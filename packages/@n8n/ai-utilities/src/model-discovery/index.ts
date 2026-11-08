@@ -9,6 +9,7 @@ import { listMistralModels } from './providers/mistral';
 import { listMoonshotAiModels } from './providers/moonshotai';
 import { listNvidiaModels } from './providers/nvidia';
 import { listOpenAiModels } from './providers/openai';
+import { listOllamaModels } from './providers/ollama';
 import { listOpenRouterModels } from './providers/openrouter';
 import { listVercelModels } from './providers/vercel';
 import { listXaiModels } from './providers/xai';
@@ -36,6 +37,7 @@ export const MODEL_DISCOVERY_PROVIDERS: Record<string, ListModelsFn> = {
 	mistral: listMistralModels,
 	moonshotai: listMoonshotAiModels,
 	nvidia: listNvidiaModels,
+	ollama: listOllamaModels,
 	openai: listOpenAiModels,
 	openrouter: listOpenRouterModels,
 	vercel: listVercelModels,
@@ -64,13 +66,9 @@ export {
 export { listAlibabaModels, shouldIncludeAlibabaModel } from './providers/alibaba';
 export { listAnthropicModels } from './providers/anthropic';
 export {
-	AZURE_AI_FOUNDRY_AUDIENCE,
-	AzureProjectNotFoundError,
-	getAzureFoundryOrigin,
 	listAzureOpenAiModels,
 	shouldIncludeAzureModel,
 	type AzureOpenAiListModelsOptions,
-	type AzureDeploymentModel,
 } from './providers/azure';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';
@@ -87,6 +85,7 @@ export { listMiniMaxModels } from './providers/minimax';
 export { listMistralModels } from './providers/mistral';
 export { listMoonshotAiModels } from './providers/moonshotai';
 export { listNvidiaModels } from './providers/nvidia';
+export { listOllamaModels } from './providers/ollama';
 export {
 	listOpenAiModels,
 	shouldIncludeOpenAiModel,

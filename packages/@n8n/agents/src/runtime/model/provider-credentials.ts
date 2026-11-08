@@ -1,4 +1,3 @@
-import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { z } from 'zod';
 
 const apiKeyCreds = z.object({
@@ -62,6 +61,12 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	vercel: apiKeyCreds,
 	openrouter: apiKeyCreds,
 	nvidia: apiKeyCreds,
+	/**
+	 * The API key is optional: a default Ollama install accepts unauthenticated
+	 * local requests, and proxies like Open WebUI take a bearer token. This mirrors
+	 * the `ollamaApi` credential, whose only required field is `baseUrl`.
+	 */
+	ollama: apiKeyCreds,
 
 	'azure-openai': z
 		.object({
@@ -76,11 +81,12 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			 */
 			endpointType: z.enum(['classic', 'foundry']).optional(),
 			/**
-			 * Catalog id of the model a Foundry deployment serves, for example
-			 * `azure-openai/claude-opus-4-5`. The SDK reads limits and thinking
-			 * support from the model id, and a deployment name does not reveal them.
+			 * User-defined Azure deployment name. The catalog model id is not the
+			 * deployment id, so the agent flow must carry this separately. Used by
+			 * both the classic and Foundry branches; on Foundry it overrides the
+			 * model id in the request path.
 			 */
-			catalogModelId: z.string().optional(),
+			deploymentName: z.string().optional(),
 			/**
 			 * Entra OAuth2 fields. The model factory mints a Bearer token from these
 			 * via `@n8n/client-oauth2` (client-credentials), mirroring the LangChain
@@ -92,12 +98,6 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			oauthScope: z.string().optional(),
 			oauthAuthentication: z.enum(['body', 'header']).optional(),
 			oauthTokenData: z.object({ access_token: z.string() }).passthrough().optional(),
-			/** Validates the Entra token URL against the instance's outbound policy. */
-			ssrfBridge: z
-				.custom<NonNullable<ClientOAuth2Options['ssrfBridge']>>(
-					(value) => typeof value === 'object' && value !== null,
-				)
-				.optional(),
 		})
 		.superRefine((data, ctx) => {
 			const hasApiKey = hasAzureApiKey(data);
@@ -150,10 +150,7 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			}
 		}),
 	'aws-bedrock': z.object({
-		region: z
-			.string()
-			.min(1, 'AWS region is required')
-			.regex(/^[a-z]{2}(-[a-z]+)+-\d+$/, 'Use an AWS region such as us-east-1'),
+		region: z.string().min(1, 'AWS region is required'),
 		accessKeyId: z.string().min(1, 'AWS accessKeyId is required'),
 		secretAccessKey: z.string().min(1, 'AWS secretAccessKey is required'),
 		sessionToken: z.string().optional(),

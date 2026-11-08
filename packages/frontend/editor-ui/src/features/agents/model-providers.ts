@@ -1,8 +1,4 @@
-import {
-	AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES,
-	type AgentModelProvider,
-	type AgentModelsUnavailableReason,
-} from '@n8n/api-types';
+import { AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES, type AgentModelProvider } from '@n8n/api-types';
 
 export {
 	AGENT_MODEL_PROVIDERS,
@@ -26,8 +22,6 @@ export interface AgentModelsForProvider {
 	models: AgentModelOption[];
 	/** The list could not be retrieved, as opposed to being genuinely empty. */
 	unavailable?: boolean;
-	/** Set with `unavailable` when the user can fix the cause. */
-	unavailableReason?: AgentModelsUnavailableReason;
 }
 
 export type AgentModelsByProvider = Partial<Record<AgentModelProvider, AgentModelsForProvider>>;
@@ -61,6 +55,7 @@ export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 	moonshotai: { displayName: 'Moonshot' },
 	alibaba: { displayName: 'Qwen Cloud' },
 	minimax: { displayName: 'MiniMax' },
+	ollama: { displayName: 'Ollama' },
 } satisfies Record<
 	AgentModelProvider,
 	{
