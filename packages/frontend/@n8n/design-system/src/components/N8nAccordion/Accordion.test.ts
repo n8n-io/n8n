@@ -65,3 +65,76 @@ describe('N8nAccordion', () => {
 		});
 	});
 });
+
+const SingleAccordion = defineComponent({
+	components: {
+		N8nAccordion,
+		N8nAccordionItem,
+		N8nAccordionHeader,
+		N8nAccordionTrigger,
+		N8nAccordionContent,
+	},
+	template: `
+		<N8nAccordion type="single" default-value="one" unmount-on-hide>
+			<N8nAccordionItem value="one">
+				<N8nAccordionHeader>
+					<N8nAccordionTrigger>First section</N8nAccordionTrigger>
+				</N8nAccordionHeader>
+				<N8nAccordionContent>First section content</N8nAccordionContent>
+			</N8nAccordionItem>
+			<N8nAccordionItem value="two">
+				<N8nAccordionHeader>
+					<N8nAccordionTrigger>Second section</N8nAccordionTrigger>
+				</N8nAccordionHeader>
+				<N8nAccordionContent>Second section content</N8nAccordionContent>
+			</N8nAccordionItem>
+		</N8nAccordion>
+	`,
+});
+
+const MultipleAccordion = defineComponent({
+	components: {
+		N8nAccordion,
+		N8nAccordionItem,
+		N8nAccordionHeader,
+		N8nAccordionTrigger,
+		N8nAccordionContent,
+	},
+	template: `
+		<N8nAccordion type="multiple" :default-value="['one']" unmount-on-hide>
+			<N8nAccordionItem value="one">
+				<N8nAccordionHeader>
+					<N8nAccordionTrigger>First section</N8nAccordionTrigger>
+				</N8nAccordionHeader>
+				<N8nAccordionContent>First section content</N8nAccordionContent>
+			</N8nAccordionItem>
+			<N8nAccordionItem value="two">
+				<N8nAccordionHeader>
+					<N8nAccordionTrigger>Second section</N8nAccordionTrigger>
+				</N8nAccordionHeader>
+				<N8nAccordionContent>Second section content</N8nAccordionContent>
+			</N8nAccordionItem>
+		</N8nAccordion>
+	`,
+});
+
+describe('N8nAccordion types', () => {
+	it('keeps the open section open when type is single', async () => {
+		render(SingleAccordion);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'First section' }));
+
+		expect(screen.getByText('First section content')).toBeInTheDocument();
+	});
+
+	it('keeps the first section open when a second section opens', async () => {
+		render(MultipleAccordion);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Second section' }));
+
+		await waitFor(() => {
+			expect(screen.getByText('Second section content')).toBeInTheDocument();
+		});
+		expect(screen.getByText('First section content')).toBeInTheDocument();
+	});
+});
