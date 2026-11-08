@@ -20,6 +20,13 @@ export interface SkillGotcha {
 	id: string;
 	/** Retrieval skips the gotcha until the conversation reaches this phase. Omit for any time. */
 	phase?: GotchaPhase;
+	/**
+	 * Retrieval skips the gotcha until one of these strings appears in the
+	 * user's messages or the agent's tool inputs, such as a node type
+	 * (`n8n-nodes-base.gmailTrigger`) or a tag (`<workflow-test-request>`).
+	 * Omit to allow it in any thread.
+	 */
+	requiresAny?: readonly string[];
 	/** The correction the model sees. */
 	text: string;
 	/** The situation the gotcha is for, in one sentence. Retrieval embeds this text. */

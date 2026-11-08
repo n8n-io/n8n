@@ -170,6 +170,13 @@ describe('detectGotchaPhases', () => {
 			new Set(['editing']),
 		);
 		expect(detectGotchaPhases([call('workflow_builder_build_workflow', 'resolved')])).toEqual(
+			new Set(['after-build']),
+		);
+	});
+
+	it('counts a build from an earlier turn as editing', () => {
+		const user: AgentMessage = { role: 'user', content: [{ type: 'text', text: 'change it' }] };
+		expect(detectGotchaPhases([call('workflow_builder_build_workflow', 'resolved'), user])).toEqual(
 			new Set(['after-build', 'editing']),
 		);
 	});
@@ -202,6 +209,71 @@ describe('createGotchaNotesProvider', () => {
 		activeSkillIds: ['workflow-builder'],
 		sentNoteIds: new Set(),
 		...overrides,
+	});
+
+	it('holds a gated gotcha back until the thread mentions one of its strings', async () => {
+		const gated: SkillGotchaSet[] = [
+			{
+				skillId: 'workflow-builder',
+				gotchas: [
+					{
+						id: 'a',
+						requiresAny: ['n8n-nodes-base.gmailTrigger'],
+						text: 'Rule A',
+						appliesWhen: 'alpha',
+						fixes: '',
+						origin: '',
+						evalCases: [],
+					},
+				],
+			},
+		];
+		const provider = createGotchaNotesProvider({
+			sets: gated,
+			embeddingModel: model,
+			threshold: 0.8,
+		});
+		expect(await provider(request())).toEqual([]);
+		const fromContext = await provider(
+			request({
+				messages: [
+					{
+						role: 'user',
+						content: [
+							{
+								type: 'text',
+								text: '<thread-context>[id:1] workflow · +2 n8n-nodes-base.gmailTrigger</thread-context>\nabout alpha',
+							},
+						],
+					},
+				],
+			}),
+		);
+		expect(fromContext).toEqual([]);
+		const withNode = await provider(
+			request({
+				messages: [
+					{ role: 'user', content: [{ type: 'text', text: 'about alpha' }] },
+					{
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: 'c1',
+								toolName: 'call_tool',
+								input: {
+									tool: 'get_node_types',
+									arguments: { nodeTypes: ['n8n-nodes-base.gmailTrigger'] },
+								},
+								state: 'resolved',
+								output: {},
+							},
+						],
+					},
+				],
+			}),
+		);
+		expect(withNode.map((note) => note.id)).toEqual([gotchaNoteId('workflow-builder', 'a')]);
 	});
 
 	it('returns gotchas above the threshold', async () => {

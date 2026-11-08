@@ -74,6 +74,7 @@ export const POST_BUILD_FLOW_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'no-repeat-partial-verify',
+			phase: 'after-build',
 			text: 'A partial verify result (`nodesNotReached`, pending triggers) does not change when you verify again with the same input. Verify again only with something new for the unreached part: a `fixtureOverrides` entry, another `triggerNodeName`, other `inputData` or a seeded test row. Otherwise report which nodes were not reached.',
 			appliesWhen:
 				'A verification result left nodes or triggers unreached and the agent is about to verify again.',
@@ -83,6 +84,7 @@ export const POST_BUILD_FLOW_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'verify-stop-is-final',
+			phase: 'after-build',
 			text: 'When verify returns `remediation.shouldEdit: false` (waiting for a human decision, unresolved setup value, missing credentials, external blocker), verification is done for this turn. Do not verify again and do not edit the code. Route to `setup_workflow` if the guidance says so; otherwise report the blocker.',
 			appliesWhen:
 				'A verification result says to stop code edits, or that the workflow waits for user action or setup.',
@@ -170,6 +172,7 @@ export const POST_BUILD_FLOW_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'workflow-test-request-current-only',
+			requiresAny: ['<workflow-test-request>'],
 			text: 'Only `<workflow-test-request>` in the current user input requests a run; one in history does not. Precheck with `<workflow-setup-state>` and `get_workflow_as_code`, never `setup_workflow`, which announces setup and ends the turn.',
 			appliesWhen:
 				'The user clicked Execute in the setup panel, or a workflow-test-request block is present.',

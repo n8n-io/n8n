@@ -91,6 +91,12 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'polling-dedupe',
+			requiresAny: [
+				'n8n-nodes-base.gmailTrigger',
+				'n8n-nodes-base.microsoftOutlookTrigger',
+				'n8n-nodes-base.rssFeedReadTrigger',
+				'n8n-nodes-base.emailReadImap',
+			],
 			text: 'A polling trigger (Gmail, Outlook) that feeds a create/write action can return the same item again. Mark each item handled, or record handled ids in a Data Table and skip ids already seen. Check the id before creating, and record it only after the create succeeds.',
 			appliesWhen:
 				'A polling trigger such as Gmail, Outlook or an RSS feed starts a workflow that creates records, tickets or rows.',
@@ -201,6 +207,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'openai-output-shape',
+			requiresAny: ['@n8n/n8n-nodes-langchain.openAi'],
 			text: 'OpenAI node output: v2+ text is `$json.output[0].content[0].text`, v1 is `$json.message.content`, and `json_schema` output is already parsed. Read `knowledge-base/reference/open-ai-output-shape.md` before mapping it.',
 			appliesWhen:
 				'A workflow uses the OpenAI node and later nodes read its generated text or structured output.',
@@ -210,11 +217,23 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'anthropic-output-shape',
+			requiresAny: ['@n8n/n8n-nodes-langchain.anthropic'],
 			text: 'Anthropic node `$json.content` is an array of blocks: read `$json.merged_response` (with Include Merged Response on) or `$json.content.find(c => c.type === "text")?.text`, never `content[0]`, which can be a tool block. See `knowledge-base/reference/anthropic-output-shape.md`.',
 			appliesWhen:
 				'A workflow uses the Anthropic or Claude node and later nodes read its generated text.',
 			fixes: 'Downstream nodes treated Anthropic `$json.content` as a string.',
 			origin: '#35850',
+			evalCases: [],
+		},
+		{
+			id: 'gemini-output-shape',
+			requiresAny: ['@n8n/n8n-nodes-langchain.googleGemini'],
+			text: 'Google Gemini node (Message a Model, Simplify Output on) returns one item for each candidate: read the text as `$json.content.parts[0].text`. With Include Merged Response on, read `$json.mergedResponse`. With Output Content as JSON on, the text is a JSON string: parse it before you read fields.',
+			appliesWhen:
+				'A workflow uses the Google Gemini node and later nodes read its generated text or JSON.',
+			fixes:
+				'The agent searched the knowledge base for the Gemini output shape or read `$json.text`.',
+			origin: 'thread b281879a',
 			evalCases: [],
 		},
 		{

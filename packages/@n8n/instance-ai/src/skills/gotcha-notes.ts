@@ -28,11 +28,8 @@ const AFTER_BUILD_TOOLS = new Set<string>([
 	DOMAIN_TOOL_IDS.DEBUG_EXECUTION,
 ]);
 
-/** A successful call to one of these means the agent edits saved workflow code. */
-const EDITING_TOOLS = new Set<string>([
-	DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE,
-	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-]);
+/** A successful call to this means the agent edits saved workflow code. */
+const EDITING_TOOLS = new Set<string>([DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE]);
 
 /** Not tuned yet. Calibrate with eval traces (scores of notes that helped vs. noise). */
 export const DEFAULT_GOTCHA_SCORE_THRESHOLD = 0.4;
@@ -166,16 +163,42 @@ export function detectJustLoadedSkills(messages: readonly AgentMessage[]): Set<s
 /** Phases the conversation has reached, from the tools that succeeded so far. */
 export function detectGotchaPhases(messages: readonly AgentMessage[]): Set<GotchaPhase> {
 	const phases = new Set<GotchaPhase>();
+	// The first build of a new workflow is not an edit. A build in an earlier
+	// turn means this turn changes a saved workflow.
+	let builtBefore = false;
+	let builtThisTurn = false;
 	for (const message of messages) {
 		if (!isLlmMessage(message)) continue;
+		if (message.role === 'user') {
+			builtBefore ||= builtThisTurn;
+			builtThisTurn = false;
+		}
 		for (const part of message.content) {
 			if (part.type !== 'tool-call' || part.state !== 'resolved') continue;
 			const name = calledToolName(part.toolName, part.input);
 			if (AFTER_BUILD_TOOLS.has(name)) phases.add('after-build');
 			if (EDITING_TOOLS.has(name)) phases.add('editing');
+			if (name === DOMAIN_TOOL_IDS.BUILD_WORKFLOW) builtThisTurn = true;
 		}
 	}
+	if (builtBefore) phases.add('editing');
 	return phases;
+}
+
+/** User text and tool inputs, searched by a gotcha's `requiresAny` gate. */
+function threadEvidence(messages: readonly AgentMessage[]): string {
+	const chunks: string[] = [];
+	for (const message of messages) {
+		if (!isLlmMessage(message)) continue;
+		for (const part of message.content) {
+			// Thread context lists node types from other workflows, so it cannot open a gate.
+			if (part.type === 'text' && message.role === 'user') {
+				chunks.push(stripInjectedText(part.text));
+			}
+			if (part.type === 'tool-call') chunks.push(JSON.stringify(part.input ?? null));
+		}
+	}
+	return chunks.join('\n');
 }
 
 /**
@@ -403,15 +426,23 @@ export function createGotchaNotesProvider(options: GotchaNotesOptions): ContextN
 
 		// A gotcha for a later phase stays unsent, so it can still fire once that phase starts.
 		const phases = detectGotchaPhases(request.messages);
-		const phaseByKey = new Map(
-			candidates.map(({ skillId, gotcha }) => [`${skillId}:${gotcha.id}`, gotcha.phase]),
+		const gotchaByKey = new Map(
+			candidates.map(({ skillId, gotcha }) => [`${skillId}:${gotcha.id}`, gotcha]),
 		);
+		let evidence: string | undefined;
+		const requirementMet = (required: readonly string[] | undefined) => {
+			if (!required?.length) return true;
+			evidence ??= threadEvidence(request.messages);
+			return required.some((needle) => evidence?.includes(needle));
+		};
 		const ranked = lastScores
 			.filter(({ skillId, gotchaId }) => {
 				if (!active.has(skillId)) return false;
 				if (request.sentNoteIds.has(gotchaNoteId(skillId, gotchaId))) return false;
-				const phase = phaseByKey.get(`${skillId}:${gotchaId}`);
-				return phase === undefined || phases.has(phase);
+				const gotcha = gotchaByKey.get(`${skillId}:${gotchaId}`);
+				if (gotcha?.phase !== undefined && !phases.has(gotcha.phase)) return false;
+				// A gate that is not met yet keeps the gotcha unsent, like a later phase.
+				return requirementMet(gotcha?.requiresAny);
 			})
 			.sort((a, b) => b.score - a.score);
 		const matches = ranked.filter(({ score }) => score >= threshold).slice(0, topK);
