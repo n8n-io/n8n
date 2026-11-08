@@ -184,7 +184,7 @@ const LayoutHarness = defineComponent({
 	template: `
 		<N8nListbox label="Workflows">
 			<N8nListboxItem value="sync" icon="copy">
-				Sync
+				<span data-test-id="sync-body">Sync</span>
 				<template #trailing>
 					<button type="button">Actions</button>
 				</template>
@@ -214,13 +214,18 @@ describe('N8nListbox', () => {
 		const sync = getByRole('option', { name: 'Sync Actions' });
 		const custom = getByRole('option', { name: 'Lead Custom' });
 		const icon = sync.querySelector('[data-icon="copy"]');
+		const content = getByTestId('sync-body');
 		const action = getByRole('button', { name: 'Actions' });
 
 		expect(icon).toBeInstanceOf(Element);
+		expect(sync).toContainElement(content);
 		expect(sync).toContainElement(action);
 		expect(
-			(icon as Element).compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING,
+			(icon as Element).compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		expect(content.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+			Node.DOCUMENT_POSITION_FOLLOWING,
+		);
 		expect(custom.querySelector('[data-icon]')).toBeNull();
 		expect(custom).toContainElement(getByTestId('custom-leading'));
 	});
