@@ -179,6 +179,26 @@ const TabHarness = defineComponent({
 	`,
 });
 
+const LayoutHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	template: `
+		<N8nListbox label="Workflows">
+			<N8nListboxItem value="sync" icon="copy">
+				Sync
+				<template #trailing>
+					<button type="button">Actions</button>
+				</template>
+			</N8nListboxItem>
+			<N8nListboxItem value="custom" icon="archive">
+				<template #leading>
+					<span data-test-id="custom-leading">Lead</span>
+				</template>
+				Custom
+			</N8nListboxItem>
+		</N8nListbox>
+	`,
+});
+
 const AttrHarness = defineComponent({
 	components: { N8nListbox, N8nListboxItem },
 	template: `
@@ -189,6 +209,22 @@ const AttrHarness = defineComponent({
 });
 
 describe('N8nListbox', () => {
+	it('places an icon before the content and a trailing control after it', () => {
+		const { getByRole, getByTestId } = render(LayoutHarness);
+		const sync = getByRole('option', { name: 'Sync Actions' });
+		const custom = getByRole('option', { name: 'Lead Custom' });
+		const icon = sync.querySelector('[data-icon="copy"]');
+		const action = getByRole('button', { name: 'Actions' });
+
+		expect(icon).toBeInstanceOf(Element);
+		expect(sync).toContainElement(action);
+		expect(
+			(icon as Element).compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		expect(custom.querySelector('[data-icon]')).toBeNull();
+		expect(custom).toContainElement(getByTestId('custom-leading'));
+	});
+
 	it('puts caller attributes on the list root and the label on the listbox', () => {
 		const { getByRole, getByTestId } = render(AttrHarness);
 		const list = getByRole('listbox', { name: 'Versions' });

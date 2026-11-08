@@ -8,9 +8,10 @@ const config = {
 	},
 };
 
-async function lintCSS(code: string) {
+async function lintCSS(code: string, codeFilename?: string) {
 	const result = await stylelint.lint({
 		code,
+		codeFilename,
 		config,
 	});
 	return result.results[0];
@@ -1215,6 +1216,62 @@ describe('css-var-naming rule', () => {
 			`;
 			const result = await lintCSS(maximumPattern);
 			expect(result.warnings).toHaveLength(0);
+		});
+	});
+
+	describe('public component token prefix', () => {
+		const componentFile =
+			'/packages/frontend/@n8n/design-system/src/components/N8nListbox/ListboxItem.vue';
+
+		it('requires the --n8n- prefix on a public component token', async () => {
+			const result = await lintCSS(
+				`.item { color: var(--listbox-item--radius, var(--radius)); }`,
+				componentFile,
+			);
+
+			expect(result.warnings).toHaveLength(1);
+			expect(result.warnings[0]).toMatchObject({
+				text: expect.stringContaining(
+					'Public CSS variable "--listbox-item--radius" must start with "--n8n-"',
+				),
+			});
+		});
+
+		it('accepts a public component token with the --n8n- prefix', async () => {
+			const result = await lintCSS(
+				`.item { color: var(--n8n-listbox-item--radius, var(--radius)); }`,
+				componentFile,
+			);
+
+			expect(result.warnings).toHaveLength(0);
+		});
+
+		it('accepts a global token and a legacy component token', async () => {
+			const result = await lintCSS(
+				`.item { color: var(--spacing--4xs, 0); border-color: var(--focus--border-width, 2px); width: var(--card--padding, 0); }`,
+				componentFile,
+			);
+
+			expect(result.warnings).toHaveLength(0);
+		});
+
+		it('does not apply the prefix check outside design-system components', async () => {
+			const result = await lintCSS(
+				`.item { color: var(--listbox-item--radius, var(--radius)); }`,
+				'/packages/frontend/editor-ui/src/app/components/Example.vue',
+			);
+
+			expect(result.warnings).toHaveLength(0);
+		});
+
+		it('keeps the name check for design-system token files', async () => {
+			const result = await lintCSS(
+				`:root { --color-primary: #0d6efd; }`,
+				'/packages/frontend/@n8n/design-system/src/css/_tokens.scss',
+			);
+
+			expect(result.warnings.length).toBeGreaterThan(0);
+			expect(result.warnings[0].text).toContain('Invalid CSS variable "--color-primary"');
 		});
 	});
 });

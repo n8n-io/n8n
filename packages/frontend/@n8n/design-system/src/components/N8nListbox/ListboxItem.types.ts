@@ -1,3 +1,4 @@
+import type { IconName } from '../N8nIcon/icons';
 import type { ListboxValue } from './Listbox.types';
 
 export type ListboxItemProps = {
@@ -10,6 +11,11 @@ export type ListboxItemProps = {
 	 * @default false
 	 */
 	disabled?: boolean;
+	/**
+	 * Icon before the row content.
+	 * The leading slot replaces this icon.
+	 */
+	icon?: IconName;
 };
 
 export type ListboxItemEmits = {
@@ -21,6 +27,13 @@ export type ListboxItemEmits = {
 };
 
 export type ListboxItemSlots = {
-	/** Row content. The item has no padding. The highlight covers this content. */
+	/** Row content. */
 	default(): unknown;
+	/**
+	 * Content before the row content.
+	 * This slot replaces the icon.
+	 */
+	leading(): unknown;
+	/** Content after the row content. */
+	trailing(): unknown;
 };

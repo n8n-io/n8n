@@ -3,9 +3,13 @@ import type { Rule } from 'stylelint';
 
 const ruleName = '@n8n/css-var-naming';
 const DESIGN_SYSTEM_CSS_PATH_SEGMENT = '/frontend/@n8n/design-system/src/css/';
+const DESIGN_SYSTEM_COMPONENT_PATH_SEGMENT = '/frontend/@n8n/design-system/src/components/';
+const PUBLIC_COMPONENT_PREFIX = '--n8n-';
 
 const messages = stylelint.utils.ruleMessages(ruleName, {
 	rejected: (variable: string, reason: string) => `Invalid CSS variable "${variable}": ${reason}`,
+	publicPrefix: (variable: string) =>
+		`Public CSS variable "${variable}" must start with "${PUBLIC_COMPONENT_PREFIX}"`,
 });
 
 const meta = {
@@ -106,6 +110,56 @@ const MEDIA = new Set(['sm', 'md', 'lg', 'xl', '2xl']);
 
 const N8N_BYPASS_PREFIX = '--n8n--';
 
+// Third-party variables stay unprefixed.
+const IGNORED_COMPONENT_PREFIXES = ['--reka', '--ag-', '--ag--', '--chat'];
+
+/**
+ * Public component tokens that predate the `--n8n-` prefix.
+ * Do not add names. A new public token starts with `--n8n-`.
+ */
+const LEGACY_PUBLIC_COMPONENT_TOKENS = new Set([
+	'--action--arrow--color',
+	'--action--arrow--color--hover',
+	'--ai-activity-step--color',
+	'--ai-activity-step--height',
+	'--ai-activity-step--min-height',
+	'--ai-activity-step--padding',
+	'--card--append--width',
+	'--card--padding',
+	'--context-menu--width',
+	'--empty-state-icon-cards--tile-background',
+	'--empty-state-icon-cards--tile-color',
+	'--focus--border-width',
+	'--input--border-width',
+	'--input--font-size',
+	'--input--radius',
+	'--input--radius--bottom-left',
+	'--input--radius--bottom-right',
+	'--input--radius--top-left',
+	'--input--radius--top-right',
+	'--jumper-font-size',
+	'--jumper-height',
+	'--jumper-inset',
+	'--jumper-radius',
+	'--markdown-editor-raw-height',
+	'--menu-item--label-overflow',
+	'--node--icon--badge--color--background',
+	'--node--icon--color',
+	'--node--icon--margin-right',
+	'--node--icon--size',
+	'--node-creator--description--color',
+	'--node-creator--name--font-size',
+	'--node-creator--name--font-weight',
+	'--notice--margin',
+	'--radio-group-item--label--font-size',
+	'--scroll-area--fade-size',
+	'--settings-content--max-width',
+	'--settings-row--description-lines',
+	'--sticky--border-color',
+	'--tabs--arrow-buttons--color',
+	'--tag--min-width',
+]);
+
 // Ignore issues related to these namespaces
 const DISABLE_CHECK_FOR_NAMESPACES = new Set(['reka', 'ag', 'chat']);
 
@@ -162,6 +216,36 @@ function shouldValidateFile(filePath: string | undefined) {
 	const normalizedPath = filePath.replace(/\\/g, '/');
 
 	return normalizedPath.includes(DESIGN_SYSTEM_CSS_PATH_SEGMENT);
+}
+
+function isDesignSystemComponentFile(filePath: string | undefined) {
+	if (!filePath) {
+		return false;
+	}
+
+	return filePath.replace(/\\/g, '/').includes(DESIGN_SYSTEM_COMPONENT_PATH_SEGMENT);
+}
+
+function isExemptFromPublicPrefix(variable: string) {
+	if (variable.startsWith(PUBLIC_COMPONENT_PREFIX)) {
+		return true;
+	}
+
+	if (IGNORED_COMPONENT_PREFIXES.some((prefix) => variable.startsWith(prefix))) {
+		return true;
+	}
+
+	if (LEGACY_PUBLIC_COMPONENT_TOKENS.has(variable)) {
+		return true;
+	}
+
+	const groups = variable.slice(2).split('--');
+	if (groups.length === 1) {
+		return STANDALONE_PROPERTIES.has(groups[0]);
+	}
+
+	// Global tokens lead with a property (`--spacing--md`, `--color--primary`).
+	return PROPERTY_VOCABULARY.has(groups[0]);
 }
 
 function shouldSkip(variable: string) {
@@ -380,7 +464,13 @@ function validateCssVariable(variable: string): ValidationResult {
 
 const ruleFunction: Rule = (primary, secondaryOptions, context) => {
 	return (root, result) => {
-		if (root.source?.input.file && !shouldValidateFile(root.source.input.file)) {
+		const filePath = root.source?.input.file;
+		const validateNaming = !filePath || shouldValidateFile(filePath);
+		const validatePublicPrefix = isDesignSystemComponentFile(filePath);
+
+		// Token files keep the full name check. Component files only require the
+		// public `--n8n-` prefix, so existing component internals stay as they are.
+		if (!validateNaming && !validatePublicPrefix) {
 			return;
 		}
 
@@ -392,46 +482,72 @@ const ruleFunction: Rule = (primary, secondaryOptions, context) => {
 			return;
 		}
 
-		root.walkDecls((decl) => {
-			const prop = decl.prop;
+		if (validateNaming) {
+			root.walkDecls((decl) => {
+				const prop = decl.prop;
 
-			// Only check CSS custom properties (variables)
-			if (!prop.startsWith('--')) {
-				return;
-			}
+				// Only check CSS custom properties (variables)
+				if (!prop.startsWith('--')) {
+					return;
+				}
 
-			const validation = validateCssVariable(prop);
-
-			if (!validation.valid) {
-				stylelint.utils.report({
-					message: messages.rejected(prop, validation.reason!),
-					node: decl,
-					result,
-					ruleName,
-				});
-			}
-		});
-
-		// Also check variable usage in var() functions
-		root.walkDecls((decl) => {
-			const value = decl.value;
-
-			// Find all var() references
-			const varPattern = /var\((--[a-z0-9-]+)/g;
-			let match;
-
-			while ((match = varPattern.exec(value)) !== null) {
-				const variable = match[1];
-				const validation = validateCssVariable(variable);
+				const validation = validateCssVariable(prop);
 
 				if (!validation.valid) {
 					stylelint.utils.report({
-						message: messages.rejected(variable, validation.reason!),
+						message: messages.rejected(prop, validation.reason!),
 						node: decl,
 						result,
 						ruleName,
 					});
 				}
+			});
+
+			// Also check variable usage in var() functions
+			root.walkDecls((decl) => {
+				const value = decl.value;
+
+				// Find all var() references
+				const varPattern = /var\((--[a-z0-9-]+)/g;
+				let match;
+
+				while ((match = varPattern.exec(value)) !== null) {
+					const variable = match[1];
+					const validation = validateCssVariable(variable);
+
+					if (!validation.valid) {
+						stylelint.utils.report({
+							message: messages.rejected(variable, validation.reason!),
+							node: decl,
+							result,
+							ruleName,
+						});
+					}
+				}
+			});
+		}
+
+		if (!validatePublicPrefix) {
+			return;
+		}
+
+		root.walkDecls((decl) => {
+			// A fallback marks a token a caller can set.
+			const varPattern = /var\(\s*(--[a-z0-9-]+)\s*,/g;
+			let match;
+
+			while ((match = varPattern.exec(decl.value)) !== null) {
+				const variable = match[1];
+				if (isExemptFromPublicPrefix(variable)) {
+					continue;
+				}
+
+				stylelint.utils.report({
+					message: messages.publicPrefix(variable),
+					node: decl,
+					result,
+					ruleName,
+				});
 			}
 		});
 	};

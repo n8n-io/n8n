@@ -247,6 +247,18 @@ Override variables for different themes:
 }
 ```
 
+### Public component tokens
+
+A public component token is a variable a caller sets on a component. Start it with `--n8n-` (one dash after `n8n`):
+
+```scss
+.item {
+  border-radius: var(--n8n-listbox-item--radius, var(--radius));
+}
+```
+
+The rule checks this prefix in `@n8n/design-system` component files. A `var()` with a fallback is a public token. Global tokens such as `--spacing--md` stay unprefixed. `--n8n--` (two dashes) still bypasses the name check for a local helper in token files.
+
 ### Namespaced Tokens
 
 Use namespaces for cross-app libraries:

@@ -40,6 +40,14 @@ These map to primitives (directly or through compatibility aliases), and have li
 
 Naming is validated by `@n8n/css-var-naming` in `packages/@n8n/stylelint-config/src/rules/css-var-naming.ts` for files in `@n8n/design-system/src/css`.
 
+A public component token is a variable a caller sets on a component. Start that token with `--n8n-` (one dash after `n8n`):
+
+```css
+color: var(--n8n-listbox-item--color--text--disabled, var(--text-color--disabled));
+```
+
+The same rule checks this prefix in `@n8n/design-system` component files.
+
 ### Required format
 
 - Use groups separated by double dashes: `--group--group`.
