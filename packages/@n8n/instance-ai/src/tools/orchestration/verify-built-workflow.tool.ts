@@ -128,6 +128,9 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 		),
 });
 
+/** Simulated output is fixture data, so a short preview is enough to show its shape. */
+const SIMULATED_NODE_PREVIEW_CHARS = 200;
+
 const remediationOutputSchema = z
 	.object({
 		category: z.enum(['code_fixable', 'needs_setup', 'blocked']),
@@ -425,9 +428,14 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				runs: parameterCheckRuns,
 				logger: context.logger,
 			});
+			// `claim.simulatedNodes` already lists each simulated node and its reason,
+			// so the note only counts them instead of listing them a second time.
+			const reachedSimulatedCount = analysis.reachedSimulatedNodes.length;
 			const simulationNote = [
 				prepared.ignoredGateOverrideNote,
-				analysis.simulationNote,
+				reachedSimulatedCount > 0
+					? `Simulated ${reachedSimulatedCount} node(s) with fixture output (see claim.simulatedNodes). Relay this to the user when presenting the result.`
+					: analysis.simulationNote,
 				buildResolvedParameterNote(
 					resolvedParameterWarnings,
 					skippedParameterChecks,
@@ -447,9 +455,12 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				status: result.status,
 				nodesExecuted: analysis.nodesExecuted,
 				lastNodeExecuted: result.lastNodeExecuted,
-				nodePreviews: buildNodePreviews(result.data, maxDataChars, simulatedNames),
-				simulatedNodes:
-					analysis.reachedSimulatedNodes.length > 0 ? analysis.reachedSimulatedNodes : undefined,
+				nodePreviews: buildNodePreviews(
+					result.data,
+					maxDataChars,
+					simulatedNames,
+					Math.min(maxDataChars, SIMULATED_NODE_PREVIEW_CHARS),
+				),
 				simulationNote: simulationNote.length > 0 ? simulationNote : undefined,
 				resolvedParameterWarnings:
 					resolvedParameterWarnings.length > 0 ? resolvedParameterWarnings : undefined,
