@@ -188,14 +188,20 @@ const columnResultSchema = z.object({
 	dataTableId: z.string(),
 });
 
-const dataTableResultSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	columns: z.array(columnResultSchema),
-	createdAt: serialisedDate,
-	updatedAt: serialisedDate,
-	projectId: z.string(),
-});
+const dataTableResultSchema = z
+	.object({
+		id: z.string(),
+		name: z.string(),
+		// The table list query does not select the column's `dataTableId`.
+		columns: z.array(columnResultSchema.extend({ dataTableId: z.string().optional() })),
+		createdAt: serialisedDate,
+		updatedAt: serialisedDate,
+		projectId: z.string(),
+	})
+	.transform((table) => ({
+		...table,
+		columns: table.columns.map((column) => ({ ...column, dataTableId: table.id })),
+	}));
 
 const rowResultSchema = z
 	.object({ id: z.number(), createdAt: serialisedDate, updatedAt: serialisedDate })

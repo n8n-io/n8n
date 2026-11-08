@@ -187,7 +187,8 @@ describe('RemoteDataTableProxyProvider', () => {
 					{
 						id: 'dt-1',
 						name: 'people',
-						columns: [],
+						// As the list query selects a column: without its `dataTableId`.
+						columns: [{ id: 'col-1', name: 'name', type: 'string', index: 0 }],
 						createdAt: when,
 						updatedAt: when,
 						projectId: 'project-1',
@@ -206,6 +207,7 @@ describe('RemoteDataTableProxyProvider', () => {
 			});
 			expect(result.count).toBe(1);
 			expect(result.data[0].createdAt).toEqual(new Date(when));
+			expect(result.data[0].columns[0].dataTableId).toBe('dt-1');
 		});
 
 		it('refuses to delete every table of the project', async () => {

@@ -10,22 +10,22 @@ const GET_NAME = 'Get rows';
 /** The date the fixture's insert node writes, so the spec can check it survives both engines. */
 const JOINED = '2026-10-27T10:00:00.000Z';
 
-/** Points every Data Table node of the fixture at the table the test created. */
+/**
+ * Points the fixture's Data Table nodes at the table the test created: the
+ * insert node by id, the get node by name, so the run covers both lookups.
+ */
 const withDataTable =
-	(dataTableId: string) =>
+	(table: { id: string; name: string }) =>
 	(workflow: Partial<IWorkflowBase>): Partial<IWorkflowBase> => ({
 		...workflow,
-		nodes: workflow.nodes?.map((node) =>
-			node.type === 'n8n-nodes-base.dataTable'
-				? {
-						...node,
-						parameters: {
-							...node.parameters,
-							dataTableId: { __rl: true, mode: 'id', value: dataTableId },
-						},
-					}
-				: node,
-		),
+		nodes: workflow.nodes?.map((node) => {
+			if (node.type !== 'n8n-nodes-base.dataTable') return node;
+			const dataTableId =
+				node.name === GET_NAME
+					? { __rl: true, mode: 'name', value: table.name }
+					: { __rl: true, mode: 'id', value: table.id };
+			return { ...node, parameters: { ...node.parameters, dataTableId } };
+		}),
 	});
 
 test.describe(
@@ -47,7 +47,7 @@ test.describe(
 				],
 			});
 			const { workflowId } = await api.workflows.importWorkflowFromFile('data-table-node.json', {
-				transform: withDataTable(table.id),
+				transform: withDataTable(table),
 			});
 
 			const { executionId } = await api.workflows.runManually(workflowId, TRIGGER_NAME);
@@ -74,7 +74,7 @@ test.describe(
 			api,
 		}) => {
 			const { workflowId } = await api.workflows.importWorkflowFromFile('data-table-node.json', {
-				transform: withDataTable('nosuchtable'),
+				transform: withDataTable({ id: 'nosuchtable', name: 'nosuchtable' }),
 			});
 
 			const { executionId } = await api.workflows.runManually(workflowId, TRIGGER_NAME);
