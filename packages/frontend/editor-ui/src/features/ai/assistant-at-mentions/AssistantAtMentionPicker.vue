@@ -214,10 +214,6 @@ function getResultPosition(itemId: string): number | undefined {
 	function find(items: MentionMenuItem[]): number | undefined {
 		let position = 0;
 		for (const item of items) {
-			if (item.header) {
-				position = 0;
-				continue;
-			}
 			if (item.data) position++;
 			if (item.id === itemId && item.data) return position;
 			const childPosition = item.children ? find(item.children) : undefined;

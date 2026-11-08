@@ -181,7 +181,12 @@ export function useAssistantAtMentions(options: {
 		const range = activeRange.value;
 		const typed = range?.origin === 'typed';
 		if (typed && range) {
-			updateText(options.text.value.slice(0, range.start) + options.text.value.slice(range.end));
+			const text = options.text.value;
+			// The trigger sits between two spaces ("a @ b"). Removing only the
+			// query would leave "a  b", so drop the following space as well.
+			const spaceOnBothSides = text[range.start - 1] === ' ' && text[range.end] === ' ';
+			const end = spaceOnBothSides ? range.end + 1 : range.end;
+			updateText(text.slice(0, range.start) + text.slice(end));
 		}
 		close(false, 'selected');
 
