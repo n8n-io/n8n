@@ -257,8 +257,11 @@ export class ExecutionService {
 		]);
 		if (!v1Execution || !v2Execution) return v1Execution ?? v2Execution;
 
-		const startedAt = (execution: IExecutionResponse) => execution.startedAt?.getTime() ?? 0;
-		return startedAt(v2Execution) > startedAt(v1Execution) ? v2Execution : v1Execution;
+		// Both engines pick their newest run by creation. A queued run can start
+		// after a newer one, so comparing start times would mix two orders.
+		return v2Execution.createdAt.getTime() > v1Execution.createdAt.getTime()
+			? v2Execution
+			: v1Execution;
 	}
 
 	private async lastSuccessfulV1Execution(
@@ -266,7 +269,15 @@ export class ExecutionService {
 	): Promise<IExecutionResponse | undefined> {
 		const executions = await this.executionPersistence.findMultipleExecutions(
 			{
-				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
+				select: [
+					'id',
+					'mode',
+					'createdAt',
+					'startedAt',
+					'stoppedAt',
+					'workflowId',
+					'jsonSizeBytes',
+				],
 				where: {
 					workflowId,
 					status: 'success',

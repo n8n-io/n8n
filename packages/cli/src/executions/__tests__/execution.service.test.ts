@@ -567,7 +567,15 @@ describe('ExecutionService', () => {
 			expect(result).toEqual(mockExecution);
 			expect(executionPersistence.findMultipleExecutions).toHaveBeenCalledWith(
 				{
-					select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
+					select: [
+						'id',
+						'mode',
+						'createdAt',
+						'startedAt',
+						'stoppedAt',
+						'workflowId',
+						'jsonSizeBytes',
+					],
 					where: {
 						workflowId,
 						status: 'success',
@@ -628,10 +636,12 @@ describe('ExecutionService', () => {
 			const mockUser = mock<User>();
 			const v1Execution = mock<IExecutionResponse>({
 				id: 'v1-execution',
+				createdAt: new Date('2025-01-15T10:00:00Z'),
 				startedAt: new Date('2025-01-15T10:00:00Z'),
 			});
 			const v2Execution = mock<IExecutionResponse>({
 				id: V2_EXECUTION_ID,
+				createdAt: new Date('2025-01-15T11:00:00Z'),
 				startedAt: new Date('2025-01-15T11:00:00Z'),
 			});
 
@@ -654,6 +664,20 @@ describe('ExecutionService', () => {
 
 				expect(result).toBe(v2Execution);
 				expect(workflowRepository.findSettings).not.toHaveBeenCalled();
+			});
+
+			it('should compare the engines by creation, as each engine picks its newest run', async () => {
+				const queuedV1Execution = mock<IExecutionResponse>({
+					id: 'queued-v1-execution',
+					createdAt: new Date('2025-01-15T10:00:00Z'),
+					startedAt: new Date('2025-01-15T12:00:00Z'),
+				});
+				executionPersistence.findMultipleExecutions.mockResolvedValue([queuedV1Execution]);
+				engineV2ExecutionReader.findLatest.mockResolvedValue(v2Execution);
+
+				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+				expect(result).toBe(v2Execution);
 			});
 
 			it('should return the success of the engine that has one', async () => {

@@ -5341,9 +5341,10 @@ describe('POST /workflows/:workflowId/run', () => {
 		});
 
 		test('should run on the draft engine while the published version runs on v1', async () => {
-			vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
-				(name) => name === 'engine-v2',
-			);
+			const isActiveSpy = vi
+				.spyOn(Container.get(ModuleRegistry), 'isActive')
+				.mockImplementation((name) => name === 'engine-v2');
+			onTestFinished(() => isActiveSpy.mockRestore());
 			const dbWorkflow = await createV2Workflow();
 			const publishedVersion = await createWorkflowHistoryItem(dbWorkflow.id, {
 				nodes: dbWorkflow.nodes,
