@@ -3,7 +3,9 @@ import { computed, ref } from 'vue';
 
 import type { ActionDropdownItem } from '../../types';
 import N8nActionDropdown from '../N8nActionDropdown/ActionDropdown.vue';
+import N8nBadge from '../N8nBadge/Badge.vue';
 import N8nButton from '../N8nButton/Button.vue';
+import N8nIcon from '../N8nIcon/Icon.vue';
 import type { IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText/Text.vue';
 import N8nListbox from './Listbox.vue';
@@ -276,14 +278,54 @@ export const CustomItem: Story = {
 	}),
 };
 
-const actionsMenuStyle = `
-.listbox-actions-copy {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-	gap: var(--spacing--5xs);
-}
-`;
+export const LeadingAndTrailing: Story = {
+	name: 'Leading and Trailing',
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'The icon prop puts an N8nIcon before the row content. The leading slot replaces that icon. Put an N8nIcon in the leading slot. Put an N8nBadge in the trailing slot. Use the actions menu story for a trailing control.',
+			},
+		},
+	},
+	render: () => ({
+		components: { N8nListbox, N8nListboxItem, N8nBadge, N8nIcon, N8nText },
+		setup() {
+			const value = ref('sync');
+			return { value };
+		},
+		template: `
+			<div style="width: 24rem">
+				<N8nListbox v-model="value" label="Workflows" style="flex: none">
+					<N8nListboxItem value="sync" icon="refresh-cw">
+						<N8nText bold size="small" color="text-dark">Sync contacts</N8nText>
+						<N8nText size="small" color="text-light">Runs every hour</N8nText>
+						<template #trailing>
+							<N8nBadge variant="success">Active</N8nBadge>
+						</template>
+					</N8nListboxItem>
+					<N8nListboxItem value="digest" icon="copy">
+						<N8nText bold size="small" color="text-dark">Weekly digest</N8nText>
+						<N8nText size="small" color="text-light">Sends on Monday</N8nText>
+						<template #trailing>
+							<N8nBadge variant="outline">Paused</N8nBadge>
+						</template>
+					</N8nListboxItem>
+					<N8nListboxItem value="acme">
+						<template #leading>
+							<N8nIcon icon="briefcase" size="large" />
+						</template>
+						<N8nText bold size="small" color="text-dark">Acme CRM sync</N8nText>
+						<N8nText size="small" color="text-light">Runs on demand</N8nText>
+						<template #trailing>
+							<N8nBadge variant="danger">Failed</N8nBadge>
+						</template>
+					</N8nListboxItem>
+				</N8nListbox>
+			</div>
+		`,
+	}),
+};
 
 const workflowActions: Array<ActionDropdownItem<string>> = [
 	{ id: 'duplicate', label: 'Duplicate', icon: 'copy' },
@@ -319,12 +361,10 @@ export const ActionsMenu: Story = {
 				lastAction,
 				selected,
 				onAction,
-				actionsMenuStyle,
 			};
 		},
 		template: `
 			<div style="display: flex; flex-direction: column; gap: var(--spacing--sm); width: 24rem">
-				<component :is="'style'">{{ actionsMenuStyle }}</component>
 				<N8nListbox v-model="value" label="Workflows" style="flex: none">
 					<N8nListboxItem
 						v-for="workflow in workflows"
@@ -332,10 +372,8 @@ export const ActionsMenu: Story = {
 						:value="workflow.id"
 						:icon="workflow.icon"
 					>
-						<span class="listbox-actions-copy">
-							<N8nText bold size="small" color="text-dark">{{ workflow.name }}</N8nText>
-							<N8nText size="small" color="text-light">{{ workflow.detail }}</N8nText>
-						</span>
+						<N8nText bold size="small" color="text-dark">{{ workflow.name }}</N8nText>
+						<N8nText size="small" color="text-light">{{ workflow.detail }}</N8nText>
 						<template #trailing>
 							<N8nActionDropdown
 								:items="workflowActions"

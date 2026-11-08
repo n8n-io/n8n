@@ -27,7 +27,7 @@ export type ListboxItemEmits = {
 };
 
 export type ListboxItemSlots = {
-	/** Row content. */
+	/** Row content. Direct children stack in a column. */
 	default(): unknown;
 	/**
 	 * Content before the row content.

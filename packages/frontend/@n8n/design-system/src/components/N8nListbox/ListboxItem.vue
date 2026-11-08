@@ -46,7 +46,7 @@ function onSelect(event: Event) {
 
 	gap: var(--n8n-listbox-item--gap, var(--spacing--2xs));
 	min-height: var(--n8n-listbox-item--min-height, var(--spacing--xl));
-	padding: var(--n8n-listbox-item--padding, var(--spacing--2xs));
+	padding: var(--n8n-listbox-item--padding, var(--spacing--2xs) var(--spacing--xs));
 	border-radius: var(--n8n-listbox-item--radius, var(--radius));
 
 	&:not([data-disabled]) {
@@ -81,7 +81,10 @@ function onSelect(event: Event) {
 }
 
 .content {
+	display: flex;
 	flex: 1;
+	flex-direction: column;
 	min-width: 0;
+	gap: var(--n8n-listbox-item--content-gap, var(--spacing--5xs));
 }
 </style>
