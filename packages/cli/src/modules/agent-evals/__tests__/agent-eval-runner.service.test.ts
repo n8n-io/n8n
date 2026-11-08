@@ -1159,6 +1159,37 @@ describe('AgentEvalRunnerService', () => {
 			await new Promise((resolve) => setImmediate(resolve));
 			expect(concurrencyControl.release).toHaveBeenCalledTimes(2);
 		});
+
+		it('aborts the run when the shared queue is cleared under it (shutdown)', async () => {
+			seedFor(
+				[
+					{ id: 'row-1', question: 'Q1' },
+					{ id: 'row-2', question: 'Q2' },
+				],
+				{ cancelled: 2 },
+			);
+			// `removeAll()` on shutdown rejects queued throttles with this error
+			// while the run's own signal is still live — no user Stop landed, and
+			// no deadline fired.
+			concurrencyControl.throttle.mockImplementation(async ({ executionId }) => {
+				throw new ManualExecutionCancelledError(executionId);
+			});
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			// Every case settles as cancelled and none ran.
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+			expect(resultRepository.markAsCancelled).toHaveBeenCalledTimes(2);
+			// The incomplete run is recorded as errored, never completed.
+			expect(runRepository.markAsError).toHaveBeenCalledWith(
+				'run-1',
+				'aborted',
+				expect.objectContaining({ message: expect.stringContaining('queue was cleared') }),
+				expect.objectContaining({ total: 2, cancelled: 2 }),
+			);
+			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getRunSummary', () => {

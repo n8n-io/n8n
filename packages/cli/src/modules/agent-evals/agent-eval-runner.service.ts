@@ -326,6 +326,10 @@ export class AgentEvalRunnerService {
 			// Whichever case first observes a cancel aborts, evicting every case still
 			// queued. The deadline below trips the same signal.
 			const abort = new AbortController();
+			// Set when the shared queue evicts this run while its signal is still
+			// live: that is shutdown's `removeAll`, not a user Stop (which aborts
+			// first). The run must then finalize as errored, not completed.
+			let evictedByShutdown = false;
 			const totalUsage: CaseUsage = { inputTokens: 0, outputTokens: 0 };
 
 			// Set only when a case actually observed the cancellation flag, so the
@@ -390,7 +394,9 @@ export class AgentEvalRunnerService {
 							// the finally owns release once a slot is held.
 							// Prefixed so the id is attributable in `n8n.execution.throttled`.
 							const executionId = `agent-eval:${runId}-case-${index}`;
-							if (!(await this.acquireEvaluationSlot(executionId, abort.signal))) {
+							const slot = await this.acquireEvaluationSlot(executionId, abort);
+							if (slot !== 'acquired') {
+								if (slot === 'evicted') evictedByShutdown = true;
 								await stopCase(resultRow);
 								return;
 							}
@@ -449,6 +455,17 @@ export class AgentEvalRunnerService {
 			if (wasCancelled) {
 				// A user stop outranks the deadline: it's intent, not a failure.
 				await this.runRepository.markAsCancelled(runId, metrics);
+			} else if (evictedByShutdown) {
+				// The queue was cleared under us. The run never finished, so record
+				// it as errored instead of reporting the partial tally as success.
+				await this.runRepository.markAsError(
+					runId,
+					'aborted',
+					{
+						message: 'Run aborted: the evaluation queue was cleared while shutting down.',
+					},
+					metrics,
+				);
 			} else if (deadline.hasExpired() && stoppedCases > 0) {
 				await this.runRepository.markAsError(
 					runId,
@@ -513,14 +530,20 @@ export class AgentEvalRunnerService {
 	}
 
 	/**
-	 * Acquire a slot in the shared evaluation queue, abort-aware. Resolves `true`
-	 * with the slot held (the caller must `release`); resolves `false` if the run
-	 * was cancelled while this entry was still queued — having evicted it so it
-	 * doesn't hold a place other evaluation work could use.
+	 * Acquire a slot in the shared evaluation queue, abort-aware. Resolves
+	 * `'acquired'` with the slot held (the caller must `release`); `'stopped'` if
+	 * the run was cancelled while this entry was still queued — having evicted it
+	 * so it doesn't hold a place other evaluation work could use; or `'evicted'`
+	 * when an external queue removal (shutdown) hit us while the run was live,
+	 * which also aborts the run so the remaining cases stop.
 	 */
-	private async acquireEvaluationSlot(executionId: string, signal: AbortSignal): Promise<boolean> {
+	private async acquireEvaluationSlot(
+		executionId: string,
+		abort: AbortController,
+	): Promise<'acquired' | 'stopped' | 'evicted'> {
+		const { signal } = abort;
 		// Not enqueued yet, so nothing to release/remove.
-		if (signal.aborted) return false;
+		if (signal.aborted) return 'stopped';
 
 		let onAbort: (() => void) | undefined;
 		const aborted = new Promise<'aborted'>((resolve) => {
@@ -546,25 +569,32 @@ export class AgentEvalRunnerService {
 		]);
 		if (onAbort) signal.removeEventListener('abort', onAbort);
 
-		if (outcome.type === 'cancelled') return false;
+		if (outcome.type === 'cancelled') {
+			// A user Stop and the run deadline abort our own signal first, so their
+			// rejection surfaces as `'aborted'`. A `'cancelled'` outcome while the
+			// signal is still live is an external eviction (shutdown's `removeAll`):
+			// abort the run so the remaining cases stop rather than run unthrottled
+			// and report the incomplete run as completed.
+			if (!signal.aborted) {
+				abort.abort();
+				return 'evicted';
+			}
+			return 'stopped';
+		}
 		if (outcome.type === 'error') throw outcome.error;
 
 		if (outcome.type === 'aborted') {
-			// Every enqueue must be balanced exactly once. The queue array is the
-			// single source of truth: `remove` evicts the entry if it is still
-			// queued (a no-op otherwise); the `.then` releases if the slot was — or
-			// gets — granted, which happens when a concurrent `release` dequeues us
-			// at the same tick the abort fires. The two are mutually exclusive: a
-			// Removing a queued entry rejects its promise. Handle that rejection
-			// while still releasing the slot if a concurrent dequeue grants it.
+			// remove() evicts a queued entry and rejects its throttle promise. Handle
+			// that rejection here while still releasing the slot if a concurrent
+			// dequeue grants it — no double release, no leaked slot.
 			this.concurrencyControl.remove({ mode: 'evaluation', executionId });
 			void acquire.then(
 				() => this.concurrencyControl.release({ mode: 'evaluation' }),
 				() => undefined,
 			);
-			return false;
+			return 'stopped';
 		}
-		return true;
+		return 'acquired';
 	}
 
 	/**

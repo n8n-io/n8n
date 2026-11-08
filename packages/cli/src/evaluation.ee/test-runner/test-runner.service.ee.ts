@@ -896,6 +896,14 @@ export class TestRunnerService {
 										executionId: caseTrackingId,
 									});
 								}
+								// A user Stop aborts our signal first, so `'cancelled'` with the
+								// signal still live is an external eviction (shutdown's
+								// `removeAll`). Abort the run so the cancellation transaction
+								// settles this already-running case instead of leaving it stuck
+								// and completing the run.
+								if (acquired === 'cancelled' && !abortSignal.aborted) {
+									abortController.abort();
+								}
 								return [];
 							}
 
