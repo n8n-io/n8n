@@ -494,18 +494,64 @@ describe('ToolWorkflowV1', () => {
 				openQuery,
 			],
 			['no properties', {}, openQuery],
+			['additionalProperties {}', { properties: { city }, additionalProperties: {} }, openQuery],
+			[
+				'additionalProperties with only a description',
+				{ properties: { city }, additionalProperties: { description: 'any value' } },
+				openQuery,
+			],
+			[
+				'an open anyOf branch',
+				{ properties: { city }, anyOf: [{ additionalProperties: true }] },
+				openQuery,
+			],
+			[
+				'properties declared only in anyOf branches',
+				{ anyOf: [{ properties: { city } }, { properties: { zip: { type: 'string' } } }] },
+				closedQuery,
+			],
+			[
+				'an object allOf member with only required',
+				{ properties: { city }, allOf: [{ type: 'object', required: ['city'] }] },
+				closedQuery,
+			],
+			[
+				'a strict schema behind a definitions $ref',
+				{
+					$ref: '#/definitions/query',
+					definitions: { query: { properties: { city }, additionalProperties: false } },
+				},
+				closedQuery,
+			],
+			[
+				'a strict schema behind a $defs $ref',
+				{
+					allOf: [{ $ref: '#/$defs/query' }],
+					$defs: { query: { properties: { city }, additionalProperties: false } },
+				},
+				closedQuery,
+			],
 			[
 				'patternProperties',
 				{ properties: { city }, patternProperties: { '^u': { type: 'string' } } },
 				closedQuery,
 			],
-			['only patternProperties', { patternProperties: { '^(u|t)': { type: 'string' } } }, {}],
+			[
+				'only patternProperties',
+				{ patternProperties: { '^t': { type: 'number' }, '^[^t]': { type: 'string' } } },
+				openQuery,
+			],
 			[
 				'typed additionalProperties',
 				{ properties: { city }, additionalProperties: { type: 'string' } },
 				closedQuery,
 			],
-			['only typed additionalProperties', { additionalProperties: { type: 'string' } }, {}],
+			[
+				'only typed additionalProperties',
+				{ additionalProperties: { type: ['string', 'number'] } },
+				openQuery,
+			],
+			['only additionalProperties false', { additionalProperties: false }, {}],
 			[
 				'additionalProperties not',
 				{ properties: { city }, additionalProperties: { not: {} } },
@@ -589,6 +635,38 @@ describe('ToolWorkflowV1', () => {
 				expect(result).toEqual([[{ json: { forecast: 'sunny' }, pairedItem: { item: 0 } }]]);
 			},
 		);
+
+		it('should not read a declared key that contains a dot as a path', async () => {
+			const ctx = createExecuteContext([
+				{
+					json: {
+						user: { id: '7', email: 'ada@example.com' },
+						toolCallId: 'call_1',
+					},
+				},
+			]);
+			useInputSchema(ctx, () =>
+				JSON.stringify({
+					type: 'object',
+					properties: { 'user.id': { type: 'string' } },
+					additionalProperties: false,
+				}),
+			);
+			ctx.executeWorkflow.mockResolvedValueOnce({
+				data: [[{ json: { name: 'Ada' } }]],
+				executionId: 'sub-1',
+			});
+
+			await node.execute.call(ctx);
+
+			expect(manual.execute).toHaveBeenCalledWith(
+				{ json: { query: {} } },
+				0,
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+			);
+		});
 
 		it('should return the waiting placeholder when the sub-workflow is waiting', async () => {
 			const ctx = createExecuteContext([{ json: { input: 'hello' } }]);
