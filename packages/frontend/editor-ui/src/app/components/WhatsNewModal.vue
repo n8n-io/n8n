@@ -103,7 +103,7 @@ function onDialogOpenUpdate(open: boolean) {
 
 <template>
 	<N8nDialog :open="modalOpen" size="2xlarge" @update:open="onDialogOpenUpdate">
-		<N8nDialogHeader>
+		<N8nDialogHeader :class="$style.header">
 			<div :class="$style.column">
 				<div :class="$style.row">
 					<N8nIcon :icon="'bell'" :color="'primary'" :size="'large'" />
@@ -251,6 +251,15 @@ function onDialogOpenUpdate(open: boolean) {
 </template>
 
 <style lang="scss" module>
+// Repeat the class so this wins over DialogHeader's close-button layout,
+// which starts children in a row and top-aligns them.
+.header {
+	&.header {
+		justify-content: space-between;
+		align-items: center;
+	}
+}
+
 .column {
 	display: flex;
 	flex-direction: column;
