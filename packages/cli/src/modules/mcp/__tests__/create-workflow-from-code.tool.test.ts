@@ -337,19 +337,6 @@ describe('create-workflow-from-code MCP tool', () => {
 			);
 		});
 
-		test('ignores version-scoped settings from the submitted workflow', async () => {
-			mockParseAndValidate.mockResolvedValue({
-				workflow: { ...mockWorkflowJson, settings: { engineType: 'v2', timezone: 'UTC' } },
-				warnings: [],
-			});
-
-			await callHandler({ code: 'const wf = ...' });
-
-			const passedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
-			expect(passedWorkflow.settings).not.toHaveProperty('engineType');
-			expect(passedWorkflow.settings).toEqual(expect.objectContaining({ timezone: 'UTC' }));
-		});
-
 		test('uses provided name over code name', async () => {
 			await callHandler({ code: 'const wf = ...', name: 'My Custom Name' });
 

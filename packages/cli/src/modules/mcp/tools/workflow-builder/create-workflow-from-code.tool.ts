@@ -6,7 +6,6 @@ import {
 	type User,
 	WorkflowEntity,
 } from '@n8n/db';
-import { omitVersionedSettings } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -428,12 +427,7 @@ export const createCreateWorkflowFromCodeTool = (
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
 				nodeGroups: workflowJson.nodeGroups ?? [],
-				// MCP cannot set the version-scoped settings, such as the engine.
-				settings: omitVersionedSettings({
-					...workflowJson.settings,
-					executionOrder: 'v1',
-					availableInMCP: true,
-				}),
+				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
 			});

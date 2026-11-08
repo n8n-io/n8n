@@ -78,6 +78,7 @@ describe('restore-workflow-version MCP tool', () => {
 					nodes: versionNodes,
 					connections: { Set: { main: [] } },
 					nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-1'] }],
+					settings: { engineType: 'v2' },
 				}),
 			);
 			(workflowService.update as Mock).mockResolvedValue({
@@ -103,8 +104,9 @@ describe('restore-workflow-version MCP tool', () => {
 			expect(updateOptions).toMatchObject({
 				forceSave: true,
 				source: 'n8n-mcp',
-				restoredFromVersionId: 'v1',
+				restoredVersionSettings: { engineType: 'v2' },
 			});
+			expect(updateOptions).not.toHaveProperty('restoredFromVersionId');
 
 			expect(result.structuredContent).toMatchObject({
 				success: true,

@@ -20,6 +20,7 @@ describe('pickVersionedSettings', () => {
 	});
 
 	it.each([
+		['null settings', null],
 		['undefined settings', undefined],
 		['empty settings', {}],
 		['only live settings', { availableInMCP: true }],
@@ -74,17 +75,13 @@ describe('omitVersionedSettings', () => {
 describe('applyVersionedSettings', () => {
 	it('takes the version-scoped settings from the version and keeps the others', () => {
 		expect(
-			applyVersionedSettings(
-				{ engineType: 'v2', availableInMCP: true },
-				{ engineType: 'v1', availableInMCP: false },
-			),
+			applyVersionedSettings({ engineType: 'v2', availableInMCP: true }, { engineType: 'v1' }),
 		).toEqual({ engineType: 'v1', availableInMCP: true });
 	});
 
-	it('clears a version-scoped setting that the version does not set', () => {
-		const result = applyVersionedSettings({ engineType: 'v2' }, {});
-
-		expect(result).toHaveProperty('engineType', undefined);
+	// A version saved before history stored settings has none.
+	it('keeps a version-scoped setting that the version does not set', () => {
+		expect(applyVersionedSettings({ engineType: 'v2' }, {})).toEqual({ engineType: 'v2' });
 	});
 
 	it('accepts null settings', () => {

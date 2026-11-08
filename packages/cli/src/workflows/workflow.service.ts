@@ -50,7 +50,14 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
-import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
+import type {
+	INode,
+	INodes,
+	IWorkflowSettings,
+	JsonValue,
+	IConnections,
+	VersionedWorkflowSettings,
+} from 'n8n-workflow';
 import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	PROJECT_ROOT,
@@ -150,6 +157,8 @@ type WorkflowUpdateOptions = {
 	allowUnresolvedErrorWorkflow?: boolean;
 	/** The history version this update restores, so its nodes keep their credentials. */
 	restoredFromVersionId?: string;
+	/** The version-scoped settings of a restored version, such as its engine. */
+	restoredVersionSettings?: VersionedWorkflowSettings;
 };
 
 type PreparedWorkflowUpdate = {
@@ -639,16 +648,6 @@ export class WorkflowService {
 		const ownerProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
 		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
 
-		// A restore may bring back nodes whose credentials the user cannot use, and the
-		// version-scoped settings of the version. Only a version from this workflow's own
-		// history qualifies.
-		const restoredVersion = restoredFromVersionId
-			? await this.workflowHistoryService.findVersion(workflowId, restoredFromVersionId)
-			: null;
-		if (restoredFromVersionId && !restoredVersion) {
-			throw new BadRequestError("The version to restore is not in this workflow's history.");
-		}
-
 		// Central credential guard for every workflow write path. With sharing
 		// enabled, reject new nodes that reference credentials the acting user
 		// cannot access and revert edits to existing read-only credential nodes.
@@ -657,8 +656,17 @@ export class WorkflowService {
 		// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
 		// folder/project services which import this module).
 		if (this.licenseState.isSharingLicensed()) {
+			// A restore may bring back nodes whose credentials the user cannot use. Only a
+			// version from this workflow's own history qualifies.
 			let restoredNodes: INode[] | undefined;
-			if (restoredVersion) {
+			if (restoredFromVersionId) {
+				const restoredVersion = await this.workflowHistoryService.findVersion(
+					workflowId,
+					restoredFromVersionId,
+				);
+				if (!restoredVersion) {
+					throw new BadRequestError("The version to restore is not in this workflow's history.");
+				}
 				// Normalize the stored nodes the way the submitted ones were above, so a
 				// credential renamed since that version still matches.
 				const normalizedVersion = await WorkflowHelpers.replaceInvalidCredentials(
@@ -677,6 +685,24 @@ export class WorkflowService {
 			);
 		}
 
+		const versionedSettingsEnabled = this.workflowVersionedSettings.isEnabled();
+		if (versionedSettingsEnabled) {
+			// A restore also brings back the version-scoped settings of the version, such as its engine.
+			const versionSettings = await this.findRestoredVersionSettings(workflowId, options);
+			if (
+				versionSettings &&
+				!versionedSettingsEqual(
+					workflow.settings,
+					applyVersionedSettings(workflow.settings, versionSettings),
+				)
+			) {
+				workflowUpdateData.settings = applyVersionedSettings(
+					workflowUpdateData.settings,
+					versionSettings,
+				);
+			}
+		}
+
 		// Update the workflow's version when changing nodes, connections, or nodeGroups
 		const hasNodesKey = 'nodes' in workflowUpdateData;
 		const hasConnectionsKey = 'connections' in workflowUpdateData;
@@ -686,25 +712,7 @@ export class WorkflowService {
 			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
 		const nodeGroupsChanged =
 			hasNodeGroupsKey && !isEqual(workflowUpdateData.nodeGroups, workflow.nodeGroups);
-
-		const versionedSettingsEnabled = this.workflowVersionedSettings.isEnabled();
-		if (versionedSettingsEnabled && restoredVersion) {
-			// A restore also brings back the version-scoped settings of the version, such as its engine.
-			workflowUpdateData.settings = applyVersionedSettings(
-				workflowUpdateData.settings ?? null,
-				restoredVersion.settings,
-			);
-		}
-		// A version-scoped setting goes live on publish, so a change to it saves a new version.
-		const versionedSettingsChanged =
-			versionedSettingsEnabled &&
-			workflowUpdateData.settings !== undefined &&
-			!versionedSettingsEqual(workflow.settings, {
-				...workflow.settings,
-				...workflowUpdateData.settings,
-			});
-		const saveNewVersion =
-			nodesChanged || connectionsChanged || nodeGroupsChanged || versionedSettingsChanged;
+		const saveNewVersion = nodesChanged || connectionsChanged || nodeGroupsChanged;
 
 		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
@@ -825,14 +833,25 @@ export class WorkflowService {
 			);
 		}
 
-		// Check if settings actually changed. A version-scoped change saved a new version above,
-		// so it must not republish the active version. Null stored settings skip the merge above,
-		// so compare them as empty settings.
-		const liveSettings = (settings: IWorkflowSettings | null) =>
-			versionedSettingsEnabled ? omitVersionedSettings(settings) : settings;
+		// A version-scoped setting goes live on publish, so a change to it saves a new version.
+		const versionedSettingsChanged =
+			versionedSettingsEnabled &&
+			workflowUpdateData.settings !== undefined &&
+			!versionedSettingsEqual(workflow.settings, workflowUpdateData.settings);
+		if (versionedSettingsChanged && !saveNewVersion) {
+			workflowUpdateData.versionId = uuid();
+		}
+
+		// Check if settings actually changed. A version-scoped change saves a new version, so it
+		// does not republish the active version.
 		const settingsChanged =
 			workflowUpdateData.settings !== undefined &&
-			!isEqual(liveSettings(workflow.settings ?? null), liveSettings(workflowUpdateData.settings));
+			(versionedSettingsEnabled
+				? !isEqual(
+						omitVersionedSettings(workflow.settings),
+						omitVersionedSettings(workflowUpdateData.settings),
+					)
+				: !isEqual(workflow.settings, workflowUpdateData.settings));
 
 		// Always set updatedAt to get millisecond precision
 		workflowUpdateData.updatedAt = new Date();
@@ -923,7 +942,7 @@ export class WorkflowService {
 			changes: workflowUpdateData,
 			updatePayload,
 			cleared,
-			saveNewVersion,
+			saveNewVersion: saveNewVersion || versionedSettingsChanged,
 			tagsDisabled: this.globalConfig.tags.disabled,
 			versionIdToPublish,
 			settingsChanged,
@@ -940,13 +959,24 @@ export class WorkflowService {
 		};
 	}
 
+	/** The version-scoped settings of the version that an update restores, if any. */
+	private async findRestoredVersionSettings(
+		workflowId: string,
+		{ restoredFromVersionId, restoredVersionSettings }: WorkflowUpdateOptions,
+	): Promise<VersionedWorkflowSettings | undefined> {
+		if (restoredVersionSettings) return restoredVersionSettings;
+		if (!restoredFromVersionId) return undefined;
+
+		return await this.workflowHistoryService.findVersionSettings(workflowId, restoredFromVersionId);
+	}
+
 	/** Pass the caller's context to include the workflow and history in its transaction. */
 	async savePreparedUpdate(
 		prepared: PreparedWorkflowUpdate,
 		ctx: OperationContext = {},
 		{ propagateVersionHistoryErrors = false }: { propagateVersionHistoryErrors?: boolean } = {},
 	) {
-		const { user, changes, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
+		const { user, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
 		const workflowId = prepared.workflow.id;
 		const { tagIds, autosaved, source, versionName, versionDescription } = prepared.options;
 		if (saveNewVersion) {
@@ -954,9 +984,10 @@ export class WorkflowService {
 				versionName || versionDescription
 					? { name: versionName, description: versionDescription }
 					: undefined;
+			// The saved workflow, so a version-scoped settings change also stores the unchanged nodes.
 			await this.workflowHistoryService.saveVersion(
 				user,
-				{ ...changes, settings: prepared.workflow.settings },
+				prepared.workflow,
 				workflowId,
 				autosaved,
 				source,

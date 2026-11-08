@@ -482,9 +482,10 @@ export function useWorkflowSaving({
 				const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
 				const workflowDataRequest: WorkflowDataUpdate = workflowDocumentStore.serialize();
-				// Only the settings modal saves the version-scoped settings, such as the engine. The backend
-				// keeps the stored value when the key is absent, so a stale editor can't overwrite it.
-				if (workflowDataRequest.settings) {
+				// With engine v2, only the settings modal saves the version-scoped settings, such as the
+				// engine. The backend keeps the stored value when the key is absent, so a stale editor
+				// can't overwrite it.
+				if (workflowDataRequest.settings && settingsStore.isModuleActive('engine-v2')) {
 					workflowDataRequest.settings = omitVersionedSettings(workflowDataRequest.settings);
 				}
 				// This can happen if the user has another workflow in the browser history and navigates

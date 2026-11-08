@@ -1,8 +1,9 @@
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, WorkflowVersionedSettings } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { WorkflowHistoryRepository } from '@n8n/db';
+import { SKIP_RULES } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowHistoryCompactionService } from '../workflow-history-compaction.service';
@@ -33,7 +34,10 @@ describe('WorkflowHistoryCompactionService', () => {
 	});
 
 	describe('compactHistories', () => {
-		const createService = (workflowHistoryRepository: WorkflowHistoryRepository) => {
+		const createService = (
+			workflowHistoryRepository: WorkflowHistoryRepository,
+			versionedSettingsEnabled = false,
+		) => {
 			const eventService = mock<EventService>();
 			const compactingService = new WorkflowHistoryCompactionService(
 				config,
@@ -41,6 +45,7 @@ describe('WorkflowHistoryCompactionService', () => {
 				mockLogger(),
 				workflowHistoryRepository,
 				eventService,
+				mock<WorkflowVersionedSettings>({ isEnabled: () => versionedSettingsEnabled }),
 			);
 			return { compactingService, eventService };
 		};
@@ -122,6 +127,7 @@ describe('WorkflowHistoryCompactionService', () => {
 					mockLogger(),
 					workflowHistoryRepository,
 					mock<EventService>(),
+					mock<WorkflowVersionedSettings>(),
 				);
 
 				await compactingService['trimLongRunningHistories'](new AbortController().signal);
@@ -148,6 +154,26 @@ describe('WorkflowHistoryCompactionService', () => {
 			expect(optimizeEnd).toEqual(new Date('2026-11-09T03:00:00.000Z'));
 			expect(trimEnd).toEqual(new Date('2026-11-02T23:00:00.000Z'));
 		});
+
+		it.each([true, false])(
+			'should keep versions with different engines apart only with versioned settings (%s)',
+			async (versionedSettingsEnabled) => {
+				const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+				workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue(['workflow-id']);
+				workflowHistoryRepository.pruneHistory.mockResolvedValue({ seen: 0, deleted: 0 });
+				const { compactingService } = createService(
+					workflowHistoryRepository,
+					versionedSettingsEnabled,
+				);
+
+				await compactingService['optimizeHistories'](new AbortController().signal);
+
+				const skipRules = workflowHistoryRepository.pruneHistory.mock.calls[0][4];
+				expect(skipRules?.includes(SKIP_RULES.skipDifferentVersionedSettings)).toBe(
+					versionedSettingsEnabled,
+				);
+			},
+		);
 
 		it('should not emit telemetry when no workflows are in range', async () => {
 			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
@@ -195,6 +221,7 @@ describe('WorkflowHistoryCompactionService', () => {
 				mockLogger(),
 				workflowHistoryRepository,
 				eventService,
+				mock<WorkflowVersionedSettings>(),
 			);
 
 			return { compactingService, workflowHistoryRepository, eventService };
