@@ -325,6 +325,12 @@ $hoverBackground: var(--color--background--light-1);
 	align-self: stretch;
 
 	@include timeline-line;
+	--timeline-hole: var(--spacing--2xs);
+
+	// Grouped items have no dot, so the line runs through.
+	.grouped & {
+		--timeline-hole: 0px;
+	}
 }
 
 .content {

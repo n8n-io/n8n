@@ -31,12 +31,16 @@ const renderComponent = createComponentRenderer(WorkflowPublishTimelineContent);
 
 type RenderOptions = {
 	adoptionDate?: string | null;
+	engineV2ModuleActive?: boolean;
 };
 
 const renderWithEvents = (events: PublishTimelineEvent[], options: RenderOptions = {}) => {
-	const { adoptionDate = null } = options;
+	const { adoptionDate = null, engineV2ModuleActive = false } = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+	mockedStore(useSettingsStore).isModuleActive.mockImplementation(
+		(name: string) => engineV2ModuleActive && name === 'engine-v2',
+	);
 
 	workflowHistoryStore.getPublishTimeline.mockResolvedValue(events);
 	workflowHistoryStore.getVersionFirstAdoptionDate.mockResolvedValue(adoptionDate);
@@ -78,23 +82,35 @@ describe('WorkflowPublishTimelineContent', () => {
 		expect(await findByText('Published Release 1')).toBeInTheDocument();
 	});
 
-	it('should show the engine of a published version with the engine-v2 module', async () => {
-		const { findByText, getAllByTestId } = renderWithEvents([
-			buildEvent({ id: 2, event: 'activated', versionId: null, versionName: null }),
-			buildEvent({
-				id: 1,
-				event: 'activated',
-				versionId: 'v1',
-				versionName: 'Release 1',
-				settings: { engineType: 'v2' },
-			}),
-		]);
-		mockedStore(useSettingsStore).isModuleActive.mockImplementation(
-			(name: string) => name === 'engine-v2',
+	it('should show the engine only on published versions that still exist', async () => {
+		const now = Date.now();
+		const { findByText, getAllByTestId } = renderWithEvents(
+			[
+				buildEvent({
+					id: 1,
+					event: 'activated',
+					versionName: 'Release 1',
+					settings: { engineType: 'v2' },
+					createdAt: new Date(now - 20_000).toISOString(),
+				}),
+				buildEvent({
+					id: 2,
+					event: 'deactivated',
+					settings: { engineType: 'v2' },
+					createdAt: new Date(now - 10_000).toISOString(),
+				}),
+				// A deleted version: its engine is unknown.
+				buildEvent({
+					id: 3,
+					event: 'activated',
+					versionId: null,
+					createdAt: new Date(now).toISOString(),
+				}),
+			],
+			{ engineV2ModuleActive: true },
 		);
 
-		await findByText('Published Release 1');
-		// The deleted version has no badge: its engine is unknown.
+		await findByText('Unpublished');
 		const badges = getAllByTestId('workflow-history-engine-badge');
 		expect(badges).toHaveLength(1);
 		expect(badges[0]).toHaveTextContent('Engine v2');

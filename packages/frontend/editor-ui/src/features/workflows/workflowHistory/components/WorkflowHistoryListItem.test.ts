@@ -4,7 +4,10 @@ import { within } from '@testing-library/vue';
 import type { UserAction } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
-import type { WorkflowHistoryActionTypes } from '@n8n/rest-api-client/api/workflowHistory';
+import type {
+	WorkflowHistory,
+	WorkflowHistoryActionTypes,
+} from '@n8n/rest-api-client/api/workflowHistory';
 import { workflowHistoryDataFactory } from '../__tests__/utils';
 import { type IUser } from 'n8n-workflow';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -64,7 +67,10 @@ describe('WorkflowHistoryListItem', () => {
 	it('should show the engine of the version with the engine-v2 module', () => {
 		const settingsStore = useSettingsStore();
 		settingsStore.settings.activeModules = ['engine-v2'];
-		const item = { ...workflowHistoryDataFactory(), settings: { engineType: 'v2' as const } };
+		const item: WorkflowHistory = {
+			...workflowHistoryDataFactory(),
+			settings: { engineType: 'v2' },
+		};
 
 		const { getByTestId } = renderComponent({ pinia, props: { item, index: 0, actions } });
 

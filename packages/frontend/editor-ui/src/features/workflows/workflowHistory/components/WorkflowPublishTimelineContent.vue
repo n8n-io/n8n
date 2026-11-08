@@ -434,6 +434,7 @@ onBeforeUnmount(() => {
 .timelineItem {
 	// The vertical padding of the item. The timeline line spans it.
 	--timeline-item-padding: var(--spacing--xs);
+	--timeline-indicator-padding: 6px;
 
 	display: flex;
 	gap: var(--spacing--xs);
@@ -462,6 +463,7 @@ onBeforeUnmount(() => {
 	flex-shrink: 0;
 	width: 11px;
 	position: relative;
+	padding-bottom: var(--timeline-indicator-padding);
 }
 
 .timelineDot {
@@ -495,15 +497,15 @@ onBeforeUnmount(() => {
 	// Runs up through the item's top padding, to meet the line of the item above.
 	&.timelineLineAbove {
 		flex: 1;
-		margin-top: calc(-1 * var(--timeline-item-padding));
+		margin-top: calc((-1 * var(--timeline-item-padding)));
 	}
 
 	// Runs down through the item's bottom padding, to meet the line of the item below.
 	&.timelineLineBelow {
 		position: absolute;
-		top: 100%;
+		top: calc(100% - var(--timeline-indicator-padding));
 		left: 50%;
-		height: var(--timeline-item-padding);
+		height: calc(var(--timeline-item-padding) + var(--timeline-indicator-padding));
 		transform: translateX(-50%);
 	}
 

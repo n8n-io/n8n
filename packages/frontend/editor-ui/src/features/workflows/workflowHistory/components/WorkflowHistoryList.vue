@@ -324,6 +324,7 @@ const pruneTimeDisplay = computed(() => {
 	min-width: var(--spacing--lg);
 
 	@include timeline-line;
+	--timeline-hole: var(--spacing--sm);
 }
 
 .groupLabel {

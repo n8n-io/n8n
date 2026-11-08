@@ -158,6 +158,7 @@ describe('Workflow history store', () => {
 					userId: null,
 					user: null,
 					versionName: 'Release 1',
+					settings: null,
 				},
 			];
 

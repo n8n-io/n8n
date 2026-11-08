@@ -2,12 +2,13 @@ import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import type { VersionedWorkflowSettings } from 'n8n-workflow';
 import WorkflowVersionEngineBadge from './WorkflowVersionEngineBadge.vue';
 
 const renderComponent = createComponentRenderer(WorkflowVersionEngineBadge);
 
 const renderBadge = (
-	settings: { engineType?: 'v1' | 'v2' } | null,
+	settings: VersionedWorkflowSettings | null,
 	{ engineV2ModuleActive = true } = {},
 ) => {
 	const pinia = createTestingPinia();
