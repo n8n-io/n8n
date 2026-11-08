@@ -39,7 +39,9 @@ const callToolInputSchema = z.object({
 	arguments: z
 		.record(z.unknown())
 		.optional()
-		.describe("The tool's input, matching its input schema"),
+		.describe(
+			"The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings.",
+		),
 });
 
 export interface ToolCatalogOptions {
@@ -160,7 +162,7 @@ export class ToolCatalog {
 			.map(([namespace, names]) => `- ${namespace}: ${names.sort().join(', ')}`);
 		return [
 			'<tool_catalog>',
-			`More tools are available than the toolset shows. Look a tool up with ${FIND_TOOLS_TOOL_NAME} to get its description and input schema, then run it with ${CALL_TOOL_TOOL_NAME}. There is no load step. When you do not know a tool's name, search with a query.`,
+			`These tools are not in your toolset. This list gives their names only, not their arguments. Before your first ${CALL_TOOL_TOOL_NAME} to one of them, get its input schema with ${FIND_TOOLS_TOOL_NAME}, even when you already know its name. When you do not know a tool's name, search with a query.`,
 			...lines,
 			'</tool_catalog>',
 		].join('\n');
@@ -190,7 +192,7 @@ export class ToolCatalog {
 		return {
 			name: CALL_TOOL_TOOL_NAME,
 			description:
-				'Run a tool from the tool catalog. Get its input schema with find_tools first, and pass its input as arguments.',
+				'Run a tool from the tool catalog. You must get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.',
 			inputSchema: callToolInputSchema,
 			dispatch: {
 				resolve: (input) => {

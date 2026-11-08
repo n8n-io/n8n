@@ -9,7 +9,7 @@ import type { ToolCatalog } from '../tools/tool-catalog';
 const MAX_SCHEMA_BYTES = 24 * 1024;
 
 const SCHEMA_NOTE =
-	'Input schemas of the catalog tools this skill uses. Call them with call_tool and these arguments. You do not need find_tools for them.';
+	'Input schemas of the catalog tools this skill uses. Run them with call_tool and these arguments. For these tools only, you do not need find_tools. Other catalog tools still need a find_tools lookup first.';
 
 /**
  * Return the input schemas of a skill's catalog tools with the skill.
