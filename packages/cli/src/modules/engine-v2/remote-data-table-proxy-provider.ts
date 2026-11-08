@@ -85,10 +85,8 @@ export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 	) {}
 
 	/**
-	 * Returns the project-level proxy, with the project resolved up front so
-	 * `getProjectId()` is synchronous. The control plane derives the project
-	 * from the execution's workflow, so the workflow and project id inputs are
-	 * not sent.
+	 * Return the proxy for project-level data table operations.
+	 * We don't use the workflow or project id since those are resolved on the control plane.
 	 */
 	async getDataTableAggregateProxy(
 		_workflow: Workflow,
@@ -96,6 +94,7 @@ export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 		_projectId?: string,
 	): Promise<IDataTableProjectAggregateService> {
 		const schemas = dataTableCallResultSchemas;
+		// Resolved up front because `getProjectId()` is synchronous.
 		const projectId = await this.call(node, { kind: 'getProjectId' }, schemas.getProjectId);
 
 		return {
@@ -121,9 +120,8 @@ export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 	}
 
 	/**
-	 * Returns the proxy for one table, without a round trip: the control plane
-	 * checks the table on every operation. The workflow and project id inputs
-	 * are not sent, as above.
+	 * Return the proxy for the operations on one data table.
+	 * We don't use the workflow or project id since those are resolved on the control plane.
 	 */
 	async getDataTableProxy(
 		_workflow: Workflow,
