@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useStorage } from '@n8n/composables/useStorage';
 import { useUIStore } from '@/app/stores/ui.store';
-import { LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION } from '../constants';
+import { AGENT_N8N_CHAT_VIEW, LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION } from '../constants';
+import { useAgentProjectBreadcrumb } from '../composables/useAgentProjectBreadcrumb';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import AgentModal from './modals/AgentModal.vue';
 
 export type AgentPublishedModalData = {
 	agentId: string;
+	projectId: string;
+	/** The published version carries n8n Chat and the user is in its experiment. */
+	n8nChatLive: boolean;
 };
 
 const props = defineProps<{
@@ -18,8 +23,10 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 const uiStore = useUIStore();
 const { trackDismissedAgentPublishedModal } = useAgentTelemetry();
+const { projectName } = useAgentProjectBreadcrumb(computed(() => props.data.projectId));
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const checked = ref(false);
@@ -30,13 +37,23 @@ function handleCheckboxChange(checkboxValue: string | number | boolean) {
 	useStorage(LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION).value = boolValue.toString();
 }
 
-function onOpenChange(open: boolean) {
-	if (open) return;
+function close(action: 'got_it' | 'talk_to_agent' | 'closed') {
 	trackDismissedAgentPublishedModal({
 		agentId: props.data.agentId,
 		dontShowAgain: checked.value,
+		action,
+		n8nChatLive: props.data.n8nChatLive,
 	});
 	uiStore.closeModal(props.modalName);
+}
+
+function talkToAgent() {
+	close('talk_to_agent');
+	void router.push({ name: AGENT_N8N_CHAT_VIEW, params: { agentId: props.data.agentId } });
+}
+
+function onOpenChange(open: boolean) {
+	if (!open) close('closed');
 }
 </script>
 
@@ -51,6 +68,16 @@ function onOpenChange(open: boolean) {
 	>
 		<div :class="$style.content">
 			<N8nText>{{ i18n.baseText('agents.publish.modal.description.readyToUse') }}</N8nText>
+			<N8nText
+				v-if="props.data.n8nChatLive && projectName"
+				data-testid="agent-published-modal-n8n-chat"
+			>
+				{{
+					i18n.baseText('agents.publish.modal.description.liveInN8nChat', {
+						interpolate: { projectName },
+					})
+				}}
+			</N8nText>
 			<N8nText>
 				{{ i18n.baseText('agents.publish.modal.description.changesNotPublished') }}
 			</N8nText>
@@ -66,11 +93,19 @@ function onOpenChange(open: boolean) {
 		</template>
 		<template #footerActions>
 			<N8nButton
-				variant="solid"
+				:variant="props.data.n8nChatLive ? 'ghost' : 'solid'"
 				data-testid="agent-published-modal-got-it"
-				@click="onOpenChange(false)"
+				@click="close('got_it')"
 			>
 				{{ i18n.baseText('agents.publish.modal.gotIt') }}
+			</N8nButton>
+			<N8nButton
+				v-if="props.data.n8nChatLive"
+				variant="solid"
+				data-testid="agent-published-modal-talk-to-agent"
+				@click="talkToAgent"
+			>
+				{{ i18n.baseText('agents.publish.modal.talkToAgent') }}
 			</N8nButton>
 		</template>
 	</AgentModal>

@@ -59,6 +59,7 @@ import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
 import '@/controllers/security-settings.controller';
+import '@/controllers/public-api-rate-limit-settings.controller';
 import '@/credentials/credentials.controller';
 import '@/credentials/credential-options.controller';
 import '@/events/events.controller';
@@ -191,7 +192,7 @@ export class Server extends AbstractServer {
 		const publicApiEndpoint = this.globalConfig.publicApi.path;
 
 		// Register auth strategies in priority order. The registry evaluates them
-		// sequentially — the first strategy that returns a non-null result wins.
+		// sequentially — the first strategy that does not abstain wins.
 		// API key auth is registered first so existing behavior is preserved.
 		// Session cookie auth is registered last: an explicit but wrong API
 		// key/bearer token fails fast rather than silently falling back to an

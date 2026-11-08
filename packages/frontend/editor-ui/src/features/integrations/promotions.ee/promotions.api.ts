@@ -1,24 +1,16 @@
 import type {
 	PromotePackageResultDto,
 	PromoteSelectionRequestDto,
-	PromotionChanges,
 	PromotionDirection,
 	PromotionPreview,
 	PromotionResourceDetails,
 	PromotionResourceDetailsRequestDto,
+	PromotionReviewChanges,
+	PromotionReviewDetailsRequestDto,
 } from '@n8n/api-types';
 import type { IRestApiContext, PublicApiContext } from '@n8n/rest-api-client';
-import { makeRestApiRequest, request } from '@n8n/rest-api-client';
+import { makePublicApiRequest, makeRestApiRequest } from '@n8n/rest-api-client';
 
-export async function getPromotableChanges(
-	context: IRestApiContext,
-	projectId: string,
-	direction: PromotionDirection = 'promote',
-): Promise<PromotionChanges> {
-	return await makeRestApiRequest(context, 'GET', `/promotions/${projectId}/changes/${direction}`);
-}
-
-/** Same endpoint as `getPromotableChanges`, typed with the resource tree and dependencies. */
 export async function getPromotionPreview(
 	context: IRestApiContext,
 	projectId: string,
@@ -41,15 +33,35 @@ export async function getPromotionResourceDetails(
 	);
 }
 
+export async function getPromotionReviewChanges(
+	context: IRestApiContext,
+	reviewId: string,
+): Promise<PromotionReviewChanges> {
+	return await makeRestApiRequest(context, 'GET', `/promotions/reviews/${reviewId}/changes`);
+}
+
+export async function getPromotionReviewDetails(
+	context: IRestApiContext,
+	reviewId: string,
+	payload: PromotionReviewDetailsRequestDto,
+): Promise<PromotionResourceDetails> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/promotions/reviews/${reviewId}/changes/details`,
+		payload,
+	);
+}
+
 export async function promoteProjectSelection(
 	context: PublicApiContext,
 	projectId: string,
 	payload: PromoteSelectionRequestDto,
 ): Promise<PromotePackageResultDto> {
-	return await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		endpoint: `/promotions/projects/${projectId}/promote`,
-		data: payload,
-	});
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		`/promotions/projects/${projectId}/promote`,
+		payload,
+	);
 }

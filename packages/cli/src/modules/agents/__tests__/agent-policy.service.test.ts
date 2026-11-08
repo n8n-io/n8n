@@ -18,7 +18,18 @@ const dateTimeTool = {
 	node: { nodeType: 'n8n-nodes-base.dateTime', nodeTypeVersion: 2, nodeParameters: {} },
 } as const;
 
-const agent = (tools: AgentJsonConfig['tools']) => ({ name: 'Support agent', tools });
+const agent = (tools: AgentJsonConfig['tools'], mcpServers?: AgentJsonConfig['mcpServers']) => ({
+	name: 'Support agent',
+	tools,
+	mcpServers,
+});
+
+const mcpServer = {
+	name: 'Docs',
+	url: 'https://mcp.example.com',
+	transport: 'streamableHttp',
+	authentication: 'none',
+} as const;
 
 const actor = { kind: 'user', user: { id: 'user-1' } } as const;
 
@@ -33,6 +44,7 @@ const violation: PolicyViolation = {
 function setUp() {
 	const backend = mock<PolicyEnforcementBackend>();
 	backend.enforce.mockResolvedValue({ violations: [] });
+	backend.evaluate.mockResolvedValue({ violations: [] });
 	const enforcement = new PolicyEnforcementService();
 	enforcement.setImplementation(backend);
 	return { backend, service: new AgentPolicyService(enforcement) };
@@ -95,5 +107,54 @@ describe('AgentPolicyService', () => {
 		expect(backend.enforce).toHaveBeenCalledWith('workflowPublish', expect.anything(), actor);
 		expect(error).toBeInstanceOf(PolicyViolationError);
 		expect((error as PolicyViolationError).violations).toEqual([violation]);
+	});
+
+	it('polices an MCP server as the node type it runs as', async () => {
+		const { backend, service } = setUp();
+
+		await service.enforcePublish('proj-1', 'agent-1', agent([], [mcpServer]), actor);
+
+		expect(backend.enforce).toHaveBeenCalledWith(
+			'workflowPublish',
+			expect.objectContaining({
+				workflow: expect.objectContaining({
+					nodes: [
+						expect.objectContaining({
+							name: 'Docs',
+							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+						}),
+					],
+				}),
+			}),
+			actor,
+		);
+	});
+
+	describe('evaluatePublish', () => {
+		it('reports the violations of a publish without throwing', async () => {
+			const { backend, service } = setUp();
+			backend.evaluate.mockResolvedValue({ violations: [violation] });
+
+			const decision = await service.evaluatePublish('proj-1', 'agent-1', agent([dateTimeTool]));
+
+			expect(backend.evaluate).toHaveBeenCalledWith(
+				'workflowPublish',
+				expect.objectContaining({ projectId: 'proj-1' }),
+			);
+			expect(decision.violations).toEqual([violation]);
+		});
+
+		it('reads the same nodes the publish gate polices', async () => {
+			const { backend, service } = setUp();
+
+			await service.evaluatePublish('proj-1', null, agent([dateTimeTool], [mcpServer]));
+
+			const [, context] = backend.evaluate.mock.calls[0];
+			const { workflow } = context as unknown as { workflow: { nodes: Array<{ type: string }> } };
+			expect(workflow.nodes).toEqual([
+				expect.objectContaining({ type: 'n8n-nodes-base.dateTime' }),
+				expect.objectContaining({ type: '@n8n/n8n-nodes-langchain.mcpClientTool' }),
+			]);
+		});
 	});
 });

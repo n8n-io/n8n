@@ -14,6 +14,12 @@ on:
         required: true
         type: string
 
+      prerelease:
+        description: 'Publish without promoting release channels or running stable release maintenance.'
+        required: false
+        type: boolean
+        default: false
+
     outputs:
       pull-request-number:
         description: 'Number of the created pull request'
@@ -38,6 +44,11 @@ on:
           - experimental
           - premajor
 
+      prerelease:
+        description: 'Publish without promoting release channels or running stable release maintenance.'
+        type: boolean
+        default: false
+
 permissions: {}
 
 jobs:
@@ -54,6 +65,24 @@ jobs:
       pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
 
     steps:
+      - name: Validate release inputs
+        env:
+          BASE_BRANCH: ${{ inputs.base-branch }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
+        run: |
+          if [ "$PRERELEASE" != "true" ]; then
+            exit 0
+          fi
+          if [ "$BASE_BRANCH" != "3.x" ]; then
+            echo "::error::Standalone prereleases must use the 3.x base branch."
+            exit 1
+          fi
+          if [[ ! "$RELEASE_TYPE" =~ ^(major|minor|patch)$ ]]; then
+            echo "::error::Standalone prereleases only support major, minor, or patch release types."
+            exit 1
+          fi
+
       - name: Generate GitHub App Token
         id: generate_token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
@@ -106,20 +135,25 @@ jobs:
 
       - name: Generate PR body
         id: generate-body
+        env:
+          PRERELEASE: ${{ inputs.prerelease }}
         run: |
           set -e
           CHANGELOG_FILE="CHANGELOG-${{ env.NEXT_RELEASE }}.md"
           DELIMITER="EOF_$(uuidgen)"
 
-          if [ -f "${CHANGELOG_FILE}" ]; then
-            {
-              echo "content<<${DELIMITER}"
+          {
+            echo "content<<${DELIMITER}"
+            if [ "$PRERELEASE" = "true" ]; then
+              echo '<!-- release-prerelease -->'
+            fi
+            if [ -f "${CHANGELOG_FILE}" ]; then
               cat "${CHANGELOG_FILE}"
-              echo "${DELIMITER}"
-            } >> "$GITHUB_OUTPUT"
-          else
-            echo "content=No changelog generated. Likely points to fixes in our CI." >> "$GITHUB_OUTPUT"
-          fi
+            else
+              echo 'No changelog generated. Likely points to fixes in our CI.'
+            fi
+            echo "${DELIMITER}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Push the release branch, and Create the PR
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
@@ -131,7 +165,7 @@ jobs:
           commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           delete-branch: true
           labels: release,release:${{ inputs.release-type }},automation:release
-          title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          title: "${{ inputs.prerelease && ':rocket: Pre-release' || ':rocket: Release' }} ${{ env.NEXT_RELEASE }}"
           body: ${{ steps.generate-body.outputs.content }}
 
   approve-and-automerge:
@@ -141,10 +175,11 @@ jobs:
     needs: [create-release-pr]
     if: |
       needs.create-release-pr.outputs.pull-request-number != ''
-    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    uses: n8n-io/github-actions/.github/workflows/approve-and-set-automerge.yml@8fe337080c0386a17ce3c857b61db606c9430f4b
     secrets: inherit
     with:
       pull-request-number: ${{ needs.create-release-pr.outputs.pull-request-number }}
+      enable-automerge: true
 
   # Packs every publishable package, so it only runs at release prep, in parallel with the PR.
   verify-single-instance-npm-full:

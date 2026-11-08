@@ -25,6 +25,10 @@ vi.mock('@n8n/ai-utilities', () => ({
 	braveSearch: vi.fn(),
 	searxngSearch: vi.fn(),
 }));
+vi.mock('@/utils/ai-proxy-fetch', () => ({
+	createAiProxyFetch: vi.fn(() => vi.fn()),
+	createWebSearchFetch: vi.fn(() => vi.fn()),
+}));
 
 import type { Logger } from '@n8n/backend-common';
 import { INSTANCE_AI_NODE_USAGE_FLAG } from '@n8n/api-types';
@@ -55,8 +59,8 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
+
 import type { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import type { NodeTypes } from '@/node-types';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';

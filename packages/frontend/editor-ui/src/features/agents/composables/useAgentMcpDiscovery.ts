@@ -1,5 +1,9 @@
 import { effectScope, toValue, type MaybeRefOrGetter } from 'vue';
-import type { McpRegistryDiscoveryResponse, McpRegistryServerResponse } from '@n8n/api-types';
+import type {
+	McpRegistryDiscoveryRequest,
+	McpRegistryDiscoveryResponse,
+	McpRegistryServerResponse,
+} from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -36,13 +40,9 @@ export function useAgentMcpDiscovery(projectId: MaybeRefOrGetter<string>) {
 	}
 
 	async function discoverRegistry(
-		serverSlug: string,
-		credentialId: string,
+		request: McpRegistryDiscoveryRequest,
 	): Promise<McpRegistryDiscoveryResponse> {
-		return await discoverMcpConnection(rootStore.restApiContext, {
-			slug: serverSlug,
-			credentialId,
-		});
+		return await discoverMcpConnection(rootStore.restApiContext, request);
 	}
 
 	async function preloadCredentials() {

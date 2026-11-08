@@ -1,11 +1,13 @@
+import { SKILL_LOAD_TOOL_NAME } from '@n8n/agents';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type {
 	AgentTelemetryMemoryType,
 	IAgentConfigurationTelemetryProperties,
 } from '@/interfaces';
 
-import type { MessageRecord } from './execution-recorder';
+import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import { toAgentDocument } from './json-config/agent-document';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import {
@@ -14,12 +16,33 @@ import {
 } from './utils/agent-capabilities';
 
 export function buildAgentTurnMetrics(record: MessageRecord) {
+	const skillLoads = record.timeline.flatMap(skillLoad);
 	return {
 		latency_ms: record.duration,
 		cost: record.totalCost ?? 0,
 		token_count: record.usage?.totalTokens ?? 0,
 		tool_call_count: record.timeline.filter((event) => event.type === 'tool-call').length,
+		skill_load_count: skillLoads.length,
+		loaded_skill_ids: uniqueSorted(skillLoads.flatMap(({ skillId }) => skillId ?? [])),
 	};
+}
+
+/**
+ * The skill a `load_skill` call activated. A call that failed, or that read a
+ * linked file instead of the main instructions, loaded no skill. The result of
+ * a linked file read is the only one that carries `filePath`.
+ */
+function skillLoad(event: TimelineEvent): Array<{ skillId?: string }> {
+	if (event.type !== 'tool-call' || event.name !== SKILL_LOAD_TOOL_NAME || !event.success) {
+		return [];
+	}
+	const { input, output } = event;
+	if (!isRecord(output) || output.success === false || output.ok === false) return [];
+	if (output.filePath !== undefined) return [];
+	if (typeof output.skillId === 'string') return [{ skillId: output.skillId }];
+	// A source without activation returns the skill text, which carries no id. A load
+	// by name still counts, without an id.
+	return [isRecord(input) && typeof input.skillId === 'string' ? { skillId: input.skillId } : {}];
 }
 
 export function buildAgentCapabilityTelemetryProperties(
@@ -29,7 +52,12 @@ export function buildAgentCapabilityTelemetryProperties(
 	const counts = countAgentCapabilities(config, integrations);
 	// Keep capability counts separate from the runtime tool count, which includes provider tools.
 	const { model, tool_types } = buildAgentConfigurationTelemetryFromConfig(config, integrations);
-	return { ...capabilityCountTelemetryProperties(counts), model, tool_types };
+	return {
+		...capabilityCountTelemetryProperties(counts),
+		skill_ids: uniqueSorted((config?.skills ?? []).map((skill) => skill.id)),
+		model,
+		tool_types,
+	};
 }
 
 export function buildAgentConfigurationTelemetry({

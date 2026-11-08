@@ -15,22 +15,41 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { computed, ref, toRef, watch } from 'vue';
-import { I18nT } from 'vue-i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, nextTick, ref, toRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import TimeAgo from '@/app/components/TimeAgo.vue';
 import { VIEWS } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
+import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
 import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../components/preview/PromotionResourceTree.vue';
+import PromotionReviewBlocker from '../components/preview/PromotionReviewBlocker.vue';
+import PromoteSelectionDialog from '../components/PromoteSelectionDialog.vue';
+import { usePromotionOperation } from '../composables/usePromotionOperation';
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
 import { usePromotionSelection } from '../composables/usePromotionSelection';
+import { getPromotionResourceDetails } from '../promotions.api';
 import { PROMOTIONS_SETTINGS_SCOPES, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
-import { includedChangeCount, totalChangeCount } from '../promotionPreview.selection';
+import {
+	indexBlockers,
+	isBlocking,
+	listBlockers,
+	crossProjectMoveBlockers,
+	toOperationRequest,
+	scopeCheck,
+	touchesDestructiveChange,
+} from '../promotionOperation';
+import {
+	includedChangeCount,
+	resolveInclusion,
+	totalChangeCount,
+	type ResourceKey,
+} from '../promotionPreview.selection';
+import { defaultActiveWorkflow, hasWorkflowDiff } from '../promotionPreview.workflow';
 import { buildPreviewTree, cardOrder } from '../promotionPreview.tree';
 
 const props = defineProps<{ projectId: string; direction: PromotionDirection }>();
@@ -40,25 +59,68 @@ const route = useRoute();
 const router = useRouter();
 const projectsStore = useProjectsStore();
 const rbacStore = useRBACStore();
+const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
 
 const projectId = toRef(props, 'projectId');
 const direction = toRef(props, 'direction');
 
-const {
-	state,
+const { state, preview, check, graph, environment, refreshing, refreshFailed, refresh } =
+	usePromotionPreview(projectId, direction);
+const promoteEnvironment = computed(() =>
+	environment.value?.direction === 'promote' ? environment.value : null,
+);
+// The page shows and enforces only the blockers of the workflows it lists.
+const scopedCheck = computed(() =>
+	check.value && graph.value ? scopeCheck(check.value, graph.value) : null,
+);
+const listedWorkflowKeys = computed(() =>
+	graph.value
+		? [...graph.value.resources.values()]
+				.filter(({ type, selectable }) => type === 'workflow' && selectable)
+				.map(({ key }) => key)
+		: [],
+);
+const blockerList = computed(() => [
+	...(scopedCheck.value ? listBlockers(scopedCheck.value, listedWorkflowKeys.value) : []),
+	...(props.direction === 'promote' && graph.value ? crossProjectMoveBlockers(graph.value) : []),
+]);
+const blockers = computed(() => indexBlockers(blockerList.value));
+const operation = usePromotionOperation(projectId, direction, { preview, check, refresh });
+const selection = usePromotionSelection(graph, {
+	disabled: computed(() => blockers.value.blocked),
+	locked: operation.isBusy,
+});
+const activeWorkflowKey = ref<ResourceKey>();
+const details = usePromotionResourceDetails(
+	async (keys) =>
+		await getPromotionResourceDetails(rootStore.restApiContext, props.projectId, props.direction, {
+			commitSha: preview.value?.commitSha ?? null,
+			keys,
+		}),
 	preview,
 	graph,
-	repositoryName,
-	refreshing,
-	refreshFailed,
-	lastRefreshedAt,
-	refresh,
-} = usePromotionPreview(projectId, direction);
-const selection = usePromotionSelection(graph);
-const details = usePromotionResourceDetails(projectId, direction, preview, graph);
+	activeWorkflowKey,
+);
 
-const title = computed(() => i18n.baseText(`promotions.preview.title.${props.direction}`));
+const projectName = computed(() =>
+	projectsStore.currentProject?.id === props.projectId
+		? projectsStore.currentProject.name
+		: preview.value?.resources.find(
+				(resource) => resource.type === 'project' && resource.id === props.projectId,
+			)?.name,
+);
+const title = computed(() => {
+	if (!environment.value?.name) {
+		return i18n.baseText(`promotions.preview.title.${props.direction}`);
+	}
+	return i18n.baseText(
+		projectName.value
+			? `promotions.preview.title.project.${props.direction}`
+			: `settings.promotions.${props.direction}.dialog.title`,
+		{ interpolate: { project: projectName.value ?? '', environment: environment.value.name } },
+	);
+});
 watch(title, (value) => documentTitle.set(value), { immediate: true });
 
 const tree = computed(() =>
@@ -77,7 +139,30 @@ const inspectedKey = computed(() =>
 	typeof route.query.resource === 'string' ? route.query.resource : undefined,
 );
 const cards = ref<InstanceType<typeof PromotionChangeCards> | null>(null);
+
+const hasDiff = (key: ResourceKey) => {
+	const resource = graph.value?.resources.get(key);
+	return !!resource && hasWorkflowDiff(resource);
+};
+
+// One workflow diff is active at a time. A new preview keeps it while the workflow still has
+// changes. The first preview activates the inspected or the first changed workflow.
+watch(
+	order,
+	(keys, previous = []) => {
+		const key = activeWorkflowKey.value;
+		if (key ? keys.includes(key) && hasDiff(key) : previous.length > 0) return;
+		activeWorkflowKey.value = graph.value
+			? defaultActiveWorkflow(keys, graph.value.resources, inspectedKey.value)
+			: undefined;
+	},
+	{ immediate: true },
+);
+watch(inspectedKey, (key) => {
+	if (key && hasDiff(key)) activeWorkflowKey.value = key;
+});
 async function inspect(key: string) {
+	if (hasDiff(key)) activeWorkflowKey.value = key;
 	// The URL does not change for the same item, so scroll to its card again directly.
 	if (key === inspectedKey.value) {
 		await cards.value?.scrollToCard(key);
@@ -105,13 +190,122 @@ const includedChanges = computed(() =>
 	graph.value ? includedChangeCount(graph.value, selection.inclusion.value) : 0,
 );
 
+const request = computed(() => {
+	const { workflowIds } = graph.value
+		? toOperationRequest(graph.value, selection.selected.value)
+		: { workflowIds: [] };
+	return {
+		workflowIds,
+		confirmDestructiveChanges: touchesDestructiveChange(blockers.value, selection.selected.value),
+	};
+});
+const hasSelectedBlocked = computed(() =>
+	[...selection.selected.value].some((key) => blockers.value.blocked.has(key)),
+);
+const submitBlockedReason = computed(() => {
+	// A folder that moved to another project stops the whole apply, so it blocks every selection.
+	const movedFolders = scopedCheck.value?.movedFolders ?? [];
+	if (movedFolders.length > 0) {
+		return i18n.baseText('promotions.preview.submit.folderMoved', {
+			adjustToNumber: movedFolders.length,
+			interpolate: { folders: movedFolders.map(({ name }) => `"${name}"`).join(', ') },
+		});
+	}
+	if (!hasSelectedBlocked.value) return undefined;
+	return i18n.baseText(
+		props.direction === 'promote'
+			? 'promotions.preview.submit.blockedPromote'
+			: 'promotions.preview.submit.blocked',
+	);
+});
+const actionableChanges = computed(() => {
+	if (!graph.value || scopedCheck.value?.movedFolders.length) return 0;
+	const actionable = new Set(
+		[...selection.selected.value].filter((key) => !blockers.value.blocked.has(key)),
+	);
+	return includedChangeCount(graph.value, resolveInclusion(graph.value, actionable));
+});
+const canSubmit = computed(
+	() =>
+		state.value === 'ready' &&
+		!refreshing.value &&
+		!operation.isBusy.value &&
+		!submitBlockedReason.value &&
+		request.value.workflowIds.length > 0 &&
+		actionableChanges.value > 0 &&
+		(props.direction === 'promote' || !!check.value),
+);
+const submitLabel = computed(() =>
+	i18n.baseText(`promotions.preview.submit.${props.direction}`, {
+		adjustToNumber: actionableChanges.value,
+		interpolate: { count: String(actionableChanges.value) },
+	}),
+);
+
+// Promote asks for the optional commit message first. Apply confirms inside the operation.
+const promoteDialogOpen = ref(false);
+// Lives here, not in the dialog, so the typed message survives a failed promote.
+const promoteCommitMessage = ref('');
+// The router reuses this view across projects, so a draft must not carry over.
+watch(projectId, () => {
+	promoteCommitMessage.value = '';
+});
+
+async function onSubmit() {
+	if (props.direction === 'promote') {
+		promoteDialogOpen.value = true;
+		return;
+	}
+	await operation.submit(request.value);
+}
+
+async function onPromoteConfirm(commitMessage: string | undefined) {
+	promoteDialogOpen.value = false;
+	await operation.submit({ ...request.value, commitMessage });
+}
+
+type PreviewTab = 'changes' | 'blockers';
+const activeTab = ref<PreviewTab>('changes');
+const blockerCount = computed(() => blockerList.value.filter(isBlocking).length);
+const showBlockersTab = computed(
+	() => props.direction === 'apply' && !!scopedCheck.value && state.value === 'ready',
+);
+watch(showBlockersTab, (show) => {
+	if (!show) activeTab.value = 'changes';
+});
 const tabs = computed(() => [
 	{
-		value: 'changes',
+		value: 'changes' as const,
 		label: i18n.baseText('promotions.preview.tab.changes'),
-		tag: String(totalChanges.value),
+		tag: graph.value ? String(totalChanges.value) : undefined,
 	},
+	...(showBlockersTab.value
+		? [
+				{
+					value: 'blockers' as const,
+					label: i18n.baseText('promotions.preview.tab.blockers'),
+					tag: blockerCount.value > 0 ? String(blockerCount.value) : undefined,
+				},
+			]
+		: []),
 ]);
+
+// Promote has no Blockers tab, so the tree's blocker icon only opens it on Apply.
+function showBlockers() {
+	if (showBlockersTab.value) activeTab.value = 'blockers';
+}
+
+async function inspectFromBlockers(key: string) {
+	activeTab.value = 'changes';
+	// The cards must be visible before the page scrolls to one.
+	await nextTick();
+	await inspect(key);
+}
+
+// Apply found blockers that the check did not show, so the page opens them.
+watch(operation.notice, (notice) => {
+	if (notice === 'newBlockers') activeTab.value = 'blockers';
+});
 
 // Users can resize the tree to read long names. The browser stores the width.
 const panes = ref<HTMLElement | null>(null);
@@ -119,7 +313,7 @@ const treeResizer = useResizablePanel({
 	container: panes,
 	width: {
 		localStorageKey: 'N8N_PROMOTION_PREVIEW_TREE_WIDTH',
-		defaultSize: (size) => Math.min(Math.max(size * 0.28, 280), 420),
+		defaultSize: (size) => Math.min(Math.max(size * 0.24, 240), 340),
 		minSize: 240,
 		maxSize: (size) => Math.min(size * 0.5, 640),
 		snap: true,
@@ -136,40 +330,32 @@ const treeResizer = useResizablePanel({
 			<N8nHeading tag="h1" size="xlarge" :class="$style.title">{{ title }}</N8nHeading>
 			<div :class="$style.tabRow">
 				<N8nTabs
-					model-value="changes"
+					v-model="activeTab"
 					:options="tabs"
 					:class="$style.tabs"
 					data-test-id="promotion-preview-tabs"
 				/>
-				<div :class="$style.meta">
-					<div :class="$style.details">
-						<N8nText v-if="preview && repositoryName" step="xs" color="text-light">
-							{{ repositoryName }}
-						</N8nText>
-						<N8nText v-if="preview" step="xs" color="text-light">
-							{{
-								i18n.baseText(`promotions.preview.branch.${direction}`, {
-									interpolate: { branch: preview.source.branchName },
-								})
-							}}
-						</N8nText>
-						<N8nText v-if="lastRefreshedAt" step="xs" color="text-light">
-							<I18nT keypath="promotions.preview.lastRefreshed" scope="global">
-								<template #time>
-									<TimeAgo :date="lastRefreshedAt.toISOString()" live />
-								</template>
-							</I18nT>
-						</N8nText>
-					</div>
+				<div :class="$style.actions">
 					<N8nButton
 						variant="outline"
 						size="small"
 						icon="refresh-cw"
 						:loading="refreshing"
+						:disabled="operation.isBusy.value"
 						data-test-id="promotion-preview-refresh"
 						@click="refresh"
 					>
 						{{ i18n.baseText('promotions.preview.refresh') }}
+					</N8nButton>
+					<N8nButton
+						:variant="request.confirmDestructiveChanges ? 'destructive' : 'brand'"
+						size="small"
+						:disabled="!canSubmit"
+						:loading="operation.isRunning.value"
+						data-test-id="promotion-preview-submit"
+						@click="onSubmit"
+					>
+						{{ submitLabel }}
 					</N8nButton>
 				</div>
 			</div>
@@ -211,6 +397,7 @@ const treeResizer = useResizablePanel({
 			data-test-id="promotion-preview-error"
 			@click:button="refresh"
 		/>
+		<PromotionReviewBlocker v-else-if="state === 'blocked'" :class="$style.state" />
 		<N8nEmptyState
 			v-else-if="state === 'empty'"
 			:class="$style.state"
@@ -219,54 +406,125 @@ const treeResizer = useResizablePanel({
 			:description="i18n.baseText('promotions.preview.state.empty.description')"
 			data-test-id="promotion-preview-empty"
 		/>
-		<div v-else-if="graph" ref="panes" :class="$style.panes">
-			<N8nResizeWrapper
-				:class="$style.tree"
-				:style="{ width: `${treeResizer.width.value}px` }"
-				:resizer="treeResizer"
-				:supported-directions="['right']"
+		<template v-else-if="graph">
+			<div v-if="operation.error.value || operation.notice.value" :class="$style.operationNotices">
+				<N8nCallout
+					v-if="operation.error.value"
+					theme="danger"
+					data-test-id="promotion-preview-operation-error"
+				>
+					<N8nText bold>{{ i18n.baseText(`promotions.preview.error.${direction}`) }}</N8nText>
+					{{ operation.error.value.message }}
+					{{ i18n.baseText(`promotions.preview.error.${operation.error.value.kind}`) }}
+				</N8nCallout>
+				<N8nCallout
+					v-if="operation.notice.value"
+					theme="warning"
+					slim
+					data-test-id="promotion-preview-operation-notice"
+				>
+					{{ i18n.baseText(`promotions.preview.notice.${operation.notice.value}`) }}
+				</N8nCallout>
+			</div>
+			<div v-show="activeTab === 'changes'" ref="panes" :class="$style.panes">
+				<N8nResizeWrapper
+					:class="$style.tree"
+					:style="{ width: `${treeResizer.width.value}px` }"
+					:resizer="treeResizer"
+					:supported-directions="['right']"
+				>
+					<PromotionResourceTree
+						:tree="tree"
+						:graph="graph"
+						:selected="selection.selected.value"
+						:inclusion="selection.inclusion.value"
+						:included-changes="includedChanges"
+						:total-changes="totalChanges"
+						:inspected-key="inspectedKey"
+						:disabled="blockers.blocked"
+						:locked="operation.isBusy.value"
+						:direction="direction"
+						:blockers="blockers"
+						@show-blockers="showBlockers"
+						@toggle="selection.toggle"
+						@toggle-container="selection.toggleAllInside"
+						@select-all="selection.selectAll"
+						@clear="selection.clear"
+						@inspect="inspect"
+					/>
+				</N8nResizeWrapper>
+				<section :class="$style.cards">
+					<!-- A disabled button cannot explain itself to keyboard users, so the reason shows here. -->
+					<N8nCallout
+						v-if="submitBlockedReason && !operation.error.value"
+						theme="warning"
+						slim
+						data-test-id="promotion-preview-submit-blocked"
+					>
+						{{ submitBlockedReason }}
+						<template v-if="showBlockersTab" #trailingContent>
+							<N8nButton variant="outline" size="small" @click="activeTab = 'blockers'">
+								{{ i18n.baseText('promotions.preview.card.viewBlockers') }}
+							</N8nButton>
+						</template>
+					</N8nCallout>
+					<N8nCallout v-if="refreshFailed" theme="warning" slim>
+						{{ i18n.baseText('promotions.preview.refreshFailed') }}
+					</N8nCallout>
+					<N8nCallout v-if="selection.dropped.value.length > 0" theme="info" slim>
+						{{
+							i18n.baseText('promotions.preview.dropped', {
+								adjustToNumber: selection.dropped.value.length,
+								interpolate: { count: String(selection.dropped.value.length) },
+							})
+						}}
+					</N8nCallout>
+					<PromotionChangeCards
+						ref="cards"
+						v-model:active-workflow="activeWorkflowKey"
+						:order="order"
+						:graph="graph"
+						:direction="direction"
+						:selected="selection.selected.value"
+						:inclusion="selection.inclusion.value"
+						:disabled="blockers.blocked"
+						:locked="operation.isBusy.value"
+						:entries="details.entries.value"
+						:inspected-key="inspectedKey"
+						:blockers="blockers"
+						@retry="details.retry"
+						@refresh="refresh"
+						@inspect="inspect"
+						@toggle="selection.toggle"
+						@toggle-container="selection.toggleAllInside"
+					/>
+				</section>
+			</div>
+			<PromotionBlockers
+				v-if="showBlockersTab && scopedCheck"
+				v-show="activeTab === 'blockers'"
+				:class="$style.blockers"
+				:check="scopedCheck"
+				:busy="operation.isBusy.value"
+				@refresh="refresh"
+				@inspect="inspectFromBlockers"
 			>
-				<PromotionResourceTree
-					:tree="tree"
-					:graph="graph"
-					:selected="selection.selected.value"
-					:inclusion="selection.inclusion.value"
-					:included-changes="includedChanges"
-					:total-changes="totalChanges"
-					:inspected-key="inspectedKey"
-					@toggle="selection.toggle"
-					@toggle-container="selection.toggleAllInside"
-					@select-all="selection.selectAll"
-					@clear="selection.clear"
-					@inspect="inspect"
-				/>
-			</N8nResizeWrapper>
-			<section :class="$style.cards">
-				<N8nCallout v-if="refreshFailed" theme="warning" slim>
-					{{ i18n.baseText('promotions.preview.refreshFailed') }}
+				<N8nCallout v-if="submitBlockedReason && !operation.error.value" theme="warning" slim>
+					{{ submitBlockedReason }}
 				</N8nCallout>
-				<N8nCallout v-if="selection.dropped.value.length > 0" theme="info" slim>
-					{{
-						i18n.baseText('promotions.preview.dropped', {
-							adjustToNumber: selection.dropped.value.length,
-							interpolate: { count: String(selection.dropped.value.length) },
-						})
-					}}
-				</N8nCallout>
-				<PromotionChangeCards
-					ref="cards"
-					:order="order"
-					:graph="graph"
-					:direction="direction"
-					:inclusion="selection.inclusion.value"
-					:entries="details.entries.value"
-					:inspected-key="inspectedKey"
-					@retry="details.retry"
-					@refresh="refresh"
-					@inspect="inspect"
-				/>
-			</section>
-		</div>
+			</PromotionBlockers>
+		</template>
+
+		<PromoteSelectionDialog
+			v-if="promoteDialogOpen && promoteEnvironment"
+			v-model:open="promoteDialogOpen"
+			v-model:commit-message="promoteCommitMessage"
+			:change-count="includedChanges"
+			:base-branch-name="promoteEnvironment.settings.baseBranchName"
+			:create-branch-on-promotion="promoteEnvironment.settings.createBranchOnPromotion"
+			:provider-type="promoteEnvironment.provider.type"
+			@confirm="onPromoteConfirm"
+		/>
 	</div>
 </template>
 
@@ -300,13 +558,8 @@ const treeResizer = useResizablePanel({
 }
 
 .tabRow {
-	/* N8nTabs draws its active indicator this far below its own box. Reserving the space puts the
-	   indicator on the divider, as in the inbox. No token matches this value. */
-	--promotion-preview--tab-overhang: 14px;
-
 	display: flex;
 	align-items: flex-end;
-	padding-bottom: var(--promotion-preview--tab-overhang);
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	width: 100%;
@@ -318,31 +571,29 @@ const treeResizer = useResizablePanel({
 	min-width: 0;
 }
 
-.meta {
+.actions {
 	flex-shrink: 0;
-	/* Centers the group on the tab label, which sits half the overhang below the tab box. */
-	margin-bottom: calc(var(--promotion-preview--tab-overhang) / -2);
+	align-self: center;
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--spacing--sm);
-}
-
-.details {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	column-gap: var(--spacing--2xs);
-}
-
-.details > * + *::before {
-	content: '·' / '';
-	margin-right: var(--spacing--2xs);
+	gap: var(--spacing--2xs);
 }
 
 .state {
 	/* The empty states draw their own border, so the space goes outside them. */
 	margin: var(--spacing--sm);
+}
+
+.operationNotices {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
+}
+
+.blockers {
+	flex: 1;
+	min-height: 0;
 }
 
 .panes {

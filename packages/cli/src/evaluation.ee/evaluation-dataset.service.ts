@@ -26,8 +26,8 @@ import type {
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { type DataTableColumn, DataTableService } from '@n8n/backend-module-data-table';
+
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 /** First-item `json` of a node's last run output, keyed by field name. */
@@ -144,6 +144,15 @@ export class EvaluationDatasetService {
 		executionId: string,
 		user: User,
 	): Promise<{ workflowData: IWorkflowBase; runData: IRunData }> {
+		// The routes are gated on the workflow, but run data sits behind
+		// `execution:read`, which a custom project role can lack.
+		const canReadExecutions = await userHasScopes(user, ['execution:read'], false, {
+			workflowId,
+		});
+		if (!canReadExecutions) {
+			throw new NotFoundError('Execution not found');
+		}
+
 		// Load via ExecutionPersistence (not the raw repository): it reads the run
 		// data from the store recorded in `storedAt` (`db` or `fs`). The raw
 		// repository only reads the DB blob, which is empty for fs-stored

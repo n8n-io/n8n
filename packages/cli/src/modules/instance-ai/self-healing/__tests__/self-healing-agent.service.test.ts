@@ -50,6 +50,7 @@ vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
 }));
 
 const user = mock<User>({ id: 'actor', disabled: false });
+const modelFetch = vi.fn();
 const baseline: WorkflowSuggestionBaseline = {
 	workflowId: 'workflow',
 	projectId: 'project',
@@ -91,7 +92,11 @@ const validOutput = {
 
 describe('SelfHealingAgentService', () => {
 	const config = mock<GlobalConfig>({
-		instanceAi: { workflowSuggestionsEnabled: true, thinkingEnabled: false },
+		instanceAi: {
+			workflowSuggestionsEnabled: true,
+			thinkingEnabled: false,
+			modelRequestLabels: true,
+		},
 		ai: {},
 	});
 	const logger = mock<Logger>();
@@ -167,6 +172,7 @@ describe('SelfHealingAgentService', () => {
 		executions.validateReference.mockResolvedValue(undefined);
 		settings.getPermissions.mockReturnValue({ ...DEFAULT_INSTANCE_AI_PERMISSIONS });
 		models.resolveAgentModelConfig.mockResolvedValue('test/model');
+		models.getLabeledModelFetch.mockReturnValue(modelFetch);
 		adapter.createContext.mockReturnValue(mock<InstanceAiContext>());
 		aiUsage.isParameterValueSharingAllowed.mockResolvedValue(true);
 		credits.claimRunUsage.mockResolvedValue(0.25);
@@ -293,6 +299,8 @@ describe('SelfHealingAgentService', () => {
 		expect(createSelfHealingAgent).toHaveBeenCalledWith(
 			expect.objectContaining({
 				context: expect.objectContaining({ threadId: options.threadId, runId: options.runId }),
+				modelFetch,
+				requestLabels: true,
 			}),
 		);
 		expect(streamAgentRun).toHaveBeenCalledWith(

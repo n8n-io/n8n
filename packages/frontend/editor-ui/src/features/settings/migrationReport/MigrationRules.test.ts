@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -125,6 +125,7 @@ describe('MigrationRules', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		vi.useRealTimers();
 	});
 
 	describe('initial rendering and loading', () => {
@@ -157,6 +158,59 @@ describe('MigrationRules', () => {
 
 			// Loading skeletons are gone
 			expect(document.querySelectorAll('.el-skeleton').length).toBe(0);
+		});
+
+		it('shows a message over the skeleton only after the report loads for 5 seconds', async () => {
+			vi.useFakeTimers();
+			let resolveReport: (report: BreakingChangeLightReportResult) => void = () => {};
+			vi.mocked(breakingChangesApi.getReport).mockReturnValue(
+				new Promise((resolve) => (resolveReport = resolve)),
+			);
+			renderComponent();
+
+			await vi.advanceTimersByTimeAsync(4999);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(screen.getByTestId('migration-report-slow-loading')).toHaveTextContent(
+				'Still scanning your workflows…',
+			);
+
+			resolveReport(mockReport);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+		});
+
+		it('does not show the message when the report loads in less than 5 seconds', async () => {
+			vi.useFakeTimers();
+			renderComponent();
+
+			await vi.advanceTimersByTimeAsync(0);
+			expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+		});
+
+		it('shows the message when a refresh takes more than 5 seconds', async () => {
+			vi.useFakeTimers();
+			let resolveRefresh: (report: BreakingChangeLightReportResult) => void = () => {};
+			vi.mocked(breakingChangesApi.refreshReport).mockReturnValue(
+				new Promise((resolve) => (resolveRefresh = resolve)),
+			);
+			renderComponent();
+			await vi.advanceTimersByTimeAsync(0);
+
+			await fireEvent.click(screen.getByText('Refresh'));
+			await vi.advanceTimersByTimeAsync(4999);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(screen.getByTestId('migration-report-slow-loading')).toBeInTheDocument();
+
+			resolveRefresh(mockReport);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
 		});
 	});
 
@@ -266,7 +320,6 @@ describe('MigrationRules', () => {
 					targetVersion: '2.0.0',
 					currentVersion: '1.0.0',
 					workflowResults: [
-						mockWorkflowIssue,
 						{
 							...mockWorkflowIssue,
 							ruleId: 'rule-2',
@@ -274,6 +327,16 @@ describe('MigrationRules', () => {
 							ruleImpact: 'behaviorChanges' as const,
 							nbAffectedWorkflows: 3,
 						},
+						// Listed between its neighbours in the input: after the behaviorChanges rule and
+						// before the executionsFail rule. A tie with either one then fails the test.
+						{
+							...mockWorkflowIssue,
+							ruleId: 'rule-5',
+							ruleTitle: 'Test Rule 5',
+							ruleImpact: 'executionsMightFail' as const,
+							nbAffectedWorkflows: 2,
+						},
+						mockWorkflowIssue,
 						{
 							...mockWorkflowIssue,
 							ruleId: 'rule-3',
@@ -302,6 +365,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('Test Rule 2')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 3')).toBeInTheDocument();
 				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions might fail')).toBeInTheDocument();
 				expect(screen.getByText('Behavior changes')).toBeInTheDocument();
 				expect(screen.getByText('Upgrade blocked')).toBeInTheDocument();
 				expect(screen.getByText('Capability removed')).toBeInTheDocument();
@@ -312,7 +376,13 @@ describe('MigrationRules', () => {
 			const titles = screen
 				.getAllByRole('heading', { level: 3 })
 				.map((heading) => heading.textContent?.trim());
-			expect(titles).toEqual(['Test Rule 3', 'Test Rule 1', 'Test Rule 2', 'Test Rule 4']);
+			expect(titles).toEqual([
+				'Test Rule 3',
+				'Test Rule 1',
+				'Test Rule 5',
+				'Test Rule 2',
+				'Test Rule 4',
+			]);
 		});
 	});
 
@@ -474,6 +544,14 @@ describe('MigrationRules', () => {
 					workflowResults: [],
 					instanceResults: [
 						mockInstanceIssue,
+						// Listed between its neighbours in the input: after the behaviorChanges rule and
+						// before the executionsFail rule. A tie with either one then fails the test.
+						{
+							...mockInstanceIssue,
+							ruleId: 'rule-6',
+							ruleTitle: 'Instance Rule 5',
+							ruleImpact: 'executionsMightFail' as const,
+						},
 						{
 							...mockInstanceIssue,
 							ruleId: 'rule-3',
@@ -507,16 +585,18 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('Instance Rule 2')).toBeInTheDocument();
 				expect(screen.getByText('Instance Rule 3')).toBeInTheDocument();
 				expect(screen.getByText('Instance Rule 4')).toBeInTheDocument();
+				expect(screen.getByText('Instance Rule 5')).toBeInTheDocument();
 			});
 
 			// Same order as the workflow tab: upgradeBlocked, executionsFail,
-			// behaviorChanges, capabilityRemoved.
+			// executionsMightFail, behaviorChanges, capabilityRemoved.
 			const titles = screen
 				.getAllByRole('heading', { level: 3 })
 				.map((heading) => heading.textContent?.trim());
 			expect(titles).toEqual([
 				'Instance Rule 4',
 				'Instance Rule 2',
+				'Instance Rule 5',
 				'Instance Rule 1',
 				'Instance Rule 3',
 			]);
@@ -797,6 +877,11 @@ describe('MigrationRules', () => {
 				tooltipText: 'will fail',
 			},
 			{
+				impact: 'executionsMightFail',
+				label: 'Executions might fail',
+				tooltipText: 'Read the recommendation',
+			},
+			{
 				impact: 'behaviorChanges',
 				label: 'Behavior changes',
 				tooltipText: 'keep running',
@@ -833,6 +918,33 @@ describe('MigrationRules', () => {
 				await waitFor(() => expect(getTooltip()).toHaveTextContent(tooltipText));
 			},
 		);
+
+		it('should show the instance tooltip for the executionsMightFail impact on hover', async () => {
+			const report = createMockReport({
+				report: {
+					generatedAt: new Date('2024-01-01'),
+					targetVersion: '2.0.0',
+					currentVersion: '1.0.0',
+					workflowResults: [],
+					instanceResults: [{ ...mockInstanceIssue, ruleImpact: 'executionsMightFail' }],
+				},
+			});
+
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(report);
+
+			renderComponent();
+
+			await userEvent.click(screen.getByText('Instance issues'));
+
+			await waitFor(() => {
+				expect(screen.getByText('Executions might fail')).toBeInTheDocument();
+			});
+
+			await hoverTooltipTrigger(screen.getByText('Executions might fail'));
+			await waitFor(() =>
+				expect(getTooltip()).toHaveTextContent('set the related environment variable'),
+			);
+		});
 	});
 
 	describe('error handling and edge cases', () => {

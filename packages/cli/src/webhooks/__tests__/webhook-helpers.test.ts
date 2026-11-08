@@ -18,7 +18,7 @@ import {
 } from '@n8n/inbound-auth';
 import type { Principal, SecurityContext } from '@n8n/permissions';
 import type { EndedMessage, ExecutionResponse } from '@n8n/engine';
-import type express from 'express';
+import express from 'express';
 import {
 	BinaryDataService,
 	ErrorReporter,
@@ -67,17 +67,14 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	createRunExecutionData,
 	ExpressionError,
-	OperationalError,
-	UnexpectedError,
-	UserError,
 } from 'n8n-workflow';
-import type { Readable } from 'stream';
-import { finished } from 'stream/promises';
+import { Readable } from 'stream';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
-import { type ResponseError } from '@n8n/errors';
+import type { EngineV2ResumeRequest } from '@/interfaces';
+import { type ResponseError, OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
@@ -86,6 +83,15 @@ import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import {
+	createLargeTempFile,
+	disconnectBeforeResponse,
+	failingStream,
+	readFirstChunkAndDisconnect,
+	readWholeBody,
+	startServer,
+	waitForClose,
+} from '@test/file-stream-server';
 
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '../constants';
 import {
@@ -99,12 +105,14 @@ import {
 	invokeWebhook,
 	handleImmediateWebhookResponse,
 	checkTriggerCredentialGate,
+	extractTracingContext,
 } from '../webhook-helpers';
 import { WebhookResponder } from '../webhook-responder';
 import { WebhookService } from '../webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
 
-vi.mock('stream/promises', () => ({
+vi.mock('stream/promises', async (importOriginal) => ({
+	...(await importOriginal<typeof import('stream/promises')>()),
 	finished: vi.fn(),
 }));
 
@@ -323,6 +331,7 @@ describe('setupResponseNodePromise', () => {
 
 		res.header.mockReturnValue(res);
 		res.end.mockReturnValue(res);
+		res.destroyed = false;
 	});
 
 	test('should handle regular response object', async () => {
@@ -350,34 +359,6 @@ describe('setupResponseNodePromise', () => {
 		expect(res.end).toHaveBeenCalled();
 	});
 
-	test('should handle binary data with ID', async () => {
-		const mockStream = mock<Readable>();
-		binaryDataService.getAsStream.mockResolvedValue(mockStream);
-
-		setupResponseNodePromise(
-			responsePromise,
-			res,
-			new WebhookResponder(responseCallback),
-			workflowStartNode,
-			executionId,
-			workflow,
-		);
-
-		responsePromise.resolve({
-			body: { binaryData: { id: 'binary-123' } },
-			headers: { 'content-type': 'image/jpeg' },
-			statusCode: 200,
-		});
-		await new Promise(process.nextTick);
-
-		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-123');
-		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'image/jpeg']]));
-		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
-		expect(mockStream.pipe).toHaveBeenCalledWith(res, { end: false });
-		expect(finished).toHaveBeenCalledWith(mockStream);
-		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
-	});
-
 	test('should reclaim an offloaded body once it has been streamed', async () => {
 		binaryDataService.getAsStream.mockResolvedValue(mock<Readable>());
 		const response = {
@@ -402,37 +383,6 @@ describe('setupResponseNodePromise', () => {
 			workflowId,
 			executionId,
 		});
-	});
-
-	test('should destroy the stream when the client goes away, so delivery settles', async () => {
-		const stream = mock<Readable>();
-		binaryDataService.getAsStream.mockResolvedValue(stream);
-
-		setupResponseNodePromise(
-			responsePromise,
-			res,
-			new WebhookResponder(responseCallback),
-			workflowStartNode,
-			executionId,
-			workflow,
-		);
-
-		responsePromise.resolve({
-			body: { binaryData: { id: 'binary-123' } },
-			headers: {},
-			statusCode: 200,
-		} as unknown as IN8nHttpFullResponse);
-		await new Promise(process.nextTick);
-
-		const closeHandler = res.once.mock.calls.find(([event]) => event === 'close')?.[1] as
-			| (() => void)
-			| undefined;
-		expect(closeHandler).toBeDefined();
-		expect(stream.destroy).not.toHaveBeenCalled();
-
-		closeHandler!();
-
-		expect(stream.destroy).toHaveBeenCalled();
 	});
 
 	test('should reclaim an offloaded body even when streaming fails', async () => {
@@ -637,6 +587,192 @@ describe('setupResponseNodePromise', () => {
 
 		expect(errorReporter.error).not.toHaveBeenCalled();
 		expect(responseCallback).not.toHaveBeenCalled();
+	});
+
+	describe('binary data responses over a real connection', () => {
+		const binaryDataResponse = {
+			body: { binaryData: { id: 'binary-123' } },
+			headers: { 'content-type': 'image/jpeg' },
+			statusCode: 200,
+		} as unknown as IN8nHttpFullResponse;
+
+		let file: Awaited<ReturnType<typeof createLargeTempFile>>;
+		let server: Awaited<ReturnType<typeof startServer>> | undefined;
+		let streams: Readable[];
+
+		const openStream = async () => {
+			const stream = await file.openStream();
+			streams.push(stream);
+			return stream;
+		};
+
+		/** Serves a Respond to Webhook binary response. `beforeRespond` runs first on each response. */
+		const serveBinaryData = async (beforeRespond?: (res: express.Response) => void) => {
+			const app = express();
+			app.get('/', (_req, res) => {
+				beforeRespond?.(res);
+				const deferred = createDeferredPromise<IN8nHttpFullResponse>();
+				setupResponseNodePromise(
+					deferred,
+					res,
+					new WebhookResponder(responseCallback),
+					workflowStartNode,
+					executionId,
+					workflow,
+				);
+				deferred.resolve(binaryDataResponse);
+			});
+			server = await startServer(app);
+			return server.url;
+		};
+
+		const endWithStatus500OnError = (res: express.Response) => {
+			responseCallback.mockImplementation((error: Error | null) => {
+				if (error) res.status(500).end();
+			});
+		};
+
+		const expectDisconnectHandledQuietly = async () => {
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalled());
+			expect(responseCallback).toHaveBeenCalledTimes(1);
+			expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+			expect(errorReporter.error).not.toHaveBeenCalled();
+			expect(logger.error).not.toHaveBeenCalled();
+			expect(webhookResponseRelay.deleteOffloadedBody).toHaveBeenCalledWith(binaryDataResponse, {
+				workflowId,
+				executionId,
+			});
+		};
+
+		beforeAll(async () => {
+			file = await createLargeTempFile();
+		});
+
+		afterAll(async () => {
+			await file.remove();
+		});
+
+		beforeEach(() => {
+			streams = [];
+		});
+
+		afterEach(async () => {
+			for (const stream of streams) stream.destroy();
+			await server?.close();
+			server = undefined;
+		});
+
+		test('should send the whole file with its headers and close the source file', async () => {
+			const stream = await openStream();
+			binaryDataService.getAsStream.mockResolvedValue(stream);
+			const url = await serveBinaryData();
+
+			const response = await fetch(url);
+
+			expect(response.headers.get('content-type')).toBe('image/jpeg');
+			expect(response.headers.get('content-security-policy')).toBe(getHtmlSandboxCSP());
+			expect((await response.arrayBuffer()).byteLength).toBe(file.sizeInBytes);
+			expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-123');
+			expect(await waitForClose(stream)).toBe(true);
+			expect(responseCallback).toHaveBeenCalledTimes(1);
+			expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+			expect(errorReporter.error).not.toHaveBeenCalled();
+		});
+
+		test('should close the source file without an error when the client disconnects mid-download', async () => {
+			const stream = await openStream();
+			binaryDataService.getAsStream.mockResolvedValue(stream);
+			const url = await serveBinaryData();
+
+			await readFirstChunkAndDisconnect(url);
+
+			expect(await waitForClose(stream)).toBe(true);
+			await expectDisconnectHandledQuietly();
+		});
+
+		test('should close the source file without an error when the client disconnects before the stream opens', async () => {
+			const stream = await openStream();
+			const streamRequested = createDeferredPromise();
+			const releaseStream = createDeferredPromise();
+			binaryDataService.getAsStream.mockImplementation(async () => {
+				streamRequested.resolve();
+				await releaseStream.promise;
+				return stream;
+			});
+			const responseClosed = createDeferredPromise();
+			const url = await serveBinaryData((res) => res.once('close', () => responseClosed.resolve()));
+
+			await disconnectBeforeResponse(url, streamRequested.promise);
+			await responseClosed.promise;
+			releaseStream.resolve();
+
+			expect(await waitForClose(stream)).toBe(true);
+			await expectDisconnectHandledQuietly();
+		});
+
+		test('should report a stream error that happens when the client disconnects', async () => {
+			const stream = await openStream();
+			binaryDataService.getAsStream.mockResolvedValue(stream);
+			const url = await serveBinaryData((res) =>
+				res.once('close', () => stream.destroy(new Error('read failed'))),
+			);
+
+			await readFirstChunkAndDisconnect(url);
+
+			expect(await waitForClose(stream)).toBe(true);
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalled());
+			expect(responseCallback).toHaveBeenCalledTimes(1);
+			expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'read failed' }),
+			);
+		});
+
+		test('should end the response and report the error when the file fails during the download', async () => {
+			const stream = failingStream(3);
+			binaryDataService.getAsStream.mockResolvedValue(stream);
+			const url = await serveBinaryData();
+
+			await expect(readWholeBody(url)).rejects.toThrow();
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalled());
+			expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'read failed' }),
+			);
+			expect(logger.error).toHaveBeenCalledTimes(1);
+		});
+
+		test('should report a failure to open the stream while the client is connected', async () => {
+			binaryDataService.getAsStream.mockRejectedValue(new Error('store is down'));
+			const url = await serveBinaryData(endWithStatus500OnError);
+
+			const response = await fetch(url);
+
+			expect(response.status).toBe(500);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'store is down' }),
+			);
+			expect(responseCallback).toHaveBeenCalledWith(expect.any(Error), {});
+		});
+
+		test('should report a stream failure while the client is connected', async () => {
+			const failingStream = new Readable({
+				read() {
+					this.destroy(new Error('read failed'));
+				},
+			});
+			binaryDataService.getAsStream.mockResolvedValue(failingStream);
+			const url = await serveBinaryData(endWithStatus500OnError);
+
+			const response = await fetch(url);
+
+			expect(response.status).toBe(500);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'read failed' }),
+			);
+			expect(responseCallback).toHaveBeenCalledWith(expect.any(Error), {});
+		});
 	});
 });
 
@@ -1204,6 +1340,55 @@ describe('getWebhookErrorMessage', () => {
 	});
 });
 
+describe('extractTracingContext', () => {
+	const traceparent = '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01';
+	const otel = {
+		injectTraceHeaders: vi.fn(),
+		extractInboundBaggage: vi.fn((header: string | string[] | undefined) =>
+			header === 'tenant=acme' ? 'tenant=acme' : undefined,
+		),
+	};
+
+	it('returns undefined without trace headers', () => {
+		expect(extractTracingContext({}, otel)).toBeUndefined();
+	});
+
+	it('reads traceparent and tracestate', () => {
+		expect(extractTracingContext({ traceparent, tracestate: 'vendor=1' }, otel)).toEqual({
+			traceparent,
+			tracestate: 'vendor=1',
+		});
+	});
+
+	it('ignores an invalid traceparent', () => {
+		expect(extractTracingContext({ traceparent: 'not-a-traceparent' }, otel)).toBeUndefined();
+	});
+
+	it('ignores baggage when the otel module is not loaded', () => {
+		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' }, undefined)).toEqual({
+			traceparent,
+		});
+	});
+
+	it('reads the baggage that the otel module returns', () => {
+		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' }, otel)).toEqual({
+			traceparent,
+			baggage: 'tenant=acme',
+		});
+		expect(otel.extractInboundBaggage).toHaveBeenCalledWith('tenant=acme');
+	});
+
+	it('reads baggage without a traceparent', () => {
+		expect(extractTracingContext({ baggage: 'tenant=acme' }, otel)).toEqual({
+			baggage: 'tenant=acme',
+		});
+	});
+
+	it('returns undefined when the otel module returns no baggage', () => {
+		expect(extractTracingContext({ baggage: 'n8n.workflow.id=forged' }, otel)).toBeUndefined();
+	});
+});
+
 // Shared by the two `executeWebhook` blocks below: `mockInstance` overwrites the
 // container binding, so registering these per-describe would leave the first block
 // holding a mock the code under test no longer resolves.
@@ -1486,7 +1671,7 @@ describe('executeWebhook form content type', () => {
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
 		);
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		webhookService.runWebhook.mockResolvedValue({});
 
@@ -2191,7 +2376,7 @@ describe('executeWebhook additional data', () => {
 		const context: SecurityContext = {
 			subject: {
 				id: 'user-1',
-				type: 'human',
+				type: 'person',
 				email: 'alice@example.com',
 				firstName: 'Alice',
 				lastName: 'Example',
@@ -2343,7 +2528,7 @@ describe('executeWebhook in responseNode mode when the Respond node never runs',
 	 */
 	const startWebhook = async () => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -2539,6 +2724,7 @@ describe('executeWebhook response-mode callback contract', () => {
 			mock<IWorkflowExecuteAdditionalData>({
 				// A real string: the formPage branch builds a URL from it.
 				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				otel: undefined,
 			}),
 		);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
@@ -2647,6 +2833,7 @@ describe('executeWebhook on engine v2', () => {
 		startNode = webhookNode(),
 		webhookResult = { workflowData: [[{ json: { body: 'hi' } }]] } as IWebhookResponseData,
 		executionId,
+		engineResume,
 		destinationNode,
 		responseHeaders,
 		response = mock<express.Response>({ headersSent: false, writableEnded: false }),
@@ -2655,6 +2842,7 @@ describe('executeWebhook on engine v2', () => {
 		startNode?: INode;
 		webhookResult?: IWebhookResponseData;
 		executionId?: string;
+		engineResume?: EngineV2ResumeRequest;
 		destinationNode?: IDestinationNode;
 		/** The response headers configured on the webhook node, as an expression. */
 		responseHeaders?: string;
@@ -2712,6 +2900,7 @@ describe('executeWebhook on engine v2', () => {
 			response,
 			responseCallback,
 			destinationNode,
+			{ engineResume },
 		);
 
 		return { response, responseCallback, returned };
@@ -2722,7 +2911,7 @@ describe('executeWebhook on engine v2', () => {
 		vi.clearAllMocks();
 
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -2793,6 +2982,32 @@ describe('executeWebhook on engine v2', () => {
 			// `prepareExecutionData` only stores it on `executionData.startData`, where
 			// the dispatcher's guard cannot see it.
 			expect(workflowRunner.run.mock.calls[0][0].destinationNode).toEqual(destinationNode);
+		});
+
+		it('resumes under the id of the waiting execution', async () => {
+			const engineResume = { stepId: 'step-1', token: 't' };
+
+			await startWebhook({
+				startNode: webhookNode(WAIT_NODE_TYPE),
+				executionId: ENGINE_EXECUTION_ID,
+				engineResume,
+			});
+
+			expect(workflowRunner.run.mock.calls[0][0].engineV2ExecutionId).toBe(ENGINE_EXECUTION_ID);
+			expect(workflowRunner.run.mock.calls[0][3]).toEqual(
+				expect.objectContaining({ executionId: ENGINE_EXECUTION_ID, engineResume }),
+			);
+		});
+
+		it('reports a resume with a v1 execution id as a bug, before the node runs', async () => {
+			await startWebhook({ startNode: webhookNode(WAIT_NODE_TYPE), executionId: '42' });
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'An engine v2 resume needs a v2 execution id' }),
+				expect.anything(),
+			);
+			expect(webhookService.runWebhook).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('dispatches the run without a response expectation, because nobody listens', async () => {
@@ -3231,20 +3446,28 @@ describe('executeWebhook on engine v2', () => {
 				message: 'Engine v2 cannot run the "Webhook" trigger yet.',
 			},
 			{
-				name: 'a wait node',
-				options: { startNode: webhookNode(WAIT_NODE_TYPE) },
-				message: 'Engine v2 cannot run the "Webhook" trigger yet.',
-			},
-			{
 				name: 'an identity webhook',
 				options: { startNode: webhookNode(WEBHOOK_NODE_TYPE, { authentication: 'n8nOAuth2' }) },
 				message:
 					'Engine v2 cannot run the "Webhook" trigger yet, because it takes credentials from the request.',
 			},
 			{
-				name: 'a resumed execution',
-				options: { executionId: 'exec-1' },
-				message: 'Engine v2 cannot resume a waiting execution yet.',
+				name: 'a resume answered by a Respond to Webhook node',
+				options: { executionId: ENGINE_EXECUTION_ID, responseMode: 'responseNode' },
+				message:
+					'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
+			},
+			{
+				name: 'a resume answered with the last node',
+				options: { executionId: ENGINE_EXECUTION_ID, responseMode: 'lastNode' },
+				message:
+					'Engine v2 cannot answer a resume request with the last node yet. Set the waiting node to respond immediately.',
+			},
+			{
+				name: 'a resume answered by the next form page',
+				options: { executionId: ENGINE_EXECUTION_ID, responseMode: 'formPage' },
+				message:
+					'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
 			},
 			{
 				name: 'a trigger that takes credentials from the request',
@@ -3358,7 +3581,7 @@ describe('executeWebhook when the node webhook throws', () => {
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
 		);
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		engineV2Dispatcher.handlesWorkflow.mockReturnValue(false);
 		if (webhookResult !== undefined) {

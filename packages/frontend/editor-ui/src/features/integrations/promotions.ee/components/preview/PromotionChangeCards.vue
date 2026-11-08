@@ -1,25 +1,60 @@
 <script setup lang="ts">
-import type { PromotionDirection } from '@n8n/api-types';
+import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
 import { computed, nextTick, ref, watch } from 'vue';
 
 import type { DetailEntry } from '../../composables/usePromotionResourceDetails';
-import type { Inclusion, ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
+import { blockersOf, type BlockerIndex } from '../../promotionOperation';
+import {
+	selectionCheck,
+	type DisabledKeys,
+	type Inclusion,
+	type ResourceKey,
+	type SelectionGraph,
+} from '../../promotionPreview.selection';
+import { isContainer } from '../../promotionPreview.tree';
 import PromotionChangeCard from './PromotionChangeCard.vue';
 
-const props = defineProps<{
-	order: ResourceKey[];
-	graph: SelectionGraph;
-	direction: PromotionDirection;
-	inclusion: Inclusion;
-	entries: ReadonlyMap<ResourceKey, DetailEntry>;
-	inspectedKey?: ResourceKey;
-}>();
+const props = withDefaults(
+	defineProps<{
+		order: ResourceKey[];
+		graph: SelectionGraph;
+		direction: PromotionDirection;
+		selected: ReadonlySet<ResourceKey>;
+		inclusion: Inclusion;
+		/** Blocked workflows, which users cannot add. */
+		disabled: DisabledKeys;
+		locked: boolean;
+		entries: ReadonlyMap<ResourceKey, DetailEntry>;
+		inspectedKey?: ResourceKey;
+		blockers: BlockerIndex;
+		/** False for a list that users only read. */
+		selectable?: boolean;
+	}>(),
+	{ selectable: true },
+);
+
+const activeWorkflow = defineModel<ResourceKey | undefined>('activeWorkflow');
 
 const emit = defineEmits<{
 	retry: [key: ResourceKey];
 	refresh: [];
 	inspect: [key: ResourceKey];
+	toggle: [key: ResourceKey];
+	toggleContainer: [key: ResourceKey];
 }>();
+
+const check = (resource: PromotionResource) =>
+	selectionCheck(props.graph, resource, {
+		selected: props.selected,
+		inclusion: props.inclusion,
+		disabled: props.disabled,
+		locked: props.locked,
+	});
+
+function onToggle(resource: PromotionResource) {
+	if (isContainer(resource)) emit('toggleContainer', resource.key);
+	else emit('toggle', resource.key);
+}
 
 const list = ref<HTMLElement | null>(null);
 const resources = computed(() =>
@@ -29,7 +64,7 @@ const resources = computed(() =>
 	}),
 );
 
-// Scrolls the card to the top. An instant jump keeps loading cards from pushing it away.
+// Tree navigation scrolls to the requested card. Card toggles keep their position.
 async function scrollToCard(key: ResourceKey | undefined) {
 	if (!key) return;
 	await nextTick();
@@ -51,10 +86,16 @@ defineExpose({ scrollToCard });
 			:resource="resource"
 			:graph="graph"
 			:direction="direction"
-			:included="inclusion.included.has(resource.key)"
+			:selection="check(resource)"
 			:entry="entries.get(resource.key)"
 			:inspected="inspectedKey === resource.key"
+			:blockers="blockersOf(blockers, resource)"
+			:diff-active="activeWorkflow === resource.key"
+			:selectable="selectable"
+			@activate-diff="activeWorkflow = resource.key"
+			@deactivate-diff="activeWorkflow = undefined"
 			@inspect="emit('inspect', $event)"
+			@toggle="onToggle(resource)"
 			@retry="emit('retry', resource.key)"
 			@refresh="emit('refresh')"
 		/>

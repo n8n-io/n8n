@@ -106,7 +106,7 @@ export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
 			user_id: z.string(),
 			workflow_id: z.string(),
 			public_api: z.boolean(),
-			source: z.enum(['ui', 'api', 'n8n-mcp', 'n8n-ai', 'import', 'review-approval']),
+			source: z.enum(['ui', 'api', 'n8n-mcp', 'n8n-ai', 'import', 'review-approval', 'cli']),
 			private_credentials_count: z.number(),
 			private_credential_types: z.array(z.string()),
 			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).

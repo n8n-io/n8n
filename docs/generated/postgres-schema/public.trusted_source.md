@@ -9,6 +9,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | discoveryClaimToken | varchar(36) |  | true |  |  |  |
 | discoveryClaimedAt | timestamp(3) with time zone |  | true |  |  |  |
+| firstAuthenticatedAt | timestamp(3) with time zone |  | true |  |  |  |
 | id | varchar(36) |  | false | [public.trusted_source_identity](public.trusted_source_identity.md) |  |  |
 | issuer | varchar |  | false |  |  |  |
 | lastCheckedAt | timestamp(3) with time zone |  | true |  |  |  |
@@ -57,6 +58,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ discoveryClaimToken
   timestamp_3__with_time_zone discoveryClaimedAt
+  timestamp_3__with_time_zone firstAuthenticatedAt
   varchar_36_ id
   varchar issuer
   timestamp_3__with_time_zone lastCheckedAt

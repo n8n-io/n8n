@@ -44,6 +44,15 @@ import type {
 import { type ExecuteContext, ExecuteSingleContext } from './node-execution-context';
 import { getAdditionalKeys } from './node-execution-context/utils/get-additional-keys';
 
+/**
+ * Marks every output item of one input item with its origin, so that `.item`
+ * expressions downstream can trace it. A node may pair an item itself in a
+ * post-receive function; that value wins.
+ */
+function pairWithInputItem(items: INodeExecutionData[], itemIndex: number): INodeExecutionData[] {
+	return items.map((item) => ({ ...item, pairedItem: item.pairedItem ?? { item: itemIndex } }));
+}
+
 export class RoutingNode {
 	constructor(
 		private readonly context: ExecuteContext,
@@ -330,7 +339,7 @@ export class RoutingNode {
 				set(nodeError, 'context.runIndex', runIndex);
 
 				if (itemContext[itemIndex].thisArgs?.continueOnFail()) {
-					returnData.push({ json: {}, error: nodeError });
+					returnData.push({ json: {}, error: nodeError, pairedItem: { item: itemIndex } });
 					continue;
 				}
 
@@ -342,7 +351,7 @@ export class RoutingNode {
 				responseData.value.splice(itemContext[itemIndex].requestData.maxResults);
 			}
 
-			returnData.push(...responseData.value);
+			returnData.push(...pairWithInputItem(responseData.value as INodeExecutionData[], itemIndex));
 		}
 
 		return [returnData];

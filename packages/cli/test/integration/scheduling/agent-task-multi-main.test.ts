@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { ScheduledJobOwnerType } from '@n8n/constants';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { Repository } from '@n8n/typeorm';
 import { createScheduler } from '@n8n/scheduler';
 import type { Scheduler, SchedulerPasses } from '@n8n/scheduler';
 import { v4 as uuid } from 'uuid';
@@ -10,7 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AGENT_TASK_TASK_TYPE } from '@/modules/agents/scheduling/agent-task-job';
@@ -35,7 +36,7 @@ describe('agent tasks across two mains over one database', () => {
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
 	let agentRepo: AgentRepository;
-	let historyRepo: AgentHistoryRepository;
+	let historyRepo: Repository<AgentHistory>;
 	let snapshotRepo: AgentTaskSnapshotRepository;
 	let registrar: AgentTaskJobRegistrar;
 	let schedulerConfig: GlobalConfig['scheduler'];
@@ -120,7 +121,7 @@ describe('agent tasks across two mains over one database', () => {
 		jobRepo = Container.get(ScheduledJobRepository);
 		taskRepo = Container.get(ScheduledTaskRepository);
 		agentRepo = Container.get(AgentRepository);
-		historyRepo = Container.get(AgentHistoryRepository);
+		historyRepo = Container.get(DataSource).getRepository(AgentHistory);
 		snapshotRepo = Container.get(AgentTaskSnapshotRepository);
 		registrar = Container.get(AgentTaskJobRegistrar);
 		mainA = buildMain('main-a');

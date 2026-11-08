@@ -18,14 +18,13 @@ describe('AI outbound fetch helpers', () => {
 		return { fetch, outboundHttp };
 	};
 
-	it('creates model fetch with the outbound network policy bypassed', () => {
+	it('creates model fetch with the outbound network policy in safe mode', () => {
 		const { fetch, outboundHttp } = makeOutboundHttp();
 
 		expect(createAiProxyFetch(outboundHttp)).toBe(fetch);
 
 		expect(outboundHttp.transport).toHaveBeenCalledWith({
 			proxy: 'env',
-			useDefaultSsrfPolicy: 'unsafe',
 			timeouts: {
 				headersTimeout: AI_REQUEST_TIMEOUT_MS,
 				bodyTimeout: AI_REQUEST_TIMEOUT_MS,

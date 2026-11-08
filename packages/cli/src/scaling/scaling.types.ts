@@ -92,6 +92,8 @@ export type JobFinishedProps = {
 	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt: Date;
+	failedBeforeStart?: true;
+	nodeTimeSavedMinutes?: number;
 };
 
 /** Message sent by worker to main to report a job has finished. */

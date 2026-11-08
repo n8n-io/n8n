@@ -18,6 +18,8 @@ interface IconProps {
 	// accepts a named IconColor token or a raw CSS custom property (e.g. '--node--icon--color--blue')
 	color?: IconColor | (string & {});
 	strokeWidth?: number | undefined;
+	// drawn instead when `icon` is in no icon set
+	fallbackIcon?: IconName;
 }
 
 defineOptions({ name: 'N8nIcon' });
@@ -26,6 +28,7 @@ const props = withDefaults(defineProps<IconProps>(), {
 	spin: false,
 	size: undefined,
 	color: undefined,
+	fallbackIcon: undefined,
 });
 
 const $style = useCssModule();
@@ -80,17 +83,27 @@ const styles = computed(() => {
 
 const nodeIconSetRef = shallowRef<typeof NodeIconSetType | null>(null);
 
-const resolvedComponent = computed(
-	() =>
-		nodeIconSetRef.value?.[props.icon as keyof typeof NodeIconSetType] ??
-		updatedIconSet[props.icon as keyof typeof updatedIconSet] ??
-		deprecatedIconSet[props.icon as keyof typeof deprecatedIconSet] ??
-		null,
+const findComponent = (name: string) =>
+	nodeIconSetRef.value?.[name as keyof typeof NodeIconSetType] ??
+	updatedIconSet[name as keyof typeof updatedIconSet] ??
+	deprecatedIconSet[name as keyof typeof deprecatedIconSet] ??
+	null;
+
+// The name the loader found nothing for. Cleared when `icon` changes, so a name selected again loads again.
+const missingIcon = ref<string | null>(null);
+// A node icon can arrive after the loader replied, so the requested icon always wins.
+const displayedIcon = computed(() =>
+	props.fallbackIcon && missingIcon.value === props.icon && !findComponent(props.icon)
+		? props.fallbackIcon
+		: props.icon,
 );
+
+const resolvedComponent = computed(() => findComponent(displayedIcon.value));
 
 watch(
 	() => props.icon,
 	async (icon) => {
+		missingIcon.value = null;
 		if (typeof icon === 'string' && icon.startsWith('node:') && !nodeIconSetRef.value) {
 			const { nodeIconSet } = await import('./node-icons');
 			nodeIconSetRef.value = nodeIconSet;
@@ -105,7 +118,7 @@ const fallbackBody = ref<string | null>(null);
 let fallbackRequestId = 0;
 
 watch(
-	() => [props.icon, resolvedComponent.value] as const,
+	() => [displayedIcon.value, resolvedComponent.value] as const,
 	async ([iconName, resolvedIcon]) => {
 		const requestId = ++fallbackRequestId;
 		if (resolvedIcon) {
@@ -113,16 +126,16 @@ watch(
 			return;
 		}
 
+		let body: string | null = null;
 		try {
-			const body = await loadIconBody(iconName);
-			if (requestId === fallbackRequestId) {
-				fallbackBody.value = body;
-			}
+			body = await loadIconBody(iconName);
 		} catch {
-			if (requestId === fallbackRequestId) {
-				fallbackBody.value = null;
-			}
+			// A failed load draws like an unknown name: blank, or the fallback until `icon` changes.
 		}
+		if (requestId !== fallbackRequestId) return;
+		fallbackBody.value = body;
+		// Only the requested name switches to the fallback; a missing fallback stays blank.
+		if (body === null && iconName === props.icon) missingIcon.value = iconName;
 	},
 	{ immediate: true },
 );
@@ -138,7 +151,7 @@ watch(
 		role="img"
 		:height="size.height"
 		:width="size.width"
-		:data-icon="props.icon"
+		:data-icon="displayedIcon"
 		:style="styles"
 	/><svg
 		v-else-if="fallbackBody"
@@ -155,7 +168,7 @@ watch(
 		aria-hidden="true"
 		focusable="false"
 		role="img"
-		:data-icon="props.icon"
+		:data-icon="displayedIcon"
 		:style="styles"
 	/>
 </template>

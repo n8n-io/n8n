@@ -6,6 +6,16 @@ describe('getSystemPrompt — read-only instance', () => {
 		expect(getSystemPrompt({ branchReadOnly: false })).not.toContain('## Read-Only Instance');
 	});
 
+	it.each([undefined, false, true])(
+		'only mentions skill changes when skill management is enabled: %s',
+		(skillManagementEnabled) => {
+			const prompt = getSystemPrompt({ branchReadOnly: true, skillManagementEnabled });
+			if (skillManagementEnabled)
+				expect(prompt).toContain('Creating, editing, and deleting skills');
+			else expect(prompt).not.toContain('deleting skills');
+		},
+	);
+
 	it('allows data table row writes and blocks data table structure changes', () => {
 		const prompt = getSystemPrompt({ branchReadOnly: true });
 		const [blocked, available] = prompt

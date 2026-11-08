@@ -29,6 +29,13 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { truncate } from '@n8n/utils/string/truncate';
 import { computed, onMounted, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
+import {
+	TransferPolicyWarning,
+	useTransferPreview,
+	type TransferPreviewTarget,
+} from '@n8n/frontend-module-type-availability-policies';
+import PolicyViolationTypeIcon from '@/app/components/PolicyViolationTypeIcon.vue';
+import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
 
 import {
 	N8nButton,
@@ -65,6 +72,7 @@ const credentialsStore = useCredentialsStore();
 const privateCredentials = usePrivateCredentials();
 const telemetry = useTelemetry();
 const { showMoveToProjectToast } = useMoveResourceToProjectToast();
+const { labelOf } = usePolicyViolationLabels();
 
 const selectedProject = ref<ProjectSharingData | null>(null);
 const shareUsedCredentials = ref(false);
@@ -123,6 +131,17 @@ const targetProjectName = computed(() => {
 	return getTruncatedProjectName(selectedProject.value?.name);
 });
 const resourceName = computed(() => truncate(props.data.resource.name, MAX_NAME_LENGTH));
+
+const transferPreviewTarget = computed(
+	(): TransferPreviewTarget => ({
+		resourceType: isResourceWorkflow.value ? 'workflow' : 'credential',
+		id: props.data.resource.id,
+	}),
+);
+const { preview: transferPreview } = useTransferPreview(
+	transferPreviewTarget,
+	() => selectedProject.value?.id,
+);
 const isPersonalSpaceRestricted = computed(
 	() =>
 		props.data.resource.homeProject?.type === ProjectTypes.Personal &&
@@ -220,7 +239,11 @@ onMounted(async () => {
 	<N8nDialog :open="modalOpen" size="medium" @update:open="onDialogOpenUpdate">
 		<N8nDialogHeader data-test-id="project-move-resource-modal">
 			<N8nDialogTitle>
-				{{ i18n.baseText('projects.move.resource.modal.title') }}
+				{{
+					i18n.baseText('projects.move.resource.modal.title', {
+						interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
+					})
+				}}
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 		<N8nDialogBody :class="$style.content">
@@ -258,6 +281,18 @@ onMounted(async () => {
 				"
 				data-test-id="project-move-resource-modal-select"
 			/>
+			<TransferPolicyWarning
+				v-if="transferPreview && selectedProject"
+				:preview="transferPreview"
+				:resource-type="transferPreviewTarget.resourceType"
+				:project-id="selectedProject.id"
+				:project-name="targetProjectName"
+				:label-of="labelOf"
+			>
+				<template #icon="{ violation }">
+					<PolicyViolationTypeIcon :violation="violation" />
+				</template>
+			</TransferPolicyWarning>
 			<N8nText>
 				<I18nT keypath="projects.move.resource.modal.message.sharingNote" scope="global">
 					<template #note>

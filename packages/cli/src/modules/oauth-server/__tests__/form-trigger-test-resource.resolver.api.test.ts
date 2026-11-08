@@ -21,7 +21,10 @@ import { CacheService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
+	endpointGroups: ['mcp'],
+});
 
 let owner: User;
 let member: User;
@@ -65,7 +68,7 @@ const formTriggerNode = ({
 	},
 });
 
-/** Mirrors what `TestWebhooks.needsWebhook` registers when the user tests a form trigger. */
+/** Mirrors what `TestWebhooks.registerWebhooks` registers when the user tests a form trigger. */
 const registerTestWebhook = async (
 	webhookPath: string,
 	node: INode,

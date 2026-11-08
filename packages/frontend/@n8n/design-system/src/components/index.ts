@@ -86,6 +86,7 @@ export { default as N8nFormInput } from './N8nFormInput';
 export { default as N8nHeading } from './N8nHeading';
 export { default as N8nHeaderAction } from './N8nHeaderAction';
 export { default as N8nHoverCard } from './N8nHoverCard';
+export { default as N8nHtmlPreview } from './N8nHtmlPreview';
 export {
 	default as N8nIcon,
 	type IconName,
@@ -136,6 +137,7 @@ export type { SettingsSaveBarProps } from './N8nSettingsSaveBar';
 export { default as N8nSettingsSection } from './N8nSettingsSection';
 export type { SettingsSectionProps } from './N8nSettingsSection';
 export { default as N8nPreviewBadge } from './PreviewBadge/PreviewBadge.vue';
+export { default as N8nEnterpriseReadinessBadge } from './EnterpriseReadinessBadge/EnterpriseReadinessBadge.vue';
 export { default as N8nNewBadge } from './NewBadge/NewBadge.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
@@ -164,7 +166,7 @@ export { default as N8nResizeWrapper } from './N8nResizeWrapper';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nStatusDot } from './N8nStatusDot';
-export type { StatusDotProps, StatusDotVariant } from './N8nStatusDot';
+export type { StatusDotAppearance, StatusDotProps, StatusDotVariant } from './N8nStatusDot';
 export { default as N8nStepper } from './N8nStepper/Stepper.vue';
 export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';

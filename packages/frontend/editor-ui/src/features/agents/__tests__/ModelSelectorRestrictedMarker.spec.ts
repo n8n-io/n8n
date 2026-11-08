@@ -7,21 +7,21 @@ import ModelSelectorRestrictedMarker from '../components/model-selector/ModelSel
 vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
 	RestrictedNodePopover: {
 		name: 'RestrictedNodePopover',
-		props: ['nodeTypeName', 'scope', 'kind', 'anchor', 'side', 'markerSize'],
+		props: ['nodeTypeName', 'restriction', 'kind', 'anchor', 'side', 'markerSize'],
 		emits: ['contactAdmin'],
-		template: '<button @click="$emit(\'contactAdmin\')" />',
+		template: "<button @click=\"$emit('contactAdmin', 'project')\" />",
 	},
 }));
 
 describe('ModelSelectorRestrictedMarker', () => {
-	it('anchors the popover to its menu row and forwards the contact-admin request', async () => {
+	it('anchors the popover to its menu row and forwards the contact-admin request with its audience', async () => {
 		const onContactAdmin = vi.fn();
 		const Row = defineComponent({
 			render: () =>
 				h('div', { role: 'menuitem', 'data-test-id': 'row' }, [
 					h(ModelSelectorRestrictedMarker, {
 						name: 'Anthropic credentials',
-						scope: 'instance',
+						restriction: { name: 'anthropicApi', available: false, scope: 'instance' },
 						onContactAdmin,
 					}),
 				]),
@@ -35,13 +35,13 @@ describe('ModelSelectorRestrictedMarker', () => {
 			side: 'right',
 			markerSize: 'xsmall',
 			nodeTypeName: 'Anthropic credentials',
-			scope: 'instance',
+			restriction: { name: 'anthropicApi', available: false, scope: 'instance' },
 			anchor: wrapper.find('[data-test-id="row"]').element,
 		});
 
 		await popover.find('button').trigger('click');
 
-		expect(onContactAdmin).toHaveBeenCalledOnce();
+		expect(onContactAdmin).toHaveBeenCalledExactlyOnceWith('project');
 		wrapper.unmount();
 	});
 });

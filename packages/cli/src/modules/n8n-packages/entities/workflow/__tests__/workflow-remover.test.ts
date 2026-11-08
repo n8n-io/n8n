@@ -150,6 +150,83 @@ describe('WorkflowRemover.plan', () => {
 		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
 	});
 
+	describe('with planned moves', () => {
+		const movedTo = (existingId: string, moveToFolderId: string | null) =>
+			({
+				action: 'update',
+				existing: mock<WorkflowEntity>({ id: existingId }),
+				moveToFolderId,
+			}) as unknown as WorkflowPlanItem;
+
+		it('counts the folder a workflow moves into as occupied, not the one it leaves', async () => {
+			const { remover } = makeRemover([{ id: 'w', name: 'W', parentFolderId: 'T' }]);
+
+			const plan = await remover.plan(context, {
+				workflowItems: [movedTo('w', 'F')],
+				packageFolderIds: ['F'],
+				folderConflictPolicy: 'overwrite',
+				deletionPolicy: 'archive',
+				importSource: 'git-pull',
+			});
+
+			expect(plan.removals).toEqual([]);
+			expect(plan.occupiedFolderIds).toEqual(['F']);
+		});
+
+		it('leaves no folder occupied when the workflow moves to the root', async () => {
+			const { remover } = makeRemover([{ id: 'w', name: 'W', parentFolderId: 'T' }]);
+
+			const plan = await remover.plan(context, {
+				workflowItems: [movedTo('w', null)],
+				packageFolderIds: [],
+				folderConflictPolicy: 'overwrite',
+				deletionPolicy: 'archive',
+				importSource: 'git-pull',
+			});
+
+			expect(plan.occupiedFolderIds).toEqual([]);
+		});
+
+		it('keeps the summary of a removed workflow at its current folder', async () => {
+			const { remover } = makeRemover([
+				{ id: 'stale', name: 'Stale', parentFolderId: 'T' },
+				{ id: 'w', name: 'W', parentFolderId: 'T' },
+			]);
+
+			const plan = await remover.plan(context, {
+				workflowItems: [movedTo('w', 'F')],
+				packageFolderIds: ['F'],
+				folderConflictPolicy: 'overwrite',
+				deletionPolicy: 'archive',
+				importSource: 'git-pull',
+			});
+
+			expect(plan.removals).toEqual([{ id: 'stale', name: 'Stale', parentFolderId: 'T' }]);
+			expect(plan.occupiedFolderIds).toEqual(['F']);
+		});
+
+		it('keeps a folder occupied while a workflow the caller may not remove stays in it', async () => {
+			const { remover } = makeRemover(
+				[
+					{ id: 'stale', name: 'Stale', parentFolderId: 'T' },
+					{ id: 'w', name: 'W', parentFolderId: 'T' },
+				],
+				['w'],
+			);
+
+			const plan = await remover.plan(context, {
+				workflowItems: [movedTo('w', 'F')],
+				packageFolderIds: ['F'],
+				folderConflictPolicy: 'overwrite',
+				deletionPolicy: 'archive',
+				importSource: 'git-pull',
+			});
+
+			expect(plan.failures.map(({ workflowId }) => workflowId)).toEqual(['stale']);
+			expect([...plan.occupiedFolderIds].sort()).toEqual(['F', 'T']);
+		});
+	});
+
 	it('checks delete permission only once, for the candidates', async () => {
 		const { remover, workflowFinderService } = makeRemover([
 			{ id: 'keep', name: 'Keep', parentFolderId: null },

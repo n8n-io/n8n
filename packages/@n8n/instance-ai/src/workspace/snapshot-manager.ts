@@ -21,10 +21,7 @@ import {
 	type KnowledgeBaseWorkspaceBundle,
 } from '../knowledge-base/materialize-knowledge-base';
 import type { Logger } from '../logger';
-import {
-	BuilderTemplatesService,
-	builderTemplatesOptionsFromEnv,
-} from './builder-templates-service';
+import type { BuilderTemplatesService } from './builder-templates-service';
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS, NPM_INSTALL_FLAGS } from './sandbox-setup';
 import { loadWorkflowDiagnosticsWorker, WORKFLOW_DIAGNOSTICS_FILENAME } from './sandbox-typescript';
 import { stageWorkspaceFilesForImage } from './snapshot-image-context';
@@ -184,7 +181,7 @@ export class SnapshotManager {
 		private readonly baseImage: string | undefined,
 		private readonly logger: Logger,
 		private readonly n8nVersion: string | undefined,
-		private readonly templatesService?: BuilderTemplatesService,
+		private readonly templatesService: BuilderTemplatesService,
 	) {}
 
 	/** Get or prepare the image descriptor. */
@@ -741,10 +738,7 @@ export class SnapshotManager {
 	}
 
 	private async buildKnowledgeBaseBundle(): Promise<KnowledgeBaseWorkspaceBundle> {
-		const templatesService =
-			this.templatesService ??
-			new BuilderTemplatesService(builderTemplatesOptionsFromEnv({ logger: this.logger }));
-		const templatesBundle = await templatesService.getBundle();
+		const templatesBundle = await this.templatesService.getBundle();
 
 		return await buildKnowledgeBaseWorkspaceBundle({
 			root: DAYTONA_WORKSPACE_ROOT,

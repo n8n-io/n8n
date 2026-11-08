@@ -21,7 +21,7 @@ export class ZendeskTrigger implements INodeType {
 		name: 'zendeskTrigger',
 		icon: 'file:zendesk.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Handle Zendesk events via webhooks',
 		defaults: {
 			name: 'Zendesk Trigger',
@@ -72,6 +72,44 @@ export class ZendeskTrigger implements INodeType {
 					},
 				],
 				default: 'apiToken',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Token',
+						value: 'apiToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'oAuth2',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+			},
+			{
+				displayName:
+					'Zendesk is retiring API token authentication. Switch this node to OAuth2. <a href="https://developer.zendesk.com/documentation/authentication/oauth-migration/#migration-timeline" target="_blank">Learn more about OAuth migration (Zendesk)</a>',
+				name: 'apiTokenRetirementNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						authentication: ['apiToken'],
+					},
+				},
 			},
 			{
 				displayName: 'Service',
