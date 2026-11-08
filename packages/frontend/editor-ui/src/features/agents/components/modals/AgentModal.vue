@@ -6,7 +6,7 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
-	N8nFocusScope,
+	FocusScope,
 	N8nIcon,
 	N8nIconButton,
 	N8nInlineTextEdit,
@@ -234,14 +234,14 @@ function onOpenAutoFocus(event: Event) {
 					:data-scrollable="props.bodyScrollable ? 'true' : 'false'"
 					data-testid="agent-modal-body"
 				>
-					<N8nFocusScope
+					<FocusScope
 						v-if="!trapFocus"
 						as-child
 						@mount-auto-focus.prevent
 						@unmount-auto-focus.prevent
 					>
 						<span hidden aria-hidden="true" />
-					</N8nFocusScope>
+					</FocusScope>
 					<slot />
 				</N8nDialogBody>
 

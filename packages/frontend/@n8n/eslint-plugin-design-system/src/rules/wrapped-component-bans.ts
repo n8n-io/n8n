@@ -66,10 +66,11 @@ export const wrappedComponentBans = [
 		replacement: 'N8nInlineTextEdit',
 	},
 	{
+		// FocusScope has no n8n behavior. The design system re-exports the primitive.
 		library: 'reka-ui',
 		prefixes: ['FocusScope'],
-		allowedFolders: ['components/N8nFocusScope'],
-		replacement: 'N8nFocusScope',
+		allowedFolders: ['components/FocusScope'],
+		replacement: 'FocusScope',
 	},
 	{
 		library: 'reka-ui',

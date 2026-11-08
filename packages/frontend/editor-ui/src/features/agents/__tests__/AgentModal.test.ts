@@ -85,7 +85,7 @@ vi.mock('@n8n/design-system', async () => {
 				/>
 			`,
 		}),
-		N8nFocusScope: defineComponent({
+		FocusScope: defineComponent({
 			props: {
 				asChild: Boolean,
 				loop: Boolean,
