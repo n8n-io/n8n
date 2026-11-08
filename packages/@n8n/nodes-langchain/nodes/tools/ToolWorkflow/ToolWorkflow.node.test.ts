@@ -459,7 +459,13 @@ describe('ToolWorkflowV1', () => {
 		const units = { type: 'string' };
 		const closedQuery = { city: 'Berlin' };
 		const unitsQuery = { city: 'Berlin', units: 'metric' };
-		const openQuery = { chatInput: 'hi', city: 'Berlin', units: 'metric', turn: 2 };
+		const openQuery = {
+			sessionId: 'session_1',
+			chatInput: 'hi',
+			city: 'Berlin',
+			units: 'metric',
+			turn: 2,
+		};
 
 		it.each([
 			['additionalProperties unset', { properties: { city } }, closedQuery],
@@ -491,43 +497,25 @@ describe('ToolWorkflowV1', () => {
 			[
 				'patternProperties',
 				{ properties: { city }, patternProperties: { '^u': { type: 'string' } } },
-				{ chatInput: 'hi', city: 'Berlin', units: 'metric' },
+				closedQuery,
+			],
+			['only patternProperties', { patternProperties: { '^(u|t)': { type: 'string' } } }, {}],
+			[
+				'typed additionalProperties',
+				{ properties: { city }, additionalProperties: { type: 'string' } },
+				closedQuery,
+			],
+			['only typed additionalProperties', { additionalProperties: { type: 'string' } }, {}],
+			[
+				'additionalProperties not',
+				{ properties: { city }, additionalProperties: { not: {} } },
+				closedQuery,
 			],
 			[
-				'only patternProperties',
-				{ patternProperties: { '^(u|t)': { type: 'string' } } },
-				{ chatInput: 'hi', city: 'Berlin', units: 'metric' },
-			],
-			[
-				'every matching patternProperties pattern',
+				'additionalProperties true and a strict allOf member',
 				{
 					properties: { city },
-					patternProperties: { '^u': { type: 'string' }, n: { type: 'number' } },
-				},
-				{ city: 'Berlin', turn: 2 },
-			],
-			[
-				'an unmatched key that fits one of the patternProperties',
-				{
-					properties: { city },
-					patternProperties: { '^u': { type: 'string' }, '^t': { type: 'number' } },
-				},
-				{ chatInput: 'hi', city: 'Berlin', units: 'metric', turn: 2 },
-			],
-			[
-				'an unmatched key checked only against typed additionalProperties',
-				{
-					properties: { city },
-					patternProperties: { '^u': { type: 'string' } },
-					additionalProperties: { type: 'number' },
-				},
-				{ city: 'Berlin', units: 'metric', turn: 2 },
-			],
-			[
-				'typed additionalProperties and a strict allOf member',
-				{
-					properties: { city },
-					additionalProperties: { type: 'string' },
+					additionalProperties: true,
 					allOf: [{ properties: { city }, additionalProperties: false }],
 				},
 				closedQuery,
@@ -536,6 +524,17 @@ describe('ToolWorkflowV1', () => {
 				'no root properties and a strict allOf member',
 				{ allOf: [{ properties: { city, units }, additionalProperties: false }] },
 				unitsQuery,
+			],
+			[
+				'a strict anyOf branch',
+				{
+					properties: { city },
+					anyOf: [
+						{ properties: { city }, additionalProperties: false },
+						{ properties: { city }, additionalProperties: { type: 'number' } },
+					],
+				},
+				closedQuery,
 			],
 			[
 				'an allOf member key',
@@ -557,60 +556,13 @@ describe('ToolWorkflowV1', () => {
 				{ properties: { city }, allOf: [{ allOf: [{ properties: { units } }] }] },
 				unitsQuery,
 			],
-			[
-				'a key allowed by only one anyOf branch',
-				{
-					properties: { city },
-					anyOf: [
-						{ properties: { city }, additionalProperties: false },
-						{ properties: { city }, additionalProperties: { type: 'number' } },
-					],
-				},
-				{ city: 'Berlin', turn: 2 },
-			],
-			[
-				'a key allowed by only one oneOf branch',
-				{
-					properties: { city },
-					oneOf: [
-						{ properties: { city }, additionalProperties: false },
-						{ properties: { city }, additionalProperties: { type: 'number' } },
-					],
-				},
-				{ city: 'Berlin', turn: 2 },
-			],
-			[
-				'a key allowed only by an anyOf branch that does not apply',
-				{
-					properties: { city },
-					anyOf: [
-						{ properties: { city }, additionalProperties: false },
-						{ required: ['zip'], additionalProperties: { type: 'number' } },
-					],
-				},
-				closedQuery,
-			],
-			[
-				'typed additionalProperties',
-				{ properties: { city }, additionalProperties: { type: 'string' } },
-				{ chatInput: 'hi', city: 'Berlin', units: 'metric' },
-			],
-			[
-				'only typed additionalProperties',
-				{ additionalProperties: { type: 'string' } },
-				{ chatInput: 'hi', city: 'Berlin', units: 'metric' },
-			],
-			[
-				'additionalProperties not',
-				{ properties: { city }, additionalProperties: { not: {} } },
-				closedQuery,
-			],
 		])(
 			'should pass the engine item to the sub-workflow by the input schema with %s',
 			async (_, schema, query) => {
 				const ctx = createExecuteContext([
 					{
 						json: {
+							sessionId: 'session_1',
 							chatInput: 'hi',
 							city: 'Berlin',
 							units: 'metric',

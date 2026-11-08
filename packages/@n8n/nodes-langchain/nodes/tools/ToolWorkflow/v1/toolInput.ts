@@ -1,7 +1,6 @@
 import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
+import pick from 'lodash/pick';
 import type { IDataObject } from 'n8n-workflow';
-
-import { convertJsonSchemaToZod } from '../../../../utils/schemaParsing';
 
 const flatten = (schema: JSONSchema7Definition): JSONSchema7[] =>
 	typeof schema === 'object'
@@ -26,22 +25,13 @@ const keepsExtraKeys = (part: JSONSchema7) =>
 export function toToolInput(schema: JSONSchema7 | undefined, json: IDataObject): IDataObject {
 	if (!schema) return json;
 
-	const input = { ...json };
-	delete input.toolCallId;
-
+	const { toolCallId, ...input } = json;
 	const parts = flatten(schema);
-	const limited = parts.some(limitsExtraKeys);
-	if (!limited && (!schema.properties || parts.some(keepsExtraKeys))) return input;
+	const open = !parts.some(limitsExtraKeys) && (!schema.properties || parts.some(keepsExtraKeys));
+	if (open) return input;
 
-	const keys = new Set(parts.flatMap((part) => Object.keys(part.properties ?? {})));
-	const toolInput = Object.fromEntries(Object.entries(input).filter(([key]) => keys.has(key)));
-	if (!limited) return toolInput;
-
-	const zodSchema = convertJsonSchemaToZod(schema);
-	for (const [key, value] of Object.entries(input)) {
-		if (!keys.has(key) && zodSchema.safeParse({ ...toolInput, [key]: value }).success) {
-			toolInput[key] = value;
-		}
-	}
-	return toolInput;
+	return pick(
+		input,
+		parts.flatMap((part) => Object.keys(part.properties ?? {})),
+	);
 }
