@@ -558,6 +558,39 @@ describe('ToolWorkflowV1', () => {
 				unitsQuery,
 			],
 			[
+				'a key allowed by only one anyOf branch',
+				{
+					properties: { city },
+					anyOf: [
+						{ properties: { city }, additionalProperties: false },
+						{ properties: { city }, additionalProperties: { type: 'number' } },
+					],
+				},
+				{ city: 'Berlin', turn: 2 },
+			],
+			[
+				'a key allowed by only one oneOf branch',
+				{
+					properties: { city },
+					oneOf: [
+						{ properties: { city }, additionalProperties: false },
+						{ properties: { city }, additionalProperties: { type: 'number' } },
+					],
+				},
+				{ city: 'Berlin', turn: 2 },
+			],
+			[
+				'a key allowed only by an anyOf branch that does not apply',
+				{
+					properties: { city },
+					anyOf: [
+						{ properties: { city }, additionalProperties: false },
+						{ required: ['zip'], additionalProperties: { type: 'number' } },
+					],
+				},
+				closedQuery,
+			],
+			[
 				'typed additionalProperties',
 				{ properties: { city }, additionalProperties: { type: 'string' } },
 				{ chatInput: 'hi', city: 'Berlin', units: 'metric' },
