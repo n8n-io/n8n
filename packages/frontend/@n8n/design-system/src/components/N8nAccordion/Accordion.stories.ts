@@ -127,6 +127,43 @@ const demoCss = `
 .n8n-accordion-demo__content[data-state='open'] {
 	padding: var(--spacing--sm);
 }
+.n8n-accordion-demo__content--animated {
+	overflow: hidden;
+	/* Reset. The open rule above sets padding, and a height animation must not include it. */
+	padding: 0;
+}
+.n8n-accordion-demo__content--animated[data-state='open'] {
+	padding: 0;
+	animation: n8n-accordion-demo-slide-down var(--duration--snappy) var(--easing--ease-out);
+}
+.n8n-accordion-demo__content--animated[data-state='closed'] {
+	animation: n8n-accordion-demo-slide-up var(--duration--snappy) var(--easing--ease-out);
+}
+.n8n-accordion-demo__body {
+	padding: var(--spacing--sm);
+}
+@media (prefers-reduced-motion: reduce) {
+	.n8n-accordion-demo__content--animated[data-state='open'],
+	.n8n-accordion-demo__content--animated[data-state='closed'] {
+		animation: none;
+	}
+}
+@keyframes n8n-accordion-demo-slide-down {
+	from {
+		height: 0;
+	}
+	to {
+		height: var(--reka-accordion-content-height);
+	}
+}
+@keyframes n8n-accordion-demo-slide-up {
+	from {
+		height: var(--reka-accordion-content-height);
+	}
+	to {
+		height: 0;
+	}
+}
 .n8n-accordion-demo__note {
 	display: block;
 	margin-bottom: var(--spacing--xs);
@@ -157,11 +194,18 @@ type AccordionStoryOptions = {
 	items?: DemoItem[];
 	before?: string;
 	trigger?: 'label' | 'meta';
+	animate?: boolean;
 	setup?: () => Record<string, unknown>;
 };
 
 function createRender(options: AccordionStoryOptions): Story['render'] {
 	const items = options.items ?? sections;
+	const contentClass = options.animate
+		? 'n8n-accordion-demo__content n8n-accordion-demo__content--animated'
+		: 'n8n-accordion-demo__content';
+	const body = options.animate
+		? '<div class="n8n-accordion-demo__body">{{ item.body }}</div>'
+		: '{{ item.body }}';
 	// N8nIcon does not forward class to its svg, so the rotation target is a span.
 	const trigger =
 		options.trigger === 'meta'
@@ -208,8 +252,8 @@ function createRender(options: AccordionStoryOptions): Story['render'] {
 						<N8nAccordionHeader class="n8n-accordion-demo__header">
 							${trigger}
 						</N8nAccordionHeader>
-						<N8nAccordionContent class="n8n-accordion-demo__content">
-							{{ item.body }}
+						<N8nAccordionContent class="${contentClass}">
+							${body}
 						</N8nAccordionContent>
 					</N8nAccordionItem>
 				</N8nAccordion>
@@ -340,6 +384,26 @@ export const CustomTrigger: Story = {
 		rootAttrs: `type="single" collapsible default-value="contacts" ${demoClass}`,
 		items: reviewSections,
 		trigger: 'meta',
+	}),
+};
+
+export const StartsClosed: Story = {
+	name: 'Starts closed',
+	parameters: storyDescription(
+		'No section is open. Set collapsible and omit default-value when every section starts closed.',
+	),
+	render: createRender({
+		rootAttrs: `type="single" collapsible ${demoClass}`,
+	}),
+};
+
+export const Animated: Story = {
+	parameters: storyDescription(
+		'Section height animates with --reka-accordion-content-height.',
+	),
+	render: createRender({
+		rootAttrs: `type="single" collapsible default-value="one" ${demoClass}`,
+		animate: true,
 	}),
 };
 

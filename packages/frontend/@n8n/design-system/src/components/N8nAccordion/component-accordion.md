@@ -3,6 +3,7 @@
 A group of sections. Each section has a heading that shows or hides its content. The parts are headless. Product code owns the layout and the styles.
 
 - **Component Name:** N8nAccordion
+- **Figma Component:** TBD
 - **Reka UI Component:** [Accordion](https://reka-ui.com/docs/components/accordion)
 - **WAI-ARIA pattern:** [Accordion](https://www.w3.org/WAI/ARIA/apg/patterns/accordion/)
 
@@ -76,13 +77,13 @@ Import the parts from `@n8n/design-system`. Do not import `AccordionRoot` or the
 
 Style the open, closed, and disabled states with these attributes. Do not add a class from script for the same states.
 
-| Part                           | Attribute          | Values                            |
-| ------------------------------ | ------------------ | --------------------------------- |
-| Item, header, trigger, content | `data-state`       | `open`, `closed`                  |
-| Item, header, trigger, content | `data-disabled`    | Present when the part is disabled |
-| Item, header, trigger, content | `data-orientation` | `vertical`, `horizontal`          |
+| Part                                 | Attribute          | Values                            |
+| ------------------------------------ | ------------------ | --------------------------------- |
+| Root, item, header, trigger, content | `data-orientation` | `vertical`, `horizontal`          |
+| Item, header, trigger, content       | `data-state`       | `open`, `closed`                  |
+| Item, header, trigger, content       | `data-disabled`    | Present when the part is disabled |
 
-Closed content sets these CSS variables while it animates:
+Content sets these CSS variables while it opens and closes:
 
 - `--reka-accordion-content-height` — The content height.
 - `--reka-accordion-content-width` — The content width.
@@ -95,7 +96,13 @@ Closed content sets these CSS variables while it animates:
 | ArrowDown, ArrowUp    | Move focus between triggers when `orientation` is `vertical`.   |
 | ArrowRight, ArrowLeft | Move focus between triggers when `orientation` is `horizontal`. |
 | Home, End             | Move focus to the first or last trigger.                        |
-| Tab                   | Move focus out of the trigger row.                              |
+| Tab, Shift+Tab        | Move focus out of the trigger row.                              |
+
+## Accessibility
+
+- The header renders an `h3`. Set `as` on `N8nAccordionHeader` when the page outline needs another heading level.
+- The trigger is a button. The button name is the section name.
+- Do not put a button or a link inside the trigger.
 
 ### Examples
 
@@ -182,5 +189,58 @@ Rotate the icon from `data-state` on the trigger. Do not store a separate open f
 
 .trigger[data-state='closed'] .chevron {
 	transform: rotate(-90deg);
+}
+```
+
+**Open and close animation**
+
+`N8nAccordionContent` sets `--reka-accordion-content-height` while it opens and closes. Animate that variable.
+
+The `collapsible-slide-down` and `collapsible-slide-up` mixins read `--reka-collapsible-content-height`.
+Those mixins do not animate accordion content.
+`N8nAnimatedCollapsibleContent` uses those mixins.
+Use that component for one collapsible region.
+Use the rules below for an accordion section.
+
+```vue
+<N8nAccordionContent class="section">Section content</N8nAccordionContent>
+```
+
+```css
+.section {
+	overflow: hidden;
+}
+
+.section[data-state='open'] {
+	animation: accordion-slide-down var(--duration--snappy) var(--easing--ease-out);
+}
+
+.section[data-state='closed'] {
+	animation: accordion-slide-up var(--duration--snappy) var(--easing--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.section[data-state='open'],
+	.section[data-state='closed'] {
+		animation: none;
+	}
+}
+
+@keyframes accordion-slide-down {
+	from {
+		height: 0;
+	}
+	to {
+		height: var(--reka-accordion-content-height);
+	}
+}
+
+@keyframes accordion-slide-up {
+	from {
+		height: var(--reka-accordion-content-height);
+	}
+	to {
+		height: 0;
+	}
 }
 ```
