@@ -148,7 +148,6 @@ export class WorkflowHistoryCompactionService {
 		metaData: Partial<Record<keyof DiffMetaData, boolean>> = {},
 	): Promise<void> {
 		const compactionStartTime = Date.now();
-		// Versions with different version-scoped settings, such as the engine, stay apart.
 		const allSkipRules = this.workflowVersionedSettings.isEnabled()
 			? [...skipRules, SKIP_RULES.skipDifferentVersionedSettings]
 			: skipRules;

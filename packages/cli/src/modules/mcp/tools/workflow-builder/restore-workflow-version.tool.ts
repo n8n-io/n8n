@@ -104,7 +104,6 @@ export const createRestoreWorkflowVersionTool = (
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 				forceSave: true,
 				source: 'n8n-mcp',
-				// Also restores the version-scoped settings of the version, such as its engine.
 				restoredVersionSettings: version.settings,
 				versionName: versionMetadata.name,
 				versionDescription: versionMetadata.description,
