@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed, inject, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nDropdownMenu, N8nIcon, N8nText, type DropdownMenuItemProps } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDropdownMenu,
+	N8nIcon,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system';
 import type { ChatHubSessionDto, ChatSessionId } from '@n8n/api-types';
 import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
 import { useChatStore } from '../chat.store';
@@ -42,9 +47,9 @@ const groupedSessions = computed(() => groupConversationsByDate(workflowSessions
 
 const menuItems = computed<Array<DropdownMenuItemProps<ChatSessionId>>>(() => {
 	const items: Array<DropdownMenuItemProps<ChatSessionId>> = [];
-	groupedSessions.value.forEach((group, index) => {
+	groupedSessions.value.forEach((group) => {
 		items.push({
-			id: `__group-${index}__`,
+			id: group.group,
 			label: group.group,
 			header: true,
 		});
@@ -73,7 +78,6 @@ async function handleOpenChange(open: boolean) {
 }
 
 function handleSelect(sessionId: ChatSessionId) {
-	if (sessionId.startsWith('__group-')) return;
 	emit('select-session', sessionId);
 }
 
@@ -107,57 +111,18 @@ watch(
 		@select="handleSelect"
 	>
 		<template #trigger>
-			<button
-				type="button"
-				:class="[$style.trigger, { [$style.open]: isOpen }]"
+			<N8nButton
+				variant="ghost"
+				size="xsmall"
 				:title="
 					i18n.baseText('chatHub.canvas.session.tooltip.sessionId', {
 						interpolate: { sessionId: props.sessionId },
 					})
 				"
-				data-test-id="canvas-chat-session-dropdown"
 			>
-				<N8nText size="small" :class="$style.triggerText">
-					{{ sessionTitle }}
-				</N8nText>
-				<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
-			</button>
+				{{ sessionTitle }}
+				<N8nIcon icon="chevron-down" size="xsmall" />
+			</N8nButton>
 		</template>
 	</N8nDropdownMenu>
 </template>
-
-<style lang="scss" module>
-.trigger {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--5xs) var(--spacing--4xs);
-	border: none;
-	border-radius: var(--radius);
-	background: transparent;
-	cursor: pointer;
-	/* The spacing scale has no token between 128px and 256px. */
-	max-width: 200px;
-	color: var(--color--text--tint-1);
-
-	&:hover {
-		background: var(--color--foreground--tint-1);
-	}
-}
-
-.triggerText {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.chevron {
-	flex-shrink: 0;
-	/* The duration scale has no 150ms token. */
-	transition: transform 150ms ease;
-
-	.open & {
-		transform: rotate(180deg);
-	}
-}
-</style>
