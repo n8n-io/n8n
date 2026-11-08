@@ -1,4 +1,4 @@
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, WorkflowVersionedSettings } from '@n8n/backend-services';
 import { createWorkflow, createWorkflowHistory, mockLogger, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -94,6 +94,7 @@ describe('WorkflowHistoryCompactionOptimizeTask', () => {
 			logger,
 			repository,
 			eventService,
+			mock<WorkflowVersionedSettings>(),
 		);
 		return {
 			task: new WorkflowHistoryCompactionOptimizeTask(config, service),

@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, WorkflowVersionedSettings } from '@n8n/backend-services';
 import { mockLogger, createWorkflow, testDb, createWorkflowHistory } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -63,6 +63,7 @@ describe('compacting cycle', () => {
 			mockLogger(),
 			Container.get(WorkflowHistoryRepository),
 			Container.get(EventService),
+			Container.get(WorkflowVersionedSettings),
 		);
 	});
 
@@ -196,6 +197,7 @@ describe('compacting cycle', () => {
 			mockLogger(),
 			Container.get(WorkflowHistoryRepository),
 			Container.get(EventService),
+			Container.get(WorkflowVersionedSettings),
 		);
 
 		// Expect wf1 and wf2 to be handled in the first batch, with wf3 untouched due to the long delay after batching

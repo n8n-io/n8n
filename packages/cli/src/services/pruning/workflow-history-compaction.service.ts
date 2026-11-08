@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, WorkflowVersionedSettings } from '@n8n/backend-services';
 import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { WorkflowHistoryRepository } from '@n8n/db';
@@ -54,6 +54,7 @@ export class WorkflowHistoryCompactionService {
 		private readonly logger: Logger,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly eventService: EventService,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettings,
 	) {
 		this.logger = this.logger.scoped('workflow-history-compaction');
 	}
@@ -147,6 +148,10 @@ export class WorkflowHistoryCompactionService {
 		metaData: Partial<Record<keyof DiffMetaData, boolean>> = {},
 	): Promise<void> {
 		const compactionStartTime = Date.now();
+		// Versions with different version-scoped settings, such as the engine, stay apart.
+		const allSkipRules = this.workflowVersionedSettings.isEnabled()
+			? [...skipRules, SKIP_RULES.skipDifferentVersionedSettings]
+			: skipRules;
 
 		const startDate = new Date(anchor.getTime() - startDeltaMs);
 		const endDate = new Date(anchor.getTime() - endDeltaMs);
@@ -188,7 +193,7 @@ export class WorkflowHistoryCompactionService {
 					startDate,
 					endDate,
 					rules,
-					skipRules,
+					allSkipRules,
 					metaData,
 				);
 				batchSum += seen;
