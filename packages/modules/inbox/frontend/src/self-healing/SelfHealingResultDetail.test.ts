@@ -709,6 +709,19 @@ describe('a fix that changes sub-workflows', () => {
 		expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
 	});
 
+	it('allows publication when only the unchanged failing workflow cannot be published', async () => {
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(
+			multiWorkflowResult({ suggestions: [multiWorkflowResult().suggestions[1]] }),
+		);
+		vi.mocked(api.fetchResultWorkflow).mockImplementation(async (_context, id) =>
+			id === 'workflow-1' ? metadata('Daily report', false) : metadata('Child workflow'),
+		);
+		const view = renderComponent();
+		await waitAllPromises();
+
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-publish-access', 'allowed');
+	});
+
 	it('loads the sub-workflow permissions when the result loads on retry', async () => {
 		vi.mocked(api.fetchResultWorkflow).mockImplementation(async (_context, id) =>
 			metadata(id === 'workflow-1' ? 'Daily report' : 'Child workflow'),

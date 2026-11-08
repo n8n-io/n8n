@@ -68,7 +68,9 @@ const workflowNames = computed(
 );
 // Approval publishes every workflow of the fix.
 const publishAccess = computed<SelfHealingPublishAccess>(() => {
-	const metadata = workflowIds.value.map((id) => workflows.value.get(id));
+	const metadata = (detail.value?.suggestions ?? []).map(({ workflowId }) =>
+		workflows.value.get(workflowId),
+	);
 	if (metadata.some((workflow) => workflow && !workflow.scopes.includes('workflow:publish'))) {
 		return 'denied';
 	}
