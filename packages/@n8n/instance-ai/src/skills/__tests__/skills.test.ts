@@ -1,4 +1,5 @@
 import { createSkillLoadTool } from '@n8n/agents';
+import { SPLIT_BUILDER_TOOLS } from '@n8n/api-types';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -45,6 +46,23 @@ describe('Instance AI skills', () => {
 						offenders.push(`${file} tells the model to load "${toolName}"`);
 					}
 				}
+			}
+		}
+
+		expect(offenders).toEqual([]);
+	});
+
+	// Split tools keep their former names only as aliases for stored calls. A skill that
+	// names one makes the model look up or guess a tool that is not in the catalog.
+	it('never names a former multi-action tool that was split into one tool per action', () => {
+		const formerNames = Object.keys(SPLIT_BUILDER_TOOLS).map((name) => name.replace(/[-]/g, '\\-'));
+		const pattern = new RegExp(`\\b(${formerNames.join('|')})\\(action`, 'g');
+		const offenders: string[] = [];
+
+		for (const file of skillMarkdownFiles()) {
+			const content = readFileSync(join(INSTANCE_AI_SKILLS_DIR, file), 'utf-8');
+			for (const match of content.matchAll(pattern)) {
+				offenders.push(`${file} names the former tool "${match[1]}"`);
 			}
 		}
 

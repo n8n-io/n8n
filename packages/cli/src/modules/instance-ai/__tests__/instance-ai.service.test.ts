@@ -5932,6 +5932,23 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			}),
 		).toBeUndefined();
 	});
+
+	it('extracts workflow setup suspension ids from a setup card that call_tool ran', () => {
+		const service = createSetupFollowUpService({});
+
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('call_tool', {
+				workflowId: 'wf-1',
+				setupRequests: [],
+			}),
+		).toBe('wf-1');
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('call_tool', {
+				workflowId: 'wf-1',
+				message: 'Publish workflow?',
+			}),
+		).toBeUndefined();
+	});
 });
 
 type TaskControlInternals = {
