@@ -329,7 +329,7 @@ $hoverBackground: var(--color--background--light-1);
 
 	// Grouped items have no dot, so the line runs through.
 	.grouped & {
-		--timeline-hole: 0px;
+		--timeline-hole: 0;
 	}
 }
 

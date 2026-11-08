@@ -5,7 +5,7 @@
 // The line skips `--timeline-hole` at the vertical center, so it does not show
 // through a hollow status dot.
 @mixin timeline-line {
-	--timeline-hole: 0px;
+	--timeline-hole: 0;
 
 	&::before,
 	&::after {
