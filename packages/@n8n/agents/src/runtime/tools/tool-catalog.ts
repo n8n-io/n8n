@@ -18,6 +18,20 @@ const DEFAULT_TOP_K = 5;
 const FULL_SCHEMA_LIMIT = 5;
 const SUGGESTION_LIMIT = 3;
 
+/**
+ * Fixed rules for the catalog. They go into the system prompt and do not name
+ * any tool, so connecting or disconnecting a server never changes the prompt.
+ */
+export const TOOL_CATALOG_GUIDANCE = [
+	'<tool_catalog_rules>',
+	'Most of your tools are not in your toolset. The "Tool catalog" section in the conversation lists them by namespace, with their names only, not their arguments. When that section changes, a newer one replaces it.',
+	`- To use one, get its input schema with ${FIND_TOOLS_TOOL_NAME}, then run it with ${CALL_TOOL_TOOL_NAME}. Do this even when you know the name, and even when a skill names the tool.`,
+	`- Look up every tool the task will need in one ${FIND_TOOLS_TOOL_NAME} call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.`,
+	"- When you do not know a tool's name, search by query or list a namespace.",
+	`- Calling a catalog tool by its own name fails. Use ${CALL_TOOL_TOOL_NAME}.`,
+	'</tool_catalog_rules>',
+].join('\n');
+
 const findToolsInputSchema = z.object({
 	namespace: z.string().optional().describe('A namespace, as the tool catalog lists it'),
 	tools: z
@@ -77,12 +91,14 @@ interface CatalogEntry {
 }
 
 /**
- * Deferred tools as a catalog in the prompt. The system prompt lists every
- * deferred tool name by namespace. The model reads descriptions and schemas
- * with `find_tools` and runs a tool with `call_tool`, without a load step.
+ * Deferred tools as a catalog. The system prompt holds only the fixed rules
+ * (`TOOL_CATALOG_GUIDANCE`). The runtime adds the list of tool names by
+ * namespace to the conversation as a context message, and adds a new one when
+ * the list changes. The model reads descriptions and schemas with `find_tools`
+ * and runs a tool with `call_tool`, without a load step.
  *
- * The toolset sent to the provider never changes, so the tool definitions and
- * system prompt stay cacheable for the whole conversation. `call_tool` is a
+ * The toolset sent to the provider and the system prompt do not depend on
+ * which tools are deferred, so they stay cacheable across users and servers. `call_tool` is a
  * dispatcher: the runtime validates, approves and runs the named tool as if
  * the model had called it directly.
  */
@@ -156,7 +172,7 @@ export class ToolCatalog {
 		return this.lookup(name, input)?.tool;
 	}
 
-	/** The prompt section that lists every deferred tool name by namespace. */
+	/** One line for each namespace: `- <name> (<summary>): tool1, tool2`. Names only. */
 	renderCatalog(): string {
 		const byNamespace = new Map<string, string[]>();
 		for (const entry of this.entries.values()) {
@@ -171,16 +187,7 @@ export class ToolCatalog {
 				const label = description ? `${namespace} (${description})` : namespace;
 				return `- ${label}: ${names.sort().join(', ')}`;
 			});
-		return [
-			'<tool_catalog>',
-			'Most of your tools are not in your toolset. They are in this catalog, listed by namespace with their names only, not their arguments.',
-			`- To use one, get its input schema with ${FIND_TOOLS_TOOL_NAME}, then run it with ${CALL_TOOL_TOOL_NAME}. Do this even when you know the name, and even when a skill names the tool.`,
-			`- Look up every tool you will need in one ${FIND_TOOLS_TOOL_NAME} call, not one at a time.`,
-			"- When you do not know a tool's name, search by query or list a namespace.",
-			`- Calling a catalog tool by its own name fails. Use ${CALL_TOOL_TOOL_NAME}.`,
-			...lines,
-			'</tool_catalog>',
-		].join('\n');
+		return lines.join('\n');
 	}
 
 	private lookup(name: string, input?: unknown): CatalogEntry | undefined {
@@ -204,7 +211,7 @@ export class ToolCatalog {
 				`A lookup that returns ${FULL_SCHEMA_LIMIT} tools or fewer includes their full schemas.`,
 			].join('\n'),
 			inputSchema: findToolsInputSchema,
-			systemInstruction: this.renderCatalog(),
+			systemInstruction: TOOL_CATALOG_GUIDANCE,
 			handler: async (input) => await Promise.resolve(this.find(findToolsInputSchema.parse(input))),
 		};
 	}

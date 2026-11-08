@@ -16,10 +16,10 @@ description: >-
   workflow's evaluations, model choices, credential setup, error workflows, and
   post-build verification: this skill lists the references for those steps.
 recommended_tools:
-  - read_file
-  - write_file
-  - edit_file
-  - execute_command
+  - workspace_read_file
+  - workspace_write_file
+  - workspace_str_replace_file
+  - workspace_execute_command
   - workflow_builder_build_workflow
   - list_workflows
   - get_workflow_as_code
@@ -65,12 +65,13 @@ is needed. Never re-emit the whole source with `workspace_write_file`, and do
 not fetch the same unchanged workflow again in another format. All edits go
 through the workspace source file and `workflow_builder_build_workflow`.
 
-When the needed node types are already obvious from the request, batch
-`get_node_types` — object form with resource/operation or mode
-discriminators — together with the `load_skill` call for this skill in your
-first action turn (each extra sequential turn resends the whole context). When
-unsure which nodes to use, load this skill first and follow its research
-process below.
+When the needed node types are already obvious from the request, make one
+`find_tools` call for every catalog tool the build will need (for example
+`search_nodes`, `get_node_types`, `workflow_builder_build_workflow`,
+`workflow_builder_verify_built_workflow`) in the same response as the
+`load_skill` call for this skill. Each extra sequential turn resends the whole
+context. When unsure which nodes to use, load this skill first and follow its
+research process below.
 
 ## Early service connections
 

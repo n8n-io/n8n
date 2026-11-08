@@ -4,7 +4,12 @@ import { Tool } from '../../sdk/tool';
 import type { BuiltTool } from '../../types';
 import { fixToolCall } from '../tools/fix-tool-call';
 import { buildToolMap, isDirectCatalogCall, resolveToolCallTarget } from '../tools/tool-adapter';
-import { CALL_TOOL_TOOL_NAME, FIND_TOOLS_TOOL_NAME, ToolCatalog } from '../tools/tool-catalog';
+import {
+	CALL_TOOL_TOOL_NAME,
+	FIND_TOOLS_TOOL_NAME,
+	TOOL_CATALOG_GUIDANCE,
+	ToolCatalog,
+} from '../tools/tool-catalog';
 import { filterTools, rankTools, tokenize } from '../tools/tool-search';
 
 function makeTool(name: string, description: string, approval = false): BuiltTool {
@@ -148,6 +153,14 @@ describe('ToolCatalog', () => {
 			namespaceDescriptions: { slack: 'send and read Slack messages' },
 		}).renderCatalog();
 		expect(described).toContain('- slack (send and read Slack messages): send_message');
-		expect(described).toContain('by its own name fails');
+		expect(TOOL_CATALOG_GUIDANCE).toContain('by its own name fails');
+	});
+
+	it('keeps tool names out of the system prompt rules', () => {
+		const findTool = catalog()
+			.getControllerTools()
+			.find((tool) => tool.name === FIND_TOOLS_TOOL_NAME);
+		expect(findTool?.systemInstruction).toBe(TOOL_CATALOG_GUIDANCE);
+		expect(TOOL_CATALOG_GUIDANCE).not.toContain('save_issue');
 	});
 });

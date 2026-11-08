@@ -7,7 +7,7 @@ import {
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
-import { isRuntimeSkillCatalog } from '../../sdk/message';
+import { isRuntimeSkillCatalog, isRuntimeToolCatalog } from '../../sdk/message';
 import { renderDynamicSkillCatalog } from '../../skills/prompt';
 import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
 import type {
@@ -199,6 +199,25 @@ export class RuntimeContextBuilder {
 		// Append changes to preserve cached history. Restore snapshots hidden by compaction.
 		// Runtime context is input, so generated answers must not include it.
 		list.addInput([{ type: 'custom', data: { type: 'n8n:runtime-skill-catalog', content } }]);
+	}
+
+	/**
+	 * Add the list of catalog tool names to the conversation, ahead of the turn's
+	 * input. The first list goes in a `<context>` block; a later change goes in a
+	 * `<system-reminder>` that replaces it. An unchanged list adds nothing, so the
+	 * system prompt and earlier messages stay byte-for-byte the same.
+	 */
+	synchronizeToolCatalog(list: AgentMessageList): void {
+		const catalog = this.toolCatalog?.hasTools ? this.toolCatalog.renderCatalog() : '';
+		const previous = list.llmVisibleMessages().filter(isRuntimeToolCatalog).at(-1);
+		if ((previous?.data.catalog ?? '') === catalog) return;
+		const section = `# Tool catalog\n${catalog || 'No longer applies. No catalog tools are available.'}`;
+		const content = previous
+			? `<system-reminder>\nThe tool catalog changed. This list replaces the earlier one.\n\n${section}\n</system-reminder>`
+			: `<context>\n${section}\n</context>`;
+		list.addInput([
+			{ type: 'custom', data: { type: 'n8n:runtime-tool-catalog', catalog, content } },
+		]);
 	}
 
 	/** Build the current local tool view; deferred loads can change this between iterations. */

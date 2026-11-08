@@ -686,6 +686,8 @@ export class AgentRuntime {
 	): Promise<AgentMessageList> {
 		const list = new AgentMessageList();
 		await this.memory.loadInto(list, options);
+		// Before the input, so a new catalog list reads at the start of the user's turn.
+		this.context.synchronizeToolCatalog(list);
 		list.addInput(input);
 
 		// Persist input now (after history load, so the prompt isn't polluted) so it

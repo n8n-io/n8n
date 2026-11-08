@@ -54,11 +54,15 @@ function getToolDiscoverySection(
 		: '';
 
 	return `
+## Tool Calls
+
+Each response that calls tools costs a full round trip. When calls do not depend on each other's results, make them all in the same response. Examples: load several matching skills together, look up several catalog tools in one \`find_tools\` call, and run independent reads or searches side by side. Make calls one after another only when a call needs the result of an earlier one.
+
 ## Tool Catalog
 
-${mcpSearchGuidance}Most of your tools, including most tools that skills name, are in the tool catalog. The <tool_catalog> section lists them and gives the rules: look them up with \`find_tools\`, then run them with \`call_tool\`. Do not guess arguments.
+${mcpSearchGuidance}Most of your tools, including most tools that skills name, are in the tool catalog. The "Tool catalog" section in the conversation lists them, and <tool_catalog_rules> gives the rules: look them up with \`find_tools\`, then run them with \`call_tool\`. Do not guess arguments.
 
-Example: before you build a workflow, call \`find_tools\` once with \`tools: ["search_nodes", "get_node_types"]\`. ${mcpExamples ? `To find a tool by task, ${mcpExamples}or ` : 'To find a tool by task, '}search "verify workflow" for \`workflow_builder_verify_built_workflow\`.
+${mcpExamples ? `To find a tool by task, ${mcpExamples}or ` : 'To find a tool by task, '}search "verify workflow" for \`workflow_builder_verify_built_workflow\`.
 
 For questions about n8n itself — how a node behaves, the shape of its output, what a parameter does, product semantics — prefer \`n8n-docs\` (already available in your toolset) and the node type definitions from the catalog tool \`get_node_types\` over web search, which is for third-party services and APIs.
 `;
@@ -260,7 +264,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			setupPanelEnabled,
 		} = options;
 
-		return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load one or more skills to help them achieve their goal. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\`).
+		return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load the skills that match it. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\`).
 
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}

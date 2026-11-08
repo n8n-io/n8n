@@ -253,6 +253,13 @@ export interface CustomAgentMessages {
 		type: 'n8n:runtime-skill-catalog';
 		content: string;
 	};
+	runtimeToolCatalog: {
+		type: 'n8n:runtime-tool-catalog';
+		/** The namespace lines the model last saw; empty when no catalog applies. */
+		catalog: string;
+		/** The text the model sees, already wrapped. */
+		content: string;
+	};
 	runtimeSkillUpdate: {
 		type: 'n8n:runtime-skill-update';
 		skillUpdate: {
