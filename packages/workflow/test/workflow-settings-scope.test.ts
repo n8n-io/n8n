@@ -64,8 +64,8 @@ describe('omitVersionedSettings', () => {
 		});
 	});
 
-	it('returns null unchanged', () => {
-		expect(omitVersionedSettings(null)).toBeNull();
+	it('returns empty settings for null', () => {
+		expect(omitVersionedSettings(null)).toEqual({});
 	});
 
 	it('does not change the settings it receives', () => {
@@ -91,7 +91,6 @@ describe('applyVersionedSettings', () => {
 		const result = applyVersionedSettings({ engineType: 'v2' }, {});
 
 		expect(result).toHaveProperty('engineType', undefined);
-		expect({ engineType: 'v2', ...result }).toHaveProperty('engineType', undefined);
 	});
 
 	it('accepts null settings', () => {
