@@ -349,9 +349,22 @@ export class RuntimeContextBuilder {
 		];
 
 		const memoryTools: BuiltTool[] = [];
-		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
+		// Catalog-mode deferred tools are not in the toolset but still reserve their names.
+		const reservedCheck = [
+			...tools,
+			...(this.toolCatalog ? (this.config.deferredTools ?? []) : []),
+		];
+		const recallTool = this.createRecallMemoryToolForRun(
+			persistence,
+			reservedCheck,
+			executionCounter,
+		);
 		if (recallTool) memoryTools.push(recallTool);
-		const flagTool = this.createFlagMemoryToolForRun(persistence, [...tools, ...memoryTools], list);
+		const flagTool = this.createFlagMemoryToolForRun(
+			persistence,
+			[...reservedCheck, ...memoryTools],
+			list,
+		);
 		if (flagTool) memoryTools.push(flagTool);
 		return { tools: [...tools, ...memoryTools], memoryTools };
 	}

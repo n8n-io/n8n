@@ -504,8 +504,7 @@ describe('mcp-servers tool', () => {
 			);
 
 			expect(output.connectedSlugs).toEqual(['notion']);
-			expect(output.message).toContain('find_tools');
-			expect(output.message).toContain('available now');
+			expect(output.message).toContain('next message');
 		});
 
 		it('ignores a client claim the server cannot confirm', async () => {

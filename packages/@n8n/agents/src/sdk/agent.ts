@@ -1131,6 +1131,20 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			);
 		}
 
+		// The catalog adds find_tools and call_tool when deferred tools exist,
+		// and would silently replace a direct or MCP tool with the same name.
+		if (finalDeferredTools.length > 0) {
+			const catalogNames = new Set([FIND_TOOLS_TOOL_NAME, CALL_TOOL_TOOL_NAME]);
+			const reserved = [...finalStaticTools, ...mcpTools]
+				.filter((t) => catalogNames.has(t.name))
+				.map((t) => t.name);
+			if (reserved.length > 0) {
+				throw new Error(
+					`Tool name collision — the following tool names are reserved for the tool catalog: ${reserved.join(', ')}`,
+				);
+			}
+		}
+
 		const collisions = mcpTools
 			.filter((t) => staticNames.has(t.name) || deferredNames.has(t.name))
 			.map((t) => t.name);

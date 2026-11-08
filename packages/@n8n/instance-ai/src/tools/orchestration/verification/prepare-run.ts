@@ -143,7 +143,13 @@ export function prepareVerificationRun(
 	// report success having exercised nothing. It stays available for a genuine
 	// empty-branch test, but the caller has to name the node to get it.
 	const zeroItemOverrideNodeNames = Object.entries(fixtureOverrides ?? {})
-		.filter(([nodeName, items]) => items.length === 0 && !allowedZeroItemNodes.has(nodeName))
+		.filter(
+			([nodeName, items]) =>
+				items.length === 0 &&
+				!allowedZeroItemNodes.has(nodeName) &&
+				// Halted-gate overrides are discarded above, so they cannot silence anything.
+				!haltedOverrideNodeNames.includes(nodeName),
+		)
 		.map(([nodeName]) => nodeName);
 	if (zeroItemOverrideNodeNames.length > 0) {
 		const guidance =

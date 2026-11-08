@@ -13,12 +13,14 @@ const NAME_WEIGHT = 3;
 const K1 = 1.2;
 const B = 0.75;
 
+export const MAX_PATTERN_LENGTH = 200;
+
 /** Lowercase words, with camelCase, snake_case, kebab-case and dotted names split. */
 export function tokenize(value: string): string[] {
 	return value
 		.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
 		.toLowerCase()
-		.split(/[^a-z0-9]+/)
+		.split(/[^\p{L}\p{N}]+/u)
 		.filter((token) => token.length > 0);
 }
 
@@ -67,6 +69,12 @@ export function rankTools<T extends SearchableTool>(tools: readonly T[], query: 
 
 /** Tools whose name or description matches `pattern`, case-insensitive. Throws on a bad pattern. */
 export function filterTools<T extends SearchableTool>(tools: readonly T[], pattern: string): T[] {
+	// A cap limits catastrophic backtracking; the searched text is only tool names and descriptions.
+	if (pattern.length > MAX_PATTERN_LENGTH) {
+		throw new Error(
+			`Pattern is too long (max ${MAX_PATTERN_LENGTH} characters). Use a shorter pattern or a query.`,
+		);
+	}
 	let regex: RegExp;
 	try {
 		regex = new RegExp(pattern, 'i');

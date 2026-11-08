@@ -7,7 +7,9 @@ import type { ValidationWarning } from './workflow-validation-warnings';
 export const FAKE_PLACEHOLDER_VALUE_CODE = 'FAKE_PLACEHOLDER_VALUE';
 
 // `PLACEHOLDER_CALENDAR_ID`, `your-sheet-id`, `REPLACE_ME`, `insert_api_key`.
-const WORD_FORM = /^(?:placeholder|your|insert|enter|replace)[_-][a-z0-9_-]+$/i;
+const WORD_FORM = /^(?:placeholder|your|insert|enter)[_-][a-z0-9_-]+$/i;
+// Only `REPLACE_ME` for `replace`: real option values such as `replace_content` share the prefix.
+const REPLACE_ME = /^replace[_-]me$/i;
 // `<your calendar id>`, `[YOUR_SHEET]`, `{insert value}`.
 const BRACKET_FORM =
 	/^[<[{]\s*(?:your|insert|enter|replace|placeholder)(?:\b|_)[^<>[\]{}]*[>\]}]$/i;
@@ -18,7 +20,7 @@ const HINT_KEYS = new Set(['placeholder', 'notice', 'hint', 'description']);
 function looksLikeFakePlaceholder(value: string): boolean {
 	const trimmed = value.trim();
 	if (trimmed.startsWith('=') || isPlaceholderValue(trimmed)) return false;
-	return WORD_FORM.test(trimmed) || BRACKET_FORM.test(trimmed);
+	return WORD_FORM.test(trimmed) || REPLACE_ME.test(trimmed) || BRACKET_FORM.test(trimmed);
 }
 
 function collect(value: unknown, path: string, out: Array<{ path: string; value: string }>): void {
@@ -49,7 +51,7 @@ function collect(value: unknown, path: string, out: Array<{ path: string; value:
 export function detectFakePlaceholderValues(json: WorkflowJSON): ValidationWarning[] {
 	const warnings: ValidationWarning[] = [];
 	for (const node of json.nodes ?? []) {
-		if (!isRecord(node.parameters)) continue;
+		if (node.disabled || !isRecord(node.parameters)) continue;
 		const nodeName = typeof node.name === 'string' ? node.name : undefined;
 		const found: Array<{ path: string; value: string }> = [];
 		collect(node.parameters, '', found);

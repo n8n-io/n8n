@@ -1435,6 +1435,9 @@ describe('AgentRuntime — execution counters', () => {
 		);
 		expect(resumed.error).toBeUndefined();
 		expect(resumed.pendingSuspend).toBeUndefined();
+		expect(resumed.toolCalls).toEqual(
+			expect.arrayContaining([expect.objectContaining({ output: { approved: true } })]),
+		);
 	});
 
 	it('persists dynamic suspension state privately and validates resume before claiming', async () => {

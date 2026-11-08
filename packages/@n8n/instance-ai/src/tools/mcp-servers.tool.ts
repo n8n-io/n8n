@@ -209,7 +209,7 @@ async function resumeConnect(
 
 	return {
 		connectedSlugs,
-		message: `Connected: ${connectedSlugs.join(', ')}. Their tools are available now — find them with \`find_tools\`, run them with \`call_tool\`, and carry on with the request.`,
+		message: `Connected: ${connectedSlugs.join(', ')}. Their tools load on the user's next message. Tell the user the connection worked and ask them to send their request again to continue.`,
 	};
 }
 

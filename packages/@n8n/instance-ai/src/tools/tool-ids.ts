@@ -207,7 +207,10 @@ const NAMESPACE_DESCRIPTIONS: Readonly<Record<string, string>> = {
 
 /** Returns the description of a catalog namespace, or undefined when it has none. */
 export function getToolNamespaceDescription(namespace: string): string | undefined {
-	return NAMESPACE_DESCRIPTIONS[namespace];
+	// Own properties only, so a server named like `constructor` gets no inherited value.
+	return Object.hasOwn(NAMESPACE_DESCRIPTIONS, namespace)
+		? NAMESPACE_DESCRIPTIONS[namespace]
+		: undefined;
 }
 
 /** Returns the catalog namespace of a deferred n8n tool, or undefined for the default one. */
