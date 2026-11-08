@@ -25,6 +25,7 @@ import { isToolType } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { compactNodeDefinition } from './compact-node-definition';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { RESOURCE_EXPLORATION_UNAVAILABLE } from '../constants/resource-exploration';
 import type { ExploreResourcesParams, InstanceAiContext, NodeDescription } from '../types';
@@ -275,7 +276,7 @@ async function resolveNodeTypeDefinitions(
 			return {
 				nodeType,
 				version: result.version,
-				content: result.content,
+				content: compactNodeDefinition(result.content),
 				...(result.builderHint ? { builderHint: result.builderHint } : {}),
 				...(result.deprecated ? { deprecated: true } : {}),
 				...(result.unavailable ? { unavailable: result.unavailable } : {}),
