@@ -7,7 +7,11 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
 import * as logAiEventModule from 'src/utils/log-ai-event';
-import { anthropicTokensUsageParser, N8nLlmTracing } from 'src/utils/n8n-llm-tracing';
+import {
+	anthropicTokensUsageParser,
+	N8nLlmTracing,
+	openAiTokensUsageParser,
+} from 'src/utils/n8n-llm-tracing';
 import * as tokenEstimatorModule from 'src/utils/tokenizer/token-estimator';
 
 // Mock the dependencies
@@ -1260,6 +1264,146 @@ describe('anthropicTokensUsageParser', () => {
 			promptTokens: 0,
 			completionTokens: 0,
 			totalTokens: 0,
+		});
+	});
+});
+
+describe('openAiTokensUsageParser', () => {
+	type UsageMetadata = {
+		input_tokens?: number;
+		output_tokens?: number;
+		total_tokens?: number;
+	};
+
+	const chatGeneration = (usageMetadata?: UsageMetadata): ChatGeneration =>
+		({
+			text: 'Response',
+			message: { usage_metadata: usageMetadata },
+		}) as unknown as ChatGeneration;
+
+	const textGeneration = (): Generation => ({ text: 'Response' });
+
+	it('reads llmOutput.tokenUsage first (Chat Completions)', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [[chatGeneration({ input_tokens: 999, output_tokens: 999 })]],
+				llmOutput: { tokenUsage: { promptTokens: 100, completionTokens: 40, totalTokens: 140 } },
+			}),
+		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 140 });
+	});
+
+	it('reads message.usage_metadata when tokenUsage is absent (Responses API)', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [
+					[chatGeneration({ input_tokens: 100, output_tokens: 40, total_tokens: 140 })],
+				],
+				llmOutput: {},
+			}),
+		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 140 });
+	});
+
+	it('prefers llmOutput.tokenUsage over message.usage_metadata', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [[chatGeneration({ input_tokens: 100, output_tokens: 40 })]],
+				llmOutput: { tokenUsage: { promptTokens: 50, completionTokens: 20 } },
+			}),
+		).toEqual({ promptTokens: 50, completionTokens: 20, totalTokens: 70 });
+	});
+
+	it('recomputes the total from the input and output tokens', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [[chatGeneration({ input_tokens: 100, output_tokens: 40 })]],
+				llmOutput: {},
+			}),
+		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 140 });
+	});
+
+	it('ignores a partial tokenUsage payload and falls through to the message', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [[chatGeneration({ input_tokens: 100, output_tokens: 40 })]],
+				llmOutput: { tokenUsage: { promptTokens: 100 } },
+			}),
+		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 140 });
+	});
+
+	it('returns zeros when no usage is reported', () => {
+		const expected = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+
+		expect(openAiTokensUsageParser({ generations: [[textGeneration()]], llmOutput: {} })).toEqual(
+			expected,
+		);
+		expect(openAiTokensUsageParser({ generations: [], llmOutput: {} })).toEqual(expected);
+	});
+
+	it('never reads the estimatedTokenUsage key', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [[textGeneration()]],
+				llmOutput: { estimatedTokenUsage: { promptTokens: 100, completionTokens: 40 } },
+			}),
+		).toEqual({ promptTokens: 0, completionTokens: 0, totalTokens: 0 });
+	});
+
+	describe('through handleLLMEnd', () => {
+		let mockExecutionFunctions: Mocked<ISupplyDataFunctions>;
+
+		beforeEach(() => {
+			mockExecutionFunctions = {
+				getNode: vi.fn().mockReturnValue({
+					id: 'test-node',
+					name: 'OpenAI Chat Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.3,
+					position: [0, 0],
+					parameters: {},
+				}),
+				addOutputData: vi.fn(),
+				addInputData: vi.fn().mockReturnValue({ index: 0 }),
+				getNextRunIndex: vi.fn().mockReturnValue(0),
+				setMetadata: vi.fn(),
+			} as unknown as Mocked<ISupplyDataFunctions>;
+		});
+
+		it('records reported usage instead of the estimate', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
+				tokensUsageParser: openAiTokensUsageParser,
+			});
+			const runId = 'run-openai-responses';
+			tracer.runsMap[runId] = { index: 0, messages: ['Test'], options: {} };
+
+			await tracer.handleLLMEnd(
+				{
+					generations: [
+						[chatGeneration({ input_tokens: 100, output_tokens: 40, total_tokens: 140 })],
+					],
+					llmOutput: {},
+				},
+				runId,
+			);
+
+			const callArgs = mockExecutionFunctions.addOutputData.mock.calls[0] as any;
+			const outputData = callArgs?.[2]?.[0]?.[0]?.json;
+
+			expect(outputData.tokenUsage).toEqual({
+				promptTokens: 100,
+				completionTokens: 40,
+				totalTokens: 140,
+			});
+			expect(outputData.tokenUsageEstimate).toBeUndefined();
+			expect(
+				(mockExecutionFunctions as unknown as { setMetadata: Mock }).setMetadata,
+			).toHaveBeenCalledWith({
+				tracing: {
+					'llm.tokens.in': 100,
+					'llm.tokens.out': 40,
+					'llm.tokens.total': 140,
+					'llm.tokens.estimated': false,
+				},
+			});
 		});
 	});
 });

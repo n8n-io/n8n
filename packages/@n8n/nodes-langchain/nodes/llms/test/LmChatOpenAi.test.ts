@@ -4,6 +4,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
+	openAiTokensUsageParser,
 	getProxyAgent,
 	aiClientFetch,
 } from '@n8n/ai-utilities';
@@ -398,7 +399,13 @@ describe('LmChatOpenAi', () => {
 
 			await lmChatOpenAi.supplyData.call(mockContext, 0);
 
-			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(mockContext, { redactedHeaders: [] });
+			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(
+				mockContext,
+				expect.objectContaining({
+					tokensUsageParser: openAiTokensUsageParser,
+					redactedHeaders: [],
+				}),
+			);
 		});
 
 		it('should pass the declared header name to N8nLlmTracing', async () => {
@@ -418,9 +425,13 @@ describe('LmChatOpenAi', () => {
 
 			await lmChatOpenAi.supplyData.call(mockContext, 0);
 
-			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(mockContext, {
-				redactedHeaders: ['x-custom-header'],
-			});
+			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(
+				mockContext,
+				expect.objectContaining({
+					tokensUsageParser: openAiTokensUsageParser,
+					redactedHeaders: ['x-custom-header'],
+				}),
+			);
 		});
 
 		it('should create failed attempt handler', async () => {

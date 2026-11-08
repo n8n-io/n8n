@@ -20,6 +20,7 @@ import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-h
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
+	openAiTokensUsageParser,
 	getProxyAgent,
 	aiClientFetch,
 	getConnectionHintNoticeField,
@@ -828,7 +829,10 @@ export class LmChatOpenAi implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [
-				new N8nLlmTracing(this, { redactedHeaders: customHeader ? [customHeader.name] : [] }),
+				new N8nLlmTracing(this, {
+					tokensUsageParser: openAiTokensUsageParser,
+					redactedHeaders: customHeader ? [customHeader.name] : [],
+				}),
 			],
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
