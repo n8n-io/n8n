@@ -326,7 +326,10 @@ describe('sub-workflow coverage', () => {
 		expect(row.getByTestId('self-healing-sub-workflow-pill')).toHaveTextContent('3');
 		expect(api.fetchWorkflowDependencies).toHaveBeenCalledWith(expect.anything(), ['workflow']);
 		expect(api.fetchWorkflowDependencies).toHaveBeenCalledWith(expect.anything(), ['child']);
-		expect(api.fetchWorkflowDependencies).not.toHaveBeenCalledWith(expect.anything(), ['external']);
+		expect(api.fetchWorkflowDependencies).not.toHaveBeenCalledWith(
+			expect.anything(),
+			expect.arrayContaining(['external']),
+		);
 
 		await fireEvent.click(view.getByRole('switch', { name: 'Include sub-workflows' }));
 
