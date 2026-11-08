@@ -48,7 +48,7 @@ function renderContent(
 	return renderComponent({
 		props: {
 			detail: result(),
-			workflowName: 'Daily report',
+			workflowNames: new Map([['workflow-1', 'Daily report']]),
 			tab: 'activity',
 			pendingAction: null,
 			publishAccess: 'allowed',
@@ -66,8 +66,24 @@ async function openMenu(name: 'Review' | 'Continue in…') {
 beforeEach(() => {
 	diffProps = undefined;
 	componentRegistry.register('workflow-diff', DiffView);
+	vi.stubGlobal(
+		'IntersectionObserver',
+		class {
+			constructor(private readonly onIntersect: IntersectionObserverCallback) {}
+			observe(target: Element) {
+				this.onIntersect(
+					[{ target, isIntersecting: true }] as unknown as IntersectionObserverEntry[],
+					this as unknown as IntersectionObserver,
+				);
+			}
+			disconnect() {}
+		},
+	);
 });
-afterEach(() => componentRegistry.clear());
+afterEach(() => {
+	componentRegistry.clear();
+	vi.unstubAllGlobals();
+});
 
 describe('SelfHealingResultContent', () => {
 	it('renders the saved report as read-only Markdown', () => {
@@ -129,7 +145,9 @@ describe('SelfHealingResultContent', () => {
 		expect(
 			within(menu).getByRole('menuitem', { name: 'Continue with Editor' }),
 		).not.toHaveAttribute('data-disabled');
-		expect(menu).toHaveTextContent('Publish permission is required to apply and publish.');
+		expect(menu).toHaveTextContent(
+			'Publish permission on every changed workflow is required to apply and publish.',
+		);
 	});
 
 	it('disables publishing without a permission note while access is unknown', async () => {
@@ -140,7 +158,7 @@ describe('SelfHealingResultContent', () => {
 		expect(within(menu).getByRole('menuitem', { name: 'Apply and publish' })).toHaveAttribute(
 			'data-disabled',
 		);
-		expect(menu).not.toHaveTextContent('Publish permission is required');
+		expect(menu).not.toHaveTextContent('Publish permission');
 	});
 
 	it('disables every decision while a decision is pending', () => {
@@ -292,15 +310,15 @@ describe('SelfHealingResultContent', () => {
 		},
 	);
 
-	it('renders the exact stored snapshots even after a suggestion is outdated', () => {
+	it('renders the exact stored snapshots even after a suggestion is outdated', async () => {
 		const proposal = suggestion({ state: 'closed', closedReason: 'outdated' });
 		proposal.payload.original.settings = { executionOrder: 'v1' };
-		const { getByTestId } = renderContent({
+		const { findByTestId } = renderContent({
 			detail: result({ suggestions: [proposal], reviewState: 'outdated' }),
 			tab: 'changes',
 		});
 
-		expect(getByTestId('saved-workflow-diff')).toBeInTheDocument();
+		expect(await findByTestId('saved-workflow-diff')).toBeInTheDocument();
 		expect(diffProps).toMatchObject({
 			sourceSnapshot: proposal.payload.original,
 			targetSnapshot: proposal.payload.proposed,
@@ -463,6 +481,63 @@ describe('SelfHealingResultContent', () => {
 		expect(entries[1]).toHaveTextContent(/System\s*\|\s*Marked the suggestion as outdated/);
 		expect(entries[2]).toHaveTextContent(/A user\s*\|\s*Discarded the suggested changes/);
 		expect(getByTestId('self-healing-activity')).not.toHaveTextContent('human-private-id');
+	});
+
+	describe('with sub-workflow changes', () => {
+		const detail = (overrides: Parameters<typeof result>[0] = {}) =>
+			result({
+				suggestions: [
+					suggestion(),
+					suggestion({ suggestionId: 'suggestion-2', workflowId: 'child-1' }),
+				],
+				...overrides,
+			});
+		const workflowNames = new Map([
+			['workflow-1', 'Daily report'],
+			['child-1', 'Send email'],
+		]);
+
+		it('counts the changed workflows and lists the sub-workflows in the metadata', () => {
+			const { getByRole, getAllByTestId } = renderContent({ detail: detail(), workflowNames });
+
+			expect(getByRole('tab', { name: /Changes\s*2/ })).toBeInTheDocument();
+			const links = getAllByTestId('self-healing-sub-workflow-link');
+			expect(links.map((link) => link.textContent?.trim())).toEqual(['Send email']);
+			expect(links[0]).toHaveAttribute('href', '/workflow/child-1');
+		});
+
+		it('gives the workflow diffs the full width of the Changes tab', () => {
+			const { getAllByTestId, queryByTestId } = renderContent({
+				detail: detail(),
+				workflowNames,
+				tab: 'changes',
+			});
+
+			expect(getAllByTestId('self-healing-changes-card')).toHaveLength(2);
+			expect(queryByTestId('self-healing-metadata')).not.toBeInTheDocument();
+			expect(queryByTestId('self-healing-changes-outdated-notice')).not.toBeInTheDocument();
+		});
+
+		it('keeps review actions for the whole fix on the Changes tab', async () => {
+			const { emitted } = renderContent({ detail: detail(), workflowNames, tab: 'changes' });
+
+			const menu = await openMenu('Review');
+			await userEvent.click(within(menu).getByRole('menuitem', { name: 'Apply and publish' }));
+			expect(emitted('action')).toEqual([['approve-and-publish']]);
+		});
+
+		it('explains an outdated fix above its workflow diffs', () => {
+			const { getByTestId, queryByRole } = renderContent({
+				detail: detail({ reviewState: 'outdated' }),
+				workflowNames,
+				tab: 'changes',
+			});
+
+			expect(getByTestId('self-healing-changes-outdated-notice')).toHaveTextContent(
+				'A workflow in this fix changed after the suggestion.',
+			);
+			expect(queryByRole('button', { name: /Review/ })).not.toBeInTheDocument();
+		});
 	});
 
 	it('emits tab changes without selecting a new item', async () => {

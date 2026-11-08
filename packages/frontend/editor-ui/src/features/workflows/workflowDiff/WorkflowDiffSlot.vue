@@ -39,6 +39,7 @@ const targetWorkflow = computed(() => toWorkflow(props.targetSnapshot, 'target')
 		:show-fullscreen-button="showFullscreenButton"
 		:canvas-id-prefix="canvasIdPrefix"
 		:hide-title="hideTitle"
+		:require-canvas-focus="requireCanvasFocus"
 	>
 		<template v-if="$slots.sourceLabel" #sourceLabel><slot name="sourceLabel" /></template>
 		<template v-if="$slots.targetLabel" #targetLabel><slot name="targetLabel" /></template>

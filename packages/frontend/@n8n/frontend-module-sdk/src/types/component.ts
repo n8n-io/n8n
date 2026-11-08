@@ -56,6 +56,7 @@ export type SlotWorkflowDiffProps = {
 	showFullscreenButton?: boolean;
 	canvasIdPrefix?: string;
 	hideTitle?: boolean;
+	requireCanvasFocus?: boolean;
 };
 
 export type SlotPromotionChangesProps = {
