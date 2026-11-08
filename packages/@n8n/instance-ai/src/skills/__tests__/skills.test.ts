@@ -209,6 +209,7 @@ describe('Instance AI skills', () => {
 			'compositional-workflows',
 			'config-eval-playbook',
 			'config-evals',
+			'credential-choices',
 			'credential-recipe-research',
 			'credential-setup-with-browser-use',
 			'error-workflows',
@@ -446,10 +447,10 @@ describe('Instance AI skills', () => {
 		expect(skill?.name).toBe('workflow-builder');
 		expect(skill?.platforms).toBeUndefined();
 		expect(skill?.recommendedTools).toEqual([
-			'read_file',
-			'write_file',
-			'edit_file',
-			'execute_command',
+			'workspace_read_file',
+			'workspace_write_file',
+			'workspace_str_replace_file',
+			'workspace_execute_command',
 			'workflow_builder_build_workflow',
 			'list_workflows',
 			'get_workflow_as_code',
@@ -491,7 +492,6 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain(
 			'Do not run a separate validation command before the build',
 		);
-		expect(loaded?.instructions).toContain('Do not run it by default');
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('`search_nodes` with `categories`');
 		expect(loaded?.instructions).toContain('`search_nodes` with `query`/`queries`');
@@ -525,8 +525,16 @@ describe('Instance AI skills', () => {
 		expect(postBuild).toContain('## Trigger URL Sharing');
 		expect(postBuild).toContain('{formBaseUrl}/{path}');
 		expect(postBuild).toContain('**Open chat** button');
-		expect(loaded?.instructions).toContain('batch\n`get_node_types`');
-		expect(loaded?.instructions).toContain('together with the `load_skill` call');
+		expect(loaded?.instructions).toContain('in the same response as the\n`load_skill` call');
+		// Rare cases live in references, behind a trigger line.
+		expect(loaded?.instructions).toContain('the `credential-choices`');
+		expect(loaded?.instructions).toContain('`data-table-playbook` reference');
+		expect(loaded?.instructions).not.toContain('preferNewCredentials');
+		expect(loaded?.instructions).not.toContain('__AI_GATEWAY_MANAGED__');
+		// Visible-output rule must not forbid early setup calls.
+		expect(loaded?.instructions).not.toContain(
+			'Do not produce visible output until the final step',
+		);
 		expect(loaded?.instructions).toContain(
 			'never stop before the first\n`workflow_builder_build_workflow` call',
 		);

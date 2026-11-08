@@ -202,6 +202,27 @@ Delete rows:
   a different filter or name unless the user changes the request.
 - **Partial import**: report inserted count, skipped count, and `nextStartRow`.
 
+## Diagnosing Lookup Misses
+
+When a workflow's table lookup misses, keep every `query_data_table` call
+targeted: filter on the column under investigation (`ilike` for
+case-insensitive partial matches; `like` is case-sensitive) with `limit` of 5
+or fewer. Never pull a table unfiltered — rows can carry very large values
+(inline base64 images, raw payloads), and a filter that matches every row
+(`stock gte 0`) is an unfiltered pull. Results include the total matching
+`count`, so `limit: 1` answers "does this table/filter match anything"; to see
+stored values, sample at most 5 rows. After a 0-row or failed query, retry
+only strictly narrower or switch to a different diagnostic step — a targeted
+query returning 0 rows is evidence about the match condition (commonly an `eq`
+condition against free-form input where only `ilike` reliably matches
+user-typed text), not proof the data is missing. Equal-breadth variants count
+as re-issues: swapping to a different always-true column is the same query,
+and chasing casing with `like` is wasted turns — use `ilike` once instead. Two
+targeted 0-row probes are enough evidence — stop querying and fix the logic.
+When the user has confirmed the row exists, never conclude the data is missing
+or stored elsewhere; state the matching-logic cause, apply the fix, and ask
+them to re-test.
+
 ## Output Examples
 
 Creation:
