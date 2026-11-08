@@ -46,9 +46,7 @@ describe('Agent tool deferral', () => {
 				.tool(makeTool(toolName))
 				.deferredTool(makeTool('lookup'));
 
-			await expect(build(agent)).rejects.toThrow(
-				`reserved for the tool catalog: ${toolName}`,
-			);
+			await expect(build(agent)).rejects.toThrow(`reserved for the tool catalog: ${toolName}`);
 		},
 	);
 });
