@@ -10,6 +10,7 @@ import type { EngineCredentialsController } from '../engine-credentials.controll
 import type { EngineDataTablesController } from '../engine-data-tables.controller';
 import type { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
+import type { EngineSubWorkflowController } from '../engine-sub-workflow.controller';
 
 const authSecret = 'a'.repeat(32);
 
@@ -51,6 +52,7 @@ describe('EngineControlPlaneServer', () => {
 			controller,
 			credentialsController,
 			dataTablesController,
+			mock<EngineSubWorkflowController>(),
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(serverLogger) }),
 		);
 		await server.start();

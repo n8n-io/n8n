@@ -61,9 +61,30 @@ describe('AppSourceArchiveService', () => {
 			'draft',
 			await archives.pack(files),
 			'Edit',
+			{ userId: 'user-1', threadId: 'thread-1' },
 		);
 
 		expect(result).toEqual(BUILD);
-		expect(changes.commit).toHaveBeenCalledWith('project', 'app', 'draft', files, 'Edit');
+		// Without bindings, the new version keeps the bindings of the draft.
+		expect(changes.commit).toHaveBeenCalledWith(
+			'project',
+			'app',
+			'draft',
+			files,
+			'Edit',
+			undefined,
+			{ userId: 'user-1', threadId: 'thread-1' },
+		);
+	});
+
+	it('exports the app SDK that app builds install', async () => {
+		const { service, archives } = setup('draft');
+
+		const files = await archives.unpack(await service.exportSdk());
+
+		expect(JSON.parse(files.get('package.json')!.toString('utf8'))).toMatchObject({
+			name: '@n8n/app-sdk',
+		});
+		expect(files.has('dist/index.js')).toBe(true);
 	});
 });

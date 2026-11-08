@@ -25,12 +25,8 @@ import {
 } from '@n8n/inbound-auth';
 import { getJwtExpiry } from '@n8n/utils/get-jwt-expiry';
 import { isRecord } from '@n8n/utils/is-record';
-import {
-	UnexpectedError,
-	UserError,
-	type N8nOAuth2FlowResult,
-	type N8nOAuth2RefreshResult,
-} from 'n8n-workflow';
+import type { N8nOAuth2FlowResult, N8nOAuth2RefreshResult } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { createHash, randomBytes } from 'node:crypto';
 import pkceChallenge from 'pkce-challenge';
 import { z } from 'zod';

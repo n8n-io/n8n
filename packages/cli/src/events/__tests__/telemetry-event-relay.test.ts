@@ -1938,6 +1938,7 @@ describe('TelemetryEventRelay', () => {
 				method: 'GET',
 				apiVersion: 'v1',
 				userAgent: 'n8n-cli',
+				client: 'editor_ui',
 			};
 
 			eventService.emit('public-api-invoked', event);
@@ -1947,6 +1948,7 @@ describe('TelemetryEventRelay', () => {
 				path: '/api/v1/workflows',
 				method: 'GET',
 				api_version: 'v1',
+				client: 'editor_ui',
 				user_agent: 'n8n-cli',
 			});
 		});
@@ -6200,6 +6202,163 @@ describe('TelemetryEventRelay', () => {
 			// The `init` tests above leave extra relays listening, so the call count is not asserted.
 			expect(telemetry.track).toHaveBeenCalled();
 			expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain('idp.example.com');
+		});
+	});
+
+	describe('app events', () => {
+		const appId = 'app-1';
+		// The init tests register a second relay on the shared emitter, so this block uses its own.
+		const appEventService = new EventService();
+
+		beforeAll(async () => {
+			await new TelemetryEventRelay(
+				appEventService,
+				telemetry,
+				license,
+				licenseState,
+				globalConfig,
+				instanceSettings,
+				binaryDataConfig,
+				workflowRepository,
+				nodeTypes,
+				sharedWorkflowRepository,
+				projectRelationRepository,
+				credentialsRepository,
+				dynamicCredentialsProxy,
+				dbConnection,
+				loadNodesAndCredentials,
+				postHogClient,
+				ownershipService,
+			).init();
+		});
+
+		it.each([
+			[
+				'app-created',
+				{ userId: 'user-1', threadId: 'thread-1', appId, projectId: 'p-1', visibility: 'project' },
+				TELEMETRY_EVENT.APPS.USER_CREATED_APP,
+				{
+					app_id: appId,
+					project_id: 'p-1',
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					visibility: 'project',
+				},
+			],
+			[
+				'app-visibility-changed',
+				{ userId: 'user-1', appId, from: 'project', to: 'instance' },
+				TELEMETRY_EVENT.APPS.USER_CHANGED_APP_VISIBILITY,
+				{ app_id: appId, user_id: 'user-1', from: 'project', to: 'instance' },
+			],
+			[
+				'app-deleted',
+				{ userId: 'user-1', appId, wasPublished: true },
+				TELEMETRY_EVENT.APPS.USER_DELETED_APP,
+				{ app_id: appId, user_id: 'user-1', was_published: true },
+			],
+			[
+				'app-published',
+				{ userId: 'user-1', appId, versionId: 'v-1', visibility: 'instance', isFirstPublish: true },
+				TELEMETRY_EVENT.APPS.USER_PUBLISHED_APP,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					access_level: 'instance',
+					is_first_publish: true,
+				},
+			],
+			[
+				'app-unpublished',
+				{ userId: 'user-1', appId },
+				TELEMETRY_EVENT.APPS.USER_UNPUBLISHED_APP,
+				{ app_id: appId, user_id: 'user-1' },
+			],
+			[
+				'app-build-finished',
+				{
+					userId: 'user-1',
+					threadId: 'thread-1',
+					appId,
+					versionId: 'v-1',
+					changeSource: 'chat',
+					status: 'failed',
+					attempts: 2,
+					durationMs: 1200,
+				},
+				TELEMETRY_EVENT.APPS.APP_BUILD_FINISHED,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					change_source: 'chat',
+					status: 'failed',
+					attempts: 2,
+					duration_ms: 1200,
+				},
+			],
+			[
+				'app-opened',
+				{ appId, versionId: 'v-1', userId: 'user-1', isPreview: false },
+				TELEMETRY_EVENT.APPS.USER_INTERACTED_WITH_APP,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					interaction_type: 'app_opened',
+					is_preview: false,
+				},
+			],
+			[
+				'app-bindings-changed',
+				{
+					appId,
+					projectId: 'project-1',
+					versionId: 'v-2',
+					userId: 'user-1',
+					workflowCount: 1,
+					dataTableCount: 2,
+					agentCount: 0,
+					addedCount: 1,
+					removedCount: 0,
+				},
+				TELEMETRY_EVENT.APPS.USER_CHANGED_APP_BINDINGS,
+				{
+					app_id: appId,
+					project_id: 'project-1',
+					version_id: 'v-2',
+					user_id: 'user-1',
+					workflow_count: 1,
+					data_table_count: 2,
+					agent_count: 0,
+					added_count: 1,
+					removed_count: 0,
+				},
+			],
+			[
+				'app-interacted',
+				{
+					appId,
+					versionId: 'v-1',
+					userId: 'user-1',
+					interactionType: 'workflow_run',
+					isPreview: true,
+				},
+				TELEMETRY_EVENT.APPS.USER_INTERACTED_WITH_APP,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					interaction_type: 'workflow_run',
+					is_preview: true,
+				},
+			],
+		] as const)('should track on `%s` event', (eventName, payload, entry, properties) => {
+			appEventService.emit(eventName, payload);
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(entry, properties);
 		});
 	});
 });

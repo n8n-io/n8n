@@ -77,6 +77,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.addSelect('execution.caller_context', 'callerContext')
 			.addSelect('execution.response_expectation', 'responseExpectation')
 			.addSelect(parentLinkSql('execution'), 'parent')
+			.addSelect('execution.lifecycle_event_subscription', 'lifecycleEventSubscription')
 			.addSelect('execution.finished_at', 'finishedAt')
 			.where('execution.id = :id', { id })
 			.getRawOne();
