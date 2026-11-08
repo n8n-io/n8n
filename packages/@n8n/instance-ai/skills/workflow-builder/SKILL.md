@@ -212,50 +212,6 @@ group is dropped with a warning: fix what the warning reports and build again. A
 {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} items with groups in place, name each remaining item and
 why it cannot join a group.
 
-## Gotchas
-
-Each line corrects a mistake observed in real builds or evals.
-
-- Do NOT wire branches as standalone statements after `export default` (`ifNode.onTrue(...)` on its own line): those calls never reach the builder. <!-- gotcha:if-branches-on-builder -->
-- An IF or Filter only selects items. When the user asks to archive, update, send or create only matching items, wire the action node on the matching branch, and give an IF both outputs. <!-- gotcha:filter-is-not-an-action -->
-- Switch outputs and Merge inputs are zero-based: `.onCase(0, …)` and `.input(0)` are the first. <!-- gotcha:zero-based-indices -->
-- `.onError()` takes one handler, not an array. Call it once for each handler. <!-- gotcha:on-error-one-handler -->
-- Zero items end a branch. Do not add `alwaysOutputData: true` or empty-check IF gates, unless a digest or alert must still send when upstream is empty. <!-- gotcha:zero-items-end-branch -->
-- When a digest or alert must send on empty input, set `alwaysOutputData: true` on every node that can emit zero items before it; the result is one item with empty json (`{}`), so the formatter must filter out empty-json items before counting rows. <!-- gotcha:always-output-data-empty-json -->
-- Set `executeOnce: true` on a node that receives many items but must run once (summary notification, report, shared-context fetch). Duplicate notifications mean it is missing. <!-- gotcha:execute-once -->
-- Do not use `.first()` or `$input.first()` for per-item data: every item then reuses item 0. Use `$('Node').item.json`. <!-- gotcha:first-is-not-per-item -->
-- Inserting a write/create/send node into A→B replaces what B receives with that node's API response. Branch it in parallel, move it upstream, or make B read `$('Data Node')`. <!-- gotcha:insert-node-replaces-payload -->
-- A polling trigger (Gmail, Outlook) that feeds a create/write action can return the same item again. Mark each item handled, or record handled ids in a Data Table and skip ids already seen. <!-- gotcha:polling-dedupe -->
-- A period summary ("weekly digest") must read that period's rows back from where the workflow stores them, and its cadence comes from the schedule, never from `$now.weekday == N`. <!-- gotcha:digest-reads-stored-rows -->
-- When Code nodes compare free-text human values ("≈ $12,500", "1.5k", "ASAP"), normalize first and give every classifier a fallback bucket. <!-- gotcha:normalize-free-text -->
-- SDK node mock `output` items are raw `$json` objects: write `[{ total: 42 }]`, never `[{ json: { total: 42 } }]`. <!-- gotcha:mock-output-raw-json -->
-- Mock `output` must include every field later read by `$json` expressions, including optional trigger fields used in filters (Slack `subtype`, `bot_id`). <!-- gotcha:mock-output-all-fields -->
-- When a real response is a list (HTTP list endpoints, search results, a top-level array), declare at least two mock items so single-item assumptions fail in verification. <!-- gotcha:mock-output-cardinality -->
-- Webhook mocks for third-party platforms use that platform's documented envelope. AI/voice tool-call webhooks nest arguments in `body.message.toolCalls[0].function.arguments`. <!-- gotcha:webhook-envelope-shape -->
-- OpenAI node output: v2+ text is `$json.output[0].content[0].text`, v1 is `$json.message.content`, and `json_schema` output is already parsed. Read `knowledge-base/reference/open-ai-output-shape.md` before mapping it. <!-- gotcha:openai-output-shape -->
-- Anthropic node `$json.content` is an array of blocks: read `$json.content[0].text`. See `knowledge-base/reference/anthropic-output-shape.md`. <!-- gotcha:anthropic-output-shape -->
-- Python Code nodes (`language: 'pythonNative'`) define only `_items`, `_item` and `print()`, and allow no imports by default unless the system prompt says otherwise. <!-- gotcha:python-native-runner -->
-- Use `placeholder('hint')` directly as the parameter value. Do not wrap it in `expr()`, objects or arrays. <!-- gotcha:placeholder-not-wrapped -->
-- Resource-locator fields use `{ __rl: true, mode, value }`. Use `name` mode with a name the user gave, `list` mode with an empty value and a `cachedResultName` hint only when nothing is known, and never a raw `placeholder()`. <!-- gotcha:resource-locator-shape -->
-- Keep concrete values the user gave (URL, channel, table, folder). Placeholder only the unknown part. <!-- gotcha:keep-user-values -->
-- When editing a saved workflow, keep every `config.id` exactly as `get_workflow_as_code` wrote it, omit `id` on new nodes, and never add `position`. <!-- gotcha:keep-node-ids-and-layout -->
-- Give every Webhook and Form Trigger an explicit, readable `path` specific to this workflow (`acme-contact-form`): paths are shared across the instance. <!-- gotcha:unique-webhook-path -->
-- Inbound trigger nodes (Webhook, Form, Chat, MCP Trigger) keep authentication `none` unless the user asks to authenticate inbound traffic. <!-- gotcha:inbound-auth-none -->
-- Set an explicit snake_case `config.name` on every `tool(...)` node (`get_email`), without a service prefix (`gmail_get_email` is wrong). <!-- gotcha:tool-names -->
-- Data Table column names are normalized to snake_case (`dayName` → `day_name`). Call `get_data_table_schema` before using a table in code. <!-- gotcha:data-table-snake-case -->
-- Never query a Data Table unfiltered: rows can hold very large values. <!-- gotcha:data-table-no-unfiltered -->
-- When `workflow_builder_build_workflow` returns `resolvedCredentialsByNode`, those credentials (including Gateway credits) are connected: do not route them to setup. <!-- gotcha:resolved-credentials-are-connected -->
-- Never write raw credential objects (`{ id, name }`) in SDK code; replace them with `newCredential()` when editing. <!-- gotcha:no-raw-credential-objects -->
-- When the user did not name a service for a capability (web search, scraping), discover coverage with `search_nodes(gatewayCreditsOnly=true)` and use a Gateway credits–covered node instead of asking. <!-- gotcha:gateway-covered-before-asking -->
-- Never re-ask an answered, deferred or skipped question. A skip grants no permission to change authentication, delete nodes or expand scope. <!-- gotcha:no-re-ask -->
-- When the user reports a node erroring, inspect it first via `debugging-executions` before editing anything. <!-- gotcha:debug-before-repair -->
-- Never dismiss a live execution error as a harness or stale-state artifact without re-running. <!-- gotcha:no-dismissing-live-errors -->
-- If part of the request is infeasible, never quietly substitute a stand-in: name the gap in the completion summary. <!-- gotcha:capability-honesty -->
-- When a required resource has no options, use `placeholder('Select <resource>')`, or create it only when the user asked and the node has a create operation. <!-- gotcha:missing-resource -->
-- When the new workflow's folder is clear, pass `folderPath` to the build. When editing, read sibling workflows with `list_workflows(folderPath)` and match their style. <!-- gotcha:folder-placement -->
-- Early setup calls are tool calls, not visible text: they do not break the rule to keep visible text for the final step. <!-- gotcha:early-setup-not-visible -->
-- Do not publish the main workflow automatically. Publishing is the user's decision. <!-- gotcha:no-auto-publish -->
-
 ## Completion
 
 For a successful build, finish with one concise sentence naming the workflow and

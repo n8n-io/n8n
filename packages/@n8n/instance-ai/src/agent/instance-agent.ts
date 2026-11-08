@@ -15,6 +15,9 @@ import {
 } from './mcp-tool-name-validation';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
+import { createGotchaNotesProvider } from '../skills/gotcha-notes';
+import { WORKFLOW_BUILDER_GOTCHAS } from '../skills/gotchas/workflow-builder.gotchas';
+import { parseAblatedGotchas } from '../skills/skill-gotchas';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
@@ -282,6 +285,19 @@ export async function createInstanceAgent(
 	}
 	if (orchestrationContext?.workspace) agent.workspace(orchestrationContext.workspace);
 	if (skills) agent.skills(skills);
+	if (skills) {
+		const threshold = Number(process.env.N8N_INSTANCE_AI_GOTCHA_THRESHOLD);
+		agent.contextNotes(
+			createGotchaNotesProvider({
+				sets: [WORKFLOW_BUILDER_GOTCHAS],
+				embeddingModel: options.gotchaRetrieval?.embeddingModel,
+				onRetrieval: options.gotchaRetrieval?.onRetrieval,
+				// Eval-only overrides: tune the threshold and ablate gotchas without a code change.
+				threshold: Number.isFinite(threshold) && threshold > 0 ? threshold : undefined,
+				ablated: parseAblatedGotchas(process.env.N8N_INSTANCE_AI_SKILL_ABLATE),
+			}),
+		);
+	}
 
 	if (options.memory) {
 		const mem = new Memory().storage(options.memory);

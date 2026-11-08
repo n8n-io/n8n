@@ -185,7 +185,11 @@ describe('AssistantAgentFactory — model transport', () => {
 			subscribeToAgentErrors: vi.fn(),
 			instanceAiConfig: { thinkingEnabled: true, modelRequestLabels },
 			_mcpClientManager: {},
-			modelService: { getLabeledModelFetch: vi.fn() },
+			logger: { warn: vi.fn(), debug: vi.fn() },
+			modelService: {
+				getLabeledModelFetch: vi.fn(),
+				resolveEmbeddingModel: vi.fn(async () => undefined),
+			},
 		}) as unknown as AssistantAgentFactory;
 
 		await factory.createAgent(
@@ -216,7 +220,11 @@ describe('AssistantAgentFactory — model transport', () => {
 			subscribeToAgentErrors: vi.fn(),
 			instanceAiConfig: { thinkingEnabled: true, modelRequestLabels: true },
 			_mcpClientManager: {},
-			modelService: { getLabeledModelFetch: vi.fn(() => modelFetch) },
+			logger: { warn: vi.fn(), debug: vi.fn() },
+			modelService: {
+				getLabeledModelFetch: vi.fn(() => modelFetch),
+				resolveEmbeddingModel: vi.fn(async () => undefined),
+			},
 		}) as unknown as AssistantAgentFactory;
 
 		await factory.createAgent(

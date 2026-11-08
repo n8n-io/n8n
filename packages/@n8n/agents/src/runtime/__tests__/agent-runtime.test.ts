@@ -2359,6 +2359,68 @@ describe('AgentRuntime — volatile instruction provider', () => {
 	});
 });
 
+describe('AgentRuntime — context note providers', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	function sentText(callIndex: number): string {
+		return JSON.stringify(generateText.mock.calls[callIndex]?.[0].messages);
+	}
+
+	it('appends new notes before each model call and sends each note once', async () => {
+		generateText
+			.mockResolvedValueOnce({
+				...makeGenerateWithToolCall('tc-note', 'openai.web_search', { query: 'n8n' }),
+				toolCalls: [
+					{
+						toolCallId: 'tc-note',
+						toolName: 'openai.web_search',
+						input: { query: 'n8n' },
+						providerExecuted: true,
+					},
+				],
+			})
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+		const provider = vi.fn().mockResolvedValue([{ id: 'one', content: '- Note one.' }]);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Base instructions.',
+			contextNoteProviders: [provider],
+		});
+
+		const result = await runtime.generate('search');
+
+		expect(provider).toHaveBeenCalledTimes(2);
+		expect(provider.mock.calls[0][0].sentNoteIds).toEqual(new Set());
+		expect(provider.mock.calls[1][0].sentNoteIds).toEqual(new Set(['one']));
+		expect(sentText(0)).toContain('<system-reminder>');
+		expect(sentText(0)).toContain('- Note one.');
+		expect(sentText(1).split('- Note one.')).toHaveLength(2);
+		expect(JSON.stringify(result.getState())).toContain('n8n:runtime-context-note');
+	});
+
+	it('continues the model call when a provider fails', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Base instructions.',
+			contextNoteProviders: [
+				vi.fn().mockRejectedValue(new Error('embedder down')),
+				vi.fn().mockResolvedValue([{ id: 'two', content: '- Note two.' }]),
+			],
+		});
+
+		await expect(runtime.generate('hello')).resolves.toEqual(
+			expect.objectContaining({ finishReason: 'stop' }),
+		);
+		expect(sentText(0)).toContain('- Note two.');
+	});
+});
+
 // ---------------------------------------------------------------------------
 // reasoning-only turn
 // ---------------------------------------------------------------------------

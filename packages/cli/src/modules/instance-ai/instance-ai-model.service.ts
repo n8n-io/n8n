@@ -1,3 +1,4 @@
+import { createEmbeddingModel, DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL } from '@n8n/agents';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	UNLIMITED_CREDITS,
@@ -13,6 +14,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isEndpointModelConfig, type ModelConfig } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import type { EmbeddingModel } from 'ai';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION } from '@/constants';
@@ -221,6 +223,56 @@ export class InstanceAiModelService {
 			// The pre-built client ignores the agent's `modelFetch`, so it gets the labeled transport here.
 			fetch: proxyContext ? this.getLabeledModelFetch(proxyContext) : this.getModelFetch(),
 		})(modelNameOverride ? modelNameForProvider(modelNameOverride, provider) : modelName);
+	}
+
+	/**
+	 * Embedding model for retrieval of skill gotchas. It uses the same model as
+	 * episodic memory. Resolution order is the same as for the agent model: the
+	 * AI service proxy, then an OpenAI main-model credential, then `OPENAI_API_KEY`.
+	 * Returns `undefined` when no source is available.
+	 */
+	async resolveEmbeddingModel(user: User): Promise<EmbeddingModel | undefined> {
+		try {
+			if (this.aiService.isProxyEnabled()) {
+				const client = await this.aiService.getClient();
+				const baseURL = client.getApiProxyBaseUrl().replace(/\/$/, '') + '/openai/';
+				const tokenManager = new ProxyTokenManager(
+					async () =>
+						await client.getInstanceAiApiProxyToken({ id: user.id }, { userMessageId: nanoid() }),
+				);
+				const proxyFetch = createAiProxyFetch(this.outboundHttp);
+				return createEmbeddingModel(DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, {
+					baseURL,
+					apiKey: 'proxy-managed',
+					fetch: async (input, init) => {
+						const headers = new Headers(init?.headers);
+						for (const [key, value] of Object.entries({
+							...(await tokenManager.getAuthHeaders()),
+							...buildProxyHeaders({ feature: 'instance-ai', n8nVersion: N8N_VERSION }),
+						})) {
+							headers.set(key, value);
+						}
+						return await proxyFetch(input, { ...init, headers });
+					},
+				});
+			}
+
+			const config = await this.settingsService.resolveModelConfig(user);
+			const endpoint = isEndpointModelConfig(config) ? config : undefined;
+			const usesOpenAi = endpoint && splitModelId(endpoint.id).provider === 'openai';
+			const apiKey = usesOpenAi ? endpoint.apiKey : process.env.OPENAI_API_KEY;
+			if (!apiKey) return undefined;
+			return createEmbeddingModel(DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, {
+				apiKey,
+				baseURL: (usesOpenAi && endpoint.url) || undefined,
+				fetch: this.getModelFetch(),
+			});
+		} catch (error) {
+			this.logger.warn('Failed to resolve the Instance AI embedding model', {
+				error: getErrorMessage(error),
+			});
+			return undefined;
+		}
 	}
 
 	/** Get current Instance AI credit usage from the AI service proxy. */

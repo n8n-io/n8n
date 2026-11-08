@@ -10,6 +10,7 @@ import type { ModelCost } from '../../sdk/catalog';
 import type { RuntimeSkillSource } from '../../skills/types';
 import type { WorkspaceFilesystem } from '../../workspace';
 import type {
+	AgentMessage,
 	BuiltFileStore,
 	BuiltMemory,
 	BuiltProviderTool,
@@ -35,6 +36,31 @@ import type {
 export interface VolatileInstructionsContext {
 	persistence?: AgentPersistenceOptions;
 }
+
+/** A piece of guidance that a context note provider wants the model to see now. */
+export interface ContextNote {
+	/** Stable id. The runtime sends a note with the same id only once per conversation. */
+	id: string;
+	content: string;
+}
+
+export interface ContextNoteRequest {
+	/** Messages the model sees, oldest first, before this model call. */
+	messages: AgentMessage[];
+	/** Skills that are active for this run. */
+	activeSkillIds: readonly string[];
+	/** Ids of the notes that the conversation already contains. */
+	sentNoteIds: ReadonlySet<string>;
+	persistence?: AgentPersistenceOptions;
+	abortSignal?: AbortSignal;
+}
+
+/**
+ * Supplies notes before each model call. The runtime saves the notes in the
+ * conversation as a `<system-reminder>`, after the earlier messages, so the
+ * prompt cache stays valid. A provider failure skips its notes for that call.
+ */
+export type ContextNoteProvider = (request: ContextNoteRequest) => Promise<ContextNote[]>;
 
 export type VolatileInstructionsProvider = (
 	context: VolatileInstructionsContext,
@@ -114,4 +140,6 @@ export interface AgentRuntimeConfig {
 	mcpConnectionFailures?: McpConnectionFailedEvent[];
 	/** The runtime loads these host instructions before each model call but does not save them. */
 	volatileInstructionsProvider?: VolatileInstructionsProvider;
+	/** The runtime asks these providers for notes before each model call. */
+	contextNoteProviders?: ContextNoteProvider[];
 }

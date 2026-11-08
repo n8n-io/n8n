@@ -3,7 +3,6 @@ import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
 import { resolve } from 'node:path';
 
-import { applySkillGotchas, parseAblatedGotchas } from './skill-gotchas';
 import { composeSkillVariants } from './skill-variants';
 import { PROMPT_FRAGMENT_SKILLS, type PromptProfile } from '../prompts/prompt-profiles';
 
@@ -17,15 +16,11 @@ const SKILL_PLACEHOLDER_TEXT: Record<string, string> = {
 	TOP_LEVEL_ITEM_CEILING_PLACEHOLDER: String(TOP_LEVEL_ITEM_CEILING),
 };
 
-// Eval-only: removes the named gotcha lines so a run shows whether each one still matters.
-const ABLATED_GOTCHAS = parseAblatedGotchas(process.env.N8N_INSTANCE_AI_SKILL_ABLATE);
-
 function substituteSkillPlaceholders(instructions: string): string {
-	const substituted = Object.entries(SKILL_PLACEHOLDER_TEXT).reduce(
+	return Object.entries(SKILL_PLACEHOLDER_TEXT).reduce(
 		(content, [placeholder, text]) => content.replaceAll(`{{${placeholder}}}`, text),
 		instructions,
 	);
-	return applySkillGotchas(substituted, ABLATED_GOTCHAS);
 }
 
 /** Bundled Assistant skills, including the fragments that prompt profiles append. */

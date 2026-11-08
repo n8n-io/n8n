@@ -270,6 +270,13 @@ export interface CustomAgentMessages {
 			change?: 'updated' | 'restored' | 'unavailable';
 		};
 	};
+	runtimeContextNote: {
+		type: 'n8n:runtime-context-note';
+		/** Stable note ids, so a conversation receives each note only once. */
+		noteIds: string[];
+		/** The note text the model sees, without the reminder wrapper. */
+		content: string;
+	};
 	// Apps can add message types through declaration merging.
 }
 
