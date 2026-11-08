@@ -455,169 +455,22 @@ describe('ToolWorkflowV1', () => {
 			expect(ctx.logAiEvent).not.toHaveBeenCalled();
 		});
 
-		const city = { type: 'string' };
-		const units = { type: 'string' };
-		const closedQuery = { city: 'Berlin' };
-		const unitsQuery = { city: 'Berlin', units: 'metric' };
-		const openQuery = {
-			sessionId: 'session_1',
-			chatInput: 'hi',
-			city: 'Berlin',
-			units: 'metric',
-			turn: 2,
-		};
-
 		it.each([
-			['additionalProperties unset', { properties: { city } }, closedQuery],
+			['an object schema', citySchema, { city: 'Berlin' }],
 			[
-				'additionalProperties false',
-				{ properties: { city }, additionalProperties: false },
-				closedQuery,
-			],
-			[
-				'additionalProperties false and allOf',
-				{
-					properties: { city },
-					additionalProperties: false,
-					allOf: [{ properties: { city: { minLength: 1 } } }],
-				},
-				closedQuery,
-			],
-			[
-				'additionalProperties false and a root default',
-				{ properties: { city }, additionalProperties: false, default: { city: 'Paris' } },
-				closedQuery,
-			],
-			[
-				'additionalProperties true',
-				{ properties: { city }, additionalProperties: true },
-				openQuery,
-			],
-			['no properties', {}, openQuery],
-			['additionalProperties {}', { properties: { city }, additionalProperties: {} }, openQuery],
-			[
-				'additionalProperties with only a description',
-				{ properties: { city }, additionalProperties: { description: 'any value' } },
-				openQuery,
-			],
-			[
-				'an open anyOf branch',
-				{ properties: { city }, anyOf: [{ additionalProperties: true }] },
-				openQuery,
-			],
-			[
-				'properties declared only in anyOf branches',
-				{ anyOf: [{ properties: { city } }, { properties: { zip: { type: 'string' } } }] },
-				closedQuery,
-			],
-			[
-				'an object allOf member with only required',
-				{ properties: { city }, allOf: [{ type: 'object', required: ['city'] }] },
-				closedQuery,
-			],
-			[
-				'a strict schema behind a definitions $ref',
-				{
-					$ref: '#/definitions/query',
-					definitions: { query: { properties: { city }, additionalProperties: false } },
-				},
-				closedQuery,
-			],
-			[
-				'a strict schema behind a $defs $ref',
-				{
-					allOf: [{ $ref: '#/$defs/query' }],
-					$defs: { query: { properties: { city }, additionalProperties: false } },
-				},
-				closedQuery,
-			],
-			[
-				'patternProperties',
-				{ properties: { city }, patternProperties: { '^u': { type: 'string' } } },
-				closedQuery,
-			],
-			[
-				'only patternProperties',
-				{ patternProperties: { '^t': { type: 'number' }, '^[^t]': { type: 'string' } } },
-				openQuery,
-			],
-			[
-				'typed additionalProperties',
-				{ properties: { city }, additionalProperties: { type: 'string' } },
-				closedQuery,
-			],
-			[
-				'only typed additionalProperties',
-				{ additionalProperties: { type: ['string', 'number'] } },
-				openQuery,
-			],
-			['only additionalProperties false', { additionalProperties: false }, {}],
-			[
-				'additionalProperties not',
-				{ properties: { city }, additionalProperties: { not: {} } },
-				closedQuery,
-			],
-			[
-				'additionalProperties true and a strict allOf member',
-				{
-					properties: { city },
-					additionalProperties: true,
-					allOf: [{ properties: { city }, additionalProperties: false }],
-				},
-				closedQuery,
-			],
-			[
-				'no root properties and a strict allOf member',
-				{ allOf: [{ properties: { city, units }, additionalProperties: false }] },
-				unitsQuery,
-			],
-			[
-				'a strict anyOf branch',
-				{
-					properties: { city },
-					anyOf: [
-						{ properties: { city }, additionalProperties: false },
-						{ properties: { city }, additionalProperties: { type: 'number' } },
-					],
-				},
-				closedQuery,
-			],
-			[
-				'an allOf member key',
-				{ properties: { city }, allOf: [{ properties: { units } }] },
-				unitsQuery,
-			],
-			[
-				'an anyOf member key',
-				{ properties: { city }, anyOf: [{ properties: { units } }] },
-				unitsQuery,
-			],
-			[
-				'a oneOf member key',
-				{ properties: { city }, oneOf: [{ properties: { units } }] },
-				unitsQuery,
-			],
-			[
-				'a nested allOf member key',
-				{ properties: { city }, allOf: [{ allOf: [{ properties: { units } }] }] },
-				unitsQuery,
+				'an open schema',
+				JSON.stringify({ type: 'object' }),
+				{ sessionId: 'session_1', chatInput: 'hi', city: 'Berlin' },
 			],
 		])(
-			'should pass the engine item to the sub-workflow by the input schema with %s',
+			'should pass the engine item without toolCallId to the sub-workflow with %s',
 			async (_, schema, query) => {
 				const ctx = createExecuteContext([
 					{
-						json: {
-							sessionId: 'session_1',
-							chatInput: 'hi',
-							city: 'Berlin',
-							units: 'metric',
-							turn: 2,
-							toolCallId: 'call_1',
-						},
+						json: { sessionId: 'session_1', chatInput: 'hi', city: 'Berlin', toolCallId: 'call_1' },
 					},
 				]);
-				useInputSchema(ctx, () => JSON.stringify({ type: 'object', ...schema }));
+				useInputSchema(ctx, () => schema);
 				ctx.executeWorkflow.mockResolvedValueOnce({
 					data: [[{ json: { forecast: 'sunny' } }]],
 					executionId: 'sub-1',
@@ -635,38 +488,6 @@ describe('ToolWorkflowV1', () => {
 				expect(result).toEqual([[{ json: { forecast: 'sunny' }, pairedItem: { item: 0 } }]]);
 			},
 		);
-
-		it('should not read a declared key that contains a dot as a path', async () => {
-			const ctx = createExecuteContext([
-				{
-					json: {
-						user: { id: '7', email: 'ada@example.com' },
-						toolCallId: 'call_1',
-					},
-				},
-			]);
-			useInputSchema(ctx, () =>
-				JSON.stringify({
-					type: 'object',
-					properties: { 'user.id': { type: 'string' } },
-					additionalProperties: false,
-				}),
-			);
-			ctx.executeWorkflow.mockResolvedValueOnce({
-				data: [[{ json: { name: 'Ada' } }]],
-				executionId: 'sub-1',
-			});
-
-			await node.execute.call(ctx);
-
-			expect(manual.execute).toHaveBeenCalledWith(
-				{ json: { query: {} } },
-				0,
-				expect.anything(),
-				expect.anything(),
-				expect.anything(),
-			);
-		});
 
 		it('should return the waiting placeholder when the sub-workflow is waiting', async () => {
 			const ctx = createExecuteContext([{ json: { input: 'hello' } }]);
