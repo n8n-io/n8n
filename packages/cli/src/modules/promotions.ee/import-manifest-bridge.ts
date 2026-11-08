@@ -6,7 +6,13 @@ import { N8N_VERSION } from '@/constants';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
-import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
+import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
+import type {
+	PackageRequirementConsumer,
+	PackageRequirements,
+} from '@/modules/n8n-packages/spec/requirements.schema';
+
+import { remapPath, type ContainerMove } from './branch-placement';
 
 /**
  * TEMPORARY bridge: import still inventories a directory package from
@@ -66,7 +72,7 @@ function dropSelectedRequirementUsers(
 	return { ...leftover, ...(requirements ? { requirements } : { requirements: undefined }) };
 }
 
-function dropSelectedUsers<T extends { usedByWorkflows: string[] }>(
+function dropSelectedUsers<T extends { usedBy: PackageRequirementConsumer[] }>(
 	rows: T[] | undefined,
 	selectedWorkflowIds: Set<string>,
 ): T[] | undefined {
@@ -74,9 +80,11 @@ function dropSelectedUsers<T extends { usedByWorkflows: string[] }>(
 	const kept = rows
 		.map((row) => ({
 			...row,
-			usedByWorkflows: row.usedByWorkflows.filter((id) => !selectedWorkflowIds.has(id)),
+			usedBy: row.usedBy.filter(
+				({ kind, id }) => kind === 'workflow' && !selectedWorkflowIds.has(id),
+			),
 		}))
-		.filter((row) => row.usedByWorkflows.length > 0);
+		.filter((row) => row.usedBy.length > 0);
 	return kept.length > 0 ? kept : undefined;
 }
 
@@ -85,24 +93,32 @@ export async function writeImportManifest(options: {
 	staging: PackageManifest;
 	sourceId: string;
 	selectedWorkflowIds?: readonly string[];
+	/** Container renames already applied to the export, so leftover targets resolve. */
+	containerMoves?: readonly ContainerMove[];
 }): Promise<void> {
-	const { exportFolder, staging, sourceId, selectedWorkflowIds = [] } = options;
+	const {
+		exportFolder,
+		staging,
+		sourceId,
+		selectedWorkflowIds = [],
+		containerMoves = [],
+	} = options;
 	const selected = [...selectedWorkflowIds, ...(staging.workflows ?? []).map((entry) => entry.id)];
 	const leftover = dropSelectedRequirementUsers(await readLeftoverManifest(exportFolder), selected);
 	const collections = await walkSnapshotCollections(exportFolder);
 	const remainingWorkflowIds = new Set((collections.workflows ?? []).map((entry) => entry.id));
 	const selectedSet = new Set(selected);
-	const variables = await collectVariables(exportFolder, leftover, staging);
+	const variables = await collectVariables(exportFolder, leftover, staging, containerMoves);
 
-	const manifest = packageManifestSchema.parse({
+	const written = {
 		packageFormatVersion: '1',
-		exportedAt: new Date().toISOString(),
 		sourceN8nVersion: N8N_VERSION,
 		sourceId,
 		...collections,
 		...(variables.length > 0 ? { variables } : {}),
 		...requirementsBlock(leftover, staging, remainingWorkflowIds, selectedSet),
-	});
+	} satisfies PackageManifest;
+	const manifest = packageManifestSchema.parse(written);
 
 	await fs.writeFile(path.join(exportFolder, MANIFEST_FILE), JSON.stringify(manifest, null, '\t'));
 }
@@ -110,7 +126,7 @@ export async function writeImportManifest(options: {
 async function walkSnapshotCollections(
 	exportFolder: string,
 ): Promise<Pick<PackageManifest, SnapshotKind>> {
-	const state: Record<SnapshotKind, ManifestEntry[]> = {
+	const state: { [K in SnapshotKind]: NonNullable<PackageManifest[K]> } = {
 		projects: [],
 		folders: [],
 		workflows: [],
@@ -133,7 +149,14 @@ async function walkSnapshotCollections(
 			const relativeFile = path.relative(exportFolder, fullPath).split(path.sep).join('/');
 			const target = path.posix.dirname(relativeFile);
 			const item = await readIdNameFile(fullPath, target);
-			if (item) state[kind].push(item);
+			if (!item) continue;
+			const { entry: listed, isArchived } = item;
+			// Only a workflow entry carries the flag; the other kinds list id, name and target.
+			if (kind === 'workflows') {
+				state.workflows.push({ ...listed, isArchived });
+				continue;
+			}
+			state[kind].push(listed);
 		}
 	};
 
@@ -148,7 +171,10 @@ async function walkSnapshotCollections(
 	};
 }
 
-async function readIdNameFile(file: string, target: string): Promise<ManifestEntry | undefined> {
+async function readIdNameFile(
+	file: string,
+	target: string,
+): Promise<{ entry: ManifestEntry; isArchived: boolean } | undefined> {
 	let parsed: unknown;
 	try {
 		parsed = jsonParse(await fs.readFile(file, 'utf-8'));
@@ -163,17 +189,19 @@ async function readIdNameFile(file: string, target: string): Promise<ManifestEnt
 	) {
 		return undefined;
 	}
-	return { id: (parsed as { id: string }).id, name: (parsed as { name: string }).name, target };
+	const { id, name, isArchived } = parsed as { id: string; name: string; isArchived?: unknown };
+	return { entry: { id, name, target }, isArchived: isArchived === true };
 }
 
 async function collectVariables(
 	exportFolder: string,
 	leftover: PackageManifest | undefined,
 	staging: PackageManifest,
+	containerMoves: readonly ContainerMove[],
 ): Promise<ManifestEntry[]> {
 	const byId = new Map<string, ManifestEntry>();
 	for (const entry of leftover?.variables ?? []) {
-		byId.set(entry.id, entry);
+		byId.set(entry.id, { ...entry, target: remapPath(entry.target, containerMoves) });
 	}
 	for (const entry of staging.variables ?? []) {
 		byId.set(entry.id, entry);
@@ -266,7 +294,7 @@ function requirementsBlock(
 	return requirements ? { requirements } : {};
 }
 
-function mergeRequirementRows<T extends { usedByWorkflows: string[] }>(
+function mergeRequirementRows<T extends { usedBy: PackageRequirementConsumer[] }>(
 	leftover: T[] | undefined,
 	staging: T[] | undefined,
 	remainingWorkflowIds: Set<string>,
@@ -275,31 +303,38 @@ function mergeRequirementRows<T extends { usedByWorkflows: string[] }>(
 ): T[] | undefined {
 	const byKey = new Map<string, T>();
 	for (const row of leftover ?? []) {
-		const usedByWorkflows = remainingUsers(
-			row.usedByWorkflows.filter((id) => !selectedWorkflowIds.has(id)),
+		const usedBy = remainingUsers(
+			row.usedBy.filter(({ kind, id }) => kind === 'workflow' && !selectedWorkflowIds.has(id)),
 			remainingWorkflowIds,
 		);
-		if (usedByWorkflows.length === 0) continue;
-		byKey.set(keyOf(row), { ...row, usedByWorkflows });
+		if (usedBy.length === 0) continue;
+		byKey.set(keyOf(row), { ...row, usedBy });
 	}
 	for (const row of staging ?? []) {
 		const key = keyOf(row);
-		const usedByWorkflows = remainingUsers(
-			[...(byKey.get(key)?.usedByWorkflows ?? []), ...row.usedByWorkflows],
+		const usedBy = remainingUsers(
+			[...(byKey.get(key)?.usedBy ?? []), ...row.usedBy],
 			remainingWorkflowIds,
 		);
-		if (usedByWorkflows.length === 0) {
+		if (usedBy.length === 0) {
 			byKey.delete(key);
 			continue;
 		}
-		byKey.set(key, { ...row, usedByWorkflows });
+		byKey.set(key, { ...row, usedBy });
 	}
 	const rows = [...byKey.values()];
 	return rows.length > 0 ? rows : undefined;
 }
 
-function remainingUsers(ids: string[], remainingWorkflowIds: Set<string>): string[] {
-	return [...new Set(ids.filter((id) => remainingWorkflowIds.has(id)))].sort();
+function remainingUsers(
+	usedBy: PackageRequirementConsumer[],
+	remainingWorkflowIds: Set<string>,
+): PackageRequirementConsumer[] {
+	return [
+		...new Set(getWorkflowConsumerIds({ usedBy }).filter((id) => remainingWorkflowIds.has(id))),
+	]
+		.sort()
+		.map((id) => ({ kind: 'workflow', id }));
 }
 
 function compactRequirements(input: {

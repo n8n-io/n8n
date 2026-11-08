@@ -261,29 +261,13 @@ describe('useAgentToolCatalog', () => {
 			.fn()
 			.mockResolvedValue([compatible, archived, formBody, waitBody, noTrigger, manualOnly]);
 
-		const { availableWorkflows, incompatibleWorkflows, loadWorkflows } = useAgentToolCatalog();
+		const { availableWorkflows, loadWorkflows } = useAgentToolCatalog();
 		await loadWorkflows('p-1');
 
 		// Compatible workflows surface as selectable; archived ones are excluded
 		// entirely. A wait-bearing workflow is now among the selectable ones.
+		// Incompatible workflows (form body, no trigger, manual-only) are absent.
 		expect(availableWorkflows.value.map((wf) => wf.id)).toEqual(['ok', 'wait']);
-
-		// Incompatible workflows surface with their reason, greyed out at the
-		// bottom of the picker. Archived ones are not surfaced as incompatible.
-		expect(incompatibleWorkflows.value).toEqual([
-			{
-				workflow: expect.objectContaining({ id: 'form' }),
-				reason: { reason: 'incompatible_nodes', nodeTypes: ['n8n-nodes-base.form'] },
-			},
-			{
-				workflow: expect.objectContaining({ id: 'no-trigger' }),
-				reason: { reason: 'no_supported_trigger' },
-			},
-			{
-				workflow: expect.objectContaining({ id: 'manual' }),
-				reason: { reason: 'no_supported_trigger' },
-			},
-		]);
 	});
 });
 

@@ -6,7 +6,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
 
 import CanvasNodeGroupTitleBar from './CanvasNodeGroupTitleBar.vue';
-import type { CanvasGroupNodeData } from '../../../canvas.types';
+import {
+	CANVAS_NODE_GROUP_INPUT_HANDLE,
+	CANVAS_NODE_GROUP_OUTPUT_HANDLE,
+	type CanvasGroupNodeData,
+} from '../../../canvas.types';
 import {
 	NodeGroupDescriptionVisibilityKey,
 	useCanvasNodeGroupDescriptionVisibility,
@@ -24,11 +28,20 @@ const viewportRef = { value: { x: 0, y: 0, zoom: 1 } };
 vi.mock('@vue-flow/core', () => ({
 	Handle: {
 		name: 'Handle',
-		props: ['id', 'type', 'position', 'isConnectable'],
+		props: ['id', 'type', 'position', 'connectable', 'connectableStart', 'connectableEnd'],
 		render() {
+			const handle = this as unknown as {
+				id: string;
+				connectable: boolean;
+				connectableStart: boolean;
+				connectableEnd: boolean;
+			};
 			return h('div', {
 				class: 'vue-flow__handle',
-				'data-handle-id': (this as unknown as { id: string }).id,
+				'data-handle-id': handle.id,
+				'data-connectable': String(handle.connectable),
+				'data-connectable-start': String(handle.connectableStart),
+				'data-connectable-end': String(handle.connectableEnd),
 			});
 		},
 	},
@@ -50,7 +63,6 @@ const { isNodeContextEnabled } = vi.hoisted(() => {
 vi.mock('@/features/ai/instanceAi/composables/useIsNodeContextEnabled', () => ({
 	useIsNodeContextEnabled: () => isNodeContextEnabled,
 }));
-
 const baseGroup: IWorkflowGroup = {
 	id: 'g1',
 	nodeIds: ['a', 'b'],
@@ -144,6 +156,48 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render();
 			await fireEvent.click(wrapper.getByTestId('canvas-node-group-toggle'));
 			expect(wrapper.emitted().toggle).toEqual([['g1']]);
+		});
+	});
+
+	describe('empty-group connection handles', () => {
+		it('enables both directions on title-bar handles only for a collapsed empty group', () => {
+			const wrapper = render({
+				data: makeData({
+					isCollapsed: true,
+					isEmptyGroup: true,
+					group: { ...baseGroup, nodeIds: ['anchor'] },
+				}),
+			});
+
+			expect(wrapper.container.querySelectorAll('[data-connectable="true"]')).toHaveLength(2);
+			expect(
+				wrapper.container
+					.querySelector(`[data-handle-id="${CANVAS_NODE_GROUP_INPUT_HANDLE}"]`)
+					?.getAttribute('data-connectable-start'),
+			).toBe('true');
+			expect(
+				wrapper.container
+					.querySelector(`[data-handle-id="${CANVAS_NODE_GROUP_INPUT_HANDLE}"]`)
+					?.getAttribute('data-connectable-end'),
+			).toBe('true');
+			expect(
+				wrapper.container
+					.querySelector(`[data-handle-id="${CANVAS_NODE_GROUP_OUTPUT_HANDLE}"]`)
+					?.getAttribute('data-connectable-start'),
+			).toBe('true');
+			expect(
+				wrapper.container
+					.querySelector(`[data-handle-id="${CANVAS_NODE_GROUP_OUTPUT_HANDLE}"]`)
+					?.getAttribute('data-connectable-end'),
+			).toBe('true');
+		});
+
+		it('does not enable handles for expanded or non-empty groups', () => {
+			const expanded = render({ data: makeData({ isCollapsed: false, isEmptyGroup: true }) });
+			const nonEmpty = render({ data: makeData({ isCollapsed: true, isEmptyGroup: false }) });
+
+			expect(expanded.container.querySelectorAll('[data-connectable="true"]')).toHaveLength(0);
+			expect(nonEmpty.container.querySelectorAll('[data-connectable="true"]')).toHaveLength(0);
 		});
 	});
 
@@ -339,6 +393,45 @@ describe('CanvasNodeGroupTitleBar', () => {
 		it('shows the info icon when collapsed', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: true }) });
 			expect(wrapper.queryByTestId('canvas-node-group-info')).toBeTruthy();
+		});
+
+		it('shows the description affordance and panel for a collapsed empty group', async () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroups: () => [
+					{
+						id: 'g1',
+						name: 'My group',
+						nodeIds: ['anchor'],
+						description: 'Empty group description',
+					},
+				],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
+			const wrapper = render(
+				{
+					data: makeData({
+						isCollapsed: true,
+						isEmptyGroup: true,
+						group: {
+							...baseGroup,
+							nodeIds: ['anchor'],
+							description: 'Empty group description',
+						},
+					}),
+				},
+				visibility,
+			);
+
+			expect(wrapper.getByTestId('canvas-node-group-info')).toBeVisible();
+
+			visibility.setVisible('g1', true);
+			await waitFor(() => {
+				expect(wrapper.getByTestId('canvas-node-group-description-panel')).toBeVisible();
+			});
+			expect(wrapper.getByTestId('canvas-node-group-description-text')).toHaveTextContent(
+				'Empty group description',
+			);
 		});
 
 		it('hides the info icon and description below the zoom threshold', () => {
@@ -579,6 +672,16 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.emitted().ungroup).toEqual([['g1']]);
 		});
 
+		it('hides ungroup and convert actions for an empty group', () => {
+			const wrapper = render({
+				data: makeData({ isEmptyGroup: true }),
+				canExtract: true,
+			});
+
+			expect(wrapper.queryByTestId('canvas-node-group-ungroup')).toBeNull();
+			expect(wrapper.queryByTestId('canvas-node-group-extract')).toBeNull();
+		});
+
 		// The toolbar offers the same actions whether the group is collapsed or
 		// expanded.
 		it.each([{ isCollapsed: true }, { isCollapsed: false }])(
@@ -680,10 +783,15 @@ describe('CanvasNodeGroupTitleBar', () => {
 	});
 
 	describe('handles', () => {
-		it('renders left and right handles for re-anchored edges', () => {
+		it('renders semantic input and output handles for re-anchored edges', () => {
 			const wrapper = render();
 			const root = wrapper.getByTestId('canvas-node-group');
-			expect(root.querySelectorAll('.vue-flow__handle').length).toBeGreaterThanOrEqual(2);
+			const handles = root.querySelectorAll('.vue-flow__handle');
+
+			expect([...handles].map((handle) => handle.getAttribute('data-handle-id'))).toEqual([
+				CANVAS_NODE_GROUP_INPUT_HANDLE,
+				CANVAS_NODE_GROUP_OUTPUT_HANDLE,
+			]);
 		});
 	});
 

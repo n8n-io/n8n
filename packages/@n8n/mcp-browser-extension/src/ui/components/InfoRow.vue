@@ -37,8 +37,8 @@ defineProps<{
 	width: var(--row-marker-size);
 	height: var(--row-marker-size);
 	border-radius: 50%;
-	background: var(--color--background);
-	color: var(--color--text--shade-1);
+	background: var(--background--subtle);
+	color: var(--text-color);
 }
 
 .info-content {
@@ -50,7 +50,7 @@ defineProps<{
 .info-title {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
-	color: var(--color--text--shade-1);
+	color: var(--text-color);
 }
 
 .info-description {

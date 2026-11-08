@@ -1,57 +1,60 @@
 import type { StepSlots } from '@n8n/engine';
-import type { EngineConfig } from '@n8n/config';
 import type { INode, WebhookResponseMode } from 'n8n-workflow';
-import { UserError, WorkflowOperationError } from 'n8n-workflow';
+import { FORM_NODE_TYPE, WorkflowOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
-import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
-import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
+import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import type { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2Webhooks } from '@/webhooks/engine-v2-webhooks';
 
 const engineV2Webhooks = new EngineV2Webhooks(
 	mock<EngineV2Dispatcher>(),
-	mock<EngineV2PayloadGuard>(),
 	mock<EngineDataPlaneProxyService>(),
-	mock<EngineConfig>(),
 );
 
 describe('EngineV2Webhooks.assertSupported', () => {
-	const assertSupported = (mode: EngineConfig['mode'], responseMode: WebhookResponseMode) => {
+	const assertSupported = (
+		responseMode: WebhookResponseMode,
+		parameters: INode['parameters'] = {},
+	) => {
 		const proxy = mock<EngineDataPlaneProxyService>();
 		proxy.isAvailable.mockReturnValue(true);
-		const webhooks = new EngineV2Webhooks(
-			mock<EngineV2Dispatcher>(),
-			mock<EngineV2PayloadGuard>(),
-			proxy,
-			mock<EngineConfig>({ mode }),
-		);
+		const webhooks = new EngineV2Webhooks(mock<EngineV2Dispatcher>(), proxy);
 
 		webhooks.assertSupported({
 			workflowStartNode: mock<INode>({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
-				parameters: {},
+				parameters,
 			}),
 			responseMode,
 			executionId: undefined,
 		});
 	};
 
-	it.each(['lastNode', 'responseNode'] as const)(
-		'rejects %s responses with a remote data plane',
+	// The engine mode no longer reaches this check, so these modes pass with a
+	// remote data plane and in-process alike.
+	it.each(['onReceived', 'lastNode', 'responseNode', 'streaming'] as const)(
+		'allows %s responses in every engine mode',
 		(responseMode) => {
-			expect(() => assertSupported('remote', responseMode)).toThrow(UserError);
-			expect(() => assertSupported('remote', responseMode)).toThrow('remote data plane');
+			expect(() => assertSupported(responseMode)).not.toThrow();
 		},
 	);
 
-	it('allows onReceived with a remote data plane', () => {
-		expect(() => assertSupported('remote', 'onReceived')).not.toThrow();
+	// The streaming node sends its headers before it outputs the raw body, so a
+	// later refusal could not answer with a 400.
+	it.each([true, '={{ true }}'])('refuses a streaming response with rawBody %s', (rawBody) => {
+		expect(() => assertSupported('streaming', { options: { rawBody } })).toThrow(
+			'Engine v2 cannot stream a response for the "Webhook" trigger with the Raw Body option yet.',
+		);
 	});
 
-	it.each(['lastNode', 'responseNode'] as const)('allows %s in-process', (responseMode) => {
-		expect(() => assertSupported('in-process', responseMode)).not.toThrow();
+	it('allows a streaming response with rawBody turned off', () => {
+		expect(() => assertSupported('streaming', { options: { rawBody: false } })).not.toThrow();
+	});
+
+	it('allows the raw body when the response does not stream', () => {
+		expect(() => assertSupported('lastNode', { options: { rawBody: true } })).not.toThrow();
 	});
 });
 
@@ -93,6 +96,7 @@ describe('EngineV2Webhooks.toRun', () => {
 		const run = await engineV2Webhooks.toRun(
 			{
 				status: 'failed',
+				nodeId: 'broken-node',
 				nodeName: 'Broken node',
 				error: { name: 'Error', message: 'The node failed' },
 			},
@@ -113,5 +117,54 @@ describe('EngineV2Webhooks.toRun', () => {
 		expect(run.data.resultData.lastNodeExecuted).toBeUndefined();
 		expect(run.data.resultData.runData).toEqual({});
 		expect(run.data.resultData.error).toBeUndefined();
+	});
+});
+
+describe('EngineV2Webhooks.assertSupported on a resume', () => {
+	const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+
+	const assertResume = (
+		responseMode: WebhookResponseMode,
+		available = true,
+		type = 'n8n-nodes-base.wait',
+	) => {
+		const proxy = mock<EngineDataPlaneProxyService>();
+		proxy.isAvailable.mockReturnValue(available);
+		new EngineV2Webhooks(mock<EngineV2Dispatcher>(), proxy).assertSupported({
+			workflowStartNode: mock<INode>({ name: 'Wait', type, parameters: {} }),
+			responseMode,
+			executionId: EXECUTION_ID,
+		});
+	};
+
+	it('lets the waiting node answer on receipt', () => {
+		expect(() => assertResume('onReceived')).not.toThrow();
+	});
+
+	it('refuses lastNode, since the data plane answers the end of a run only to its start', () => {
+		expect(() => assertResume('lastNode')).toThrow(
+			'Engine v2 cannot answer a resume request with the last node yet. Set the waiting node to respond immediately.',
+		);
+	});
+
+	it('skips the trigger checks, so a waiting Form node can resume', () => {
+		expect(() => assertResume('onReceived', true, FORM_NODE_TYPE)).not.toThrow();
+	});
+
+	it.each(['responseNode', 'formPage'] as const)(
+		'refuses %s, where a later node would answer the resume request',
+		(mode) => {
+			expect(() => assertResume(mode)).toThrow(
+				'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
+			);
+		},
+	);
+
+	it('refuses a response mode that engine v2 does not support', () => {
+		expect(() => assertResume('hostedChat')).toThrow("'hostedChat' response mode");
+	});
+
+	it('still needs the engine module', () => {
+		expect(() => assertResume('onReceived', false)).toThrow('N8N_ENABLED_MODULES');
 	});
 });

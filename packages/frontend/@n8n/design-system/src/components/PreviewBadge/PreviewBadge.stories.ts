@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
+import { BADGE_SIZE } from '../N8nBadge/Badge.type';
 import PreviewBadge from './PreviewBadge.vue';
 
 const meta = {
@@ -8,7 +9,7 @@ const meta = {
 	argTypes: {
 		size: {
 			control: 'select',
-			options: ['small', 'medium'],
+			options: BADGE_SIZE,
 		},
 	},
 } satisfies Meta<typeof PreviewBadge>;
@@ -27,18 +28,20 @@ export const Default: Story = {
 		};
 	},
 	args: {
-		size: 'small',
+		size: 'xxsmall',
 	},
 };
 
 export const Sizes: Story = {
 	render: function renderSizes() {
 		return {
+			setup: function setup() {
+				return { sizes: BADGE_SIZE };
+			},
 			components: { PreviewBadge },
 			template: `
 				<div style="display: flex; gap: var(--spacing--sm); align-items: center;">
-					<PreviewBadge size="small" />
-					<PreviewBadge size="medium" />
+					<PreviewBadge v-for="size in sizes" :key="size" :size="size" />
 				</div>
 			`,
 		};

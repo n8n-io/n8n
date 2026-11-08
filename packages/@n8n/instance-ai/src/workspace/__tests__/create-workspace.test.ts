@@ -33,6 +33,7 @@ vi.mock('../snapshot-manager', () => ({
 	},
 }));
 
+import type { BuilderTemplatesService } from '../builder-templates-service';
 import {
 	type SandboxConfig,
 	type InstanceAiCreateSandboxOptions,
@@ -77,6 +78,8 @@ const logger = {
 const errorReporter = {
 	error: vi.fn(),
 };
+
+const templatesService = {} as BuilderTemplatesService;
 
 describe('createSandbox', () => {
 	beforeEach(() => {
@@ -150,6 +153,7 @@ describe('createSandbox', () => {
 		const options: InstanceAiCreateSandboxOptions = {
 			logger,
 			errorReporter,
+			templatesService,
 			useSnapshotFallback: true,
 		};
 
@@ -183,7 +187,7 @@ describe('createSandbox', () => {
 			n8nVersion: '1.2.3',
 		};
 
-		await createSandbox(config, { useSnapshotFallback: true });
+		await createSandbox(config, { templatesService, useSnapshotFallback: true });
 
 		expect(mockSnapshotManagerConstructor).toHaveBeenCalledWith(
 			undefined,
@@ -202,7 +206,7 @@ describe('createSandbox', () => {
 			n8nVersion: '1.2.3',
 		};
 
-		await createSandbox(config, { logger, useSnapshotFallback: true });
+		await createSandbox(config, { logger, templatesService, useSnapshotFallback: true });
 
 		expect(mockSnapshotManagerConstructor).toHaveBeenCalledWith(undefined, logger, '1.2.3');
 	});
@@ -222,6 +226,7 @@ describe('createSandbox', () => {
 			createSandbox(config, {
 				logger,
 				errorReporter,
+				templatesService,
 				useSnapshotFallback: true,
 			}),
 		).resolves.toBe(sandbox);
@@ -257,7 +262,7 @@ describe('createSandbox', () => {
 		};
 
 		await expect(
-			createSandbox(config, { logger, errorReporter, useSnapshotFallback: true }),
+			createSandbox(config, { logger, errorReporter, templatesService, useSnapshotFallback: true }),
 		).rejects.toThrow('No Instance AI sandbox snapshot is available');
 
 		expect(mockEnsureImage).not.toHaveBeenCalled();
@@ -284,7 +289,7 @@ describe('createSandbox', () => {
 		};
 
 		await expect(
-			createSandbox(config, { logger, errorReporter, useSnapshotFallback: true }),
+			createSandbox(config, { logger, errorReporter, templatesService, useSnapshotFallback: true }),
 		).rejects.toBe(createFailure);
 
 		expect(errorReporter.error).toHaveBeenCalledWith(
@@ -309,7 +314,7 @@ describe('createSandbox', () => {
 		};
 
 		await expect(
-			createSandbox(config, { logger, errorReporter, useSnapshotFallback: true }),
+			createSandbox(config, { logger, errorReporter, templatesService, useSnapshotFallback: true }),
 		).resolves.toBe(sandbox);
 
 		// The explicit override short-circuits the version-derived default.
@@ -329,7 +334,7 @@ describe('createSandbox', () => {
 		};
 
 		await expect(
-			createSandbox(config, { logger, errorReporter, useSnapshotFallback: true }),
+			createSandbox(config, { logger, errorReporter, templatesService, useSnapshotFallback: true }),
 		).resolves.toBe(sandbox);
 
 		// No auth token => direct mode => the override must not reach the shared factory.

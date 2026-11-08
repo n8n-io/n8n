@@ -47,8 +47,11 @@ export class WorkflowPublicationTriggerStatusRepository extends BaseRepository<W
 		});
 	}
 
-	async findByWorkflowId(workflowId: string): Promise<WorkflowPublicationTriggerStatus[]> {
-		return await this.findBy({ workflowId });
+	async findByWorkflowId(
+		workflowId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowPublicationTriggerStatus[]> {
+		return await this.managerFor(ctx).findBy(WorkflowPublicationTriggerStatus, { workflowId });
 	}
 
 	/**

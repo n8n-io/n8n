@@ -1,26 +1,31 @@
 const INTEGRATION_MEMORY_RESOURCE_PREFIX = 'integration:';
 const DRAFT_CHAT_MEMORY_RESOURCE_PREFIX = 'draft-chat:';
-const THREAD_MEMORY_RESOURCE_PREFIX = 'thread:';
-
-export function threadMemoryResourceId(threadId: string): string {
-	return `${THREAD_MEMORY_RESOURCE_PREFIX}${threadId}`;
-}
-
-/**
- * Integration threads are shared conversations, so their durable notes belong
- * to the thread, not to the author. Every other run keeps its resource as scope.
- */
-export function episodicMemoryWriteScopeId(scope: {
-	resourceId: string;
-	threadId: string;
-}): string {
-	return isIntegrationMemoryResourceId(scope.resourceId)
-		? threadMemoryResourceId(scope.threadId)
-		: scope.resourceId;
-}
+const PRODUCTION_CHAT_MEMORY_RESOURCE_PREFIX = 'n8n-chat-production:';
+const SYSTEM_CHAT_MEMORY_RESOURCE_PREFIX = 'system-chat:';
 
 export function draftChatMemoryResourceId(userId: string): string {
 	return `${DRAFT_CHAT_MEMORY_RESOURCE_PREFIX}${userId}`;
+}
+
+export function productionChatMemoryResourceId(userId: string): string {
+	return `${PRODUCTION_CHAT_MEMORY_RESOURCE_PREFIX}${userId}`;
+}
+
+/** A system-agent chat. It is not a Preview chat, so it has its own resource scope. */
+export function systemChatMemoryResourceId(userId: string): string {
+	return `${SYSTEM_CHAT_MEMORY_RESOURCE_PREFIX}${userId}`;
+}
+
+export function userIdFromSystemChatMemoryResourceId(resourceId: string): string | undefined {
+	if (!resourceId.startsWith(SYSTEM_CHAT_MEMORY_RESOURCE_PREFIX)) return undefined;
+	const userId = resourceId.slice(SYSTEM_CHAT_MEMORY_RESOURCE_PREFIX.length);
+	return userId.length > 0 ? userId : undefined;
+}
+
+export function userIdFromProductionChatMemoryResourceId(resourceId: string): string | undefined {
+	if (!resourceId.startsWith(PRODUCTION_CHAT_MEMORY_RESOURCE_PREFIX)) return undefined;
+	const userId = resourceId.slice(PRODUCTION_CHAT_MEMORY_RESOURCE_PREFIX.length);
+	return userId.length > 0 ? userId : undefined;
 }
 
 export function userIdFromDraftChatMemoryResourceId(resourceId: string): string | undefined {

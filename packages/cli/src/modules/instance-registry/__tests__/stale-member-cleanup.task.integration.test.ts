@@ -6,7 +6,7 @@ import { Redis } from 'ioredis';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { RedisClientService } from '@n8n/backend-services';
 
 import { InstanceRegistryService } from '../instance-registry.service';
 import { REDIS_KEY_PATTERNS } from '../instance-registry.types';

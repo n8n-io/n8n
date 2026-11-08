@@ -2,6 +2,12 @@ import '../../openapi-extend';
 
 import { z } from 'zod';
 
+import {
+	installCommunityPackageFieldDocs,
+	installCommunityPackageResponseFieldDocs,
+	updateCommunityPackageFieldDocs,
+} from './community-package-public.openapi';
+import { packagePolicyRestrictionsSchema } from './package-policy-restrictions';
 import { Z } from '../../zod-class';
 
 const installedNodePublicSchema = z
@@ -34,6 +40,31 @@ export const communityPackagePublicSchema = z.object({
 
 export type CommunityPackagePublic = z.infer<typeof communityPackagePublicSchema>;
 
+export class CommunityPackagePublicDto extends Z.class(communityPackagePublicSchema.shape) {}
+
+export const installCommunityPackageResponsePublicSchema = communityPackagePublicSchema.extend({
+	policyRestrictions: packagePolicyRestrictionsSchema
+		.optional()
+		.openapi(installCommunityPackageResponseFieldDocs.policyRestrictions),
+});
+
+export type InstallCommunityPackageResponsePublic = z.infer<
+	typeof installCommunityPackageResponsePublicSchema
+>;
+
+export class InstallCommunityPackageResponsePublicDto extends Z.class(
+	installCommunityPackageResponsePublicSchema.shape,
+) {}
+
 export class CommunityPackageListPublicDto extends Z.array(communityPackagePublicSchema) {}
 
 export class ListCommunityPackagesQueryDto extends Z.class({}, { strict: true }) {}
+
+export class InstallCommunityPackagePublicDto extends Z.class({
+	name: z.string().openapi(installCommunityPackageFieldDocs.name),
+	version: z.string().optional().openapi(installCommunityPackageFieldDocs.version),
+}) {}
+
+export class UpdateCommunityPackagePublicDto extends Z.class({
+	version: z.string().optional().openapi(updateCommunityPackageFieldDocs.version),
+}) {}

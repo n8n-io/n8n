@@ -3,8 +3,7 @@ import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
-import type { ApplicableAiPreferences } from '@/services/ai-preference.service';
-import { AiPreferenceService } from '@/services/ai-preference.service';
+import { type ApplicableAiPreferences, AiPreferenceService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -352,6 +351,7 @@ describe('get-user-preferences MCP tool', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCES_READ_OVER_MCP,
 				{
+					user_id: 'user-1',
 					count: 1,
 					scope_types: ['instance'],
 					rendered_length: expect.any(Number),
@@ -368,7 +368,7 @@ describe('get-user-preferences MCP tool', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCES_READ_OVER_MCP,
-				{ count: 0, scope_types: [], rendered_length: 0, project_scoped: true },
+				{ user_id: 'user-1', count: 0, scope_types: [], rendered_length: 0, project_scoped: true },
 			);
 		});
 

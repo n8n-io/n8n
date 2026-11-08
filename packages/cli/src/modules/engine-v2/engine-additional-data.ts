@@ -1,13 +1,11 @@
 import { SsrfProtectionService } from '@n8n/backend-network';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UnimplementedError } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import { ExternalSecretsProxy } from 'n8n-core';
 import type { ICredentialsHelper, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-
-import { EventService } from '@/events/event.service';
-import { UrlService } from '@/services/url.service';
 
 /** A capability the data plane does not have yet. The step that reaches it fails and says why. */
 function unimplemented(feature: string) {
@@ -123,7 +121,10 @@ export class EngineAdditionalDataBuilder {
 			executeWorkflow: unimplemented('Sub-workflows (executeWorkflow)'),
 			executeAgent: unimplemented('Agents (executeAgent)'),
 			listAgents: unimplemented('Agents (listAgents)'),
-			getRunExecutionData: unimplemented('Reading another execution (getRunExecutionData)'),
+			// The Execute Sub-workflow node reads the sub-execution's run data to trace paired
+			// items through it. The data plane has no v1 run data for a sub-execution. The shim
+			// drops the sub-execution items' own marks, so the node pairs them by index.
+			getRunExecutionData: async () => undefined,
 			getRuntimeCredential: unimplemented('Runtime credentials (getRuntimeCredential)'),
 			setExecutionStatus: () => {
 				throw new UnimplementedError(

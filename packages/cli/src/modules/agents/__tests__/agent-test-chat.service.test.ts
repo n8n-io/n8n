@@ -75,7 +75,5 @@ describe('AgentTestChatService', () => {
 
 		await service.clearAllTestChatMessages(agentId);
 		expect(memory.deleteThreadsByPrefix).toHaveBeenCalledWith(`test-${agentId}`);
-		expect(memory.deleteMessagesByThread).toHaveBeenCalledWith(`test-${agentId}`);
-		expect(memory.deleteThread).toHaveBeenCalledWith(`test-${agentId}`);
 	});
 });

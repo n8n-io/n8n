@@ -4,17 +4,18 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
-import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { AiPreferenceScopeFullError, type AiPreferenceService } from '@n8n/backend-services';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+} from '@n8n/errors';
 import {
 	toAiPreferenceWriteRejection,
 	writeAssistantPreference,
 } from '@/services/ai-preference-write';
-import type { AiPreferenceService } from '@/services/ai-preference.service';
 import type { Telemetry } from '@/telemetry';
 
 const user = mock<User>({ id: 'user-1' });
@@ -61,15 +62,22 @@ describe('writeAssistantPreference', () => {
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN,
-			{ surface: 'mcp', scope_type: 'user', text_length: 19 },
+			{ user_id: 'user-1', surface: 'mcp', scope_type: 'user', text_length: 19 },
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
-			{ surface: 'mcp', outcome: 'accepted', scope_type: 'user', text_length: 19 },
+			{
+				user_id: 'user-1',
+				surface: 'mcp',
+				outcome: 'accepted',
+				scope_type: 'user',
+				text_length: 19,
+			},
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
 			{
+				user_id: 'user-1',
 				surface: 'mcp',
 				offered_scope: 'user',
 				accepted_scope: 'user',
@@ -78,7 +86,13 @@ describe('writeAssistantPreference', () => {
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE,
-			{ surface: 'mcp', scope_type: 'user', text_length: 19, replaced_existing: false },
+			{
+				user_id: 'user-1',
+				surface: 'mcp',
+				scope_type: 'user',
+				text_length: 19,
+				replaced_existing: false,
+			},
 		);
 	});
 
@@ -109,6 +123,7 @@ describe('writeAssistantPreference', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
 				{
+					user_id: 'user-1',
 					surface: 'mcp',
 					reason: expected.reason,
 					scope_type: 'user',

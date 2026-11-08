@@ -16,6 +16,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	AuthIdentity,
 	AuthIdentityRepository,
+	GLOBAL_MEMBER_ROLE,
 	type User,
 	UserRepository,
 	RoleRepository,
@@ -26,8 +27,7 @@ import type express from 'express';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { TEMPLATES_DIR } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import {
 	EC_TEST_CERTIFICATE,
@@ -36,8 +36,10 @@ import {
 	RSA_TEST_CERTIFICATE,
 	RSA_TEST_PRIVATE_KEY,
 } from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures';
+import { SamlEmailNotVerifiedError } from '@/modules/sso-saml/errors/saml-email-not-verified.error';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { SamlService } from '@/modules/sso-saml/saml.service.ee';
+import type { SamlUserAttributes } from '@/modules/sso-saml/types';
 import {
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
@@ -45,7 +47,7 @@ import {
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 
 import { sampleConfig, sampleMetadata } from './sample-metadata';
-import { createOwner, createUser } from '../shared/db/users';
+import { createOwner, createUser, createUserShell } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -1131,5 +1133,117 @@ describe('SAML SSO provisioning', () => {
 
 		const projectRole = await getProjectRoleForUser(project.id, result.authenticatedUser!.id);
 		expect(projectRole).toEqual('project:editor');
+	});
+});
+
+describe('SAML account linking', () => {
+	let samlService: SamlService;
+	type PrivatePrefs = { _samlPreferences: SamlPreferences };
+
+	const setEmailVerifiedRequired = (value: boolean) => {
+		(samlService as unknown as PrivatePrefs)._samlPreferences.emailVerifiedRequired = value;
+	};
+
+	const loginWith = async (
+		attributes: Partial<SamlUserAttributes> &
+			Pick<SamlUserAttributes, 'email' | 'userPrincipalName'>,
+	) => {
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: { firstName: 'Saml', lastName: 'User', ...attributes },
+			raw: {},
+		});
+		return await samlService.handleSamlLogin({} as express.Request, 'post');
+	};
+
+	const samlIdentitiesOf = async (user: User) =>
+		await Container.get(AuthIdentityRepository).findBy({ userId: user.id, providerType: 'saml' });
+
+	beforeAll(() => {
+		samlService = Container.get(SamlService);
+	});
+
+	afterEach(() => {
+		setEmailVerifiedRequired(false);
+		vi.restoreAllMocks();
+	});
+
+	test('logs in the user that owns the SAML identity when the response carries the email of another user', async () => {
+		const identityOwner = await createUser();
+		const otherUser = await createUser();
+		const upn = `upn-${identityOwner.id}`;
+		await attachSamlIdentity(identityOwner, upn);
+
+		const result = await loginWith({ email: otherUser.email, userPrincipalName: upn });
+
+		expect(result.authenticatedUser?.id).toBe(identityOwner.id);
+		expect(await samlIdentitiesOf(otherUser)).toHaveLength(0);
+	});
+
+	test('links a SAML identity to an existing user by email when the response carries no verification attribute', async () => {
+		const user = await createUser();
+		const upn = `upn-${user.id}`;
+
+		const result = await loginWith({ email: user.email, userPrincipalName: upn });
+
+		expect(result.authenticatedUser?.id).toBe(user.id);
+		expect(await samlIdentitiesOf(user)).toEqual([expect.objectContaining({ providerId: upn })]);
+	});
+
+	// Admins can invite under SAML while SCIM is on. The invitee then signs in through SAML.
+	test('links a SAML identity to an invited user by email and completes the invite', async () => {
+		const invitee = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const upn = `upn-${invitee.id}`;
+
+		const result = await loginWith({ email: invitee.email, userPrincipalName: upn });
+
+		expect(result.authenticatedUser?.id).toBe(invitee.id);
+		expect(await samlIdentitiesOf(invitee)).toEqual([expect.objectContaining({ providerId: upn })]);
+		const userRepository = Container.get(UserRepository);
+		expect(
+			await userRepository.findOneOrFail({
+				where: { id: invitee.id },
+				relations: ['authIdentities', 'role'],
+			}),
+		).toMatchObject({ isPending: false, role: { slug: GLOBAL_MEMBER_ROLE.slug } });
+		expect(await userRepository.countBy({ email: invitee.email })).toBe(1);
+	});
+
+	test('does not link an existing user by email when the identity provider marks the email as not verified', async () => {
+		const user = await createUser({ firstName: 'Local', lastName: 'Account' });
+
+		await expect(
+			loginWith({ email: user.email, userPrincipalName: `upn-${user.id}`, emailVerified: 'false' }),
+		).rejects.toThrow(SamlEmailNotVerifiedError);
+
+		expect(await samlIdentitiesOf(user)).toHaveLength(0);
+		const stored = await Container.get(UserRepository).findOneByOrFail({ id: user.id });
+		expect(stored.firstName).toBe('Local');
+		expect(stored.lastName).toBe('Account');
+	});
+
+	test('does not link an existing user by email when verification is required and the attribute is absent', async () => {
+		setEmailVerifiedRequired(true);
+		const user = await createUser();
+
+		await expect(
+			loginWith({ email: user.email, userPrincipalName: `upn-${user.id}` }),
+		).rejects.toThrow(SamlEmailNotVerifiedError);
+
+		expect(await samlIdentitiesOf(user)).toHaveLength(0);
+	});
+
+	test('links an existing user by email when verification is required and the identity provider verified the email', async () => {
+		setEmailVerifiedRequired(true);
+		const user = await createUser();
+		const upn = `upn-${user.id}`;
+
+		const result = await loginWith({
+			email: user.email,
+			userPrincipalName: upn,
+			emailVerified: 'true',
+		});
+
+		expect(result.authenticatedUser?.id).toBe(user.id);
+		expect(await samlIdentitiesOf(user)).toEqual([expect.objectContaining({ providerId: upn })]);
 	});
 });

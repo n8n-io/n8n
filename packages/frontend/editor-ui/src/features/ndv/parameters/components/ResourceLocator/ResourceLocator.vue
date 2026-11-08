@@ -1278,7 +1278,10 @@ function removeOverride() {
 									</template>
 								</N8nInput>
 								<div v-if="showOverrideButton" :class="$style.overrideButtonInline">
-									<FromAiOverrideButton @click="applyOverride" />
+									<FromAiOverrideButton
+										:size="isValueExpression || forceShowExpression ? 'medium' : 'small'"
+										@click="applyOverride"
+									/>
 								</div>
 							</div>
 						</template>

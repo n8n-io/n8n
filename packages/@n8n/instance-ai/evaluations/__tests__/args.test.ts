@@ -182,6 +182,7 @@ describe('parseCliArgs --build-via-mcp', () => {
 		// --build-via-mcp is LangSmith-only; give every test in this suite a key
 		// so the requirement doesn't drown out what each test actually asserts.
 		vi.stubEnv('LANGSMITH_API_KEY', 'test-key');
+		vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
 	});
 
 	afterEach(() => {
@@ -191,6 +192,14 @@ describe('parseCliArgs --build-via-mcp', () => {
 	it('requires LANGSMITH_API_KEY (the direct loop does not support MCP builds)', () => {
 		vi.stubEnv('LANGSMITH_API_KEY', '');
 		expect(() => parseCliArgs(['--build-via-mcp'])).toThrow(/--build-via-mcp requires LangSmith/);
+	});
+
+	it('requires env-based claude auth for isolated builds, but not with --build-cwd', () => {
+		vi.stubEnv('ANTHROPIC_API_KEY', '');
+		vi.stubEnv('ANTHROPIC_AUTH_TOKEN', '');
+		vi.stubEnv('CLAUDE_CODE_OAUTH_TOKEN', '');
+		expect(() => parseCliArgs(['--build-via-mcp'])).toThrow(/isolated from ~\/\.claude/);
+		expect(parseCliArgs(['--build-via-mcp', '--build-cwd', '/tmp/x']).buildViaMcp).toBe(true);
 	});
 
 	it('defaults to disabled with sensible build knobs', () => {

@@ -1,4 +1,5 @@
 import { getWorkflow } from '@/app/api/workflows';
+import { STICKY_NODE_TYPE } from '@/app/constants';
 import {
 	createWorkflowDocumentId,
 	useExistingWorkflowDocumentStore,
@@ -51,18 +52,22 @@ interface QueuedLoad {
 export function projectWorkflowArtifact(
 	workflow: WorkflowArtifactProjectionSource,
 ): WorkflowArtifactIndex {
-	const nodes = workflow.nodes.map(({ id, name, type, typeVersion }) => ({
-		id,
-		name,
-		type,
-		typeVersion,
-	}));
+	const nodes = workflow.nodes
+		.filter((node) => node.type !== STICKY_NODE_TYPE)
+		.map(({ id, name, type, typeVersion }) => ({
+			id,
+			name,
+			type,
+			typeVersion,
+		}));
 	const nodesById = new Map(nodes.map((node) => [node.id, node]));
-	const groups = (workflow.nodeGroups ?? []).map(({ id, name, nodeIds }) => ({
-		id,
-		name,
-		nodeIds: [...new Set(nodeIds.filter((nodeId) => nodesById.has(nodeId)))],
-	}));
+	const groups = (workflow.nodeGroups ?? [])
+		.map(({ id, name, nodeIds }) => ({
+			id,
+			name,
+			nodeIds: [...new Set(nodeIds.filter((nodeId) => nodesById.has(nodeId)))],
+		}))
+		.filter((group) => group.nodeIds.length > 0);
 	const groupsById = new Map(groups.map((group) => [group.id, group]));
 	const nodeIdToGroupId = new Map<string, string>();
 	for (const group of groups) {

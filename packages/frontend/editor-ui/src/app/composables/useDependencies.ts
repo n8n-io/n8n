@@ -2,6 +2,7 @@ import type {
 	DependencyResourceType,
 	DependencyTypeCounts,
 	ResolvedDependenciesResult,
+	ResolvedDependency,
 } from '@n8n/api-types';
 import { ref } from 'vue';
 
@@ -113,6 +114,26 @@ export function useDependencies() {
 		);
 	}
 
+	/**
+	 * Resolved dependencies for every workflow inside a folder. Not cached, because the folder's
+	 * contents change independently of the folder id.
+	 */
+	async function fetchFolderDependencies(
+		projectId: string,
+		folderId: string,
+	): Promise<ResolvedDependency[]> {
+		try {
+			return await workflowDependenciesApi.getFolderDependencies(
+				rootStore.restApiContext,
+				projectId,
+				folderId,
+			);
+		} catch {
+			// Dependencies are supplementary — silently ignore errors
+			return [];
+		}
+	}
+
 	function getDependencies(
 		resourceId: string,
 		resourceType: DependencyResourceType,
@@ -148,6 +169,7 @@ export function useDependencies() {
 	return {
 		fetchDependencyCounts,
 		fetchDependencies,
+		fetchFolderDependencies,
 		getDependencies,
 		getDependencyCounts,
 		getTotalCount,

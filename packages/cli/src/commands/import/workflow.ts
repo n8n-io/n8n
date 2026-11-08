@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	generateNanoId,
 	ProjectRepository,
@@ -12,11 +13,11 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import glob from 'fast-glob';
 import fs from 'fs';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
 
@@ -38,6 +39,7 @@ function assertHasWorkflowsToImport(
 
 /**
  * Creates workflow entities from plain objects while preserving versionMetadata metadata.
+ * Generates an ID for each workflow that has none.
  */
 function createWorkflowsWithVersionMetadata(
 	workflowRepository: WorkflowRepository,
@@ -46,6 +48,9 @@ function createWorkflowsWithVersionMetadata(
 	const createdWorkflows = workflowRepository.create(workflows);
 	return createdWorkflows.map((created, index) => ({
 		...created,
+		// A plain object does not run the entity insert hook that generates missing IDs.
+		// The ownership check also needs the ID before the insert.
+		id: created.id || generateNanoId(),
 		versionMetadata: workflows[index].versionMetadata,
 	}));
 }
@@ -103,6 +108,12 @@ const flagsSchema = z.object({
 export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	// (De)activating imported workflows evaluates webhook parameters, which may be expressions
 	override needsExpressionEngine = true;
+
+	async init() {
+		await super.init();
+		await this.initLicense();
+		await this.initPolicyEnforcement();
+	}
 
 	async run(): Promise<void> {
 		const { flags } = this;
@@ -290,9 +301,6 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		for (const file of files) {
 			const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
-			if (!workflow.id) {
-				workflow.id = generateNanoId();
-			}
 
 			try {
 				assertHasWorkflowsToImport([workflow]);

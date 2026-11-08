@@ -1,3 +1,6 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -5,7 +8,7 @@ import type {
 	AuthenticatedRequest,
 	User,
 	InvalidAuthTokenRepository,
-	UserRepository,
+	PersonRepository,
 } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import type { NextFunction, Response } from 'express';
@@ -16,8 +19,7 @@ import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
-import { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
+import { JwtService, type UrlService } from '@n8n/backend-services';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';
@@ -41,20 +43,26 @@ describe('AuthService', () => {
 		userManagement: { jwtSecret: 'random-secret' },
 		endpoints: { rest: 'rest' },
 	});
-	const jwtService = new JwtService(mock(), globalConfig);
+	const jwtService = new JwtService(mock(), globalConfig, mock());
 	const urlService = mock<UrlService>();
-	const userRepository = mock<UserRepository>();
+	const personRepository = mock<PersonRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 	const mfaService = mock<MfaService>();
 	const license = mock<License>();
 	const logger = mock<Logger>();
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	const discoveryActivity = mock<EventService>();
+	// EOF Experiment cleanup
 	const authService = new AuthService(
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		discoveryActivity,
+		// EOF Experiment cleanup
 		globalConfig,
 		logger,
 		license,
 		jwtService,
 		urlService,
-		userRepository,
+		personRepository,
 		invalidAuthTokenRepository,
 		mfaService,
 	);
@@ -63,10 +71,10 @@ describe('AuthService', () => {
 	vi.useFakeTimers({ now });
 
 	const validToken =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjpmYWxzZSwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjV9.N7JgwETmO41o4FUDVb4pA1HM3Clj4jyjDK-lE8Fa1Zw'; // Generated using `authService.issueJWT(user, false, browserId)`
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjpmYWxzZSwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjUsImF1ZCI6Im44bjpzZXNzaW9uIn0.Non8MLCyq2HdJMu4G2EMKsooOSSZV09f3SJ0vGk3_O8'; // Generated using `authService.issueJWT(user, false, browserId)`
 
 	const validTokenWithMfa =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjp0cnVlLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.9kTTue-ZdBQ0CblH0IrqW9K-k0WWfxfsWTglyPB10ko'; // Generated using `authService.issueJWT(user, true, browserId)`
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjp0cnVlLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNSwiYXVkIjoibjhuOnNlc3Npb24ifQ.54_9gexM1Y39cMkmp7Rr2cVFxSx8R0xtgEdPAbagomE'; // Generated using `authService.issueJWT(user, true, browserId)`
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -99,7 +107,7 @@ describe('AuthService', () => {
 						mfaSecret: 'secret',
 					}),
 				),
-			).toEqual('WUXEVFet9W');
+			).toEqual('WRZ6wXhLW9');
 			expect(
 				authService.createJWTHash(
 					mock<User>({
@@ -109,7 +117,16 @@ describe('AuthService', () => {
 						mfaSecret: 'secret',
 					}),
 				),
-			).toEqual('toYQYKufH6');
+			).toEqual('RyOQ0yF+N1');
+		});
+
+		it('should produce distinct hashes for MFA secrets that share a prefix', () => {
+			const withSecret = (mfaSecret: string) =>
+				authService.createJWTHash(
+					mock<User>({ email: user.email, password: user.password, mfaEnabled: true, mfaSecret }),
+				);
+
+			expect(withSecret('U2FsdGVkX1+first')).not.toEqual(withSecret('U2FsdGVkX1+second'));
 		});
 	});
 
@@ -151,7 +168,7 @@ describe('AuthService', () => {
 			await middleware(req, res, next);
 
 			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
@@ -167,7 +184,7 @@ describe('AuthService', () => {
 			await middleware(req, res, next);
 
 			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
@@ -176,7 +193,7 @@ describe('AuthService', () => {
 		it('should 401 but not clear the cookie if 2FA is enforced and not configured for the user', async () => {
 			const req = mockReq();
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
-			userRepository.findOne.mockResolvedValue(user);
+			personRepository.findByIdWithRole.mockResolvedValue(user);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			mfaService.isMFAEnforced.mockResolvedValue(true);
 
@@ -185,7 +202,7 @@ describe('AuthService', () => {
 			await middleware(req, res, next);
 
 			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-			expect(userRepository.findOne).toHaveBeenCalled();
+			expect(personRepository.findByIdWithRole).toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.clearCookie).not.toHaveBeenCalledWith();
@@ -196,7 +213,7 @@ describe('AuthService', () => {
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			vi.advanceTimersByTime(6 * Time.days.toMilliseconds);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			userRepository.findOne.mockResolvedValue(user);
+			personRepository.findByIdWithRole.mockResolvedValue(user);
 
 			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
 
@@ -244,7 +261,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
-				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 				expect(next).toHaveBeenCalled();
 				expect(res.status).not.toHaveBeenCalled();
 			});
@@ -262,7 +279,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
-				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 				expect(next).not.toHaveBeenCalled();
 				expect(res.status).toHaveBeenCalledWith(401);
 			});
@@ -280,7 +297,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
-				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 				expect(next).not.toHaveBeenCalled();
 				expect(res.status).toHaveBeenCalledWith(401);
 			});
@@ -298,7 +315,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
-				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 				expect(next).not.toHaveBeenCalled();
 				expect(res.status).toHaveBeenCalledWith(401);
 			});
@@ -308,7 +325,7 @@ describe('AuthService', () => {
 				const req = mockReq();
 				req.cookies[AUTH_COOKIE_NAME] = validToken;
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user);
+				personRepository.findByIdWithRole.mockResolvedValue(user);
 
 				const middleware = authService.createAuthMiddleware({
 					allowSkipMFA: true,
@@ -318,7 +335,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).toHaveBeenCalled();
 				expect(req.user).toBe(user);
 				expect(next).toHaveBeenCalled();
 				expect(res.status).not.toHaveBeenCalled();
@@ -349,7 +366,7 @@ describe('AuthService', () => {
 				const req = mockReq();
 				req.cookies[AUTH_COOKIE_NAME] = validToken;
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user);
+				personRepository.findByIdWithRole.mockResolvedValue(user);
 
 				const middleware = authService.createAuthMiddleware({
 					allowSkipMFA: false,
@@ -359,7 +376,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).toHaveBeenCalled();
 				expect(req.user).toBe(user);
 				expect(next).toHaveBeenCalled();
 				expect(res.clearCookie).not.toHaveBeenCalled();
@@ -379,7 +396,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
 				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
@@ -398,7 +415,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
 				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
@@ -417,7 +434,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
 				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
@@ -435,7 +452,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
-				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
 				expect(res.clearCookie).not.toHaveBeenCalled();
@@ -448,7 +465,7 @@ describe('AuthService', () => {
 				req.cookies[AUTH_COOKIE_NAME] = validToken; // validToken has usedMfa: false
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(userWithMfa);
+				personRepository.findByIdWithRole.mockResolvedValue(userWithMfa);
 				mfaService.isMFAEnforced.mockResolvedValue(true);
 
 				const middleware = authService.createAuthMiddleware({
@@ -459,7 +476,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
 				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
@@ -470,7 +487,7 @@ describe('AuthService', () => {
 				req.cookies[AUTH_COOKIE_NAME] = validToken; // validToken has usedMfa: false
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user); // user has mfaEnabled: false
+				personRepository.findByIdWithRole.mockResolvedValue(user); // user has mfaEnabled: false
 				mfaService.isMFAEnforced.mockResolvedValue(true);
 
 				const middleware = authService.createAuthMiddleware({
@@ -481,7 +498,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
 				expect(res.status).not.toHaveBeenCalled();
@@ -504,7 +521,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
-				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
 				expect(res.status).not.toHaveBeenCalled();
@@ -516,6 +533,210 @@ describe('AuthService', () => {
 					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
 				}
 			});
+		});
+	});
+
+	describe('createAssetAuthMiddleware', () => {
+		const mockReq = () =>
+			mock<AuthenticatedRequest>({
+				cookies: {},
+				user: undefined,
+				browserId,
+			});
+		const res = mock<Response>();
+		const next = vi.fn() as NextFunction;
+
+		const tokenWithPayload = (payload: object, options: jwt.SignOptions = { expiresIn: '1h' }) =>
+			jwtService.sign('session', payload, options);
+
+		it('should 404 if no cookie is set', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+			expect(res.json).not.toHaveBeenCalled();
+		});
+
+		it('should 404 if the token signature does not verify', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = `${validToken}tampered`;
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+			expect(res.clearCookie).not.toHaveBeenCalled();
+		});
+
+		it('should 404 if the token has expired', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			vi.advanceTimersByTime(365 * Time.days.toMilliseconds);
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token with an empty payload', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({});
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token whose payload has an id but no hash', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ id: '123' });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token whose payload has a hash but no id', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ hash: 'mJAYx4Wb7k' });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token whose payload id is not a string', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ id: 123, hash: 'mJAYx4Wb7k' });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token whose payload hash is not a string', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ id: '123', hash: { value: 'x' } });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token without an expiry whose payload carries no id or hash', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ sub: '123', scope: 'mcp' }, {});
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should call next for a payload carrying a string id and hash', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ id: '123', hash: 'mJAYx4Wb7k' });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.sendStatus).not.toHaveBeenCalled();
+		});
+
+		it('should call next for a valid token without any database query', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.sendStatus).not.toHaveBeenCalled();
+			expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+			expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
+		});
+
+		it('should call next for a token whose user is gone or whose session was invalidated', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			personRepository.findByIdWithRole.mockResolvedValue(null);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.sendStatus).not.toHaveBeenCalled();
+		});
+
+		it('should call next with no cookie when preview mode is enabled', () => {
+			const originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+			process.env.N8N_PREVIEW_MODE = 'true';
+
+			try {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				authService.createAssetAuthMiddleware()(req, res, next);
+
+				expect(next).toHaveBeenCalled();
+				expect(res.sendStatus).not.toHaveBeenCalled();
+			} finally {
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
+			}
+		});
+
+		it('should call next with a cookie that fails the check when preview mode is enabled', () => {
+			const originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+			process.env.N8N_PREVIEW_MODE = 'true';
+
+			try {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = `${validToken}tampered`;
+
+				authService.createAssetAuthMiddleware()(req, res, next);
+
+				expect(next).toHaveBeenCalled();
+				expect(res.sendStatus).not.toHaveBeenCalled();
+			} finally {
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
+			}
+		});
+
+		it('should 404 with no cookie when preview mode is unset', () => {
+			const originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+			delete process.env.N8N_PREVIEW_MODE;
+
+			try {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				authService.createAssetAuthMiddleware()(req, res, next);
+
+				expect(next).not.toHaveBeenCalled();
+				expect(res.sendStatus).toHaveBeenCalledWith(404);
+			} finally {
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
+			}
 		});
 	});
 
@@ -532,6 +753,31 @@ describe('AuthService', () => {
 			});
 		});
 
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		it('emits the login time after setting the cookie synchronously', () => {
+			const result = authService.issueCookie(res, user, false, browserId);
+			expect(result).toBeUndefined();
+			expect(res.cookie).toHaveBeenCalled();
+			expect(discoveryActivity.emit).toHaveBeenCalledWith('experiment-user-first-login', {
+				userId: user.id,
+				at: now.getTime(),
+			});
+			expect(res.cookie.mock.invocationCallOrder[0]).toBeLessThan(
+				discoveryActivity.emit.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not record a login if cookie issuance fails', () => {
+			res.cookie.mockImplementationOnce(() => {
+				throw new Error('Headers already sent');
+			});
+			expect(() => authService.issueCookie(res, user, false, browserId)).toThrow(
+				'Headers already sent',
+			);
+			expect(discoveryActivity.emit).not.toHaveBeenCalled();
+		});
+		// EOF Experiment cleanup
+
 		describe('when user limit is reached', () => {
 			it('should block issuance if the user is not the global owner', async () => {
 				user.role = GLOBAL_MEMBER_ROLE;
@@ -539,6 +785,9 @@ describe('AuthService', () => {
 				expect(() => {
 					authService.issueCookie(res, user, false, browserId);
 				}).toThrowError('Maximum number of users reached');
+				// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+				expect(discoveryActivity.emit).not.toHaveBeenCalled();
+				// EOF Experiment cleanup
 			});
 
 			it('should allow issuance if the user is the global owner', async () => {
@@ -588,7 +837,7 @@ describe('AuthService', () => {
 				const token = authService.issueJWT(user, false, browserId);
 
 				expect(authService.jwtExpiration).toBe(defaultInSeconds);
-				const decodedToken = jwtService.verify(token);
+				const decodedToken = jwtService.verify('session', token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
 					expect.fail('Expected exp and iat to be defined');
 				}
@@ -605,7 +854,7 @@ describe('AuthService', () => {
 				globalConfig.userManagement.jwtSessionDurationHours = testDurationHours;
 				const token = authService.issueJWT(user, false, browserId);
 
-				const decodedToken = jwtService.verify(token);
+				const decodedToken = jwtService.verify('session', token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
 					expect.fail('Expected exp and iat to be defined on decodedToken');
 				}
@@ -661,19 +910,19 @@ describe('AuthService', () => {
 			['the user id is empty', { id: '', hash: 'mJAYx4Wb7k' }],
 			['the hash is missing', { id: '123' }],
 		])('should throw when %s', async (_name, payload) => {
-			const token = jwtService.sign(payload, { expiresIn: '1h' });
+			const token = jwtService.sign('session', payload, { expiresIn: '1h' });
 
 			await expect(authService.resolveJwt(token, req, res)).rejects.toThrow('Unauthorized');
-			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
 		it('should throw when the payload is missing the expiry', async () => {
 			// jwt.verify treats an absent `exp` as a token that never expires.
-			const token = jwtService.sign({ id: user.id, hash: 'mJAYx4Wb7k' });
+			const token = jwtService.sign('session', { id: user.id, hash: 'mJAYx4Wb7k' });
 
 			await expect(authService.resolveJwt(token, req, res)).rejects.toThrow('Unauthorized');
-			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 		});
 
 		it.each([
@@ -685,16 +934,17 @@ describe('AuthService', () => {
 			['browserId', { browserId: 0 }],
 		])('should throw when %s is present but not its declared type', async (_name, claim) => {
 			const token = jwtService.sign(
+				'session',
 				{ id: user.id, hash: 'mJAYx4Wb7k', ...claim },
 				{ expiresIn: '1h' },
 			);
 
 			await expect(authService.resolveJwt(token, req, res)).rejects.toThrow('Unauthorized');
-			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 		});
 
 		it('should throw on hijacked tokens', async () => {
-			userRepository.findOne.mockResolvedValue(user);
+			personRepository.findByIdWithRole.mockResolvedValue(user);
 			const req = mock<AuthenticatedRequest>({
 				browserId: 'another-browser',
 				method: 'POST',
@@ -706,7 +956,7 @@ describe('AuthService', () => {
 		});
 
 		it('should skip browserId check for GET requests on skip endpoints', async () => {
-			userRepository.findOne.mockResolvedValue(user);
+			personRepository.findByIdWithRole.mockResolvedValue(user);
 			const req = mock<AuthenticatedRequest>({
 				browserId: 'another-browser',
 				method: 'GET',
@@ -724,7 +974,7 @@ describe('AuthService', () => {
 		});
 
 		it('should skip browserId check for GET requests matching a RegExp skip entry', async () => {
-			userRepository.findOne.mockResolvedValue(user);
+			personRepository.findByIdWithRole.mockResolvedValue(user);
 			// Project-scoped routes resolve :projectId into req.baseUrl, so the
 			// skip entry must be a pattern rather than an exact string.
 			const req = mock<AuthenticatedRequest>({
@@ -739,8 +989,48 @@ describe('AuthService', () => {
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
+		it('should skip browserId check for n8n Chat attachment GET requests', async () => {
+			personRepository.findByIdWithRole.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/projects/9xbqXk3hZVlVlPsN/agents/v2',
+				route: { path: '/:agentId/n8n-chat/attachments/:attachmentId' },
+			});
+
+			const result = await authService.resolveJwt(validToken, req, res);
+			expect(result).toEqual([user, { usedMfa: false }]);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should skip browserId check for system agent chat attachment GET requests', async () => {
+			personRepository.findByIdWithRole.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/agents/system',
+				route: { path: '/:agentId/chat/attachments/:attachmentId' },
+			});
+
+			const result = await authService.resolveJwt(validToken, req, res);
+			expect(result).toEqual([user, { usedMfa: false }]);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should not skip browserId check for other system agent routes', async () => {
+			personRepository.findByIdWithRole.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/agents/system',
+				route: { path: '/:agentId/chat/:threadId/messages' },
+			});
+
+			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
+		});
+
 		it('should not skip browserId check for other project-scoped agent routes', async () => {
-			userRepository.findOne.mockResolvedValue(user);
+			personRepository.findByIdWithRole.mockResolvedValue(user);
 			const req = mock<AuthenticatedRequest>({
 				browserId: 'another-browser',
 				method: 'GET',
@@ -752,7 +1042,7 @@ describe('AuthService', () => {
 		});
 
 		it('should not skip browserId check for POST requests on skip endpoints', async () => {
-			userRepository.findOne.mockResolvedValue(user);
+			personRepository.findByIdWithRole.mockResolvedValue(user);
 			const req = mock<AuthenticatedRequest>({
 				browserId: 'another-browser',
 				method: 'POST',
@@ -784,13 +1074,15 @@ describe('AuthService', () => {
 				{ ...userData, mfaEnabled: true, mfaSecret: '123' },
 			],
 		])('should throw if %s', async (_, data) => {
-			userRepository.findOne.mockResolvedValueOnce(data && Object.assign(mock<User>(), data));
+			personRepository.findByIdWithRole.mockResolvedValueOnce(
+				data && Object.assign(mock<User>(), data),
+			);
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
 		it('should refresh the cookie before it expires', async () => {
-			userRepository.findOne.mockResolvedValue(user);
+			personRepository.findByIdWithRole.mockResolvedValue(user);
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
 				user,
 				{ usedMfa: false },
@@ -809,6 +1101,9 @@ describe('AuthService', () => {
 				secure: true,
 			});
 
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			expect(discoveryActivity.emit).not.toHaveBeenCalled();
+			// EOF Experiment cleanup
 			const newToken = res.cookie.mock.calls[0].at(1);
 			expect(newToken).not.toBe(validToken);
 			expect(await authService.resolveJwt(newToken, req, res)).toEqual([user, { usedMfa: false }]);
@@ -818,7 +1113,7 @@ describe('AuthService', () => {
 		});
 
 		it('should refresh the cookie only if less than 1/4th of time is left', async () => {
-			userRepository.findOne.mockResolvedValue(user);
+			personRepository.findByIdWithRole.mockResolvedValue(user);
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
 				user,
 				{ usedMfa: false },
@@ -841,7 +1136,7 @@ describe('AuthService', () => {
 		});
 
 		it('should preserve embed cookie attributes when refreshing an embed session', async () => {
-			userRepository.findOne.mockResolvedValue(user);
+			personRepository.findByIdWithRole.mockResolvedValue(user);
 			const embedToken = authService.issueJWT(user, false, browserId, true);
 
 			vi.advanceTimersByTime(6 * Time.days.toMilliseconds);
@@ -854,6 +1149,9 @@ describe('AuthService', () => {
 				secure: true,
 			});
 
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			expect(discoveryActivity.emit).not.toHaveBeenCalled();
+			// EOF Experiment cleanup
 			const refreshedToken = res.cookie.mock.calls[0].at(1);
 			const decoded = jwt.decode(refreshedToken) as jwt.JwtPayload;
 			expect(decoded.isEmbed).toBe(true);
@@ -862,7 +1160,7 @@ describe('AuthService', () => {
 		it('should not refresh the cookie if jwtRefreshTimeoutHours is set to -1', async () => {
 			globalConfig.userManagement.jwtRefreshTimeoutHours = -1;
 
-			userRepository.findOne.mockResolvedValue(user);
+			personRepository.findByIdWithRole.mockResolvedValue(user);
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
 				user,
 				{ usedMfa: false },
@@ -930,7 +1228,7 @@ describe('AuthService', () => {
 		});
 
 		it('should not return a user if the user does not exist in the DB', async () => {
-			userRepository.findOne.mockResolvedValueOnce(null);
+			personRepository.findByIdWithAuthIdentities.mockResolvedValueOnce(null);
 			const token = authService.generatePasswordResetToken(user);
 
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
@@ -941,7 +1239,7 @@ describe('AuthService', () => {
 			const token = authService.generatePasswordResetToken(user);
 			const updatedUser = Object.create(user);
 			updatedUser.password = 'something-else';
-			userRepository.findOne.mockResolvedValueOnce(updatedUser);
+			personRepository.findByIdWithAuthIdentities.mockResolvedValueOnce(updatedUser);
 
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
 			expect(resolvedUser).toBeUndefined();
@@ -949,7 +1247,7 @@ describe('AuthService', () => {
 
 		it('should not return the user if all checks pass', async () => {
 			const token = authService.generatePasswordResetToken(user);
-			userRepository.findOne.mockResolvedValueOnce(user);
+			personRepository.findByIdWithAuthIdentities.mockResolvedValueOnce(user);
 
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
 			expect(resolvedUser).toEqual(user);
@@ -972,7 +1270,7 @@ describe('AuthService', () => {
 		});
 
 		it('should not include the raw token in any log entry when the referenced user is missing', async () => {
-			userRepository.findOne.mockResolvedValueOnce(null);
+			personRepository.findByIdWithAuthIdentities.mockResolvedValueOnce(null);
 			const validToken = authService.generatePasswordResetToken(user);
 
 			await authService.resolvePasswordResetToken(validToken);
@@ -991,16 +1289,16 @@ describe('AuthService', () => {
 
 		it('should resolve a token it generated', async () => {
 			const token = tokenFromUrl(authService.generateEmailChangeUrl(user, newEmail));
-			userRepository.findOne.mockResolvedValueOnce(user);
+			personRepository.findByIdWithAuthIdentities.mockResolvedValueOnce(user);
 
 			const resolved = await authService.resolveEmailChangeToken(token);
 
-			expect(resolved).toEqual({ user, newEmail });
+			expect(resolved).toEqual({ person: user, newEmail });
 		});
 
 		it('should not resolve a password-reset token as an email change token', async () => {
 			const passwordResetToken = authService.generatePasswordResetToken(user);
-			userRepository.findOne.mockResolvedValueOnce(user);
+			personRepository.findByIdWithAuthIdentities.mockResolvedValueOnce(user);
 
 			const resolved = await authService.resolveEmailChangeToken(passwordResetToken);
 
@@ -1012,7 +1310,7 @@ describe('AuthService', () => {
 			const userWithChangedEmail = Object.assign(mockUser(), {
 				email: 'already-changed@example.com',
 			});
-			userRepository.findOne.mockResolvedValueOnce(userWithChangedEmail);
+			personRepository.findByIdWithAuthIdentities.mockResolvedValueOnce(userWithChangedEmail);
 
 			const resolved = await authService.resolveEmailChangeToken(token);
 
@@ -1022,6 +1320,15 @@ describe('AuthService', () => {
 		it('should not resolve an expired token', async () => {
 			const token = tokenFromUrl(authService.generateEmailChangeUrl(user, newEmail));
 			vi.setSystemTime(new Date(now.getTime() + 21 * 60 * 1000));
+
+			const resolved = await authService.resolveEmailChangeToken(token);
+
+			expect(resolved).toBeUndefined();
+		});
+
+		it('should not resolve when no person has the token subject', async () => {
+			const token = tokenFromUrl(authService.generateEmailChangeUrl(user, newEmail));
+			personRepository.findByIdWithAuthIdentities.mockResolvedValueOnce(null);
 
 			const resolved = await authService.resolveEmailChangeToken(token);
 
@@ -1143,11 +1450,11 @@ describe('AuthService', () => {
 		it('should resolve with the user for a valid token', async () => {
 			const token = authService.issueJWT(user, false, browserId);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			userRepository.findOne.mockResolvedValue(user);
+			personRepository.findByIdWithRole.mockResolvedValue(user);
 
 			await expect(authService.validateCookieToken(token)).resolves.toBe(user);
 			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalledWith({ token });
-			expect(userRepository.findOne).toHaveBeenCalled();
+			expect(personRepository.findByIdWithRole).toHaveBeenCalled();
 		});
 
 		it('should throw when token has been revoked', async () => {
@@ -1155,7 +1462,7 @@ describe('AuthService', () => {
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
 
 			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
-			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 		});
 
 		it('should throw when token is malformed', async () => {
@@ -1175,7 +1482,7 @@ describe('AuthService', () => {
 		it('should throw when user is disabled', async () => {
 			const token = authService.issueJWT(user, false, browserId);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			userRepository.findOne.mockResolvedValue(mockUser({ disabled: true }));
+			personRepository.findByIdWithRole.mockResolvedValue(mockUser({ disabled: true }));
 
 			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
 		});
@@ -1183,7 +1490,7 @@ describe('AuthService', () => {
 		it('should throw when user no longer exists', async () => {
 			const token = authService.issueJWT(user, false, browserId);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			userRepository.findOne.mockResolvedValue(null);
+			personRepository.findByIdWithRole.mockResolvedValue(null);
 
 			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
 		});
@@ -1203,7 +1510,7 @@ describe('AuthService', () => {
 				const tokenWithMfa = authService.issueJWT(user, true, browserId);
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user);
+				personRepository.findByIdWithRole.mockResolvedValue(user);
 
 				const result = await authService.authenticateUserBasedOnToken(
 					tokenWithMfa,
@@ -1214,7 +1521,7 @@ describe('AuthService', () => {
 
 				expect(result).toEqual(user);
 				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalledWith({ token: tokenWithMfa });
-				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).toHaveBeenCalled();
 			});
 
 			it('should authenticate successfully when MFA not enforced and user has no MFA', async () => {
@@ -1222,7 +1529,7 @@ describe('AuthService', () => {
 				const tokenWithoutMfa = authService.issueJWT(user, false, browserId);
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user);
+				personRepository.findByIdWithRole.mockResolvedValue(user);
 				mfaService.isMFAEnforced.mockResolvedValue(false);
 
 				const result = await authService.authenticateUserBasedOnToken(
@@ -1236,7 +1543,7 @@ describe('AuthService', () => {
 				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalledWith({
 					token: tokenWithoutMfa,
 				});
-				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).toHaveBeenCalled();
 				expect(mfaService.isMFAEnforced).toHaveBeenCalled();
 			});
 
@@ -1245,7 +1552,7 @@ describe('AuthService', () => {
 				const tokenNoBrowser = authService.issueJWT(user, false, undefined);
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user);
+				personRepository.findByIdWithRole.mockResolvedValue(user);
 				mfaService.isMFAEnforced.mockResolvedValue(false);
 
 				const skipEndpoint = '/rest/push';
@@ -1270,7 +1577,7 @@ describe('AuthService', () => {
 				).rejects.toThrow('Unauthorized');
 
 				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalledWith({ token });
-				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 			});
 
 			it('should throw when JWT is expired', async () => {
@@ -1298,19 +1605,19 @@ describe('AuthService', () => {
 			it('should throw when user is not found', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(null);
+				personRepository.findByIdWithRole.mockResolvedValue(null);
 
 				await expect(
 					authService.authenticateUserBasedOnToken(token, method, endpoint, browserId),
 				).rejects.toThrow('Unauthorized');
 
-				expect(userRepository.findOne).toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).toHaveBeenCalled();
 			});
 
 			it('should throw when user is disabled', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(mockUser({ disabled: true }));
+				personRepository.findByIdWithRole.mockResolvedValue(mockUser({ disabled: true }));
 
 				await expect(
 					authService.authenticateUserBasedOnToken(token, method, endpoint, browserId),
@@ -1320,7 +1627,9 @@ describe('AuthService', () => {
 			it('should throw when user password has changed', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(mockUser({ password: 'newPasswordHash' }));
+				personRepository.findByIdWithRole.mockResolvedValue(
+					mockUser({ password: 'newPasswordHash' }),
+				);
 
 				await expect(
 					authService.authenticateUserBasedOnToken(token, method, endpoint, browserId),
@@ -1332,7 +1641,7 @@ describe('AuthService', () => {
 			it('should throw when browserId does not match', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user);
+				personRepository.findByIdWithRole.mockResolvedValue(user);
 
 				await expect(
 					authService.authenticateUserBasedOnToken(token, method, endpoint, 'different-browser-id'),
@@ -1342,7 +1651,7 @@ describe('AuthService', () => {
 			it('should throw when browserId is missing but required', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user);
+				personRepository.findByIdWithRole.mockResolvedValue(user);
 
 				await expect(
 					authService.authenticateUserBasedOnToken(token, method, endpoint, undefined),
@@ -1352,7 +1661,7 @@ describe('AuthService', () => {
 			it('should not throw when browserId check is skipped for GET on skip endpoints', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user);
+				personRepository.findByIdWithRole.mockResolvedValue(user);
 				mfaService.isMFAEnforced.mockResolvedValue(false);
 
 				// Use an endpoint that's definitely in the skip list
@@ -1370,7 +1679,7 @@ describe('AuthService', () => {
 			it('should throw when browserId check is not skipped for POST on skip endpoints', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user);
+				personRepository.findByIdWithRole.mockResolvedValue(user);
 
 				const skipEndpoint = '/rest/push';
 				await expect(
@@ -1395,7 +1704,7 @@ describe('AuthService', () => {
 				const tokenForMfaUser = authService.issueJWT(userWithMfa, false, browserId);
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(userWithMfa);
+				personRepository.findByIdWithRole.mockResolvedValue(userWithMfa);
 				mfaService.isMFAEnforced.mockResolvedValue(true);
 
 				await expect(
@@ -1410,7 +1719,7 @@ describe('AuthService', () => {
 				const tokenWithoutMfa = authService.issueJWT(user, false, browserId);
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user); // user has mfaEnabled: false
+				personRepository.findByIdWithRole.mockResolvedValue(user); // user has mfaEnabled: false
 				mfaService.isMFAEnforced.mockResolvedValue(true);
 
 				await expect(
@@ -1430,7 +1739,7 @@ describe('AuthService', () => {
 				const tokenForMfaUser = authService.issueJWT(userWithMfa, false, browserId);
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(userWithMfa);
+				personRepository.findByIdWithRole.mockResolvedValue(userWithMfa);
 				mfaService.isMFAEnforced.mockResolvedValue(false);
 
 				await expect(
@@ -1450,7 +1759,7 @@ describe('AuthService', () => {
 				const tokenForMfaUser = authService.issueJWT(userWithMfa, true, browserId);
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(userWithMfa);
+				personRepository.findByIdWithRole.mockResolvedValue(userWithMfa);
 				mfaService.isMFAEnforced.mockResolvedValue(true);
 
 				const result = await authService.authenticateUserBasedOnToken(
@@ -1472,7 +1781,7 @@ describe('AuthService', () => {
 				const tokenWithoutMfa = authService.issueJWT(user, false, browserId);
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user);
+				personRepository.findByIdWithRole.mockResolvedValue(user);
 				mfaService.isMFAEnforced.mockResolvedValue(false);
 
 				const result = await authService.authenticateUserBasedOnToken(
@@ -1490,7 +1799,7 @@ describe('AuthService', () => {
 				// Token without browserId field
 				const tokenWithoutBrowserId = authService.issueJWT(user, false, undefined);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user);
+				personRepository.findByIdWithRole.mockResolvedValue(user);
 				mfaService.isMFAEnforced.mockResolvedValue(false);
 
 				const result = await authService.authenticateUserBasedOnToken(
@@ -1516,7 +1825,7 @@ describe('AuthService', () => {
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
 
 				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('Unauthorized');
-				expect(userRepository.findOne).not.toHaveBeenCalled();
+				expect(personRepository.findByIdWithRole).not.toHaveBeenCalled();
 			});
 
 			it('should throw when JWT is expired', async () => {
@@ -1538,7 +1847,7 @@ describe('AuthService', () => {
 			it('should throw when user is not found', async () => {
 				const token = authService.issueJWT(user, true, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(null);
+				personRepository.findByIdWithRole.mockResolvedValue(null);
 
 				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('Unauthorized');
 			});
@@ -1546,7 +1855,7 @@ describe('AuthService', () => {
 			it('should throw when user is disabled', async () => {
 				const token = authService.issueJWT(user, true, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(mockUser({ disabled: true }));
+				personRepository.findByIdWithRole.mockResolvedValue(mockUser({ disabled: true }));
 
 				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('Unauthorized');
 			});
@@ -1554,7 +1863,9 @@ describe('AuthService', () => {
 			it('should throw when user password hash changed', async () => {
 				const token = authService.issueJWT(user, true, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(mockUser({ password: 'newPasswordHash' }));
+				personRepository.findByIdWithRole.mockResolvedValue(
+					mockUser({ password: 'newPasswordHash' }),
+				);
 
 				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('Unauthorized');
 			});
@@ -1564,7 +1875,7 @@ describe('AuthService', () => {
 			it('should throw when MFA is enforced and token was issued without MFA', async () => {
 				const tokenWithoutMfa = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(user);
+				personRepository.findByIdWithRole.mockResolvedValue(user);
 				mfaService.isMFAEnforced.mockResolvedValue(true);
 
 				await expect(authService.authenticateUserByCookie(tokenWithoutMfa)).rejects.toThrow(
@@ -1580,7 +1891,7 @@ describe('AuthService', () => {
 				});
 				const tokenForMfaUser = authService.issueJWT(userWithMfa, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				userRepository.findOne.mockResolvedValue(userWithMfa);
+				personRepository.findByIdWithRole.mockResolvedValue(userWithMfa);
 				mfaService.isMFAEnforced.mockResolvedValue(false);
 
 				await expect(authService.authenticateUserByCookie(tokenForMfaUser)).rejects.toThrow(

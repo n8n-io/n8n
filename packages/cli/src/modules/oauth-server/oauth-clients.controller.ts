@@ -12,8 +12,7 @@ import { Delete, Get, GlobalScope, Param, Query, RestController } from '@n8n/dec
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import { OAuthServerService } from './oauth-server.service';
 

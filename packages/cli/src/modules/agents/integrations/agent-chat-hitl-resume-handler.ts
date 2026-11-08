@@ -10,17 +10,23 @@ import type {
 } from './agent-chat-integration';
 import { onceStatusHandle, postToUserOrThread } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
-import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
+import type { AgentChatStreamConsumer, EarlierToolResult } from './agent-chat-stream-consumer';
 import type { CallbackStore } from './callback-store';
 import type { InternalThread } from './types';
 import type {
 	ResumeForChatConfig,
 	AgentExecutionOrchestratorService,
 } from '../agent-execution-orchestrator.service';
+import { parseBackgroundApprovalAction } from '../background/sub-agent-background-state';
 
 type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'> & {
 	/** Optional: a caller that cannot look checkpoints up simply skips the gate. */
 	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
+	/** The agent thread and earlier tool results of a suspended run. */
+	getSuspendedRun?(config: {
+		agentId: string;
+		runId: string;
+	}): Promise<{ threadId: string; toolResults: EarlierToolResult[] } | null>;
 };
 
 /** Covers both an expired callback key and a checkpoint that is gone. */
@@ -34,6 +40,8 @@ interface AgentChatHitlResumeHandlerOptions {
 	agentService: ResumeExecutor;
 	logger: Logger;
 	callbackStore?: CallbackStore;
+	/** Lets the platform claim a tap that is not a resume, such as WhatsApp's "More…" row. */
+	claimAction?: (event: ActionEvent) => Promise<boolean>;
 	deleteActionMessageBeforeResume: boolean;
 	formatActionDecisionMessage?: ActionDecisionMessageFormatter;
 	settleActionMessage?: SettleActionMessage;
@@ -69,6 +77,8 @@ export class AgentChatHitlResumeHandler {
 			return;
 		}
 
+		if (await this.options.claimAction?.(event)) return;
+
 		const callbackData = await this.resolveCallbackData(
 			event.actionId,
 			event.value,
@@ -79,11 +89,12 @@ export class AgentChatHitlResumeHandler {
 
 		const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
 		if (!parsed) return;
+		const backgroundApproval = parseBackgroundApprovalAction(callbackData.actionId);
 
 		// Resuming a gone run reports it as an agent misconfiguration, which it is
 		// not. Check before the card is settled, so a stale one is answered rather
 		// than relabelled with a decision that never took effect.
-		if (!(await this.isRunResumable(parsed.runId))) {
+		if (!backgroundApproval && !(await this.isRunResumable(parsed.runId))) {
 			// Settling is not an option here: there is no decision to name.
 			if (this.options.deleteActionMessageBeforeResume) await this.deleteActionMessage(event);
 			await postToUserOrThread(thread, event.user, STALE_ACTION_NOTICE);
@@ -101,12 +112,20 @@ export class AgentChatHitlResumeHandler {
 			replyExpectation: 'required',
 		});
 
-		await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
-		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData, {
-			messageContext,
-			contextConversation: { threadId: threadId.id, resourceId: event.user.userId },
-			actingUser: event.user,
-		});
+		if (!backgroundApproval) await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
+		const resumed = await this.executeResume(
+			thread,
+			parsed.runId,
+			parsed.toolCallId,
+			parsed.resumeData,
+			{
+				messageContext,
+				contextConversation: { threadId: threadId.id, resourceId: event.user.userId },
+				actingUser: event.user,
+			},
+		);
+		if (backgroundApproval && resumed)
+			await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
 	}
 
 	/** Parsed result from an action ID. */
@@ -114,6 +133,8 @@ export class AgentChatHitlResumeHandler {
 		actionId: string,
 		value: string | undefined,
 	): { runId: string; toolCallId: string; resumeData: unknown } | null {
+		const backgroundApproval = parseBackgroundApprovalAction(actionId);
+		if (backgroundApproval) return backgroundApproval;
 		if (actionId.startsWith('ri-sel:')) {
 			const parts = actionId.split(':');
 			if (parts.length < 4) {
@@ -159,6 +180,7 @@ export class AgentChatHitlResumeHandler {
 		value: string | undefined;
 		label?: string;
 	} | null> {
+		if (parseBackgroundApprovalAction(actionId)) return { actionId, value };
 		if (!this.options.callbackStore) return { actionId, value };
 
 		const resolved = await this.options.callbackStore.resolve(actionId);
@@ -226,6 +248,24 @@ export class AgentChatHitlResumeHandler {
 		}
 	}
 
+	private async getSuspendedRun(runId: string) {
+		try {
+			return (
+				(await this.options.agentService.getSuspendedRun?.({
+					agentId: this.options.agentId,
+					runId,
+				})) ?? null
+			);
+		} catch (error) {
+			// Without it, the resume still runs, but files queued before the suspension are not sent.
+			this.options.logger.warn('[AgentChatBridge] Could not read the suspended run', {
+				runId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+	}
+
 	private async isRunResumable(runId: string): Promise<boolean> {
 		if (!this.options.agentService.isResumable) return true;
 		try {
@@ -281,7 +321,7 @@ export class AgentChatHitlResumeHandler {
 			 */
 			cardRecipientId?: string;
 		} = {},
-	): Promise<void> {
+	): Promise<boolean> {
 		const { actingUser, cardRecipientId, ...context } = options;
 		const cardUserId = actingUser?.userId ?? cardRecipientId;
 		if (this.activeResumedRuns.has(runId)) {
@@ -289,11 +329,13 @@ export class AgentChatHitlResumeHandler {
 			if (actingUser) {
 				await postToUserOrThread(thread, actingUser, 'This action has already been handled');
 			}
-			return;
+			return false;
 		}
 
 		this.activeResumedRuns.add(runId);
 		try {
+			// Read before the resume, which replaces the checkpoint.
+			const suspendedRun = await this.getSuspendedRun(runId);
 			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
 			const statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
 			try {
@@ -310,6 +352,12 @@ export class AgentChatHitlResumeHandler {
 					...resumeExecutionContext,
 					statusHandle,
 					...(cardUserId ? { actingUserId: cardUserId } : {}),
+					...(suspendedRun
+						? {
+								agentThreadId: suspendedRun.threadId,
+								earlierToolResults: suspendedRun.toolResults,
+							}
+						: {}),
 				});
 			} finally {
 				// The stream consumer clears the status right before the first response;
@@ -317,6 +365,7 @@ export class AgentChatHitlResumeHandler {
 				// once-wrapped handle makes it a no-op await when that already ran.
 				await statusHandle?.clearBeforeResponse();
 			}
+			return true;
 		} finally {
 			this.activeResumedRuns.delete(runId);
 		}

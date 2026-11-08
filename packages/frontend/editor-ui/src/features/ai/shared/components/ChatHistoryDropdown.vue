@@ -30,6 +30,8 @@ const props = withDefaults(
 		editingItemId?: string;
 		actionsDisabled?: boolean;
 		itemDoubleClickEnabled?: boolean;
+		/** Pinned above every date group, e.g. a "New chat" entry — never grouped, filtered, or hidden by the empty/loading state. */
+		leadingItem?: ChatHistoryItem;
 	}>(),
 	{
 		modelValue: undefined,
@@ -41,6 +43,7 @@ const props = withDefaults(
 		editingItemId: undefined,
 		actionsDisabled: false,
 		itemDoubleClickEnabled: false,
+		leadingItem: undefined,
 	},
 );
 
@@ -57,6 +60,7 @@ const slots = defineSlots<{
 	loading?: () => unknown;
 	empty?: () => unknown;
 	footer?: () => unknown;
+	'item-leading'?: (props: { item: ChatHistoryItem; ui: { class: string } }) => unknown;
 	'item-edit'?: (props: { item: ChatHistoryItem; ui: { class: string } }) => unknown;
 	'item-trailing'?: (props: { item: ChatHistoryItem }) => unknown;
 }>();
@@ -79,6 +83,21 @@ const groupLabels = {
 };
 
 const groupedItems = computed<ChatHistoryItem[]>(() => {
+	// With a leading item, `loading` is never forwarded to `N8nDropdownMenu` (see the
+	// template below) — its own loading state would otherwise replace every row, including
+	// the pinned one, with skeletons. Show a non-interactive row here instead, before doing
+	// any grouping work.
+	if (props.leadingItem && props.loading) {
+		return [
+			props.leadingItem,
+			{
+				id: '__chat-history-loading__',
+				label: i18n.baseText('generic.loadingEllipsis'),
+				header: true,
+			},
+		];
+	}
+
 	const groups = new Map<(typeof groupOrder)[number], ChatHistoryItem[]>();
 	const undated: ChatHistoryItem[] = [];
 	const now = new Date();
@@ -96,7 +115,7 @@ const groupedItems = computed<ChatHistoryItem[]>(() => {
 		groups.set(group, items);
 	}
 
-	return [
+	const dated = [
 		...groupOrder.flatMap((group) => {
 			const items = (groups.get(group) ?? []).sort(
 				(a, b) => Date.parse(b.data?.updatedAt ?? '') - Date.parse(a.data?.updatedAt ?? ''),
@@ -107,6 +126,18 @@ const groupedItems = computed<ChatHistoryItem[]>(() => {
 		}),
 		...undated,
 	];
+
+	if (!props.leadingItem) return dated;
+	// With a leading item, the list is never truly empty, so `N8nDropdownMenu`'s own
+	// `items.length === 0` → `emptyText` fallback never fires. Reproduce it here as a
+	// non-interactive row, so "no items" still reads as empty instead of just missing.
+	// A blank `emptyText` (e.g. the caller's own message lives elsewhere, such as a
+	// footer error) skips the row rather than rendering an empty line.
+	const body =
+		dated.length === 0 && props.emptyText
+			? [{ id: '__chat-history-empty__', label: props.emptyText, header: true }]
+			: dated;
+	return [props.leadingItem, ...body];
 });
 
 const cancelPendingItemClick = () => {
@@ -160,6 +191,16 @@ useEventListener(
 	{ capture: true },
 );
 
+// Hovering a row, the edited one too, moves focus to that row or to the search input.
+// That blurs the rename input and ends the rename, so rows get no hover while editing.
+function keepEditFocus(event: PointerEvent) {
+	if (!props.editingItemId || !(event.target instanceof Element)) return;
+	if (event.target.closest('[data-menu-content]')?.id !== contentId.value) return;
+	event.stopPropagation();
+}
+useEventListener(document, 'pointermove', keepEditFocus, { capture: true });
+useEventListener(document, 'pointerleave', keepEditFocus, { capture: true });
+
 const highlightFirstItem = () => {
 	dropdownRef.value?.highlightFirstItem();
 };
@@ -177,7 +218,7 @@ defineExpose({ highlightFirstItem, focusTrigger });
 		:id="contentId"
 		:model-value="props.modelValue"
 		:items="groupedItems"
-		:loading="props.loading"
+		:loading="!props.leadingItem && props.loading"
 		:max-height="props.maxHeight"
 		:data-test-id="props.dataTestId"
 		:content-test-id="props.contentTestId"
@@ -201,13 +242,21 @@ defineExpose({ highlightFirstItem, focusTrigger });
 			<slot name="empty" />
 		</template>
 
+		<template v-if="slots['item-leading']" #item-leading="slotProps">
+			<slot name="item-leading" v-bind="slotProps" />
+		</template>
+
 		<template #item-label="{ item, ui }">
-			<slot
+			<!-- Events in the edit row stay there. On the menu, a click, Space or Enter selects the row, and letters jump between rows. -->
+			<div
 				v-if="item.data && props.editingItemId === item.id"
-				name="item-edit"
-				:item="item"
-				:ui="ui"
-			/>
+				:class="$style.itemEdit"
+				@pointerdown.stop
+				@click.stop
+				@keydown.stop
+			>
+				<slot name="item-edit" :item="item" :ui="ui" />
+			</div>
 			<N8nText
 				v-else
 				:class="[ui.class, $style.itemLabel]"
@@ -240,7 +289,7 @@ defineExpose({ highlightFirstItem, focusTrigger });
 					<template #activator>
 						<N8nIconButton
 							variant="ghost"
-							icon="ellipsis-vertical"
+							icon="ellipsis"
 							:disabled="props.actionsDisabled || item.disabled"
 							:aria-label="props.actionButtonLabel"
 						/>
@@ -256,6 +305,10 @@ defineExpose({ highlightFirstItem, focusTrigger });
 </template>
 
 <style lang="scss" module>
+.itemEdit {
+	display: contents;
+}
+
 .menuContent {
 	width: var(--n8n--dropdown-menu-width);
 }

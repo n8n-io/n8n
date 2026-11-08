@@ -23,7 +23,12 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialsService } from '@/credentials/credentials.service';
+import {
+	CredentialsService,
+	PENDING_AUTHORIZATION_GRACE_MS,
+} from '@/credentials/credentials.service';
+import { PendingAuthorizationCleanupTask } from '@/credentials/pending-authorization-cleanup.task';
+import { OauthService } from '@/oauth/oauth.service';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
@@ -2100,6 +2105,141 @@ describe('GET /credentials/:id', () => {
 
 		const responseAbc = await authOwnerAgent.get('/credentials/abc');
 		expect(responseAbc.statusCode).toBe(404);
+	});
+});
+
+describe('pending authorization', () => {
+	const createPending = async () => {
+		const response = await authMemberAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), pendingAuthorization: true });
+		expect(response.statusCode).toBe(200);
+		return response.body.data.id as string;
+	};
+
+	const listedIds = async () => {
+		const response = await authMemberAgent.get('/credentials');
+		expect(response.statusCode).toBe(200);
+		return response.body.data.map((c: { id: string }) => c.id);
+	};
+
+	test('should set the deadline on creation', async () => {
+		const id = await createPending();
+
+		const credential = await getCredentialById(id);
+		a.ok(credential?.pendingAuthorizationExpiresAt);
+		expect(credential.pendingAuthorizationExpiresAt.getTime() - Date.now()).toBeCloseTo(
+			PENDING_AUTHORIZATION_GRACE_MS,
+			-4,
+		);
+	});
+
+	test('should leave it out of lists but keep it reachable by id', async () => {
+		const id = await createPending();
+		const visible = await saveCredential(randomCredentialPayload(), {
+			user: member,
+			role: 'credential:owner',
+		});
+
+		expect(await listedIds()).toEqual([visible.id]);
+
+		const forProject = await authMemberAgent
+			.get('/credentials/for-workflow')
+			.query({ projectId: memberPersonalProject.id });
+		expect(forProject.statusCode).toBe(200);
+		expect(forProject.body.data.map((c: { id: string }) => c.id)).toEqual([visible.id]);
+
+		const byId = await authMemberAgent.get(`/credentials/${id}`);
+		expect(byId.statusCode).toBe(200);
+		expect(byId.body.data.id).toBe(id);
+	});
+
+	test('should list it once a token is written', async () => {
+		const id = await createPending();
+		const credential = await getCredentialById(id);
+		a.ok(credential);
+
+		await Container.get(OauthService).encryptAndSaveData(credential, {
+			oauthTokenData: { access_token: 'token' },
+		});
+
+		expect((await getCredentialById(id))?.pendingAuthorizationExpiresAt).toBeNull();
+		expect(await listedIds()).toEqual([id]);
+	});
+
+	test('should stay pending when only client registration data is written', async () => {
+		const id = await createPending();
+		const credential = await getCredentialById(id);
+		a.ok(credential);
+
+		await Container.get(OauthService).encryptAndSaveData(credential, {
+			clientId: 'registered-client',
+			clientSecret: 'registered-secret',
+		});
+
+		expect((await getCredentialById(id))?.pendingAuthorizationExpiresAt).not.toBeNull();
+		expect(await listedIds()).toEqual([]);
+	});
+
+	test('should reject the flag on end-user and instance credentials', async () => {
+		const resolvable = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), pendingAuthorization: true, isResolvable: true });
+		expect(resolvable.statusCode).toBe(400);
+
+		const instance = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), pendingAuthorization: true, usageScope: 'instance' });
+		expect(instance.statusCode).toBe(400);
+	});
+
+	test('should leave a pending global credential out of lists', async () => {
+		const pendingGlobal = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), pendingAuthorization: true, isGlobal: true });
+		expect(pendingGlobal.statusCode).toBe(200);
+
+		const list = await authMemberAgent.get('/credentials').query({ includeGlobal: true });
+		expect(list.statusCode).toBe(200);
+		expect(list.body.data).toEqual([]);
+
+		const forProject = await authMemberAgent
+			.get('/credentials/for-workflow')
+			.query({ projectId: memberPersonalProject.id });
+		expect(forProject.statusCode).toBe(200);
+		expect(forProject.body.data).toEqual([]);
+	});
+
+	test('should not count toward the next credential name', async () => {
+		const name = randomCredentialPayload().name;
+		await authMemberAgent.post('/credentials').send({
+			...randomCredentialPayload(),
+			name,
+			pendingAuthorization: true,
+		});
+
+		const response = await authMemberAgent.get(`/credentials/new?name=${name}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.name).toBe(name);
+	});
+
+	test('cleanup task should delete only credentials past their deadline', async () => {
+		const expiredId = await createPending();
+		const pendingId = await createPending();
+		const regular = await saveCredential(randomCredentialPayload(), {
+			user: member,
+			role: 'credential:owner',
+		});
+		await Container.get(CredentialsRepository).update(expiredId, {
+			pendingAuthorizationExpiresAt: new Date(Date.now() - 1000),
+		});
+
+		await Container.get(PendingAuthorizationCleanupTask).run();
+
+		expect(await getCredentialById(expiredId)).toBeNull();
+		expect(await getCredentialById(pendingId)).not.toBeNull();
+		expect(await getCredentialById(regular.id)).not.toBeNull();
 	});
 });
 

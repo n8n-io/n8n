@@ -252,7 +252,7 @@ describe('TaskRunnerProcess', () => {
 			);
 		});
 
-		it('on secure mode, should use --disallow-code-generation-from-strings and --disable-proto=delete flags', async () => {
+		it('on secure mode, should use the hardening flags', async () => {
 			authService.createGrantToken.mockResolvedValue('grantToken');
 
 			await taskRunnerProcess.start();
@@ -260,6 +260,7 @@ describe('TaskRunnerProcess', () => {
 			expect(spawnMock.mock.calls[0].at(1)).toEqual([
 				'--disallow-code-generation-from-strings',
 				'--disable-proto=delete',
+				'--no-experimental-webstorage',
 				expect.stringContaining('/packages/@n8n/task-runner/dist/start.js'),
 			]);
 		});

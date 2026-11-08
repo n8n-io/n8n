@@ -10,7 +10,7 @@ import {
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { sleep } from '@n8n/utils/sleep';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -88,11 +88,14 @@ describe('DbLockService', () => {
 			const settingsKey = `test.atomic-settings.${randomUUID()}`;
 
 			// The credential writes are sealed; with no check registered, enforcement clears.
-			const policyCleared = await Container.get(PolicyEnforcementService).enforceCredentialSave({
-				credential: { id: null, type: 'openAiApi' },
-				storedCredential: null,
-				projectId: null,
-			});
+			const policyCleared = await Container.get(PolicyEnforcementService).enforceCredentialSave(
+				{
+					credential: { id: null, type: 'openAiApi' },
+					storedCredential: null,
+					projectId: null,
+				},
+				{ kind: 'system', reason: 'integration' },
+			);
 
 			await expect(
 				dbLockService.withLockContext(DbLock.TEST, async (ctx) => {
@@ -130,11 +133,14 @@ describe('DbLockService', () => {
 				}),
 			);
 			const settingsKey = `test.atomic-settings.${randomUUID()}`;
-			const policyCleared = await Container.get(PolicyEnforcementService).enforceCredentialSave({
-				credential: { id: credential.id, type: credential.type },
-				storedCredential: { id: credential.id, type: credential.type },
-				projectId: null,
-			});
+			const policyCleared = await Container.get(PolicyEnforcementService).enforceCredentialSave(
+				{
+					credential: { id: credential.id, type: credential.type },
+					storedCredential: { id: credential.id, type: credential.type },
+					projectId: null,
+				},
+				{ kind: 'system', reason: 'integration' },
+			);
 
 			await expect(
 				dbLockService.withLockContext(DbLock.TEST, async (ctx) => {

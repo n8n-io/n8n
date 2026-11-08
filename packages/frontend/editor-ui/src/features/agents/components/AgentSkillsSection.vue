@@ -7,18 +7,22 @@ import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabili
 import type { AgentSkill } from '../types';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
+import AgentItemContextMenu from './AgentItemContextMenu.vue';
 
 const props = withDefaults(
 	defineProps<{
+		/** In ref order. A skill has no on/off toggle: a ref is attached or it is not. */
 		skills: Array<{ id: string; skill: AgentSkill }>;
 		disabled?: boolean;
 		showLabel?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
+		outdatedSkillIds?: string[];
 	}>(),
 	{
 		disabled: false,
 		showLabel: true,
 		validationIssues: () => [],
+		outdatedSkillIds: () => [],
 	},
 );
 
@@ -33,6 +37,8 @@ const { groupIssueMessages } = useAgentCapabilityIssueMessages(() => props.valid
 const skillIssueMessages = computed(() =>
 	groupIssueMessages('skill', (issue) => issue.capability.id),
 );
+const outdatedSkillIds = computed(() => new Set(props.outdatedSkillIds));
+const outdatedWarning = computed(() => [i18n.baseText('agents.builder.skills.outdated.warning')]);
 </script>
 
 <template>
@@ -46,17 +52,21 @@ const skillIssueMessages = computed(() =>
 		@add="emit('add-skill')"
 	>
 		<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
-			<AgentChipButton
-				icon="book-open"
-				:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
-				:invalid-reasons="skillIssueMessages.get(id) ?? []"
-				:disabled="props.disabled"
-				:class="$style.skillChip"
-				data-testid="agent-capabilities-skill-row"
-				@click="emit('open-skill', id)"
-			>
-				{{ skill.name || id }}
-			</AgentChipButton>
+			<AgentItemContextMenu :disabled="props.disabled" @remove="emit('remove-skill', id)">
+				<AgentChipButton
+					icon="book-open"
+					:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
+					:invalid-reasons="skillIssueMessages.get(id) ?? []"
+					:warning="outdatedSkillIds.has(id)"
+					:warning-reasons="outdatedSkillIds.has(id) ? outdatedWarning : []"
+					:disabled="props.disabled"
+					:class="$style.skillChip"
+					data-testid="agent-capabilities-skill-row"
+					@click="emit('open-skill', id)"
+				>
+					{{ skill.name || id }}
+				</AgentChipButton>
+			</AgentItemContextMenu>
 		</div>
 	</AgentChipRow>
 </template>

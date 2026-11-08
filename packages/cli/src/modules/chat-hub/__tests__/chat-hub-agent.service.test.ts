@@ -1,11 +1,12 @@
 import type { ChatHubAgentKnowledgeItem } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
@@ -80,6 +81,7 @@ describe('ChatHubAgentService', () => {
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 	const toolService = mock<ChatHubToolService>();
 	const mockUser = mock<User>({ id: mockUserId });
+	const mockTrx = mock<EntityManager>();
 
 	let service: ChatHubAgentService;
 
@@ -98,6 +100,11 @@ describe('ChatHubAgentService', () => {
 			settingsService,
 			dynamicNodeParametersService,
 			toolService,
+		);
+
+		agentRepository.runInTransaction.mockImplementation(
+			async (ctx: unknown, fn: (em: never, ctx: unknown) => Promise<unknown>) =>
+				await fn(mockTrx as never, ctx),
 		);
 	});
 
@@ -129,6 +136,7 @@ describe('ChatHubAgentService', () => {
 					model: 'gpt-4',
 					ownerId: mockUserId,
 				}),
+				mockTrx,
 			);
 			expect(dto.id).toBe(agent.id);
 			expect(dto.name).toBe('Test Agent');
@@ -153,6 +161,7 @@ describe('ChatHubAgentService', () => {
 
 			expect(agentRepository.createAgent).toHaveBeenCalledWith(
 				expect.objectContaining({ description: null }),
+				mockTrx,
 			);
 		});
 
@@ -171,8 +180,32 @@ describe('ChatHubAgentService', () => {
 				toolIds,
 			});
 
-			expect(toolService.setAgentTools).toHaveBeenCalledWith(expect.any(String), toolIds);
+			expect(toolService.setAgentTools).toHaveBeenCalledWith(
+				expect.any(String),
+				mockUserId,
+				toolIds,
+				mockTrx,
+			);
 			expect(dto.toolIds).toEqual(toolIds);
+		});
+
+		it('should create the agent and set its tools in one transaction', async () => {
+			agentRepository.createAgent.mockResolvedValue(makeAgent());
+			toolService.setAgentTools.mockRejectedValue(new NotFoundError('Chat hub tool not found'));
+
+			await expect(
+				service.createAgent(mockUser, {
+					name: 'Test Agent',
+					systemPrompt: 'You are helpful',
+					icon: { type: 'emoji', value: '🤖' },
+					credentialId: 'cred-1',
+					provider: 'openai',
+					model: 'gpt-4',
+					toolIds: [uuid()],
+				}),
+			).rejects.toThrow(NotFoundError);
+
+			expect(agentRepository.createAgent).toHaveBeenCalledWith(expect.anything(), mockTrx);
 		});
 
 		it('should not call setAgentTools when toolIds is empty', async () => {
@@ -210,6 +243,7 @@ describe('ChatHubAgentService', () => {
 
 			expect(agentRepository.createAgent).toHaveBeenCalledWith(
 				expect.objectContaining({ suggestedPrompts: prompts }),
+				mockTrx,
 			);
 			expect(dto.suggestedPrompts).toEqual(prompts);
 		});
@@ -230,6 +264,7 @@ describe('ChatHubAgentService', () => {
 
 			expect(agentRepository.createAgent).toHaveBeenCalledWith(
 				expect.objectContaining({ suggestedPrompts: [] }),
+				mockTrx,
 			);
 		});
 	});
@@ -273,7 +308,11 @@ describe('ChatHubAgentService', () => {
 
 			await service.updateAgent(agent.id, mockUser, { name: 'New Name' });
 
-			expect(agentRepository.updateAgent).toHaveBeenCalledWith(agent.id, { name: 'New Name' });
+			expect(agentRepository.updateAgent).toHaveBeenCalledWith(
+				agent.id,
+				{ name: 'New Name' },
+				mockTrx,
+			);
 		});
 
 		it('should update multiple fields at once', async () => {
@@ -294,11 +333,15 @@ describe('ChatHubAgentService', () => {
 				systemPrompt: 'New prompt',
 			});
 
-			expect(agentRepository.updateAgent).toHaveBeenCalledWith(agent.id, {
-				name: 'Updated',
-				description: 'New desc',
-				systemPrompt: 'New prompt',
-			});
+			expect(agentRepository.updateAgent).toHaveBeenCalledWith(
+				agent.id,
+				{
+					name: 'Updated',
+					description: 'New desc',
+					systemPrompt: 'New prompt',
+				},
+				mockTrx,
+			);
 			expect(dto.name).toBe('Updated');
 		});
 
@@ -311,7 +354,24 @@ describe('ChatHubAgentService', () => {
 
 			await service.updateAgent(agent.id, mockUser, { toolIds });
 
-			expect(toolService.setAgentTools).toHaveBeenCalledWith(agent.id, toolIds);
+			expect(toolService.setAgentTools).toHaveBeenCalledWith(
+				agent.id,
+				mockUserId,
+				toolIds,
+				mockTrx,
+			);
+		});
+
+		it('should not update the agent fields when the tools are rejected', async () => {
+			const agent = makeAgent();
+			agentRepository.getOneById.mockResolvedValue(agent);
+			toolService.setAgentTools.mockRejectedValue(new NotFoundError('Chat hub tool not found'));
+
+			await expect(
+				service.updateAgent(agent.id, mockUser, { name: 'New Name', toolIds: [uuid()] }),
+			).rejects.toThrow(NotFoundError);
+
+			expect(agentRepository.updateAgent).not.toHaveBeenCalled();
 		});
 
 		it('should not set tools when toolIds is not provided', async () => {
@@ -339,6 +399,7 @@ describe('ChatHubAgentService', () => {
 			expect(agentRepository.updateAgent).toHaveBeenCalledWith(
 				agent.id,
 				expect.objectContaining({ suggestedPrompts: prompts }),
+				mockTrx,
 			);
 			expect(dto.suggestedPrompts).toEqual(prompts);
 		});
@@ -354,6 +415,7 @@ describe('ChatHubAgentService', () => {
 			expect(agentRepository.updateAgent).toHaveBeenCalledWith(
 				agent.id,
 				expect.not.objectContaining({ suggestedPrompts: expect.anything() }),
+				mockTrx,
 			);
 		});
 	});

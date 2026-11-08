@@ -1,5 +1,6 @@
 import { Logger, parseFlatted } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type {
@@ -20,16 +21,18 @@ import {
 	MoreThanOrEqual,
 	Not,
 	And,
+	Raw,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { stringify } from 'flatted';
 import chunk from 'lodash/chunk';
 import pick from 'lodash/pick';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
+	ExecutionTracingContext,
 	IRunExecutionData,
 	IRunExecutionDataAll,
 	IWorkflowSettings,
@@ -65,13 +68,40 @@ import type {
 import { TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { chunkIds } from '../utils/chunk-ids';
-import { parseDbTime } from '../utils/dialect-time';
+import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
 import { separate } from '../utils/separate';
 
 class PostgresLiveRowsRetrievalError extends UnexpectedError {
 	constructor(rows: unknown) {
 		super('Failed to retrieve live execution rows in Postgres', { extra: { rows } });
 	}
+}
+
+const MAX_REPORTED_INVALID_EXECUTIONS = 20;
+
+const REPORTED_ROW_FIELDS = [
+	'id',
+	'storedAt',
+	'status',
+	'mode',
+	'finished',
+	'createdAt',
+	'startedAt',
+	'stoppedAt',
+	'jsonSizeBytes',
+	'deletedAt',
+	'retryOf',
+] as const;
+
+/** Row fields that tell which kind of execution lost its data. Leaves out fields the query did not load. */
+function toReportedRow(execution: ExecutionEntity) {
+	const row: Record<string, unknown> = {};
+	for (const field of REPORTED_ROW_FIELDS) {
+		const value: unknown = execution[field];
+		if (value === undefined || value === null) continue;
+		row[field] = value instanceof Date ? value.toISOString() : value;
+	}
+	return row;
 }
 
 export type CrashedExecution = {
@@ -81,17 +111,26 @@ export type CrashedExecution = {
 	mode: WorkflowExecuteMode;
 	startedAt: Date | null;
 	stoppedAt: Date;
-	tracingContext?: { traceparent: string; tracestate?: string };
+	tracingContext?: ExecutionTracingContext;
 	workflowVersionId?: string;
 	retryOf?: string;
 	workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
 	project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 };
 
+export type ResumableExecutionStatus = 'waiting' | 'new';
+
+export type ResumeAttemptClaim =
+	| { outcome: 'claimed'; attempts: number }
+	| { outcome: 'exhausted'; attempts: number; jsonSizeBytes: number }
+	| { outcome: 'conflict' };
+
 export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
 	requireNotFinished?: boolean;
 	requireNotCanceled?: boolean;
+	/** Also update a soft-deleted execution. */
+	includeDeleted?: boolean;
 }
 
 export interface IGetExecutionsQueryFilter {
@@ -181,14 +220,13 @@ const MAX_UPDATE_BATCH_SIZE = 900;
 
 @Service()
 export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
-	private hardDeletionBatchSize = 100;
+	readonly hardDeletionBatchSize = 100;
 
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly binaryDataService: BinaryDataService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		transactionRunner: TransactionRunner,
 	) {
@@ -268,6 +306,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			new UnexpectedError('Found executions without executionData', {
 				extra: {
 					executionIds: executions.map(({ id }) => id),
+					executions: executions.slice(0, MAX_REPORTED_INVALID_EXECUTIONS).map(toReportedRow),
 				},
 			}),
 		);
@@ -437,11 +476,39 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
+	 * Set a `waiting` or `new` execution to `crashed`, which `markAsCrashed` skips on purpose.
+	 * With `expectedAttempts`, the row is left alone if its count changed since it was read.
+	 */
+	async markAsCrashedFrom(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		{
+			expectedAttempts,
+			onTransitioned,
+		}: { expectedAttempts?: number; onTransitioned?: (batch: CrashedExecution[]) => void } = {},
+	): Promise<CrashedExecution[]> {
+		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+		if (expectedAttempts !== undefined) where.resumeAttempts = expectedAttempts;
+
+		const transitioned = await this.withOwnerProjects(
+			await this.transitionToCrashed(where, [status]),
+		);
+
+		if (transitioned.length > 0) {
+			onTransitioned?.(transitioned);
+			this.logger.info('Marked executions as `crashed`', { executionIds: [executionId] });
+		}
+
+		return transitioned;
+	}
+
+	/**
 	 * Set the rows matching `where` to `crashed`. The caller's predicate selects the
 	 * candidates; the status guard and the identity of the written rows are added here.
 	 */
 	private async transitionToCrashed(
 		where: FindOptionsWhere<ExecutionEntity>,
+		fromStatuses: readonly ExecutionStatus[] = CRASHABLE_EXECUTION_STATUSES,
 	): Promise<CrashedExecution[]> {
 		// `stoppedAt` doubles as a claim token, so the read below can match the rows this
 		// UPDATE wrote without `SELECT ... FOR UPDATE`, which SQLite does not support. A
@@ -454,7 +521,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			// healthy execution as dangling, but only genuinely in-progress rows should be crashed
 			const updateResult = await tx.update(
 				ExecutionEntity,
-				{ ...where, status: In(CRASHABLE_EXECUTION_STATUSES) },
+				{ ...where, status: In(fromStatuses) },
 				{ status: 'crashed', stoppedAt, waitTill: null },
 			);
 
@@ -592,6 +659,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				// oxlint-disable-next-line typescript/no-deprecated
 				if (conditions?.requireNotFinished) whereCondition.finished = false;
 				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');
 
@@ -614,7 +682,23 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
-	async deleteExecutionsByFilter({
+	/** Deletion targets of a workflow, soft-deleted ones included. */
+	async findForDeletionByWorkflowId(workflowId: string, limit: number) {
+		const executions = await this.createQueryBuilder('execution')
+			.withDeleted()
+			.select(['execution.id', 'execution.workflowId', 'execution.storedAt'])
+			.where('execution.workflowId = :workflowId', { workflowId })
+			.limit(limit)
+			.getMany();
+
+		return executions.map(({ id, workflowId, storedAt }) => ({
+			executionId: id,
+			workflowId,
+			storedAt,
+		}));
+	}
+
+	async findExecutionsToDelete({
 		filters,
 		accessibleWorkflowIds,
 		deleteConditions,
@@ -654,23 +738,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			return [];
 		}
 
-		const refs = executions.map(({ id, workflowId, storedAt }) => ({
+		return executions.map(({ id, workflowId, storedAt }) => ({
 			executionId: id,
 			workflowId,
 			storedAt,
 		}));
-
-		const toDelete = [...refs];
-		do {
-			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = toDelete.splice(0, this.hardDeletionBatchSize);
-			await Promise.all([
-				this.delete(batch.map(({ executionId }) => executionId)),
-				this.binaryDataService.deleteMany(batch.map((b) => ({ type: 'execution' as const, ...b }))),
-			]);
-		} while (toDelete.length > 0);
-
-		return refs;
 	}
 
 	async getIdsSince(date: Date) {
@@ -692,34 +764,33 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.select('annotation.executionId')
 			.from(ExecutionAnnotation, 'annotation');
 
-		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
-		const date = new Date();
-		date.setHours(date.getHours() - pruneDataMaxAge);
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
 
-		const toPrune: Array<FindOptionsWhere<ExecutionEntity>> = [
-			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
-			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
-		];
+		const pruningCriteria = new Brackets((qb) => {
+			// Find executions that stopped before the retention cutoff.
+			qb.where({
+				stoppedAt: Raw(
+					(column) =>
+						`${column} <= ${dbNowPlusMsLiteral(isPostgres, -pruneDataMaxAge * Time.hours.toMilliseconds)}`,
+				),
+			});
 
-		if (pruneDataMaxCount > 0) {
-			const executions = await this.createQueryBuilder('execution')
-				.select('execution.id')
-				.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
-				.skip(pruneDataMaxCount)
-				.take(1)
-				.orderBy('execution.id', 'DESC')
-				.getMany();
+			if (pruneDataMaxCount > 0) {
+				// Compute the count cutoff in the same statement so it matches the rows it updates.
+				const countCutoff = this.createQueryBuilder('execution')
+					.select('execution.id')
+					.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
+					.orderBy('execution.id', 'DESC')
+					.offset(pruneDataMaxCount)
+					.limit(1);
 
-			if (executions[0]) {
-				toPrune.push({ id: LessThanOrEqual(executions[0].id) });
+				qb.orWhere(`id <= (${countCutoff.getQuery()})`);
 			}
-		}
-
-		const [timeBasedWhere, countBasedWhere] = toPrune;
+		});
 
 		return await this.createQueryBuilder()
 			.update(ExecutionEntity)
-			.set({ deletedAt: new Date() })
+			.set({ deletedAt: () => dbNowLiteral(isPostgres) })
 			.where({
 				deletedAt: IsNull(),
 				// Only mark executions as deleted if they are in an end state
@@ -727,25 +798,23 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			})
 			// Only mark executions as deleted if they are not annotated
 			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
-			.andWhere(
-				new Brackets((qb) =>
-					countBasedWhere
-						? qb.where(timeBasedWhere).orWhere(countBasedWhere)
-						: qb.where(timeBasedWhere),
-				),
-			)
+			.andWhere(pruningCriteria)
 			.execute();
 	}
 
-	async findSoftDeletedExecutions() {
-		const date = new Date();
-		date.setHours(date.getHours() - this.globalConfig.executions.pruneDataHardDeleteBuffer);
+	/** One batch of soft-deleted executions past the buffer, newest id first, below `before` when given. */
+	async findSoftDeletedExecutions(before?: string) {
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
+		const bufferMs =
+			this.globalConfig.executions.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
 
 		const results = await this.find({
 			select: ['workflowId', 'id', 'storedAt'],
 			where: {
-				deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+				deletedAt: Raw((column) => `${column} <= ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
+				...(before === undefined ? {} : { id: LessThan(before) }),
 			},
+			order: { id: 'DESC' },
 			take: this.hardDeletionBatchSize,
 
 			/**
@@ -762,8 +831,87 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}));
 	}
 
+	/**
+	 * A finished manual execution that n8n did not save, until pruning hard-deletes it.
+	 * It is soft-deleted, so other reads do not return it. The caller must check that
+	 * the reader started it.
+	 */
+	async findUnsavedManualExecution(executionId: string): Promise<ExecutionEntity | null> {
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
+		const bufferMs =
+			this.globalConfig.executions.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
+
+		return await this.findOne({
+			where: {
+				id: executionId,
+				mode: 'manual',
+				// A run whose final data was never written still has its start status.
+				status: In(['success', 'error', 'crashed', 'canceled']),
+				deletedAt: Raw((column) => `${column} > ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
+			},
+			relations: { metadata: true },
+			// An unsaved manual execution is soft-deleted when it finishes.
+			withDeleted: true,
+		});
+	}
+
 	async deleteByIds(executionIds: string[]) {
 		return await this.delete({ id: In(executionIds) });
+	}
+
+	/**
+	 * Count one resume attempt before the load, so a load that kills the process stays
+	 * counted. `conflict` means the row is no longer in `status`.
+	 */
+	async claimResumeAttempt(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		maxAttempts: number,
+	): Promise<ResumeAttemptClaim> {
+		const execution = await this.findOne({
+			select: ['id', 'resumeAttempts', 'jsonSizeBytes'],
+			where: { id: executionId, status },
+		});
+		if (!execution) return { outcome: 'conflict' };
+
+		const { resumeAttempts: attempts, jsonSizeBytes } = execution;
+		if (attempts >= maxAttempts) return { outcome: 'exhausted', attempts, jsonSizeBytes };
+
+		// The count just read is part of the predicate, so two processes cannot take the same attempt.
+		const result = await this.update(
+			{ id: executionId, status, resumeAttempts: attempts },
+			{ resumeAttempts: attempts + 1 },
+		);
+		if ((result.affected ?? 0) === 0) return { outcome: 'conflict' };
+
+		return { outcome: 'claimed', attempts: attempts + 1 };
+	}
+
+	/**
+	 * Give back an attempt. `attempts` is the count the claim returned, so a newer claim by
+	 * another process is not undone.
+	 */
+	async releaseResumeAttempt(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		attempts: number,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status, resumeAttempts: attempts },
+			{ resumeAttempts: attempts - 1 },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	async findEnqueuedIds(): Promise<string[]> {
+		const rows = await this.find({
+			select: ['id'],
+			where: { status: 'new' },
+			order: { id: 'ASC' },
+		});
+
+		return rows.map(({ id }) => id);
 	}
 
 	async getWaitingExecutions() {
@@ -1424,6 +1572,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.getRawMany<{ workflowVersionId: string }>();
 
 		return result.map((r) => r.workflowVersionId);
+	}
+
+	/** IDs of executions still in progress (`running` or `unknown` status). */
+	async findUnfinishedIds(): Promise<string[]> {
+		const rows = await this.find({
+			select: ['id'],
+			where: { status: In(['running', 'unknown']) },
+		});
+		return rows.map(({ id }) => id);
 	}
 
 	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {

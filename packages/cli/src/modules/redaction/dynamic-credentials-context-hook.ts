@@ -9,7 +9,7 @@ import {
 } from '@n8n/decorators';
 import type { PlaintextExecutionContext } from 'n8n-workflow';
 
-import { ExecutingUserIdentifierProxy } from '@/credentials/executing-user-identifier-proxy';
+import { ExecutingUserIdentifierProxy } from '@n8n/backend-services';
 
 @ContextEstablishmentHook({
 	alwaysExecute: true,

@@ -278,6 +278,29 @@ describe('useCredentialOAuth', () => {
 			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
 		});
 
+		// Jira's shape: the instance supplies the OAuth app, but the Site URL stays
+		// the user's to fill, so only the one-click path is lost.
+		it('should return false when a required property beyond the client pair is not overwritten', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.slackOAuth2Api = {
+				...slackOAuth2Api,
+				properties: [
+					...slackOAuth2Api.properties,
+					{
+						displayName: 'Site URL',
+						name: 'domain',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+				],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
+		});
+
 		it('should return true when all required properties are overwritten', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.state.credentialTypes.slackOAuth2Api = {
@@ -854,7 +877,7 @@ describe('useCredentialOAuth', () => {
 			mockShowMessage.mockClear();
 			mockPopup = { closed: false, close: vi.fn(), focus: vi.fn(), location: { href: '' } };
 			MockBroadcastChannel.silent = false;
-			mockedStore(useCredentialsStore).deleteCredential.mockResolvedValue();
+			mockedStore(useCredentialsStore).deleteCredential.mockResolvedValue(true);
 			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
 		});
@@ -920,7 +943,7 @@ describe('useCredentialOAuth', () => {
 				}),
 				undefined,
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 		});
 
@@ -943,7 +966,7 @@ describe('useCredentialOAuth', () => {
 				},
 				'workflow-project',
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				workflowId: 'setup-workflow',
@@ -966,7 +989,7 @@ describe('useCredentialOAuth', () => {
 				expect.objectContaining({ description: 'Use for production alerts' }),
 				undefined,
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 		});
 
@@ -1014,7 +1037,7 @@ describe('useCredentialOAuth', () => {
 				}),
 				undefined,
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 		});
 

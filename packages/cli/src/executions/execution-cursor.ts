@@ -1,7 +1,7 @@
 import type { SerializedCursor } from '@n8n/api-types';
 import { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 const timestamp = z.string().datetime({ offset: true });
 

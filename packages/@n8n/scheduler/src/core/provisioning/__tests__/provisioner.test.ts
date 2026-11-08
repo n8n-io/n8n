@@ -1,3 +1,9 @@
+import {
+	SCHEDULED_JOB_NAME_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_ID_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH,
+	ScheduledJobMisfirePolicy,
+} from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
 import { ScheduledJobOwnerRegistry } from '../../reconciliation/owner';
@@ -32,6 +38,7 @@ describe('createJobProvisioner', () => {
 		const tx = mock<ProvisionTransaction>();
 		tx.findExisting.mockResolvedValue([]);
 		tx.insert.mockResolvedValue([1]);
+		tx.readJobs.mockResolvedValue({ now: new Date(), jobs: [] });
 		const runInProvision: RunInProvisionTransaction = async (work) => await work(tx);
 		const provisionTransaction = vi.fn().mockReturnValue(runInProvision);
 		const provisioner = createJobProvisioner({
@@ -73,6 +80,54 @@ describe('createJobProvisioner', () => {
 			ref: 'scope-b',
 		});
 		expect(result).toEqual({ removed: 3 });
+	});
+
+	it('keeps the default seed window when an override is explicitly undefined', async () => {
+		const now = new Date('2026-01-01T00:00:00.000Z');
+		const tx = mock<ProvisionTransaction>();
+		tx.findExisting.mockResolvedValue([]);
+		tx.insert.mockResolvedValue([1]);
+		tx.readJobs.mockResolvedValue({
+			now,
+			jobs: [
+				{
+					id: 1,
+					taskType: 'test',
+					payload: {},
+					kind: 'interval',
+					cronExpression: null,
+					timezone: null,
+					intervalSeconds: 10,
+					fireAt: null,
+					recurrenceUnit: null,
+					recurrenceSize: null,
+					nextRunAt: new Date(now.getTime() + 10_000),
+					lastFiredAt: null,
+					maxAttempts: 1,
+					timeoutSeconds: 300,
+					concurrencyLimit: null,
+					misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+					misfireGraceSeconds: 60,
+					ownerKey: 'owner-a',
+					enabled: true,
+				},
+			],
+		});
+		tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
+		tx.retireSuperseded.mockResolvedValue(0);
+		const runInProvision: RunInProvisionTransaction = async (work) => await work(tx);
+		const provisioner = createJobProvisioner({
+			provisionTransaction: vi.fn().mockReturnValue(runInProvision),
+			deprovisionTransaction: vi.fn(),
+			owners,
+			materializer: { windowSeconds: undefined },
+		});
+
+		await provisioner.provision({ owner: owner('thing-1') }, desired);
+
+		expect(tx.recordOccurrences).toHaveBeenCalledWith(
+			expect.arrayContaining([expect.objectContaining({ jobId: 1 })]),
+		);
 	});
 
 	describe('liveness resolver guardrail', () => {
@@ -131,7 +186,10 @@ describe('createJobProvisioner', () => {
 			const { provisioner } = makeProvisioner();
 
 			await expect(
-				provisioner.provision({ owner: owner('thing-1', 'm'.repeat(37)) }, desired),
+				provisioner.provision(
+					{ owner: owner('thing-1', 'm'.repeat(SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH + 1)) },
+					desired,
+				),
 			).rejects.toThrow('Scheduled job owner member id must be non-empty and fit its length limit');
 		});
 
@@ -139,8 +197,61 @@ describe('createJobProvisioner', () => {
 			const { provisioner } = makeProvisioner();
 
 			await expect(
-				provisioner.provision({ owner: owner('a'.repeat(255), 'm'.repeat(36)) }, desired),
+				provisioner.provision(
+					{
+						owner: owner(
+							'a'.repeat(SCHEDULED_JOB_OWNER_ID_MAX_LENGTH),
+							'm'.repeat(SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH),
+						),
+					},
+					desired,
+				),
 			).resolves.toMatchObject({ inserted: [{ id: 1, name: 'wf:node:0' }] });
+		});
+
+		it('counts owner ids in characters, not UTF-16 code units', async () => {
+			const { provisioner } = makeProvisioner();
+
+			await expect(
+				provisioner.provision(
+					{
+						owner: owner(
+							'😀'.repeat(SCHEDULED_JOB_OWNER_ID_MAX_LENGTH),
+							'😀'.repeat(SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH),
+						),
+					},
+					desired,
+				),
+			).resolves.toMatchObject({ inserted: [{ id: 1, name: 'wf:node:0' }] });
+		});
+	});
+
+	describe('job name guardrail', () => {
+		const named = (name: string): DesiredJob[] => [{ ...desired[0], name }];
+
+		it('refuses a job name longer than its column, before anything is written', async () => {
+			const { provisioner, provisionTransaction } = makeProvisioner();
+
+			await expect(
+				provisioner.provision(
+					{ owner: owner('thing-1') },
+					named('n'.repeat(SCHEDULED_JOB_NAME_MAX_LENGTH + 1)),
+				),
+			).rejects.toThrow('Scheduled job name must fit its length limit');
+
+			expect(provisionTransaction).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['ASCII', 'n'],
+			['astral', '😀'],
+		])('provisions a job name of exactly its limit in %s characters', async (_, character) => {
+			const { provisioner } = makeProvisioner();
+			const name = character.repeat(SCHEDULED_JOB_NAME_MAX_LENGTH);
+
+			await expect(
+				provisioner.provision({ owner: owner('thing-1') }, named(name)),
+			).resolves.toMatchObject({ inserted: [{ id: 1, name }] });
 		});
 	});
 });

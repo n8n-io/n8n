@@ -58,6 +58,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -85,6 +86,7 @@ erDiagram
   varchar status
   json toolCalls
   timestamp_3__with_time_zone updatedAt
+  json verdict
 }
 ```
 

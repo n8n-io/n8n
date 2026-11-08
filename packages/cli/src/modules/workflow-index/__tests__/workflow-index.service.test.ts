@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
 import { WorkflowDependencyRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
@@ -8,8 +9,6 @@ import type { Span } from 'n8n-core';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-
-import { EventService } from '@/events/event.service';
 
 import { WorkflowIndexService } from '../workflow-index.service';
 
@@ -29,6 +28,9 @@ describe('WorkflowIndexService', () => {
 		vi.resetAllMocks();
 
 		mockTracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
+		mockWorkflowDependencyRepository.findUnpublishedWorkflowIdsWithPublishedDependencies.mockResolvedValue(
+			[],
+		);
 
 		service = new WorkflowIndexService(
 			mockWorkflowDependencyRepository,
@@ -739,12 +741,16 @@ describe('WorkflowIndexService', () => {
 		it('should register event listeners for workflow events', () => {
 			service.init();
 
-			expect(mockEventService.on).toHaveBeenCalledTimes(5);
+			expect(mockEventService.on).toHaveBeenCalledTimes(6);
 			expect(mockEventService.on).toHaveBeenCalledWith('server-started', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-created', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-saved', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-deleted', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-activated', expect.any(Function));
+			expect(mockEventService.on).toHaveBeenCalledWith(
+				'workflow-deactivated',
+				expect.any(Function),
+			);
 		});
 	});
 

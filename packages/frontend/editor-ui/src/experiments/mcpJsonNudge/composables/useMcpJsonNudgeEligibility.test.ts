@@ -8,7 +8,8 @@ const mockSetCalloutDismissed = vi.hoisted(() => vi.fn());
 const mockCurrentUser = vi.hoisted<{ settings: Record<string, unknown> }>(() => ({ settings: {} }));
 const mockUpdateUserSettings = vi.hoisted(() => vi.fn());
 
-vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
+vi.mock('@n8n/frontend-module-mcp', async (importOriginal) => ({
+	...(await importOriginal()),
 	useMCPStore: () => mockMcpStore,
 }));
 

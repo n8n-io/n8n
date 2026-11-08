@@ -98,11 +98,7 @@ describe('install_community_node MCP tool', () => {
 		test('installs the package the node type belongs to', async () => {
 			const structured = await call();
 
-			expect(lifecycleService.install).toHaveBeenCalledWith(
-				{ name: PACKAGE, verify: true },
-				user,
-				'mcp',
-			);
+			expect(lifecycleService.install).toHaveBeenCalledWith({ name: PACKAGE }, user, 'mcp');
 			expect(structured).toMatchObject({
 				installed: true,
 				packageName: PACKAGE,
@@ -116,15 +112,11 @@ describe('install_community_node MCP tool', () => {
 			expect(structured.nodeTypes).toEqual([NODE_TYPE, `${PACKAGE}.firecrawlTool`]);
 		});
 
-		test('delegates version pinning to install(), which always verifies the checksum', async () => {
-			// No version is passed on purpose: install() resolves the latest vetted
-			// version and its checksum from one catalog lookup, so the pair can
-			// never straddle a catalog refresh.
+		test('delegates version and verification policy to install()', async () => {
 			await call();
 
 			const [args] = lifecycleService.install.mock.calls[0];
-			expect(args.version).toBeUndefined();
-			expect(args.verify).toBe(true);
+			expect(args).toEqual({ name: PACKAGE });
 
 			expect(communityNodeTypesService.findVetted).not.toHaveBeenCalled();
 		});
@@ -150,6 +142,34 @@ describe('install_community_node MCP tool', () => {
 
 			expect(structured.installed).toBe(true);
 			expect(structured).not.toHaveProperty('credentialTypes');
+		});
+	});
+
+	describe('policy restrictions', () => {
+		test('reports the node types a policy restricts', async () => {
+			const policyRestrictions = {
+				nodeTypes: [{ type: NODE_TYPE, blockedOn: 'instance' as const, optInAvailable: false }],
+			};
+			lifecycleService.describePolicyRestrictions.mockResolvedValue(policyRestrictions);
+
+			const structured = await call();
+
+			expect(lifecycleService.describePolicyRestrictions).toHaveBeenCalledWith(
+				expect.objectContaining({ packageName: PACKAGE }),
+			);
+			expect(structured).toHaveProperty('policyRestrictions', policyRestrictions);
+		});
+
+		test('reports an empty list when no policy restricts the package', async () => {
+			lifecycleService.describePolicyRestrictions.mockResolvedValue({ nodeTypes: [] });
+
+			expect(await call()).toHaveProperty('policyRestrictions', { nodeTypes: [] });
+		});
+
+		test('omits policy restrictions when no policy was evaluated', async () => {
+			lifecycleService.describePolicyRestrictions.mockResolvedValue(undefined);
+
+			expect(await call()).not.toHaveProperty('policyRestrictions');
 		});
 	});
 
@@ -299,11 +319,7 @@ describe('install_community_node MCP tool', () => {
 
 			await call(DOTTED_NODE);
 
-			expect(lifecycleService.install).toHaveBeenCalledWith(
-				{ name: DOTTED_PACKAGE, verify: true },
-				user,
-				'mcp',
-			);
+			expect(lifecycleService.install).toHaveBeenCalledWith({ name: DOTTED_PACKAGE }, user, 'mcp');
 		});
 	});
 

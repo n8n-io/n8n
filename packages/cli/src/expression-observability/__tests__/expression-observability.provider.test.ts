@@ -4,16 +4,13 @@
 import type { Logger } from '@n8n/backend-common';
 import { ExpressionEngineConfig, type GlobalConfig } from '@n8n/config';
 import { EXPRESSION_METRICS } from '@n8n/expression-runtime';
-import type { Tracer } from '@opentelemetry/api';
+import { trace, type Tracer } from '@opentelemetry/api';
 import promClient from 'prom-client';
 import { mock } from 'vitest-mock-extended';
 
 import { ExpressionObservabilityProvider } from '../expression-observability.provider';
 
-import type { OtelService } from '@/modules/otel/otel.service';
-
 const scopedLogger = mock<Logger>();
-const otelService = mock<OtelService>();
 const startSpanMock = vi.fn().mockReturnValue({
 	setStatus: vi.fn(),
 	setAttribute: vi.fn(),
@@ -23,9 +20,9 @@ const startSpanMock = vi.fn().mockReturnValue({
 
 function buildConfig(overrides: Partial<ExpressionEngineConfig> = {}): ExpressionEngineConfig {
 	const config = new ExpressionEngineConfig();
-	// The provider is a no-op unless engine === 'vm'. Default tests to the active
-	// engine so shared assertions exercise the real code path.
-	return Object.assign(config, { engine: 'vm' as const, ...overrides });
+	// The provider is a no-op unless engine is 'vm', and spans are off by default.
+	// Turn both on so shared assertions exercise the real code path.
+	return Object.assign(config, { engine: 'vm' as const, tracesEnabled: true, ...overrides });
 }
 
 function buildLogger(): Logger {
@@ -41,7 +38,7 @@ function buildGlobalConfig(prefix = 'n8n_'): GlobalConfig {
 describe('ExpressionObservabilityProvider', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		otelService.getTracer.mockReturnValue({ startSpan: startSpanMock } as unknown as Tracer);
+		vi.spyOn(trace, 'getTracer').mockReturnValue({ startSpan: startSpanMock } as unknown as Tracer);
 		promClient.register.clear();
 	});
 
@@ -51,7 +48,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ observabilityEnabled: false }),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 
 			expect(() => {
@@ -68,7 +64,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ engine: 'legacy' }),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 
 			provider.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
@@ -84,7 +79,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 2);
 
@@ -94,12 +88,28 @@ describe('ExpressionObservabilityProvider', () => {
 			expect(output).toContain('n8n_expression_pool_acquired_total 2');
 		});
 
+		it('registers the native evaluation counter with result and reason labels', async () => {
+			const provider = new ExpressionObservabilityProvider(
+				buildConfig(),
+				buildLogger(),
+				buildGlobalConfig(),
+			);
+			provider.metrics.counter(EXPRESSION_METRICS.nativeEvaluations.name, 1, {
+				result: 'fallback',
+				reason: 'too_large',
+			});
+
+			const output = await promClient.register.metrics();
+			expect(output).toContain(
+				'n8n_expression_native_evaluations_total{result="fallback",reason="too_large"} 1',
+			);
+		});
+
 		it('registers a prom gauge with the cleaned name', async () => {
 			const provider = new ExpressionObservabilityProvider(
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.gauge(EXPRESSION_METRICS.codeCacheSize.name, 42);
 
@@ -112,7 +122,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 3, {
 				status: 'success',
@@ -131,7 +140,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 
 			promClient.register.clear();
@@ -156,7 +164,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 
 			promClient.register.clear();
@@ -175,7 +182,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50, tracesSampleRate: 0 }),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.01, {
 				status: 'success',
@@ -189,7 +195,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50 }),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.1, {
 				status: 'success',
@@ -211,7 +216,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ slowEvaluationThresholdMs: 50 }),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.005, {
 				status: 'error',
@@ -233,7 +237,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig({ tracesEnabled: false, slowEvaluationThresholdMs: 10 }),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.5, {
 				status: 'error',
@@ -249,7 +252,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			expect(() => {
 				provider.metrics.counter('test.unknown', 1);
@@ -264,7 +266,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 
 			provider.metrics.histogram(EXPRESSION_METRICS.evaluationDuration.name, 0.01, {
@@ -294,7 +295,6 @@ describe('ExpressionObservabilityProvider', () => {
 				buildConfig(),
 				buildLogger(),
 				buildGlobalConfig(),
-				otelService,
 			);
 			provider.logs.info('hello', { k: 'v' });
 			provider.logs.warn('warn', { k: 'v' });

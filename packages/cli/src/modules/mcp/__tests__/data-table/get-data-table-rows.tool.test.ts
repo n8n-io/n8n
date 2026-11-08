@@ -1,6 +1,6 @@
 import z from 'zod';
 
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 
 import { createTelemetry, user } from './test-utils';
 import { createGetDataTableRowsTool } from '../../tools/data-table';

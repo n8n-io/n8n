@@ -17,7 +17,7 @@ function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
 	};
 }
 
-describe('configure_channel tool', () => {
+describe('agent_builder_configure_channel tool', () => {
 	const track: Mock = vi.fn();
 
 	beforeEach(() => {
@@ -28,7 +28,7 @@ describe('configure_channel tool', () => {
 		return buildConfigureChannelTool({
 			agentId: 'agent-1',
 			projectId: 'project-1',
-			listChatIntegrationTypes: () => availableTypes,
+			listChatIntegrationTypes: async () => availableTypes,
 			track,
 		});
 	}
@@ -113,6 +113,32 @@ describe('configure_channel tool', () => {
 		});
 	});
 
+	it('accepts n8n_chat when it is offered and tracks it as the added trigger on approval', async () => {
+		const tool = buildTool(['slack', 'n8n_chat']);
+		const suspendCtx = makeCtx();
+
+		await tool.handler!(
+			{ integrationType: 'n8n_chat' },
+			suspendCtx as unknown as InterruptibleToolContext,
+		);
+
+		expect(suspendCtx.suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				channelConfig: { integrationType: 'n8n_chat', agentId: 'agent-1' },
+			}),
+		);
+
+		const result = await tool.handler!(
+			{ integrationType: 'n8n_chat' },
+			makeCtx({ resumeData: { approved: true } }) as unknown as InterruptibleToolContext,
+		);
+
+		expect(result).toEqual({ configured: true });
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
+			trigger_type: 'n8n_chat',
+		});
+	});
+
 	it('returns configured: false when the user skips (dismissal), without tracking a trigger', async () => {
 		const ctx = makeCtx({ resumeData: { approved: false } });
 
@@ -123,5 +149,27 @@ describe('configure_channel tool', () => {
 
 		expect(result).toEqual({ configured: false });
 		expect(track).not.toHaveBeenCalled();
+	});
+});
+
+describe('agent_builder_configure_channel model output', () => {
+	const tool = buildConfigureChannelTool({
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		listChatIntegrationTypes: async () => ['slack'],
+		track: vi.fn(),
+	});
+	const modelView = (result: Record<string, unknown>) =>
+		tool.toModelOutput!(result) as Record<string, unknown>;
+
+	it('tells the model to continue without a skipped channel', () => {
+		const view = modelView({ configured: false });
+
+		expect(view.nextStep).toContain('without');
+		expect(view.nextStep).toContain('do not ask');
+	});
+
+	it('adds no next step to a configured channel', () => {
+		expect(modelView({ configured: true })).not.toHaveProperty('nextStep');
 	});
 });

@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { N8nBadge, N8nTooltip } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { N8nDropdownMenu } from '@n8n/design-system';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDependencies } from '@/app/composables/useDependencies';
@@ -108,7 +108,10 @@ async function onDropdownToggle(open: boolean) {
 	>
 		<template #trigger>
 			<N8nTooltip :content="tooltipText" placement="top" as-child>
-				<N8nBadge variant="outline" leading-icon="link" clickable>
+				<N8nBadge variant="outline" clickable>
+					<template #leading>
+						<N8nIcon icon="graph-12" size="small" :class="$style.icon" />
+					</template>
 					{{ effectiveCount }}
 				</N8nBadge>
 			</N8nTooltip>
@@ -127,6 +130,12 @@ async function onDropdownToggle(open: boolean) {
 </template>
 
 <style lang="scss" module>
+/* Mirrors N8nBadge's leading icon, which only renders at 14px or larger. */
+.icon {
+	flex-shrink: 0;
+	opacity: 0.9;
+}
+
 .hiddenNotice {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-top: var(--border);

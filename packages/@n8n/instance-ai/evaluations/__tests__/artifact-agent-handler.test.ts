@@ -103,6 +103,23 @@ describe('agentHandler', () => {
 		expect(rendered).not.toContain('abcdef1234567890');
 	});
 
+	it('reads the agent from the project the ref names', async () => {
+		const getPersonalProjectId: Mock = vi.fn();
+		const getAgentConfig: Mock = vi.fn().mockResolvedValue(validConfig);
+		const getAgentSkills: Mock = vi.fn().mockResolvedValue({});
+		const client = {
+			getPersonalProjectId,
+			getAgentConfig,
+			getAgentSkills,
+		} as unknown as N8nClient;
+
+		await agentHandler.fetch({ type: 'agent', id: 'agent-1', projectId: 'build-project' }, client);
+
+		expect(getAgentConfig).toHaveBeenCalledWith('build-project', 'agent-1');
+		expect(getAgentSkills).toHaveBeenCalledWith('build-project', 'agent-1');
+		expect(getPersonalProjectId).not.toHaveBeenCalled();
+	});
+
 	it('keeps node-tool credential configs available to the judge and redacts them for export', async () => {
 		const config = {
 			...validConfig,

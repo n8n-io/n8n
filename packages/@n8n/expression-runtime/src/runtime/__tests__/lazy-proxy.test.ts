@@ -68,13 +68,13 @@ describe('createDeepLazyProxy', () => {
 		});
 
 		it('toString() returns "[object Object]"', () => {
-			const p = proxy();
+			const p = proxy(undefined, []);
 			expect(p.toString()).toBe('[object Object]');
 			expect(mocks.getValueAtPath).not.toHaveBeenCalled();
 		});
 
 		it('valueOf() returns the proxy target', () => {
-			const p = proxy();
+			const p = proxy(undefined, []);
 			const val = p.valueOf();
 			expect(typeof val).toBe('object');
 			expect(val).not.toBeNull();
@@ -186,6 +186,14 @@ describe('createDeepLazyProxy', () => {
 			return proxy();
 		}
 
+		it('reads a named key of an array from the host', () => {
+			const p = arrayProxy(['$json'], 1);
+			mocks.getValueAtPath.mockReturnValue('session-1');
+
+			expect(p.sessionId).toBe('session-1');
+			expect(mocks.getValueAtPath).toHaveBeenCalledWith(['$json', 'sessionId']);
+		});
+
 		it('creates a nested proxy for object elements', () => {
 			const p = proxyWithLargeArray();
 			mocks.getArrayElement.mockReturnValue({ __isObject: true, __keys: ['a'] });
@@ -234,7 +242,9 @@ describe('createDeepLazyProxy', () => {
 
 		it('returns undefined for non-numeric non-length properties', () => {
 			const p = proxyWithLargeArray();
-			expect(p.items.foo).toBeUndefined();
+			const items = p.items;
+			mocks.getValueAtPath.mockReturnValue(undefined);
+			expect(items.foo).toBeUndefined();
 			expect(mocks.getArrayElement).not.toHaveBeenCalled();
 		});
 
@@ -487,6 +497,7 @@ describe('createDeepLazyProxy', () => {
 			expect(p[2]).toBeUndefined();
 			expect(p[100]).toBeUndefined();
 			expect(mocks.getArrayElement).not.toHaveBeenCalled();
+			expect(mocks.getValueAtPath).not.toHaveBeenCalled();
 		});
 
 		it('non-canonical index strings are rejected', () => {
@@ -614,20 +625,27 @@ describe('createDeepLazyProxy', () => {
 				expect(Object.keys(p)).toEqual(['name']);
 			});
 
-			it('host data with an own __proto__ key is cached as an own property, not a prototype', () => {
-				const protoValue = { polluted: true };
-				mocks.getValueAtPath.mockImplementation((path: string[]) => {
-					const key = path[path.length - 1];
-					if (key === 'name') return 'Alice';
-					if (key === '__proto__') return protoValue;
-					return undefined;
-				});
-				const p = proxy(['user'], ['name', '__proto__']);
-				p.name = 'Zed'; // triggers materialization over all keys
-				expect(Object.keys(p)).toEqual(['name', '__proto__']);
-				expect(p.polluted).toBeUndefined();
-				expect(p['__proto__']).toBe(protoValue);
-			});
+			it.each(['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf'])(
+				'preserves the own field %s before and after a write',
+				(field) => {
+					const fieldValue = { label: 'Field value' };
+					mocks.getValueAtPath.mockImplementation((path: string[]) => {
+						const key = path[path.length - 1];
+						if (key === 'name') return 'Alice';
+						if (key === field) return fieldValue;
+						return undefined;
+					});
+					const p = proxy(['user'], ['name', field]);
+					expect(Object.fromEntries(Object.entries(p))).toEqual({
+						name: 'Alice',
+						[field]: fieldValue,
+					});
+					p.name = 'Zed'; // triggers materialization over all keys
+					expect(Object.keys(p)).toEqual(['name', field]);
+					expect(p.label).toBeUndefined();
+					expect(p[field]).toBe(fieldValue);
+				},
+			);
 
 			it('write fetches each uncached key exactly once; later access stays local', () => {
 				const p = writableObjectProxy();

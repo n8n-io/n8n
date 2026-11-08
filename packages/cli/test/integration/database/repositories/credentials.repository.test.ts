@@ -1,6 +1,11 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { CredentialSharingRelation, ListQuery } from '@n8n/db';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	SharedCredentials,
+	SharedCredentialsRepository,
+	TransactionRunner,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
@@ -469,10 +474,8 @@ describe('CredentialsRepository', () => {
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
 			const { createCredentials } = await import('../../shared/db/credentials.js');
-			const { CredentialsFinderService } = await import(
-				'@/credentials/credentials-finder.service.js'
-			);
-			const { RoleService } = await import('@/services/role.service.js');
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -518,9 +521,7 @@ describe('CredentialsRepository', () => {
 			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 			const { createCredentials } = await import('../../shared/db/credentials.js');
-			const { CredentialsFinderService } = await import(
-				'@/credentials/credentials-finder.service.js'
-			);
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -563,10 +564,8 @@ describe('CredentialsRepository', () => {
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
 			const { createCredentials } = await import('../../shared/db/credentials.js');
-			const { CredentialsFinderService } = await import(
-				'@/credentials/credentials-finder.service.js'
-			);
-			const { RoleService } = await import('@/services/role.service.js');
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -633,10 +632,8 @@ describe('CredentialsRepository', () => {
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
 			const { createCredentials } = await import('../../shared/db/credentials.js');
-			const { CredentialsFinderService } = await import(
-				'@/credentials/credentials-finder.service.js'
-			);
-			const { RoleService } = await import('@/services/role.service.js');
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 
@@ -720,10 +717,8 @@ describe('CredentialsRepository', () => {
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
 			const { createCredentials } = await import('../../shared/db/credentials.js');
-			const { CredentialsFinderService } = await import(
-				'@/credentials/credentials-finder.service.js'
-			);
-			const { RoleService } = await import('@/services/role.service.js');
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			// Create two separate users
 			const userA = await createMember();
@@ -813,6 +808,40 @@ describe('CredentialsRepository', () => {
 		});
 	});
 
+	describe('transaction context', () => {
+		it('uses the active transaction for credential access reads', async () => {
+			const { createMember } = await import('../../shared/db/users.js');
+			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
+			const { RoleCacheService } = await import('@n8n/backend-services');
+
+			const member = await createMember();
+			const project = await createTeamProject('transaction-project');
+			await linkUserToProject(member, project, 'project:editor');
+			const credential = await createCredentials({
+				name: 'Credential',
+				type: 'httpBasicAuth',
+				data: '',
+			});
+			await shareCredentialsToProject([credential], project.id, 'credential:user');
+
+			const credentialsRepository = Container.get(CredentialsRepository);
+			const finder = Container.get(CredentialsFinderService);
+			await Container.get(RoleCacheService).invalidateCache();
+			await credentialsRepository.runInTransaction({}, async (manager, ctx) => {
+				await manager.delete(SharedCredentials, {
+					credentialsId: credential.id,
+					projectId: project.id,
+				});
+
+				await expect(
+					finder.getCredentialIdsByUserAndRole([member.id], { scopes: ['credential:read'] }, ctx),
+				).resolves.toEqual([]);
+			});
+		});
+	});
+
 	describe('hasResolvableCredential', () => {
 		let credentialsRepository: CredentialsRepository;
 
@@ -846,6 +875,90 @@ describe('CredentialsRepository', () => {
 
 		it('returns false for an empty id list without querying', async () => {
 			await expect(credentialsRepository.hasResolvableCredential([])).resolves.toBe(false);
+		});
+	});
+
+	describe('existsById', () => {
+		it('returns true for an existing credential and false for an unknown id', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const credential = await createCredentials({ name: 'Test', type: 'githubApi', data: '' });
+			const credentialsRepository = Container.get(CredentialsRepository);
+
+			await expect(credentialsRepository.existsById(credential.id)).resolves.toBe(true);
+			await expect(credentialsRepository.existsById('missing')).resolves.toBe(false);
+		});
+
+		it('reads through the transaction carried by ctx', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const credential = await createCredentials({
+				name: 'Instance',
+				type: 'githubApi',
+				data: '',
+				usageScope: 'instance',
+			});
+			const credentialsRepository = Container.get(CredentialsRepository);
+			const transactionRunner = Container.get(TransactionRunner);
+
+			await expect(
+				transactionRunner.run({}, async (ctx) => {
+					await credentialsRepository.deleteInstanceCredentialIfUnassigned(credential.id, ctx);
+					await expect(credentialsRepository.existsById(credential.id, ctx)).resolves.toBe(false);
+					throw new Error('roll back');
+				}),
+			).rejects.toThrow('roll back');
+
+			await expect(credentialsRepository.existsById(credential.id)).resolves.toBe(true);
+		});
+	});
+
+	describe('findStoredData', () => {
+		it('returns the stored data of the credential', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const credential = await createCredentials({
+				name: 'Test',
+				type: 'githubApi',
+				data: 'ciphertext',
+			});
+			const credentialsRepository = Container.get(CredentialsRepository);
+
+			const stored = await credentialsRepository.findStoredData(credential.id);
+
+			expect(stored?.data).toBe('ciphertext');
+		});
+
+		it('returns null for an unknown id', async () => {
+			const credentialsRepository = Container.get(CredentialsRepository);
+
+			await expect(credentialsRepository.findStoredData('missing')).resolves.toBeNull();
+		});
+
+		it('reads through the transaction carried by ctx', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const credential = await createCredentials({
+				name: 'Test',
+				type: 'githubApi',
+				data: 'before',
+			});
+			const credentialsRepository = Container.get(CredentialsRepository);
+			const transactionRunner = Container.get(TransactionRunner);
+
+			await expect(
+				transactionRunner.run({}, async (ctx) => {
+					await credentialsRepository.updateDataIfUnchanged(
+						credential.id,
+						'githubApi',
+						'before',
+						'after',
+						ctx,
+					);
+					const stored = await credentialsRepository.findStoredData(credential.id, ctx);
+					expect(stored?.data).toBe('after');
+					throw new Error('roll back');
+				}),
+			).rejects.toThrow('roll back');
+
+			const stored = await credentialsRepository.findStoredData(credential.id);
+			expect(stored?.data).toBe('before');
 		});
 	});
 });

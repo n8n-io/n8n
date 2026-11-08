@@ -3,7 +3,6 @@ import type {
 	AINodeConnectionType,
 	CallbackManager,
 	CloseFunction,
-	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -21,6 +20,7 @@ import type {
 import { UnexpectedError, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
+import { SupplyDataContext } from './supply-data-context';
 import {
 	assertBinaryData,
 	getBinaryDataBuffer,
@@ -126,16 +126,13 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			)) as IExecuteFunctions['getNodeParameter'];
 	}
 
-	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
-		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
-	}
-
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
 	): Promise<unknown> {
 		return await getInputConnectionData.call(
 			this,
+			SupplyDataContext,
 			this.workflow,
 			this.runExecutionData,
 			this.runIndex,
