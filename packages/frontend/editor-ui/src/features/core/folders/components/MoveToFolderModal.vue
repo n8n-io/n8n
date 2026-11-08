@@ -499,7 +499,13 @@ onMounted(async () => {
 </script>
 
 <template>
-	<N8nDialog :open="modalOpen" size="medium" :header="title" @update:open="onDialogOpenUpdate">
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="title"
+		:data-test-id="`${MOVE_FOLDER_MODAL_KEY}-modal`"
+		@update:open="onDialogOpenUpdate"
+	>
 		<N8nDialogBody>
 			<N8nDialogDescription
 				v-if="props.data.resourceType === 'folder' && (workflowCount > 0 || subFolderCount > 0)"
