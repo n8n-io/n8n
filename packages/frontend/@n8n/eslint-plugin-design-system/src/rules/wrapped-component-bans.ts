@@ -67,6 +67,12 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'reka-ui',
+		prefixes: ['HoverCard'],
+		allowedFolders: ['components/N8nHoverCard'],
+		replacement: 'N8nHoverCard',
+	},
+	{
+		library: 'reka-ui',
 		prefixes: ['NumberField'],
 		allowedFolders: ['components/N8nInputNumber'],
 		replacement: 'N8nInputNumber',
