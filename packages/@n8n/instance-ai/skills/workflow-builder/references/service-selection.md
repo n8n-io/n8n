@@ -6,11 +6,9 @@ description: >-
   the user has no usable credential for a capability, when the user asks what
   Gateway credits support, or when a build result says Gateway credits are
   depleted.
-recommended_tools:
-  - search_nodes
-  - get_node_types
-  - list_credentials
-  - search_credential_types
+recommended_namespaces:
+  - nodes
+  - credentials
 ---
 
 # Service Selection

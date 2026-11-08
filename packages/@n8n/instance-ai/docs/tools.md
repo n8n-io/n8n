@@ -1318,8 +1318,8 @@ carries *what* it does.
 Build n8n Apps. Present only when the apps module is active, the run has a
 bound project and the sandbox is available. The adapter wires `appService`, and
 the turn setup removes it without a sandbox, so the tool, the `app-builder`
-skill and the `<app-targets>` block share one gate. Deferred: the skill lists
-the tool in `recommended_tools`.
+skill and the `<app-targets>` block share one gate. Deferred: the tool is in the
+default `tools` namespace, which the skill lists in `recommended_namespaces`.
 
 | Action | Scope | Description |
 |--------|-------|-------------|

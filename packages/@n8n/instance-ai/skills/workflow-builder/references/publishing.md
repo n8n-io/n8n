@@ -4,12 +4,9 @@ description: >-
   Load before you publish a workflow, offer or mention publishing, count a run
   the user started as publishing evidence, or repair a workflow that is already
   published.
-recommended_tools:
-  - publish_workflow
-  - get_workflow
-  - list_executions
-  - get_execution
-  - workflow_builder_verify_built_workflow
+recommended_namespaces:
+  - workflows
+  - executions
 ---
 
 # Publishing

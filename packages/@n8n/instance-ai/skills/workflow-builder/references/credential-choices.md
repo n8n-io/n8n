@@ -4,11 +4,9 @@ description: >-
   Load before you pick a credential type for a service that has no connected
   credential, before you choose HTTP Request authentication, or when the user
   explicitly asks for a new credential instead of an existing one.
-recommended_tools:
-  - list_credentials
-  - search_credential_types
-  - setup_credentials
-  - setup_workflow
+recommended_namespaces:
+  - credentials
+  - workflows
 ---
 
 # Credential Choices

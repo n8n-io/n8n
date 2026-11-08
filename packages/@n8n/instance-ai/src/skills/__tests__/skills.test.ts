@@ -125,7 +125,7 @@ describe('Instance AI skills', () => {
 
 		expect(recipeResearch).toMatchObject({
 			name: 'credential-recipe-research',
-			recommendedTools: ['research', 'setup_workflow'],
+			recommendedNamespaces: ['workflows'],
 		});
 		expect(recipeResearch?.description).toContain('Load before composing');
 		expect(recipeResearch?.description).toContain('credentialHints');
@@ -252,20 +252,7 @@ describe('Instance AI skills', () => {
 		expect(dataTableManager).toMatchObject({
 			name: 'data-table-manager',
 			platforms: ['daytona'],
-			recommendedTools: [
-				'list_data_tables',
-				'get_data_table_schema',
-				'query_data_table',
-				'create_data_table',
-				'delete_data_table',
-				'add_data_table_column',
-				'delete_data_table_column',
-				'rename_data_table_column',
-				'insert_data_table_rows',
-				'update_data_table_rows',
-				'delete_data_table_rows',
-				'parse-file',
-			],
+			recommendedNamespaces: ['data_tables'],
 		});
 		expect(dataTableManager?.description).toContain(
 			'Load before calling the data table tools or parse-file',
@@ -303,12 +290,7 @@ describe('Instance AI skills', () => {
 		expect(configEvals).toMatchObject({
 			name: 'config-evals',
 			platforms: ['daytona'],
-			recommendedTools: [
-				'eval-config',
-				'list_data_tables',
-				'create_data_table',
-				'insert_data_table_rows',
-			],
+			recommendedNamespaces: ['tools', 'data_tables'],
 			parents: ['workflow-builder'],
 		});
 
@@ -384,16 +366,7 @@ describe('Instance AI skills', () => {
 		);
 
 		expect(skill?.name).toBe('credential-setup-with-browser-use');
-		for (const tool of [
-			'research',
-			'ask_user',
-			'browser_connect',
-			'browser_snapshot',
-			'browser_capture_secret',
-			'browser_create_credential',
-		]) {
-			expect(skill?.recommendedTools).toContain(tool);
-		}
+		expect(skill?.recommendedNamespaces).toBeUndefined();
 		expect(skill?.linkedFiles.references).toEqual([]);
 
 		const loaded = await source.loadSkill('credential-setup-with-browser-use');
@@ -414,13 +387,7 @@ describe('Instance AI skills', () => {
 
 		expect(skill).toMatchObject({
 			name: 'n8n-docs-assistant',
-			recommendedTools: [
-				'n8n-docs',
-				'list_credentials',
-				'search_credential_types',
-				'search_nodes',
-				'get_node_types',
-			],
+			recommendedNamespaces: ['credentials', 'nodes'],
 		});
 		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
 		expect(skill?.description).not.toContain('load_tool');
@@ -446,33 +413,7 @@ describe('Instance AI skills', () => {
 
 		expect(skill?.name).toBe('workflow-builder');
 		expect(skill?.platforms).toBeUndefined();
-		expect(skill?.recommendedTools).toEqual([
-			'workspace_read_file',
-			'workspace_write_file',
-			'workspace_str_replace_file',
-			'workspace_execute_command',
-			'workflow_builder_build_workflow',
-			'list_workflows',
-			'get_workflow_as_code',
-			'setup_workflow',
-			'search_nodes',
-			'get_node_types',
-			'get_node_parameter_options',
-			'execute_node',
-			'list_data_tables',
-			'get_data_table_schema',
-			'query_data_table',
-			'create_data_table',
-			'list_credentials',
-			'search_credential_types',
-			'setup_credentials',
-			'test_credential',
-			'workflow_builder_verify_built_workflow',
-			'list_executions',
-			'get_execution',
-			'run_workflow',
-			'debug_execution',
-		]);
+		expect(skill?.recommendedNamespaces).toBeUndefined();
 		expect(skill?.description).toContain('Load before calling workflow_builder_build_workflow');
 		expect(skill?.description).not.toContain('Default path');
 		expect(skill?.description).toContain('new one-off workflows');
@@ -667,17 +608,7 @@ describe('Instance AI skills', () => {
 		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'debugging-executions');
 
-		expect(skill?.recommendedTools).toEqual([
-			'list_executions',
-			'get_execution',
-			'run_workflow',
-			'run_workflow_step',
-			'debug_execution',
-			'get_execution_node_output',
-			'get_resolved_node_parameters',
-			'get_workflow',
-			'get_workflow_as_code',
-		]);
+		expect(skill?.recommendedNamespaces).toEqual(['executions', 'workflows']);
 
 		const loaded = await source.loadSkill('debugging-executions');
 		expect(loaded?.instructions).toContain('debug_execution');

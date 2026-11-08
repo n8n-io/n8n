@@ -5,22 +5,9 @@ description: >-
   the message contains workflow-verification-follow-up or workflow-setup-required.
   Load after direct builds, when verificationReadiness requires action, or on
   orchestrator verify/setup follow-up turns.
-recommended_tools:
-  - ask_user
-  - workflow_builder_verify_built_workflow
-  - get_workflow
-  - get_workflow_as_code
-  - setup_workflow
-  - validate_workflow
-  - publish_workflow
-  - workflow_builder_build_workflow
-  - list_executions
-  - get_execution
-  - run_workflow
-  - run_workflow_step
-  - debug_execution
-  - get_execution_node_output
-  - get_resolved_node_parameters
+recommended_namespaces:
+  - workflows
+  - executions
 ---
 
 # Post-Build Flow

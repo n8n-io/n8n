@@ -6,11 +6,9 @@ description: >-
   remove an evaluation, score, grade, or judge a workflow's output, or measure
   answer quality against a test dataset. This is the only eval form Instance AI
   handles — it does not touch on-canvas evaluation nodes.
-recommended_tools:
-  - eval-config
-  - list_data_tables
-  - create_data_table
-  - insert_data_table_rows
+recommended_namespaces:
+  - tools
+  - data_tables
 platforms:
   - daytona
 ---

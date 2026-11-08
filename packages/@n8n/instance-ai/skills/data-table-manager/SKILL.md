@@ -8,19 +8,8 @@ description: >-
   delete data tables and rows, especially from CSV/XLSX/JSON attachments. Also
   load before building or planning workflows that create or write to Data
   Tables (then load workflow-builder before workflow_builder_build_workflow).
-recommended_tools:
-  - list_data_tables
-  - get_data_table_schema
-  - query_data_table
-  - create_data_table
-  - delete_data_table
-  - add_data_table_column
-  - delete_data_table_column
-  - rename_data_table_column
-  - insert_data_table_rows
-  - update_data_table_rows
-  - delete_data_table_rows
-  - parse-file
+recommended_namespaces:
+  - data_tables
 platforms:
   - daytona
 ---

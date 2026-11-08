@@ -9283,7 +9283,7 @@ describe('AgentRuntime — mid-run observation', () => {
 					description: 'Build workflows.',
 					instructions: 'Choose a model from the catalog.',
 					dependencies: { tools: ['catalog', 'unregistered'] },
-					recommendedTools: ['optional_tool'],
+					recommendedNamespaces: ['tools'],
 				},
 			]);
 			const catalogHandler = vi.fn(async () => ({ models: [] }));

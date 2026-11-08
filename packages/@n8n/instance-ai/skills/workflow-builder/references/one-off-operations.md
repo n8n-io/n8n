@@ -9,18 +9,10 @@ description: >-
   contains postBuildFlow.reason "direct-one-off-build-succeeded". Do not load
   for automations the user will run again — that is the normal build +
   post-build-flow path.
-recommended_tools:
-  - execute_node
-  - get_node_types
-  - workflow_builder_build_workflow
-  - setup_workflow
-  - list_executions
-  - get_execution
-  - run_workflow
-  - run_workflow_step
-  - get_execution_node_output
-  - ask_user
-  - workflow_builder_verify_built_workflow
+recommended_namespaces:
+  - nodes
+  - workflows
+  - executions
 ---
 
 # One-Off Operations

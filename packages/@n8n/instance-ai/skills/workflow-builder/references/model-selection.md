@@ -16,12 +16,9 @@ description: >-
 dependencies:
   tools:
     - search_models
-recommended_tools:
-  - get_node_types
-  - get_node_parameter_options
-  - list_credentials
-  - search_models
-  - research
+recommended_namespaces:
+  - nodes
+  - credentials
 ---
 
 # Model selection

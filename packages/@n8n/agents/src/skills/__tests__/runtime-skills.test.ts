@@ -34,8 +34,8 @@ describe('runtime skills', () => {
 		const result = parseRuntimeSkillMarkdown(`---
 name: workflow-builder
 description: Build workflows.
-recommended_tools:
-  - bash
+recommended_namespaces:
+  - workflows
 allowed_tools: workflow
 interface:
   display_name: Workflow Builder
@@ -74,7 +74,7 @@ Follow the workflow-building process.`);
 				name: 'workflow-builder',
 				description: 'Build workflows.',
 				instructions: 'Follow the workflow-building process.',
-				recommendedTools: ['bash'],
+				recommendedNamespaces: ['workflows'],
 				allowedTools: ['workflow'],
 				interface: {
 					displayName: 'Workflow Builder',
@@ -550,7 +550,7 @@ Use the workflow SDK.`,
 				name: 'Summarize notes',
 				description: 'Use for meeting notes.',
 				category: 'productivity',
-				recommendedTools: ['data-tables'],
+				recommendedNamespaces: ['data_tables'],
 				instructions: 'Extract private decisions.',
 			},
 		]);
@@ -561,7 +561,7 @@ Use the workflow SDK.`,
 		expect(prompt).toContain('name: "Summarize notes"');
 		expect(prompt).toContain('id: "summarize_notes"');
 		expect(prompt).toContain('category: "productivity"');
-		expect(prompt).toContain('recommendedTools: ["data-tables"]');
+		expect(prompt).toContain('recommendedNamespaces: ["data_tables"]');
 		expect(prompt).toContain('load_skill once with `{ "skillId": "<id>" }`');
 		expect(prompt).not.toContain('list_skills');
 		expect(prompt).not.toContain('Extract private decisions.');

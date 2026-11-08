@@ -7,16 +7,9 @@ description: >-
   expression error. Also load when a live run you started for the user fails
   with an error from a node or an external service (for example a 401), before
   you explain the cause to the user.
-recommended_tools:
-  - list_executions
-  - get_execution
-  - run_workflow
-  - run_workflow_step
-  - debug_execution
-  - get_execution_node_output
-  - get_resolved_node_parameters
-  - get_workflow
-  - get_workflow_as_code
+recommended_namespaces:
+  - executions
+  - workflows
 ---
 
 # Debugging Executions

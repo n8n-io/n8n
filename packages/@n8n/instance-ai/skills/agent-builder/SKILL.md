@@ -9,19 +9,11 @@ description: >-
   requested artifact is no longer clear.
 shared_references:
   - credential-setup-with-browser-use
-recommended_tools:
-  - agent_builder_select_agent
-  - agent-context
-  - agent_builder_write_config
-  - agent_builder_patch_config
-  - agent_builder_resolve_llm
-  - search_models
-  - agent_builder_finish_setup
-  - agent_builder_call_agent
-  - workflow_builder_build_workflow
-  - list_data_tables
-  - get_data_table_schema
-  - create_data_table
+recommended_namespaces:
+  - agents
+  - nodes
+  - workflows
+  - data_tables
 ---
 
 # Agent Builder
