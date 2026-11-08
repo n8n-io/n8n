@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Tool } from '../../sdk/tool';
 import type { BuiltTool } from '../../types';
 import { fixToolCall } from '../tools/fix-tool-call';
-import { buildToolMap, isDirectCatalogCall, resolveToolCallTarget } from '../tools/tool-adapter';
+import { buildToolMap, resolveToolCallTarget } from '../tools/tool-adapter';
 import {
 	CALL_TOOL_TOOL_NAME,
 	FIND_TOOLS_TOOL_NAME,
@@ -140,20 +140,18 @@ describe('ToolCatalog', () => {
 		expect(repaired).toBeNull();
 	});
 
-	it('detects a catalog tool called by its own name', () => {
+	it('routes a catalog tool called by its own name through call_tool', () => {
 		const map = buildToolMap(catalog().getControllerTools());
-		expect(isDirectCatalogCall(map, 'get_cell', { id: 'c1' })).toBe(true);
-		expect(isDirectCatalogCall(map, CALL_TOOL_TOOL_NAME, { tool: 'get_cell' })).toBe(false);
-		expect(isDirectCatalogCall(map, 'not_a_tool', {})).toBe(false);
+		expect(resolveToolCallTarget(map, 'get_cell', { id: 'c1' })?.tool.name).toBe('get_cell');
+		expect(resolveToolCallTarget(map, 'not_a_tool', {})).toBeUndefined();
 	});
 
-	it('shows namespace descriptions and says direct calls fail', () => {
+	it('shows namespace descriptions', () => {
 		const described = new ToolCatalog(tools, {
 			namespaces: { send_message: 'slack' },
 			namespaceDescriptions: { slack: 'send and read Slack messages' },
 		}).renderCatalog();
 		expect(described).toContain('- slack (send and read Slack messages): send_message');
-		expect(TOOL_CATALOG_GUIDANCE).toContain('by its own name fails');
 	});
 
 	it('keeps tool names out of the system prompt rules', () => {

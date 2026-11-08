@@ -3,7 +3,6 @@ import type { JSONSchema7 } from 'json-schema';
 
 import {
 	executeTool,
-	isDirectCatalogCall,
 	isSuspendedToolResult,
 	resolveToolCallTarget,
 	type SuspendedToolResult,
@@ -102,21 +101,16 @@ export class ToolCallRunner {
 	 */
 	async processToolCall(callParams: ProcessToolCallParams): Promise<ToolCallOutcome> {
 		const { toolName, toolMap, list, toolCallId, resumeData } = callParams;
-		// A catalog tool called by its own name fails, so the model learns to read
-		// the schema first. A resume still runs it: an older conversation may have
-		// suspended a call made that way.
-		if (resumeData === undefined && isDirectCatalogCall(toolMap, toolName, callParams.input)) {
-			return await this.toolError(
-				callParams,
-				new Error(
-					`"${toolName}" is in the tool catalog, not in your toolset. Get its input schema with ${FIND_TOOLS_TOOL_NAME}, then run it with ${CALL_TOOL_TOOL_NAME}.`,
-				),
-			);
-		}
+		// A catalog tool called by its own name runs as if it came through
+		// call_tool. Skills and tool results name catalog tools directly, and some
+		// models then call them by that name. Invalid input returns the schema.
 		const target = resolveToolCallTarget(toolMap, toolName, callParams.input);
 
 		if (!target) {
-			return await this.toolError(callParams, new Error(`Tool ${toolName} not found`));
+			const hint = toolMap.has(CALL_TOOL_TOOL_NAME)
+				? ` Find the right name with ${FIND_TOOLS_TOOL_NAME} (query), then run it with ${CALL_TOOL_TOOL_NAME}.`
+				: '';
+			return await this.toolError(callParams, new Error(`Tool ${toolName} not found.${hint}`));
 		}
 		// A dispatcher (the catalog's call_tool) hands the call to the tool it
 		// names. That tool's schema, approval, and suspension then apply.
@@ -145,7 +139,7 @@ export class ToolCallRunner {
 			incrementToolCallCount(params.executionCounter);
 		}
 
-		const validation = await this.validateToolInput(params, builtTool);
+		const validation = await this.validateToolInput(params, builtTool, !!target.dispatchedBy);
 		if (!validation.ok) return validation.outcome;
 		const input = validation.input;
 
@@ -384,13 +378,14 @@ export class ToolCallRunner {
 	private async validateToolInput(
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
+		dispatched: boolean,
 	): Promise<{ ok: true; input: JSONValue } | { ok: false; outcome: ToolCallOutcome }> {
 		if (!builtTool.inputSchema) return { ok: true, input: params.input };
 		const result = await parseWithSchema(builtTool.inputSchema, params.input);
 		if (!result.success) {
 			const reason = result.schemaInvalid
 				? `Tool ${params.toolName} has an input schema that could not be compiled: ${result.error}`
-				: params.toolName === builtTool.name
+				: !dispatched && params.toolName === builtTool.name
 					? `Invalid tool input: ${result.error}`
 					: // Dispatched calls carry no schema in the request, so return it to retry with.
 						`Invalid arguments for ${builtTool.name}: ${result.error}\nInput schema: ${JSON.stringify(

@@ -308,21 +308,6 @@ export function findDispatcherForCall(
 	return undefined;
 }
 
-/**
- * Whether the model called a catalog tool by its own name instead of through
- * its dispatcher. The catalog tool is not in the toolset, so the call fails.
- */
-export function isDirectCatalogCall(
-	toolMap: Map<string, BuiltTool>,
-	toolName: string,
-	input: unknown,
-): boolean {
-	return (
-		resolveToolForCall(toolMap, toolName, input) === undefined &&
-		findDispatcherForCall(toolMap, toolName, input) !== undefined
-	);
-}
-
 /** Whether `tool` resolved from a former name through `legacyActions`, not `legacyNames`. */
 export function isResolvedByLegacyAction(tool: BuiltTool, toolName: string): boolean {
 	return tool.name !== toolName && tool.legacyActions?.[toolName] !== undefined;

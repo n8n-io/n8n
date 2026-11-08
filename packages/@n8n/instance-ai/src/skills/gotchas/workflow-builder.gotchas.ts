@@ -239,7 +239,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'data-table-snake-case',
-			text: 'Data Table column names are normalized to snake_case (`dayName` → `day_name`). Call `get_data_table_schema` before using a table in code.',
+			text: 'Data Table column names are normalized to snake_case (`dayName` → `day_name`). Run `get_data_table_schema` through `call_tool` before using a table in code.',
 			appliesWhen: 'The workflow reads from or writes to an n8n Data Table.',
 			fixes: 'Workflow code used camelCase Data Table columns that do not exist.',
 			origin: '#31412',
@@ -327,7 +327,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'folder-placement',
-			text: "When the new workflow's folder is clear, pass `folderPath` to the build. When editing, read sibling workflows with `list_workflows(folderPath)` and match their style.",
+			text: "When the new workflow's folder is clear, pass `folderPath` to the build. When editing, read sibling workflows by running `list_workflows` through `call_tool` with `folderPath`, and match their style.",
 			appliesWhen:
 				'The user mentions a folder or project for the workflow, or the workflow being edited sits in a folder.',
 			fixes: 'New workflows landed at the project root when their folder was clear.',

@@ -4472,7 +4472,7 @@ describe('AgentRuntime — deferred tool loading', () => {
 		);
 	});
 
-	it('fails a catalog tool called by its own name and says to use find_tools', async () => {
+	it('runs a catalog tool called by its own name as if through call_tool', async () => {
 		const handler = vi.fn(async () => await Promise.resolve({ ok: true }));
 		const runtime = new AgentRuntime({
 			name: 'test',
@@ -4492,8 +4492,32 @@ describe('AgentRuntime — deferred tool loading', () => {
 
 		const result = await runtime.generate('look it up');
 
+		expect(handler).toHaveBeenCalled();
+		expect(JSON.stringify(result)).not.toContain('not found');
+	});
+
+	it('returns the input schema when a direct catalog call has invalid input', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ ok: true }));
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [makeSuspendingTool('deferred_lookup', handler)],
+			toolDeferral: { mode: 'catalog' },
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-direct', toolName: 'deferred_lookup', args: { value: 1 } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const result = await runtime.generate('look it up');
+
 		expect(handler).not.toHaveBeenCalled();
-		expect(JSON.stringify(result)).toContain('is in the tool catalog, not in your toolset');
+		expect(JSON.stringify(result)).toContain('Input schema:');
 	});
 });
 

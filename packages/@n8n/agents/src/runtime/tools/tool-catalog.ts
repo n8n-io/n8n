@@ -29,7 +29,6 @@ export const TOOL_CATALOG_GUIDANCE = [
 	`- Skills and instructions often name a catalog tool directly, such as "call \`some_tool\` with the IDs". Read that as ${CALL_TOOL_TOOL_NAME} with tool "some_tool" and those arguments. Never emit a tool call whose name is a catalog tool.`,
 	`- Look up every tool the task will need in one ${FIND_TOOLS_TOOL_NAME} call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.`,
 	"- When you do not know a tool's name, search by query or list a namespace.",
-	`- Calling a catalog tool by its own name fails. Use ${CALL_TOOL_TOOL_NAME}.`,
 	'</tool_catalog_rules>',
 ].join('\n');
 
