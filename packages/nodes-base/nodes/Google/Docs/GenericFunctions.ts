@@ -81,9 +81,22 @@ export async function googleApiRequestAllItems(
 
 export const hasKeys = (obj = {}) => Object.keys(obj).length > 0;
 export const extractID = (url: string) => {
-	const regex = new RegExp('https://docs.google.com/document/d/([a-zA-Z0-9-_]+)/');
-	const results = regex.exec(url);
-	return results ? results[1] : undefined;
+	try {
+		const { hostname, pathname, searchParams } = new URL(url);
+		if (hostname === 'docs.google.com') {
+			return /^\/document\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/.exec(pathname)?.[1];
+		}
+		if (hostname === 'drive.google.com') {
+			if (pathname === '/open') {
+				const id = searchParams.get('id');
+				return id && /^[a-zA-Z0-9_-]+$/.test(id) ? id : undefined;
+			}
+			return /^\/file\/d\/([a-zA-Z0-9_-]+)(?:\/|$)/.exec(pathname)?.[1];
+		}
+	} catch {
+		// Bare IDs are not URLs. The caller uses them without extraction.
+	}
+	return undefined;
 };
 export const upperFirst = (str: string) => {
 	return str[0].toUpperCase() + str.substr(1);

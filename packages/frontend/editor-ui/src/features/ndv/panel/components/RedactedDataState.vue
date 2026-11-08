@@ -4,12 +4,11 @@ import { N8nButton, N8nIcon, N8nLink } from '@n8n/design-system';
 import NDVEmptyState from './NDVEmptyState.vue';
 import { I18nT } from 'vue-i18n';
 import { EXECUTION_DATA_REDACTION_DOCS_URL } from '@/app/constants';
+import type { RedactionInfo } from 'n8n-workflow';
 
 defineProps<{
 	title: string;
-	isDynamicCredentials: boolean;
-	/** The execution is redacted because a sub-workflow it called has a redaction policy. */
-	isSubWorkflowRedaction?: boolean;
+	reason?: RedactionInfo['reason'];
 	canReveal: boolean;
 	/** A credential the viewer cannot use but can share with themselves to see the data. */
 	credentialToShare?: { id: string; name: string };
@@ -29,10 +28,10 @@ const i18n = useI18n();
 		<template #icon>
 			<N8nIcon icon="shredder" size="xxlarge" color="text-light" />
 		</template>
-		<template v-if="isDynamicCredentials">
+		<template v-if="reason === 'dynamic_credentials'">
 			{{ i18n.baseText('ndv.redacted.dynamicCredentials.description') }}
 		</template>
-		<template v-else-if="isSubWorkflowRedaction">
+		<template v-else-if="reason === 'sub_workflow_redaction_policy'">
 			{{ i18n.baseText('ndv.redacted.subWorkflow.description') }}
 		</template>
 		<template v-else-if="canReveal">
@@ -45,21 +44,24 @@ const i18n = useI18n();
 				</template>
 			</I18nT>
 		</template>
-		<template v-else-if="credentialToShare">
-			{{ i18n.baseText('ndv.redacted.shareCredential.description') }}<br />
-			<N8nLink
-				size="medium"
-				data-test-id="redacted-data-share-credential"
-				@click="emit('shareCredential')"
-			>
-				{{
-					credentialToShare.name
-						? i18n.baseText('ndv.redacted.shareCredential.link', {
-								interpolate: { credential: credentialToShare.name },
-							})
-						: i18n.baseText('ndv.redacted.shareCredential.linkNoName')
-				}}
-			</N8nLink>
+		<template v-else-if="reason === 'credential_inaccessible'">
+			{{ i18n.baseText('ndv.redacted.shareCredential.description') }}
+			<template v-if="credentialToShare">
+				<br />
+				<N8nLink
+					size="medium"
+					data-test-id="redacted-data-share-credential"
+					@click="emit('shareCredential')"
+				>
+					{{
+						credentialToShare.name
+							? i18n.baseText('ndv.redacted.shareCredential.link', {
+									interpolate: { credential: credentialToShare.name },
+								})
+							: i18n.baseText('ndv.redacted.shareCredential.linkNoName')
+					}}
+				</N8nLink>
+			</template>
 		</template>
 		<template v-else>
 			{{ i18n.baseText('ndv.redacted.noPermission.description') }}

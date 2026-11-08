@@ -1367,6 +1367,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prompt_modified: null,
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
+				selected_element_count: 0,
 			},
 		);
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
@@ -1382,6 +1383,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prompt_modified: null,
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
+				selected_element_count: 0,
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1461,6 +1463,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					prompt_modified: false,
 					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
+					selected_element_count: 0,
 				},
 			);
 		});
@@ -1490,7 +1493,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 	});
 
-	test('sendMessage reports mention and outbound attachment counts', async () => {
+	test('sendMessage reports mention, attachment, and selected element counts', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -1503,6 +1506,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					workflowId: 'workflow-1',
 					sets: [{ nodes: [{ id: 'node-1', name: 'Validate' }] }],
 				},
+				{ type: 'element', appId: 'app-1', tagName: 'button' },
 			],
 			mentionCounts: {
 				total: 3,
@@ -1516,7 +1520,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 			expect.objectContaining({
 				mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
-				attachment_count: 2,
+				attachment_count: 3,
+				selected_element_count: 1,
 			}),
 		);
 		warnSpy.mockRestore();
@@ -1567,6 +1572,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prompt_modified: null,
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
+				selected_element_count: 0,
 			},
 		);
 		expect(warnSpy).not.toHaveBeenCalled();
@@ -1597,6 +1603,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prompt_modified: null,
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
+				selected_element_count: 0,
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1632,6 +1639,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prompt_modified: true,
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
+				selected_element_count: 0,
 			},
 		);
 		warnSpy.mockRestore();
@@ -1924,6 +1932,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					tab_visible: false,
 					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
+					selected_element_count: 0,
 				},
 			],
 			[
@@ -1939,12 +1948,13 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					tab_visible: false,
 					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
+					selected_element_count: 0,
 				},
 			],
 		]);
 	});
 
-	test("repeats the message's mention and attachment counts on the response event", async () => {
+	test("repeats the message's context counts on the response event", async () => {
 		mockPostMessage.mockResolvedValueOnce({ runId: 'run-with-context' });
 
 		await activeRuntime(registry).sendMessage('Compare the workflow and node', {
@@ -1956,6 +1966,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					workflowId: 'workflow-1',
 					sets: [{ nodes: [{ id: 'node-1', name: 'Validate' }] }],
 				},
+				{ type: 'element', appId: 'app-1', tagName: 'button' },
 			],
 			mentionCounts: {
 				total: 3,
@@ -1970,7 +1981,8 @@ describe('createThreadRuntime - response timing telemetry', () => {
 		expect(responseMetricCalls()[0][1]).toMatchObject({
 			run_id: 'run-with-context',
 			mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
-			attachment_count: 2,
+			attachment_count: 3,
+			selected_element_count: 1,
 		});
 	});
 
