@@ -74,8 +74,8 @@ function toV1Error(node: INode, error: DataTableCallErrorResponse['error']): Err
 /**
  * The `DataTableProxyProvider` that the engine v2 data plane gives to v1 nodes.
  *
- * One instance per execution: the constructor context names the execution the
- * requests are for.
+ * One instance per step: the constructor context names the execution the
+ * step's requests are for.
  */
 export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 	constructor(
