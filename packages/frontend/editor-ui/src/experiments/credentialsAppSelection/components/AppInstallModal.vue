@@ -178,6 +178,9 @@ const handleClose = () => {
 };
 
 async function closeDialog() {
+	// The dialog reads its open state from the UI store. Return before closeModal
+	// while an install is in progress so the dialog stays open.
+	if (loading.value) return;
 	uiStore.closeModal(resolvedModalName.value);
 	handleClose();
 }
