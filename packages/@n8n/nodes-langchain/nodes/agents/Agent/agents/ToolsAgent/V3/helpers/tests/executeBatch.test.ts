@@ -1,5 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 import { vi } from 'vitest';
@@ -159,5 +159,71 @@ describe('executeBatch — error enrichment', () => {
 		);
 
 		expect(returnData[0].json.error).toBe('already enriched');
+	});
+});
+
+describe('executeBatch — batch metadata merge', () => {
+	it("should not drop a non-first item's previousRequests when merging a two-item batch", async () => {
+		// Regression test: executeBatch used to keep only the first item's metadata
+		// when merging multiple items that both requested tool calls in the same
+		// round, silently discarding every other item's own conversation history.
+		const item0Step = {
+			action: {
+				tool: 'item0_tool',
+				toolInput: { input: 'item 0' },
+				log: 'item 0 log',
+				toolCallId: 'call_item0',
+				type: 'tool_call',
+			},
+			observation: 'item 0 result',
+			itemIndex: 0,
+		};
+		const item1Step = {
+			action: {
+				tool: 'item1_tool',
+				toolInput: { input: 'item 1' },
+				log: 'item 1 log',
+				toolCallId: 'call_item1',
+				type: 'tool_call',
+			},
+			observation: 'item 1 result',
+			itemIndex: 1,
+		};
+
+		prepareItemContextMock.mockImplementation((_ctx: unknown, itemIndex: number) =>
+			buildItemContext(itemIndex),
+		);
+
+		runAgentMock.mockImplementation(
+			async (_ctx: unknown, _executor: unknown, itemContext: ItemContext) => {
+				if (itemContext.itemIndex === 0) {
+					return {
+						actions: [{ nodeName: 'Item0Tool', input: {}, id: 'call_item0' }],
+						metadata: { previousRequests: [item0Step], itemIndex: 0, iterationCount: 1 },
+					};
+				}
+				return {
+					actions: [{ nodeName: 'Item1Tool', input: {}, id: 'call_item1' }],
+					metadata: { previousRequests: [item1Step], itemIndex: 1, iterationCount: 1 },
+				};
+			},
+		);
+
+		const batch = [{ json: {} }, { json: {} }] as INodeExecutionData[];
+
+		const result = await executeBatch(
+			mockContext,
+			batch,
+			0,
+			mock<BaseChatModel>(),
+			null,
+			undefined,
+		);
+
+		expect(result.request).toBeDefined();
+		expect(result.request?.metadata?.previousRequests).toEqual(
+			expect.arrayContaining([item0Step, item1Step]),
+		);
+		expect(result.request?.metadata?.previousRequests).toHaveLength(2);
 	});
 });

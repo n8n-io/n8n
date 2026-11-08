@@ -370,6 +370,66 @@ describe('buildSteps', () => {
 				expect(result).toHaveLength(1);
 				expect(result[0]).toEqual(previousRequests[0]);
 			});
+
+			it("should not leak another item's previous requests into this item's steps", () => {
+				const otherItemStep = {
+					action: {
+						tool: 'other_item_tool',
+						toolInput: { input: 'belongs to item 0' },
+						log: 'Other item log',
+						toolCallId: 'call_other_item',
+						type: 'tool_call',
+					},
+					observation: 'other item result',
+					itemIndex: 0,
+				};
+				const thisItemStep = {
+					action: {
+						tool: 'this_item_tool',
+						toolInput: { input: 'belongs to item 1' },
+						log: 'This item log',
+						toolCallId: 'call_this_item',
+						type: 'tool_call',
+					},
+					observation: 'this item result',
+					itemIndex: 1,
+				};
+
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [],
+					metadata: {
+						previousRequests: [otherItemStep, thisItemStep],
+					},
+				};
+
+				const result = buildSteps(response, 1);
+
+				expect(result).toEqual([thisItemStep]);
+			});
+
+			it('should preserve untagged previous requests persisted before upgrade (itemIndex === undefined)', () => {
+				const untaggedStep = {
+					action: {
+						tool: 'pre_upgrade_tool',
+						toolInput: { input: 'persisted prior to upgrade' },
+						log: 'Pre-upgrade log',
+						toolCallId: 'call_pre_upgrade',
+						type: 'tool_call',
+					},
+					observation: 'pre-upgrade result',
+				};
+
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [],
+					metadata: {
+						previousRequests: [untaggedStep],
+					},
+				};
+
+				const result = buildSteps(response, 0);
+
+				expect(result).toEqual([untaggedStep]);
+			});
 		});
 
 		describe('Synthetic AI message creation', () => {

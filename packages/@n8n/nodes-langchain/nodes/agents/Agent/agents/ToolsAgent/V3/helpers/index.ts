@@ -18,3 +18,5 @@ export {
 	resolveSubAgentRequest,
 	type ResolveSubAgentRequestDeps,
 } from './resolveSubAgentRequest';
+
+export { mergeRequestMetadata } from './mergeRequestMetadata';
