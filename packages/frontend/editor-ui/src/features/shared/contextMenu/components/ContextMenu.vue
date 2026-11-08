@@ -110,11 +110,11 @@ function onOpenChange(open: boolean) {
 					}"
 				/>
 			</template>
-			<template #item-trailing="{ item }">
+			<template #item-trailing="{ item, ui }">
 				<N8nKeyboardShortcut
 					v-if="item.data?.shortcut"
 					v-bind="item.data.shortcut"
-					:class="$style.shortcut"
+					:class="[ui.class, $style.shortcut]"
 				/>
 			</template>
 		</N8nDropdownMenu>
@@ -137,5 +137,6 @@ function onOpenChange(open: boolean) {
 
 .shortcut {
 	display: flex;
+	margin-left: auto;
 }
 </style>

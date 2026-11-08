@@ -61,6 +61,7 @@ const dialogBan = requireBan('reka-ui', 'Dialog');
 const dateRangeBan = requireBan('reka-ui', 'DateRangePicker');
 const toggleBan = requireBan('reka-ui', 'Toggle');
 const menuBan = requireBan('element-plus', 'ElMenu');
+const dropdownBan = requireBan('element-plus', 'ElDropdown');
 const radioBan = requireBan('reka-ui', 'RadioGroup');
 
 const paginationWrapper =
@@ -362,6 +363,11 @@ vueRuleTester.run('no-direct-component-imports templates', NoDirectComponentImpo
 			code: template('<el-menu><ElMenu /></el-menu>'),
 		},
 		{
+			name: 'dropdown template tags in the allowed wrapper path',
+			filename: wrapperFile('components/N8nDropdownMenu', 'DropdownMenu.vue'),
+			code: template('<el-dropdown><ElDropdownItem /><el-dropdown-menu /></el-dropdown>'),
+		},
+		{
 			name: 'reka radio imports in the allowed wrapper path',
 			filename: radioWrapper,
 			code: "<script>import { RadioGroupRoot, injectRadioGroupRootContext } from 'reka-ui';</script>",
@@ -378,6 +384,18 @@ vueRuleTester.run('no-direct-component-imports templates', NoDirectComponentImpo
 			filename: 'Component.vue',
 			code: template('<el-menu />'),
 			errors: [error('el-menu', menuBan)],
+		},
+		{
+			name: 'kebab-case dropdown template tag',
+			filename: 'Component.vue',
+			code: template(
+				'<el-dropdown><el-dropdown-menu><el-dropdown-item /></el-dropdown-menu></el-dropdown>',
+			),
+			errors: [
+				error('el-dropdown', dropdownBan),
+				error('el-dropdown-menu', dropdownBan),
+				error('el-dropdown-item', dropdownBan),
+			],
 		},
 		{
 			name: 'PascalCase template tag',
