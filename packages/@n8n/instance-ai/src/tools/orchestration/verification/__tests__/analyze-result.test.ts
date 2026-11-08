@@ -5,6 +5,7 @@ import {
 	analyzeVerificationResult,
 	buildEmptyOutputNote,
 	buildMissingFieldNote,
+	buildNodePreviews,
 	INJECTED_TRIGGER_SIMULATION_REASON,
 	WORKFLOW_PIN_SIMULATION_REASON,
 } from '../analyze-result';
@@ -50,6 +51,19 @@ const result = {
 	lastNodeExecuted: 'Email Approval',
 	data: { Trigger: [{}], 'Format Draft': [{}], 'Email Approval': [] },
 } as unknown as ExecutionRunResult;
+
+describe('buildNodePreviews', () => {
+	it('gives simulated nodes the shorter preview limit', () => {
+		const long = [{ text: 'x'.repeat(1000) }];
+		const previews = buildNodePreviews({ Real: long, Fake: long }, 600, new Set(['Fake']), 200);
+		const real = previews.find((p) => p.nodeName === 'Real');
+		const fake = previews.find((p) => p.nodeName === 'Fake');
+		expect(real?.preview).toHaveLength(603);
+		expect(fake).toMatchObject({ simulated: true, truncated: true });
+		expect(fake?.preview).toHaveLength(203);
+		expect(fake?.chars).toBe(real?.chars);
+	});
+});
 
 describe('analyzeVerificationResult — halted wait gates', () => {
 	it('explains the expected stop at the gate instead of the generic zero-output guidance', () => {
@@ -758,6 +772,20 @@ describe('buildMissingFieldNote', () => {
 			new Set(),
 		);
 		expect(note).toContain('split that array into items (Split Out)');
+	});
+
+	it('blames the fixture, not the workflow, when the input came from a simulated parent', () => {
+		const note = buildMissingFieldNote(
+			{
+				Webhook: wrap([{ candidates: [{ content: { parts: [] } }] }]),
+				Score: wrap([{}]),
+			},
+			workflowWith('n8n-nodes-base.set', { text: '={{ $json.content.parts }}' }),
+			new Set(['Webhook']),
+		);
+		expect(note).toContain('Fixture field check');
+		expect(note).toContain('fixtureOverrides');
+		expect(note).not.toContain('Split Out');
 	});
 
 	it('skips Code nodes, simulated nodes and resolved fields', () => {

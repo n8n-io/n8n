@@ -13,8 +13,36 @@ import {
 	SIMULATION_FIXTURES_MODEL,
 	buildPlaceholderFixtures,
 	generateSimulationFixtures,
+	toNodeOutputShape,
 	withPassThroughFloor,
 } from '../generate-simulation-fixtures.service';
+
+describe('toNodeOutputShape', () => {
+	type NamedNode = WorkflowJSON['nodes'][number] & { name: string };
+	const gemini = (parameters: NamedNode['parameters']): NamedNode => ({
+		id: 'gemini',
+		name: 'Gemini',
+		type: '@n8n/n8n-nodes-langchain.googleGemini',
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters,
+	});
+	const candidate = { content: { parts: [{ text: 'hi' }], role: 'model' } };
+	const raw = [{ candidates: [candidate, candidate], usageMetadata: {} }];
+
+	it('unwraps Gemini candidates when Simplify Output is on by default', () => {
+		expect(toNodeOutputShape(gemini({}), raw)).toEqual([candidate, candidate]);
+	});
+
+	it('keeps the raw response when Simplify Output is off', () => {
+		expect(toNodeOutputShape(gemini({ simplify: false }), raw)).toEqual(raw);
+	});
+
+	it('leaves other node types and simplified items alone', () => {
+		expect(toNodeOutputShape(gemini({}), [candidate])).toEqual([candidate]);
+		expect(toNodeOutputShape({ ...gemini({}), type: 'n8n-nodes-base.set' }, raw)).toEqual(raw);
+	});
+});
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
 const mockExtractText = extractText as MockedFunction<typeof extractText>;

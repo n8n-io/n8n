@@ -136,12 +136,14 @@ export function buildNodePreviews(
 	resultData: Record<string, unknown> | undefined,
 	maxChars: number,
 	simulatedNodeNames?: ReadonlySet<string>,
+	simulatedMaxChars = maxChars,
 ): VerificationNodePreview[] {
 	if (!resultData) return [];
 
 	return Object.entries(resultData).map(([nodeName, nodeOutput]) => {
 		const serialized = stringifyForToolOutput(nodeOutput);
-		const preview = previewValue(nodeOutput, maxChars);
+		const limit = simulatedNodeNames?.has(nodeName) ? simulatedMaxChars : maxChars;
+		const preview = previewValue(nodeOutput, limit);
 		const outputs = countOutputBranchItems(nodeOutput);
 		return {
 			nodeName,
@@ -283,7 +285,11 @@ function findMissingSegment(
 
 const normalizeKey = (key: string) => key.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-function describeMissingField(at: Record<string, unknown>, segment: string): string {
+function describeMissingField(
+	at: Record<string, unknown>,
+	segment: string,
+	fromFixture: boolean,
+): string {
 	const keys = Object.keys(at);
 	const wanted = normalizeKey(segment);
 	const close = keys.filter((key) => {
@@ -299,7 +305,9 @@ function describeMissingField(at: Record<string, unknown>, segment: string): str
 	});
 	const parts = [`input keys: ${keys.slice(0, 15).join(', ') || '(none)'}`];
 	if (close.length > 0) parts.push(`close match: ${close.join(', ')}`);
-	if (arrayHolders.length > 0) {
+	// A fixture's shape is a guess, so a restructuring hint would change the
+	// workflow to fit the guess instead of the real node.
+	if (arrayHolders.length > 0 && !fromFixture) {
 		parts.push(
 			`\`${segment}\` is on each entry of the array in ${arrayHolders.join(', ')}: ` +
 				'split that array into items (Split Out) before this node',
@@ -317,6 +325,8 @@ function describeMissingField(at: Record<string, unknown>, segment: string): str
  * Code nodes are skipped: their item access is not an expression.
  * Simulated nodes are skipped: their output is a fixture, and the resolved
  * parameter check covers their inputs.
+ * A miss whose input came from a simulated parent is reported apart: the
+ * fixture can have the wrong shape while the expression is right.
  */
 export function buildMissingFieldNote(
 	resultData: Record<string, unknown> | undefined,
@@ -326,9 +336,10 @@ export function buildMissingFieldNote(
 	if (!resultData || !workflow?.connections) return undefined;
 	const byDestination = mapConnectionsByDestination(toEngineConnections(workflow.connections));
 	const findings: string[] = [];
+	const fixtureFindings: string[] = [];
 
 	for (const node of workflow.nodes ?? []) {
-		if (findings.length >= MAX_MISSING_FIELDS) break;
+		if (findings.length + fixtureFindings.length >= MAX_MISSING_FIELDS) break;
 		const nodeName = node.name;
 		if (typeof nodeName !== 'string' || !(nodeName in resultData)) continue;
 		if (simulatedNodeNames.has(nodeName) || CODE_NODE_TYPES.has(node.type)) continue;
@@ -336,6 +347,7 @@ export function buildMissingFieldNote(
 		if (parents.length !== 1) continue; // Merge-style inputs: `$json` depends on the input index.
 		const inputItems = sampleItems(resultData[parents[0]]);
 		if (!inputItems || inputItems.length === 0) continue;
+		const fromFixture = simulatedNodeNames.has(parents[0]);
 
 		const reported = new Set<string>();
 		for (const expression of expressionStrings(node.parameters)) {
@@ -349,21 +361,33 @@ export function buildMissingFieldNote(
 				reported.add(key);
 				const where =
 					firstMiss.resolved.length > 0 ? ` in \`${firstMiss.resolved.join('.')}\`` : '';
-				findings.push(
+				(fromFixture ? fixtureFindings : findings).push(
 					`${nodeName} reads \`$json.${key}\`, but no item from ${parents[0]} has ` +
-						`\`${firstMiss.segment}\`${where} (${describeMissingField(firstMiss.at, firstMiss.segment)})`,
+						`\`${firstMiss.segment}\`${where} (${describeMissingField(firstMiss.at, firstMiss.segment, fromFixture)})`,
 				);
 			}
 		}
 	}
 
-	if (findings.length === 0) return undefined;
-	return (
-		`Field check: ${findings.join('; ')}. These expressions resolved to empty, so this run does ` +
-		'not prove those steps. Use the field names the input really has. If the input comes from an ' +
-		'outside system and its field names or tool names are not in the request, ask the user for ' +
-		'them or test with a real payload. Do not guess them.'
-	);
+	const notes: string[] = [];
+	if (findings.length > 0) {
+		notes.push(
+			`Field check: ${findings.join('; ')}. These expressions resolved to empty, so this run does ` +
+				'not prove those steps. Use the field names the input really has. If the input comes from an ' +
+				'outside system and its field names or tool names are not in the request, ask the user for ' +
+				'them or test with a real payload. Do not guess them.',
+		);
+	}
+	if (fixtureFindings.length > 0) {
+		notes.push(
+			`Fixture field check: ${fixtureFindings.join('; ')}. The input came from simulated output, ` +
+				'which can have the wrong shape. These expressions resolved to empty, so this run does not ' +
+				'prove those steps. If the real node outputs the field you read, keep the expression and ' +
+				'verify again with a `fixtureOverrides` entry in the real output shape. Change the workflow ' +
+				'only when the real node does not output that field.',
+		);
+	}
+	return notes.length > 0 ? notes.join(' ') : undefined;
 }
 
 export function countProducedOutputRows(
