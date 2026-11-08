@@ -126,7 +126,7 @@ function isTabStop(element: HTMLElement) {
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--listbox--gap, var(--spacing--4xs));
+	gap: var(--n8n-listbox--gap, var(--spacing--4xs));
 
 	&[data-orientation='horizontal'] {
 		flex-direction: row;

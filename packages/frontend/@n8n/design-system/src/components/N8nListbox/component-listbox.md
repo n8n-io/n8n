@@ -20,6 +20,7 @@ A single-select list. Arrow keys move a highlight over the whole item. Pointer m
 
 - `value: string` Value this item selects. Unique among the items in the list.
 - `disabled?: boolean` The user cannot highlight or select this item. Arrow keys skip it. Tab from another item skips it when an enabled item follows. A click does not change the value. | `default: false`
+- `icon?: IconName` Icon before the row content. The leading slot replaces this icon.
 
 **Events**
 
@@ -35,24 +36,31 @@ A single-select list. Arrow keys move a highlight over the whole item. Pointer m
 
 **Item slots**
 
-- `default` Row content. The item has no padding. The highlight covers this content.
+- `default` Row content.
+- `leading` Content before the row content. This slot replaces `icon`.
+- `trailing` Content after the row content.
+
+The item sets the padding, the gap, and the minimum height. The highlight covers the item, including that padding.
 
 **Container tokens**
 
 Set a token on the list. The list uses the token. When the token is unset, it uses the default.
 
-- `--listbox--gap` Space between items. | default: `--spacing--4xs` (4px)
+- `--n8n-listbox--gap` Space between items. | default: `--spacing--4xs` (4px)
 
 **Item tokens**
 
 Set a token on the list or on an item. The item uses the token. When the token is unset, it uses the default.
 
-Set `--listbox-item--color--background--highlight` and `--listbox-item--color--background--selected` to `transparent` when the slot paints its own highlight and selected fill. The item keeps selection and keyboard behavior.
+Set `--n8n-listbox-item--color--background--highlight` and `--n8n-listbox-item--color--background--selected` to `transparent` when the slot paints its own highlight and selected fill. Set `--n8n-listbox-item--padding` to `0` when that slot also sets its own padding. The item keeps selection and keyboard behavior.
 
-- `--listbox-item--color--background--highlight` Background of the highlighted item. The same fill as a highlighted dropdown or context-menu row. | default: `--background--hover`
-- `--listbox-item--color--background--selected` Background of the selected item. This fill stays when the highlight moves. | default: `--background--active`
-- `--listbox-item--color--text--disabled` Text color of a disabled item. | default: `--text-color--disabled`
-- `--listbox-item--radius` Corner radius of the item. | default: `--radius`
+- `--n8n-listbox-item--color--background--highlight` Background of the highlighted item. The same fill as a highlighted dropdown or context-menu row. | default: `--background--hover`
+- `--n8n-listbox-item--color--background--selected` Background of the selected item. This fill stays when the highlight moves. | default: `--background--active`
+- `--n8n-listbox-item--color--text--disabled` Text color of a disabled item. | default: `--text-color--disabled`
+- `--n8n-listbox-item--radius` Corner radius of the item. | default: `--radius`
+- `--n8n-listbox-item--padding` Padding inside the item. | default: `--spacing--2xs` (8px)
+- `--n8n-listbox-item--gap` Space between the leading content, the row content, and the trailing content. | default: `--spacing--2xs` (8px)
+- `--n8n-listbox-item--min-height` Minimum height of the item. | default: `--spacing--xl` (32px)
 
 **Types**
 
@@ -87,6 +95,7 @@ type ListboxItemProps = {
    * @default false
    */
   disabled?: boolean;
+  icon?: IconName;
 };
 ```
 
@@ -108,7 +117,10 @@ const version = ref<string | undefined>('v2')
     label="Versions"
     selection-behavior="toggle"
   >
-    <N8nListboxItem value="v2">v2 · Latest</N8nListboxItem>
+    <N8nListboxItem value="v2" icon="check">
+      v2
+      <template #trailing>Latest</template>
+    </N8nListboxItem>
     <N8nListboxItem value="v1">v1 · Published</N8nListboxItem>
     <N8nListboxItem value="v0" disabled>v0 · Draft</N8nListboxItem>
   </N8nListbox>

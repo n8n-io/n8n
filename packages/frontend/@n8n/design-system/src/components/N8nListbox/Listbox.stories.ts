@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import type { ActionDropdownItem } from '../../types';
 import N8nActionDropdown from '../N8nActionDropdown/ActionDropdown.vue';
 import N8nButton from '../N8nButton/Button.vue';
+import type { IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText/Text.vue';
 import N8nListbox from './Listbox.vue';
 import N8nListboxItem from './ListboxItem.vue';
@@ -22,15 +23,12 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const row =
-	'display: flex; align-items: center; box-sizing: border-box; min-height: var(--height--lg); padding-inline: var(--spacing--xs); font-size: var(--font-size--sm); line-height: var(--line-height--sm)';
-
 export const Default: Story = {
 	parameters: {
 		docs: {
 			description: {
 				story:
-					'Arrow keys move the highlight. Enter, Space, or a click changes the value. The item has no padding. This story sets padding on the row.',
+					'Arrow keys move the highlight. Enter, Space, or a click changes the value. The item sets the padding.',
 			},
 		},
 	},
@@ -38,19 +36,13 @@ export const Default: Story = {
 		components: { N8nListbox, N8nListboxItem },
 		setup() {
 			const value = ref('v2');
-			return { value, row };
+			return { value };
 		},
 		template: `
 			<N8nListbox v-model="value" label="Versions" style="flex: none; width: 20rem">
-				<N8nListboxItem value="v2">
-					<span :style="row">v2 · Latest</span>
-				</N8nListboxItem>
-				<N8nListboxItem value="v1">
-					<span :style="row">v1 · Published</span>
-				</N8nListboxItem>
-				<N8nListboxItem value="v0">
-					<span :style="row">v0 · Draft</span>
-				</N8nListboxItem>
+				<N8nListboxItem value="v2">v2 · Latest</N8nListboxItem>
+				<N8nListboxItem value="v1">v1 · Published</N8nListboxItem>
+				<N8nListboxItem value="v0">v0 · Draft</N8nListboxItem>
 			</N8nListbox>
 		`,
 	}),
@@ -67,7 +59,7 @@ export const ControlledUncontrolled: Story = {
 				{ label: 'v1', value: 'v1' },
 				{ label: 'Clear', value: undefined },
 			];
-			return { value, presets, row };
+			return { value, presets };
 		},
 		template: `
 			<div style="display: flex; flex-direction: column; gap: var(--spacing--xl)">
@@ -76,15 +68,9 @@ export const ControlledUncontrolled: Story = {
 						Controlled
 					</h3>
 					<N8nListbox v-model="value" label="Versions (controlled)" style="flex: none">
-						<N8nListboxItem value="v2">
-							<span :style="row">v2 · Latest</span>
-						</N8nListboxItem>
-						<N8nListboxItem value="v1">
-							<span :style="row">v1 · Published</span>
-						</N8nListboxItem>
-						<N8nListboxItem value="v0">
-							<span :style="row">v0 · Draft</span>
-						</N8nListboxItem>
+						<N8nListboxItem value="v2">v2 · Latest</N8nListboxItem>
+						<N8nListboxItem value="v1">v1 · Published</N8nListboxItem>
+						<N8nListboxItem value="v0">v0 · Draft</N8nListboxItem>
 					</N8nListbox>
 					<div style="display: flex; gap: var(--spacing--2xs); flex-wrap: wrap">
 						<N8nButton
@@ -103,15 +89,9 @@ export const ControlledUncontrolled: Story = {
 						Uncontrolled
 					</h3>
 					<N8nListbox default-value="v1" label="Versions (uncontrolled)" style="flex: none">
-						<N8nListboxItem value="v2">
-							<span :style="row">v2 · Latest</span>
-						</N8nListboxItem>
-						<N8nListboxItem value="v1">
-							<span :style="row">v1 · Published</span>
-						</N8nListboxItem>
-						<N8nListboxItem value="v0">
-							<span :style="row">v0 · Draft</span>
-						</N8nListboxItem>
+						<N8nListboxItem value="v2">v2 · Latest</N8nListboxItem>
+						<N8nListboxItem value="v1">v1 · Published</N8nListboxItem>
+						<N8nListboxItem value="v0">v0 · Draft</N8nListboxItem>
 					</N8nListbox>
 				</section>
 			</div>
@@ -131,7 +111,7 @@ export const Horizontal: Story = {
 		components: { N8nListbox, N8nListboxItem },
 		setup() {
 			const value = ref('comfortable');
-			return { value, row };
+			return { value };
 		},
 		template: `
 			<N8nListbox
@@ -140,15 +120,9 @@ export const Horizontal: Story = {
 				label="Density"
 				style="flex: none"
 			>
-				<N8nListboxItem value="compact">
-					<span :style="row">Compact</span>
-				</N8nListboxItem>
-				<N8nListboxItem value="comfortable">
-					<span :style="row">Comfortable</span>
-				</N8nListboxItem>
-				<N8nListboxItem value="spacious">
-					<span :style="row">Spacious</span>
-				</N8nListboxItem>
+				<N8nListboxItem value="compact">Compact</N8nListboxItem>
+				<N8nListboxItem value="comfortable">Comfortable</N8nListboxItem>
+				<N8nListboxItem value="spacious">Spacious</N8nListboxItem>
 			</N8nListbox>
 		`,
 	}),
@@ -168,25 +142,15 @@ export const DisabledItem: Story = {
 		components: { N8nListbox, N8nListboxItem },
 		setup() {
 			const value = ref('v4');
-			return { value, row };
+			return { value };
 		},
 		template: `
 			<N8nListbox v-model="value" label="Versions" style="flex: none; width: 20rem">
-				<N8nListboxItem value="v4">
-					<span :style="row">v4 · Latest</span>
-				</N8nListboxItem>
-				<N8nListboxItem value="v3">
-					<span :style="row">v3 · Published</span>
-				</N8nListboxItem>
-				<N8nListboxItem value="v2" disabled>
-					<span :style="row">v2 · Draft</span>
-				</N8nListboxItem>
-				<N8nListboxItem value="v1" disabled>
-					<span :style="row">v1 · Review</span>
-				</N8nListboxItem>
-				<N8nListboxItem value="v0">
-					<span :style="row">v0 · Archived</span>
-				</N8nListboxItem>
+				<N8nListboxItem value="v4">v4 · Latest</N8nListboxItem>
+				<N8nListboxItem value="v3">v3 · Published</N8nListboxItem>
+				<N8nListboxItem value="v2" disabled>v2 · Draft</N8nListboxItem>
+				<N8nListboxItem value="v1" disabled>v1 · Review</N8nListboxItem>
+				<N8nListboxItem value="v0">v0 · Archived</N8nListboxItem>
 			</N8nListbox>
 		`,
 	}),
@@ -199,7 +163,7 @@ export const SelectionBehavior: Story = {
 		setup() {
 			const replaceValue = ref<string | undefined>('v2');
 			const toggleValue = ref<string | undefined>('v2');
-			return { replaceValue, toggleValue, row };
+			return { replaceValue, toggleValue };
 		},
 		template: `
 			<div style="display: flex; flex-direction: column; gap: var(--spacing--xl)">
@@ -213,12 +177,8 @@ export const SelectionBehavior: Story = {
 						label="Versions (replace)"
 						style="flex: none"
 					>
-						<N8nListboxItem value="v2">
-							<span :style="row">v2 · Latest</span>
-						</N8nListboxItem>
-						<N8nListboxItem value="v1">
-							<span :style="row">v1 · Published</span>
-						</N8nListboxItem>
+						<N8nListboxItem value="v2">v2 · Latest</N8nListboxItem>
+						<N8nListboxItem value="v1">v1 · Published</N8nListboxItem>
 					</N8nListbox>
 				</section>
 				<section style="display: flex; flex-direction: column; gap: var(--spacing--sm); width: 20rem">
@@ -231,12 +191,8 @@ export const SelectionBehavior: Story = {
 						label="Versions (toggle)"
 						style="flex: none"
 					>
-						<N8nListboxItem value="v2">
-							<span :style="row">v2 · Latest</span>
-						</N8nListboxItem>
-						<N8nListboxItem value="v1">
-							<span :style="row">v1 · Published</span>
-						</N8nListboxItem>
+						<N8nListboxItem value="v2">v2 · Latest</N8nListboxItem>
+						<N8nListboxItem value="v1">v1 · Published</N8nListboxItem>
 					</N8nListbox>
 				</section>
 			</div>
@@ -269,7 +225,7 @@ export const CustomItem: Story = {
 		docs: {
 			description: {
 				story:
-					'Set the item background tokens to transparent. The card paints the highlight and the selected fill. The item keeps selection and keyboard behavior.',
+					'Set the item background tokens to transparent and the item padding to 0. The card paints the highlight, the selected fill, and its own padding. The item keeps selection and keyboard behavior.',
 			},
 		},
 	},
@@ -285,7 +241,7 @@ export const CustomItem: Story = {
 				<N8nListbox
 					v-model="value"
 					label="Versions"
-					style="flex: none; --listbox-item--color--background--highlight: transparent; --listbox-item--color--background--selected: transparent; --listbox-item--radius: 0"
+					style="flex: none; --n8n-listbox-item--color--background--highlight: transparent; --n8n-listbox-item--color--background--selected: transparent; --n8n-listbox-item--radius: 0; --n8n-listbox-item--padding: 0"
 				>
 					<N8nListboxItem value="v2">
 						<span class="listbox-custom-card">
@@ -321,18 +277,9 @@ export const CustomItem: Story = {
 };
 
 const actionsMenuStyle = `
-.listbox-actions-row {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	min-width: 0;
-	padding-block: var(--spacing--3xs);
-	padding-inline: var(--spacing--xs) var(--spacing--2xs);
-}
 .listbox-actions-copy {
 	display: flex;
 	flex-direction: column;
-	flex: 1;
 	min-width: 0;
 	gap: var(--spacing--5xs);
 }
@@ -349,10 +296,10 @@ export const ActionsMenu: Story = {
 	render: () => ({
 		components: { N8nListbox, N8nListboxItem, N8nActionDropdown, N8nText },
 		setup() {
-			const workflows = [
-				{ id: 'sync', name: 'Sync contacts', detail: 'Runs every hour' },
-				{ id: 'digest', name: 'Weekly digest', detail: 'Sends on Monday' },
-				{ id: 'archive', name: 'Archive old leads', detail: 'Paused' },
+			const workflows: Array<{ id: string; name: string; detail: string; icon: IconName }> = [
+				{ id: 'sync', name: 'Sync contacts', detail: 'Runs every hour', icon: 'refresh-cw' },
+				{ id: 'digest', name: 'Weekly digest', detail: 'Sends on Monday', icon: 'copy' },
+				{ id: 'archive', name: 'Archive old leads', detail: 'Paused', icon: 'archive' },
 			];
 			const value = ref('sync');
 			const lastAction = ref('');
@@ -379,12 +326,17 @@ export const ActionsMenu: Story = {
 			<div style="display: flex; flex-direction: column; gap: var(--spacing--sm); width: 24rem">
 				<component :is="'style'">{{ actionsMenuStyle }}</component>
 				<N8nListbox v-model="value" label="Workflows" style="flex: none">
-					<N8nListboxItem v-for="workflow in workflows" :key="workflow.id" :value="workflow.id">
-						<span class="listbox-actions-row">
-							<span class="listbox-actions-copy">
-								<N8nText bold size="small" color="text-dark">{{ workflow.name }}</N8nText>
-								<N8nText size="small" color="text-light">{{ workflow.detail }}</N8nText>
-							</span>
+					<N8nListboxItem
+						v-for="workflow in workflows"
+						:key="workflow.id"
+						:value="workflow.id"
+						:icon="workflow.icon"
+					>
+						<span class="listbox-actions-copy">
+							<N8nText bold size="small" color="text-dark">{{ workflow.name }}</N8nText>
+							<N8nText size="small" color="text-light">{{ workflow.detail }}</N8nText>
+						</span>
+						<template #trailing>
 							<N8nActionDropdown
 								:items="workflowActions"
 								activator-size="small"
@@ -394,7 +346,7 @@ export const ActionsMenu: Story = {
 								@keydown.space.stop
 								@select="onAction(workflow.name, $event)"
 							/>
-						</span>
+						</template>
 					</N8nListboxItem>
 				</N8nListbox>
 				<p style="margin: 0; font-size: var(--font-size--sm)">
