@@ -476,11 +476,12 @@ describe('Instance AI skills', () => {
 		expect(skill?.description).toContain('Load before calling workflow_builder_build_workflow');
 		expect(skill?.description).not.toContain('Default path');
 		expect(skill?.description).toContain('new one-off workflows');
-		expect(skill?.description).toContain('Once the user wants a workflow, load it before you ask');
+		expect(skill?.description).toContain('load it before you ask about that workflow');
 		expect(skill?.description).toContain(
 			'For any other new workflow, load intent-recognition first when it is listed',
 		);
-		expect(skill?.description).toContain('The build validates the source');
+		// How to build lives in the body; the description only routes.
+		expect(skill?.description).not.toContain('filePath');
 		expect(skill?.description).not.toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
 
