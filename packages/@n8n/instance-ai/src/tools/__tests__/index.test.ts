@@ -240,7 +240,7 @@ describe('domain tool construction', () => {
 		expect(getToolNamespace('insert_data_table_rows')).toBe('data_tables');
 		expect(getToolNamespace('setup_credentials')).toBe('credentials');
 		expect(getToolNamespace('agent_builder_write_config')).toBe('agents');
-		expect(getToolNamespace('list_folders')).toBe('workspace');
+		expect(getToolNamespace('list_folders')).toBe('instance');
 		expect(getToolNamespace('ask_user')).toBeUndefined();
 	});
 

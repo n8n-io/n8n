@@ -5,7 +5,7 @@ import {
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	WORKFLOW_TOOL_NAMES,
-	WORKSPACE_TOOL_NAME_BY_ACTION,
+	INSTANCE_TOOL_NAME_BY_ACTION,
 } from '@n8n/api-types';
 
 export const DOMAIN_TOOL_IDS = {
@@ -48,14 +48,14 @@ export const DOMAIN_TOOL_IDS = {
 	INSERT_DATA_TABLE_ROWS: SHARED_BUILDER_TOOL_NAMES.INSERT_DATA_TABLE_ROWS,
 	UPDATE_DATA_TABLE_ROWS: SHARED_BUILDER_TOOL_NAMES.UPDATE_DATA_TABLE_ROWS,
 	DELETE_DATA_TABLE_ROWS: SHARED_BUILDER_TOOL_NAMES.DELETE_DATA_TABLE_ROWS,
-	LIST_PROJECTS: WORKSPACE_TOOL_NAME_BY_ACTION['list-projects'],
-	LIST_TAGS: WORKSPACE_TOOL_NAME_BY_ACTION['list-tags'],
-	TAG_WORKFLOW: WORKSPACE_TOOL_NAME_BY_ACTION['tag-workflow'],
-	CLEANUP_TEST_EXECUTIONS: WORKSPACE_TOOL_NAME_BY_ACTION['cleanup-test-executions'],
-	LIST_FOLDERS: WORKSPACE_TOOL_NAME_BY_ACTION['list-folders'],
-	CREATE_FOLDER: WORKSPACE_TOOL_NAME_BY_ACTION['create-folder'],
-	DELETE_FOLDER: WORKSPACE_TOOL_NAME_BY_ACTION['delete-folder'],
-	MOVE_WORKFLOW_TO_FOLDER: WORKSPACE_TOOL_NAME_BY_ACTION['move-workflow-to-folder'],
+	LIST_PROJECTS: INSTANCE_TOOL_NAME_BY_ACTION['list-projects'],
+	LIST_TAGS: INSTANCE_TOOL_NAME_BY_ACTION['list-tags'],
+	TAG_WORKFLOW: INSTANCE_TOOL_NAME_BY_ACTION['tag-workflow'],
+	CLEANUP_TEST_EXECUTIONS: INSTANCE_TOOL_NAME_BY_ACTION['cleanup-test-executions'],
+	LIST_FOLDERS: INSTANCE_TOOL_NAME_BY_ACTION['list-folders'],
+	CREATE_FOLDER: INSTANCE_TOOL_NAME_BY_ACTION['create-folder'],
+	DELETE_FOLDER: INSTANCE_TOOL_NAME_BY_ACTION['delete-folder'],
+	MOVE_WORKFLOW_TO_FOLDER: INSTANCE_TOOL_NAME_BY_ACTION['move-workflow-to-folder'],
 	RESEARCH: 'research',
 	N8N_DOCS: 'n8n-docs',
 	NODES: WORKFLOW_BUILDER_TOOL_NAMES.NODES,
@@ -125,7 +125,7 @@ export const AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES: readonly string[] = Object.v
 /**
  * Harness tools: the tools of the chat agent itself. Only these are sent in full.
  * Every n8n resource tool (workflows, executions, data tables, credentials,
- * Agents, workspace) is listed by name in the tool catalog and runs through `call_tool`.
+ * Agents, instance) is listed by name in the tool catalog and runs through `call_tool`.
  */
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.ASK_USER,
@@ -187,9 +187,9 @@ const TOOL_NAMESPACE_BY_NAME = new Map<string, string>([
 	...CREDENTIAL_TOOL_NAMES.map((name): [string, string] => [name, 'credentials']),
 	...NODE_TOOL_NAMES.map((name): [string, string] => [name, 'nodes']),
 	...Object.values(AGENT_BUILDER_TOOL_NAMES).map((name): [string, string] => [name, 'agents']),
-	...Object.values(WORKSPACE_TOOL_NAME_BY_ACTION).map((name): [string, string] => [
+	...Object.values(INSTANCE_TOOL_NAME_BY_ACTION).map((name): [string, string] => [
 		name,
-		'workspace',
+		'instance',
 	]),
 ]);
 
@@ -201,7 +201,8 @@ const NAMESPACE_DESCRIPTIONS: Readonly<Record<string, string>> = {
 	credentials: 'set up, test and manage credentials',
 	nodes: 'search node types and read their parameter definitions',
 	agents: 'build and configure standalone n8n Agents',
-	workspace: 'read and write files in the agent workspace',
+	instance:
+		'list projects and tags, manage folders, tag workflows and clean up test executions in this n8n instance',
 };
 
 /** Returns the description of a catalog namespace, or undefined when it has none. */
