@@ -36,7 +36,7 @@ A single-select list. Arrow keys move a highlight over the whole item. Pointer m
 **Item slots**
 
 - `default` Row content. Direct children stack in a column. Set `--n8n-listbox-item--content-gap` to change the space between those children. Wrap children in one element when they sit on one line.
-- `leading` Content before the row content. Put an icon in this slot.
+- `leading` Content before the row content.
 - `trailing` Content after the row content. A control in this slot sits inside the item. Stop `click`, Enter, and Space on that control when the control must not select the item.
 
 The item sets the padding, the gap, and the minimum height. The highlight covers the item, including that padding.

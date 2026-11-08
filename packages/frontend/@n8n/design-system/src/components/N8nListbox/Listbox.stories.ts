@@ -284,7 +284,7 @@ export const LeadingAndTrailing: Story = {
 		docs: {
 			description: {
 				story:
-					'Put an icon in the leading slot. Put an N8nBadge in the trailing slot. Use the actions menu story for a trailing control.',
+					'Leading content sits before the row. Trailing content sits after it. Use the actions menu story for a trailing control.',
 			},
 		},
 	},
