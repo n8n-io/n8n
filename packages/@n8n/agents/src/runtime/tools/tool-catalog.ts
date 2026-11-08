@@ -277,6 +277,21 @@ export class ToolCatalog {
 		return [...new Set([...ranked, ...byPrefix])].slice(0, SUGGESTION_LIMIT);
 	}
 
+	/** Name and input schema of each named tool that is in the catalog, in the given order. */
+	schemasFor(names: readonly string[]): Array<{ name: string; inputSchema: unknown }> {
+		return names.flatMap((name) => {
+			const entry = this.entries.get(name);
+			const schema = entry?.tool.inputSchema;
+			if (!entry || !schema) return [];
+			return [
+				{
+					name: entry.name,
+					inputSchema: isZodSchema(schema) ? zodSchemaToJsonSchema(schema) : schema,
+				},
+			];
+		});
+	}
+
 	private describe(entry: CatalogEntry, withSchema: boolean) {
 		const schema = entry.tool.inputSchema;
 		return {

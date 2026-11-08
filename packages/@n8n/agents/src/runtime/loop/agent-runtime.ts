@@ -63,7 +63,9 @@ import { AgentMessageList, type SerializedMessageList } from '../model/message-l
 import { createModelTokenCounter } from '../model/model-token-counter';
 import { getEffectiveAnthropicCacheTtl, getPromptCacheRetentionMs } from '../model/prompt-cache';
 import { ActiveSkills } from '../skills/active-skills';
+import { SKILL_LOAD_TOOL_NAME } from '../../skills/types';
 import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
+import { withSkillToolSchemas } from '../skills/skill-tool-schemas';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
@@ -240,6 +242,15 @@ export class AgentRuntime {
 					// A lookup for an always-available tool says to call it directly.
 					activeTools: config.tools,
 				});
+				const catalog = this.toolCatalog;
+				const registry = config.skillSource?.registry;
+				if (registry) {
+					config.tools = config.tools?.map((tool) =>
+						tool.name === SKILL_LOAD_TOOL_NAME
+							? withSkillToolSchemas(tool, catalog, registry)
+							: tool,
+					);
+				}
 			}
 		}
 		this.context = new RuntimeContextBuilder(config, this.toolCatalog);
