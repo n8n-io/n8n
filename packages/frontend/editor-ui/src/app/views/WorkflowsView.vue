@@ -16,7 +16,7 @@ import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTags
 import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import type {
 	DragTarget,
 	DropTarget,
@@ -649,12 +649,21 @@ watch([() => route.params?.projectId, () => route.name], async () => {
 	}
 });
 
+let isClearingSearchOnFolderChange = false;
+
 watch(
 	() => route.params?.folderId,
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
 		filters.value.search = '';
-		saveFiltersOnQueryString();
+		// A route-name change can run initialize() before the URL drops the old
+		// search term. Stop it from restoring that term from the stale URL.
+		isClearingSearchOnFolderChange = true;
+		try {
+			await saveFiltersOnQueryString();
+		} finally {
+			isClearingSearchOnFolderChange = false;
+		}
 		await Promise.all([
 			fetchWorkflows(),
 			foldersStore.fetchTotalWorkflowsAndFoldersCount(
@@ -985,7 +994,7 @@ const getParentFolderId = (routeId?: string) => {
 // Filter and sort methods
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
-	saveFiltersOnQueryString();
+	void saveFiltersOnQueryString();
 	if (!loading.value) {
 		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
 	}
@@ -993,7 +1002,7 @@ const onFiltersUpdated = async () => {
 
 const onSearchUpdated = async (search: string) => {
 	currentPage.value = 1;
-	saveFiltersOnQueryString();
+	void saveFiltersOnQueryString();
 	if (search) {
 		await callDebounced(fetchWorkflows, { debounceTime: SEARCH_DEBOUNCE_TIME, trailing: true });
 	} else {
@@ -1025,14 +1034,14 @@ const onClickTag = async (tagId: string) => {
 	if (!filters.value.tags.includes(tagId)) {
 		filters.value.tags.push(tagId);
 		currentPage.value = 1;
-		saveFiltersOnQueryString();
+		void saveFiltersOnQueryString();
 		await fetchWorkflows();
 	}
 };
 
 // Query string methods
 
-const saveFiltersOnQueryString = () => {
+const saveFiltersOnQueryString = async () => {
 	// Get current query parameters
 	const currentQuery = { ...route.query };
 
@@ -1067,7 +1076,7 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.homeProject;
 	}
 
-	void router.replace({
+	await router.replace({
 		query: Object.keys(currentQuery).length ? currentQuery : undefined,
 	});
 };
@@ -1095,7 +1104,7 @@ const setFiltersFromQueryString = async () => {
 	}
 
 	// Handle search
-	if (isValidString(search)) {
+	if (isValidString(search) && !isClearingSearchOnFolderChange) {
 		newQuery.search = search;
 		filters.value.search = search;
 	} else {

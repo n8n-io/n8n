@@ -14,7 +14,7 @@ import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 } from '../constants';
-import type { AgentPreviewHandoffParams } from '../composables/useInstanceAiAgentPreviewHandoff';
+import type { AgentTestHandoffParams } from '../composables/useInstanceAiAgentTestHandoff';
 import AgentBuildingIndicator from './AgentBuildingIndicator.vue';
 
 const props = defineProps<{
@@ -22,13 +22,14 @@ const props = defineProps<{
 	agentId: string;
 	previewSessionId?: string;
 	previewOpen: boolean;
+	previewChatTarget?: HTMLElement | null;
 	/** No agent row exists yet — the builder renders a local draft and persists on first edit. */
 	pending?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'preview-open-change': [open: boolean];
-	'assistant-handoff': [params: AgentPreviewHandoffParams];
+	'assistant-handoff': [params: AgentTestHandoffParams];
 }>();
 
 // === Editing lock ===
@@ -127,6 +128,7 @@ async function persistAgent(
 			:artifact-agent-id="props.agentId"
 			:artifact-preview-session-id="props.previewSessionId"
 			:artifact-preview-open="props.previewOpen"
+			:artifact-preview-chat-target="props.previewChatTarget"
 			:artifact-agent-pending="props.pending"
 			:artifact-editing-locked="isAgentBuilding"
 			:artifact-persist-agent="persistAgent"

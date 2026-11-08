@@ -104,8 +104,8 @@ async function loadSourceControlStatus() {
 
 		if (!freshStatus.length) {
 			toast.showMessage({
-				title: 'No changes to commit',
-				message: 'Everything is up to date',
+				title: i18n.baseText('settings.sourceControl.modals.push.noChanges.title'),
+				message: i18n.baseText('settings.sourceControl.modals.push.everythingIsUpToDate'),
 				type: 'info',
 			});
 			// Close modal since there's nothing to show
@@ -951,7 +951,7 @@ onMounted(async () => {
 					<N8nInput
 						v-model="search"
 						data-test-id="source-control-push-search"
-						placeholder="Filter by title"
+						:placeholder="i18n.baseText('settings.sourceControl.modals.push.search.placeholder')"
 						clearable
 						style="width: 234px"
 					>
@@ -1056,7 +1056,7 @@ onMounted(async () => {
 						<template #trailingContent>
 							<N8nIcon
 								icon="x"
-								title="Dismiss"
+								:title="i18n.baseText('generic.dismiss')"
 								size="medium"
 								type="secondary"
 								@click="projectAdminCalloutDismissed = true"

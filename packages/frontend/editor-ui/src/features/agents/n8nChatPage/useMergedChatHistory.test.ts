@@ -17,8 +17,10 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const listN8nChatThreadsMock = vi.fn();
+const listSystemAgentThreadsMock = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	listN8nChatThreads: (...args: unknown[]) => listN8nChatThreadsMock(...args),
+	listSystemAgentThreads: (...args: unknown[]) => listSystemAgentThreadsMock(...args),
 }));
 
 const assistantLoadMore = vi.fn();
@@ -57,6 +59,16 @@ vi.mock('@/features/ai/instanceAi/instanceAi.store', () => ({
 		},
 	}),
 }));
+
+const assistantAgentThread = (id: string, updatedAt: string) => ({
+	id,
+	title: `Assistant agent ${id}`,
+	updatedAt,
+	projectId: 'project-1',
+});
+
+const itemIds = (items: Array<{ kind: string; thread: { id: string } }>) =>
+	items.map((item) => `${item.kind}:${item.thread.id}`);
 
 const agentThread = (id: string, updatedAt: string) => ({
 	id,
@@ -98,11 +110,90 @@ describe('useMergedChatHistory', () => {
 		// nextCursor non-null by default — hasMore stays true so a follow-up loadMore has
 		// something to do; tests that need the source exhausted override this.
 		listN8nChatThreadsMock.mockResolvedValue({ data: [], nextCursor: 'cursor-1' });
+		listSystemAgentThreadsMock.mockResolvedValue({ data: [], nextCursor: null });
 	});
 
 	afterEach(() => {
 		mountedWrappers.forEach((wrapper) => wrapper.unmount());
 		mountedWrappers = [];
+	});
+
+	describe('Assistant agent threads', () => {
+		it('makes no Assistant agent request while the Assistant agent is off', async () => {
+			const wrapper = mountComposable();
+			await vi.waitFor(() => expect(listN8nChatThreadsMock).toHaveBeenCalledTimes(1));
+			await wrapper.vm.$nextTick();
+
+			expect(listSystemAgentThreadsMock).not.toHaveBeenCalled();
+		});
+
+		it('merges its first page by update time, and loads the next page from its cursor', async () => {
+			assistantHistory.value = {
+				...assistantHistory.value,
+				threads: [
+					{
+						id: 'a1',
+						title: 'Assistant chat',
+						createdAt: '2026-01-01T00:00:00.000Z',
+						updatedAt: '2026-01-01T00:00:00.000Z',
+					},
+				],
+			};
+			listSystemAgentThreadsMock
+				.mockResolvedValueOnce({
+					data: [assistantAgentThread('aa1', '2026-01-03T00:00:00.000Z')],
+					nextCursor: 'cursor-aa1',
+				})
+				.mockResolvedValueOnce({
+					data: [assistantAgentThread('aa2', '2026-01-02T00:00:00.000Z')],
+					nextCursor: null,
+				});
+
+			const wrapper = mountComposable({ enabled: false, assistantAgentEnabled: true });
+			await vi.waitFor(() => expect(itemIds(wrapper.vm.items)).toContain('assistant-agent:aa1'));
+			expect(listSystemAgentThreadsMock).toHaveBeenCalledWith(
+				{ baseUrl: '/rest', pushRef: 'push-1' },
+				'assistant',
+				{ limit: 30, cursor: undefined, search: undefined },
+			);
+			// The older current Assistant thread waits until the Assistant agent pages reach it.
+			expect(itemIds(wrapper.vm.items)).not.toContain('assistant:a1');
+
+			wrapper.vm.loadMore();
+
+			await vi.waitFor(() =>
+				expect(itemIds(wrapper.vm.items)).toEqual([
+					'assistant-agent:aa1',
+					'assistant-agent:aa2',
+					'assistant:a1',
+				]),
+			);
+			expect(listSystemAgentThreadsMock).toHaveBeenLastCalledWith(expect.anything(), 'assistant', {
+				limit: 30,
+				cursor: 'cursor-aa1',
+				search: undefined,
+			});
+			expect(wrapper.vm.hasMore).toBe(false);
+			expect(listN8nChatThreadsMock).not.toHaveBeenCalled();
+		});
+
+		it('reports its page as loading so the sentinel re-arms after it', async () => {
+			let resolveFetch: (() => void) | undefined;
+			listSystemAgentThreadsMock.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						resolveFetch = () => resolve({ data: [], nextCursor: null });
+					}),
+			);
+
+			const wrapper = mountComposable({ enabled: false, assistantAgentEnabled: true });
+			await vi.waitFor(() => expect(capturedIsExtraSourceLoading?.()).toBe(true));
+			expect(wrapper.vm.isLoading).toBe(true);
+
+			resolveFetch?.();
+			await vi.waitFor(() => expect(capturedIsExtraSourceLoading?.()).toBe(false));
+			expect(wrapper.vm.isLoading).toBe(false);
+		});
 	});
 
 	it('fetches the first agent page on mount', async () => {

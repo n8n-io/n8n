@@ -64,6 +64,7 @@ export function createLazyRuntimeWorkspace({
 		name,
 		filesystem: new LazyRuntimeFilesystem(resolver, filesystemInstructions),
 		sandbox: new LazyRuntimeSandbox(resolver, sandboxInstructions),
+		prewarm: () => resolver.prewarm(),
 	});
 
 	const baseGetTools = workspace.getTools.bind(workspace);
@@ -75,6 +76,7 @@ export function createLazyRuntimeWorkspace({
 
 class LazyRuntimeWorkspaceResolver {
 	private workspacePromise: Promise<Workspace | undefined> | undefined;
+	private prewarmPromise: Promise<Workspace | undefined> | undefined;
 	private resolvedWorkspace: Workspace | undefined;
 	private workspaceDestroyPromise: Promise<void> | undefined;
 	private readonly resolvedListeners = new Set<WorkspaceResolvedListener>();
@@ -95,7 +97,29 @@ class LazyRuntimeWorkspaceResolver {
 		this.destroyedListeners.add(listener);
 	}
 
+	/**
+	 * Starts creating the workspace without waiting for it. The next tool call
+	 * joins the creation in progress.
+	 */
+	prewarm(): void {
+		if (this.workspacePromise) return;
+		this.resolveWorkspace().catch(() => {});
+		this.prewarmPromise = this.workspacePromise;
+	}
+
 	async getWorkspace(): Promise<Workspace> {
+		const joinsPrewarm =
+			this.workspacePromise !== undefined && this.workspacePromise === this.prewarmPromise;
+		try {
+			return await this.resolveWorkspace();
+		} catch (error) {
+			// A prewarm is speculative. A call that only joined it makes its own attempt.
+			if (!joinsPrewarm) throw error;
+			return await this.resolveWorkspace();
+		}
+	}
+
+	private async resolveWorkspace(): Promise<Workspace> {
 		this.workspacePromise ??= this.ensureWorkspace()
 			.then((workspace) => {
 				this.setResolvedWorkspace(workspace);

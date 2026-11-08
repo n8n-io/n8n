@@ -1,6 +1,7 @@
 import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
+	createWorkflow,
 	shareWorkflowWithUsers,
 	testDb,
 	testModules,
@@ -14,12 +15,15 @@ import { saveCredential } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
 
 import { N8nPackagesService } from '../n8n-packages.service';
-import { readExport } from './utils/tar-support';
+import { readExport, type UnpackedEntry } from './utils/tar-support';
 import {
 	buildWorkflowCallingSubWorkflow,
 	buildWorkflowReferencingCredential,
 	buildWorkflowReferencingCredentialById,
 } from './utils/test-builders';
+
+const parseEntry = <T>(entries: UnpackedEntry[], name: string): T =>
+	jsonParse<T>(entries.find((e) => e.name === name)!.content.toString());
 
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
@@ -99,6 +103,85 @@ describe('workflow package export — with credentials', () => {
 		});
 		// Secret-adjacent fields must not appear on disk under any name.
 		expect(Object.keys(parsed).sort()).toEqual(['id', 'name', 'type']);
+	});
+
+	it('omits the credential name from the workflow JSON so a rename cannot go stale', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const credential = await saveCredential(
+			{ name: 'Renamed credential', type: 'httpHeaderAuth', data: { name: 'X-Auth', value: 's' } },
+			{ project, role: 'credential:owner' },
+		);
+		// The node still carries the pre-rename label from the last workflow save.
+		const workflow = await buildWorkflowReferencingCredentialById({
+			name: 'Stale cred name',
+			project,
+			credentialId: credential.id,
+			credentialName: 'Old credential name',
+			credentialType: credential.type,
+		});
+
+		const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+		const { manifest, entries } = await readExport(stream);
+		const wf = parseEntry<{ nodes: Array<{ credentials: Record<string, { id: string }> }> }>(
+			entries,
+			`${manifest.workflows![0].target}/workflow.json`,
+		);
+		const cred = parseEntry<{ name: string }>(
+			entries,
+			`${manifest.credentials![0].target}/credential.json`,
+		);
+
+		// Only the id in the workflow; the current name lives in the credential file.
+		expect(wf.nodes[0].credentials.httpHeaderAuth).toEqual({ id: credential.id });
+		expect(cred.name).toBe('Renamed credential');
+	});
+
+	it('omits the credential name from an inline sub-workflow in the workflow JSON', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const credential = await saveCredential(
+			{ name: 'Renamed credential', type: 'httpHeaderAuth', data: { name: 'X-Auth', value: 's' } },
+			{ project, role: 'credential:owner' },
+		);
+		// Sub-workflow node still holding the old label, embedded as a JSON string.
+		const inner = {
+			id: 'inner',
+			type: 'n8n-nodes-base.httpRequest',
+			credentials: { httpHeaderAuth: { id: credential.id, name: 'Old credential name' } },
+		};
+		const workflow = await createWorkflow(
+			{
+				name: 'Inline sub-workflow',
+				nodes: [
+					{
+						id: 'n1',
+						name: 'Execute Workflow',
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							source: 'parameter',
+							workflowJson: JSON.stringify({ nodes: [inner], connections: {} }),
+						},
+					},
+				],
+				connections: {},
+			},
+			project,
+		);
+
+		const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+		const { manifest, entries } = await readExport(stream);
+		const wf = parseEntry<{ nodes: Array<{ parameters: { workflowJson: string } }> }>(
+			entries,
+			`${manifest.workflows![0].target}/workflow.json`,
+		);
+		const inlineWf = jsonParse<{ nodes: Array<{ credentials: Record<string, { id: string }> }> }>(
+			wf.nodes[0].parameters.workflowJson,
+		);
+
+		expect(inlineWf.nodes[0].credentials.httpHeaderAuth).toEqual({ id: credential.id });
 	});
 
 	it('bundles expression values from credential data under the default policy', async () => {

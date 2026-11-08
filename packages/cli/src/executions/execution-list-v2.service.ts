@@ -143,7 +143,7 @@ export class ExecutionListV2Service {
 		)
 			return 'all';
 
-		return await this.executionListRepository.findWorkflowIdsForExecutionList(query);
+		return await this.executionListRepository.findWorkflowIdsForExecutionList(query, {});
 	}
 
 	private async v1Page(ctx: ExecutionListCtx) {
@@ -199,8 +199,10 @@ export class ExecutionListV2Service {
 		if (!v2Results.length) return;
 
 		const uniqV2WorkflowIds = [...new Set(v2Results.map((item) => item.workflowId))];
-		const workflowNames =
-			await this.executionListRepository.findNamesForExecutionList(uniqV2WorkflowIds);
+		const workflowNames = await this.executionListRepository.findNamesForExecutionList(
+			uniqV2WorkflowIds,
+			{},
+		);
 		const namesById = new Map(workflowNames.map((workflow) => [workflow.id, workflow.name]));
 
 		for (const item of v2Results) item.workflowName = namesById.get(item.workflowId);

@@ -2,6 +2,7 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import {
 	getModelPromptCachingCapability,
 	getProviderPrefix,
+	isAzureFoundryAnthropicModel,
 	isGoogleVertexAnthropicModel,
 } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
@@ -9,7 +10,6 @@ import type { ModelMessage, SystemModelMessage, ToolSet } from 'ai';
 import { createHash } from 'crypto';
 
 import type { PromptCachingConfig } from '../../types/sdk/agent';
-import type { JSONObject } from '../../types/utils/json';
 
 /** Anthropic hard-errors past this many `cacheControl` breakpoints in one request. */
 const MAX_ANTHROPIC_CACHE_BREAKPOINTS = 4;
@@ -21,7 +21,7 @@ export function mergeProviderOptions(
 	const defined = options.filter((o): o is ProviderOptions => o !== undefined);
 	if (defined.length === 0) return undefined;
 
-	const merged: Record<string, JSONObject> = {};
+	const merged: ProviderOptions = {};
 	for (const opts of defined) {
 		for (const [provider, providerOpts] of Object.entries(opts)) {
 			merged[provider] = { ...merged[provider], ...providerOpts };
@@ -68,7 +68,8 @@ export function isAnthropicMessagesProvider(modelId: string): boolean {
 	return (
 		provider === 'anthropic' ||
 		provider === 'google-vertex-anthropic' ||
-		isGoogleVertexAnthropicModel(modelId)
+		isGoogleVertexAnthropicModel(modelId) ||
+		isAzureFoundryAnthropicModel(modelId)
 	);
 }
 
@@ -184,6 +185,26 @@ export function buildSkillInstructionCacheOptions(
 	// Instructions + skills + conversation breakpoint.
 	if (callerBreakpoints + 3 > MAX_ANTHROPIC_CACHE_BREAKPOINTS) return undefined;
 	return instructionProviderOptions;
+}
+
+const HOUR_MS = 60 * 60_000;
+
+/**
+ * How long the provider keeps a prompt cache warm for this model. Anthropic uses
+ * the configured TTL. OpenAI uses its retention, 24 hours by default. Other
+ * providers cache on their own terms, so assume one hour.
+ */
+export function getPromptCacheRetentionMs(
+	config: PromptCachingConfig | undefined,
+	modelId: string,
+): number {
+	const anthropicTtl = getEffectiveAnthropicCacheTtl(config, modelId);
+	if (anthropicTtl) return anthropicTtl === '5m' ? 5 * 60_000 : HOUR_MS;
+	if (getProviderPrefix(modelId) === 'openai' && isEnabledForProvider(config, 'openai')) {
+		const openaiConfig = typeof config?.openai === 'object' ? config.openai : undefined;
+		return (openaiConfig?.promptCacheRetention ?? '24h') === '24h' ? 24 * HOUR_MS : HOUR_MS;
+	}
+	return HOUR_MS;
 }
 
 /** OpenAI call-level cache options (routing key + retention). Undefined for non-OpenAI models or when disabled. */

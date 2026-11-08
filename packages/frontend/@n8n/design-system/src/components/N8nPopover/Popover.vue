@@ -26,6 +26,7 @@ interface Props
 			| 'reference'
 			| 'positionStrategy'
 			| 'collisionPadding'
+			| 'hideWhenDetached'
 		>,
 		Pick<PopoverRootProps, 'open'> {
 	/**
@@ -97,6 +98,7 @@ const props = withDefaults(defineProps<Props>(), {
 	sideOffset: 4,
 	align: 'start',
 	sideFlip: undefined,
+	hideWhenDetached: undefined,
 	collisionPadding: 5,
 	suppressAutoFocus: false,
 	zIndex: 999,
@@ -163,6 +165,7 @@ watch(
 				:class="[$style.popoverContent, contentClass, { [$style.enableSlideIn]: enableSlideIn }]"
 				:style="{ width, zIndex }"
 				:reference="reference"
+				:hide-when-detached="hideWhenDetached"
 				:force-mount="forceMount"
 				:position-strategy="positionStrategy"
 				@open-auto-focus="handleOpenAutoFocus"

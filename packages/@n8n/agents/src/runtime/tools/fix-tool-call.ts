@@ -1,8 +1,24 @@
 import type { ToolCall } from '@ai-sdk/provider-utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { InvalidToolInputError, NoSuchToolError, ToolCallRepairFunction, ToolSet } from 'ai';
 
+import { isResolvedByLegacyAction, resolveToolForCall } from './tool-adapter';
 import type { BuiltTool } from '../../types';
 import { isZodSchema } from '../../utils/zod';
+
+/** The call input without `action`, which a tool split by action does not accept. */
+function withoutAction(input: unknown): unknown {
+	let value = input;
+	if (typeof value === 'string') {
+		try {
+			value = JSON.parse(value);
+		} catch {
+			return input;
+		}
+	}
+	if (!isRecord(value)) return input;
+	return Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'action'));
+}
 
 const isZodEmptyObject = (schema: unknown) => {
 	if (!isZodSchema(schema)) return false;
@@ -28,14 +44,16 @@ export const fixToolCall = async (
 	toolMap: Map<string, BuiltTool>,
 	// eslint-disable-next-line @typescript-eslint/require-await
 ): ReturnType<ToolCallRepairFunction<NoInfer<ToolSet>>> => {
-	const tool = toolMap.get(options.toolCall.toolName);
+	const tool = resolveToolForCall(toolMap, options.toolCall.toolName, options.toolCall.input);
 	if (!tool || options.toolCall.providerExecuted) return null;
 
 	// The tool map also registers former tool names. A model can still call a
 	// tool by a former name, for example after it reads an older conversation.
 	const isNoSuchToolError = options.error.name === 'AI_NoSuchToolError';
 	if (isNoSuchToolError && tool.name !== options.toolCall.toolName) {
-		const { input } = options.toolCall;
+		const input = isResolvedByLegacyAction(tool, options.toolCall.toolName)
+			? withoutAction(options.toolCall.input)
+			: options.toolCall.input;
 		return {
 			type: 'tool-call' as const,
 			toolCallId: options.toolCall.toolCallId,

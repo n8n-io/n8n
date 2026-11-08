@@ -302,7 +302,7 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 					estimatedTokenCount: 60_000,
 					requiredAction: {
 						toolName: 'workspace_read_tool_result' as const,
-						input: { path, view: 'describe' as const },
+						input: { path, view: 'json' as const, pointer: '' as const },
 					},
 					message: 'Stored in workspace',
 				};

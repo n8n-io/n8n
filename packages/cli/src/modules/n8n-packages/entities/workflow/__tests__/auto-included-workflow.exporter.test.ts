@@ -87,7 +87,7 @@ describe('AutoIncludedWorkflowExporter', () => {
 		);
 
 		expect(result.workflowEntries).toEqual([
-			{ id: 'wf_triage', name: 'Triage', target: 'workflows/triage-wf_triage' },
+			{ id: 'wf_triage', name: 'Triage', target: 'workflows/triage-wf_triage', isArchived: false },
 		]);
 		expect(writer.files.map((f) => f.path)).toContain('workflows/triage-wf_triage/workflow.json');
 	});

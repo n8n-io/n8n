@@ -1,4 +1,4 @@
-import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode, ResourceMapperField } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { escapeODataValue } from '@utils/query-escaping';
@@ -90,6 +90,58 @@ export function addUniqueConstraintHint(error: unknown): void {
 	if (error instanceof NodeApiError && error.message.includes('unique constraints')) {
 		error.description = "Double-check the value(s) in 'Columns' and try again";
 	}
+}
+
+export function isForbiddenError(error: unknown): boolean {
+	return error instanceof NodeApiError && error.httpCode === '403';
+}
+
+// SharePoint refuses the content types read with 403 after a column rename in a
+// non-default site language. The columns endpoint still works but omits `type`.
+const COLUMN_TYPE_BY_FACET: Record<string, string> = {
+	text: 'text',
+	number: 'number',
+	currency: 'currency',
+	boolean: 'boolean',
+	dateTime: 'dateTime',
+	choice: 'choice',
+	personOrGroup: 'user',
+	lookup: 'lookup',
+};
+
+export function withColumnTypes<T extends { type?: string; choice?: object }>(columns: T[]): T[] {
+	return columns.flatMap((column) => {
+		const facet = Object.keys(COLUMN_TYPE_BY_FACET).find((key) => key in column);
+		if (facet === undefined) {
+			return [];
+		}
+		// SharePoint offers checkboxes only for a choice column with multiple selections.
+		const isMultiChoice =
+			column.choice !== undefined &&
+			'displayAs' in column.choice &&
+			column.choice.displayAs === 'checkBoxes';
+		return [{ ...column, type: isMultiChoice ? 'multichoice' : COLUMN_TYPE_BY_FACET[facet] }];
+	});
+}
+
+// An empty schema would drop every property and write an empty item.
+export function autoMapInputData(
+	node: INode,
+	schema: ResourceMapperField[] | undefined,
+	json: IDataObject,
+	itemIndex: number,
+): IDataObject {
+	const columnIds = new Set(
+		(schema ?? []).filter((field) => !field.readOnly || field.id === 'id').map((field) => field.id),
+	);
+	if (columnIds.size === 0) {
+		throw new NodeOperationError(node, 'Could not map the input data to the list columns', {
+			description:
+				'The node has no columns for this list. Open the node so that it loads the columns, then save the workflow.',
+			itemIndex,
+		});
+	}
+	return Object.fromEntries(Object.entries(json).filter(([key]) => columnIds.has(key)));
 }
 
 /** Characters SharePoint forbids in file names; Graph rejects them with a misleading 400. */
