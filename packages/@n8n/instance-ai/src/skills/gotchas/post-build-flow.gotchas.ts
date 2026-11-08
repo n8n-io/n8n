@@ -65,12 +65,30 @@ export const POST_BUILD_FLOW_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'empty-lookup-seed-and-remove',
-			text: 'Non-empty `nodesNotReached` with `success: true` is partial evidence, usually a lookup that returned zero items. Seed a matching test row (e.g. `insert_data_table_rows`), verify again, then delete the row. If you cannot seed, name the unreached nodes and offer a manual test; do not start a live run.',
+			text: 'Non-empty `nodesNotReached` with `success: true` is partial evidence, usually a lookup that returned zero items. Seed a matching test row (e.g. `insert_data_table_rows`), verify again once, then delete the row. If you cannot seed, or the second pass still does not reach them, name the unreached nodes and offer a manual test; do not start a live run.',
 			appliesWhen:
 				'Verification succeeded but stopped early and lists nodes not reached, often after an empty lookup or query.',
 			fixes: 'Claimed end-to-end verification while downstream nodes never ran.',
 			origin: '#33085',
 			evalCases: [],
+		},
+		{
+			id: 'no-repeat-partial-verify',
+			text: 'A partial verify result (`nodesNotReached`, pending triggers) does not change when you verify again with the same input. Verify again only with something new for the unreached part: a `fixtureOverrides` entry, another `triggerNodeName`, other `inputData` or a seeded test row. Otherwise report which nodes were not reached.',
+			appliesWhen:
+				'A verification result left nodes or triggers unreached and the agent is about to verify again.',
+			fixes: 'Called verify again with the same input after a partial result.',
+			origin: 'r9 repeat-verify analysis',
+			evalCases: ['voice-agent-crm-backend'],
+		},
+		{
+			id: 'verify-stop-is-final',
+			text: 'When verify returns `remediation.shouldEdit: false` (waiting for a human decision, unresolved setup value, missing credentials, external blocker), verification is done for this turn. Do not verify again and do not edit the code. Route to `setup_workflow` if the guidance says so; otherwise report the blocker.',
+			appliesWhen:
+				'A verification result says to stop code edits, or that the workflow waits for user action or setup.',
+			fixes: 'Called verify again after a stop on approval loops and unresolved setup values.',
+			origin: 'r9 guard-stop analysis',
+			evalCases: ['pre-publish-email-approval-loop'],
 		},
 		{
 			id: 'resolved-parameter-warnings',
