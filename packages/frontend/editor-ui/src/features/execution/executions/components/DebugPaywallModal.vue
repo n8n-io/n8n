@@ -33,6 +33,7 @@ function onDialogOpenUpdate(open: boolean) {
 
 <template>
 	<N8nDialog
+		v-bind="$attrs"
 		:open="modalOpen"
 		size="medium"
 		:header="props.data.title"

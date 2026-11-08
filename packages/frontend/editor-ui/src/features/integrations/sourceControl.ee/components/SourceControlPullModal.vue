@@ -425,8 +425,9 @@ const otherFilesText = computed(() => {
 });
 
 function close() {
-	// Navigate back in history to maintain proper browser navigation
-	// The global route watcher will handle closing the modal
+	// Clear the store here. router.back() drops the query that opened this
+	// dialog when that history entry exists. A deep link has no entry to pop.
+	uiStore.closeModal(SOURCE_CONTROL_PULL_MODAL_KEY);
 	router.back();
 }
 
@@ -859,6 +860,9 @@ onMounted(() => {
 <style module lang="scss">
 .sourceControlPull {
 	header {
+		/* The close button switches the header to a row. Keep the title above the description. */
+		flex-direction: column;
+		align-items: stretch;
 		padding-bottom: var(--spacing--xs);
 	}
 

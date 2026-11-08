@@ -147,6 +147,7 @@ function onCancel() {
 
 <template>
 	<N8nDialog
+		data-test-id="deleteSecretsProvider-modal"
 		:open="modalOpen"
 		size="large"
 		:header="

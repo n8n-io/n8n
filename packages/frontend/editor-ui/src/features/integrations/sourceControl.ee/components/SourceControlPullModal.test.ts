@@ -6,7 +6,9 @@ import userEvent from '@testing-library/user-event';
 import { useSourceControlStore } from '../sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/dom';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
+import { useUIStore } from '@/app/stores/ui.store';
+import { SOURCE_CONTROL_PULL_MODAL_KEY } from '../sourceControl.constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 import type { SourceControlledFile } from '@n8n/api-types';
@@ -21,14 +23,16 @@ const mockRoute = reactive({
 	name: 'TestRoute',
 });
 
+const mockRouter = {
+	back: vi.fn(),
+	push: vi.fn(),
+	replace: vi.fn(),
+	go: vi.fn(),
+};
+
 vi.mock('vue-router', () => ({
 	useRoute: () => mockRoute,
-	useRouter: () => ({
-		back: vi.fn(),
-		push: vi.fn(),
-		replace: vi.fn(),
-		go: vi.fn(),
-	}),
+	useRouter: () => mockRouter,
 	RouterLink: {
 		template: '<a><slot></slot></a>',
 		props: ['to', 'target'],
@@ -84,7 +88,10 @@ const renderModal = createComponentRenderer(SourceControlPullModalEe, {
 			DynamicScroller: DynamicScrollerStub,
 			DynamicScrollerItem: DynamicScrollerItemStub,
 			Dialog: {
-				template: '<div role="dialog"><slot /></div>',
+				props: ['open'],
+				emits: ['update:open'],
+				template:
+					'<div role="dialog" :data-open="String(open === true)"><button type="button" data-test-id="stub-dialog-request-close" @click="$emit(\'update:open\', false)"></button><slot /></div>',
 			},
 			DialogHeader: { template: '<div><slot /></div>' },
 			DialogTitle: { template: '<h2><slot /></h2>' },
@@ -154,6 +161,30 @@ describe('SourceControlPullModal', () => {
 			},
 		});
 		expect(getByText('Pull')).toBeInTheDocument();
+	});
+
+	it('follows the modal store and closes through the router', async () => {
+		const { getByRole, getByTestId } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status: sampleFiles,
+				},
+			},
+		});
+
+		expect(getByRole('dialog')).toHaveAttribute('data-open', 'false');
+
+		const uiStore = useUIStore();
+		uiStore.modalStateById[SOURCE_CONTROL_PULL_MODAL_KEY] = { open: true };
+		await nextTick();
+		expect(getByRole('dialog')).toHaveAttribute('data-open', 'true');
+
+		await userEvent.click(getByTestId('stub-dialog-request-close'));
+
+		expect(mockRouter.back).toHaveBeenCalled();
+		expect(uiStore.closeModal).toHaveBeenCalledWith(SOURCE_CONTROL_PULL_MODAL_KEY);
 	});
 
 	it('should renders the changes', () => {

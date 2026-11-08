@@ -530,8 +530,9 @@ function onToggleSelectAll() {
 }
 
 function close() {
-	// Navigate back in history to maintain proper browser navigation
-	// The useWorkflowDiffRouting composable will handle closing the modal
+	// Clear the store here. router.back() drops the query that opened this
+	// dialog when that history entry exists. A deep link has no entry to pop.
+	uiStore.closeModal(SOURCE_CONTROL_PUSH_MODAL_KEY);
 	router.back();
 }
 
@@ -1462,6 +1463,9 @@ onMounted(async () => {
 
 .sourceControlPush {
 	header {
+		/* The close button switches the header to a row. Keep the title above the filters. */
+		flex-direction: column;
+		align-items: stretch;
 		padding-bottom: var(--spacing--xs);
 	}
 

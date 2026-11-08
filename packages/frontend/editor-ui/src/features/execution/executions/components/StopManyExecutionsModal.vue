@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 
@@ -23,6 +23,11 @@ const props = defineProps<{
 }>();
 
 const isLoading = ref(false);
+let isUnmounted = false;
+
+onUnmounted(() => {
+	isUnmounted = true;
+});
 
 const executionsStore = useExecutionsStore();
 const i18n = useI18n();
@@ -92,7 +97,11 @@ const onSubmit = async () => {
 	} catch (e) {
 		toast.showError(e, i18n.baseText('executionStopManyModal.error.failure'));
 	} finally {
-		void closeDialog();
+		// A close unmounts this instance. Skip the store close so an earlier
+		// request cannot dismiss a dialog the user opened again.
+		if (!isUnmounted) {
+			void closeDialog();
+		}
 	}
 };
 

@@ -571,7 +571,9 @@ onMounted(async () => {
 	display: block;
 }
 
-.secretsProviderConnectionModal {
+.secretsProviderConnectionModal.secretsProviderConnectionModal {
+	/* Previous shell was 70% of the viewport and capped at 1200px. No spacing token for that cap. */
+	--dialog--max-width: min(70%, 1200px, calc(100dvw - var(--spacing--lg)));
 	min-height: 600px;
 	max-height: 600px;
 }

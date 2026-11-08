@@ -35,6 +35,9 @@ const renderComponent = createComponentRenderer(DeleteSecretsProviderModal, {
 			Dialog: {
 				template: '<div role="dialog"><slot /></div>',
 			},
+			DialogBody: { template: '<div><slot /></div>' },
+			DialogDescription: { template: '<p><slot /></p>' },
+			DialogFooter: { template: '<div><slot /></div>' },
 		},
 	},
 });
@@ -65,6 +68,7 @@ describe('DeleteSecretsProviderModal', () => {
 		await findByTestId('delete-confirmation-input');
 
 		expect(getByText(/aws-prod/)).toBeInTheDocument();
+		expect(await findByTestId('deleteSecretsProvider-modal')).toBeInTheDocument();
 	});
 
 	it('should disable delete button when confirmation text does not match', async () => {

@@ -3,7 +3,7 @@ import { getDropdownItems } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import SecretsProviderConnectionModal from './SecretsProviderConnectionModal.ee.vue';
-import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY } from '@/app/constants';
+import { MODAL_CONFIRM, SECRETS_PROVIDER_CONNECTION_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type {
 	SecretProviderTypeResponse,
@@ -16,6 +16,7 @@ import { createProjectListItem } from '@/features/collaboration/projects/__tests
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import orderBy from 'lodash/orderBy';
 import { flushPromises } from '@vue/test-utils';
+import { useUIStore } from '@/app/stores/ui.store';
 
 // Factory function for creating mock connection data
 const createMockConnectionData = (overrides: Partial<SecretProviderConnection> = {}) => ({
@@ -81,6 +82,14 @@ const mockConnectionModal = {
 	setScopeState: vi.fn(),
 };
 
+const confirmMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({
+		confirm: confirmMock,
+	}),
+}));
+
 vi.mock('../composables/useSecretsProviderConnection.ee', () => ({
 	useSecretsProviderConnection: vi.fn(() => mockConnection),
 }));
@@ -100,11 +109,13 @@ vi.mock('../composables/useConnectionModal.ee', () => ({
 }));
 
 const DialogStub = {
-	props: ['header', 'description'],
+	props: ['header', 'description', 'open'],
+	emits: ['update:open'],
 	template: `
-		<div role="dialog">
+		<div role="dialog" :data-open="String(open === true)">
 			<h2 v-if="header">{{ header }}</h2>
 			<p v-if="description">{{ description }}</p>
+			<button type="button" data-test-id="stub-dialog-request-close" @click="$emit('update:open', false)"></button>
 			<slot />
 		</div>
 	`,
@@ -189,6 +200,7 @@ describe('SecretsProviderConnectionModal', () => {
 		mockConnectionModal.isSharedGlobally.value = false;
 		mockConnectionModal.isScopedMode.value = false;
 		mockConnectionModal.isReadOnly.value = false;
+		mockConnectionModal.hasUnsavedChanges.value = false;
 	});
 
 	it('should load connection data', async () => {
@@ -664,6 +676,60 @@ describe('SecretsProviderConnectionModal', () => {
 			const notice = container.querySelector('[data-test-id="secrets-provider-read-only-notice"]');
 			expect(notice).toBeInTheDocument();
 			expect(notice?.textContent).toContain('Contact your instance admin');
+		});
+	});
+
+	describe('dialog open state', () => {
+		function renderOpenDialog(onClose = vi.fn()) {
+			return {
+				onClose,
+				...renderComponent({
+					props: {
+						modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+						data: {
+							providerTypes: mockProviderTypes,
+							onClose,
+						},
+					},
+				}),
+			};
+		}
+
+		it('reflects the store open state', async () => {
+			const { getByRole } = renderOpenDialog();
+
+			expect(getByRole('dialog')).toHaveAttribute('data-open', 'true');
+
+			const uiStore = useUIStore();
+			uiStore.modalStateById[SECRETS_PROVIDER_CONNECTION_MODAL_KEY] = { open: false };
+			await nextTick();
+
+			expect(getByRole('dialog')).toHaveAttribute('data-open', 'false');
+		});
+
+		it('keeps the dialog open when the user keeps editing unsaved changes', async () => {
+			mockConnectionModal.hasUnsavedChanges.value = true;
+			confirmMock.mockResolvedValue(MODAL_CONFIRM);
+			const { getByTestId, onClose } = renderOpenDialog();
+
+			await userEvent.click(getByTestId('stub-dialog-request-close'));
+			await flushPromises();
+
+			expect(confirmMock).toHaveBeenCalled();
+			expect(onClose).not.toHaveBeenCalled();
+			expect(useUIStore().closeModal).not.toHaveBeenCalled();
+		});
+
+		it('closes the dialog when the user discards unsaved changes', async () => {
+			mockConnectionModal.hasUnsavedChanges.value = true;
+			confirmMock.mockResolvedValue('cancel');
+			const { getByTestId, onClose } = renderOpenDialog();
+
+			await userEvent.click(getByTestId('stub-dialog-request-close'));
+			await flushPromises();
+
+			expect(onClose).toHaveBeenCalled();
+			expect(useUIStore().closeModal).toHaveBeenCalledWith(SECRETS_PROVIDER_CONNECTION_MODAL_KEY);
 		});
 	});
 });

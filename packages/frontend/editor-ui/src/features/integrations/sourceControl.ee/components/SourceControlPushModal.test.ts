@@ -11,7 +11,9 @@ import { VIEWS } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
+import { useUIStore } from '@/app/stores/ui.store';
+import { SOURCE_CONTROL_PUSH_MODAL_KEY } from '../sourceControl.constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 
@@ -121,7 +123,10 @@ const renderModal = createComponentRenderer(SourceControlPushModal, {
 			DynamicScroller: DynamicScrollerStub,
 			DynamicScrollerItem: DynamicScrollerItemStub,
 			Dialog: {
-				template: '<div role="dialog"><slot /></div>',
+				props: ['open'],
+				emits: ['update:open'],
+				template:
+					'<div role="dialog" :data-open="String(open === true)"><button type="button" data-test-id="stub-dialog-request-close" @click="$emit(\'update:open\', false)"></button><slot /></div>',
 			},
 			DialogHeader: { template: '<div><slot /></div>' },
 			DialogTitle: { template: '<h2><slot /></h2>' },
@@ -179,6 +184,46 @@ describe('SourceControlPushModal', () => {
 		await waitFor(() => {
 			expect(getByText('Commit and push changes')).toBeInTheDocument();
 		});
+	});
+
+	it('follows the modal store and closes through the router', async () => {
+		const files: SourceControlledFile[] = [
+			{
+				id: 'workflow-open',
+				name: 'Open workflow',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				file: '/workflow-open.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+		];
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(files);
+
+		const { getByRole, getByTestId } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status: files,
+				},
+			},
+		});
+
+		await waitFor(() => {
+			expect(getByRole('dialog')).toHaveAttribute('data-open', 'false');
+		});
+
+		const uiStore = useUIStore();
+		uiStore.modalStateById[SOURCE_CONTROL_PUSH_MODAL_KEY] = { open: true };
+		await nextTick();
+		expect(getByRole('dialog')).toHaveAttribute('data-open', 'true');
+
+		await userEvent.click(getByTestId('stub-dialog-request-close'));
+
+		expect(mockRouterInstance.back).toHaveBeenCalled();
+		expect(uiStore.closeModal).toHaveBeenCalledWith(SOURCE_CONTROL_PUSH_MODAL_KEY);
 	});
 
 	it.each(['created', 'modified'] as const)('shows the correct badge for %s', async (status) => {
