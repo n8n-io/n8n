@@ -9,6 +9,7 @@ import type { MockedStore } from '@/__tests__/utils';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '../projects.constants';
 import ProjectMoveResourceModal from './ProjectMoveResourceModal.vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { STORES } from '@n8n/stores';
 import { useProjectsStore } from '../projects.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -50,11 +51,20 @@ vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal
 });
 
 const renderComponent = createComponentRenderer(ProjectMoveResourceModal, {
-	pinia: createTestingPinia(),
+	pinia: createTestingPinia({
+		initialState: {
+			[STORES.UI]: {
+				modalStateById: {
+					[PROJECT_MOVE_RESOURCE_MODAL]: { open: true },
+				},
+			},
+		},
+	}),
 	global: {
 		stubs: {
 			Dialog: {
-				template: '<div role="dialog"><slot /></div>',
+				props: { open: { type: Boolean, default: false } },
+				template: '<div v-if="open" role="dialog"><slot /></div>',
 			},
 			DialogHeader: { template: '<div><slot /></div>' },
 			DialogTitle: { template: '<h2><slot /></h2>' },
