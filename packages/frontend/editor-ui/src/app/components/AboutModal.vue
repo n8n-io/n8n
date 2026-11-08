@@ -74,6 +74,7 @@ const copyDebugInfoToClipboard = async () => {
 	<N8nDialog
 		:open="modalOpen"
 		size="large"
+		data-test-id="about-modal"
 		:header="i18n.baseText('about.aboutN8n')"
 		@update:open="onDialogOpenUpdate"
 	>
