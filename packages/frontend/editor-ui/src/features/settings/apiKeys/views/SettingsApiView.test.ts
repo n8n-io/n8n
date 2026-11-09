@@ -211,6 +211,9 @@ describe('SettingsApiView', () => {
 
 		it('stretches the layout when the key table shows', () => {
 			apiKeysStore.apiKeys = [makeKey()];
+			apiKeysStore.allCount = 1;
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.totalMineCount = 1;
 			apiKeysStore.totalAllCount = 1;
 
 			renderComponent(SettingsApiView);
