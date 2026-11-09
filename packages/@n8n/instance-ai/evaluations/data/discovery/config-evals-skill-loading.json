@@ -60,5 +60,6 @@
 		],
 		"noneOf": ["evals", "spawn_sub_agent:eval-setup", "eval-setup-with-agent"]
 	},
-	"rationale": "Regression coverage for runtime skill loading of the config-evals skill. Config-based evaluation work must load the config-evals skill, and must never wire on-canvas evaluation nodes via the node-based evals tool or the eval-setup sub-agent. The seed gives the stub instance the existing AI Agent workflow that the prompt refers to, so the Assistant does not stop to ask which workflow to use."
+	"rationale": "Regression coverage for runtime skill loading of the config-evals skill. Config-based evaluation work must load the config-evals skill, and must never wire on-canvas evaluation nodes via the node-based evals tool or the eval-setup sub-agent. The seed gives the stub instance the existing AI Agent workflow that the prompt refers to, so the Assistant does not stop to ask which workflow to use. With the workflow present, the Assistant continues into the setup and a turn often takes 45 to 60 seconds, so the default 60-second budget is too small.",
+	"timeoutMs": 120000
 }
