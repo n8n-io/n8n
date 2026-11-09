@@ -12,7 +12,7 @@ const COLUMN_COMMENT =
  * DSL recreates the table on SQLite, which would fire it. The default lets
  * SQLite add a NOT NULL column without a recreate.
  */
-export class AddSettingsToWorkflowHistory1794238813000 implements ReversibleMigration {
+export class AddSettingsToWorkflowHistory1794244643352 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		const { escape, runQuery, isPostgres } = context;
 		const tableName = escape.tableName('workflow_history');
