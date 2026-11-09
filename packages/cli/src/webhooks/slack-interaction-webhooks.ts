@@ -12,8 +12,8 @@ interface SlackInteractionPayload {
 
 /**
  * Resumes a Send and Wait execution from a Slack interactive button callback. The reference
- * travels in the clicked button's `value` and is HMAC-verified here; Slack's own
- * `x-slack-signature` is verified downstream by the Slack node's handler (which holds the secret).
+ * travels in the clicked button's `value`; Slack's own `x-slack-signature` is verified
+ * downstream by the Slack node's handler (which holds the secret).
  */
 @Service()
 export class SlackInteractionWebhooks extends HitlInteractionWebhooks {

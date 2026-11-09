@@ -554,11 +554,10 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * No step accepts the request. A queued, running or waiting execution answers
-	 * "is running already": it has not reached its wait yet, or its wait ends
-	 * only at a deadline. A completed, failed or cancelled execution answers "has
-	 * finished already", except for a send-and-wait node: as in v1, a second
-	 * click on its link renders a page that says no action is required.
+	 * No step accepts the request. A live execution answers "is running
+	 * already", and an ended one answers "has finished already". A second click
+	 * on a send-and-wait link of an ended execution renders the page that says
+	 * no action is required.
 	 */
 	protected answerEngineV2WithoutTarget(
 		executionId: string,

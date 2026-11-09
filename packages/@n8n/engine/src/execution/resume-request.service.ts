@@ -108,10 +108,9 @@ export class ResumeRequestService {
 	) {}
 
 	/**
-	 * Verifies the token and returns the wait it can end, for every kind of
-	 * token. The kind of the token decides whether `id` names an execution or a
-	 * step. The target is `null` when no step accepts the request: the caller
-	 * reads the execution's status to learn why.
+	 * Verifies the token and returns the wait it can end. The kind of the token
+	 * decides whether `id` names an execution or a step. The target is `null`
+	 * when no step accepts the request.
 	 *
 	 * A request can arrive before the step writes its wait. While the execution
 	 * is live, this retries for a short time.

@@ -19,9 +19,8 @@ type ValidationResult = { ok: true; value: ValidatedCallback } | { ok: false; st
 
 /**
  * Shared base for the fixed-URL HITL interaction webhook handlers (Slack, Telegram).
- * The Send and Wait reference travels in the request body (not the URL) and is verified
- * here via HMAC; the platform's own request-authenticity check happens downstream in that
- * node's webhook handler. Subclasses supply how to read the reference (`readReference`) and
+ * The Send and Wait reference travels in the request body (not the URL); the platform's own
+ * request-authenticity check happens downstream in that node's webhook handler. Subclasses supply how to read the reference (`readReference`) and
  * may mark the request before it resumes (`beforeResume`).
  */
 export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
@@ -124,10 +123,7 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		});
 	}
 
-	/**
-	 * Resumes a wait on the engine v2 data plane. The callback names a step, and
-	 * the data plane verifies the callback and names the waiting node.
-	 */
+	/** Resumes a wait on the engine v2 data plane, which verifies the callback. */
 	private async resumeEngineV2Callback(
 		req: WaitingWebhookRequest,
 		res: express.Response,
@@ -139,7 +135,6 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		if (!located.ok) return this.reject(res, located.status === 401 ? 404 : located.status);
 
 		const { execution: snapshot, target } = located.value;
-		// Replayed or late interaction: nothing left to resume.
 		if (target === null) return this.reject(res, 409);
 
 		const standIn = await this.buildEngineV2StandIn(snapshot, target.nodeId);

@@ -53,6 +53,7 @@ export type ResumeOutcome<T> =
  * runs in the same process, so this stays a network-shaped contract.
  */
 export interface EngineDataPlaneProvider {
+	/** One page of the executions that match `request`. */
 	searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse>;
 
 	/**
@@ -83,9 +84,7 @@ export interface EngineDataPlaneProvider {
 	/**
 	 * Phase one of a resume request: the execution's snapshot with its steps,
 	 * and the one step that accepts the request, or `null` when none does. The
-	 * id is the one in the resume URL or the approval callback: an execution id
-	 * or a step id. The data plane reads which from the token and verifies it;
-	 * this plane forwards it unread.
+	 * data plane verifies the token; this plane forwards it unread.
 	 */
 	locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>>;
 

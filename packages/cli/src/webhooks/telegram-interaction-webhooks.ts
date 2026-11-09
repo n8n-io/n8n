@@ -13,8 +13,8 @@ interface TelegramCallbackUpdate {
 
 /**
  * Resumes a Send and Wait execution from a Telegram callback-button tap. The reference travels
- * in `callback_query.data` and is HMAC-verified here; the `X-Telegram-Bot-Api-Secret-Token`
- * header is verified downstream by the Telegram node's handler (which holds the bot credential).
+ * in `callback_query.data`; the `X-Telegram-Bot-Api-Secret-Token` header is verified downstream
+ * by the Telegram node's handler (which holds the bot credential).
  */
 @Service()
 export class TelegramInteractionWebhooks extends HitlInteractionWebhooks {
