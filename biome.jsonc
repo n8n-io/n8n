@@ -19,7 +19,9 @@
 			"**/o200k_base.json",
 			"**/*.generated.ts",
 			"**/benchmark/scripts/mock-api/**",
-			"**/expectations/**"
+			"**/expectations/**",
+			// Vendored Bull fork, kept close to upstream
+			"packages/@n8n/bull/**"
 		]
 	},
 	"formatter": {

@@ -1,4 +1,4 @@
-import Bull from 'bull';
+import Bull from '@n8n/bull';
 import { Redis } from 'ioredis';
 
 import { JOB_TYPE_NAME } from '../constants';

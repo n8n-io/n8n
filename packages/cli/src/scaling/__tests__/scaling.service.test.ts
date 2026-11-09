@@ -3,7 +3,7 @@ import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig, WorkerPoolConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import * as BullModule from 'bull';
+import * as BullModule from '@n8n/bull';
 import { ENCODED_BUFFER_KEY, InstanceSettings } from 'n8n-core';
 import type { ErrorReporter } from 'n8n-core';
 import { OperationalError, UnexpectedError } from '@n8n/errors';
@@ -27,7 +27,7 @@ const queue = mock<JobQueue>({
 	client: { ping: vi.fn() },
 });
 
-vi.mock('bull', () => ({
+vi.mock('@n8n/bull', () => ({
 	__esModule: true,
 	// Source does `new BullQueue(...)`; Vitest constructs the implementation, and
 	// arrows aren't constructable. Use a regular function.
