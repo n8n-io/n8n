@@ -2,17 +2,18 @@ import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { ParsedHitlCallbackReference } from 'n8n-core';
 import { parseHitlCallbackReference, verifyHitlCallbackReference } from 'n8n-core';
-import type { IHttpRequestMethods } from 'n8n-workflow';
+import type { IHttpRequestMethods, INode } from 'n8n-workflow';
 
 import { WaitingWebhooks } from './waiting-webhooks';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
 
+import type { EngineV2ResumeRequest } from '@/interfaces';
+
 interface ValidatedCallback {
 	execution: IExecutionResponse;
 	executionId: string;
-	lastNodeExecuted: string;
-	nodeId: string;
+	node: INode;
 }
 
 type ValidationResult = { ok: true; value: ValidatedCallback } | { ok: false; status: number };
@@ -20,8 +21,9 @@ type ValidationResult = { ok: true; value: ValidatedCallback } | { ok: false; st
 /**
  * Shared base for the fixed-URL HITL interaction webhook handlers (Slack, Telegram).
  * The Send and Wait reference travels in the request body (not the URL); the platform's own
- * request-authenticity check happens downstream in that node's webhook handler. Subclasses supply how to read the reference (`readReference`) and
- * may mark the request before it resumes (`beforeResume`).
+ * request-authenticity check happens downstream in that node's webhook handler. Subclasses
+ * supply how to read the reference (`readReference`) and may mark the request before it
+ * resumes (`beforeResume`).
  */
 export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 	protected reject(res: express.Response, status: number): IWebhookResponseCallbackData {
@@ -78,16 +80,7 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		const node = workflow.getNode(lastNodeExecuted);
 		if (!node) return { ok: false, status: 404 };
 
-		if (node.type !== this.platformNodeType) return { ok: false, status: 404 };
-
-		// The resume routes on the node id as the webhook suffix. Execution snapshots are frozen
-		// copies that can predate id enforcement, and an id-less node resolves to an empty suffix.
-		if (!node.id) return { ok: false, status: 404 };
-
-		return {
-			ok: true,
-			value: { execution, executionId: parsed.executionId, lastNodeExecuted, nodeId: node.id },
-		};
+		return { ok: true, value: { execution, executionId: parsed.executionId, node } };
 	}
 
 	async executeWebhook(
@@ -109,18 +102,7 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		const validated: ValidationResult = await this.validate(parsed);
 		if (!validated.ok) return this.reject(res, validated.status);
 
-		this.beforeResume(req);
-
-		// Delegate to the shared resume machinery.
-		const { execution, executionId, lastNodeExecuted, nodeId } = validated.value;
-		return await this.getWebhookExecutionData({
-			execution,
-			req,
-			res,
-			lastNodeExecuted,
-			executionId,
-			suffix: nodeId,
-		});
+		return await this.resumeAtNode(req, res, validated.value);
 	}
 
 	/** Resumes a wait on the engine v2 data plane, which verifies the callback. */
@@ -138,18 +120,46 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		if (target === null) return this.reject(res, 409);
 
 		const resume = await this.buildV1ResumeExecution(snapshot, target.nodeId);
-		if (!resume || resume.node.type !== this.platformNodeType) return this.reject(res, 404);
+		if (!resume) return this.reject(res, 404);
+
+		return await this.resumeAtNode(req, res, {
+			execution: resume.execution,
+			executionId: snapshot.id,
+			node: resume.node,
+			engineResume: { stepId: target.stepId, token: reference },
+		});
+	}
+
+	/**
+	 * The end of both resume paths. It resumes only a node of this platform, and
+	 * it marks the request only after the wait is confirmed resumable.
+	 */
+	private async resumeAtNode(
+		req: WaitingWebhookRequest,
+		res: express.Response,
+		{
+			execution,
+			executionId,
+			node,
+			engineResume,
+		}: ValidatedCallback & { engineResume?: EngineV2ResumeRequest },
+	): Promise<IWebhookResponseCallbackData> {
+		if (node.type !== this.platformNodeType) return this.reject(res, 404);
+
+		// The resume routes on the node id as the webhook suffix. Execution snapshots are frozen
+		// copies that can predate id enforcement, and an id-less node resolves to an empty suffix.
+		if (!node.id) return this.reject(res, 404);
 
 		this.beforeResume(req);
 
 		return await this.getWebhookExecutionData({
-			execution: resume.execution,
+			execution,
 			req,
 			res,
-			lastNodeExecuted: resume.node.name,
-			executionId: snapshot.id,
-			suffix: target.nodeId,
-			engineResume: { stepId: target.stepId, token: reference },
+			lastNodeExecuted: node.name,
+			executionId,
+			suffix: node.id,
+			engineResume,
 		});
 	}
 }
