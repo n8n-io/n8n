@@ -8,7 +8,7 @@ import type { ApiHelpers } from '../../../services/api-helper';
 // Manual -> Capture Resume URL -> Slack (send and wait for approval) -> After
 const WORKFLOW_FILE = 'send-and-wait-step-bound.json';
 
-// The send-and-wait webhook answers a bot with an empty 200 and does not resume.
+// An approval link answers a bot with an empty 200 and does not resume.
 const BROWSER = { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0.0.0 Safari/537.36' };
 
 interface SlackButton {
@@ -18,7 +18,6 @@ interface SlackButton {
 
 test.use({ capability: 'proxy' });
 
-/** Starts the workflow. Slack answers the message after `slackDelayMs`. */
 async function start(
 	api: ApiHelpers,
 	proxy: ProxyServer,
@@ -88,7 +87,6 @@ async function request(api: ApiHelpers, path: string) {
 	return response.status();
 }
 
-/** Sends the one field of the form page. */
 async function submit(api: ApiHelpers, path: string, value: string) {
 	const response = await api.webhooks.trigger(path, {
 		method: 'POST',
@@ -99,7 +97,6 @@ async function submit(api: ApiHelpers, path: string, value: string) {
 	return response.status();
 }
 
-/** Waits for the run to end and returns the response that the Slack node resumed with once. */
 async function responseAfterResume(api: ApiHelpers, executionId: string) {
 	const execution = await api.workflows.waitForExecutionById(executionId);
 	expect(execution.status).toBe('success');
@@ -112,7 +109,7 @@ async function approvedAfterResume(api: ApiHelpers, executionId: string) {
 	return (await responseAfterResume(api, executionId)).approved;
 }
 
-/** Changes one character in the middle of the token, where every character carries signed bits. */
+/** Changes one character in the middle of the token. */
 function forge(path: string) {
 	const url = new URL(path, 'http://n8n');
 	const token = url.searchParams.get('signature')!;

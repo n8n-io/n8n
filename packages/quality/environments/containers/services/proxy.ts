@@ -364,7 +364,7 @@ export class ProxyServer {
 		return await this.client.retrieveRecordedRequestsAndResponses('');
 	}
 
-	/** Lists received requests, including those whose delayed response is still pending. */
+	/** Includes requests whose delayed response is still pending. */
 	async getReceivedRequests(path: string): Promise<HttpRequest[]> {
 		return await this.client.retrieveRecordedRequests({ path });
 	}

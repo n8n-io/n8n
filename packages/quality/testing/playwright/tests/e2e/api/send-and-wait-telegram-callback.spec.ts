@@ -8,7 +8,7 @@ import type { ApiHelpers } from '../../../services/api-helper';
 const WORKFLOW_FILE = 'send-and-wait-telegram-chat-approval.json';
 const BOT_TOKEN = '123456:fake-token';
 
-// The node offers callback buttons only on an instance that Telegram can reach over HTTPS.
+// The node offers callback buttons only for an HTTPS webhook URL on a non-loopback host.
 test.use({
 	capability: { services: ['proxy'], env: { WEBHOOK_URL: 'https://n8n.example.test/' } },
 });
@@ -20,7 +20,7 @@ interface TelegramRequestBody {
 
 async function mockTelegram(proxy: ProxyServer) {
 	await proxy.clearAllExpectations();
-	// One answer fits every method the node calls: an unclaimed webhook and a sent message.
+	// An empty `url` means that no one claims the bot's webhook, so the node claims it.
 	await proxy.createExpectation({
 		httpRequest: { method: 'POST', path: '/bot.*' },
 		httpResponse: {
