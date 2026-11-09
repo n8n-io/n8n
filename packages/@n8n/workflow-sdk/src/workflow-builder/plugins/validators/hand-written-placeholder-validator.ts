@@ -11,31 +11,27 @@ import { isPlainObject } from '../../../utils/safe-access';
 import type { GraphNode, NodeInstance } from '../../../types/base';
 import type { PluginContext, ValidationIssue, ValidatorPlugin } from '../types';
 
-const PLACEHOLDER_WORDS = '(?:placeholder|your|insert|enter|replace)';
+/** `PLACEHOLDER_CALENDAR_ID`, `your-sheet-id`, `insert_api_key`. */
+const WORD_FORM = /^(?:placeholder|your|insert|enter)[_-][a-z0-9_-]+$/i;
 
-/** `PLACEHOLDER_CALENDAR_ID`, `your-sheet-id`, `REPLACE_ME`. */
-const WORD_FORM = new RegExp(`^${PLACEHOLDER_WORDS}[_-][a-z0-9_-]+$`, 'i');
+/** Only `REPLACE_ME` for `replace`: real option values such as `replace_content` share the prefix. */
+const REPLACE_ME = /^replace[_-]me$/i;
 
 /** `<your calendar id>`, `[YOUR_SHEET]`, `{insert value}`. */
-const BRACKET_FORM = new RegExp(`^[<[{]\\s*${PLACEHOLDER_WORDS}(?:\\b|_)[^<>[\\]{}]*[>\\]}]$`, 'i');
+const BRACKET_FORM =
+	/^[<[{]\s*(?:your|insert|enter|replace|placeholder)(?:\b|_)[^<>[\]{}]*[>\]}]$/i;
 
 /**
  * Keys whose value is text for a person, not a value the node uses. A resource
  * locator's cached name and URL are display labels next to its real `value`.
+ * `description` is left out: some nodes use it as a real input.
  */
-const HINT_KEYS = new Set([
-	'placeholder',
-	'notice',
-	'hint',
-	'description',
-	'cachedResultName',
-	'cachedResultUrl',
-]);
+const HINT_KEYS = new Set(['placeholder', 'notice', 'hint', 'cachedResultName', 'cachedResultUrl']);
 
 export function isHandWrittenPlaceholder(value: string): boolean {
 	const trimmed = value.trim();
 	if (trimmed.startsWith('=') || isPlaceholderValue(trimmed)) return false;
-	return WORD_FORM.test(trimmed) || BRACKET_FORM.test(trimmed);
+	return WORD_FORM.test(trimmed) || REPLACE_ME.test(trimmed) || BRACKET_FORM.test(trimmed);
 }
 
 function findHandWrittenPlaceholders(
@@ -65,6 +61,8 @@ export const handWrittenPlaceholderValidator: ValidatorPlugin = {
 		_graphNode: GraphNode,
 		_ctx: PluginContext,
 	): ValidationIssue[] {
+		// A disabled node does not run, so its values cannot fail.
+		if (node.config?.disabled) return [];
 		const found: Array<{ path: string; value: string }> = [];
 		findHandWrittenPlaceholders(node.config?.parameters, '', found);
 		return found.map(({ path, value }) => ({

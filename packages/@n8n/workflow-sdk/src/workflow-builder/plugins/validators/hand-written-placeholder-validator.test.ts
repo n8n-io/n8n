@@ -15,23 +15,27 @@ describe('isHandWrittenPlaceholder', () => {
 		expect(isHandWrittenPlaceholder(value)).toBe(true);
 	});
 
-	it.each(['primary', 'your', 'Your order has shipped', '={{ $json.your_id }}', 'replacement'])(
-		'does not flag %s',
-		(value) => {
-			expect(isHandWrittenPlaceholder(value)).toBe(false);
-		},
-	);
+	it.each([
+		'primary',
+		'your',
+		'Your order has shipped',
+		'={{ $json.your_id }}',
+		'replacement',
+		'replace_content',
+	])('does not flag %s', (value) => {
+		expect(isHandWrittenPlaceholder(value)).toBe(false);
+	});
 });
 
 describe('handWrittenPlaceholderValidator', () => {
-	const issuesFor = (parameters: Record<string, unknown>) =>
+	const issuesFor = (parameters: Record<string, unknown>, disabled = false) =>
 		workflow('wf-1', 'Placeholders')
 			.add(
 				trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } }).to(
 					node({
 						type: 'n8n-nodes-base.googleCalendar',
 						version: 1.3,
-						config: { name: 'Create Event', parameters },
+						config: { name: 'Create Event', parameters, disabled },
 					}),
 				),
 			)
@@ -54,8 +58,16 @@ describe('handWrittenPlaceholderValidator', () => {
 		expect(
 			issuesFor({
 				calendar: { __rl: true, mode: 'id', value: placeholder('Calendar ID') },
-				options: { description: 'your-calendar-id goes here', notice: 'REPLACE_ME' },
+				options: { placeholder: 'your-calendar-id', notice: 'REPLACE_ME' },
 			}),
 		).toEqual([]);
+	});
+
+	it('checks description, which some nodes use as a real input', () => {
+		expect(issuesFor({ description: 'REPLACE_ME' })).toHaveLength(1);
+	});
+
+	it('skips a disabled node', () => {
+		expect(issuesFor({ calendar: 'PLACEHOLDER_CALENDAR_ID' }, true)).toEqual([]);
 	});
 });

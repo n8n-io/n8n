@@ -37,6 +37,24 @@ describe('extractFieldReferences', () => {
 	it('skips code that does not parse and removes duplicates', () => {
 		expect(paths('={{ $json.a }} {{ $json.a }} {{ if ( }}')).toEqual(['a']);
 	});
+
+	it('marks references that supply a fallback or use optional chaining as guarded', () => {
+		const guarded = (expression: string) =>
+			extractFieldReferences(expression).map((reference) => reference.guarded);
+
+		expect(guarded("={{ $json.a ?? 'x' }}")).toEqual([true]);
+		expect(guarded("={{ $json.a || 'x' }}")).toEqual([true]);
+		expect(guarded("={{ $json.a?.b ?? 'x' }}")).toEqual([true]);
+		expect(guarded('={{ $json.a?.b }}')).toEqual([true]);
+		expect(guarded("={{ 'x' ?? $json.a }}")).toEqual([false]);
+		expect(guarded('={{ $json.a && $json.b }}')).toEqual([false, false]);
+	});
+
+	it('keeps the unguarded read when a field is read both ways', () => {
+		expect(extractFieldReferences("={{ $json.a ?? 'x' }} {{ $json.a }}")).toEqual([
+			{ source: { kind: 'input' }, path: ['a'], guarded: false },
+		]);
+	});
 });
 
 describe('findMissingFieldReferences', () => {
@@ -68,6 +86,10 @@ describe('findMissingFieldReferences', () => {
 		const [finding] = run({ id: '={{ $json.id }}' }, [{ results: [{ id: 1 }] }]);
 
 		expect(finding?.arrayFieldsWithSegment).toEqual(['results']);
+	});
+
+	it('does not report a guarded reference', () => {
+		expect(run({ to: "={{ $json.email ?? 'none' }}" }, [{ mail: 'a@b.c' }])).toEqual([]);
 	});
 
 	it('does not report a path through a primitive value', () => {

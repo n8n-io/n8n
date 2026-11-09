@@ -23,6 +23,11 @@ export interface FieldReference {
 	source: FieldReferenceSource;
 	/** Static path below `json`, e.g. `['user', 'email']` or `['items', '0', 'id']`. */
 	path: string[];
+	/**
+	 * The expression handles a missing value itself: `$json.a ?? 'x'`,
+	 * `$json.a || 'x'` or `$json.a?.b`. A missing field is then not a mistake.
+	 */
+	guarded: boolean;
 }
 
 /** Item accessors that return one item of a node (`.item`, `.first()`, `.last()`). */
@@ -105,38 +110,60 @@ function jsonSource(node: Node): FieldReferenceSource | undefined {
  * `$json.items[0].id` gives `['items', '0', 'id']`. A dynamic segment
  * (`$json[key]`) ends the path.
  */
-function readReference(node: Node): FieldReference | undefined {
+function readReference(node: Node, guardedByParent: boolean): FieldReference | undefined {
 	const segments: string[] = [];
+	let optional = false;
+	const result = (source: FieldReferenceSource): FieldReference | undefined =>
+		segments.length > 0
+			? { source, path: segments.reverse(), guarded: guardedByParent || optional }
+			: undefined;
 	let current: Node = unwrapChain(node);
 	while (current.type === 'MemberExpression') {
 		const source = jsonSource(current);
-		if (source) return segments.length > 0 ? { source, path: segments.reverse() } : undefined;
+		if (source) return result(source);
 		const name = staticPropertyName(current);
 		if (name === undefined) {
 			// `$json[key].x`: keep only what comes before the dynamic segment.
 			segments.length = 0;
+			optional = false;
 		} else {
 			segments.push(name);
+			optional ||= current.optional;
 		}
 		current = unwrapChain(current.object);
 	}
 	const source = jsonSource(current);
-	return source && segments.length > 0 ? { source, path: segments.reverse() } : undefined;
+	return source ? result(source) : undefined;
+}
+
+/** `node` is the left side of `??` or `||`, so the expression supplies a fallback. */
+function hasFallback(node: Node, parent: Node | undefined): boolean {
+	return (
+		parent?.type === 'LogicalExpression' &&
+		parent.left === node &&
+		(parent.operator === '??' || parent.operator === '||')
+	);
 }
 
 function collectFromAst(root: Node, out: FieldReference[]): void {
-	const visit = (node: Node, parent: Node | undefined): void => {
+	const visit = (node: Node, parent: Node | undefined, grandparent: Node | undefined): void => {
 		// Only the outermost member of a chain is a complete reference.
 		const isChainLink = parent?.type === 'MemberExpression' && parent.object === node;
 		if (node.type === 'MemberExpression' && !isChainLink) {
 			// `$json.name.toUpperCase()`: the method is not a field.
 			const isCallee = parent?.type === 'CallExpression' && parent.callee === node;
-			const reference = readReference(isCallee ? node.object : node);
+			// `$json.a?.b ?? 'x'`: the chain node sits between the member and `??`.
+			const [outer, outerParent] =
+				parent?.type === 'ChainExpression' ? [parent, grandparent] : [node, parent];
+			const reference = readReference(
+				isCallee ? node.object : node,
+				!isCallee && hasFallback(outer, outerParent),
+			);
 			if (reference) out.push(reference);
 		}
-		for (const child of childNodes(node)) visit(child, node);
+		for (const child of childNodes(node)) visit(child, node, parent);
 	};
-	visit(root, undefined);
+	visit(root, undefined, undefined);
 }
 
 function parseCodeChunk(code: string): Expression | undefined {
@@ -165,13 +192,14 @@ export function extractFieldReferences(expression: string): FieldReference[] {
 		const ast = parseCodeChunk(chunk.text);
 		if (ast) collectFromAst(ast, references);
 	}
-	const seen = new Set<string>();
-	return references.filter((reference) => {
+	// One entry per field. An unguarded read wins: one read without a fallback is enough to break.
+	const byKey = new Map<string, FieldReference>();
+	for (const reference of references) {
 		const key = referenceKey(reference);
-		if (seen.has(key)) return false;
-		seen.add(key);
-		return true;
-	});
+		const existing = byKey.get(key);
+		if (!existing || (existing.guarded && !reference.guarded)) byKey.set(key, reference);
+	}
+	return [...byKey.values()];
 }
 
 /** Every expression string in a parameter tree, with its parameter path. */
@@ -260,6 +288,7 @@ export function findMissingFieldReferences(
 	for (const node of input.nodes) {
 		for (const { expression, parameterPath } of collectExpressionStrings(node.parameters)) {
 			for (const reference of extractFieldReferences(expression)) {
+				if (reference.guarded) continue;
 				const sourceNodeName =
 					reference.source.kind === 'node'
 						? reference.source.nodeName
