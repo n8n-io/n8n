@@ -139,6 +139,33 @@ describe('UserService', () => {
 			expect(publicUser.mfaRecoveryCodes).toBeUndefined();
 		});
 
+		it('returns only the public fields of a service account', async () => {
+			const createdAt = new Date();
+			const serviceAccount = Object.assign(new ServiceAccount(), {
+				id: 'sa-1',
+				createdAt,
+				disabled: false,
+				settings: { userActivated: true },
+				mfaEnabled: false,
+				mfaRecoveryCodes: [],
+				role: GLOBAL_MEMBER_ROLE,
+			});
+
+			const publicUser = await userService.toPublic(serviceAccount);
+
+			expect(publicUser).toEqual({
+				id: 'sa-1',
+				createdAt,
+				disabled: false,
+				settings: { userActivated: true },
+				isPending: false,
+				signInType: 'email',
+				role: GLOBAL_MEMBER_ROLE.slug,
+				isOwner: false,
+				mfaAuthenticated: false,
+			});
+		});
+
 		it('should add scopes if requested', async () => {
 			const scoped = await userService.toPublic(commonMockUser, { withScopes: true });
 			const unscoped = await userService.toPublic(commonMockUser);

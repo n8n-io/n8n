@@ -2,6 +2,7 @@ import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import type { DeepPartial, EntityManager, Repository } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
 import { eligibleAccountsWhere, type EligibleAccountsQuery } from './user.repository';
@@ -89,7 +90,7 @@ export class PersonRepository {
 				where: { id: savedPerson.id },
 				relations: ['role'],
 			});
-			if (!personWithRole) throw new Error('Failed to create user!');
+			if (!personWithRole) throw new UnexpectedError('Failed to create user!');
 			const savedProject = await entityManager.save<Project>(
 				entityManager.create(Project, {
 					type: 'personal',

@@ -201,8 +201,8 @@ export class UserService {
 
 	/** A service account has no person columns and never waits for an invite. */
 	private serviceAccountFields(user: User): Omit<PublicUser, 'role' | 'isOwner'> {
-		const { id, createdAt, disabled } = user;
-		return { id, createdAt, disabled, isPending: false, signInType: 'email' };
+		const { id, createdAt, disabled, settings } = user;
+		return { id, createdAt, disabled, settings, isPending: false, signInType: 'email' };
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
