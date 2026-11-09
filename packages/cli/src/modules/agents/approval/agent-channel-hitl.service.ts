@@ -47,6 +47,7 @@ export class AgentChannelHitlService {
 		const reference = parseHitlCallbackReference(event.actionId);
 		if (
 			!reference ||
+			reference.kind !== 'execution' ||
 			!verifyHitlCallbackReference(reference, this.instanceSettings.hmacSignatureSecret)
 		)
 			return 'unavailable';

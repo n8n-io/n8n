@@ -32,6 +32,7 @@ import { useExecutionNavigationCommands } from './useExecutionNavigationCommands
 import { useProjectNavigationCommands } from './useProjectNavigationCommands';
 import { useExecutionCommands } from './useExecutionCommands';
 import { useGenericCommands } from './useGenericCommands';
+import { useContextCommands } from './useContextCommands';
 import { useRecentResources } from './useRecentResources';
 import { useChatHubCommands } from './useChatHubCommands';
 import { useInstanceAiCommands } from './useInstanceAiCommands';
@@ -133,6 +134,7 @@ export function useCommandBar() {
 	const projectNavigationGroup = useProjectNavigationCommands();
 	const agentNavigationGroup = useAgentNavigationCommands({ currentProjectName });
 	const genericCommandGroup = useGenericCommands();
+	const contextCommandGroup = useContextCommands();
 	const recentResourcesGroup = useRecentResources();
 	const chatHubCommandGroup = useChatHubCommands();
 	const instanceAiCommandGroup = useInstanceAiCommands();
@@ -182,6 +184,7 @@ export function useCommandBar() {
 		instanceAiCommandGroup,
 		...navigationGroups.value.filter((group) => group !== nodeCommandGroup),
 		executionNavigationGroup,
+		contextCommandGroup,
 		genericCommandGroup,
 	]);
 

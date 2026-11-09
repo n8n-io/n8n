@@ -62,6 +62,8 @@ import {
 	createRunExecutionData,
 	applyDynamicCredentialsUsage,
 	hasExecutionRunNodes,
+	isExecutionOutputRedacted,
+	redactErrorReport,
 } from 'n8n-workflow';
 import PCancelable, { type OnCancelFunction } from 'p-cancelable';
 
@@ -1966,17 +1968,28 @@ export class WorkflowExecute {
 	 * The error to send to the error reporter, or undefined if this error must not be
 	 * reported. Errors of our own classes report their cause. Other errors report only
 	 * their class and call frames, because their message can hold user data.
+	 *
+	 * When the run's redaction policy covers the channel it executes on, every report
+	 * goes through `redactErrorReport`: it keeps only the class and call frames, and an
+	 * error Sentry's `beforeSend` would drop is dropped here. A wrapped cause runs
+	 * through the same checks, so a cause that would be skipped raw is skipped redacted.
 	 */
-	private buildErrorReport(error: unknown): Error | undefined {
+	private buildErrorReport(error: unknown, workflow: Workflow): Error | undefined {
+		const redacted = isExecutionOutputRedacted(this.runExecutionData, workflow.settings, this.mode);
+		return this.selectErrorReport(error, redacted);
+	}
+
+	private selectErrorReport(error: unknown, redacted: boolean): Error | undefined {
 		if (error instanceof ApplicationError) {
 			// Report any unhandled errors that were wrapped in by one of our error classes
-			return error.cause instanceof Error ? error.cause : undefined;
+			if (!(error.cause instanceof Error)) return undefined;
+			return redacted ? this.selectErrorReport(error.cause, true) : error.cause;
 		}
 
 		if (error instanceof BaseError) {
 			// BaseError subclasses specify shouldReport and level
 			// so always report and let beforeSend decide
-			return error;
+			return redacted ? redactErrorReport(error) : error;
 		}
 
 		// oxlint-disable-next-line typescript/no-deprecated
@@ -1988,14 +2001,7 @@ export class WorkflowExecute {
 
 		// Non-BaseError errors only report their class and call frames
 		// The full error is still stored in the execution resultData
-		// Stack frames are in the format `<name>: <message>\n<call frames>`
-		// they can span multiple lines, so we drop everything except call frame lines
-		const errorClass = error.name || 'Error';
-		const sanitized = new Error(errorClass);
-		sanitized.name = errorClass;
-		const frames = (error.stack ?? '').split('\n').filter((line) => /^\s+at\s/.test(line));
-		sanitized.stack = [errorClass, ...frames].join('\n');
-		return sanitized;
+		return redactErrorReport(error);
 	}
 
 	/**
@@ -2009,7 +2015,7 @@ export class WorkflowExecute {
 	): ExecutionBaseError {
 		this.runExecutionData.resultData.lastNodeExecuted = executionNode.name;
 
-		const toReport = this.buildErrorReport(error);
+		const toReport = this.buildErrorReport(error, workflow);
 		if (toReport) {
 			const { executionId, instanceBaseUrl } = this.additionalData;
 			Container.get(ErrorReporter).error(toReport, {

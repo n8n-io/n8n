@@ -1,3 +1,4 @@
+import type { OperationContext } from '@n8n/db';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
 	MAX_AGENT_FILE_SIZE_MB,
@@ -18,7 +19,9 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { BadRequestError } from '@n8n/errors';
 
+import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 import {
 	AgentKnowledgeUploadError,
@@ -33,8 +36,7 @@ import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
 import { createKnowledgeTelemetryHmac } from './agent-knowledge-telemetry';
 import { storageFileNameForOriginalFileName, toAgentFileDto } from './agent-knowledge-storage';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
-import type { AgentFile } from './entities/agent-file.entity';
-import { AgentFileRepository } from './repositories/agent-file.repository';
+import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
 const MAX_AGENT_FILE_METADATA_LENGTH = 255;
@@ -48,7 +50,7 @@ export interface UploadedKnowledgeFile {
 export class AgentKnowledgeService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
-		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentKnowledgeMirrorService: AgentKnowledgeMirrorService,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
@@ -56,6 +58,7 @@ export class AgentKnowledgeService {
 		private readonly logger: Logger,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
 	) {}
 
 	async uploadFiles(
@@ -69,12 +72,12 @@ export class AgentKnowledgeService {
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(agentId, files);
 
-			const uploadedFiles: AgentFile[] = [];
+			const uploadedFiles: KnowledgeFile[] = [];
 			const results: UploadedKnowledgeFile[] = [];
 			try {
 				for (const file of files) {
 					const contentHash = await this.hashUploadedFile(file.path);
-					const storedFile = await this.storeAgentFile(agentId, file);
+					const storedFile = await this.storeAgentFile(agentId, projectId, file);
 					uploadedFiles.push(storedFile);
 					results.push({ file: toAgentFileDto(storedFile), contentHash });
 				}
@@ -156,10 +159,20 @@ export class AgentKnowledgeService {
 	}
 
 	/**
-	 * Cleanup for the agent and project deletion cascades. Not gated on the
-	 * knowledge module: skipping it would leave stored bytes that no row points at.
+	 * Cleanup for the agent and project deletion cascades. With the knowledge
+	 * module off its entity is not registered, so the rows cannot be read: the
+	 * database cascade still removes them with the agent, but their stored bytes
+	 * stay (see the knowledge module AGENTS.md).
 	 */
 	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {
+		if (!this.knowledgeAvailabilityService.isModuleActive()) {
+			this.logger.warn(
+				'Knowledge module is inactive, so the stored knowledge file bytes of the deleted agent are kept',
+				{ agentId },
+			);
+			return;
+		}
+
 		const files = await this.agentFileRepository.findByAgentId(agentId, {});
 		await this.agentFileRepository.deleteByAgentId(agentId, {});
 		if (files.length > 0) {
@@ -185,7 +198,11 @@ export class AgentKnowledgeService {
 	}
 
 	/** Stores the file's bytes via AgentKnowledgeFileStore, then reserves its DB row. */
-	private async storeAgentFile(agentId: string, file: Express.Multer.File): Promise<AgentFile> {
+	private async storeAgentFile(
+		agentId: string,
+		projectId: string,
+		file: Express.Multer.File,
+	): Promise<KnowledgeFile> {
 		const fileId = generateNanoId();
 		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
 		const content = await this.prepareUploadContent(file);
@@ -196,7 +213,10 @@ export class AgentKnowledgeService {
 		});
 
 		try {
-			return await this.saveAgentFile(agentId, fileId, file, stored);
+			return await this.projectDeletion.withWritableProject(
+				projectId,
+				async (ctx) => await this.saveAgentFile(agentId, fileId, file, stored, ctx),
+			);
 		} catch (error) {
 			await this.agentKnowledgeFileStore.delete([stored]).catch(() => {});
 			if (isUniqueConstraintError(error)) {
@@ -211,7 +231,8 @@ export class AgentKnowledgeService {
 		fileId: string,
 		file: Express.Multer.File,
 		stored: StoredAgentKnowledgeFile,
-	): Promise<AgentFile> {
+		ctx: OperationContext,
+	): Promise<KnowledgeFile> {
 		return await this.agentFileRepository.saveUploadedFile(
 			{
 				id: fileId,
@@ -222,7 +243,7 @@ export class AgentKnowledgeService {
 				mimeType: file.mimetype,
 				fileSizeBytes: file.size,
 			},
-			{},
+			ctx,
 		);
 	}
 
@@ -247,7 +268,7 @@ export class AgentKnowledgeService {
 		return createReadStream(file.path);
 	}
 
-	private async cleanupUploadedFiles(files: AgentFile[]): Promise<void> {
+	private async cleanupUploadedFiles(files: KnowledgeFile[]): Promise<void> {
 		for (const file of files) {
 			await this.agentKnowledgeFileStore
 				.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])

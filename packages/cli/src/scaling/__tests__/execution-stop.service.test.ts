@@ -6,7 +6,7 @@ import { ManualExecutionCancelledError } from 'n8n-workflow';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import type { JobProcessor } from '@/scaling/job-processor';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 describe('ExecutionStopService', () => {
 	const publisher = mock<Publisher>();

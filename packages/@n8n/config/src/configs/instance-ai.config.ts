@@ -29,7 +29,7 @@ export class InstanceAiConfig {
 
 	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
-	model: string = 'anthropic/claude-opus-4-8';
+	model: string = 'anthropic/claude-opus-5-5';
 
 	/** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:1234/v1" for LM Studio). */
 	@Env('N8N_INSTANCE_AI_MODEL_URL')

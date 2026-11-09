@@ -27,7 +27,7 @@ import { AgentBackgroundJobService } from '../background/agent-background-job.se
 import { buildApprovalArgs } from '../execution-recorder';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
 import { executeWorkflow } from '../tools/workflow-tool-factory';
-import { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
+import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import { collectAgentDecision } from './decision-result';
 import { readWorkflowCaller } from './workflow-caller';
 import { APPROVAL_EXPIRED_ERROR, hasApprovalExpired } from './approval-expiry';
@@ -53,7 +53,7 @@ const RESUME_SCHEMA = z.object({ type: z.string().optional(), value: z.string().
 @Service()
 export class AgentDecisionWorkflowService {
 	constructor(
-		private readonly loader: WorkflowToolWorkflowLoader,
+		private readonly loader: CallableWorkflowLoader,
 		private readonly policyChecker: SubworkflowPolicyChecker,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly jobs: AgentBackgroundJobService,

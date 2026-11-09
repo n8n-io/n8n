@@ -1,4 +1,14 @@
 export { createResponseEmitter } from './create-response-emitter';
+export { EXECUTION_CHANNEL_TOPICS } from './execution-channel';
+export type {
+	ExecutionChannelCodec,
+	ExecutionChannelFrameHandler,
+	ExecutionChannelPublisher,
+	ExecutionChannelSubscriber,
+	ExecutionChannelTopic,
+	FrameResult,
+	UnsubscribeFromExecutionChannel,
+} from './execution-channel';
 export { noopExecutionResponseSender } from './execution-response-sender';
 export type { ExecutionResponseSender } from './execution-response-sender';
 export {

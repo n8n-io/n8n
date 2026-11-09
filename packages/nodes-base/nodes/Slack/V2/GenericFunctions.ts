@@ -1,6 +1,4 @@
-import { Container } from '@n8n/di';
 import get from 'lodash/get';
-import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -536,12 +534,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const captureResponder =
 		context.getNodeParameter('captureResponder', 0, false) === true && responseType === 'approval';
 
-	// Both native callback paths use the same signing key as Telegram.
 	const agentApproval = context.getNode().parameters.agentApproval === true;
-	const executionId = context.getExecutionId();
-	const hmacSecret =
-		captureResponder || agentApproval ? Container.get(InstanceSettings).hmacSignatureSecret : '';
-
 	const body: SendAndWaitMessageBody = {
 		channel: target,
 		blocks: [
@@ -579,19 +572,15 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 					// Agent callbacks go to the channel bridge. Workflow callbacks use the fixed interaction route.
 					...(agentApproval
 						? {
-								action_id: buildHitlCallbackReference(
-									executionId,
-									option.approved ? 'a' : 'd',
-									hmacSecret,
+								action_id: context.getApprovalCallbackReference(
+									option.approved ? 'approve' : 'decline',
 								),
 							}
 						: captureResponder
 							? {
 									action_id: option.approved ? HITL_APPROVE_ACTION_ID : HITL_DECLINE_ACTION_ID,
-									value: buildHitlCallbackReference(
-										executionId,
-										option.approved ? 'a' : 'd',
-										hmacSecret,
+									value: context.getApprovalCallbackReference(
+										option.approved ? 'approve' : 'decline',
 									),
 								}
 							: { url: option.url }),

@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { parse } from 'yaml';
 import { evaluateFilter, parseFilters } from '../actions/ci-filter/ci-filter.mjs';
@@ -195,6 +198,105 @@ describe('release SBOM validation in PR CI', () => {
 			/check-sbom-licenses\.mjs\s+sbom-source\.cdx\.json/,
 		);
 		assert.equal(gate['continue-on-error'] ?? false, false);
+	});
+
+	it('validates the full SHA before checking out the SBOM source without persisted credentials', () => {
+		const validator = workflowFile('sbom-validation-callable.yml');
+		const steps = validator.jobs['validate-sbom'].steps;
+		const validation = stepNamed(validator, 'validate-sbom', 'Validate SBOM source SHA');
+		const checkout = stepNamed(validator, 'validate-sbom', 'Checkout SBOM source');
+
+		assert.ok(steps.indexOf(validation) < steps.indexOf(checkout));
+		assert.match(validation.run, /\^\[0-9a-f\]\{40\}\$/);
+		assert.doesNotMatch(validation.run, /git (fetch|checkout)/);
+		assert.equal(checkout.uses, 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1');
+		assert.equal(checkout.with.ref, '${{ inputs.sha }}');
+		assert.equal(checkout.with['persist-credentials'], false);
+	});
+});
+
+describe('release PR verification gate', () => {
+	const workflow = workflowFile('release-create-pr.yml');
+
+	it('requires successful verification before creating the PR', () => {
+		const create = workflow.jobs['create-release-pr'];
+		assert.ok(create.needs.includes('verify-single-instance-npm-full'));
+		assert.equal(create.if ?? 'success()', 'success()');
+		assert.ok(workflow.jobs['approve-and-automerge'].needs.includes('create-release-pr'));
+	});
+
+	it('fails release preparation on findings from all packages on the release base', () => {
+		const verify = workflow.jobs['verify-single-instance-npm-full'];
+		assert.equal(verify.uses, './.github/workflows/test-single-instance-npm.yml');
+		assert.equal(verify.with.scope, 'all');
+		assert.equal(verify.with.blocking, true);
+		assert.equal(verify.with['base-branch'], '${{ needs.resolve-release-base.outputs.sha }}');
+		assert.equal(verify['continue-on-error'] ?? false, false);
+	});
+
+	it('uses one resolved commit for verification and release preparation', () => {
+		const resolve = workflow.jobs['resolve-release-base'];
+		const verify = workflow.jobs['verify-single-instance-npm-full'];
+		const create = workflow.jobs['create-release-pr'];
+		assert.equal(resolve.outputs.sha, '${{ steps.resolve.outputs.sha }}');
+		assert.equal(
+			resolve.steps.find((step) => step.uses?.startsWith('actions/checkout@')).with.ref,
+			'${{ inputs.base-branch }}',
+		);
+		assert.ok(verify.needs.includes('resolve-release-base'));
+		assert.ok(create.needs.includes('resolve-release-base'));
+		for (const name of ['Switch to base commit', 'Push the base branch']) {
+			assert.equal(
+				stepNamed(workflow, 'create-release-pr', name).env.BASE_SHA,
+				verify.with['base-branch'],
+			);
+		}
+	});
+
+	it('keeps the verified commit when the selected branch advances', (t) => {
+		const directory = mkdtempSync(join(tmpdir(), 'release-base-'));
+		t.after(() => rmSync(directory, { recursive: true, force: true }));
+		const env = {
+			...process.env,
+			GIT_AUTHOR_NAME: 'Test User',
+			GIT_AUTHOR_EMAIL: 'test@example.com',
+			GIT_COMMITTER_NAME: 'Test User',
+			GIT_COMMITTER_EMAIL: 'test@example.com',
+			GITHUB_OUTPUT: join(directory, 'output'),
+			NEXT_RELEASE: '1.0.1',
+		};
+		const git = (...args) =>
+			execFileSync('git', args, {
+				cwd: directory,
+				env,
+				encoding: 'utf8',
+				stdio: ['ignore', 'pipe', 'pipe'],
+			}).trim();
+		const runStep = (step) =>
+			execFileSync('bash', ['--noprofile', '--norc', '-eo', 'pipefail', '-c', step.run], {
+				cwd: directory,
+				env,
+				stdio: 'pipe',
+			});
+		git('init', '--initial-branch=selected-base');
+		git('commit', '--allow-empty', '-m', 'Verified base');
+		const verifiedSha = git('rev-parse', 'HEAD');
+		runStep(stepNamed(workflow, 'resolve-release-base', 'Resolve base commit'));
+		env.BASE_SHA = readFileSync(env.GITHUB_OUTPUT, 'utf8').trim().replace(/^sha=/, '');
+		assert.equal(env.BASE_SHA, verifiedSha);
+
+		git('commit', '--allow-empty', '-m', 'Later base');
+		assert.notEqual(git('rev-parse', 'selected-base'), verifiedSha);
+		runStep(stepNamed(workflow, 'create-release-pr', 'Switch to base commit'));
+		assert.equal(git('rev-parse', 'HEAD'), verifiedSha);
+
+		const remote = join(directory, 'remote.git');
+		git('init', '--bare', remote);
+		git('remote', 'add', 'origin', remote);
+		git('update-ref', 'refs/remotes/origin/selected-base', git('rev-parse', 'selected-base'));
+		writeFileSync(join(directory, 'version.txt'), '1.0.1');
+		runStep(stepNamed(workflow, 'create-release-pr', 'Push the base branch'));
+		assert.equal(git('--git-dir', remote, 'rev-parse', 'refs/heads/release/1.0.1'), verifiedSha);
 	});
 });
 

@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type {
@@ -26,7 +26,7 @@ import type {
 import type { AssistantTurnRuntime } from '../../turn-setup/assistant-turn-runtime';
 import { QuotaExhaustedStreamError } from '../../turn-setup/assistant-credits';
 import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
-import { AssistantAgentProvider } from '../assistant-agent.provider';
+import { AssistantAgentProvider, FILES_ONLY_MESSAGE } from '../assistant-agent.provider';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
 import type { AssistantTurnTrace, AssistantTurnTracer } from '../assistant-turn-trace';
 import type {
@@ -127,6 +127,7 @@ function startTurn(
 		checkpointStore: mock<SystemAgentStartTurn['checkpointStore']>(),
 		sessionGrants: mock<SystemAgentStartTurn['sessionGrants']>(),
 		readAttachment: vi.fn(async () => undefined),
+		readFile: vi.fn(async () => undefined),
 		executionId: 'exec-1',
 		message: 'Build a digest',
 		attachments: [],
@@ -278,34 +279,97 @@ describe('AssistantAgentProvider', () => {
 			});
 		});
 
-		it('gives the file tools the content of the turn files, and keeps the input as text', async () => {
+		it('keeps the element a user picked in an app preview, whatever the node gate says', async () => {
 			const { provider, turnInput } = setup();
-			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
+			const element = { type: 'element', appId: 'app-1', tagName: 'button', text: 'Save' };
 			const turn = startTurn({
-				attachments: [ref, { ...ref, id: 'att-gone' }],
-				readAttachment: vi.fn(async (attachment) =>
-					attachment.id === 'att-1' ? Buffer.from('a,b') : undefined,
-				),
+				options: { ...startTurn().options, request: { attachments: [element] } },
+			});
+
+			await provider.prepareTurn(turn);
+
+			expect(turnInput.buildInput).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ contextAttachments: [element] }),
+			);
+		});
+
+		it('gives parse-file the stored files of the thread, and keeps the input as text', async () => {
+			const { provider, turnInput, environment } = setup();
+			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
+			const stored = {
+				fileName: 'notes.csv',
+				mimeType: 'text/csv',
+				sizeBytes: 3,
+				readContent: vi.fn(async () => Buffer.from('a,b')),
+			};
+			const turn = startTurn({
+				attachments: [ref],
+				readFile: vi.fn(async (fileId: string) => (fileId === 'att-1' ? stored : undefined)),
 			});
 
 			const handle = await provider.prepareTurn(turn);
 
-			const file = {
-				type: 'file',
-				data: Buffer.from('a,b').toString('base64'),
-				mimeType: 'text/csv',
-				fileName: 'notes.csv',
-			};
+			// No file content is loaded up front, so parse-file is not tied to this message.
+			expect(turn.readAttachment).not.toHaveBeenCalled();
 			expect(turnInput.applyTurnScope).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ fileAttachments: [file] }),
+				expect.objectContaining({ fileAttachments: [] }),
 			);
 			expect(turnInput.buildInput).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.anything(),
-				expect.objectContaining({ fileAttachments: [file] }),
+				expect.objectContaining({ fileAttachments: [] }),
 			);
+			await expect(environment.context.storedFiles?.read('att-1')).resolves.toBe(stored);
+			await expect(environment.context.storedFiles?.read('other')).resolves.toBeUndefined();
 			expect(handle.input).toBe('Build a digest');
+		});
+
+		it('asks the model to inspect the files of a message without text', async () => {
+			const { provider, turnInput } = setup();
+			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
+
+			await provider.prepareTurn(startTurn({ message: '', attachments: [ref] }));
+
+			expect(turnInput.buildInput).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ message: FILES_ONLY_MESSAGE }),
+			);
+		});
+
+		it('gives parse-file the stored files on a resumed turn', async () => {
+			const { provider, environment } = setup();
+			const start = startTurn();
+			const stored = {
+				fileName: 'notes.csv',
+				mimeType: 'text/csv',
+				sizeBytes: 3,
+				readContent: vi.fn(async () => Buffer.from('a,b')),
+			};
+			const turn: SystemAgentResumeTurn<AssistantSandboxLease> = {
+				type: 'resume',
+				user,
+				thread,
+				resourceId: start.resourceId,
+				abortSignal: start.abortSignal,
+				emitHostEvent: start.emitHostEvent,
+				memory: start.memory,
+				checkpointStore: start.checkpointStore,
+				sessionGrants: start.sessionGrants,
+				readFile: vi.fn(async () => stored),
+				runId: 'agent-run-1',
+				toolCallId: 'tool-call-1',
+				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+				resumeData: { approved: true },
+			};
+
+			await provider.prepareTurn(turn);
+
+			await expect(environment.context.storedFiles?.read('att-1')).resolves.toBe(stored);
+			expect(turn.readFile).toHaveBeenCalledWith('att-1');
 		});
 
 		describe('attached agent', () => {
@@ -742,6 +806,7 @@ describe('AssistantAgentProvider', () => {
 				memory: start.memory,
 				checkpointStore: start.checkpointStore,
 				sessionGrants: start.sessionGrants,
+				readFile: start.readFile,
 				runId: 'agent-run-1',
 				toolCallId: 'tool-call-1',
 				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
@@ -889,6 +954,7 @@ describe('AssistantAgentProvider', () => {
 					memory: start.memory,
 					checkpointStore: start.checkpointStore,
 					sessionGrants: start.sessionGrants,
+					readFile: start.readFile,
 					runId: 'agent-run-1',
 					toolCallId: 'tool-call-1',
 					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
@@ -1000,6 +1066,7 @@ describe('AssistantAgentProvider', () => {
 						memory: start.memory,
 						checkpointStore: start.checkpointStore,
 						sessionGrants: start.sessionGrants,
+						readFile: start.readFile,
 						runId: 'agent-run-1',
 						toolCallId: 'tool-call-1',
 						checkpointHostMetadata: {

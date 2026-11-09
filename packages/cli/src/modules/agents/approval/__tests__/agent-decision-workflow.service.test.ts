@@ -17,7 +17,7 @@ import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks
 import type { AgentBackgroundJobService } from '../../background/agent-background-job.service';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
-import type { WorkflowToolWorkflowLoader } from '../../tools/workflow-tool-workflow-loader.service';
+import type { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import { AgentDecisionWorkflowService } from '../agent-decision-workflow.service';
 
 const configuration: AgentJsonConfig = {
@@ -32,7 +32,7 @@ const configuration: AgentJsonConfig = {
 function setup(agentConfiguration: AgentJsonConfig = configuration) {
 	const jobs = mock<AgentBackgroundJobRepository>();
 	const executions = mock<ExecutionPersistence>();
-	const loader = mock<WorkflowToolWorkflowLoader>();
+	const loader = mock<CallableWorkflowLoader>();
 	const jobService = mock<AgentBackgroundJobService>();
 	const service = new AgentDecisionWorkflowService(
 		loader,

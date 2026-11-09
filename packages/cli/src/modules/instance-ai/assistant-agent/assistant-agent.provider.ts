@@ -4,7 +4,7 @@ import {
 	InstanceAiConfirmRequestDto,
 	type InstanceAiAgentAttachment,
 	type InstanceAiAttachment,
-	type InstanceAiFileAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
@@ -75,6 +75,10 @@ import {
 	type AssistantSandboxLease,
 } from './assistant-workspace-source';
 
+/** The model input of a message that has files but no text. */
+export const FILES_ONLY_MESSAGE =
+	'The user attached file(s) without a message. Inspect the first file and give a short summary. Use parse-file for a file that you cannot read directly.';
+
 type FormattedTurnError = NonNullable<
 	Awaited<ReturnType<NonNullable<SystemAgentTurnHandle['formatError']>>>
 >;
@@ -90,9 +94,11 @@ function contextAttachmentsOf(
 		): attachment is
 			| InstanceAiWorkflowAttachment
 			| InstanceAiAgentAttachment
-			| InstanceAiNodesAttachment =>
+			| InstanceAiNodesAttachment
+			| InstanceAiElementAttachment =>
 			attachment.type === 'workflow' ||
 			attachment.type === 'agent' ||
+			attachment.type === 'element' ||
 			(attachment.type === 'nodes' && nodeContextEnabled),
 	);
 }
@@ -167,7 +173,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		const { user } = turn;
 		const { request } = options;
 		const experimentGates = await this.adapterService.resolveExperimentGates(user);
-		const fileAttachments = turn.type === 'start' ? await this.readFileAttachments(turn) : [];
+		const turnFiles = turn.type === 'start' ? turn.attachments : [];
 		const contextAttachments = contextAttachmentsOf(
 			request.attachments,
 			experimentGates.nodeContextEnabled,
@@ -180,7 +186,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			...(proxyRunConfig.tracingProxyConfig
 				? { proxyConfig: proxyRunConfig.tracingProxyConfig }
 				: {}),
-			fileAttachments,
+			fileAttachments: turnFiles,
 			contextAttachments,
 			threadArtifacts: request.threadArtifacts,
 		});
@@ -188,7 +194,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			return await this.prepareTracedTurn(turn, options, {
 				trace,
 				experimentGates,
-				fileAttachments,
 				contextAttachments,
 				proxyRunConfig,
 			});
@@ -207,14 +212,13 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		setup: {
 			trace: AssistantTurnTrace | undefined;
 			experimentGates: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>;
-			fileAttachments: InstanceAiFileAttachment[];
 			contextAttachments: InstanceAiResourceAttachment[];
 			proxyRunConfig: AssistantProxyRunConfig;
 		},
 	): Promise<SystemAgentTurnHandle> {
 		const { user, thread } = turn;
 		const { runId, request } = options;
-		const { trace, experimentGates, fileAttachments, contextAttachments, proxyRunConfig } = setup;
+		const { trace, experimentGates, contextAttachments, proxyRunConfig } = setup;
 		const runtime = this.createTurnRuntime(turn, options, trace);
 		const environment = await this.turnEnvironment.create(
 			{
@@ -234,8 +238,13 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			runId,
 			message: turn.type === 'start' ? turn.message : '',
 			timeZone: request.timeZone,
-			fileAttachments,
+			// The runtime adds the files to the model input as stored references,
+			// and parse-file reads them by id through `storedFiles`.
+			fileAttachments: [],
 		});
+		environment.context.storedFiles = {
+			read: async (fileId) => await turn.readFile(fileId),
+		};
 
 		let turnInput: AssistantTurnInput | undefined;
 		if (turn.type === 'start') {
@@ -245,8 +254,9 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					user,
 					threadId: thread.id,
 					runId,
-					message: turn.message,
-					fileAttachments,
+					message:
+						!turn.message.trim() && turn.attachments.length > 0 ? FILES_ONLY_MESSAGE : turn.message,
+					fileAttachments: [],
 					contextAttachments,
 					handoffContext: request.context,
 					timeZone: request.timeZone,
@@ -255,7 +265,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				});
 			turnInput = trace
 				? await trace.tracePromptBuild(
-						{ message: turn.message, attachmentCount: fileAttachments.length },
+						{ message: turn.message, attachmentCount: turn.attachments.length },
 						buildInput,
 						(built) => ({ fullMessage: built.fullMessage }),
 					)
@@ -277,7 +287,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		return {
 			agent,
 			// The runtime adds the files to the model input as stored references, so the
-			// input keeps only the text. The file content is for the file tools.
+			// input keeps only the text. parse-file reads the files by id when it needs them.
 			...(turnInput ? { input: turnInput.fullMessage } : {}),
 			hostMetadata: this.hostMetadataOf(options, environment.skillScope.profile.mode, trace),
 			runOptions: {
@@ -434,24 +444,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			const target = { agentId: attachment.id, projectId: attachment.projectId };
 			await snapshotAgent(context, delegate, target, 'attached');
 		}
-	}
-
-	/** The content of the turn's files, for the file tools of the turn. */
-	private async readFileAttachments(
-		turn: SystemAgentStartTurn<AssistantSandboxLease>,
-	): Promise<InstanceAiFileAttachment[]> {
-		const files: InstanceAiFileAttachment[] = [];
-		for (const ref of turn.attachments) {
-			const content = await turn.readAttachment(ref);
-			if (!content) continue;
-			files.push({
-				type: 'file',
-				data: content.toString('base64'),
-				mimeType: ref.mimeType,
-				fileName: ref.fileName,
-			});
-		}
-		return files;
 	}
 
 	private hostMetadataOf(

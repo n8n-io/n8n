@@ -23,10 +23,9 @@ import {
 	Middleware,
 } from '@n8n/decorators';
 import { NextFunction, Response } from 'express';
-import { UserError } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, InternalServerError, NotFoundError, UserError } from '@n8n/errors';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';

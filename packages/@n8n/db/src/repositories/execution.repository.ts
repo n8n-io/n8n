@@ -32,6 +32,7 @@ import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
+	ExecutionTracingContext,
 	IRunExecutionData,
 	IRunExecutionDataAll,
 	IWorkflowSettings,
@@ -76,6 +77,33 @@ class PostgresLiveRowsRetrievalError extends UnexpectedError {
 	}
 }
 
+const MAX_REPORTED_INVALID_EXECUTIONS = 20;
+
+const REPORTED_ROW_FIELDS = [
+	'id',
+	'storedAt',
+	'status',
+	'mode',
+	'finished',
+	'createdAt',
+	'startedAt',
+	'stoppedAt',
+	'jsonSizeBytes',
+	'deletedAt',
+	'retryOf',
+] as const;
+
+/** Row fields that tell which kind of execution lost its data. Leaves out fields the query did not load. */
+function toReportedRow(execution: ExecutionEntity) {
+	const row: Record<string, unknown> = {};
+	for (const field of REPORTED_ROW_FIELDS) {
+		const value: unknown = execution[field];
+		if (value === undefined || value === null) continue;
+		row[field] = value instanceof Date ? value.toISOString() : value;
+	}
+	return row;
+}
+
 export type CrashedExecution = {
 	id: string;
 	workflowId: string;
@@ -83,7 +111,7 @@ export type CrashedExecution = {
 	mode: WorkflowExecuteMode;
 	startedAt: Date | null;
 	stoppedAt: Date;
-	tracingContext?: { traceparent: string; tracestate?: string; identity?: Record<string, string> };
+	tracingContext?: ExecutionTracingContext;
 	workflowVersionId?: string;
 	retryOf?: string;
 	workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
@@ -278,6 +306,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			new UnexpectedError('Found executions without executionData', {
 				extra: {
 					executionIds: executions.map(({ id }) => id),
+					executions: executions.slice(0, MAX_REPORTED_INVALID_EXECUTIONS).map(toReportedRow),
 				},
 			}),
 		);

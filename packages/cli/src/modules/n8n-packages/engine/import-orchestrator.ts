@@ -116,6 +116,7 @@ import {
 	assertTagWritesAllowed,
 	assertVariableWritesAllowed,
 	assertPackageImportApiKeyScopes,
+	assertWorkflowPublishingAllowed,
 } from './import-gates';
 import { identifyRequirements } from './import-result';
 
@@ -229,6 +230,9 @@ export class ImportOrchestrator {
 			options.apiKeyScopes,
 			plans.map((plan) => plan.workflowPlan),
 		);
+		for (const { workflowPlan } of plans) {
+			assertWorkflowPublishingAllowed(options.apiKeyScopes, workflowPlan);
+		}
 		const creations = plans.flatMap((plan) => plan.variablePlan.creations);
 		const overwrites = plans.flatMap((plan) => plan.variablePlan.overwrites);
 
@@ -780,7 +784,10 @@ function scopeAgentRequirements(
 	};
 }
 
-/** Imported channels never use package credentials, so a channel reference alone requires none. */
+/**
+ * Imported channels never use package credentials, so a channel reference alone requires none.
+ * Exports write channels without credential IDs, but older packages still carry them.
+ */
 function withoutChannelOnlyConsumers<
 	T extends { id: string; usedBy: PackageRequirementConsumer[] },
 >(requirements: T[] | undefined, agents: AgentPlanItem[]): T[] | undefined {

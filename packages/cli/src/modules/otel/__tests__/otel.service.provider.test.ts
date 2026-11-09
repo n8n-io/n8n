@@ -30,7 +30,7 @@ import { OtelService } from '../otel.service';
 import { N8N_VERSION } from '@/constants';
 import type { ExternalHooks } from '@/external-hooks';
 import { OtelSdk } from '@/observability/otel-sdk';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 const {
 	exportedSpans,

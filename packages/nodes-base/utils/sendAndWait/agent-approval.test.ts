@@ -32,6 +32,9 @@ it.each([
 		});
 		context.getNode.mockReturnValue(node);
 		context.getExecutionId.mockReturnValue('123');
+		context.getApprovalCallbackReference.mockImplementation((decision) =>
+			buildHitlCallbackReference('123', decision === 'approve' ? 'a' : 'd', secret),
+		);
 		context.getSignedResumeUrl.mockReturnValue('https://example.com/webhook-waiting/123');
 		context.getNodeParameter.mockImplementation((name) => {
 			if (name === 'message') return 'Approval required';

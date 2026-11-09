@@ -10,7 +10,8 @@ import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ActionEvent, Attachment, Thread, Author, Message } from 'chat';
-import { UserError, type Logger } from 'n8n-workflow';
+import type { Logger } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { ChatInstance } from './chat-integration.service';
 import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
@@ -122,9 +123,6 @@ export interface AgentChatIntegrationBuilderGuidance {
 	useIntegrationWhen: string[];
 	useNodeToolWhen: string[];
 }
-
-/** A temporary cap, because sends load files into memory. Rework it with the storage caps of the session files. */
-export const MAX_CHANNEL_SEND_FILE_BYTES = 50 * 1024 * 1024;
 
 /** One send posts at most this many messages of files, so a runaway call cannot flood the conversation. */
 export const MAX_FILE_MESSAGES_PER_SEND = 3;

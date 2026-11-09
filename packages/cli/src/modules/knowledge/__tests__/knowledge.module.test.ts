@@ -1,6 +1,7 @@
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+import { KnowledgeFile } from '../entities/knowledge-file.entity';
 import { KnowledgeModule } from '../knowledge.module';
 
 describe('KnowledgeModule', () => {
@@ -15,8 +16,8 @@ describe('KnowledgeModule', () => {
 		expect(entry?.instanceTypes).toBeUndefined();
 	});
 
-	it('registers no entities, so no migration is generated', async () => {
-		await expect(new KnowledgeModule().entities()).resolves.toEqual([]);
+	it('registers the knowledge file entity', async () => {
+		await expect(new KnowledgeModule().entities()).resolves.toEqual([KnowledgeFile]);
 	});
 
 	it('initializes without side effects', async () => {

@@ -17,7 +17,9 @@ import type {
 	WorkflowExecuteMode,
 	EngineResponse,
 } from 'n8n-workflow';
-import { UnexpectedError, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError, UserError, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+
+import { buildHitlCallbackReference } from '@/utils/hitl-callback-reference';
 
 import { BaseExecuteContext } from './base-execute-context';
 import { SupplyDataContext } from './supply-data-context';
@@ -193,6 +195,24 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	addExecutionHints(...hints: NodeExecutionHint[]) {
 		this.hints.push(...hints);
+	}
+
+	getApprovalCallbackReference(decision: 'approve' | 'decline') {
+		if (this.instanceSettings.instanceType === 'engine') {
+			throw new UserError('Engine v2 does not support approval callbacks yet');
+		}
+
+		const { executionId } = this.additionalData;
+
+		if (typeof executionId !== 'string') {
+			throw new UnexpectedError('Execution id is missing');
+		}
+
+		return buildHitlCallbackReference(
+			executionId,
+			decision === 'approve' ? 'a' : 'd',
+			this.instanceSettings.hmacSignatureSecret,
+		);
 	}
 
 	/** Returns true if the node is being executed as an AI Agent tool */

@@ -35,10 +35,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
-import {
-	isContextPreferencesEnabled,
-	isContextSkillsEnabled,
-} from '@/features/settings/context/context.utils';
+import { isContextSkillsEnabled } from '@/features/settings/context/context.utils';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -209,13 +206,12 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 		descriptionKey: 'settings.n8nAgent.permissions.group.mcpDescription',
 		keys: ['mcpRead', 'mcpWrite'],
 	},
+	{
+		id: 'preferences',
+		labelKey: 'settings.n8nAgent.permissions.group.preferences',
+		keys: ['createPreference'],
+	},
 ];
-
-const PREFERENCES_PERMISSION_GROUP: PermissionGroup = {
-	id: 'preferences',
-	labelKey: 'settings.n8nAgent.permissions.group.preferences',
-	keys: ['createPreference'],
-};
 
 const SKILLS_PERMISSION_GROUP: PermissionGroup = {
 	id: 'skills',
@@ -225,7 +221,6 @@ const SKILLS_PERMISSION_GROUP: PermissionGroup = {
 
 const permissionGroups = computed(() => [
 	...PERMISSION_GROUPS,
-	...(isContextPreferencesEnabled() ? [PREFERENCES_PERMISSION_GROUP] : []),
 	...(isContextSkillsEnabled() ? [SKILLS_PERMISSION_GROUP] : []),
 ]);
 
