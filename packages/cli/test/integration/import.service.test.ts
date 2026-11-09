@@ -423,11 +423,12 @@ describe('ImportService', () => {
 			expect(mockWorkflowService.activateWorkflow).not.toHaveBeenCalled();
 		});
 
-		test('should call both deactivateWorkflow and activateWorkflow when re-importing an active workflow', async () => {
+		test('should skip deactivation and activate the imported version when re-importing an active workflow', async () => {
 			mockWorkflowService.deactivateWorkflow.mockClear();
 			mockWorkflowService.activateWorkflow.mockClear();
 
 			const existingWorkflow = await createActiveWorkflow();
+			const oldActiveVersionId = existingWorkflow.activeVersionId;
 
 			const workflowToImport = await getWorkflowById(existingWorkflow.id);
 			if (!workflowToImport) expect.fail('Expected to find workflow');
@@ -437,16 +438,20 @@ describe('ImportService', () => {
 				activeState: 'fromJson',
 			});
 
-			expect(mockWorkflowService.deactivateWorkflow).toHaveBeenCalledWith(
-				expect.objectContaining({ id: owner.id }),
-				existingWorkflow.id,
-				{ source: 'import' },
-			);
+			expect(mockWorkflowService.deactivateWorkflow).not.toHaveBeenCalled();
+
+			const dbWorkflow = await getWorkflowById(existingWorkflow.id);
+			if (!dbWorkflow) expect.fail('Expected to find workflow');
+			expect(dbWorkflow.activeVersionId).toBe(oldActiveVersionId);
+
+			expect(mockWorkflowService.activateWorkflow).toHaveBeenCalledTimes(1);
 			expect(mockWorkflowService.activateWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ id: owner.id }),
 				existingWorkflow.id,
-				expect.objectContaining({ source: 'import' }),
+				expect.objectContaining({ source: 'import', versionId: expect.any(String) }),
 			);
+			const activateCall = mockWorkflowService.activateWorkflow.mock.calls[0];
+			expect(activateCall?.[2]?.versionId).not.toBe(oldActiveVersionId);
 		});
 
 		test('should not call WorkflowService.deactivateWorkflow for a brand-new active workflow', async () => {
@@ -465,34 +470,6 @@ describe('ImportService', () => {
 			expect(mockWorkflowService.activateWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ id: owner.id }),
 				workflowToImport.id,
-				expect.objectContaining({ source: 'import' }),
-			);
-		});
-
-		test('should call WorkflowService.deactivateWorkflow exactly once when re-importing an active workflow', async () => {
-			mockWorkflowService.deactivateWorkflow.mockClear();
-			mockWorkflowService.activateWorkflow.mockClear();
-
-			const existingWorkflow = await createActiveWorkflow();
-
-			const workflowToImport = await getWorkflowById(existingWorkflow.id);
-			if (!workflowToImport) expect.fail('Expected to find workflow');
-			workflowToImport.active = true;
-
-			await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, owner.id, {
-				activeState: 'fromJson',
-			});
-
-			expect(mockWorkflowService.deactivateWorkflow).toHaveBeenCalledTimes(1);
-			expect(mockWorkflowService.deactivateWorkflow).toHaveBeenCalledWith(
-				expect.objectContaining({ id: owner.id }),
-				existingWorkflow.id,
-				{ source: 'import' },
-			);
-			expect(mockWorkflowService.activateWorkflow).toHaveBeenCalledTimes(1);
-			expect(mockWorkflowService.activateWorkflow).toHaveBeenCalledWith(
-				expect.objectContaining({ id: owner.id }),
-				existingWorkflow.id,
 				expect.objectContaining({ source: 'import' }),
 			);
 		});
