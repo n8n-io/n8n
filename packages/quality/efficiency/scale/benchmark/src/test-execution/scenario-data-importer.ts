@@ -60,8 +60,16 @@ export class ScenarioDataImporter {
 			}
 		}
 
-		for (const workflow of data.workflows) {
-			await this.importWorkflow({ existingWorkflows, workflow });
+		for (const [index, workflow] of data.workflows.entries()) {
+			const createdWorkflow = await this.importWorkflow({ existingWorkflows, workflow });
+
+			// Workflows that come later can reference this one (e.g. as a sub-workflow),
+			// so we need to update the id in them
+			if (workflow.id) {
+				for (const laterWorkflow of data.workflows.slice(index + 1)) {
+					this.replaceValuesInObject(laterWorkflow, workflow.id, createdWorkflow.id);
+				}
+			}
 		}
 
 		let dataTableId: string | undefined;
@@ -125,16 +133,21 @@ export class ScenarioDataImporter {
 		const existingWorkflows = this.findExistingWorkflows(opts.existingWorkflows, opts.workflow);
 		if (existingWorkflows.length > 0) {
 			for (const toDelete of existingWorkflows) {
-				await this.workflowApiClient.archiveWorkflow(toDelete.id);
+				// The workflow is already archived when an earlier run failed to delete it
+				if (!toDelete.isArchived) {
+					await this.workflowApiClient.archiveWorkflow(toDelete.id);
+				}
 				await this.workflowApiClient.deleteWorkflow(toDelete.id);
 			}
 		}
 
+		// n8n generates a new id, so the id in the file can't collide with an existing workflow
+		const { id: _id, ...workflow } = opts.workflow;
 		const createdWorkflow = await this.workflowApiClient.createWorkflow({
-			...opts.workflow,
+			...workflow,
 			name: this.getBenchmarkWorkflowName(opts.workflow),
 			...(this.engineType
-				? { settings: { ...opts.workflow.settings, engineType: this.engineType } }
+				? { settings: { ...workflow.settings, engineType: this.engineType } }
 				: {}),
 		});
 
