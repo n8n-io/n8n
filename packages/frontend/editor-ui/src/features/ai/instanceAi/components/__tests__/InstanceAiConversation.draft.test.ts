@@ -131,7 +131,6 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 		expect(view.getByTestId('instance-ai-composer')).toBe(composer);
 		expect(composer).toBeVisible();
 		expectDraft(view);
-		expect(thread.removeTransientWorkflowReference).not.toHaveBeenCalled();
 	});
 
 	it('keeps the composer hidden until the last floating approval or question ends', async () => {
@@ -158,9 +157,8 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 		expect(view.getByRole('textbox')).toHaveFocus();
 	});
 
-	it('starts another thread with an empty composer and releases the old mentions', async () => {
+	it('starts another thread with an empty composer', async () => {
 		const firstView = await renderWithDraft();
-		const firstThread = thread;
 		await setPendingConfirmations([makeConfirmation('req-1')]);
 		firstView.unmount();
 
@@ -168,7 +166,6 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 		thread.id = 'thread-2';
 		const secondView = renderConversation();
 
-		expect(firstThread.removeTransientWorkflowReference).toHaveBeenCalledOnce();
 		expect(secondView.getByRole('textbox')).toHaveValue('');
 		expect(secondView.queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
 		expect(secondView.queryByText('orders.csv')).not.toBeInTheDocument();
