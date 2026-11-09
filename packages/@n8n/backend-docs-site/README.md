@@ -24,7 +24,7 @@ The command runs the Astro dev server. Open the printed URL. Edits to the markdo
 - One sun and moon button switches between the light and dark themes. It is in `src/components/ThemeSelect.astro`.
 - Code blocks use the Shiki highlighter that Astro includes. Expressive Code is off because its stylesheet did not load with Astro 7.
 
-The plugin that does the link and diagram work is `plugins/remark-backend-docs.mjs`. The sidebar order is in `astro.config.mjs` and follows the reading plan in `docs/backend/README.md`. A new page appears in the sidebar without a config change, after the known pages. Month 1 nests its pages by topic. A new page that no topic lists goes into a "More" group.
+The plugin that does the link and diagram work is `plugins/remark-backend-docs.mjs`. The sidebar order is in `astro.config.mjs` and follows the reading plan in `docs/backend/README.md`. A new `how-to/` page appears in the sidebar without a config change, after the known pages. A new top-level page must go into `DAY_ONE`, `TIER_TWO`, or a group in `MONTH_ONE` in `astro.config.mjs`. Otherwise the build fails.
 
 ## Build a static copy
 

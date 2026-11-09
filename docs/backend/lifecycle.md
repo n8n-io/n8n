@@ -66,7 +66,7 @@ n8n has two ways to block a node type:
 
 ## Shutdown
 
-When a process stops, n8n calls only the `@OnShutdown()` methods of its services, by priority. Any cleanup therefore belongs in one of these methods.
+When a process stops, n8n calls the `@OnShutdown()` methods of its services, by priority. The start and worker commands also call the `shutdown()` method of a few services directly. New cleanup belongs in an `@OnShutdown()` method, so that it runs in the shutdown sequence.
 
 Before a worker exits, the worker waits for its running jobs, up to 30 seconds by default. With `N8N_WORKER_SUSPEND_EXECUTIONS_ON_SHUTDOWN=true`, the worker instead pauses each production execution at the next node, and another worker resumes the execution.
 

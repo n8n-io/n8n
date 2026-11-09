@@ -72,7 +72,7 @@ Every sign-in method ends with the same session cookie, so a route does not need
 
 ## Sessions
 
-n8n does not store sessions on the server. The session JWT holds a hash of the email, password, and multi-factor authentication (MFA) secret of the user, so a change to any of them ends the other sessions of that user. A logout adds the JWT to a block list.
+n8n does not store sessions on the server. The session JWT holds a hash of the email and password of the user. When multi-factor authentication (MFA) is on, the hash also covers the MFA secret. A change to any of these values ends the other sessions of that user. A logout adds the JWT to a block list.
 
 If an admin requires MFA, a session without MFA can reach only the routes for MFA setup.
 

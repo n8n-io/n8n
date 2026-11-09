@@ -28,12 +28,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: errata-ai/vale-action@518a9136acc6e6668ce7c00d367051e0941e87ff # v3.0.0
+      - uses: vale-cli/vale-action@518a9136acc6e6668ce7c00d367051e0941e87ff # v3.0.0
         with:
           files: docs/backend
           vale_flags: '--config=docs/backend/.vale.ini --minAlertLevel=warning'
           fail_on_error: true
-          reporter: github-pr-check
+          reporter: github-pr-annotations
 
   links:
     name: Lychee

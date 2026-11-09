@@ -20,7 +20,7 @@ Data redaction hides the node data of executions from users. n8n stores the full
 
 ## Insights and usage
 
-Insights shows admins how many executions ran, and how many failed. Insights, billing, and execution limits all use [one file](../../packages/@n8n/backend-services/src/executions/counting-rules.ts) to decide which executions count. A new execution mode needs an entry there, and your code must not keep its own list of modes.
+Insights shows admins how many executions ran, and how many failed. Insights and billing use [one file](../../packages/@n8n/backend-services/src/executions/counting-rules.ts) to decide which executions count. A new execution mode needs an entry there, and your code must not keep its own list of modes.
 
 ## Environments
 

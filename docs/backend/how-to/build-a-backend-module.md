@@ -29,7 +29,7 @@ From repository root:
 pnpm n8n-module-sdk create my-feature --stack=backend
 ```
 
-The scaffolder writes the package `@n8n/backend-module-my-feature` to `packages/modules/my-feature/backend/`.
+The scaffolder writes the package `@n8n/backend-module-my-feature` to `packages/modules/<name>/backend/`, where `<name>` is `my-feature`.
 
 ```bash
 pnpm install

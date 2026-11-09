@@ -12,13 +12,13 @@ import Default from '@astrojs/starlight/components/Head.astro';
 />
 
 <script>
-	import mermaid from 'mermaid';
-
 	// The remark plugin leaves each diagram as <pre class="mermaid"> with its source as text.
 	// Render once on load, and again when the reader switches the color theme.
 	const MIN_SCALE = 0.75;
 	const blocks = Array.from(document.querySelectorAll<HTMLElement>('pre.mermaid'));
 	if (blocks.length > 0) {
+		// Mermaid is large, so only pages with a diagram load it.
+		const { default: mermaid } = await import('mermaid');
 		for (const block of blocks) block.dataset.source = block.textContent ?? '';
 		const render = async () => {
 			const dark = document.documentElement.dataset.theme === 'dark';

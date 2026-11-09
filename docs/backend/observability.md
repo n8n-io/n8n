@@ -56,7 +56,7 @@ To see the events of a local instance, run `pnpm telemetry:sink`, and start the 
    - B. Only PostHog.
    - C. Only the failure email.
    - D. Log streaming users.
-2. A telemetry event has a name with a typo. What do you do?
+2. A telemetry event that already shipped has a name with a typo. What do you do?
    - A. Rename the event in the registry.
    - B. Keep the name.
    - C. Rename it, and also rename the old table.

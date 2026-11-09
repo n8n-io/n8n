@@ -54,7 +54,7 @@ After the execution, the database holds its status, mode, start and end times, a
 
 Your call took the simplest path. Other executions differ from it in these common ways:
 
-- **Manual execution:** When you clicked **Execute**, the main listened for a single call to the test URL. A manual execution can also use **pinned data**, i.e. fixed output saved on a node, to test the next nodes without the real call. Production executions ignore pinned data. When a user runs one node, the editor sends the run data that it already has, and the engine runs only the nodes on the path to that node whose input changed. In queue mode, a worker runs the manual execution, and a main relays the progress. This setup is `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true`, and it is the only supported setup for queue mode.
+- **Manual execution:** When you clicked **Execute**, the main listened for a single call to the test URL. A manual execution can also use **pinned data**, i.e. fixed output saved on a node, to test the next nodes without the real call. Production executions ignore pinned data. When a user runs one node, the editor sends the run data that it already has, and the engine runs only the nodes on the path to that node whose input changed. In queue mode, a worker runs the manual execution, and a main relays the progress. This setup is `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true`, and it is the only supported setup for queue mode. Without the variable, the main runs manual executions and logs a deprecation warning. Version 3 removes the variable and always sends manual executions to workers.
 - **Queue mode:** The main or webhook process that takes the call keeps the HTTP request open. When the worker sends the result back through the queue, that process answers.
 - **Wait:** A Wait node pauses an execution. A short wait stays in memory, and a longer wait saves the execution to the database until the leader resumes it. A call to a resume URL can also end a wait, which is how forms and human-in-the-loop approvals work.
 - **Sub-workflow:** An Execute Workflow node starts a child execution in the same process as the parent. By default, the parent waits for its result. An agent can also call a workflow as a tool. This starts a separate execution, which runs on a worker in queue mode.
@@ -100,7 +100,7 @@ A message to an agent starts an [agent turn](agent-turn.md) instead.
 
 1. B. The engine never writes to the database itself. It calls the hooks before and after each node and the whole workflow.
 2. B. The main loads the published version of the workflow. Edits to the draft do not change production until you publish them.
-3. A. The worker sends the result back through the queue.
+3. A. The process that took the call keeps the request open. It sends the response when the result of the worker arrives through the queue.
 4. C. Only a short wait stays in memory.
 5. B. The editor sends the run data that it already has, so the engine runs only what changed.
 

@@ -18,7 +18,8 @@ export const collections = {
 			extend: z.object({
 				audience: z.string().optional(),
 				tier: z.number().optional(),
-				last_reviewed: z.coerce.date().optional(),
+				// An empty value is absent. Without this, it becomes the date 1970-01-01.
+				last_reviewed: z.preprocess((value) => value ?? undefined, z.coerce.date().optional()),
 				contact: z.string().optional(),
 			}),
 		}),

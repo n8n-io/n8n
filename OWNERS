@@ -70,15 +70,12 @@ docs/backend/                                           @n8n-io/core-execution
 docs/backend/agent-turn.md @n8n-io/ai-agents
 docs/backend/agent-publication.md @n8n-io/ai-agents
 docs/backend/sandboxing.md @n8n-io/core-execution
-docs/backend/ai-for-building.md @n8n-io/ai-assistant
-docs/backend/ai-context.md @n8n-io/context
-docs/backend/ai-evals.md @n8n-io/ai-trust
 docs/backend/coordination.md @n8n-io/core-execution
 docs/backend/lifecycle.md @n8n-io/core-application
 docs/backend/persistence.md @n8n-io/core-execution
 docs/backend/apis.md @n8n-io/core-application
 docs/backend/authentication.md @n8n-io/iam
-docs/backend/permissions.md @n8n-io/iam
+docs/backend/authorization.md @n8n-io/iam
 docs/backend/credentials.md @n8n-io/iam
 docs/backend/licensing.md @n8n-io/iam
 docs/backend/observability.md @n8n-io/governance-and-observability

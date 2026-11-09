@@ -114,11 +114,17 @@ for (const file of markdownFiles(DOCS_DIR)) {
 		const files = codeSpans(row[columns.file] ?? '')
 			.map(asRepoPath)
 			.filter((path) => path && existsSync(join(REPO_ROOT, path)) && statSync(join(REPO_ROOT, path)).isFile());
-		if (files.length === 0) return;
+		if (files.length === 0) {
+			if (codeSpans(row[columns.file] ?? '').length > 0) {
+				problems.push(`${where}  no file in the File column resolves: ${row[columns.file]}`);
+			}
+			return;
+		}
 		for (const span of codeSpans(row[columns.symbol] ?? '')) {
 			if (!SYMBOL.test(span)) continue;
 			const name = span.replace(/\(\)$/, '').split('.').pop() ?? span;
-			if (!files.some((path) => readRepoFile(/** @type {string} */ (path)).includes(name))) {
+			const identifier = new RegExp(`(?<![\\w$])${name.replaceAll('$', '\\$')}(?![\\w$])`);
+			if (!files.some((path) => identifier.test(readRepoFile(/** @type {string} */ (path))))) {
 				problems.push(`${where}  symbol not found in ${files.join(', ')}: ${span}`);
 			}
 		}

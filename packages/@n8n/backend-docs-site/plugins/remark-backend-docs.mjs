@@ -11,12 +11,13 @@
 // 6. Turns a multiple choice self-check into a quiz. See `buildQuizzes` for the format.
 // 7. Turns a GitHub alert, such as `> [!NOTE]`, into an aside. GitHub renders the same syntax.
 // 8. Shows an ordered list after a `<!-- steps -->` comment as numbered steps.
+import { existsSync, statSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const DOCS_DIR = resolve(REPO_DIR, 'docs/backend');
-const GITHUB_BASE = 'https://github.com/n8n-io/n8n/blob/master/';
+const GITHUB_BASE = 'https://github.com/n8n-io/n8n';
 
 const isRelative = (url) => !/^([a-z][a-z0-9+.-]*:|\/|#)/i.test(url);
 
@@ -37,7 +38,8 @@ export function rewriteLink(url, fromDir) {
 		const route = insideDocs.slice(0, -3).replace(/(^|\/)README$/, '$1');
 		return `/${route}${route ? '/' : ''}${suffix}`;
 	}
-	return `${GITHUB_BASE}${toPosix(relative(REPO_DIR, absolute))}${suffix}`;
+	const kind = existsSync(absolute) && statSync(absolute).isDirectory() ? 'tree' : 'blob';
+	return `${GITHUB_BASE}/${kind}/master/${toPosix(relative(REPO_DIR, absolute))}${suffix}`;
 }
 
 function walk(node, visit, index, parent) {
@@ -87,15 +89,15 @@ function buildQuizzes(tree) {
 				answers?.type !== 'list' ||
 				close?.type !== 'html' ||
 				!close.value.includes('</details>') ||
-				answers.children.length !== questions.children.length
+				answers.children.length !== questions.children.length ||
+				!answers.children.every((answer) => ANSWER.test(firstText(answer)?.value ?? ''))
 			) {
 				continue;
 			}
 			questions.data = { hProperties: { className: ['quiz'] } };
 			questions.children.forEach((question, q) => {
 				const answer = answers.children[q];
-				const letter = firstText(answer)?.value.match(ANSWER)?.[1];
-				if (!letter) return;
+				const letter = firstText(answer).value.match(ANSWER)[1];
 				stripPrefix(answer, ANSWER);
 				question.data = { hProperties: { className: ['quiz-question'], dataAnswer: letter } };
 				const options = question.children.find((child) => child.type === 'list');

@@ -64,7 +64,7 @@ In queue mode, a workflow tool runs on a worker, and the turn waits for it on th
 Your message took the simplest path. Other turns differ from it in these common ways:
 
 - **Other sources:** A published agent can also take messages from a chat platform (e.g. Slack), or run on a schedule. These messages go into the same queue.
-- **Second message:** A second message to the same conversation waits in the queue until the turn ends. It can also **steer** the running turn, i.e. join it before the next call to the model.
+- **Second message:** A second message to the same conversation waits in the queue until the turn ends. It can also **steer** the running turn, i.e. join it before the next call to the model. Only messages from the test chat and the n8n chat can steer.
 - **Approval:** A tool can ask a person for approval. The turn then saves a checkpoint and pauses, and the approval resumes it from the checkpoint on any main.
 - **Multi-main:** Mains relay the stream over pubsub, so a second tab or the Stop button works on any main.
 
