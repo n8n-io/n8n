@@ -75,10 +75,23 @@ ruleTester.run(RULE_NAME, NonRequiredFieldsInCollectionRule, {
 		{
 			name: 'non .node.ts file is ignored',
 			filename: '/tmp/helper.ts',
+			code: createNodeCode(`
+				{ displayName: 'Limit', name: 'limit', type: 'number', default: 50 },
+			`),
+		},
+		{
+			name: 'node without a static description is skipped',
+			filename: '/tmp/TestNode.node.ts',
+			code: 'export class TestNode implements INodeType { description = nodeDescription; }',
+		},
+		{
+			name: 'node without an inline properties array is skipped',
+			filename: '/tmp/TestNode.node.ts',
 			code: `
-				export const properties = [
-					{ displayName: 'Limit', name: 'limit', type: 'number', default: 50 },
-				];
+				import { userFields } from './UserDescription';
+				export class TestNode implements INodeType {
+					description = { properties: userFields };
+				}
 			`,
 		},
 		{
@@ -156,6 +169,31 @@ ruleTester.run(RULE_NAME, NonRequiredFieldsInCollectionRule, {
 					type: 'options',
 					options: [{ name: 'Access Token', value: 'accessToken' }],
 					default: 'accessToken',
+				},
+			`),
+		},
+		{
+			name: 'optional Simplify control stays at the top level',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeCode(`
+				{
+					displayName: 'Simplify',
+					name: 'simplify',
+					type: 'boolean',
+					default: true,
+				},
+			`),
+		},
+		{
+			name: 'explicitly optional Simplify control can default to false',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeCode(`
+				{
+					displayName: 'Simplify Output',
+					name: 'simplify',
+					type: 'boolean',
+					required: false,
+					default: false,
 				},
 			`),
 		},
@@ -280,6 +318,34 @@ ruleTester.run(RULE_NAME, NonRequiredFieldsInCollectionRule, {
 			errors: [{ messageId: MESSAGE_ID, data: { field: 'limit' } }],
 		},
 		{
+			name: 'optional dropdown is not a collection',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeCode(`
+				{
+					displayName: 'Format',
+					name: 'format',
+					type: 'options',
+					options: [{ name: 'Text', value: 'text' }],
+					default: 'text',
+				},
+			`),
+			output: null,
+			errors: [{ messageId: MESSAGE_ID, data: { field: 'format' } }],
+		},
+		{
+			name: 'non-boolean field named simplify is not exempt',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeCode(`
+				{
+					displayName: 'Simplify',
+					name: 'simplify',
+					type: 'string',
+					default: '',
+				},
+			`),
+			errors: [{ messageId: MESSAGE_ID, data: { field: 'simplify' } }],
+		},
+		{
 			name: 'each non-required top-level field is reported',
 			filename: '/tmp/TestNode.node.ts',
 			code: createNodeCode(`
@@ -291,15 +357,15 @@ ruleTester.run(RULE_NAME, NonRequiredFieldsInCollectionRule, {
 					default: 50,
 				},
 				{
-					displayName: 'Simplify',
-					name: 'simplify',
+					displayName: 'Include Metadata',
+					name: 'includeMetadata',
 					type: 'boolean',
 					default: true,
 				},
 			`),
 			errors: [
 				{ messageId: MESSAGE_ID, data: { field: 'limit' } },
-				{ messageId: MESSAGE_ID, data: { field: 'simplify' } },
+				{ messageId: MESSAGE_ID, data: { field: 'includeMetadata' } },
 			],
 		},
 	],

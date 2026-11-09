@@ -32,6 +32,16 @@ export default [
 ];
 ```
 
+## UX guidelines
+
+Keep required fields and standard controls at the top level of a node. Put
+optional settings in an **Additional Fields** or **Additional Options**
+collection. Keep the boolean **Simplify** control at the top level so users
+can choose the response format.
+
+See the [field placement guide and example](docs/rules/non-required-fields-in-collection.md#ux-guidelines).
+The `non-required-fields-in-collection` rule warns about this convention.
+
 ## Rules
 
 <!-- begin auto-generated rules list -->

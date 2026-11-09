@@ -4,13 +4,19 @@
 
 <!-- end auto-generated rule header -->
 
-## Rule Details
+## UX guidelines
 
-The n8n [UX guidelines](https://docs.n8n.io/integrations/creating-nodes/build/reference/ux-guidelines/)
-keep the top level of a node to the fields the user must fill in. Put every
-other field in a `collection`, usually named `Additional Fields` or `Additional
-Options`. The user then sees a short form, and opens the collection only to
-change a default.
+Keep required fields and standard controls at the top level of a node. Put
+optional settings in a `collection` named `Additional Fields` or `Additional
+Options`. This keeps the form short. Users open the collection to change an
+optional setting. See the [correct example](#-correct) below.
+
+Keep the Resource, Operation, and Authentication selectors visible. Keep the
+boolean `simplify` control at the top level too. It lets users choose a
+simplified response or the raw data. This follows the
+[Simplify responses guideline](https://docs.n8n.io/connect/create-nodes/plan-your-node/node-ui-design#simplify-responses).
+
+## Rule Details
 
 This rule reports each field in `description.properties` that is not marked
 `required: true`. These fields are exempt:
@@ -21,6 +27,8 @@ This rule reports each field in `description.properties` that is not marked
   because they hold no user input.
 - The `resource`, `operation`, and `authentication` selectors, because they
   decide which other fields n8n shows.
+- The boolean `simplify` control, because it selects the response format.
+  Other optional boolean fields still belong in a collection.
 
 The rule checks placement only. It does not check the name of a container: a
 collection named `additionalFields`, `options`, `updateFields` or `filters` is
@@ -28,6 +36,12 @@ equally valid, and the rule does not look at the fields inside a container.
 
 A `required` value that is not a boolean literal (for example a variable) is
 unknowable at lint time, so the rule makes no report for that field.
+
+The rule checks inline property objects in `.node.ts` files. It skips spread
+elements and arrays imported from other modules. It does not resolve them.
+
+The rule has no automatic fix. Moving a field into a collection changes its
+parameter path. Update the code that reads the field when you move it.
 
 ## Why a lint rule and not a type
 
@@ -88,6 +102,12 @@ export class MyNode implements INodeType {
         type: 'string',
         required: true,
         default: '',
+      },
+      {
+        displayName: 'Simplify',
+        name: 'simplify',
+        type: 'boolean',
+        default: true,
       },
       {
         displayName: 'Additional Fields',

@@ -91,6 +91,11 @@ export const NonRequiredFieldsInCollectionRule = createRule({
 					continue;
 				}
 
+				// Keep the standard response-format control visible at the top level.
+				if (name === 'simplify' && type === 'boolean') {
+					continue;
+				}
+
 				if (isRequired(element)) {
 					continue;
 				}
