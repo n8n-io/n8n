@@ -858,6 +858,35 @@ describe('run', () => {
 		}
 	});
 
+	it('replaces the personal credentials count of an earlier run', async () => {
+		globalConfig.executions.mode = 'queue';
+		try {
+			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined);
+			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
+			vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
+			vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
+
+			const data: IWorkflowExecutionDataProcess = {
+				executionMode: 'trigger',
+				workflowData: mock<IWorkflowExecutionDataProcess['workflowData']>({
+					id: 'workflow-id',
+					nodes: [],
+					staticData: {},
+				}),
+				telemetryMetadata: { personalCredentialsCount: 2 },
+			};
+
+			await runner.run(data, true);
+
+			expect(data.telemetryMetadata).toEqual({ personalCredentialsCount: 0 });
+		} finally {
+			globalConfig.executions.mode = 'regular';
+		}
+	});
+
 	it('uses recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom with data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
