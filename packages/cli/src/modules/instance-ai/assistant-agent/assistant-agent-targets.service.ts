@@ -13,10 +13,9 @@ import {
 	type AgentBuilderTarget,
 } from '@n8n/instance-ai';
 
+import { AgentContextService } from '@/modules/agents/agent-context.service';
 import { AgentDraftService } from '@/modules/agents/agent-draft.service';
-import { AgentsService } from '@/modules/agents/agents.service';
 import { SystemAgentThreadMetadataService } from '@/modules/agents/system-agents/system-agent-thread-metadata.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
 
@@ -49,7 +48,7 @@ export class AssistantAgentTargetsService {
 	constructor(
 		private readonly threadMetadata: SystemAgentThreadMetadataService,
 		private readonly agentDrafts: AgentDraftService,
-		private readonly agents: AgentsService,
+		private readonly agentContext: AgentContextService,
 	) {}
 
 	async getState(user: User, threadId: string): Promise<AssistantAgentTargetsState> {
@@ -70,11 +69,9 @@ export class AssistantAgentTargetsService {
 	): Promise<AssistantAgentTargetsState> {
 		const { projectId } = await this.threadMetadata.readThread(ASSISTANT_AGENT_ID, user, threadId);
 		assertThreadProject(projectId, target.projectId);
-		// Check the scope first, so the route does not tell a user without access which agents exist.
-		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
-			throw new ForbiddenError('You do not have permission to access agents in this project');
-		}
-		if (!(await this.agents.findById(target.agentId, projectId))) {
+		// Throws before the lookup when the user cannot read agents in the project,
+		// so the route does not tell that user which agents exist.
+		if ((await this.agentContext.resolveAgentName(user, projectId, target.agentId)) === undefined) {
 			throw new NotFoundError('Agent not found');
 		}
 		return await this.writeBinding(user, threadId, target);
