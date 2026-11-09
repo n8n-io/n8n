@@ -1,0 +1,40 @@
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_7a118b07ee147d::t_079cd45d0a4487 55,59,62,65,68,70,74-75,77,79,172,187,452,476,631
+  s_7a118b07ee147d::t_bf147c8d00b33d 113,130,165,169,175,178,180,184-185,189,212,215-216,228,242,307,311,314,317,320,322,326-327,329,331,347,365,368,382,439,443,446,449,454,458-459,461,463,481,486,489-490,499,502,574,581,585,588,591,594,596,600-601,603,605,618,623,628,632,641,644,658,723,727,730,733,736,738,742-743,745,747,768,771-772,784,798,816,832-833,889,893,896,899,902,904,908-909,911,913
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_7a118b07ee147d::t_079cd45d0a4487 55,59,62,172,251,352
+  s_7a118b07ee147d::t_aa0da171c1a55f 65,68,70,74-75,77,79,113,130,165,169,175,178,180,184-185,187,189,207,212,215-216,228,247,250,263,277,342,345-346,349,354-355,357,361-362,364,366,382,387,390-391,403,417,435,453,510,514,517,520,523,525,529-530,532,534
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_7a118b07ee147d::t_3599372c093c54 8343
+  s_7a118b07ee147d::t_302151bdc22cda 8405-8407,8414
+  s_7a118b07ee147d::t_88a30f6c0211e0 8344-8347,8403-8404,8415-8420
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  s_7a118b07ee147d::t_302151bdc22cda 25
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_7a118b07ee147d::t_079cd45d0a4487 55,59,62,65,68,70,74-75,77,79,113,117,129,141,158,163,168,210,225,526,702,706,895,927
+  s_7a118b07ee147d::t_fd5351c6bc4b4d 144,203,207,213,216,218,222-223,227,242,247,252,255-256,265,268,282,347,351,354,357,360,362,366-367,369,371,387,405,417,420,429,432,446,451,456,513,517,520,523,528,532-533,535,537,551-552,557,562,565-566,575,578,650,657,661,664,667,670,672,676-677,679,681,705,718,737,740-741,753,767,832,836,839,842,845,847,851-852,854,856,879,882-883,909,945-946,1002,1006,1009,1012,1015,1017,1021-1022,1024,1026
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_7a118b07ee147d::t_302151bdc22cda 113
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_7a118b07ee147d::t_3599372c093c54 350,356,361
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_7a118b07ee147d::t_302151bdc22cda 914-915
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_7a118b07ee147d::t_b750a4c1dee61b 55,59,62,65,68,70,74-75,77,79,113,130,165,169,172,175,178,180,184-185,187,189,210,213-214,226,240,245,248-249,261,280,283-284,296,353,357,360,363,366,368,372-373,375,377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55a7ad45b3f53ee26e39307b64bc0ae556a986f1",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
