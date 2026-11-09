@@ -22,7 +22,7 @@ import type { BindingContext } from 'samlify/types/src/entity';
 import config from '@/config';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import type { CacheService, EventService } from '@n8n/backend-services';
 import type { UrlService } from '@n8n/backend-services';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
