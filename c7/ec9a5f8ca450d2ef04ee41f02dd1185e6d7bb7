@@ -1,10 +1,9 @@
-packages/quality/testing/playwright/tests/infrastructure/promotions/environment-lock-multi-main.spec.ts
-  s_15e6ef8768e112::t_fe2b0befa228b0 1-160
-packages/cli/src/modules/promotions.ee/promotion-environment-lock.service.ts
-  s_15e6ef8768e112::t_d17b154f5c105c 34-42
 packages/quality/testing/playwright/services/promotions-api-helper.ts
-  s_15e6ef8768e112::t_e1bb78d752e5c9 5-6,69-70
-  s_15e6ef8768e112::t_98fffd5481b70f 71-72
+  s_0da4b348b3b902::t_0fdd6cef4dd53f 5-6,69-72
+packages/quality/testing/playwright/tests/infrastructure/promotions/environment-lock-multi-main.spec.ts
+  s_0da4b348b3b902::t_ae72b4ce6d8b15 1-160
+packages/cli/src/modules/promotions.ee/promotion-environment-lock.service.ts
+  s_bfb3680951bbc8::t_7e690d55f9a188 34-42
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -12,11 +11,19 @@ packages/quality/testing/playwright/services/promotions-api-helper.ts
   "base_commit_sha": "c7ec9a5f8ca450d2ef04ee41f02dd1185e6d7bb7",
   "prompts": {},
   "sessions": {
-    "s_15e6ef8768e112": {
+    "s_0da4b348b3b902": {
       "agent_id": {
         "tool": "claude",
-        "id": "10d3b34c-e62c-4e8c-b494-f31c38e5cd50",
+        "id": "b39a28ab-fdbc-4a8e-8e76-7040acec36d2",
         "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_bfb3680951bbc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b9e7e40-a75c-4a5a-a07a-3f53514351f8",
+        "model": "unknown"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"
     }
