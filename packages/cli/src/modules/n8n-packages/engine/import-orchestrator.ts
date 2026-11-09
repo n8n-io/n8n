@@ -784,7 +784,10 @@ function scopeAgentRequirements(
 	};
 }
 
-/** Imported channels never use package credentials, so a channel reference alone requires none. */
+/**
+ * Imported channels never use package credentials, so a channel reference alone requires none.
+ * Exports write channels without credential IDs, but older packages still carry them.
+ */
 function withoutChannelOnlyConsumers<
 	T extends { id: string; usedBy: PackageRequirementConsumer[] },
 >(requirements: T[] | undefined, agents: AgentPlanItem[]): T[] | undefined {

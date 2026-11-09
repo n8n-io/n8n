@@ -33,7 +33,7 @@ import { createEngineStepDataLoader } from '../engine-step-data-loader';
 import type { SubWorkflowResolver } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
-import { testAdditionalDataFactory, v1Workflow } from './fixtures';
+import { noSubWorkflows, testAdditionalDataFactory, v1Workflow } from './fixtures';
 
 const registry = new Map<string, INodeType | IVersionedNodeType>([
 	['n8n-nodes-base.set', new SetNode()],
@@ -319,7 +319,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		triggerOutputs: TriggerOutputs | null,
 		mode?: ExecutionMode,
 		{
-			resolveSubWorkflow,
+			resolveSubWorkflow = noSubWorkflows,
 			finishCount = 1,
 		}: {
 			/** Resolves the sub-workflows the run calls, as the control plane would. */

@@ -76,7 +76,16 @@ const exemptedBrowserShim = (
 	) ?? []
 ).length;
 
-const exempted = exemptedHarness + exemptedContainerHarness + exemptedBrowserShim;
+// Benchmark scenario scripts run in k6, not Node: k6 provides `k6` and `k6/*` at
+// run time, so the only package they can import from is the `@types/k6` declarations.
+const exemptedK6Scenario = (
+	unwrapped.match(
+		/type\s*declaration\s*package[^\n]*\n\s*,-\[[^\]]*\/benchmark\/scenarios\/[^\]]*\.script\.js:/g,
+	) ?? []
+).length;
+
+const exempted =
+	exemptedHarness + exemptedContainerHarness + exemptedBrowserShim + exemptedK6Scenario;
 const current = Number(match[1]) - exempted;
 
 if (write) {
@@ -86,7 +95,7 @@ if (write) {
 }
 
 console.log(
-	`turbo boundaries: ${current} issues (baseline ${baseline}, ${exemptedHarness} node-test-harness + ${exemptedContainerHarness} container-harness + ${exemptedBrowserShim} browser-shim imports exempted)`,
+	`turbo boundaries: ${current} issues (baseline ${baseline}, ${exemptedHarness} node-test-harness + ${exemptedContainerHarness} container-harness + ${exemptedBrowserShim} browser-shim + ${exemptedK6Scenario} k6-scenario imports exempted)`,
 );
 
 if (current > baseline) {

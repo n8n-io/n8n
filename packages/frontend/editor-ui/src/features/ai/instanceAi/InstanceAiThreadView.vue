@@ -344,6 +344,7 @@ const activeAgentPreviewSessionId = computed(() => {
 });
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
+provide('showMentionedWorkflow', preview.showMentionedWorkflow);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
