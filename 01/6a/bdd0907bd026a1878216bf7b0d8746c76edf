@@ -1,0 +1,42 @@
+packages/@n8n/backend-common/src/locking/lock-service.interface.ts
+  s_bfb3680951bbc8::t_2b364994d2f137 1
+  s_bfb3680951bbc8::t_6de1859710b445 16-23,28-32
+  s_bfb3680951bbc8::t_4ba1923b25ab4b 24-27
+packages/cli/src/modules/promotions.ee/promotion-environment-lock.service.ts
+  s_bfb3680951bbc8::t_a128283f3720a7 19-27
+  s_bfb3680951bbc8::t_cd544b9f076a17 57-60
+  s_bfb3680951bbc8::t_162536c6d7001f 76-77
+packages/cli/src/modules/promotions.ee/__tests__/promotion-telemetry.test.ts
+  s_bfb3680951bbc8::t_4186847cbbaacf 13-16
+  s_bfb3680951bbc8::t_e7f6c317c6c595 36
+packages/cli/src/modules/promotions.ee/promotion-telemetry.ts
+  s_bfb3680951bbc8::t_19a5b8b8bde46c 22
+  s_bfb3680951bbc8::t_3f3a710f82a66e 9-12
+packages/cli/src/scaling/redis-lock.service.ts
+  s_bfb3680951bbc8::t_8fcf419dcf2cfc 72-73,77,80,82
+  s_bfb3680951bbc8::t_c88968d1272aa2 169-170,173
+packages/@n8n/backend-common/src/locking/__tests__/in-process-lock.service.test.ts
+  s_bfb3680951bbc8::t_13d929097d7494 120-121
+packages/cli/src/scaling/__tests__/redis-lock.service.test.ts
+  s_bfb3680951bbc8::t_23eb0683ba9267 1
+  s_bfb3680951bbc8::t_1c8d3eed3e09cb 98-127
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environment-lock.service.test.ts
+  s_bfb3680951bbc8::t_e35fa780d4b998 130-147
+  s_bfb3680951bbc8::t_c9b1f30d639c59 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "016abdd0907bd026a1878216bf7b0d8746c76edf",
+  "prompts": {},
+  "sessions": {
+    "s_bfb3680951bbc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b9e7e40-a75c-4a5a-a07a-3f53514351f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
