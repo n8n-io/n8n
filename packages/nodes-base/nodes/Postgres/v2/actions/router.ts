@@ -59,7 +59,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				);
 		}
 	} catch (err) {
-		if (!this.continueOnFail()) throw err;
+		if (
+			!this.continueOnFail() ||
+			(err instanceof NodeOperationError && err.context.itemIndex !== undefined)
+		) {
+			throw err;
+		}
 		const error = parsePostgresError(node, err, []);
 		return [items.map((_, index) => prepareErrorItem({ ...error, message: error.message }, index))];
 	}

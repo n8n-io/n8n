@@ -391,7 +391,12 @@ export class PostgresV1 implements INodeType {
 
 			return [returnItems];
 		} catch (err) {
-			if (!this.continueOnFail()) throw err;
+			if (
+				!this.continueOnFail() ||
+				(err instanceof NodeOperationError && err.context.itemIndex !== undefined)
+			) {
+				throw err;
+			}
 			const error = parsePostgresError(this.getNode(), err, []);
 			return [
 				items.map((_, index) => prepareErrorItem({ ...error, message: error.message }, index)),

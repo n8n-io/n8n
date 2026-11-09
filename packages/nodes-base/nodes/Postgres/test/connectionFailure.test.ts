@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -139,6 +140,48 @@ describe.each([
 		expect(db.multi).toHaveBeenCalledWith('SELECT 1 AS id');
 		expect(context.helpers.getSSHClient).not.toHaveBeenCalled();
 	});
+
+	it.each([0, 1])('should preserve the parameter error for input %i', async (itemIndex) => {
+		const db = mockDeep<PgpDatabase>();
+		poolManager.getConnection.mockResolvedValue({ db, pgp: pgPromise() });
+		context.getInputData.mockReturnValue([{ json: { id: 1 } }, { json: { id: 2 } }]);
+		const error = new NodeOperationError(context.getNode(), 'Invalid query parameter', {
+			itemIndex,
+		});
+		const getNodeParameter = context.getNodeParameter.getMockImplementation()!;
+		context.getNodeParameter.mockImplementation((parameter, index, ...args) => {
+			if (parameter === 'query' && index === itemIndex) throw error;
+			return getNodeParameter(parameter, index, ...args);
+		});
+
+		await expect(postgres.execute.call(context)).rejects.toBe(error);
+		expect(error.context.itemIndex).toBe(itemIndex);
+		expect(db.multi).not.toHaveBeenCalled();
+	});
+
+	if (version >= 2) {
+		it.each([0, 1])(
+			'should keep invalid query replacements scoped to input %i',
+			async (itemIndex) => {
+				const db = mockDeep<PgpDatabase>();
+				poolManager.getConnection.mockResolvedValue({ db, pgp: pgPromise() });
+				context.getInputData.mockReturnValue([{ json: { id: 1 } }, { json: { id: 2 } }]);
+				const getNodeParameter = context.getNodeParameter.getMockImplementation()!;
+				context.getNodeParameter.mockImplementation((parameter, index, ...args) => {
+					if (parameter === 'options.queryReplacement' && index === itemIndex) return {};
+					return getNodeParameter(parameter, index, ...args);
+				});
+
+				await expect(postgres.execute.call(context)).rejects.toMatchObject({
+					name: 'NodeOperationError',
+					message:
+						'Query Parameters must be a string of comma-separated values or an array of values',
+					context: { itemIndex },
+				});
+				expect(db.multi).not.toHaveBeenCalled();
+			},
+		);
+	}
 
 	const scenarios: Array<{
 		operation: string;
