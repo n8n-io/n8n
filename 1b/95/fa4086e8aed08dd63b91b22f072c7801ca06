@@ -1,0 +1,21 @@
+packages/frontend/@n8n/design-system/src/css/mixins/mixins.scss
+  s_04379449181c8a::t_a1aaf3349386a1 65-78
+packages/frontend/@n8n/design-system/src/components/N8nAttachments/Attachment/Attachment.vue
+  s_04379449181c8a::t_4412be2ee16317 420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b95fa4086e8aed08dd63b91b22f072c7801ca06",
+  "prompts": {},
+  "sessions": {
+    "s_04379449181c8a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c00a-1c7c-7164-ad86-908c77224347",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
