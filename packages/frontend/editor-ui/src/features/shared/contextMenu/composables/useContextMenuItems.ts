@@ -27,6 +27,7 @@ import { injectContextMenuGroupView } from './contextMenuGroupView';
 export type ContextMenuAction =
 	| 'open'
 	| 'copy'
+	| 'paste'
 	| 'toggle_activation'
 	| 'duplicate'
 	| 'execute'
@@ -475,6 +476,12 @@ export function useContextMenuItems(
 								disabled: isReadOnly.value,
 							},
 						]),
+				{
+					id: 'paste',
+					label: i18n.baseText('contextMenu.paste'),
+					shortcut: { metaKey: true, keys: ['V'] },
+					disabled: isReadOnly.value,
+				},
 				...layoutActions,
 				...groupViewActions,
 				// Join the group-view section

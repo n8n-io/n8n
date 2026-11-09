@@ -542,6 +542,15 @@ describe('useContextMenu', () => {
 			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
 			expect(byId.add_node?.disabled).toBe(true);
 			expect(byId.add_sticky?.disabled).toBe(true);
+			expect(byId.paste?.disabled).toBe(true);
+		});
+
+		it('offers an enabled paste action in the empty-selection menu', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			const paste = actions.value.find((action) => action.id === 'paste');
+			expect(paste?.disabled).toBe(false);
 		});
 
 		it('leaves out add sticky when the sticky note type is not loaded', () => {
