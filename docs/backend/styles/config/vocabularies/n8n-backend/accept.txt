@@ -69,7 +69,7 @@ Vitest
 (?i)walkthroughs
 (?i)webhook
 (?i)webhooks
-zod
+Zod
 (?i)config
 (?i)configs
 (?i)enum
@@ -185,3 +185,5 @@ tomi
 bjorger
 mfsiega
 SamWooler
+Pinecone
+martintsch

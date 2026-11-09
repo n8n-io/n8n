@@ -57,7 +57,7 @@ sequenceDiagram
     C->>N: request with OAuth token
 ```
 
-**Sessionless caller:** A user who opens an invitation link has no session yet, so the route for this link skips authentication. A route that skips authentication must verify the caller in another way.
+**Caller without a session:** A user who opens an invitation link has no session yet, so the route for this link skips authentication. A route that skips authentication must verify the caller in another way.
 
 ## Sign-in
 

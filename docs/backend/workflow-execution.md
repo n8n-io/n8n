@@ -34,7 +34,7 @@ Every execution starts the same way, whether a webhook call, a schedule, a manua
 
 ## Engine
 
-The engine keeps a stack of nodes that are ready to run. It takes a node, runs it with its input items, and adds the nodes that come next to the stack. It stops when the stack is empty. So the engine runs one branch to its end before it starts the next. Workflows from before n8n 1.0 keep the old breadth-first order, because the order is a setting of each workflow.
+The engine keeps a stack of nodes that are ready to run. It takes a node, runs it with its input items, and adds the nodes that come next to the stack. It stops when the stack is empty. Therefore, the engine runs one branch to its end before it starts the next. Workflows from before n8n 1.0 keep the old breadth-first order, because the order is a setting of each workflow.
 
 In your execution, the Webhook node turned the request into one item, with the request body under `body`. The Edit Fields node then evaluated its expression `'Hello, ' + $json.body.name` for this item, in a sandbox, and output one item, `{"greeting":"Hello, Nathan"}`.
 
