@@ -110,3 +110,21 @@ jobs:
       previous-version: ${{ inputs.previous_version }}
       version: ${{ inputs.version }}
     secrets: inherit
+
+  publish-api-schema:
+    name: 'Publish Public API schema'
+    # Runs when the `stable` tag moves: on a stable patch release, or on a minor
+    # release that promotes the previous beta to stable.
+    if: |
+      inputs.release_type != 'rc' &&
+      !inputs.prerelease &&
+      (inputs.track == 'stable' || inputs.new_stable_version != '')
+    permissions:
+      contents: read
+      deployments: write
+    uses: ./.github/workflows/util-publish-api-schema.yml
+    with:
+      version: ${{ inputs.new_stable_version != '' && inputs.new_stable_version || inputs.version }}
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

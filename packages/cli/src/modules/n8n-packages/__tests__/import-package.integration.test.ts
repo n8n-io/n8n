@@ -1,3 +1,5 @@
+import { WorkflowService } from '@/workflows/workflow.service';
+import { ImportOrchestrator } from '../engine/import-orchestrator';
 import { LicenseState } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import {
@@ -47,6 +49,7 @@ import {
 } from '../n8n-packages.types';
 import type { WorkflowPublishingPolicy as WorkflowPublishingPolicyValue } from '../entities/workflow/workflow-publishing-policy.types';
 import { FORMAT_VERSION } from '../spec/constants';
+import type { PackageManifest } from '../spec/manifest.schema';
 import {
 	buildImportPackageBuffer,
 	githubCredentialPayload,
@@ -207,6 +210,23 @@ describe('Package import batch validation', () => {
 
 		const allWorkflows = await workflowRepo.find({ order: { name: 'ASC' } });
 		expect(allWorkflows.map((w) => w.sourceWorkflowId)).toEqual(['wf-source-1', 'wf-source-2']);
+	});
+
+	it('imports an older package whose manifest has exportedAt', async () => {
+		const owner = await createOwner();
+
+		const tarBuffer = await buildImportPackageBuffer(
+			[serializedWorkflow({ id: 'wf-older', name: 'Older' })],
+			{ manifestExtras: { exportedAt: '2026-05-18T12:00:00.000Z' } as Partial<PackageManifest> },
+		);
+
+		const result = await importPackage({ user: owner, packageBuffer: tarBuffer });
+
+		expect(result.workflows).toHaveLength(1);
+		expect(result.package).toEqual({
+			sourceN8nVersion: '1.0.0',
+			sourceId: 'integration-test-source',
+		});
 	});
 });
 
@@ -980,7 +1000,6 @@ describe('Package import rejection cases', () => {
 			'manifest.json',
 			JSON.stringify({
 				packageFormatVersion: '99',
-				exportedAt: new Date().toISOString(),
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'bad-manifest',
 			}),
@@ -1073,7 +1092,6 @@ describe('Package import rejection cases', () => {
 			'manifest.json',
 			JSON.stringify({
 				packageFormatVersion: '99',
-				exportedAt: new Date().toISOString(),
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'integration-test-source',
 				workflows: [{ id: 'wf-x', name: 'X', target: 'workflows/wf-x' }],
@@ -1100,7 +1118,6 @@ describe('Package import rejection cases', () => {
 			'manifest.json',
 			JSON.stringify({
 				packageFormatVersion: FORMAT_VERSION,
-				exportedAt: new Date().toISOString(),
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'integration-test-source',
 				workflows: [{ id: 'wf-missing', name: 'Missing', target: 'workflows/nowhere-to-be-found' }],
@@ -2777,6 +2794,96 @@ describe('Package import workflow publishing policy', () => {
 		},
 	];
 
+	it.each([
+		{
+			publishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			archived: true,
+			sourcePublished: false,
+		},
+		{
+			publishingPolicy: WorkflowPublishingPolicy.MatchSource,
+			archived: true,
+			sourcePublished: true,
+		},
+		{
+			publishingPolicy: WorkflowPublishingPolicy.UnpublishAll,
+			archived: false,
+			sourcePublished: false,
+		},
+		{
+			publishingPolicy: WorkflowPublishingPolicy.MatchSource,
+			archived: false,
+			sourcePublished: false,
+		},
+		{
+			publishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
+			archived: false,
+			sourcePublished: true,
+		},
+	])(
+		'keeps the planned publication action after a state change under $publishingPolicy (archived: $archived)',
+		async ({ publishingPolicy, archived, sourcePublished }) => {
+			const owner = await createOwner();
+			const packageBuffer = await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'planned-workflow',
+					name: 'Planned workflow',
+					isArchived: archived,
+					publishedVersionId: sourcePublished ? WIRE_VERSION_ID : null,
+					nodes: scheduleTriggerNodes(),
+				}),
+			]);
+			const seeded = await importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({
+						id: 'planned-workflow',
+						name: 'Planned workflow',
+						isArchived: archived,
+						publishedVersionId: sourcePublished ? WIRE_VERSION_ID : null,
+						nodes: scheduleTriggerNodes().map((node) => ({
+							...node,
+							name: 'Initial Schedule Trigger',
+						})),
+					}),
+				]),
+			});
+			const workflowId = seeded.workflows[0].localId;
+			const service = Container.get(WorkflowService);
+			const orchestrator = Container.get(ImportOrchestrator);
+			const apply = orchestrator.apply.bind(orchestrator);
+			let activeVersionId: string | null = null;
+			const applySpy = vi.spyOn(orchestrator, 'apply').mockImplementationOnce(async (...args) => {
+				if (archived) {
+					await service.unarchive(owner, workflowId);
+				} else {
+					const published = await service.activateWorkflow(owner, workflowId);
+					activeVersionId = published.activeVersionId;
+				}
+				return await apply(...args);
+			});
+			try {
+				const result = await importPackage({
+					user: owner,
+					packageBuffer,
+					conflictPolicy: ImportConflictPolicy.NewVersion,
+					publishingPolicy,
+					apiKeyScopes: archived
+						? ['workflow:import', 'workflow:delete']
+						: ['workflow:import', 'workflow:activate'],
+				});
+				expect(applySpy).toHaveBeenCalledOnce();
+				expect(result.workflows[0].publishing).toEqual({ state: 'unchanged' });
+				const saved = await Container.get(WorkflowRepository).findOneByOrFail({ id: workflowId });
+				expect(saved.isArchived).toBe(false);
+				expect(saved.activeVersionId).toBe(activeVersionId);
+				if (!archived) expect(saved.versionId).not.toBe(activeVersionId);
+			} finally {
+				applySpy.mockRestore();
+			}
+		},
+	);
+
 	it.each<WorkflowPublishingPolicyValue>([
 		WorkflowPublishingPolicy.PreservePublishedState,
 		WorkflowPublishingPolicy.MatchSource,
@@ -3146,6 +3253,37 @@ describe('Package import workflow publishing policy', () => {
 			{ state: 'published' },
 			{ state: 'published' },
 		]);
+	});
+
+	it('publishes for an API key with workflow:activate', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			apiKeyScopes: ['workflow:import', 'workflow:activate'],
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-api-key', name: 'API key', nodes: scheduleTriggerNodes() }),
+			]),
+			publishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		expect(result.workflows.map(({ publishing }) => publishing)).toEqual([{ state: 'published' }]);
+	});
+
+	it('requires workflow:activate from an API key when the import publishes', async () => {
+		const owner = await createOwner();
+
+		await expect(
+			importPackage({
+				user: owner,
+				apiKeyScopes: ['workflow:import'],
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-api-key', name: 'API key', nodes: scheduleTriggerNodes() }),
+				]),
+				publishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			}),
+		).rejects.toThrow(ForbiddenError);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
 	});
 });
 

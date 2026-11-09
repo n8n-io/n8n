@@ -107,7 +107,7 @@ describe('AuthService', () => {
 						mfaSecret: 'secret',
 					}),
 				),
-			).toEqual('WUXEVFet9W');
+			).toEqual('WRZ6wXhLW9');
 			expect(
 				authService.createJWTHash(
 					mock<User>({
@@ -117,7 +117,16 @@ describe('AuthService', () => {
 						mfaSecret: 'secret',
 					}),
 				),
-			).toEqual('toYQYKufH6');
+			).toEqual('RyOQ0yF+N1');
+		});
+
+		it('should produce distinct hashes for MFA secrets that share a prefix', () => {
+			const withSecret = (mfaSecret: string) =>
+				authService.createJWTHash(
+					mock<User>({ email: user.email, password: user.password, mfaEnabled: true, mfaSecret }),
+				);
+
+			expect(withSecret('U2FsdGVkX1+first')).not.toEqual(withSecret('U2FsdGVkX1+second'));
 		});
 	});
 
@@ -992,6 +1001,32 @@ describe('AuthService', () => {
 			const result = await authService.resolveJwt(validToken, req, res);
 			expect(result).toEqual([user, { usedMfa: false }]);
 			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should skip browserId check for system agent chat attachment GET requests', async () => {
+			personRepository.findByIdWithRole.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/agents/system',
+				route: { path: '/:agentId/chat/attachments/:attachmentId' },
+			});
+
+			const result = await authService.resolveJwt(validToken, req, res);
+			expect(result).toEqual([user, { usedMfa: false }]);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should not skip browserId check for other system agent routes', async () => {
+			personRepository.findByIdWithRole.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/agents/system',
+				route: { path: '/:agentId/chat/:threadId/messages' },
+			});
+
+			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 		});
 
 		it('should not skip browserId check for other project-scoped agent routes', async () => {

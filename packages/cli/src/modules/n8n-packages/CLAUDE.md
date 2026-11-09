@@ -44,6 +44,20 @@ flowchart LR
   bring each one's own folders + workflows + credential deps into scope. Don't split folder vs workflow:
   they share target resolution, credential resolution, and publishing.
 
+### Plan and write are separate steps
+- `ProjectPackageImporter.import` is `planImport` + throw on issues + `applyPlan`. `planImport`
+  writes no data. It returns every issue that blocks the import, and `applyPlan` writes a plan
+  without issues. `N8nPackagesService.planPackage`, `planPackageSelection` and
+  `applyPackagePlan` expose the two steps to promotions, which previews an Apply with the
+  same plan that the Apply writes.
+- `mode: 'check'` makes the policy gates call `evaluate*`, so a preview writes no audit event.
+  A policy check that cannot run becomes the issue `policy-check-failed`. A column id of another
+  data table becomes an issue too. `mode: 'enforce'` keeps the import's errors as they are.
+- A refused project (project permission, an id of a personal project) is an issue in both
+  modes, so Apply returns it as a blocker. `import` throws the same error for it as before.
+- A new gate returns issues. Throw only for API-key scopes and malformed packages. Two older
+  checks still throw in both modes: the folder license and `assertCanPublish`.
+
 ### Adding an IMPORT property
 
 1. **Module** (here)

@@ -99,6 +99,7 @@ const props = withDefaults(
 		placeholderKey?: BaseTextKey;
 		/** Already-translated base placeholder; wins over `placeholderKey`. Never used as a prefill. */
 		placeholder?: string;
+		composerHeight?: string;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		previewPromptKey?: BaseTextKey | null;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
@@ -686,6 +687,9 @@ watch(
 		const consumed = instanceAiStore.consumePendingAttachments();
 		for (const attachment of consumed) {
 			if (attachment.type === 'file') continue;
+			if (attachment.type === 'element') {
+				attachedResources.value = attachedResources.value.filter((a) => a.type !== 'element');
+			}
 			if (attachment.type === 'nodes') {
 				const existing = attachedResources.value.find(
 					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
@@ -702,6 +706,17 @@ watch(
 	},
 	{ deep: true, immediate: true },
 );
+
+watch(
+	() => {
+		const element = attachedResources.value.find((a) => a.type === 'element');
+		return element?.type === 'element' ? element.appId : null;
+	},
+	(appId) => instanceAiStore.setComposerElementAppId(appId),
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => instanceAiStore.setComposerElementAppId(null));
 
 function handleStop() {
 	mentions.close();
@@ -876,6 +891,7 @@ const resizable = computed(() => {
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup || isPreparingSubmission || props.isOutOfCredits"
 			:autosize="resizable"
+			:composer-height="props.composerHeight"
 			:button-label="props.submitLabel"
 			:active-requires-focus="props.submitActiveRequiresFocus"
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
@@ -921,8 +937,13 @@ const resizable = computed(() => {
 					/>
 				</div>
 			</template>
-			<template v-if="props.attachOnlyMimeTypes === undefined" #footer-start>
+			<template
+				v-if="$slots['footer-start'] || props.attachOnlyMimeTypes === undefined"
+				#footer-start
+			>
+				<slot name="footer-start" />
 				<InstanceAiInputMenu
+					v-if="props.attachOnlyMimeTypes === undefined"
 					:disabled="isBusy || isGatedBySetup"
 					:is-streaming="props.isStreaming"
 					@attach-files="chatInputRef?.openFilePicker()"
@@ -948,6 +969,9 @@ const resizable = computed(() => {
 			</template>
 		</ChatInputBase>
 		<slot name="footer"></slot>
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+		<slot name="before-suggestions"></slot>
+		<!-- EOF Experiment cleanup -->
 		<Transition name="suggestions-fade" :duration="SUGGESTIONS_TRANSITION_DURATION">
 			<component
 				:is="resolvedSuggestionsComponent"

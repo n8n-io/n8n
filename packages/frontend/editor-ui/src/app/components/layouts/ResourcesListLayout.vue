@@ -9,13 +9,14 @@ import ResourcesListEmptyState, {
 	isEmptyStateResourceKey,
 } from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { DatatableColumn } from '@n8n/design-system';
+import type { SlotResourcesListLayoutProps } from '@n8n/frontend-module-sdk';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/app/utils/typeGuards';
-import { type LocalStorageTabKey, useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
+import { useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/app/composables/useResourcesListI18n';
 
 import {
@@ -30,74 +31,37 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-type UIConfig = {
-	searchEnabled: boolean;
-	showFiltersDropdown: boolean;
-	sortEnabled: boolean;
-};
-
 const route = useRoute();
 const router = useRouter();
 const { callDebounced } = useDebounce();
 const telemetry = useTelemetry();
 const n8nLocalStorage = useN8nLocalStorage();
 
-const props = withDefaults(
-	defineProps<{
-		resourceKey: string;
-		displayName?: (resource: ResourceType) => string;
-		resources: ResourceType[];
-		disabled: boolean;
-		initialize?: () => Promise<void>;
-		filters?: BaseFilters;
-		additionalFiltersHandler?: (
-			resource: ResourceType,
-			filters: BaseFilters,
-			matches: boolean,
-		) => boolean;
-		shareable?: boolean;
-		sortFns?: Record<string, (a: ResourceType, b: ResourceType) => number>;
-		sortOptions?: string[];
-		type?: 'datatable' | 'list-full' | 'list-paginated';
-		typeProps: { itemSize: number } | { columns: DatatableColumn[] };
-		loading: boolean;
-		customPageSize?: number;
-		availablePageSizeOptions?: number[];
-		totalItems?: number;
-		resourcesRefreshing?: boolean;
-		// Set to true if sorting and filtering is done outside of the component
-		dontPerformSortingAndFiltering?: boolean;
-		hasEmptyState?: boolean;
-		uiConfig?: UIConfig;
-		tabKey?: LocalStorageTabKey;
-		persistKeyExclusions?: string[];
-	}>(),
-	{
-		displayName: (resource: ResourceType) => resource.name || '',
-		initialize: async () => {},
-		filters: () => ({ search: '', homeProject: '' }),
-		sortFns: () => ({}),
-		sortOptions: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
-		type: 'list-full',
-		typeProps: () => ({ itemSize: 80 }),
-		loading: true,
-		additionalFiltersHandler: undefined,
-		shareable: true,
-		customPageSize: 25,
-		availablePageSizeOptions: () => [10, 25, 50, 100],
-		totalItems: 0,
-		dontPerformSortingAndFiltering: false,
-		resourcesRefreshing: false,
-		hasEmptyState: true,
-		uiConfig: () => ({
-			searchEnabled: true,
-			showFiltersDropdown: true,
-			sortEnabled: true,
-		}),
-		tabKey: 'workflows',
-		persistKeyExclusions: () => [],
-	},
-);
+const props = withDefaults(defineProps<SlotResourcesListLayoutProps<ResourceType>>(), {
+	displayName: (resource: ResourceType) => resource.name || '',
+	initialize: async () => {},
+	filters: () => ({ search: '', homeProject: '' }),
+	sortFns: () => ({}),
+	sortOptions: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
+	type: 'list-full',
+	typeProps: () => ({ itemSize: 80 }),
+	loading: true,
+	additionalFiltersHandler: undefined,
+	shareable: true,
+	customPageSize: 25,
+	availablePageSizeOptions: () => [10, 25, 50, 100],
+	totalItems: 0,
+	dontPerformSortingAndFiltering: false,
+	resourcesRefreshing: false,
+	hasEmptyState: true,
+	uiConfig: () => ({
+		searchEnabled: true,
+		showFiltersDropdown: true,
+		sortEnabled: true,
+	}),
+	tabKey: 'workflows',
+	persistKeyExclusions: () => [],
+});
 
 const { getResourceText } = useResourcesListI18n(props.resourceKey);
 
@@ -167,7 +131,8 @@ const showEmptyState = computed(() => {
 const showLoadingState = computed(() => {
 	return (
 		props.loading ||
-		(props.resourcesRefreshing &&
+		(props.hasEmptyState &&
+			props.resourcesRefreshing &&
 			props.resources.length === 0 &&
 			!hasFilters.value &&
 			!filtersModel.value.search)

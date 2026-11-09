@@ -381,6 +381,30 @@ describe('OAuthConsentView', () => {
 				),
 			).toBeVisible();
 		});
+
+		it('should show app sign-in copy and an app icon without workflow permissions', async () => {
+			consentStore.consentDetails = {
+				clientName: 'Sales dashboard',
+				clientId: 'app-client',
+				redirectUri: 'https://sales.apps.example.com/_n8n/auth/app-id/callback',
+				resourceName: 'Sales dashboard',
+				scopes: [],
+				isFirstParty: true,
+				uiHints: { icon: 'grid-2x2', consentType: 'app' },
+			};
+			consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails);
+
+			const { getByRole, getByText, getByTestId, queryByText, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByRole('heading', { name: 'Sign in to "Sales dashboard"' })).toBeVisible();
+			expect(getByText('Use your n8n account to access this app')).toBeVisible();
+			expect(getByRole('button', { name: 'Continue to app' })).toBeEnabled();
+			expect(getByTestId('consent-client-icon')).toHaveAttribute('data-icon', 'grid-2x2');
+			expect(queryByText(/executes its workflow/)).toBeNull();
+			expect(queryByText('Get a list of your workflows')).toBeNull();
+			expect(queryByTestId('consent-redirect-confirm')).toBeNull();
+		});
 	});
 
 	describe('scope selection', () => {

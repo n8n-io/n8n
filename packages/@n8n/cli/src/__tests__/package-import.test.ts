@@ -133,7 +133,7 @@ describe('package import command', () => {
 		expect(conflictPolicy.default).toBeUndefined();
 	});
 
-	it('returns Agent summaries and publication failures without failing the definition import', async () => {
+	it('returns Agent summaries, channel setup, and publication failures without failing the definition import', async () => {
 		const result = {
 			agents: [
 				{
@@ -144,11 +144,29 @@ describe('package import command', () => {
 					activeVersionId: null,
 					status: 'created',
 					publishing: { state: 'failed', error: 'Publication refused' },
+					channels: [],
+				},
+				{
+					sourceAgentId: 'helper',
+					localId: 'helper',
+					name: 'Helper',
+					projectId: 'project',
+					activeVersionId: null,
+					status: 'created',
+					publishing: { state: 'blocked', blockedReason: 'channel-setup-required' },
+					channels: [
+						{
+							type: 'slack',
+							status: 'setup-required',
+							reason: 'new-channel',
+							setupUrl: 'https://n8n.example.com/projects/project/agents/helper',
+						},
+					],
 				},
 			],
 			workflows: [],
-			bindings: { agents: { source: 'source' }, workflows: {}, credentials: {} },
-			counts: { agents: { created: 1, updated: 0, skipped: 0 } },
+			bindings: { agents: { source: 'source', helper: 'helper' }, workflows: {}, credentials: {} },
+			counts: { agents: { created: 2, updated: 0, skipped: 0 } },
 		};
 		const { command, internals } = stubCommand(
 			{ file: '/tmp/agent.n8np', conflictPolicy: 'new-version', publishingPolicy: 'publish-all' },

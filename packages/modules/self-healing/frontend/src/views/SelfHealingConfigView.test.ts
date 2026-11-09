@@ -34,6 +34,7 @@ const configuration: SelfHealingConfigurationDto = {
 	workflowIds: [],
 	reviewerIds: ['creator'],
 	includeAllProjectMembers: false,
+	includeSubWorkflows: false,
 	enabled: false,
 	enabledById: null,
 	lastActivity: null,
@@ -110,6 +111,7 @@ it('creates an enabled configuration with the creator as reviewer', async () => 
 				workflowIds: [],
 				reviewerIds: ['creator'],
 				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
 				enabled: true,
 			},
 			undefined,
@@ -187,11 +189,12 @@ it.each(['resolves', 'rejects'])(
 		}
 		await waitAllPromises();
 
-		expect(view.getByText('Loading configurations…')).toBeVisible();
+		expect(view.getByTestId('self-healing-config-loading')).toBeVisible();
 		expect(view.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
 		expect(showError).not.toHaveBeenCalled();
 		current.resolve(undefined);
 		expect(await view.findByRole('button', { name: 'Save changes' })).toBeDisabled();
+		expect(view.queryByTestId('self-healing-config-loading')).not.toBeInTheDocument();
 	},
 );
 
@@ -224,11 +227,34 @@ it.each([false, true])(
 		expect(router.currentRoute.value.path).toBe('/projects/project/settings/self-healing/1');
 		expect(save).toHaveBeenCalledWith(
 			'project',
-			{ scope: 'all', workflowIds: [], reviewerIds: ['creator'], includeAllProjectMembers: false },
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: ['creator'],
+				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
+			},
 			1,
 		);
 	},
 );
+
+it('keeps the sub-workflow setting when saving edits', async () => {
+	const store = useSelfHealingStore();
+	store.configurations.project = [
+		{ ...configuration, scope: 'selected', workflowIds: ['workflow'], includeSubWorkflows: true },
+	];
+	const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
+	const view = await renderView('1');
+	await fireEvent.click(await view.findByRole('radio', { name: 'All' }));
+	await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+	expect(save).toHaveBeenCalledWith(
+		'project',
+		expect.objectContaining({ scope: 'all', includeSubWorkflows: true }),
+		1,
+	);
+});
 
 it.each([
 	'/projects/project/settings',
@@ -291,6 +317,7 @@ it('selects workflow rows and reviewers before saving', async () => {
 			workflowIds: ['workflow'],
 			reviewerIds: ['creator'],
 			includeAllProjectMembers: false,
+			includeSubWorkflows: false,
 			enabled: true,
 		},
 		undefined,
@@ -466,6 +493,22 @@ describe('personal project', () => {
 		);
 	});
 
+	it.each([
+		['/projects/project/settings/self-healing/new', true],
+		['/projects/project/self-healing/new', false],
+	])(
+		'shows the reviewer skeleton only outside the personal tab (%s)',
+		async (path, showsReviewers) => {
+			const store = useSelfHealingStore();
+			vi.spyOn(store, 'load').mockReturnValue(new Promise(() => {}));
+			await router.push(path);
+			const view = render(RouterView, { global: { plugins: [router] } });
+
+			expect(view.getByTestId('self-healing-config-loading')).toBeVisible();
+			expect(!!view.queryByText('Reviewers')).toBe(showsReviewers);
+		},
+	);
+
 	it('reports a missing configuration without pointing to project settings', async () => {
 		await router.push('/projects/project/self-healing/1');
 		render(RouterView, { global: { plugins: [router] } });
@@ -567,6 +610,7 @@ describe('project members', () => {
 				workflowIds: [],
 				reviewerIds: [],
 				includeAllProjectMembers: true,
+				includeSubWorkflows: false,
 				enabled: true,
 			},
 			undefined,
@@ -608,6 +652,7 @@ describe('project members', () => {
 				workflowIds: [],
 				reviewerIds: ['creator', 'maya'],
 				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
 				enabled: true,
 			},
 			undefined,
@@ -653,7 +698,13 @@ describe('project members', () => {
 		await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
 		expect(save).toHaveBeenCalledWith(
 			'project',
-			{ scope: 'all', workflowIds: [], reviewerIds: ['creator'], includeAllProjectMembers: false },
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: ['creator'],
+				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
+			},
 			1,
 		);
 	});
@@ -669,7 +720,13 @@ describe('project members', () => {
 
 		expect(save).toHaveBeenCalledWith(
 			'project',
-			{ scope: 'all', workflowIds: [], reviewerIds: [], includeAllProjectMembers: true },
+			{
+				scope: 'all',
+				workflowIds: [],
+				reviewerIds: [],
+				includeAllProjectMembers: true,
+				includeSubWorkflows: false,
+			},
 			1,
 		);
 	});

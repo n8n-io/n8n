@@ -1,3 +1,4 @@
+import { EDIT_FIELDS_SET_NODE_NAME } from '../../../config/constants';
 import { test, expect } from '../../../fixtures/base';
 
 test.describe(
@@ -17,6 +18,21 @@ test.describe(
 			test('should navigate from blank canvas', async ({ n8n }) => {
 				await n8n.start.fromBlankCanvas();
 				await expect(n8n.canvas.canvasPane()).toBeVisible();
+			});
+
+			// Parity sentinel: the editor saves this workflow, so only the `n8n`
+			// fixture's settings merge sends it to engine v2. The explicit check keeps
+			// this test red if that wiring is lost.
+			test('should run a workflow built on the canvas @engine:v2', async ({ n8n }) => {
+				await n8n.start.fromBlankCanvas();
+				await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
+				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+					'Workflow executed successfully',
+				);
+
+				await n8n.api.workflows.assertLatestExecutionRoutedToEngine(
+					n8n.canvas.getWorkflowIdFromUrl(),
+				);
 			});
 		});
 

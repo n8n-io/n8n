@@ -2,9 +2,8 @@ import { LicenseState } from '@n8n/backend-common';
 import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -87,6 +86,7 @@ export class WorkflowPackageImporter {
 			missingMode: request.credentialMissingMode,
 			credentialBindings: request.bindings?.credentials,
 			conflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
+			personalRoute: request.credentialPersonalRoute,
 			packageCredentials: needsBundledCredentialFiles(
 				request,
 				(credentialRequirements?.length ?? 0) > 0,
@@ -150,6 +150,7 @@ export class WorkflowPackageImporter {
 			workflows,
 			credentialRequest,
 			agents,
+			skills: agents.length > 0 ? await this.packageParser.getSkills(reader) : [],
 			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			dataTableRequest,
 			variableRequest,

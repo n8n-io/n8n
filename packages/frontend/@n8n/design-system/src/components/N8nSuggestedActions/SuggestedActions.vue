@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nBadge from '../N8nBadge';
@@ -22,6 +22,7 @@ export interface SuggestedActionsProps {
 	title: string;
 	actions: SuggestedAction[];
 	open: boolean;
+	ignoreAllLabel?: string;
 	popoverAlignment?: 'start' | 'end' | 'center';
 	popoverSideOffset?: number;
 	notice?: string;
@@ -31,12 +32,15 @@ export interface SuggestedActionsProps {
 
 interface SuggestedActionsEmits {
 	(event: 'action-click', actionId: string): void;
+	(event: 'ignore-click', actionId: string): void;
+	(event: 'ignore-all'): void;
 	(event: 'update:open', open: boolean): void;
 }
 
 defineOptions({ name: 'N8nSuggestedActions' });
 
 const props = withDefaults(defineProps<SuggestedActionsProps>(), {
+	ignoreAllLabel: undefined,
 	popoverAlignment: undefined,
 	popoverSideOffset: undefined,
 	notice: undefined,
@@ -45,12 +49,22 @@ const props = withDefaults(defineProps<SuggestedActionsProps>(), {
 const emit = defineEmits<SuggestedActionsEmits>();
 const { t } = useI18n();
 
+const ignoringActions = ref<Set<string>>(new Set());
+
 const completedCount = computed(() => props.actions.filter((action) => action.completed).length);
 
 const handleActionClick = (action: SuggestedAction) => {
 	if (!action.completed) {
 		emit('action-click', action.id);
 	}
+};
+
+const handleIgnoreClick = (actionId: string) => {
+	ignoringActions.value.add(actionId);
+	setTimeout(() => {
+		emit('ignore-click', actionId);
+		ignoringActions.value.delete(actionId);
+	}, 500);
 };
 </script>
 
@@ -91,6 +105,7 @@ const handleActionClick = (action: SuggestedAction) => {
 					:class="[
 						{
 							[$style.actionItem]: true,
+							[$style.ignoring]: ignoringActions.has(action.id),
 							[$style.actionable]: !action.completed,
 						},
 					]"
@@ -123,6 +138,25 @@ const handleActionClick = (action: SuggestedAction) => {
 							</N8nText>
 						</div>
 					</div>
+					<N8nLink
+						theme="text"
+						:title="t('generic.ignore')"
+						data-test-id="suggested-action-ignore"
+						@click.prevent.stop="handleIgnoreClick(action.id)"
+					>
+						<N8nIcon v-if="!action.completed" icon="x" size="large" />
+					</N8nLink>
+				</div>
+				<div :class="$style.ignoreAllContainer">
+					<N8nLink
+						theme="text"
+						size="small"
+						underline
+						data-test-id="suggested-action-ignore-all"
+						@click.prevent.stop="emit('ignore-all')"
+					>
+						{{ ignoreAllLabel ?? t('generic.ignoreAll') }}
+					</N8nLink>
 				</div>
 			</div>
 		</template>
@@ -164,8 +198,18 @@ const handleActionClick = (action: SuggestedAction) => {
 .actionItem {
 	display: flex;
 	flex-direction: row;
+	transition:
+		opacity 0.3s ease,
+		filter 0.3s ease;
 	&:not(:last-child) {
 		border-bottom: var(--border);
+	}
+
+	&.ignoring {
+		opacity: 0.5;
+		filter: grayscale(0.8);
+		pointer-events: none;
+		cursor: not-allowed;
 	}
 }
 
@@ -195,5 +239,9 @@ const handleActionClick = (action: SuggestedAction) => {
 .checkboxContainer {
 	padding-top: 1px;
 	padding-right: var(--spacing--xs);
+}
+
+.ignoreAllContainer {
+	padding-left: var(--spacing--5xs);
 }
 </style>

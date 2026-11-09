@@ -12,9 +12,11 @@ import {
 	UrlService,
 	RoleService,
 	FolderFinderService,
+	InstanceWriteAccessService,
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
 	AiPreferenceService,
+	CredentialsFinderService,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
@@ -25,6 +27,7 @@ import {
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
+import { isRecord } from '@n8n/utils/is-record';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
@@ -38,8 +41,8 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { DataTableProxyService } from '@n8n/backend-module-data-table';
+import { SkillsGate } from '@/modules/skills';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -62,6 +65,7 @@ import { McpPostSaveMetricsService } from './mcp-post-save-metrics.service';
 import { McpConfig } from './mcp.config';
 import {
 	INSTALL_COMMUNITY_NODE_TOOL,
+	MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE,
 	MCP_CREATE_AGENT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
@@ -116,6 +120,7 @@ import {
 	createGetInstanceActivityTool,
 } from './tools/instance-activity.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
+import { createUpdateCredentialDescriptionTool } from './tools/update-credential-description.tool';
 import { createListN8nGatewayServicesTool } from './tools/list-n8n-gateway-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
 import { createMoveWorkflowsToFolderTool } from './tools/move-workflows-to-folder.tool';
@@ -248,6 +253,7 @@ export class McpService {
 		private readonly workflowService: WorkflowService,
 		private readonly urlService: UrlService,
 		private readonly credentialsService: CredentialsService,
+		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
@@ -281,6 +287,7 @@ export class McpService {
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly mcpConfig: McpConfig,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -393,7 +400,20 @@ export class McpService {
 				const workflowId = getWorkflowId(handlerArgs[0]);
 
 				try {
-					const result = await invoke(...handlerArgs);
+					const isProductionExecution =
+						tool.name === 'execute_workflow' &&
+						isRecord(handlerArgs[0]) &&
+						handlerArgs[0].executionMode === 'production';
+					const isBlocked =
+						this.instanceWriteAccess.isReadOnly() &&
+						tool.config.annotations?.readOnlyHint !== true &&
+						!isProductionExecution;
+					const result: ToolHandlerResult = isBlocked
+						? {
+								isError: true,
+								content: [{ type: 'text', text: MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE }],
+							}
+						: await invoke(...handlerArgs);
 					const { status, errorMessage } = getToolCallOutcome(result);
 					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 					if (
@@ -584,6 +604,7 @@ export class McpService {
 			this.urlService.getWebhookBaseUrl(),
 			this.workflowFinderService,
 			this.credentialsService,
+			this.credentialsFinderService,
 			this.nodeTypes,
 			{
 				webhook: this.globalConfig.endpoints.webhook,
@@ -656,6 +677,7 @@ export class McpService {
 			this.nodeTypes,
 			this.telemetry,
 			this,
+			this.logger,
 		);
 		registerIfAllowed(testWorkflowTool);
 
@@ -673,6 +695,12 @@ export class McpService {
 			this.telemetry,
 		);
 		registerIfAllowed(listCredentialsTool);
+		if (featureFlags.credentialDescriptionsEnabled === true) {
+			registerIfAllowed(
+				createUpdateCredentialDescriptionTool(user, this.credentialsService, this.telemetry),
+			);
+		}
+
 		registerIfAllowed(listN8nGatewayServicesTool);
 
 		if (!this.globalConfig.tags.disabled) {
@@ -863,9 +891,13 @@ export class McpService {
 			);
 		}
 
-		if (Container.get(SkillAgentsProxy).hasProvider) {
+		if (Container.get(SkillsGate).isEnabled) {
 			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
-			await Container.get(McpSkillToolsService).registerTools(registerIfAllowed, user);
+			await Container.get(McpSkillToolsService).registerTools(
+				registerIfAllowed,
+				user,
+				featureFlags.skillsExtensionEnabled === true,
+			);
 			if (featureFlags.skillsExtensionEnabled && (allowedToolNames?.has('get_skill') ?? true)) {
 				const { McpSkillExtensionService } = await import(
 					'./tools/skills/skill-extension.service.js'

@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
-import { PROJECT_ROOT, UserError } from 'n8n-workflow';
+import { PROJECT_ROOT } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { FolderService } from '@/services/folder.service';
 
@@ -99,6 +100,7 @@ export class FolderImporter {
 				sourceFolderId: folder.sourceFolderId,
 				name: folder.name,
 				targetParentFolderId: match.parentFolderId,
+				existingName: match.name,
 			});
 		}
 

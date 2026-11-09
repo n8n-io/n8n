@@ -6,13 +6,11 @@ import {
 	type PromotionReviewDetailsRequestDto,
 	type PromotionReviewOutcome,
 	type PromotionReviewWarning,
-	type SerializedWorkflow,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
-import { jsonParse } from 'n8n-workflow';
 
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
@@ -70,7 +68,7 @@ export class PromotionReviewChangesService {
 		if (!headCommitSha) {
 			throw new BadRequestError('GitLab did not report the head commit of the merge request.');
 		}
-		const baseline = baselineOf(mergeRequest);
+		const baseline = baselineOf(target.review, mergeRequest);
 		const outcome = outcomeOf(target.review, mergeRequest);
 		let commits;
 		try {
@@ -80,8 +78,8 @@ export class PromotionReviewChangesService {
 				baseline,
 			});
 		} catch (error) {
-			// The host drops the refs of a finished review. Its outcome is still worth showing.
-			if (!(error instanceof PromotionReviewCommitsMissingError) || !outcome) throw error;
+			// The commits are gone from the host or in another repository. Show how the review ended.
+			if (!(error instanceof PromotionReviewCommitsMissingError)) throw error;
 			if (!('commitSha' in baseline)) throw error;
 			return {
 				baselineCommitSha: baseline.commitSha,
@@ -105,13 +103,11 @@ export class PromotionReviewChangesService {
 		if (warnings.length > 0) return { ...commitShas, resources: [], dependencies: [], warnings };
 
 		const projectIds = projectIdsOf(base.side.manifest, head.side.manifest);
-		const archiveState = await readArchiveState(commits.head, base.side, head.side, projectIds);
 		const { resources, dependencies } = buildPreview({
 			operation: null,
 			projectIds,
 			base: base.side,
 			desired: head.side,
-			isArchived: (path) => archiveState.get(path) ?? false,
 		});
 		return { ...commitShas, resources, dependencies, warnings };
 	}
@@ -191,12 +187,15 @@ export class PromotionReviewChangesService {
 /**
  * An open review diffs against its merge base with the target branch, so a rebase on the host
  * does not add the commits of the target branch. After a merge, that merge base is the head
- * itself, so a merged or closed review diffs against the base that the host recorded.
+ * itself, so a merged or closed review diffs against the base that the host recorded. A review
+ * that n8n closed counts as finished.
  */
 function baselineOf(
+	review: PromotionReview,
 	mergeRequest: GitLabMergeRequest,
 ): { targetBranchName: string } | { commitSha: string; targetBranchName: string } {
-	if (mergeRequest.state === 'opened' || mergeRequest.state === 'locked') {
+	const isOpen = mergeRequest.state === 'opened' || mergeRequest.state === 'locked';
+	if (isOpen && review.state !== 'closed') {
 		return { targetBranchName: mergeRequest.target_branch };
 	}
 	const commitSha = mergeRequest.diff_refs?.base_sha;
@@ -216,6 +215,15 @@ function outcomeOf(
 	mergeRequest: GitLabMergeRequest,
 ): PromotionReviewOutcome | null {
 	const { state, web_url: webUrl } = mergeRequest;
+	// A close by n8n is final, whatever the host does later.
+	if (review.state === 'closed' && !endedOnHostFirst(review, mergeRequest)) {
+		return {
+			state: 'closed',
+			at: review.lastStateChangeAt?.toISOString() ?? null,
+			by: 'n8n',
+			webUrl,
+		};
+	}
 	if (state !== 'merged' && state !== 'closed') return null;
 	const hostActor =
 		state === 'merged'
@@ -232,6 +240,15 @@ function outcomeOf(
 		by: approverName ?? hostActor ?? null,
 		webUrl,
 	};
+}
+
+/** n8n records a host merge or close only after the host made it. */
+function endedOnHostFirst(review: PromotionReview, mergeRequest: GitLabMergeRequest): boolean {
+	const { state } = mergeRequest;
+	if (state !== 'merged' && state !== 'closed') return false;
+	const endedAt = state === 'merged' ? mergeRequest.merged_at : mergeRequest.closed_at;
+	if (!endedAt || !review.lastStateChangeAt) return true;
+	return new Date(endedAt) <= review.lastStateChangeAt;
 }
 
 function newestBranchName({ runs }: PromotionReview): string | null {
@@ -259,29 +276,6 @@ function projectIdsOf(...manifests: Array<PackageManifest | null>): string[] {
 	return [
 		...new Set(manifests.flatMap((manifest) => manifest?.projects?.map(({ id }) => id) ?? [])),
 	];
-}
-
-/** Archive state separates "archived" from "modified", so only changed workflows are read. */
-async function readArchiveState(
-	head: PackageCommit,
-	base: PreviewSide,
-	desired: PreviewSide,
-	projectIds: readonly string[],
-): Promise<Map<string, boolean>> {
-	const baseIndex = indexProjects(base, projectIds);
-	const paths = [...indexProjects(desired, projectIds).values()].flatMap((resource) => {
-		const before = baseIndex.get(resource.key);
-		return resource.type === 'workflow' && before && before.blobSha !== resource.blobSha
-			? [resource.path]
-			: [];
-	});
-	const files = await head.readFiles(paths);
-	return new Map(
-		[...files].map(([path, raw]) => [
-			path,
-			jsonParse<SerializedWorkflow>(raw, { fallbackValue: undefined })?.isArchived ?? false,
-		]),
-	);
 }
 
 function detailSide(content: string | undefined): DetailSide {

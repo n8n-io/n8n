@@ -1,15 +1,25 @@
 import type { EventService } from '@n8n/backend-services';
 import type { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
+import type { ExecutionSnapshot } from '@n8n/engine';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
 import { WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
-import type { INodeParameters, IWebhookData, IWorkflowBase, Workflow } from 'n8n-workflow';
+import type {
+	INode,
+	INodeParameters,
+	IRunData,
+	IWebhookData,
+	IWorkflowBase,
+	Workflow,
+} from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
+import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
@@ -52,6 +62,8 @@ describe('WaitingWebhooks', () => {
 		mockInstanceSettings,
 		mockEventService,
 		mockEndpointsConfig,
+		mock(),
+		mock(),
 	);
 
 	beforeEach(() => {
@@ -827,6 +839,8 @@ describe('WaitingWebhooks', () => {
 				mockInstanceSettings,
 				mockEventService,
 				identicalEndpointsConfig,
+				mock(),
+				mock(),
 			);
 			executionPersistence.findSingleExecution.mockResolvedValue(
 				buildExecution({ nodeType: 'n8n-nodes-base.wait', nodeParameters: { resume: 'form' } }),
@@ -1962,6 +1976,8 @@ describe('WaitingWebhooks', () => {
 				mockInstanceSettings,
 				mockEventService,
 				mockEndpointsConfig,
+				mock(),
+				mock(),
 			);
 			executionPersistence.findSingleExecution.mockResolvedValue(
 				createMockExecution({
@@ -2006,5 +2022,283 @@ describe('WaitingWebhooks', () => {
 				expect.anything(),
 			);
 		});
+	});
+});
+
+describe('WaitingWebhooks on an engine v2 execution', () => {
+	const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+	const dataPlane = mock<EngineDataPlaneProxyService>();
+	const executionReader = mock<EngineV2ExecutionReader>();
+	const webhookService = mock<WebhookService>();
+	const executionPersistence = mock<ExecutionPersistence>();
+	const waitingWebhooks = new WaitingWebhooks(
+		mock(),
+		mock(),
+		executionPersistence,
+		webhookService,
+		mock<InstanceSettings>(),
+		mock<EventService>(),
+		mock<EndpointsConfig>({ webhookWaiting: 'webhook-waiting', formWaiting: 'form-waiting' }),
+		dataPlane,
+		executionReader,
+	);
+
+	const waitNode = {
+		id: 'wait-id',
+		name: 'Wait',
+		type: 'n8n-nodes-base.wait',
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters: { resume: 'webhook' },
+	};
+	// Plain objects, not `mock()`: the route clones the node, and a proxy cannot be cloned.
+	const snapshot = (status: ExecutionSnapshot['status']) =>
+		({ id: EXECUTION_ID, status, workflow: { nodes: [waitNode] } }) as unknown as ExecutionSnapshot;
+	const target = { stepId: 'step-1', nodeId: 'wait-id' };
+	const request = (query: Record<string, string>, headers: Record<string, string> = {}) => {
+		const url = `/webhook-waiting/${EXECUTION_ID}?${new URLSearchParams(query).toString()}`;
+		return mock<WaitingWebhookRequest>({
+			method: 'GET',
+			params: { path: EXECUTION_ID, suffix: undefined },
+			query,
+			url,
+			originalUrl: url,
+			headers: { host: 'localhost', ...headers },
+		});
+	};
+	const response = () => {
+		const res = mock<express.Response>();
+		res.status.mockReturnValue(res);
+		return res;
+	};
+
+	/** Lets the data plane name the waiting step of `node`, and returns the execution the reader maps. */
+	const acceptResume = ({
+		node = waitNode,
+		path = '',
+		runData = {},
+	}: { node?: INode; path?: string; runData?: IRunData } = {}) => {
+		dataPlane.locateResumeTarget.mockResolvedValue({
+			ok: true,
+			value: { execution: snapshot('waiting'), target },
+		});
+		const execution = {
+			id: EXECUTION_ID,
+			mode: 'manual',
+			status: 'waiting',
+			workflowData: { id: 'wf-1', name: 'wf', nodes: [{ ...node }], connections: {} },
+			data: { resultData: { runData } },
+		} as unknown as IExecutionResponse;
+		executionReader.fromSnapshot.mockResolvedValue(execution);
+		webhookService.getNodeWebhooks.mockReturnValue([
+			{
+				httpMethod: 'GET',
+				path,
+				webhookDescription: { restartWebhook: true, httpMethod: 'GET', name: 'default', path },
+			} as unknown as IWebhookData,
+		]);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+		const executeWebhookSpy = vi
+			.spyOn(WebhookHelpers, 'executeWebhook')
+			.mockImplementation(
+				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
+					callback(null, { noWebhookResponse: true });
+					return EXECUTION_ID;
+				},
+			);
+		return { execution, executeWebhookSpy };
+	};
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+	});
+
+	it('announces no extra methods to a preflight, without the v1 lookup', async () => {
+		await expect(waitingWebhooks.getWebhookMethods(EXECUTION_ID)).resolves.toEqual([]);
+
+		expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['without a token', {}],
+		['with an empty token', { [WAITING_TOKEN_QUERY_PARAM]: '' }],
+	])('answers 401 %s, before it asks the data plane', async (_, query) => {
+		const res = response();
+
+		await expect(waitingWebhooks.executeWebhook(request(query), res)).resolves.toEqual({
+			noWebhookResponse: true,
+		});
+
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token' });
+		expect(dataPlane.locateResumeTarget).not.toHaveBeenCalled();
+	});
+
+	it("relays the data plane's refusal of the token as 401, without its reason", async () => {
+		dataPlane.locateResumeTarget.mockResolvedValue({
+			ok: false,
+			status: 401,
+			error: 'invalid_token',
+		});
+		const res = response();
+
+		await waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 'bad' }), res);
+
+		expect(dataPlane.locateResumeTarget).toHaveBeenCalledWith(EXECUTION_ID, { token: 'bad' });
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token' });
+	});
+
+	it('answers 404 for an execution the data plane does not have', async () => {
+		dataPlane.locateResumeTarget.mockResolvedValue({ ok: false, status: 404, error: 'not_found' });
+
+		await expect(
+			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
+		).rejects.toThrow(NotFoundError);
+	});
+
+	it.each([
+		[409, 'ambiguous', ConflictError],
+		[501, 'unimplemented', NotImplementedError],
+		[400, 'invalid_request', BadRequestError],
+	])("answers the data plane's %s refusal with its own status", async (status, error, expected) => {
+		dataPlane.locateResumeTarget.mockResolvedValue({ ok: false, status, error });
+
+		await expect(
+			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
+		).rejects.toThrow(expected);
+	});
+
+	it.each([
+		['queued', 'is running already'],
+		['running', 'is running already'],
+		['waiting', 'is running already'],
+		['completed', 'has finished already'],
+	] as const)(
+		'answers 409 when no step accepts the request and the execution is %s',
+		async (status, message) => {
+			dataPlane.locateResumeTarget.mockResolvedValue({
+				ok: true,
+				value: { execution: snapshot(status), target: null },
+			});
+
+			const answer = waitingWebhooks.executeWebhook(
+				request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }),
+				response(),
+			);
+
+			await expect(answer).rejects.toThrow(ConflictError);
+			await expect(answer).rejects.toThrow(`The execution "${EXECUTION_ID}" ${message}.`);
+		},
+	);
+
+	it('runs the waiting node under its own execution id, with the step and token the data plane named', async () => {
+		const { executeWebhookSpy } = acceptResume();
+		const req = request({ [WAITING_TOKEN_QUERY_PARAM]: 'token' });
+
+		await expect(waitingWebhooks.executeWebhook(req, response())).resolves.toEqual({
+			noWebhookResponse: true,
+		});
+
+		expect(dataPlane.locateResumeTarget).toHaveBeenCalledWith(EXECUTION_ID, { token: 'token' });
+		const [, , , startNode, , , runExecutionData, executionId, calledReq, , , , options] =
+			executeWebhookSpy.mock.calls[0];
+		expect(executionId).toBe(EXECUTION_ID);
+		expect(startNode.name).toBe('Wait');
+		expect(runExecutionData?.resultData.lastNodeExecuted).toBe('Wait');
+		expect(runExecutionData?.executionData?.nodeExecutionStack[0]?.node.name).toBe('Wait');
+		// The node never sees the token.
+		expect(options).toEqual(
+			expect.objectContaining({ engineResume: { stepId: 'step-1', token: 'token' } }),
+		);
+		expect(calledReq.url).toBe(`/webhook-waiting/${EXECUTION_ID}`);
+		expect(calledReq.params).toEqual({});
+	});
+
+	it('reads the webhook path that follows the token in the query', async () => {
+		acceptResume({ path: 'my-suffix' });
+
+		await expect(
+			waitingWebhooks.executeWebhook(
+				request({ [WAITING_TOKEN_QUERY_PARAM]: 'token/my-suffix' }),
+				response(),
+			),
+		).resolves.toEqual({ noWebhookResponse: true });
+
+		expect(dataPlane.locateResumeTarget).toHaveBeenCalledWith(EXECUTION_ID, { token: 'token' });
+	});
+
+	it('answers 404 when the reader cannot map the snapshot to an execution', async () => {
+		acceptResume();
+		executionReader.fromSnapshot.mockResolvedValue(undefined);
+
+		await expect(
+			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
+		).rejects.toThrow(NotFoundError);
+	});
+
+	it('answers 404 when the workflow has no node with the id of the waiting step', async () => {
+		acceptResume({ node: { ...waitNode, id: 'other-id' } });
+
+		await expect(
+			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response()),
+		).rejects.toThrow('Could not find node to process webhook.');
+	});
+
+	it('removes the auth cookie before the node gets the request', async () => {
+		const { executeWebhookSpy } = acceptResume();
+
+		await waitingWebhooks.executeWebhook(
+			request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }, { cookie: 'n8n-auth=x' }),
+			response(),
+		);
+
+		expect(executeWebhookSpy.mock.calls[0][8].headers.cookie).not.toContain('n8n-auth');
+	});
+
+	it('redirects the resume of a form wait to the form-waiting route', async () => {
+		acceptResume({ node: { ...waitNode, parameters: { resume: 'form' } } });
+		const res = response();
+
+		await expect(
+			waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), res),
+		).resolves.toEqual({ noWebhookResponse: true });
+
+		expect(res.redirect).toHaveBeenCalledWith(307, expect.stringContaining('/form-waiting/'));
+	});
+
+	it('sets the CORS headers before the node runs', async () => {
+		acceptResume();
+		const res = response();
+
+		await waitingWebhooks.executeWebhook(
+			request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }, { origin: 'https://example.com' }),
+			res,
+		);
+
+		expect(res.setHeader).toHaveBeenCalledWith(
+			'Access-Control-Allow-Origin',
+			'https://example.com',
+		);
+	});
+
+	it('keeps the earlier runs of the waiting node', async () => {
+		const earlierRun = { startTime: 1, executionTime: 1, executionIndex: 0, source: [] };
+		const waitingRun = { startTime: 2, executionTime: 0, executionIndex: 1, source: [] };
+		const { execution } = acceptResume({ runData: { Wait: [earlierRun, waitingRun] } });
+
+		await waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response());
+
+		expect(execution.data.resultData.runData.Wait).toEqual([earlierRun]);
+	});
+
+	it('disables a copy of the waiting node, not the workflow node', async () => {
+		const { execution } = acceptResume();
+
+		await waitingWebhooks.executeWebhook(request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }), response());
+
+		expect(execution.data.executionData?.nodeExecutionStack[0].node.disabled).toBe(true);
+		expect(execution.workflowData.nodes[0].disabled).toBeUndefined();
 	});
 });

@@ -49,13 +49,14 @@ const router = useRouter();
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
 const chat = capabilityRegistry.tryUse(capabilities.createSelfHealingChatHandoff)?.();
+const canChat = computed(() => chat?.canStart(props.selection.projectId) ?? false);
 const chatRetry = ref<ChatRetry | null>(null);
 let reconcileOnRetry: ((current: SelfHealingResultDetail) => Promise<boolean>) | null = null;
 
 const workflowName = computed(
 	() =>
 		workflow.value?.name ??
-		detail.value?.suggestion?.payload.original.name ??
+		detail.value?.suggestions[0]?.payload.original.name ??
 		props.selection.workflowId,
 );
 const publishAccess = computed<SelfHealingPublishAccess>(() => {
@@ -130,7 +131,7 @@ async function startChat(request: Omit<ChatRetry, 'reason'>) {
 
 async function retryChat() {
 	const retry = chatRetry.value;
-	if (!retry || !chat?.available.value || !store.isSelected(retry.target)) return;
+	if (!retry || !canChat.value || !store.isSelected(retry.target)) return;
 	if (!store.beginAction(retry.target, 'chat')) return;
 
 	try {
@@ -144,11 +145,12 @@ async function retryDetail() {
 	if (pendingAction.value) return;
 
 	const reconcile = reconcileOnRetry;
-	const result = await store.refreshDetail();
-	if (!reconcile || !result || reconcileOnRetry !== reconcile) return;
+	await store.refreshDetail(async (result) => {
+		if (!reconcile || reconcileOnRetry !== reconcile) return;
 
-	reconcileOnRetry = null;
-	await reconcile(result);
+		reconcileOnRetry = null;
+		await reconcile(result);
+	});
 }
 
 async function onAction(action: SelfHealingResultAction) {
@@ -161,7 +163,7 @@ async function onAction(action: SelfHealingResultAction) {
 		(publishAccess.value !== 'allowed' || before.outcome !== 'fix_ready')
 	)
 		return;
-	if (action === 'chat' && !chat?.available.value) return;
+	if (action === 'chat' && !canChat.value) return;
 
 	const target = { ...props.selection };
 	if (!store.beginAction(target, action)) return;
@@ -172,12 +174,11 @@ async function onAction(action: SelfHealingResultAction) {
 
 	let reviewAction: SelfHealingReviewAction;
 	if (isContinuation) {
-		reviewAction = before.suggestion ? 'apply' : 'dismiss';
+		reviewAction = before.suggestions.length > 0 ? 'apply' : 'dismiss';
 	} else {
 		reviewAction = action;
 	}
 	const closedState = reviewAction === 'dismiss' ? 'dismissed' : 'applied';
-	let chatProjectId: string | null = null;
 
 	/**
 	 * Without a response, the saved state does not show which request closed the result.
@@ -188,13 +189,11 @@ async function onAction(action: SelfHealingResultAction) {
 		responseLost: boolean,
 	) {
 		// An outdated or concurrently discarded suggestion leaves nothing to continue with.
-		const closed =
-			result.reviewState === closedState ||
-			(action === 'dismiss' && result.reviewState === 'discarded');
+		const closed = result.reviewState === closedState;
 		if (!isSelected(target.id) || !closed) return false;
 
-		if (chatProjectId) {
-			const request = { target, projectId: chatProjectId, result };
+		if (action === 'chat') {
+			const request = { target, projectId: target.projectId, result };
 			if (responseLost) chatRetry.value = { ...request, reason: 'unconfirmed' };
 			else await startChat(request);
 		} else if (action !== 'dismiss') {
@@ -220,24 +219,10 @@ async function onAction(action: SelfHealingResultAction) {
 	}
 
 	try {
-		if (action === 'chat') {
-			// Load the chat project before closing, so a failed lookup leaves the result open.
-			chatProjectId = (await chat?.resolveProjectId().catch(() => null)) ?? null;
-			if (!isSelected(target.id)) return;
-			if (!chatProjectId) {
-				showMessage({
-					type: 'error',
-					title: i18n.baseText('inbox.selfHealing.action.chatError'),
-					message: i18n.baseText('inbox.selfHealing.action.chatProjectError'),
-				});
-				return;
-			}
-		}
-
 		const result = await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
 
-		store.acceptResult(result);
 		await continueAfterClose(result, false);
+		store.acceptResult(result);
 		notifyResultClosed(before, result, onItemChange);
 	} catch (cause) {
 		// Refresh saved state before the user retries a request with a lost response.
@@ -250,9 +235,10 @@ async function onAction(action: SelfHealingResultAction) {
 		try {
 			const current = await fetchSelfHealingResult(rootStore.restApiContext, target);
 
+			const continued = await reconcile(current);
 			store.acceptResult(current);
 			if (isSelected(target.id)) void store.refreshWorkflow();
-			if (await reconcile(current)) return;
+			if (continued) return;
 		} catch (readError) {
 			store.setError(target, readError);
 			if (isSelected(target.id)) reconcileOnRetry = reconcile;
@@ -291,7 +277,7 @@ async function onAction(action: SelfHealingResultAction) {
 				:tab="tab"
 				:pending-action="pendingAction"
 				:publish-access="publishAccess"
-				:can-chat="chat?.available.value ?? false"
+				:can-chat="canChat"
 				@update:tab="emit('update:tab', $event)"
 				@action="onAction"
 			>
@@ -313,7 +299,7 @@ async function onAction(action: SelfHealingResultAction) {
 						<template #trailingContent>
 							<N8nButton
 								variant="ghost"
-								:disabled="!chat?.available.value"
+								:disabled="!canChat"
 								:loading="pendingAction === 'chat'"
 								data-test-id="self-healing-chat-retry-button"
 								@click="retryChat()"

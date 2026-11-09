@@ -55,19 +55,11 @@ describe('useEnvironmentsVersionSwitch', () => {
 		},
 	);
 
-	it.each([
-		[true, true, true],
-		[false, true, false],
-		[true, false, false],
-	])(
-		'offers the switch back only to an admin while v1 is connected (connected: %s, manage: %s)',
-		(connected, canManage, canSwitchBack) => {
-			sourceControlStore.preferences.connected = connected;
-			mockHasPermission.mockReturnValue(canManage);
+	it.each([true, false])('offers the switch back only to an admin (manage: %s)', (canManage) => {
+		mockHasPermission.mockReturnValue(canManage);
 
-			expect(useEnvironmentsVersionSwitch().canSwitchBack.value).toBe(canSwitchBack);
-		},
-	);
+		expect(useEnvironmentsVersionSwitch().canSwitchBack.value).toBe(canManage);
+	});
 
 	it('ignores a second switch while the first one saves', async () => {
 		const save = Promise.withResolvers<void>();

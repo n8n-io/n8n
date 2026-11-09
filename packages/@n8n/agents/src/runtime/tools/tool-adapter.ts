@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { Tool as AiSdkTool } from 'ai';
 import { z } from 'zod';
 
@@ -192,18 +193,31 @@ function createSuspendHandler(
 	};
 }
 
-/**
- * Check if a tool has suspend/resume schemas (i.e. is interruptible).
- */
-export function isInterruptible(toolName: string, toolMap: Map<string, BuiltTool>): boolean {
-	const builtTool = toolMap.get(toolName);
-	return !!builtTool?.suspendSchema;
+// A tool name cannot contain this character, so the key never shadows a real name.
+const LEGACY_ACTION_KEY_SEPARATOR = '\u0000';
+
+function legacyActionKey(toolName: string, action: string): string {
+	return `${toolName}${LEGACY_ACTION_KEY_SEPARATOR}${action}`;
+}
+
+/** The call's `action` input. Persisted and repaired calls can carry the input as JSON text. */
+export function callAction(input: unknown): string | undefined {
+	let value = input;
+	if (typeof value === 'string') {
+		try {
+			value = JSON.parse(value);
+		} catch {
+			return undefined;
+		}
+	}
+	return isRecord(value) && typeof value.action === 'string' ? value.action : undefined;
 }
 
 /**
  * Build a Map from tool name to BuiltTool for quick lookups. Legacy names are
  * registered too, so persisted calls under a former name still resolve. A
- * current tool name always wins over a legacy name.
+ * current tool name always wins over a legacy name. Resolve calls through
+ * `resolveToolForCall`, which also applies `legacyActions`.
  */
 export function buildToolMap(tools?: BuiltTool[]): Map<string, BuiltTool> {
 	const map = new Map<string, BuiltTool>();
@@ -216,5 +230,34 @@ export function buildToolMap(tools?: BuiltTool[]): Map<string, BuiltTool> {
 			if (!map.has(legacyName)) map.set(legacyName, t);
 		}
 	}
+	for (const t of tools) {
+		for (const [legacyName, actions] of Object.entries(t.legacyActions ?? {})) {
+			if (map.get(legacyName)?.name === legacyName) continue;
+			for (const action of actions) {
+				const key = legacyActionKey(legacyName, action);
+				if (!map.has(key)) map.set(key, t);
+			}
+		}
+	}
 	return map;
+}
+
+/**
+ * The tool that runs a call. A call under a former name of a split tool
+ * resolves by its `action` input to the tool that now owns that action.
+ */
+export function resolveToolForCall(
+	toolMap: Map<string, BuiltTool>,
+	toolName: string,
+	input: unknown,
+): BuiltTool | undefined {
+	const action = callAction(input);
+	const byAction =
+		action === undefined ? undefined : toolMap.get(legacyActionKey(toolName, action));
+	return byAction ?? toolMap.get(toolName);
+}
+
+/** Whether `tool` resolved from a former name through `legacyActions`, not `legacyNames`. */
+export function isResolvedByLegacyAction(tool: BuiltTool, toolName: string): boolean {
+	return tool.name !== toolName && tool.legacyActions?.[toolName] !== undefined;
 }

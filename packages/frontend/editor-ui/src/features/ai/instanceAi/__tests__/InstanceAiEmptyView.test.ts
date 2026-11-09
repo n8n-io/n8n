@@ -11,6 +11,10 @@ import { flushPromises } from '@vue/test-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import {
+	consumePendingAssistantAgentMessage,
+	knownAssistantThreadRuntime,
+} from '../assistantAgent/assistantAgentThreads';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -40,6 +44,7 @@ const {
 	replaceMock,
 	pushMock,
 	showErrorMock,
+	showMessageMock,
 	telemetryTrack,
 } = vi.hoisted(() => ({
 	experimentMocks: {
@@ -115,6 +120,7 @@ const {
 	replaceMock: vi.fn(),
 	pushMock: vi.fn(),
 	showErrorMock: vi.fn(),
+	showMessageMock: vi.fn(),
 	telemetryTrack: vi.fn(),
 }));
 
@@ -289,7 +295,7 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: showErrorMock }),
+	useToast: () => ({ showError: showErrorMock, showMessage: showMessageMock }),
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -593,6 +599,14 @@ const InstanceAiInputStub = defineComponent({
 				h(
 					'button',
 					{
+						'data-test-id': 'instance-ai-input-stub-submit-empty',
+						onClick: () => submit(''),
+					},
+					'submit empty',
+				),
+				h(
+					'button',
+					{
 						'data-test-id': 'instance-ai-input-stub-attach-file',
 						onClick: () =>
 							stagedFileAttachments.value.push({
@@ -603,6 +617,33 @@ const InstanceAiInputStub = defineComponent({
 							}),
 					},
 					'attach',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-stub-attach-image',
+						onClick: () =>
+							stagedFileAttachments.value.push({
+								type: 'file',
+								data: btoa('image content'),
+								mimeType: 'image/png',
+								fileName: 'screenshot.png',
+							}),
+					},
+					'attach image',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-stub-attach-workflow',
+						onClick: () =>
+							stagedFileAttachments.value.push({
+								type: 'workflow',
+								id: 'workflow-1',
+								name: 'My workflow',
+							}),
+					},
+					'attach workflow',
 				),
 				h(
 					'button',
@@ -727,6 +768,43 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
 			'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder',
 		);
+	});
+
+	it('uses the App empty state and creates a pending App thread on submit', async () => {
+		const appId = '019a4012-272c-7313-91af-5c94a3d819a9';
+		routeQuery.pendingAppId = appId;
+		routeQuery.projectId = 'project-1';
+		routeQuery.source = 'app_builder_page';
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...defaultModuleSettings, assistantAgentEnabled: true },
+		};
+		store.syncThread.mockResolvedValue(undefined);
+		store.updateThreadMetadata.mockResolvedValue(undefined);
+
+		const { getByTestId, getByText, queryByTestId } = renderView();
+
+		expect(getByText('Build an app with workflows, data tables and agents')).toBeVisible();
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('5');
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'apps.assistant.empty.placeholder',
+		);
+		expect(queryByTestId('instance-ai-project-select')).not.toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', 'project-1', {
+			source: 'app_builder_page',
+			origin: 'internal',
+		});
+		expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-placeholder', {
+			instanceAiPendingAppTarget: { appId, projectId: 'project-1' },
+		});
+		expect(thread.sendMessage).toHaveBeenCalledWith('hello', expect.anything());
+		expect(replaceMock).toHaveBeenCalledWith({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-placeholder' },
+		});
 	});
 
 	it('passes v2 copy, suggestions, component, and catalog version when prompt suggestions v2 is enabled', () => {
@@ -1560,6 +1638,113 @@ describe('InstanceAiEmptyView', () => {
 		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
 	});
 
+	describe('Assistant agent threads', () => {
+		beforeEach(() => {
+			useSettingsStore().moduleSettings = {
+				'instance-ai': { ...defaultModuleSettings, assistantAgentEnabled: true },
+			};
+		});
+
+		it('opens a new Assistant agent thread with its first message, without a current Assistant thread', async () => {
+			pushMock.mockResolvedValue(undefined);
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-image'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(pushMock).toHaveBeenCalledWith({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: 'thread-placeholder' },
+			});
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+			expect(acceptDraftMock).toHaveBeenCalledOnce();
+			expect(
+				knownAssistantThreadRuntime('thread-placeholder', {
+					assistantAgentEnabled: true,
+					isAssistantThread: () => false,
+				}),
+			).toEqual({ kind: 'assistant-agent', projectId: PERSONAL_PROJECT_ID });
+			expect(localStorage.setItem).toHaveBeenCalledWith(
+				'n8n-assistant-agent-launch:thread-placeholder',
+				JSON.stringify({ projectId: PERSONAL_PROJECT_ID }),
+			);
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User launched Instance AI thread',
+				expect.objectContaining({
+					thread_id: 'thread-placeholder',
+					source: 'assistant_page',
+					origin: 'internal',
+					runtime: 'agents',
+				}),
+			);
+
+			const pendingMessage = consumePendingAssistantAgentMessage('thread-placeholder');
+			expect(pendingMessage?.text).toBe('hello');
+			expect(pendingMessage?.files.map((file) => file.name)).toEqual(['screenshot.png']);
+			expect(pendingMessage?.references).toEqual([]);
+		});
+
+		it('drops the first message and restores the draft when the navigation fails', async () => {
+			pushMock.mockResolvedValueOnce(new Error('navigation aborted'));
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
+			expect(localStorage.removeItem).toHaveBeenCalledWith(
+				'n8n-assistant-agent-launch:thread-placeholder',
+			);
+			expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+		});
+
+		it('keeps the draft when the message has only references', async () => {
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-workflow'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit-empty'));
+			await flushPromises();
+
+			expect(pushMock).not.toHaveBeenCalled();
+			expect(acceptDraftMock).not.toHaveBeenCalled();
+			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
+		});
+
+		it('keeps the draft and reports the file when the message has only an unsupported file', async () => {
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit-empty'));
+			await flushPromises();
+
+			expect(pushMock).not.toHaveBeenCalled();
+			expect(acceptDraftMock).not.toHaveBeenCalled();
+			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
+			expect(showMessageMock).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'error', title: expect.stringContaining('context.txt') }),
+			);
+		});
+
+		it('sends the text without an unsupported file and reports the file', async () => {
+			pushMock.mockResolvedValue(undefined);
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(pushMock).toHaveBeenCalled();
+			const pendingMessage = consumePendingAssistantAgentMessage('thread-placeholder');
+			expect(pendingMessage?.text).toBe('hello');
+			expect(pendingMessage?.files).toEqual([]);
+			expect(showMessageMock).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'error', title: expect.stringContaining('context.txt') }),
+			);
+		});
+	});
+
 	it('does not create a runtime before the first send', () => {
 		renderView();
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
@@ -1992,7 +2177,7 @@ describe('InstanceAiEmptyView', () => {
 
 			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
 			await nextTick();
-			expect(getByTestId('instance-ai-input-attach-only')).toHaveTextContent('image/*');
+			expect(getByTestId('instance-ai-input-attach-only')).toHaveTextContent('image/png');
 
 			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-assistant'));
 			await nextTick();

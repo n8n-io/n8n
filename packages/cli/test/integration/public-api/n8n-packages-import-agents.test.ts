@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	ImportResultDto,
@@ -38,14 +39,19 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
+import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import {
+	DataTableColumnRepository,
+	DataTableRepository,
+	DataTableService,
+} from '@n8n/backend-module-data-table';
+
 import {
 	looseAgentsFixture,
 	projectAgentsFixture,
@@ -54,8 +60,8 @@ import {
 import { streamToBuffer } from '@/modules/n8n-packages/__tests__/utils/tar-support';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { serializedAgentSchema } from '@/modules/n8n-packages/spec/serialized/agent.schema';
-import { SkillRepository } from '@/modules/skills/skill.repository';
-import { toSkillContent } from '@/modules/skills/skill.service';
+import { createSkill, deleteSkill, toSkillContent } from '@/modules/skills/testing';
+import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
 import { createCredentials } from '@test-integration/db/credentials';
@@ -68,7 +74,11 @@ mockInstance(ActiveWorkflowManager);
 mockInstance(Telemetry);
 mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
 beforeAll(
-	async () => await testModules.loadModules(['skills', 'n8n-packages', 'agents', 'data-table']),
+	async () =>
+		await testModules.loadModules(
+			['skills', 'n8n-packages', 'agents', 'data-table'],
+			packagedModules,
+		),
 );
 const server = setupTestServer({
 	endpointGroups: ['publicApi'],
@@ -84,11 +94,13 @@ let owner: User;
 let destination: Project;
 let sourceProject: Project;
 let sourceAgents: Agent[];
+/** The source skills belong to the source project, so they outlive the source Agents. */
+let sourceSkillIds: string[];
 let agents: AgentRepository;
 let tasks: AgentTaskRepository;
 
 beforeAll(async () => {
-	registerSkillAgentsProvider();
+	registerSkillUsage();
 	agents = Container.get(AgentRepository);
 	tasks = Container.get(AgentTaskRepository);
 	Container.get(InstanceSettings).markAsLeader();
@@ -110,11 +122,11 @@ beforeEach(async () => {
 	destination = await createTeamProject('Destination', owner);
 	sourceProject = await createTeamProject('Source', owner);
 	sourceAgents = [];
+	sourceSkillIds = [];
 	const fixture = looseAgentsFixture();
 	for (const [index, entry] of fixture.manifest.agents.entries()) {
 		const {
 			config,
-			skills,
 			tasks: taskDefinitions,
 			...definition
 		} = serializedAgentSchema.parse(fixture.files[`${entry.target}/agent.json`]);
@@ -132,21 +144,18 @@ beforeEach(async () => {
 				subAgents: { agents: [{ agentId: fixture.manifest.agents[1 - index].id }] },
 			}),
 		});
-		for (const [id, skill] of Object.entries(skills)) {
-			await Container.get(SkillRepository).createSkill(
-				{
-					id,
-					target: { projectId: null, agentId: agent.id },
-					source: 'agent',
-					createdById: owner.id,
-				},
-				toSkillContent(skill),
-			);
-		}
-		await Container.get(AgentSkillRepository).replaceDependencies(
-			agent.id,
-			Object.keys(skills).map((skillId) => ({ skillId })),
-		);
+		const skill = serializedSkillSchema.parse(fixture.files[`skills/${entry.id}_skill/skill.json`]);
+		sourceSkillIds.push(skill.id);
+		await createSkill({
+			id: skill.id,
+			projectId: sourceProject.id,
+			source: 'agent',
+			createdById: owner.id,
+			content: toSkillContent(skill.skill, skill.frontmatter),
+		});
+		await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [
+			{ skillId: skill.id },
+		]);
 		await tasks.save(
 			Object.entries(taskDefinitions).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
 		);
@@ -170,6 +179,10 @@ afterEach(async () => {
 	]);
 	await Container.get(VariablesService).updateCache();
 });
+
+async function deleteSourceSkills() {
+	for (const id of sourceSkillIds) await deleteSkill(id);
+}
 
 async function download(
 	selection: Partial<ExportPackageRequestDto> = { agentIds: [sourceAgents[0].id] },
@@ -270,6 +283,15 @@ it.each(['loose', 'project'] as const)(
 			await agents.save(sourceAgents[0]);
 			bindings = JSON.stringify({ credentials: { [sourceCredential.id]: targetCredential.id } });
 		}
+		const slackSettings = { messagingExperience: 'agent', onlyRespondWhenMentioned: true } as const;
+		const sourceSlack = await createCredentials(
+			{ name: 'Source Slack', type: 'slackApi', data: '' },
+			sourceProject,
+		);
+		sourceAgents[0].integrations = [
+			{ type: 'slack', credentialId: sourceSlack.id, settings: slackSettings },
+		];
+		await agents.save(sourceAgents[0]);
 		const archive = await download(
 			shape === 'project' ? { projectIds: [sourceProject.id] } : undefined,
 		);
@@ -278,6 +300,7 @@ it.each(['loose', 'project'] as const)(
 			sourceAgents.map(async (agent) => await skillRefs.readDraft(agent, {})),
 		);
 		await agents.delete({ projectId: sourceProject.id });
+		await deleteSourceSkills();
 		await Container.get(WorkflowRepository).delete(workflow.id);
 		if (shape === 'project') {
 			await Container.get(ProjectRepository).delete(sourceProject.id);
@@ -302,6 +325,17 @@ it.each(['loose', 'project'] as const)(
 				activeVersionId: null,
 				status: 'created',
 				publishing: { state: 'unchanged' },
+				channels:
+					index === 0
+						? [
+								{
+									type: 'slack',
+									status: 'setup-required',
+									reason: 'new-channel',
+									setupUrl: expect.stringContaining(`/projects/${projectId}/agents/${localId}`),
+								},
+							]
+						: [],
 			});
 			const saved = await agents.findById(localId);
 			expect(saved).toMatchObject({
@@ -313,6 +347,18 @@ it.each(['loose', 'project'] as const)(
 					subAgents: { agents: [{ agentId: result.bindings.agents[sourceAgents[1 - index].id] }] },
 				},
 			});
+			// The channel settings travel; the source credential does not connect the channel.
+			expect(saved!.integrations).toEqual(
+				index === 0 ? [{ type: 'slack', credentialId: '', settings: slackSettings }] : [],
+			);
+			const destinationCredentials = await Container.get(SharedCredentialsRepository).find({
+				where: { projectId },
+				relations: { credentials: true },
+			});
+			// A credential that only a channel uses is neither imported nor stubbed.
+			expect(destinationCredentials.map(({ credentials }) => credentials.type)).not.toContain(
+				'slackApi',
+			);
 			expect(await skillRefs.readDraft({ id: localId }, {})).toEqual(sourceSkills[index]);
 			const [task] = await tasks.findByAgentId(localId);
 			expect(task).toMatchObject({
@@ -320,6 +366,17 @@ it.each(['loose', 'project'] as const)(
 				objective: 'Summarize the open requests.',
 			});
 			expect(saved!.schema!.tasks![0].id).toBe(task.id);
+			const history = await Container.get(AgentHistoryRepository).findByVersionAndAgentId(
+				saved!.versionId!,
+				localId,
+				{},
+			);
+			expect(history).not.toBeNull();
+			expect(await Container.get(AgentDefinitionService).readVersion(history!)).toMatchObject({
+				skills: sourceSkills[index].skills,
+				tools: source.tools,
+				tasks: new Map([[task.id, expect.objectContaining({ objective: task.objective })]]),
+			});
 		}
 		expect(
 			(await agents.findById(result.bindings.agents[sourceAgents[0].id]))!.schema!.tools,
@@ -384,6 +441,7 @@ it.each([
 		dependencyPolicy: 'reference-only',
 	});
 	await agents.delete({ projectId: sourceProject.id });
+	await deleteSourceSkills();
 	if (state === 'missing-agent') await agents.delete(existingChild.id);
 	if (state === 'inaccessible-agent')
 		await agents.update(existingChild.id, { projectId: sourceProject.id });
@@ -487,6 +545,7 @@ it('imports an Agent dependency chain through a child Agent and nested workflows
 	await agents.save(child);
 	const archive = await download();
 	await agents.delete({ projectId: sourceProject.id });
+	await deleteSourceSkills();
 	await Container.get(WorkflowRepository).delete([workflow.id, nested.id]);
 	await Container.get(CredentialsRepository).delete(credential.id);
 	const response = await upload(archive, { credentialMissingMode: 'create-stub' });
@@ -587,6 +646,7 @@ it.each(['create', 'missing-credential', 'missing-table', 'missing-variable'] as
 		await agents.save(agent);
 		const archive = await download();
 		await agents.delete({ projectId: sourceProject.id });
+		await deleteSourceSkills();
 		await Container.get(CredentialsRepository).delete(credential.id);
 		await tables.deleteDataTable(table.id, sourceProject.id);
 		await Container.get(VariablesRepository).delete(variable.id);
@@ -653,6 +713,7 @@ it('shares conflict, ID, and publication policies across mixed content', async (
 	const workflow = await addWorkflowDependency();
 	const archive = await download();
 	await agents.delete({ projectId: sourceProject.id });
+	await deleteSourceSkills();
 	await Container.get(WorkflowRepository).delete(workflow.id);
 	const created = await upload(archive, {
 		publishingPolicy: 'publish-all',
@@ -681,6 +742,12 @@ it('shares conflict, ID, and publication policies across mixed content', async (
 		{ status: 'updated', publishing: { state: 'unpublished' } },
 		{ status: 'updated', publishing: { state: 'unpublished' } },
 	]);
+	for (const { localId } of initial.agents) {
+		const saved = await agents.findById(localId);
+		const versions = await Container.get(AgentHistoryRepository).findByAgentId(localId, 10, 0, {});
+		expect(versions).toHaveLength(2);
+		expect(versions.map(({ versionId }) => versionId)).toContain(saved!.versionId);
+	}
 	const before = await records();
 	const skipped = await upload(archive, {
 		conflictPolicy: 'skip',
@@ -701,11 +768,13 @@ it('shares conflict, ID, and publication policies across mixed content', async (
 	expect(await records()).toEqual(before);
 });
 
-it('imports with Agent-only grants and skips with no write grants', async () => {
+it('imports with Agent and skill grants and skips with no write grants', async () => {
 	const archive = await download();
 	await agents.delete({ projectId: sourceProject.id });
+	await deleteSourceSkills();
+	// The package skills belong to the project, so their writes need the skill grant.
 	const member = await createMemberWithApiKey({
-		scopes: ['agent:import', 'agent:read', 'agent:create'],
+		scopes: ['agent:import', 'agent:read', 'agent:create', 'skill:create'],
 	});
 	await linkUserToProject(member, destination, 'project:editor');
 	const created = await upload(archive, {}, member);
@@ -731,9 +800,11 @@ it.each(['read', 'create', 'update', 'publish', 'unpublish'] as const)(
 	async (action) => {
 		const archive = await download();
 		await agents.delete({ projectId: sourceProject.id });
+		await deleteSourceSkills();
 		if (action === 'update' || action === 'unpublish') {
 			expect((await upload(archive, { publishingPolicy: 'publish-all' })).statusCode).toBe(200);
 		}
+		// The skill grants stay, so only the missing Agent grant can refuse the import.
 		const scopes: ApiKeyScope[] = [
 			'agent:import',
 			'agent:read',
@@ -741,6 +812,8 @@ it.each(['read', 'create', 'update', 'publish', 'unpublish'] as const)(
 			'agent:update',
 			'agent:publish',
 			'agent:unpublish',
+			'skill:create',
+			'skill:update',
 		];
 		const caller = await createOwnerWithApiKey({
 			scopes: scopes.filter((scope) => scope !== `agent:${action}`),
@@ -758,8 +831,10 @@ it.each(['project:viewer', 'project:chatUser'] as const)(
 	async (role) => {
 		const archive = await download();
 		await agents.delete({ projectId: sourceProject.id });
+		await deleteSourceSkills();
+		// With every grant, only the project role can refuse the import.
 		const member = await createMemberWithApiKey({
-			scopes: ['agent:import', 'agent:read', 'agent:create'],
+			scopes: ['agent:import', 'agent:read', 'agent:create', 'skill:create'],
 		});
 		await linkUserToProject(member, destination, role);
 		const before = await records();
@@ -773,7 +848,13 @@ it.each(['agent:import', 'workflow:import'] as const)(
 	async (missing) => {
 		await addWorkflowDependency();
 		const archive = await download();
-		const scopes: ApiKeyScope[] = ['agent:import', 'workflow:import', 'agent:read', 'agent:create'];
+		const scopes: ApiKeyScope[] = [
+			'agent:import',
+			'workflow:import',
+			'agent:read',
+			'agent:create',
+			'skill:create',
+		];
 		const caller = await createOwnerWithApiKey({
 			scopes: scopes.filter((scope) => scope !== missing),
 		});
@@ -785,6 +866,7 @@ it.each(['agent:import', 'workflow:import'] as const)(
 
 it('reports a blocked plan without creating the destination project', async () => {
 	await agents.delete({ projectId: sourceProject.id });
+	await deleteSourceSkills();
 	const fixture = projectAgentsFixture();
 	delete fixture.manifest.requirements;
 	const entry = fixture.manifest.agents[0];
@@ -811,6 +893,7 @@ it('returns saved definitions and continues when one publication fails', async (
 	await agents.save(sourceAgents[0]);
 	const archive = await download();
 	await agents.delete({ projectId: sourceProject.id });
+	await deleteSourceSkills();
 	const response = await upload(archive, { publishingPolicy: 'publish-all' });
 	expect(response.statusCode).toBe(200);
 	const result = ImportResultDto.parse(response.body);

@@ -105,8 +105,11 @@ longer. JSON output shows the full values, so copy them from there.
 }
 ```
 
-Give the token the `read_api` and `write_repository` scopes. Protected branches
-can require the Maintainer role to push.
+Give the token the `api` and `write_repository` scopes. The `api` scope is
+required to open merge requests. Give the token user the Developer role or
+higher. Protected branches can require the Maintainer role to push. Approve in
+n8n merges the merge request, so the token user needs the Maintainer role, or
+permission to merge, on the base branch.
 
 ## `promotion-provider create`
 
@@ -252,6 +255,8 @@ n8n-cli promotion-environment delete env-1
 `update` takes `name`, `providerId`, `remote`, `settings`, or a combination. The
 direction and the scope cannot change. `settings` replaces the whole saved
 settings and must match the direction, so send every setting you want to keep.
+A new provider type or repository closes the open promotion reviews of the
+environment in n8n. Their merge requests stay open on the Git host.
 
 ```bash
 echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":true}}' \
@@ -259,7 +264,8 @@ echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnProm
 ```
 
 `delete` also removes the project links and the local checkout. The provider
-stays. Nothing in Git changes.
+stays. Nothing in the Git repository changes. The open promotion reviews of the
+environment close in n8n. Their merge requests stay open on the Git host.
 
 ## `promotion-environment connect` / `disconnect`
 
@@ -371,15 +377,15 @@ none.
 |--------|-----------|---------------|
 | `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
 | `source-changed` | `3` | The environment, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
-| `blocked` | `4` | Preflight found missing bindings, access requirements, or conflicts. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
+| `blocked` | `4` | The Apply check found missing bindings, access requirements, or conflicts. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
 
 With `--json`, the output is the full result for each status. For `blocked`, the
-`preflight` object lists each missing project, missing binding, access
+`check` object lists each missing project, missing binding, access
 requirement, and conflict. Existing variable values on this instance are kept.
 
 Apply makes the team projects on this instance match the package. It deletes
 each team project that the package does not hold, with all its workflows,
-credentials, and data tables. Preflight reports each such project as a
+credentials, and data tables. The Apply check reports each such project as a
 `project-deletion` conflict.
 
 Workflows and folders move within their project to match the branch, and folders
@@ -403,7 +409,7 @@ n8n-cli promotion-environment apply-continue env-2 \
 
 The three `--expected-*` flags are required. Use the `environmentId`,
 `git.branchName`, and `git.commitSha` that the blocked Apply reported. The
-command runs the preflight again. The results and exit codes are the same as
+command runs the Apply check again. The results and exit codes are the same as
 for `apply`: `blocked` again means that something still blocks, and
 `source-changed` means that you must review again. The server keeps no session,
 so run the command again when it exits `4`.
@@ -490,7 +496,7 @@ n8n-cli promotion-environment apply-selection-continue proj-abc -w wf-1 -w wf-2 
 
 Resend the same workflow ids. The three `--expected-*` flags are required: use
 the `environmentId`, `git.branchName`, and `git.commitSha` that the blocked Apply
-reported. The command runs the preflight again. The results and exit codes are
+reported. The command runs the Apply check again. The results and exit codes are
 the same as for `apply-selection`. The server keeps no session, so run the
 command again when it exits `4`.
 
@@ -499,6 +505,31 @@ changes: removed or retyped columns. The values in those columns are removed.
 Rows and other columns are kept. The flag applies all such changes when the
 command runs. This includes changes that the blocked Apply did not report.
 Without the flag, a destructive change blocks the command, and it exits `4`.
+
+## `promotion-environment list-missing-projects` / `create-missing-projects`
+
+Create the team projects of the Apply package that do not exist on this
+instance yet. The project Apply flow only works for a project that exists here
+with the same ID.
+
+```bash
+n8n-cli promotion-environment list-missing-projects env-2
+n8n-cli promotion-environment create-missing-projects env-2
+n8n-cli promotion-environment create-missing-projects env-2 -p proj-abc -p proj-def
+n8n-cli promotion-environment create-missing-projects env-2 --admin proj-abc=user-123
+```
+
+Projects are matched by ID, not by name. Each project is created empty, with the
+ID, name, icon, description, and telemetry tags from the package. You become its
+project admin. Use `--admin <projectId>=<userId>` to add another user as project
+admin of a new project. Nothing else is imported. Then apply changes to each project with
+`apply-selection`.
+
+Without `-p`, the command creates every missing project. Each result has the
+status `created`, `already-exists`, `failed`, or `admin-failed`. For
+`admin-failed`, the project exists, but the admin was not assigned. Assign the
+admin with `project add-member`. The command exits `1` when a project could not
+be created or its admin could not be assigned.
 
 ## `promotion-environment list-projects` / `add-project` / `remove-project`
 

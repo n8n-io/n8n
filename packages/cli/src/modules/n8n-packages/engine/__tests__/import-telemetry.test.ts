@@ -102,6 +102,7 @@ const scope = (input: {
 			creations: new Array(dt.created),
 			updates: new Array(dt.updated ?? 0),
 			columnAlignments: [],
+			matched: [],
 			failures: [],
 			matchedCount: dt.matched,
 		},
@@ -109,7 +110,7 @@ const scope = (input: {
 			matched: [
 				...Array.from({ length: vars.matched }, (_, i) => `matched-var-${i}`),
 				...overwrittenVariableNames,
-			],
+			].map((name) => ({ name, scopes: ['global'] })),
 			missing: missingVariableNames.map((name) => ({ name })),
 			creations: [...createdVariableNames, ...stubbedVariableNames, ...existingVariableNames].map(
 				(name) => ({ name }),

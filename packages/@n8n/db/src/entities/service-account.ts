@@ -10,9 +10,13 @@ export class ServiceAccount extends User {
 
 	/**
 	 * Every service account has one. `ServiceAccountRepository.create` writes both
-	 * rows in one transaction. Only set when the query loads the relation.
+	 * rows in one transaction. Every `find*` query loads it. A query builder
+	 * ignores eager relations, so it must join `details` itself.
+	 *
+	 * Because of the join, a limited `find*` on `User` (such as `findOne`) with a
+	 * `select` must include `id`, and a `FOR UPDATE` lock must name its tables.
 	 */
-	@OneToOne('ServiceAccountDetails', 'serviceAccount')
+	@OneToOne('ServiceAccountDetails', 'serviceAccount', { eager: true })
 	details: Relation<ServiceAccountDetails>;
 
 	/** A service account never waits for an invite. */

@@ -163,8 +163,8 @@ export function canWriteInstanceSkillScope(): boolean {
 }
 
 /**
- * The skills hub is on while the agents module is on. The skills module cannot be
- * disabled then. The skills routes answer 404 while the hub is off.
+ * Skills are on while the agents module is on. The skills module cannot be
+ * disabled then. The skills routes answer 404 while skills are off.
  */
 export function isContextSkillsEnabled(): boolean {
 	return useSettingsStore().isModuleActive('agents');

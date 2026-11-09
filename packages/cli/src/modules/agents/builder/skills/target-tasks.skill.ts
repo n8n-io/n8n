@@ -12,7 +12,7 @@ export function targetTasksSkill(): RuntimeSkill {
 			'agent_builder_create_tasks',
 			'agent-context',
 			'agent_builder_update_task',
-			'agent_builder_ask_questions',
+			'ask_user',
 			'agent_builder_patch_config',
 			'agent_builder_publish_agent',
 		],
@@ -20,7 +20,7 @@ export function targetTasksSkill(): RuntimeSkill {
 			'agent_builder_create_tasks',
 			'agent-context',
 			'agent_builder_update_task',
-			'agent_builder_ask_questions',
+			'ask_user',
 			'agent_builder_patch_config',
 			'agent_builder_write_config',
 			'search_nodes',
@@ -73,7 +73,7 @@ BOTH of these are true for it:
    the user did not specify a cadence, pick a sensible default and state it
    as an assumption.
 
-Use \`agent_builder_ask_questions\` only when even a reasonable assumption is impossible —
+Use \`ask_user\` only when even a reasonable assumption is impossible —
 never during an initial build: add the open decision to the pending setup
 instead, per the Initial Build rules in the \`agent-builder\` skill. Never create a
 placeholder or "refine-it-later" task.
@@ -87,7 +87,9 @@ placeholder or "refine-it-later" task.
   run-specific details. Do not duplicate Agent Instructions or Skill bodies;
   name a configured capability only when it helps route the work.
 - Make sure the agent already has every capability the steps need (an
-  integration, node/workflow tool, or web search). Configured chat integrations
+  integration, node/workflow tool, or web search) before you call \`agent_builder_create_tasks\`.
+  Add a missing tool to the config first: a step that needs a missing tool
+  fails at runtime. Configured chat integrations
   automatically generate their context and action tools in scheduled runs too.
   If the task sends through a configured platform and the integration lists the
   needed action (for example \`send_dm\`), use that action; do not add a

@@ -1,4 +1,3 @@
-import { AssistantSkillProviderProxy } from '@n8n/backend-services';
 // Manual mocks — must be declared before any imports that touch the mocked modules.
 vi.mock('@n8n/agents', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/agents')>()),
@@ -82,7 +81,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			source: {
 				registry: {
 					skillsHash: 'skills-hash',
-					skills: [{ id: 'data-table-manager' }],
+					skills: [{ id: 'data-table-manager', name: 'Data table manager' }],
 				},
 				loadSkill: vi.fn(),
 			},
@@ -233,7 +232,11 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
 
-import type { ScopedMemoryTaskEvent, SerializableAgentState } from '@n8n/agents';
+import {
+	createRuntimeSkillSource,
+	type ScopedMemoryTaskEvent,
+	type SerializableAgentState,
+} from '@n8n/agents';
 import type {
 	InstanceAiEvent,
 	InstanceContextInjection,
@@ -273,12 +276,11 @@ import {
 } from '@n8n/instance-ai';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ErrorReporter } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UserError } from '@n8n/errors';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
@@ -451,7 +453,6 @@ const TURN_ENVIRONMENT_FIELDS = [
 	'settingsService',
 	'browserSessionService',
 	'aiService',
-	'dbIterationLogStorage',
 	'instanceWriteAccess',
 	'telemetry',
 	'evalCredentialAllowlists',
@@ -839,7 +840,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			source: {
 				registry: {
 					skillsHash: 'skills-hash',
-					skills: [{ id: 'data-table-manager' }],
+					skills: [{ id: 'data-table-manager', name: 'Data table manager' }],
 				},
 				loadSkill: vi.fn(),
 			},
@@ -909,10 +910,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveMemoryModelConfig: Mock;
 				getCredits: Mock;
 				getModelFetch: Mock;
+				getLabeledModelFetch: Mock;
 			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
-			dbIterationLogStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
 			aiConfig: Record<string, never>;
@@ -952,7 +953,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			skillsService: InstanceAiSkillsService;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => true);
-		service.skillsService = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
+		service.skillsService = new InstanceAiSkillsService(mock(), mock());
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -986,6 +987,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 			resolveMemoryModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(),
+			getLabeledModelFetch: vi.fn(),
 			getCredits: vi.fn(async () => ({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
@@ -996,7 +998,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getThreadProjectId: vi.fn(async () => 'project-1'),
 			getThread: vi.fn(async () => undefined),
 		};
-		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
 		service.aiConfig = {};
@@ -1045,6 +1046,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveN8nSandboxConfig: vi.fn(async () => ({})),
 			},
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+			getTemplatesService: vi.fn(),
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
@@ -1117,7 +1119,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(1);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledTimes(1);
 		expect(environment.orchestrationContext.skills?.registry.skills).toEqual([
-			{ id: 'data-table-manager' },
+			{ id: 'data-table-manager', name: 'Data table manager' },
 		]);
 
 		// The credit-metering hook is wired to the instance-AI thread/user in
@@ -1212,7 +1214,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 
 		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
 		expect(unavailableEnvironment.orchestrationContext.skills?.registry.skills).toEqual([
-			{ id: 'data-table-manager' },
+			{ id: 'data-table-manager', name: 'Data table manager' },
 		]);
 		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
 		expect(createSandbox).not.toHaveBeenCalled();
@@ -1276,10 +1278,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveMemoryModelConfig: Mock;
 				getCredits: Mock;
 				getModelFetch: Mock;
+				getLabeledModelFetch: Mock;
 			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
-			dbIterationLogStorage: unknown;
 			dbSnapshotStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
@@ -1319,7 +1321,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			skillsService: InstanceAiSkillsService;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => false);
-		service.skillsService = new InstanceAiSkillsService(new AssistantSkillProviderProxy());
+		service.skillsService = new InstanceAiSkillsService(mock(), mock());
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
@@ -1352,6 +1354,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 			resolveMemoryModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(),
+			getLabeledModelFetch: vi.fn(),
 			getCredits: vi.fn(async () => ({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
@@ -1362,7 +1365,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			getThreadProjectId: vi.fn(async () => 'project-1'),
 			getThread: vi.fn(async () => undefined),
 		};
-		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
@@ -1407,6 +1409,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveN8nSandboxConfig: vi.fn(async () => ({})),
 			},
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
+			getTemplatesService: vi.fn(),
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
@@ -1568,6 +1571,8 @@ describe('InstanceAiService — self-healing launcher', () => {
 			workflowId: 'workflow-1',
 			projectId: 'project-1',
 		}),
+		configurationId: 1,
+		includeSubWorkflows: false,
 		executionId: 'execution-1',
 	};
 	const lifecycle = {
@@ -3990,6 +3995,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 				persistence: expect.objectContaining({
 					hostMetadata: {
 						instanceContext: {
+							hubSkills: { sequence: 1, calls: [], context: [] },
 							injection: { state: 'absent', reason: 'disabled' },
 							instanceContextEnabled: false,
 							nodeUsageEnabled: false,
@@ -5337,9 +5343,8 @@ describe('InstanceAiService — editor handoff context resources', () => {
 	it('traces the attached resources, which the raw message no longer shows', () => {
 		const source = InstanceAiService.toString();
 
-		// Assignment-form tolerant: the wiring is what matters, not whether the
-		// field is spread into the literal or set on it afterwards.
-		expect(source).toMatch(/resourceAttachments\s*[:=]\s*contextAttachments\.map/);
+		// The shared trace input records the resources; the wiring is what matters here.
+		expect(source).toMatch(/buildAssistantTurnTraceInput\)?\(\{[^}]*\bcontextAttachments\s*,/);
 	});
 });
 
@@ -6629,6 +6634,84 @@ describe('InstanceAiService — instance-context turn event', () => {
 		};
 	}
 
+	it.each(['completed', 'suspended', 'errored'] as const)(
+		'captures failed skill intent when the run is %s',
+		async (status) => {
+			const run = createContextRun('whole');
+			const runtimeSkillId = `hub-${'a'.repeat(64)}`;
+			const skills = createRuntimeSkillSource([
+				{
+					id: runtimeSkillId,
+					name: 'Private name',
+					description: 'Private description',
+					instructions: 'Private instructions',
+					metadata: { hubSkillId: 'skill-1' },
+				},
+			]);
+			const createEnvironment = Reflect.get(run.service, 'createExecutionEnvironment');
+			const environment = await createEnvironment();
+			environment.orchestrationContext.skills = skills;
+			createEnvironment.mockResolvedValue(environment);
+			vi.mocked(streamAgentRun).mockImplementationOnce(async (_agent, _input, _stream, options) => {
+				options.eventBus.publish(options.threadId, {
+					type: 'tool-call',
+					runId: options.runId,
+					agentId: options.agentId,
+					payload: {
+						toolCallId: 'load-1',
+						toolName: 'load_skill',
+						args: { skillId: runtimeSkillId },
+					},
+				});
+				options.eventBus.publish(options.threadId, {
+					type: 'tool-result',
+					runId: options.runId,
+					agentId: options.agentId,
+					payload: { toolCallId: 'load-1', result: { success: false, error: 'Private error' } },
+				});
+				if (status === 'errored') throw new Error('Stream stopped');
+				return {
+					status,
+					agentRunId: 'agent-run-1',
+					text: Promise.resolve('Done'),
+					workSummary: emptyWorkSummary(),
+					...(status === 'suspended'
+						? { suspension: { toolCallId: 'ask-1', requestId: 'req-1', suspendPayload: {} } }
+						: {}),
+				};
+			});
+			await run.start();
+			expect(run.rows()).toHaveLength(1);
+			expect(run.rows()[0]).toMatchObject({
+				thread_id: 'thread-1',
+				run_id: 'run-1',
+				status,
+				hub_skill_attempt_count: 1,
+				hub_skill_attempted_ids: ['skill-1'],
+				hub_skill_failure_count: 1,
+				hub_skill_load_count: 0,
+				hub_skill_snapshot_sequence: 1,
+			});
+			expect(JSON.stringify(run.rows())).not.toContain('Private');
+			expect(
+				TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN.getValidationError(run.rows()[0]),
+			).toBeNull();
+			if (status === 'suspended') {
+				expect(run.service.runState.suspendRun).toHaveBeenCalledWith(
+					'thread-1',
+					expect.objectContaining({
+						instanceContext: expect.objectContaining({
+							hubSkills: expect.objectContaining({
+								sequence: 1,
+								calls: [expect.objectContaining({ key: 'load-1', outcome: 'failure' })],
+							}),
+						}),
+					}),
+				);
+			}
+		},
+	);
+
 	function mockContextStream(
 		mode: 'whole' | 'resumed',
 		result: () => Awaited<ReturnType<typeof streamAgentRun>>,
@@ -6881,6 +6964,7 @@ describe('InstanceAiService — instance-context turn event', () => {
 				const saved = service.runState.suspendRun.mock.lastCall?.[1] as SuspendedRunState<User>;
 				expect(saved.instanceContext).toEqual({
 					...instanceContext,
+					hubSkills: { sequence: 1, calls: [], context: [] },
 					reachSoFar: {
 						surfaces: enabled
 							? ['activity-list', 'activity-expand']

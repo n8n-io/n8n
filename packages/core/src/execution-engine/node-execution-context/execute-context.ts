@@ -20,6 +20,7 @@ import type {
 import { UnexpectedError, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
+import { SupplyDataContext } from './supply-data-context';
 import {
 	assertBinaryData,
 	getBinaryDataBuffer,
@@ -131,6 +132,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	): Promise<unknown> {
 		return await getInputConnectionData.call(
 			this,
+			SupplyDataContext,
 			this.workflow,
 			this.runExecutionData,
 			this.runIndex,

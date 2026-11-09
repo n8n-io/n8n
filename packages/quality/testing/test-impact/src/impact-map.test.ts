@@ -102,7 +102,7 @@ describe('buildImpactMap', () => {
 		expect(impactMap['f.ts']['10']).toEqual(['A', 'B']);
 	});
 
-	it('excludes load-only functions (hits === 0) from the map', () => {
+	it('keeps load-only functions (hits === 0) with no specs', () => {
 		const { impactMap } = buildImpactMap([
 			{
 				spec: 'A',
@@ -110,7 +110,7 @@ describe('buildImpactMap', () => {
 			},
 		]);
 		expect(impactMap['f.ts']['10']).toEqual(['A']);
-		expect(impactMap['f.ts']['20']).toBeUndefined();
+		expect(impactMap['f.ts']['20']).toEqual([]);
 	});
 
 	it('sums hit counts across specs in the unified lcov', () => {
