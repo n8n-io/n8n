@@ -317,9 +317,6 @@ jobs:
       - name: Run format check
         run: pnpm format:check
 
-  # Unit and DB tests run on the PR only. In the merge queue they failed mostly on
-  # flaky tests and on tests that were already red on master, and the DB matrix
-  # set the queue run time. ci-master.yml runs the unit tests after each merge.
   unit-test:
     name: Unit tests
     if: github.event_name != 'merge_group' && needs.install-and-build.outputs.unit == 'true'
