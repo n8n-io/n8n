@@ -47,16 +47,19 @@ import type { Response } from 'express';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { DataTableRow, DataTableRowReturn, DataTableRowReturnWithState } from 'n8n-workflow';
 
-import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableAccessDeniedError } from '@/modules/data-table/errors/data-table-access-denied.error';
-import { DataTableColumnNameConflictError } from '@/modules/data-table/errors/data-table-column-name-conflict.error';
-import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import { DataTableSystemColumnNameConflictError } from '@/modules/data-table/errors/data-table-system-column-name-conflict.error';
-import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
+import {
+	DataTableAggregateService,
+	type DataTableColumn,
+	type DataTable,
+	DataTableService,
+	DataTableAccessDeniedError,
+	DataTableColumnNameConflictError,
+	DataTableNameConflictError,
+	DataTableNotFoundError,
+	DataTableSystemColumnNameConflictError,
+	DataTableValidationError,
+} from '@n8n/backend-module-data-table';
+
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { toDependencyListPublicDto } from '@/public-api/v1/shared/dependency.mapper';
 import {

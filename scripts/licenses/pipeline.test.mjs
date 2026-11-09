@@ -5,6 +5,9 @@ import { mkdtemp, mkdir, rm, readFile, copyFile, writeFile } from 'node:fs/promi
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { enrichSbom, loadLicenseConfig } from './enrich-sbom.mjs';
+import { checkSbom, loadSpdxIds } from './check-sbom-licenses.mjs';
+import { qualifiedName, renderSbom } from './render-licenses-md.mjs';
 
 // End-to-end test of the release-blocking license chain: enrich-sbom feeds
 // check-sbom-licenses, driven as real CLIs (main(), arg parsing, exit codes,
@@ -188,4 +191,54 @@ describe('image license resolutions (shipped config)', () => {
 			assert.equal(enrichedGate.status, 0, enrichedGate.stderr);
 		});
 	}
+});
+
+describe('release license resolutions (shipped config)', () => {
+	it('resolves packages with missing license metadata in the SBOM and license manifest', async () => {
+		const raw = {
+			components: [
+				{
+					name: 'xmlhttprequest-ssl',
+					version: '2.1.2',
+					purl: 'pkg:npm/xmlhttprequest-ssl@2.1.2',
+					licenses: [],
+				},
+				{
+					name: 'simple-lru-cache',
+					version: '0.0.2',
+					purl: 'pkg:npm/simple-lru-cache@0.0.2',
+					licenses: [],
+				},
+				{
+					name: 'cohere-ai',
+					version: '7.14.0',
+					purl: 'pkg:npm/cohere-ai@7.14.0',
+					licenses: [],
+				},
+				{
+					group: '@kafkajs',
+					name: 'confluent-schema-registry',
+					version: '3.8.0',
+					purl: 'pkg:npm/%40kafkajs/confluent-schema-registry@3.8.0',
+					licenses: [],
+				},
+			],
+		};
+		const gateOptions = { validIds: await loadSpdxIds(), allowRefs: new Set() };
+		assert.equal(checkSbom(raw, gateOptions).failures.length, 4);
+
+		const config = await loadLicenseConfig();
+		const { sbom } = enrichSbom(raw, config);
+		for (const component of sbom.components) {
+			assert.deepEqual(component.licenses, [{ license: { id: 'MIT' } }], component.purl);
+		}
+		assert.deepEqual(checkSbom(sbom, gateOptions).failures, []);
+
+		const { markdown, unresolved } = await renderSbom(sbom, {});
+		assert.deepEqual(unresolved, []);
+		assert.ok(markdown.includes('## MIT\n'));
+		for (const component of raw.components) {
+			assert.ok(markdown.includes(`* ${qualifiedName(component)} ${component.version}\n`));
+		}
+	});
 });

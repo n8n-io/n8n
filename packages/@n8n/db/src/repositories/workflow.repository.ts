@@ -743,6 +743,17 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return await this.findOne({ select: MIGRATION_SCAN_FIELDS, where: { id: workflowId } });
 	}
 
+	/** `workflowIds` limits the count to those workflows; `undefined` counts all. */
+	async countUnarchived(workflowIds?: string[]): Promise<number> {
+		if (workflowIds === undefined) return await this.count({ where: { isArchived: false } });
+
+		let total = 0;
+		for (const chunk of chunkIds(workflowIds)) {
+			total += await this.count({ where: { id: In(chunk), isArchived: false } });
+		}
+		return total;
+	}
+
 	/** The subset of `workflowIds` that still exists, in no particular order. */
 	async findExistingIds(workflowIds: string[], ctx: OperationContext = {}): Promise<string[]> {
 		if (workflowIds.length === 0) return [];

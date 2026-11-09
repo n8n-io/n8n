@@ -4,13 +4,12 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CreateAppDto,
 	ListAppsQueryDto,
+	SetAppBindingsDto,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
@@ -157,9 +156,6 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
-	OperationalError,
-	UnexpectedError,
-	UserError,
 	isTriggerNodeType,
 	jsonParse,
 	createRunExecutionData,
@@ -175,7 +171,14 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
+import {
+	ConflictError,
+	LockedError,
+	NotFoundError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
@@ -197,8 +200,8 @@ import {
 import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
+
 import { SkillsGate } from '@/modules/skills';
 import {
 	MCP_REGISTRY_PACKAGE_NAME,
@@ -427,8 +430,6 @@ export interface InstanceAiFeatureFlags {
 	 *  closed with every other gate: `getFeatureFlags` never throws, it
 	 *  returns `{}` on a PostHog outage. */
 	folderExplorationEnabled: boolean;
-	/** Saved AI preferences on every user turn. */
-	aiPreferencesEnabled: boolean;
 	credentialDescriptionsEnabled: boolean;
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
@@ -581,9 +582,6 @@ export class InstanceAiAdapterService {
 			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
-			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
-			 *  `save_user_preference` tool. */
-			aiPreferencesEnabled?: boolean;
 			assistantSkillsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
@@ -612,7 +610,6 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled,
 			onboardingThread,
 			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
 			assistantSkillsEnabled,
 			modelId,
 			modelFetch,
@@ -694,9 +691,12 @@ export class InstanceAiAdapterService {
 			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
-			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
+			// Absent only in test contexts constructed without DI.
+			...(this.aiPreferenceService
+				? { aiPreferenceService: this.createPreferenceAdapter(user) }
+				: {}),
 			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
-			appService: this.createAppAdapter(user, projectId),
+			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -848,7 +848,6 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
 		};
@@ -1846,7 +1845,7 @@ export class InstanceAiAdapterService {
 				const settings = Container.get(WorkflowEngineDefaults).applyTo({
 					executionOrder: 'v1',
 					...(json.settings ?? {}),
-				} as IWorkflowSettings);
+				});
 				assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
 
 				// Strip redactionPolicy if the user lacks the required scope —
@@ -3543,14 +3542,25 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createAppAdapter(user: User, projectId?: string): InstanceAiAppService | undefined {
+	private createAppAdapter(
+		user: User,
+		projectId?: string,
+		threadId?: string,
+	): InstanceAiAppService | undefined {
 		if (!projectId || !Container.get(ModuleRegistry).isActive('apps')) return undefined;
 		const { assertProjectScope } = this.createProjectScopeHelpers(user, projectId);
+		const actor = { userId: user.id, threadId };
 		const services = async (scope: Scope) => {
 			if (scope === 'app:create' || scope === 'app:update') this.assertInstanceNotReadOnly('apps');
 			await assertProjectScope([scope], projectId);
-			const { AppsService, AppSourceArchiveService } = await import('@n8n/backend-module-apps');
-			return { apps: Container.get(AppsService), sources: Container.get(AppSourceArchiveService) };
+			const { AppsService, AppSourceArchiveService, AppBindingsService, renderBindingTypes } =
+				await import('@n8n/backend-module-apps');
+			return {
+				apps: Container.get(AppsService),
+				sources: Container.get(AppSourceArchiveService),
+				bindings: () => Container.get(AppBindingsService),
+				renderBindingTypes,
+			};
 		};
 
 		return {
@@ -3559,7 +3569,7 @@ export class InstanceAiAdapterService {
 				return await apps.createApp(
 					projectId,
 					CreateAppDto.parse({ name, namespace, visibility }),
-					{ id },
+					{ id, actor },
 				);
 			},
 			listApps: async ({ name }) => {
@@ -3585,7 +3595,28 @@ export class InstanceAiAdapterService {
 			},
 			commit: async (appId, baseVersionId, archive, label) => {
 				const { sources } = await services('app:update');
-				return await sources.commit(projectId, appId, baseVersionId, archive, label);
+				return await sources.commit(projectId, appId, baseVersionId, archive, label, actor);
+			},
+			getBindings: async (appId) => {
+				const { bindings, renderBindingTypes } = await services('app:read');
+				const result = await bindings().getBindings(projectId, appId);
+				return { ...result, types: renderBindingTypes(result.bindings) };
+			},
+			setBindings: async (appId, baseVersionId, next) => {
+				const { bindings, renderBindingTypes } = await services('app:update');
+				const dto = SetAppBindingsDto.parse({ baseVersionId, bindings: next });
+				const result = await bindings().setBindings(
+					user,
+					projectId,
+					appId,
+					dto.baseVersionId,
+					dto.bindings,
+				);
+				return { ...result, types: renderBindingTypes(result.bindings) };
+			},
+			exportSdk: async () => {
+				const { sources } = await services('app:read');
+				return await sources.exportSdk();
 			},
 		};
 	}

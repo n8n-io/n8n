@@ -1,7 +1,7 @@
 import type { CredentialProvider, ResolvedCredential, CredentialListItem } from '@n8n/agents';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { ICredentialDataDecryptedObject, McpAiGatewayCredentialType } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';

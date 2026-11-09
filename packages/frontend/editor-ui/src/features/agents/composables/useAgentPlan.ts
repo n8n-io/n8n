@@ -30,6 +30,8 @@ export function useAgentPlan(target: {
 		const threadId = target.threadId();
 
 		if (!threadId || !target.active() || disposed || visibility.value !== 'visible') return;
+		// System agents, such as the Assistant, have no plan route.
+		if (target.channel?.() === 'system') return;
 
 		const read = ++request;
 

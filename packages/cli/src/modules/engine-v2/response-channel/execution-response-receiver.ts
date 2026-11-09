@@ -1,6 +1,6 @@
-import type { ExecutionResponse } from '@n8n/engine';
+import type { ExecutionResponse, UnsubscribeFromExecutionChannel } from '@n8n/engine';
 
-export type UnsubscribeExecutionResponse = () => void;
+export type UnsubscribeExecutionResponse = UnsubscribeFromExecutionChannel;
 
 /** Receives responses from executions and delivers them to their callers. */
 export interface ExecutionResponseReceiver {
