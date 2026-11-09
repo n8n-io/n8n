@@ -10,7 +10,6 @@ import {
 	UpdatedFolderPublicDto,
 	folderIdParamSchema,
 	folderProjectIdParamSchema,
-	projectIdParamSchema,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type {
@@ -137,13 +136,14 @@ export class FoldersPublicController {
 	async listFolders(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('projectId', folderProjectIdParamSchema) projectId: string,
 		@Query query: ListFoldersQueryPublicDto,
 	): Promise<FolderListPublicDto> {
 		// Kept in the handler: it answers 404 for an unknown project, which @ProjectScope cannot do.
-		await assertProjectScope(req.user, projectId, ['folder:list']);
+		const resolvedProjectId = await this.resolveProjectId(req, projectId);
+		await assertProjectScope(req.user, resolvedProjectId, ['folder:list']);
 
-		const [data, count] = await this.folderService.getManyAndCount(projectId, query);
+		const [data, count] = await this.folderService.getManyAndCount(resolvedProjectId, query);
 
 		return { count, data: data.map(toFolderPublicDto) };
 	}
@@ -187,15 +187,16 @@ export class FoldersPublicController {
 	async getFolder(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('projectId', folderProjectIdParamSchema) projectId: string,
 		@Param('folderId', folderIdParamSchema) folderId: string,
 	): Promise<FolderDetailsPublicDto> {
 		// Kept as a manual check: it answers 404 for an unknown project, which `@ProjectScope` cannot.
-		await assertProjectScope(req.user, projectId, ['folder:read']);
+		const resolvedProjectId = await this.resolveProjectId(req, projectId);
+		await assertProjectScope(req.user, resolvedProjectId, ['folder:read']);
 
 		try {
 			const { folder, totalSubFolders, totalWorkflows } =
-				await this.folderService.findFolderWithContentCounts(folderId, projectId);
+				await this.folderService.findFolderWithContentCounts(folderId, resolvedProjectId);
 
 			return toFolderDetailsPublicDto(folder, totalSubFolders, totalWorkflows);
 		} catch (error) {
@@ -214,15 +215,16 @@ export class FoldersPublicController {
 	async updateFolder(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('projectId', folderProjectIdParamSchema) projectId: string,
 		@Param('folderId', folderIdParamSchema) folderId: string,
 		@Body body: UpdateFolderPublicDto,
 	): Promise<UpdatedFolderPublicDto> {
 		// A manual check, not `@ProjectScope`: an unknown project has to stay a 404, not a 403.
-		await assertProjectScope(req.user, projectId, ['folder:update']);
+		const resolvedProjectId = await this.resolveProjectId(req, projectId);
+		await assertProjectScope(req.user, resolvedProjectId, ['folder:update']);
 
 		try {
-			const folder = await this.folderService.updateFolder(folderId, projectId, body);
+			const folder = await this.folderService.updateFolder(folderId, resolvedProjectId, body);
 			return toUpdatedFolderPublicDto(folder);
 		} catch (error) {
 			return handleError(error);
@@ -244,15 +246,16 @@ export class FoldersPublicController {
 	async deleteFolder(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('projectId', folderProjectIdParamSchema) projectId: string,
 		@Param('folderId', folderIdParamSchema) folderId: string,
 		@Query query: DeleteFolderQueryPublicDto,
 	): Promise<void> {
 		// Stays a manual check: an unknown project answers 404 here, where `@ProjectScope` answers 403.
-		await assertProjectScope(req.user, projectId, ['folder:delete']);
+		const resolvedProjectId = await this.resolveProjectId(req, projectId);
+		await assertProjectScope(req.user, resolvedProjectId, ['folder:delete']);
 
 		try {
-			await this.folderService.deleteFolder(req.user, folderId, projectId, query);
+			await this.folderService.deleteFolder(req.user, folderId, resolvedProjectId, query);
 		} catch (error) {
 			return handleError(error);
 		}
