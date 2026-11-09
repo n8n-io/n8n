@@ -11,6 +11,7 @@ import {
 	onBeforeUnmount,
 	useTemplateRef,
 	nextTick,
+	type Ref,
 } from 'vue';
 import {
 	N8nAiActivityStepGroup,
@@ -105,6 +106,7 @@ import ApprovalCard from './interactive/ApprovalCard.vue';
 const props = withDefaults(
 	defineProps<{
 		visible?: boolean;
+		autofocus?: boolean;
 		projectId: string;
 		agentId: string;
 		mode?: 'panel' | 'inline';
@@ -150,6 +152,7 @@ const props = withDefaults(
 		 * question card and for a non-empty queue still take priority.
 		 */
 		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
 		/**
 		 * Shows the attach button of the composer. A host that opens the file
@@ -190,6 +193,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
+	'content-change': [hasContent: boolean];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
@@ -713,8 +717,38 @@ const backgroundJobStopButton =
 const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 
 function focusInput(options?: FocusOptions) {
-	chatInput.value?.focus(options);
+	if (props.visible) chatInput.value?.focus(options);
 }
+
+let forceFocusPending = true;
+watch(
+	[chatInput, () => props.autofocus, () => props.visible],
+	async ([input, autofocus, visible], [, previousAutofocus, wasVisible], onCleanup) => {
+		if (!autofocus || !visible) {
+			forceFocusPending = false;
+			return;
+		}
+		if (!previousAutofocus || !wasVisible) forceFocusPending = true;
+		if (!input) return;
+		let cancelled = false;
+		onCleanup(() => {
+			cancelled = true;
+		});
+		await nextTick();
+		if (cancelled || !props.autofocus || !props.visible || chatInput.value !== input) return;
+		const activeElement = document.activeElement;
+		if (
+			!forceFocusPending &&
+			activeElement instanceof HTMLElement &&
+			activeElement !== document.body &&
+			activeElement !== document.documentElement
+		) {
+			return;
+		}
+		forceFocusPending = false;
+		focusInput();
+	},
+);
 
 watch(
 	[
@@ -1372,6 +1406,8 @@ function isDirty(): boolean {
 	return hasDraft.value || composerAttachments.value.length > 0;
 }
 
+watch(isDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
+
 /** Puts text into the composer without sending it. */
 function setDraft(text: string) {
 	inputText.value = text;
@@ -1808,6 +1844,11 @@ onBeforeUnmount(() => {
 					v-model="inputText"
 					:block-canvas-shortcuts="false"
 					:placeholder="chatPlaceholder"
+					:placeholder-preview="
+						!hasOpenInteractiveQuestion && queuedMessages.length === 0
+							? props.placeholderPreview
+							: undefined
+					"
 					:composer-height="composerHeight"
 					:is-streaming="false"
 					:show-stop-button="showStop"
