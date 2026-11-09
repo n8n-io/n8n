@@ -1,0 +1,20 @@
+packages/quality/efficiency/scale/benchmark/scenarios/expression-mix/expression-mix.script.js
+  s_ab3961db330c75::t_879a3b7fc1f6a5 65
+  s_ab3961db330c75::t_8f59636c748798 31-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe4800b301358c3bacba74ef19248ed7430f5ed1",
+  "prompts": {},
+  "sessions": {
+    "s_ab3961db330c75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c74b9e5f-af0d-4aae-a9a5-ca3d098fbeab",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
