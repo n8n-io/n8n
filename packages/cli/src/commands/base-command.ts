@@ -9,7 +9,6 @@ import {
 	ModulesConfig,
 } from '@n8n/backend-common';
 import { installGlobalProxyAgent } from '@n8n/backend-network';
-import { TelemetryProxy } from '@n8n/backend-services';
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -53,7 +52,6 @@ import { POLICY_MODULES } from '@/policy/policy-modules';
 import { PostHogClient } from '@/posthog';
 import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { Telemetry } from '@/telemetry';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -219,7 +217,6 @@ export abstract class BaseCommand<F = never> {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
-		Container.get(TelemetryProxy).registerProvider(Container.get(Telemetry));
 		Container.get(ActivityEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 

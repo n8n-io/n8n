@@ -20,7 +20,7 @@ export class TelemetryProxy implements TelemetryTracker {
 	private provider: TelemetryTracker | null = null;
 
 	/** Flushers added before the provider registers. */
-	private readonly pendingFlushers: (() => void)[] = [];
+	private readonly pendingFlushers: Array<() => void> = [];
 
 	registerProvider(provider: TelemetryTracker): void {
 		this.provider = provider;

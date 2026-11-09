@@ -1,6 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import { InstanceRegistryProxyService, type TelemetryTracker } from '@n8n/backend-services';
+import {
+	InstanceRegistryProxyService,
+	TelemetryProxy,
+	type TelemetryTracker,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRelationRepository,
@@ -144,6 +148,8 @@ export class Telemetry implements TelemetryTracker {
 	}
 
 	async init() {
+		Container.get(TelemetryProxy).registerProvider(this);
+
 		const { enabled, backendConfig } = this.globalConfig.diagnostics;
 		if (enabled) {
 			const [key, dataPlaneUrl] = backendConfig.split(';');
