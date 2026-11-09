@@ -78,11 +78,8 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 		);
 
 		await queryRunner.createIndices(TABLE, [
-			// The listing pages by the keyset `(created_at, id) < (cursor)` and
-			// orders by `created_at DESC, id DESC`. An index on the same columns,
-			// after the workflow filter, returns one page without a sort. Both
-			// orders are the same direction, so Postgres scans this ASC index
-			// backwards; `TableIndex` cannot express DESC.
+			// Serves the listing's keyset order `created_at DESC, id DESC`. ASC
+			// because `TableIndex` cannot say DESC; Postgres scans it backwards.
 			new TableIndex({
 				name: 'idx_workflow_execution_workflow_id_created_at_id',
 				columnNames: ['workflow_id', 'created_at', 'id'],
