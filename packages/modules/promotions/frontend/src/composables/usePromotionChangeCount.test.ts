@@ -7,7 +7,7 @@ import * as api from '../promotions.api';
 import { resource } from '../__tests__/preview.fixtures';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: {} }),
+	useRootStore: () => ({ publicApiContext: {} }),
 }));
 
 vi.mock('../promotions.api');
