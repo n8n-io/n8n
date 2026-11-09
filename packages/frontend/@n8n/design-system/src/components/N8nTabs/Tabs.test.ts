@@ -8,6 +8,8 @@ const options = [
 	{ value: 'second', label: 'Second', disabled: true, tooltip: 'No access' },
 ];
 
+const ROOT_WIDTH = 264; // setOverflowLayout sets the root clientWidth to this value.
+
 function setOverflowLayout(tablist: HTMLElement, scrollLeft = 0) {
 	Object.defineProperties(tablist, {
 		scrollWidth: { configurable: true, value: 500 },
@@ -15,7 +17,10 @@ function setOverflowLayout(tablist: HTMLElement, scrollLeft = 0) {
 		scrollLeft: { configurable: true, value: scrollLeft },
 	});
 	if (tablist.parentElement) {
-		Object.defineProperty(tablist.parentElement, 'clientWidth', { configurable: true, value: 264 });
+		Object.defineProperty(tablist.parentElement, 'clientWidth', {
+			configurable: true,
+			value: ROOT_WIDTH,
+		});
 	}
 	vi.spyOn(tablist, 'getBoundingClientRect').mockReturnValue(new DOMRect(32, 0, 200, 24));
 	Array.from(tablist.children).forEach((item, index) => {
@@ -148,7 +153,7 @@ describe('N8nTabs', () => {
 		});
 		const tablist = getByRole('tablist');
 		setOverflowLayout(tablist);
-		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 265 });
+		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: ROOT_WIDTH + 1 });
 		await fireEvent.scroll(tablist);
 
 		expect(queryByRole('button', { name: 'Show previous tabs' })).not.toBeInTheDocument();
@@ -161,19 +166,24 @@ describe('N8nTabs', () => {
 		});
 		const tablist = getByRole('tablist');
 		setOverflowLayout(tablist);
-		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 266 });
+		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: ROOT_WIDTH + 2 });
 		await fireEvent.scroll(tablist);
 
 		expect(getByRole('button', { name: 'Show previous tabs' })).toBeInTheDocument();
 		expect(getByRole('button', { name: 'Show next tabs' })).toBeInTheDocument();
 
-		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 264.5 });
+		Object.defineProperty(tablist, 'scrollWidth', {
+			configurable: true,
+			value: ROOT_WIDTH,
+		});
 		await fireEvent.scroll(tablist);
 
+		// The pre-fix check hides this button at ROOT_WIDTH; the deadband keeps it visible.
 		expect(getByRole('button', { name: 'Show previous tabs' })).toBeInTheDocument();
+		// The pre-fix check hides this button at ROOT_WIDTH; the deadband keeps it visible.
 		expect(getByRole('button', { name: 'Show next tabs' })).toBeInTheDocument();
 
-		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 265 });
+		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: ROOT_WIDTH + 1 });
 		await fireEvent.scroll(tablist);
 
 		expect(getByRole('button', { name: 'Show previous tabs' })).toBeInTheDocument();
@@ -186,11 +196,19 @@ describe('N8nTabs', () => {
 		});
 		const tablist = getByRole('tablist');
 		setOverflowLayout(tablist);
-		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 266 });
+		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: ROOT_WIDTH + 2 });
 		await fireEvent.scroll(tablist);
 		expect(getByRole('button', { name: 'Show next tabs' })).toBeInTheDocument();
 
-		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 263 });
+		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: ROOT_WIDTH });
+		await fireEvent.scroll(tablist);
+
+		// The pre-fix check hides this button at ROOT_WIDTH; the deadband keeps it visible.
+		expect(getByRole('button', { name: 'Show previous tabs' })).toBeInTheDocument();
+		// The pre-fix check hides this button at ROOT_WIDTH; the deadband keeps it visible.
+		expect(getByRole('button', { name: 'Show next tabs' })).toBeInTheDocument();
+
+		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: ROOT_WIDTH - 1 });
 		await fireEvent.scroll(tablist);
 
 		expect(queryByRole('button', { name: 'Show previous tabs' })).not.toBeInTheDocument();
