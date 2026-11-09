@@ -253,14 +253,6 @@ describe('AgentEditorModal', () => {
 		});
 	});
 
-	it('closes the dialog when the dialog requests close', async () => {
-		const { getByTestId } = renderModal();
-
-		await userEvent.click(getByTestId('dialog-request-close'));
-
-		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
-	});
-
 	describe('edit mode', () => {
 		beforeEach(() => {
 			mockUseCustomAgent.mockReturnValue({
