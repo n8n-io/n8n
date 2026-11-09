@@ -394,11 +394,9 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 vi.mock('../composables/agentTelemetry.utils', () => ({
 	deriveAgentStatus: vi.fn(() => 'draft'),
 	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({
-		tools: [],
 		skills: [],
 		triggers: [],
 		memory: null,
-		model: null,
 		config_version: 'test-version',
 	}),
 }));
@@ -437,6 +435,7 @@ describe('AgentChatPanel', () => {
 			continueSessionId: string;
 			agentConfig: AgentJsonConfig | null;
 			attachmentCapabilities: ProviderAttachmentCapabilities;
+			acceptedMimeTypes: string;
 			beforeSend: () => Promise<void> | void;
 			backgroundJobsActive: boolean;
 			increaseBudget: (payload: {
@@ -509,9 +508,13 @@ describe('AgentChatPanel', () => {
 			expect(trackSubmittedMessageMock).toHaveBeenCalledWith({
 				agentId: 'a1',
 				status: 'draft',
-				agentConfig: expect.objectContaining({
+				agentConfig: {
+					skills: [],
+					tasks: [],
+					triggers: [],
+					memory: null,
 					config_version: expect.stringMatching(/^[0-9a-f]{16}$/),
-				}),
+				},
 			});
 		} finally {
 			vi.unstubAllGlobals();
@@ -2126,14 +2129,18 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
-		it('keeps plan stopping available only in Preview', async () => {
+		it('keeps plan stopping available in Preview and n8n Chat, not in the system chat', async () => {
 			messagesMock.value = [publishPlan(planView())];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 
 			expect(wrapper.getComponent(AgentChatPlan).props('canStop')).toBe(true);
 
-			backgroundJobsMock.value = [{ ...job, status: 'paused', pauseRequested: true }];
 			await wrapper.setProps({ channel: 'n8n-chat' });
+
+			expect(wrapper.getComponent(AgentChatPlan).props('canStop')).toBe(true);
+
+			backgroundJobsMock.value = [{ ...job, status: 'paused', pauseRequested: true }];
+			await wrapper.setProps({ channel: 'system' });
 
 			expect(wrapper.getComponent(AgentChatPlan).props('stopped')).toBe(false);
 			expect(wrapper.getComponent(AgentChatPlan).props('canStop')).toBe(false);
@@ -2850,32 +2857,26 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
-		it.each([false, true])(
-			'keeps n8n Chat background controls without a trace link, plan=%s',
-			async (hasPlan) => {
-				if (hasPlan) messagesMock.value = [publishPlan(planView())];
+		it('keeps n8n Chat background controls without a trace link and stops through Stop all tasks', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel({
+				backgroundJobsActive: true,
+				continueSessionId: 't1',
+				channel: 'n8n-chat',
+			});
+			const panel = wrapper.get('[data-testid="agent-background-jobs"]');
+			await panel.get('button').trigger('click');
 
-				backgroundJobsMock.value = [job];
-				const wrapper = mountPanel({
-					backgroundJobsActive: true,
-					continueSessionId: 't1',
-					channel: 'n8n-chat',
-				});
-				const panel = wrapper.get('[data-testid="agent-background-jobs"]');
-				await panel.get('button').trigger('click');
+			// `/sessions/<threadId>` is the builder's session view, which needs
+			// `agent:read` — a chat-only n8n Chat member only has `agent:execute`.
+			expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
 
-				// `/sessions/<threadId>` is the builder's session view, which needs
-				// `agent:read` — a chat-only n8n Chat member only has `agent:execute`.
-				expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
+			await wrapper.get('[data-testid="agent-background-jobs-stop"]').trigger('click');
 
-				await wrapper.get('[data-testid="agent-background-jobs-stop"]').trigger('click');
+			expect(stopPlanMock).toHaveBeenCalledOnce();
 
-				expect(stopAllMock).toHaveBeenCalledOnce();
-				expect(stopPlanMock).not.toHaveBeenCalled();
-
-				wrapper.unmount();
-			},
-		);
+			wrapper.unmount();
+		});
 
 		it.each([
 			['completed', 'Completed', 'circle-check'],
@@ -3328,13 +3329,10 @@ describe('AgentChatPanel', () => {
 		await vi.waitFor(() => expect(buildAgentConfigFingerprint).toHaveBeenCalledOnce());
 		await wrapper.setProps({ continueSessionId: 'session-2' });
 		fingerprint.resolve({
-			tools: [],
 			skills: [],
 			tasks: [],
 			triggers: [],
-			vector_stores: [],
 			memory: null,
-			model: null,
 			config_version: 'test-version',
 		});
 		await flushPromises();
@@ -3359,13 +3357,10 @@ describe('AgentChatPanel', () => {
 
 		busy.value = true;
 		fingerprint.resolve({
-			tools: [],
 			skills: [],
 			tasks: [],
 			triggers: [],
-			vector_stores: [],
 			memory: null,
-			model: null,
 			config_version: 'test-version',
 		});
 		await flushPromises();
@@ -4245,6 +4240,74 @@ describe('AgentChatPanel', () => {
 				undefined,
 			);
 		});
+
+		it('shows a toast for a file that the composer rejects by type', async () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				acceptedMimeTypes: 'text/csv,.csv',
+			});
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+			const zip = new File(['zip'], 'archive.zip', { type: 'application/zip' });
+
+			chatInput.vm.$emit('files-rejected', [zip]);
+			await flushPromises();
+
+			expect(showMessageMock).toHaveBeenCalledExactlyOnceWith({
+				type: 'error',
+				title: 'archive.zip is not a supported file type',
+			});
+		});
+
+		it('uses the accepted types of the host instead of the capabilities', () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				attachmentCapabilities: { image: false, pdf: false, audio: false },
+				acceptedMimeTypes: 'text/csv,.csv',
+			});
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('showAttach')).toBe(true);
+			expect(chatInput.props('acceptedMimeTypes')).toBe('text/csv,.csv');
+		});
+
+		it('hides the attach button when the host accepts no types', () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				attachmentCapabilities: { image: true, pdf: true, audio: false },
+				acceptedMimeTypes: '',
+			});
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('showAttach')).toBe(false);
+		});
+
+		it('accepts a file by the accepted types of the host, and rejects other files', async () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				acceptedMimeTypes: 'text/csv,.csv',
+			});
+			// Some browsers report a CSV file as an Excel file.
+			const csv = new File(['a,b'], 'data.csv', { type: 'application/vnd.ms-excel' });
+			const zip = new File(['zip'], 'archive.zip', { type: 'application/zip' });
+
+			(
+				wrapper.vm as unknown as {
+					sendMessageFromOutside: (message: string, files?: File[]) => void;
+				}
+			).sendMessageFromOutside('', [csv, zip]);
+			await flushPromises();
+
+			expect(showMessageMock).toHaveBeenCalledExactlyOnceWith({
+				type: 'error',
+				title: 'archive.zip is not a supported file type',
+			});
+			expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+				'',
+				[csv],
+				expect.any(Function),
+				undefined,
+			);
+		});
 	});
 
 	it('emits agent-unavailable when the stream reports the agent is no longer available', () => {
@@ -4352,6 +4415,35 @@ describe('AgentChatPanel', () => {
 					true,
 				);
 				expect(wrapper.find('[data-testid="host-footer"]').exists()).toBe(true);
+			});
+
+			it('disables the footer-start controls while a queued message moves back into the composer', async () => {
+				queuedMessagesMock.value = [
+					{
+						id: '1',
+						steeringExecutionId: null,
+						message: 'original',
+						createdAt: new Date().toISOString(),
+					},
+				];
+				const removal = createDeferredPromise<string>();
+				removeQueuedMessageMock.mockReturnValueOnce(removal.promise);
+				const wrapper = mountPanel({}, undefined, {
+					'footer-start': (props) =>
+						h('button', { 'data-testid': 'host-menu', disabled: props.disabled }),
+				});
+				const hostMenu = () => wrapper.get('[data-testid="host-menu"]').element;
+
+				expect(hostMenu()).toHaveProperty('disabled', false);
+
+				await wrapper.get('[aria-label="generic.edit"]').trigger('click');
+				await flushPromises();
+				expect(hostMenu()).toHaveProperty('disabled', true);
+
+				removal.resolve('removed');
+				await flushPromises();
+				expect(hostMenu()).toHaveProperty('disabled', false);
+				wrapper.unmount();
 			});
 		});
 

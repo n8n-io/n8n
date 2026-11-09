@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-module-apps",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -42,6 +42,7 @@
   "dependencies": {
     "@n8n/agents": "workspace:*",
     "@n8n/api-types": "workspace:*",
+    "@n8n/app-sdk": "workspace:*",
     "@n8n/backend-common": "workspace:*",
     "@n8n/backend-services": "workspace:*",
     "@n8n/blob-storage": "workspace:*",
@@ -73,7 +74,9 @@
     "@types/compression": "catalog:",
     "@types/cookie-parser": "catalog:",
     "@types/express": "catalog:",
+    "@types/jsdom": "catalog:",
     "@types/mime-types": "catalog:",
+    "jsdom": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",

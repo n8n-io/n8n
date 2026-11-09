@@ -1,3 +1,4 @@
+import type { OperationContext } from '@n8n/db';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
 	MAX_AGENT_FILE_SIZE_MB,
@@ -35,6 +36,7 @@ import { storageFileNameForOriginalFileName, toAgentFileDto } from './agent-know
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import type { AgentFile } from './entities/agent-file.entity';
 import { AgentFileRepository } from './repositories/agent-file.repository';
+import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
 const MAX_AGENT_FILE_METADATA_LENGTH = 255;
@@ -56,6 +58,7 @@ export class AgentKnowledgeService {
 		private readonly logger: Logger,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
 	) {}
 
 	async uploadFiles(
@@ -74,7 +77,7 @@ export class AgentKnowledgeService {
 			try {
 				for (const file of files) {
 					const contentHash = await this.hashUploadedFile(file.path);
-					const storedFile = await this.storeAgentFile(agentId, file);
+					const storedFile = await this.storeAgentFile(agentId, projectId, file);
 					uploadedFiles.push(storedFile);
 					results.push({ file: toAgentFileDto(storedFile), contentHash });
 				}
@@ -185,7 +188,11 @@ export class AgentKnowledgeService {
 	}
 
 	/** Stores the file's bytes via AgentKnowledgeFileStore, then reserves its DB row. */
-	private async storeAgentFile(agentId: string, file: Express.Multer.File): Promise<AgentFile> {
+	private async storeAgentFile(
+		agentId: string,
+		projectId: string,
+		file: Express.Multer.File,
+	): Promise<AgentFile> {
 		const fileId = generateNanoId();
 		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
 		const content = await this.prepareUploadContent(file);
@@ -196,7 +203,10 @@ export class AgentKnowledgeService {
 		});
 
 		try {
-			return await this.saveAgentFile(agentId, fileId, file, stored);
+			return await this.projectDeletion.withWritableProject(
+				projectId,
+				async (ctx) => await this.saveAgentFile(agentId, fileId, file, stored, ctx),
+			);
 		} catch (error) {
 			await this.agentKnowledgeFileStore.delete([stored]).catch(() => {});
 			if (isUniqueConstraintError(error)) {
@@ -211,6 +221,7 @@ export class AgentKnowledgeService {
 		fileId: string,
 		file: Express.Multer.File,
 		stored: StoredAgentKnowledgeFile,
+		ctx: OperationContext,
 	): Promise<AgentFile> {
 		return await this.agentFileRepository.saveUploadedFile(
 			{
@@ -222,7 +233,7 @@ export class AgentKnowledgeService {
 				mimeType: file.mimetype,
 				fileSizeBytes: file.size,
 			},
-			{},
+			ctx,
 		);
 	}
 

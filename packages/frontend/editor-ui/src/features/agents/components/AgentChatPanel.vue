@@ -104,6 +104,12 @@ const props = withDefaults(
 		agentConfig: AgentJsonConfig | null;
 		/** Replaces the model-derived attachment support, for pages that get no model. */
 		attachmentCapabilities?: ProviderAttachmentCapabilities;
+		/**
+		 * Replaces the accepted file types, as an `accept` string. Use it for a
+		 * host whose agent reads more types than its model, for example with a
+		 * file tool.
+		 */
+		acceptedMimeTypes?: string;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
 		canSendToAssistant?: boolean;
@@ -166,6 +172,7 @@ const props = withDefaults(
 		clientContext: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
+		acceptedMimeTypes: undefined,
 		attachButtonIcon: 'paperclip',
 		interactionExtensions: () => [],
 	},
@@ -213,8 +220,11 @@ defineSlots<{
 		chips: AgentChatComposerChip[];
 		removeChip: (id: string) => void;
 	}) => unknown;
-	/** Controls at the start of the composer footer. */
-	'footer-start'?: () => unknown;
+	/**
+	 * Controls at the start of the composer footer. `disabled` is true while the
+	 * composer does not take input, as for the built-in attach button.
+	 */
+	'footer-start'?: (props: { disabled: boolean }) => unknown;
 	'composer-start'?: () => unknown;
 	/** Controls at the end of the composer footer, next to the send button. */
 	'composer-actions'?: () => unknown;
@@ -753,10 +763,12 @@ const attachmentCapabilities = computed(() => {
 	return provider ? getProviderAttachmentCapabilities(provider) : undefined;
 });
 const showAttach = computed(() => {
+	if (props.acceptedMimeTypes !== undefined) return props.acceptedMimeTypes.length > 0;
 	const capabilities = attachmentCapabilities.value;
 	return !!capabilities && (capabilities.image || capabilities.pdf || capabilities.audio);
 });
 const acceptedMimeTypes = computed(() => {
+	if (props.acceptedMimeTypes !== undefined) return props.acceptedMimeTypes;
 	const capabilities = attachmentCapabilities.value;
 	return capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : undefined;
 });
@@ -805,6 +817,18 @@ function handleFilesSelected(files: File[]) {
 	}
 }
 
+/** The composer drops a file whose type is not accepted. Tell the user, the same as for a picked file. */
+function handleFilesRejected(files: File[]) {
+	for (const file of files) {
+		toast.showMessage({
+			type: 'error',
+			title: locale.baseText('agents.chat.attachments.unsupportedType', {
+				interpolate: { fileName: file.name },
+			}),
+		});
+	}
+}
+
 function handleFileRemove(file: File) {
 	attachedFiles.value = attachedFiles.value.filter((f) => f !== file);
 }
@@ -824,6 +848,8 @@ const hasDraft = computed(
 	() => inputText.value.trim().length > 0 || attachedFiles.value.length > 0,
 );
 const isPreparingToSend = ref(false);
+/** The composer takes no input while a send starts or a queued message moves back into it. */
+const isComposerBlocked = computed(() => isPreparingToSend.value || !!editingQueueId.value);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
 let submittingQueuedExternalMessage = false;
@@ -1692,11 +1718,12 @@ onBeforeUnmount(() => {
 					:show-attach-button="false"
 					:accepted-mime-types="acceptedMimeTypes"
 					:can-submit="!isSubmissionBlocked && hasDraft"
-					:disabled="isPreparingToSend || !!editingQueueId"
+					:disabled="isComposerBlocked"
 					data-testid="chat-input"
 					@submit="onSubmit"
 					@stop="stopGenerating"
 					@files-selected="handleFilesSelected"
+					@files-rejected="handleFilesRejected"
 					@keydown="onChatInputKeydown"
 				>
 					<template #above>
@@ -1780,13 +1807,13 @@ onBeforeUnmount(() => {
 								variant="ghost"
 								:icon="attachButtonIcon"
 								icon-size="large"
-								:disabled="isPreparingToSend || !!editingQueueId"
+								:disabled="isComposerBlocked"
 								:aria-label="locale.baseText('chatInputBase.button.attach')"
 								data-test-id="chat-input-attach-button"
 								@click.stop="chatInput?.openFilePicker()"
 							/>
 						</N8nTooltip>
-						<slot name="footer-start" />
+						<slot name="footer-start" :disabled="isComposerBlocked" />
 					</template>
 					<template v-if="$slots['composer-actions']" #right-actions>
 						<slot name="composer-actions" />

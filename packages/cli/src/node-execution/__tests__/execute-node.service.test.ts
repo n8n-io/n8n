@@ -5,12 +5,11 @@ import { WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';

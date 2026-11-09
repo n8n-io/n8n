@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.46.0",
+  "version": "2.47.0",
   "private": true,
   "engines": {
     "node": ">=24.0.0",
@@ -85,7 +85,7 @@
     "test:ci:frontend": "turbo run test --continue --filter='./packages/frontend/**' --filter='./packages/modules/*/frontend'",
     "test:ci:frontend:changed": "turbo run test:changed --continue --filter='./packages/frontend/**' --filter='./packages/modules/*/frontend'",
     "test:ci:backend": "turbo run test --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend'",
-    "test:ci:backend:unit": "turbo run test:unit --continue --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend'",
+    "test:ci:backend:unit": "turbo run test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend'",
     "test:ci:backend:integration": "turbo run test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend'",
     "test:ci:backend:integration:changed": "turbo run test:integration:changed --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend'",
     "test:affected": "turbo run test --affected --concurrency=1",
