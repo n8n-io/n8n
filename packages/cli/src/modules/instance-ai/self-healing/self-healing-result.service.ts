@@ -6,6 +6,8 @@ import {
 	type SelfHealingExecutionReference,
 	type SelfHealingResultDetail,
 	type SelfHealingResultActionResponse,
+	type SelfHealingResultWorkflow,
+	type SelfHealingResultWorkflowCall,
 	type WorkflowSuggestionAppliedVersion,
 	type WorkflowSuggestionBaseline,
 	type WorkflowSuggestionProposalDetail,
@@ -15,6 +17,7 @@ import {
 	SharedWorkflowRepository,
 	TransactionRunner,
 	UserRepository,
+	WorkflowDependencyRepository,
 	type OperationContext,
 	type User,
 } from '@n8n/db';
@@ -24,6 +27,8 @@ import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import uniqBy from 'lodash/uniqBy';
+
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
@@ -41,6 +46,12 @@ import {
 	SelfHealingConfigurationService,
 } from './self-healing-configuration.service';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
+import { pruneWorkflowHierarchy } from './self-healing-hierarchy';
+
+const MAX_HIERARCHY_DEPTH = 10;
+const MAX_HIERARCHY_WORKFLOWS = 100;
+
+type ResultHierarchy = Pick<SelfHealingResultDetail, 'workflows' | 'calls'>;
 
 export type SelfHealingResultInput = {
 	output: SelfHealingOutput;
@@ -66,6 +77,8 @@ export class SelfHealingResultService {
 		private readonly roles: RoleService,
 		private readonly configurations: SelfHealingConfigurationRepository,
 		private readonly configurationService: SelfHealingConfigurationService,
+		private readonly dependencies: WorkflowDependencyRepository,
+		private readonly workflowFinder: WorkflowFinderService,
 	) {}
 
 	private async getInboxAccess(userId: string) {
@@ -258,12 +271,76 @@ export class SelfHealingResultService {
 			workflowId,
 			result.executionId,
 		);
-		return this.toDetail(result, proposals, execution);
+		const hierarchy = await this.getWorkflowHierarchy(reviewer, result, proposals);
+		return this.toDetail(result, proposals, hierarchy, execution);
+	}
+
+	private async getWorkflowHierarchy(
+		reviewer: User,
+		result: SelfHealingResult,
+		proposals: WorkflowSuggestionProposalDetail[],
+	): Promise<ResultHierarchy> {
+		const suggestionIds = new Map(
+			proposals.map(({ workflowId, suggestionId }) => [workflowId, suggestionId]),
+		);
+		const calls = await this.findCurrentCalls(result);
+		const hierarchy = pruneWorkflowHierarchy(
+			result.workflowId,
+			calls,
+			new Set(suggestionIds.keys()),
+		);
+		const readable = await this.workflowFinder.findWorkflowsByIdsForUser(
+			hierarchy.workflowIds,
+			reviewer,
+			['workflow:read'],
+		);
+		const names = new Map(readable.map(({ id, name }) => [id, name]));
+
+		return {
+			workflows: hierarchy.workflowIds.flatMap((workflowId): SelfHealingResultWorkflow[] => {
+				const name = names.get(workflowId);
+				if (name === undefined) return [];
+				const suggestionId = suggestionIds.get(workflowId) ?? null;
+				return [
+					{ workflowId, name, change: suggestionId ? 'modified' : 'unchanged', suggestionId },
+				];
+			}),
+			calls: hierarchy.calls.filter(
+				({ callerWorkflowId, calledWorkflowId }) =>
+					names.has(callerWorkflowId) && names.has(calledWorkflowId),
+			),
+		};
+	}
+
+	private async findCurrentCalls({ workflowId, projectId }: SelfHealingResult) {
+		const calls: SelfHealingResultWorkflowCall[] = [];
+		const visited = new Set([workflowId]);
+		let frontier = [workflowId];
+		for (let depth = 0; depth < MAX_HIERARCHY_DEPTH && frontier.length > 0; depth++) {
+			const rows = await this.dependencies.findDependenciesForResources(frontier, [], true);
+			const found = rows.filter(({ dependencyType }) => dependencyType === 'workflowCall');
+			const owners = await this.ownership.findOwnerProjectsByWorkflowIds(
+				found.map(({ dependencyKey }) => dependencyKey),
+			);
+
+			frontier = [];
+			for (const { workflowId: caller, dependencyKey: called } of found) {
+				if (!visited.has(called)) {
+					if (owners.get(called)?.id !== projectId) continue;
+					if (visited.size >= MAX_HIERARCHY_WORKFLOWS) continue;
+					visited.add(called);
+					frontier.push(called);
+				}
+				calls.push({ callerWorkflowId: caller, calledWorkflowId: called });
+			}
+		}
+		return calls;
 	}
 
 	private toDetail(
 		result: SelfHealingResult,
 		suggestions: WorkflowSuggestionProposalDetail[],
+		hierarchy: ResultHierarchy,
 		execution: SelfHealingExecutionReference,
 	): SelfHealingResultDetail {
 		return {
@@ -280,6 +357,7 @@ export class SelfHealingResultService {
 			completedAt: result.completedAt.toISOString(),
 			reviewState: result.reviewState,
 			suggestions,
+			...hierarchy,
 			execution,
 		};
 	}
@@ -322,8 +400,9 @@ export class SelfHealingResultService {
 			projectId,
 			await this.getSuggestions(current),
 		);
+		const hierarchy = await this.getWorkflowHierarchy(reviewer, current, proposals);
 		return {
-			...this.toDetail(current, proposals, execution),
+			...this.toDetail(current, proposals, hierarchy, execution),
 			...publication,
 		};
 	}

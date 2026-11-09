@@ -357,6 +357,14 @@ suggestion of the result in one transaction. Approval then requests publication 
 workflow, sub-workflows first. Reviewer filtering applies to Inbox lists, counts, details,
 and actions. Each action resolves its suggestions from the result and returns the updated review.
 The detail lists the suggestions with the triggering workflow first.
+The detail and action responses also return `workflows` and `calls` for the call hierarchy.
+`workflows` contains the triggering workflow, each changed workflow, and each unchanged workflow on a
+call path between them. `calls` contains the calls between these workflows.
+The calls come from the workflow dependency index, so they show the current draft and published
+calls, not the versions that the agent read. The walk starts at the triggering workflow. It stays in
+the project of the result and stops after 10 levels or 100 workflows. Unchanged workflows that the
+reviewer cannot read are left out. A changed workflow without a path to the triggering workflow is
+listed without a caller.
 Send the editor client ID in `push-ref` for Apply actions.
 Read the returned review state before navigating. A competing action can close the suggestion first.
 The first successful action closes the result. Later Apply, approval, and dismissal requests return

@@ -18,6 +18,8 @@ import {
 	SharedWorkflowRepository,
 	TransactionRunner,
 	UserRepository,
+	WorkflowDependencies,
+	WorkflowDependencyRepository,
 	WorkflowHistoryRepository,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
@@ -38,6 +40,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ControllerRegistry } from '@/controller.registry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPublishGuardProxy } from '@n8n/backend-services';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createExecution } from '@test-integration/db/executions';
@@ -1814,6 +1817,145 @@ describe('grouped completion', () => {
 		expect(await results.count()).toBe(1);
 		expect(await suggestions.count()).toBe(1);
 	});
+});
+
+describe('call hierarchy', () => {
+	async function indexCalls(workflow: WorkflowEntity, calledWorkflowIds: string[]) {
+		const dependencies = new WorkflowDependencies(
+			workflow.id,
+			workflow.versionCounter,
+			workflow.activeVersionId,
+		);
+		for (const dependencyKey of calledWorkflowIds) {
+			dependencies.add({ dependencyType: 'workflowCall', dependencyKey, dependencyInfo: null });
+		}
+		await Container.get(WorkflowDependencyRepository).updateDependenciesForWorkflow(
+			workflow.id,
+			dependencies,
+		);
+	}
+
+	async function hierarchyFixture(chainLength = 1) {
+		const context = await prepareInvestigation('fix_ready', 'unchanged', { inTeamProject: true });
+		const { user, project, original, baseline, graph, completion, investigation } = context;
+		const chain: WorkflowEntity[] = [];
+		for (let index = 0; index < chainLength; index++) {
+			chain.push(await createPublishedWorkflow(project));
+		}
+		const leaf = await createPublishedWorkflow(project);
+		const unrelated = await createPublishedWorkflow(project);
+		const result = await completeResult({
+			investigationId: investigation.id,
+			...completion,
+			candidates: [
+				{ baseline, graph },
+				{
+					baseline: await suggestionService.captureBaseline(leaf.id, user.id),
+					graph: {
+						nodes: leaf.nodes.map((node) => ({
+							...node,
+							position: [200, 200] as [number, number],
+						})),
+						connections: leaf.connections,
+					},
+				},
+			],
+		});
+		await indexCalls(original, [chain[0].id, unrelated.id]);
+		for (const [index, workflow] of chain.entries()) {
+			await indexCalls(workflow, [chain[index + 1]?.id ?? leaf.id]);
+		}
+		const [suggestion] = await suggestions.getForResult(result.id);
+		const getDetail = async () => await service.getDetail(user, project.id, original.id, result.id);
+		const unchanged = ({ id, name }: WorkflowEntity) => ({
+			workflowId: id,
+			name,
+			change: 'unchanged',
+			suggestionId: null,
+		});
+		const changedLeaf = {
+			workflowId: leaf.id,
+			name: leaf.name,
+			change: 'modified',
+			suggestionId: suggestion.id,
+		};
+		return { ...context, chain, leaf, result, getDetail, unchanged, changedLeaf };
+	}
+
+	it('returns the unchanged workflows on the path to a nested change', async () => {
+		const { user, project, original, chain, result, getDetail, unchanged, changedLeaf } =
+			await hierarchyFixture();
+		const [middle] = chain;
+		const expected = {
+			workflows: [unchanged(original), unchanged(middle), changedLeaf],
+			calls: [
+				{ callerWorkflowId: original.id, calledWorkflowId: middle.id },
+				{ callerWorkflowId: middle.id, calledWorkflowId: changedLeaf.workflowId },
+			],
+		};
+
+		expect(await getDetail()).toMatchObject(expected);
+		expect(await service.act(user, project.id, original.id, result.id, 'apply')).toMatchObject(
+			expected,
+		);
+	});
+
+	it('lists the changed workflow without a caller when the reviewer cannot read the path', async () => {
+		const { original, chain, getDetail, unchanged, changedLeaf } = await hierarchyFixture();
+		const finder = Container.get(WorkflowFinderService);
+		const findReadable = finder.findWorkflowsByIdsForUser.bind(finder);
+		vi.spyOn(finder, 'findWorkflowsByIdsForUser').mockImplementation(async (...args) =>
+			(await findReadable(...args)).filter(({ id }) => id !== chain[0].id),
+		);
+
+		expect(await getDetail()).toMatchObject({
+			workflows: [unchanged(original), changedLeaf],
+			calls: [],
+		});
+	});
+
+	it('does not follow calls into another project', async () => {
+		const { user, project, original, chain, getDetail, unchanged, changedLeaf } =
+			await hierarchyFixture();
+		const destination = await createTeamProject(undefined, user);
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: chain[0].id, projectId: project.id },
+			{ projectId: destination.id },
+		);
+
+		expect(await getDetail()).toMatchObject({
+			workflows: [unchanged(original), changedLeaf],
+			calls: [],
+		});
+	});
+
+	it('uses the current calls of an unchanged workflow', async () => {
+		const { original, chain, getDetail, unchanged, changedLeaf } = await hierarchyFixture();
+		await Container.get(WorkflowDependencyRepository).removeDependenciesForWorkflow(chain[0].id);
+
+		expect(await getDetail()).toMatchObject({
+			workflows: [unchanged(original), changedLeaf],
+			calls: [],
+		});
+	});
+
+	it.each([
+		[9, 'reaches'],
+		[10, 'does not reach'],
+	])(
+		'follows a chain of %i unchanged workflows and %s the changed workflow',
+		async (chainLength, outcome) => {
+			const { original, chain, getDetail, changedLeaf } = await hierarchyFixture(chainLength);
+
+			const detail = await getDetail();
+
+			expect(detail.workflows.map(({ workflowId }) => workflowId)).toEqual(
+				outcome === 'reaches'
+					? [original.id, ...chain.map(({ id }) => id), changedLeaf.workflowId]
+					: [original.id, changedLeaf.workflowId],
+			);
+		},
+	);
 });
 
 describe('competing reviewers', () => {
