@@ -5,7 +5,6 @@ export {
 	ThinkingMessage,
 	RestoreVersionConfirm,
 } from './AskAssistantChat';
-export { default as N8nAssistantIcon } from './AskAssistantIcon';
 export { default as N8nAssistantAvatar } from './AskAssistantAvatar';
 export { default as N8nAssistantText } from './AskAssistantText';
 export { default as N8nActionDropdown } from './N8nActionDropdown';

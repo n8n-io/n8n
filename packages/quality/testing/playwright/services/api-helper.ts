@@ -844,7 +844,24 @@ export class ApiHelpers {
 			throw new TestError('Login did not return expected user data (missing user ID)');
 		}
 
+		await this.dismissMcpJsonNudge();
+
 		return loginData;
+	}
+
+	/**
+	 * The MCP JSON nudge modal opens on the first two exports, imports, copies and
+	 * pastes of workflow JSON while MCP access is off. It would block every test
+	 * that pastes a workflow, so each signed-in user starts with it dismissed.
+	 */
+	private async dismissMcpJsonNudge(): Promise<void> {
+		const response = await this.request.patch('/rest/me/settings', {
+			data: { dismissedCallouts: { MCP_JSON_NUDGE: true } },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Could not dismiss the MCP JSON nudge: ${await response.text()}`);
+		}
 	}
 
 	private getCredentials(role: UserRole, memberIndex: number = 0): UserCredentials {
