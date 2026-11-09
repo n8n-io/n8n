@@ -47,6 +47,18 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
 
 /**
+ * Archive file names of entity classes that were renamed while their table kept
+ * its name. The exporter names each file after the entity class, so an archive
+ * written before a rename still carries the old name, and an importer that only
+ * knows the new class would skip it silently. Keyed by the old lowercase name,
+ * the value is the current one.
+ */
+const LEGACY_ENTITY_FILE_NAMES: Readonly<Record<string, string>> = {
+	// `AgentFile` became `KnowledgeFile` when it moved into the knowledge module.
+	agentfile: 'knowledgefile',
+};
+
+/**
  * One workflow the content-import policy blocked. It was skipped — the rest of the batch still
  * imports, so a single bad workflow cannot cost an operator a whole restore.
  */
@@ -529,7 +541,12 @@ export class ImportService {
 				continue;
 			}
 
-			const entityName = baseName;
+			const entityName = LEGACY_ENTITY_FILE_NAMES[baseName] ?? baseName;
+			if (entityName !== baseName) {
+				this.logger.info(
+					`   ℹ️  Reading ${file} as ${entityName} (entity renamed since the export)`,
+				);
+			}
 
 			// Build table names map (only need to do this once per entity)
 			if (!entityTableNamesMap[entityName]) {

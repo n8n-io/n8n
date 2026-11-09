@@ -332,6 +332,58 @@ describe('ImportService', () => {
 			});
 		});
 
+		it('should read the files of a renamed entity under its current name', async () => {
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'KnowledgeFile',
+					tableName: 'agent_files',
+					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
+				},
+			] as any;
+			// An export from before the rename holds `agentfile.jsonl`, numbered when large.
+			const mockFiles = ['agentfile.jsonl', 'agentfile.2.jsonl'];
+
+			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
+			vi.mocked(safeJoinPath)
+				.mockReturnValueOnce('/test/input/agentfile.jsonl')
+				.mockReturnValueOnce('/test/input/agentfile.2.jsonl');
+
+			const result = await importService.getImportMetadata('/test/input');
+
+			expect(result).toEqual({
+				entityFiles: {
+					knowledgefile: ['/test/input/agentfile.jsonl', '/test/input/agentfile.2.jsonl'],
+				},
+				tableNames: ['agent_files'],
+				dataTableFiles: {},
+			});
+		});
+
+		it('should merge the files of a renamed entity with files that carry its current name', async () => {
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'KnowledgeFile',
+					tableName: 'agent_files',
+					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
+				},
+			] as any;
+			const mockFiles = ['agentfile.jsonl', 'knowledgefile.jsonl'];
+
+			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
+			vi.mocked(safeJoinPath)
+				.mockReturnValueOnce('/test/input/agentfile.jsonl')
+				.mockReturnValueOnce('/test/input/knowledgefile.jsonl');
+
+			const result = await importService.getImportMetadata('/test/input');
+
+			expect(result.entityFiles).toEqual({
+				knowledgefile: ['/test/input/agentfile.jsonl', '/test/input/knowledgefile.jsonl'],
+			});
+			expect(result.tableNames).toEqual(['agent_files']);
+		});
+
 		it('should skip entities without metadata', async () => {
 			const mockFiles = ['unknown.jsonl', 'invalid.txt'];
 
