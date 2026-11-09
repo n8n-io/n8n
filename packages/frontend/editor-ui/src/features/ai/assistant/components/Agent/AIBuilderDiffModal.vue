@@ -65,41 +65,22 @@ function onDialogOpenUpdate(open: boolean) {
 		size="cover"
 		stacked
 		:show-close-button="false"
-		:container-class="$style.aiBuilderDiffModal"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>
-			<div :class="$style.body">
-				<WorkflowDiffView
-					:source-workflow="props.data.sourceWorkflow"
-					:target-workflow="props.data.targetWorkflow"
-					:source-label="props.data.sourceLabel"
-					:target-label="props.data.targetLabel"
-					:show-back-button="true"
-					@back="closeModal"
-				/>
-			</div>
+			<WorkflowDiffView
+				:source-workflow="props.data.sourceWorkflow"
+				:target-workflow="props.data.targetWorkflow"
+				:source-label="props.data.sourceLabel"
+				:target-label="props.data.targetLabel"
+				:show-back-button="true"
+				@back="closeModal"
+			/>
 		</N8nDialogBody>
 	</N8nDialog>
 </template>
 
 <style module lang="scss">
-.aiBuilderDiffModal {
-	display: flex;
-	flex-direction: column;
-	margin-bottom: 0;
-	border-radius: 0;
-	padding: 0;
-	overflow: hidden;
-	--n8n-dialog-content--padding: 0;
-}
-
-.body {
-	flex: 1 1 auto;
-	min-height: 0;
-	overflow: auto;
-}
-
 .backButton {
 	border: none;
 }
