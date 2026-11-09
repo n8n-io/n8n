@@ -13,7 +13,7 @@ tenant, customer, and client IDs. The rule applies to community node packages
 that use a recommended config.
 
 The rule also checks template literals without expressions. This includes
-computed property keys such as ``options[`partner_id`]``.
+computed properties such as ``{ [`partner_id`]: 'fixed-partner' }``.
 
 Read these values from a node parameter or credential instead. The rule does not
 change a hardcoded value automatically.
