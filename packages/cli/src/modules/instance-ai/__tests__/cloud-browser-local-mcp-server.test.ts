@@ -70,6 +70,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		} as unknown as ToolDefinition;
 		const connection = {
 			isConnected: true,
+			getConnection: () => ({ activePageId: 'page-1' }),
 			connect: vi.fn().mockResolvedValue(undefined),
 			disconnect: vi.fn().mockResolvedValue(undefined),
 		};
@@ -216,6 +217,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 		};
 		const domainRequest = (host: string) => ({
 			toolGroup: 'browser',
+			kind: 'host',
 			resource: host,
 			description: `Browser: ${host}`,
 			options: ['denyOnce', 'allowOnce', 'allowForSession'],
@@ -361,6 +363,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				expect(confirmationRequest(result)).toEqual({
 					toolGroup: 'browser',
+					kind: 'credential-write',
 					resource: 'credentials',
 					description: 'Create credential "Acme API"',
 					options: ['denyOnce', 'allowOnce'],
@@ -627,6 +630,63 @@ describe('CloudBrowserLocalMcpServer', () => {
 	});
 
 	describe('other browser tools', () => {
+		it('refuses a call on a tab other than the active one', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+
+			const result = await server.callTool({
+				name: 'browser_click',
+				arguments: { ref: 'e1', pageId: 'page-2' },
+			});
+
+			expect(result).toEqual({
+				content: [
+					{
+						type: 'text',
+						text: 'Browser tools work only in the current tab. To use a page that opened in a new tab, open its URL in this tab with browser_navigate.',
+					},
+				],
+				isError: true,
+			});
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click');
+			expect(click?.execute).not.toHaveBeenCalled();
+		});
+
+		it('refuses a call with a pageId when the connection is gone', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+			toolkits[0].connection.getConnection = () => {
+				throw new Error('Not connected');
+			};
+
+			const result = await server.callTool({
+				name: 'browser_click',
+				arguments: { ref: 'e1', pageId: 'page-1' },
+			});
+
+			expect(result).toEqual({
+				content: [
+					{
+						type: 'text',
+						text: 'Browser tools work only in the current tab. To use a page that opened in a new tab, open its URL in this tab with browser_navigate.',
+					},
+				],
+				isError: true,
+			});
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click');
+			expect(click?.execute).not.toHaveBeenCalled();
+		});
+
+		it('runs a call that names the active tab', async () => {
+			const { server, toolkits, start } = setup();
+			await start({ url: 'https://example.com' });
+
+			await server.callTool({ name: 'browser_click', arguments: { ref: 'e1', pageId: 'page-1' } });
+
+			const click = toolkits[0].tools.find(({ name }) => name === 'browser_click');
+			expect(click?.execute).toHaveBeenCalled();
+		});
+
 		it('asks for browser_start_session when no session is open', async () => {
 			const { server } = setup();
 

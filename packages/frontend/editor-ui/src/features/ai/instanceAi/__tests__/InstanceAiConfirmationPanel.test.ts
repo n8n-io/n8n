@@ -5,11 +5,11 @@ import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
-import type {
-	InstanceAiConfirmation,
-	InstanceAiToolCallState,
-	InstanceAiAgentNode,
-	PushMessage,
+import {
+	type InstanceAiConfirmation,
+	type InstanceAiToolCallState,
+	type InstanceAiAgentNode,
+	type PushMessage,
 } from '@n8n/api-types';
 import InstanceAiConfirmationPanel from '../components/InstanceAiConfirmationPanel.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
@@ -119,6 +119,12 @@ vi.mock('../components/GatewayResourceDecision.vue', () => ({
 		emits: ['decide'],
 		template:
 			'<button data-test-id="mock-resource-decision" :data-thread-id="threadId" @click="$emit(\'decide\', \'allowOnce\')" />',
+	},
+}));
+vi.mock('../components/CloudBrowserResourceDecision.vue', () => ({
+	default: {
+		template: '<div>cloud browser decision {{ requestId }} {{ kind }} {{ resource }}</div>',
+		props: ['requestId', 'kind', 'resource', 'description', 'options'],
 	},
 }));
 vi.mock('../components/InstanceAiCredentialSetup.vue', () => ({
@@ -1613,5 +1619,53 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				},
 			]);
 		});
+	});
+});
+
+describe('InstanceAiConfirmationPanel resource decisions', () => {
+	let thread: ThreadRuntime;
+
+	const resourceDecision: InstanceAiConfirmation = {
+		requestId: 'req-browser',
+		severity: 'warning',
+		message: 'browser_navigate: Browser: example.com',
+		inputType: 'resource-decision',
+		resourceDecision: {
+			toolGroup: 'browser',
+			kind: 'host',
+			resource: 'example.com',
+			description: 'Browser: example.com',
+			options: ['denyOnce', 'allowOnce', 'allowForSession'],
+		},
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		const pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
+		thread = useInstanceAiStore().getOrCreateRuntime('thread-1');
+		thread.messages = [];
+	});
+
+	it('shows the cloud browser card in the floating slot for a cloud browser request', () => {
+		injectPendingConfirmation(thread, resourceDecision, {}, 'browser_navigate');
+		thread.messages[0].agentTree!.kind = 'cloud-browser';
+
+		const floating = renderComponent({ props: { kind: 'floating' } });
+		expect(floating.getByText('cloud browser decision req-browser host example.com')).toBeVisible();
+		expect(floating.queryByTestId('approval-card-allow-once')).not.toBeInTheDocument();
+
+		const inline = renderComponent({ props: { kind: 'inline' } });
+		expect(inline.queryByTestId('instance-ai-gateway-confirmation-panel')).not.toBeInTheDocument();
+	});
+
+	it('keeps the inline gateway card for a request from another agent', () => {
+		injectPendingConfirmation(thread, resourceDecision, {}, 'browser_navigate');
+
+		const inline = renderComponent({ props: { kind: 'inline' } });
+		expect(inline.getByTestId('instance-ai-gateway-confirmation-panel')).toBeInTheDocument();
+
+		const floating = renderComponent({ props: { kind: 'floating' } });
+		expect(floating.queryByText(/cloud browser decision/)).not.toBeInTheDocument();
 	});
 });
