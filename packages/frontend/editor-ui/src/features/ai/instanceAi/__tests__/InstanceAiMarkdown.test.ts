@@ -599,6 +599,22 @@ describe('InstanceAiMarkdown', () => {
 			expect(links[1].dataset.resourceChip).toBeUndefined();
 		});
 
+		it.each(['credentials/cred-1', 'datatables'])(
+			'keeps the home route for %s when the base is /home/',
+			(resourcePath) => {
+				const path = `/home/${resourcePath}?tab=details#item`;
+				const links = renderWithBase(
+					`<a href="${path}">Resource</a> <a href="/home${path}">Based resource</a>`,
+					{ base: '/home/' },
+				).querySelectorAll('a');
+
+				expect(links).toHaveLength(2);
+				for (const link of links) {
+					expect(link.getAttribute('href')).toBe(`/home${path}`);
+				}
+			},
+		);
+
 		it.each([
 			{ base: '/n8n/', href: '/projects/project-1/agents/agent-1/preview' },
 			{ base: '/n8n/', href: '/n8n/projects/project-1/agents/agent-1?openPreview=true' },

@@ -224,24 +224,26 @@ const source = computed(() => ({
 }));
 
 /** Route patterns that map internal n8n URLs to resource types. */
-const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
+const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string; fallback?: boolean }> = [
 	{ pattern: /^\/workflow\/([a-zA-Z0-9]+)/, type: 'workflow' },
-	{ pattern: /^\/(?:home\/)?credentials(?:\/|$)/, type: 'credential' },
-	{ pattern: /^\/(?:home\/)?data-?tables(?:\/|$)/, type: 'data-table' },
+	{ pattern: /^\/home\/credentials(?:\/|$)/, type: 'credential' },
+	{ pattern: /^\/home\/data-?tables(?:\/|$)/, type: 'data-table' },
 	{ pattern: /^\/home\/agents(?:\/|$)/, type: 'agent' },
 	{ pattern: /^\/projects\/[^/]+\/credentials(?:\/|$)/, type: 'credential' },
 	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
 	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
 	{ pattern: /^\/projects\/[^/]+\/apps(?:\/|$)/, type: 'app' },
+	{ pattern: /^\/credentials(?:\/|$)/, type: 'credential', fallback: true },
+	{ pattern: /^\/data-?tables(?:\/|$)/, type: 'data-table', fallback: true },
 ];
 const AGENT_ROUTE_PATTERN = /^\/projects\/[^/]+\/agents\/([^/]+)\/?$/;
 
 function findInternalRoute(href: string) {
-	for (const routerPath of toRouterPaths(href)) {
+	const matches = toRouterPaths(href).flatMap((routerPath) => {
 		const route = INTERNAL_ROUTE_PATTERNS.find(({ pattern }) => pattern.test(routerPath.pathname));
-		if (route) return { routerPath, type: route.type };
-	}
-	return undefined;
+		return route ? [{ routerPath, type: route.type, fallback: route.fallback }] : [];
+	});
+	return matches.find(({ fallback }) => !fallback) ?? matches[0];
 }
 
 function decodeResourceId(value: string): string {
