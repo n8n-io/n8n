@@ -15,11 +15,8 @@ export const DEFAULT_LIFECYCLE_EVENT_SEND_TIMEOUT_MS = 10_000;
 /** Events allowed to wait for the host before new ones are dropped. */
 export const DEFAULT_MAX_PENDING_EVENTS = 20 * MAX_LIFECYCLE_EVENTS_PER_BATCH;
 
-/**
- * Wire size assumed for an event that carries only identifiers. Generous, so
- * the batch cap holds without serializing on the flush path.
- */
-const SMALL_EVENT_BYTES = 512;
+/** Bytes `JSON.stringify` adds around an event's `outputs` value: `,"outputs":`. */
+const OUTPUTS_KEY_BYTES = 11;
 
 /** An event waiting to be sent, with its size measured once on arrival. */
 interface PendingEvent {
@@ -185,26 +182,33 @@ export class BatchingLifecycleEventPublisher implements LifecycleEventPublisher 
 }
 
 /**
- * Sizes an event for batch cutting. Only `step:completed` carries data, so only
- * its outputs are serialized; every other event takes a fixed estimate. Outputs
- * over `MAX_STEP_COMPLETED_OUTPUTS_BYTES` are dropped from the event: the host
- * still learns the step completed and can read the outputs from the data plane.
+ * Sizes an event for batch cutting, once, on arrival. The envelope is measured
+ * exactly: its strings come from the workflow, so a node name can make an
+ * identifier-only event arbitrarily large. The outputs are measured apart from
+ * it, so the one large value is serialized a single time. Outputs over
+ * `MAX_STEP_COMPLETED_OUTPUTS_BYTES` are dropped from the event: the host still
+ * learns the step completed and can read the outputs from the data plane.
  */
 function measure(event: LifecycleEvent): PendingEvent {
 	if (event.type !== 'step:completed' || event.outputs === undefined) {
-		return { event, bytes: SMALL_EVENT_BYTES };
+		return { event, bytes: serializedBytes(event) };
 	}
 
-	const outputBytes = Buffer.byteLength(JSON.stringify(event.outputs));
+	const { outputs, ...envelope } = event;
+	const envelopeBytes = serializedBytes(envelope) + OUTPUTS_KEY_BYTES;
+	const outputBytes = serializedBytes(outputs);
 	if (outputBytes <= MAX_STEP_COMPLETED_OUTPUTS_BYTES) {
-		return { event, bytes: SMALL_EVENT_BYTES + outputBytes };
+		return { event, bytes: envelopeBytes + outputBytes };
 	}
 
 	console.warn(
 		`engine: lifecycle event outputs over the wire limit, sent step:completed without outputs (execution ${event.executionId}, step ${event.stepId}, ${outputBytes} bytes)`,
 	);
-	const { outputs: _dropped, ...withoutOutputs } = event;
-	return { event: withoutOutputs, bytes: SMALL_EVENT_BYTES };
+	return { event: envelope, bytes: envelopeBytes - OUTPUTS_KEY_BYTES };
+}
+
+function serializedBytes(value: unknown): number {
+	return Buffer.byteLength(JSON.stringify(value));
 }
 
 /**

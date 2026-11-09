@@ -343,13 +343,45 @@ describe('BatchingLifecycleEventPublisher', () => {
 		);
 
 		// Three fit in one batch; the fourth would push it over.
-		const [s1, s2, s3, s4] = ['s1', 's2', 's3', 's4'].map((id) => completed(id, 2_000));
+		const [s1, s2, s3, s4] = ['s1', 's2', 's3', 's4'].map((id) => completed(id, 2_500));
 		for (const published of [s1, s2, s3, s4]) publisher.publish(published);
 		await vi.advanceTimersByTimeAsync(FLUSH_MS);
 
 		expect(send.mock.calls).toEqual([
 			[[s1, s2, s3], signal],
 			[[s4], signal],
+		]);
+	});
+
+	it('counts the envelope of an identifier-only event toward the byte cap', async () => {
+		const send = vi.fn().mockResolvedValue(undefined);
+		const maxBatchBytes = 10_000;
+		const publisher = new BatchingLifecycleEventPublisher(
+			send,
+			FLUSH_MS,
+			500,
+			5_000,
+			TIMEOUT_MS,
+			maxBatchBytes,
+		);
+
+		// A node name is workflow data, so an event without outputs can be large too.
+		const started = (stepId: string): LifecycleEvent => ({
+			type: 'step:started',
+			executionId: 'exec-1',
+			stepId,
+			nodeId: 'node-a',
+			nodeName: 'n'.repeat(4_000),
+			iteration: 0,
+			at: '2026-08-24T10:00:00.000Z',
+		});
+		const [s1, s2, s3] = ['s1', 's2', 's3'].map(started);
+		for (const published of [s1, s2, s3]) publisher.publish(published);
+		await vi.advanceTimersByTimeAsync(FLUSH_MS);
+
+		expect(send.mock.calls).toEqual([
+			[[s1, s2], signal],
+			[[s3], signal],
 		]);
 	});
 

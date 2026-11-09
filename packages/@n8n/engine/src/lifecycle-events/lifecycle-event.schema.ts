@@ -8,13 +8,18 @@ export const MAX_LIFECYCLE_EVENTS_PER_BATCH = 500;
 /**
  * Cap on the bytes one batch puts on the wire. The count cap alone cannot
  * bound a body, because a `step:completed` event carries the step's outputs.
+ *
+ * The publisher enforces both byte caps when it cuts a batch. This schema does
+ * not: the receiver has already parsed the body, and measuring it again would
+ * serialize every output a second time. The receiver's body size limit is the
+ * backstop, so keep it above this cap.
  */
 export const MAX_LIFECYCLE_EVENT_BATCH_BYTES = 4 * 1024 * 1024;
 
 /**
  * Cap on the serialized outputs one `step:completed` event may carry. Past it
- * the event ships without `outputs`, so one large step cannot fill a batch on
- * its own or exceed the batch cap by itself.
+ * the publisher ships the event without `outputs`, so one large step cannot
+ * fill a batch on its own or exceed the batch cap by itself.
  */
 export const MAX_STEP_COMPLETED_OUTPUTS_BYTES = 1024 * 1024;
 
