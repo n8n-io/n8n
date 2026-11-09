@@ -11,7 +11,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import { ConnectionPoolManager } from '../../../utils/connection-pool-manager';
 import { PostgresV1 } from '../v1/PostgresV1.node';
 import { PostgresV2 } from '../v2/PostgresV2.node';
-import type { PgpDatabase, PostgresNodeCredentials } from '../v2/helpers/interfaces';
+import type { PgpConnection, PgpDatabase, PostgresNodeCredentials } from '../v2/helpers/interfaces';
 
 const baseDescription: INodeTypeBaseDescription = {
 	displayName: 'Postgres',
@@ -129,20 +129,31 @@ describe.each([
 		expect(context.helpers.getSSHClient).toHaveBeenCalledOnce();
 	});
 
-	it('should return query results when connection setup succeeds', async () => {
-		const db = mockDeep<PgpDatabase>();
-		db.multi.mockResolvedValue([[{ id: 1 }]]);
-		poolManager.getConnection.mockResolvedValue({ db, pgp: pgPromise() });
+	it.each([true, false])(
+		'should release the probe before running queries with Continue On Fail set to %s',
+		async (continueOnFail) => {
+			context.continueOnFail.mockReturnValue(continueOnFail);
+			const db = mockDeep<PgpDatabase>();
+			const probe = mockDeep<PgpConnection>();
+			db.connect.mockResolvedValue(probe);
+			db.multi.mockResolvedValue([[{ id: 1 }]]);
+			poolManager.getConnection.mockResolvedValue({ db, pgp: pgPromise() });
 
-		await expect(postgres.execute.call(context)).resolves.toEqual([
-			[{ json: { id: 1 }, pairedItem: { item: 0 } }],
-		]);
-		expect(db.multi).toHaveBeenCalledWith('SELECT 1 AS id');
-		expect(context.helpers.getSSHClient).not.toHaveBeenCalled();
-	});
+			await expect(postgres.execute.call(context)).resolves.toEqual([
+				[{ json: { id: 1 }, pairedItem: { item: 0 } }],
+			]);
+			expect(db.connect).toHaveBeenCalledOnce();
+			expect(probe.done).toHaveBeenCalledOnce();
+			expect(probe.done).toHaveBeenCalledBefore(db.multi);
+			expect(db.multi).toHaveBeenCalledWith('SELECT 1 AS id');
+			expect(db.$pool.end).not.toHaveBeenCalled();
+			expect(context.helpers.getSSHClient).not.toHaveBeenCalled();
+		},
+	);
 
 	it.each([0, 1])('should preserve the parameter error for input %i', async (itemIndex) => {
 		const db = mockDeep<PgpDatabase>();
+		db.connect.mockResolvedValue(mockDeep<PgpConnection>());
 		poolManager.getConnection.mockResolvedValue({ db, pgp: pgPromise() });
 		context.getInputData.mockReturnValue([{ json: { id: 1 } }, { json: { id: 2 } }]);
 		const error = new NodeOperationError(context.getNode(), 'Invalid query parameter', {
@@ -159,11 +170,48 @@ describe.each([
 		expect(db.multi).not.toHaveBeenCalled();
 	});
 
+	it.each(['Error', 'NodeOperationError'])(
+		'should preserve a parameter %s without an item index',
+		async (errorType) => {
+			const db = mockDeep<PgpDatabase>();
+			db.connect.mockResolvedValue(mockDeep<PgpConnection>());
+			poolManager.getConnection.mockResolvedValue({ db, pgp: pgPromise() });
+			const error =
+				errorType === 'Error'
+					? new Error('Invalid query parameter')
+					: new NodeOperationError(context.getNode(), 'Invalid query parameter');
+			const getNodeParameter = context.getNodeParameter.getMockImplementation()!;
+			context.getNodeParameter.mockImplementation((parameter, index, ...args) => {
+				if (parameter === 'query') throw error;
+				return getNodeParameter(parameter, index, ...args);
+			});
+
+			await expect(postgres.execute.call(context)).rejects.toBe(error);
+			expect(db.multi).not.toHaveBeenCalled();
+		},
+	);
+
+	it('should preserve operation errors after the connection succeeds', async () => {
+		const db = mockDeep<PgpDatabase>();
+		db.connect.mockResolvedValue(mockDeep<PgpConnection>());
+		poolManager.getConnection.mockResolvedValue({ db, pgp: pgPromise() });
+		const error = Object.assign(new Error('permission denied for table test'), { code: '42501' });
+		if (version === 1) {
+			db.multi.mockRejectedValue(error);
+		} else {
+			context.getNode().parameters.operation = 'insert';
+			db.any.mockRejectedValue(error);
+		}
+
+		await expect(postgres.execute.call(context)).rejects.toBe(error);
+	});
+
 	if (version >= 2) {
 		it.each([0, 1])(
 			'should keep invalid query replacements scoped to input %i',
 			async (itemIndex) => {
 				const db = mockDeep<PgpDatabase>();
+				db.connect.mockResolvedValue(mockDeep<PgpConnection>());
 				poolManager.getConnection.mockResolvedValue({ db, pgp: pgPromise() });
 				context.getInputData.mockReturnValue([{ json: { id: 1 } }, { json: { id: 2 } }]);
 				const getNodeParameter = context.getNodeParameter.getMockImplementation()!;
@@ -186,27 +234,44 @@ describe.each([
 	const scenarios: Array<{
 		operation: string;
 		mode: string;
-		method: 'multi' | 'any' | 'tx' | 'task';
 	}> =
 		version === 1
 			? ['executeQuery', 'insert', 'update'].flatMap((operation) => [
-					{ operation, mode: 'multiple', method: operation === 'executeQuery' ? 'multi' : 'any' },
-					{ operation, mode: 'transaction', method: 'tx' },
-					{ operation, mode: 'independently', method: 'task' },
+					{ operation, mode: 'multiple' },
+					{ operation, mode: 'transaction' },
+					{ operation, mode: 'independently' },
 				])
 			: [
-					{ operation: 'insert', mode: 'single', method: 'any' },
-					{ operation: 'update', mode: 'single', method: 'any' },
-					{ operation: 'upsert', mode: 'single', method: 'any' },
-					{ operation: 'executeQuery', mode: 'transaction', method: 'tx' },
-					{ operation: 'executeQuery', mode: 'independently', method: 'task' },
+					{ operation: 'insert', mode: 'single' },
+					{ operation: 'update', mode: 'single' },
+					{ operation: 'upsert', mode: 'single' },
+					{ operation: 'executeQuery', mode: 'transaction' },
+					{ operation: 'executeQuery', mode: 'independently' },
 				];
 
-	describe.each(scenarios)('non-SSH $operation / $mode', ({ operation, mode, method }) => {
+	describe.each(scenarios)('non-SSH $operation / $mode', ({ operation, mode }) => {
 		describe.each([
-			{ code: 'ECONNREFUSED', message: 'connect ECONNREFUSED database.example.test:5432' },
-			{ code: '28P01', message: 'password authentication failed for user "test"' },
-		])('$code', ({ code, message }) => {
+			{
+				code: 'ECONNREFUSED',
+				message: 'connect ECONNREFUSED database.example.test:5432',
+				expectedMessage: 'Connection refused',
+			},
+			{
+				code: '28P01',
+				message: 'password authentication failed for user "test"',
+				expectedMessage: 'password authentication failed for user "test"',
+			},
+			{
+				code: 'ENOTFOUND',
+				message: 'getaddrinfo ENOTFOUND database.example.test',
+				expectedMessage: 'Host not found',
+			},
+			{
+				code: 'ETIMEDOUT',
+				message: 'connect ETIMEDOUT database.example.test:5432',
+				expectedMessage: 'Connection timed out',
+			},
+		])('$code', ({ code, message, expectedMessage }) => {
 			let db: ReturnType<typeof mockDeep<PgpDatabase>>;
 			let databaseError: Error;
 			const items: INodeExecutionData[] = [{ json: { id: 1 } }, { json: { id: 2 } }];
@@ -215,10 +280,7 @@ describe.each([
 				db = mockDeep<PgpDatabase>();
 				databaseError = Object.assign(new Error(message), { code });
 				// The pool exists before pg-promise opens the first database connection.
-				db.multi.mockRejectedValue(databaseError);
-				db.any.mockRejectedValue(databaseError);
-				db.tx.mockRejectedValue(databaseError);
-				db.task.mockRejectedValue(databaseError);
+				db.connect.mockRejectedValue(databaseError);
 				poolManager.getConnection.mockResolvedValue({ db, pgp: pgPromise() });
 				context.getCredentials.mockResolvedValue({ ...credentials, sshTunnel: false });
 				context.getInputData.mockReturnValue(items);
@@ -234,7 +296,7 @@ describe.each([
 					items.map((_, index) => ({
 						json: {
 							error: expect.objectContaining({
-								message: code === 'ECONNREFUSED' ? 'Connection refused' : message,
+								message: expectedMessage,
 							}),
 						},
 						pairedItem: { item: index },
@@ -243,13 +305,11 @@ describe.each([
 				expect(poolManager.getConnection).toHaveBeenCalledWith(
 					expect.objectContaining({ credentials: expect.objectContaining({ sshTunnel: false }) }),
 				);
-				expect(db[method]).toHaveBeenCalledOnce();
-				if (version >= 2 && operation !== 'executeQuery') {
-					expect(db.any).toHaveBeenCalledWith(
-						expect.stringContaining('FROM information_schema.columns'),
-						['public', 'test'],
-					);
-				}
+				expect(db.connect).toHaveBeenCalledOnce();
+				expect(db.multi).not.toHaveBeenCalled();
+				expect(db.any).not.toHaveBeenCalled();
+				expect(db.tx).not.toHaveBeenCalled();
+				expect(db.task).not.toHaveBeenCalled();
 				expect(context.helpers.getSSHClient).not.toHaveBeenCalled();
 			});
 
@@ -258,7 +318,7 @@ describe.each([
 				context.getNode().onError = 'stopWorkflow';
 
 				await expect(postgres.execute.call(context)).rejects.toBe(databaseError);
-				expect(db[method]).toHaveBeenCalledOnce();
+				expect(db.connect).toHaveBeenCalledOnce();
 			});
 		});
 	});

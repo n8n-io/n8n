@@ -14,7 +14,11 @@ import { oldVersionNotice } from '@utils/descriptions';
 
 import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './genericFunctions';
 import { configurePostgres } from '../transport';
-import type { PgpConnection, PostgresNodeCredentials } from '../v2/helpers/interfaces';
+import type {
+	ConnectionsData,
+	PgpConnection,
+	PostgresNodeCredentials,
+} from '../v2/helpers/interfaces';
 import { parsePostgresError, prepareErrorItem } from '../v2/helpers/utils';
 
 const versionDescription: INodeTypeDescription = {
@@ -338,63 +342,19 @@ export class PostgresV1 implements INodeType {
 		) as string;
 
 		const items = this.getInputData();
+		let connection: ConnectionsData;
 		try {
-			const { db, pgp } = await configurePostgres.call(this, credentials, {
+			connection = await configurePostgres.call(this, credentials, {
 				largeNumbersOutput:
 					largeNumbersOutput === 'numbers' || largeNumbersOutput === 'text'
 						? largeNumbersOutput
 						: undefined,
 			});
-
-			let returnItems: INodeExecutionData[] = [];
-
-			const operation = this.getNodeParameter('operation', 0);
-
-			if (operation === 'executeQuery') {
-				// ----------------------------------
-				//         executeQuery
-				// ----------------------------------
-
-				const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
-					resolveExpression: true,
-				});
-				returnItems = queryResult as INodeExecutionData[];
-			} else if (operation === 'insert') {
-				// ----------------------------------
-				//         insert
-				// ----------------------------------
-
-				const insertData = await pgInsertV2.call(this, pgp, db, items, this.continueOnFail());
-
-				// returnItems = this.helpers.returnJsonArray(insertData);
-				returnItems = insertData as INodeExecutionData[];
-			} else if (operation === 'update') {
-				// ----------------------------------
-				//         update
-				// ----------------------------------
-
-				const updateItems = await pgUpdate(
-					this.getNodeParameter,
-					pgp,
-					db,
-					items,
-					this.continueOnFail(),
-				);
-
-				returnItems = wrapData(updateItems);
-			} else {
-				throw new NodeOperationError(
-					this.getNode(),
-					`The operation "${operation}" is not supported!`,
-				);
-			}
-
-			return [returnItems];
+			// Open the lazy connection before dispatch, then return it to the pool.
+			const probe = await connection.db.connect();
+			await probe.done();
 		} catch (err) {
-			if (
-				!this.continueOnFail() ||
-				(err instanceof NodeOperationError && err.context.itemIndex !== undefined)
-			) {
+			if (!this.continueOnFail()) {
 				throw err;
 			}
 			const error = parsePostgresError(this.getNode(), err, []);
@@ -402,5 +362,51 @@ export class PostgresV1 implements INodeType {
 				items.map((_, index) => prepareErrorItem({ ...error, message: error.message }, index)),
 			];
 		}
+
+		const { db, pgp } = connection;
+		let returnItems: INodeExecutionData[] = [];
+
+		const operation = this.getNodeParameter('operation', 0);
+
+		if (operation === 'executeQuery') {
+			// ----------------------------------
+			//         executeQuery
+			// ----------------------------------
+
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
+				resolveExpression: true,
+			});
+			returnItems = queryResult as INodeExecutionData[];
+		} else if (operation === 'insert') {
+			// ----------------------------------
+			//         insert
+			// ----------------------------------
+
+			const insertData = await pgInsertV2.call(this, pgp, db, items, this.continueOnFail());
+
+			// returnItems = this.helpers.returnJsonArray(insertData);
+			returnItems = insertData as INodeExecutionData[];
+		} else if (operation === 'update') {
+			// ----------------------------------
+			//         update
+			// ----------------------------------
+
+			const updateItems = await pgUpdate(
+				this.getNodeParameter,
+				pgp,
+				db,
+				items,
+				this.continueOnFail(),
+			);
+
+			returnItems = wrapData(updateItems);
+		} else {
+			throw new NodeOperationError(
+				this.getNode(),
+				`The operation "${operation}" is not supported!`,
+			);
+		}
+
+		return [returnItems];
 	}
 }
