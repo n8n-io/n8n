@@ -1291,13 +1291,15 @@ describe('credential tools', () => {
 		});
 
 		it.each([
-			{ field: 'workflowId', panel: false },
-			{ field: 'filePath', panel: true },
-			{ field: 'workflowName', panel: true },
-		])('should reject $field for target agent', async ({ field, panel }) => {
+			{ field: 'workflowId', panel: false, folders: false },
+			{ field: 'filePath', panel: true, folders: false },
+			{ field: 'workflowName', panel: true, folders: false },
+			{ field: 'folderPath', panel: true, folders: true },
+		])('should reject $field for target agent', async ({ field, panel, folders }) => {
 			const context = createMockContext({
 				agentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' },
 				...(panel ? { setupItemsEmitter: {} as InstanceAiContext['setupItemsEmitter'] } : {}),
+				folderExplorationEnabled: folders,
 			});
 			const suspendFn = vi.fn();
 			const tool = createSetupCredentialsTool(context);
