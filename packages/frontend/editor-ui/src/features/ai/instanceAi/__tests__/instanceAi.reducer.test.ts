@@ -547,6 +547,23 @@ describe('instanceAi.reducer', () => {
 			expect(child.result).toBe('done');
 			expect(child.error).toBeUndefined();
 		});
+
+		test('agent-result-delivered sets resultDelivered on the node of a finished run', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeAgentSpawnedEvent('run-1', 'sub-1', 'agent-root'));
+			handleEvent(state, makeAgentCompletedEvent('run-1', 'sub-1', 'done', undefined));
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
+			handleEvent(state, {
+				type: 'agent-result-delivered',
+				runId: 'run-1',
+				agentId: 'sub-1',
+				payload: {},
+			});
+
+			const child = state.messages[0].agentTree!.children[0];
+			expect(child.resultDelivered).toBe(true);
+			expect(child.status).toBe('completed');
+		});
 	});
 
 	// Test live event dispatch, not only shared history replay.

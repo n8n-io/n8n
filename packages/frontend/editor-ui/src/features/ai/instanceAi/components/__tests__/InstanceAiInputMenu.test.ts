@@ -26,6 +26,17 @@ vi.mock('../../composables/useInstanceAiInputMenuItems', async () => {
 	};
 });
 
+vi.mock('../../composables/useLocalBrowserCoachmark', async () => {
+	const { ref } = await import('vue');
+
+	return {
+		useLocalBrowserCoachmark: () => ({
+			shouldShowCoachmark: ref(false),
+			onDismissCoachmark: vi.fn(),
+		}),
+	};
+});
+
 const renderComponent = createComponentRenderer(InstanceAiInputMenu);
 
 describe('InstanceAiInputMenu', () => {

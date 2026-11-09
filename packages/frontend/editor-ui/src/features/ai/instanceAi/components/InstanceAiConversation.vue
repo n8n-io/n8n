@@ -11,7 +11,14 @@ import {
 	watch,
 } from 'vue';
 import { storeToRefs } from 'pinia';
-import { N8nChatMessage, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nChatMessage,
+	N8nIconButton,
+	N8nPopover,
+	N8nScrollArea,
+	N8nText,
+} from '@n8n/design-system';
 import { useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type {
@@ -77,6 +84,7 @@ import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
 import LimitedModeNotice from './LimitedModeNotice.vue';
 import AgentSection from './AgentSection.vue';
+import { useStopBrowserTasksPrompt } from '../composables/useStopBrowserTasksPrompt';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builderAgents';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
@@ -734,8 +742,13 @@ async function handleSubmit(
 		});
 }
 
+const stopBrowserTasksPrompt = useStopBrowserTasksPrompt(thread);
+const stopBrowserTasksAnchor = ref<HTMLElement>();
+
 function handleStop() {
+	stopBrowserTasksAnchor.value = chatInputRef.value?.getSendStopButtonElement();
 	void thread.cancelRun();
+	stopBrowserTasksPrompt.openIfTasksRunning();
 }
 
 function clearGeneratedDraft() {
@@ -983,6 +996,53 @@ defineExpose({
 							/>
 							<slot name="above-input" />
 							<div :class="$style.inputSwap">
+								<N8nPopover
+									:open="stopBrowserTasksPrompt.isOpen.value"
+									:reference="stopBrowserTasksAnchor"
+									side="top"
+									align="end"
+									:side-offset="8"
+									:enable-scrolling="false"
+									suppress-auto-focus
+									:content-class="$style.stopBrowserTasks"
+									@update:open="(open) => !open && stopBrowserTasksPrompt.close()"
+								>
+									<template #content>
+										<div data-test-id="instance-ai-stop-browser-tasks">
+											<N8nText tag="p" bold size="medium" color="text-dark">{{
+												i18n.baseText('instanceAi.cloudBrowser.stopPopover.title', {
+													adjustToNumber: stopBrowserTasksPrompt.runningCount.value,
+												})
+											}}</N8nText>
+											<N8nText tag="p" size="small" color="text-base">{{
+												i18n.baseText('instanceAi.cloudBrowser.stopPopover.body', {
+													adjustToNumber: stopBrowserTasksPrompt.runningCount.value,
+													interpolate: { count: String(stopBrowserTasksPrompt.runningCount.value) },
+												})
+											}}</N8nText>
+											<div :class="$style.stopBrowserTasksActions">
+												<N8nButton
+													variant="outline"
+													size="small"
+													:label="i18n.baseText('instanceAi.cloudBrowser.stopPopover.keepRunning')"
+													data-test-id="instance-ai-stop-browser-tasks-keep"
+													@click="stopBrowserTasksPrompt.close()"
+												/>
+												<N8nButton
+													variant="destructive"
+													size="small"
+													:label="
+														i18n.baseText('instanceAi.cloudBrowser.stopPopover.stop', {
+															adjustToNumber: stopBrowserTasksPrompt.runningCount.value,
+														})
+													"
+													data-test-id="instance-ai-stop-browser-tasks-stop"
+													@click="stopBrowserTasksPrompt.stopTasks()"
+												/>
+											</div>
+										</div>
+									</template>
+								</N8nPopover>
 								<Transition name="input-swap">
 									<InstanceAiConfirmationPanel
 										v-if="hasFloatingConfirmation"
@@ -1184,6 +1244,22 @@ defineExpose({
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--md);
+}
+
+.stopBrowserTasks {
+	width: 320px;
+	padding: var(--spacing--sm);
+
+	p + p {
+		margin-top: var(--spacing--xs);
+	}
+}
+
+.stopBrowserTasksActions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--sm);
 }
 
 // The leaving child is detached from layout (see `.input-swap-leave-active`
