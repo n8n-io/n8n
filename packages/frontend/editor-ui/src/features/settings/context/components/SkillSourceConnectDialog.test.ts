@@ -984,7 +984,9 @@ describe('SkillSourceConnectDialog', () => {
 			const view = render();
 
 			expect(
-				await view.findByText('Gives n8n write access to all your repositories'),
+				await view.findByText(
+					'Gives n8n write access to every repository that your account can reach',
+				),
 			).toBeInTheDocument();
 			await selectCredential(view, '+ Sign in with GitHub (OAuth2)');
 
@@ -1006,7 +1008,7 @@ describe('SkillSourceConnectDialog', () => {
 
 			await selectCredential(view, 'Ada account');
 			expect(view.getByTestId('skill-source-oauth-warning')).toHaveTextContent(
-				'OAuth2 gives n8n write access to every repository that this GitHub account can reach',
+				'OAuth2 gives n8n write access to every repository that this account can reach',
 			);
 
 			await selectCredential(view, 'Ada token');

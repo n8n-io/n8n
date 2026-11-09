@@ -62,10 +62,10 @@ const GITHUB_LINK = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+([/?#].*)?
 const OTHER_HOST_LINK = /^https?:\/\/(?!(www\.)?github\.com([/?#:]|$))[^\s/?#]+/i;
 
 /** The credential types that read a private repository. */
-const TOKEN_CREDENTIAL_TYPES = ['githubApi', 'githubAppApi', 'githubOAuth2Api'] as const;
-type TokenCredentialType = (typeof TOKEN_CREDENTIAL_TYPES)[number];
+const GITHUB_CREDENTIAL_TYPES = ['githubApi', 'githubAppApi', 'githubOAuth2Api'] as const;
+type GitHubCredentialType = (typeof GITHUB_CREDENTIAL_TYPES)[number];
 /** GitHub OAuth2 has a fixed scope with write access to every repository of the account. */
-const OAUTH2_CREDENTIAL_TYPE: TokenCredentialType = 'githubOAuth2Api';
+const OAUTH2_CREDENTIAL_TYPE: GitHubCredentialType = 'githubOAuth2Api';
 
 /** The options of the credential select that open the credential modal instead of picking. */
 const NEW_CREDENTIAL_PREFIX = '__new__:';
@@ -391,7 +391,7 @@ const credentialModalOpen = computed(
 	() => uiStore.isModalActiveById?.[CREDENTIAL_EDIT_MODAL_KEY] ?? false,
 );
 
-function openCredentialModal(type: TokenCredentialType) {
+function openCredentialModal(type: GitHubCredentialType) {
 	const project = credentialProject.value;
 	if (!project || !canCreateCredential.value) return;
 	const requestedScope = scope.value;
@@ -418,7 +418,7 @@ async function onCredentialCreated(id: string, requestedScope: string, scopeLabe
 
 function onCredentialSelect(value: string) {
 	if (value.startsWith(NEW_CREDENTIAL_PREFIX)) {
-		const type = TOKEN_CREDENTIAL_TYPES.find(
+		const type = GITHUB_CREDENTIAL_TYPES.find(
 			(known) => known === value.slice(NEW_CREDENTIAL_PREFIX.length),
 		);
 		if (type) openCredentialModal(type);
