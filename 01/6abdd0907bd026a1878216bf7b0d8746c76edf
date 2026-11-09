@@ -1,28 +1,19 @@
 packages/@n8n/backend-common/src/locking/lock-service.interface.ts
-  s_bfb3680951bbc8::t_2b364994d2f137 1
-  s_bfb3680951bbc8::t_6de1859710b445 16-23,28-32
-  s_bfb3680951bbc8::t_4ba1923b25ab4b 24-27
-packages/cli/src/modules/promotions.ee/promotion-environment-lock.service.ts
-  s_bfb3680951bbc8::t_a128283f3720a7 19-27
-  s_bfb3680951bbc8::t_cd544b9f076a17 57-60
-  s_bfb3680951bbc8::t_162536c6d7001f 76-77
-packages/cli/src/modules/promotions.ee/__tests__/promotion-telemetry.test.ts
-  s_bfb3680951bbc8::t_4186847cbbaacf 13-16
-  s_bfb3680951bbc8::t_e7f6c317c6c595 36
-packages/cli/src/modules/promotions.ee/promotion-telemetry.ts
-  s_bfb3680951bbc8::t_19a5b8b8bde46c 22
-  s_bfb3680951bbc8::t_3f3a710f82a66e 9-12
-packages/cli/src/scaling/redis-lock.service.ts
-  s_bfb3680951bbc8::t_8fcf419dcf2cfc 72-73,77,80,82
-  s_bfb3680951bbc8::t_c88968d1272aa2 169-170,173
+  s_bfb3680951bbc8::t_9ef8e683ba702f 1,16-32
 packages/@n8n/backend-common/src/locking/__tests__/in-process-lock.service.test.ts
-  s_bfb3680951bbc8::t_13d929097d7494 120-121
-packages/cli/src/scaling/__tests__/redis-lock.service.test.ts
-  s_bfb3680951bbc8::t_23eb0683ba9267 1
-  s_bfb3680951bbc8::t_1c8d3eed3e09cb 98-127
+  s_bfb3680951bbc8::t_570567a17b2113 120-121
 packages/cli/src/modules/promotions.ee/__tests__/promotion-environment-lock.service.test.ts
-  s_bfb3680951bbc8::t_e35fa780d4b998 130-147
-  s_bfb3680951bbc8::t_c9b1f30d639c59 10
+  s_bfb3680951bbc8::t_d28ff3611085cb 10,130-147
+packages/cli/src/modules/promotions.ee/__tests__/promotion-telemetry.test.ts
+  s_bfb3680951bbc8::t_764b6c4523c465 13-16,36
+packages/cli/src/modules/promotions.ee/promotion-environment-lock.service.ts
+  s_bfb3680951bbc8::t_3715b7c688183f 19-27,57-60,76-77
+packages/cli/src/modules/promotions.ee/promotion-telemetry.ts
+  s_bfb3680951bbc8::t_fd1fb9a0bcf60d 9-12,22
+packages/cli/src/scaling/__tests__/redis-lock.service.test.ts
+  s_bfb3680951bbc8::t_a034abf46e5ce6 1,98-127
+packages/cli/src/scaling/redis-lock.service.ts
+  s_bfb3680951bbc8::t_c41478b1f334fe 72-73,77,80,82,169-170,173
 ---
 {
   "schema_version": "authorship/3.0.0",
