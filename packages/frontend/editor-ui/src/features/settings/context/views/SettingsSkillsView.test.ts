@@ -618,6 +618,31 @@ describe('SettingsSkillsView', () => {
 			expect(showErrorMock).not.toHaveBeenCalled();
 		});
 
+		it('drops an upload when the user opens an existing skill before it finishes', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail());
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const read = Promise.withResolvers<string>();
+			const slow = skillFile();
+			Object.defineProperty(slow, 'text', { value: async () => await read.promise });
+
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [slow] },
+			});
+			await userEvent.click(view.getByText('research-search'));
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1));
+			const editData = lastModalData();
+			read.resolve('---\nname: slow-skill\ndescription: d\n---\ni');
+			await new Promise(process.nextTick);
+			await new Promise(process.nextTick);
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+			expect(lastModalData()).toBe(editData);
+			expect(editData.skill?.name).not.toBe('slow-skill');
+		});
+
 		it('ignores a cancelled picker', async () => {
 			const view = renderView();
 			await new Promise(process.nextTick);

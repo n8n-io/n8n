@@ -319,6 +319,8 @@ async function loadFilterOptions() {
 }
 
 function openModal(data: AgentSkillModalData) {
+	// The skill modal is shared, so a late upload must not replace what opens now.
+	dropPendingUpload();
 	uiStore.openModalWithData({ name: AGENT_SKILL_MODAL_KEY, data });
 }
 
@@ -349,12 +351,17 @@ function openCreateModal(
 
 type CreateAction = 'github' | 'uploadFolder' | 'uploadFile' | 'manual';
 
-// One upload at a time, and none that lands after the user left the page.
+// One upload at a time. An upload is dropped when another skill action starts or the
+// user leaves the page, so its late result opens no modal and shows no toast.
 const uploadBusy = ref(false);
-let unmounted = false;
-onBeforeUnmount(() => {
-	unmounted = true;
-});
+let pendingUpload: object | null = null;
+
+function dropPendingUpload() {
+	pendingUpload = null;
+	uploadBusy.value = false;
+}
+
+onBeforeUnmount(dropPendingUpload);
 
 // Only "Connect to GitHub" is behind the Skill Sync flag. The other items are for everyone.
 const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => [
@@ -395,10 +402,13 @@ const skillFileInput = useTemplateRef<HTMLInputElement>('skillFileInput');
 const { importSkillFiles } = useAgentSkillImport();
 
 function onCreateMenuSelect(action: CreateAction) {
-	if (action === 'github') connectOpen.value = true;
-	else if (action === 'uploadFolder') skillFolderInput.value?.click();
+	if (action === 'uploadFolder') skillFolderInput.value?.click();
 	else if (action === 'uploadFile') skillFileInput.value?.click();
-	else openCreateModal({ initialStep: 'manual' });
+	else if (action === 'manual') openCreateModal({ initialStep: 'manual' });
+	else {
+		dropPendingUpload();
+		connectOpen.value = true;
+	}
 }
 
 /** Reads the picked folder or SKILL.md, then opens the form with the skill for review. */
@@ -409,13 +419,15 @@ async function onSkillFilesPicked(event: Event) {
 	// Cleared so that the same pick fires a change event again.
 	input.value = '';
 	if (files.length === 0 || uploadBusy.value) return;
+	const request = {};
+	pendingUpload = request;
 	uploadBusy.value = true;
 	try {
 		const skill = await importSkillFiles(files);
-		if (unmounted) return;
+		if (pendingUpload !== request) return;
 		openCreateModal({ skill, initialMethod: 'upload' });
 	} catch (error) {
-		if (unmounted) return;
+		if (pendingUpload !== request) return;
 		// The same texts as the upload step in the modal, so both paths read alike.
 		const key =
 			error instanceof AgentSkillImportError
@@ -423,7 +435,7 @@ async function onSkillFilesPicked(event: Event) {
 				: 'agents.builder.skills.import.invalidFolder';
 		showError(new Error(i18n.baseText(key)), i18n.baseText('settings.context.skills.upload.error'));
 	} finally {
-		uploadBusy.value = false;
+		if (pendingUpload === request) dropPendingUpload();
 	}
 }
 
