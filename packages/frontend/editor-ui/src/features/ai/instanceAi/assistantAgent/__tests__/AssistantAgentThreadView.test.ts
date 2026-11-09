@@ -1494,6 +1494,26 @@ describe('AssistantAgentThreadView', () => {
 			});
 		});
 
+		it('keeps the hand-off session after its message is sent, while the turn runs', async () => {
+			await renderAgentTab();
+
+			agentPreview.emit?.('assistant-handoff', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'session-2',
+			});
+			await flushPromises();
+
+			// The message is sent, and a reload still has the session of the last turn.
+			composerAttachments.value = [];
+			const onStreaming = panelProps.current['onUpdate:streaming'] as (value: boolean) => void;
+			onStreaming(true);
+			onStreaming(false);
+			await flushPromises();
+
+			expect(agentPreview.props).toMatchObject({ 'preview-session-id': 'session-2' });
+		});
+
 		it('keeps an unsent draft and does not hand off', async () => {
 			await renderAgentTab();
 			isDirty.mockReturnValue(true);

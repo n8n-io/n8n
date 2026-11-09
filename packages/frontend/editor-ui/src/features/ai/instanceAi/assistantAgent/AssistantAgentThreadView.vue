@@ -94,10 +94,7 @@ import {
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 import { useAssistantAgentTargets } from './useAssistantAgentTargets';
-import {
-	stagedAgentPreviewSession,
-	toAgentPreviewComposerAttachment,
-} from './assistantAgentPreviewHandoff';
+import { toAgentPreviewComposerAttachment } from './assistantAgentPreviewHandoff';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
 
@@ -397,13 +394,15 @@ function handleAgentTestDockOpenChange(open: boolean): void {
 	}
 }
 
-/** The test chat session that the preview shows: a staged hand-off first, else the stored one. */
+// The session of the last hand-off. The turn stores it only after the message
+// is sent, so the stored session is older until the targets load again.
+const lastHandoffSession = ref<{ agentId: string; threadId: string }>();
+
+/** The test chat session that the preview shows: the last hand-off, else the stored one. */
 const activeAgentPreviewSessionId = computed(() => {
 	const agentId = preview.activeAgentId.value;
-	const staged = stagedAgentPreviewSession(panel.value?.composerAttachments ?? []);
-	if (staged?.agentId === agentId) return staged.threadId;
-	const stored = agentTargets.state.value?.previewSession;
-	return stored?.agentId === agentId ? stored.threadId : undefined;
+	const session = lastHandoffSession.value ?? agentTargets.state.value?.previewSession;
+	return session?.agentId === agentId ? session.threadId : undefined;
 });
 
 /** The user asks the Assistant about a test chat of the agent preview. */
@@ -434,6 +433,7 @@ function handleAgentPreviewAssistantHandoff(params: AgentTestHandoffParams): voi
 		(key, options) => i18n.baseText(key, options),
 		thread.producedArtifacts.get(context.agentId)?.name,
 	);
+	lastHandoffSession.value = { agentId: context.agentId, threadId: context.threadId };
 	const { chip, clientContextPatch } = toAgentPreviewComposerAttachment(context, label);
 	current.addComposerAttachment(chip, clientContextPatch);
 	if (params.initialDraft) current.setDraft(params.initialDraft.text);
