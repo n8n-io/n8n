@@ -1,0 +1,22 @@
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_b4c3e395e0f4bc::t_dee69075c5f918 250-252,254-258,264-267,278-279
+  s_b4c3e395e0f4bc::t_333e9d2585e9ed 253
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_b4c3e395e0f4bc::t_dee69075c5f918 1424-1433
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1452bcdf0c7ac249d649fb35bb9b7ad1d7a330b6",
+  "prompts": {},
+  "sessions": {
+    "s_b4c3e395e0f4bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a59373a-cd91-42e2-b50a-315efa22e24a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

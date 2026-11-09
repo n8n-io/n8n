@@ -1,0 +1,269 @@
+packages/quality/testing/playwright/scripts/run-local-isolated.mjs
+  s_0137c3e58fb21b::t_071aa982d0ef22 96-97
+packages/cli/src/modules/instance-ai/browser/cloud-browser-local-mcp-server.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-438
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 47,58,287-288,314-315,358-380,455,1267,1269,1294-1295
+packages/@n8n/instance-ai/docs/configuration.md
+  s_0137c3e58fb21b::t_071aa982d0ef22 14
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 20-24,170,173,175,179
+packages/cli/src/services/ai-gateway.service.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 17-22,46-68,137-139,171-173,181-183,185,187,198,200,202,205-207,344-392,503-507,512,514-548,550,772,783,792-796,817
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 13-19,41-42,48,80,89,113-114,287,305-318,6558,7459,8782,8847,8910,8977,9040,9119,9194,9271,9306-9658
+  s_0137c3e58fb21b::t_16d4033ff0ad83 9659-9660
+packages/@n8n/agents/src/runtime/mcp/mcp-tool-resolver.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 6
+packages/core/src/execution-engine/index.ts
+  s_0137c3e58fb21b::t_e21e9f93297cfc 116
+packages/@n8n/instance-ai/src/tools/__tests__/browser-screenshot-continuation.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-124
+packages/@n8n/api-types/src/agents/__tests__/system-agent-query.dto.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-5,68-81
+  s_0137c3e58fb21b::t_48798497fc2108 82
+packages/cli/src/services/__tests__/ai-gateway-browser-use.service.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-131
+packages/quality/testing/test-impact/src/line-scope.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-221
+packages/cli/src/credentials/skill-source-credentials.ts
+  s_0137c3e58fb21b::t_e21e9f93297cfc 158,161-163
+packages/frontend/editor-ui/src/features/ai/chatHub/SettingsChatHubView.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 134,141
+packages/nodes-base/scripts/post-build.js
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-15
+.github/workflows/test-evals-instance-ai.yml
+  s_0137c3e58fb21b::t_071aa982d0ef22 453
+.github/test-metrics/e2e-impact-map.json
+  s_0137c3e58fb21b::t_071aa982d0ef22 1
+packages/@n8n/mcp-browser/src/adapters/playwright.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 18,48,106-109,113-122,136-137,153-159,174-178,231-258,262,298-300,372-379,1169,1174-1177,1182,1191,1223-1228
+  s_0137c3e58fb21b::t_c83735c052b930 1229
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 2339-2358
+packages/@n8n/agents/src/__tests__/integration/mcp-streamable-http-transport.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 104,117-124
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 2048-2049,2166-2179
+  s_0137c3e58fb21b::t_49aab800126a1b 2180
+packages/cli/src/modules/instance-ai/__tests__/cloud-browser-local-mcp-server.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-865
+.github/workflows/ci-pull-requests.yml
+  s_0137c3e58fb21b::t_071aa982d0ef22 423-426
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 387-388,390-395,400,407,410-442,499,514-522,527,529,539-544,591,607-636
+  s_0137c3e58fb21b::t_ded4ecd97d39a2 637
+packages/cli/src/modules/instance-ai/__tests__/browser-local-mcp-server.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 199-217,321-330
+  s_0137c3e58fb21b::t_6267ac732ac2e0 331
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 6,51-56,59-74,103-109,126,311,321,334-358,360-384,386-387,390-472,474-479,482-522,524-565,567-571,574-584,586,588-590,593-619,633-663
+packages/@n8n/instance-ai/scripts/run-eval-lanes.sh
+  s_0137c3e58fb21b::t_071aa982d0ef22 440,450
+packages/@n8n/mcp-browser/src/__tests__/connection.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1,4,16-40,42-43,185-247
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 87
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1088-1102
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantAgentThreads.store.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1,9,19,44,75-140
+  s_0137c3e58fb21b::t_d58278a3f8fe27 141
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_0137c3e58fb21b::t_071aa982d0ef22 215-218,318-340,342-345,352,354,357-358,360,405-410,419,492
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 259-324
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 515-521
+  s_0137c3e58fb21b::t_099d74664f1ceb 514
+packages/quality/testing/janitor/src/cli/arg-parser.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 68-69,211-212
+  s_0137c3e58fb21b::t_96aec97e7c1ca1 213
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/usePagedAssistantAgentThreads.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-104
+packages/cli/src/metrics/prometheus/database-metric-query.service.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 28,92,98,103-106
+packages/@n8n/mcp-browser/src/utils.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 52-70
+packages/nodes-base/package.json
+  s_0137c3e58fb21b::t_071aa982d0ef22 27
+packages/quality/testing/janitor/src/core/read-line-scopes.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-94
+packages/quality/testing/test-impact/src/index.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 9
+packages/@n8n/mcp-browser/src/connection.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 33-36,40-43,56-57,66-67,114,270-271,277-278
+pnpm-workspace.yaml
+  s_0137c3e58fb21b::t_071aa982d0ef22 231
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadsView.vue
+  s_0137c3e58fb21b::t_071aa982d0ef22 27,73-76,78,90-91,98-99,109-115,119,122,124,167,173,175,182,194,198
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadsView.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 29,31-32,223,271-289
+  s_0137c3e58fb21b::t_0382e61dfe011d 290
+packages/nodes-base/test/package-scripts.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-76
+packages/cli/src/services/__tests__/ai-gateway.service.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 838-950
+packages/@n8n/instance-ai/src/tools/create-tools-from-mcp-server.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1
+.github/workflows/test-evals-mcp.yml
+  s_0137c3e58fb21b::t_071aa982d0ef22 194,199
+packages/@n8n/api-types/src/agents/dto.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 164-168
+packages/@n8n/mcp-browser/src/adapters/playwright.remote.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 43-55,86-116,152-366
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 122,124-130,137,139-141,149,158-169
+  s_0137c3e58fb21b::t_998cbca4e04700 170-172
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 13,134-144
+  s_0137c3e58fb21b::t_27d3e628cf1116 145-146
+packages/cli/src/modules/agents/__tests__/agent-execution-thread.repository.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 5,28-51
+  s_0137c3e58fb21b::t_794921a0d89007 52-53
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-settings.service.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 8,20,27,63-64,80-81,111,114-115,1277-1378
+  s_0137c3e58fb21b::t_ee0f02f4813983 1379-1380
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 314-317,324
+packages/cli/src/modules/instance-ai/browser/instance-ai-browser-session.service.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 27-30,185,190-195
+  s_0137c3e58fb21b::t_367c0412e61103 26
+packages/cli/src/modules/instance-ai/browser/instance-ai-cloud-browser.service.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-147
+packages/cli/src/modules/instance-ai/browser/browser-local-mcp-server.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1,3,11-19,36-37,45,64,67-73,91
+packages/cli/src/modules/instance-ai/browser/browser.helpers.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-238
+packages/cli/src/__tests__/license.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 269-283
+packages/@n8n/instance-ai/src/tools/__tests__/create-tools-from-mcp-server.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 264,268-269,297-305
+packages/@n8n/agents/src/runtime/__tests__/mcp-tool-resolver.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 18-24,43
+.env.eval.example
+  s_0137c3e58fb21b::t_071aa982d0ef22 20-23
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 9-15
+  s_0137c3e58fb21b::t_aea3ff904eebff 8
+packages/cli/src/modules/instance-ai/__tests__/browser.helpers.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-203
+packages/cli/src/services/ai-gateway-browser-use.service.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-108
+packages/cli/test/integration/database/repositories/scheduled-job.repository.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-72
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 223-239,367,374,396-414
+  s_0137c3e58fb21b::t_3acdeed7e5b266 415
+packages/@n8n/nodes-langchain/utils/custom-model-endpoint/auth-fetch.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-178
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.vue
+  s_0137c3e58fb21b::t_071aa982d0ef22 194-203,250-251,253-259,308-311
+packages/cli/src/modules/instance-ai/browser/cloud-browser-session-provider.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-24
+packages/quality/testing/janitor/src/core/affected-packages-analyzer.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 164,169,175,197,202,211
+packages/quality/testing/janitor/src/core/global-triggers.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 2,17-19,33-36,38,47-52
+packages/cli/test/integration/instance-ai-settings.service.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1,10,14,23,33,42,57,64,208-225
+  s_0137c3e58fb21b::t_bb7834208297f6 226
+.agents/skills/create-instance-ai-eval/running-evals.md
+  s_0137c3e58fb21b::t_071aa982d0ef22 130-131,152
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 33-35,70,72,99-105,208,241-243,250,270-271
+  s_0137c3e58fb21b::t_29f4fd9b9190d6 272
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.store.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 12,21-29,52-56,62,131-150,157,163
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 535,538-553,788,792-793
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-cloud-browser.service.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-230
+packages/@n8n/mcp-browser/src/__tests__/utils.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 11,110-137
+  s_0137c3e58fb21b::t_03a9dd384b006b 138-139
+.agents/skills/create-agent-builder-eval/local-setup.md
+  s_0137c3e58fb21b::t_071aa982d0ef22 77
+packages/quality/testing/janitor/README.md
+  s_0137c3e58fb21b::t_071aa982d0ef22 288-307,309,314-316
+packages/@n8n/nodes-langchain/utils/custom-model-endpoint/auth-fetch.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-69
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/usePagedAssistantAgentThreads.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 8,26-43
+packages/@n8n/instance-ai/evaluations/README.md
+  s_0137c3e58fb21b::t_071aa982d0ef22 78,101,1334
+  s_0137c3e58fb21b::t_a9bf0864f215d0 1335
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 6,79,713,721-750
+  s_0137c3e58fb21b::t_b00b2e2fefde24 751
+packages/quality/testing/janitor/src/core/read-line-scopes.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-86
+packages/quality/testing/janitor/src/core/test-scoped-runner.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 15,77
+packages/quality/testing/playwright/scripts/fetch-impact-map-commit.mjs
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-60
+packages/quality/testing/playwright/scripts/aggregate-coverage.mjs
+  s_0137c3e58fb21b::t_071aa982d0ef22 44-46,120
+packages/quality/testing/test-impact/src/impact-map.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 18-19,45-46,139,161-166,224,250,276-280,341-342,373,402-412,415-418
+packages/quality/testing/test-impact/src/line-scope.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1-175
+packages/quality/testing/test-impact/src/impact-map.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 105,113
+packages/cli/src/license.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 506-510
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 689-693
+packages/@n8n/agents/src/__tests__/integration/mcp-sse-transport.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 158,167-174
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 350-379
+packages/cli/src/modules/mcp/evaluations/README.md
+  s_0137c3e58fb21b::t_071aa982d0ef22 46
+packages/@n8n/agents/src/index.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 285
+packages/quality/testing/playwright/fixtures/containers.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 48-49
+packages/quality/testing/janitor/src/core/scope-analyzer.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 172-204
+packages/quality/testing/janitor/src/core/scope-analyzer.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 10,55-58,71-75,81-92
+  s_0137c3e58fb21b::t_cdebf0e3a9f9a4 93-94
+packages/quality/testing/playwright/playwright.config.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 85-86
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 1261-1266,1289
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_0137c3e58fb21b::t_071aa982d0ef22 2,43,112-113,122-123,125-126,261,263-267,270-277,298-305,307-309,312-326,328-329,332-346,349-350,371-375,379-381,383-385,468,470,487-492,524,552,608,620,631,643,652,700-703,729,743,775,783,791
+packages/quality/testing/janitor/src/cli.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 50,86,700-703,720-723,750-753,760-777,813
+packages/quality/testing/playwright/scripts/impact-map.md
+  s_0137c3e58fb21b::t_071aa982d0ef22 115-140,147
+packages/quality/testing/test-impact/src/select.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 34,68-70,204-207
+packages/nodes-base/nodes/Jenkins/GenericFunctions.ts
+  s_0137c3e58fb21b::t_7068c99796909b 122
+  s_0137c3e58fb21b::t_b2389f6d580c67 40
+packages/frontend/@n8n/design-system/src/components/EnterpriseReadinessBadge/EnterpriseReadinessBadge.test.ts
+  s_0137c3e58fb21b::t_071aa982d0ef22 7,9,26
+packages/frontend/@n8n/design-system/src/components/EnterpriseReadinessBadge/__snapshots__/EnterpriseReadinessBadge.test.ts.snap
+  s_0137c3e58fb21b::t_28446f4c941e66 22,56
+pnpm-lock.yaml
+  s_0137c3e58fb21b::t_655d9e7ad4f306 645-646,2968,5035,8432,19899-19900,38164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4ea455959ea02f6f4d51ff7cafbd909fc62ed9e",
+  "prompts": {},
+  "sessions": {
+    "s_0137c3e58fb21b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e640dc0daffeXacAfiwbc1Qrur",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
