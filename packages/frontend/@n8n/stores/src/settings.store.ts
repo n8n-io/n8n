@@ -434,7 +434,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		try {
 			applySettings(embeddedSettings);
 		} catch (error) {
-			console.error('Failed to apply the embedded settings', error);
+			console.warn('Failed to apply the embedded settings:', error);
 			return false;
 		}
 

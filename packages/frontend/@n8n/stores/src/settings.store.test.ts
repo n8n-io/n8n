@@ -377,6 +377,10 @@ describe('settings.store', () => {
 		afterEach(() => {
 			delete window[EMBEDDED_SETTINGS_GLOBAL];
 			vi.unstubAllGlobals();
+			vi.restoreAllMocks();
+			// Drop queued one-time results, so a failed case cannot leak them into later cases
+			getSettings.mockReset();
+			mockRootStore.setDefaultLocale.mockReset();
 		});
 
 		it('should apply the embedded settings without a request', async () => {
@@ -430,7 +434,7 @@ describe('settings.store', () => {
 		});
 
 		it('should fetch the settings when the embedded settings cannot be applied', async () => {
-			const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 			mockRootStore.setDefaultLocale.mockImplementationOnce(() => {
 				throw new Error('Unexpected settings shape');
 			});
@@ -441,10 +445,9 @@ describe('settings.store', () => {
 			expect(settingsStore.applyEmbeddedSettings()).toBe(false);
 			await settingsStore.initialize();
 
-			expect(consoleError).toHaveBeenCalledTimes(1);
+			expect(consoleWarn).toHaveBeenCalledTimes(1);
 			expect(getSettings).toHaveBeenCalledTimes(1);
 			expect(settingsStore.isModuleActive('data-table')).toBe(true);
-			consoleError.mockRestore();
 		});
 
 		it('should still fetch the settings in preview mode', async () => {
