@@ -9,7 +9,6 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { ICredentialType } from 'n8n-workflow';
 
 import {
-	N8nAssistantIcon,
 	N8nAssistantText,
 	N8nButton,
 	N8nDialog,
@@ -17,6 +16,7 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nIcon,
 	N8nText,
 } from '@n8n/design-system';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
@@ -76,7 +76,7 @@ const startNewSession = async () => {
 		<N8nDialogHeader>
 			<N8nDialogTitle>
 				{{ i18n.baseText('aiAssistant.newSessionModal.title.part1') }}
-				<span :class="$style.assistantIcon"><N8nAssistantIcon size="medium" /></span>
+				<span :class="$style.assistantIcon"><N8nIcon icon="n8n-assistant" :size="12" /></span>
 				<N8nAssistantText size="xlarge" :text="i18n.baseText('aiAssistant.assistant')" />
 				{{ i18n.baseText('aiAssistant.newSessionModal.title.part2') }}
 			</N8nDialogTitle>
