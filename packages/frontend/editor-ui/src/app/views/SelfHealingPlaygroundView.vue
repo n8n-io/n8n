@@ -15,7 +15,11 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import type { SelfHealingConfigurationDto } from '@n8n/api-types';
+import type {
+	SelfHealingConfigurationDto,
+	UpdateSelfHealingConfigurationDto,
+} from '@n8n/api-types';
+import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -24,6 +28,7 @@ import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionsListResponse } from '@/features/execution/executions/executions.types';
 import {
 	PREFIX,
+	createSubWorkflow,
 	createWorkflow,
 	getScenarios,
 	identifyWorkflow,
@@ -53,7 +58,7 @@ const responses = ref<Record<string, string>>({});
 const workflowCards = computed(() =>
 	workflows.value.map((workflow) => ({
 		workflow,
-		scenario: identifyWorkflow(workflow, scenarios)?.scenario,
+		...identifyWorkflow(workflow, scenarios),
 		latest: executions.value[workflow.id]?.[0],
 	})),
 );
@@ -85,6 +90,43 @@ function canRun(workflowId: string) {
 					(configuration.scope === 'all' || configuration.workflowIds.includes(workflowId)),
 			),
 	);
+}
+
+function coveringConfiguration(workflowId: string) {
+	return (
+		configurations.value.find(
+			({ scope, workflowIds }) => scope === 'selected' && workflowIds.includes(workflowId),
+		) ?? configurations.value.find(({ scope }) => scope === 'all')
+	);
+}
+
+function needsSubWorkflows(workflowId: string, scenario?: PlaygroundScenario) {
+	return Boolean(
+		scenario?.subWorkflowName &&
+			canRun(workflowId) &&
+			!coveringConfiguration(workflowId)?.includeSubWorkflows,
+	);
+}
+
+async function includeSubWorkflows(workflowId: string) {
+	const configuration = coveringConfiguration(workflowId);
+	if (!configuration) return;
+	const { id, scope, workflowIds, reviewerIds, includeAllProjectMembers } = configuration;
+	const update: UpdateSelfHealingConfigurationDto = {
+		scope,
+		workflowIds,
+		reviewerIds,
+		includeAllProjectMembers,
+		includeSubWorkflows: true,
+	};
+	await makeRestApiRequest(
+		root.restApiContext,
+		'PATCH',
+		`/projects/${projectId.value}/self-healing-configurations/${id}`,
+		update,
+	);
+	message.value = i18n.baseText('selfHealingPlayground.subWorkflows.included');
+	await checkConfiguration();
 }
 
 async function refresh() {
@@ -174,7 +216,10 @@ async function prepareReset() {
 }
 
 async function resetPlayground() {
-	const targets = [...workflows.value];
+	const targets = [...workflows.value].sort(
+		(a, b) =>
+			Number(!identifyWorkflow(a, scenarios)?.path) - Number(!identifyWorkflow(b, scenarios)?.path),
+	);
 	resetOpen.value = false;
 	let deleted = 0;
 	let failed = 0;
@@ -208,13 +253,23 @@ async function resetPlayground() {
 	}
 }
 
+async function createAndPublish(data: WorkflowDataCreate) {
+	const workflow = await workflowsStore.createNewWorkflow(data);
+	await activateWorkflow(root.restApiContext, workflow.id, { versionId: workflow.versionId });
+	return workflow;
+}
+
 async function create(scenario: PlaygroundScenario) {
-	const workflow = await workflowsStore.createNewWorkflow(
-		createWorkflow(scenario, projectId.value),
-	);
 	try {
-		await activateWorkflow(root.restApiContext, workflow.id, { versionId: workflow.versionId });
-		message.value = i18n.baseText('selfHealingPlayground.created');
+		const subWorkflow = scenario.subWorkflowName
+			? await createAndPublish(createSubWorkflow(scenario, projectId.value))
+			: undefined;
+		await createAndPublish(createWorkflow(scenario, projectId.value, subWorkflow?.id));
+		message.value = i18n.baseText(
+			subWorkflow
+				? 'selfHealingPlayground.createdWithSubWorkflow'
+				: 'selfHealingPlayground.created',
+		);
 	} finally {
 		await refresh();
 		await nextTick();
@@ -235,7 +290,7 @@ async function sendInput(id: string, alternate: boolean) {
 	if (!published(workflow) || workflow.isArchived)
 		throw new Error(i18n.baseText('selfHealingPlayground.needsPublish'));
 	const identity = identifyWorkflow(workflow, scenarios);
-	if (!identity) throw new Error(i18n.baseText('selfHealingPlayground.unknown'));
+	if (!identity?.path) throw new Error(i18n.baseText('selfHealingPlayground.unknown'));
 	const response = await fetch(`${root.webhookUrl}/${identity.path}`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -494,7 +549,7 @@ onMounted(async () => {
 					<p v-if="!busy">{{ i18n.baseText('selfHealingPlayground.empty') }}</p>
 				</div>
 				<N8nCard
-					v-for="{ workflow, scenario, latest } in workflowCards"
+					v-for="{ workflow, scenario, path, latest } in workflowCards"
 					:key="workflow.id"
 					:class="$style.workflow"
 					data-test-id="playground-workflow"
@@ -524,36 +579,55 @@ onMounted(async () => {
 							<strong>{{ i18n.baseText('selfHealingPlayground.expectation') }}</strong>
 							{{ scenario?.expectation }}
 						</p>
+						<p v-if="!path" :class="$style.meta">
+							{{ i18n.baseText('selfHealingPlayground.subWorkflow.description') }}
+						</p>
 						<N8nCallout v-if="!published(workflow) && !workflow.isArchived" theme="info">{{
 							i18n.baseText('selfHealingPlayground.needsPublish')
 						}}</N8nCallout>
 						<N8nCallout
-							v-if="!busy && !canRun(workflow.id) && !workflow.isArchived"
+							v-if="path && !busy && !canRun(workflow.id) && !workflow.isArchived"
 							theme="warning"
 							>{{
 								i18n.baseText('selfHealingPlayground.workflowConfigurationRequired')
 							}}</N8nCallout
 						>
-						<div :class="$style.actions">
-							<N8nButton
-								:disabled="
-									busy || !published(workflow) || workflow.isArchived || !canRun(workflow.id)
-								"
-								:loading="activeAction === `run-${workflow.id}`"
-								@click="perform(() => sendInput(workflow.id, false), `run-${workflow.id}`)"
-							>
-								<template #icon><N8nIcon icon="play" size="small" /></template
-								>{{ i18n.baseText('selfHealingPlayground.original') }}
-							</N8nButton>
+						<N8nCallout
+							v-if="path && !busy && needsSubWorkflows(workflow.id, scenario)"
+							theme="warning"
+							data-test-id="playground-sub-workflows-required"
+						>
+							<p>{{ i18n.baseText('selfHealingPlayground.subWorkflows.required') }}</p>
 							<N8nButton
 								variant="outline"
-								:disabled="
-									busy || !published(workflow) || workflow.isArchived || !canRun(workflow.id)
-								"
-								:loading="activeAction === `alternate-${workflow.id}`"
-								@click="perform(() => sendInput(workflow.id, true), `alternate-${workflow.id}`)"
-								>{{ i18n.baseText('selfHealingPlayground.alternate') }}</N8nButton
+								size="small"
+								:disabled="busy"
+								@click="perform(() => includeSubWorkflows(workflow.id))"
+								>{{ i18n.baseText('selfHealingPlayground.subWorkflows.include') }}</N8nButton
 							>
+						</N8nCallout>
+						<div :class="$style.actions">
+							<template v-if="path">
+								<N8nButton
+									:disabled="
+										busy || !published(workflow) || workflow.isArchived || !canRun(workflow.id)
+									"
+									:loading="activeAction === `run-${workflow.id}`"
+									@click="perform(() => sendInput(workflow.id, false), `run-${workflow.id}`)"
+								>
+									<template #icon><N8nIcon icon="play" size="small" /></template
+									>{{ i18n.baseText('selfHealingPlayground.original') }}
+								</N8nButton>
+								<N8nButton
+									variant="outline"
+									:disabled="
+										busy || !published(workflow) || workflow.isArchived || !canRun(workflow.id)
+									"
+									:loading="activeAction === `alternate-${workflow.id}`"
+									@click="perform(() => sendInput(workflow.id, true), `alternate-${workflow.id}`)"
+									>{{ i18n.baseText('selfHealingPlayground.alternate') }}</N8nButton
+								>
+							</template>
 							<N8nButton
 								v-if="!published(workflow) && !workflow.isArchived"
 								:disabled="busy"
@@ -583,20 +657,20 @@ onMounted(async () => {
 									}}<N8nIcon icon="arrow-up-right" size="small"
 								/></RouterLink>
 							</div>
-							<p v-if="latest.status === 'error' || latest.status === 'crashed'">
+							<p v-if="path && (latest.status === 'error' || latest.status === 'crashed')">
 								{{ i18n.baseText('selfHealingPlayground.afterFailure') }}
 								<RouterLink to="/inbox"
 									>{{ i18n.baseText('selfHealingPlayground.inbox') }} →</RouterLink
 								>
 							</p>
-							<p v-else-if="latest.status === 'success'">
+							<p v-else-if="path && latest.status === 'success'">
 								{{ i18n.baseText('selfHealingPlayground.afterSuccess') }}
 							</p>
 						</div>
-						<p v-else :class="$style.meta">
+						<p v-else-if="path" :class="$style.meta">
 							{{ i18n.baseText('selfHealingPlayground.noExecutions') }}
 						</p>
-						<details :class="$style.details">
+						<details v-if="path" :class="$style.details">
 							<summary>{{ i18n.baseText('selfHealingPlayground.inputs') }}</summary>
 							<div :class="$style.inputGrid">
 								<div>

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { IWorkflowDb } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { createWorkflow, getScenarios } from './selfHealingPlayground';
+import { createSubWorkflow, createWorkflow, getScenarios } from './selfHealingPlayground';
 import SelfHealingPlaygroundView from './SelfHealingPlaygroundView.vue';
 
 const mocks = vi.hoisted(() => ({
@@ -331,5 +331,87 @@ describe('SelfHealingPlaygroundView', () => {
 		mocks.executions.mockResolvedValue({ results: [{ id: 'execution1', status }] });
 		const screen = render();
 		expect(await screen.findByText(guidance, { exact: false })).toBeVisible();
+	});
+	it('creates and publishes the sub-workflow before the parent that calls it', async () => {
+		mocks.create.mockImplementation(async (data: IWorkflowDb) => ({
+			...data,
+			id: data.nodes.some(({ type }) => type === 'n8n-nodes-base.webhook') ? 'parent' : 'child',
+			versionId: 'v1',
+		}));
+		const screen = render();
+		const create = screen.getByTestId('create-sub-workflow');
+		await waitFor(() => expect(create).toBeEnabled());
+		await userEvent.click(create);
+		await waitFor(() => expect(mocks.activate).toHaveBeenCalledTimes(2));
+		expect(mocks.activate.mock.calls.map(([, id]) => id)).toEqual(['child', 'parent']);
+		const [[child], [parent]] = mocks.create.mock.calls as Array<[IWorkflowDb]>;
+		expect(child.nodes.map(({ type }) => type)).toEqual([
+			'n8n-nodes-base.executeWorkflowTrigger',
+			'n8n-nodes-base.set',
+		]);
+		expect(parent.nodes[1]).toMatchObject({
+			type: 'n8n-nodes-base.executeWorkflow',
+			parameters: { workflowId: { value: 'child' } },
+		});
+		expect(await screen.findByTestId('playground-message')).toHaveTextContent(
+			'Parent workflow and sub-workflow created and published',
+		);
+	});
+	it('lists both workflows, includes sub-workflows, and deletes the parent first', async () => {
+		const scenario = getScenarios(useI18n()).find(({ id }) => id === 'sub-workflow')!;
+		const child = {
+			...createSubWorkflow(scenario, 'project1'),
+			id: 'child',
+			versionId: 'v1',
+			activeVersionId: 'v1',
+			isArchived: false,
+		} as IWorkflowDb;
+		const parent = {
+			...createWorkflow(scenario, 'project1', 'child'),
+			id: 'parent',
+			versionId: 'v1',
+			activeVersionId: 'v1',
+			isArchived: false,
+		} as IWorkflowDb;
+		const configuration = {
+			id: 1,
+			enabled: true,
+			scope: 'selected',
+			workflowIds: ['parent', 'child'],
+			reviewerIds: ['user1'],
+			includeAllProjectMembers: false,
+			includeSubWorkflows: false,
+		};
+		mocks.configurations.mockResolvedValue([configuration]);
+		mocks.getWorkflows.mockResolvedValue({ data: [child, parent], count: 2 });
+		mocks.getWorkflow.mockImplementation(async (_context, id) => (id === 'child' ? child : parent));
+		const screen = render();
+		await waitFor(() => expect(screen.getAllByTestId('playground-workflow')).toHaveLength(2));
+		expect(screen.getAllByRole('button', { name: 'Run original input' })).toHaveLength(1);
+		expect(screen.getByText(/The parent workflow calls this sub-workflow/)).toBeVisible();
+		const include = await screen.findByRole('button', { name: 'Include sub-workflows' });
+		mocks.configurations.mockResolvedValue([{ ...configuration, includeSubWorkflows: true }]);
+		await userEvent.click(include);
+		await waitFor(() =>
+			expect(mocks.request).toHaveBeenCalledWith(
+				mocks.context,
+				'PATCH',
+				'/projects/project1/self-healing-configurations/1',
+				{
+					scope: 'selected',
+					workflowIds: ['parent', 'child'],
+					reviewerIds: ['user1'],
+					includeAllProjectMembers: false,
+					includeSubWorkflows: true,
+				},
+			),
+		);
+		await waitFor(() =>
+			expect(screen.queryByTestId('playground-sub-workflows-required')).not.toBeInTheDocument(),
+		);
+		await userEvent.click(screen.getByTestId('playground-reset'));
+		await userEvent.click(await screen.findByTestId('playground-reset-confirm'));
+		await waitFor(() => expect(mocks.delete).toHaveBeenCalledTimes(2));
+		expect(mocks.delete.mock.calls.map(([id]) => id)).toEqual(['parent', 'child']);
 	});
 });

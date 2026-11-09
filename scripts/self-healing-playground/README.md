@@ -46,10 +46,30 @@ Open **Self-healing playground** in the sidebar, or navigate to
 6. Send both inputs again. Inspect the saved executions and output.
 
 The invoice scenario should return numeric totals of `42.5` and `19` for the two
-inputs. The output-shape scenario should return an object with an `items` array
+inputs. The sub-workflow scenario should return the same totals. The output-shape scenario should return an object with an `items` array
 that preserves the supplied items. The unavailable-API scenario uses a reserved
 `.invalid` domain and tests reports that need outside help. The healthy control
 should succeed without starting an investigation.
+
+## Test a fix across workflows
+
+The sub-workflow scenario creates two workflows. It creates and publishes the
+sub-workflow first. Then it creates and publishes a parent webhook workflow. The
+parent calls the sub-workflow with an Execute Sub-workflow node. The defect is in
+the sub-workflow: it reads the customer email as the total.
+
+1. Create the **Sub-workflow invoice mix-up** scenario. Both workflows appear in the list.
+2. In self-healing settings, select the parent workflow. You can also select the
+   sub-workflow. Assign yourself as a reviewer.
+3. The settings form has no sub-workflow option yet. On the parent workflow card,
+   select **Include sub-workflows**. This sets `includeSubWorkflows` on the
+   configuration that covers the parent.
+4. Send the original input to the parent. The parent execution fails in the
+   sub-workflow call.
+5. In Inbox, expect a repair that changes the sub-workflow.
+   Apply and publish the repair. Then send both inputs again.
+
+Only parent executions start investigations. Sub-workflow failures alone do not.
 
 Assistant model and sandbox setup must work. The playground does not create
 self-healing configurations or fabricate results. An open result blocks another
@@ -61,4 +81,5 @@ moment and try again. Check for a saved execution before treating it as a failur
 Use Refresh to update execution status after actions in another tab.
 
 Test workflows stay in n8n. Their names start with `[self-healing playground]`.
-Delete them in n8n when you finish.
+Select **Reset playground** to delete them. Reset deletes parent workflows before
+their sub-workflows.

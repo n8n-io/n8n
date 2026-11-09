@@ -1,4 +1,9 @@
-import type { IDataObject, INode } from 'n8n-workflow';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	type IDataObject,
+	type INode,
+} from 'n8n-workflow';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import type { useI18n } from '@n8n/i18n';
 import type { IWorkflowDb } from '@/Interface';
@@ -11,6 +16,7 @@ export interface PlaygroundScenario {
 	outcome: string;
 	input: IDataObject;
 	alternateInput: IDataObject;
+	subWorkflowName?: string;
 }
 
 export const PREFIX = '[self-healing playground] ';
@@ -55,6 +61,20 @@ export function getScenarios(i18n: ReturnType<typeof useI18n>): PlaygroundScenar
 			alternateInput: { accountId: 'ACCOUNT-102' },
 		},
 		{
+			id: 'sub-workflow',
+			name: i18n.baseText('selfHealingPlayground.sub-workflow.name'),
+			description: i18n.baseText('selfHealingPlayground.sub-workflow.description'),
+			expectation: i18n.baseText('selfHealingPlayground.sub-workflow.expectation'),
+			outcome: i18n.baseText('selfHealingPlayground.sub-workflow.outcome'),
+			subWorkflowName: i18n.baseText('selfHealingPlayground.sub-workflow.subWorkflowName'),
+			input: { orderId: 'ORDER-201', customer: { email: 'buyer@example.com' }, amount: 42.5 },
+			alternateInput: {
+				orderId: 'ORDER-202',
+				customer: { email: 'other@example.com' },
+				amount: 19,
+			},
+		},
+		{
 			id: 'healthy',
 			name: i18n.baseText('selfHealingPlayground.healthy.name'),
 			description: i18n.baseText('selfHealingPlayground.healthy.description'),
@@ -69,6 +89,7 @@ export function getScenarios(i18n: ReturnType<typeof useI18n>): PlaygroundScenar
 export function createWorkflow(
 	scenario: PlaygroundScenario,
 	projectId: string,
+	subWorkflowId?: string,
 ): WorkflowDataCreate {
 	const runId = crypto.randomUUID();
 	const webhook: INode = {
@@ -108,7 +129,7 @@ export function createWorkflow(
 						name: 'total',
 						type: 'number',
 						value:
-							scenario.id === 'wrong-field'
+							scenario.id === 'wrong-field' || scenario.id === 'sub-workflow'
 								? '={{ $json.body.customer.email }}'
 								: '={{ $json.body.amount }}',
 					},
@@ -129,6 +150,16 @@ export function createWorkflow(
 			options: { timeout: 5000 },
 		};
 	}
+	if (subWorkflowId) {
+		transform.name = 'Calculate invoice';
+		transform.type = EXECUTE_WORKFLOW_NODE_TYPE;
+		transform.typeVersion = 1.2;
+		transform.parameters = {
+			source: 'database',
+			workflowId: { __rl: true, mode: 'id', value: subWorkflowId },
+			options: {},
+		};
+	}
 	return {
 		name: `${PREFIX}${scenario.name} · ${runId.slice(0, 8)}`,
 		...(projectId ? { projectId } : {}),
@@ -142,7 +173,30 @@ export function createWorkflow(
 	};
 }
 
-export function identifyWorkflow(workflow: IWorkflowDb, scenarios: PlaygroundScenario[]) {
+export function createSubWorkflow(
+	scenario: PlaygroundScenario,
+	projectId: string,
+): WorkflowDataCreate {
+	const workflow = createWorkflow(scenario, projectId);
+	const trigger: INode = {
+		id: crypto.randomUUID(),
+		name: 'Receive order',
+		type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+		typeVersion: 1.1,
+		position: [0, 0],
+		parameters: { inputSource: 'passthrough' },
+	};
+	return {
+		...workflow,
+		name: `${PREFIX}${scenario.subWorkflowName} · ${crypto.randomUUID().slice(0, 8)}`,
+		nodes: [trigger, workflow.nodes[1]],
+	};
+}
+
+export function identifyWorkflow(
+	workflow: IWorkflowDb,
+	scenarios: PlaygroundScenario[],
+): { scenario: PlaygroundScenario; path?: string } | null {
 	if (!workflow.name.startsWith(PREFIX)) return null;
 	for (const node of workflow.nodes) {
 		const path = node.parameters.path;
@@ -155,5 +209,11 @@ export function identifyWorkflow(workflow: IWorkflowDb, scenarios: PlaygroundSce
 		const scenario = scenarios.find(({ id }) => id === path.split('/')[1]);
 		if (scenario) return { scenario, path };
 	}
-	return null;
+	const scenario = scenarios.find(
+		({ subWorkflowName }) =>
+			subWorkflowName && workflow.name.startsWith(`${PREFIX}${subWorkflowName} · `),
+	);
+	return scenario && workflow.nodes.some(({ type }) => type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)
+		? { scenario }
+		: null;
 }
