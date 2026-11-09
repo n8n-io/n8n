@@ -47,6 +47,8 @@ export interface BrowserTab {
 	name: string;
 	icon: IconName;
 	taskId: string;
+	/** Set while the task waits for the user to do a step in the browser. */
+	userAction?: { reason: string };
 }
 
 /** A tab in the preview tab bar. */
@@ -189,6 +191,7 @@ export function useCanvasPreview({
 				name: task.title || i18n.baseText('instanceAi.cloudBrowser.tabName'),
 				icon: 'globe',
 				taskId: task.taskId,
+				userAction: task.userAction,
 			})),
 	);
 

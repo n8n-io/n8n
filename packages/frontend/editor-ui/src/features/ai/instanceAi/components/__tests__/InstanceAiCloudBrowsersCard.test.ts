@@ -122,6 +122,42 @@ describe('InstanceAiCloudBrowsersCard', () => {
 		expect(thread.cancelBackgroundTask).toHaveBeenCalledWith('task-1');
 	});
 
+	it('says the task needs the user while it waits for them', () => {
+		const { getByTestId } = render(makeTask({ userAction: { reason: 'Log in, please' } }), {
+			status: 'live',
+			liveViewUrl: 'https://live.example.com/1',
+			windowId: 'window-1',
+		});
+
+		expect(getByTestId('instance-ai-cloud-browser-status')).toHaveTextContent('Needs you');
+	});
+
+	it('says the user has control after they take over the task that needs them', () => {
+		const { getByTestId } = render(makeTask({ userAction: { reason: 'Log in, please' } }), {
+			status: 'live',
+			liveViewUrl: 'https://live.example.com/1',
+			windowId: 'window-1',
+			userHasTakenOver: true,
+		});
+
+		expect(getByTestId('instance-ai-cloud-browser-status')).toHaveTextContent(
+			'You have control of the browser',
+		);
+	});
+
+	it('says the user has control after they took over', () => {
+		const { getByTestId } = render(makeTask(), {
+			status: 'live',
+			liveViewUrl: 'https://live.example.com/1',
+			windowId: 'window-1',
+			userHasTakenOver: true,
+		});
+
+		expect(getByTestId('instance-ai-cloud-browser-status')).toHaveTextContent(
+			'You have control of the browser',
+		);
+	});
+
 	it('opens the browser tab when the user clicks the live view', async () => {
 		const openCloudBrowserTab = vi.fn();
 		const { getByTestId, container } = render(

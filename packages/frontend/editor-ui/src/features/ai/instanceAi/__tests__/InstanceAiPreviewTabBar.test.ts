@@ -460,6 +460,29 @@ describe('InstanceAiPreviewTabBar', () => {
 			);
 		});
 
+		it('shows a waiting dot while the task waits for the user', () => {
+			const { getByRole } = renderComponent({
+				props: {
+					tabs: [{ ...browserTab, userAction: { reason: 'Log in, please' } }],
+					activeTabId: 'browser:task-1',
+				},
+			});
+
+			// Screen readers announce the dot, not only its label attribute.
+			expect(getByRole('img', { name: 'Needs you' })).toHaveAttribute(
+				'data-test-id',
+				'instance-ai-tab-waiting',
+			);
+		});
+
+		it('shows no waiting dot while the task works', () => {
+			const { queryByTestId } = renderComponent({
+				props: { tabs: [browserTab], activeTabId: 'browser:task-1' },
+			});
+
+			expect(queryByTestId('instance-ai-tab-waiting')).not.toBeInTheDocument();
+		});
+
 		it.each(['Open in editor', 'Copy link'])('disables "%s" in the context menu', async (label) => {
 			const { container } = renderComponent({
 				props: { tabs: [browserTab], activeTabId: 'browser:task-1' },
