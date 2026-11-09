@@ -1266,6 +1266,7 @@ export class InstanceAiService {
 				type: 'agent-completed',
 				runId: task.runId,
 				agentId: task.agentId,
+				...(task.detachedFromTurn ? { detachedFromTurn: true } : {}),
 				payload: {
 					role: task.role,
 					result: '',
@@ -1333,6 +1334,7 @@ export class InstanceAiService {
 			type: 'agent-completed',
 			runId: task.runId,
 			agentId: task.agentId,
+			...(task.detachedFromTurn ? { detachedFromTurn: true } : {}),
 			payload: { role: task.role, result: '', status: 'cancelled' },
 		});
 

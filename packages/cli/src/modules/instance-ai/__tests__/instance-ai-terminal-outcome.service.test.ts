@@ -326,6 +326,17 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 		expect(terminalOutcomeStorageMock.markDelivered).toHaveBeenCalledTimes(1);
 	});
 
+	it('records nothing for a task detached from its turn', async () => {
+		const { service, deps } = createService();
+
+		await service.recordBackgroundTerminalOutcome(
+			makeTask({ status: 'cancelled', detachedFromTurn: true }),
+		);
+
+		expect(terminalOutcomeStorageMock.upsert).not.toHaveBeenCalled();
+		expect(deps.eventBus.publish).not.toHaveBeenCalled();
+	});
+
 	it('keeps the outcome pending and replays it later when persistence fails', async () => {
 		terminalOutcomeStorageMock.upsert.mockRejectedValueOnce(new Error('db down'));
 		const { service, deps } = createService();
