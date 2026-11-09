@@ -342,7 +342,7 @@ describe('TelegramInteractionWebhooks', () => {
 		const snapshot = { id: EXECUTION_ID } as unknown as ExecutionSnapshot;
 		const target = { stepId: STEP_ID, nodeId: 'node-1' };
 
-		const standIn = (type = 'n8n-nodes-base.telegram') =>
+		const resumeExecution = (type = 'n8n-nodes-base.telegram') =>
 			({
 				id: EXECUTION_ID,
 				workflowData: { nodes: [{ name: 'Telegram', id: 'node-1', type, parameters: {} }] },
@@ -370,7 +370,7 @@ describe('TelegramInteractionWebhooks', () => {
 				ok: true,
 				value: { execution: snapshot, target },
 			});
-			executionReader.fromSnapshot.mockResolvedValue(standIn());
+			executionReader.fromSnapshot.mockResolvedValue(resumeExecution());
 		});
 
 		it('locates the callback by its step id and resumes the step under the execution id', async () => {
@@ -419,7 +419,7 @@ describe('TelegramInteractionWebhooks', () => {
 			expect(getWebhookExecutionData).not.toHaveBeenCalled();
 		});
 
-		it('answers 404 when the snapshot cannot be mapped to a stand-in', async () => {
+		it('answers 404 when the snapshot cannot be mapped to a resume execution', async () => {
 			executionReader.fromSnapshot.mockResolvedValue(undefined);
 			const res = makeRes();
 
@@ -430,7 +430,7 @@ describe('TelegramInteractionWebhooks', () => {
 		});
 
 		it('answers 404 when the waiting node is not a Telegram node', async () => {
-			executionReader.fromSnapshot.mockResolvedValue(standIn('n8n-nodes-base.slack'));
+			executionReader.fromSnapshot.mockResolvedValue(resumeExecution('n8n-nodes-base.slack'));
 			const res = makeRes();
 
 			await svc.executeWebhook(makeReq(reference), res);

@@ -137,16 +137,16 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		const { execution: snapshot, target } = located.value;
 		if (target === null) return this.reject(res, 409);
 
-		const standIn = await this.buildEngineV2StandIn(snapshot, target.nodeId);
-		if (!standIn || standIn.node.type !== this.platformNodeType) return this.reject(res, 404);
+		const resume = await this.buildV1ResumeExecution(snapshot, target.nodeId);
+		if (!resume || resume.node.type !== this.platformNodeType) return this.reject(res, 404);
 
 		this.beforeResume(req);
 
 		return await this.getWebhookExecutionData({
-			execution: standIn.execution,
+			execution: resume.execution,
 			req,
 			res,
-			lastNodeExecuted: standIn.node.name,
+			lastNodeExecuted: resume.node.name,
 			executionId: snapshot.id,
 			suffix: target.nodeId,
 			engineResume: { stepId: target.stepId, token: reference },

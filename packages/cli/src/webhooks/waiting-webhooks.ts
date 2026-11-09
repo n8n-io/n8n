@@ -499,9 +499,9 @@ export class WaitingWebhooks implements IWebhookManager {
 			return this.answerEngineV2WithoutTarget(executionId, snapshot, suffix, res);
 		}
 
-		const standIn = await this.buildEngineV2StandIn(snapshot, target.nodeId);
-		if (!standIn) throw new NotFoundError('Could not find node to process webhook.');
-		const { execution, node } = standIn;
+		const resume = await this.buildV1ResumeExecution(snapshot, target.nodeId);
+		if (!resume) throw new NotFoundError('Could not find node to process webhook.');
+		const { execution, node } = resume;
 
 		this.sanitizeEngineV2Request(req, node);
 
@@ -533,7 +533,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	 * snapshot, with the waiting node seeded. Undefined when the run's workflow
 	 * document lacks what the v1 code reads or lacks the node.
 	 */
-	protected async buildEngineV2StandIn(
+	protected async buildV1ResumeExecution(
 		snapshot: ExecutionSnapshot,
 		nodeId: string,
 	): Promise<{ execution: IExecutionResponse; node: INode } | undefined> {
