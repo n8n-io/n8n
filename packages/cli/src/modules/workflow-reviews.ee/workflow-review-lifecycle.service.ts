@@ -1,5 +1,5 @@
 import type { WorkflowReviewWorkflowCauseActivityType } from '@n8n/api-types';
-import { EventService } from '@n8n/backend-services';
+import { EventService, type WorkflowMutationHooks } from '@n8n/backend-services';
 import type { OperationContext } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -11,8 +11,6 @@ import {
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import type { WorkflowMutationHooks } from '@/workflows/workflow-mutation-hooks-proxy.service';
 
 import { WorkflowReviewStateNotifier } from './workflow-review-state-notifier.service';
 

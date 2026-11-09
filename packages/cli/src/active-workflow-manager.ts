@@ -28,10 +28,10 @@ import {
 	Workflow,
 	WorkflowActivationError,
 	WebhookPathTakenError,
-	UnexpectedError,
 	IsolateError,
 	validateWorkflowHasTriggerLikeNode,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
@@ -40,6 +40,7 @@ import {
 	TRIGGER_COUNT_EXCLUDED_NODES,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
+	WORKFLOW_REACTIVATE_STABLE_PERIOD,
 } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalHooks } from '@/external-hooks';
@@ -71,9 +72,18 @@ interface QueuedActivation {
 	workflowData: IWorkflowDb;
 }
 
+/** The wait before the last reactivation attempt, so a quick failure continues the backoff. */
+interface RecentReactivation {
+	lastTimeout: number;
+	/** When the activation call returned. Unset while it still runs. */
+	activatedAt?: number;
+}
+
 @Service()
 export class ActiveWorkflowManager {
 	private queuedActivations: Record<WorkflowId, QueuedActivation> = {};
+
+	private readonly recentReactivations = new Map<WorkflowId, RecentReactivation>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -431,6 +441,12 @@ export class ActiveWorkflowManager {
 		const dbWorkflow = await this.workflowRepository.findById(workflowId);
 		if (!dbWorkflow) return;
 
+		// With the default batch size of 1, this is the last line before a crash during registration
+		this.logger.info(`Activating workflow ${formatWorkflow(dbWorkflow)}`, {
+			workflowName: dbWorkflow.name,
+			workflowId: dbWorkflow.id,
+		});
+
 		try {
 			const added = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
 				shouldPublish: false,
@@ -561,21 +577,6 @@ export class ActiveWorkflowManager {
 			return added;
 		}
 
-		if (this.instanceSettings.isMultiMain && shouldPublish) {
-			if (!dbWorkflow?.activeVersionId) {
-				throw new UnexpectedError('Active version ID not found for workflow', {
-					extra: { workflowId },
-				});
-			}
-
-			void this.publisher.publishCommand({
-				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId, activationMode },
-			});
-
-			return added;
-		}
-
 		let workflow: Workflow;
 
 		const shouldAddWebhooks = this.shouldAddWebhooks(activationMode);
@@ -611,6 +612,21 @@ export class ActiveWorkflowManager {
 				{ id: dbWorkflow.id, name: dbWorkflow.name, nodes },
 				actor,
 			);
+
+			// This check answers the caller. The leader checks again as `system` before it
+			// registers, so a check that depends on the actor can still refuse there.
+			if (this.instanceSettings.isMultiMain && shouldPublish) {
+				void this.publisher.publishCommand({
+					command: 'add-webhooks-triggers-and-pollers',
+					payload: {
+						workflowId,
+						activeVersionId: dbWorkflow.activeVersion.versionId,
+						activationMode,
+					},
+				});
+
+				return added;
+			}
 
 			workflow = new Workflow({
 				id: dbWorkflow.id,
@@ -892,6 +908,10 @@ export class ActiveWorkflowManager {
 				workflowId,
 				workflowName,
 			});
+			const attempt: RecentReactivation = {
+				lastTimeout: own.activation?.lastTimeout ?? WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
+			};
+			this.recentReactivations.set(workflowId, attempt);
 			try {
 				await this.add(workflowId, activationMode, workflowData, { shouldPublish: false });
 			} catch (error) {
@@ -905,6 +925,9 @@ export class ActiveWorkflowManager {
 					// Only our own entry: a newer failure may have replaced it since.
 					if (this.queuedActivations[workflowId] === own.activation) {
 						this.removeQueuedWorkflowActivation(workflowId);
+					}
+					if (this.recentReactivations.get(workflowId) === attempt) {
+						this.recentReactivations.delete(workflowId);
 					}
 
 					return;
@@ -937,6 +960,7 @@ export class ActiveWorkflowManager {
 				queuedActivation.timeout = setTimeout(retryFunction, lastTimeout);
 				return;
 			}
+			if (this.recentReactivations.get(workflowId) === attempt) attempt.activatedAt = Date.now();
 			this.logger.info(`Activation of workflow "${workflowName}" (${workflowId}) was successful!`, {
 				workflowId,
 				workflowName,
@@ -947,13 +971,33 @@ export class ActiveWorkflowManager {
 		// multiple run in parallel
 		this.removeQueuedWorkflowActivation(workflowId);
 
+		const initialTimeout = this.getReactivationTimeout(workflowId);
 		own.activation = {
 			activationMode,
-			lastTimeout: WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
-			timeout: setTimeout(retryFunction, WORKFLOW_REACTIVATE_INITIAL_TIMEOUT),
+			lastTimeout: initialTimeout,
+			timeout: setTimeout(retryFunction, initialTimeout),
 			workflowData,
 		};
 		this.queuedActivations[workflowId] = own.activation;
+	}
+
+	/**
+	 * A trigger that fails again soon after a successful reactivation continues the backoff
+	 * instead of starting over, or a trigger that dies right after it connects is retried
+	 * every second without end. The backoff starts over once the trigger has stayed up for
+	 * `WORKFLOW_REACTIVATE_STABLE_PERIOD` after its activation call returned.
+	 */
+	private getReactivationTimeout(workflowId: WorkflowId) {
+		const recent = this.recentReactivations.get(workflowId);
+		if (!recent) return WORKFLOW_REACTIVATE_INITIAL_TIMEOUT;
+
+		const { activatedAt } = recent;
+		if (activatedAt !== undefined && Date.now() - activatedAt > WORKFLOW_REACTIVATE_STABLE_PERIOD) {
+			this.recentReactivations.delete(workflowId);
+			return WORKFLOW_REACTIVATE_INITIAL_TIMEOUT;
+		}
+
+		return Math.min(recent.lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
 	}
 
 	/**
@@ -973,6 +1017,7 @@ export class ActiveWorkflowManager {
 		for (const workflowId in this.queuedActivations) {
 			this.removeQueuedWorkflowActivation(workflowId);
 		}
+		this.recentReactivations.clear();
 	}
 
 	/**
@@ -1020,6 +1065,7 @@ export class ActiveWorkflowManager {
 		if (this.queuedActivations[workflowId] !== undefined) {
 			this.removeQueuedWorkflowActivation(workflowId);
 		}
+		this.recentReactivations.delete(workflowId);
 
 		// If it is active in memory, it is a non-webhook trigger workflow.
 		await this.removeNonWebhookTriggers(workflowId);
@@ -1030,6 +1076,7 @@ export class ActiveWorkflowManager {
 		workflowId,
 	}: PubSubCommandMap['remove-triggers-and-pollers']) {
 		await this.removeActivationError(workflowId);
+		this.recentReactivations.delete(workflowId);
 		await this.removeNonWebhookTriggers(workflowId);
 
 		await this.workflowPushNotifier.notify(workflowId, {

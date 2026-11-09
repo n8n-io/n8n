@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import type {
 	InstanceAiAgentActivity,
 	InstanceAiAgentNode,
@@ -126,7 +127,7 @@ export function messageHasVisibleContent(message: InstanceAiMessage): boolean {
 		if (e.type === 'tool-call') {
 			const toolCall = toolCallsById[e.toolCallId];
 			return !(
-				toolCall?.toolName === 'build-agent' &&
+				toolCall?.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 				e.responseId !== undefined &&
 				activeBuilderChildResponseIds.has(e.responseId)
 			);

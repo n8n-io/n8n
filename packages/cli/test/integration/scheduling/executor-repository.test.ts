@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { ScheduledJob as ScheduledJobEntity, ScheduledTask } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EntityManager } from '@n8n/typeorm';
 
 import { selfOwned } from './shared/job-factory';
 
@@ -75,6 +76,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 	}
 
 	const reload = async (id: string) => await taskRepository.findOneByOrFail({ id });
+	const reloadJob = async () => await jobRepository.findOneByOrFail({ id: job.id });
 
 	beforeAll(async () => {
 		// Use separate connections for concurrent claims.
@@ -577,6 +579,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 									scheduledFor: earlier,
 									runAt: earlier,
 									maxAttempts: 1,
+									timeoutSeconds: 300,
 									missedAfter: null,
 								},
 							]),
@@ -677,6 +680,29 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect((await reload(id)).startedAt).not.toBeNull();
 		});
 
+		it('renewLease pushes the lease out for the claiming host, and refuses a non-claiming host, a stale epoch and a finished row', async () => {
+			const { id, epoch } = await claimOne();
+			const leaseBefore = (await reload(id)).leaseExpiresAt!.getTime();
+
+			expect(
+				await taskRepository.renewLease({ host: HOST_B, id, claimedEpoch: epoch }, 120_000),
+			).toBe(false);
+			expect(
+				await taskRepository.renewLease({ host: HOST_A, id, claimedEpoch: epoch - 1 }, 120_000),
+			).toBe(false);
+			expect((await reload(id)).leaseExpiresAt!.getTime()).toBe(leaseBefore);
+
+			expect(
+				await taskRepository.renewLease({ host: HOST_A, id, claimedEpoch: epoch }, 120_000),
+			).toBe(true);
+			expect((await reload(id)).leaseExpiresAt!.getTime()).toBeGreaterThan(leaseBefore);
+
+			await taskRepository.completeTask({ host: HOST_A, id, claimedEpoch: epoch });
+			expect(
+				await taskRepository.renewLease({ host: HOST_A, id, claimedEpoch: epoch }, 120_000),
+			).toBe(false);
+		});
+
 		it('markDispatched stamps dispatchedAt for the owner, and is a no-op for a non-owner host', async () => {
 			const { id, epoch } = await claimOne();
 
@@ -684,11 +710,43 @@ describe('ScheduledTaskRepository executor methods', () => {
 				0,
 			);
 			expect((await reload(id)).dispatchedAt).toBeNull();
+			expect((await reloadJob()).lastDispatchedAt).toBeNull();
 
 			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
 				1,
 			);
 			expect((await reload(id)).dispatchedAt).not.toBeNull();
+		});
+
+		it('markDispatched stamps the same instant on the job', async () => {
+			const { id, epoch } = await claimOne();
+
+			await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch });
+
+			const { dispatchedAt } = await reload(id);
+			const { lastDispatchedAt } = await reloadJob();
+			expect(dispatchedAt).not.toBeNull();
+			expect(lastDispatchedAt).not.toBeNull();
+			expect(Math.abs(lastDispatchedAt!.getTime() - dispatchedAt!.getTime())).toBeLessThanOrEqual(
+				1000,
+			);
+		});
+
+		it('markDispatched leaves dispatchedAt unset when the job stamp fails', async () => {
+			const { id, epoch } = await claimOne();
+			vi.spyOn(EntityManager.prototype, 'query').mockRejectedValueOnce(
+				new Error('job stamp failed'),
+			);
+
+			try {
+				await expect(
+					taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch }),
+				).rejects.toThrow('job stamp failed');
+			} finally {
+				vi.restoreAllMocks();
+			}
+
+			expect((await reload(id)).dispatchedAt).toBeNull();
 		});
 
 		it('markDispatched is not fenced on an existing marker (at-least-once allows redelivery)', async () => {
@@ -1025,10 +1083,9 @@ describe('ScheduledTaskRepository executor methods', () => {
 			});
 
 			it('reaps a lease that expired a moment ago (boundary)', async () => {
-				// The WHERE clause is strictly `leaseExpiresAt < now()`. Expiring 1ms in the
-				// past keeps the lease unambiguously below the DB clock, so this pins the
-				// comparison to `<` rather than an off-by-one variant that would exclude it.
-				const task = await createExpiredRunning({ leaseExpiresAt: new Date(Date.now() - 1) });
+				// Use the reaper's clock: the database and test host can differ by more than 1 ms.
+				const now = await taskRepository.readDbTime();
+				const task = await createExpiredRunning({ leaseExpiresAt: new Date(now.getTime() - 1) });
 
 				const found = await taskRepository.findExpiredLeases(10);
 
@@ -1142,6 +1199,39 @@ describe('ScheduledTaskRepository executor methods', () => {
 				expect(row.status).toBe('pending');
 				expect(row.attempts).toBe(1); // counted once, not twice
 				expect(row.leaseEpoch).toBe(2); // bumped once, not twice
+			});
+
+			it('is a no-op after the owner renewed the lease', async () => {
+				const task = await createExpiredRunning({ leaseEpoch: 1, attempts: 0 });
+
+				expect(
+					await taskRepository.renewLease({ host: HOST_A, id: task.id, claimedEpoch: 1 }, 60_000),
+				).toBe(true);
+				expect(
+					await taskRepository.reclaimExpired({ id: task.id, claimedEpoch: 1 }, 30_000, 'x'),
+				).toBe(0);
+
+				const row = await reload(task.id);
+				expect(row.status).toBe('running');
+				expect(row.leaseEpoch).toBe(1);
+				const dbNow = await taskRepository.readDbTime();
+				expect(row.leaseExpiresAt!.getTime()).toBeGreaterThan(dbNow.getTime());
+			});
+
+			it('makes a later renewal by the previous owner a no-op', async () => {
+				const task = await createExpiredRunning({ leaseEpoch: 1, attempts: 0 });
+
+				expect(
+					await taskRepository.reclaimExpired({ id: task.id, claimedEpoch: 1 }, 30_000, 'x'),
+				).toBe(1);
+				expect(
+					await taskRepository.renewLease({ host: HOST_A, id: task.id, claimedEpoch: 1 }, 60_000),
+				).toBe(false);
+
+				const row = await reload(task.id);
+				expect(row.status).toBe('pending');
+				expect(row.leaseEpoch).toBe(2);
+				expect(row.attempts).toBe(1);
 			});
 
 			it('is a no-op on a dispatched row: a dispatched occurrence is completed, not reclaimed', async () => {

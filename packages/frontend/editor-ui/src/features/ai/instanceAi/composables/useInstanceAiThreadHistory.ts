@@ -5,12 +5,19 @@ import { useIntersectionObserver } from '@/app/composables/useIntersectionObserv
 import { DEBOUNCE_TIME } from '@/app/constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 
+export type UseInstanceAiThreadHistoryOptions = {
+	/** Replaces `loadMore` when the sentinel intersects, for a caller that pages a second source. */
+	onSentinelLoadMore?: () => void;
+	/** Extra loading state of that second source. The sentinel re-arms when it ends. */
+	isExtraSourceLoading?: () => boolean;
+};
+
 /**
  * Server-side searched, cursor-paged chat list for one mounted list at a time.
  * Bind `search` to the input, `listRef` to the scroll container and `sentinelRef` to an
  * element after the last row. Loads on mount and clears the store state on unmount.
  */
-export function useInstanceAiThreadHistory() {
+export function useInstanceAiThreadHistory(options?: UseInstanceAiThreadHistoryOptions) {
 	const store = useInstanceAiStore();
 	const history = computed(() => store.threadHistory);
 	const search = ref('');
@@ -31,11 +38,14 @@ export function useInstanceAiThreadHistory() {
 
 	// The observer fires once per observe() call. Re-arm it after every page so a sentinel that
 	// is still in view (short list in a tall window) loads the next page right away.
-	const { observe } = useIntersectionObserver({ root: listRef, onIntersect: loadMore });
+	const { observe } = useIntersectionObserver({
+		root: listRef,
+		onIntersect: options?.onSentinelLoadMore ?? loadMore,
+	});
 	watch(
-		[sentinelRef, () => history.value.loading],
-		([sentinel, loading]) => {
-			if (sentinel && !loading) observe(sentinel);
+		[sentinelRef, () => history.value.loading, () => options?.isExtraSourceLoading?.() ?? false],
+		([sentinel, loading, extraLoading]) => {
+			if (sentinel && !loading && !extraLoading) observe(sentinel);
 		},
 		{ flush: 'post' },
 	);

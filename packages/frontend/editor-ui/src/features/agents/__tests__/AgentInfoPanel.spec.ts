@@ -110,13 +110,6 @@ vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({ currentUserId: 'user-1' }),
 }));
 
-vi.mock('@/features/credentials/credentials.store', () => ({
-	useCredentialsStore: () => ({
-		getCredentialById: () => undefined,
-		getCredentialData: async () => undefined,
-	}),
-}));
-
 vi.mock('../composables/useAgentProjectId', () => ({
 	useAgentProjectId: () => ref('project-1'),
 }));
@@ -317,6 +310,37 @@ describe('AgentInfoPanel', () => {
 		// A user-driven pick carries no meta — only an auto-applied default does.
 		expect(events.at(-1)?.[1]).toBeUndefined();
 	});
+
+	it.each([
+		{ provider: 'openrouter', model: 'anthropic/claude-sonnet-4.5', supported: true },
+		{ provider: 'openrouter', model: 'openai/gpt-5', supported: false },
+		{ provider: 'google-vertex', model: 'claude-sonnet-4-5', supported: true },
+		{ provider: 'google-vertex', model: 'gemini-2.5-pro', supported: false },
+	])(
+		'normalizes caching when selecting $provider/$model',
+		async ({ provider, model, supported }) => {
+			credsHolder.value[provider] = 'credential-2';
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'credential-1',
+				instructions: 'Help users.',
+				config: {
+					toolCallConcurrency: 2,
+					promptCaching: { enabled: true, anthropic: { ttl: '5m' } },
+				},
+			});
+			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', { provider, model });
+			await wrapper.vm.$nextTick();
+
+			const changes = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+			expect(changes.model).toBe(`${provider}/${model}`);
+			expect(changes.config?.toolCallConcurrency).toBe(2);
+			expect(changes.config?.promptCaching).toEqual(
+				supported ? { enabled: true, anthropic: { ttl: '5m' } } : undefined,
+			);
+		},
+	);
 
 	it('forwards the model selector\'s own "auto" source through to update:config', async () => {
 		const config: AgentJsonConfig = {
@@ -616,5 +640,24 @@ describe('AgentInfoPanel', () => {
 			const props = selectorProps(wrapper);
 			expect((props.credentials as Record<string, string>).anthropic).toBe('credential-1');
 		});
+	});
+
+	it('has no deployment-name field and emits no deployment name for an Azure model', () => {
+		credsHolder.value = { 'azure-openai': 'azure-foundry-1' };
+		const wrapper = mountModelPanel({
+			name: 'Azure agent',
+			model: 'azure-openai/gpt-4o',
+			credential: 'azure-foundry-1',
+			instructions: 'Help users.',
+		});
+
+		wrapper
+			.findComponent({ name: 'AgentModelSelector' })
+			.vm.$emit('change', { provider: 'azure-openai', model: 'my-chat-deployment' });
+
+		expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(false);
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Record<string, unknown>;
+		expect(last.model).toBe('azure-openai/my-chat-deployment');
+		expect(last).not.toHaveProperty('modelDeploymentName');
 	});
 });

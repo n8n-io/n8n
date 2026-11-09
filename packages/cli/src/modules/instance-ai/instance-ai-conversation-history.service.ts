@@ -13,10 +13,11 @@ import type {
 	InstanceAiConversationHistoryReader,
 } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
-import { ASK_USER_TOOL_NAME, TOOL_CALL_PART_TYPES } from './conversation-history-content';
+import { ASK_USER_TOOL_NAMES, TOOL_CALL_PART_TYPES } from './conversation-history-content';
 import type { InstanceAiMessage } from './entities/instance-ai-message.entity';
 import { cleanStoredUserMessage, sanitisePromptText } from './internal-messages';
 import { extractTextFromContent } from './message-parser';
@@ -82,7 +83,7 @@ const askUserAnswerSchema = z.object({
 
 const askUserPartSchema = z.object({
 	type: z.literal('tool-call'),
-	toolName: z.literal(ASK_USER_TOOL_NAME),
+	toolName: z.string().refine((name) => ASK_USER_TOOL_NAMES.includes(name)),
 	state: z.literal('resolved'),
 	output: z.object({
 		answered: z.boolean(),

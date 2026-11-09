@@ -1,4 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { createHmac } from 'crypto';
 
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 import type { IntegrationActionResult } from './integration-tool-types';
@@ -35,6 +36,28 @@ export function unsupportedAction(platform: string, action: string): Integration
 		INTEGRATION_ERROR_CODES.UNSUPPORTED_ACTION,
 		`The active ${platform} connection does not support ${action}.`,
 	);
+}
+
+/** The chat SDK attachment type for a MIME type. */
+export function fileAttachmentType(mimeType: string): 'image' | 'video' | 'audio' | 'file' {
+	// MIME types are case-insensitive, and stored values can have spaces.
+	const type = mimeType.trim().toLowerCase();
+	if (type.startsWith('image/')) return 'image';
+	if (type.startsWith('video/')) return 'video';
+	if (type.startsWith('audio/')) return 'audio';
+	return 'file';
+}
+
+/** The attachment type to send a file as. An image over `maxImageBytes` goes as a file. */
+export function outboundAttachmentType(
+	file: { mimeType: string; fileSizeBytes: number },
+	maxImageBytes?: number,
+): 'image' | 'video' | 'audio' | 'file' {
+	const type = fileAttachmentType(file.mimeType);
+	if (type === 'image' && maxImageBytes !== undefined && file.fileSizeBytes > maxImageBytes) {
+		return 'file';
+	}
+	return type;
 }
 
 export function normalizePlatformId(platform: string, id: string): string {
@@ -79,6 +102,23 @@ export function removeUndefinedValues<T extends Record<string, unknown>>(
 
 export function isDefined<T>(value: T | undefined): value is T {
 	return value !== undefined;
+}
+
+/**
+ * Meta requires pasting this token by hand into the webhook config, so it must
+ * be shown before a credential exists — derived from `agentId` alone, not `credentialId`.
+ *
+ * Signed with `instanceSettings.hmacSignatureSecret`, not the credential
+ * encryption key: this value is exposed on an unauthenticated endpoint, and
+ * `hmacSignatureSecret` is the existing dedicated secret this codebase already
+ * uses for that class of webhook signing (see `waiting-webhooks.ts`) — a real
+ * secret an operator can rotate independently via `N8N_HMAC_SIGNATURE_SECRET`,
+ * not a value derived from the encryption key that protects stored credentials.
+ */
+export function deriveWhatsAppVerifyToken(hmacSignatureSecret: string, agentId: string): string {
+	return createHmac('sha256', hmacSignatureSecret)
+		.update(`whatsapp:verify:${agentId}`)
+		.digest('hex');
 }
 
 export function hasUpdateIssueField(input: {

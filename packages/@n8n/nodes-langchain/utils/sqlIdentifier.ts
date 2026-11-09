@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import pg from 'pg';
 
 /**
@@ -63,4 +64,40 @@ export function findUnsafeMetadataFilterKey(
 ): string | undefined {
 	if (!filter) return undefined;
 	return Object.keys(filter).find((key) => key.includes("'") || key.includes('\\'));
+}
+
+/**
+ * Matches a field name that Oracle accepts as an unquoted SQL/JSON path step.
+ * Oracle documents the unquoted form as a leading letter followed by letters and
+ * digits; underscore is allowed here because it is inert in both the path
+ * grammar and the surrounding string literal, and is common in existing keys.
+ */
+const SAFE_JSON_PATH_FIELD = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/**
+ * Returns the first metadata-filter key that the Oracle store cannot resolve as
+ * an unquoted SQL/JSON path step, or undefined when every key is usable.
+ *
+ * Walks `$and` and `$or` because the store expands them before building the
+ * path, so a nested key reaches the same place a top-level one does.
+ */
+export function findUnsupportedJsonPathFilterKey(filter: unknown): string | undefined {
+	if (!isRecord(filter)) return undefined;
+
+	for (const [key, value] of Object.entries(filter)) {
+		if (key === '$and' || key === '$or') {
+			if (!Array.isArray(value)) continue;
+			for (const condition of value) {
+				const unsupported = findUnsupportedJsonPathFilterKey(condition);
+				if (unsupported !== undefined) return unsupported;
+			}
+			continue;
+		}
+
+		// Only the field name reaches the path. Operator names in value position
+		// are matched against a fixed set by the store, and values are bound.
+		if (!SAFE_JSON_PATH_FIELD.test(key)) return key;
+	}
+
+	return undefined;
 }

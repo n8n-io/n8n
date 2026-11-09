@@ -2,10 +2,9 @@ import type { RuntimeSkillSource } from '@n8n/agents';
 import type { InstanceAiBuildMode, InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import type { SkillVariant } from './skill-variants';
 import { CONCISE_COMMUNICATION_STYLE_SECTION } from '../agent/communication-style.prompt';
 import { createSystemPromptRenderer, getSystemPrompt } from '../agent/system-prompt';
-import { ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
+import type { SkillVariant } from '../skills/skill-variants';
 
 export interface PromptProfile {
 	version: string;
@@ -27,8 +26,6 @@ const progressiveBuilding: SkillVariant = {
 		{ skillId: 'workflow-builder', appendFrom: 'progressive-building', useDescription: true },
 		{ skillId: 'post-build-flow', appendFrom: 'progressive-building' },
 	],
-	disabledSkills: ['planning'],
-	disabledTools: [ORCHESTRATION_TOOL_IDS.CREATE_TASKS],
 };
 
 /** Published versions are immutable. Add a new entry to change a profile. */

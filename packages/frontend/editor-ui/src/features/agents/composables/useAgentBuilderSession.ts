@@ -5,13 +5,13 @@ import { truncate } from '@n8n/utils/string/truncate';
 import { useRoute, useRouter } from 'vue-router';
 import type { LocationQueryRaw } from 'vue-router';
 
-import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 
 import { useAgentSessionsStore } from '../agentSessions.store';
 import type { AgentExecutionThread } from './useAgentThreadsApi';
 import { CONTINUE_SESSION_ID_PARAM, NEW_SESSION_PARAM } from '../constants';
 import { useThreadTitle } from '../utils/thread-title';
+import { useAgentConfirmationModal } from './useAgentConfirmationModal';
 
 /**
  * Max chars for session-name display in the preview breadcrumb dropdown trigger
@@ -240,7 +240,7 @@ function useSessionDeletion(
 ) {
 	const sessionsStore = useAgentSessionsStore();
 	const i18n = useI18n();
-	const message = useMessage();
+	const { openAgentConfirmationModal } = useAgentConfirmationModal();
 	const toast = useToast();
 	const isDeletingSession = ref(false);
 	let isDisposed = false;
@@ -256,15 +256,13 @@ function useSessionDeletion(
 
 		isDeletingSession.value = true;
 		try {
-			const confirmed = await message.confirm(
-				i18n.baseText('agentSessions.deleteConfirm.message'),
-				i18n.baseText('agentSessions.deleteConfirm.headline'),
-				{
-					type: 'warning',
-					confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
-					cancelButtonText: '',
-				},
-			);
+			const confirmed = await openAgentConfirmationModal({
+				title: i18n.baseText('agentSessions.deleteConfirm.headline'),
+				description: i18n.baseText('agentSessions.deleteConfirm.message'),
+				isDestructive: true,
+				confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
+				cancelButtonText: i18n.baseText('generic.cancel'),
+			});
 			if (confirmed !== MODAL_CONFIRM || !isTargetCurrent()) return false;
 
 			await sessionsStore.deleteThread(targetProjectId, targetAgentId, sessionId);

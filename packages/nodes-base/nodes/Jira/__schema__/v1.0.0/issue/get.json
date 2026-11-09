@@ -118,6 +118,9 @@
                             "filename": {
                                 "type": "string"
                             },
+                            "fixture_path": {
+                                "type": "string"
+                            },
                             "id": {
                                 "type": "string"
                             },
@@ -994,6 +997,9 @@
                                             "displayName": {
                                                 "type": "string"
                                             },
+                                            "emailAddress": {
+                                                "type": "string"
+                                            },
                                             "self": {
                                                 "type": "string"
                                             },
@@ -1058,6 +1064,9 @@
                                             "displayName": {
                                                 "type": "string"
                                             },
+                                            "emailAddress": {
+                                                "type": "string"
+                                            },
                                             "self": {
                                                 "type": "string"
                                             },
@@ -1089,5 +1098,5 @@
             "type": "string"
         }
     },
-    "version": 11
+    "version": 12
 }

@@ -52,7 +52,7 @@ test.describe(
 
 			const disableToken = authenticator.generate(mfaSecret!);
 			await n8n.settingsPersonal.triggerDisableMfa();
-			await n8n.settingsPersonal.fillMfaCodeAndSave(disableToken);
+			await n8n.settingsPersonal.fillMfaCodeAndConfirm(disableToken);
 
 			await expect(n8n.settingsPersonal.getEnableMfaButton()).toBeVisible();
 		});
@@ -65,7 +65,7 @@ test.describe(
 			await n8n.settingsPersonal.pressEnterOnEmail();
 
 			const mfaCode = authenticator.generate(mfaSecret!);
-			await n8n.settingsPersonal.fillMfaCodeAndSave(mfaCode);
+			await n8n.settingsPersonal.fillMfaCodeAndConfirm(mfaCode);
 
 			await expect(
 				n8n.notifications.getNotificationByTitleOrContent(NOTIFICATIONS.PERSONAL_DETAILS_UPDATED),
@@ -87,14 +87,13 @@ test.describe(
 		}) => {
 			await n8n.mfaComposer.enableMfa(email, password, mfaSecret!);
 
-			await n8n.settingsPersonal.updateFirstAndLastName(
-				TEST_DATA.NEW_FIRST_NAME,
-				TEST_DATA.NEW_LAST_NAME,
-			);
+			await n8n.settingsPersonal.goto();
 
-			await expect(
-				n8n.notifications.getNotificationByTitleOrContent(NOTIFICATIONS.PERSONAL_DETAILS_UPDATED),
-			).toBeVisible();
+			expect((await n8n.settingsPersonal.saveFirstName(TEST_DATA.NEW_FIRST_NAME)).ok()).toBe(true);
+			expect((await n8n.settingsPersonal.saveLastName(TEST_DATA.NEW_LAST_NAME)).ok()).toBe(true);
+
+			await n8n.notifications.waitForNotification(NOTIFICATIONS.PERSONAL_DETAILS_UPDATED);
+			await expect(n8n.settingsPersonal.getMfaCodeOrRecoveryCodeInput()).toBeHidden();
 		});
 
 		test('Should be able to disable MFA in account with recovery code', async ({ n8n }) => {
@@ -104,7 +103,7 @@ test.describe(
 			await n8n.mfaComposer.loginWithMfaCode(email, password, mfaSecret!);
 
 			await n8n.settingsPersonal.triggerDisableMfa();
-			await n8n.settingsPersonal.fillMfaCodeAndSave(RECOVERY_CODE);
+			await n8n.settingsPersonal.fillMfaCodeAndConfirm(RECOVERY_CODE);
 
 			await expect(n8n.settingsPersonal.getEnableMfaButton()).toBeVisible();
 		});

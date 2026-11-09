@@ -1,6 +1,7 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { WORKFLOW_EXECUTION_BLOCK_CAUSES } from '../workflow-execution-block-cause';
 import { Z } from '../zod-class';
 
 const paginationNumber = z
@@ -28,6 +29,10 @@ const workflowFilter = z.object({
 	availableInMCP: z.boolean().optional(),
 	nodeTypes: z.array(z.string()).optional(),
 	triggerNodeTypes: z.array(z.string()).optional(),
+	executionBlockedBy: z
+		.array(z.enum(WORKFLOW_EXECUTION_BLOCK_CAUSES))
+		.refine((causes) => new Set(causes).size === causes.length)
+		.optional(),
 	includeCallableSubworkflows: z.boolean().optional(),
 	parentWorkflowId: z.string().optional(),
 });

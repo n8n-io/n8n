@@ -1,34 +1,45 @@
-import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import {
+	READ_ONLY_ANNOTATIONS,
+	type INodeProperties,
+	type INodePropertyOptions,
+	type NodeOperationAnnotations,
+} from 'n8n-workflow';
 
 import { optimizeResponseProperties } from '../shared/optimizeResponse';
 
-const webdavMethodOptions: INodePropertyOptions[] = [
-	'COPY',
-	'MKCOL',
-	'MOVE',
-	'PROPFIND',
-	'REPORT',
-].flatMap((method) => [
-	{
-		name: method,
-		value: method,
-		displayOptions: {
-			show: {
-				'options.webdavMethods': [true],
+const webdavMethodAnnotations: Record<string, NodeOperationAnnotations> = {
+	COPY: { effect: 'write', destructive: true, idempotent: false },
+	MKCOL: { effect: 'write', destructive: false, idempotent: false },
+	MOVE: { effect: 'write', destructive: true, idempotent: false },
+	PROPFIND: READ_ONLY_ANNOTATIONS,
+	REPORT: READ_ONLY_ANNOTATIONS,
+};
+
+const webdavMethodOptions: INodePropertyOptions[] = Object.entries(webdavMethodAnnotations).flatMap(
+	([method, annotations]) => [
+		{
+			name: method,
+			value: method,
+			annotations,
+			displayOptions: {
+				show: {
+					'options.webdavMethods': [true],
+				},
 			},
 		},
-	},
-	{
-		name: method,
-		value: method,
-		displayOptions: {
-			hide: {
-				method: [{ _cnd: { not: method } }],
-				'options.webdavMethods': [true],
+		{
+			name: method,
+			value: method,
+			annotations,
+			displayOptions: {
+				hide: {
+					method: [{ _cnd: { not: method } }],
+					'options.webdavMethods': [true],
+				},
 			},
 		},
-	},
-]);
+	],
+);
 
 export const mainProperties: INodeProperties[] = [
 	{
@@ -45,22 +56,27 @@ export const mainProperties: INodeProperties[] = [
 			{
 				name: 'DELETE',
 				value: 'DELETE',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'GET',
 				value: 'GET',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'HEAD',
 				value: 'HEAD',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'OPTIONS',
 				value: 'OPTIONS',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'PATCH',
 				value: 'PATCH',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'POST',
@@ -69,6 +85,7 @@ export const mainProperties: INodeProperties[] = [
 			{
 				name: 'PUT',
 				value: 'PUT',
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 			...webdavMethodOptions,
 		],
@@ -1143,6 +1160,10 @@ For what a template cannot express, use the matching type for new and existing c
 								],
 								default: 'responseIsEmpty',
 								description: 'When should no further requests be made?',
+								builderHint: {
+									propertyHint:
+										"Use \"responseIsEmpty\" only when you know the API returns a bare JSON array or no body on its last page. It never stops on a JSON object, and most JSON APIs return one: a last page like `{ \"items\": [] }` makes the node request pages until n8n stops it with \"The returned response was identical 5x\". In every other case, including an API whose response shape you do not know, use \"other\" with a completeExpression: on the API's end marker when you know it (e.g. `expr('{{ $response.body.has_more === false }}')`, `expr('{{ !$response.body.next }}')`), or on the list the next nodes read (e.g. `expr('{{ $response.body.items.length === 0 }}')`). For an unknown shape, `expr('{{ !$response.body || (Array.isArray($response.body) ? $response.body.length === 0 : Object.values($response.body).some(Array.isArray) && Object.values($response.body).filter(Array.isArray).every(list => list.length === 0)) }}')` stops when the body is empty, or when it has top-level lists and all of them are empty. It never stops on a list nested deeper, so name that list instead.",
+								},
 							},
 							{
 								displayName: 'Status Code(s) when Complete',

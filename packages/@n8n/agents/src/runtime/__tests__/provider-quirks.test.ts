@@ -51,7 +51,11 @@ describe('thinkingToProviderOptions', () => {
 			),
 		).toEqual({
 			anthropic: {
-				thinking: { type: 'adaptive', display: 'summarized' },
+				thinking: {
+					type: 'adaptive',
+					display: 'summarized',
+					blockBinding: { prefixMismatchBehavior: 'drop_block' },
+				},
 				effort: 'medium',
 			},
 		});
@@ -65,7 +69,11 @@ describe('thinkingToProviderOptions', () => {
 			),
 		).toEqual({
 			anthropic: {
-				thinking: { type: 'adaptive', display: 'summarized' },
+				thinking: {
+					type: 'adaptive',
+					display: 'summarized',
+					blockBinding: { prefixMismatchBehavior: 'drop_block' },
+				},
 				effort: 'high',
 			},
 		});
@@ -81,7 +89,11 @@ describe('thinkingToProviderOptions', () => {
 			),
 		).toEqual({
 			anthropic: {
-				thinking: { type: 'adaptive', display: 'summarized' },
+				thinking: {
+					type: 'adaptive',
+					display: 'summarized',
+					blockBinding: { prefixMismatchBehavior: 'drop_block' },
+				},
 				effort: 'medium',
 			},
 		});

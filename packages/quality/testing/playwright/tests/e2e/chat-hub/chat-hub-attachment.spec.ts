@@ -9,7 +9,7 @@ test.use(chatHubTestConfig);
 test.describe(
 	'File attachment',
 	{
-		annotation: [{ type: 'owner', description: 'Chat' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		let tmpDir: string;

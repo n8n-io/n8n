@@ -14,7 +14,8 @@ Flag a diff that **adds** entries to any of these, and ask for the fix instead:
 | `.code-health-baseline.json` | `@n8n/code-health` violations |
 | `.boundaries-baseline.json` | `turbo boundaries` issue count |
 | `packages/quality/testing/playwright/.janitor-baseline.json` | Playwright janitor findings |
-| `packages/cli/eslint.config.mjs` | the `misplaced-n8n-typeorm-import` and public-API allowlists, each captioned "NEVER add to this list" |
+| `.code-health-baseline.json` | the `typeorm-persistence-boundary` baseline, which only shrinks as business logic moves queries into repositories |
+| `packages/cli/eslint.config.mjs` | the public-API allowlists captioned "NEVER add to this list" |
 | `.code-health-baseline.json` (`lint-config-layering`) | package-wide rule downgrades left in package ESLint configs |
 
 Removals are the healthy direction and need no comment.

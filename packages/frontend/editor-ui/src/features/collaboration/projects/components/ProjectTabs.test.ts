@@ -3,6 +3,7 @@ import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import ProjectTabs from './ProjectTabs.vue';
 import { createPinia, setActivePinia } from 'pinia';
+import { within } from '@testing-library/vue';
 import { useProjectsStore } from '../projects.store';
 import type { Project } from '../projects.types';
 
@@ -92,16 +93,16 @@ describe('ProjectTabs', () => {
 		expect(getByText('Variables')).toBeInTheDocument();
 	});
 
-	it('should render preview tabs with the preview tag component', () => {
-		const { container, getByText } = renderComponent({
+	it('should render the preview badge only on preview tabs', () => {
+		const { getByTestId, getByText } = renderComponent({
 			props: {
 				additionalTabs: [{ label: 'Agents', value: 'agents', preview: true }],
 			},
 		});
 
 		expect(getByText('Agents')).toBeInTheDocument();
-		expect(getByText('Preview')).toBeInTheDocument();
-		expect(container.querySelector('.preview')).toBeInTheDocument();
+		expect(within(getByTestId('tab-agents')).getByText('Preview')).toBeInTheDocument();
+		expect(within(getByTestId('tab-WorkflowsView')).queryByText('Preview')).not.toBeInTheDocument();
 	});
 
 	const getTabValuesInOrder = (container: ParentNode) =>
@@ -139,5 +140,15 @@ describe('ProjectTabs', () => {
 
 		const tabValues = getTabValuesInOrder(container);
 		expect(tabValues[tabValues.length - 1]).toBe('agents');
+	});
+
+	it('hides an additional tab that is not available', () => {
+		const available = vi.fn((projectId: string | undefined) => projectId === 'other-project');
+		const { queryByText } = renderComponent({
+			props: { additionalTabs: [{ label: 'Apps', value: 'apps', available }] },
+		});
+
+		expect(queryByText('Apps')).not.toBeInTheDocument();
+		expect(available).toHaveBeenCalledWith(undefined);
 	});
 });

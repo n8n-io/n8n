@@ -5,7 +5,7 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMCPStore } from '@n8n/frontend-module-mcp';
 
 import { useExposeAllWorkflowsToMcpOffer } from './useExposeAllWorkflowsToMcpOffer';
 
@@ -21,7 +21,7 @@ describe('useExposeAllWorkflowsToMcpOffer', () => {
 		uiStore = mockedStore(useUIStore);
 		experimentStore = mockedStore(useExposeAllWorkflowsToMcpStore);
 		settingsStore = mockedStore(useSettingsStore);
-		settingsStore.isModuleActive = vi.fn().mockReturnValue(false);
+		settingsStore.isAgentsEnabled = false;
 	});
 
 	it('opens the expose-all modal when enrolled and eligible workflows exist', async () => {
@@ -59,21 +59,20 @@ describe('useExposeAllWorkflowsToMcpOffer', () => {
 		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 	});
 
-	it('opens the modal when only eligible agents exist and the agents module is active', async () => {
+	it('opens the modal when only eligible agents exist and agents are enabled', async () => {
 		experimentStore.isEnabled = true;
-		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+		settingsStore.isAgentsEnabled = true;
 		mcpStore.getMcpEligibleWorkflows.mockResolvedValue({ count: 0, data: [] });
 		mcpStore.getMcpEligibleAgents.mockResolvedValue({ count: 2, data: [] });
 
 		const opened = await useExposeAllWorkflowsToMcpOffer().offerToExposeAllWorkflows(vi.fn());
 
 		expect(opened).toBe(true);
-		expect(settingsStore.isModuleActive).toHaveBeenCalledWith('agents');
 		expect(mcpStore.getMcpEligibleAgents).toHaveBeenCalledWith({ take: 1 });
 		expect(uiStore.openModalWithData).toHaveBeenCalled();
 	});
 
-	it('does not check agents when the agents module is inactive', async () => {
+	it('does not check agents when agents are disabled', async () => {
 		experimentStore.isEnabled = true;
 		mcpStore.getMcpEligibleWorkflows.mockResolvedValue({ count: 0, data: [] });
 

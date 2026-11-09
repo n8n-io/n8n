@@ -3,7 +3,7 @@ import { test, expect } from '../../../../../fixtures/base';
 test.describe(
 	'Workflow Settings',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Context' }],
 	},
 	() => {
 		test.fixme();

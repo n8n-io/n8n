@@ -1,5 +1,6 @@
 import {
 	AGENT_EVALS_FLAG,
+	ASSISTANT_SKILLS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
@@ -28,6 +29,7 @@ import { N8N_VERSION } from '@/constants';
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const EDITOR_INSTANCE_FLAGS = [CREDENTIAL_DESCRIPTIONS_FLAG, ASSISTANT_SKILLS_FLAG];
 
 const SESSION_ID_MAX_LENGTH = 1000;
 
@@ -58,7 +60,8 @@ export class PostHogClient {
 
 	async init() {
 		const { enabled, posthogConfig } = this.globalConfig.diagnostics;
-		if (!enabled) {
+		// Eval instances must not draw a fresh flag rollout per instance; env overrides still apply.
+		if (!enabled || this.globalConfig.instanceAi.evalInstance) {
 			return;
 		}
 
@@ -112,19 +115,19 @@ export class PostHogClient {
 		properties,
 	}: {
 		instanceId: string;
-		distinctId?: string;
+		distinctId: string;
 		properties: Record<string, string | number> | undefined;
 	}): void {
-		if (!instanceId) return;
+		// PostHog refuses a `$groupidentify` that has no real person behind it
+		if (!instanceId || !distinctId) return;
 
 		this.postHog?.capture({
-			distinctId: distinctId ?? `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
+			distinctId,
 			event: '$groupidentify',
 			properties: {
 				$group_type: POSTHOG_GROUP_TYPE_INSTANCE,
 				$group_key: instanceId,
 				$group_set: properties,
-				...(!distinctId && { $process_person_profile: false }),
 			},
 			groups: {
 				[POSTHOG_GROUP_TYPE_INSTANCE]: instanceId,
@@ -149,15 +152,20 @@ export class PostHogClient {
 	}
 
 	async getFeatureFlagForInstance(flagName: string): Promise<FeatureFlags[string]> {
+		const flagNames = EDITOR_INSTANCE_FLAGS.includes(flagName) ? EDITOR_INSTANCE_FLAGS : [flagName];
+		return (await this.getFeatureFlagsForInstance(flagNames))[flagName];
+	}
+
+	private async getFeatureFlagsForInstance(flagNames: string[]): Promise<FeatureFlags> {
 		const { instanceId } = this.instanceSettings;
 		let data: FeatureFlagData = { featureFlags: {}, featureFlagPayloads: {} };
 
 		try {
 			data = await this.fetchFlagsFromPostHog({
-				cacheKey: ['instance', instanceId, flagName].join('#'),
+				cacheKey: ['instance', instanceId, ...flagNames].join('#'),
 				distinctId: `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
 				options: {
-					flagKeys: [flagName],
+					flagKeys: flagNames,
 					groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId },
 				},
 			});
@@ -165,7 +173,7 @@ export class PostHogClient {
 			// Apply local overrides when PostHog is not available.
 		}
 
-		return this.applyEnvOverrides(data).featureFlags[flagName];
+		return this.applyEnvOverrides(data).featureFlags;
 	}
 
 	async getFeatureFlagsAndPayloads(
@@ -193,13 +201,13 @@ export class PostHogClient {
 		}
 		const overridden = this.applyEnvOverrides(data);
 		// The editor and backend must use the same instance result.
-		const credentialDescriptionsEnabled =
-			(await this.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)) === true;
+		const instanceFlags = await this.getFeatureFlagsForInstance(EDITOR_INSTANCE_FLAGS);
 		return {
 			...overridden,
 			featureFlags: {
 				...overridden.featureFlags,
-				[CREDENTIAL_DESCRIPTIONS_FLAG]: credentialDescriptionsEnabled,
+				[CREDENTIAL_DESCRIPTIONS_FLAG]: instanceFlags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
+				[ASSISTANT_SKILLS_FLAG]: instanceFlags[ASSISTANT_SKILLS_FLAG] === true,
 			},
 		};
 	}

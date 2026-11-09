@@ -90,6 +90,7 @@ import {
 	N8nBlockUi,
 	N8nButton,
 	N8nCallout,
+	N8nHtmlPreview,
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
@@ -106,7 +107,6 @@ const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDat
 const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunDataJson.vue'));
 
 const LazyRunDataSchema = defineAsyncComponent(async () => await import('./VirtualSchema.vue'));
-const LazyRunDataHtml = defineAsyncComponent(async () => await import('./RunDataHtml.vue'));
 const LazyRunDataAi = defineAsyncComponent(
 	async () => await import('./RunDataParsedAiContent.vue'),
 );
@@ -1620,7 +1620,7 @@ defineExpose({ enterEditMode });
 				/>
 
 				<N8nIconButton
-					variant="subtle"
+					variant="outline"
 					size="small"
 					v-if="
 						!props.disableEdit &&
@@ -1653,7 +1653,7 @@ defineExpose({ enterEditMode });
 
 				<div v-if="!props.disableEdit" v-show="editMode.enabled" :class="$style.editModeActions">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('runData.editor.cancel')"
 						@click="onClickCancelEdit"
 					/>
@@ -2218,9 +2218,10 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
-			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<LazyRunDataHtml :input-html="inputHtml" />
-			</Suspense>
+			<N8nHtmlPreview
+				v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'"
+				:html="inputHtml"
+			/>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'ai'">
 				<LazyRunDataAi
@@ -2266,6 +2267,7 @@ defineExpose({ enterEditMode });
 				hasNodeRun &&
 				!hasRunError &&
 				displayMode !== 'binary' &&
+				displayMode !== 'html' &&
 				dataCount > pageSize &&
 				!isSchemaView &&
 				!isArtificialRecoveredEventItem
@@ -2680,7 +2682,7 @@ defineExpose({ enterEditMode });
 	}
 
 	th {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 
@@ -2711,7 +2713,7 @@ defineExpose({ enterEditMode });
 .redactedSchemaKey {
 	font-size: var(--font-size--sm);
 	color: var(--color--text);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .redactedSchemaType {

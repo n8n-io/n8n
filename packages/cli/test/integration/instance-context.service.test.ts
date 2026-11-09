@@ -2,6 +2,7 @@ import {
 	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
+	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
@@ -16,6 +17,7 @@ import type {
 } from '@/modules/instance-ai/instance-context.service';
 
 import { createExecution } from '@test-integration/db/executions';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember } from '@test-integration/db/users';
 
 /** Instance AI: bound to the thread's own project. */
@@ -39,7 +41,7 @@ describe('InstanceContextService', () => {
 
 	/** The bracketed entry ids a block rendered, newest first — the ids every tool takes. */
 	function shownIds(block: string): number[] {
-		return [...block.matchAll(/^\[(\d+)\]/gm)].map((match) => Number(match[1]));
+		return [...block.matchAll(/^\[id:(\d+)\]/gm)].map((match) => Number(match[1]));
 	}
 
 	function cursorOf(result: InstanceContextResult): InstanceContextCursor {
@@ -364,7 +366,8 @@ describe('InstanceContextService', () => {
 		expect(blockOf(built)).not.toContain('ran ');
 	});
 
-	it("expands an entry with the rest of that resource's history", async () => {
+	it.each(['initial', 'delta'])('expands a labeled id from the %s block', async (blockType) => {
+		let cursor: InstanceContextCursor | null = null;
 		for (const action of ['created', 'saved']) {
 			await record({
 				category: 'workflow',
@@ -374,18 +377,26 @@ describe('InstanceContextService', () => {
 				resourceId: 'wf-1',
 				resourceName: 'Lead enrichment',
 			});
+			if (blockType === 'delta' && action === 'created') {
+				cursor = cursorOf(
+					await service.buildBlock({ enabled: true, user, scope: bound(project.id), cursor }),
+				);
+			}
 		}
-		const [newest] = await activity.findFeed({
-			projectIds: [project.id],
-			allowedCategories: ['workflow', 'credential'],
-			limit: 1,
+		const built = await service.buildBlock({
+			enabled: true,
+			user,
+			scope: bound(project.id),
+			cursor,
 		});
+		const ids = shownIds(blockOf(built));
+		expect(ids).toHaveLength(blockType === 'delta' ? 1 : 2);
 
-		const expansion = await service.expand({ id: newest.id, user, scope: bound(project.id) });
+		const expansion = await service.expand({ id: ids[0], user, scope: bound(project.id) });
 
 		expect(expansion?.entry.action).toBe('saved');
 		expect(expansion?.resourceHistory.map((other) => other.action)).toEqual(['created']);
-		expect(expansion?.liveRecordHint).toBe('workflows(action="get", workflowId="wf-1")');
+		expect(expansion?.liveRecordHint).toBe('get_workflow(workflowId="wf-1")');
 	});
 
 	it('reads nothing when the conversation is bound to no project', async () => {
@@ -619,7 +630,7 @@ describe('InstanceContextService', () => {
 			const viaChat = await service.expand({ id: entry.id, user, scope: bound(project.id) });
 
 			expect(viaMcp?.liveRecordHint).toBe(`get_workflow_details(workflowId="${workflow.id}")`);
-			expect(viaChat?.liveRecordHint).toBe(`workflows(action="get", workflowId="${workflow.id}")`);
+			expect(viaChat?.liveRecordHint).toBe(`get_workflow(workflowId="${workflow.id}")`);
 		});
 
 		it('reads no credential history for a caller without the credential grant', async () => {
@@ -786,7 +797,7 @@ describe('InstanceContextService', () => {
 			const viaChat = await service.expand({ id: entry.id, user, scope: bound(project.id) });
 
 			expect(viaMcp?.liveRecordHint).toBe(`get_workflow_details(workflowId="${workflow.id}")`);
-			expect(viaChat?.liveRecordHint).toBe(`workflows(action="get", workflowId="${workflow.id}")`);
+			expect(viaChat?.liveRecordHint).toBe(`get_workflow(workflowId="${workflow.id}")`);
 		});
 
 		it('reads no credential history for a caller without the credential grant', async () => {
@@ -801,6 +812,77 @@ describe('InstanceContextService', () => {
 
 			expect(await service.list({ user, scope: mcp(false), limit: 20 })).toEqual([]);
 			expect(await service.list({ user, scope: mcp(), limit: 20 })).toHaveLength(1);
+		});
+	});
+
+	/**
+	 * The token flag only narrows a token. The run leg must also follow the caller's real
+	 * `execution:read` on each project, as the executions API and the conversation surface do.
+	 * A custom project role can grant `workflow:read` without it.
+	 */
+	describe('the MCP run leg', () => {
+		const baseScopes = ['workflow:read', 'workflow:list', 'project:read', 'project:list'];
+
+		/** A token with no tool allowlist, which grants the run leg by default. */
+		const mcpFor = (projectId?: string): InstanceContextScope => ({
+			surface: 'mcp',
+			credentialGranted: false,
+			executionGranted: true,
+			...(projectId ? { projectId } : {}),
+		});
+
+		async function seedProjectWithRole(scopeSlugs: string[]) {
+			const role = await createCustomRoleWithScopeSlugs(scopeSlugs, { roleType: 'project' });
+			const member = await createMember();
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, role.slug);
+
+			const workflow = await createWorkflow(
+				{ name: 'Invoice sync', settings: { availableInMCP: true } },
+				teamProject,
+			);
+			const failed = await createExecution({ status: 'error', stoppedAt: recently() }, workflow);
+
+			return { member, teamProject, workflow, failed };
+		}
+
+		it.each([
+			['across every readable project', false],
+			['for a named project', true],
+		])(
+			'omits run summaries %s when the caller lacks execution:read',
+			async (_label, namesProject) => {
+				const { member, teamProject, failed } = await seedProjectWithRole(baseScopes);
+
+				const built = await service.buildBlock({
+					enabled: true,
+					user: member,
+					scope: mcpFor(namesProject ? teamProject.id : undefined),
+					cursor: null,
+				});
+
+				const block = blockOf(built);
+				// The inventory leg rides on `workflow:read`, so the block is still built.
+				expect(block).toContain('Invoice sync');
+				// The run leg is execution data and needs `execution:read`.
+				expect(block).not.toContain('ran 1×');
+				expect(block).not.toContain(`execution:${failed.id}`);
+			},
+		);
+
+		it('still shows run summaries when the role also grants execution:read', async () => {
+			const { member, failed } = await seedProjectWithRole([...baseScopes, 'execution:read']);
+
+			const built = await service.buildBlock({
+				enabled: true,
+				user: member,
+				scope: mcpFor(),
+				cursor: null,
+			});
+
+			const block = blockOf(built);
+			expect(block).toContain('ran 1×, 1 failed');
+			expect(block).toContain(`execution:${failed.id}`);
 		});
 	});
 
@@ -821,7 +903,7 @@ describe('InstanceContextService', () => {
 				scope: bound(project.id),
 				cursor,
 			});
-			expect(blockOf(built).match(/^\[\d+\]/gm)).toHaveLength(30);
+			expect(blockOf(built).match(/^\[id:\d+\]/gm)).toHaveLength(30);
 			cursor = cursorOf(built);
 		}
 		for (let turn = 0; turn < 2; turn++) {

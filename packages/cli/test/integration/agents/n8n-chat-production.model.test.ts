@@ -11,6 +11,7 @@ import { Container } from '@n8n/di';
 import nock, { back as nockBack } from 'nock';
 import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
 
+import { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
@@ -20,6 +21,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { saveCredential } from '../shared/db/credentials';
 import { createOwner, createMember } from '../shared/db/users';
 import { initCredentialsTypes, setupTestServer } from '../shared/utils';
+import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 vi.mock('@/utils/ai-proxy-fetch', async (importOriginal) => {
 	const original = await importOriginal<typeof import('@/utils/ai-proxy-fetch')>();
@@ -249,22 +251,23 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 				id: randomUUID(),
 				name: schema.name,
 				projectId: project.id,
-				schema,
+				schema: storedAgentConfig(schema),
 				tools,
-				skills: {},
 				integrations: [chatIntegration],
 				versionId: randomUUID(),
 			}),
 		);
 		const versionId = randomUUID();
-		await Container.get(AgentHistoryRepository).saveVersion({
-			versionId,
-			agentId: agent.id,
-			schema: { ...schema, integrations: [chatIntegration] },
-			tools,
-			skills: {},
-			publishedBy: owner,
-		});
+		await Container.get(AgentHistoryRepository).saveVersion(
+			{
+				versionId,
+				agentId: agent.id,
+				schema: storedAgentConfig({ ...schema, integrations: [chatIntegration] }),
+				tools,
+				publishedBy: owner,
+			},
+			{},
+		);
 		await repository.update({ id: agent.id }, { activeVersionId: versionId });
 		return { owner, project, agent, versionId };
 	}
@@ -375,6 +378,14 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 	}, 120_000);
 
 	it('sends an image to the model and reloads the stored attachment', async () => {
+		// The model sees the fileId of the upload, so a fixed ID keeps the request the same in each run.
+		const storeInbound = AgentChatAttachmentService.prototype.storeInbound;
+		const storeSpy = vi
+			.spyOn(AgentChatAttachmentService.prototype, 'storeInbound')
+			.mockImplementation(async function (this: AgentChatAttachmentService, params) {
+				return await storeInbound.call(this, { ...params, id: params.id ?? 'pixelUpload00001' });
+			});
+		onTestFinished(() => storeSpy.mockRestore());
 		const { owner, project, agent } = await createPublishedAgent({
 			instructions: 'Describe the color of an attached image in one word.',
 		});

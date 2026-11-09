@@ -48,7 +48,7 @@ function makeConfigMutationTree(toolCallId: string) {
 		toolCalls: [
 			makeToolCall({
 				toolCallId,
-				toolName: 'patch_config',
+				toolName: 'agent_builder_patch_config',
 				isLoading: false,
 				result: { ok: true, configMutated: true, agentId: 'agent-1' },
 			}),

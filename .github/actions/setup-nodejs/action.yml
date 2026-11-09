@@ -7,9 +7,9 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 26.5.1 by default for reproducible builds.'
+    description: 'Node.js version to use. Pinned to 26.12.1 by default for reproducible builds.'
     required: false
-    default: '26.5.1'
+    default: '26.12.1'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -78,7 +78,7 @@ runs:
     - name: Activate cached pnpm executable
       if: steps.cache-pnpm-exe.outputs.cache-hit == 'true'
       shell: bash
-      run: | # zizmor: ignore[github-env] Fixed paths contain no external input.
+      run: |
         PNPM_DEST="$HOME/setup-pnpm"
         echo "PNPM_HOME=$PNPM_DEST" >> "$GITHUB_ENV"
         echo "$PNPM_DEST" >> "$GITHUB_PATH"

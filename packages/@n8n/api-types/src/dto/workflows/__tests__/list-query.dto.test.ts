@@ -44,6 +44,27 @@ describe('list query DTOs', () => {
 		expect(WorkflowListQueryDto.parse({ filter: '{"active":null}' }).filter).toBeUndefined();
 	});
 
+	it('preserves execution block filters', () => {
+		expect(
+			WorkflowListQueryDto.parse({
+				filter: JSON.stringify({ executionBlockedBy: ['restrictedNode'] }),
+			}).filter,
+		).toEqual({ executionBlockedBy: ['restrictedNode'] });
+		expect(
+			WorkflowListQueryDto.parse({ filter: '{"executionBlockedBy":null}' }).filter,
+		).toBeUndefined();
+	});
+
+	it.each([
+		{ executionBlockedBy: ['unknown'] },
+		{ executionBlockedBy: ['restrictedNode', 'restrictedNode'] },
+		{ executionBlockedBy: 'restrictedNode' },
+	])('rejects invalid execution block filters: %j', ({ executionBlockedBy }) => {
+		expect(
+			WorkflowListQueryDto.safeParse({ filter: JSON.stringify({ executionBlockedBy }) }).success,
+		).toBe(false);
+	});
+
 	it('parses credential filters and selects without workflow fields', () => {
 		const query = CredentialsGetManyRequestQuery.parse({
 			filter: JSON.stringify({ name: 'test', projectId: 'project-1', ignored: 'value' }),
