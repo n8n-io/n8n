@@ -1547,4 +1547,116 @@ describe('ImportService', () => {
 			expect(mockEntityManager.query).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('importWorkflows', () => {
+		const PROJECT_ID = 'project-1';
+		const USER_ID = 'user-1';
+		const WORKFLOW_ID = 'workflow-1';
+		const OLD_VERSION_ID = 'old-version-id';
+
+		const buildWorkflow = (overrides: Record<string, unknown> = {}) =>
+			({
+				id: WORKFLOW_ID,
+				name: 'Test Workflow',
+				active: true,
+				nodes: [{ id: 'node-1', name: 'Node', type: 'n8n-nodes-base.noOp', position: [0, 0] }],
+				connections: {},
+				settings: {},
+				versionMetadata: { name: 'Test Workflow', description: '' },
+				...overrides,
+			}) as any;
+
+		const setupExistingWorkflow = (activeVersionId: string | null) => {
+			vi.mocked(mockCredentialsRepository.find).mockResolvedValue([]);
+			vi.mocked(mockTagRepository.find).mockResolvedValue([]);
+			vi.mocked(mockUserRepository.findOneOrFail).mockResolvedValue({
+				id: USER_ID,
+				role: { slug: 'owner' },
+			} as any);
+			(mockCredentialsRepository as any).manager = mockEntityManager;
+			vi.mocked(mockEntityManager.find).mockResolvedValue([
+				{ id: WORKFLOW_ID, activeVersionId, nodes: [] },
+			] as any);
+			vi.mocked(mockSharedWorkflowRepository.findOwnerProjectsByWorkflowIds).mockResolvedValue(
+				new Map(),
+			);
+			vi.mocked(mockWorkflowRepository.runInTransaction).mockImplementation(
+				(async (_ctx: any, fn: any) => await fn(mockEntityManager, {})) as any,
+			);
+			vi.mocked(mockWorkflowRepository.upsertImportedContent).mockResolvedValue(WORKFLOW_ID);
+			vi.mocked(mockEntityManager.findOneByOrFail).mockResolvedValue({ id: PROJECT_ID } as any);
+		};
+
+		it('re-imports an active workflow without deactivating it and activates the imported version', async () => {
+			setupExistingWorkflow(OLD_VERSION_ID);
+			const workflow = buildWorkflow({ active: true });
+
+			const result = await importService.importWorkflows([workflow], PROJECT_ID, USER_ID, {
+				activeState: 'fromJson',
+			});
+
+			expect(mockWorkflowService.deactivateWorkflow).not.toHaveBeenCalled();
+			expect(mockWorkflowService.activateWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ id: USER_ID }),
+				WORKFLOW_ID,
+				{ versionId: workflow.versionId, source: 'import' },
+			);
+			expect(result.failedActivations).toEqual([]);
+
+			const upserted = vi.mocked(mockWorkflowRepository.upsertImportedContent).mock.calls[0][0];
+			expect(upserted.active).toBe(true);
+			expect(upserted.activeVersionId).toBe(OLD_VERSION_ID);
+		});
+
+		it('reports activation failures with the error message', async () => {
+			setupExistingWorkflow(OLD_VERSION_ID);
+			vi.mocked(mockWorkflowService.activateWorkflow).mockRejectedValue(
+				new Error('Schedule Trigger cron invalid'),
+			);
+			const workflow = buildWorkflow({ active: true });
+
+			const result = await importService.importWorkflows([workflow], PROJECT_ID, USER_ID, {
+				activeState: 'fromJson',
+			});
+
+			expect(result.failedActivations).toEqual([
+				{ workflowId: WORKFLOW_ID, message: 'Schedule Trigger cron invalid' },
+			]);
+		});
+
+		it('deactivates an active workflow when activeState is "false"', async () => {
+			setupExistingWorkflow(OLD_VERSION_ID);
+			const workflow = buildWorkflow({ active: true });
+
+			const result = await importService.importWorkflows([workflow], PROJECT_ID, USER_ID, {
+				activeState: 'false',
+			});
+
+			expect(mockWorkflowService.deactivateWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ id: USER_ID }),
+				WORKFLOW_ID,
+				{ source: 'import' },
+			);
+			expect(mockWorkflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(result.failedActivations).toEqual([]);
+
+			const upserted = vi.mocked(mockWorkflowRepository.upsertImportedContent).mock.calls[0][0];
+			expect(upserted.active).toBe(false);
+			expect(upserted.activeVersionId).toBeNull();
+		});
+
+		it('does not keep an old active version for a first-time active import', async () => {
+			setupExistingWorkflow(null);
+			const workflow = buildWorkflow({ active: true });
+
+			await importService.importWorkflows([workflow], PROJECT_ID, USER_ID, {
+				activeState: 'fromJson',
+			});
+
+			expect(mockWorkflowService.activateWorkflow).toHaveBeenCalled();
+			const upserted = vi.mocked(mockWorkflowRepository.upsertImportedContent).mock.calls[0][0];
+			expect(upserted.active).toBe(false);
+			expect(upserted.activeVersionId).toBeNull();
+		});
+	});
 });

@@ -110,4 +110,36 @@ describe('ImportWorkflowsCommand', () => {
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('logFailedActivations', () => {
+		const buildCommandWithLoggerSpy = () => {
+			const command = new ImportWorkflowsCommand();
+			const logger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
+			// @ts-expect-error Protected property
+			command.logger = logger;
+			return { command, logger };
+		};
+
+		it('logs the workflow id and error message for each failed activation', () => {
+			const { command, logger } = buildCommandWithLoggerSpy();
+
+			// @ts-expect-error Private method
+			command.logFailedActivations([
+				{ workflowId: 'workflow-1', message: 'Schedule Trigger cron invalid' },
+			]);
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to activate 1 imported workflow(s): workflow-1 (Schedule Trigger cron invalid)',
+			);
+		});
+
+		it('logs nothing when no activation failed', () => {
+			const { command, logger } = buildCommandWithLoggerSpy();
+
+			// @ts-expect-error Private method
+			command.logFailedActivations([]);
+
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+	});
 });

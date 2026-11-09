@@ -56,6 +56,15 @@ export interface WorkflowImportViolations {
 	violations: PolicyViolation[];
 }
 
+/**
+ * One imported workflow whose post-import activation failed. Carries the error
+ * message so the CLI can tell the operator why the workflow is not active.
+ */
+export interface WorkflowImportFailedActivation {
+	workflowId: string;
+	message: string;
+}
+
 @Service()
 export class ImportService {
 	private dbCredentials: ICredentialsDb[] = [];
@@ -107,7 +116,10 @@ export class ImportService {
 		projectId: string,
 		userId: string,
 		{ activeState = 'false' }: { activeState?: 'false' | 'fromJson' },
-	): Promise<{ violations: WorkflowImportViolations[]; failedActivations: string[] }> {
+	): Promise<{
+		violations: WorkflowImportViolations[];
+		failedActivations: WorkflowImportFailedActivation[];
+	}> {
 		await this.initRecords();
 
 		const user = await this.userRepository.findOneOrFail({
@@ -252,17 +264,23 @@ export class ImportService {
 				const shouldActivate = wantsActive(workflow);
 				const versionIdToActivate = workflow.versionId;
 
-				// Always upsert with active=false and activeVersionId=null.
-				// Activation happens post-transaction once the new workflow_history row exists
-				// (the activeVersionId FK references workflow_history.versionId).
+				// A workflow that will be re-activated keeps its old active version pointer:
+				// activation then takes the update path and replaces the old in-memory trigger
+				// registration instead of merging into it. The durable jobs are not deleted
+				// here — publication reconciles them by trigger diff, and legacy activation
+				// re-provisions them while registering the imported version.
+				//
+				// A workflow that is not re-activated is upserted inactive, and activation
+				// happens post-transaction once the new workflow_history row exists (the
+				// activeVersionId FK references workflow_history.versionId).
 				if (
 					!shouldActivate &&
 					(oldActiveVersionId || workflow.activeVersionId || workflow.active)
 				) {
 					this.logger.info(`Deactivating workflow "${workflow.name}".`);
 				}
-				workflow.active = false;
-				workflow.activeVersionId = null;
+				workflow.active = shouldActivate && typeof oldActiveVersionId === 'string';
+				workflow.activeVersionId = shouldActivate ? (oldActiveVersionId ?? null) : null;
 
 				// Each workflow carries its own clearance: one token per subject, so a batch cannot
 				// have one cleared workflow vouch for another.
@@ -320,10 +338,10 @@ export class ImportService {
 			insertedWorkflows,
 			workflowsToActivate,
 		);
-		const failedActivations: string[] = [];
+		const failedActivations: WorkflowImportFailedActivation[] = [];
 		for (const { workflowId, versionId } of orderedWorkflowsToActivate) {
 			const error = await this.activateWorkflow(workflowId, versionId, user);
-			if (error) failedActivations.push(workflowId);
+			if (error) failedActivations.push({ workflowId, message: error.message });
 		}
 
 		// Directly update the index for the important workflows, since they don't generate

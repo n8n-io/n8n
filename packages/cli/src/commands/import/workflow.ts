@@ -19,7 +19,11 @@ import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
-import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
+import {
+	ImportService,
+	type WorkflowImportFailedActivation,
+	type WorkflowImportViolations,
+} from '@/services/import.service';
 
 import { BaseCommand } from '../base-command';
 
@@ -170,12 +174,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		);
 
 		this.logSkippedWorkflows(violations);
-
-		if (failedActivations.length > 0) {
-			this.logger.error(
-				`Failed to activate ${failedActivations.length} imported workflow(s): ${failedActivations.join(', ')}`,
-			);
-		}
+		this.logFailedActivations(failedActivations);
 
 		const importedCount = workflows.length - violations.length;
 
@@ -252,6 +251,16 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 				{ violations },
 			);
 		}
+	}
+
+	private logFailedActivations(failed: WorkflowImportFailedActivation[]) {
+		if (failed.length === 0) return;
+
+		const details = failed
+			.map(({ workflowId, message }) => `${workflowId} (${message})`)
+			.join(', ');
+
+		this.logger.error(`Failed to activate ${failed.length} imported workflow(s): ${details}`);
 	}
 
 	private async getWorkflowOwner(workflowId: WorkflowId) {
