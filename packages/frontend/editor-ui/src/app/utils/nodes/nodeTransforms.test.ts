@@ -4,7 +4,12 @@ import { setActivePinia } from 'pinia';
 import { NodeHelpers } from 'n8n-workflow';
 import type { INodePropertyOptions, INodeTypeDescription } from 'n8n-workflow';
 
-import { getParameterDisplayableOptions, serializeNode } from './nodeTransforms';
+import {
+	getParameterDisplayableOptions,
+	remapToolAvailabilitySources,
+	serializeNode,
+} from './nodeTransforms';
+import { AGENT_NODE_TYPE } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
@@ -35,6 +40,44 @@ vi.mock('n8n-workflow', async (importOriginal) => {
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(),
 }));
+
+describe('remapToolAvailabilitySources', () => {
+	it('remaps copied sources without changing the original parameters or uncopied sources', () => {
+		const parameters = {
+			toolAvailability: {
+				rules: [
+					{ sourceNodeId: 'copied-tool', available: '={{ $json.allowTool }}' },
+					{ sourceNodeId: 'uncopied-tool', available: false },
+				],
+			},
+		};
+		const node = { type: AGENT_NODE_TYPE, parameters };
+
+		remapToolAvailabilitySources([node], new Map([['copied-tool', 'new-tool']]));
+
+		expect(node.parameters.toolAvailability.rules).toEqual([
+			{ sourceNodeId: 'new-tool', available: '={{ $json.allowTool }}' },
+			{ sourceNodeId: 'uncopied-tool', available: false },
+		]);
+		expect(parameters.toolAvailability.rules[0].sourceNodeId).toBe('copied-tool');
+	});
+
+	it('keeps nodes without rules and unrelated node parameters unchanged', () => {
+		const nodes = [
+			{ type: AGENT_NODE_TYPE, parameters: {} },
+			{ type: AGENT_NODE_TYPE, parameters: { toolAvailability: {} } },
+			{
+				type: 'n8n-nodes-base.noOp',
+				parameters: { toolAvailability: { rules: [{ sourceNodeId: 'tool', available: false }] } },
+			},
+		];
+		const original = structuredClone(nodes);
+
+		remapToolAvailabilitySources(nodes, new Map([['tool', 'new-tool']]));
+
+		expect(nodes).toEqual(original);
+	});
+});
 
 describe('getParameterDisplayableOptions', () => {
 	let mockGetNodeType: ReturnType<typeof vi.fn>;

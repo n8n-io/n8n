@@ -7249,6 +7249,57 @@ describe('useCanvasOperations', () => {
 			},
 		);
 
+		it.each(['paste', 'file', 'duplicate'])(
+			'remaps tool availability source IDs on %s',
+			async (source) => {
+				vi.spyOn(NodeHelpers, 'getNodeParameters').mockImplementation(
+					(_properties, parameters) => parameters,
+				);
+				const workflowData = {
+					nodes: [
+						createTestNode({
+							id: 'agent',
+							name: 'AI Agent',
+							type: AGENT_NODE_TYPE,
+							typeVersion: 3.1,
+							parameters: {
+								toolAvailability: {
+									rules: [
+										{ sourceNodeId: 'tool', available: '={{ $json.allowTool }}' },
+										{ sourceNodeId: 'uncopied-tool', available: false },
+									],
+								},
+							},
+						}),
+						createTestNode({ id: 'tool', name: 'Calculator' }),
+					],
+					connections: {
+						Calculator: {
+							ai_tool: [[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }]],
+						},
+					},
+				};
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+					(nodes, connections) => createTestWorkflowObject({ nodes, connections }),
+				);
+
+				const result = await useCanvasOperations().importWorkflowData(workflowData, source);
+
+				const importedTool = result.nodes!.find(({ name }) => name === 'Calculator')!;
+				const importedAgent = result.nodes!.find(({ name }) => name === 'AI Agent')!;
+				expect(importedTool.id).not.toBe('tool');
+				expect(importedAgent.parameters.toolAvailability).toEqual({
+					rules: [
+						{ sourceNodeId: importedTool.id, available: '={{ $json.allowTool }}' },
+						{ sourceNodeId: 'uncopied-tool', available: false },
+					],
+				});
+				expect(workflowDocumentStoreInstance.addNode).toHaveBeenCalledWith(
+					expect.objectContaining({ parameters: importedAgent.parameters }),
+				);
+			},
+		);
+
 		it('should remap nodeGroups nodeIds when regenerating IDs', async () => {
 			const oldId1 = 'old-node-id-1';
 			const oldId2 = 'old-node-id-2';

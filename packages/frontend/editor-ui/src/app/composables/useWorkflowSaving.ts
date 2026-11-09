@@ -47,6 +47,7 @@ import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGrou
 import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
 import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
 import { removeEmptyCanvasGroupsFromWorkflowData } from '@/features/workflows/canvas/emptyGroup.utils';
+import { remapToolAvailabilitySources } from '@/app/utils/nodes/nodeTransforms';
 
 function getErrorMessage(error: unknown): string {
 	if (error instanceof Error) {
@@ -632,6 +633,7 @@ export function useWorkflowSaving({
 					if (oldId) nodeIdMap.set(oldId, node.id);
 					return node;
 				});
+				remapToolAvailabilitySources(workflowDataRequest.nodes, nodeIdMap);
 
 				if (workflowDataRequest.nodeGroups?.length) {
 					workflowDataRequest.nodeGroups = workflowDataRequest.nodeGroups.map((group) => ({

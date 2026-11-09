@@ -1,4 +1,5 @@
 import {
+	AGENT_NODE_TYPE,
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_MCP_TOOL_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
@@ -14,6 +15,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	isHitlToolType,
+	isNodeParameters,
 	NodeHelpers,
 	normalizeNodeShape,
 	traverseNodeParameters,
@@ -41,6 +43,37 @@ export function assignNodeId(node: INodeUi): string {
 	const id = window.crypto.randomUUID();
 	node.id = id;
 	return id;
+}
+
+export function remapToolAvailabilitySources(
+	nodes: Array<Pick<INodeUi, 'type' | 'parameters'>>,
+	nodeIdMap: ReadonlyMap<string, string>,
+): void {
+	for (const node of nodes) {
+		if (node.type !== AGENT_NODE_TYPE) continue;
+		const availability = node.parameters.toolAvailability;
+		if (
+			!isNodeParameters(availability) ||
+			!Array.isArray(availability.rules) ||
+			!availability.rules.every(isNodeParameters)
+		)
+			continue;
+
+		node.parameters = {
+			...node.parameters,
+			toolAvailability: {
+				...availability,
+				rules: availability.rules.map((rule) => {
+					if (typeof rule.sourceNodeId !== 'string') return rule;
+					return {
+						...rule,
+						// Keep uncopied sources so the Agent can report disconnected rules.
+						sourceNodeId: nodeIdMap.get(rule.sourceNodeId) ?? rule.sourceNodeId,
+					};
+				}),
+			},
+		};
+	}
 }
 
 /**
