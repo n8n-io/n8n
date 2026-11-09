@@ -1,3 +1,11 @@
+## [2.46.7](https://github.com/n8n-io/n8n/compare/n8n@2.46.6...n8n@2.46.7) (2026-11-09)
+
+
+### Bug Fixes
+
+* **core:** Limit resume attempts for waiting and queued executions ([#42862](https://github.com/n8n-io/n8n/issues/42862)) ([c7aa6aa](https://github.com/n8n-io/n8n/commit/c7aa6aa6e1aa8d891d454a7516c2232b98821da4))
+
+
 ## [2.46.6](https://github.com/n8n-io/n8n/compare/n8n@2.46.5...n8n@2.46.6) (2026-11-04)
 
 
