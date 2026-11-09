@@ -34,6 +34,12 @@ describe('MicrosoftWorkIqOAuth2Api Credential', () => {
 			expect(credential.name.endsWith('OAuth2Api')).toBe(true);
 			expect(credential.extends).toEqual(['microsoftOAuth2Api']);
 		});
+
+		it('pins its identity fields', () => {
+			expect(credential.displayName).toBe('Microsoft Work IQ OAuth2 API');
+			expect(credential.documentationUrl).toBe('microsoftworkiq');
+			expect(credential.icon).toBe('file:icons/Microsoft.svg');
+		});
 	});
 
 	describe('tenant', () => {
@@ -56,31 +62,44 @@ describe('MicrosoftWorkIqOAuth2Api Credential', () => {
 	});
 
 	describe('scope', () => {
-		it('asks for read and ask access plus a refresh token', () => {
-			expect(evaluate('scope', { allowWriteAccess: false }).split(' ')).toEqual([
+		it('always asks for agent access plus a refresh token', () => {
+			expect(evaluate('scope', { allowDirectChanges: false }).split(' ')).toEqual([
 				`${WORK_IQ_RESOURCE_ID}/WorkIQAgent.Ask`,
 				`${WORK_IQ_RESOURCE_ID}/WorkIQ.Read`,
 				'offline_access',
 			]);
 		});
 
-		it('adds WorkIQ.Act only when write access is switched on', () => {
-			expect(propertyNamed('allowWriteAccess')?.default).toBe(false);
-			expect(evaluate('scope', { allowWriteAccess: true })).toContain(
+		it('requests the agent scope unconditionally and says it carries write', () => {
+			// Microsoft documents WorkIQAgent.Ask as including read AND write access to
+			// Microsoft 365. Since it is always requested, the credential has to warn
+			// rather than imply that leaving the toggle off yields a read-only connection.
+			expect(evaluate('scope', { allowDirectChanges: false })).toContain(
+				`${WORK_IQ_RESOURCE_ID}/WorkIQAgent.Ask`,
+			);
+
+			const notice = propertyNamed('accessNotice');
+			expect(notice?.type).toBe('notice');
+			expect(notice?.displayName).toMatch(/read and write access/i);
+		});
+
+		it('adds WorkIQ.Act only when direct changes are switched on', () => {
+			expect(propertyNamed('allowDirectChanges')?.default).toBe(false);
+			expect(evaluate('scope', { allowDirectChanges: true })).toContain(
 				`${WORK_IQ_RESOURCE_ID}/WorkIQ.Act`,
 			);
 		});
 
 		it.each([false, undefined, '', 'false', 0])(
-			'withholds WorkIQ.Act for %j, so only the toggle can widen consent',
-			(allowWriteAccess) => {
-				expect(evaluate('scope', { allowWriteAccess })).not.toContain('WorkIQ.Act');
+			'withholds WorkIQ.Act for %j, so only the toggle adds it',
+			(allowDirectChanges) => {
+				expect(evaluate('scope', { allowDirectChanges })).not.toContain('WorkIQ.Act');
 			},
 		);
 
 		it('qualifies every Work IQ permission with the resource ID', () => {
-			// The server advertises this qualified form; the setup docs show a bare one.
-			const workIqScopes = evaluate('scope', { allowWriteAccess: true })
+			// The server advertises this qualified form in its protected resource metadata.
+			const workIqScopes = evaluate('scope', { allowDirectChanges: true })
 				.split(' ')
 				.filter((scope) => scope !== 'offline_access');
 
@@ -92,9 +111,12 @@ describe('MicrosoftWorkIqOAuth2Api Credential', () => {
 	});
 
 	describe('inherited fields', () => {
-		it('hides the Graph base URL, which Work IQ never calls', () => {
-			expect(propertyNamed('graphApiBaseUrl')?.type).toBe('hidden');
-		});
+		it.each(['authUrl', 'accessTokenUrl', 'scope', 'graphApiBaseUrl'])(
+			'keeps %s hidden so the credential type wins over a stored value',
+			(name) => {
+				expect(propertyNamed(name)?.type).toBe('hidden');
+			},
+		);
 
 		it('leaves the delegated grant type and account picker as microsoftOAuth2Api sets them', () => {
 			// The parent already pins grantType to authorizationCode and sends
