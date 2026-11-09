@@ -60,6 +60,15 @@ describe('EngineV2LifecycleSubscriptions', () => {
 		expect(relay.relay).toHaveBeenCalledExactlyOnceWith([completed]);
 	});
 
+	it('drops an event of another execution', async () => {
+		await subscriptions.subscribe('exec-1');
+		const [, handler] = receiver.receive.mock.calls[0];
+
+		handler({ ...completed, executionId: 'exec-2' });
+
+		expect(relay.relay).not.toHaveBeenCalled();
+	});
+
 	it('subscribes once for each execution', async () => {
 		await subscriptions.subscribe('exec-1');
 		await subscriptions.subscribe('exec-1');

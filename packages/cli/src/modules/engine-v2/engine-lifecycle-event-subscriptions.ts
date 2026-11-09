@@ -73,7 +73,7 @@ export class EngineV2LifecycleSubscriptions {
 		if (this.subscriptions.has(executionId) || this.pending.has(executionId)) return;
 
 		this.pending.add(executionId);
-		const subscription = receiver.receive(executionId, (event) => this.pushRelay.relay([event]));
+		const subscription = receiver.receive(executionId, (event) => this.relay(executionId, event));
 
 		let timer: NodeJS.Timeout | undefined;
 		const timedOut = new Promise<'timed-out'>((resolve) => {
@@ -113,6 +113,20 @@ export class EngineV2LifecycleSubscriptions {
 		}
 
 		this.subscriptions.set(executionId, result);
+	}
+
+	/** The relay finds the push session from the event, so the event must belong to the channel. */
+	private relay(channelExecutionId: string, event: LifecycleEvent): void {
+		if (event.executionId !== channelExecutionId) {
+			this.logger.warn('Engine v2 dropped a lifecycle event of another execution', {
+				executionId: channelExecutionId,
+				eventExecutionId: event.executionId,
+				type: event.type,
+			});
+			return;
+		}
+
+		this.pushRelay.relay([event]);
 	}
 
 	unsubscribe(executionId: string): void {
