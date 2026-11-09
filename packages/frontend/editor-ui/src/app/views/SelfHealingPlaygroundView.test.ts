@@ -332,30 +332,60 @@ describe('SelfHealingPlaygroundView', () => {
 		const screen = render();
 		expect(await screen.findByText(guidance, { exact: false })).toBeVisible();
 	});
-	it('creates and publishes the sub-workflow before the parent that calls it', async () => {
-		mocks.create.mockImplementation(async (data: IWorkflowDb) => ({
-			...data,
-			id: data.nodes.some(({ type }) => type === 'n8n-nodes-base.webhook') ? 'parent' : 'child',
-			versionId: 'v1',
-		}));
-		const screen = render();
-		const create = screen.getByTestId('create-sub-workflow');
-		await waitFor(() => expect(create).toBeEnabled());
-		await userEvent.click(create);
-		await waitFor(() => expect(mocks.activate).toHaveBeenCalledTimes(2));
-		expect(mocks.activate.mock.calls.map(([, id]) => id)).toEqual(['child', 'parent']);
-		const [[child], [parent]] = mocks.create.mock.calls as Array<[IWorkflowDb]>;
-		expect(child.nodes.map(({ type }) => type)).toEqual([
-			'n8n-nodes-base.executeWorkflowTrigger',
-			'n8n-nodes-base.set',
-		]);
-		expect(parent.nodes[1]).toMatchObject({
-			type: 'n8n-nodes-base.executeWorkflow',
-			parameters: { workflowId: { value: 'child' } },
+	it.each(['sub-workflow', 'both-workflows'])(
+		'creates and publishes the %s sub-workflow before the parent that calls it',
+		async (id) => {
+			mocks.create.mockImplementation(async (data: IWorkflowDb) => ({
+				...data,
+				id: data.nodes.some(({ type }) => type === 'n8n-nodes-base.webhook') ? 'parent' : 'child',
+				versionId: 'v1',
+			}));
+			const screen = render();
+			const create = screen.getByTestId(`create-${id}`);
+			await waitFor(() => expect(create).toBeEnabled());
+			await userEvent.click(create);
+			await waitFor(() => expect(mocks.activate).toHaveBeenCalledTimes(2));
+			expect(mocks.activate.mock.calls.map(([, id]) => id)).toEqual(['child', 'parent']);
+			const [[child], [parent]] = mocks.create.mock.calls as Array<[IWorkflowDb]>;
+			expect(child.nodes.map(({ type }) => type)).toEqual([
+				'n8n-nodes-base.executeWorkflowTrigger',
+				'n8n-nodes-base.set',
+			]);
+			expect(parent.nodes.find(({ name }) => name === 'Calculate invoice')).toMatchObject({
+				type: 'n8n-nodes-base.executeWorkflow',
+				parameters: { workflowId: { value: 'child' } },
+			});
+			expect(await screen.findByTestId('playground-message')).toHaveTextContent(
+				'Parent workflow and sub-workflow created and published',
+			);
+		},
+	);
+	it('needs a change in both workflows for the parent and sub-workflow scenario', () => {
+		const scenario = getScenarios(useI18n()).find(({ id }) => id === 'both-workflows')!;
+		const child = createSubWorkflow(scenario, 'project1');
+		const parent = createWorkflow(scenario, 'project1', 'child');
+		expect(child.nodes[1].parameters.assignments).toMatchObject({
+			assignments: [
+				{ name: 'orderId', value: '={{ $json.orderId }}' },
+				{ name: 'total', value: "={{ $('Look up order').item.json.amount }}" },
+			],
 		});
-		expect(await screen.findByTestId('playground-message')).toHaveTextContent(
-			'Parent workflow and sub-workflow created and published',
-		);
+		expect(parent.nodes.map(({ name }) => name)).toEqual([
+			'Receive order',
+			'Prepare order',
+			'Calculate invoice',
+			'Check total',
+			'Reject total',
+		]);
+		expect(parent.nodes[1].parameters.assignments).toMatchObject({
+			assignments: [{ name: 'orderId' }],
+		});
+		expect(parent.connections).toMatchObject({
+			'Receive order': { main: [[{ node: 'Prepare order' }]] },
+			'Prepare order': { main: [[{ node: 'Calculate invoice' }]] },
+			'Calculate invoice': { main: [[{ node: 'Check total' }]] },
+			'Check total': { main: [[], [{ node: 'Reject total' }]] },
+		});
 	});
 	it('lists both workflows, includes sub-workflows, and deletes the parent first', async () => {
 		const scenario = getScenarios(useI18n()).find(({ id }) => id === 'sub-workflow')!;

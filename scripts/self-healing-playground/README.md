@@ -71,6 +71,29 @@ the sub-workflow: it reads the customer email as the total.
 
 Only parent executions start investigations. Sub-workflow failures alone do not.
 
+## Test a fix that changes both workflows
+
+The **Parent and sub-workflow mix-up** scenario uses the same steps. It has one
+defect in each workflow:
+
+- The parent sets only `orderId` before it calls the sub-workflow. The amount is lost.
+- The sub-workflow reads the total from a node that does not exist.
+
+After the call, the parent compares the total with the `amount` of the webhook
+input. A mismatch stops the execution with an error. A repair must keep the amount
+in the parent and read it in the sub-workflow.
+
+A repair of only one workflow fails:
+
+- A parent-only repair fails because the sub-workflow still reads a missing node.
+  The data from the parent cannot change this.
+- A sub-workflow-only repair fails because the sub-workflow does not receive the
+  amount. The parent check rejects every other total.
+
+After a correct repair, the parent returns `{ "orderId": "ORDER-301", "total": 42.5 }`
+for the original input and `{ "orderId": "ORDER-302", "total": 19 }` for the
+alternate input.
+
 Assistant model and sandbox setup must work. The playground does not create
 self-healing configurations or fabricate results. An open result blocks another
 investigation on that workflow. Close it before sending another failed input.

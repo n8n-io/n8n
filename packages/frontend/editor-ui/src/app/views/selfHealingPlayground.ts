@@ -1,6 +1,7 @@
 import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	type IConnections,
 	type IDataObject,
 	type INode,
 } from 'n8n-workflow';
@@ -21,6 +22,12 @@ export interface PlaygroundScenario {
 
 export const PREFIX = '[self-healing playground] ';
 export const WEBHOOK_PREFIX = 'self-healing-playground/';
+
+const TOTALS: Record<string, string | undefined> = {
+	'wrong-field': '={{ $json.body.customer.email }}',
+	'sub-workflow': '={{ $json.body.customer.email }}',
+	'both-workflows': "={{ $('Look up order').item.json.amount }}",
+};
 
 export function getScenarios(i18n: ReturnType<typeof useI18n>): PlaygroundScenario[] {
 	return [
@@ -75,6 +82,16 @@ export function getScenarios(i18n: ReturnType<typeof useI18n>): PlaygroundScenar
 			},
 		},
 		{
+			id: 'both-workflows',
+			name: i18n.baseText('selfHealingPlayground.both-workflows.name'),
+			description: i18n.baseText('selfHealingPlayground.both-workflows.description'),
+			expectation: i18n.baseText('selfHealingPlayground.both-workflows.expectation'),
+			outcome: i18n.baseText('selfHealingPlayground.both-workflows.outcome'),
+			subWorkflowName: i18n.baseText('selfHealingPlayground.both-workflows.subWorkflowName'),
+			input: { orderId: 'ORDER-301', amount: 42.5 },
+			alternateInput: { orderId: 'ORDER-302', amount: 19 },
+		},
+		{
 			id: 'healthy',
 			name: i18n.baseText('selfHealingPlayground.healthy.name'),
 			description: i18n.baseText('selfHealingPlayground.healthy.description'),
@@ -122,16 +139,16 @@ export function createWorkflow(
 						id: crypto.randomUUID(),
 						name: 'orderId',
 						type: 'string',
-						value: '={{ $json.body.orderId }}',
+						value:
+							scenario.id === 'both-workflows'
+								? '={{ $json.orderId }}'
+								: '={{ $json.body.orderId }}',
 					},
 					{
 						id: crypto.randomUUID(),
 						name: 'total',
 						type: 'number',
-						value:
-							scenario.id === 'wrong-field' || scenario.id === 'sub-workflow'
-								? '={{ $json.body.customer.email }}'
-								: '={{ $json.body.amount }}',
+						value: TOTALS[scenario.id] ?? '={{ $json.body.amount }}',
 					},
 				],
 			},
@@ -160,11 +177,76 @@ export function createWorkflow(
 			options: {},
 		};
 	}
+	const nodes = [webhook, transform];
+	const check: INode = {
+		id: crypto.randomUUID(),
+		name: 'Check total',
+		type: 'n8n-nodes-base.if',
+		typeVersion: 2.2,
+		position: [0, 0],
+		parameters: {
+			conditions: {
+				options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+				conditions: [
+					{
+						id: crypto.randomUUID(),
+						leftValue: '={{ $json.total }}',
+						rightValue: "={{ $('Receive order').first().json.body.amount }}",
+						operator: { type: 'number', operation: 'equals' },
+					},
+				],
+				combinator: 'and',
+			},
+			options: {},
+		},
+	};
+	const guarded = Boolean(subWorkflowId) && scenario.id === 'both-workflows';
+	if (guarded) {
+		nodes.splice(1, 0, {
+			id: crypto.randomUUID(),
+			name: 'Prepare order',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 3.4,
+			position: [0, 0],
+			parameters: {
+				assignments: {
+					assignments: [
+						{
+							id: crypto.randomUUID(),
+							name: 'orderId',
+							type: 'string',
+							value: '={{ $json.body.orderId }}',
+						},
+					],
+				},
+				options: {},
+			},
+		});
+		nodes.push(check);
+	}
+	const connections: IConnections = {};
+	nodes.forEach((node, index) => {
+		node.position = [index * 280, 0];
+		const next = nodes[index + 1];
+		if (next) connections[node.name] = { main: [[{ node: next.name, type: 'main', index: 0 }]] };
+	});
+	if (guarded) {
+		const reject: INode = {
+			id: crypto.randomUUID(),
+			name: 'Reject total',
+			type: 'n8n-nodes-base.stopAndError',
+			typeVersion: 1,
+			position: [nodes.length * 280, 160],
+			parameters: { errorMessage: 'The invoice total does not match the order amount.' },
+		};
+		connections[check.name] = { main: [[], [{ node: reject.name, type: 'main', index: 0 }]] };
+		nodes.push(reject);
+	}
 	return {
 		name: `${PREFIX}${scenario.name} · ${runId.slice(0, 8)}`,
 		...(projectId ? { projectId } : {}),
-		nodes: [webhook, transform],
-		connections: { [webhook.name]: { main: [[{ node: transform.name, type: 'main', index: 0 }]] } },
+		nodes,
+		connections,
 		settings: {
 			executionOrder: 'v1',
 			saveDataErrorExecution: 'all',
