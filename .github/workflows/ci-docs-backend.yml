@@ -23,7 +23,6 @@ jobs:
     name: Vale
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # The check reporter writes a check run. For a fork PR, reviewdog logs the results instead.
     permissions:
       contents: read
       checks: write
@@ -34,12 +33,10 @@ jobs:
 
       - uses: vale-cli/vale-action@518a9136acc6e6668ce7c00d367051e0941e87ff # v3.0.0
         with:
-          # A pinned version skips the "latest" lookup and keeps results stable.
           version: 3.25.1
           files: docs/backend
           vale_flags: '--config=docs/backend/.vale.ini --minAlertLevel=warning'
           fail_on_error: true
-          # The annotations reporter fails the job above 10 results. The check reporter has no limit.
           reporter: github-pr-check
 
   links:

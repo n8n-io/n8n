@@ -17,7 +17,6 @@ import Default from '@astrojs/starlight/components/Head.astro';
 	const MIN_SCALE = 0.75;
 	const blocks = Array.from(document.querySelectorAll<HTMLElement>('pre.mermaid'));
 	if (blocks.length > 0) {
-		// Mermaid is large, so only pages with a diagram load it.
 		const { default: mermaid } = await import('mermaid');
 		for (const block of blocks) block.dataset.source = block.textContent ?? '';
 		const render = async () => {
