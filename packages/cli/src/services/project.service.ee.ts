@@ -212,11 +212,10 @@ export class ProjectService {
 		const ownedSharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: { projectId: project.id, role: 'workflow:owner' },
 		});
+		const workflowIds = ownedSharedWorkflows.map((sw) => sw.workflowId);
 
 		if (targetProject) {
-			const workflowIds = ownedSharedWorkflows.map((sw) => sw.workflowId);
 			await this.sharedWorkflowRepository.makeOwner(workflowIds, targetProject.id);
-			await this.ownershipService.invalidateWorkflowProjectCacheByIds(workflowIds);
 		} else {
 			for (const sharedWorkflow of ownedSharedWorkflows) {
 				await workflowService.delete(user, sharedWorkflow.workflowId, true);
@@ -280,6 +279,11 @@ export class ProjectService {
 				await (await this.agentProjectCleanupService).completeProjectDeletion(projectId, ctx);
 			}
 		});
+
+		if (targetProject) {
+			// The cascade removes the source owner rows. Invalidate after the transaction commits.
+			await this.ownershipService.invalidateWorkflowProjectCacheByIds(workflowIds);
+		}
 
 		// The cascade deletes the project's variables. Refresh the cache so their keys are free again.
 		try {
