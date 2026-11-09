@@ -483,7 +483,9 @@ export function sanitizeFilename(fileName: string): string {
 	const normalized = fileName.replace(/\\/g, '/');
 
 	// Extract just the filename, stripping all directory components
-	let sanitized = path.basename(normalized);
+	// path.basename() ignores trailing separators, so a directory path would
+	// otherwise yield its last segment as if it were a filename.
+	let sanitized = normalized.endsWith('/') ? '' : path.basename(normalized);
 
 	// Remove null bytes which could be used for null byte injection attacks
 	sanitized = sanitized.replace(/\0/g, '');

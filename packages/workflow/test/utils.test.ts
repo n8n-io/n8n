@@ -783,3 +783,22 @@ describe('sanitizeFilename', () => {
 		expect(sanitizeFilename('\0\0\0')).toBe('untitled');
 	});
 });
+
+describe('sanitizeFilename trailing separators', () => {
+	it('should not treat a trailing directory name as a filename', () => {
+		expect(sanitizeFilename('path/to/')).toBe('untitled');
+		expect(sanitizeFilename('/var/uploads/')).toBe('untitled');
+		expect(sanitizeFilename('C:\\Users\\Admin\\')).toBe('untitled');
+	});
+
+	it('should not treat a directory path ending in a separator as a filename', () => {
+		expect(sanitizeFilename('/etc/passwd/')).toBe('untitled');
+		expect(sanitizeFilename('dir\\sub\\')).toBe('untitled');
+	});
+
+	it('should still extract filenames without trailing separators', () => {
+		expect(sanitizeFilename('path/to/file.txt')).toBe('file.txt');
+		expect(sanitizeFilename('file.txt')).toBe('file.txt');
+		expect(sanitizeFilename('/')).toBe('untitled');
+	});
+});
