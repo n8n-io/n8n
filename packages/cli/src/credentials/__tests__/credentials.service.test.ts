@@ -4129,66 +4129,6 @@ describe('CredentialsService', () => {
 				expect(result).toHaveLength(1);
 			});
 
-			it.each([
-				['project', { projectId: 'target-project' }],
-				['workflow', { workflowId: 'workflow-1' }],
-			] as const)(
-				'keeps only the credentials the user can use through their own access for a %s, when ownAccessOnly is set',
-				async (_scope, scope) => {
-					const foreignCredential = makePersonalCredential();
-					foreignCredential.shared = [
-						{
-							credentialsId: 'cred-personal',
-							role: 'credential:owner',
-							projectId: 'alice-personal-project',
-						},
-					] as SharedCredentials[];
-					const ownCredential = Object.assign(makePersonalCredential(), { id: 'cred-own' });
-					credentialsFinderService.findCredentialsForUser.mockResolvedValue([
-						foreignCredential,
-						ownCredential,
-					]);
-					userRepository.findPersonalOwnerForProject.mockResolvedValue(ownerUser);
-					userRepository.findPersonalOwnerForWorkflow.mockResolvedValue(ownerUser);
-					credentialsRepository.findAllPersonalCredentials.mockResolvedValue([
-						foreignCredential,
-						ownCredential,
-					]);
-					credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
-						'cred-personal',
-					]);
-
-					const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
-						...scope,
-						excludePersonalRoute: true,
-						ownAccessOnly: true,
-					});
-
-					expect(result.map((c) => c.id)).toEqual(['cred-own']);
-					expect(
-						credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
-					).toHaveBeenCalledWith(user, ['cred-personal', 'cred-own'], {
-						ignoreGlobalUseScope: true,
-					});
-				},
-			);
-
-			it('does not ask about own access when ownAccessOnly is not set', async () => {
-				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
-					makePersonalCredential(),
-				]);
-				userRepository.findPersonalOwnerForProject.mockResolvedValue(ownerUser);
-				credentialsRepository.findAllPersonalCredentials.mockResolvedValue([
-					makePersonalCredential(),
-				]);
-
-				await service.getCredentialsAUserCanUseInAWorkflow(user, { projectId: 'target-project' });
-
-				expect(
-					credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
-				).not.toHaveBeenCalled();
-			});
-
 			it('includes the credential via the personal route for an unsaved workflow (projectId option)', async () => {
 				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
 					makePersonalCredential(),
@@ -4226,6 +4166,57 @@ describe('CredentialsService', () => {
 				expect(result).toHaveLength(1);
 				expect(result[0]).toMatchObject({ id: 'cred-personal', sharedRoute: 'project' });
 			});
+		});
+	});
+
+	describe('getCredentialsAUserCanUseThemselves', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const credential = (id: string) =>
+			mock<Awaited<ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>>[number]>(
+				{ id },
+			);
+		let getUsableCredentials: MockInstance<
+			CredentialsService['getCredentialsAUserCanUseInAWorkflow']
+		>;
+
+		beforeEach(() => {
+			getUsableCredentials = vi.spyOn(service, 'getCredentialsAUserCanUseInAWorkflow');
+		});
+
+		afterEach(() => {
+			getUsableCredentials.mockRestore();
+		});
+
+		it('drops what the user cannot use through their own access', async () => {
+			getUsableCredentials.mockResolvedValue([credential('own'), credential('colleague')]);
+			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+				'colleague',
+			]);
+
+			const result = await service.getCredentialsAUserCanUseThemselves(user, {
+				projectId: 'project-1',
+				excludePersonalRoute: true,
+			});
+
+			expect(result.map((c) => c.id)).toEqual(['own']);
+			expect(getUsableCredentials).toHaveBeenCalledWith(user, {
+				projectId: 'project-1',
+				excludePersonalRoute: true,
+			});
+			expect(
+				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+			).toHaveBeenCalledWith(user, ['own', 'colleague'], { ignoreGlobalUseScope: true });
+		});
+
+		it('does not ask about own access when nothing is usable', async () => {
+			getUsableCredentials.mockResolvedValue([]);
+
+			await expect(
+				service.getCredentialsAUserCanUseThemselves(user, { projectId: 'project-1' }),
+			).resolves.toEqual([]);
+			expect(
+				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+			).not.toHaveBeenCalled();
 		});
 	});
 

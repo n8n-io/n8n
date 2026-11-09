@@ -3011,9 +3011,8 @@ export class InstanceAiAdapterService {
 				// auto-binds only credentials the user can use through their own access,
 				// the same ones whose run data redaction lets them see.
 				if (boundProjectId) {
-					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+					const scoped = await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 						projectId: boundProjectId,
-						ownAccessOnly: true,
 					});
 					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
 					return filtered.map(
@@ -3031,13 +3030,11 @@ export class InstanceAiAdapterService {
 				// candidates still match what the save path will accept.
 				if (options?.workflowId || options?.projectId) {
 					const scoped = options.workflowId
-						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						? await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 								workflowId: options.workflowId,
-								ownAccessOnly: true,
 							})
-						: await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						: await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 								projectId: options.projectId!,
-								ownAccessOnly: true,
 							});
 
 					const filtered = options.type ? scoped.filter((c) => c.type === options.type) : scoped;

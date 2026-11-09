@@ -645,20 +645,16 @@ export class CredentialsService {
 	 * for workflows that have not been saved yet.
 	 * @param options.excludePersonalRoute Skip the personal route, which lets a
 	 * user bring their own personal credentials into a team project they are a
-	 * member of. Agents set this because they do not support it yet.
+	 * member of. Agents set this because they do not support it yet. The
+	 * instance-wide shortcut for owners and admins in their personal project
+	 * stays in place.
 	 * @param options.excludeResolvable Skip credentials that need an end-user identity.
-	 * @param options.ownAccessOnly Keep only the credentials the user can use
-	 * through their own access: owned, shared with them, in a project they belong
-	 * to, or global. An owner's or admin's instance-wide `credential:use` does not
-	 * count. Execution redaction asks the same question, so the n8n Assistant sets
-	 * this and never offers a credential whose run data the user could not see.
 	 */
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
 		options: ({ workflowId: string } | { projectId: string }) & {
 			excludePersonalRoute?: boolean;
 			excludeResolvable?: boolean;
-			ownAccessOnly?: boolean;
 		},
 	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
@@ -682,14 +678,11 @@ export class CredentialsService {
 
 		// the union of all three is every credential the user can use in this
 		// workflow or project
-		const routedCredentials = allCredentials.filter(
+		const usableCredentials = allCredentials.filter(
 			(c) =>
 				(!options.excludeResolvable || !c.isResolvable) &&
 				(credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal),
 		);
-		const usableCredentials = options.ownAccessOnly
-			? await this.keepOwnAccess(user, routedCredentials)
-			: routedCredentials;
 
 		if (usableCredentials.length > 0) {
 			const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
@@ -735,13 +728,16 @@ export class CredentialsService {
 	}
 
 	/**
-	 * Drops the credentials that `user` can use only through an instance-wide
-	 * grant, with the same helper that execution redaction uses.
+	 * The credentials the user can use in this workflow or project through their
+	 * own access, as if they held no instance-wide `credential:use`: owned, shared
+	 * with them, in a project they belong to, or global. Execution redaction asks
+	 * the same question, so the n8n Assistant offers only these.
 	 */
-	private async keepOwnAccess<T extends { id: string }>(
+	async getCredentialsAUserCanUseThemselves(
 		user: User,
-		credentials: T[],
-	): Promise<T[]> {
+		options: Parameters<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>[1],
+	): Promise<WorkflowCredentialResult[]> {
+		const credentials = await this.getCredentialsAUserCanUseInAWorkflow(user, options);
 		if (credentials.length === 0) return credentials;
 
 		const inaccessibleIds = new Set(

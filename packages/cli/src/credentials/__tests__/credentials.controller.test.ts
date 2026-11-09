@@ -139,15 +139,9 @@ describe('CredentialsController', () => {
 	});
 
 	describe('getProjectCredentials', () => {
-		it.each([
-			{ forAgent: 'true', forAssistant: undefined },
-			{ forAgent: 'false', forAssistant: undefined },
-			{ forAgent: undefined, forAssistant: undefined },
-			{ forAgent: undefined, forAssistant: 'true' },
-			{ forAgent: 'true', forAssistant: 'false' },
-		] as const)(
-			'requests agent and Assistant restrictions only when asked (forAgent=$forAgent, forAssistant=$forAssistant)',
-			async ({ forAgent, forAssistant }) => {
+		it.each(['true', 'false', undefined] as const)(
+			'requests agent credential restrictions only when forAgent is true (forAgent=%s)',
+			async (forAgent) => {
 				const fixed = mock<
 					Awaited<ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>>[number]
 				>({ id: 'fixed', isResolvable: false });
@@ -156,7 +150,7 @@ describe('CredentialsController', () => {
 					.mockResolvedValue([fixed]);
 				const request = mock<CredentialRequest.ForWorkflow>({
 					user: req.user,
-					query: { projectId: 'project-1', forAgent, forAssistant },
+					query: { projectId: 'project-1', forAgent, forAssistant: undefined },
 				});
 
 				await expect(credentialsController.getProjectCredentials(request)).resolves.toEqual([
@@ -166,10 +160,34 @@ describe('CredentialsController', () => {
 					projectId: 'project-1',
 					excludePersonalRoute: forAgent === 'true',
 					excludeResolvable: forAgent === 'true',
-					ownAccessOnly: forAssistant === 'true',
 				});
 			},
 		);
+
+		it("lists only the user's own access when forAssistant is true", async () => {
+			const fixed = mock<
+				Awaited<ReturnType<CredentialsService['getCredentialsAUserCanUseThemselves']>>[number]
+			>({ id: 'fixed', isResolvable: false });
+			const getOwnCredentials = vi
+				.spyOn(credentialsService, 'getCredentialsAUserCanUseThemselves')
+				.mockResolvedValue([fixed]);
+			const getUsableCredentials = vi.spyOn(
+				credentialsService,
+				'getCredentialsAUserCanUseInAWorkflow',
+			);
+			const request = mock<CredentialRequest.ForWorkflow>({
+				user: req.user,
+				query: { projectId: 'project-1', forAgent: undefined, forAssistant: 'true' },
+			});
+
+			await expect(credentialsController.getProjectCredentials(request)).resolves.toEqual([fixed]);
+			expect(getOwnCredentials).toHaveBeenCalledWith(request.user, {
+				projectId: 'project-1',
+				excludePersonalRoute: false,
+				excludeResolvable: false,
+			});
+			expect(getUsableCredentials).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('createCredentials', () => {

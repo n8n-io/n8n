@@ -123,12 +123,14 @@ export class CredentialsController {
 				}),
 			)
 			.parse(req.query);
-		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, {
+		const options = {
 			...scope,
 			excludePersonalRoute: forAgent === 'true',
 			excludeResolvable: forAgent === 'true',
-			ownAccessOnly: forAssistant === 'true',
-		});
+		};
+		return forAssistant === 'true'
+			? await this.credentialsService.getCredentialsAUserCanUseThemselves(req.user, options)
+			: await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
 	}
 
 	@Get('/new')
