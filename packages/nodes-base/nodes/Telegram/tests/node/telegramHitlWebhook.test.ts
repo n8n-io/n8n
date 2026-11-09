@@ -1,6 +1,8 @@
+import { Container } from '@n8n/di';
 import {
 	buildHitlCallbackReference,
 	HITL_CALLBACK_PREFIX_V2,
+	InstanceSettings,
 	markTelegramInteractionRequest,
 } from 'n8n-core';
 import type { IWebhookFunctions } from 'n8n-workflow';
@@ -34,7 +36,7 @@ vi.mock('../../../../utils/sendAndWait/utils', async () => {
 // Imported after the mocks above so both bind to the mocked implementations.
 import { sendAndWaitWebhook } from '../../../../utils/sendAndWait/utils';
 import * as genericFunctions from '../../GenericFunctions';
-import { deriveHitlSecretToken } from '../../hitl/tokens';
+import { deriveHitlSecretToken, deriveLegacyHitlSecretToken } from '../../hitl/tokens';
 import { telegramSendAndWaitWebhook } from '../../hitl/webhook';
 
 const VALID_SECRET_TOKEN = deriveHitlSecretToken(ACCESS_TOKEN);
@@ -175,6 +177,26 @@ describe('telegramSendAndWaitWebhook', () => {
 			'The Telegram credential has no access token',
 		);
 		expect(genericFunctions.apiRequest).not.toHaveBeenCalled();
+	});
+
+	it('resumes on the secret token a bot still holds from before the derivation changed', async () => {
+		Container.set(InstanceSettings, { hmacSignatureSecret: 'instance-secret' } as InstanceSettings);
+		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
+			if (name === 'chatApproval') return true;
+			if (name === 'postDecisionBehavior') return 'keepMessage';
+			return fallback as never;
+		});
+		webhookFns.getHeaderData.mockReturnValue({
+			'x-telegram-bot-api-secret-token': deriveLegacyHitlSecretToken(ACCESS_TOKEN),
+		});
+
+		const result = await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(
+			(result as { workflowData: Array<Array<{ json: { data: { approved: boolean } } }>> })
+				.workflowData[0][0].json.data.approved,
+		).toBe(true);
 	});
 
 	it('responds 403 and does not resume when the secret-token header is wrong', async () => {

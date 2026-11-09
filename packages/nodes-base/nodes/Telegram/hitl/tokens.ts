@@ -1,4 +1,6 @@
+import { Container } from '@n8n/di';
 import { createHmac } from 'crypto';
+import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 /**
@@ -29,6 +31,20 @@ export function deriveHitlSecretToken(accessToken: string): string {
 	// base64url alphabet.
 	return createHmac('sha256', accessToken)
 		.update(`n8n-telegram-hitl-secret:${botId}`)
+		.digest('base64url')
+		.slice(0, 43);
+}
+
+/**
+ * The value a bot holds from before the derivation moved to the bot token.
+ * The webhook accepts it until the next Send and Wait run registers the
+ * webhook again. Accepted for one release only.
+ *
+ * TODO(CET-663): remove one release after this ships.
+ */
+export function deriveLegacyHitlSecretToken(accessToken: string): string {
+	return createHmac('sha256', Container.get(InstanceSettings).hmacSignatureSecret)
+		.update(`n8n-telegram-hitl-secret:${accessToken}`)
 		.digest('base64url')
 		.slice(0, 43);
 }
