@@ -7,6 +7,7 @@ import {
 	SKILL_SYNC_FLAG,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillSourceCheckResponse,
 	type SkillUserDto,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -1338,7 +1339,7 @@ describe('SettingsSkillsView', () => {
 			);
 
 			it('shows progress on the row while the check runs', async () => {
-				let finish: (value: unknown) => void = () => {};
+				let finish: (value: SkillSourceCheckResponse) => void = () => {};
 				skillsStore.checkSource.mockReturnValue(
 					new Promise((resolve) => {
 						finish = resolve;

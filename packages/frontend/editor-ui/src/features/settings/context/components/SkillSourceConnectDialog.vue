@@ -808,7 +808,7 @@ const title = computed(() => {
 				{{ duplicateMessage }}
 				<N8nButton
 					v-if="duplicateSourceId"
-					variant="subtle"
+					variant="ghost"
 					size="small"
 					:label="i18n.baseText('settings.context.skills.sources.view')"
 					data-test-id="skill-source-view-existing"
