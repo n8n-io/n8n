@@ -511,9 +511,16 @@ export class YouTube implements INodeType {
 							body.snippet.tags = (options.tags as string).split(',');
 						}
 
+						if (options.privacyStatus) {
+							qs.part = 'snippet, status';
+							body.status = {
+								privacyStatus: options.privacyStatus as string,
+							};
+						}
+
 						if (options.description) {
 							//@ts-ignore
-							body.snippet.privacyStatus = options.privacyStatus as string;
+							body.snippet.description = options.description as string;
 						}
 
 						if (options.defaultLanguage) {
