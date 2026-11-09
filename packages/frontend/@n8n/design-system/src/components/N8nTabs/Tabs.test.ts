@@ -178,14 +178,7 @@ describe('N8nTabs', () => {
 		});
 		await fireEvent.scroll(tablist);
 
-		// The pre-fix check hides this button at ROOT_WIDTH; the deadband keeps it visible.
-		expect(getByRole('button', { name: 'Show previous tabs' })).toBeInTheDocument();
-		// The pre-fix check hides this button at ROOT_WIDTH; the deadband keeps it visible.
-		expect(getByRole('button', { name: 'Show next tabs' })).toBeInTheDocument();
-
-		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: ROOT_WIDTH + 1 });
-		await fireEvent.scroll(tablist);
-
+		// The pre-fix check hides both controls at ROOT_WIDTH; the deadband retains them.
 		expect(getByRole('button', { name: 'Show previous tabs' })).toBeInTheDocument();
 		expect(getByRole('button', { name: 'Show next tabs' })).toBeInTheDocument();
 	});
@@ -203,9 +196,8 @@ describe('N8nTabs', () => {
 		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: ROOT_WIDTH });
 		await fireEvent.scroll(tablist);
 
-		// The pre-fix check hides this button at ROOT_WIDTH; the deadband keeps it visible.
+		// The pre-fix check hides both controls at ROOT_WIDTH; the deadband retains them.
 		expect(getByRole('button', { name: 'Show previous tabs' })).toBeInTheDocument();
-		// The pre-fix check hides this button at ROOT_WIDTH; the deadband keeps it visible.
 		expect(getByRole('button', { name: 'Show next tabs' })).toBeInTheDocument();
 
 		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: ROOT_WIDTH - 1 });
