@@ -23,6 +23,7 @@ import { useResourceLocatorDropdown } from '../../composables/useResourceLocator
 import { useResourceLocatorModes } from '../../composables/useResourceLocatorModes';
 import { useWorkflowResourcesLocator } from '../../composables/useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useWorkflowProjectId } from '@/app/composables/useWorkflowProjectId';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { VIEWS } from '@/app/constants';
 import {
@@ -81,6 +82,7 @@ const emit = defineEmits<{
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const projectStore = useProjectsStore();
+const workflowProjectId = useWorkflowProjectId();
 
 const router = useRouter();
 const i18n = useI18n();
@@ -292,7 +294,7 @@ onClickOutside(dropdown, (event) => {
 
 const onAddResourceClicked = async () => {
 	try {
-		const projectId = projectStore.currentProjectId;
+		const projectId = workflowProjectId.value;
 		const sampleWorkflow = props.sampleWorkflow;
 		const workflowName = sampleWorkflow.name ?? 'My Sub-Workflow';
 		const sampleSubWorkflows = workflowsListStore.allWorkflows.filter(

@@ -15,6 +15,8 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { shallowRef } from 'vue';
 
 const { onDocumentVisible } = vi.hoisted(() => ({
 	onDocumentVisible: vi.fn(),
@@ -304,42 +306,45 @@ describe('WorkflowSelectorParameterInput', () => {
 		});
 	});
 
-	describe('error handling', () => {
+	describe('creating a sub-workflow', () => {
+		async function clickAddResource(homeProject: { id: string } | null = null) {
+			vi.spyOn(window, 'open').mockImplementation(() => null);
+			const workflowDocumentStore = shallowRef({ documentId: 'parent@latest', homeProject });
+			const { getByTestId } = renderComponent({
+				props: {
+					modelValue: { __rl: true, value: '', mode: 'list' },
+					path: '',
+					parameter: {
+						displayName: 'display-name',
+						type: 'workflowSelector',
+						name: 'name',
+						default: '',
+					},
+				} satisfies Props,
+				global: { provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStore } },
+			});
+			await flushPromises();
+			await userEvent.click(getByTestId('rlc-input'));
+			await userEvent.click(getByTestId('rlc-item-add-resource'));
+			await flushPromises();
+		}
+
+		it("creates the sub-workflow in the workflow's home project", async () => {
+			projectsStore.currentProjectId = 'former-project';
+
+			await clickAddResource({ id: 'home-project' });
+
+			expect(workflowsStore.createNewWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'home-project' }),
+			);
+		});
+
 		it('should show toast when workflow creation fails', async () => {
-			// Make createNewWorkflow fail
 			const error = new Error('Failed to create workflow');
 			workflowsStore.createNewWorkflow.mockRejectedValue(error);
 
-			const props: Props = {
-				modelValue: {
-					__rl: true,
-					value: '',
-					mode: 'list',
-				},
-				path: '',
-				parameter: {
-					displayName: 'display-name',
-					type: 'workflowSelector',
-					name: 'name',
-					default: '',
-				},
-			};
+			await clickAddResource();
 
-			const { getByTestId } = renderComponent({ props });
-			await flushPromises();
-
-			// Click on the input to open the dropdown
-			await userEvent.click(getByTestId('rlc-input'));
-
-			// Get the ResourceLocatorDropdown component to trigger the add resource click
-			const addResourceButton = getByTestId('rlc-item-add-resource');
-			expect(addResourceButton).toBeInTheDocument();
-
-			// Click the add resource button
-			await userEvent.click(addResourceButton);
-			await flushPromises();
-
-			// Verify the toast error was shown
 			expect(mockToast.showError).toHaveBeenCalledWith(error, 'Error creating sub-workflow');
 		});
 	});
