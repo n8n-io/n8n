@@ -3,7 +3,7 @@ export const PROMOTIONS_ENVIRONMENT_ADD_VIEW = 'PromotionsEnvironmentAdd';
 export const PROMOTIONS_ENVIRONMENT_EDIT_VIEW = 'PromotionsEnvironmentEdit';
 
 export const ENVIRONMENTS_DOCS_URL = 'https://docs.n8n.io/administer/environments';
-export const ENVIRONMENTS_SETUP_DOCS_URL = `${ENVIRONMENTS_DOCS_URL}/set-up-environments`;
+export const ENVIRONMENTS_PLAN_DOCS_URL = `${ENVIRONMENTS_DOCS_URL}/plan-your-environments`;
 export const ENVIRONMENTS_UPGRADE_DOCS_URL = `${ENVIRONMENTS_DOCS_URL}/upgrade-from-environments-classic`;
 
 /** The scopes that the promotion settings page needs. */

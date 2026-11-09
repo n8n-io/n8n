@@ -45,7 +45,8 @@ import { Service } from '@n8n/di';
 import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import { In, IsNull, Like } from '@n8n/typeorm';
 import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { AgentMemoryEntryCandidateEntity } from '../entities/agent-memory-entry-candidate.entity';
 import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.entity';
@@ -60,6 +61,7 @@ import { AgentMemoryEntryCandidateRepository } from '../repositories/agent-memor
 import { AgentMemoryEntryLockRepository } from '../repositories/agent-memory-entry-lock.repository';
 import { AgentMemoryEntrySourceRepository } from '../repositories/agent-memory-entry-source.repository';
 import { AgentMemoryEntryRepository } from '../repositories/agent-memory-entry.repository';
+import { AgentMemoryScopeRepository } from '../repositories/agent-memory-scope.repository';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentObservationCursorRepository } from '../repositories/agent-observation-cursor.repository';
 import { AgentObservationLockRepository } from '../repositories/agent-observation-lock.repository';
@@ -106,6 +108,7 @@ export class N8nMemory {
 		private readonly memoryEntryCandidateRepository: AgentMemoryEntryCandidateRepository,
 		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
+		private readonly memoryScopeRepository: AgentMemoryScopeRepository,
 	) {}
 
 	/** The metadata of the given threads, in one query. Threads without metadata are left out. */
@@ -132,6 +135,7 @@ export class N8nMemory {
 			this.memoryEntryCandidateRepository,
 			this.memoryEntryLockRepository,
 			this.memoryEntrySourceRepository,
+			this.memoryScopeRepository,
 		);
 	}
 }
@@ -161,6 +165,7 @@ export class N8nMemoryImpl
 		private readonly memoryEntryCandidateRepository: AgentMemoryEntryCandidateRepository,
 		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
+		private readonly memoryScopeRepository: AgentMemoryScopeRepository,
 	) {}
 
 	readonly episodic: BuiltEpisodicMemoryCaptureStore['episodic'] = {
@@ -270,8 +275,8 @@ export class N8nMemoryImpl
 	}
 
 	async deleteThread(threadId: string, ctx: OperationContext = {}): Promise<void> {
-		await this.threadRepository.runInTransaction(ctx, async (trx) => {
-			await this.dropEpisodicEntriesWithoutSources(trx, threadId);
+		await this.threadRepository.runInTransaction(ctx, async (trx, transactionCtx) => {
+			await this.deleteEpisodicEntriesWithoutSources(trx, threadId, transactionCtx);
 			const observationScope = { agentId: this.agentId, observationScopeId: threadId };
 			await trx.delete(AgentObservationEntity, observationScope);
 			await trx.delete(AgentObservationCursorEntity, observationScope);
@@ -291,8 +296,8 @@ export class N8nMemoryImpl
 	}
 
 	private async deleteThreadsMatching(observationScopeId: FindOperator<string>): Promise<void> {
-		await this.threadRepository.manager.transaction(async (trx) => {
-			await this.dropEpisodicEntriesWithoutSources(trx, observationScopeId);
+		await this.threadRepository.runInTransaction({}, async (trx, transactionCtx) => {
+			await this.deleteEpisodicEntriesWithoutSources(trx, observationScopeId, transactionCtx);
 			const observationScope = { agentId: this.agentId, observationScopeId };
 			await trx.delete(AgentObservationEntity, observationScope);
 			await trx.delete(AgentObservationCursorEntity, observationScope);
@@ -301,9 +306,10 @@ export class N8nMemoryImpl
 		});
 	}
 
-	private async dropEpisodicEntriesWithoutSources(
+	private async deleteEpisodicEntriesWithoutSources(
 		trx: EntityManager,
 		threadId: string | FindOperator<string>,
+		ctx: OperationContext,
 	): Promise<void> {
 		const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);
 		const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
@@ -313,6 +319,14 @@ export class N8nMemoryImpl
 		});
 		const affectedEntryIds = uniqueStrings(affectedSources.map((source) => source.memoryEntryId));
 		if (affectedEntryIds.length === 0) return;
+
+		const entries = await entryRepo.find({
+			select: { resourceId: true },
+			where: { agentId: this.agentId, id: In(affectedEntryIds) },
+		});
+		for (const resourceId of uniqueStrings(entries.map((entry) => entry.resourceId)).sort()) {
+			await this.memoryScopeRepository.lockActiveScope(resourceId, ctx);
+		}
 
 		await trx.delete(AgentMemoryEntrySourceEntity, {
 			agentId: this.agentId,
@@ -327,10 +341,7 @@ export class N8nMemoryImpl
 		const orphanedEntryIds = affectedEntryIds.filter((id) => !entriesWithSources.has(id));
 		if (orphanedEntryIds.length === 0) return;
 
-		await entryRepo.update(
-			{ agentId: this.agentId, id: In(orphanedEntryIds), status: 'active' },
-			droppedLifecycleState(),
-		);
+		await entryRepo.delete({ agentId: this.agentId, id: In(orphanedEntryIds) });
 	}
 
 	// ── Message persistence ──────────────────────────────────────────────

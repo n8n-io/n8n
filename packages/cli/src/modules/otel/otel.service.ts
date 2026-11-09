@@ -12,7 +12,7 @@ import {
 } from '@opentelemetry/sdk-trace-base';
 import { ParentBasedSampler, TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { ExecutionIdentitySpanProcessor } from './execution-identity';
 import { OtelConfigureHook } from './otel-configure-hook';
@@ -31,8 +31,8 @@ import { N8N_VERSION } from '@/constants';
 import { ExternalHooks } from '@/external-hooks';
 import { OtelSdk } from '@/observability/otel-sdk';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { outboundPropagatorFromEnv } from '@/observability/outbound-propagator';
 import {
-	OUTBOUND_HEADERS_PROPAGATOR,
 	TRACING_OFF,
 	type ShutdownErrors,
 	type TracingPipeline,
@@ -64,6 +64,8 @@ const stripEmptyResolutionNote = (message: string) =>
 
 @Service()
 export class OtelService {
+	private readonly outbound = outboundPropagatorFromEnv();
+
 	private activeExport?: ActiveExport;
 
 	private isShutDown = false;
@@ -81,6 +83,8 @@ export class OtelService {
 	) {}
 
 	async init(): Promise<void> {
+		this.warnUnknownPropagators();
+
 		try {
 			await this.externalHooks.run('otel.configure', [this.configureHook.api]);
 		} catch (error) {
@@ -90,6 +94,16 @@ export class OtelService {
 			});
 		}
 		await this.applySavedSettings();
+	}
+
+	private warnUnknownPropagators(): void {
+		const unknown = this.outbound.unknownNames;
+		if (unknown.length === 0) return;
+
+		this.logger.warn(
+			'Ignored a propagator in OTEL_PROPAGATORS that n8n does not carry. n8n writes the W3C trace context and baggage only.',
+			{ unknown },
+		);
 	}
 
 	readonly applySavedSettings = latestWins(async () => {
@@ -223,7 +237,7 @@ export class OtelService {
 			sampler: new ParentBasedSampler({
 				root: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
 			}),
-			propagator: settings.injectOutbound ? OUTBOUND_HEADERS_PROPAGATOR : TRACING_OFF.propagator,
+			propagator: settings.injectOutbound ? this.outbound.propagator : TRACING_OFF.propagator,
 		};
 	}
 

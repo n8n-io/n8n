@@ -1241,6 +1241,12 @@ keep the vulnerability out of public branch names, commits, and test description
 
 All workflows post via `.github/scripts/slack/notify.mjs` — a direct `fetch` to `chat.postMessage` that exits non-zero on any Slack error. No third-party action; no silent swallowing.
 
+`release-schedule-patch-prs.yml` sends one alert to `#alerts-build` if any patch
+track fails, including a nested npm-install closure check. The alert includes
+the workflow name and run URL. It applies to manual `workflow_dispatch` runs
+while the cron trigger is disabled. Successful runs, no-change skips, and runs
+with only cancellations send no alert.
+
 ```yaml
 notify-on-failure:
   runs-on: ubuntu-latest

@@ -8,26 +8,26 @@
 #   3. Change the runtime images to the digests that step 2 published.
 # The podman path of scripts/dockerize-n8n.mjs reads these defaults as text.
 # Keep each default a plain string.
-variable "NODE_VERSION" { default = "26.12.1" }
+variable "NODE_VERSION" { default = "26.13.0" }
 
 variable "DHI_REF" {
-  default = "dhi.io/node:26.12.1-alpine3.24-dev@sha256:4b1591bfce570a17f9562e206b62e76be84d6df32c3a86bfc677fc87959402cc"
+  default = "dhi.io/node:26.13.0-alpine3.24-dev@sha256:3e61a81f5d83780aff01cb2d8f2251698bf3fe7d522bef71a9656fa93333b504"
 }
 variable "BUILDER_IMAGE" {
-  default = "node:26.12.1-alpine3.24@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797"
+  default = "node:26.13.0-alpine3.24@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216"
 }
 variable "RUNTIME_IMAGE" {
-  default = "n8nio/base:26.12.1@sha256:435e5310b29cfa5880b5512703f7d10bafcf0f5dd700c7adac6ee8cfbe77306a"
+  default = "n8nio/base:26.13.0@sha256:ad63e5559bd12eb97a8702d64662d7baebeba07cb1362bb304f771edea7104c6"
 }
 
 variable "DEBIAN_DHI_REF" {
-  default = "dhi.io/node:26.12.1-debian13-dev@sha256:c8939885965365c675a024d062bcb761bda4b47e95ce0323aa998ac9bc312fd6"
+  default = "dhi.io/node:26.13.0-debian13-dev@sha256:6c7e2d41ac2cad140e61f765740708f5ab19ac3e734b3d56e029923cb11be4fd"
 }
 variable "DEBIAN_BUILDER_IMAGE" {
-  default = "node:26.12.1-trixie-slim@sha256:94816674c62774da0d099a947bf4613b9e1972a2733abd0d0cd80e795f8411d0"
+  default = "node:26.13.0-trixie-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072"
 }
 variable "DEBIAN_RUNTIME_IMAGE" {
-  default = "n8nio/base:26.12.1-debian@sha256:694957591142a93eb6db31ce0374807c17901e80e8970d5753baf1fb15fdec9f"
+  default = "n8nio/base:26.13.0-debian@sha256:e21d4b26ba8bf56e9fed9e459fd347e9a030bda9dc0a0b82bed03c2e836fe52a"
 }
 
 # build-node-pc-image.yml publishes these.
