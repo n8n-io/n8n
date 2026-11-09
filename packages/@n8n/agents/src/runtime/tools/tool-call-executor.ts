@@ -496,8 +496,8 @@ export class ToolCallExecutor {
 		for (const entry of Object.values(pending)) {
 			if (!entry.suspended) continue;
 			const target = resolveToolCallTarget(ctx.toolMap, entry.toolName, entry.input);
-			const tool = target?.tool;
-			if (!tool?.onCancellation) continue;
+			if (!target?.tool.onCancellation) continue;
+			const tool = target.tool;
 			const params = this.pendingToolCallParams(entry, ctx);
 			if (target.dispatchedBy) params.input = target.input as JSONValue;
 			try {
