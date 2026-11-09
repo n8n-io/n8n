@@ -1,0 +1,28 @@
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-event-sink.test.ts
+  s_53e8d1b413a99f::t_eaca84fdae6f97 14-15,25,29-47
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-event-sink.ts
+  s_53e8d1b413a99f::t_eaca84fdae6f97 28-37,56-58
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantArtifactTurns.ts
+  s_53e8d1b413a99f::t_4e636d66120342 31-34,46-47,56,90-92,97-109,111-113
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantArtifactTurns.test.ts
+  s_53e8d1b413a99f::t_cfa0723f57f543 150-151,197
+  s_53e8d1b413a99f::t_2bf1be761876e6 64-69,121-149,173-196
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_53e8d1b413a99f::t_eaca84fdae6f97 1259-1260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aeb926e7fee60a56db2b5b81aef133d9ce840856",
+  "prompts": {},
+  "sessions": {
+    "s_53e8d1b413a99f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c09ae1ae-1bdf-4e66-8a6d-f7eb7997f339",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
