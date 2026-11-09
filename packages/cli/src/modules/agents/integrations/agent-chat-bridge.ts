@@ -23,7 +23,7 @@ import { UserError } from '@n8n/errors';
 
 import { CacheService } from '@n8n/backend-services';
 
-import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentChatAttachmentService, AgentFileLimitError } from '../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
 import type {
 	AgentExecutionAdmission,
@@ -1318,7 +1318,9 @@ export class AgentChatBridge {
 				attachmentNotes.push(
 					error instanceof InboundAttachmentAccessError
 						? `[Attachment "${name}" could not be read: ${error.message}]`
-						: `[Attachment "${name}" could not be processed]`,
+						: error instanceof AgentFileLimitError
+							? `[Attachment "${name}" was skipped: ${error.message}]`
+							: `[Attachment "${name}" could not be processed]`,
 				);
 			}
 		}

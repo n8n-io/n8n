@@ -7,7 +7,16 @@ import { type EventService, type UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { TransactionRunner, type User, type OperationContext } from '@n8n/db';
+import type { TransactionRunner } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	Person,
+	ServiceAccount,
+	ServiceAccountDetails,
+	type User,
+	type OperationContext,
+} from '@n8n/db';
 import type { Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -21,9 +30,10 @@ import { UserManagementMailer } from '@/user-management/email';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
+import type { UserConsent } from '../database/entities/oauth-user-consent.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
-import { OAuthGrantRepository } from '../database/repositories/oauth-grant.repository';
+import type { OAuthGrantRepository } from '../database/repositories/oauth-grant.repository';
 import { OAuthGrantService } from '../oauth-grant.service';
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
 import { OAuthConsentService } from '../oauth-consent.service';
@@ -792,7 +802,7 @@ describe('OAuthServerService', () => {
 			beforeEach(() => {
 				getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
 				authService.getCookieToken.mockReturnValue('valid-cookie');
-				authService.authenticateUserByCookie.mockResolvedValue(mock<User>({ id: 'user-1' }));
+				authService.authenticateUserByCookie.mockResolvedValue(mock<Person>({ id: 'user-1' }));
 			});
 
 			it('mints a code and skips the consent screen when a grant is reused', async () => {
@@ -1677,6 +1687,42 @@ describe('OAuthServerService', () => {
 		});
 	});
 
+	const serviceAccount = Object.assign(new ServiceAccount(), {
+		id: 'sa-1',
+		role: GLOBAL_MEMBER_ROLE,
+		details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+	});
+
+	describe('getAllClients', () => {
+		it('shows a service account owner by its name and with an empty email', async () => {
+			const manager = Object.assign(new Person(), { id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+			userConsentRepository.findConnectedClients.mockResolvedValue({
+				rows: [
+					{
+						userId: 'sa-1',
+						clientId: 'client-123',
+						grantedAt: 1000,
+						scope: [],
+						client: { id: 'client-123', name: 'Test Client' },
+						user: serviceAccount,
+					} as unknown as UserConsent,
+				],
+				total: 1,
+			});
+			userConsentRepository.findConsentOwners.mockResolvedValue([]);
+			userConsentRepository.countConnectedConsents.mockResolvedValue(1);
+
+			const result = await service.getAllClients(manager, { ownership: 'all' });
+
+			expect(result.clients[0].owner).toEqual({
+				id: 'sa-1',
+				firstName: 'Deploy bot',
+				lastName: null,
+				email: '',
+			});
+		});
+	});
+
 	describe('deleteClient', () => {
 		// The GC step deletes the client through a single conditional query
 		// (`DELETE ... WHERE id = :clientId AND NOT EXISTS (<remaining consents>)`),
@@ -1749,11 +1795,16 @@ describe('OAuthServerService', () => {
 				name: 'Test Client',
 			} as OAuthClient;
 
+			const owner = Object.assign(new Person(), {
+				id: 'user-456',
+				email: 'owner@n8n.io',
+				firstName: 'Owner',
+			});
 			oauthClientRepository.findOne.mockResolvedValue(client);
 			userConsentRepository.findOne.mockResolvedValue({
 				userId: 'user-456',
 				clientId: 'client-123',
-				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+				user: owner,
 			} as any);
 			userConsentRepository.countBy.mockResolvedValue(1);
 			mailer.notifyMcpClientRevoked.mockResolvedValue({ emailSent: true });
@@ -1763,7 +1814,7 @@ describe('OAuthServerService', () => {
 
 			expect(mailer.notifyMcpClientRevoked).toHaveBeenCalledWith({
 				clientName: 'Test Client',
-				owner: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+				owner,
 				revoker,
 			});
 		});
@@ -1785,6 +1836,31 @@ describe('OAuthServerService', () => {
 			const revoker = { id: 'user-456', email: 'owner@n8n.io' } as any;
 			await service.deleteClient('client-123', 'user-456', revoker);
 
+			expect(mailer.notifyMcpClientRevoked).not.toHaveBeenCalled();
+		});
+
+		it('should not send an email when the grant owner is a service account', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOne.mockResolvedValue({
+				userId: 'sa-1',
+				clientId: 'client-123',
+				user: serviceAccount,
+			} as unknown as UserConsent);
+			userConsentRepository.countBy.mockResolvedValue(1);
+			mockGarbageCollect(0);
+
+			const revoker = Object.assign(new Person(), { id: 'admin-1', email: 'admin@n8n.io' });
+			await service.deleteClient('client-123', 'sa-1', revoker);
+
+			expect(userConsentRepository.delete).toHaveBeenCalledWith({
+				clientId: 'client-123',
+				userId: 'sa-1',
+			});
 			expect(mailer.notifyMcpClientRevoked).not.toHaveBeenCalled();
 		});
 

@@ -26,13 +26,13 @@ import { useCloseOnEscape } from '../composables/useCloseOnEscape';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 const {
-	nodeTypeName,
+	typeName,
 	kind = 'node',
 	audience,
 	project,
 } = defineProps<{
 	/** Several names switch to copy that does not assume one node or one credential type. */
-	nodeTypeName: string | string[];
+	typeName: string | string[];
 	kind?: RestrictedTypeKind;
 	audience: ContactAudience;
 	/** Whose project admins to list. Defaults to the open project. */
@@ -49,7 +49,7 @@ const policiesStore = useTypeAvailabilityPoliciesStore();
 const isLoading = ref(false);
 let lookupId = 0;
 
-const typeNames = computed(() => (Array.isArray(nodeTypeName) ? nodeTypeName : [nodeTypeName]));
+const typeNames = computed(() => (Array.isArray(typeName) ? typeName : [typeName]));
 const isSeveral = computed(() => typeNames.value.length > 1);
 const typeLabel = computed(() => typeNames.value.join(', '));
 

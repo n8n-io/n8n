@@ -117,6 +117,9 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 			.leftJoinAndSelect('review.environment', 'environment')
 			.leftJoinAndSelect('review.createdBy', 'createdBy')
 			.leftJoinAndSelect('review.approvedBy', 'approvedBy')
+			// A query builder skips eager relations, and a service account's name is in `details`.
+			.leftJoinAndSelect('createdBy.details', 'createdByDetails')
+			.leftJoinAndSelect('approvedBy.details', 'approvedByDetails')
 			.where('review.state IN (:...states)', {
 				states: state === 'open' ? OPEN_STATES : TERMINAL_STATES,
 			})
