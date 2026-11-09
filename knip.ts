@@ -100,6 +100,10 @@ const config: KnipConfig = {
 			// ioredis-mock is loaded with vi.importActual, which knip does not link.
 			ignoreDependencies: ['ioredis-mock'],
 		}),
+		'packages/@n8n/backend-docs-site': pkg({
+			// The Astro prerender step resolves cookie at runtime. See the package README.
+			ignoreDependencies: ['cookie'],
+		}),
 		'packages/@n8n/instance-ai': pkg({
 			// psl is loaded with a dynamic import, which knip does not link to @types.
 			ignoreDependencies: ['@types/psl'],

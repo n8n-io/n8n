@@ -21,7 +21,11 @@ accept = ["200..=204", "429"]
 
 # Notion and Linear require a session and always answer 200 or a redirect to
 # a login page, so a check proves nothing. Slack permalinks are private.
+# The n8n-cloud repository is private, so GitHub answers 404 without a token.
+# npmjs.com answers 403 to the link checker.
 exclude = [
+  "^https://github\\.com/n8n-io/n8n-cloud/",
+  "^https://www\\.npmjs\\.com/",
   "^https://app\\.notion\\.com/",
   "^https://www\\.notion\\.so/",
   "^https://linear\\.app/",
