@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { CredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
 import type { CredentialsEntity, Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -27,7 +27,6 @@ vi.mock('n8n-core', async () => {
 });
 
 import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
-import { OwnershipService } from '../ownership.service';
 import { WorkflowLoaderService } from '../workflow-loader.service';
 
 import { CredentialsFinderService } from '@n8n/backend-services';
@@ -39,14 +38,14 @@ describe('DynamicNodeParametersService', () => {
 	const logger = mockInstance(Logger);
 	const nodeTypes = mockInstance(NodeTypes);
 	const workflowLoaderService = mockInstance(WorkflowLoaderService);
-	const ownershipService = mockInstance(OwnershipService);
+	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const credentialsFinderService = mockInstance(CredentialsFinderService);
 	const credentialsRepository = mockInstance(CredentialsRepository);
 	const service = new DynamicNodeParametersService(
 		logger,
 		nodeTypes,
 		workflowLoaderService,
-		ownershipService,
+		sharedWorkflowRepository,
 		credentialsFinderService,
 		credentialsRepository,
 	);
@@ -848,7 +847,7 @@ describe('DynamicNodeParametersService', () => {
 		});
 
 		it("should use the workflow's owning project instead of the supplied project", async () => {
-			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
 				mock<Project>({ id: 'owning-project' }),
 			);
 			const payload = { projectId: 'former-project', workflowId: 'workflow-1' };
@@ -856,6 +855,15 @@ describe('DynamicNodeParametersService', () => {
 			await service.refineResourceIds(user, payload);
 
 			expect(payload.projectId).toBe('owning-project');
+		});
+
+		it('should keep the supplied project when the workflow is not saved yet', async () => {
+			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
+			const payload = { projectId: 'project-1', workflowId: 'unsaved-workflow' };
+
+			await service.refineResourceIds(user, payload);
+
+			expect(payload.projectId).toBe('project-1');
 		});
 
 		it('should run credential check regardless of whether workflowId is present', async () => {

@@ -222,17 +222,14 @@ export function sortNodesByExecutionOrder<T extends ExecutionOrderItem>(
 	return result;
 }
 
-/** Query parameters that only place a new, unsaved workflow. */
+/** Query parameters that only place a new workflow. */
 const NEW_WORKFLOW_QUERY_KEYS = ['new', 'projectId', 'parentFolderId'] as const;
 
 export function hasNewWorkflowQuery(query: LocationQuery): boolean {
 	return NEW_WORKFLOW_QUERY_KEYS.some((key) => query[key] !== undefined);
 }
 
-/**
- * Removes the query parameters that only place a new workflow. A saved workflow can move to
- * another project, and a leftover `projectId` would point the editor at its former project.
- */
+/** A saved workflow can move, so a leftover `projectId` can name its former project. */
 export function withoutNewWorkflowQuery(query: LocationQuery): LocationQueryRaw {
 	const result: LocationQueryRaw = { ...query };
 	for (const key of NEW_WORKFLOW_QUERY_KEYS) result[key] = undefined;

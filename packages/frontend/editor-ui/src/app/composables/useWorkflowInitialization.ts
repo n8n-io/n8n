@@ -367,7 +367,7 @@ export function useWorkflowInitialization() {
 
 	async function initializeWorkspaceForExistingWorkflow(id: string) {
 		try {
-			// Before the load: the route change resets the project navigation that the load sets.
+			// Before the load: a route change resets the project navigation.
 			if (hasNewWorkflowQuery(route.query)) {
 				await router.replace({
 					name: route.name,

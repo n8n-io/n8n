@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { CredentialsRepository, User } from '@n8n/db';
+import { CredentialsRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { LoadOptionsContext, RoutingNode, LocalLoadOptionsContext, ExecuteContext } from 'n8n-core';
 import type {
@@ -29,7 +29,6 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { withExpressionIsolate } from '@/utils';
 
-import { OwnershipService } from './ownership.service';
 import { WorkflowLoaderService } from './workflow-loader.service';
 
 type LocalResourceMappingMethod = (
@@ -60,7 +59,7 @@ export class DynamicNodeParametersService {
 		private logger: Logger,
 		private nodeTypes: NodeTypes,
 		private workflowLoaderService: WorkflowLoaderService,
-		private ownershipService: OwnershipService,
+		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private credentialsFinderService: CredentialsFinderService,
 		private credentialsRepository: CredentialsRepository,
 	) {}
@@ -96,10 +95,11 @@ export class DynamicNodeParametersService {
 				);
 				payload.workflowId = undefined;
 			} else {
-				// A saved workflow runs against its owning project, so look up resources there.
-				// The project from the client can be stale after the workflow moves.
-				const project = await this.ownershipService.getWorkflowProjectCached(payload.workflowId);
-				payload.projectId = project.id;
+				// Use the owning project: the client's can be stale. Unsaved workflows have none.
+				const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(
+					payload.workflowId,
+				);
+				if (project) payload.projectId = project.id;
 			}
 		}
 
