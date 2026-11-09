@@ -230,7 +230,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		displayName: 'Color',
 		name: 'color',
 		type: 'color',
-		default: '#ff000000',
+		default: '#FF0000',
 		typeOptions: {
 			showAlpha: true,
 		},
