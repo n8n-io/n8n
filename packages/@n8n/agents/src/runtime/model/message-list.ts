@@ -1,8 +1,8 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { ModelMessage, SystemModelMessage } from 'ai';
 
-import { toAiMessages } from './messages';
-import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
+import { isReasoningBoundToPrefix, toAiMessages } from './messages';
+import { filterLlmMessages, getCreatedAt, isLlmMessage } from '../../sdk/message';
 import type { SerializedMessageList } from '../../types/runtime/message-list';
 import type {
 	AgentDbMessage,
@@ -139,6 +139,13 @@ export class AgentMessageList {
 	 * re-derive it from the persisted cursor.
 	 */
 	private observationMaskBoundary: { createdAt: Date; id: string } | undefined;
+
+	/**
+	 * IDs of the messages that existed when the prompt prefix was last rewritten.
+	 * `forLlm` stops replaying their prefix-bound reasoning. Runtime-only — not
+	 * serialized.
+	 */
+	private prefixRewrittenMessageIds = new Set<string>();
 
 	/**
 	 * Normalize an AgentMessage into an AgentDbMessage and push it onto `this.all`,
@@ -381,7 +388,9 @@ export class AgentMessageList {
 		providerId?: string,
 	): LlmContext {
 		const messages = toAiMessages(
-			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
+			filterLlmMessages(
+				stripOrphanedToolMessages(this.withoutPrefixBoundReasoning(this.llmVisibleMessages())),
+			),
 			providerId,
 		);
 		// A masked window may be empty or start mid-exchange; anchor it with a
@@ -423,6 +432,35 @@ export class AgentMessageList {
 			createdAt: lastObservedAt,
 			id: cursor.lastObservedMessageId,
 		};
+	}
+
+	/**
+	 * Record that the runtime rewrote the prompt prefix (system prompt and first
+	 * messages). Reasoning that the provider binds to the old prefix is no longer
+	 * replayed for the messages that exist now.
+	 */
+	markPromptPrefixRewritten(): void {
+		this.prefixRewrittenMessageIds = new Set(this.all.map((m) => m.id));
+	}
+
+	/**
+	 * Copy the marked messages without the replay data of their prefix-bound
+	 * reasoning, so `toAiMessages` drops those blocks. The blocks stay in place
+	 * because replay positions of provider-executed results count blocks.
+	 */
+	private withoutPrefixBoundReasoning(messages: AgentDbMessage[]): AgentDbMessage[] {
+		if (this.prefixRewrittenMessageIds.size === 0) return messages;
+		return messages.map((message) => {
+			if (!isLlmMessage(message) || !this.prefixRewrittenMessageIds.has(message.id)) {
+				return message;
+			}
+			const content = message.content.map((block) =>
+				block.type === 'reasoning' && isReasoningBoundToPrefix(block)
+					? { type: 'reasoning' as const, text: block.text }
+					: block,
+			);
+			return { ...message, content };
+		});
 	}
 
 	/** Messages visible to the LLM: everything after the observation mask boundary. */

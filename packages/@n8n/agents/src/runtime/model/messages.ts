@@ -132,6 +132,18 @@ function isReasoningMergedByProvider(part: AiContentPart): boolean {
 	);
 }
 
+/** Whether a reasoning block carries replay data that the provider binds to the prompt prefix. */
+export function isReasoningBoundToPrefix(block: MessageContent): boolean {
+	if (!isReasoning(block)) return false;
+	const namespaces = [
+		...Object.keys(block.providerMetadata ?? {}),
+		...Object.keys(block.providerOptions ?? {}),
+	];
+	return namespaces.some(
+		(namespace) => getProviderQuirks(namespace).reasoningBoundToPrefix === true,
+	);
+}
+
 export type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
 
 export function isContentToolResultOutput(value: unknown): value is ContentToolResultOutput {
@@ -448,6 +460,106 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 	return base;
 }
 
+type SettledToolCall = ContentToolCall & { state: 'resolved' | 'rejected' };
+
+/** Legacy DB blocks have no state, and pending blocks have no result to replay. */
+function isSettledToolCall(block: MessageContent): block is SettledToolCall {
+	return block.type === 'tool-call' && 'state' in block && block.state !== 'pending';
+}
+
+/**
+ * Replayed settled tool calls still need their original provider metadata.
+ * Gemini validates thought signatures on historical function-call parts, even
+ * after the tool result is available.
+ */
+function toReplayedToolCallPart(block: ContentToolCall, toolCallId: string): ToolCallPart {
+	return {
+		type: 'tool-call',
+		toolCallId,
+		toolName: block.toolName,
+		input: toToolInputObject(block.input),
+		providerExecuted: block.providerExecuted,
+		...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
+		...(block.providerOptions && { providerOptions: block.providerOptions }),
+	};
+}
+
+/**
+ * Group provider-executed results with a recorded position by the block index
+ * they go before. A result never goes before its own call. Results at or past
+ * the end share the last slot, in block order.
+ */
+function groupPositionedResults(
+	content: MessageContent[],
+	messageIndex: number,
+): Map<number, ToolResultPart[]> {
+	const groups = new Map<number, ToolResultPart[]>();
+	for (const [blockIndex, block] of content.entries()) {
+		if (!isSettledToolCall(block) || !block.providerExecuted) continue;
+		if (block.resultPosition === undefined) continue;
+
+		const slot = Math.min(Math.max(block.resultPosition, blockIndex + 1), content.length);
+		const toolCallId = replayableToolCallId(block.toolCallId, messageIndex, blockIndex);
+		const group = groups.get(slot) ?? [];
+		group.push(toolCallToResultPart(block, toolCallId));
+		groups.set(slot, group);
+	}
+	return groups;
+}
+
+/**
+ * Client results go to separate tool messages. A provider-executed result
+ * stays in the assistant message: right after its call when no position was
+ * recorded, else at that position (see groupPositionedResults).
+ */
+function placeUnpositionedResult(
+	block: SettledToolCall,
+	toolCallId: string,
+	assistantParts: AiContentPart[],
+	resultMessages: ModelMessage[],
+): void {
+	if (!block.providerExecuted) {
+		resultMessages.push({ role: 'tool', content: [toolCallToResultPart(block, toolCallId)] });
+		return;
+	}
+	if (block.resultPosition !== undefined) return;
+	assistantParts.push(toolCallToResultPart(block, toolCallId));
+}
+
+function toAssistantAiMessages(
+	msg: Message,
+	messageIndex: number,
+	replayReasoningText: boolean,
+): ModelMessage[] {
+	const assistantParts: AiContentPart[] = [];
+	const resultMessages: ModelMessage[] = [];
+	const positionedResults = groupPositionedResults(msg.content, messageIndex);
+
+	for (const [blockIndex, block] of msg.content.entries()) {
+		assistantParts.push(...(positionedResults.get(blockIndex) ?? []));
+		if (block.type !== 'tool-call') {
+			const part = toAiContent(block, replayReasoningText);
+			if (part) assistantParts.push(part);
+			continue;
+		}
+		// Defense-in-depth: the strip step removes pending blocks first
+		if (!isSettledToolCall(block)) continue;
+
+		const toolCallId = replayableToolCallId(block.toolCallId, messageIndex, blockIndex);
+		assistantParts.push(toReplayedToolCallPart(block, toolCallId));
+		placeUnpositionedResult(block, toolCallId, assistantParts, resultMessages);
+	}
+	assistantParts.push(...(positionedResults.get(msg.content.length) ?? []));
+
+	if (assistantParts.length === 0) return resultMessages;
+	const assistantMsg: ModelMessage = {
+		role: 'assistant',
+		content: assistantParts as AiAssistantContent,
+		...(msg.providerOptions && { providerOptions: msg.providerOptions }),
+	};
+	return [assistantMsg, ...resultMessages];
+}
+
 /**
  * Convert a single n8n Message to one or more AI SDK ModelMessages.
  *
@@ -482,66 +594,8 @@ function toAiMessageList(
 			return [msg.providerOptions ? { ...base, providerOptions: msg.providerOptions } : base];
 		}
 
-		case 'assistant': {
-			const assistantParts: AiContentPart[] = [];
-			const resultMessages: ModelMessage[] = [];
-
-			for (const [blockIndex, block] of msg.content.entries()) {
-				if (block.type === 'tool-call') {
-					if (!('state' in block)) {
-						// Legacy DB block - skip it
-						continue;
-					}
-					if (block.state === 'pending') {
-						// Skip pending blocks — defense-in-depth (strip step removes them first)
-						continue;
-					}
-					const toolCallId = replayableToolCallId(block.toolCallId, messageIndex, blockIndex);
-					// Emit tool-call part (without result fields)
-					const toolCallPart: ToolCallPart = {
-						type: 'tool-call',
-						toolCallId,
-						toolName: block.toolName,
-						input: toToolInputObject(block.input),
-						providerExecuted: block.providerExecuted,
-					};
-					// Replayed settled tool calls still need their original provider
-					// metadata. Gemini validates thought signatures on historical
-					// function-call parts, even after the tool result is available.
-					assistantParts.push({
-						...toolCallPart,
-						...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
-						...(block.providerOptions && { providerOptions: block.providerOptions }),
-					});
-					// Emit corresponding tool-result message immediately after. A
-					// provider-executed result belongs in the assistant message itself.
-					const resultPart = toolCallToResultPart(block, toolCallId);
-					if (block.providerExecuted) assistantParts.push(resultPart);
-					else resultMessages.push({ role: 'tool', content: [resultPart] });
-				} else {
-					const part = toAiContent(block, replayReasoningText);
-					if (part) assistantParts.push(part);
-				}
-			}
-
-			const transformedMessages: ModelMessage[] = [];
-
-			if (assistantParts.length > 0) {
-				const assistantBase: ModelMessage = {
-					role: 'assistant',
-					content: assistantParts as AiAssistantContent,
-				};
-				const assistantMsg: ModelMessage = msg.providerOptions
-					? { ...assistantBase, providerOptions: msg.providerOptions }
-					: assistantBase;
-				transformedMessages.push(assistantMsg);
-			}
-			if (resultMessages.length > 0) {
-				transformedMessages.push(...resultMessages);
-			}
-
-			return transformedMessages;
-		}
+		case 'assistant':
+			return toAssistantAiMessages(msg, messageIndex, replayReasoningText);
 
 		case 'tool': {
 			// Legacy role: 'tool' messages (from old DB rows). Don't emit them.
@@ -586,6 +640,39 @@ export function toAiMessages(messages: Message[], providerId?: string): ModelMes
 	}
 
 	return result;
+}
+
+/**
+ * Record where each provider-executed result sat in its assistant message, so
+ * replay puts it back there. Anthropic rejects replayed thinking when the
+ * blocks around it change order, for example after parallel web searches.
+ */
+function recordResultPositions(
+	parts: readonly AiContentPart[],
+	converted: Array<MessageContent | undefined>,
+	content: MessageContent[],
+): void {
+	let keptBlocks = 0;
+	for (const [index, part] of parts.entries()) {
+		if (converted[index]) {
+			keptBlocks++;
+			continue;
+		}
+		if (part.type !== 'tool-result') continue;
+		const block = content.find(
+			(candidate): candidate is ContentToolCall =>
+				candidate.type === 'tool-call' && candidate.toolCallId === part.toolCallId,
+		);
+		if (block) block.resultPosition = keptBlocks;
+	}
+}
+
+function fromAiContentList(rawContent: ModelMessage['content']): MessageContent[] {
+	if (typeof rawContent === 'string') return [{ type: 'text', text: rawContent }];
+	const converted = rawContent.map(fromAiContent);
+	const content = converted.filter((p): p is MessageContent => p !== undefined);
+	recordResultPositions(rawContent, converted, content);
+	return content;
 }
 
 /**
@@ -645,10 +732,7 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 		}
 
 		const rawContent = msg.content;
-		const content: MessageContent[] =
-			typeof rawContent === 'string'
-				? [{ type: 'text', text: rawContent }]
-				: rawContent.map(fromAiContent).filter((p): p is MessageContent => p !== undefined);
+		const content = fromAiContentList(rawContent);
 
 		const agentMsg: AgentMessage = { role: msg.role, content };
 		if ('providerOptions' in msg && msg.providerOptions) {

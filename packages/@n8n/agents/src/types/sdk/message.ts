@@ -140,6 +140,12 @@ export type ContentToolCall = ContentMetadata & {
 	resultProviderOptions?: ProviderOptions;
 
 	/**
+	 * Number of content blocks before a provider-executed result in the original
+	 * assistant message. Replay puts the result back at this position.
+	 */
+	resultPosition?: number;
+
+	/**
 	 * Skills this tool activated programmatically (via `ctx.loadSkill`), so the
 	 * skill body can re-anchor to this result on a later turn instead of falling
 	 * back to the system prompt. Metadata only — never sent to the model.

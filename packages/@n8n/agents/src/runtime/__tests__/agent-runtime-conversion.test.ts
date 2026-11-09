@@ -944,6 +944,84 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		]);
 	});
 
+	it('replays parallel and sequential provider-executed results in their original block order', () => {
+		const search = (id: string) => ({
+			type: 'tool-call' as const,
+			toolCallId: id,
+			toolName: 'web_search',
+			input: { query: id },
+			providerExecuted: true,
+		});
+		const result = (id: string) => ({
+			type: 'tool-result' as const,
+			toolCallId: id,
+			toolName: 'web_search',
+			output: { type: 'json' as const, value: [{ url: `https://${id}` }] },
+		});
+		const aiMessages: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'plan', providerOptions: { anthropic: { signature: 's' } } },
+					search('srvtoolu_A'),
+					search('srvtoolu_B'),
+					result('srvtoolu_A'),
+					result('srvtoolu_B'),
+					{ type: 'text', text: 'found' },
+				],
+			},
+		];
+		const order = (messages: ModelMessage[]) =>
+			(messages[0].content as Array<{ type: string; toolCallId?: string }>).map((part) =>
+				[part.type, part.toolCallId].filter(Boolean).join(':'),
+			);
+
+		// Stored rows are JSON.
+		const serialized = JSON.stringify(fromAiMessages(aiMessages));
+		const stored = JSON.parse(serialized) as Message[];
+
+		expect(order(toAiMessages(stored, 'anthropic'))).toEqual([
+			'reasoning',
+			'tool-call:srvtoolu_A',
+			'tool-call:srvtoolu_B',
+			'tool-result:srvtoolu_A',
+			'tool-result:srvtoolu_B',
+			'text',
+		]);
+
+		// Stored blocks without a recorded position keep each result after its call.
+		const legacy = structuredClone(stored);
+		for (const block of legacy[0].content) {
+			if (block.type === 'tool-call') delete block.resultPosition;
+		}
+		expect(order(toAiMessages(legacy, 'anthropic'))).toEqual([
+			'reasoning',
+			'tool-call:srvtoolu_A',
+			'tool-result:srvtoolu_A',
+			'tool-call:srvtoolu_B',
+			'tool-result:srvtoolu_B',
+			'text',
+		]);
+
+		// Sequential calls keep their interleaved order.
+		const sequential: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'plan', providerOptions: { anthropic: { signature: 's' } } },
+					search('srvtoolu_A'),
+					result('srvtoolu_A'),
+					search('srvtoolu_B'),
+					result('srvtoolu_B'),
+					{ type: 'text', text: 'found' },
+				],
+			},
+		];
+		const serializedSequential = JSON.stringify(fromAiMessages(sequential));
+		const storedSequential = JSON.parse(serializedSequential) as Message[];
+		expect(order(toAiMessages(storedSequential, 'anthropic'))).toEqual(order(sequential));
+	});
+
 	it('round-trip is structurally equivalent for a resolved tool-call', () => {
 		const original: Message[] = [
 			{

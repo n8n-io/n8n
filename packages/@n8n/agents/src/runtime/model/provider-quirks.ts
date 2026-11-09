@@ -27,6 +27,12 @@ export interface ProviderQuirks {
 	 * turns still drop them.
 	 */
 	replayReasoningText?: boolean;
+	/**
+	 * Signed reasoning is bound to the prompt it was created under. After the
+	 * runtime rewrites that prompt (mid-run observation), the provider rejects
+	 * the replay, so the runtime drops it.
+	 */
+	reasoningBoundToPrefix?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
@@ -112,6 +118,12 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// that produced them, so a merged message with signed reasoning from two
 		// responses is rejected with "thinking blocks ... cannot be modified".
 		mergesAdjacentAssistantMessages: true,
+		// QUIRK(anthropic): the signature binds a thinking block to the system
+		// prompt and the messages before it. Mid-run observation replaces the
+		// first message and the system prompt, so the replay is rejected with
+		// "thinking block bound to a different conversation". A tool loop that
+		// continues without the thinking blocks is accepted.
+		reasoningBoundToPrefix: true,
 		// QUIRK(anthropic): defaults every function tool to eager_input_streaming,
 		// which forwards the model's raw argument tokens without server-side JSON
 		// validation — malformed inputs (e.g. unquoted string values) then reach
