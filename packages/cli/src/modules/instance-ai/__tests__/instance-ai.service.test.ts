@@ -1559,6 +1559,23 @@ describe('InstanceAiService — memory task observer', () => {
 		expect(() => observer(event)).not.toThrow();
 		expect(service.memoryTaskRegistry.handleEvent).toHaveBeenCalledWith('thread-1', event);
 	});
+
+	it('logs the reason when a completed observer task was skipped', () => {
+		const service = createMemoryTaskObserverService();
+		const observer = service.memoryTaskObserverFor('thread-1', undefined);
+		const { task } = queuedMemoryTaskEvent();
+
+		observer({
+			type: 'completed',
+			task,
+			value: { status: 'skipped', reason: 'pending-tool-call' },
+		});
+
+		expect(service.logger.info).toHaveBeenCalledWith(
+			'Observational memory task completed',
+			expect.objectContaining({ outcome: 'skipped', reason: 'pending-tool-call' }),
+		);
+	});
 });
 
 describe('InstanceAiService — self-healing launcher', () => {
@@ -5557,6 +5574,117 @@ describe('InstanceAiService — background task cancellation', () => {
 				type: 'agent-completed',
 				payload: { role: 'builder', result: '', status: 'cancelled' },
 			}),
+		);
+	});
+});
+
+describe('InstanceAiService — suspended run cancellation', () => {
+	type SuspendedCancellationService = {
+		cancelRun: (threadId: string, reason?: string) => void;
+		finalizeCancelledSuspendedRun: Mock;
+		agentMemory: { getMessages: Mock; saveMessages: Mock };
+		logger: { warn: Mock };
+		backgroundTasks: { cancelThread: Mock };
+		runState: { getThreadUser: Mock; cancelThread: Mock };
+		suspendedThreads: { dropPendingConfirmationsForThread: Mock };
+	};
+
+	const pendingSetupMessage = {
+		id: 'msg-setup',
+		createdAt: new Date('2026-11-09T12:09:55Z'),
+		role: 'assistant',
+		content: [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-setup',
+				toolName: 'setup_workflow',
+				input: {},
+				state: 'pending',
+				suspension: { message: 'Configure credentials for your workflow' },
+			},
+		],
+	};
+	const resolvedMessage = {
+		id: 'msg-build',
+		createdAt: new Date('2026-11-09T12:09:49Z'),
+		role: 'assistant',
+		content: [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-build',
+				toolName: 'build_workflow',
+				input: {},
+				state: 'resolved',
+				output: 'built',
+			},
+		],
+	};
+
+	function createSuspendedCancellationService() {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as SuspendedCancellationService;
+		Object.assign(service, {
+			finalizeCancelledSuspendedRun: vi.fn(async () => {}),
+			agentMemory: {
+				getMessages: vi.fn(async () => [resolvedMessage, pendingSetupMessage]),
+				saveMessages: vi.fn(async () => {}),
+			},
+			logger: { warn: vi.fn() },
+			backgroundTasks: { cancelThread: vi.fn(() => []) },
+			runState: {
+				getThreadUser: vi.fn(() => fakeUser),
+				cancelThread: vi.fn(() => ({
+					suspended: { runId: 'run-1', user: fakeUser, abortController: new AbortController() },
+				})),
+			},
+			suspendedThreads: { dropPendingConfirmationsForThread: vi.fn(async () => {}) },
+		});
+		return service;
+	}
+
+	it('persists the settled tool call when a suspended run is stopped', async () => {
+		const service = createSuspendedCancellationService();
+
+		service.cancelRun('thread-a');
+
+		await vi.waitFor(() => expect(service.agentMemory.saveMessages).toHaveBeenCalled());
+		expect(service.agentMemory.getMessages).toHaveBeenCalledWith('thread-a', {
+			resourceId: 'user-1',
+		});
+		expect(service.agentMemory.saveMessages).toHaveBeenCalledWith({
+			threadId: 'thread-a',
+			resourceId: 'user-1',
+			messages: [
+				expect.objectContaining({
+					id: 'msg-setup',
+					content: [
+						expect.objectContaining({
+							toolCallId: 'tc-setup',
+							state: 'rejected',
+							error: expect.stringContaining('Configure credentials for your workflow'),
+						}),
+					],
+				}),
+			],
+		});
+	});
+
+	it('logs and continues when the settled tool call cannot be saved', async () => {
+		const service = createSuspendedCancellationService();
+		service.agentMemory.saveMessages.mockRejectedValueOnce(new Error('db down'));
+
+		service.cancelRun('thread-a');
+
+		await vi.waitFor(() =>
+			expect(service.logger.warn).toHaveBeenCalledWith(
+				'Failed to settle the tool call of a cancelled suspended run',
+				{ threadId: 'thread-a', error: 'db down' },
+			),
+		);
+		expect(service.finalizeCancelledSuspendedRun).toHaveBeenCalled();
+		expect(service.suspendedThreads.dropPendingConfirmationsForThread).toHaveBeenCalledWith(
+			'thread-a',
 		);
 	});
 });
