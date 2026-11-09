@@ -16,5 +16,6 @@ describe('approval callback step id', () => {
 		expect(decodeStepId(encoded.slice(0, 21) + 'B')).toBeUndefined();
 		expect(decodeStepId(encodeStepId('01926a4e-7f5c-4000-8000-000000000001'))).toBeUndefined();
 		expect(decodeStepId('short')).toBeUndefined();
+		expect(decodeStepId('A'.repeat(100_000))).toBeUndefined();
 	});
 });

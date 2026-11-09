@@ -13,6 +13,8 @@ export const encodeStepId = (stepId: string): string =>
 
 /** Accepts only the string that `encodeStepId` builds for a UUID v7. */
 export function decodeStepId(encoded: string): string | undefined {
+	// Check the length before decoding, so an oversized value allocates nothing.
+	if (!/^[A-Za-z0-9_-]{22}$/.test(encoded)) return undefined;
 	const hex = Buffer.from(encoded, 'base64url').toString('hex');
 	const stepId = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 	// The last of the 22 characters has 4 unused bits, so 16 strings decode to the same id.
