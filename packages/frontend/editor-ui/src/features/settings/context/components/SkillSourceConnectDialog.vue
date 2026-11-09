@@ -126,8 +126,12 @@ function resetRepositories() {
 	repositories.value = [];
 	repositoriesTruncated.value = false;
 	repositoriesLoading.value = false;
-	// A link does not depend on the list, so it stays.
-	if (!asLink(repository.value)) repository.value = '';
+}
+
+/** A repository picked from the list stays only while the list of the credential has it. */
+function keepRepositoryIn(list: SkillSourceRepositoryOption[]) {
+	if (asLink(repository.value)) return;
+	if (!list.some((option) => repositoryKey(option) === repository.value)) repository.value = '';
 }
 
 watch(
@@ -280,7 +284,10 @@ async function loadCredentials(select?: string) {
 async function loadRepositories() {
 	resetRepositories();
 	const id = credentialId.value;
-	if (!id) return;
+	if (!id) {
+		keepRepositoryIn([]);
+		return;
+	}
 	const requestedScope = scope.value;
 	const run = repositoriesRun;
 	repositoriesLoading.value = true;
@@ -292,6 +299,7 @@ async function loadRepositories() {
 		if (run !== repositoriesRun) return;
 		repositories.value = list.repositories;
 		repositoriesTruncated.value = list.truncated;
+		keepRepositoryIn(list.repositories);
 	} catch (error) {
 		if (run !== repositoriesRun) return;
 		linkError.value = discoverErrorText(
@@ -360,8 +368,8 @@ function onRepositoryChange(value: unknown) {
 const sourceUrl = computed(() => selectedRepository.value?.url ?? asLink(repository.value) ?? '');
 
 function onScopeChange(value: string) {
+	// The credential and the repository stay when the new scope can use them.
 	scope.value = value;
-	credentialId.value = '';
 	createdCredential.value = null;
 	void loadCredentials();
 }
@@ -576,7 +584,8 @@ function onInteractOutside(event: Event) {
 	<N8nDialog
 		:open="open"
 		:header="i18n.baseText('settings.context.skills.connect.title')"
-		:size="step === 'review' ? '2xlarge' : 'large'"
+		:size="step === 'review' ? 'full' : 'xlarge'"
+		:container-class="step === 'review' ? $style.wide : undefined"
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
 		data-test-id="skill-source-connect-dialog"
@@ -767,6 +776,11 @@ function onInteractOutside(event: Event) {
 
 .footer {
 	align-items: center;
+}
+
+/* The review shows the skill list and the files side by side. */
+.wide {
+	--dialog--max-width: min(1200px, calc(100dvw - var(--spacing--lg)));
 }
 
 .spacer {

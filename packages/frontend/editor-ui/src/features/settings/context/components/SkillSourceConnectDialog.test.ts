@@ -273,6 +273,48 @@ describe('SkillSourceConnectDialog', () => {
 			});
 		});
 
+		it('keeps the credential and the picked repository when the new scope can use them', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, APP]);
+			skillsStore.fetchSourceRepositories.mockResolvedValue(REPOSITORIES);
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			const view = render();
+			await selectCredential(view, 'Ada token');
+			await pickRepository(view, 'ada/notes');
+
+			await selectScope(view, 'project:team-1');
+			await waitFor(() =>
+				expect(skillsStore.fetchSourceRepositories).toHaveBeenLastCalledWith({
+					scope: 'project',
+					projectId: 'team-1',
+					credentialId: 'cred-1',
+				}),
+			);
+			await view.findAllByTestId('repository-option');
+			await next(view);
+
+			expect(skillsStore.discoverSource).toHaveBeenCalledWith({
+				url: 'https://github.com/ada/notes',
+				scope: 'project',
+				projectId: 'team-1',
+				credentialId: 'cred-1',
+			});
+		});
+
+		it('clears the credential and the picked repository when the new scope cannot use them', async () => {
+			skillsStore.fetchSourceCredentials.mockImplementation(async (target) =>
+				target.scope === 'instance' ? [TOKEN] : [APP],
+			);
+			skillsStore.fetchSourceRepositories.mockResolvedValue(REPOSITORIES);
+			const view = render();
+			await selectCredential(view, 'Ada token');
+			await pickRepository(view, 'ada/notes');
+
+			await selectScope(view, 'project:team-1');
+
+			await waitFor(() => expect(view.getByTestId('skill-source-next')).toBeDisabled());
+			expect(view.getByTestId('skill-source-credential-select')).toHaveValue('__none__');
+		});
+
 		it('offers a pasted link as the first option next to the repositories of the credential', async () => {
 			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
 			skillsStore.fetchSourceRepositories.mockResolvedValue(REPOSITORIES);
