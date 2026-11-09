@@ -57,7 +57,7 @@ export function expectedSourceFlags({ required }: { required: boolean }) {
 
 const PREVIEW_REVISION = /^[0-9a-f]{64}$/;
 
-/** Pins Apply to the reviewed preview. Apply stops when this instance changed since then. */
+/** Pins Apply to the reviewed preview. Apply stops when the preview changed since then. */
 export const expectedPreviewRevisionFlag = {
 	expectedPreviewRevision: Flags.string({
 		description:

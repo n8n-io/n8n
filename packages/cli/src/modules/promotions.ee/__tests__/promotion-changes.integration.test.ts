@@ -399,7 +399,7 @@ it('lists the project variable that a workflow reads, not the global variable th
 	});
 	const environments = await createInstanceEnvironments();
 	await exportPreviewBaseline(environments.promote, owner);
-	const agent = server.publicApiAgentWithCookie(owner);
+	const agent = server.publicApiAgentFor(owner);
 	const endpoint = `/promotions/projects/${project.id}/changes/promote`;
 	const changed = async () => changedResources((await agent.get(endpoint).expect(200)).body);
 
@@ -416,8 +416,7 @@ it('lists the project variable that a workflow reads, not the global variable th
 
 	// The details name the variable, but the key cannot read its value.
 	const { commitSha } = (await agent.get(endpoint).expect(200)).body;
-	const { body } = await server
-		.publicApiAgentFor(owner)
+	const { body } = await agent
 		.post(`${endpoint}/details`)
 		.send({ commitSha, keys: [variableKey] })
 		.expect(200);

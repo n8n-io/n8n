@@ -327,7 +327,7 @@ The table lists each changed resource:
 |--------|-------------|
 | `TYPE` | `project`, `folder`, `workflow`, `credential`, `dataTable`, `variable`, or `tag`. |
 | `ID` | The ID of the resource. |
-| `NAME` | The name after the change. |
+| `NAME` | The name of the resource. A renamed resource shows its new name. |
 | `CHANGE` | `added`, `modified`, `archived`, or `deleted`. |
 | `FOLDER` | The folder that holds the resource. Empty at the top level of the project. |
 | `USEDBY` | For a credential, data table, variable, or tag: the workflows that send it. The table shows up to three IDs. |
@@ -337,8 +337,8 @@ To select a workflow, pass its ID to `-w`. To select a folder, pass its ID to
 `--folder`. Both flags work in `promote-selection` and `apply-selection`. The
 project is always included. You can't select a credential, data table,
 variable, or tag. To send one, select a workflow from its `USEDBY` column. With
-`--format id-only`, the output lists the IDs of all types. Pass each ID to the
-flag for its type.
+`--format id-only`, the output lists the IDs of all types. Pass only the
+workflow and folder IDs to `-w` and `--folder`.
 
 When an open review holds the changes of the project, the command names the
 review and lists nothing. You can promote again when the review is merged or
@@ -414,7 +414,7 @@ none.
 |--------|-----------|---------------|
 | `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
 | `source-changed` | `3` | The environment, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
-| `preview-changed` | `3` | Only for `apply-selection` and `apply-selection-continue` with `--expected-preview-revision`: this instance changed since the preview that you reviewed. Nothing was imported. Review the changes again. |
+| `preview-changed` | `3` | Only for `apply-selection` and `apply-selection-continue` with `--expected-preview-revision`: the Apply preview changed since you reviewed it, because this instance or the branch changed. Nothing was imported. Review the changes again. |
 | `blocked` | `4` | The Apply check found missing bindings, access requirements, or conflicts. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
 
 With `--json`, the output is the full result for each status. For `blocked`, the

@@ -45,6 +45,8 @@ Read `resources` instead.
 Each resource has a `type`, `id`, `change` and `selectable` field.
 The `change` values are `added`, `modified`, `archived`, `deleted` and `unchanged`.
 They replace the old `status` values.
+A renamed resource has the change `modified` and a `previousName`.
+A moved resource has the change `modified` and a `previousParentKey`.
 The endpoint no longer accepts the `search`, `sort` and `order` query parameters.
 
 The CLI `promotion-environment list-changes` command shows the changed resources of all types.

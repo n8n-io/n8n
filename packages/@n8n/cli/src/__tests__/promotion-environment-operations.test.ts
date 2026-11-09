@@ -499,11 +499,13 @@ describe('promotion-environment apply-selection command', () => {
 		);
 	});
 
-	it('sends the reviewed source built from the three expected flags', async () => {
+	it('sends the reviewed source and the reviewed preview revision', async () => {
+		const revision = 'b'.repeat(64);
 		const { run, applyProjectSelection } = runApplySelection(APPLY_RESULT, {
 			format: 'table',
 			workflow: ['wf-1'],
 			...PINNED_FLAGS,
+			expectedPreviewRevision: revision,
 		});
 
 		await run();
@@ -512,7 +514,7 @@ describe('promotion-environment apply-selection command', () => {
 			'proj-1',
 			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
-			undefined,
+			revision,
 		);
 	});
 

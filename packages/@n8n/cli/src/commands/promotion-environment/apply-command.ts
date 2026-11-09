@@ -55,7 +55,7 @@ function stopMessage(result: ApplyPackageResult, continueCommand: ContinueComman
 	if (result.status === 'blocked') return blockedMessage(result, result.check, continueCommand);
 	if (result.status === 'preview-changed') {
 		return [
-			'This instance changed since the reviewed preview. Nothing was imported.',
+			'The Apply preview changed since you reviewed it. Nothing was imported.',
 			'Run list-changes again. Review the changes. Then apply with the new revision.',
 		].join('\n');
 	}

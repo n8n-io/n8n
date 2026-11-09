@@ -271,7 +271,7 @@ jq '{commitSha, source, revision}' preview.json
 n8n-cli promotion-environment apply-selection <projectId> -w <workflowId> \
   --expected-environment-id=<source.environmentId> --expected-branch=<source.branchName> \
   --expected-commit-sha=<commitSha> --expected-preview-revision=<revision>
-# Exit 3: the source or this instance changed since the review. Review again.
+# Exit 3: the source or the preview changed since the review. Review again.
 ```
 
 Environment JSON for step 2 (`promote.json`; `apply.json` uses `"direction":"apply"`
