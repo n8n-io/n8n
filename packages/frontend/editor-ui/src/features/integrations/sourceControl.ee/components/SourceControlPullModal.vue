@@ -858,7 +858,10 @@ onMounted(() => {
 </template>
 
 <style module lang="scss">
-.sourceControlPull {
+.sourceControlPull.sourceControlPull {
+	/* Previous shell width. No spacing token for 812px. */
+	--dialog--max-width: min(812px, calc(100dvw - var(--spacing--lg)));
+
 	header {
 		/* The close button switches the header to a row. Keep the title above the description. */
 		flex-direction: column;

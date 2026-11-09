@@ -1461,7 +1461,10 @@ onMounted(async () => {
 	justify-content: flex-end;
 }
 
-.sourceControlPush {
+.sourceControlPush.sourceControlPush {
+	/* Previous shell width. No spacing token for 812px. */
+	--dialog--max-width: min(812px, calc(100dvw - var(--spacing--lg)));
+
 	header {
 		/* The close button switches the header to a row. Keep the title above the filters. */
 		flex-direction: column;

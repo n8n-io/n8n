@@ -150,6 +150,7 @@ function onCancel() {
 		data-test-id="deleteSecretsProvider-modal"
 		:open="modalOpen"
 		size="large"
+		stacked
 		:header="
 			i18n.baseText('settings.secretsProviderConnections.delete.title', {
 				interpolate: { name: data.providerName },

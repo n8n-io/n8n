@@ -236,7 +236,7 @@ function onDialogOpenUpdate(open: boolean) {
 			</div>
 		</N8nDialogHeader>
 		<N8nDialogBody>
-			<div v-if="provider">
+			<div v-if="provider" :class="$style.container">
 				<div v-if="connectionState !== 'initializing'" class="mb-l">
 					<N8nCallout
 						v-if="connectionState === 'connected' || connectionState === 'tested'"
@@ -313,6 +313,12 @@ function onDialogOpenUpdate(open: boolean) {
 </template>
 
 <style module lang="scss">
+.container {
+	> * {
+		overflow-wrap: break-word;
+	}
+}
+
 .providerDialog.providerDialog {
 	/* Previous shell width. No spacing token for 812px. */
 	--dialog--max-width: min(812px, calc(100dvw - var(--spacing--lg)));

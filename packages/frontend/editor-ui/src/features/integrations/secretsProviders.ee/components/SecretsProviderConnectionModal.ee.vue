@@ -574,8 +574,10 @@ onMounted(async () => {
 .secretsProviderConnectionModal.secretsProviderConnectionModal {
 	/* Previous shell was 70% of the viewport and capped at 1200px. No spacing token for that cap. */
 	--dialog--max-width: min(70%, 1200px, calc(100dvw - var(--spacing--lg)));
-	min-height: 600px;
-	max-height: 600px;
+	/* Keep the previous 600px shell, and stay inside short viewports. No spacing token for 600px. */
+	height: min(600px, calc(100dvh - var(--spacing--lg)));
+	min-height: 0;
+	max-height: calc(100dvh - var(--spacing--lg));
 }
 
 .dialogHeader {
@@ -636,6 +638,13 @@ onMounted(async () => {
 	min-height: 0;
 	overflow: auto;
 	padding: var(--n8n-dialog-region--padding, var(--spacing--md));
+}
+
+.mainContent {
+	flex: 1;
+	/* Previous tab padding. No spacing token for 60px. */
+	padding-bottom: 60px;
+	padding-inline: var(--spacing--xs);
 }
 
 .expressionExample {

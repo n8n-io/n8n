@@ -610,6 +610,8 @@ const { width } = useElementSize(defNameRef);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	/* Previous shell was 70% of the viewport. */
+	--dialog--max-width: min(70%, calc(100dvw - var(--spacing--lg)));
 	/* Previous dialog height. No spacing token for 650px. */
 	height: min(650px, calc(100dvh - var(--spacing--lg)));
 	max-height: min(650px, calc(100dvh - var(--spacing--lg)));
