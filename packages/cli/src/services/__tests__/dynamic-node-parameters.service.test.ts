@@ -857,6 +857,19 @@ describe('DynamicNodeParametersService', () => {
 			expect(payload.projectId).toBe('owning-project');
 		});
 
+		it('should not use the owning project when the user cannot edit the workflow', async () => {
+			vi.spyOn(checkAccess, 'userHasScopes').mockImplementation(
+				async (_user, scopes) =>
+					!scopes.includes('workflow:update') && !scopes.includes('dataTable:listProject'),
+			);
+			const payload = { projectId: 'project-1', workflowId: 'workflow-1' };
+
+			await service.refineResourceIds(user, payload);
+
+			expect(sharedWorkflowRepository.getWorkflowOwningProject).not.toHaveBeenCalled();
+			expect(payload.projectId).toBeUndefined();
+		});
+
 		it('should keep the supplied project when the workflow is not saved yet', async () => {
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
 			const payload = { projectId: 'project-1', workflowId: 'unsaved-workflow' };

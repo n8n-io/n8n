@@ -222,7 +222,7 @@ export function sortNodesByExecutionOrder<T extends ExecutionOrderItem>(
 	return result;
 }
 
-/** Query parameters that only place a new workflow. */
+/** Query parameters for an unsaved workflow: the `new` flag and the project and folder to save it in. */
 const NEW_WORKFLOW_QUERY_KEYS = ['new', 'projectId', 'parentFolderId'] as const;
 
 export function hasNewWorkflowQuery(query: LocationQuery): boolean {
