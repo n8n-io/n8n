@@ -811,7 +811,6 @@ async function handleSubmit(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs?: number,
-	acceptDraft: () => void = () => {},
 	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
@@ -832,7 +831,6 @@ async function handleSubmit(
 		}
 		const pendingMessage = { agentId, text: message, files };
 		stashPendingN8nChatMessage(pendingMessage);
-		acceptDraft();
 		const failure = await router.push({ name: AGENT_N8N_CHAT_VIEW, params: { agentId } });
 		// A blocked or cancelled navigation must not leave the hand-off for a later
 		// visit. Only discard and restore the draft if the slot still holds this
@@ -855,13 +853,7 @@ async function handleSubmit(
 	}
 
 	if (settingsStore.isAssistantAgentEnabled && !isCreatingApp.value) {
-		await startAssistantAgentThread(
-			selectedProject.value,
-			message,
-			attachments,
-			restoreDraft,
-			acceptDraft,
-		);
+		await startAssistantAgentThread(selectedProject.value, message, attachments, restoreDraft);
 		return;
 	}
 
@@ -942,7 +934,6 @@ async function handleSubmit(
 			runtime: 'instance-ai',
 		});
 	}
-	acceptDraft();
 
 	try {
 		await router.replace({
@@ -965,7 +956,6 @@ async function startAssistantAgentThread(
 	message: string,
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
-	acceptDraft: () => void,
 ) {
 	const acceptString = ASSISTANT_AGENT_ACCEPTED_MIME_TYPES;
 	const fileAttachments: InstanceAiFileAttachment[] = [];
@@ -1002,7 +992,6 @@ async function startAssistantAgentThread(
 		source: resolveLaunchSource(),
 		origin: 'internal',
 	});
-	acceptDraft();
 	const failure = await router.push({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId: pendingMessage.threadId },

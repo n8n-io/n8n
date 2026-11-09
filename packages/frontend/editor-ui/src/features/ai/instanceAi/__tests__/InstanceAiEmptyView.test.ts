@@ -390,11 +390,6 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: () => ({ push: pushMock, replace: replaceMock }),
 }));
 
-// Shared across all stub submits (not just the agent hand-off tests below) so
-// the n8n Chat variant B test can assert it without widening the stub's emit
-// contract for every other caller.
-const acceptDraftMock = vi.fn();
-
 const InstanceAiInputStub = defineComponent({
 	name: 'InstanceAiInputStub',
 	props: {
@@ -455,8 +450,6 @@ const InstanceAiInputStub = defineComponent({
 							promptModified: message !== prefill.text.trim(),
 						}
 					: USER_TYPED_MESSAGE,
-				undefined,
-				acceptDraftMock,
 			);
 			currentText.value = '';
 			activePrefill.value = null;
@@ -1688,7 +1681,6 @@ describe('InstanceAiEmptyView', () => {
 			});
 			expect(store.syncThread).not.toHaveBeenCalled();
 			expect(thread.sendMessage).not.toHaveBeenCalled();
-			expect(acceptDraftMock).toHaveBeenCalledOnce();
 			expect(
 				knownAssistantThreadRuntime('thread-placeholder', {
 					assistantAgentEnabled: true,
@@ -1737,7 +1729,6 @@ describe('InstanceAiEmptyView', () => {
 			await flushPromises();
 
 			expect(pushMock).not.toHaveBeenCalled();
-			expect(acceptDraftMock).not.toHaveBeenCalled();
 			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
 		});
 
@@ -1749,7 +1740,6 @@ describe('InstanceAiEmptyView', () => {
 			await flushPromises();
 
 			expect(pushMock).not.toHaveBeenCalled();
-			expect(acceptDraftMock).not.toHaveBeenCalled();
 			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
 			expect(showMessageMock).toHaveBeenCalledWith(
 				expect.objectContaining({ type: 'error', title: expect.stringContaining('archive.zip') }),
@@ -2244,7 +2234,7 @@ describe('InstanceAiEmptyView', () => {
 			expect(thread.sendMessage).not.toHaveBeenCalled();
 		});
 
-		it('stores the hand-off with the typed text and converted file attachments, calls acceptDraft, and does not start an Assistant thread', async () => {
+		it('stores the hand-off with the typed text and converted file attachments, and does not start an Assistant thread', async () => {
 			const { getByTestId } = renderView();
 
 			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
@@ -2259,7 +2249,6 @@ describe('InstanceAiEmptyView', () => {
 			});
 			expect(store.syncThread).not.toHaveBeenCalled();
 			expect(thread.sendMessage).not.toHaveBeenCalled();
-			expect(acceptDraftMock).toHaveBeenCalledOnce();
 
 			const pendingMessage = consumePendingN8nChatMessage('agent-1');
 			expect(pendingMessage?.text).toBe('hello');
