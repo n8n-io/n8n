@@ -61,12 +61,15 @@ const GITHUB_LINK = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+([/?#].*)?
 /** A web link to another host, such as GitLab. */
 const OTHER_HOST_LINK = /^https?:\/\/(?!(www\.)?github\.com([/?#:]|$))[^\s/?#]+/i;
 
-/** A source reads a private repository with a token only, never with OAuth. */
-const TOKEN_CREDENTIAL_TYPES = ['githubApi', 'githubAppApi'] as const;
+/** The credential types that read a private repository. */
+const TOKEN_CREDENTIAL_TYPES = ['githubApi', 'githubAppApi', 'githubOAuth2Api'] as const;
 type TokenCredentialType = (typeof TOKEN_CREDENTIAL_TYPES)[number];
+/** GitHub OAuth2 has a fixed scope with write access to every repository of the account. */
+const OAUTH2_CREDENTIAL_TYPE: TokenCredentialType = 'githubOAuth2Api';
 
 /** The options of the credential select that open the credential modal instead of picking. */
 const NEW_CREDENTIAL_PREFIX = '__new__:';
+const NEW_OAUTH2_CREDENTIAL = `${NEW_CREDENTIAL_PREFIX}${OAUTH2_CREDENTIAL_TYPE}`;
 /** "None, the repository is public". The select needs a value for it. */
 const NO_CREDENTIAL = '__none__';
 
@@ -254,9 +257,19 @@ const credentialItems = computed<SelectItem[]>(() => [
 					value: `${NEW_CREDENTIAL_PREFIX}githubAppApi`,
 					label: i18n.baseText('settings.context.skills.connect.credential.newApp'),
 				},
+				{
+					value: NEW_OAUTH2_CREDENTIAL,
+					label: i18n.baseText('settings.context.skills.connect.credential.newOAuth2'),
+				},
 			]
 		: []),
 ]);
+
+const oauth2Picked = computed(
+	() =>
+		credentials.value.find((credential) => credential.id === credentialId.value)?.type ===
+		OAUTH2_CREDENTIAL_TYPE,
+);
 
 /** Reads the credentials of the scope; `select` picks one, such as a credential just made. */
 async function loadCredentials(select?: string) {
@@ -634,11 +647,23 @@ function onInteractOutside(event: Event) {
 						:disabled="credentialsLoading"
 						data-test-id="skill-source-credential-select"
 						@update:model-value="onCredentialSelect(String($event ?? ''))"
-					/>
+					>
+						<template #item-label="{ item }">
+							<span v-if="item.value === NEW_OAUTH2_CREDENTIAL" :class="$style.itemStack">
+								<span>{{ item.label }}</span>
+								<N8nText tag="span" size="small" color="warning">
+									{{ i18n.baseText('settings.context.skills.connect.credential.newOAuth2.note') }}
+								</N8nText>
+							</span>
+						</template>
+					</N8nSelect2>
 				</N8nInputLabel>
 				<N8nText size="small" color="text-light" data-test-id="skill-source-credential-hint">
 					{{ credentialHint }}
 				</N8nText>
+				<N8nCallout v-if="oauth2Picked" theme="warning" data-test-id="skill-source-oauth-warning">
+					{{ i18n.baseText('settings.context.skills.connect.credential.oauth2Warning') }}
+				</N8nCallout>
 			</div>
 			<div :class="$style.field">
 				<N8nInputLabel
@@ -767,6 +792,13 @@ function onInteractOutside(event: Event) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+/* The OAuth2 option has a second line for its note. */
+.itemStack {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
 .source {

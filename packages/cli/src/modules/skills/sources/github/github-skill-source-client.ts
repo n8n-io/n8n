@@ -71,6 +71,7 @@ const API = 'https://api.github.com';
 const MAX_REPOSITORY_PAGES = 10;
 const TOKEN_CREDENTIAL = 'githubApi';
 const APP_CREDENTIAL = 'githubAppApi';
+const OAUTH2_CREDENTIAL = 'githubOAuth2Api';
 
 /**
  * Reads skills from GitHub repositories. Branches come from `ls-refs` over git smart HTTP. A
@@ -84,10 +85,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	readonly type = 'github';
 
 	/**
-	 * A personal access token, classic or fine-grained, and a GitHub App installation. Not
-	 * OAuth2: its fixed scope gives write access to every repository of the user.
+	 * A personal access token, classic or fine-grained, a GitHub App installation, and an
+	 * OAuth2 account. OAuth2 has a fixed scope with write access to every repository of the
+	 * user, so the connect dialog warns about it.
 	 */
-	readonly credentialTypes = [TOKEN_CREDENTIAL, APP_CREDENTIAL];
+	readonly credentialTypes = [TOKEN_CREDENTIAL, APP_CREDENTIAL, OAUTH2_CREDENTIAL];
 
 	readonly capabilities: SkillSourceCapabilities = {
 		discovery: 'listing',
@@ -128,7 +130,10 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return isGitHubLink(input);
 	}
 
-	/** Both credential types hold the token in `accessToken`. A GitHub App gets a fresh one. */
+	/**
+	 * A token and a GitHub App hold the token in `accessToken`, and a GitHub App gets a fresh
+	 * one. OAuth2 holds it in `oauthTokenData` once the user connected the account.
+	 */
 	authFrom(credential: {
 		id?: string;
 		type: string;
@@ -136,10 +141,14 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}): SkillSourceAuth {
 		this.checkCredential(credential);
 		const { id, type, data } = credential;
-		if (typeof data.accessToken !== 'string' || data.accessToken === '') {
+		const token =
+			type === OAUTH2_CREDENTIAL && isRecord(data.oauthTokenData)
+				? data.oauthTokenData.access_token
+				: data.accessToken;
+		if (typeof token !== 'string' || token === '') {
 			throw new SkillSourceReadError('credential_invalid', 'The credential has no token.');
 		}
-		return { token: data.accessToken, credentialType: type, ...(id ? { credentialId: id } : {}) };
+		return { token, credentialType: type, ...(id ? { credentialId: id } : {}) };
 	}
 
 	/** A credential of another type, or for another GitHub server, is refused. */
@@ -257,8 +266,8 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}
 
 	/**
-	 * A GitHub App lists the repositories it is installed on. A token lists the repositories
-	 * that its user owns, collaborates on, or reaches through an organization.
+	 * A GitHub App lists the repositories it is installed on. A token or an OAuth2 account lists
+	 * the repositories that its user owns, collaborates on, or reaches through an organization.
 	 */
 	async listRepositories(
 		auth: SkillSourceAuth,

@@ -17,6 +17,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { GithubAppApi } from 'n8n-nodes-base/credentials/GithubAppApi.credentials';
 import { GithubOAuth2Api } from 'n8n-nodes-base/credentials/GithubOAuth2Api.credentials';
+import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import nock from 'nock';
 import { generateKeyPairSync } from 'node:crypto';
 
@@ -46,6 +47,8 @@ beforeAll(async () => {
 	await initCredentialsTypes();
 	const { credentials } = Container.get(LoadNodesAndCredentials).loaded;
 	credentials.githubAppApi = { type: new GithubAppApi(), sourcePath: '' };
+	// GitHub OAuth2 extends the generic OAuth2 type, so both must load.
+	credentials.oAuth2Api = { type: new OAuth2Api(), sourcePath: '' };
 	credentials.githubOAuth2Api = { type: new GithubOAuth2Api(), sourcePath: '' };
 	nock.disableNetConnect();
 	nock.enableNetConnect(/127\.0\.0\.1|localhost/);
@@ -102,8 +105,13 @@ describe('Skill Sync with credentials', () => {
 			ghCredential('Sales GitHub', TOKEN),
 			inProject(otherTeam),
 		);
+		// OAuth2 keeps the token of the connected account in `oauthTokenData`.
 		oauthCredential = await saveCredential(
-			ghCredential('Team OAuth', TOKEN, 'githubOAuth2Api'),
+			{
+				name: 'Team OAuth',
+				type: 'githubOAuth2Api',
+				data: { oauthTokenData: { access_token: TOKEN } },
+			},
 			inProject(team),
 		);
 		badCredential = await saveCredential(ghCredential('Expired', 'ghp_expired'), inProject(team));
@@ -178,7 +186,7 @@ describe('Skill Sync with credentials', () => {
 	const names = (options: SkillSourceCredentialOption[]) => options.map(({ name }) => name).sort();
 
 	describe('credential select', () => {
-		it('lists the GitHub token credentials that the project can use, and never OAuth2', async () => {
+		it('lists the GitHub credentials that the project can use', async () => {
 			const { data } = await get<SkillSourceCredentialOption[]>(
 				editor,
 				`/skill-sources/credentials?scope=project&projectId=${team.id}`,
@@ -192,8 +200,8 @@ describe('Skill Sync with credentials', () => {
 				'Shared GitHub',
 				'Team GitHub',
 				'Team GitHub App',
+				'Team OAuth',
 			]);
-			expect(data.map(({ id }) => id)).not.toContain(oauthCredential.id);
 			expect(data.map(({ id }) => id)).not.toContain(otherTeamCredential.id);
 		});
 
@@ -274,6 +282,16 @@ describe('Skill Sync with credentials', () => {
 	describe('private import', () => {
 		const scope = () => ({ scope: 'project', projectId: team.id });
 
+		it('reads a private repository with a connected OAuth2 account', async () => {
+			const { data } = await post<SkillSourceDiscovery>(editor, '/skill-sources/discover', {
+				url: PRIVATE,
+				...scope(),
+				credentialId: oauthCredential.id,
+			});
+
+			expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
+		});
+
 		it('imports from a private repository and stores the credential on the source', async () => {
 			const body = { url: PRIVATE, ...scope(), credentialId: teamCredential.id };
 			const { data: discovery } = await post<SkillSourceDiscovery>(
@@ -307,7 +325,6 @@ describe('Skill Sync with credentials', () => {
 
 		it.each([
 			['a credential of another project', () => otherTeamCredential.id],
-			['an OAuth2 credential', () => oauthCredential.id],
 			['a credential that does not exist', () => 'no-such-credential'],
 		])('refuses %s as out of scope', async (_case, credentialId) => {
 			const { meta } = await post(

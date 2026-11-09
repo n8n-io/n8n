@@ -43,10 +43,13 @@ vi.mock('@n8n/design-system', async () => {
 	};
 	const N8nSelect2 = {
 		name: 'N8nSelect2',
+		inheritAttrs: false,
 		props: ['modelValue', 'items', 'disabled', 'placeholder'],
 		emits: ['update:modelValue'],
+		// A native option holds text only, so the custom item labels render after the select.
 		template: `
 			<select
+				v-bind="$attrs"
 				:value="modelValue"
 				:disabled="disabled"
 				@change="$emit('update:modelValue', $event.target.value)"
@@ -57,6 +60,9 @@ vi.mock('@n8n/design-system', async () => {
 					:value="item.value"
 				>{{ item.label }}</option>
 			</select>
+			<template v-for="item in items.filter((entry) => entry.type !== 'separator')" :key="'label-' + item.value">
+				<slot name="item-label" :item="item" />
+			</template>
 		`,
 	};
 	const N8nCombobox2 = {
@@ -134,6 +140,11 @@ const renderDialog = createComponentRenderer(SkillSourceConnectDialog);
 
 const TOKEN: SkillSourceCredentialOption = { id: 'cred-1', name: 'Ada token', type: 'githubApi' };
 const APP: SkillSourceCredentialOption = { id: 'cred-2', name: 'Acme app', type: 'githubAppApi' };
+const OAUTH: SkillSourceCredentialOption = {
+	id: 'cred-3',
+	name: 'Ada account',
+	type: 'githubOAuth2Api',
+};
 
 const REPOSITORIES: SkillSourceRepositoryList = {
 	repositories: [
@@ -967,6 +978,39 @@ describe('SkillSourceConnectDialog', () => {
 					'Could not load the credentials',
 				),
 			);
+		});
+
+		it('offers OAuth2 with a note on its write access, and opens the credential modal for it', async () => {
+			const view = render();
+
+			expect(
+				await view.findByText('Gives n8n write access to all your repositories'),
+			).toBeInTheDocument();
+			await selectCredential(view, '+ Sign in with GitHub (OAuth2)');
+
+			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+				'githubOAuth2Api',
+				false,
+				false,
+				'personal-1',
+				undefined,
+				undefined,
+				undefined,
+				expect.objectContaining({ closeOnSave: true }),
+			);
+		});
+
+		it('warns about write access while an OAuth2 credential is picked', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, OAUTH]);
+			const view = render();
+
+			await selectCredential(view, 'Ada account');
+			expect(view.getByTestId('skill-source-oauth-warning')).toHaveTextContent(
+				'OAuth2 gives n8n write access to every repository that this GitHub account can reach',
+			);
+
+			await selectCredential(view, 'Ada token');
+			expect(view.queryByTestId('skill-source-oauth-warning')).not.toBeInTheDocument();
 		});
 
 		it('says why the credential cannot list the repositories', async () => {
