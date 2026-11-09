@@ -3891,6 +3891,51 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('canSubmit')).toBe(true);
 	});
 
+	it('does not block sending on a credits stop — the retry is the wallet re-check', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.credits' }],
+			},
+		];
+		const wrapper = mountPanel();
+		await flushPromises();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+
+		expect(chatInput.props('canSubmit')).toBe(true);
+		wrapper.unmount();
+	});
+
+	it('clears a stale credits stop once a new message is accepted', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.credits' }],
+			},
+		];
+		sendMessageMock.mockResolvedValueOnce('sent');
+		const wrapper = mountPanel();
+		await flushPromises();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		chatInput.vm.$emit('submit');
+		await flushPromises();
+
+		sendMessageMock.mock.lastCall?.[2]?.();
+		await nextTick();
+
+		expect(clearBudgetNoticesMock).toHaveBeenCalledExactlyOnceWith(new Set(['budget.credits']));
+		wrapper.unmount();
+	});
+
 	it('enables chat input while an interactive card is unresolved (cancel-and-steer mode)', () => {
 		messagesMock.value = [openInteractiveMessage()];
 
