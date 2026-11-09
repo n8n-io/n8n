@@ -232,7 +232,13 @@ function permissionKeys(content: SkillContent): Map<string, unknown> {
  * Phrases that try to take over the model, hide actions from the user, or send data away. A
  * match is a hint for a reviewer, not proof: a skill about security can quote them.
  */
-const SUSPICIOUS_PHRASES: Array<{ label: string; find: (text: string) => string | undefined }> = [
+/** A phrase that a pattern found, and where it starts in the text. */
+type PhraseMatch = { text: string; index: number };
+
+const SUSPICIOUS_PHRASES: Array<{
+	label: string;
+	find: (text: string) => PhraseMatch | undefined;
+}> = [
 	{
 		label: 'an instruction override',
 		find: firstMatch(
@@ -278,8 +284,11 @@ const SUSPICIOUS_PHRASES: Array<{ label: string; find: (text: string) => string 
 	{ label: 'an image link that carries data', find: findDataImageLink },
 ];
 
-function firstMatch(pattern: RegExp): (text: string) => string | undefined {
-	return (text) => pattern.exec(text)?.[0];
+function firstMatch(pattern: RegExp): (text: string) => PhraseMatch | undefined {
+	return (text) => {
+		const match = pattern.exec(text);
+		return match ? { text: match[0], index: match.index } : undefined;
+	};
 }
 
 /** A placeholder in a URL: `{{name}}`, `${name}`, `{name}` or `%7B`, which is an encoded "{". */
@@ -292,7 +301,7 @@ const URL_PLACEHOLDER = /\{\{|\$\{|\{[a-z_]+\}|%7B/i;
  * URL goes to the first ")" or space. The scan reads each character at most a few times, so the
  * time is linear in the length of the text, with no limit on the alt text or the URL.
  */
-function findDataImageLink(text: string): string | undefined {
+function findDataImageLink(text: string): PhraseMatch | undefined {
 	const tokens = /!\[|\]/g;
 	const linkStart = /\(\s*https?:\/\//iy;
 	const urlChars = /[^)\s]*/y;
@@ -318,7 +327,8 @@ function findDataImageLink(text: string): string | undefined {
 		readUntil = urlChars.lastIndex;
 		const placeholder = URL_PLACEHOLDER.exec(text.slice(afterScheme, readUntil));
 		if (placeholder) {
-			return text.slice(start, afterScheme + placeholder.index + placeholder[0].length);
+			const end = afterScheme + placeholder.index + placeholder[0].length;
+			return { text: text.slice(start, end), index: start };
 		}
 	}
 	return undefined;
@@ -336,14 +346,13 @@ export function findSuspiciousPhrases({ content }: SkillScanInput): SkillScanFin
 			for (const { entry, text } of joined) {
 				const match = find(text);
 				if (match === undefined) continue;
-				const index = text.indexOf(match);
 				return [
 					{
 						rule: 'suspicious_phrase',
 						severity: 'needs_review',
 						file,
-						detail: `The text has ${label}: "${excerpt(match)}".`,
-						location: entry.locate(index, index + match.length),
+						detail: `The text has ${label}: "${excerpt(match.text)}".`,
+						location: entry.locate(match.index, match.index + match.text.length),
 					},
 				];
 			}

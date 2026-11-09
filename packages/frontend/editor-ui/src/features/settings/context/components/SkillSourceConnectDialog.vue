@@ -313,7 +313,7 @@ async function loadRepositories() {
 }
 
 // The repository field lists every repository of the chosen credential, of all owners.
-watch([credentialId, scope], () => void loadRepositories());
+watch([credentialId, scope], async () => await loadRepositories());
 
 const selectedRepository = computed(() =>
 	repositories.value.find((option) => repositoryKey(option) === repository.value),

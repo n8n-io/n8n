@@ -26,7 +26,8 @@ function pathInSource(path: string): string {
 
 /** The page of a file on GitHub. The skill links to its folder (`tree`), a file uses `blob`. */
 function fileUrl(path: string): string {
-	return `${props.skill.webUrl.replace(/\/$/, '').replace('/tree/', '/blob/')}/${path}`;
+	const encoded = path.split('/').map(encodeURIComponent).join('/');
+	return `${props.skill.webUrl.replace(/\/$/, '').replace('/tree/', '/blob/')}/${encoded}`;
 }
 
 /** The skipped files, each with why n8n leaves it out. */
@@ -38,21 +39,6 @@ const skippedFiles = computed(() =>
 		const reason = ruleText(unstorable ? 'file_unstorable' : 'file_skipped');
 		return `${pathInSource(path)} · ${reason}`;
 	}),
-);
-
-/** Whether the preview shows the text that a finding marks. A long skill shows its first files. */
-function isShown(finding: SkillScanFinding): boolean {
-	const file = props.skill.previewFiles.find((preview) => preview.path === finding.file);
-	if (!file || !finding.location) return false;
-	return finding.location.line <= file.text.split('\n').length;
-}
-
-/**
- * Warnings and errors that the files do not show: a finding that marks no text, such as a size
- * limit, and a finding in a part that the preview leaves out. They show above the files.
- */
-const unplacedFindings = computed(() =>
-	findings.value.filter((finding) => finding.severity !== 'info' && !isShown(finding)),
 );
 
 function unplacedText(finding: SkillScanFinding): string {
@@ -105,6 +91,20 @@ const files = computed(() =>
 		return { path: file.path, lines };
 	}),
 );
+
+/**
+ * Warnings and errors that the files do not mark: a finding that marks no text, such as a size
+ * limit, a finding in a part that the preview leaves out, and a finding under a mark that shows
+ * first. They show above the files.
+ */
+const unplacedFindings = computed(() => {
+	const marked = new Set(
+		files.value.flatMap(({ lines }) =>
+			lines.flatMap(({ segments }) => segments.flatMap(({ finding }) => finding ?? [])),
+		),
+	);
+	return findings.value.filter((finding) => finding.severity !== 'info' && !marked.has(finding));
+});
 </script>
 
 <template>

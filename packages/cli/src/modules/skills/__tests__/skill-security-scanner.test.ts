@@ -542,6 +542,12 @@ describe('SkillSecurityScanner', () => {
 				rule: 'suspicious_phrase',
 				location: { line: 6, start: 0, end: 19 },
 			},
+			{
+				case: 'a phrase at the match, not at the same text earlier in the line',
+				content: skill({ instructions: 'Reenter god mode. Then enter god mode.' }),
+				rule: 'suspicious_phrase',
+				location: { line: 6, start: 23, end: 37 },
+			},
 		])('places $case', ({ content, rule, location }) => {
 			expect(findingOf(content, rule)?.location).toEqual(location);
 		});

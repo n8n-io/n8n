@@ -654,6 +654,56 @@ describe('SkillSourceConnectDialog', () => {
 			);
 		});
 
+		it('lists a warning above the files when an earlier mark covers its text', async () => {
+			const skill = discovered({
+				previewFiles: [{ path: 'SKILL.md', text: 'See https://evil.example/a⟦U+200B⟧b now.' }],
+				check: {
+					verdict: 'needs_review',
+					findings: [
+						{
+							rule: 'new_url',
+							severity: 'info',
+							file: 'SKILL.md',
+							detail: 'd',
+							location: { line: 1, start: 4, end: 36 },
+						},
+						{
+							rule: 'hidden_unicode',
+							severity: 'needs_review',
+							file: 'SKILL.md',
+							detail: 'd',
+							location: { line: 1, start: 26, end: 34 },
+						},
+					],
+				},
+			});
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [skill] }));
+			const view = render();
+			await review(view);
+
+			expect(view.getByTestId('skill-source-unplaced-finding')).toHaveTextContent(
+				'Hidden Unicode characters in SKILL.md',
+			);
+		});
+
+		it('encodes each part of a file path in its GitHub link', async () => {
+			const skill = discovered({
+				previewFiles: [
+					{ path: 'SKILL.md', text: 'Body.' },
+					{ path: 'references/50% #1?.md', text: 'Notes.' },
+				],
+			});
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [skill] }));
+			const view = render();
+			await review(view);
+
+			const files = view.getAllByTestId('skill-source-file');
+			expect(within(files[1]).getByRole('link')).toHaveAttribute(
+				'href',
+				'https://github.com/acme/skills/blob/main/skills/brand-voice/references/50%25%20%231%3F.md',
+			);
+		});
+
 		it('shows the files of the skill that the user clicks', async () => {
 			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
 			const view = render();
@@ -793,9 +843,13 @@ describe('SkillSourceConnectDialog', () => {
 
 			await userEvent.click(view.getByTestId('skill-source-import'));
 
-			expect(view.emitted('connected')?.[0]?.[0]).toMatchObject({
-				response: { failed: [{ key: 'skills/odd', name: 'odd', reason: 'blocked_by_check' }] },
-			});
+			expect(view.emitted('connected')).toMatchObject([
+				[
+					{
+						response: { failed: [{ key: 'skills/odd', name: 'odd', reason: 'blocked_by_check' }] },
+					},
+				],
+			]);
 		});
 
 		it('stays open with a translated toast when the import fails', async () => {
