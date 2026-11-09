@@ -491,6 +491,7 @@ describe('SettingsSkillsView', () => {
 
 			await view.findByTestId('skills-create-manual');
 			expect(createMenuLabels()).toEqual(['Upload folder', 'Upload SKILL.md', 'Create manually']);
+			expect(view.queryByTestId('skills-create-github')).not.toBeInTheDocument();
 		});
 
 		it('opens the form at once from "Create manually"', async () => {
@@ -1247,16 +1248,6 @@ describe('SettingsSkillsView', () => {
 		function renderWithDialogStub() {
 			return renderView({ global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub } } });
 		}
-
-		it('leaves "Connect to GitHub" out of the "Create skills" menu when the flag is off', async () => {
-			const view = renderView();
-
-			await userEvent.click(view.getByTestId('skills-create-menu-button'));
-
-			await view.findByTestId('skills-create-manual');
-			expect(createMenuLabels()).not.toContain('Connect to GitHub');
-			expect(view.queryByTestId('skills-create-github')).not.toBeInTheDocument();
-		});
 
 		it('offers "Connect to GitHub" first in the "Create skills" menu when the flag is on', async () => {
 			enableSkillSync();
