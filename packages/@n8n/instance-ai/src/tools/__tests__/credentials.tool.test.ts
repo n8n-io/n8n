@@ -1299,19 +1299,24 @@ describe('credential tools', () => {
 				agentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' },
 				...(panel ? { setupItemsEmitter: {} as InstanceAiContext['setupItemsEmitter'] } : {}),
 			});
+			const suspendFn = vi.fn();
 			const tool = createSetupCredentialsTool(context);
 
-			await expect(
-				executeTool(
-					tool,
-					{
-						target: 'agent' as const,
-						credentials: [{ credentialType: 'notionApi' }],
-						[field]: 'agent-1',
-					},
-					suspendCtx(),
-				),
-			).rejects.toThrow(`\`${field}\` applies only to workflow setup`);
+			const result = await executeTool(
+				tool,
+				{
+					target: 'agent' as const,
+					credentials: [{ credentialType: 'notionApi' }],
+					[field]: 'agent-1',
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(result).toMatchObject({
+				error: 'workflow_fields_for_agent',
+				message: expect.stringContaining(`\`${field}\``),
+			});
+			expect(suspendFn).not.toHaveBeenCalled();
 			expect(context.credentialService.list).not.toHaveBeenCalled();
 		});
 

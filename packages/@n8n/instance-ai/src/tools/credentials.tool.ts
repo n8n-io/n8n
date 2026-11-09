@@ -432,7 +432,7 @@ const setupCredentialsSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Workflow target only. Omit it when target is "agent". The workflow these credentials are for, when one exists (e.g. the id returned by workflow_builder_build_workflow). Lets the setup panel list them against that workflow. Never pass an Agent ID here.',
+			'Workflow target only. The workflow these credentials are for, when one exists (e.g. the id returned by workflow_builder_build_workflow). Lets the setup panel list them against that workflow. Never pass an Agent ID here.',
 		),
 	requireUserSelection: z
 		.boolean()
@@ -499,36 +499,11 @@ const WORKFLOW_ONLY_SETUP_FIELDS = [
 	'folderPath',
 ] as const;
 
-/**
- * The Agent target always uses the Agent selected with agent_builder_select_agent,
- * so workflow fields have no meaning there. Reject them so the model learns to
- * omit them. The provider schema drops refinements, so this runs only when the
- * handler parses the input.
- */
-function rejectWorkflowFieldsForAgent(
-	input: { target?: 'workflow' | 'agent' } & Partial<
-		Record<(typeof WORKFLOW_ONLY_SETUP_FIELDS)[number], string>
-	>,
-	ctx: z.RefinementCtx,
-) {
-	if (input.target !== 'agent') return;
-	for (const field of WORKFLOW_ONLY_SETUP_FIELDS) {
-		if (input[field] === undefined) continue;
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			path: [field],
-			message: `\`${field}\` applies only to workflow setup. Omit it for target "agent": the Agent selected with agent_builder_select_agent is used.`,
-		});
-	}
-}
-
 function getSetupInputSchema(context: InstanceAiContext) {
-	if (!isSetupPanelEnabled(context)) {
-		return setupCredentialsSchema.superRefine(rejectWorkflowFieldsForAgent);
-	}
+	if (!isSetupPanelEnabled(context)) return setupCredentialsSchema;
 	return context.folderExplorationEnabled
-		? earlySetupCredentialsSchemaWithFolder.superRefine(rejectWorkflowFieldsForAgent)
-		: earlySetupCredentialsSchema.superRefine(rejectWorkflowFieldsForAgent);
+		? earlySetupCredentialsSchemaWithFolder
+		: earlySetupCredentialsSchema;
 }
 
 // ── Descriptions ───────────────────────────────────────────────────────────
@@ -917,6 +892,14 @@ async function handleSetup(
 
 	if (input.target === 'agent') {
 		if (!resumeData) {
+			// The Agent target always uses the selected Agent, so workflow fields have no meaning.
+			const workflowFields = WORKFLOW_ONLY_SETUP_FIELDS.filter((f) => input[f] !== undefined);
+			if (workflowFields.length > 0) {
+				return {
+					error: 'workflow_fields_for_agent',
+					message: `${workflowFields.map((f) => `\`${f}\``).join(', ')}: workflow setup only. Omit for target "agent": the Agent selected with agent_builder_select_agent is used.`,
+				};
+			}
 			const invalidRequest = await validateSetupRequests(context, input.credentials);
 			if (invalidRequest) return invalidRequest;
 		}
