@@ -117,7 +117,10 @@ export {
 	WorkflowPublishGuardProxy,
 	type WorkflowPublishGuard,
 } from './workflows/workflow-publish-guard-proxy.service';
-export { NodeTypesProxy } from './services/node-types-proxy.service';
+export {
+	NodeTypesProviderMissingError,
+	NodeTypesProxy,
+} from './services/node-types-proxy.service';
 export {
 	RestrictedNodeTypesProviderProxy,
 	type RestrictedNodeTypesProvider,

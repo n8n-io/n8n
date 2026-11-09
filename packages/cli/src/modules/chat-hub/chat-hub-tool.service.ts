@@ -10,7 +10,7 @@ import type { INode } from 'n8n-workflow';
 import { collectExpressionDefaults, findDisallowedChatToolExpressions } from 'n8n-workflow';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { NodeTypesProxy } from '@n8n/backend-services';
+import { NodeTypesProviderMissingError, NodeTypesProxy } from '@n8n/backend-services';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import type { ChatHubTool } from './chat-hub-tool.entity';
@@ -96,7 +96,8 @@ export class ChatHubToolService {
 		try {
 			const nodeType = this.nodeTypes.getByNameAndVersion(definition.type, definition.typeVersion);
 			allowedExpressions = collectExpressionDefaults(nodeType.description.properties);
-		} catch {
+		} catch (error) {
+			if (error instanceof NodeTypesProviderMissingError) throw error;
 			// If node type lookup fails assume no allowed expressions
 		}
 

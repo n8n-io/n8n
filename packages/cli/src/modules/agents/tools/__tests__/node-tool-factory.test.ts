@@ -1,11 +1,11 @@
 import type { AgentJsonToolConfig, AgentToolSkippedFile } from '@n8n/api-types';
 import type { PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { hasPolicyRefusalMarker } from 'n8n-workflow';
+import { hasPolicyRefusalMarker, type INodeTypes } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
-import { NodeTypesProxy } from '@n8n/backend-services';
+import { NodeTypesProviderMissingError, NodeTypesProxy } from '@n8n/backend-services';
 import { NodeTypes } from '@/node-types';
 import type { NonEmptyViolations } from '@/policy/policy-violation.error';
 
@@ -22,12 +22,7 @@ const violation = (overrides: Partial<PolicyViolation> = {}): PolicyViolation =>
 	...overrides,
 });
 
-// The node-tool-factory imports the DI `Container` to look up NodeTypesProxy inside
-// `resolveInputSchema` (for auto-seeding a `{ input: string }` schema on
-// native tools). In the unit-test scope the proxy has no provider, so the
-// lookup throws — the function's own `try/catch` swallows
-// that and falls back to an empty schema. The test doesn't need a real executor
-// either; the handler isn't invoked.
+// The handler isn't invoked in most tests, so the executor stays empty.
 const mockCtx = {
 	executor: {} as unknown as EphemeralNodeExecutor,
 	projectId: 'p1',
@@ -43,8 +38,32 @@ const baseToolSchema = {
 	},
 };
 
+const unknownNodeType = () => {
+	throw new Error('Unrecognized node type');
+};
+const nodeTypesWithoutTypes: INodeTypes = {
+	getByName: unknownNodeType,
+	getByNameAndVersion: unknownNodeType,
+	getKnownTypes: () => ({}),
+};
+
+beforeEach(() => {
+	// Unknown node types fall back to an empty input schema.
+	Container.get(NodeTypesProxy).registerProvider(nodeTypesWithoutTypes);
+});
+
 afterEach(() => {
 	Container.reset();
+});
+
+describe('resolveNodeTool → node type lookup', () => {
+	it('rethrows when no node types provider is registered', async () => {
+		Container.set(NodeTypesProxy, new NodeTypesProxy());
+
+		await expect(resolveNodeTool(baseToolSchema, mockCtx)).rejects.toThrow(
+			NodeTypesProviderMissingError,
+		);
+	});
 });
 
 describe('resolveNodeTool → tool name sanitization', () => {

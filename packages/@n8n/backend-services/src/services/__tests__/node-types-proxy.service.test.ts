@@ -2,7 +2,7 @@ import { UnexpectedError } from '@n8n/errors';
 import type { INodeType, INodeTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { NodeTypesProxy } from '../node-types-proxy.service';
+import { NodeTypesProviderMissingError, NodeTypesProxy } from '../node-types-proxy.service';
 
 describe('NodeTypesProxy', () => {
 	it('throws when no provider is registered', () => {
@@ -11,6 +11,7 @@ describe('NodeTypesProxy', () => {
 		expect(() => proxy.getByName('n8n-nodes-base.set')).toThrow(UnexpectedError);
 		expect(() => proxy.getByNameAndVersion('n8n-nodes-base.set', 1)).toThrow(UnexpectedError);
 		expect(() => proxy.getKnownTypes()).toThrow(UnexpectedError);
+		expect(() => proxy.getByName('n8n-nodes-base.set')).toThrow(NodeTypesProviderMissingError);
 	});
 
 	it('delegates getByName to the registered provider', () => {

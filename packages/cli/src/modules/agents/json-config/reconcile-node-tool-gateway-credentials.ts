@@ -1,5 +1,6 @@
 import type { AgentJsonToolConfig, AiGatewayConfigDto, NodeToolConfig } from '@n8n/api-types';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
+import { NodeTypesProviderMissingError } from '@n8n/backend-services';
 import type { INodeParameters, INodeTypeDescription, INodeTypes } from 'n8n-workflow';
 import { NodeHelpers, resolveSupportedCredentialActivation } from 'n8n-workflow';
 
@@ -148,7 +149,8 @@ export function listAiGatewayManagedCredentialTypes(
 		let description: INodeTypeDescription;
 		try {
 			description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
-		} catch {
+		} catch (error) {
+			if (error instanceof NodeTypesProviderMissingError) throw error;
 			continue;
 		}
 
@@ -188,7 +190,8 @@ export function assignCredentialToNodeTools(
 		let description: INodeTypeDescription;
 		try {
 			description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
-		} catch {
+		} catch (error) {
+			if (error instanceof NodeTypesProviderMissingError) throw error;
 			continue;
 		}
 		if (!description.credentials?.some((c) => c.name === credentialType)) continue;
@@ -213,7 +216,8 @@ function reconcileNode(
 	let description: INodeTypeDescription;
 	try {
 		description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
-	} catch {
+	} catch (error) {
+		if (error instanceof NodeTypesProviderMissingError) throw error;
 		dropAiGatewayMarkers(node);
 		return;
 	}
