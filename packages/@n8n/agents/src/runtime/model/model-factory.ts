@@ -247,19 +247,24 @@ export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 }
 
 /**
+ * The custom base URL of a model config. Reads `baseURL`, then the `url` alias,
+ * the same way `createModel` does. An empty value means the provider default.
+ */
+function getConfigBaseUrl(model: unknown): string | undefined {
+	if (!isRecord(model) || isLanguageModel(model)) return undefined;
+	const baseURL = model.baseURL ?? model.url;
+	return typeof baseURL === 'string' && baseURL !== '' ? baseURL : undefined;
+}
+
+/**
  * Whether the model calls Anthropic's own API. A pre-built model hides its base
  * URL, and n8n builds one only for a proxy, so it counts as not official.
  */
 export function usesOfficialAnthropicApi(model: ModelConfig): boolean {
-	if (typeof model === 'string') return true;
-	if (!('id' in model)) return false;
-	const baseURL = 'baseURL' in model && typeof model.baseURL === 'string' ? model.baseURL : '';
-	if (!baseURL) return true;
-	try {
-		return new URL(baseURL).origin === 'https://api.anthropic.com';
-	} catch {
-		return false;
-	}
+	if (isLanguageModel(model)) return false;
+	const baseURL = getConfigBaseUrl(model);
+	if (baseURL === undefined) return true;
+	return URL.canParse(baseURL) && new URL(baseURL).origin === 'https://api.anthropic.com';
 }
 
 /** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
@@ -270,14 +275,8 @@ export function supportsSplitSystemMessages(model: ModelConfig): boolean {
 		case 'openrouter':
 			return true;
 		case 'openai': {
-			if (typeof model === 'string') return true;
-			const baseURL =
-				'baseURL' in model && typeof model.baseURL === 'string'
-					? model.baseURL
-					: 'url' in model && typeof model.url === 'string'
-						? model.url
-						: undefined;
-			return !baseURL || isOfficialOpenAiBaseUrl(baseURL);
+			const baseURL = getConfigBaseUrl(model);
+			return baseURL === undefined || isOfficialOpenAiBaseUrl(baseURL);
 		}
 		default:
 			return false;

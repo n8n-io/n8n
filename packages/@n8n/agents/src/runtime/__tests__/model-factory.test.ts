@@ -1421,6 +1421,17 @@ describe('usesOfficialAnthropicApi', () => {
 			false,
 		],
 		[
+			'a config with a custom url alias',
+			{ id: 'anthropic/claude-sonnet-5', apiKey: 'k', url: 'https://gateway.example.com' },
+			false,
+		],
+		['a config with an empty url', { id: 'anthropic/claude-sonnet-5', apiKey: 'k', url: '' }, true],
+		[
+			'a config with an unparsable base URL',
+			{ id: 'anthropic/claude-sonnet-5', apiKey: 'k', baseURL: 'not a url' },
+			false,
+		],
+		[
 			'a pre-built model',
 			createAnthropic({ apiKey: 'k', baseURL: 'https://proxy.example.com/anthropic/v1' })(
 				'claude-haiku-5-5',
