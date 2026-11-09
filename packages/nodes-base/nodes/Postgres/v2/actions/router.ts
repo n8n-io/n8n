@@ -33,10 +33,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		const probe = await connection.db.connect();
 		await probe.done();
 	} catch (err) {
-		if (!this.continueOnFail()) {
-			throw err;
-		}
 		const error = parsePostgresError(node, err, []);
+		if (!this.continueOnFail()) {
+			throw error;
+		}
 		return [items.map((_, index) => prepareErrorItem({ ...error, message: error.message }, index))];
 	}
 

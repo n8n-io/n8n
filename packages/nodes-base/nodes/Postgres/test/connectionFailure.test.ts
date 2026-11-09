@@ -125,7 +125,16 @@ describe.each([
 		context.continueOnFail.mockReturnValue(false);
 		context.getNode().onError = 'stopWorkflow';
 
-		await expect(postgres.execute.call(context)).rejects.toThrow(connectionError.message);
+		const execution = postgres.execute.call(context);
+		if (version === 1) {
+			await expect(execution).rejects.toBe(connectionError);
+		} else {
+			await expect(execution).rejects.toBeInstanceOf(NodeOperationError);
+			await expect(execution).rejects.toMatchObject({
+				message: 'Connection refused',
+				description: 'ssh.example.test:22',
+			});
+		}
 		expect(context.helpers.getSSHClient).toHaveBeenCalledOnce();
 	});
 
@@ -245,6 +254,7 @@ describe.each([
 					{ operation: 'insert', mode: 'single' },
 					{ operation: 'update', mode: 'single' },
 					{ operation: 'upsert', mode: 'single' },
+					{ operation: 'executeQuery', mode: 'single' },
 					{ operation: 'executeQuery', mode: 'transaction' },
 					{ operation: 'executeQuery', mode: 'independently' },
 				];
@@ -255,23 +265,27 @@ describe.each([
 				code: 'ECONNREFUSED',
 				message: 'connect ECONNREFUSED database.example.test:5432',
 				expectedMessage: 'Connection refused',
+				expectedDescription: 'database.example.test:5432',
 			},
 			{
 				code: '28P01',
 				message: 'password authentication failed for user "test"',
 				expectedMessage: 'password authentication failed for user "test"',
+				expectedDescription: undefined,
 			},
 			{
 				code: 'ENOTFOUND',
 				message: 'getaddrinfo ENOTFOUND database.example.test',
 				expectedMessage: 'Host not found',
+				expectedDescription: 'database.example.test',
 			},
 			{
 				code: 'ETIMEDOUT',
 				message: 'connect ETIMEDOUT database.example.test:5432',
 				expectedMessage: 'Connection timed out',
+				expectedDescription: 'database.example.test:5432',
 			},
-		])('$code', ({ code, message, expectedMessage }) => {
+		])('$code', ({ code, message, expectedMessage, expectedDescription }) => {
 			let db: ReturnType<typeof mockDeep<PgpDatabase>>;
 			let databaseError: Error;
 			const items: INodeExecutionData[] = [{ json: { id: 1 } }, { json: { id: 2 } }];
@@ -287,7 +301,7 @@ describe.each([
 				context.getNode().parameters = {
 					operation,
 					additionalFields: { mode },
-					options: { queryBatching: mode },
+					options: mode === 'single' ? {} : { queryBatching: mode },
 				};
 			});
 
@@ -317,7 +331,16 @@ describe.each([
 				context.continueOnFail.mockReturnValue(false);
 				context.getNode().onError = 'stopWorkflow';
 
-				await expect(postgres.execute.call(context)).rejects.toBe(databaseError);
+				const execution = postgres.execute.call(context);
+				if (version === 1) {
+					await expect(execution).rejects.toBe(databaseError);
+				} else {
+					await expect(execution).rejects.toBeInstanceOf(NodeOperationError);
+					await expect(execution).rejects.toMatchObject({
+						message: expectedMessage,
+						description: expectedDescription,
+					});
+				}
 				expect(db.connect).toHaveBeenCalledOnce();
 			});
 		});
