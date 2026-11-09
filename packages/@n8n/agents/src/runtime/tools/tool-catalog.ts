@@ -233,7 +233,8 @@ export class ToolCatalog {
 				wrap: (toolName, input) => {
 					const entry = this.lookup(toolName, input);
 					if (!entry) return undefined;
-					const args = toArguments(input);
+					// Copy: the caller's input is also kept for suspension and resume.
+					const args = { ...toArguments(input) };
 					// A tool split by action does not accept the `action` of its former name.
 					if (entry.name !== toolName && entry.tool.legacyActions?.[toolName] !== undefined) {
 						delete args.action;
