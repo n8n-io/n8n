@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -10,7 +11,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { CacheService } from '@n8n/backend-services';
+import { CacheService, EventService } from '@n8n/backend-services';
 import type { Project } from '@n8n/db';
 import {
 	FolderRepository,
@@ -34,6 +35,8 @@ import {
 import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { OwnershipService } from '@/services/ownership.service';
@@ -1884,6 +1887,57 @@ describe('DELETE /project/:projectId', () => {
 			}
 		},
 	);
+
+	test('finishes project deletion and transfer cleanup when workflow project cache invalidation fails', async () => {
+		const admin = await createAdmin();
+		const sourceProject = await createTeamProject('Source project', admin);
+		const targetProject = await createTeamProject('Target project');
+		const workflow = await createWorkflow({}, sourceProject);
+		const deleteCacheEntrySpy = vi
+			.spyOn(Container.get(CacheService), 'deleteFromHash')
+			.mockRejectedValueOnce(new Error('cache unavailable'));
+		const updateVariablesCacheSpy = vi.spyOn(Container.get(VariablesService), 'updateCache');
+		const cleanupConnectionsSpy = vi.spyOn(
+			Container.get(CredentialConnectionStatusProxy),
+			'cleanupOrphanedEntriesForUsers',
+		);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			await testServer
+				.authAgentFor(admin)
+				.delete(`/projects/${sourceProject.id}`)
+				.query({ transferId: targetProject.id })
+				.expect(200);
+
+			await expect(findProject(sourceProject.id)).rejects.toThrowError(EntityNotFoundError);
+			await expect(
+				Container.get(SharedWorkflowRepository).findOneByOrFail({
+					workflowId: workflow.id,
+					role: 'workflow:owner',
+				}),
+			).resolves.toMatchObject({ projectId: targetProject.id });
+			expect(deleteCacheEntrySpy).toHaveBeenCalledWith('workflow-project', workflow.id);
+			expect(Container.get(Logger).warn).toHaveBeenCalledWith(
+				'Failed to invalidate the workflow project cache on project delete',
+				{ projectId: sourceProject.id, error: 'cache unavailable' },
+			);
+			expect(updateVariablesCacheSpy).toHaveBeenCalledTimes(1);
+			expect(cleanupConnectionsSpy).toHaveBeenCalledExactlyOnceWith([admin.id]);
+			expect(emitSpy).toHaveBeenCalledWith('team-project-deleted', {
+				userId: admin.id,
+				role: admin.role.slug,
+				projectId: sourceProject.id,
+				removalType: 'transfer',
+				targetProjectId: targetProject.id,
+			});
+		} finally {
+			deleteCacheEntrySpy.mockRestore();
+			updateVariablesCacheSpy.mockRestore();
+			cleanupConnectionsSpy.mockRestore();
+			emitSpy.mockRestore();
+		}
+	});
 
 	test('does not migrate end-user credentials to a personal project', async () => {
 		//

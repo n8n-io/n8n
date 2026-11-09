@@ -282,7 +282,14 @@ export class ProjectService {
 
 		if (targetProject) {
 			// The cascade removes the source owner rows. Invalidate after the transaction commits.
-			await this.ownershipService.invalidateWorkflowProjectCacheByIds(workflowIds);
+			try {
+				await this.ownershipService.invalidateWorkflowProjectCacheByIds(workflowIds);
+			} catch (error) {
+				this.logger.warn('Failed to invalidate the workflow project cache on project delete', {
+					projectId,
+					error: error instanceof Error ? error.message : error,
+				});
+			}
 		}
 
 		// The cascade deletes the project's variables. Refresh the cache so their keys are free again.
