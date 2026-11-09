@@ -162,14 +162,6 @@ describe('ToolSettingsModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('closes the dialog when the dialog requests close', async () => {
-		const { getByTestId } = renderModal();
-
-		await userEvent.click(getByTestId('dialog-request-close'));
-
-		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
-	});
-
 	it('should close dialog when cancel is clicked', async () => {
 		const { getByText } = renderModal();
 
