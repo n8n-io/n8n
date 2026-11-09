@@ -1,10 +1,11 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as sharedUtils from '../../shared/utils';
-import { getTools } from '../listSearch';
+import { getPrompts, getResources, getTools } from '../listSearch';
 import { McpClient } from '../McpClient.node';
 import { getToolParameters } from '../resourceMapping';
 
@@ -707,6 +708,793 @@ describe('McpClient', () => {
 				expect.objectContaining({ surface: 'MCP Client' }),
 			);
 			expect(client.listTools).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('v1.2 operations', () => {
+		const v12Node = (typeVersion = 1.2) => ({
+			id: '123',
+			name: 'MCP Client',
+			type: '@n8n/n8n-nodes-langchain.mcpClient',
+			typeVersion,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		});
+
+		const runV12 = async (params: Record<string, unknown>, typeVersion = 1.2) => {
+			executeFunctions.getNode.mockReturnValue(v12Node(typeVersion));
+			executeFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const merged: Record<string, unknown> = {
+					...defaultParams,
+					operation: 'executeTool',
+					...params,
+				};
+				return merged[key] ?? defaultValue;
+			});
+
+			return await new McpClient().execute.call(executeFunctions);
+		};
+
+		it('does not read the operation parameter for v1.1', async () => {
+			executeFunctions.getNode.mockReturnValue(v12Node(1.1));
+			executeFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				if (key === 'operation') {
+					throw new Error('operation must not be read for v1.1');
+				}
+				return (defaultParams as Record<string, unknown>)[key] ?? defaultValue;
+			});
+			client.callTool.mockResolvedValue({
+				content: [{ type: 'text', text: 'ok' }],
+			});
+
+			await new McpClient().execute.call(executeFunctions);
+
+			expect(client.callTool).toHaveBeenCalledTimes(1);
+			expect(client.listResources).not.toHaveBeenCalled();
+		});
+
+		it('runs executeTool for v1.2 with the v1.1 arguments', async () => {
+			client.callTool.mockResolvedValue({
+				content: [{ type: 'text', text: 'ok' }],
+			});
+
+			const result = await runV12({ operation: 'executeTool' });
+
+			expect(client.callTool).toHaveBeenCalledWith(
+				{ name: 'get_weather', arguments: { location: 'Berlin' } },
+				undefined,
+				{ timeout: 10000 },
+			);
+			expect(result).toEqual([
+				[
+					{
+						json: { content: [{ type: 'text', text: 'ok' }] },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('keeps images as JSON when convertToBinary is false on v1.2 executeTool (B1)', async () => {
+			client.callTool.mockResolvedValue({
+				content: [{ type: 'image', data: 'abcdef', mimeType: 'image/png' }],
+			});
+
+			const result = await runV12({
+				operation: 'executeTool',
+				options: { timeout: 10000, convertToBinary: false },
+			});
+
+			expect(result).toEqual([
+				[
+					{
+						json: { content: [{ type: 'image', data: 'abcdef', mimeType: 'image/png' }] },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(executeFunctions.helpers.prepareBinaryData).not.toHaveBeenCalled();
+		});
+
+		it('lists resources for v1.2', async () => {
+			client.listResources.mockResolvedValue({
+				resources: [{ uri: 'mem://a', name: 'a' }],
+			});
+
+			const result = await runV12({ operation: 'listResources' });
+
+			expect(result).toEqual([
+				[
+					{
+						json: { resources: [{ uri: 'mem://a', name: 'a' }] },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('lists resource templates for v1.2', async () => {
+			client.listResourceTemplates.mockResolvedValue({
+				resourceTemplates: [{ uriTemplate: 'mem://{id}', name: 'templates' }],
+			});
+
+			const result = await runV12({ operation: 'listResourceTemplates' });
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							resourceTemplates: [{ uriTemplate: 'mem://{id}', name: 'templates' }],
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('lists prompts for v1.2', async () => {
+			client.listPrompts.mockResolvedValue({
+				prompts: [{ name: 'p', description: 'A prompt' }],
+			});
+
+			const result = await runV12({ operation: 'listPrompts' });
+
+			expect(result).toEqual([
+				[
+					{
+						json: { prompts: [{ name: 'p', description: 'A prompt' }] },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('reads a text resource for v1.2', async () => {
+			client.readResource.mockResolvedValue({
+				contents: [{ uri: 'mem://a', text: '{"a":1}' }],
+			});
+
+			const result = await runV12({
+				operation: 'readResource',
+				resourceUri: 'mem://a',
+			});
+
+			expect(client.readResource).toHaveBeenCalledWith(
+				{ uri: 'mem://a' },
+				expect.objectContaining({ timeout: 10000 }),
+			);
+			expect(result).toEqual([
+				[
+					{
+						json: { uri: 'mem://a', contents: [{ uri: 'mem://a', text: { a: 1 } }] },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('preserves non-JSON resource text as a string', async () => {
+			client.readResource.mockResolvedValue({
+				contents: [{ uri: 'mem://a', text: 'plain text' }],
+			});
+
+			const result = await runV12({
+				operation: 'readResource',
+				resourceUri: 'mem://a',
+			});
+
+			expect(result).toEqual([
+				[
+					{
+						json: { uri: 'mem://a', contents: [{ uri: 'mem://a', text: 'plain text' }] },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('gets a prompt and keeps text as a string (S2)', async () => {
+			client.getPrompt.mockResolvedValue({
+				description: 'A prompt',
+				messages: [{ role: 'user', content: { type: 'text', text: '{"a":1}' } }],
+			});
+
+			const result = await runV12({
+				operation: 'getPrompt',
+				promptName: 'p',
+				promptArguments: {},
+			});
+
+			expect(client.getPrompt).toHaveBeenCalledWith(
+				{ name: 'p' },
+				expect.objectContaining({ timeout: 10000 }),
+			);
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							description: 'A prompt',
+							messages: [{ role: 'user', content: { type: 'text', text: '{"a":1}' } }],
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('maps a missing resources capability to a NodeOperationError (B3)', async () => {
+			client.listResources.mockRejectedValue(
+				new McpError(ErrorCode.MethodNotFound, 'Method not found'),
+			);
+
+			await expect(runV12({ operation: 'listResources' })).rejects.toThrow(
+				'This MCP server does not support resources (required for "resources/list").',
+			);
+		});
+
+		it('keeps the server message as the capability error description', async () => {
+			client.listResources.mockRejectedValue(
+				new McpError(ErrorCode.MethodNotFound, 'Method not found'),
+			);
+
+			await expect(runV12({ operation: 'listResources' })).rejects.toMatchObject({
+				description: expect.stringContaining('Method not found'),
+			});
+		});
+
+		it('maps a missing prompts capability to a NodeOperationError (B3)', async () => {
+			client.getPrompt.mockRejectedValue(
+				new McpError(ErrorCode.MethodNotFound, 'Method not found'),
+			);
+
+			await expect(runV12({ operation: 'getPrompt', promptName: 'p' })).rejects.toThrow(
+				'This MCP server does not support prompts (required for "prompts/get").',
+			);
+		});
+
+		it('returns a capability error as json when continueOnFail is true', async () => {
+			client.getPrompt.mockRejectedValue(
+				new McpError(ErrorCode.MethodNotFound, 'Method not found'),
+			);
+			executeFunctions.continueOnFail.mockReturnValue(true);
+
+			const result = await runV12({ operation: 'getPrompt', promptName: 'p' });
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							error: {
+								message: 'This MCP server does not support prompts (required for "prompts/get").',
+							},
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('succeeds when the server does not advertise resources but returns data (B3)', async () => {
+			client.listResources.mockResolvedValue({
+				resources: [{ uri: 'mem://a', name: 'a' }],
+			});
+
+			const result = await runV12({ operation: 'listResources' });
+
+			expect(result).toEqual([
+				[
+					{
+						json: { resources: [{ uri: 'mem://a', name: 'a' }] },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(client.getServerCapabilities).not.toHaveBeenCalled();
+		});
+
+		it('returns an empty list without an error', async () => {
+			client.listResources.mockResolvedValue({ resources: [] });
+
+			const result = await runV12({ operation: 'listResources' });
+
+			expect(result).toEqual([[{ json: { resources: [] }, pairedItem: { item: 0 } }]]);
+		});
+
+		it('aggregates multiple pages', async () => {
+			client.listResources
+				.mockResolvedValueOnce({
+					resources: [{ uri: 'mem://a', name: 'a' }],
+					nextCursor: 'c',
+				})
+				.mockResolvedValueOnce({
+					resources: [{ uri: 'mem://b', name: 'b' }],
+				});
+
+			const result = await runV12({ operation: 'listResources' });
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							resources: [
+								{ uri: 'mem://a', name: 'a' },
+								{ uri: 'mem://b', name: 'b' },
+							],
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(client.listResources).toHaveBeenNthCalledWith(
+				1,
+				{ cursor: undefined },
+				expect.objectContaining({}),
+			);
+			expect(client.listResources).toHaveBeenNthCalledWith(
+				2,
+				{ cursor: 'c' },
+				expect.objectContaining({}),
+			);
+		});
+
+		it('stops at 100 pages and returns a truncated result instead of throwing', async () => {
+			client.listResources.mockImplementation(async (params) => {
+				const page = params?.cursor === undefined ? 0 : Number(params.cursor);
+				return { resources: [], nextCursor: String(page + 1) };
+			});
+
+			const result = await runV12({ operation: 'listResources' });
+
+			expect(result).toEqual([
+				[{ json: { resources: [], truncated: true }, pairedItem: { item: 0 } }],
+			]);
+			expect(client.listResources).toHaveBeenCalledTimes(100);
+		});
+
+		it('stops on a repeated cursor and returns a truncated result', async () => {
+			client.listResources.mockResolvedValue({ resources: [], nextCursor: 'c' });
+
+			const result = await runV12({ operation: 'listResources' });
+
+			expect(result).toEqual([
+				[{ json: { resources: [], truncated: true }, pairedItem: { item: 0 } }],
+			]);
+			expect(client.listResources).toHaveBeenCalledTimes(2);
+		});
+
+		it('converts resource blobs to binary when convertToBinary is true', async () => {
+			client.readResource.mockResolvedValue({
+				contents: [{ uri: 'mem://a', blob: 'aGVsbG8=', mimeType: 'text/plain' }],
+			});
+			executeFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: 'hello',
+				mimeType: 'text/plain',
+			});
+
+			const result = await runV12({
+				operation: 'readResource',
+				resourceUri: 'mem://a',
+				options: { timeout: 10000, convertToBinary: true },
+			});
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							uri: 'mem://a',
+							contents: [{ uri: 'mem://a', mimeType: 'text/plain', binaryKey: 'data_0' }],
+						},
+						binary: { data_0: { data: 'hello', mimeType: 'text/plain' } },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('keeps resource blobs as base64 when convertToBinary is false', async () => {
+			client.readResource.mockResolvedValue({
+				contents: [{ uri: 'mem://a', blob: 'aGVsbG8=', mimeType: 'text/plain' }],
+			});
+
+			const result = await runV12({
+				operation: 'readResource',
+				resourceUri: 'mem://a',
+				options: { timeout: 10000, convertToBinary: false },
+			});
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							uri: 'mem://a',
+							contents: [{ uri: 'mem://a', blob: 'aGVsbG8=', mimeType: 'text/plain' }],
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('converts mixed and multiple resource contents in order', async () => {
+			client.readResource.mockResolvedValue({
+				contents: [
+					{ uri: 'mem://a', text: 'hello' },
+					{ uri: 'mem://b', blob: 'aGVsbG8=', mimeType: 'image/png' },
+					{ uri: 'mem://c', blob: 'd29ybGQ=', mimeType: 'image/jpeg' },
+				],
+			});
+			executeFunctions.helpers.prepareBinaryData
+				.mockResolvedValueOnce({ data: 'hello', mimeType: 'image/png' })
+				.mockResolvedValueOnce({ data: 'world', mimeType: 'image/jpeg' });
+
+			const result = await runV12({
+				operation: 'readResource',
+				resourceUri: 'mem://a',
+				options: { timeout: 10000, convertToBinary: true },
+			});
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							uri: 'mem://a',
+							contents: [
+								{ uri: 'mem://a', text: 'hello' },
+								{ uri: 'mem://b', mimeType: 'image/png', binaryKey: 'data_0' },
+								{ uri: 'mem://c', mimeType: 'image/jpeg', binaryKey: 'data_1' },
+							],
+						},
+						binary: {
+							data_0: { data: 'hello', mimeType: 'image/png' },
+							data_1: { data: 'world', mimeType: 'image/jpeg' },
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('rejects an unsafe prompt argument name (B2)', async () => {
+			const unsafeName = '__proto__';
+			await expect(
+				runV12({
+					operation: 'getPrompt',
+					promptName: 'p',
+					promptArguments: { arguments: [{ name: unsafeName, value: 'x' }] },
+				}),
+			).rejects.toThrow('Prompt argument name "__proto__" is not allowed.');
+		});
+
+		it('rejects the constructor prompt argument name (B2)', async () => {
+			await expect(
+				runV12({
+					operation: 'getPrompt',
+					promptName: 'p',
+					promptArguments: { arguments: [{ name: 'constructor', value: 'x' }] },
+				}),
+			).rejects.toThrow('Prompt argument name "constructor" is not allowed.');
+		});
+
+		it('rejects an empty prompt argument name (B2)', async () => {
+			await expect(
+				runV12({
+					operation: 'getPrompt',
+					promptName: 'p',
+					promptArguments: { arguments: [{ name: '', value: 'x' }] },
+				}),
+			).rejects.toThrow('Prompt argument name "" is not allowed.');
+		});
+
+		it('passes safe prompt arguments through and leaves Object.prototype unchanged (B2)', async () => {
+			client.getPrompt.mockResolvedValue({
+				messages: [{ role: 'user', content: { type: 'text', text: 'ok' } }],
+			});
+
+			await runV12({
+				operation: 'getPrompt',
+				promptName: 'p',
+				promptArguments: { arguments: [{ name: 'Text', value: 'hello' }] },
+			});
+
+			expect(client.getPrompt).toHaveBeenCalledWith(
+				{ name: 'p', arguments: expect.objectContaining({ Text: 'hello' }) },
+				expect.objectContaining({ timeout: 10000 }),
+			);
+			expect((Object.prototype as Record<string, unknown>).polluted).toBeUndefined();
+		});
+
+		it('converts an embedded resource blob in a prompt (S3)', async () => {
+			client.getPrompt.mockResolvedValue({
+				messages: [
+					{
+						role: 'user',
+						content: {
+							type: 'resource',
+							resource: { uri: 'mem://a', blob: 'aGVsbG8=', mimeType: 'text/plain' },
+						},
+					},
+				],
+			});
+			executeFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: 'hello',
+				mimeType: 'text/plain',
+			});
+
+			const result = await runV12({
+				operation: 'getPrompt',
+				promptName: 'p',
+				options: { timeout: 10000, convertToBinary: true },
+			});
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							messages: [
+								{
+									role: 'user',
+									content: {
+										type: 'resource',
+										resource: { uri: 'mem://a', mimeType: 'text/plain', binaryKey: 'data_0' },
+									},
+								},
+							],
+						},
+						binary: { data_0: { data: 'hello', mimeType: 'text/plain' } },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('keeps an embedded resource blob as base64 when convertToBinary is false (S3)', async () => {
+			client.getPrompt.mockResolvedValue({
+				messages: [
+					{
+						role: 'user',
+						content: {
+							type: 'resource',
+							resource: { uri: 'mem://a', blob: 'aGVsbG8=', mimeType: 'text/plain' },
+						},
+					},
+				],
+			});
+
+			const result = await runV12({
+				operation: 'getPrompt',
+				promptName: 'p',
+				options: { timeout: 10000, convertToBinary: false },
+			});
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							messages: [
+								{
+									role: 'user',
+									content: {
+										type: 'resource',
+										resource: { uri: 'mem://a', blob: 'aGVsbG8=', mimeType: 'text/plain' },
+									},
+								},
+							],
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('converts prompt image content to binary when convertToBinary is true', async () => {
+			client.getPrompt.mockResolvedValue({
+				messages: [
+					{
+						role: 'user',
+						content: { type: 'image', data: 'aGVsbG8=', mimeType: 'image/png' },
+					},
+				],
+			});
+			executeFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: 'hello',
+				mimeType: 'image/png',
+			});
+
+			const result = await runV12({
+				operation: 'getPrompt',
+				promptName: 'p',
+				options: { timeout: 10000, convertToBinary: true },
+			});
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							messages: [
+								{
+									role: 'user',
+									content: { type: 'image', mimeType: 'image/png', binaryKey: 'data_0' },
+								},
+							],
+						},
+						binary: { data_0: { data: 'hello', mimeType: 'image/png' } },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('converts prompt audio content to binary when convertToBinary is true', async () => {
+			client.getPrompt.mockResolvedValue({
+				messages: [
+					{
+						role: 'assistant',
+						content: { type: 'audio', data: 'aGVsbG8=', mimeType: 'audio/mpeg' },
+					},
+				],
+			});
+			executeFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: 'hello',
+				mimeType: 'audio/mpeg',
+			});
+
+			const result = await runV12({
+				operation: 'getPrompt',
+				promptName: 'p',
+				options: { timeout: 10000, convertToBinary: true },
+			});
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							messages: [
+								{
+									role: 'assistant',
+									content: { type: 'audio', mimeType: 'audio/mpeg', binaryKey: 'data_0' },
+								},
+							],
+						},
+						binary: { data_0: { data: 'hello', mimeType: 'audio/mpeg' } },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('keeps prompt image content as base64 when convertToBinary is false', async () => {
+			client.getPrompt.mockResolvedValue({
+				messages: [
+					{
+						role: 'user',
+						content: { type: 'image', data: 'aGVsbG8=', mimeType: 'image/png' },
+					},
+				],
+			});
+
+			const result = await runV12({
+				operation: 'getPrompt',
+				promptName: 'p',
+				options: { timeout: 10000, convertToBinary: false },
+			});
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							messages: [
+								{
+									role: 'user',
+									content: { type: 'image', data: 'aGVsbG8=', mimeType: 'image/png' },
+								},
+							],
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('maps a connection failure before the loop and does not close the client', async () => {
+			connectMcpClientForCredential.mockResolvedValueOnce({
+				ok: false,
+				error: { type: 'connection', error: new Error('nope') },
+			});
+
+			await expect(runV12({ operation: 'listResources' })).rejects.toThrow(
+				'Could not connect to your MCP server',
+			);
+			expect(client.close).not.toHaveBeenCalled();
+		});
+
+		it('passes the surface and the cancel signal to the connect helper for v1.2', async () => {
+			const abort = new AbortController();
+			executeFunctions.getExecutionCancelSignal.mockReturnValue(abort.signal);
+			client.listResources.mockResolvedValue({ resources: [] });
+
+			await runV12({ operation: 'listResources' });
+
+			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+				executeFunctions,
+				expect.objectContaining({
+					surface: 'MCP Client',
+					signal: abort.signal,
+				}),
+			);
+		});
+	});
+
+	describe('listSearch: getResources and getPrompts', () => {
+		const mockLoadOptions = () =>
+			mock<ILoadOptionsFunctions>({
+				getNode: vi.fn().mockReturnValue({
+					id: '123',
+					name: 'MCP Client',
+					type: '@n8n/n8n-nodes-langchain.mcpClient',
+					typeVersion: 1.2,
+					position: [0, 0],
+					parameters: {},
+				}),
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
+					const params: Record<string, unknown> = {
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+					};
+					return params[key];
+				}),
+			});
+
+		it('lists resources and closes the client', async () => {
+			client.listResources.mockResolvedValue({
+				resources: [{ uri: 'mem://a', name: 'Resource', description: 'A resource' }],
+				nextCursor: 'c',
+			});
+
+			const result = await getResources.call(mockLoadOptions());
+
+			expect(result).toEqual({
+				results: [{ name: 'Resource', value: 'mem://a', description: 'A resource' }],
+				paginationToken: 'c',
+			});
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns an empty result and closes the client when listing resources fails', async () => {
+			client.listResources.mockRejectedValue(new Error('listResources failed'));
+
+			const result = await getResources.call(mockLoadOptions());
+
+			expect(result).toEqual({ results: [] });
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('lists prompts and closes the client', async () => {
+			client.listPrompts.mockResolvedValue({
+				prompts: [{ name: 'Prompt', description: 'A prompt' }],
+			});
+
+			const result = await getPrompts.call(mockLoadOptions());
+
+			expect(result).toEqual({
+				results: [{ name: 'Prompt', value: 'Prompt', description: 'A prompt' }],
+				paginationToken: undefined,
+			});
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns an empty result and closes the client when listing prompts fails', async () => {
+			client.listPrompts.mockRejectedValue(new Error('listPrompts failed'));
+
+			const result = await getPrompts.call(mockLoadOptions());
+
+			expect(result).toEqual({ results: [] });
+			expect(client.close).toHaveBeenCalledTimes(1);
 		});
 	});
 });

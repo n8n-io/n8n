@@ -1,10 +1,15 @@
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 import type {
 	ResourceMapperField,
 	FieldType,
 	INodePropertyOptions,
 	IDataObject,
+	INode,
 } from 'n8n-workflow';
+import { isSafeObjectProperty, NodeOperationError } from 'n8n-workflow';
 
 function pickFirstSchema(schema: JSONSchema7Definition): JSONSchema7Definition {
 	if (typeof schema === 'object' && (schema?.anyOf || schema?.oneOf)) {
@@ -278,4 +283,145 @@ export function convertJsonSchemaToResourceMapperFields(
 	}
 
 	return fields;
+}
+
+export const MCP_MAX_LIST_PAGES = 100;
+
+type ListPage<T> = {
+	items: T[];
+	nextCursor?: string;
+};
+
+export type ListAllResult<T> = {
+	items: T[];
+	truncated: boolean;
+};
+
+type McpResource = Awaited<ReturnType<Client['listResources']>>['resources'][number];
+type McpResourceTemplate = Awaited<
+	ReturnType<Client['listResourceTemplates']>
+>['resourceTemplates'][number];
+type McpPrompt = Awaited<ReturnType<Client['listPrompts']>>['prompts'][number];
+
+async function getAllPages<T>(
+	options: RequestOptions,
+	listPage: (cursor: string | undefined) => Promise<ListPage<T>>,
+): Promise<ListAllResult<T>> {
+	let cursor: string | undefined;
+	let pages = 0;
+	const items: T[] = [];
+
+	while (true) {
+		if (options.signal?.aborted) {
+			throw new Error('Execution was cancelled');
+		}
+
+		const page = await listPage(cursor);
+		items.push(...page.items);
+		pages += 1;
+
+		const nextCursor = page.nextCursor;
+		if (!nextCursor) {
+			return { items, truncated: false };
+		}
+
+		// Stop on a repeated cursor or at the page cap. Return the data we have
+		// instead of discarding it.
+		if (nextCursor === cursor || pages >= MCP_MAX_LIST_PAGES) {
+			return { items, truncated: true };
+		}
+
+		cursor = nextCursor;
+	}
+}
+
+export async function getAllResources(
+	client: Client,
+	options: RequestOptions,
+): Promise<ListAllResult<McpResource>> {
+	return await getAllPages(options, async (cursor) => {
+		const { resources, nextCursor } = await client.listResources({ cursor }, options);
+		return { items: resources, nextCursor };
+	});
+}
+
+export async function getAllResourceTemplates(
+	client: Client,
+	options: RequestOptions,
+): Promise<ListAllResult<McpResourceTemplate>> {
+	return await getAllPages(options, async (cursor) => {
+		const { resourceTemplates, nextCursor } = await client.listResourceTemplates(
+			{ cursor },
+			options,
+		);
+		return { items: resourceTemplates, nextCursor };
+	});
+}
+
+export async function getAllPrompts(
+	client: Client,
+	options: RequestOptions,
+): Promise<ListAllResult<McpPrompt>> {
+	return await getAllPages(options, async (cursor) => {
+		const { prompts, nextCursor } = await client.listPrompts({ cursor }, options);
+		return { items: prompts, nextCursor };
+	});
+}
+
+/**
+ * Turns only the JSON-RPC "method not found" error into a capability-named
+ * NodeOperationError. Other errors pass through unchanged so the caller's
+ * existing error handling still applies.
+ */
+export function mapCapabilityError(
+	node: INode,
+	itemIndex: number,
+	capability: 'resources' | 'prompts',
+	method: string,
+	error: unknown,
+): Error {
+	if (error instanceof McpError && error.code === Number(ErrorCode.MethodNotFound)) {
+		return new NodeOperationError(
+			node,
+			`This MCP server does not support ${capability} (required for "${method}").`,
+			{ itemIndex, description: error.message },
+		);
+	}
+
+	return error instanceof Error ? error : new Error(String(error));
+}
+
+/**
+ * Converts the fixedCollection value into the string map the MCP SDK expects.
+ * Argument names are user input, so they are validated before they are used as
+ * object keys. The value is never included in an error message.
+ */
+export function buildPromptArguments(
+	raw: IDataObject,
+	node: INode,
+	itemIndex: number,
+): Record<string, string> | undefined {
+	const entries = raw.arguments;
+	if (!Array.isArray(entries) || entries.length === 0) {
+		return undefined;
+	}
+
+	const result: Record<string, string> = Object.create(null) as Record<string, string>;
+
+	for (const entry of entries) {
+		if (typeof entry !== 'object' || entry === null) {
+			continue;
+		}
+
+		const name = (entry as IDataObject).name;
+		if (typeof name !== 'string' || name.length === 0 || !isSafeObjectProperty(name)) {
+			throw new NodeOperationError(node, `Prompt argument name "${String(name)}" is not allowed.`, {
+				itemIndex,
+			});
+		}
+
+		result[name] = String((entry as IDataObject).value ?? '');
+	}
+
+	return result;
 }

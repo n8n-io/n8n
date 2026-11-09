@@ -1,9 +1,20 @@
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { JSONSchema7Definition, JSONSchema7 } from 'json-schema';
+import type { INode } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import {
+	buildPromptArguments,
 	convertJsonSchemaToResourceMapperFields,
+	getAllPrompts,
+	getAllResourceTemplates,
+	getAllResources,
 	jsonSchemaTypeToDefaultValue,
 	jsonSchemaTypeToFieldType,
+	mapCapabilityError,
+	MCP_MAX_LIST_PAGES,
 } from '../utils';
 
 describe('utils', () => {
@@ -297,6 +308,259 @@ describe('utils', () => {
 				},
 			];
 			expect(convertJsonSchemaToResourceMapperFields(schema)).toEqual(expected);
+		});
+	});
+
+	describe('MCP_MAX_LIST_PAGES', () => {
+		it('caps pagination at 100 pages', () => {
+			expect(MCP_MAX_LIST_PAGES).toBe(100);
+		});
+	});
+
+	describe('getAllResources', () => {
+		it('aggregates resources across pages and passes the cursor and options', async () => {
+			const client = mockDeep<Client>();
+			const options = { timeout: 1234 };
+			client.listResources
+				.mockResolvedValueOnce({
+					resources: [{ uri: 'mem://a', name: 'a' }],
+					nextCursor: 'c1',
+				})
+				.mockResolvedValueOnce({
+					resources: [{ uri: 'mem://b', name: 'b' }],
+				});
+
+			const result = await getAllResources(client, options);
+
+			expect(result).toEqual({
+				items: [
+					{ uri: 'mem://a', name: 'a' },
+					{ uri: 'mem://b', name: 'b' },
+				],
+				truncated: false,
+			});
+			expect(client.listResources).toHaveBeenNthCalledWith(1, { cursor: undefined }, options);
+			expect(client.listResources).toHaveBeenNthCalledWith(2, { cursor: 'c1' }, options);
+		});
+
+		it('returns a truncated result at the page cap instead of throwing', async () => {
+			const client = mockDeep<Client>();
+			client.listResources.mockImplementation(async (params) => {
+				const page = params?.cursor === undefined ? 0 : Number(params.cursor);
+				return { resources: [], nextCursor: String(page + 1) };
+			});
+
+			const result = await getAllResources(client, {});
+
+			expect(result).toEqual({ items: [], truncated: true });
+			expect(client.listResources).toHaveBeenCalledTimes(MCP_MAX_LIST_PAGES);
+		});
+
+		it('returns a truncated result on a repeated cursor', async () => {
+			const client = mockDeep<Client>();
+			client.listResources.mockResolvedValue({ resources: [], nextCursor: 'c' });
+
+			const result = await getAllResources(client, {});
+
+			expect(result).toEqual({ items: [], truncated: true });
+			expect(client.listResources).toHaveBeenCalledTimes(2);
+		});
+
+		it('throws before calling the server when the signal is already aborted', async () => {
+			const client = mockDeep<Client>();
+			const controller = new AbortController();
+			controller.abort();
+
+			await expect(getAllResources(client, { signal: controller.signal })).rejects.toThrow(
+				'Execution was cancelled',
+			);
+			expect(client.listResources).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getAllResourceTemplates', () => {
+		it('aggregates resource templates across pages', async () => {
+			const client = mockDeep<Client>();
+			client.listResourceTemplates
+				.mockResolvedValueOnce({
+					resourceTemplates: [{ uriTemplate: 'mem://a/{id}', name: 'a' }],
+					nextCursor: 'c1',
+				})
+				.mockResolvedValueOnce({
+					resourceTemplates: [{ uriTemplate: 'mem://b/{id}', name: 'b' }],
+				});
+
+			const result = await getAllResourceTemplates(client, {});
+
+			expect(result).toEqual({
+				items: [
+					{ uriTemplate: 'mem://a/{id}', name: 'a' },
+					{ uriTemplate: 'mem://b/{id}', name: 'b' },
+				],
+				truncated: false,
+			});
+			expect(client.listResourceTemplates).toHaveBeenNthCalledWith(2, { cursor: 'c1' }, {});
+		});
+	});
+
+	describe('getAllPrompts', () => {
+		it('aggregates prompts across pages', async () => {
+			const client = mockDeep<Client>();
+			client.listPrompts
+				.mockResolvedValueOnce({
+					prompts: [{ name: 'first' }],
+					nextCursor: 'c1',
+				})
+				.mockResolvedValueOnce({
+					prompts: [{ name: 'second' }],
+				});
+
+			const result = await getAllPrompts(client, {});
+
+			expect(result).toEqual({
+				items: [{ name: 'first' }, { name: 'second' }],
+				truncated: false,
+			});
+			expect(client.listPrompts).toHaveBeenNthCalledWith(1, { cursor: undefined }, {});
+			expect(client.listPrompts).toHaveBeenNthCalledWith(2, { cursor: 'c1' }, {});
+		});
+	});
+
+	describe('mapCapabilityError', () => {
+		const node = mockDeep<INode>();
+
+		it('maps a missing resources capability to a NodeOperationError', () => {
+			const mapped = mapCapabilityError(
+				node,
+				2,
+				'resources',
+				'resources/list',
+				new McpError(ErrorCode.MethodNotFound, 'Method not found'),
+			);
+
+			expect(mapped).toBeInstanceOf(NodeOperationError);
+			const nodeError = mapped as NodeOperationError;
+			expect(nodeError.message).toBe(
+				'This MCP server does not support resources (required for "resources/list").',
+			);
+			expect(nodeError.description).toBe('MCP error -32601: Method not found');
+			expect(nodeError.context.itemIndex).toBe(2);
+		});
+
+		it('maps a missing prompts capability to a NodeOperationError', () => {
+			const mapped = mapCapabilityError(
+				node,
+				0,
+				'prompts',
+				'prompts/get',
+				new McpError(ErrorCode.MethodNotFound, 'Method not found'),
+			);
+
+			expect(mapped).toBeInstanceOf(NodeOperationError);
+			expect(mapped.message).toBe(
+				'This MCP server does not support prompts (required for "prompts/get").',
+			);
+		});
+
+		it('passes through other MCP errors unchanged', () => {
+			const error = new McpError(ErrorCode.InternalError, 'boom');
+			expect(mapCapabilityError(node, 0, 'resources', 'resources/list', error)).toBe(error);
+		});
+
+		it('passes through a normal Error unchanged', () => {
+			const error = new Error('boom');
+			expect(mapCapabilityError(node, 0, 'resources', 'resources/list', error)).toBe(error);
+		});
+
+		it('wraps a non-Error value', () => {
+			const mapped = mapCapabilityError(node, 0, 'resources', 'resources/list', 'boom');
+
+			expect(mapped).toBeInstanceOf(Error);
+			expect(mapped.message).toBe('boom');
+		});
+	});
+
+	describe('buildPromptArguments', () => {
+		const node = mockDeep<INode>();
+
+		it('returns undefined for an empty collection', () => {
+			expect(buildPromptArguments({}, node, 0)).toBeUndefined();
+			expect(buildPromptArguments({ arguments: [] }, node, 0)).toBeUndefined();
+		});
+
+		it('builds a string map and coerces values', () => {
+			const result = buildPromptArguments(
+				{
+					arguments: [
+						{ name: 'Text', value: 'hello' },
+						{ name: 'Count', value: 3 },
+					],
+				},
+				node,
+				0,
+			);
+
+			expect(result).toEqual({ Text: 'hello', Count: '3' });
+		});
+
+		it('uses a null-prototype accumulator', () => {
+			const result = buildPromptArguments(
+				{ arguments: [{ name: 'Text', value: 'hello' }] },
+				node,
+				0,
+			);
+
+			expect(Object.getPrototypeOf(result)).toBeNull();
+		});
+
+		it('keeps the last value for a duplicate name', () => {
+			const result = buildPromptArguments(
+				{
+					arguments: [
+						{ name: 'X', value: '1' },
+						{ name: 'X', value: '2' },
+					],
+				},
+				node,
+				0,
+			);
+
+			expect(result).toEqual({ X: '2' });
+		});
+
+		it('uses an empty string when the value is missing', () => {
+			const result = buildPromptArguments({ arguments: [{ name: 'X' }] }, node, 0);
+
+			expect(result).toEqual({ X: '' });
+		});
+
+		it.each(['__proto__', 'constructor', 'prototype'])(
+			'rejects the unsafe argument name %s',
+			(name) => {
+				expect(() => buildPromptArguments({ arguments: [{ name, value: 'x' }] }, node, 0)).toThrow(
+					`Prompt argument name "${name}" is not allowed.`,
+				);
+			},
+		);
+
+		it('rejects an empty argument name', () => {
+			expect(() =>
+				buildPromptArguments({ arguments: [{ name: '', value: 'x' }] }, node, 0),
+			).toThrow('Prompt argument name "" is not allowed.');
+		});
+
+		it('rejects a non-string argument name', () => {
+			expect(() =>
+				buildPromptArguments({ arguments: [{ name: 123, value: 'x' }] }, node, 0),
+			).toThrow('Prompt argument name "123" is not allowed.');
+		});
+
+		it('does not pollute Object.prototype', () => {
+			const unsafeName = '__proto__';
+			expect(() =>
+				buildPromptArguments({ arguments: [{ name: unsafeName, value: 'x' }] }, node, 0),
+			).toThrow();
+			expect((Object.prototype as Record<string, unknown>).polluted).toBeUndefined();
 		});
 	});
 });
