@@ -258,7 +258,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 	// With the character-count token counter, a 750-char message is inside the
 	// soft band [700, 1000), and two such messages cross the hard threshold.
 
-	it('schedules the observer in the background at the soft threshold and activates at a later boundary', async () => {
+	it('schedules the observer in the background at the soft threshold and leaves the window for the next turn', async () => {
 		const store = new InMemoryMemory();
 		const d = deferred<string>();
 		const observe = vi.fn(async () => await d.promise);
@@ -283,15 +283,50 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 
 		d.resolve('* CRITICAL (14:30) Background observation.');
 		await tracker.flush();
+		expect(await store.getCursor(THREAD_ID)).not.toBeNull();
 
-		// The next boundary activates the settled result without a new observer run.
+		// Below the hard threshold, later boundaries keep the prompt unchanged
+		// and do not observe the same window again.
+		const visibleBefore = list.forLlm('base');
 		await orchestrator.maybeObserveMidRun(list, runOptions());
 		expect(observe).toHaveBeenCalledTimes(1);
-		expect(list.forLlm('base').messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
-		expect(list.observationLogMemory).toContain('Background observation.');
-		expect(await store.getCursor(THREAD_ID)).not.toBeNull();
+		expect(list.forLlm('base')).toEqual(visibleBefore);
+		expect(list.observationLogMemory).toBeUndefined();
+
+		// The next turn loads history from the advanced cursor.
+		const next = new AgentMessageList();
+		await orchestrator.loadInto(next, runOptions());
+		expect(next.llmVisibleMessages()).toHaveLength(0);
+		expect(next.observationLogMemory).toContain('Background observation.');
+	});
+
+	it('applies a settled background result when the hard threshold is crossed', async () => {
+		const store = new InMemoryMemory();
+		const observe = vi.fn(
+			async () => await Promise.resolve('* CRITICAL (14:30) First chunk observed.'),
+		);
+		const { orchestrator, tracker } = buildOrchestrator(store, {
+			observerThresholdTokens: 1000,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('x'.repeat(750))]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		await tracker.flush();
+
+		list.addResponse([assistantMsg('y'.repeat(750))]);
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		// The settled result brings the window under the hard threshold, so no
+		// second observer runs.
+		expect(observe).toHaveBeenCalledTimes(1);
+		const visible = list.forLlm('base').messages;
+		expect(visible).toHaveLength(2);
+		expect(visible[0]).toEqual({ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER });
+		expect(JSON.stringify(visible[1])).toContain('y'.repeat(750));
+		expect(list.observationLogMemory).toContain('First chunk observed.');
 	});
 
 	it('joins the in-flight observer when the hard threshold is crossed', async () => {

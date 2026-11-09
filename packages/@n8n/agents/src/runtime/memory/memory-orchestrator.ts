@@ -489,16 +489,19 @@ export class MemoryOrchestrator {
 	 * window's estimated model-facing token size crosses a soft threshold
 	 * (`MID_RUN_SOFT_THRESHOLD_RATIO` x `observerThresholdTokens`), persist the
 	 * turn-so-far (the Observer reads from the store) and start the Observer as
-	 * a background task without blocking the loop. A later boundary activates
-	 * the settled result cheaply: mask the observed messages out of the LLM
-	 * window and refresh the injected observation log — no LLM call. Only when
-	 * the budget reaches the hard threshold (`observerThresholdTokens`) does the
-	 * loop block: it joins the in-flight task, or falls back to a synchronous
-	 * Observer run. Best-effort: a skipped (lock held) or failed observer run —
-	 * or any failure in the surrounding store reads and token counting — leaves
-	 * the window untouched and never fails the run. A failed attempt or a response
-	 * that does not advance the cursor disables observation until the next run.
-	 * Lock contention and incomplete tool calls can be checked at the next boundary.
+	 * a background task without blocking the loop. The settled result is not
+	 * applied at a later boundary: the next turn loads history from the advanced
+	 * cursor instead. Masking mid-turn rewrites the prompt prefix, which breaks
+	 * the provider prompt cache and the binding of signed thinking blocks (for
+	 * example Anthropic). Only when the budget reaches the hard threshold
+	 * (`observerThresholdTokens`) does the loop mask mid-turn: it applies the
+	 * settled or in-flight task, or falls back to a synchronous Observer run
+	 * when that is not enough. Best-effort: a skipped (lock held) or failed
+	 * observer run — or any failure in the surrounding store reads and token
+	 * counting — leaves the window untouched and never fails the run. A failed
+	 * attempt or a response that does not advance the cursor disables
+	 * observation until the next run. Lock contention and incomplete tool calls
+	 * can be checked at the next boundary.
 	 */
 	async maybeObserveMidRun(
 		list: AgentMessageList,
@@ -550,67 +553,88 @@ export class MemoryOrchestrator {
 		const observerThresholdTokens = observationalMemory?.observerThresholdTokens;
 		if (!observationalMemory?.observe || observerThresholdTokens === undefined) return;
 
-		// Phase 1: activate a settled background result first — cheap, resets
-		// the budget for the threshold checks below.
-		if (this.midRunObserverTask?.result) {
-			const { result } = this.midRunObserverTask;
-			this.midRunObserverTask = undefined;
-			if (this.noteMidRunObserverResult(result)) {
-				await this.activateObservations(list, options.persistence);
-			}
-		}
-
-		if (this.observerRun.disabled) return;
-
 		const budget = await this.estimateVisibleBudget(list);
+		if (budget >= observerThresholdTokens) {
+			await this.observeAtHardThreshold(list, options, options.persistence, {
+				budget,
+				observerThresholdTokens,
+			});
+			return;
+		}
 		const softThresholdTokens = Math.max(
 			1,
 			Math.floor(observerThresholdTokens * MID_RUN_SOFT_THRESHOLD_RATIO),
 		);
 		if (budget < softThresholdTokens) return;
+		await this.startBackgroundObserver(list, options, options.persistence);
+	}
 
-		const telemetry = this.runtimeTelemetry.resolve(options);
-
-		// Phase 2: hard threshold — the window must not grow past it. Join the
-		// in-flight task if any. Observe again only if the run is still enabled.
-		if (budget >= observerThresholdTokens) {
-			logger.debug('Mid-run observation hit the hard threshold', {
-				threadId: options.persistence.threadId,
-				budget,
-				observerThresholdTokens,
-				observerInFlight: Boolean(this.midRunObserverTask),
-			});
-			if (this.midRunObserverTask) {
-				const result = await this.midRunObserverTask.handle.done;
-				this.midRunObserverTask = undefined;
-				if (this.noteMidRunObserverResult(result)) {
-					await this.activateObservations(list, options.persistence);
-					if ((await this.estimateVisibleBudget(list)) < observerThresholdTokens) return;
-				}
-			}
-			if (this.observerRun.disabled) return;
-			await this.persistTurnDelta(list, options);
-			const handle = this.scheduleObserverTask(
-				options.persistence,
-				options.executionCounter,
-				telemetry,
-				options.onSideCallUsage,
-			);
-			if (!handle) return;
-			const result = await handle.done;
-			if (!this.noteMidRunObserverResult(result)) return;
-			await this.activateObservations(list, options.persistence);
-			return;
+	/**
+	 * The window must not grow past the hard threshold, so mask mid-turn: apply
+	 * the background task first, then observe synchronously if still needed.
+	 */
+	private async observeAtHardThreshold(
+		list: AgentMessageList,
+		options: RunOptions & ExecutionOptions,
+		persistence: AgentPersistenceOptions,
+		{ budget, observerThresholdTokens }: { budget: number; observerThresholdTokens: number },
+	): Promise<void> {
+		logger.debug('Mid-run observation hit the hard threshold', {
+			threadId: persistence.threadId,
+			budget,
+			observerThresholdTokens,
+			observerTask: Boolean(this.midRunObserverTask),
+		});
+		if (await this.applyMidRunObserverTask(list, persistence)) {
+			if ((await this.estimateVisibleBudget(list)) < observerThresholdTokens) return;
 		}
-
-		// Phase 3: soft threshold — start the observer in the background; never
-		// blocks the loop. One in-flight task at a time.
-		if (this.midRunObserverTask) return;
+		if (this.observerRun.disabled) return;
 		await this.persistTurnDelta(list, options);
 		const handle = this.scheduleObserverTask(
-			options.persistence,
+			persistence,
 			options.executionCounter,
-			telemetry,
+			this.runtimeTelemetry.resolve(options),
+			options.onSideCallUsage,
+		);
+		if (!handle) return;
+		const result = await handle.done;
+		if (!this.noteMidRunObserverResult(result)) return;
+		await this.activateObservations(list, persistence);
+	}
+
+	/**
+	 * Wait for the background task if it is still in flight, then mask the
+	 * window when it advanced the cursor. Returns whether the window changed.
+	 */
+	private async applyMidRunObserverTask(
+		list: AgentMessageList,
+		persistence: AgentPersistenceOptions,
+	): Promise<boolean> {
+		const task = this.midRunObserverTask;
+		if (!task) return false;
+		const result = task.result ?? (await task.handle.done);
+		this.midRunObserverTask = undefined;
+		if (!this.noteMidRunObserverResult(result)) return false;
+		await this.activateObservations(list, persistence);
+		return true;
+	}
+
+	/**
+	 * Start the Observer in the background without blocking the loop. One task
+	 * per turn until the hard threshold applies it: its settled result stays in
+	 * place, so later soft boundaries do not observe the same window again.
+	 */
+	private async startBackgroundObserver(
+		list: AgentMessageList,
+		options: RunOptions & ExecutionOptions,
+		persistence: AgentPersistenceOptions,
+	): Promise<void> {
+		if (this.midRunObserverTask || this.observerRun.disabled) return;
+		await this.persistTurnDelta(list, options);
+		const handle = this.scheduleObserverTask(
+			persistence,
+			options.executionCounter,
+			this.runtimeTelemetry.resolve(options),
 			options.onSideCallUsage,
 		);
 		if (!handle) return;
