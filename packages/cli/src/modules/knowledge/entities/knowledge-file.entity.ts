@@ -1,9 +1,10 @@
 import { WithTimestampsAndStringId, type ExecutionDataStorageLocation } from '@n8n/db';
-import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
-
-import { Agent } from './agent.entity';
+import { Column, Entity, Index } from '@n8n/typeorm';
 
 /**
+ * An uploaded knowledge file of an agent. The table keeps its name from the
+ * time the agents module owned it.
+ *
  * The table still carries a nullable `binaryDataId` and its unique index, left
  * behind by `AddAgentFileStorageColumns` so the previous release can read the
  * rows it wrote. It is deliberately absent here — new rows leave it null — and
@@ -12,11 +13,12 @@ import { Agent } from './agent.entity';
 @Entity({ name: 'agent_files' })
 @Index(['agentId', 'createdAt'])
 @Index(['agentId', 'fileName'], { unique: true })
-export class AgentFile extends WithTimestampsAndStringId {
-	@ManyToOne(() => Agent, { onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'agentId' })
-	agent: Relation<Agent>;
-
+export class KnowledgeFile extends WithTimestampsAndStringId {
+	/**
+	 * The owning agent. The database keeps the foreign key to `agents` with its
+	 * cascade from `CreateAgentFilesTable`; the entity declares no relation, so
+	 * the knowledge module does not depend on the agents module.
+	 */
 	@Column({ type: 'varchar', length: 36 })
 	agentId: string;
 
