@@ -1,0 +1,31 @@
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  ai_agent 9,263,293,304-318,1089-1093
+docs/generated/sqlite-schema/app_version.md
+  ai_agent 9,25,70
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  ai_agent 12
+docs/generated/postgres-schema/public.app_artifact.md
+  ai_agent 64
+docs/generated/sqlite-schema/README.md
+  ai_agent 57,993
+pnpm-lock.yaml
+  ai_agent 3675-3677,7151-7153,7157-7159,25624
+docs/generated/postgres-schema/public.app.md
+  ai_agent 73
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  ai_agent 14
+docs/generated/sqlite-schema/app_artifact.md
+  ai_agent 61
+docs/generated/postgres-schema/public.app_version.md
+  ai_agent 14,66
+docs/generated/sqlite-schema/app.md
+  ai_agent 78
+docs/generated/postgres-schema/README.md
+  ai_agent 57,1007
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f8a48d7a8d379b2ba0f14091d5c4bc862b650299",
+  "prompts": {}
+}
