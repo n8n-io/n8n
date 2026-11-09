@@ -187,7 +187,7 @@ export type {
 	N8nTabsRootEmits,
 	N8nTabsRootProps,
 	N8nTabsTriggerProps,
-} from './N8nTabs';
+} from './N8nTabs/Tabs.types';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';
 export { default as N8nText } from './N8nText';
