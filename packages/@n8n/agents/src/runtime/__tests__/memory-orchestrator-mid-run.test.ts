@@ -300,6 +300,34 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		expect(next.observationLogMemory).toContain('Background observation.');
 	});
 
+	it('retries a lock-held background observer at a later soft boundary', async () => {
+		const store = new InMemoryMemory();
+		const lock = await store.acquireObservationLogTaskLock(THREAD_ID, 'observer', {
+			holderId: 'someone-else',
+			ttlMs: 60_000,
+		});
+		const observe = vi.fn(
+			async () => await Promise.resolve('* CRITICAL (14:30) Background observation.'),
+		);
+		const { orchestrator, tracker } = buildOrchestrator(store, {
+			observerThresholdTokens: 1000,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('x'.repeat(750))]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		await tracker.flush();
+		expect(observe).not.toHaveBeenCalled();
+
+		await store.releaseObservationLogTaskLock(lock!);
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		await tracker.flush();
+		expect(observe).toHaveBeenCalledTimes(1);
+		expect(await store.getCursor(THREAD_ID)).not.toBeNull();
+	});
+
 	it('applies a settled background result when the hard threshold is crossed', async () => {
 		const store = new InMemoryMemory();
 		const observe = vi.fn(

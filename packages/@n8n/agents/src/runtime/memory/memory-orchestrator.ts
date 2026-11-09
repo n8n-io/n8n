@@ -621,14 +621,19 @@ export class MemoryOrchestrator {
 
 	/**
 	 * Start the Observer in the background without blocking the loop. One task
-	 * per turn until the hard threshold applies it: its settled result stays in
-	 * place, so later soft boundaries do not observe the same window again.
+	 * per turn until the hard threshold applies it: a result that advanced the
+	 * cursor stays in place, so later soft boundaries do not observe the same
+	 * window again.
 	 */
 	private async startBackgroundObserver(
 		list: AgentMessageList,
 		options: RunOptions & ExecutionOptions,
 		persistence: AgentPersistenceOptions,
 	): Promise<void> {
+		// Only a result that advanced the cursor waits for the hard threshold.
+		// Drop any other settled result, so a lock-held attempt can retry here.
+		const settled = this.midRunObserverTask?.result;
+		if (settled && !didAdvanceCursor(settled)) this.midRunObserverTask = undefined;
 		if (this.midRunObserverTask || this.observerRun.disabled) return;
 		await this.persistTurnDelta(list, options);
 		const handle = this.scheduleObserverTask(
