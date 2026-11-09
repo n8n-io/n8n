@@ -36,7 +36,12 @@ vi.mock('vue-router', async (importOriginal) => {
 
 vi.mock('@n8n/design-system', () => ({
 	N8nEmptyState: { template: '<div />', props: ['icon', 'description'] },
-	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
+	N8nButton: {
+		template:
+			'<button :disabled="disabled" :data-variant="variant" :data-icon="icon" @click="$emit(\'click\', $event)">{{ label }}<slot /></button>',
+		props: ['disabled', 'variant', 'icon', 'label'],
+		emits: ['click'],
+	},
 	N8nCard: {
 		name: 'N8nCard',
 		template: '<div v-bind="$attrs"><slot /></div>',
@@ -77,7 +82,11 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['modelValue', 'variant', 'size', 'icon', 'label', 'disabled'],
 		emits: ['click'],
 	},
-	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
+	N8nTooltip: {
+		template:
+			'<div data-testid="stub-tooltip" :data-disabled="disabled" :data-content="content"><slot /><slot name="content" /></div>',
+		props: ['disabled', 'content'],
+	},
 }));
 
 vi.mock('../components/AgentAdvancedPanel.vue', () => ({
@@ -115,6 +124,14 @@ vi.mock('../components/AgentFilesPanel.vue', () => ({
 		template: '<div data-testid="agent-files-panel" />',
 		props: ['agentId', 'files', 'disabled', 'loading', 'uploading', 'deletingFileId'],
 		emits: ['upload-files', 'delete-file'],
+	},
+}));
+
+vi.mock('../components/AgentMemoryEntriesPanel.vue', () => ({
+	default: {
+		name: 'AgentMemoryEntriesPanel',
+		template: '<div data-testid="agent-memory-entries-panel" />',
+		props: ['projectId', 'agentId', 'disabled'],
 	},
 }));
 
@@ -179,6 +196,7 @@ async function mountColumn(
 		}>;
 		knowledgeBaseEnabled: boolean;
 		canEditAgent: boolean;
+		isPreviewOpen: boolean;
 		agent: AgentResource | null;
 	}> = {},
 ) {
@@ -212,6 +230,7 @@ async function mountColumn(
 			appliedSkills: [],
 			connectedTriggers: [],
 			canEditAgent: overrides.canEditAgent ?? true,
+			isPreviewOpen: overrides.isPreviewOpen,
 			executionsDescription: '',
 		},
 		global: {
@@ -257,6 +276,79 @@ describe('AgentBuilderEditorColumn', () => {
 			name,
 		});
 		expect(wrapper.emitted('update:activeMainTab')).toEqual([[tab], [tab]]);
+	});
+
+	it.each([
+		{
+			label: 'opens',
+			isPreviewOpen: false,
+			event: 'open-preview',
+			payload: ['primary'],
+			accessibleLabel: 'agents.builder.preview.button',
+		},
+		{
+			label: 'closes',
+			isPreviewOpen: true,
+			event: 'close-preview',
+			payload: [],
+			accessibleLabel: 'agents.builder.preview.close.ariaLabel',
+		},
+	])(
+		'$label Preview from the preview action',
+		async ({ isPreviewOpen, event, payload, accessibleLabel }) => {
+			const wrapper = await mountColumn({
+				isPreviewOpen,
+				agent: { id: 'agent-1', isRunnable: true } as AgentResource,
+			});
+			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+			expect(previewButton.attributes('data-icon')).toBe('flask-conical');
+			expect(previewButton.text()).toBe(accessibleLabel);
+
+			await previewButton.trigger('click');
+			expect(wrapper.emitted(event)).toEqual([payload]);
+			expect(wrapper.emitted(isPreviewOpen ? 'open-preview' : 'close-preview')).toBeUndefined();
+		},
+	);
+
+	it('disables preview with a tooltip when the agent is not runnable', async () => {
+		const wrapper = await mountColumn({
+			agent: { id: 'agent-1', isRunnable: false } as AgentResource,
+		});
+		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+
+		expect(previewButton.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled')).toBe('false');
+		expect(wrapper.find('[data-testid="stub-tooltip"]').attributes('data-content')).toBe(
+			'agents.builder.preview.disabledTooltip',
+		);
+
+		await previewButton.trigger('click');
+
+		expect(wrapper.emitted('open-preview')).toBeUndefined();
+	});
+
+	it('keeps the close action enabled when the open preview agent is not runnable', async () => {
+		const wrapper = await mountColumn({
+			isPreviewOpen: true,
+			agent: { id: 'agent-1', isRunnable: false } as AgentResource,
+		});
+		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+
+		expect(previewButton.attributes('disabled')).toBeUndefined();
+
+		await previewButton.trigger('click');
+
+		expect(wrapper.emitted('close-preview')).toEqual([[]]);
+		expect(wrapper.emitted('open-preview')).toBeUndefined();
+	});
+
+	it('shows the outlined test action beside the Agent title', async () => {
+		const wrapper = await mountColumn();
+		const titleRow = wrapper.get('[data-testid="agent-builder-identity-header"]');
+		expect(titleRow.find('[data-testid="agent-identity-header"]').exists()).toBe(true);
+		expect(
+			titleRow.get('[data-testid="agent-header-preview-btn"]').attributes('data-variant'),
+		).toBe('outline');
 	});
 
 	it('keeps initialization, programmatic tab changes, and Evals telemetry silent', async () => {

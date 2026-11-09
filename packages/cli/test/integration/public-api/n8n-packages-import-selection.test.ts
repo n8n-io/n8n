@@ -1,5 +1,6 @@
 import { EventService } from '@n8n/backend-services';
 import {
+	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
 	linkUserToProject,
@@ -7,8 +8,9 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { CredentialsRepository, WorkflowRepository, type User } from '@n8n/db';
+import { CredentialsRepository, WorkflowRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ApiKeyScope } from '@n8n/permissions';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialTypes } from '@/credential-types';
@@ -21,8 +23,10 @@ import {
 	serializedProject,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
+	WIRE_VERSION_ID,
 } from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
 import { Telemetry } from '@/telemetry';
+import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
@@ -31,6 +35,8 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
+// Keep the publication outbox from draining in the background after a test publishes.
+mockInstance(WorkflowPublicationNotifier);
 
 // Must run before `setupTestServer`, which constructs the controller with this mock.
 const credentialTypesMock = mockInstance(CredentialTypes);
@@ -68,8 +74,11 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate([
+		'WorkflowPublishedVersion',
 		'WorkflowEntity',
 		'SharedWorkflow',
+		'WorkflowHistory',
+		'WorkflowPublishHistory',
 		'Project',
 		'ProjectRelation',
 		'Folder',
@@ -183,7 +192,7 @@ describe('POST /n8n-packages/import-selection', () => {
 		expect(await workflowRepository.findOneBy({ id: 'WFA' })).not.toBeNull();
 	});
 
-	it('returns 409 for a conflicting import under workflowConflictPolicy=fail', async () => {
+	it('returns 409 for a conflicting import under conflictPolicy=fail', async () => {
 		const project = await createTeamProject('Target', owner);
 		const tarBuffer = await buildProjectPackage(project.id);
 
@@ -199,7 +208,7 @@ describe('POST /n8n-packages/import-selection', () => {
 			.post('/n8n-packages/import-selection')
 			.field('selectedProjectId', project.id)
 			.field('selectedWorkflowIds', JSON.stringify(['WFA']))
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(409);
@@ -482,5 +491,131 @@ describe('POST /n8n-packages/import-selection', () => {
 		expect(response.body).toStrictEqual({
 			message: "request/body must have required property 'package'",
 		});
+	});
+});
+
+describe('POST /n8n-packages/import-selection publishing and API key publish scopes', () => {
+	const selectionScopes: ApiKeyScope[] = ['project:create', 'project:update', 'workflow:import'];
+	const scheduleTriggerNodes = [
+		{
+			id: 'schedule-trigger',
+			name: 'Schedule Trigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		},
+	];
+
+	async function selectionPackage(projectId: string, sourcePublished: boolean) {
+		return await buildEntityPackageBuffer({
+			sourceId: 'http-selection-source',
+			projects: [
+				{ target: 'projects/p1', project: serializedProject({ id: projectId, name: 'P1' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/p1/workflows/wfa',
+					workflow: serializedWorkflow({
+						id: 'WFA',
+						name: 'wfa',
+						nodes: scheduleTriggerNodes,
+						publishedVersionId: sourcePublished ? WIRE_VERSION_ID : null,
+					}),
+				},
+			],
+		});
+	}
+
+	async function importSelectionAs(user: User, projectId: string, packageBuffer: Buffer) {
+		return await testServer
+			.publicApiAgentFor(user)
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', projectId)
+			.field('selectedWorkflowIds', JSON.stringify(['WFA']))
+			.attach('package', packageBuffer, 'import.n8np');
+	}
+
+	async function seedPublishedTarget(project: Project) {
+		const workflow = await createActiveWorkflow({ name: 'Published target' }, project);
+		await Container.get(WorkflowRepository).update(workflow.id, { sourceWorkflowId: 'WFA' });
+		return workflow;
+	}
+
+	async function storedWorkflows() {
+		return await Container.get(WorkflowRepository).find({
+			select: ['id', 'versionId', 'activeVersionId'],
+			order: { id: 'ASC' },
+		});
+	}
+
+	it('rejects an API key without workflow:activate when match-source publishes the selection', async () => {
+		const user = await createOwnerWithApiKey({ scopes: selectionScopes });
+		const project = await createTeamProject('Target', owner);
+
+		const response = await importSelectionAs(
+			user,
+			project.id,
+			await selectionPackage(project.id, true),
+		);
+
+		expect(response.statusCode).toBe(403);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+	});
+
+	it('publishes the selection for an API key with workflow:activate', async () => {
+		const user = await createOwnerWithApiKey({
+			scopes: [...selectionScopes, 'workflow:activate'],
+		});
+		const project = await createTeamProject('Target', owner);
+
+		const response = await importSelectionAs(
+			user,
+			project.id,
+			await selectionPackage(project.id, true),
+		);
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.workflows).toEqual([
+			expect.objectContaining({ sourceWorkflowId: 'WFA', publishing: { state: 'published' } }),
+		]);
+	});
+
+	it('rejects an API key without workflow:deactivate when match-source unpublishes the selection', async () => {
+		const user = await createOwnerWithApiKey({ scopes: selectionScopes });
+		const project = await createTeamProject('Target', owner);
+		await seedPublishedTarget(project);
+		const before = await storedWorkflows();
+
+		const response = await importSelectionAs(
+			user,
+			project.id,
+			await selectionPackage(project.id, false),
+		);
+
+		expect(response.statusCode).toBe(403);
+		expect(await storedWorkflows()).toEqual(before);
+	});
+
+	it('unpublishes the selection for an API key with workflow:deactivate', async () => {
+		const user = await createOwnerWithApiKey({
+			scopes: [...selectionScopes, 'workflow:deactivate'],
+		});
+		const project = await createTeamProject('Target', owner);
+		const target = await seedPublishedTarget(project);
+
+		const response = await importSelectionAs(
+			user,
+			project.id,
+			await selectionPackage(project.id, false),
+		);
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.workflows).toEqual([
+			expect.objectContaining({ sourceWorkflowId: 'WFA', publishing: { state: 'unpublished' } }),
+		]);
+		expect(await storedWorkflows()).toEqual([
+			expect.objectContaining({ id: target.id, activeVersionId: null }),
+		]);
 	});
 });

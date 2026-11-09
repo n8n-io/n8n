@@ -1,13 +1,20 @@
 import type { Logger } from '@n8n/backend-common';
 
 /** LLM-call phases of a mocked eval execution. */
-type EvalTimingPhase = 'hints' | 'bypass-pin' | 'data-table-rows' | 'http-mock' | 'ai-turn';
+type EvalTimingPhase =
+	| 'hints'
+	| 'bypass-pin'
+	| 'data-table-rows'
+	| 'http-mock'
+	| 'node-mock'
+	| 'ai-turn';
 
 const PHASE_ORDER: EvalTimingPhase[] = [
 	'hints',
 	'bypass-pin',
 	'data-table-rows',
 	'http-mock',
+	'node-mock',
 	'ai-turn',
 ];
 
@@ -57,11 +64,11 @@ export class EvalTimings {
 		}
 
 		const llmTotal = this.samples.reduce((sum, s) => sum + s.durationMs, 0);
-		// Display-only; mirrors getModelId() in eval-agents.ts (SONNET_MODEL default).
+		// Display-only; mirrors getModelId() in eval-agents.ts (EVAL_MODEL default).
 		const model =
 			process.env.N8N_INSTANCE_AI_EVAL_MODEL ??
 			process.env.N8N_INSTANCE_AI_MODEL ??
-			'anthropic/claude-sonnet-4-6';
+			'anthropic/claude-sonnet-5-5';
 		logger.info(
 			`[EvalMock][timing] SUMMARY wall=${fmt(Date.now() - this.startedAt)} llmCalls=${this.samples.length} llmTotal=${fmt(llmTotal)} model=${model}`,
 		);

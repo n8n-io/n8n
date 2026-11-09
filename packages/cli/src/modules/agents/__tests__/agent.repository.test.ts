@@ -46,11 +46,11 @@ describe('AgentRepository', () => {
 	describe('findById', () => {
 		it('calls findOne with the id, the project scope and the activeVersion relation', async () => {
 			const agent = mock<Agent>({ id: 'agent-1' });
-			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
+			entityManager.findOne.mockResolvedValue(agent);
 
 			const result = await repository.findById('agent-1');
 
-			expect(repository.findOne).toHaveBeenCalledWith({
+			expect(entityManager.findOne).toHaveBeenCalledWith(Agent, {
 				where: { id: 'agent-1', scope: 'project' },
 				relations: { activeVersion: true },
 			});

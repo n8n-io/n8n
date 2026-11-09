@@ -1,5 +1,5 @@
 import { createCanvas, GlobalFonts, loadImage } from '@napi-rs/canvas';
-import getSystemFonts from 'get-system-fonts';
+import { join } from 'path';
 import { mockDeep } from 'vitest-mock-extended';
 
 import type {
@@ -15,6 +15,14 @@ import type {
 import { EditImage } from '../EditImage.node';
 import { calculateResizeDimensions } from '../v2/actions/resize.operation';
 import { toCanvasColor } from '../v2/helpers';
+
+// Installed system fonts differ by platform and are returned in a nondeterministic
+// order, so text tests use a bundled font as the only "system" font.
+const testFont = join(__dirname, 'fixtures', 'Geist-Variable.woff2');
+
+vi.mock('get-system-fonts', () => ({
+	default: async () => [join(__dirname, 'fixtures', 'Geist-Variable.woff2')],
+}));
 
 function isQualityOption(
 	option: INodeProperties | INodePropertyCollection | INodePropertyOptions,
@@ -831,9 +839,6 @@ describe('Edit Image v2', () => {
 	});
 
 	it('renders text with a selected system font', async () => {
-		const fonts = await getSystemFonts();
-		const font = fonts[0];
-		expect(font).toBeDefined();
 		const input = await imageBuffer('#ffffff', 80, 40);
 		const executeFunctions = createExecuteFunctions({
 			parameters: {
@@ -847,7 +852,7 @@ describe('Edit Image v2', () => {
 				horizontalAlignment: 'west',
 				verticalAlignment: 'north',
 				lineLength: 80,
-				options: { font },
+				options: { font: testFont },
 			},
 			input: {
 				json: {},
@@ -864,9 +869,7 @@ describe('Edit Image v2', () => {
 	it.each([['west', 'north'] as const, ['east', 'south'] as const])(
 		'positions %s and %s text from the font baseline',
 		async (horizontalAlignment, verticalAlignment) => {
-			const fonts = await getSystemFonts();
-			const font = fonts.find((systemFont) => systemFont.includes('Arial.')) ?? fonts[0];
-			expect(font).toBeDefined();
+			const font = testFont;
 			const text = 'Alignment';
 			const fontSize = 14;
 			const positionX = 20;

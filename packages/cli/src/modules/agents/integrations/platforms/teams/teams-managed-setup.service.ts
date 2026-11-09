@@ -125,6 +125,10 @@ export class TeamsManagedSetupService {
 	 * list, which is what makes it span both APIs — a sign-in cannot, because a
 	 * code is redeemed for one resource at a time. An administrator does this once
 	 * per organisation and nobody sees a consent screen afterwards.
+	 *
+	 * The link serves a new sign-in, so it names the default app, like the sign-in does. The
+	 * setup shows it only while the sign-in is missing or must be redone. A connected
+	 * credential keeps the app that it stores.
 	 */
 	async adminConsentUrl(): Promise<string | null> {
 		const overwrite = this.credentialsOverwrites.getOverwrites(TEAMS_MANAGER_CREDENTIAL_TYPE);
@@ -167,7 +171,7 @@ export class TeamsManagedSetupService {
 
 		const usable = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			options.user,
-			{ projectId: options.projectId, excludePersonalRoute: true },
+			{ projectId: options.projectId, excludePersonalRoute: true, excludeResolvable: true },
 		);
 
 		const managerCredentials: TeamsManagerCredentialSummary[] = [];
@@ -239,7 +243,11 @@ export class TeamsManagedSetupService {
 			connected,
 			reconnectRequired:
 				connected &&
-				(!canRefresh || REQUIRED_MANAGER_SCOPES.some((scope) => isMissingScope(granted, scope))),
+				(!canRefresh ||
+					REQUIRED_MANAGER_SCOPES.some((scope) => isMissingScope(granted, scope)) ||
+					// The app that issued the sign-in is not in the overwrites any more.
+					this.credentialsOverwrites.getManagedAuthState(TEAMS_MANAGER_CREDENTIAL_TYPE, data) ===
+						'missing-app'),
 			// Written by the provisioning step once it has read the tenant; absent
 			// until then, which is why both are nullable rather than empty strings.
 			organizationName: stringProperty(data, 'organizationName') ?? null,

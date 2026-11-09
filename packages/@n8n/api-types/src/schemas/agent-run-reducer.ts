@@ -218,7 +218,6 @@ function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
 		(node.timeline?.length ?? 0) > 0 ||
 		(node.toolCalls?.length ?? 0) > 0 ||
 		(node.children?.length ?? 0) > 0 ||
-		(node.planItems?.length ?? 0) > 0 ||
 		!!node.statusMessage ||
 		!!node.result ||
 		!!node.error ||
@@ -395,6 +394,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const announced = state.toolCallsById[event.payload.toolCallId];
 			if (announced) {
 				announced.args = event.payload.args;
+				announced.toolName = resolveBuilderToolName(
+					event.payload.toolName,
+					event.payload.args.action,
+				);
 				break;
 			}
 			const agent = ensureAgent(state, event.agentId);
@@ -402,7 +405,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				const tc: InstanceAiToolCallState = {
 					runId: event.runId,
 					toolCallId: event.payload.toolCallId,
-					toolName: resolveBuilderToolName(event.payload.toolName),
+					toolName: resolveBuilderToolName(event.payload.toolName, event.payload.args.action),
 					args: event.payload.args,
 					isLoading: true,
 					renderHint: getRenderHint(event.payload.toolName),
@@ -559,13 +562,31 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'skill-update': {
+			const agent = ensureAgent(state, event.agentId);
+			const alreadyShown = agent?.timeline.some(
+				(entry) =>
+					entry.type === 'skill-update' &&
+					entry.runId === event.runId &&
+					entry.skillId === event.payload.skillId &&
+					entry.version === event.payload.version &&
+					entry.change === event.payload.change,
+			);
+			if (agent && !alreadyShown) {
+				agent.timeline.push({
+					type: 'skill-update',
+					runId: event.runId,
+					...event.payload,
+					...(event.responseId ? { responseId: event.responseId } : {}),
+				});
+			}
+			break;
+		}
+
 		case 'tasks-update': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.tasks = event.payload.tasks;
-				if (event.payload.planItems) {
-					agent.planItems = event.payload.planItems;
-				}
 			}
 			break;
 		}

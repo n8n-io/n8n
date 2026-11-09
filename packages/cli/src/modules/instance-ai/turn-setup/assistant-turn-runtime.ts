@@ -1,22 +1,23 @@
-import type { BuiltMemory, Workspace } from '@n8n/agents';
+import type { ObservationLogObserverMemory, Workspace } from '@n8n/agents';
 import type {
 	InstanceAiBuildMode,
 	InstanceAiPromptConfiguration,
 	InstanceAiSetupItem,
 } from '@n8n/api-types';
 import type {
+	CreateInstanceAgentOptions,
 	DomainAccessTracker,
 	InstanceAiContext,
 	InstanceAiEventBus,
+	ManagedBackgroundTask,
 	OrchestrationContext,
 	SandboxConfig,
 } from '@n8n/instance-ai';
 
-import type { TypeORMAgentMemory } from '../storage/typeorm-agent-memory';
+import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 
-/** The thread memory reads that the turn setup needs. */
-export type AssistantTurnMemory = BuiltMemory &
-	Pick<TypeORMAgentMemory, 'getThread' | 'getThreadProjectId'>;
+/** The thread memory that the turn setup reads and the agent writes. */
+export type AssistantTurnMemory = ObservationLogObserverMemory;
 
 /** Turn settings that the runtime keeps for one thread between turns. */
 export interface AssistantTurnState {
@@ -27,6 +28,8 @@ export interface AssistantTurnState {
 	setSetupPanelEnabled(enabled: boolean): void;
 	/** Whether the client renders the Browser Use entry. */
 	getBrowserUseAvailable(): boolean | undefined;
+	/** The observer threshold that the thread sets, if any. */
+	getObserverThresholdTokens(): number | undefined;
 }
 
 /**
@@ -39,11 +42,7 @@ export interface AssistantTurnState {
 export interface AssistantTurnRuntime
 	extends Pick<
 			OrchestrationContext,
-			| 'touchRun'
-			| 'cancelBackgroundTask'
-			| 'sendCorrectionToTask'
-			| 'touchBackgroundTask'
-			| 'schedulePlannedTasks'
+			'touchRun' | 'cancelBackgroundTask' | 'sendCorrectionToTask' | 'touchBackgroundTask'
 		>,
 		Pick<
 			InstanceAiContext,
@@ -51,8 +50,13 @@ export interface AssistantTurnRuntime
 			| 'onArtifactChanged'
 			| 'recordWorkflowCodeSnapshot'
 			| 'markWorkflowSetupHandled'
-		> {
+		>,
+		Pick<CreateInstanceAgentOptions, 'checkpointStore' | 'onMemoryTaskEvent'> {
 	memory: AssistantTurnMemory;
+	/** The memory resource that owns the thread. The setup refuses a thread of another resource. */
+	resourceId: string;
+	/** The working project of the thread. */
+	getProjectId(): Promise<string | undefined>;
 	eventBus: InstanceAiEventBus;
 	turnState: AssistantTurnState;
 	/** Per-user "always allow" grants on the thread. */
@@ -74,4 +78,11 @@ export interface AssistantTurnRuntime
 		resolveConfig(): Promise<SandboxConfig>;
 		getOrCreateWorkspace(context: InstanceAiContext): Promise<Workspace | undefined>;
 	};
+	/**
+	 * Where the Assistant keeps its temporary workflows. Without it, the
+	 * workflow tools use the temporary workflow table of the current runtime.
+	 */
+	temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
+	/** Detached background tasks of the thread that still run. */
+	getRunningBackgroundTasks?(): ManagedBackgroundTask[];
 }

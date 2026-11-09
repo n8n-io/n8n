@@ -5,6 +5,7 @@ import { NotFoundError } from '@n8n/errors';
 
 import { AgentMessageQueueService } from '@/modules/agents/agent-message-queue.service';
 import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
+import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
 import type { SystemAgentProvider } from '@/modules/agents/system-agents/system-agent.types';
 
 import { createOwner } from '../shared/db/users';
@@ -35,7 +36,7 @@ describe('System agent queue access before the first execution', () => {
 		await testDb.init();
 		service = Container.get(SystemAgentExecutionService);
 		queue = Container.get(AgentMessageQueueService);
-		await service.register(provider);
+		await Container.get(SystemAgentRegistrationService).register(provider);
 		owner = await createOwner();
 		projectId = (await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id))
 			.id;

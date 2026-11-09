@@ -61,7 +61,7 @@ describe('SettingsContextView', () => {
 		expect(getByTestId('settings-context-sources-row')).toBeInTheDocument();
 	});
 
-	it('marks Skills and Sources as unavailable while the skills hub is off', () => {
+	it('marks Skills and Sources as unavailable while the agents module is off', () => {
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('settings-context-skills-row')).toHaveTextContent('Coming soon');
@@ -89,7 +89,7 @@ describe('SettingsContextView', () => {
 		expect(push).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
 	});
 
-	describe('with the skills hub on', () => {
+	describe('with the skills module on', () => {
 		beforeEach(() => {
 			flags.skills = true;
 		});
@@ -117,7 +117,7 @@ describe('SettingsContextView', () => {
 			expect(showErrorMock).toHaveBeenCalled();
 		});
 
-		it('hides Preferences when only the skills hub is on', () => {
+		it('hides Preferences when only skills are on', () => {
 			flags.preferences = false;
 
 			const { queryByTestId } = renderView();

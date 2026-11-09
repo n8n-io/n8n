@@ -27,6 +27,7 @@ import type {
 } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
+import type { PublicApiClient } from '@/public-api/public-api-client';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
@@ -60,13 +61,16 @@ interface IApiInvocationProperties {
 	method: string;
 	api_version: string;
 	user_agent?: string;
+	client: PublicApiClient;
 }
 
 interface IApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
+	endpoints_by_client: { editor_ui: Record<string, number> };
 	user_agents: Record<string, number>;
+	clients: Record<PublicApiClient, number>;
 }
 
 interface IApiInvocationsBuffer {
@@ -279,7 +283,9 @@ export class Telemetry {
 					total_calls: entry.total_calls,
 					first: entry.first,
 					endpoints: JSON.stringify(entry.endpoints),
+					endpoints_by_client: JSON.stringify(entry.endpoints_by_client),
 					user_agents: JSON.stringify(entry.user_agents),
+					clients: JSON.stringify(entry.clients),
 				});
 			}
 		}
@@ -546,24 +552,36 @@ export class Telemetry {
 	trackApiInvocation(properties: IApiInvocationProperties) {
 		if (!this.rudderStack) return;
 
-		const { user_id, path, method, user_agent } = properties;
+		const { user_id, path, method, user_agent, client } = properties;
 
-		this.apiInvocationsBuffer[user_id] = this.apiInvocationsBuffer[user_id] ?? {
+		const entry = (this.apiInvocationsBuffer[user_id] ??= {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
+			endpoints_by_client: { editor_ui: {} },
 			user_agents: {},
-		};
-
-		const entry = this.apiInvocationsBuffer[user_id];
+			clients: { editor_ui: 0, other: 0 },
+		});
 		entry.total_calls++;
+		entry.clients[client]++;
 
 		const endpointKey = `${method} ${path}`;
 		entry.endpoints[endpointKey] = (entry.endpoints[endpointKey] ?? 0) + 1;
 
+		// Only editor UI calls are counted per endpoint for now to help keep event size down.
+		if (client === 'editor_ui') {
+			const editorUiEndpoints = entry.endpoints_by_client.editor_ui;
+			editorUiEndpoints[endpointKey] = (editorUiEndpoints[endpointKey] ?? 0) + 1;
+		}
+
 		if (user_agent) {
 			entry.user_agents[user_agent] = (entry.user_agents[user_agent] ?? 0) + 1;
 		}
+	}
+
+	/** Sends the queued events now, instead of at the next flush interval. */
+	async flushQueue(): Promise<void> {
+		await this.rudderStack?.flush();
 	}
 
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)

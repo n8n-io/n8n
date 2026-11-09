@@ -7,7 +7,7 @@ import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import type { ICredentialType } from 'n8n-workflow';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
-import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
@@ -141,7 +141,21 @@ vi.mock('../composables/useInstanceAiHandoff', async (importOriginal) => {
 	};
 });
 
-const renderComponent = createThreadComponentRenderer(InstanceAiCredentialSetup);
+const renderCard = createThreadComponentRenderer(InstanceAiCredentialSetup);
+
+/** The card emits its answer. These tests check the emitted body and resolution. */
+const decide = vi.fn();
+
+function renderComponent(options: Parameters<typeof renderCard>[0] = {}) {
+	return renderCard({
+		...options,
+		props: { threadId: 'thread-1', onDecide: decide, ...options.props },
+	});
+}
+
+beforeEach(() => {
+	decide.mockReset();
+});
 
 // getUsableCredentialByType is a computed returning a function — vi.spyOn's accessor
 // overloads can't type a getter whose value is a function, so override it directly.
@@ -197,13 +211,12 @@ function makeCredentialRequestsWithExisting(count: number): InstanceAiCredential
 
 describe('InstanceAiCredentialSetup', () => {
 	let store: ReturnType<typeof useInstanceAiStore>;
-	let thread: ThreadRuntime;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		store = useInstanceAiStore();
-		thread = store.getOrCreateRuntime('thread-1');
+		store.getOrCreateRuntime('thread-1');
 
 		const credentialsStore = useCredentialsStore();
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
@@ -222,7 +235,6 @@ describe('InstanceAiCredentialSetup', () => {
 			const requests = makeCredentialRequests(3);
 			const { getByText, getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -244,7 +256,6 @@ describe('InstanceAiCredentialSetup', () => {
 			const requests = makeCredentialRequestsWithExisting(3);
 			const { getAllByTestId, getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -264,7 +275,6 @@ describe('InstanceAiCredentialSetup', () => {
 			const requests = makeCredentialRequestsWithExisting(1);
 			renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 					projectId: 'project-team-1',
@@ -286,7 +296,6 @@ describe('InstanceAiCredentialSetup', () => {
 			const requests = makeCredentialRequests(1);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -315,7 +324,6 @@ describe('InstanceAiCredentialSetup', () => {
 			];
 			const { getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -357,7 +365,6 @@ describe('InstanceAiCredentialSetup', () => {
 			];
 			const { getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 					projectId: 'project-1',
@@ -396,7 +403,6 @@ describe('InstanceAiCredentialSetup', () => {
 			const requests = makeCredentialRequestsWithExisting(1);
 			const { getAllByTestId, getByText } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -429,7 +435,6 @@ describe('InstanceAiCredentialSetup', () => {
 
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -450,7 +455,6 @@ describe('InstanceAiCredentialSetup', () => {
 			const requests = makeCredentialRequestsWithExisting(2);
 			const { getByTestId, container } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -472,7 +476,6 @@ describe('InstanceAiCredentialSetup', () => {
 			const requests = makeCredentialRequestsWithExisting(2);
 			const { getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -489,7 +492,6 @@ describe('InstanceAiCredentialSetup', () => {
 			const requests = makeCredentialRequestsWithExisting(2);
 			const { getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -503,12 +505,10 @@ describe('InstanceAiCredentialSetup', () => {
 	describe('submit actions', () => {
 		it('calls confirmAction with credential map on continue', async () => {
 			const requests = makeCredentialRequestsWithExisting(2);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
-			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+			const confirmSpy = decide;
 
 			const { getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -522,8 +522,8 @@ describe('InstanceAiCredentialSetup', () => {
 			await userEvent.click(getByTestId('credential-picker'));
 
 			// Auto-continue fires since all are selected
-			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+			expect(confirmSpy).toHaveBeenCalledWith(expect.anything(), 'approved');
+			expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 				kind: 'credentialSelection',
 				credentials: {
 					type1: 'cred-123',
@@ -534,12 +534,10 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('calls confirmAction with false on defer', async () => {
 			const requests = makeCredentialRequests(1);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
-			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+			const confirmSpy = decide;
 
 			const { getByText } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -548,17 +546,19 @@ describe('InstanceAiCredentialSetup', () => {
 			// Click "Later"
 			await userEvent.click(getByText('instanceAi.credential.deny'));
 
-			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'deferred');
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: false });
+			expect(confirmSpy).toHaveBeenCalledWith(expect.anything(), 'deferred');
+			expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
+				kind: 'approval',
+				approved: false,
+			});
 		});
 
 		it('auto-continues when single credential is selected', async () => {
 			const requests = makeCredentialRequestsWithExisting(1);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = decide;
 
 			const { getByTestId, getByText } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -567,7 +567,7 @@ describe('InstanceAiCredentialSetup', () => {
 			// Select credential — auto-continue should fire
 			await userEvent.click(getByTestId('credential-picker'));
 
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+			expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 				kind: 'credentialSelection',
 				credentials: { type1: 'cred-123' },
 			});
@@ -578,11 +578,10 @@ describe('InstanceAiCredentialSetup', () => {
 		// must not be preselected — let alone auto-submitted before they see the card.
 		it('does not preselect or auto-submit when the request prefers a new credential', async () => {
 			const [request] = makeCredentialRequestsWithSingleExisting(1);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = decide;
 
 			renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: [{ ...request, preferNew: true }],
 					message: 'Set up credentials',
 				},
@@ -594,12 +593,10 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('auto-submits a single pre-selected existing credential without user input', async () => {
 			const requests = makeCredentialRequestsWithSingleExisting(1);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
-			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+			const confirmSpy = decide;
 
 			const { getByText } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -608,22 +605,21 @@ describe('InstanceAiCredentialSetup', () => {
 			// The single existing credential is auto-selected on init and
 			// submitted without any user interaction.
 			await vi.waitFor(() => {
-				expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 					kind: 'credentialSelection',
 					credentials: { type1: 'existing-1' },
 				});
 			});
-			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
+			expect(confirmSpy).toHaveBeenCalledWith(expect.anything(), 'approved');
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
 		});
 
 		it('waits for Continue when a sole existing credential requires user selection', async () => {
 			const requests = makeCredentialRequestsWithSingleExisting(1);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = decide;
 
 			const { getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 					requireUserSelection: true,
@@ -635,7 +631,7 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(confirmSpy).not.toHaveBeenCalled();
 
 			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+			expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 				kind: 'credentialSelection',
 				credentials: { type1: 'existing-1' },
 			});
@@ -644,7 +640,7 @@ describe('InstanceAiCredentialSetup', () => {
 		it('waits for Continue after creating a credential when user selection is required', async () => {
 			const credentialsStore = useCredentialsStore();
 			const requests = makeCredentialRequestsWithSingleExisting(1);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = decide;
 			vi.spyOn(credentialsApi, 'createNewCredential').mockResolvedValue({
 				id: 'created-1',
 				name: 'Created Cred',
@@ -653,7 +649,6 @@ describe('InstanceAiCredentialSetup', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 					requireUserSelection: true,
@@ -671,7 +666,7 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(confirmSpy).not.toHaveBeenCalled();
 
 			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+			expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 				kind: 'credentialSelection',
 				credentials: { type1: 'created-1' },
 			});
@@ -696,13 +691,13 @@ describe('InstanceAiCredentialSetup', () => {
 
 			function renderOAuthCard(credentialRequests = oauthRequests) {
 				return renderComponent({
-					props: { requestId: 'req-1', credentialRequests, message: 'Set up credentials' },
+					props: { credentialRequests, message: 'Set up credentials' },
 				});
 			}
 
-			function expectSubmitted(confirmSpy: ReturnType<typeof vi.spyOn>) {
+			function expectSubmitted(confirmSpy: typeof decide) {
 				return vi.waitFor(() =>
-					expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+					expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 						kind: 'credentialSelection',
 						credentials: { linearMcpOAuth2Api: 'oauth-1' },
 					}),
@@ -714,7 +709,7 @@ describe('InstanceAiCredentialSetup', () => {
 				const getDataSpy = vi
 					.spyOn(credentialsStore, 'getCredentialData')
 					.mockResolvedValue({ ...created, data: {} } as never);
-				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				const confirmSpy = decide;
 				const { getByTestId } = renderOAuthCard();
 
 				// The credential modal saves the credential before the sign-in popup completes.
@@ -737,7 +732,7 @@ describe('InstanceAiCredentialSetup', () => {
 				const getDataSpy = vi
 					.spyOn(credentialsStore, 'getCredentialData')
 					.mockResolvedValue({ ...created, data: {} } as never);
-				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				const confirmSpy = decide;
 				const { getByTestId } = renderOAuthCard([
 					{ ...oauthRequests[0], existingCredentials: [{ id: created.id, name: created.name }] },
 				]);
@@ -752,7 +747,7 @@ describe('InstanceAiCredentialSetup', () => {
 				const credentialsStore = useCredentialsStore();
 				credentialsStore.upsertCredential(created);
 				vi.spyOn(credentialsStore, 'getCredentialData').mockResolvedValue(signedIn as never);
-				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				const confirmSpy = decide;
 				renderOAuthCard([
 					{ ...oauthRequests[0], existingCredentials: [{ id: created.id, name: created.name }] },
 				]);
@@ -766,7 +761,7 @@ describe('InstanceAiCredentialSetup', () => {
 				const getDataSpy = vi
 					.spyOn(credentialsStore, 'getCredentialData')
 					.mockResolvedValue({ ...created, data: {} } as never);
-				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				const confirmSpy = decide;
 				const { getByTestId } = renderOAuthCard([
 					{
 						credentialType: 'slackApi',
@@ -785,7 +780,7 @@ describe('InstanceAiCredentialSetup', () => {
 				credentialsStore.upsertCredential({ ...created, updatedAt: '2026-09-30T10:01:00.000Z' });
 
 				await vi.waitFor(() =>
-					expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+					expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 						kind: 'credentialSelection',
 						credentials: { slackApi: 'api-1', linearMcpOAuth2Api: 'oauth-1' },
 					}),
@@ -798,7 +793,7 @@ describe('InstanceAiCredentialSetup', () => {
 					...created,
 					data: { grantType: 'clientCredentials' },
 				} as never);
-				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				const confirmSpy = decide;
 				renderOAuthCard();
 
 				await credentialsStore.createNewCredential({ ...payload, data: {} });
@@ -808,7 +803,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 			it('ignores a credential that a connection flow creates before authorization', async () => {
 				const credentialsStore = useCredentialsStore();
-				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				const confirmSpy = decide;
 				const { queryByTestId } = renderOAuthCard();
 
 				await credentialsStore.createNewCredential({ ...payload, data: {} }, undefined, undefined, {
@@ -828,11 +823,10 @@ describe('InstanceAiCredentialSetup', () => {
 			stubCredentialTypes(useCredentialsStore(), (name) =>
 				typesLoaded.value ? { name, displayName: name, properties: [] } : undefined,
 			);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = decide;
 
 			renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: makeCredentialRequestsWithSingleExisting(1),
 					message: 'Set up credentials',
 				},
@@ -844,7 +838,7 @@ describe('InstanceAiCredentialSetup', () => {
 			typesLoaded.value = true;
 
 			await vi.waitFor(() =>
-				expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 					kind: 'credentialSelection',
 					credentials: { type1: 'existing-1' },
 				}),
@@ -859,11 +853,10 @@ describe('InstanceAiCredentialSetup', () => {
 					existingCredentials: [{ id: 'existing-bearer', name: 'Bearer Auth account' }],
 				},
 			];
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = decide;
 
 			const { getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -876,7 +869,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 			// User confirms the preselected credential explicitly.
 			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+			expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 				kind: 'credentialSelection',
 				credentials: { httpBearerAuth: 'existing-bearer' },
 			});
@@ -893,11 +886,10 @@ describe('InstanceAiCredentialSetup', () => {
 					],
 				},
 			];
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = decide;
 
 			const { getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -908,7 +900,7 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(confirmSpy).not.toHaveBeenCalled();
 
 			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+			expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 				kind: 'credentialSelection',
 				credentials: { httpBearerAuth: 'cred-123' },
 			});
@@ -927,11 +919,10 @@ describe('InstanceAiCredentialSetup', () => {
 					existingCredentials: [{ id: 'existing-bearer', name: 'Bearer Auth account' }],
 				},
 			];
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = decide;
 
 			const { getByText, getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -943,7 +934,7 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(confirmSpy).not.toHaveBeenCalled();
 
 			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+			expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 				kind: 'credentialSelection',
 				credentials: { httpBearerAuth: 'existing-bearer' },
 			});
@@ -962,11 +953,10 @@ describe('InstanceAiCredentialSetup', () => {
 					existingCredentials: [],
 				},
 			];
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = decide;
 
 			const { getByText, getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 					requireUserSelection: true,
@@ -978,7 +968,7 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(confirmSpy).not.toHaveBeenCalled();
 
 			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+			expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 				kind: 'credentialSelection',
 				credentials: { slackApi: 'existing-slack' },
 			});
@@ -986,11 +976,9 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('shows deferred state after skip', async () => {
 			const requests = makeCredentialRequests(1);
-			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
 			const { getByText } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -1001,35 +989,27 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getByText('instanceAi.credential.finalize.deferred')).toBeTruthy();
 		});
 
-		it('rolls back UI state when defer API call fails', async () => {
+		it('shows the form again when the parent could not send the deferral', async () => {
 			const requests = makeCredentialRequests(1);
-			vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
-			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+			const props = { credentialRequests: requests, message: 'Set up credentials' };
 
-			const { getByText } = renderComponent({
-				props: {
-					requestId: 'req-1',
-					credentialRequests: requests,
-					message: 'Set up credentials',
-				},
-			});
+			const { getByText, queryByText, rerender } = renderComponent({ props });
 
 			await userEvent.click(getByText('instanceAi.credential.deny'));
+			expect(decide).toHaveBeenCalledWith({ kind: 'approval', approved: false }, 'deferred');
+			expect(queryByText('instanceAi.credential.deny')).toBeNull();
 
-			// Should NOT resolve confirmation on failure
-			expect(resolveSpy).not.toHaveBeenCalled();
-			// Should show the form again (not deferred state)
+			await rerender({ threadId: 'thread-1', onDecide: decide, ...props, failedAttempts: 1 });
+
 			expect(getByText('instanceAi.credential.deny')).toBeTruthy();
 		});
 
 		it('submits the selected credential and marks the skipped one when skipping the first of two', async () => {
 			const requests = makeCredentialRequestsWithExisting(2);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
-			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+			const confirmSpy = decide;
 
 			const { getByText, getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -1040,11 +1020,11 @@ describe('InstanceAiCredentialSetup', () => {
 
 			await userEvent.click(getByTestId('credential-picker'));
 
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+			expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 				kind: 'credentialSelection',
 				credentials: { type2: 'cred-123' },
 			});
-			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
+			expect(confirmSpy).toHaveBeenCalledWith(expect.anything(), 'approved');
 			expect(getByText('instanceAi.credential.someSkipped')).toBeTruthy();
 		});
 
@@ -1053,7 +1033,6 @@ describe('InstanceAiCredentialSetup', () => {
 
 			const { getByText, getByTestId } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -1068,12 +1047,10 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('defers the whole card once every credential slot has been skipped', async () => {
 			const requests = makeCredentialRequests(2);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
-			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+			const confirmSpy = decide;
 
 			const { getByText } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 				},
@@ -1082,8 +1059,11 @@ describe('InstanceAiCredentialSetup', () => {
 			await userEvent.click(getByText('instanceAi.credential.deny'));
 			await userEvent.click(getByText('instanceAi.credential.deny'));
 
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: false });
-			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'deferred');
+			expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
+				kind: 'approval',
+				approved: false,
+			});
+			expect(confirmSpy).toHaveBeenCalledWith(expect.anything(), 'deferred');
 		});
 	});
 
@@ -1110,7 +1090,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 		function renderCard(requests: InstanceAiCredentialRequest[]) {
 			return renderComponent({
-				props: { requestId: 'req-1', credentialRequests: requests, message: 'Set up credentials' },
+				props: { credentialRequests: requests, message: 'Set up credentials' },
 			});
 		}
 
@@ -1227,20 +1207,19 @@ describe('InstanceAiCredentialSetup', () => {
 		it('submits auto setup immediately when the browser is connected', async () => {
 			experiment.enabled = true;
 			settingsStore.browserConnected = true;
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
-			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+			const confirmSpy = decide;
 
 			const { getByTestId } = renderCard(makeCredentialRequests(1));
 			await userEvent.click(getByTestId('setup-choice-ai'));
 
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+			expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 				kind: 'credentialAutoSetup',
 				credentialType: 'type1',
 				attemptId: expect.any(String),
 			});
-			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
+			expect(confirmSpy).toHaveBeenCalledWith(expect.anything(), 'approved');
 			const confirmedAttemptId = (
-				confirmSpy.mock.calls[0][1] as { kind: string; attemptId: string }
+				confirmSpy.mock.calls[0][0] as { kind: string; attemptId: string }
 			).attemptId;
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'Instance AI Browser Use User clicked credential setup option',
@@ -1259,7 +1238,7 @@ describe('InstanceAiCredentialSetup', () => {
 			const uiStore = useUIStore();
 			const openModalSpy = vi.spyOn(uiStore, 'openModal').mockImplementation(() => {});
 			const closeModalSpy = vi.spyOn(uiStore, 'closeModal').mockImplementation(() => {});
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = decide;
 
 			const { getByTestId } = renderCard(makeCredentialRequests(1));
 			await userEvent.click(getByTestId('setup-choice-ai'));
@@ -1276,7 +1255,7 @@ describe('InstanceAiCredentialSetup', () => {
 			settingsStore.browserConnected = true;
 
 			await vi.waitFor(() => {
-				expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 					kind: 'credentialAutoSetup',
 					credentialType: 'type1',
 					attemptId: expect.any(String),
@@ -1289,7 +1268,7 @@ describe('InstanceAiCredentialSetup', () => {
 			experiment.enabled = true;
 			settingsStore.browserConnected = false;
 			const uiStore = useUIStore();
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = decide;
 
 			const { getByTestId } = renderCard(makeCredentialRequests(1));
 			await userEvent.click(getByTestId('setup-choice-ai'));
@@ -1305,7 +1284,6 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('tracks skip when deferring while the choice is shown', async () => {
 			experiment.enabled = true;
-			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
 			const { getByText } = renderCard(makeCredentialRequests(1));
 			await userEvent.click(getByText('instanceAi.credential.deny'));
@@ -1322,7 +1300,6 @@ describe('InstanceAiCredentialSetup', () => {
 			const requests = makeCredentialRequests(1);
 			const { getByText } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 					credentialFlow: { stage: 'finalize' as const },
@@ -1334,11 +1311,9 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('shows finalize applied state after submit', async () => {
 			const requests = makeCredentialRequestsWithExisting(1);
-			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 
 			const { getByTestId, getByText } = renderComponent({
 				props: {
-					requestId: 'req-1',
 					credentialRequests: requests,
 					message: 'Set up credentials',
 					credentialFlow: { stage: 'finalize' as const },

@@ -74,7 +74,7 @@ const {
 	toggleCollapse,
 } = useSidebarLayout();
 
-const { settingsItems, handleSettingsItemSelect } = useSettingsItems();
+const { settingsItems, settingsSections, handleSettingsItemSelect } = useSettingsItems();
 const { fetchWallet, isEnabled: isAiGatewayEnabled } = useAiGateway();
 
 // Component data
@@ -405,6 +405,7 @@ useKeybindings({
 		<!-- EOF Experiment cleanup -->
 		<BottomMenu
 			:items="visibleMenuItems"
+			:settings-sections="settingsSections"
 			:is-collapsed="isCollapsed"
 			@logout="onLogout"
 			@select="handleSelect"

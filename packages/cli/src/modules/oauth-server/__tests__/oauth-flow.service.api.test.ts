@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
 import type { OAuthDiscoveryClient } from '@n8n/backend-services';
-import { CacheService, UrlService } from '@n8n/backend-services';
+import { CacheService, EventService, UrlService } from '@n8n/backend-services';
 import { createWorkflowWithHistory, setActiveVersion, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -23,8 +23,8 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_PATH_SUFFIX,
 	FORM_TRIGGER_NODE_TYPE,
-	UserError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
@@ -304,6 +304,7 @@ beforeAll(async () => {
 		store,
 		client,
 		Container.get(LocalAuthorizationServer),
+		Container.get(EventService),
 	);
 
 	const pair = await generateKeyPair('ES256');

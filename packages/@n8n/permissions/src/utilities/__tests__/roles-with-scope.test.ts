@@ -25,4 +25,22 @@ describe('rolesWithScope', () => {
 			).toEqual(['global:owner', 'global:admin']);
 		});
 	});
+
+	describe('extra any-of scopes', () => {
+		test('keeps only roles that hold every scope and at least one of the extra scopes', () => {
+			// Only the admin holds credential:share. Owner and editor stay in because
+			// one matching extra scope is enough.
+			const roles = staticRolesWithScope(
+				'project',
+				['credential:read'],
+				['credential:share', 'credential:connect'],
+			);
+
+			expect(roles).toEqual(['project:admin', 'project:personalOwner', 'project:editor']);
+		});
+
+		test('returns no role when none holds one of the extra scopes', () => {
+			expect(staticRolesWithScope('project', ['credential:read'], ['credential:use'])).toEqual([]);
+		});
+	});
 });

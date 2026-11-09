@@ -1,8 +1,9 @@
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
-import { ServiceAccount } from '../entities';
+import { type Role, ServiceAccount, ServiceAccountDetails } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 class ServiceAccountTable extends BaseRepository<ServiceAccount> {
@@ -15,7 +16,15 @@ class ServiceAccountTable extends BaseRepository<ServiceAccount> {
 	}
 }
 
-/** Loads service accounts only. Each query filters on `kind = 'service'`. */
+export type NewServiceAccount = {
+	name: string;
+	role: Role;
+};
+
+/**
+ * Loads service accounts only. Each query filters on `kind = 'service'`. The
+ * service account comes back with its `details`.
+ */
 @Service()
 export class ServiceAccountRepository {
 	private readonly table: ServiceAccountTable;
@@ -25,6 +34,27 @@ export class ServiceAccountRepository {
 	}
 
 	async findById(id: string, ctx: OperationContext = {}): Promise<ServiceAccount | null> {
-		return await this.table.managerFor(ctx).findOneBy(ServiceAccount, { id });
+		return await this.table.managerFor(ctx).findOne(ServiceAccount, {
+			where: { id },
+			relations: { details: true },
+		});
+	}
+
+	/**
+	 * Creates the `user` row and the details row in one transaction. If one
+	 * insert fails, neither row is saved. The name must not be blank.
+	 */
+	async create({ name, role }: NewServiceAccount, ctx: OperationContext = {}) {
+		if (name.trim() === '') {
+			throw new UnexpectedError('A service account needs a name');
+		}
+
+		return await this.table.runInTransaction(ctx, async (tx) => {
+			const serviceAccount = await tx.save(tx.create(ServiceAccount, { role }));
+			serviceAccount.details = await tx.save(
+				tx.create(ServiceAccountDetails, { userId: serviceAccount.id, name }),
+			);
+			return serviceAccount;
+		});
 	}
 }

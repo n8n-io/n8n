@@ -11,8 +11,9 @@ interface StateSelectItem extends SelectOptionBase<MigrationFindingListedStatus>
 	description: string;
 }
 
-// The value can be any listed state, but a user picks only a triage state. The
-// notified state is set by a notification, so it shows only while it is current.
+// The value can be any listed state, but a user picks only a triage state. A
+// notification sets the notified state and the scan sets the fixed unpublished
+// state, so each shows, disabled, only while it is current.
 const props = defineProps<{ modelValue: MigrationFindingListedStatus; disabled?: boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [value: MigrationFindingTriageStatus] }>();
 
@@ -34,6 +35,18 @@ const stateOptions = computed<StateSelectItem[]>(() => [
 				},
 			]
 		: []),
+	...(props.modelValue === 'fixed_unpublished'
+		? [
+				{
+					value: 'fixed_unpublished' as const,
+					label: i18n.baseText('settings.migrationReport.detail.state.fixedUnpublished'),
+					description: i18n.baseText(
+						'settings.migrationReport.detail.state.fixedUnpublished.description',
+					),
+					disabled: true,
+				},
+			]
+		: []),
 	{
 		value: 'wont_fix',
 		label: i18n.baseText('settings.migrationReport.detail.state.wontFix'),
@@ -47,7 +60,7 @@ function findOption(value: SelectValue | undefined) {
 
 function onSelect(value: SelectValue | undefined) {
 	const option = findOption(value);
-	if (option && option.value !== 'notified') {
+	if (option && (option.value === 'open' || option.value === 'wont_fix')) {
 		emit('update:modelValue', option.value);
 	}
 }

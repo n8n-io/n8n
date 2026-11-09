@@ -6,17 +6,11 @@ import {
 import { getMultiTriggerCoverage } from './verification-progress';
 import type {
 	AttemptRecord,
-	WorkflowBuildOwner,
 	WorkflowBuildOutcome,
 	WorkflowLoopState,
 	WorkflowVerificationObligation,
 	WorkflowVerificationObligationPolicy,
-	WorkflowVerificationObligationSource,
 	WorkflowVerificationObligationStatus,
-} from './workflow-loop-state';
-import {
-	plannedTaskIdFromWorkflowBuildOwner,
-	resolveWorkflowBuildOwner,
 } from './workflow-loop-state';
 
 export interface WorkflowVerificationObligationRecord {
@@ -26,9 +20,6 @@ export interface WorkflowVerificationObligationRecord {
 }
 
 export interface DeriveWorkflowVerificationObligationOptions {
-	source?: WorkflowVerificationObligationSource;
-	owner?: WorkflowBuildOwner;
-	plannedTaskId?: string;
 	updatedAt?: string;
 	setupPanelEnabled?: boolean;
 }
@@ -114,8 +105,8 @@ function deriveStatus(
 	// One-off builds: verification is optional, so the obligation settles
 	// immediately (after the evidence checks above, which still win). This must
 	// stay an explicit settled return — falling through to `ready_to_verify`
-	// would make the planned scheduler re-issue verification follow-ups forever
-	// for one-off builds. A blocked loop state still surfaces as blocked;
+	// would make the host re-issue verification follow-ups forever for one-off
+	// builds. A blocked loop state still surfaces as blocked;
 	// 'blocked' is itself settled, so loop-safety holds either way.
 	if (outcome.executionIntent === 'one-off') {
 		return state.status === 'blocked' ? 'blocked' : 'not_verifiable';
@@ -241,19 +232,13 @@ export function deriveWorkflowVerificationObligation(
 	const status = deriveStatus(state, outcome, coverage);
 	const updatedAt =
 		options.updatedAt ?? lastAttemptTimestamp(record.attempts) ?? new Date().toISOString();
-	const owner = resolveWorkflowBuildOwner(options, record.state, outcome);
-	const plannedTaskId = plannedTaskIdFromWorkflowBuildOwner(owner);
-	const source = options.source ?? owner.type;
 
 	return {
 		workItemId: record.state.workItemId,
 		threadId,
 		runId: outcome?.runId ?? record.state.runId,
 		taskId: outcome?.taskId ?? record.state.lastTaskId,
-		owner,
-		plannedTaskId,
 		workflowId: outcome?.workflowId ?? record.state.workflowId,
-		source,
 		policy: derivePolicy(status, outcome),
 		status,
 		readiness: outcome?.verificationReadiness,
@@ -273,8 +258,7 @@ export function isWorkflowVerificationObligationUnsettled(
 
 /**
  * Derive an obligation from a build outcome alone, for callers that have a
- * settled build outcome (e.g. a planned task's recorded outcome) but no live
- * workflow-loop record to read. Backs the obligation with a minimal synthetic
+ * settled build outcome but no live workflow-loop record to read. Backs the obligation with a minimal synthetic
  * state so the same derivation rules apply.
  */
 export function deriveWorkflowVerificationObligationFromOutcome(
@@ -288,8 +272,6 @@ export function deriveWorkflowVerificationObligationFromOutcome(
 		runId: outcome.runId,
 		workflowId: outcome.workflowId,
 		lastTaskId: outcome.taskId,
-		owner: outcome.owner,
-		plannedTaskId: outcome.plannedTaskId,
 		phase: 'verifying',
 		status: 'active',
 		source: 'create',

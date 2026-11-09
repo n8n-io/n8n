@@ -1,11 +1,12 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 
-import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
+import { MAX_AGENT_FILE_SIZE_BYTES, MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { NotFoundError } from '@n8n/errors';
@@ -94,7 +95,7 @@ function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 class InMemoryAgentFileRepository {
 	private readonly files = new Map<string, AgentFile>();
 
-	create(input: Partial<AgentFile>): AgentFile {
+	private create(input: Partial<AgentFile>): AgentFile {
 		const createdAt = new Date();
 		return {
 			id: input.id ?? 'generated-id',
@@ -115,6 +116,12 @@ class InMemoryAgentFileRepository {
 		return file;
 	}
 
+	async saveUploadedFile(
+		input: Parameters<AgentFileRepository['saveUploadedFile']>[0],
+	): Promise<AgentFile> {
+		return await this.save(this.create(input));
+	}
+
 	async findByAgentId(agentIdToFind: string): Promise<AgentFile[]> {
 		return [...this.files.values()]
 			.filter((file) => file.agentId === agentIdToFind)
@@ -133,7 +140,15 @@ class InMemoryAgentFileRepository {
 		return file;
 	}
 
-	async delete(criteria: { id?: string; agentId?: string }): Promise<void> {
+	async deleteByIdAndAgentId(fileId: string, agentIdToFind: string): Promise<void> {
+		await this.delete({ id: fileId, agentId: agentIdToFind });
+	}
+
+	async deleteByAgentId(agentIdToFind: string): Promise<void> {
+		await this.delete({ agentId: agentIdToFind });
+	}
+
+	private async delete(criteria: { id?: string; agentId?: string }): Promise<void> {
 		for (const [id, file] of this.files.entries()) {
 			if (criteria.id && file.id !== criteria.id) continue;
 			if (criteria.agentId && file.agentId !== criteria.agentId) continue;
@@ -145,6 +160,11 @@ class InMemoryAgentFileRepository {
 		return [...this.files.values()];
 	}
 }
+
+const projectDeletion = mock<AgentProjectDeletionRepository>();
+projectDeletion.withWritableProject.mockImplementation(
+	async (_projectId, write, ctx = {}) => await write(ctx),
+);
 
 describe('AgentKnowledgeService', () => {
 	let agentRepository: Mocked<AgentRepository>;
@@ -169,6 +189,7 @@ describe('AgentKnowledgeService', () => {
 			logger,
 			knowledgeAvailabilityService,
 			mock<GlobalConfig>({ diagnostics: { enabled: diagnosticsEnabled } }),
+			projectDeletion,
 		);
 	}
 
@@ -521,6 +542,27 @@ describe('AgentKnowledgeService', () => {
 						}),
 					]),
 				).rejects.toMatchObject({ reason: 'pdf_no_text' });
+			} finally {
+				await rm(tempDirectory, { recursive: true, force: true });
+			}
+		});
+
+		it('gives a PDF whose text is above the file size limit the file_size reason', async () => {
+			loadMock.mockResolvedValue([{ pageContent: 'a'.repeat(MAX_AGENT_FILE_SIZE_BYTES + 1) }]);
+			const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+			try {
+				const pdfFilePath = path.join(tempDirectory, 'large.pdf');
+				await writeFile(pdfFilePath, '%PDF-1.4');
+
+				await expect(
+					service.uploadFiles(agentId, projectId, [
+						makeMulterFile({
+							originalname: 'large.pdf',
+							mimetype: 'application/pdf',
+							path: pdfFilePath,
+						}),
+					]),
+				).rejects.toMatchObject({ reason: 'file_size' });
 			} finally {
 				await rm(tempDirectory, { recursive: true, force: true });
 			}

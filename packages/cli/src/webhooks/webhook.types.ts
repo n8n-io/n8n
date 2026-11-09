@@ -47,3 +47,10 @@ export interface IWebhookResponseCallbackData {
 }
 
 export type Method = NonNullable<IHttpRequestMethods>;
+
+export interface RegisteredTestWebhooks {
+	/** Unique names of the nodes whose test webhooks were registered, in registration order. */
+	nodeNames: string[];
+	/** Test URL of each registered Form Trigger, for the editor to open in a popup. */
+	formTestUrls: string[];
+}

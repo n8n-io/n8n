@@ -1,4 +1,4 @@
-import type { SelfHealingConfigurationDto } from '@n8n/api-types';
+import type { SelfHealingConfigurationDto, SelfHealingConfigurationOptions } from '@n8n/api-types';
 
 import * as api from './self-healing.api';
 import { useSelfHealingStore } from './self-healing.store';
@@ -13,14 +13,21 @@ const configuration: SelfHealingConfigurationDto = {
 	enabledById: null,
 	workflowIds: [],
 	reviewerIds: ['reviewer'],
+	includeAllProjectMembers: false,
 	lastActivity: null,
+};
+
+const options: SelfHealingConfigurationOptions = {
+	project: { name: 'Acme project', icon: null },
+	workflows: [],
+	reviewers: [],
 };
 
 beforeEach(() => vi.resetAllMocks());
 
 it('loads saved configurations and keeps project lists separate', async () => {
 	vi.mocked(api.fetchConfigurations).mockResolvedValue([configuration]);
-	vi.mocked(api.fetchConfigurationOptions).mockResolvedValue({ workflows: [], reviewers: [] });
+	vi.mocked(api.fetchConfigurationOptions).mockResolvedValue(options);
 	const store = useSelfHealingStore();
 	await store.load('project');
 	expect(store.configurations.project).toEqual([configuration]);
@@ -57,7 +64,7 @@ it.each(['save', 'setEnabled', 'remove'] as const)(
 		store.configurations.project = [configuration];
 		const pending = Promise.withResolvers<SelfHealingConfigurationDto[]>();
 		vi.mocked(api.fetchConfigurations).mockReturnValue(pending.promise);
-		vi.mocked(api.fetchConfigurationOptions).mockResolvedValue({ workflows: [], reviewers: [] });
+		vi.mocked(api.fetchConfigurationOptions).mockResolvedValue(options);
 		const load = store.load('project');
 		const updated = { ...configuration, enabled: true, enabledById: 'actor' };
 
@@ -86,7 +93,7 @@ it('keeps the latest list when requests finish out of order', async () => {
 	vi.mocked(api.fetchConfigurations)
 		.mockReturnValueOnce(pending.promise)
 		.mockResolvedValueOnce([updated]);
-	vi.mocked(api.fetchConfigurationOptions).mockResolvedValue({ workflows: [], reviewers: [] });
+	vi.mocked(api.fetchConfigurationOptions).mockResolvedValue(options);
 
 	const firstLoad = store.load('project');
 	await store.load('project');

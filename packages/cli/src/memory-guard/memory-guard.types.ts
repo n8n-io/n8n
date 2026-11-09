@@ -9,4 +9,8 @@ export interface StopTarget {
 	/** Running executions of the tree, the root first. */
 	memberIds: string[];
 	estimatedBytes: number;
+	/** The running node of the member with the most run data. */
+	runningNodeType: string | undefined;
+	/** The node with the most run data across all members. */
+	largestDataNodeType: string | undefined;
 }

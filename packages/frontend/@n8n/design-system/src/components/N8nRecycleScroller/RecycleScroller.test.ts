@@ -48,9 +48,14 @@ describe('components', () => {
 				});
 
 				await nextTick();
+				const scrollTo = vi.spyOn(wrapper.get('.recycle-scroller-wrapper').element, 'scrollTo');
 				wrapper.vm.scrollToKey('10');
 
-				expect(wrapper.find('.recycle-scroller-wrapper').element.scrollTop).toBe(1000);
+				expect(scrollTo).toHaveBeenLastCalledWith({ top: 1000, behavior: 'auto' });
+				wrapper.vm.scrollToKey('20', 'smooth');
+				expect(scrollTo).toHaveBeenLastCalledWith({ top: 2000, behavior: 'smooth' });
+				wrapper.unmount();
+				scrollTo.mockRestore();
 			} finally {
 				if (originalOffsetHeight) {
 					Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight);

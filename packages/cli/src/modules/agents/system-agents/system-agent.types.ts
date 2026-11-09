@@ -1,7 +1,9 @@
 import type {
 	Agent as RuntimeAgent,
+	CheckpointStore,
 	ExecutionOptions,
 	JSONObject,
+	ObservationLogObserverMemory,
 	ResumeOptions,
 	RunOptions,
 	SideCallUsageReport,
@@ -21,8 +23,18 @@ import type {
 } from '../types/agent-turn-outcome';
 import type { SystemAgentHostEventEmitter } from './system-agent-host-events';
 
+/** The stream chunks that a system-agent provider sees through `onChunk`. */
+export type { AgentExecutionStreamChunk, SteeredMessageEvent } from '../types/agent-steering';
+
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
+
+/** The "always allow" decisions that the user made in one thread of a system agent. */
+export interface SystemAgentSessionGrants {
+	load(): Promise<Set<string>>;
+	grant(key: string): Promise<void>;
+	revoke(key: string): Promise<void>;
+}
 
 interface SystemAgentTurnBase<TLease> {
 	user: User;
@@ -33,13 +45,27 @@ interface SystemAgentTurnBase<TLease> {
 	/** The lease from the provider's workspace source. It is not set when the provider has no source. */
 	workspace?: TLease;
 	/**
+	 * The memory of the agent in the Agents tables. Give it to the agent the
+	 * provider builds, so the turn's messages, title and observations are stored
+	 * with the thread.
+	 */
+	memory: ObservationLogObserverMemory;
+	/**
+	 * The checkpoint store of the agent. Give it to the agent the provider
+	 * builds: the runtime resumes a suspended turn only from this store.
+	 */
+	checkpointStore: CheckpointStore;
+	/** The "always allow" decisions in the thread. They last until the thread is deleted. */
+	sessionGrants: SystemAgentSessionGrants;
+	/**
 	 * Send a custom event to the chat during this turn. The runtime streams it
 	 * as a `host-event` SSE event and records it with the turn, so history
 	 * shows it again after a reload. Pass a `key` to update an earlier event
 	 * with the same name. The provider can keep the callback for its tools
 	 * and hooks. `onSettled` can emit only when the turn has an execution
 	 * record. Events after `onSettled` returns are dropped. It throws when
-	 * the payload is larger than 64 KiB as JSON.
+	 * the payload is larger than 64 KiB as JSON. The stream and history return
+	 * the payload as it is, so do not put secrets in it.
 	 */
 	emitHostEvent: SystemAgentHostEventEmitter;
 }
@@ -51,6 +77,11 @@ export interface SystemAgentStartTurn<TLease = unknown> extends SystemAgentTurnB
 	/** The message as the user wrote it. It is the stored transcript text. */
 	message: string;
 	attachments: StoredAttachmentRef[];
+	/**
+	 * The content of one attachment of this turn. Gives `undefined` for a file
+	 * that is not an attachment of this turn or no longer exists.
+	 */
+	readAttachment(ref: StoredAttachmentRef): Promise<Buffer | undefined>;
 	options: SystemAgentTurnOptions;
 }
 
@@ -66,8 +97,6 @@ export interface SystemAgentResumeTurn<TLease = unknown>
 export type SystemAgentTurn<TLease = unknown> =
 	| SystemAgentStartTurn<TLease>
 	| SystemAgentResumeTurn<TLease>;
-
-export type SystemAgentTurnStatus = AgentTurnStatus;
 
 /**
  * The outcome that the runtime stores for the turn. A turn that failed
@@ -95,6 +124,13 @@ export interface SystemAgentTurnHandle {
 		'persistence' | 'onSideCallUsage'
 	>;
 	onChunk?: (chunk: AgentExecutionStreamChunk) => void;
+	/**
+	 * Runs the turn inside a context of the provider, such as the active span
+	 * of its trace. The runtime calls it once and runs the whole turn in `run`,
+	 * so model calls, tools and the settle hook see the same context. It must
+	 * call `run` exactly once and return or throw its result.
+	 */
+	withTurnContext?: <T>(run: () => Promise<T>) => Promise<T>;
 	/**
 	 * Called once for each model call that runs beside the turn: title
 	 * generation, the observation-log observer and reflector, and episodic
@@ -197,6 +233,15 @@ export interface SystemAgentProvider<TLease = unknown> {
 	 */
 	authorize(user: User, projectId: string): Promise<boolean>;
 	prepareTurn(turn: SystemAgentTurn<TLease>): Promise<SystemAgentTurnHandle>;
+	/**
+	 * The user-facing text and code of an error that `prepareTurn` threw. The
+	 * turn has no handle yet, so its `formatError` cannot run. The same rules
+	 * apply: return `undefined`, or an empty message, to keep the raw error.
+	 * When it throws, the runtime logs the failure and keeps the raw error.
+	 * The errors of a stopped turn and errors that already have a client code
+	 * are not formatted.
+	 */
+	formatSetupError?(user: User, error: unknown): Promise<FormattedTurnError | undefined>;
 	/** Turn options for a message sent through the system-agent chat route. */
 	chatTurnOptions?(
 		user: User,

@@ -47,16 +47,15 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { changeLabel, blockerMessage, selectLabel } = usePromotionPreviewLabels();
+const { blockerMessage, selectLabel } = usePromotionPreviewLabels();
 
 function markers(resource: PromotionResource) {
 	const blockers = blockersOf(props.blockers, resource);
 	const blocked = blockerMessage(resource, blockers);
-	// A variable warning replaces the change label, as the variable itself does not change.
 	const meta =
 		resource.type !== 'workflow' && blockers?.some(({ kind }) => kind === 'warning')
 			? i18n.baseText('promotions.preview.marker.warning')
-			: changeLabel(resource, props.direction);
+			: undefined;
 	return { blocked, meta: blocked ? undefined : meta };
 }
 
@@ -158,8 +157,13 @@ function onToggle(resource: PromotionResource) {
 							</N8nText>
 						</span>
 					</button>
-					<N8nTooltip v-if="marker.blocked" :content="marker.blocked" placement="right">
+					<!-- Only Apply has a Blockers tab to open, so Promote shows a plain marker. As the
+					trigger itself, each one opens the tooltip on keyboard focus. -->
+					<N8nTooltip v-if="marker.blocked" placement="right" as-child>
+						<!-- Plain text: a personal project name such as `Name <email>` is not HTML. -->
+						<template #content>{{ marker.blocked }}</template>
 						<N8nButton
+							v-if="direction === 'apply'"
 							variant="ghost"
 							size="xsmall"
 							icon-only
@@ -171,6 +175,16 @@ function onToggle(resource: PromotionResource) {
 								<N8nIcon icon="circle-alert" size="small" color="warning" />
 							</template>
 						</N8nButton>
+						<span
+							v-else
+							role="img"
+							tabindex="0"
+							:aria-label="marker.blocked"
+							:class="$style.blockerMarker"
+							data-test-id="promotion-preview-tree-blocker"
+						>
+							<N8nIcon icon="circle-alert" size="small" color="warning" />
+						</span>
 					</N8nTooltip>
 				</li>
 			</template>
@@ -265,6 +279,16 @@ function onToggle(resource: PromotionResource) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.blockerMarker {
+	display: inline-flex;
+	align-items: center;
+	padding: var(--spacing--5xs);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--outline-color);
+	}
 }
 
 .meta {

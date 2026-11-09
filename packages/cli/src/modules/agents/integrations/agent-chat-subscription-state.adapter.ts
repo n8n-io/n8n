@@ -36,7 +36,7 @@ export class AgentChatSubscriptionStateAdapter implements StateAdapter {
 		await this.delegate.connect();
 		this.connected = true;
 		this.negativeSubscriptionCache.clear();
-		for (const threadId of await this.repository.listThreadIdsForConnection(this.scope)) {
+		for (const threadId of await this.repository.listThreadIdsForConnection(this.scope, {})) {
 			await this.delegate.subscribe(threadId);
 		}
 	}
@@ -51,14 +51,14 @@ export class AgentChatSubscriptionStateAdapter implements StateAdapter {
 	}
 
 	async subscribe(threadId: string): Promise<void> {
-		await this.repository.subscribe(this.scope, threadId);
+		await this.repository.subscribe(this.scope, threadId, {});
 		this.negativeSubscriptionCache.delete(threadId);
 		await this.delegate.subscribe(threadId);
 		await this.publishChange(this.integration, threadId, 'subscribe');
 	}
 
 	async unsubscribe(threadId: string): Promise<void> {
-		await this.repository.unsubscribe(this.scope, threadId);
+		await this.repository.unsubscribe(this.scope, threadId, {});
 		await this.delegate.unsubscribe(threadId);
 		this.rememberNegativeSubscription(threadId);
 		await this.publishChange(this.integration, threadId, 'unsubscribe');
@@ -70,7 +70,7 @@ export class AgentChatSubscriptionStateAdapter implements StateAdapter {
 
 		if (this.hasFreshNegativeSubscription(threadId)) return false;
 
-		if (await this.repository.isSubscribed(this.scope, threadId)) {
+		if (await this.repository.isSubscribed(this.scope, threadId, {})) {
 			this.negativeSubscriptionCache.delete(threadId);
 			await this.delegate.subscribe(threadId);
 			return true;
