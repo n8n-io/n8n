@@ -5,12 +5,14 @@ export const POLICY_VIOLATION_KIND = {
 	nodeTypeUnavailable: 'node-type-unavailable',
 	credentialTypeUnavailable: 'credential-type-unavailable',
 	nodeTypeDeprecated: 'node-type-deprecated',
+	llmBudgetExceeded: 'llm-budget-exceeded',
 } as const;
 
 /** The `subjectType` values n8n emits today. The schema stays open to others. */
 export const POLICY_VIOLATION_SUBJECT_TYPE = {
 	nodeType: 'nodeType',
 	credentialType: 'credentialType',
+	llmBudget: 'llmBudget',
 } as const;
 
 /**

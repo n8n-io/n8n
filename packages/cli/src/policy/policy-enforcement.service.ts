@@ -4,6 +4,7 @@ import type {
 	CredentialSaveContext,
 	CredentialTransferContext,
 	EnforcementPoint,
+	LlmCallPolicyContext,
 	PolicedWorkflow,
 	PolicyDecision,
 	WorkflowPublishContext,
@@ -16,6 +17,7 @@ import type {
 import {
 	credentialContentSubject,
 	credentialSubject,
+	llmCallSubject,
 	workflowContentSubject,
 	workflowSubject,
 } from '@n8n/decorators';
@@ -215,6 +217,13 @@ export class PolicyEnforcementService {
 
 	async evaluateContentImport(context: ContentImportContext): Promise<PolicyDecision> {
 		return await this.evaluate('contentImport', expandedImport(context));
+	}
+
+	async enforceLlmCall(
+		context: LlmCallPolicyContext,
+		actor: PolicyActor,
+	): Promise<PolicyCleared<'llmCall'>> {
+		return await this.enforce('llmCall', context, actor, llmCallSubject(context));
 	}
 
 	private async enforce<Point extends EnforcementPoint>(

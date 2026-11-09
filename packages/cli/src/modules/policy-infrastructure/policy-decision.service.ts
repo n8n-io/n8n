@@ -23,7 +23,7 @@ import type { DecisionAuditInput } from './policy-decision-audit';
 import { auditedActor, decisionAudit } from './policy-decision-audit';
 
 /**
- * How long one check gets. Tight on the two points that sit inside a running execution: a wedged
+ * How long one check gets. Tight on the points that sit inside a running execution: a wedged
  * policy store there pins worker slots rather than failing a single request.
  */
 const DEADLINES_MS = {
@@ -35,7 +35,14 @@ const DEADLINES_MS = {
 	credentialTransfer: 1_000,
 	credentialDecrypt: 250,
 	contentImport: 1_000,
+	llmCall: 250,
 } as const satisfies Record<EnforcementPoint, number>;
+
+/**
+ * A blocked LLM call repeats on every item and agent step, so its audit goes out at most once in
+ * this interval for each workflow or agent and budget. The other points act once per request.
+ */
+const LLM_CALL_AUDIT_INTERVAL_MS = 60_000;
 
 type CheckRunner<Point extends EnforcementPoint> = (
 	context: PolicyContext<Point>,
@@ -118,6 +125,8 @@ function decisionFrom(results: PolicyCheckResult[]): PolicyDecision {
  */
 @Service()
 export class PolicyDecisionService implements PolicyEnforcementBackend {
+	private readonly lastLlmCallAudit = new Map<string, number>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly checkMetadata: PolicyCheckMetadata,
@@ -179,6 +188,7 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 	 */
 	private audit(input: DecisionAuditInput, actor: PolicyActor) {
 		const line = decisionAudit(input);
+		if (this.isRepeatedLlmCallBlock(line)) return;
 		const message =
 			line.outcome === 'violation'
 				? `Policy blocked ${line.point}`
@@ -186,6 +196,17 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 
 		this.logger.warn(message, line);
 		this.eventService.emit('policy-decision-blocked', { ...line, ...auditedActor(actor) });
+	}
+
+	private isRepeatedLlmCallBlock(line: ReturnType<typeof decisionAudit>) {
+		if (line.point !== 'llmCall' || line.outcome !== 'violation') return false;
+		const subjects = line.violations.map(({ subject }) => subject);
+		const key = [line.agentId ?? line.workflowId, ...subjects].join('|');
+		const now = Date.now();
+		const last = this.lastLlmCallAudit.get(key);
+		if (last !== undefined && now - last < LLM_CALL_AUDIT_INTERVAL_MS) return true;
+		this.lastLlmCallAudit.set(key, now);
+		return false;
 	}
 
 	private async runChecks<Point extends EnforcementPoint>(

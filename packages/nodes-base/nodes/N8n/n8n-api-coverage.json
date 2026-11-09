@@ -89,6 +89,27 @@
 		"GET /insights/summary": {
 			"status": "gap"
 		},
+		"GET /llm-usage/calls": {
+			"status": "gap"
+		},
+		"GET /llm-budgets": {
+			"status": "gap"
+		},
+		"POST /llm-budgets": {
+			"status": "gap"
+		},
+		"GET /llm-budgets/{llmBudgetId}": {
+			"status": "gap"
+		},
+		"PUT /llm-budgets/{llmBudgetId}": {
+			"status": "gap"
+		},
+		"DELETE /llm-budgets/{llmBudgetId}": {
+			"status": "gap"
+		},
+		"GET /llm-budgets/{llmBudgetId}/status": {
+			"status": "gap"
+		},
 		"GET /executions": {
 			"status": "covered",
 			"nodeOperation": "execution:getAll"

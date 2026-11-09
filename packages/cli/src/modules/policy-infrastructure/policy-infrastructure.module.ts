@@ -21,6 +21,9 @@ export class PolicyInfrastructureModule implements ModuleInterface {
 
 		Container.get(PolicyEnforcementService).setImplementation(Container.get(PolicyDecisionService));
 
+		const { installLlmCallGuard } = await import('@/policy/llm-call-guard.js');
+		installLlmCallGuard(Container.get(PolicyEnforcementService));
+
 		// Imported for its side effect: `@OnLifecycleEvent` registers on class definition.
 		await import('./policy-lifecycle-handler.js');
 	}

@@ -198,6 +198,25 @@ class OtherPointsCheck implements RegisteredPolicyCheck {
 	}
 }
 
+/** Blocks every LLM call with one budget. */
+@Service()
+class LlmBudgetCheck implements RegisteredPolicyCheck {
+	readonly id = 'llm-budget';
+
+	async onLlmCall(): Promise<PolicyCheckResult> {
+		return {
+			violations: [
+				{
+					kind: 'llm-budget-exceeded',
+					checkId: 'llm-budget',
+					message: 'Budget reached',
+					subject: 'budget-1',
+				},
+			],
+		};
+	}
+}
+
 /** Only implements `onWorkflowStart`, so it must not be called at other points. */
 @Service()
 class StartOnlyCheck implements RegisteredPolicyCheck {
@@ -662,6 +681,37 @@ describe('PolicyDecisionService', () => {
 
 			expect(audit).toHaveBeenCalledTimes(1);
 			expect(emit).toHaveBeenCalledTimes(1);
+		});
+
+		it('emits a blocked LLM call once a minute for each workflow and budget', async () => {
+			vi.useFakeTimers();
+			const { service, emit } = auditedServiceWith(LlmBudgetCheck);
+			const llmCall = (workflowId: string) => ({
+				callerType: 'node',
+				workflowId,
+				agentId: null,
+				projectId: null,
+				accountableUserId: null,
+				credential: null,
+				provider: null,
+				model: null,
+			});
+
+			try {
+				await service.enforce('llmCall', llmCall('wf-1'), unattended);
+				await service.enforce('llmCall', llmCall('wf-1'), unattended);
+				await service.enforce('llmCall', llmCall('wf-2'), unattended);
+				vi.advanceTimersByTime(60_000);
+				await service.enforce('llmCall', llmCall('wf-1'), unattended);
+			} finally {
+				vi.useRealTimers();
+			}
+
+			expect(emit.mock.calls.map(([, payload]) => payload.workflowId)).toEqual([
+				'wf-1',
+				'wf-2',
+				'wf-1',
+			]);
 		});
 
 		it('emits nothing for an allowed action', async () => {

@@ -47,6 +47,8 @@ describe('permissions', () => {
 			workflowTags: {},
 			folder: {},
 			insights: {},
+			llmBudget: {},
+			llmUsage: {},
 			dataTable: {},
 			mcp: {},
 			mcpApiKey: {},
@@ -183,6 +185,8 @@ describe('permissions', () => {
 			insights: {
 				list: true,
 			},
+			llmBudget: {},
+			llmUsage: {},
 			dataTable: {},
 			execution: {},
 			testRun: {},
