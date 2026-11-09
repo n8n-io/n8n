@@ -1,5 +1,6 @@
 import {
 	BadRequestError,
+	ConflictError,
 	NotFoundError,
 	OperationalError,
 	UnexpectedError,
@@ -67,6 +68,33 @@ describe('classifyRestError', () => {
 			kind: RestErrorKind.responseError,
 			status: 400,
 			message: 'invalid',
+			code: 400,
+		});
+	});
+
+	it('copies meta from a ResponseError into the descriptor', () => {
+		const d = classifyRestError(new ConflictError('conflict', undefined, { reason: 'taken' }));
+		expect(d).toEqual({
+			kind: RestErrorKind.responseError,
+			status: 409,
+			message: 'conflict',
+			code: 409,
+			meta: { reason: 'taken' },
+		});
+	});
+
+	it('does not copy meta that the error marks as internal', () => {
+		class InternalMetaError extends BadRequestError {
+			override readonly metaIsInternal = true;
+
+			override readonly meta = { limit: 1 };
+		}
+
+		const d = classifyRestError(new InternalMetaError('full'));
+		expect(d).toEqual({
+			kind: RestErrorKind.responseError,
+			status: 400,
+			message: 'full',
 			code: 400,
 		});
 	});

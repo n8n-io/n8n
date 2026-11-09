@@ -5,12 +5,19 @@ export { SkillsGate } from './services/skills-gate';
 export { AssistantSkillsFlagGate } from './services/assistant-skills-flag-gate';
 export { SkillUsage, type SkillAgent } from './services/skill-usage.contracts';
 export { SkillUsageProxy } from './services/skill-usage-proxy.service';
+export {
+	SkillSourceCredentials,
+	type ResolvedSkillSourceCredential,
+	type SkillSourceCredentialScope,
+} from './services/skill-source-credentials.contracts';
+export { SkillSourceCredentialsProxy } from './services/skill-source-credentials-proxy.service';
 export type {
 	SkillTelemetryMethod,
 	SkillTelemetryRef,
 	SkillTelemetrySource,
 } from './services/skills-telemetry.service';
 export { SkillNameTakenError, skillNameTakenToolMessage } from './errors/skill-name-taken.error';
+export { toSkillToolRefusal, type SkillToolRefusal } from './errors/skill-tool-refusal';
 export {
 	findIntroducedNameClashes,
 	findNameClashGroups,

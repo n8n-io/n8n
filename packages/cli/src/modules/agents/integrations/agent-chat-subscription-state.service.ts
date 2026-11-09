@@ -47,7 +47,7 @@ export class AgentChatSubscriptionStateService {
 		agentId: string,
 		integration: AgentIntegrationConfig,
 	): Promise<void> {
-		await this.repository.deleteForConnection(agentChannelRef(agentId, integration));
+		await this.repository.deleteForConnection(agentChannelRef(agentId, integration), {});
 	}
 
 	@OnPubSubEvent('agent-chat-subscription-changed', { instanceType: 'main' })

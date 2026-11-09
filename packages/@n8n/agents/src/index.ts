@@ -205,6 +205,7 @@ export type { DatasetRow, EvaluateConfig } from './sdk/evaluate';
 export * as evals from './evals/index';
 export { Telemetry } from './sdk/telemetry';
 export { deriveSubAgentTelemetry } from './runtime/telemetry/sub-agent-telemetry';
+export { X_N8N_FUNCTION_ID_HEADER } from './runtime/telemetry/function-id';
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
@@ -223,6 +224,8 @@ export {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	findRuntimeSkillEntry,
+	isMainSkillFilePath,
 	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
 	hashRuntimeSkillRegistry,
@@ -265,6 +268,7 @@ export type {
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
+	RuntimeSkillContextUsage,
 	RuntimeSkillState,
 	RuntimeSkillStateScope,
 	RuntimeSkillStateStore,
@@ -278,11 +282,7 @@ export type {
 	CredentialListItem,
 } from './types';
 export { McpClient } from './sdk/mcp-client';
-export {
-	hasMcpMediaContent,
-	mcpContentToMessageParts,
-	mcpContentToModelParts,
-} from './runtime/mcp/mcp-content';
+export { hasMcpMediaContent, mcpContentToModelParts } from './runtime/mcp/mcp-content';
 export type { McpModelContentPart } from './runtime/mcp/mcp-content';
 export { providerTools } from './sdk/provider-tools';
 export { verify } from './sdk/verify';
@@ -304,7 +304,7 @@ export type {
 	CustomAgentMessages,
 	AgentDbMessage,
 } from './types/sdk/message';
-export { stripHydratedFileData } from './types/sdk/message';
+export { isTextMediaType, stripHydratedFileData } from './types/sdk/message';
 export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {

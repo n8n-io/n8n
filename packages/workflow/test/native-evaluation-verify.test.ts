@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 
+import { createPairedItemPagination } from './fixtures/paired-item-pagination';
+import * as Helpers from './helpers';
 import type * as NativeEvaluation from '../src/expressions/native-evaluation';
 import { canVerifyNatively, nativeSkeleton } from '../src/expressions/native-evaluation/verify';
 import type { IDataObject } from '../src/interfaces';
+import type { Workflow } from '../src/workflow';
 
 const engine = process.env.N8N_EXPRESSION_ENGINE;
 
@@ -104,6 +107,42 @@ describe('Expression - native evaluation verify mode', () => {
 	});
 
 	if (engine === 'vm' || engine === 'quickjs') {
+		test.each([1, 2])(
+			'verifies item ancestry across 5000 pages with %i rows per page',
+			async (rows) => {
+				const { Workflow } = await import('../src/workflow');
+				const fixture = createPairedItemPagination(5000, rows);
+				const workflow = new Workflow({ ...fixture.workflow, nodeTypes: Helpers.NodeTypes() });
+				const task = fixture.run.data.resultData.runData.Process[0];
+				const input = task.data!.main[0]!;
+				await workflow.expression.acquireIsolate();
+				try {
+					expect(modules.Expression.getActiveImplementation()).toBe(engine);
+					const value = workflow.expression.getParameterValue(
+						"={{ $('Trigger').item.json.timestamp }}",
+						fixture.run.data,
+						0,
+						0,
+						'Process',
+						input,
+						'manual',
+						{},
+						{
+							node: workflow.getNode('Process')!,
+							data: { main: [input] },
+							source: { main: task.source },
+						},
+					);
+
+					expect(value).toBe('2024-01-01T08:00:00.000Z');
+					expect(evaluateNatively).toHaveReturnedWith({ handled: true, value });
+					expect(report).not.toHaveBeenCalled();
+				} finally {
+					await workflow.expression.releaseIsolate();
+				}
+			},
+		);
+
 		test('returns the engine result and reports the mismatch without workflow data', () => {
 			evaluateNatively.mockReturnValueOnce({ handled: true, value: 'native' });
 
@@ -282,6 +321,78 @@ describe('Expression - native evaluation verify mode', () => {
 
 			expect(evaluate('={{ $json.name.padEnd(1) }}')).toBe('native');
 			expect(report).not.toHaveBeenCalled();
+		});
+
+		describe.each([
+			'n8n-nodes-base.function',
+			'n8n-nodes-base.functionItem',
+			'@n8n/n8n-nodes-langchain.code',
+		])('in a workflow with a %s node', (sandboxNodeType) => {
+			let sandboxWorkflow: Workflow;
+
+			beforeAll(async () => {
+				const { Workflow } = await import('../src/workflow');
+				sandboxWorkflow = new Workflow({
+					nodes: [
+						{
+							name: 'Sandbox',
+							typeVersion: 1,
+							type: sandboxNodeType,
+							id: 'uuid-sandbox',
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							name: 'node',
+							typeVersion: 1,
+							type: 'test.set',
+							id: 'uuid-node',
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				});
+				await sandboxWorkflow.expression.acquireIsolate();
+			});
+
+			afterAll(async () => {
+				await sandboxWorkflow.expression.releaseIsolate();
+			});
+
+			const evaluateInSandboxWorkflow = (value: string) =>
+				sandboxWorkflow.expression.getParameterValue(
+					value,
+					null,
+					0,
+					0,
+					'node',
+					[{ json: { name: 'secret-name' } }],
+					'manual',
+					{},
+				);
+
+			test('gives the expression of a later node to the engine in verify mode', () => {
+				expect(evaluateInSandboxWorkflow('={{ $json.name.toUpperCase() }}')).toBe('SECRET-NAME');
+				expect(evaluateNatively).not.toHaveBeenCalled();
+				expect(report).not.toHaveBeenCalled();
+			});
+
+			test('gives the expression of a later node to the engine while native evaluation is on', () => {
+				modules.Expression.setNativeEvaluation(true);
+
+				expect(evaluateInSandboxWorkflow('={{ $json.name.toUpperCase() }}')).toBe('SECRET-NAME');
+				expect(evaluateNatively).not.toHaveBeenCalled();
+			});
+		});
+
+		test('uses native evaluation in a workflow without a vm2 sandbox node', () => {
+			modules.Expression.setNativeEvaluation(true);
+			evaluateNatively.mockReturnValueOnce({ handled: true, value: 'native' });
+
+			expect(evaluate('={{ $json.name.toUpperCase() }}')).toBe('native');
 		});
 
 		test.each(['={{ $now.toMillis() }}', '={{ $parameter.a }}'])(

@@ -1,6 +1,7 @@
 import type {
 	ExecutionMode,
 	ExecutionStatus,
+	ParentLink,
 	StepError,
 	StepSlots,
 	StepStatus,
@@ -62,6 +63,8 @@ export interface ExecutionSnapshot {
 	 * render the execution against the workflow that ran, not the current one.
 	 */
 	workflow: WorkflowDocument;
+	/** The parent link, or `null` for a top-level execution. */
+	parent: ParentLink | null;
 	createdAt: string;
 	updatedAt: string;
 	finishedAt: string | null;
@@ -90,6 +93,24 @@ export interface StepDetail {
 /** Body of `POST /workflow-executions/:id/resume-target`. The control plane forwards the token unread. */
 export interface ResumeTargetRequest {
 	token: string;
+}
+
+/**
+ * Body of `POST /resume-requests/locate`, phase one of every kind of resume
+ * request. `id` is the id in the resume URL or in the approval callback. The
+ * token says whether it names an execution or a step. The control plane
+ * forwards the token unread.
+ */
+export interface ResumeLocateRequest {
+	id: string;
+	token: string;
+	/**
+	 * The path and query of the resume URL as the caller sent them, without the
+	 * token parameter, for example
+	 * `/webhook-waiting/<step id>/<node id>?approved=true`. A step-bound token
+	 * accepts the request only if this equals the string that it holds.
+	 */
+	pathAndQuery?: string;
 }
 
 /**

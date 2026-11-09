@@ -39,7 +39,7 @@ export function askUserContent(
 			{
 				type: 'tool-call',
 				toolCallId: 'call-1',
-				toolName: options.toolName ?? 'workflow_builder_ask_user',
+				toolName: options.toolName ?? 'ask_user',
 				state: options.state ?? 'resolved',
 				output: { answered: true, answers },
 			},

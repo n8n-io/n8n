@@ -508,6 +508,20 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Release PR verification
+
+When the selected ref contains `packages/quality/policy/code-health`,
+`release-create-pr.yml` verifies the npm-install dependency graph for all publishable
+packages before it creates a release PR. It resolves the selected ref once.
+Verification, release preparation, and the release base branch use
+that commit SHA, even if the selected branch advances. Verification runs in blocking
+mode. A failure stops PR creation and auto-merge setup. This gate also
+applies to patch, minor, and experimental releases that call this workflow.
+
+For older release refs without the verifier package, the verification job emits a
+notice and skips dependency verification, even in blocking mode. Release PR creation
+can continue without that check.
+
 ### Standalone prereleases
 
 Set `prerelease: true` on `release-create-pr.yml` to publish a bare SemVer as a
@@ -768,7 +782,7 @@ Workflows with `workflow_call` trigger:
 | Workflow                           | Inputs                                        | Purpose               |
 |------------------------------------|-----------------------------------------------|-----------------------|
 | `test-unit-reusable.yml`           | `ref`, `nodeVersion`, `collectCoverage`       | Unit tests            |
-| `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
+| `test-linting-reusable.yml`        | `ref`, `nodeVersion`, `affectedBase`          | Lint (affected packages when `affectedBase` is set) |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag`, `create_attestations` | Docker build |
@@ -1078,6 +1092,15 @@ Packages whose license cannot be resolved from disk go in
 `scripts/licenses/license-overrides.json` with a verified `source` citation — the upstream
 LICENSE file, not registry metadata.
 
+PR CI calls `sbom-validation-callable.yml` when the root manifest, lockfile, or workspace
+configuration changes. It also runs when the scripts manifest or lockfile changes.
+It also runs for changes to the license scripts, production build script, Node setup action,
+or SBOM validation workflow. It builds the production closure at the PR merge SHA with
+`N8N_GENERATE_LICENSES=true`. This runs cdxgen, enrichment, license rendering, and the SPDX
+gate. `Required Checks` includes the result. The job has read-only access and publishes
+no SBOM artifacts. If dependency installation fails, `setup-nodejs` uploads diagnostics
+as `pnpm-install-logs-*` artifacts. GitHub retains these logs for seven days.
+
 `test-sbom-nightly.yml` runs at 04:00 UTC. It waits up to two hours for the current scheduled
 Docker build to complete. It builds the production deployment closure at that run's SHA and
 validates the release SBOM. It also resolves the four immutable SHA image tags from that
@@ -1230,6 +1253,12 @@ keep the vulnerability out of public branch names, commits, and test description
 ## Slack Notifications
 
 All workflows post via `.github/scripts/slack/notify.mjs` — a direct `fetch` to `chat.postMessage` that exits non-zero on any Slack error. No third-party action; no silent swallowing.
+
+`release-schedule-patch-prs.yml` sends one alert to `#alerts-build` if any patch
+track fails, including a nested npm-install closure check. The alert includes
+the workflow name and run URL. It applies to manual `workflow_dispatch` runs
+while the cron trigger is disabled. Successful runs, no-change skips, and runs
+with only cancellations send no alert.
 
 ```yaml
 notify-on-failure:

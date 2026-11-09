@@ -65,7 +65,9 @@ describe('eligibleModules', () => {
 		'agents',
 		'agent-evals',
 		'inbox',
+		'promotions',
 		'type-availability-policies',
+		'execution-limits',
 	])('should include %s by default', (moduleName) => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
 	});
@@ -76,7 +78,9 @@ describe('eligibleModules', () => {
 		'agents',
 		'agent-evals',
 		'inbox',
+		'promotions',
 		'type-availability-policies',
+		'execution-limits',
 	])('should allow opting out of the default %s module via env var', (moduleName) => {
 		process.env.N8N_DISABLED_MODULES = moduleName;
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain(moduleName);
@@ -162,6 +166,7 @@ describe('eligibleModules', () => {
 			'mcp-registry',
 			'workflow-reviews',
 			'inbox',
+			'promotions',
 			'skills',
 			'instance-ai',
 			'knowledge',
@@ -169,6 +174,7 @@ describe('eligibleModules', () => {
 			'agent-evals',
 			'scim',
 			'type-availability-policies',
+			'execution-limits',
 		]);
 	});
 
@@ -210,6 +216,7 @@ describe('eligibleModules', () => {
 			'mcp-registry',
 			'workflow-reviews',
 			'inbox',
+			'promotions',
 			'skills',
 			'instance-ai',
 			'knowledge',
@@ -217,6 +224,7 @@ describe('eligibleModules', () => {
 			'agent-evals',
 			'scim',
 			'type-availability-policies',
+			'execution-limits',
 			'engine-v2',
 		]);
 	});

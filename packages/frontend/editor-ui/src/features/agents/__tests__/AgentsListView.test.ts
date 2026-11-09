@@ -154,7 +154,7 @@ vi.mock('../components/AgentCard.vue', async () => {
 	return {
 		default: defineComponent({
 			name: 'AgentCard',
-			props: ['agent', 'projectId'],
+			props: ['agent', 'projectId', 'showOwnershipBadge'],
 			emits: ['new-chat', 'duplicate'],
 			template: '<div data-test-id="agent-card">{{ agent.name }}</div>',
 		}),
@@ -242,6 +242,7 @@ describe('AgentsListView — project page', () => {
 		);
 		expect(mocks.listAgentsPageGlobal).not.toHaveBeenCalled();
 		expect(wrapper.find('[data-test-id="agent-card"]').text()).toBe('Support Agent');
+		expect(wrapper.findComponent({ name: 'AgentCard' }).props('showOwnershipBadge')).toBe(false);
 		expect(wrapper.find('[data-test-id="resources-total"]').text()).toBe('2');
 		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
 		expect(layout.props('type')).toBe('list-paginated');
@@ -453,6 +454,9 @@ describe('AgentsListView — overview page', () => {
 		);
 		expect(mocks.listAgentsPage).not.toHaveBeenCalled();
 		expect(wrapper.find('[data-test-id="resources-total"]').text()).toBe('3');
+		for (const card of wrapper.findAllComponents({ name: 'AgentCard' })) {
+			expect(card.props('showOwnershipBadge')).toBe(true);
+		}
 	});
 
 	it('refetches via listAgentsPageGlobal when search changes on the overview page', async () => {

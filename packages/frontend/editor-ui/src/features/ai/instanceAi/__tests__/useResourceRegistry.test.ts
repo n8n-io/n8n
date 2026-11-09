@@ -55,6 +55,7 @@ function setup(
 		| undefined,
 	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
 	agentBuilderTargets?: () => Array<{ agentId: string; projectId: string; name?: string }>,
+	appTargets?: () => Array<{ appId: string; projectId: string; name?: string }>,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const {
@@ -63,16 +64,15 @@ function setup(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
-	} = useResourceRegistry(
-		() => messages.value,
+	} = useResourceRegistry(() => messages.value, {
 		workflowNameLookup,
-		undefined,
 		agentBuilderTarget,
 		pendingAgentTarget,
 		pendingWorkflowAttachment,
 		transientWorkflowReferences,
 		agentBuilderTargets,
-	);
+		appTargets,
+	});
 	return {
 		messages,
 		producedArtifacts,
@@ -88,6 +88,30 @@ function setup(
 // ---------------------------------------------------------------------------
 
 describe('useResourceRegistry', () => {
+	test('registers an App linked in thread metadata as a preview artifact', async () => {
+		const appTargets = ref([
+			{ appId: '019a4012-272c-7313-91af-5c94a3d819a9', projectId: 'project-1', name: 'Portal' },
+		]);
+		const { producedArtifacts, linkableResourceNameIndex } = setup(
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			() => appTargets.value,
+		);
+		await nextTick();
+
+		expect(producedArtifacts.get(appTargets.value[0].appId)).toEqual({
+			type: 'app',
+			id: appTargets.value[0].appId,
+			name: 'Portal',
+			projectId: 'project-1',
+		});
+		expect(linkableResourceNameIndex.has('portal')).toBe(false);
+	});
+
 	describe('producedArtifacts — workflow registration', () => {
 		test('registers workflow with workflowName from result', async () => {
 			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
@@ -1197,6 +1221,73 @@ describe('useResourceRegistry', () => {
 		});
 	});
 
+	describe('producedArtifacts — app registration', () => {
+		test('registers an app the assistant committed, but not one it only read', async () => {
+			const { messages, producedArtifacts } = setup();
+			const app = { id: 'app-1', name: 'Todos', projectId: 'project-1' };
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-get',
+								toolName: 'apps',
+								args: { action: 'get', appId: 'app-2' },
+								result: { app: { ...app, id: 'app-2' } },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-commit',
+								toolName: 'apps',
+								args: { action: 'commit', appId: 'app-1', label: 'Add list' },
+								result: { app, versionId: 'v1', buildStatus: 'succeeded' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toEqual({ type: 'app', ...app });
+			expect(producedArtifacts.has('app-2')).toBe(false);
+		});
+
+		test('keeps the latest app name from a tool result over thread metadata', async () => {
+			const appTargets = ref([{ appId: 'app-1', projectId: 'project-1', name: 'Old name' }]);
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => appTargets.value,
+			);
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'apps',
+								args: { action: 'commit', appId: 'app-1' },
+								result: {
+									app: { id: 'app-1', name: 'New name', projectId: 'project-1' },
+									versionId: 'v1',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')?.name).toBe('New name');
+			expect(resourceNameIndex.get('new name')?.id).toBe('app-1');
+			expect(linkableResourceNameIndex.get('new name')?.id).toBe('app-1');
+			expect(resourceNameIndex.has('old name')).toBe(false);
+		});
+	});
+
 	describe('producedArtifacts — skill registration', () => {
 		function skillsMessage(calls: Array<Partial<InstanceAiToolCallState>>) {
 			return makeMessage({
@@ -1521,9 +1612,14 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
-		test.each(['schema', 'query'] as const)(
-			'registers data table from data-tables %s result with resolved metadata',
-			async (action) => {
+		test.each([
+			{ toolName: 'data_tables', action: 'schema' },
+			{ toolName: 'data_tables', action: 'query' },
+			{ toolName: 'get_data_table_schema', action: 'schema' },
+			{ toolName: 'query_data_table', action: 'query' },
+		] as const)(
+			'registers data table from $toolName $action result with resolved metadata',
+			async ({ toolName, action }) => {
 				const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 				messages.value = [
@@ -1531,8 +1627,11 @@ describe('useResourceRegistry', () => {
 						agentTree: makeAgentNode({
 							toolCalls: [
 								makeToolCall({
-									toolName: 'data_tables',
-									args: { action, dataTableId: 'Signups' },
+									toolName,
+									args:
+										toolName === 'data_tables'
+											? { action, dataTableId: 'Signups' }
+											: { dataTableId: 'Signups' },
 									result: {
 										dataTableId: 'dt-signups',
 										dataTableName: 'Signups',
@@ -1670,11 +1769,9 @@ describe('useResourceRegistry', () => {
 		test('field-level changes notify field readers, and removed fields are swept', async () => {
 			const messages = ref<InstanceAiMessage[]>([]);
 			const archived = ref<ReadonlySet<string>>(new Set());
-			const { producedArtifacts } = useResourceRegistry(
-				() => messages.value,
-				undefined,
-				() => archived.value,
-			);
+			const { producedArtifacts } = useResourceRegistry(() => messages.value, {
+				archivedWorkflowIds: () => archived.value,
+			});
 			messages.value = [
 				makeMessage({
 					agentTree: makeAgentNode({

@@ -33,10 +33,14 @@ const props = withDefaults(
 		cancelLabel?: string;
 		/** Draws a line under the header, for a body whose columns start at the top edge. */
 		headerDivider?: boolean;
+		/** Warning colors the divider over the body, to match a warning strip at the top of it. */
+		headerDividerTone?: 'default' | 'warning';
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
 		/** Pin the body height so the dialog does not resize between steps. Short modals leave it off. */
 		stableHeight?: boolean;
+		/** A fixed size from the window, so the dialog never resizes when its content changes. */
+		fixedSize?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -53,9 +57,11 @@ const props = withDefaults(
 		showCancel: true,
 		cancelLabel: undefined,
 		headerDivider: false,
+		headerDividerTone: 'default',
 		bodyScrollable: true,
 		bodyFlush: false,
 		stableHeight: false,
+		fixedSize: false,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -143,13 +149,15 @@ function onOpenAutoFocus(event: Event) {
 			props.disableOutsidePointerEvents && parameterDialogs.size === 0
 		"
 		:show-close-button="!dismissalBlocked"
-		:container-class="$style.dialog"
+		:container-class="props.fixedSize ? `${$style.dialog} ${$style.dialogFixed}` : $style.dialog"
 		@escape-key-down="onEscapeKeyDown"
 		@interact-outside="onInteractOutside"
 		@open-auto-focus="onOpenAutoFocus"
 		@update:open="onOpenChange"
 	>
-		<N8nDialogHeader :class="[$style.header, props.headerDivider && $style.headerDivider]">
+		<N8nDialogHeader
+			:class="[$style.header, props.headerDivider && !props.fixedSize && $style.headerDivider]"
+		>
 			<div :class="$style.headerContent">
 				<N8nIconButton
 					v-if="props.showBack"
@@ -208,7 +216,16 @@ function onOpenAutoFocus(event: Event) {
 			</N8nText>
 		</N8nDialogHeader>
 
-		<div :class="[$style.split, $slots.sidePanel && $style.splitWithPanel]">
+		<!-- A fixed dialog keeps the split layout, so the panel can slide in and out. -->
+		<!-- A fixed dialog draws the divider over each column, so the body and the panel can differ. -->
+		<div
+			:class="[
+				$style.split,
+				($slots.sidePanel || props.fixedSize) && $style.splitWithPanel,
+				props.headerDivider && props.fixedSize && $style.splitDivided,
+				props.headerDividerTone === 'warning' && $style.dividerWarning,
+			]"
+		>
 			<div :class="$style.main">
 				<N8nDialogBody
 					ref="bodyRoot"
@@ -251,11 +268,22 @@ function onOpenAutoFocus(event: Event) {
 					</slot>
 				</N8nDialogFooter>
 			</div>
-			<aside v-if="$slots.sidePanel" :class="$style.sidePanel" data-testid="agent-modal-side-panel">
-				<div :class="$style.sidePanelScroll">
-					<slot name="sidePanel" />
-				</div>
-			</aside>
+			<Transition
+				:enter-active-class="$style.sidePanelMotion"
+				:leave-active-class="$style.sidePanelMotion"
+				:enter-from-class="$style.sidePanelHidden"
+				:leave-to-class="$style.sidePanelHidden"
+			>
+				<aside
+					v-if="$slots.sidePanel"
+					:class="$style.sidePanel"
+					data-testid="agent-modal-side-panel"
+				>
+					<div :class="$style.sidePanelScroll">
+						<slot name="sidePanel" />
+					</div>
+				</aside>
+			</Transition>
 		</div>
 	</N8nDialog>
 </template>
@@ -282,6 +310,17 @@ function onOpenAutoFocus(event: Event) {
 
 .headerDivider {
 	border-bottom: var(--border);
+}
+
+.splitDivided {
+	> .main,
+	.sidePanel {
+		border-top: var(--border);
+	}
+
+	&.dividerWarning > .main {
+		border-top-color: var(--callout--border-color--warning);
+	}
 }
 
 .titleError {
@@ -361,6 +400,29 @@ function onOpenAutoFocus(event: Event) {
 	margin-left: auto;
 }
 
+/* The size of the window less a margin, whatever the content. The body and the side panel scroll. */
+[role='dialog'].dialogFixed {
+	width: min(72rem, calc(100dvw - var(--spacing--lg) * 2));
+	height: calc(100dvh - var(--spacing--3xl) * 2);
+	max-width: none;
+
+	.splitWithPanel {
+		flex: 1;
+	}
+
+	.body {
+		flex: 1;
+		max-height: none;
+	}
+
+	/* The content fills the body, so a full-height column reaches the footer. */
+	.body > * {
+		display: flex;
+		flex-direction: column;
+		flex-grow: 1;
+	}
+}
+
 /* Without a side panel the wrappers add no boxes, so the layout stays as before. */
 .split,
 .main {
@@ -381,16 +443,41 @@ function onOpenAutoFocus(event: Event) {
 }
 
 .sidePanel {
+	--agent-modal-side-panel--size: var(
+		--agent-modal-side-panel--width,
+		calc(var(--spacing--5xl) * 1.25)
+	);
 	position: relative;
 	flex-shrink: 0;
-	width: var(--agent-modal-side-panel--width, calc(var(--spacing--5xl) * 1.25));
+	width: var(--agent-modal-side-panel--size);
+	overflow: hidden;
 	border-left: var(--border);
 }
 
-/* The panel takes the height of the body and the footer, and a long panel scrolls. */
+/* The panel slides in from the right: its width grows while the content fades in. */
+.sidePanelMotion {
+	transition:
+		width var(--duration--base) var(--easing--ease-out),
+		opacity var(--duration--base) var(--easing--ease-out);
+}
+
+.sidePanelHidden {
+	width: 0;
+	opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.sidePanelMotion {
+		transition: none;
+	}
+}
+
+/* The panel takes the height of the body and the footer, and a long panel scrolls. Its content
+   keeps the full width, so nothing wraps again while the panel slides. */
 .sidePanelScroll {
 	position: absolute;
-	inset: 0;
+	inset: 0 0 0 auto;
+	width: var(--agent-modal-side-panel--size);
 	overflow-y: auto;
 
 	@include scrollbar-mixins.scroll-bar;
@@ -422,6 +509,9 @@ function onOpenAutoFocus(event: Event) {
 
 .body[data-flush='true'][data-slot='dialog-body'][data-scrollable] {
 	padding: 0;
+	/* The base body moves up over the header to give room for a focus ring. A flush body has
+	   no inset to use, so a strip at its top would cover the header divider. */
+	margin-block-start: 0;
 	/* Full-width strips reach the edge, so no space is kept for a scrollbar. */
 	scrollbar-gutter: auto;
 }

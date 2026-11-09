@@ -31,8 +31,11 @@ import type {
 import {
 	createRunExecutionData,
 	ExecutionCancelledError,
+	hasExecutionRunNodes,
+	isExecutionOutputRedacted,
 	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
+	redactErrorReport,
 	TimeoutExecutionCancelledError,
 	Workflow,
 	WorkflowOperationError,
@@ -136,6 +139,7 @@ export class WorkflowRunner {
 		executionId: string,
 		hooks?: ExecutionLifecycleHooks,
 		storedAt: ExecutionStorageLocation = this.storageConfig.modeTag,
+		failedBeforeStart = false,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -289,8 +293,18 @@ export class WorkflowRunner {
 			}
 		}
 
-		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
-		this.errorReporter.error(error, { executionId });
+		// The run data is gone at this point, so the stored workflow setting decides;
+		// the instance floor is already enforced on that setting.
+		const redacted = isExecutionOutputRedacted(
+			undefined,
+			hooks?.workflowData.settings,
+			executionMode,
+		);
+		this.logger.error(
+			`Problem with execution ${executionId}: ${redacted ? error.constructor.name : error.message}. Aborting.`,
+		);
+		const toReport = redacted ? redactErrorReport(error) : error;
+		if (toReport) this.errorReporter.error(toReport, { executionId });
 
 		if (error instanceof MaxStalledCountError) {
 			const claimed = await this.executionCrashService.markAsCrashedWithoutCounting(
@@ -313,6 +327,7 @@ export class WorkflowRunner {
 						stack: error.stack,
 					},
 					runData: {},
+					...(failedBeforeStart && { failedBeforeStart: true }),
 				},
 			}),
 			finished: false,
@@ -339,12 +354,17 @@ export class WorkflowRunner {
 		executionId: string,
 		error: ExecutionError & { node?: INode },
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		existingExecution?: ResumableExecution,
 	): Promise<void> {
 		const runData = this.failedRunFactory.generateFailedExecutionFromError(
 			data.executionMode,
 			error,
 			error.node,
 		);
+		const isResume = existingExecution?.expectedStatus === 'waiting';
+		if (!hasExecutionRunNodes(data.executionData?.resultData?.runData, isResume)) {
+			runData.data.resultData.failedBeforeStart = true;
+		}
 		const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
 		await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
 		await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
@@ -440,7 +460,7 @@ export class WorkflowRunner {
 				);
 			} catch (error) {
 				const executionId = await this.activeExecutions.add(data, existingExecution);
-				await this.failExecution(data, executionId, error, responsePromise);
+				await this.failExecution(data, executionId, error, responsePromise, existingExecution);
 				return executionId;
 			}
 		}
@@ -458,7 +478,13 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, existingExecution);
 
 		if (establishContextError) {
-			await this.failExecution(data, executionId, establishContextError, responsePromise);
+			await this.failExecution(
+				data,
+				executionId,
+				establishContextError,
+				responsePromise,
+				existingExecution,
+			);
 			return executionId;
 		}
 
@@ -806,7 +832,19 @@ export class WorkflowRunner {
 			// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
 			// "workflowExecuteAfter" which we require.
 			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
-			await this.processError(error, new Date(), data.executionMode, executionId, lifecycleHooks);
+			// Without a job, no worker can have run a node.
+			const failedBeforeStart =
+				job === undefined &&
+				!hasExecutionRunNodes(data.executionData?.resultData?.runData, !!restartExecutionId);
+			await this.processError(
+				error,
+				new Date(),
+				data.executionMode,
+				executionId,
+				lifecycleHooks,
+				undefined,
+				failedBeforeStart,
+			);
 			// Nobody will wait for this job, so drop any outcome the worker already reported
 			if (job) this.scalingService.popJobResult(job);
 			throw error;
@@ -942,6 +980,7 @@ export class WorkflowRunner {
 								lastNodeExecuted: jobResult.lastNodeExecuted,
 								error: jobResult.error,
 								metadata: jobResult.metadata,
+								failedBeforeStart: jobResult.failedBeforeStart,
 							},
 						}),
 						jobId: job.id.toString(),

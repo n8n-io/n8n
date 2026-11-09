@@ -618,7 +618,7 @@ export class InMemoryMemory
 				content: entry.content,
 				contentHash,
 				...activeLifecycleState(),
-				...(entry.embedding ? { embedding: [...entry.embedding] } : {}),
+				...(entry.embedding ? { embedding: entry.embedding.slice() } : {}),
 				...(entry.embeddingModel ? { embeddingModel: entry.embeddingModel } : {}),
 				metadata: entry.metadata ?? null,
 				createdAt: entry.createdAt ?? now,
@@ -707,7 +707,7 @@ export class InMemoryMemory
 	// eslint-disable-next-line @typescript-eslint/require-await
 	private async findSimilarEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
-		embeddings: number[][],
+		embeddings: Array<ArrayLike<number>>,
 		opts: Pick<EpisodicMemorySearchOptions, 'topK' | 'minSimilarity'>,
 	): Promise<RetrievedEpisodicMemoryEntry[][]> {
 		const resourceId = episodicWriteScopeId(scope);
@@ -883,14 +883,14 @@ function refreshEpisodicMemoryEntry(
 	markLifecycleActive(entry);
 	entry.lastSeenAt = update.lastSeenAt ?? now;
 	entry.updatedAt = now;
-	if (update.embedding !== undefined) entry.embedding = [...update.embedding];
+	if (update.embedding !== undefined) entry.embedding = update.embedding.slice();
 	if (update.embeddingModel !== undefined) entry.embeddingModel = update.embeddingModel;
 }
 
 function cloneEpisodicMemoryEntry(entry: EpisodicMemoryEntry): EpisodicMemoryEntry {
 	return {
 		...entry,
-		...(entry.embedding ? { embedding: [...entry.embedding] } : {}),
+		...(entry.embedding ? { embedding: entry.embedding.slice() } : {}),
 		createdAt: new Date(entry.createdAt),
 		updatedAt: new Date(entry.updatedAt),
 		lastSeenAt: new Date(entry.lastSeenAt),

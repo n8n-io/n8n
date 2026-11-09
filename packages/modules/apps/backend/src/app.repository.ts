@@ -1,4 +1,4 @@
-import type { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
+import type { AppVisibility, CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import {
 	BaseRepository,
 	escapeLike,
@@ -38,12 +38,13 @@ export class AppRepository extends BaseRepository<App> {
 		projectId: string,
 		appId: string,
 		versionId: string | null,
+		visibility: AppVisibility | undefined,
 		ctx: OperationContext,
 	) {
 		await this.managerFor(ctx).update(
 			App,
 			{ id: appId, projectId },
-			{ publishedVersionId: versionId },
+			{ publishedVersionId: versionId, ...(visibility && { visibility }) },
 		);
 		return await this.findInProject(projectId, appId, ctx);
 	}
@@ -84,15 +85,22 @@ export class AppRepository extends BaseRepository<App> {
 		return await this.managerFor(ctx).existsBy(Project, { id: projectId });
 	}
 
-	async createApp(projectId: string, dto: CreateAppDto, ctx: OperationContext = {}): Promise<App> {
+	async createApp(
+		projectId: string,
+		dto: CreateAppDto & { id?: string },
+		ctx: OperationContext = {},
+	): Promise<App> {
 		try {
-			return await this.managerFor(ctx).save(App, {
+			const manager = this.managerFor(ctx);
+			const app = manager.create(App, {
 				...dto,
-				id: uuidv7(),
+				id: dto.id ?? uuidv7(),
 				projectId,
 				draftVersionId: null,
 				publishedVersionId: null,
 			});
+			await manager.insert(App, app);
+			return app;
 		} catch (error) {
 			if (isUniqueConstraintError(error)) {
 				throw new ConflictError('An app already uses this namespace. Choose another namespace.');

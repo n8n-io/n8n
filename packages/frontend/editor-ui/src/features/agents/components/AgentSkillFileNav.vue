@@ -78,13 +78,13 @@ function testIdForPath(path: string) {
 			@click="emit('select', SKILL_FILE)"
 		>
 			<N8nIcon icon="file-text" :size="16" :class="$style.icon" />
-			<N8nText size="small" :bold="true" :class="$style.path">{{ SKILL_FILE }}</N8nText>
+			<N8nText size="medium" :class="$style.path">{{ SKILL_FILE }}</N8nText>
 			<SkillDiffCount :count="props.changeCounts?.[SKILL_FILE]" :class="$style.count" />
 		</button>
 
 		<div :class="$style.section">
 			<div :class="$style.sectionHeader">
-				<N8nText size="xsmall" color="text-light" :bold="true" :class="$style.sectionTitle">
+				<N8nText size="small" color="text-light" :class="$style.sectionTitle">
 					{{ i18n.baseText('agents.builder.skills.references.title') }}
 				</N8nText>
 				<N8nButton
@@ -102,7 +102,7 @@ function testIdForPath(path: string) {
 			</div>
 			<N8nText
 				v-if="references.length === 0"
-				size="xsmall"
+				size="small"
 				color="text-light"
 				:class="$style.sectionTitle"
 			>
@@ -129,7 +129,7 @@ function testIdForPath(path: string) {
 							isInvalid(reference.path) ? `${testIdForPath(reference.path)}-invalid` : undefined
 						"
 					/>
-					<N8nText size="small" :class="$style.path">{{ reference.path }}</N8nText>
+					<N8nText size="medium" :class="$style.path">{{ reference.path }}</N8nText>
 					<span v-if="props.changeCounts?.[reference.path]" :class="$style.count">
 						<!-- A file that only one version has: new in the later one, or deleted from it. -->
 						<N8nIcon

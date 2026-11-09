@@ -284,6 +284,12 @@ describe('createBuildWorkflowTool', () => {
 		).toThrow(/projectId/);
 	});
 
+	it('needs the workspace, since it reads and compiles the source file there', () => {
+		const { context } = makeContext({ source: 'workflow source' });
+
+		expect(createBuildWorkflowTool(context).requiresWorkspace).toBe(true);
+	});
+
 	it('requires workflow-builder and data-table-manager skill loads in its description', () => {
 		const { context } = makeContext({ source: 'workflow source' });
 		const tool = createBuildWorkflowTool(context);
@@ -511,7 +517,7 @@ describe('createBuildWorkflowTool', () => {
 
 			expect(result.success).toBe(false);
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
-			expect(result.errors?.join(' ')).toContain('move-workflow-to-folder');
+			expect(result.errors?.join(' ')).toContain('move_workflow_to_folder');
 		});
 
 		it.each(['', ' ', '/'])(
@@ -633,7 +639,7 @@ describe('createBuildWorkflowTool', () => {
 			'never offer publishing as an alternative to the live test',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
-			'A user-run execution counts only after `workflow_builder_executions(action="list")`',
+			'A user-run execution counts only after `list_executions`',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
 			'Do not replace the error-workflow opt-in with a generic add-anything',

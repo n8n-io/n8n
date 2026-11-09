@@ -1,8 +1,39 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowReviewActivity } from '@n8n/db';
+import { Person } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { toActivityEntry } from '../workflow-review.mapper';
+import { toActivityEntry, toEligibleReviewer } from '../workflow-review.mapper';
+import { mockServiceAccount } from '@test/mock-objects';
+
+describe('toEligibleReviewer', () => {
+	it('exposes the name and email of a person', () => {
+		const person = Object.assign(new Person(), {
+			id: 'person-1',
+			email: 'ada@example.com',
+			firstName: 'Ada',
+			lastName: 'Lovelace',
+		});
+
+		expect(toEligibleReviewer(person)).toEqual({
+			id: 'person-1',
+			email: 'ada@example.com',
+			firstName: 'Ada',
+			lastName: 'Lovelace',
+		});
+	});
+
+	it('names a service account by its name, with no email', () => {
+		const serviceAccount = mockServiceAccount({ id: 'service-1' });
+
+		expect(toEligibleReviewer(serviceAccount)).toEqual({
+			id: 'service-1',
+			email: '',
+			firstName: 'Deploy bot',
+			lastName: null,
+		});
+	});
+});
 
 describe('toActivityEntry', () => {
 	const logger = mock<Logger>();

@@ -3,7 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type {
 	InstanceAiConfirmation,
@@ -115,28 +115,55 @@ vi.mock('../components/DomainAccessApproval.vue', () => ({
 }));
 vi.mock('../components/GatewayResourceDecision.vue', () => ({
 	default: {
-		template: '<div />',
-		props: ['requestId', 'resource', 'description', 'options'],
+		props: ['resource', 'description', 'options', 'threadId', 'inputThreadId'],
+		emits: ['decide'],
+		template:
+			'<button data-test-id="mock-resource-decision" :data-thread-id="threadId" @click="$emit(\'decide\', \'allowOnce\')" />',
 	},
 }));
 vi.mock('../components/InstanceAiCredentialSetup.vue', () => ({
 	default: {
-		template:
-			'<div data-test-id="mock-credential-setup" :data-project-id="projectId" :data-require-user-selection="String(requireUserSelection)" />',
 		props: [
-			'requestId',
 			'credentialRequests',
 			'message',
 			'projectId',
 			'credentialFlow',
 			'requireUserSelection',
+			'threadId',
+			'inputThreadId',
+			'failedAttempts',
 		],
+		emits: ['decide'],
+		template: `<div>
+			<div data-test-id="mock-credential-setup" :data-project-id="projectId" :data-require-user-selection="String(requireUserSelection)" :data-failed-attempts="String(failedAttempts)" />
+			<button data-test-id="mock-credential-setup-continue" @click="$emit('decide', { kind: 'credentialSelection', credentials: { slackApi: 'cred-1' } }, 'approved')" />
+		</div>`,
 	},
 }));
 vi.mock('../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
 	default: {
-		template: '<div data-test-id="mock-workflow-setup" />',
-		props: ['requestId', 'setupRequests', 'workflowId', 'message', 'projectId', 'credentialFlow'],
+		props: [
+			'requestId',
+			'setupRequests',
+			'workflowId',
+			'projectId',
+			'credentialFlow',
+			'threadId',
+			'inputThreadId',
+			'outcome',
+		],
+		emits: ['apply', 'defer'],
+		template: `<div>
+			<div data-test-id="mock-workflow-setup" :data-outcome="outcome?.state ?? ''" />
+			<button data-test-id="mock-workflow-setup-defer" @click="$emit('defer')" />
+		</div>`,
+	},
+}));
+vi.mock('../components/InstanceAiChannelSetup.vue', () => ({
+	default: {
+		props: ['integrationType', 'agentId', 'projectId'],
+		emits: ['decide'],
+		template: '<button data-test-id="mock-channel-setup" @click="$emit(\'decide\', true)" />',
 	},
 }));
 
@@ -850,6 +877,162 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 
 			expect(credentialSetup).toHaveAttribute('data-require-user-selection', 'true');
 			expect(credentialSetup).toHaveAttribute('data-project-id', 'thread-project');
+		});
+
+		const credentialConfirmation = {
+			requestId: 'req-credential',
+			severity: 'info' as const,
+			message: 'Set up credentials',
+			credentialRequests: [
+				{ credentialType: 'slackApi', reason: 'Post a message', existingCredentials: [] },
+			],
+		};
+
+		it('sends the answer of the card through the thread and resolves it', async () => {
+			injectPendingConfirmation(thread, credentialConfirmation);
+			const confirmAction = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveConfirmation = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			await userEvent.click(getByTestId('mock-credential-setup-continue'));
+
+			expect(confirmAction).toHaveBeenCalledWith('req-credential', {
+				kind: 'credentialSelection',
+				credentials: { slackApi: 'cred-1' },
+			});
+			expect(resolveConfirmation).toHaveBeenCalledWith('req-credential', 'approved');
+		});
+
+		it('tells the card when the answer failed to send, so the user can try again', async () => {
+			injectPendingConfirmation(thread, credentialConfirmation);
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+			const resolveConfirmation = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			expect(getByTestId('mock-credential-setup')).toHaveAttribute('data-failed-attempts', '0');
+			await userEvent.click(getByTestId('mock-credential-setup-continue'));
+
+			expect(resolveConfirmation).not.toHaveBeenCalled();
+			expect(getByTestId('mock-credential-setup')).toHaveAttribute('data-failed-attempts', '1');
+		});
+	});
+
+	describe('setup card decisions', () => {
+		it('sends a resource decision through the thread', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-resource',
+				severity: 'info',
+				message: 'Read a file',
+				inputType: 'resource-decision',
+				resourceDecision: {
+					toolGroup: 'filesystem',
+					resource: '/tmp/a.txt',
+					description: 'Read /tmp/a.txt',
+					options: ['denyOnce', 'allowOnce', 'allowForSession'],
+				},
+			});
+			const confirmResourceDecision = vi
+				.spyOn(thread, 'confirmResourceDecision')
+				.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			// The panel's own test id replaces the one of the card.
+			const card = getByTestId('instance-ai-gateway-confirmation-panel');
+			expect(card).toHaveAttribute('data-thread-id', 'thread-1');
+			await userEvent.click(card);
+
+			expect(confirmResourceDecision).toHaveBeenCalledWith('req-resource', 'allowOnce');
+		});
+
+		it('confirms a channel setup through the thread and resolves it', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-channel',
+				severity: 'info',
+				message: 'Set up Slack',
+				channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
+			});
+			const confirmAction = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveConfirmation = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			await userEvent.click(getByTestId('mock-channel-setup'));
+
+			expect(confirmAction).toHaveBeenCalledWith('req-channel', {
+				kind: 'approval',
+				approved: true,
+			});
+			expect(resolveConfirmation).toHaveBeenCalledWith('req-channel', 'approved');
+		});
+
+		const channelConfirmation = {
+			requestId: 'req-channel',
+			severity: 'info' as const,
+			message: 'Set up Slack',
+			channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
+		};
+
+		it('retries a failed channel setup confirm once before resolving', async () => {
+			injectPendingConfirmation(thread, channelConfirmation);
+			const confirmAction = vi
+				.spyOn(thread, 'confirmAction')
+				.mockResolvedValueOnce(false)
+				.mockResolvedValueOnce(true);
+			const resolveConfirmation = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			await userEvent.click(getByTestId('mock-channel-setup'));
+
+			await waitFor(() =>
+				expect(resolveConfirmation).toHaveBeenCalledWith('req-channel', 'approved'),
+			);
+			expect(confirmAction).toHaveBeenCalledTimes(2);
+		});
+
+		it('resolves a channel setup locally when every confirm attempt fails', async () => {
+			injectPendingConfirmation(thread, channelConfirmation);
+			const confirmAction = vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+			const resolveConfirmation = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			await userEvent.click(getByTestId('mock-channel-setup'));
+
+			await waitFor(() =>
+				expect(resolveConfirmation).toHaveBeenCalledWith('req-channel', 'approved'),
+			);
+			expect(confirmAction).toHaveBeenCalledTimes(2);
+		});
+
+		it('ignores a channel setup answer for a request that is already resolved', async () => {
+			injectPendingConfirmation(thread, channelConfirmation);
+			const confirmAction = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			// Another path resolves the request in the same tick as the click, before the
+			// panel removes the card.
+			thread.resolvedConfirmationIds.set('req-channel', 'approved');
+			await fireEvent.click(getByTestId('mock-channel-setup'));
+
+			expect(confirmAction).not.toHaveBeenCalled();
+		});
+
+		it('defers a workflow setup through the thread', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-setup',
+				severity: 'info',
+				message: 'Set up the workflow',
+				setupRequests: [{ node: { name: 'Slack' } }],
+			} as unknown as InstanceAiConfirmation);
+			const confirmAction = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveConfirmation = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'inline' } });
+			await userEvent.click(getByTestId('mock-workflow-setup-defer'));
+
+			expect(confirmAction).toHaveBeenCalledWith('req-setup', {
+				kind: 'approval',
+				approved: false,
+			});
+			expect(resolveConfirmation).toHaveBeenCalledWith('req-setup', 'deferred');
 		});
 	});
 

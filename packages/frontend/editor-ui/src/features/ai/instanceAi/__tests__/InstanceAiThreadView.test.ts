@@ -17,6 +17,7 @@ import { moveResize, startResize } from '@/__tests__/resize';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { fetchThreadTabs } from '../instanceAi.memory.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
@@ -129,29 +130,40 @@ vi.mock('@/features/agents/composables/useAgentCapabilitySummary', () => ({
 
 const mockRouteState = vi.hoisted(() => ({
 	params: { threadId: 'thread-1' } as { threadId?: string },
+	query: { value: {} } as Ref<Record<string, string | undefined>>,
 }));
 
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
-	useRoute: () => ({
-		params: mockRouteState.params,
-		path: '/instance-ai/thread-1',
-		matched: [],
-		fullPath: '/instance-ai/thread-1',
-		query: {},
-		hash: '',
-		meta: {},
-	}),
-	useRouter: () => ({
-		push: routerPushSpy,
-		replace: routerReplaceSpy,
-		currentRoute: {
-			get value() {
-				return { params: mockRouteState.params };
+vi.mock('vue-router', async (importOriginal) => {
+	const [{ ref: createRef }, original] = await Promise.all([
+		import('vue'),
+		importOriginal<typeof import('vue-router')>(),
+	]);
+	mockRouteState.query = createRef(mockRouteState.query.value);
+
+	return {
+		...original,
+		useRoute: () => ({
+			params: mockRouteState.params,
+			path: '/instance-ai/thread-1',
+			matched: [],
+			fullPath: '/instance-ai/thread-1',
+			get query() {
+				return mockRouteState.query.value;
 			},
-		},
-	}),
-}));
+			hash: '',
+			meta: {},
+		}),
+		useRouter: () => ({
+			push: routerPushSpy,
+			replace: routerReplaceSpy,
+			currentRoute: {
+				get value() {
+					return { params: mockRouteState.params };
+				},
+			},
+		}),
+	};
+});
 
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const [{ ref: createRef }, original] = await Promise.all([
@@ -357,6 +369,43 @@ const InstanceAiDataTablePreviewStub = {
 	template: '<div data-test-id="data-table-preview-stub" />',
 };
 
+const InstanceAiAppPreviewStub = defineComponent({
+	props: {
+		appId: { type: String, required: true },
+		projectId: { type: String, required: true },
+	},
+	setup: (props) => () =>
+		h('div', {
+			'data-test-id': 'instance-ai-app-preview-stub',
+			'data-app-id': props.appId,
+			'data-project-id': props.projectId,
+		}),
+});
+
+// Picking a resource emits a fixed workflow, so the tests do not depend on the resource search.
+const InstanceAiResourcePickerStub = defineComponent({
+	props: {
+		projectId: { type: String, required: true },
+		contentTestId: { type: String, default: 'instance-ai-tab-picker' },
+	},
+	emits: ['select'],
+	setup:
+		(props, { emit }) =>
+		() =>
+			h('button', {
+				'data-test-id': props.contentTestId,
+				'data-project-id': props.projectId,
+				onClick: () =>
+					emit('select', {
+						type: 'workflow',
+						id: 'wf-picked',
+						name: 'Picked workflow',
+						icon: 'workflow',
+						projectId: props.projectId,
+					}),
+			}),
+});
+
 // Reused by tests that need to override one stub (e.g. swap in a controllable
 // `InstanceAiTestAgentPreviewPanel`) without losing the rest — the renderer's
 // per-call `global.stubs` replaces the whole map rather than merging into it.
@@ -368,7 +417,9 @@ const defaultViewStubs = {
 	InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 	AgentSection: AgentSectionStub,
 	InstanceAiDataTablePreview: InstanceAiDataTablePreviewStub,
+	InstanceAiAppPreview: InstanceAiAppPreviewStub,
 	InstanceAiArtifactsPanel: InstanceAiArtifactsPanelStub,
+	InstanceAiResourcePicker: InstanceAiResourcePickerStub,
 };
 
 const renderView = createComponentRenderer(InstanceAiThreadView, {
@@ -425,6 +476,7 @@ describe('InstanceAiThreadView', () => {
 		routerPushSpy.mockClear();
 		routerReplaceSpy.mockClear();
 		mockRouteState.params = { threadId: 'thread-1' };
+		mockRouteState.query.value = {};
 		localStorageState.store.clear();
 		inputState.initialDraft = '';
 		inputState.hasAttachments = false;
@@ -508,6 +560,32 @@ describe('InstanceAiThreadView', () => {
 		);
 	});
 
+	it('switches the preview when another app opens in the same thread', async () => {
+		store.threads[0].metadata = {
+			instanceAiAppTargets: [
+				{ appId: 'app-1', projectId: 'project-1' },
+				{ appId: 'app-2', projectId: 'project-1' },
+			],
+		};
+		thread.producedArtifacts = new Map([
+			['app-1', { type: 'app', id: 'app-1', projectId: 'project-1', name: 'First app' }],
+			['app-2', { type: 'app', id: 'app-2', projectId: 'project-1', name: 'Second app' }],
+		]) as typeof thread.producedArtifacts;
+		mockRouteState.query.value = { appId: 'app-1' };
+		const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(await findByTestId('instance-ai-app-preview-stub')).toHaveAttribute(
+			'data-app-id',
+			'app-1',
+		);
+
+		mockRouteState.query.value = { appId: 'app-2' };
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-app-preview-stub')).toHaveAttribute('data-app-id', 'app-2');
+		});
+	});
+
 	it('registers an explicit workflow open without a project as unscoped', async () => {
 		seedWorkflowArtifact();
 		thread.projectId = undefined;
@@ -545,6 +623,61 @@ describe('InstanceAiThreadView', () => {
 			'workflow-1',
 			'thread-project',
 		);
+	});
+
+	it('offers a resource picker in the header while no tabs are open, and opens the picked resource', async () => {
+		const user = userEvent.setup();
+		const { findByTestId, queryAllByTestId } = renderView({
+			props: { threadId: 'thread-1' },
+		});
+		// The header toggle opens the preview. The tab bar has its own, which closes it.
+		const headerToggles = () =>
+			queryAllByTestId('instance-ai-artifacts-preview-toggle').filter(
+				(toggle) => toggle.getAttribute('aria-pressed') === 'false',
+			);
+
+		const picker = await findByTestId('instance-ai-open-resource-picker');
+		expect(picker).toHaveAttribute('data-project-id', 'thread-project');
+		expect(headerToggles()).toHaveLength(0);
+
+		await user.click(picker);
+
+		expect(await findByTestId('instance-ai-workflow-preview-stub')).toHaveAttribute(
+			'data-workflow-id',
+			'wf-picked',
+		);
+	});
+
+	it('shows no resource picker until the stored tabs load', async () => {
+		vi.mocked(fetchThreadTabs).mockReturnValueOnce(new Promise(() => {}));
+		const { findAllByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		const toggles = await findAllByTestId('instance-ai-artifacts-preview-toggle');
+		expect(queryByTestId('instance-ai-open-resource-picker')).toBeNull();
+		expect(
+			toggles.find((toggle) => toggle.getAttribute('aria-pressed') === 'false'),
+		).toBeDisabled();
+	});
+
+	it('shows the preview toggle, not the picker, while tabs are open', async () => {
+		seedWorkflowArtifact();
+		const user = userEvent.setup();
+		const { findByTestId, getAllByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1' },
+		});
+		await findByTestId('instance-ai-workflow-preview-stub');
+
+		const closeToggle = getAllByTestId('instance-ai-artifacts-preview-toggle').find(
+			(toggle) => toggle.getAttribute('aria-pressed') === 'true',
+		);
+		await user.click(closeToggle!);
+
+		expect(queryByTestId('instance-ai-open-resource-picker')).toBeNull();
+		expect(
+			getAllByTestId('instance-ai-artifacts-preview-toggle').some(
+				(toggle) => toggle.getAttribute('aria-pressed') === 'false',
+			),
+		).toBe(true);
 	});
 
 	it('uses the message-circle-plus icon for the new chat button', function () {
@@ -1687,7 +1820,7 @@ describe('InstanceAiThreadView', () => {
 				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
 				toolCall: {
 					toolCallId: 'tc-q',
-					toolName: 'workflow_builder_ask_user',
+					toolName: 'ask_user',
 					args: {},
 					isLoading: true,
 					confirmationStatus: 'pending',
@@ -2384,6 +2517,21 @@ describe('InstanceAiThreadView', () => {
 			expect(prompt).toContain('Extract Emails');
 			expect(prompt).toContain('Intentional break');
 			expect(prompt).toContain('My Workflow');
+		});
+
+		it('attaches the failed execution to the fix prompt', async () => {
+			seedThreadArtifact('wf-1', 'My Workflow');
+			const user = userEvent.setup();
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			openPreviewForBuild();
+
+			await emitFailure();
+			await user.click(await findByTestId('instance-ai-fix-with-ai-button'));
+
+			const [, options] = vi.mocked(thread.sendMessage).mock.calls[0];
+			expect(options?.attachments).toEqual([
+				{ type: 'workflow', id: 'wf-1', name: 'My Workflow', executionId: 'exec-1' },
+			]);
 		});
 
 		it('hides the card while the chat is busy', async () => {

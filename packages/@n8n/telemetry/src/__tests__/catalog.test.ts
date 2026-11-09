@@ -3,6 +3,7 @@ import { z } from 'zod/v4';
 import { buildCatalog, formatCatalog } from '../catalog';
 import { defineTelemetryEvents } from '../define';
 import { INSTANCE_AI_TELEMETRY } from '../events/instance-ai';
+import { AGENTS_TELEMETRY } from '../events/agents';
 
 const WORKFLOWS_FIXTURE = defineTelemetryEvents({
 	USER_CLICKED_EXECUTE_WORKFLOW: {
@@ -49,6 +50,11 @@ describe('buildCatalog', () => {
 		expect(entry.properties).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ name: 'surface', type: '"aia" | "mcp"', optional: false }),
+				expect.objectContaining({
+					name: 'hub_skill_snapshot_sequence',
+					type: 'integer',
+					optional: true,
+				}),
 				{ name: 'block_state', type: '"absent" | "injected"', optional: false },
 				{
 					name: 'absence_reason',
@@ -70,12 +76,27 @@ describe('buildCatalog', () => {
 				},
 			]),
 		);
-		expect(entry.properties).toHaveLength(24);
-		expect(new Set(entry.properties.map((property) => property.name)).size).toBe(24);
+		expect(entry.properties).toHaveLength(40);
+		expect(new Set(entry.properties.map((property) => property.name)).size).toBe(40);
 	});
 });
 
 describe('buildCatalog deprecation flag', () => {
+	it('keeps property deprecation in the structured and formatted catalog', () => {
+		const catalog = buildCatalog({
+			AGENTS: {
+				USER_EDITED_AGENT_TOOL: AGENTS_TELEMETRY.USER_EDITED_AGENT_TOOL,
+			},
+		});
+		expect(catalog[0].properties).toContainEqual({
+			name: 'workflow',
+			type: 'string',
+			optional: true,
+			deprecated: true,
+		});
+		expect(formatCatalog(catalog)).toContain('workflow?: string (deprecated)');
+	});
+
 	it('marks entries whose schema carries deprecated metadata', () => {
 		const DEPRECATED_FIXTURE = defineTelemetryEvents({
 			USER_USED_LEGACY_FEATURE: {

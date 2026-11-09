@@ -1,6 +1,6 @@
 {
   "name": "@n8n/agents",
-  "version": "0.31.0",
+  "version": "0.32.0",
   "description": "AI agent SDK for n8n's code-first execution engine",
   "engines": {
     "node": ">=24.0.0"
@@ -119,7 +119,7 @@
     "@openrouter/ai-sdk-provider": "catalog:",
     "@opentelemetry/context-async-hooks": "^2.7.1",
     "@opentelemetry/exporter-trace-otlp-http": ">=0.50.0",
-    "@opentelemetry/sdk-trace-base": "2.7.1",
+    "@opentelemetry/sdk-trace-base": "catalog:",
     "@opentelemetry/sdk-trace-node": ">=1.0.0",
     "ai": "catalog:",
     "ajv": "^8.18.0",

@@ -23,6 +23,9 @@ import type {
 } from '../types/agent-turn-outcome';
 import type { SystemAgentHostEventEmitter } from './system-agent-host-events';
 
+/** The stream chunks that a system-agent provider sees through `onChunk`. */
+export type { AgentExecutionStreamChunk, SteeredMessageEvent } from '../types/agent-steering';
+
 /** Provider-defined, JSON-safe turn options. The queue stores them with the message. */
 export type SystemAgentTurnOptions = Record<string, unknown>;
 
@@ -65,6 +68,20 @@ interface SystemAgentTurnBase<TLease> {
 	 * the payload as it is, so do not put secrets in it.
 	 */
 	emitHostEvent: SystemAgentHostEventEmitter;
+	/**
+	 * Find a file that the user attached to any message of this thread, by id.
+	 * Gives `undefined` for a file of another thread.
+	 */
+	readFile(fileId: string): Promise<SystemAgentFile | undefined>;
+}
+
+/** A stored file of a system-agent thread. */
+export interface SystemAgentFile {
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
+	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
+	readContent(): Promise<Buffer | undefined>;
 }
 
 export interface SystemAgentStartTurn<TLease = unknown> extends SystemAgentTurnBase<TLease> {
@@ -121,6 +138,13 @@ export interface SystemAgentTurnHandle {
 		'persistence' | 'onSideCallUsage'
 	>;
 	onChunk?: (chunk: AgentExecutionStreamChunk) => void;
+	/**
+	 * Runs the turn inside a context of the provider, such as the active span
+	 * of its trace. The runtime calls it once and runs the whole turn in `run`,
+	 * so model calls, tools and the settle hook see the same context. It must
+	 * call `run` exactly once and return or throw its result.
+	 */
+	withTurnContext?: <T>(run: () => Promise<T>) => Promise<T>;
 	/**
 	 * Called once for each model call that runs beside the turn: title
 	 * generation, the observation-log observer and reflector, and episodic

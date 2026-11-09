@@ -1,7 +1,6 @@
 import { computed, ref } from 'vue';
 import type { SettingsSectionId } from '@n8n/frontend-module-sdk';
 
-import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
 import { useSettingsItems } from './useSettingsItems';
 import { VIEWS } from '../constants';
 import { hasPermission } from '../utils/rbac/permissions';
@@ -18,18 +17,13 @@ const settingsSidebarItems = ref<
 	Array<{ id: string; available: boolean; order?: number; section?: SettingsSectionId }>
 >([]);
 const activeModules = ref<string[]>([]);
-const promotionsFlag = ref('false');
 const environmentsVersion = ref<'v1' | 'v2'>();
 const canUserAccessRouteByName = vi.hoisted(() => vi.fn<(name: string) => boolean>(() => true));
-const contextEnabled = vi.hoisted(() => ({ value: true }));
 const openTopUpMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({ useRouter: vi.fn(() => ({})) }));
 vi.mock('./useUserHelpers', () => ({
 	useUserHelpers: vi.fn(() => ({ canUserAccessRouteByName })),
-}));
-vi.mock('@/features/settings/context/context.utils', () => ({
-	isContextEnabled: () => contextEnabled.value,
 }));
 vi.mock('./useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({ balance: computed(() => balance.value) })),
@@ -63,9 +57,6 @@ vi.mock('@n8n/stores/settings.store', () => ({
 			return isQueueModeEnabled.value;
 		},
 		isModuleActive: (name: string) => activeModules.value.includes(name),
-		get settings() {
-			return { envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: promotionsFlag.value } };
-		},
 		get moduleSettings() {
 			return moduleSettings.value;
 		},
@@ -92,10 +83,8 @@ describe('useSettingsItems', () => {
 		moduleSettings.value = {};
 		settingsSidebarItems.value = [];
 		activeModules.value = [];
-		promotionsFlag.value = 'false';
 		environmentsVersion.value = undefined;
 		canUserAccessRouteByName.mockReturnValue(true);
-		contextEnabled.value = true;
 	});
 
 	// Module items in registration order, with the orders and sections the real modules set.
@@ -106,6 +95,7 @@ describe('useSettingsItems', () => {
 		{ id: 'settings-instance-ai', available: true, order: 20, section: 'ai' as const },
 		{ id: 'settings-agents', available: true, order: 30, section: 'ai' as const },
 		{ id: 'settings-opentelemetry', available: true, order: 50, section: 'operations' as const },
+		{ id: 'settings-promotions', available: true, order: 20, section: 'operations' as const },
 	];
 
 	const makeEverythingAvailable = () => {
@@ -114,7 +104,6 @@ describe('useSettingsItems', () => {
 		isQueueModeEnabled.value = true;
 		moduleSettings.value = { 'encryption-key-manager': { rotationEnabled: true } };
 		activeModules.value = ['promotions', 'instance-ai'];
-		promotionsFlag.value = 'true';
 		environmentsVersion.value = 'v2';
 		vi.mocked(hasPermission).mockReturnValue(true);
 		settingsSidebarItems.value = realModuleItems();
@@ -369,12 +358,6 @@ describe('useSettingsItems', () => {
 			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-community-nodes') - 1);
 		});
 
-		it('is hidden when the flag is off, because the route guard does not run here', () => {
-			contextEnabled.value = false;
-
-			expect(idsOf()).not.toContain('settings-context');
-		});
-
 		it('carries the preview label', () => {
 			const item = useSettingsItems().settingsItems.value.find(
 				({ id }) => id === 'settings-context',
@@ -384,13 +367,10 @@ describe('useSettingsItems', () => {
 		});
 	});
 
+	// The promotions module adds its own link. Its availability is tested with the module.
 	describe('Environments v2', () => {
-		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
-
 		beforeEach(() => {
 			activeModules.value = ['promotions'];
-			promotionsFlag.value = 'true';
-			environmentsVersion.value = 'v2';
 		});
 
 		it('leaves the slot to Environments while the instance uses v1', () => {
@@ -401,31 +381,6 @@ describe('useSettingsItems', () => {
 			);
 
 			expect(operations?.items[0]?.id).toBe('settings-source-control');
-			expect(idsOf()).not.toContain('settings-promotions');
-		});
-
-		it('is hidden when the feature flag is off', () => {
-			promotionsFlag.value = 'false';
-
-			expect(useSettingsItems().settingsItems.value.map(({ id }) => id)).not.toContain(
-				'settings-promotions',
-			);
-		});
-
-		it('is hidden when the promotions module is inactive', () => {
-			activeModules.value = ['source-control'];
-
-			expect(useSettingsItems().settingsItems.value.map(({ id }) => id)).not.toContain(
-				'settings-promotions',
-			);
-		});
-
-		it('is hidden when route access is denied', () => {
-			canUserAccessRouteByName.mockImplementation((name) => name !== PROMOTIONS_SETTINGS_VIEW);
-
-			expect(useSettingsItems().settingsItems.value.map(({ id }) => id)).not.toContain(
-				'settings-promotions',
-			);
 		});
 	});
 

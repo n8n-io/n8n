@@ -21,7 +21,9 @@ export class AppBuildController {
 	@ProjectScope('app:update')
 	async retry(req: BuildRequest, res: Response) {
 		const { projectId, appId, versionId } = req.params;
-		const status = await this.builds.startBuild(projectId, appId, versionId, true);
+		const status = await this.builds.startBuild(projectId, appId, versionId, true, {
+			userId: req.user.id,
+		});
 		res.status(202);
 		return status;
 	}

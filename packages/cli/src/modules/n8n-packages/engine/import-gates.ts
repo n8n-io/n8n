@@ -8,7 +8,10 @@ import type { CredentialImportPlan } from '../entities/credential/credential.typ
 import type { DataTableImportPlan } from '../entities/data-table/data-table.types';
 import type { SkillImportPlan } from '../entities/skill/skill-import.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
-import type { WorkflowImportPlan } from '../entities/workflow/workflow-import.types';
+import type {
+	WorkflowImportPlan,
+	WorkflowPlanItem,
+} from '../entities/workflow/workflow-import.types';
 import type { CredentialConflictPolicy } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
 
@@ -73,7 +76,7 @@ export function assertDataTableWritesAllowed(
 
 /**
  * Plan-derived: a project or instance skill can change other Agents, so its write needs the
- * matching API-key scope. The skills of one Agent need only the Agent scopes.
+ * matching API-key scope.
  */
 export function assertSharedSkillWritesAllowed(
 	apiKeyScopes: string[] | undefined,
@@ -137,4 +140,27 @@ export function assertArchiveTransitionsAllowed(
 	if (hasTransitions) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['workflow:delete']);
 	}
+}
+
+/**
+ * Plan-derived, like the Agent publish scopes: a planned publish needs `workflow:activate` and a
+ * planned unpublish needs `workflow:deactivate`, as on the direct publish routes. Archiving needs
+ * only `workflow:delete` (see {@link assertArchiveTransitionsAllowed}), as on the archive route.
+ */
+export function assertWorkflowPublishingAllowed(
+	apiKeyScopes: string[] | undefined,
+	workflowPlan: Pick<WorkflowImportPlan, 'items'>,
+): void {
+	assertPackageImportApiKeyScopes(
+		apiKeyScopes,
+		requiredWorkflowPublishingScopes(workflowPlan.items),
+	);
+}
+
+export function requiredWorkflowPublishingScopes(items: WorkflowPlanItem[]): Scope[] {
+	const actions = new Set(items.map((item) => item.publishingAction));
+	const scopes: Scope[] = [];
+	if (actions.has('publish')) scopes.push('workflow:activate');
+	if (actions.has('unpublish')) scopes.push('workflow:deactivate');
+	return scopes;
 }

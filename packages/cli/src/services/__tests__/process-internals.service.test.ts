@@ -77,27 +77,19 @@ describe('ProcessInternalsService', () => {
 		);
 	});
 
-	it('should report only scaling collections on a worker', () => {
-		const internals = createService('worker', 'queue').collect();
+	it.each(['worker', 'webhook'] as const)(
+		'should report scaling and active executions on a %s process',
+		(instanceType) => {
+			const internals = createService(instanceType, 'queue').collect();
 
-		expect(Object.keys(internals.collections)).toEqual([
-			'scaling.jobResults',
-			'scaling.queueListeners',
-			'scaling.runningJobs',
-		]);
-		expect(activeExecutions.getDiagnosticCounts).not.toHaveBeenCalled();
-		expect(waitTracker.getDiagnosticCounts).not.toHaveBeenCalled();
-	});
-
-	it('should report scaling and active executions on a webhook process', () => {
-		const internals = createService('webhook', 'queue').collect();
-
-		expect(Object.keys(internals.collections)).toEqual([
-			'scaling.jobResults',
-			'scaling.queueListeners',
-			'scaling.runningJobs',
-			'activeExecutions.executions',
-			'activeExecutions.responseModes',
-		]);
-	});
+			expect(Object.keys(internals.collections)).toEqual([
+				'scaling.jobResults',
+				'scaling.queueListeners',
+				'scaling.runningJobs',
+				'activeExecutions.executions',
+				'activeExecutions.responseModes',
+			]);
+			expect(waitTracker.getDiagnosticCounts).not.toHaveBeenCalled();
+		},
+	);
 });
