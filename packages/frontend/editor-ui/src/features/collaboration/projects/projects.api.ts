@@ -4,7 +4,7 @@ import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import type { AssignableProjectRole } from '@n8n/permissions';
 
-export { addProjectMembers, createPublicProject, getProject } from '@n8n/rest-api-client';
+export { addProjectMembers, getProject } from '@n8n/rest-api-client';
 
 export const getAllProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
 	return await makeRestApiRequest(context, 'GET', '/projects');

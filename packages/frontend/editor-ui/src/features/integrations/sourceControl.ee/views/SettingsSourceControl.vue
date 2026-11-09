@@ -8,7 +8,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
-import { ENVIRONMENTS_UPGRADE_DOCS_URL } from '@/features/integrations/promotions.ee/promotions.constants';
+import { ENVIRONMENTS_UPGRADE_DOCS_URL } from '@n8n/frontend-module-promotions';
 import { useSourceControlStore } from '../sourceControl.store';
 import {
 	SOURCE_CONTROL_HTTPS_REPO_URL_REGEX,
