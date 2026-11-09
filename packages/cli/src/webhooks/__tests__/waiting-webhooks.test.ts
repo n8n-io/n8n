@@ -2208,11 +2208,12 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 			type: 'n8n-nodes-base.slack',
 			parameters: { operation: SEND_AND_WAIT_OPERATION },
 		};
-		const settled = (status: ExecutionSnapshot['status']) =>
+		const settled = (status: ExecutionSnapshot['status'], waitingAt: string[] = []) =>
 			({
 				id: EXECUTION_ID,
 				status,
 				workflow: { nodes: [waitNode, sendAndWaitNode] },
+				steps: waitingAt.map((nodeId) => ({ nodeId, status: 'waiting' })),
 			}) as unknown as ExecutionSnapshot;
 		const toNode = (nodeId: string) => {
 			const req = request({ approved: 'true', [WAITING_TOKEN_QUERY_PARAM]: 't' });
@@ -2220,12 +2221,15 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 			return req;
 		};
 
-		it.each(['completed', 'failed', 'cancelled'] as const)(
-			'renders the no-action page for a send-and-wait node of a %s execution',
-			async (status) => {
+		it.each([
+			['a completed execution', settled('completed')],
+			['an execution that waits at another node', settled('waiting', ['wait-id'])],
+		])(
+			'renders the no-action page for a send-and-wait node of %s, as v1 does',
+			async (_, execution) => {
 				dataPlane.locateResume.mockResolvedValue({
 					ok: true,
-					value: { execution: settled(status), target: null },
+					value: { execution, target: null },
 				});
 				const res = response();
 
@@ -2244,16 +2248,23 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 			},
 		);
 
-		it('answers 409 for a send-and-wait node while the execution runs', async () => {
-			dataPlane.locateResume.mockResolvedValue({
-				ok: true,
-				value: { execution: settled('running'), target: null },
-			});
+		it.each([
+			['runs', settled('running'), 'is running already'],
+			['waits at the same node again', settled('waiting', ['slack-id']), 'is running already'],
+			['failed', settled('failed'), 'has finished already'],
+			['was cancelled', settled('cancelled'), 'has finished already'],
+		])(
+			'answers 409 for a send-and-wait node of an execution that %s, as v1 does',
+			async (_, execution, message) => {
+				dataPlane.locateResume.mockResolvedValue({ ok: true, value: { execution, target: null } });
+				const res = response();
 
-			await expect(waitingWebhooks.executeWebhook(toNode('slack-id'), response())).rejects.toThrow(
-				`The execution "${EXECUTION_ID}" is running already.`,
-			);
-		});
+				await expect(waitingWebhooks.executeWebhook(toNode('slack-id'), res)).rejects.toThrow(
+					`The execution "${EXECUTION_ID}" ${message}.`,
+				);
+				expect(res.render).not.toHaveBeenCalled();
+			},
+		);
 
 		it('names the execution, not the step in the path, when it answers 409', async () => {
 			const STEP_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';

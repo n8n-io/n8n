@@ -78,6 +78,18 @@ const isLiveSnapshot = ({ status }: ExecutionSnapshot): boolean =>
 	status === 'queued' || status === 'running' || status === 'waiting';
 
 /**
+ * Whether a send-and-wait link has nothing left to do, as v1 decides it: the
+ * execution completed, or it waits only at other nodes.
+ */
+function isSendAndWaitOver(snapshot: ExecutionSnapshot, nodeId: string | undefined): boolean {
+	if (snapshot.status === 'completed') return true;
+	if (snapshot.status !== 'waiting') return false;
+
+	const waiting = (snapshot.steps ?? []).filter((step) => step.status === 'waiting');
+	return waiting.length > 0 && waiting.every((step) => step.nodeId !== nodeId);
+}
+
+/**
  * Puts the waiting node where the v1 resume path expects it. The data plane
  * keeps no stack, so the execution gets one entry. `preserveInputOverride`
  * pops the node's last run, so one must exist.
@@ -555,9 +567,9 @@ export class WaitingWebhooks implements IWebhookManager {
 
 	/**
 	 * No step accepts the request. A live execution answers "is running
-	 * already", and an ended one answers "has finished already". A second click
-	 * on a send-and-wait link of an ended execution renders the page that says
-	 * no action is required.
+	 * already", and an ended one answers "has finished already". As in v1, a
+	 * second click on a send-and-wait link renders the page that says no action
+	 * is required when the execution completed or waits at another node.
 	 */
 	protected answerEngineV2WithoutTarget(
 		executionId: string,
@@ -565,16 +577,15 @@ export class WaitingWebhooks implements IWebhookManager {
 		suffix: string | undefined,
 		res: express.Response,
 	): IWebhookResponseCallbackData {
-		const live = isLiveSnapshot(snapshot);
 		const nodes = asWorkflowSnapshot(snapshot.workflow)?.nodes ?? [];
-		if (!live && this.isSendAndWaitRequest(nodes, suffix)) {
+		if (this.isSendAndWaitRequest(nodes, suffix) && isSendAndWaitOver(snapshot, suffix)) {
 			applyFormSandboxCSP(res);
 			res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 			return { noWebhookResponse: true };
 		}
 
 		throw new ConflictError(
-			live
+			isLiveSnapshot(snapshot)
 				? `The execution "${executionId}" is running already.`
 				: `The execution "${executionId}" has finished already.`,
 		);
