@@ -1658,5 +1658,36 @@ describe('ImportService', () => {
 			expect(upserted.active).toBe(false);
 			expect(upserted.activeVersionId).toBeNull();
 		});
+
+		it('activates a first-time active import with no existing workflow (absent)', async () => {
+			vi.mocked(mockCredentialsRepository.find).mockResolvedValue([]);
+			vi.mocked(mockTagRepository.find).mockResolvedValue([]);
+			vi.mocked(mockUserRepository.findOneOrFail).mockResolvedValue({
+				id: USER_ID,
+				role: { slug: 'owner' },
+			} as any);
+			(mockCredentialsRepository as any).manager = mockEntityManager;
+			vi.mocked(mockEntityManager.find).mockResolvedValue([] as any);
+			vi.mocked(mockSharedWorkflowRepository.findOwnerProjectsByWorkflowIds).mockResolvedValue(
+				new Map(),
+			);
+			vi.mocked(mockWorkflowRepository.runInTransaction).mockImplementation(
+				(async (_ctx: any, fn: any) => await fn(mockEntityManager, {})) as any,
+			);
+			vi.mocked(mockWorkflowRepository.upsertImportedContent).mockResolvedValue(WORKFLOW_ID);
+			vi.mocked(mockEntityManager.findOneByOrFail).mockResolvedValue({ id: PROJECT_ID } as any);
+
+			const workflow = buildWorkflow({ active: true });
+
+			const result = await importService.importWorkflows([workflow], PROJECT_ID, USER_ID, {
+				activeState: 'fromJson',
+			});
+
+			expect(mockWorkflowService.activateWorkflow).toHaveBeenCalled();
+			const upserted = vi.mocked(mockWorkflowRepository.upsertImportedContent).mock.calls[0][0];
+			expect(upserted.active).toBe(false);
+			expect(upserted.activeVersionId).toBeNull();
+			expect(result.failedActivations).toEqual([]);
+		});
 	});
 });
