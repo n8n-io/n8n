@@ -8,7 +8,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | heldUntil | timestamp(3) with time zone |  | false |  |  |  |
 | holderId | varchar(64) |  | false |  |  | Ephemeral background-task lock owner token |
-| resourceId | varchar(255) |  | false |  | [public.agents_resources](public.agents_resources.md) | agents_resources.id partition locked for episodic indexing |
+| resourceId | varchar(1024) |  | false |  | [public.agents_resources](public.agents_resources.md) | agents_resources.id partition locked for episodic indexing |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -45,7 +45,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone heldUntil
   varchar_64_ holderId
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents" {
@@ -68,7 +68,7 @@ erDiagram
 }
 "public.agents_resources" {
   timestamp_3__with_time_zone createdAt
-  varchar_255_ id
+  varchar_1024_ id
   text metadata
   timestamp_3__with_time_zone updatedAt
 }

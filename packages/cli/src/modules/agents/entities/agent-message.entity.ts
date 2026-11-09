@@ -27,7 +27,7 @@ export class AgentMessageEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	threadId: string;
 
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	resourceId: string;
 
 	@Column({ type: 'varchar', length: 36 })

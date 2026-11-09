@@ -263,12 +263,12 @@ erDiagram
 "public.agents" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agents" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.agents_memory_entries" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
-"public.agents_memory_entries" }o--|| "public.agents_resources" : "FOREIGN KEY (#quot;resourceId#quot;) REFERENCES agents_resources(id) ON DELETE CASCADE"
 "public.agents_memory_entries" }o--o| "public.agents_memory_entries" : "FOREIGN KEY (#quot;supersededBy#quot;) REFERENCES agents_memory_entries(id)"
+"public.agents_memory_entries" }o--|| "public.agents_resources" : "FOREIGN KEY (#quot;resourceId#quot;) REFERENCES agents_resources(id) ON DELETE CASCADE"
 "public.agents_memory_entry_candidates" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
-"public.agents_memory_entry_candidates" }o--|| "public.agents_resources" : "FOREIGN KEY (#quot;resourceId#quot;) REFERENCES agents_resources(id) ON DELETE CASCADE"
 "public.agents_memory_entry_candidates" }o--o| "public.agents_messages" : "FOREIGN KEY (#quot;sourceMessageId#quot;) REFERENCES agents_messages(id) ON DELETE SET NULL"
 "public.agents_memory_entry_candidates" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
+"public.agents_memory_entry_candidates" }o--|| "public.agents_resources" : "FOREIGN KEY (#quot;resourceId#quot;) REFERENCES agents_resources(id) ON DELETE CASCADE"
 "public.agents_memory_entry_locks" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_memory_entry_locks" }o--|| "public.agents_resources" : "FOREIGN KEY (#quot;resourceId#quot;) REFERENCES agents_resources(id) ON DELETE CASCADE"
 "public.agents_memory_entry_sources" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -512,7 +512,7 @@ erDiagram
   timestamp_3__with_time_zone notifiedAt
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
-  varchar_255_ parentResourceId
+  varchar_1024_ parentResourceId
   varchar_1024_ parentThreadId
   uuid pauseRequestId
   uuid planId FK
@@ -562,7 +562,7 @@ erDiagram
   varchar_16_ id
   varchar_255_ mimeType
   varchar_36_ projectId FK
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_32_ source
   varchar_1024_ threadId
   timestamp_3__with_time_zone updatedAt
@@ -855,7 +855,7 @@ erDiagram
   varchar_36_ id
   timestamp_3__with_time_zone lastSeenAt
   json metadata
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
   timestamp_3__with_time_zone updatedAt
@@ -868,7 +868,7 @@ erDiagram
   text evidenceText
   varchar_36_ id
   varchar_32_ kind
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
@@ -881,7 +881,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone heldUntil
   varchar_64_ holderId
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_memory_entry_sources" {
@@ -904,7 +904,7 @@ erDiagram
   json modelContent
   timestamp_3__with_time_zone modelContextAt
   json origin
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_36_ role
   varchar_1024_ threadId FK
   varchar_36_ type
@@ -942,7 +942,7 @@ erDiagram
 }
 "public.agents_resources" {
   timestamp_3__with_time_zone createdAt
-  varchar_255_ id
+  varchar_1024_ id
   text metadata
   timestamp_3__with_time_zone updatedAt
 }
@@ -950,7 +950,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_1024_ id
   text metadata
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
 }

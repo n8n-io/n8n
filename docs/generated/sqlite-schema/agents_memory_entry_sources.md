@@ -100,7 +100,7 @@ erDiagram
   TEXT evidenceText
   varchar_36_ id PK
   varchar_32_ kind
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
@@ -118,7 +118,7 @@ erDiagram
   varchar_36_ id PK
   datetime_3_ lastSeenAt
   TEXT metadata
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
   datetime_3_ updatedAt
@@ -140,7 +140,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_1024_ id PK
   TEXT metadata
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_255_ title
   datetime_3_ updatedAt
 }

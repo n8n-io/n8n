@@ -81,7 +81,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_1024_ id PK
   TEXT metadata
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_255_ title
   datetime_3_ updatedAt
 }

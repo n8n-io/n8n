@@ -71,7 +71,7 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	parentThreadId: string;
 
 	/** Memory resource of the parent run. */
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	parentResourceId: string;
 
 	/** Sandbox principal of the parent run. */

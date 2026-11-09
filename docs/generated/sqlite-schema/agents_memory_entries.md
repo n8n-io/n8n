@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_memory_entries" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "resourceId" varchar(255) NOT NULL, "content" text NOT NULL, "contentHash" varchar(64) NOT NULL, "status" varchar(16) NOT NULL, "supersededBy" varchar(36), "embeddingModel" varchar(128), "metadata" text, "lastSeenAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "embedding" BLOB, CONSTRAINT "CHK_agents_memory_entries_status" CHECK ("status" IN ('active', 'superseded', 'dropped', 'deleted')), CONSTRAINT "FK_0edf1226b77ddc525eae4938079" FOREIGN KEY ("supersededBy") REFERENCES "agents_memory_entries" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION, CONSTRAINT "FK_1443a75e59adbfb796071d66393" FOREIGN KEY ("resourceId") REFERENCES "agents_resources" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_28e981fb675e9b44ce02f0ec1dd" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agents_memory_entries" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "resourceId" varchar(1024) NOT NULL, "content" text NOT NULL, "contentHash" varchar(64) NOT NULL, "status" varchar(16) NOT NULL, "supersededBy" varchar(36), "embeddingModel" varchar(128), "metadata" text, "lastSeenAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "embedding" BLOB, CONSTRAINT "CHK_agents_memory_entries_status" CHECK ("status" IN ('active', 'superseded', 'dropped', 'deleted')), CONSTRAINT "FK_0edf1226b77ddc525eae4938079" FOREIGN KEY ("supersededBy") REFERENCES "agents_memory_entries" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION, CONSTRAINT "FK_1443a75e59adbfb796071d66393" FOREIGN KEY ("resourceId") REFERENCES "agents_resources" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_28e981fb675e9b44ce02f0ec1dd" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -24,7 +24,7 @@ CREATE TABLE "agents_memory_entries" ("id" varchar(36) PRIMARY KEY NOT NULL, "ag
 | id | varchar(36) |  | false | [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) |  |  |
 | lastSeenAt | datetime(3) |  | false |  |  |  |
 | metadata | TEXT |  | true |  |  |  |
-| resourceId | varchar(255) |  | false |  | [agents_resources](agents_resources.md) |  |
+| resourceId | varchar(1024) |  | false |  | [agents_resources](agents_resources.md) |  |
 | status | varchar(16) |  | false |  |  |  |
 | supersededBy | varchar(36) |  | true |  | [agents_memory_entries](agents_memory_entries.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -70,7 +70,7 @@ erDiagram
   varchar_36_ id PK
   datetime_3_ lastSeenAt
   TEXT metadata
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
   datetime_3_ updatedAt
@@ -107,7 +107,7 @@ erDiagram
 }
 "agents_resources" {
   datetime_3_ createdAt
-  varchar_255_ id PK
+  varchar_1024_ id PK
   TEXT metadata
   datetime_3_ updatedAt
 }

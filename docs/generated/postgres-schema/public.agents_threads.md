@@ -7,7 +7,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | varchar(1024) |  | false | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_messages](public.agents_messages.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) |  |  |
 | metadata | text |  | true |  |  |  |
-| resourceId | varchar(255) |  | false |  |  |  |
+| resourceId | varchar(1024) |  | false |  |  |  |
 | title | varchar(255) |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -44,7 +44,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_1024_ id
   text metadata
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
 }
@@ -56,7 +56,7 @@ erDiagram
   text evidenceText
   varchar_36_ id
   varchar_32_ kind
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
@@ -84,7 +84,7 @@ erDiagram
   json modelContent
   timestamp_3__with_time_zone modelContextAt
   json origin
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_36_ role
   varchar_1024_ threadId FK
   varchar_36_ type

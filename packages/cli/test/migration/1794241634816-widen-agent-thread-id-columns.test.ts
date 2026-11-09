@@ -34,6 +34,14 @@ const COLUMNS = [
 	['agents_observation_cursors', 'observationScopeId', 255],
 	['agents_observation_locks', 'observationScopeId', 255],
 	['agent_chat_subscriptions', 'threadId', 255],
+	['agents_resources', 'id', 255],
+	['agents_threads', 'resourceId', 255],
+	['agents_messages', 'resourceId', 255],
+	['agents_memory_entries', 'resourceId', 255],
+	['agents_memory_entry_candidates', 'resourceId', 255],
+	['agents_memory_entry_locks', 'resourceId', 255],
+	['agent_chat_attachments', 'resourceId', 255],
+	['agent_background_job', 'parentResourceId', 255],
 ] as const;
 
 // A Teams DM in a regional (Australia) tenant, as the Teams adapter encodes it.
@@ -70,7 +78,8 @@ describe('WidenAgentThreadIdColumns migration', () => {
 	}
 
 	async function insertThreadWithMessage(threadId: string) {
-		const resourceId = 'integration:teams:29:1abc';
+		// Workflow runs use the thread id as the resource id.
+		const resourceId = threadId;
 		await withContext(async ({ runQuery, escape }) => {
 			await runQuery(
 				`INSERT INTO ${escape.tableName('agents_threads')} ("id", "resourceId") VALUES (:threadId, :resourceId)`,
@@ -112,7 +121,7 @@ describe('WidenAgentThreadIdColumns migration', () => {
 		expect(agentThreadId.length).toBeGreaterThan(255);
 	});
 
-	it('widens every agent thread id column to 1024 characters', async () => {
+	it('widens every agent thread and resource id column to 1024 characters', async () => {
 		await runSingleMigration(MIGRATION_NAME);
 
 		expect(await readDeclaredTypes()).toEqual(COLUMNS.map(() => 'varchar(1024)'));
@@ -150,7 +159,7 @@ describe('WidenAgentThreadIdColumns migration', () => {
 				await insertThreadWithMessage(agentThreadId);
 
 				await expect(undoLastSingleMigration()).rejects.toThrow(
-					'Cannot narrow the agent thread id columns, because these columns hold longer ids: agents_threads.id (1 rows longer than 128), agent_budget_spend.key (1 rows longer than 128), agents_messages.threadId (1 rows longer than 255).',
+					'Cannot narrow the agent thread and resource id columns, because these columns hold longer ids: agents_threads.id (1 rows longer than 128), agent_budget_spend.key (1 rows longer than 128), agents_messages.threadId (1 rows longer than 255), agents_threads.resourceId (1 rows longer than 255), agents_messages.resourceId (1 rows longer than 255).',
 				);
 				expect(await readDeclaredTypes()).toEqual(COLUMNS.map(() => 'varchar(1024)'));
 			},

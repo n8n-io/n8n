@@ -45,7 +45,7 @@ export class AgentChatAttachment extends WithTimestampsAndStringId {
 	createdByThreadId: string;
 
 	/** Per-user scope within the thread (platform user), when known. */
-	@Column({ type: 'varchar', length: 255, nullable: true })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH, nullable: true })
 	resourceId: string | null;
 
 	/**

@@ -105,7 +105,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_1024_ id
   text metadata
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
 }

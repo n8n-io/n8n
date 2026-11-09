@@ -64,7 +64,7 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 
 	/**
 	 * Parent session thread id that delegated this run, for navigating back to
-	 * it. Holds another thread's id, so it matches the id column width (128).
+	 * it. Holds another thread's id, so it matches the id column width.
 	 */
 	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH, nullable: true })
 	parentThreadId: string | null;

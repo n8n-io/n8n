@@ -104,7 +104,7 @@ erDiagram
   json modelContent
   timestamp_3__with_time_zone modelContextAt
   json origin
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_36_ role
   varchar_1024_ threadId FK
   varchar_36_ type

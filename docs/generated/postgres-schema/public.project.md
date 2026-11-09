@@ -120,7 +120,7 @@ erDiagram
   varchar_16_ id
   varchar_255_ mimeType
   varchar_36_ projectId FK
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_32_ source
   varchar_1024_ threadId
   timestamp_3__with_time_zone updatedAt

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_memory_entry_candidates" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "resourceId" varchar(255) NOT NULL, "threadId" varchar(1024) NOT NULL, "sourceMessageId" varchar(36), "runId" varchar(255) NOT NULL, "toolCallId" varchar(255) NOT NULL, "content" text NOT NULL, "evidenceText" text NOT NULL, "kind" varchar(32) NOT NULL, "status" varchar(16) NOT NULL DEFAULT ('pending'), "attemptCount" smallint NOT NULL DEFAULT (0), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agents_memory_entry_candidates_status" CHECK ("status" IN ('pending', 'completed', 'failed', 'deleted')), CONSTRAINT "FK_f1857f6716aa258393dd6f33243" FOREIGN KEY ("sourceMessageId") REFERENCES "agents_messages" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_ac7ada75df7cc8ced228921d5a9" FOREIGN KEY ("threadId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_5123f71435736664d2676084a85" FOREIGN KEY ("resourceId") REFERENCES "agents_resources" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_b3d0f5fe54565580bc1f5febb6e" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agents_memory_entry_candidates" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "resourceId" varchar(1024) NOT NULL, "threadId" varchar(1024) NOT NULL, "sourceMessageId" varchar(36), "runId" varchar(255) NOT NULL, "toolCallId" varchar(255) NOT NULL, "content" text NOT NULL, "evidenceText" text NOT NULL, "kind" varchar(32) NOT NULL, "status" varchar(16) NOT NULL DEFAULT ('pending'), "attemptCount" smallint NOT NULL DEFAULT (0), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agents_memory_entry_candidates_status" CHECK ("status" IN ('pending', 'completed', 'failed', 'deleted')), CONSTRAINT "FK_f1857f6716aa258393dd6f33243" FOREIGN KEY ("sourceMessageId") REFERENCES "agents_messages" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_ac7ada75df7cc8ced228921d5a9" FOREIGN KEY ("threadId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_5123f71435736664d2676084a85" FOREIGN KEY ("resourceId") REFERENCES "agents_resources" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_b3d0f5fe54565580bc1f5febb6e" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -22,7 +22,7 @@ CREATE TABLE "agents_memory_entry_candidates" ("id" varchar(36) PRIMARY KEY NOT 
 | evidenceText | TEXT |  | false |  |  |  |
 | id | varchar(36) |  | false | [agents_memory_entry_sources](agents_memory_entry_sources.md) |  |  |
 | kind | varchar(32) |  | false |  |  |  |
-| resourceId | varchar(255) |  | false |  | [agents_resources](agents_resources.md) |  |
+| resourceId | varchar(1024) |  | false |  | [agents_resources](agents_resources.md) |  |
 | runId | varchar(255) |  | false |  |  |  |
 | sourceMessageId | varchar(36) |  | true |  | [agents_messages](agents_messages.md) |  |
 | status | varchar(16) | 'pending' | false |  |  |  |
@@ -72,7 +72,7 @@ erDiagram
   TEXT evidenceText
   varchar_36_ id PK
   varchar_32_ kind
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
@@ -112,7 +112,7 @@ erDiagram
 }
 "agents_resources" {
   datetime_3_ createdAt
-  varchar_255_ id PK
+  varchar_1024_ id PK
   TEXT metadata
   datetime_3_ updatedAt
 }
@@ -124,7 +124,7 @@ erDiagram
   TEXT modelContent
   DATETIME modelContextAt
   TEXT origin
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_36_ role
   varchar_1024_ threadId FK
   varchar_36_ type
@@ -134,7 +134,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_1024_ id PK
   TEXT metadata
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_255_ title
   datetime_3_ updatedAt
 }

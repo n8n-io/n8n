@@ -1,8 +1,10 @@
+import { UserError } from 'n8n-workflow';
+
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const WIDTH = 1024;
 
-/** Every column that stores an agent thread id, with its width before this migration. */
+/** Every column that stores an agent thread or resource id, with its width before this migration. */
 const COLUMNS: Array<{ table: string; column: string; from: 128 | 255 }> = [
 	{ table: 'agents_threads', column: 'id', from: 128 },
 	{ table: 'agent_execution_threads', column: 'id', from: 128 },
@@ -26,10 +28,19 @@ const COLUMNS: Array<{ table: string; column: string; from: 128 | 255 }> = [
 	{ table: 'agents_observation_locks', column: 'observationScopeId', from: 255 },
 	// Holds the platform thread id without the agent prefix.
 	{ table: 'agent_chat_subscriptions', column: 'threadId', from: 255 },
+	// Workflow runs and message context bindings use a thread id as the resource id.
+	{ table: 'agents_resources', column: 'id', from: 255 },
+	{ table: 'agents_threads', column: 'resourceId', from: 255 },
+	{ table: 'agents_messages', column: 'resourceId', from: 255 },
+	{ table: 'agents_memory_entries', column: 'resourceId', from: 255 },
+	{ table: 'agents_memory_entry_candidates', column: 'resourceId', from: 255 },
+	{ table: 'agents_memory_entry_locks', column: 'resourceId', from: 255 },
+	{ table: 'agent_chat_attachments', column: 'resourceId', from: 255 },
+	{ table: 'agent_background_job', column: 'parentResourceId', from: 255 },
 ];
 
 /**
- * Widens the agent thread id columns to varchar(1024). A chat thread id is
+ * Widens the agent thread and resource id columns to varchar(1024). A chat thread id is
  * `<agentId>:<platform thread id>`, and some platforms make long ids: a
  * Microsoft Teams DM in a regional tenant is about 330 characters, because the
  * Teams id encodes the conversation id and the service URL in base64. Postgres
@@ -102,8 +113,8 @@ async function requireIdsThatFit({ escape, runQuery }: MigrationContext) {
 	}
 
 	if (tooLong.length > 0) {
-		throw new Error(
-			`Cannot narrow the agent thread id columns, because these columns hold longer ids: ${tooLong.join(', ')}. Delete these rows, then revert again.`,
+		throw new UserError(
+			`Cannot narrow the agent thread and resource id columns, because these columns hold longer ids: ${tooLong.join(', ')}. Delete these rows, then revert again.`,
 		);
 	}
 }

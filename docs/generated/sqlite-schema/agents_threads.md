@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_threads" ("id" varchar(1024) PRIMARY KEY NOT NULL, "resourceId" varchar(255) NOT NULL, "title" varchar(255), "metadata" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
+CREATE TABLE "agents_threads" ("id" varchar(1024) PRIMARY KEY NOT NULL, "resourceId" varchar(1024) NOT NULL, "title" varchar(255), "metadata" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
 ```
 
 </details>
@@ -18,7 +18,7 @@ CREATE TABLE "agents_threads" ("id" varchar(1024) PRIMARY KEY NOT NULL, "resourc
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | id | varchar(1024) |  | false | [agents_memory_entry_candidates](agents_memory_entry_candidates.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_messages](agents_messages.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_observations](agents_observations.md) |  |  |
 | metadata | TEXT |  | true |  |  |  |
-| resourceId | varchar(255) |  | false |  |  |  |
+| resourceId | varchar(1024) |  | false |  |  |  |
 | title | varchar(255) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -52,7 +52,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_1024_ id PK
   TEXT metadata
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_255_ title
   datetime_3_ updatedAt
 }
@@ -64,7 +64,7 @@ erDiagram
   TEXT evidenceText
   varchar_36_ id PK
   varchar_32_ kind
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
@@ -92,7 +92,7 @@ erDiagram
   TEXT modelContent
   DATETIME modelContextAt
   TEXT origin
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_36_ role
   varchar_1024_ threadId FK
   varchar_36_ type

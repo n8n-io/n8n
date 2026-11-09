@@ -123,7 +123,7 @@ erDiagram
   datetime_3_ notifiedAt
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
-  varchar_255_ parentResourceId
+  varchar_1024_ parentResourceId
   varchar_1024_ parentThreadId
   varchar pauseRequestId
   varchar planId FK
@@ -163,7 +163,7 @@ erDiagram
   varchar_16_ id PK
   varchar_255_ mimeType
   varchar_36_ projectId FK
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_32_ source
   varchar_1024_ threadId
   datetime_3_ updatedAt
@@ -285,7 +285,7 @@ erDiagram
   varchar_36_ id PK
   datetime_3_ lastSeenAt
   TEXT metadata
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
   datetime_3_ updatedAt
@@ -298,7 +298,7 @@ erDiagram
   TEXT evidenceText
   varchar_36_ id PK
   varchar_32_ kind
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
@@ -311,7 +311,7 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ heldUntil
   varchar_64_ holderId
-  varchar_255_ resourceId PK
+  varchar_1024_ resourceId PK
   datetime_3_ updatedAt
 }
 "agents_memory_entry_sources" {

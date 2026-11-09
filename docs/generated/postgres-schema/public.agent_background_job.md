@@ -14,7 +14,7 @@
 | notifiedAt | timestamp(3) with time zone |  | true |  |  | Time when the parent received the latest result or approval request |
 | parentAgentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
 | parentPrincipalHash | varchar(64) |  | false |  |  | Sandbox principal hash of the parent agent run |
-| parentResourceId | varchar(255) |  | false |  |  | Memory resource of the parent agent run |
+| parentResourceId | varchar(1024) |  | false |  |  | Memory resource of the parent agent run |
 | parentThreadId | varchar(1024) |  | false |  |  |  |
 | pauseRequestId | uuid |  | true |  |  | Groups jobs stopped by one user request |
 | planId | uuid |  | true |  | [public.agent_plan](public.agent_plan.md) | Plan that owns this work |
@@ -85,7 +85,7 @@ erDiagram
   timestamp_3__with_time_zone notifiedAt
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
-  varchar_255_ parentResourceId
+  varchar_1024_ parentResourceId
   varchar_1024_ parentThreadId
   uuid pauseRequestId
   uuid planId FK

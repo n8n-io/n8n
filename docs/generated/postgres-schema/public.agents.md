@@ -122,7 +122,7 @@ erDiagram
   timestamp_3__with_time_zone notifiedAt
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
-  varchar_255_ parentResourceId
+  varchar_1024_ parentResourceId
   varchar_1024_ parentThreadId
   uuid pauseRequestId
   uuid planId FK
@@ -162,7 +162,7 @@ erDiagram
   varchar_16_ id
   varchar_255_ mimeType
   varchar_36_ projectId FK
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_32_ source
   varchar_1024_ threadId
   timestamp_3__with_time_zone updatedAt
@@ -284,7 +284,7 @@ erDiagram
   varchar_36_ id
   timestamp_3__with_time_zone lastSeenAt
   json metadata
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
   timestamp_3__with_time_zone updatedAt
@@ -297,7 +297,7 @@ erDiagram
   text evidenceText
   varchar_36_ id
   varchar_32_ kind
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
@@ -310,7 +310,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone heldUntil
   varchar_64_ holderId
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_memory_entry_sources" {

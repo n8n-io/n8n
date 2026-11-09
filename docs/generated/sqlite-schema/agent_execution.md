@@ -118,7 +118,7 @@ erDiagram
   datetime_3_ notifiedAt
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
-  varchar_255_ parentResourceId
+  varchar_1024_ parentResourceId
   varchar_1024_ parentThreadId
   varchar pauseRequestId
   varchar planId FK

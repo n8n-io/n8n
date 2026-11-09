@@ -93,7 +93,7 @@ erDiagram
   TEXT modelContent
   DATETIME modelContextAt
   TEXT origin
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_36_ role
   varchar_1024_ threadId FK
   varchar_36_ type

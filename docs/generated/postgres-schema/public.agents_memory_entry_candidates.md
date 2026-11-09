@@ -11,7 +11,7 @@
 | evidenceText | text |  | false |  |  | Redacted exact evidence from the source message |
 | id | varchar(36) |  | false | [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) |  |  |
 | kind | varchar(32) |  | false |  |  | Reason the agent flagged this candidate; see EpisodicMemoryCaptureKind in @n8n/agents |
-| resourceId | varchar(255) |  | false |  | [public.agents_resources](public.agents_resources.md) | Resource scope for the eventual episodic memory entry |
+| resourceId | varchar(1024) |  | false |  | [public.agents_resources](public.agents_resources.md) | Resource scope for the eventual episodic memory entry |
 | runId | varchar(255) |  | false |  |  | Agent run that issued the memory capture tool call |
 | sourceMessageId | varchar(36) |  | true |  | [public.agents_messages](public.agents_messages.md) | Persisted message that contains the exact source evidence |
 | status | varchar(16) | 'pending'::character varying | false |  |  | Candidate processing state |
@@ -73,7 +73,7 @@ erDiagram
   text evidenceText
   varchar_36_ id
   varchar_32_ kind
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
@@ -113,7 +113,7 @@ erDiagram
 }
 "public.agents_resources" {
   timestamp_3__with_time_zone createdAt
-  varchar_255_ id
+  varchar_1024_ id
   text metadata
   timestamp_3__with_time_zone updatedAt
 }
@@ -125,7 +125,7 @@ erDiagram
   json modelContent
   timestamp_3__with_time_zone modelContextAt
   json origin
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_36_ role
   varchar_1024_ threadId FK
   varchar_36_ type
@@ -135,7 +135,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_1024_ id
   text metadata
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
 }

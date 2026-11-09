@@ -67,7 +67,7 @@ erDiagram
   timestamp_3__with_time_zone notifiedAt
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
-  varchar_255_ parentResourceId
+  varchar_1024_ parentResourceId
   varchar_1024_ parentThreadId
   uuid pauseRequestId
   uuid planId FK

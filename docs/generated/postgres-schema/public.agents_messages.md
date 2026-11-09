@@ -11,7 +11,7 @@
 | modelContent | json |  | true |  |  | Enriched model input when it differs from the original content |
 | modelContextAt | timestamp(3) with time zone |  | true |  |  | Runtime ordering timestamp. NULL inputs are excluded from model context |
 | origin | json |  | true |  |  | Source identifiers and transcript visibility. NULL for legacy or SDK-only messages |
-| resourceId | varchar(255) |  | false |  |  |  |
+| resourceId | varchar(1024) |  | false |  |  |  |
 | role | varchar(36) |  | false |  |  |  |
 | threadId | varchar(1024) |  | false |  | [public.agents_threads](public.agents_threads.md) |  |
 | type | varchar(36) |  | true |  |  |  |
@@ -59,7 +59,7 @@ erDiagram
   json modelContent
   timestamp_3__with_time_zone modelContextAt
   json origin
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_36_ role
   varchar_1024_ threadId FK
   varchar_36_ type
@@ -92,7 +92,7 @@ erDiagram
   text evidenceText
   varchar_36_ id
   varchar_32_ kind
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
@@ -104,7 +104,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_1024_ id
   text metadata
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
 }

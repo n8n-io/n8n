@@ -14,7 +14,7 @@
 | id | varchar(16) |  | false | [public.agent_file_grants](public.agent_file_grants.md) |  | Application-generated n8n nano ID |
 | mimeType | varchar(255) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Project owning the conversation; authorization scope for downloads |
-| resourceId | varchar(255) |  | true |  |  | Per-user scope within the thread (platform user), when known |
+| resourceId | varchar(1024) |  | true |  |  | Per-user scope within the thread (platform user), when known |
 | source | varchar(32) |  | false |  |  | Surface the file arrived from, e.g. "chat", "slack", "telegram" |
 | threadId | varchar(1024) |  | false |  |  | Conversation thread the file belongs to |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -66,7 +66,7 @@ erDiagram
   varchar_16_ id
   varchar_255_ mimeType
   varchar_36_ projectId FK
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_32_ source
   varchar_1024_ threadId
   timestamp_3__with_time_zone updatedAt

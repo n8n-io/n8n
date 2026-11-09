@@ -13,7 +13,7 @@
 | id | varchar(36) |  | false | [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) |  |  |
 | lastSeenAt | timestamp(3) with time zone |  | false |  |  | Last time equivalent content was observed; updatedAt tracks row mutation time |
 | metadata | json |  | true |  |  | Optional system metadata for ranking and debugging |
-| resourceId | varchar(255) |  | false |  | [public.agents_resources](public.agents_resources.md) | agents_resources.id partition used for episodic recall scope |
+| resourceId | varchar(1024) |  | false |  | [public.agents_resources](public.agents_resources.md) | agents_resources.id partition used for episodic recall scope |
 | status | varchar(16) |  | false |  |  |  |
 | supersededBy | varchar(36) |  | true |  | [public.agents_memory_entries](public.agents_memory_entries.md) | Self-reference to replacement memory entry |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -67,7 +67,7 @@ erDiagram
   varchar_36_ id
   timestamp_3__with_time_zone lastSeenAt
   json metadata
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
   timestamp_3__with_time_zone updatedAt
@@ -104,7 +104,7 @@ erDiagram
 }
 "public.agents_resources" {
   timestamp_3__with_time_zone createdAt
-  varchar_255_ id
+  varchar_1024_ id
   text metadata
   timestamp_3__with_time_zone updatedAt
 }
