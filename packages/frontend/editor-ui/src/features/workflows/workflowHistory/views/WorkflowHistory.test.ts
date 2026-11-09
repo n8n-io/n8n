@@ -283,6 +283,10 @@ describe('WorkflowHistory', () => {
 	});
 
 	describe('slow actions', () => {
+		beforeAll(() => {
+			Element.prototype.scrollTo = vi.fn(() => {});
+		});
+
 		const renderPreview = createComponentRenderer(WorkflowHistoryPage, {
 			global: {
 				stubs: {
@@ -292,27 +296,24 @@ describe('WorkflowHistory', () => {
 					WorkflowHistoryDiff: true,
 					WorkflowPublishTimelineContent: true,
 					WorkflowPreviewHost: true,
-					WorkflowHistoryList: defineComponent({
-						props: {
-							actions: {
-								type: Array as PropType<Array<{ value: string; disabled?: boolean }>>,
-								default: () => [],
-							},
-						},
-						template: `<div>
-							<span
-								v-for="name in ['clone', 'restore', 'download']"
-								:key="name"
-								:data-test-id="'stub-' + name + '-action'"
-								:data-disabled="String(Boolean(actions.find((action) => action.value === name)?.disabled))"
-							/>
-						</div>`,
-					}),
 				},
 			},
 		});
 
 		const shownVersion = { ...versionData, ...historyData[1] };
+		const slowActions = ['clone', 'restore', 'download'] as const;
+
+		const openListActions = async (
+			getAllByTestId: ReturnType<typeof renderPreview>['getAllByTestId'],
+			index: number,
+		) => {
+			const item = getAllByTestId('workflow-history-list-item')[index];
+			const button = within(within(item).getByTestId('action-toggle')).getByRole('button');
+			await userEvent.click(button);
+			const dropdown = document.getElementById(button.getAttribute('aria-controls') as string);
+			expect(dropdown).toBeInTheDocument();
+			return within(dropdown as HTMLElement);
+		};
 
 		const prepareSlowAction = () => {
 			route.params.workflowId = workflowId;
@@ -344,7 +345,7 @@ describe('WorkflowHistory', () => {
 						}),
 				);
 
-				const { findByTestId, findByText, getByTestId } = renderPreview({ pinia });
+				const { findByTestId, findByText, getByTestId, getAllByTestId } = renderPreview({ pinia });
 				await userEvent.click(await findByTestId('action-toggle-button'));
 				await userEvent.click(await findByText(label));
 
@@ -355,10 +356,12 @@ describe('WorkflowHistory', () => {
 					expect(pendingButton).toBeDisabled();
 					expect(pendingButton).toHaveAttribute('aria-busy', 'true');
 					expect(pendingButton.querySelector('[data-icon="loader"]')).toBeInTheDocument();
-					expect(getByTestId('stub-clone-action')).toHaveAttribute('data-disabled', 'true');
-					expect(getByTestId('stub-restore-action')).toHaveAttribute('data-disabled', 'true');
-					expect(getByTestId('stub-download-action')).toHaveAttribute('data-disabled', 'true');
 				});
+				const pendingActions = await openListActions(getAllByTestId, 1);
+				for (const action of slowActions) {
+					expect(pendingActions.getByTestId(`action-${action}`)).toHaveAttribute('data-disabled');
+				}
+				await userEvent.keyboard('{Escape}');
 
 				await userEvent.click(getByTestId('action-toggle-button'));
 				expect(spy).toHaveBeenCalledTimes(1);
@@ -369,8 +372,69 @@ describe('WorkflowHistory', () => {
 					expect(idleButton).toHaveTextContent('Actions');
 					expect(idleButton).not.toBeDisabled();
 					expect(idleButton).not.toHaveAttribute('aria-busy', 'true');
-					expect(getByTestId('stub-clone-action')).toHaveAttribute('data-disabled', 'false');
 				});
+				const idleActions = await openListActions(getAllByTestId, 1);
+				expect(idleActions.getByTestId('action-clone')).not.toHaveAttribute('data-disabled');
+				await userEvent.keyboard('{Escape}');
+			},
+		);
+
+		it.each([
+			['Clone to new workflow', 'cloneIntoNewWorkflow', 'clone'],
+			['Restore version', 'restoreWorkflow', 'restore'],
+			['Download', 'downloadVersion', 'download'],
+		] as const)(
+			'ignores %s from the history list while it is pending',
+			async (_label, method, action) => {
+				prepareSlowAction();
+				const spies = {
+					cloneIntoNewWorkflow: vi.spyOn(workflowHistoryStore, 'cloneIntoNewWorkflow'),
+					restoreWorkflow: vi.spyOn(workflowHistoryStore, 'restoreWorkflow'),
+					downloadVersion: vi.spyOn(workflowHistoryStore, 'downloadVersion'),
+				};
+				let finish: (value?: unknown) => void = () => {};
+				const spy = spies[method].mockImplementation(
+					() =>
+						new Promise((resolve) => {
+							finish = resolve;
+						}),
+				);
+				const { getAllByTestId, getByTestId, findAllByTestId } = renderPreview({ pinia });
+				await findAllByTestId('workflow-history-list-item');
+				const initialActions = await openListActions(getAllByTestId, 1);
+				await userEvent.click(initialActions.getByTestId(`action-${action}`));
+				await waitFor(() => {
+					expect(spy).toHaveBeenCalledTimes(1);
+					expect(getByTestId('action-toggle-button')).toBeDisabled();
+					expect(getByTestId('action-toggle-button')).toHaveAttribute('aria-busy', 'true');
+				});
+
+				const pendingActions = await openListActions(getAllByTestId, 1);
+				for (const pendingAction of slowActions) {
+					const entry = pendingActions.getByTestId(`action-${pendingAction}`);
+					expect(entry).toHaveAttribute('data-disabled');
+					expect(entry).toHaveAttribute('aria-disabled', 'true');
+					await userEvent.click(entry);
+				}
+				expect(spy).toHaveBeenCalledTimes(1);
+				for (const [otherMethod, otherSpy] of Object.entries(spies)) {
+					if (otherMethod !== method) {
+						expect(otherSpy).not.toHaveBeenCalled();
+					}
+				}
+				await userEvent.keyboard('{Escape}');
+
+				finish(method === 'downloadVersion' ? undefined : { id: 'done', versionId: 'next' });
+				await waitFor(() => expect(getByTestId('action-toggle-button')).not.toBeDisabled());
+				const idleActions = await openListActions(getAllByTestId, 1);
+				await waitFor(() => {
+					for (const idleAction of slowActions) {
+						expect(idleActions.getByTestId(`action-${idleAction}`)).not.toHaveAttribute(
+							'data-disabled',
+						);
+					}
+				});
+				await userEvent.keyboard('{Escape}');
 			},
 		);
 
@@ -381,15 +445,17 @@ describe('WorkflowHistory', () => {
 				.mockRejectedValueOnce(new Error('Clone failed'))
 				.mockResolvedValueOnce({ id: 'cloned-after-error' } as IWorkflowDb);
 
-			const { findByTestId, findByText, getByTestId } = renderPreview({ pinia });
+			const { findByTestId, findByText, getByTestId, getAllByTestId } = renderPreview({ pinia });
 			await userEvent.click(await findByTestId('action-toggle-button'));
 			await userEvent.click(await findByText('Clone to new workflow'));
 
 			expect(await findByText('Failed to clone to new workflow')).toBeInTheDocument();
 			await waitFor(() => {
 				expect(getByTestId('action-toggle-button')).not.toBeDisabled();
-				expect(getByTestId('stub-clone-action')).toHaveAttribute('data-disabled', 'false');
 			});
+			const idleActions = await openListActions(getAllByTestId, 1);
+			expect(idleActions.getByTestId('action-clone')).not.toHaveAttribute('data-disabled');
+			await userEvent.keyboard('{Escape}');
 
 			await userEvent.click(getByTestId('action-toggle-button'));
 			await userEvent.click(await findByText('Clone to new workflow'));
