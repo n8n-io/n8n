@@ -7,3 +7,4 @@ export {
 	type InstanceAiSandboxSettings,
 	type RuntimeSandboxEntry,
 } from './instance-ai-sandbox.service';
+export { InstanceAiSandboxProviderHealth } from './sandbox-provider-health';

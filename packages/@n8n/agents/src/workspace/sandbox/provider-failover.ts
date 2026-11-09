@@ -73,8 +73,9 @@ function classifyOne(error: unknown): boolean | undefined {
 /**
  * Whether a sandbox failure shows that the provider is down or unreachable, so a
  * fallback provider can take over. Network failures, timeouts, 5xx, 408 and 429
- * responses qualify. Authentication, quota, validation and configuration failures
- * do not: another provider would only hide them from the operator. A user abort
+ * responses qualify, also a 429 that a provider sends for a quota limit. Authentication,
+ * validation, configuration and other 4xx failures do not: another provider would only
+ * hide them from the operator. A user abort
  * does not qualify either.
  */
 export function isSandboxProviderUnavailableError(error: unknown): boolean {
@@ -113,6 +114,8 @@ type ProviderState = {
 	cooldownMs: number;
 	/** Set while the circuit is open. The provider is skipped until this time. */
 	openUntil?: number;
+	/** A test request is in flight after a cooldown. Only its failure doubles the cooldown. */
+	testing?: boolean;
 };
 
 /**
@@ -150,6 +153,7 @@ export class SandboxProviderHealth {
 		const now = this.now();
 		if (now < state.openUntil) return false;
 		state.openUntil = now + state.cooldownMs;
+		state.testing = true;
 		return true;
 	}
 
@@ -176,7 +180,11 @@ export class SandboxProviderHealth {
 		state.consecutiveFailures++;
 
 		if (state.openUntil !== undefined) {
+			// Other failures, such as requests that started before the circuit opened, do not
+			// change the cooldown.
+			if (!state.testing) return false;
 			// A failed test request: wait longer before the next test.
+			state.testing = false;
 			state.cooldownMs = Math.min(state.cooldownMs * 2, this.maxCooldownMs);
 			state.openUntil = this.now() + state.cooldownMs;
 			return false;

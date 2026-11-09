@@ -281,11 +281,14 @@ a fallback that equals the primary provider or that has no connection.
 
 - A new thread sandbox goes to the fallback provider when the primary provider
   fails with a network error, a timeout, a 5xx response or a 429 response.
-- Authentication, quota and configuration errors do not cause a fallback. The
+- Every 429 response causes a fallback, also when the provider sends it for a
+  quota limit. Authentication, configuration and other 4xx errors, including
+  quota errors with other status codes, do not cause a fallback. The
   acquisition fails, so that the operator sees the problem.
-- After repeated failures, the primary provider is skipped for a cooldown. The
-  cooldown doubles after each failed test request. This state is kept in each
-  process.
+- After repeated failures, the primary provider is skipped for a cooldown. After
+  the cooldown, one test request uses the primary provider again. The cooldown
+  doubles only when that test request fails. All Assistant services in a process
+  share this state. Each process keeps its own state.
 - A cached thread keeps the provider of its sandbox. It tries the primary
   provider again only when it needs a new sandbox, for example after idle
   eviction or a restart. A failover starts with an empty sandbox: files from

@@ -650,8 +650,12 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'The n8n Assistant created a thread sandbox on the fallback provider because the primary provider was unavailable (network failure, timeout, 5xx or 429), or because its circuit was open after earlier failures. Fires once per sandbox creation that succeeded on the fallback provider. Requires N8N_INSTANCE_AI_SANDBOX_FALLBACK_PROVIDER.',
 		properties: z.object({
-			from_provider: z.string().describe('Primary sandbox provider that was skipped or failed'),
-			to_provider: z.string().describe('Fallback sandbox provider that created the sandbox'),
+			from_provider: z
+				.enum(['n8n-sandbox', 'daytona'])
+				.describe('Primary sandbox provider that was skipped or failed'),
+			to_provider: z
+				.enum(['n8n-sandbox', 'daytona'])
+				.describe('Fallback sandbox provider that created the sandbox'),
 			failure_class: z
 				.string()
 				.nullable()
