@@ -50,8 +50,8 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 		return value;
 	}
 
-	if (typeof value === 'string' && ['true', 'false'].includes(value.toLowerCase())) {
-		return value.toLowerCase() === 'true';
+	if (typeof value === 'string' && ['true', 'false'].includes(value.trim().toLowerCase())) {
+		return value.trim().toLowerCase() === 'true';
 	}
 
 	// If value is not a empty string, try to parse it to a number

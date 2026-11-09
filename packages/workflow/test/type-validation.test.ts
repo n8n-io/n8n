@@ -2,6 +2,7 @@ import { DateTime, Settings } from 'luxon';
 
 import {
 	getValueDescription,
+	tryToParseBoolean,
 	tryToParseDateTime,
 	tryToParseJsonToFormFields,
 	tryToParseUrl,
@@ -543,5 +544,22 @@ describe('Type Validation', () => {
 			expect(() => tryToParseUrl('not a url at all')).toThrow('is not a valid url');
 			expect(() => tryToParseUrl('')).toThrow('is not a valid url');
 		});
+	});
+});
+
+describe('tryToParseBoolean whitespace handling', () => {
+	it('should trim surrounding whitespace on boolean literals', () => {
+		expect(tryToParseBoolean('  true  ')).toBe(true);
+		expect(tryToParseBoolean('\nfalse\t')).toBe(false);
+	});
+
+	it('should still accept case-insensitive boolean literals', () => {
+		expect(tryToParseBoolean('TRUE')).toBe(true);
+		expect(tryToParseBoolean('False')).toBe(false);
+	});
+
+	it('should keep numeric parsing with whitespace unchanged', () => {
+		expect(tryToParseBoolean(' 1 ')).toBe(true);
+		expect(tryToParseBoolean(' 0 ')).toBe(false);
 	});
 });
