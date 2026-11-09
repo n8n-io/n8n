@@ -420,8 +420,7 @@ export const TOOL_CATALOG_CALL_TOOL_NAME = 'call_tool';
 
 /**
  * Returns the tool and arguments that a `call_tool` call runs, so a display
- * shows the real tool. Returns other calls unchanged. `arguments` can be an
- * object or a JSON string, as the SDK accepts both.
+ * shows the real tool. Returns other calls unchanged.
  */
 export function unwrapToolCatalogCall(
 	toolName: string,
@@ -433,17 +432,11 @@ export function unwrapToolCatalogCall(
 	return { toolName: target, args: parseToolCatalogArguments(args.arguments) };
 }
 
+// The SDK accepts only an object for `arguments`, so show nothing for a call it rejects.
 function parseToolCatalogArguments(value: unknown): Record<string, unknown> {
 	const isObject = (v: unknown): v is Record<string, unknown> =>
 		typeof v === 'object' && v !== null && !Array.isArray(v);
-	if (isObject(value)) return value;
-	if (typeof value !== 'string') return {};
-	try {
-		const parsed: unknown = JSON.parse(value);
-		return isObject(parsed) ? parsed : {};
-	} catch {
-		return {};
-	}
+	return isObject(value) ? value : {};
 }
 
 /** Returns every former name of a builder tool. */

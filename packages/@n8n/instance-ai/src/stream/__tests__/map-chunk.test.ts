@@ -105,7 +105,7 @@ describe('mapAgentChunkToEvent', () => {
 			type: 'tool-call-suspended',
 			toolCallId: 'tc-2',
 			toolName: 'call_tool',
-			input: { tool: 'workflows', arguments: '{"action":"delete"}' },
+			input: { tool: 'workflows', arguments: { action: 'delete' } },
 			suspendPayload: { message: 'Delete it?' },
 		});
 		expect(confirmation).toMatchObject({

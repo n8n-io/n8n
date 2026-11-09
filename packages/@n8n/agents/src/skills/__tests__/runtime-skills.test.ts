@@ -30,6 +30,22 @@ function skillLoadText(output: unknown): string {
 }
 
 describe('runtime skills', () => {
+	it('loads a SKILL.md that still uses the deprecated recommended_tools key', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: legacy-skill
+description: Written before the tool group rename.
+recommended_tools:
+  - list_workflows
+---
+
+Do the thing.`);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.skill).not.toHaveProperty('recommendedToolGroups');
+		expect(result.skill).not.toHaveProperty('recommendedTools');
+	});
+
 	it('parses SKILL.md frontmatter into a runtime skill', () => {
 		const result = parseRuntimeSkillMarkdown(`---
 name: workflow-builder

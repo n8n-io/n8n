@@ -211,6 +211,17 @@ export function getToolGroupDescription(group: string): string | undefined {
 	return Object.hasOwn(TOOL_GROUP_DESCRIPTIONS, group) ? TOOL_GROUP_DESCRIPTIONS[group] : undefined;
 }
 
+/**
+ * Returns the tool group of an MCP server's tools. A server named like an n8n tool
+ * group, or like the SDK's default group `tools`, gets an `mcp_` prefix so its tools
+ * do not merge into that group.
+ */
+export function getMcpToolGroup(serverName: string): string {
+	return Object.hasOwn(TOOL_GROUP_DESCRIPTIONS, serverName) || serverName === 'tools'
+		? `mcp_${serverName}`
+		: serverName;
+}
+
 /** Returns the tool group of a deferred n8n tool, or undefined for the default one. */
 export function getToolGroup(toolName: string): string | undefined {
 	return TOOL_GROUP_BY_NAME.get(toolName);

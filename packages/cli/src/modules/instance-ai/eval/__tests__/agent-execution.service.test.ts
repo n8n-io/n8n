@@ -609,10 +609,12 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 
+		// Records name the tool that ran, not the call_tool dispatcher.
+		const toolNames = result.toolCalls.map((call) => call.tool);
+		expect(toolNames).toEqual(expect.arrayContaining(['setup_workflow', 'get_node_types']));
+		expect(toolNames).not.toContain('call_tool');
 		const flagOf = (tool: string) =>
-			result.toolCalls.find(
-				(call) => call.tool === 'call_tool' && (call.input as { tool: string }).tool === tool,
-			)?.autoApproved;
+			result.toolCalls.find((call) => call.tool === tool)?.autoApproved;
 		expect(flagOf('setup_workflow')).toBe(true);
 		expect(flagOf('get_node_types')).toBeUndefined();
 	});

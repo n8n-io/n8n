@@ -530,18 +530,18 @@ export class EvalAgentExecutionService {
 				? 'mcp'
 				: 'other');
 		const toolCalls = segmentToolCalls.map((entry): InstanceAiEvalAgentToolCallRecord => {
-			const interceptedRequests = toolLedger.get(entry.tool) ?? [];
+			// The ledger and the tool summaries use the real tool name, not `call_tool`.
+			const tool = effectiveToolName(entry.tool, entry.input);
+			const interceptedRequests = toolLedger.get(tool) ?? [];
 			return {
-				tool: entry.tool,
-				kind: kindForTool(entry.tool),
+				tool,
+				kind: kindForTool(tool),
 				input: truncateRecordedValue(entry.input),
 				output: truncateRecordedValue(entry.output),
 				...(entry.canceled ? { error: 'canceled' } : {}),
 				mocked: interceptedRequests.length > 0,
 				interceptedRequests,
-				...(autoApprovedToolNames.has(effectiveToolName(entry.tool, entry.input))
-					? { autoApproved: true }
-					: {}),
+				...(autoApprovedToolNames.has(tool) ? { autoApproved: true } : {}),
 			};
 		});
 		// Ledger entries with no matching toolCalls record are either errored

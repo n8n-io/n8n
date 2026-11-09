@@ -868,7 +868,7 @@ describe('agent-run-reducer', () => {
 				payload: {
 					toolCallId: 'tc-catalog',
 					toolName: 'call_tool',
-					args: { tool: 'build-workflow', arguments: '{"name":"Tickets"}' },
+					args: { tool: 'build-workflow', arguments: { name: 'Tickets' } },
 				},
 			});
 

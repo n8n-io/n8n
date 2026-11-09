@@ -6,7 +6,7 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '..';
 import type { InstanceAiContext, OrchestrationContext } from '../../types';
-import { ALWAYS_LOADED_TOOL_NAMES, getToolGroup } from '../tool-ids';
+import { ALWAYS_LOADED_TOOL_NAMES, getMcpToolGroup, getToolGroup } from '../tool-ids';
 
 vi.mock('../attachments/parse-file.tool', () => ({
 	createParseFileTool: vi.fn(() => ({ id: 'parse-file' })),
@@ -242,6 +242,14 @@ describe('domain tool construction', () => {
 		expect(getToolGroup('agent_builder_write_config')).toBe('agents');
 		expect(getToolGroup('list_folders')).toBe('instance');
 		expect(getToolGroup('ask_user')).toBeUndefined();
+	});
+
+	it('keeps an MCP server named like an n8n tool group in a group of its own', () => {
+		expect(getMcpToolGroup('linear')).toBe('linear');
+		expect(getMcpToolGroup('credentials')).toBe('mcp_credentials');
+		expect(getMcpToolGroup('instance')).toBe('mcp_instance');
+		expect(getMcpToolGroup('tools')).toBe('mcp_tools');
+		expect(getMcpToolGroup('constructor')).toBe('constructor');
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {

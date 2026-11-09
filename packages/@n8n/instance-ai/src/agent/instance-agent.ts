@@ -22,7 +22,12 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES, getToolGroup, getToolGroupDescription } from '../tools/tool-ids';
+import {
+	ALWAYS_LOADED_TOOL_NAMES,
+	getMcpToolGroup,
+	getToolGroup,
+	getToolGroupDescription,
+} from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
@@ -250,16 +255,23 @@ export async function createInstanceAgent(
 		// (workflows, data_tables, agents, ...), so the model can browse one area
 		// with find_tools({ group }) instead of searching the whole set.
 		const toolsByGroup = new Map<string | undefined, InstanceAiToolRegistry>();
+		const groupDescriptions = new Map<string, string>();
 		for (const [name, tool] of deferredTools) {
-			const group = tool.mcpServerName ?? getToolGroup(name);
+			let group: string | undefined;
+			if (tool.mcpServerName) {
+				group = getMcpToolGroup(tool.mcpServerName);
+				groupDescriptions.set(group, `tools from the ${tool.mcpServerName} MCP server`);
+			} else {
+				group = getToolGroup(name);
+				const description = group ? getToolGroupDescription(group) : undefined;
+				if (group && description) groupDescriptions.set(group, description);
+			}
 			const groupTools = toolsByGroup.get(group) ?? createToolRegistry();
 			groupTools.set(name, tool);
 			toolsByGroup.set(group, groupTools);
 		}
 		for (const [group, groupTools] of toolsByGroup) {
-			const groupDescription = group
-				? (getToolGroupDescription(group) ?? `tools from the ${group} MCP server`)
-				: undefined;
+			const groupDescription = group ? groupDescriptions.get(group) : undefined;
 			agent.deferredTool(
 				toolRegistryValues(groupTools),
 				group ? { group, groupDescription } : undefined,

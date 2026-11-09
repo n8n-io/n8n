@@ -41,7 +41,8 @@ Respect the constraints it reports:
   - Do not set parameters listed in `aiGateway.hiddenProperties`.
 
 **Enumeration (answering "what does Gateway credits support?"):**
-  - All supported nodes: `search_nodes(gatewayCreditsOnly=true)` — each
+  - All supported nodes: run `search_nodes` through `call_tool` with
+    `gatewayCreditsOnly: true` — each
     result carries the full `aiGateway` field (minVersion, operations,
     hiddenProperties).
   - All supported credential types:

@@ -340,7 +340,7 @@ To keep the orchestrator's context lean, tools are stratified into two tiers:
   files, `find_tools`, `call_tool`).
 - **Deferred tools** (behind the `@n8n/agents` tool catalog): every n8n resource
   tool. The prompt lists their names by tool group: `workflows`, `executions`,
-  `data_tables`, `credentials`, `nodes`, `agents`, `workspace` (see
+  `data_tables`, `credentials`, `nodes`, `agents`, `instance` (see
   `getToolGroup`), and one tool group for each MCP server. The model reads
   schemas with `find_tools` and runs a tool with `call_tool`, with no load step.
   Skill tool dependencies stay in the tool catalog too
