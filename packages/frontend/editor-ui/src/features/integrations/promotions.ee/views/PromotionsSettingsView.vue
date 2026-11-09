@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { promotionDirectionSchema, type PromotionDirection } from '@n8n/api-types';
+import {
+	isPromotionGitHostType,
+	promotionDirectionSchema,
+	type PromotionDirection,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
 	N8nExternalLink,
 	N8nLoading2,
 	N8nPreviewBadge,
@@ -12,23 +17,29 @@ import {
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nSwitch,
 	N8nText,
 	useMessage,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { nextTick, onMounted, ref, type ComponentPublicInstance } from 'vue';
+import { nextTick, onMounted, reactive, ref, type ComponentPublicInstance } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
+import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
+	ENVIRONMENTS_DOCS_URL,
+	ENVIRONMENTS_PLAN_DOCS_URL,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
 	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
 } from '../promotions.constants';
@@ -45,14 +56,26 @@ const toast = useToast();
 const message = useMessage();
 const router = useRouter();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 const documentTitle = useDocumentTitle();
 const { next: nextLoad } = useLatestFetch();
-const { connectErrors, canClone, connect } = usePromotionCheckout();
+const { connectErrors, canConnect, connect } = usePromotionCheckout();
+const {
+	busy: switchBusy,
+	canSwitchBack,
+	switchTo: switchEnvironmentsVersion,
+} = useEnvironmentsVersionSwitch();
+const {
+	busy: protectionBusy,
+	isProtected,
+	load: loadProtection,
+	set: setProtected,
+} = useInstanceProtection();
 
 const environments = ref<Partial<Record<PromotionDirection, PromotionEnvironment>>>({});
 const isInitialLoading = ref(true);
 const loadError = ref(false);
-const busy = ref<{ id: string; action: 'retry' | 'remove' }>();
+const busy = reactive(new Map<string, 'retry' | 'remove'>());
 const addButtons: Partial<Record<PromotionDirection, Element | ComponentPublicInstance | null>> =
 	{};
 
@@ -78,20 +101,24 @@ async function load() {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.promotions.title'));
-	await load();
+	await Promise.all([load(), loadProtection()]);
 });
 
 async function retry(environment: PromotionEnvironment) {
-	busy.value = { id: environment.id, action: 'retry' };
+	busy.set(environment.id, 'retry');
 	if (await connect(environment.id)) await load();
-	busy.value = undefined;
+	busy.delete(environment.id);
 }
 
 async function remove(environment: PromotionEnvironment) {
+	// Only a Promote environment on a Git host has promotion reviews to close.
+	const hasReviews =
+		environment.direction === 'promote' && isPromotionGitHostType(environment.provider.type);
+	const messageKey = hasReviews
+		? 'settings.promotions.environment.remove.confirm.message.gitHost'
+		: 'settings.promotions.environment.remove.confirm.message';
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.promotions.environment.remove.confirm.message', {
-			interpolate: { name: environment.name },
-		}),
+		i18n.baseText(messageKey, { interpolate: { name: environment.name } }),
 		i18n.baseText('settings.promotions.environment.remove.confirm.title'),
 		{
 			confirmButtonText: i18n.baseText('settings.promotions.environment.remove.confirm.button'),
@@ -103,12 +130,12 @@ async function remove(environment: PromotionEnvironment) {
 	if (confirmed !== MODAL_CONFIRM) return;
 
 	const context = rootStore.publicApiContext;
-	busy.value = { id: environment.id, action: 'remove' };
+	busy.set(environment.id, 'remove');
 	try {
 		await deletePromotionEnvironment(context, environment.id);
 	} catch (error) {
 		if (!(error instanceof ResponseError && error.httpStatusCode === 404)) {
-			busy.value = undefined;
+			busy.delete(environment.id);
 			toast.showError(error, i18n.baseText('settings.promotions.environment.toast.error.remove'));
 			return;
 		}
@@ -121,7 +148,7 @@ async function remove(environment: PromotionEnvironment) {
 	connectErrors.delete(environment.id);
 	invalidateInstancePromotionConnection();
 	await load();
-	busy.value = undefined;
+	busy.delete(environment.id);
 	toast.showMessage({
 		title: i18n.baseText('settings.promotions.environment.toast.removed', {
 			interpolate: { name: environment.name },
@@ -140,10 +167,15 @@ async function remove(environment: PromotionEnvironment) {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.promotions.title')"
 			:description="i18n.baseText('settings.promotions.description')"
-			:show-docs-link="false"
+			:docs-url="ENVIRONMENTS_PLAN_DOCS_URL"
 		>
 			<template #titleTrailing>
-				<N8nPreviewBadge size="xsmall" />
+				<N8nPreviewBadge size="xsmall" data-test-id="promotions-preview-badge" />
+				<N8nEnterpriseReadinessBadge
+					v-if="settingsStore.isEnterprisePlan"
+					size="xsmall"
+					data-test-id="promotions-enterprise-readiness-badge"
+				/>
 			</template>
 		</N8nSettingsPageHeader>
 
@@ -152,8 +184,7 @@ async function remove(environment: PromotionEnvironment) {
 				<N8nText size="small" color="text-base">
 					<I18nT keypath="settings.promotions.environments.description" tag="span" scope="global">
 						<template #environments>
-							<!-- FIXME: link to the environments docs page once it exists. -->
-							<N8nExternalLink inline size="small" href="#">{{
+							<N8nExternalLink inline size="small" :href="ENVIRONMENTS_DOCS_URL">{{
 								i18n.baseText('settings.promotions.environments.description.link')
 							}}</N8nExternalLink>
 						</template>
@@ -177,9 +208,9 @@ async function remove(environment: PromotionEnvironment) {
 							:key="environments[direction].id"
 							:class="$style.column"
 							:environment="environments[direction]"
-							:busy="busy?.id === environments[direction].id ? busy.action : undefined"
+							:busy="busy.get(environments[direction].id)"
 							:connect-error="connectErrors.get(environments[direction].id)"
-							:can-clone="canClone"
+							:can-connect="canConnect"
 							:data-test-id="`promotion-environment-card-${direction}`"
 							@retry="retry(environments[direction])"
 							@edit="
@@ -212,7 +243,45 @@ async function remove(environment: PromotionEnvironment) {
 					</template>
 				</div>
 			</N8nSettingsRowGroup>
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					:title="i18n.baseText('settings.sourceControl.protected.bold')"
+					:description="i18n.baseText('settings.promotions.protected.description')"
+				>
+					<template #action>
+						<N8nSwitch
+							:model-value="isProtected"
+							:disabled="protectionBusy"
+							:aria-label="i18n.baseText('settings.sourceControl.protected.bold')"
+							data-test-id="promotion-protected-instance-switch"
+							@update:model-value="setProtected"
+						/>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
+		<N8nText
+			v-if="canSwitchBack"
+			tag="p"
+			size="small"
+			color="text-light"
+			class="mt-2xl"
+			data-test-id="promotions-switch-back"
+		>
+			<I18nT keypath="settings.promotions.switchBack.text" tag="span" scope="global">
+				<template #action>
+					<button
+						type="button"
+						:class="$style.switchBack"
+						:disabled="switchBusy"
+						data-test-id="promotions-switch-to-v1"
+						@click="switchEnvironmentsVersion('v1')"
+					>
+						{{ i18n.baseText('settings.promotions.switchBack.button') }}
+					</button>
+				</template>
+			</I18nT>
+		</N8nText>
 	</N8nSettingsLayout>
 </template>
 
@@ -221,6 +290,7 @@ async function remove(environment: PromotionEnvironment) {
 
 .layout {
 	container-type: inline-size;
+	padding-top: 0;
 }
 
 .columns {
@@ -244,6 +314,16 @@ async function remove(environment: PromotionEnvironment) {
 			border-block-start: var(--border-width, 1px) solid var(--border-color--subtle);
 		}
 	}
+}
+
+.switchBack {
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	color: inherit;
+	text-decoration: underline;
+	cursor: pointer;
 }
 
 .empty {

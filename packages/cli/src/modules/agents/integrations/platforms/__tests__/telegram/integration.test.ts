@@ -14,7 +14,7 @@ import type { ProjectAgent } from '../../../../entities/agent.entity';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../../../agent-chat-integration';
 import { loadTelegramAdapter } from '../../../esm-loader';
-import { TelegramIntegration } from '../../telegram-integration';
+import { TelegramIntegration } from '../../telegram/telegram-integration';
 
 vi.mock('../../../esm-loader', () => ({
 	loadTelegramAdapter: vi.fn(),

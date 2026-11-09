@@ -8,7 +8,7 @@ on:
         type: string
         default: ''
       matrix:
-        description: 'Job matrix JSON, from .github/scripts/db-test-matrix.mjs.'
+        description: 'Job matrices JSON ({ integration, migration }), from .github/scripts/db-test-matrix.mjs.'
         required: true
         type: string
       run-migrations:
@@ -21,25 +21,37 @@ on:
         required: false
         type: string
         default: ''
+      lockfile-impacted-packages:
+        description: 'Output of `janitor lockfile-impact`. Empty means no signal: a lockfile change then affects every package.'
+        required: false
+        type: string
+        default: ''
 
 env:
   NODE_OPTIONS: '--max-old-space-size=6144'
 
 jobs:
+  # Shards, commands and per-shard steps come from db-test-matrix.mjs.
+  # This job runs each entry as given.
   integration:
-    name: ${{ matrix.name }} Integration
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.matrix) }}
+        include: ${{ fromJSON(inputs.matrix).integration }}
     env:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
       COVERAGE_ENABLED: ${{ matrix.collectCoverage }}
       # With a change signal, the shared vitest config measures only the changed files.
       COVERAGE_SCOPE: ${{ inputs.changed-files != '' && 'changed-files' || 'all' }}
       CHANGED_FILES: ${{ inputs.changed-files }}
+      LOCKFILE_IMPACTED_PACKAGES: ${{ inputs.lockfile-impacted-packages }}
+      # A change to how this workflow runs the suites is not part of turbo's hash,
+      # so it must not replay a cached result. An empty list (ci-filter caps
+      # large PRs) can hide such a change.
+      TURBO_FORCE: ${{ inputs.changed-files == '' || contains(inputs.changed-files, '.github/workflows/test-db-reusable.yml') || contains(inputs.changed-files, '.github/scripts/db-test-matrix.mjs') }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -52,15 +64,14 @@ jobs:
         run: pnpm --filter n8n-containers exec tsx pull-test-images.ts || true
 
       - name: Run Integration Tests
-        working-directory: packages/cli
         run: ${{ matrix.test-cmd }}
 
       # A packaged backend module opts in by defining `test:postgres`.
       - name: Run packaged backend module PostgreSQL tests
-        if: matrix.TEST_IMAGE_POSTGRES != ''
+        if: matrix.packaged-modules-cmd != ''
         env:
           COVERAGE_ENABLED: 'false'
-        run: pnpm --filter './packages/modules/*/backend' --if-present run test:postgres --maxWorkers=100%
+        run: ${{ matrix.packaged-modules-cmd }}
 
       # Regenerates the schema docs for this leg's database (sqlite temp file /
       # postgres testcontainer) and fails if they differ from what's committed.
@@ -81,14 +92,14 @@ jobs:
           fail_ci_if_error: false
 
   migration:
-    name: ${{ matrix.name }} Migrations
+    name: ${{ matrix.name }}
     if: inputs.run-migrations
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.matrix) }}
+        include: ${{ fromJSON(inputs.matrix).migration }}
     env:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
     steps:

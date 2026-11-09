@@ -19,14 +19,13 @@ import { CALLABLE_METHODS, ITERATOR_METHODS } from '../src/expressions/native-ev
 import { EXTENSION_METHODS } from '../src/expressions/native-evaluation/grammar';
 import { Workflow } from '../src/workflow';
 
-// Four pre-existing, flag-independent quickjs bridge behaviours are kept out
+// Three pre-existing, flag-independent quickjs bridge behaviours are kept out
 // of the comparison: a string is truncated at its first NUL character on the
 // way across, a lone surrogate (which indexing an astral character yields)
-// comes back as U+FFFD replacement characters, undefined inside an array
-// result comes back as null, and -0 inside an object or array result comes
-// back as 0 (vm keeps both; native sides with vm). Data strings stay NUL-free
-// and inside the Basic Multilingual Plane; the other two cases are skipped
-// below. quickjs and V8 also use different shortest-digit
+// comes back as U+FFFD replacement characters, and -0 inside an object or
+// array result comes back as 0 (vm keeps it; native sides with vm). Data
+// strings stay NUL-free and inside the Basic Multilingual Plane; the -0 case
+// is skipped below. quickjs and V8 also use different shortest-digit
 // algorithms for Number.prototype.toString with a radix other than 10, which
 // the spec permits; expressions that pass a radix are skipped under quickjs.
 const noNul = (s: string) => !s.includes('\0');
@@ -249,13 +248,9 @@ describe('Expression - fast native evaluation fuzz parity', () => {
 				const viaNative = outcome(expr, json, true);
 
 				const quickjs = Expression.getActiveImplementation() === 'quickjs';
-				const holesAsNull =
-					quickjs &&
-					Array.isArray(viaNative.value) &&
-					viaNative.value.some((element) => element === undefined);
 				const nestedNegativeZero = quickjs && hasNestedNegativeZero(viaNative.value);
 				const radixToString = quickjs && /\.toString\([^)]/.test(expr);
-				if (holesAsNull || nestedNegativeZero || radixToString) return;
+				if (nestedNegativeZero || radixToString) return;
 
 				if (viaEngine.error) {
 					expect(viaNative.error).toBeInstanceOf(viaEngine.error.constructor);

@@ -53,7 +53,7 @@ const jwtService = new JwtService(instanceSettings, mock(), mock());
 const signIssuerToken = (iss: string) => jwt.sign({ iss, sub: 'idp-alice' }, 'any-secret');
 
 const context: SecurityContext = {
-	subject: { id: 'user-123', type: 'human', email: 'alice@example.com' } as Principal,
+	subject: { id: 'user-123', type: 'person', email: 'alice@example.com' } as Principal,
 	authMethod: 'oauth-access-token',
 	subjectClaim: { sourceId: 'idp-1', issuer: 'https://idp.example', subject: 'idp-alice' },
 	clientId: 'client-abc',

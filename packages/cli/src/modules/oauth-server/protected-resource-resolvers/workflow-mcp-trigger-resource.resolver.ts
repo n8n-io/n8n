@@ -10,6 +10,7 @@ import { Service } from '@n8n/di';
 
 import { triggerResourceGate } from '../resource-gate';
 import {
+	acceptedTrustedSourceIds,
 	WORKFLOW_MCP_TRIGGER_SCOPES,
 	trimSlashes,
 	trimTrailingSlash,
@@ -105,6 +106,7 @@ export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceReso
 				surface: 'trigger' as const,
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => audiences,
+				getAcceptedSourceIds: () => acceptedTrustedSourceIds(node),
 				scopes: WORKFLOW_MCP_TRIGGER_SCOPES,
 				displayName: workflow.name,
 				...triggerResourceGate(this.workflowFinderService, {

@@ -193,6 +193,36 @@ describe('OAuthController', () => {
 			});
 		});
 
+		test('lists only the issuer of the source a trigger accepts', async () => {
+			const trigger: ProtectedResource = {
+				...resource([]),
+				surface: 'trigger',
+				getResourceUrl: () => 'https://n8n.test/webhook/orders?method=POST',
+				getAudiences: () => ['https://n8n.test/webhook/orders?method=POST'],
+				getAcceptedSourceIds: () => ['idp-1'],
+			};
+			registry.getByResourcePath.mockResolvedValue(trigger);
+			authenticationService.advertise.mockResolvedValue({
+				authorizationServers: ['https://idp.example'],
+				challenges: [],
+			});
+			const res = makeRes();
+
+			await controller.protectedResourceMetadata(makeReq(['webhook', 'orders']), res);
+
+			expect(authenticationService.advertise).toHaveBeenCalledWith({
+				surface: 'trigger',
+				resource: {
+					url: 'https://n8n.test/webhook/orders?method=POST',
+					acceptedAudiences: ['https://n8n.test/webhook/orders?method=POST'],
+				},
+				acceptedSourceIds: ['idp-1'],
+			});
+			expect(res.json).toHaveBeenCalledWith(
+				expect.objectContaining({ authorization_servers: ['https://idp.example'] }),
+			);
+		});
+
 		test('omits scopes_supported when the resource advertises no scopes', async () => {
 			registry.getByResourcePath.mockResolvedValue(resource([]));
 			const res = makeRes();

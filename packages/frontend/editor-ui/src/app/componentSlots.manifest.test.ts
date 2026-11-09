@@ -15,18 +15,17 @@ describe('registerComponentSlots', () => {
 		expect(componentRegistry.get('project-filter')).toBeUndefined();
 	});
 
-	it('registers the project-filter slot', () => {
+	// An async component wrapper, not the resolved SFC: resolving here would make the
+	// projects feature and the list layout statically reachable from `main.ts`.
+	it.each([
+		'project-filter',
+		'project-header',
+		'insights-summary',
+		'resources-list-layout',
+	] as const)('registers the %s slot lazily', (slot) => {
 		registerComponentSlots();
 
-		expect(componentRegistry.get('project-filter')).toBeDefined();
-	});
-
-	it('registers the host lazily, so the projects feature stays out of the boot chunk', () => {
-		registerComponentSlots();
-
-		// An async component wrapper, not the resolved SFC: resolving here would make
-		// `ProjectSharing` and the projects store statically reachable from `main.ts`.
-		const slot = componentRegistry.get('project-filter');
-		expect((slot as { __asyncLoader?: unknown }).__asyncLoader).toBeInstanceOf(Function);
+		const component = componentRegistry.get(slot);
+		expect((component as { __asyncLoader?: unknown }).__asyncLoader).toBeInstanceOf(Function);
 	});
 });

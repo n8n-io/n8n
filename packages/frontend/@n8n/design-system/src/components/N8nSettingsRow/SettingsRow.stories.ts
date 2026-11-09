@@ -278,7 +278,7 @@ export const ActionMaxWidth: Story = {
 				action-max-width="5%"
 			>
 				<template #action>
-					<N8nButton style="width: 100%" variant="outline" size="medium" icon-only icon="ellipsis-vertical" aria-label="More" />
+					<N8nButton style="width: 100%" variant="outline" size="medium" icon-only icon="ellipsis" aria-label="More" />
 				</template>
 			</N8nSettingsRow>
 			<N8nSettingsRow

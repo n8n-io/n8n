@@ -1,0 +1,5 @@
+1. A Webhook node receives POST requests.
+2. The Webhook responds through a Respond to Webhook node instead of immediately.
+3. A Data Table node inserts a row into the "contacts" data table.
+4. The inserted row maps name, email and message from the webhook body ($json.body.*).
+5. The response is JSON and contains the submitted name.

@@ -1,6 +1,6 @@
 import { jsonParse } from 'n8n-workflow';
 
-import { IdRemapper, TraceIndex, TraceWriter, parseTraceJsonl } from '../trace-replay';
+import { IdRemapper, TraceIndex, TraceWriter } from '../trace-replay';
 import type { TraceToolCall, TraceToolSuspend, TraceToolResume, TraceEvent } from '../trace-replay';
 
 // ── IdRemapper ──────────────────────────────────────────────────────────────
@@ -86,11 +86,11 @@ describe('IdRemapper', () => {
 			remapper.learn(
 				{
 					guidance:
-						'Workflow verified successfully. Call `workflow_builder_workflows(action="setup")` with workflowId "old-wf-1" to finish setup.',
+						'Workflow verified successfully. Call `setup_workflow` with workflowId "old-wf-1" to finish setup.',
 				},
 				{
 					guidance:
-						'Workflow verified successfully. Call `workflow_builder_workflows(action="setup")` with workflowId "new-wf-9" to finish setup.',
+						'Workflow verified successfully. Call `setup_workflow` with workflowId "new-wf-9" to finish setup.',
 				},
 			);
 
@@ -236,6 +236,21 @@ describe('TraceIndex', () => {
 
 		const e3 = index.next('orchestrator', 'run-workflow');
 		expect(e3.stepId).toBe(3);
+	});
+
+	it('matches a recorded former workflows call to the tool that owns its action', () => {
+		const events: TraceEvent[] = [
+			{ ...makeToolCall(1, 'orchestrator', 'workflows'), input: { action: 'list' } },
+			{
+				...makeToolCall(2, 'orchestrator', 'workflow_builder_workflows'),
+				input: { action: 'get-as-code', workflowId: 'wf-1' },
+			},
+		];
+
+		const index = new TraceIndex(events);
+
+		expect(index.next('orchestrator', 'list_workflows').stepId).toBe(1);
+		expect(index.nextMatching('orchestrator', 'get_workflow_as_code')?.stepId).toBe(2);
 	});
 
 	it('should throw on tool name mismatch', () => {
@@ -437,87 +452,5 @@ describe('TraceWriter', () => {
 		const call = jsonParse<{ kind: string; toolName: string }>(lines[1]);
 		expect(call.kind).toBe('tool-call');
 		expect(call.toolName).toBe('search-nodes');
-	});
-});
-
-// ── parseTraceJsonl ──────────────────────────────────────────────────────────
-
-describe('parseTraceJsonl', () => {
-	it('should parse JSONL into TraceEvent array', () => {
-		const jsonl = [
-			JSON.stringify({ kind: 'header', version: 1, testName: 'test', recordedAt: '2026-01-01' }),
-			JSON.stringify({
-				kind: 'tool-call',
-				stepId: 1,
-				agentRole: 'orch',
-				toolName: 'search',
-				input: {},
-				output: {},
-			}),
-		].join('\n');
-
-		const events = parseTraceJsonl(jsonl);
-		expect(events).toHaveLength(2);
-		expect(events[0].kind).toBe('header');
-		expect(events[1].kind).toBe('tool-call');
-	});
-
-	it('should handle trailing newline', () => {
-		const jsonl =
-			JSON.stringify({ kind: 'header', version: 1, testName: 'test', recordedAt: '' }) + '\n';
-		const events = parseTraceJsonl(jsonl);
-		expect(events).toHaveLength(1);
-	});
-
-	it('should handle empty string', () => {
-		expect(parseTraceJsonl('')).toEqual([]);
-	});
-
-	it('should roundtrip with TraceWriter', () => {
-		const writer = new TraceWriter('roundtrip-test');
-		writer.recordToolCall(
-			'orch',
-			'workflow_builder_build_workflow',
-			{ filePath: 'src/workflows/wi-1.workflow.ts' },
-			{ workflowId: '5', filePath: 'src/workflows/wi-1.workflow.ts' },
-		);
-		writer.recordToolSuspend('orch', 'run-workflow', { workflowId: '5' }, {}, { ask: true });
-
-		const parsed = parseTraceJsonl(writer.toJsonl());
-		expect(parsed).toHaveLength(3);
-		expect(parsed[0].kind).toBe('header');
-		expect(parsed[1].kind).toBe('tool-call');
-		expect(parsed[2].kind).toBe('tool-suspend');
-		expect((parsed[1] as TraceToolCall).input).toEqual({
-			filePath: 'src/workflows/wi-1.workflow.ts',
-		});
-		expect((parsed[1] as TraceToolCall).output).toEqual({
-			workflowId: '5',
-			filePath: 'src/workflows/wi-1.workflow.ts',
-		});
-	});
-
-	it('should throw when a line is not an object', () => {
-		expect(() => parseTraceJsonl('42')).toThrow(/line 1/i);
-		expect(() => parseTraceJsonl('null')).toThrow(/line 1/i);
-		expect(() => parseTraceJsonl('"hello"')).toThrow(/line 1/i);
-	});
-
-	it('should throw when an event is missing the kind field', () => {
-		const jsonl = JSON.stringify({ stepId: 1, agentRole: 'orch' });
-		expect(() => parseTraceJsonl(jsonl)).toThrow(/kind/i);
-	});
-
-	it('should throw on unknown kind value', () => {
-		const jsonl = JSON.stringify({ kind: 'mystery-event', stepId: 1 });
-		expect(() => parseTraceJsonl(jsonl)).toThrow(/mystery-event/);
-	});
-
-	it('should report the offending line number for the second invalid line', () => {
-		const jsonl = [
-			JSON.stringify({ kind: 'header', version: 1, testName: 't', recordedAt: '' }),
-			JSON.stringify({ kind: 'banana' }),
-		].join('\n');
-		expect(() => parseTraceJsonl(jsonl)).toThrow(/line 2/i);
 	});
 });

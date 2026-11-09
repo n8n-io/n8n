@@ -145,6 +145,7 @@ describe('useN8nChatAgents', () => {
 					name: 'Two',
 					project: { id: 'p', name: 'P' },
 					attachments: NO_ATTACHMENTS,
+					availableInChat: true,
 				},
 			],
 		});
@@ -157,6 +158,7 @@ describe('useN8nChatAgents', () => {
 					name: 'One',
 					project: { id: 'p', name: 'P' },
 					attachments: NO_ATTACHMENTS,
+					availableInChat: true,
 				},
 			],
 		});
@@ -168,6 +170,7 @@ describe('useN8nChatAgents', () => {
 				name: 'Two',
 				project: { id: 'p', name: 'P' },
 				attachments: NO_ATTACHMENTS,
+				availableInChat: true,
 			},
 		]);
 		expect(count.value).toBe(1);
@@ -191,7 +194,13 @@ describe('useN8nChatAgents', () => {
 		second.resolve({
 			count: 1,
 			data: [
-				{ id: 'a2', name: 'Two', project: { id: 'p', name: 'P' }, attachments: NO_ATTACHMENTS },
+				{
+					id: 'a2',
+					name: 'Two',
+					project: { id: 'p', name: 'P' },
+					attachments: NO_ATTACHMENTS,
+					availableInChat: true,
+				},
 			],
 		});
 		await flushPromises();
@@ -201,7 +210,13 @@ describe('useN8nChatAgents', () => {
 		expect(showErrorMock).not.toHaveBeenCalled();
 		expect(loadFailed.value).toBe(false);
 		expect(agents.value).toEqual([
-			{ id: 'a2', name: 'Two', project: { id: 'p', name: 'P' }, attachments: NO_ATTACHMENTS },
+			{
+				id: 'a2',
+				name: 'Two',
+				project: { id: 'p', name: 'P' },
+				attachments: NO_ATTACHMENTS,
+				availableInChat: true,
+			},
 		]);
 	});
 

@@ -24,12 +24,20 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_VIEW,
 } from '../constants';
+import {
+	clearAssistantAgentLaunch,
+	forgetAssistantAgentThread,
+	stashAssistantAgentLaunch,
+} from '../assistantAgent/assistantAgentThreads';
 import type { InstanceAiEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { instanceAiResponseNow } from '../instanceAi.responseTiming';
 import { useInstanceAiReady } from './useInstanceAiAvailability';
 import {
@@ -368,6 +376,8 @@ export function consumePendingDraftAttachment(threadId: string): InstanceAiNodes
 }
 
 export function clearPendingThreadHandoff(threadId: string): void {
+	clearAssistantAgentLaunch(threadId);
+	forgetAssistantAgentThread(threadId);
 	clearPendingHandoffContext(threadId);
 	clearPendingComposerDraft(threadId);
 	clearPendingAgentAttachment(threadId);
@@ -390,6 +400,35 @@ export async function ensurePersonalProjectId(): Promise<string | null> {
 	return projectsStore.personalProject?.id ?? null;
 }
 
+/** With the flag on, hand-offs start their threads on the Assistant agent. */
+function isAssistantAgentLaunch(): boolean {
+	return useInstanceAiSettingsStore().isAssistantAgentEnabled;
+}
+
+/**
+ * Mint the id of a new thread and create the thread on its runtime. An
+ * Assistant agent thread exists on the server only after its first message, so
+ * it gets a local launch marker instead. Throws if the thread is not created.
+ */
+async function createLaunchedThread(
+	projectId: string,
+	launch: InstanceAiThreadLaunch,
+): Promise<string> {
+	const threadId = uuidv4();
+	if (isAssistantAgentLaunch()) {
+		const templateId = launch.sourceContext?.templateId;
+		stashAssistantAgentLaunch(threadId, {
+			projectId,
+			source: launch.source,
+			origin: launch.origin,
+			...(typeof templateId === 'string' ? { templateId } : {}),
+		});
+	} else {
+		await useInstanceAiStore().syncThread(threadId, projectId, launch);
+	}
+	return threadId;
+}
+
 /**
  * Provision a launched thread the destination view will send for: mint the id,
  * persist it, and stash the opening message. Shared by the deep-link router
@@ -405,9 +444,9 @@ export async function provisionLaunchedThread(
 		...payload,
 		responseStartedAtEpochMs: payload.responseStartedAtEpochMs ?? instanceAiResponseNow(),
 	};
-	const threadId = uuidv4();
+	let threadId: string;
 	try {
-		await useInstanceAiStore().syncThread(threadId, projectId, launch);
+		threadId = await createLaunchedThread(projectId, launch);
 	} catch {
 		return null;
 	}
@@ -425,14 +464,15 @@ export async function provisionWorkflowThread(
 	attachment: InstanceAiWorkflowAttachment,
 	launch: InstanceAiThreadLaunch,
 ): Promise<string | null> {
-	const threadId = uuidv4();
+	let threadId: string;
 	try {
-		await useInstanceAiStore().syncThread(threadId, projectId, launch);
+		threadId = await createLaunchedThread(projectId, launch);
 	} catch {
 		return null;
 	}
 	stashPendingWorkflowAttachment(threadId, attachment);
-	if (launch.source === 'workflow_list_auto') {
+	// The Assistant agent view does not show the redirect landing callout.
+	if (launch.source === 'workflow_list_auto' && !isAssistantAgentLaunch()) {
 		stashPendingRedirectLanding(threadId);
 	}
 	return threadId;
@@ -453,6 +493,8 @@ export type InstanceAiOnboardingLaunch = {
  * Provision the agent-first onboarding thread for the `/assistant?source=onboarding` router
  * guard. The backend seeds the greeting and the first question card, so nothing is stashed for
  * the destination view to send. Returns the thread id, or null if persistence failed.
+ *
+ * Always on the current runtime: the Assistant agent cannot seed the greeting yet.
  */
 export async function provisionOnboardingThread(
 	projectId: string,
@@ -490,23 +532,32 @@ export async function provisionSubjectThread(
 	const threadId = uuidv4();
 	await store.syncThread(threadId, subject.projectId, launch);
 
-	const targetMetadata =
-		subject.type === 'agent'
-			? subject.pending
-				? {
-						[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: {
-							projectId: subject.projectId,
-							agentId: subject.id,
-						},
-					}
-				: {
-						[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
-							agentId: subject.id,
-							projectId: subject.projectId,
-							...(subject.name ? { name: subject.name } : {}),
-						},
-					}
-			: {}; // workflow: no target metadata yet — see instanceAiEmbed.types.ts.
+	let targetMetadata: Record<string, unknown> = {};
+	if (subject.type === 'agent') {
+		targetMetadata = subject.pending
+			? {
+					[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: {
+						projectId: subject.projectId,
+						agentId: subject.id,
+					},
+				}
+			: {
+					[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
+						agentId: subject.id,
+						projectId: subject.projectId,
+						...(subject.name ? { name: subject.name } : {}),
+					},
+				};
+	} else if (subject.type === 'app') {
+		const target = {
+			appId: subject.id,
+			projectId: subject.projectId,
+			...(subject.name ? { name: subject.name } : {}),
+		};
+		targetMetadata = subject.pending
+			? { [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: target }
+			: { [INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [target] };
+	}
 
 	try {
 		await store.updateThreadMetadata(threadId, { ...targetMetadata, ...extraMetadata });
@@ -529,9 +580,9 @@ export async function provisionContextOnlyThread(
 	launch: InstanceAiThreadLaunch,
 	initialDraft?: PendingComposerDraft,
 ): Promise<string | null> {
-	const threadId = uuidv4();
+	let threadId: string;
 	try {
-		await useInstanceAiStore().syncThread(threadId, projectId, launch);
+		threadId = await createLaunchedThread(projectId, launch);
 	} catch {
 		return null;
 	}
@@ -542,6 +593,13 @@ export async function provisionContextOnlyThread(
 
 // One hand-off at a time across all entry points (module-level to share the guard).
 let handoffInFlight = false;
+
+/**
+ * How `startThread` ended. `started` means the thread opened and no retry is safe.
+ * `busy` means another hand-off was in flight and nothing ran. `setup` means it
+ * routed to the Assistant setup instead.
+ */
+export type InstanceAiHandoffOutcome = 'started' | 'busy' | 'failed' | 'setup';
 
 /**
  * Create a thread, optionally seed its runtime (`prepare`), send the opening turn,
@@ -647,21 +705,23 @@ export function useInstanceAiHandoff() {
 			newTab?: boolean;
 			context?: InstanceAiHandoffContext;
 		},
-	): Promise<void> {
+	): Promise<InstanceAiHandoffOutcome> {
 		if (!instanceAiReady.value) {
 			await routeToSetup();
-			return;
+			return 'setup';
 		}
 		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
-		if (handoffInFlight) return;
+		if (handoffInFlight) return 'busy';
 		handoffInFlight = true;
 		const responseStartedAtEpochMs = instanceAiResponseNow();
 		try {
-			if (options?.newTab) {
+			// The Assistant agent view sends the stashed message too: its chat sends
+			// the message, so no runtime can be seeded here.
+			if (options?.newTab || isAssistantAgentLaunch()) {
 				// Open the tab now, inside the click gesture, so it isn't popup-blocked.
 				// The destination view sends the stashed message (sending here would
 				// race backend persistence in the separate window).
-				const tab = window.open('', '_blank');
+				const tab = options?.newTab ? window.open('', '_blank') : null;
 				const threadId = await provisionLaunchedThread(
 					projectId,
 					{ message, attachments, context: options?.context, authorship, responseStartedAtEpochMs },
@@ -670,12 +730,17 @@ export function useInstanceAiHandoff() {
 				if (!threadId) {
 					tab?.close();
 					showOpenFailed();
-					return;
+					return 'failed';
 				}
-				const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
-				if (tab) tab.location.href = router.resolve(route).href;
-				else await router.push(route); // popup blocked → same tab; it consumes the message
-				return;
+				if (tab) {
+					tab.location.href = router.resolve({
+						name: INSTANCE_AI_THREAD_VIEW,
+						params: { threadId },
+					}).href;
+					return 'started';
+				}
+				// Popup blocked, or the same tab: the view here consumes the message.
+				return (await navigateToNewThread(threadId)) ? 'started' : 'failed';
 			}
 			// Same tab: send through a runtime seeded here, which survives the navigation.
 			const threadId = uuidv4();
@@ -683,11 +748,11 @@ export function useInstanceAiHandoff() {
 				await instanceAiStore.syncThread(threadId, projectId, launch);
 			} catch {
 				showOpenFailed();
-				return;
+				return 'failed';
 			}
 			const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 			prepare?.(threadId);
-			if (!(await navigateToNewThread(threadId))) return;
+			if (!(await navigateToNewThread(threadId))) return 'failed';
 			// Send only after the navigation lands, so a run never starts in a thread
 			// the user can't see.
 			void thread.sendMessage(message, {
@@ -697,6 +762,7 @@ export function useInstanceAiHandoff() {
 				handoffContext: options?.context,
 				responseStartedAtEpochMs,
 			});
+			return 'started';
 		} finally {
 			handoffInFlight = false;
 		}
@@ -724,7 +790,34 @@ export function useInstanceAiHandoff() {
 				showOpenFailed();
 				return false;
 			}
-			prepare?.(threadId);
+			// `prepare` seeds a current-runtime thread, which an Assistant agent thread does not use.
+			if (!isAssistantAgentLaunch()) prepare?.(threadId);
+			return await navigateToNewThread(threadId);
+		} finally {
+			handoffInFlight = false;
+		}
+	}
+
+	async function openThreadWithDraft(
+		projectId: string,
+		draft: PendingComposerDraft,
+		launch: InstanceAiThreadLaunch,
+	): Promise<boolean> {
+		if (!instanceAiReady.value) {
+			await routeToSetup();
+			return false;
+		}
+		if (handoffInFlight) return false;
+		handoffInFlight = true;
+		try {
+			let threadId: string;
+			try {
+				threadId = await createLaunchedThread(projectId, launch);
+			} catch {
+				showOpenFailed();
+				return false;
+			}
+			stashPendingComposerDraft(threadId, draft);
 			return await navigateToNewThread(threadId);
 		} finally {
 			handoffInFlight = false;
@@ -741,10 +834,10 @@ export function useInstanceAiHandoff() {
 		try {
 			const projectId = await ensurePersonalProjectId();
 			if (!projectId) return null;
-			const threadId = uuidv4();
 			const launch: InstanceAiThreadLaunch = { source: 'canvas_action_button', origin: 'internal' };
+			let threadId: string;
 			try {
-				await instanceAiStore.syncThread(threadId, projectId, launch);
+				threadId = await createLaunchedThread(projectId, launch);
 			} catch {
 				toast.showError(
 					new Error(i18n.baseText('instanceAi.handoff.openFailed.message')),
@@ -761,7 +854,7 @@ export function useInstanceAiHandoff() {
 				// No opening turn — the attachment opens the canvas preview and rides
 				// the user's first real prompt.
 				stashPendingWorkflowAttachment(threadId, attachment);
-				if (workflow.snapshot) {
+				if (workflow.snapshot && !isAssistantAgentLaunch()) {
 					instanceAiStore
 						.getOrCreateRuntime(threadId, projectId)
 						.setPendingHandoff({ workflowId: workflow.id, workflow: workflow.snapshot });
@@ -776,6 +869,7 @@ export function useInstanceAiHandoff() {
 	return {
 		startThread,
 		openWorkflowThread,
+		openThreadWithDraft,
 		openThreadWithContext,
 		openThreadForDraft,
 	};

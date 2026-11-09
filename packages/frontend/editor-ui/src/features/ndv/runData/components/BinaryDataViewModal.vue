@@ -2,13 +2,12 @@
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { N8nDialog, N8nDialogBody } from '@n8n/design-system';
 import VueJsonPretty from 'vue-json-pretty';
-import RunDataHtml from './RunDataHtml.vue';
 import RunDataMarkdown from './RunDataMarkdown.vue';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import type { BinaryMetadata } from '@n8n/design-system';
+import { N8nHtmlPreview, type BinaryMetadata } from '@n8n/design-system';
 
 defineOptions({ inheritAttrs: false });
 
@@ -191,7 +190,7 @@ function onDialogOpenUpdate(open: boolean) {
 					/>
 
 					<!-- HTML -->
-					<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="displayData" />
+					<N8nHtmlPreview v-else-if="binaryData.fileType === 'html'" :html="displayData" />
 
 					<!-- Markdown -->
 					<RunDataMarkdown

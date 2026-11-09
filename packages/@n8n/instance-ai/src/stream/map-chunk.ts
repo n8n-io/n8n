@@ -6,16 +6,18 @@ import {
 	instanceAiQuestionSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
-	taskListSchema,
-	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
+	skillUpdatePayloadSchema,
 	channelConfigSchema,
 	mcpConnectRequestSchema,
 	credentialDestinationSchema,
 	testListenerCardSchema,
+	appBlueprintSchema,
+	confirmationInputTypeSchema,
+	type InstanceAiEvent,
+	type InstanceAiConfirmationInputType,
 } from '@n8n/api-types';
-import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { z } from 'zod';
 
@@ -212,14 +214,6 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 
 type EventBase = { runId: string; agentId: string; responseId?: string };
 
-type ConfirmationInputType =
-	| 'approval'
-	| 'text'
-	| 'questions'
-	| 'plan-review'
-	| 'resource-decision'
-	| 'continue';
-
 /** A non-empty string, or undefined for anything else (matches the legacy `value ? value : undefined` gate). */
 function presentString(value: unknown): string | undefined {
 	return typeof value === 'string' && value ? value : undefined;
@@ -246,19 +240,9 @@ function parseSeverity(value: unknown): 'destructive' | 'warning' | 'info' {
 	return (valid as readonly string[]).includes(raw) ? (raw as (typeof valid)[number]) : 'warning';
 }
 
-function parseInputType(value: unknown): ConfirmationInputType | undefined {
-	const raw = typeof value === 'string' ? value : undefined;
-	const valid = [
-		'approval',
-		'text',
-		'questions',
-		'plan-review',
-		'resource-decision',
-		'continue',
-	] as const;
-	return (valid as readonly string[]).includes(raw ?? '')
-		? (raw as (typeof valid)[number])
-		: undefined;
+function parseInputType(value: unknown): InstanceAiConfirmationInputType | undefined {
+	const parsed = confirmationInputTypeSchema.safeParse(value);
+	return parsed.success ? parsed.data : undefined;
 }
 
 function parseDomainAccess(value: unknown): { url: string; host: string } | undefined {
@@ -333,8 +317,6 @@ function mapSuspendedChunk(
 	const inputType = parseInputType(suspendPayload.inputType);
 	const questions = parseSchemaArray(suspendPayload.questions, instanceAiQuestionSchema);
 	const introMessage = presentString(suspendPayload.introMessage);
-	const tasks = parseSchemaRecord(suspendPayload.tasks, taskListSchema);
-	const planItems = parseSchemaArray(suspendPayload.planItems, plannedTaskArgSchema);
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
@@ -359,6 +341,7 @@ function mapSuspendedChunk(
 		mcpConnectRequestSchema,
 	);
 	const testListener = parseSchemaRecord(suspendPayload.testListener, testListenerCardSchema);
+	const appBlueprint = parseSchemaRecord(suspendPayload.appBlueprint, appBlueprintSchema);
 	// A test run of the target Agent pauses for the target's own tool approvals.
 	const isTargetTestRun =
 		typeof chunk.toolName === 'string' &&
@@ -404,12 +387,11 @@ function mapSuspendedChunk(
 			...(approvalDetails ? { approvalDetails } : {}),
 			...(questions ? { questions } : {}),
 			...(introMessage ? { introMessage } : {}),
-			...(tasks ? { tasks } : {}),
-			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
 			...(channelConfig ? { channelConfig } : {}),
 			...(mcpConnectRequest ? { mcpConnectRequest } : {}),
 			...(testListener ? { testListener } : {}),
+			...(appBlueprint ? { appBlueprint } : {}),
 		},
 	};
 }
@@ -449,6 +431,11 @@ function mapMessageChunk(
 	base: EventBase,
 ): InstanceAiEvent | null {
 	const message = getRecordProperty(chunk, 'message');
+	const data = getRecordProperty(message, 'data');
+	if (message?.type === 'custom' && data?.type === 'n8n:runtime-skill-update') {
+		const update = skillUpdatePayloadSchema.safeParse(data.skillUpdate);
+		return update.success ? { type: 'skill-update', ...base, payload: update.data } : null;
+	}
 	if (message?.role !== 'tool') return null;
 
 	const content = getArrayProperty(message, 'content');

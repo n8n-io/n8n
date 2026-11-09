@@ -15,7 +15,7 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
-import type { AgentPreviewTarget } from '@/features/agents/utils/agentPreviewUrl';
+import type { AgentTestTarget } from '@/features/agents/utils/agentTestUrl';
 import { HIDDEN_TOOLS, isStreamingTimelineEntry } from '../agentTimeline.utils';
 import { getToolIcon, useToolLabel } from '../toolLabels';
 import AiReasoningBlock from '../../shared/components/AiReasoningBlock.vue';
@@ -27,7 +27,7 @@ import ToolResultRenderer from './ToolResultRenderer.vue';
 const props = withDefaults(
 	defineProps<{
 		agentNode: InstanceAiAgentNode;
-		agentPreviewTarget?: AgentPreviewTarget;
+		agentPreviewTarget?: AgentTestTarget;
 		/** When provided, renders only these entries instead of the full timeline. */
 		visibleEntries?: InstanceAiTimelineEntry[];
 		/** Peek mode: compact, pins streaming text to the bottom. */

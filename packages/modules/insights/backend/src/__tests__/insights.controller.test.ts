@@ -1,12 +1,12 @@
 import { LicenseState } from '@n8n/backend-common';
-import { mockInstance, testDb } from '@n8n/backend-test-utils';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { WorkflowSharingService } from '@n8n/backend-services';
+import { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
 
 import { TypeToNumber, type TypeUnitNumber } from '../insights-shared';
 import { InsightsByPeriodRepository } from '../insights-by-period.repository';
@@ -24,17 +24,14 @@ const authReq = () =>
 		user: { role: { scopes: [{ slug: 'workflow:read' }] } },
 	} as unknown as AuthenticatedRequest);
 
-beforeAll(async () => {
-	await testDb.init();
-});
-
-afterAll(async () => {
-	await testDb.terminate();
+afterAll(() => {
+	Container.reset();
 });
 
 describe('InsightsController', () => {
 	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
 	mockInstance(WorkflowSharingService);
+	const projectScopeService = mockInstance(ProjectScopeService);
 	let controller: InsightsController;
 	const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 	const today = DateTime.now().toJSDate();
@@ -50,6 +47,7 @@ describe('InsightsController', () => {
 
 		licenseState.getInsightsMaxHistory.mockReturnValue(-1);
 		licenseState.isInsightsHourlyDataLicensed.mockReturnValue(true);
+		projectScopeService.getProjectIds.mockResolvedValue(null);
 	});
 
 	describe('getInsightsSummary', () => {

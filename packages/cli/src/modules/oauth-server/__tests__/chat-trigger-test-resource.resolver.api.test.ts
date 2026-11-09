@@ -22,7 +22,10 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
+	endpointGroups: ['mcp'],
+});
 
 let owner: User;
 let member: User;
@@ -73,7 +76,7 @@ const chatTriggerNode = ({
 	},
 });
 
-/** Mirrors what `TestWebhooks.needsWebhook` registers when the user tests a chat trigger. */
+/** Mirrors what `TestWebhooks.registerWebhooks` registers when the user tests a chat trigger. */
 const registerTestWebhook = async (
 	path: string,
 	node: INode,

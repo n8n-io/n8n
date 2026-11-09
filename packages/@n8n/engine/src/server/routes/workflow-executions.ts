@@ -4,53 +4,33 @@ import { z } from 'zod';
 
 import {
 	createCancelExecutionHandler,
+	createFindLatestExecutionHandler,
 	createGetExecutionHandler,
 	createSearchExecutionsHandler,
 } from './workflow-executions.handlers';
+import { createResumeTargetHandler } from './resume-requests';
 import { AdmittanceRejectedError } from '../../admittance';
 import { jsonObjectSchema, jsonValueSchema, UnimplementedError } from '../../common';
-import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
+import { GraphValidationError } from '../../graph';
+import { lifecycleEventSubscriptionSchema } from '../../lifecycle-events';
 import { responseExpectationSchema } from '../../response-channel';
 import type { EngineServerDeps } from '../create-engine-server';
 import { fail } from '../error-response';
-
-const MAX_TRIGGER_SLOTS = MAX_SLOT_INDEX + 1;
-
-const StepTypeSchema = z.enum(['trigger', 'v1-node', 'wait', 'subworkflow', 'batch']);
-
-// Non-empty: lifecycle events reship both as identifiers.
-const GraphNodeSchema = z.object({
-	id: z.string().min(1),
-	name: z.string().min(1),
-	type: StepTypeSchema,
-	config: z.unknown().optional(),
-});
-
-const GraphEdgeSchema = z.object({
-	from: z.string(),
-	to: z.string(),
-	// Defaulted rather than optional so callers can omit the common 0/0 case while
-	// the engine always sees a fully-populated edge.
-	outputIndex: z.number().int().nonnegative().default(0),
-	inputIndex: z.number().int().nonnegative().default(0),
-	isBackEdge: z.boolean().optional(),
-});
-
-const WorkflowGraphSchema = z.object({
-	nodes: z.array(GraphNodeSchema),
-	edges: z.array(GraphEdgeSchema),
-});
+import {
+	MAX_TRIGGER_SLOTS,
+	triggerOutputsSchema,
+	workflowGraphSchema,
+} from '../start-execution.schema';
 
 const StartExecutionBody = z.object({
 	workflowId: z.string().min(1),
-	graph: WorkflowGraphSchema,
+	graph: workflowGraphSchema,
 	/**
 	 * The workflow the graph came from. Only its JSON-ness is checked: the engine
 	 * stores and reports it without reading a field out of it.
 	 */
 	workflow: jsonObjectSchema,
-	/** Trigger output slots. Empty means "no payload" — send `null` or omit instead. */
-	triggerOutputs: z.array(jsonValueSchema).min(1).max(MAX_TRIGGER_SLOTS).nullable().optional(),
+	triggerOutputs: triggerOutputsSchema.nullable().optional(),
 	/** Steps the caller holds the outputs of, by node id: slots like `triggerOutputs`, once per pass. */
 	seededSteps: z
 		.record(z.string().min(1), z.array(z.array(jsonValueSchema).max(MAX_TRIGGER_SLOTS)).min(1))
@@ -67,6 +47,8 @@ const StartExecutionBody = z.object({
 		.strict(),
 	/** What kind of a response the caller expects. */
 	responseExpectation: responseExpectationSchema.optional(),
+	/** Which lifecycle events the caller subscribes to. Missing means none. */
+	lifecycleEventSubscription: lifecycleEventSubscriptionSchema.optional(),
 	/** The caller mints the id. v7 only, so ids stay time-ordered. */
 	executionId: z.string().regex(UUID_V7_PATTERN),
 });
@@ -74,6 +56,7 @@ const StartExecutionBody = z.object({
 export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterType {
 	const router = Router();
 	router.post('/search', createSearchExecutionsHandler(deps.executionQuery));
+	router.post('/search/latest', createFindLatestExecutionHandler(deps.executionQuery));
 
 	router.post('/', async (req, res) => {
 		const parsed = StartExecutionBody.safeParse(req.body);
@@ -104,6 +87,10 @@ export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterTy
 
 	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
 	router.post('/:id/cancel', createCancelExecutionHandler(deps.cancelExecution));
+	router.post(
+		'/:id/resume-target',
+		createResumeTargetHandler(deps.resumeRequests, deps.executionQuery),
+	);
 
 	return router;
 }

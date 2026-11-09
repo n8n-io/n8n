@@ -76,10 +76,10 @@ describe('project package export', () => {
 		expect(entries[0].name).toBe('manifest.json');
 		expect(manifest).toMatchObject({
 			packageFormatVersion: FORMAT_VERSION,
-			exportedAt: expect.any(String),
 			sourceN8nVersion: expect.any(String),
 			sourceId: expect.any(String),
 		});
+		expect(manifest).not.toHaveProperty('exportedAt');
 		expect(manifest.projects).toEqual([
 			{ id: project.id, name: 'Empty Project', target: expect.any(String) },
 		]);
@@ -765,7 +765,7 @@ describe('project package export — workflow selection', () => {
 		const fullTargets = new Map(full.manifest.workflows!.map((w) => [w.id, w.target]));
 		expect(new Set(fullTargets.values()).size).toBe(2);
 		expect(partial.manifest.workflows).toEqual([
-			{ id: second.id, name: 'Same Name', target: fullTargets.get(second.id) },
+			{ id: second.id, name: 'Same Name', target: fullTargets.get(second.id), isArchived: false },
 		]);
 		expect(fullTargets.get(first.id)).not.toBe(partial.manifest.workflows![0].target);
 	});

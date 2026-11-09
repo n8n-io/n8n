@@ -123,4 +123,19 @@ export class ExpressionEngineConfig {
 	 */
 	@Env('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION')
 	nativeEvaluation: boolean = false;
+
+	/**
+	 * Experimental: share of simple expressions, from 0 to 1,
+	 * that n8n also evaluates natively and compares with the engine.
+	 * n8n always uses the engine's result and reports differences to Sentry.
+	 * 0 compares none, 1 compares all.
+	 * Use 1 on a test instance and 0.1 in production.
+	 * Only applies to the `vm` and `quickjs` engines, when `N8N_SENTRY_DSN` is set.
+	 * Ignored while `N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION` is true.
+	 */
+	@Env(
+		'N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE',
+		z.number({ coerce: true }).min(0).max(1),
+	)
+	nativeEvaluationVerifySample: number = 0;
 }

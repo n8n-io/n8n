@@ -7,10 +7,12 @@ import {
 	ImportWorkflowFromUrlDto,
 	ListCallableSubworkflowsQueryDto,
 	ManualRunDto,
+	TransferPreviewQueryDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
 	type CallableSubworkflowsResponse,
 	type WorkflowPublicationStatus,
+	type WorkflowTransferPreview,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfBlockedIpError } from '@n8n/backend-network';
@@ -656,6 +658,21 @@ export class WorkflowsController {
 			newShareeIds: projectsRelations.map((pr) => pr.userId),
 			workflow,
 		});
+	}
+
+	@Get('/:workflowId/transfer-preview')
+	@ProjectScope('workflow:move')
+	async transferPreview(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Query query: TransferPreviewQueryDto,
+	): Promise<WorkflowTransferPreview> {
+		return await this.enterpriseWorkflowService.previewWorkflowTransfer(
+			req.user,
+			workflowId,
+			query.destinationProjectId,
+		);
 	}
 
 	@Put('/:workflowId/transfer')

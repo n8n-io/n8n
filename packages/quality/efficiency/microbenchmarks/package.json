@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@n8n/expression-runtime": "workspace:*",
+    "n8n": "workspace:*",
     "vite": "catalog:",
     "vitest": "catalog:",
     "n8n-workflow": "workspace:*",

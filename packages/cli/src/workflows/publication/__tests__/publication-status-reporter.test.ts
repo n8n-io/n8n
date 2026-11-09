@@ -15,6 +15,7 @@ import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import type { WorkflowSharingService } from '@n8n/backend-services';
 
@@ -476,6 +477,61 @@ describe('PublicationStatusReporter', () => {
 
 		expect(push.sendToUsers).toHaveBeenCalledWith(
 			{ type: 'workflowFailedToActivate', data: { workflowId: 'wf-1', errorMessage } },
+			userIds,
+		);
+	});
+
+	test('failed for one oversized trigger pushes that trigger node id', async () => {
+		const error = new TriggerNodeIdTooLongError([{ id: 'too-long', name: 'Long' }]);
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error,
+			triggerStatuses: [
+				{
+					nodeId: 'fitting',
+					nodeName: 'Fitting',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: error.message,
+				},
+			],
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: error.message, nodeId: 'too-long' },
+			},
+			userIds,
+		);
+	});
+
+	test('failed for several oversized triggers pushes no node id', async () => {
+		const error = new TriggerNodeIdTooLongError([
+			{ id: 'first-long', name: 'First' },
+			{ id: 'second-long', name: 'Second' },
+		]);
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error,
+			triggerStatuses: [
+				{
+					nodeId: 'fitting',
+					nodeName: 'Fitting',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: error.message,
+				},
+			],
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: error.message },
+			},
 			userIds,
 		);
 	});

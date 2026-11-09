@@ -154,20 +154,15 @@ function onListBackgroundClick() {
 }
 
 .header {
-	position: relative;
 	display: flex;
-	align-items: center;
-	height: var(--review-tab-bar--height, var(--height--sm));
-	padding-right: var(--spacing--md);
-	margin-bottom: var(--review-tab-bar--gap);
+	align-items: flex-end;
+	margin: 0 var(--spacing--md) var(--spacing--sm) 0;
+	/* The divider follows the bottom of the tabs, so the tab badges can change their height. */
+	border-bottom: var(--border);
 
-	&::after {
-		content: '';
-		position: absolute;
-		left: 0;
-		right: var(--spacing--md);
-		bottom: calc(-1 * var(--review-tab-bar--indicator-overhang) - var(--border-width));
-		border-bottom: var(--border-width) solid var(--border-color);
+	> :global(.n8n-tabs) {
+		/* The active-tab indicator covers the divider, as in the detail tab bars. */
+		margin-bottom: calc(-1 * var(--border-width));
 	}
 }
 

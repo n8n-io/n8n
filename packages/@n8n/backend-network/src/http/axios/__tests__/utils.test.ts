@@ -21,6 +21,7 @@ import {
 	isIgnoreStatusErrorConfig,
 	isProxyPotentiallyActive,
 	isRedirectStatus,
+	isSameHostHttpsUpgrade,
 	resolveLegacyRequestTarget,
 	resolveLegacyRequestUrl,
 	searchForHeader,
@@ -739,6 +740,21 @@ describe('isRedirectStatus', () => {
 
 	it.each([200, 204, 299, 400, 500])('treats %i as not a redirect', (status) => {
 		expect(isRedirectStatus(status)).toBe(false);
+	});
+});
+
+describe('isSameHostHttpsUpgrade', () => {
+	test.each([
+		['http://example.com/a', 'https://example.com/b', true],
+		['http://example.com:80/a', 'https://example.com:443/b', true],
+		['https://example.com/a', 'https://example.com/b', false],
+		['https://example.com/a', 'http://example.com/b', false],
+		['http://example.com/a', 'https://sub.example.com/b', false],
+		['http://example.com/a', 'https://example.com:8443/b', false],
+		['http://example.com:8080/a', 'https://example.com/b', false],
+		['not a url', 'https://example.com/b', false],
+	])('returns the expected result for %s to %s', (fromUrl, toUrl, expected) => {
+		expect(isSameHostHttpsUpgrade(fromUrl, toUrl)).toBe(expected);
 	});
 });
 

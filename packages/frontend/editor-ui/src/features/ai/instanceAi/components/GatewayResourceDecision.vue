@@ -7,7 +7,6 @@ import { computed } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { redactTelemetryProperties } from '@n8n/telemetry';
-import { useThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import SplitButton from './SplitButton.vue';
@@ -27,16 +26,23 @@ function isInstanceGatewayResourceDecision(
 }
 
 const props = defineProps<{
-	requestId: string;
 	resource: string;
 	description: string;
 	options: InstanceGatewayResourceDecision[];
+	/** The thread that the telemetry reports. */
+	threadId: string;
+	/** Joins the telemetry with the "Builder asked for input" event of this card. */
+	inputThreadId?: string;
+}>();
+
+const emit = defineEmits<{
+	/** The user's decision. The parent sends it. */
+	decide: [decision: InstanceGatewayResourceDecision];
 }>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
-const thread = useThread();
 
 interface OptionEntry {
 	decision: InstanceGatewayResourceDecision;
@@ -72,12 +78,10 @@ const approveDropdownItems = computed(() => {
 	return items;
 });
 
-async function confirm(decision: InstanceGatewayResourceDecision) {
-	const tc = thread.findToolCallByRequestId(props.requestId);
-	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+function confirm(decision: InstanceGatewayResourceDecision) {
 	const eventProps = {
-		thread_id: thread.id,
-		input_thread_id: inputThreadId,
+		thread_id: props.threadId,
+		input_thread_id: props.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: 'resource-decision',
 		provided_inputs: [{ label: props.resource, options: props.options, option_chosen: decision }],
@@ -87,7 +91,7 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 	// hostname or a URL, so it goes through the egress policy like any other
 	// free-form value.
 	telemetry.track('User finished providing input', redactTelemetryProperties(eventProps));
-	await thread.confirmResourceDecision(props.requestId, decision);
+	emit('decide', decision);
 }
 </script>
 

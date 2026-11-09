@@ -9,15 +9,16 @@ export const DEFAULT_TELEGRAM_PUBLIC_SETTINGS = {
 /**
  * Resolve the form's "saved" state for a Telegram integration. Returns the
  * stored settings when present, the legacy public default for connected
- * integrations missing settings, and `undefined` for unconnected setups so the
- * form starts in private mode.
+ * integrations missing settings, and `undefined` for unconnected setups without
+ * settings so the form starts in private mode. A draft channel is not connected
+ * yet, but its saved settings still apply.
  */
 export function resolveSavedTelegramSettings(
 	settings: AgentIntegrationSettings | undefined,
 	connected: boolean,
 ): AgentTelegramIntegrationSettings | undefined {
-	if (!connected) return undefined;
-	return settings && 'accessMode' in settings ? settings : DEFAULT_TELEGRAM_PUBLIC_SETTINGS;
+	if (settings && 'accessMode' in settings) return settings;
+	return connected ? DEFAULT_TELEGRAM_PUBLIC_SETTINGS : undefined;
 }
 
 export type TelegramSettingsValidationError = 'required' | 'invalid';

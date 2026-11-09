@@ -61,6 +61,7 @@ import {
 	ManualExecutionCancelledError,
 	createRunExecutionData,
 	applyDynamicCredentialsUsage,
+	hasExecutionRunNodes,
 } from 'n8n-workflow';
 import PCancelable, { type OnCancelFunction } from 'p-cancelable';
 
@@ -1146,7 +1147,10 @@ export class WorkflowExecute {
 		let closingError: Error | undefined;
 
 		try {
-			if (customOperation) {
+			const evalMockOutput = await additionalData.evalNodeMockHandler?.(context);
+			if (evalMockOutput) {
+				data = evalMockOutput;
+			} else if (customOperation) {
 				data = await customOperation.call(context);
 			} else if (nodeType.execute) {
 				data = isNodeClassInstance(nodeType)
@@ -1579,8 +1583,17 @@ export class WorkflowExecute {
 			pinDataNodeNames,
 		});
 		if (workflowIssues !== null) {
+			this.markFailedBeforeStart();
 			throw new WorkflowHasIssuesError(workflowIssues, workflow.nodes);
 		}
+	}
+
+	private markFailedBeforeStart(): boolean {
+		const { resultData } = this.runExecutionData;
+		const isResume = this.additionalData.restartExecutionId !== undefined;
+		if (hasExecutionRunNodes(resultData.runData, isResume)) return false;
+		resultData.failedBeforeStart = true;
+		return true;
 	}
 
 	private setupExecution(): {
@@ -1679,6 +1692,9 @@ export class WorkflowExecute {
 		workflow: Workflow,
 		hooks: ExecutionLifecycleHooks,
 	): Promise<void> {
+		// A retry copies the original's data, flag included; this run decides it afresh.
+		delete this.runExecutionData.resultData.failedBeforeStart;
+
 		try {
 			await workflow.expression.acquireIsolate();
 
@@ -1697,6 +1713,9 @@ export class WorkflowExecute {
 			}
 		} catch (error) {
 			const e = error as unknown as ExecutionBaseError;
+
+			// Read before the start-node task below fills `runData`.
+			const failedBeforeStart = this.markFailedBeforeStart();
 
 			// Set the error that it can be saved correctly
 			const executionError: ExecutionBaseError = {
@@ -1728,6 +1747,7 @@ export class WorkflowExecute {
 					},
 					lastNodeExecuted: startItem.node.name,
 					error: executionError,
+					...(failedBeforeStart && { failedBeforeStart: true }),
 				};
 			} else {
 				this.runExecutionData.resultData.error = executionError;
@@ -1851,6 +1871,19 @@ export class WorkflowExecute {
 		];
 	}
 
+	/**
+	 * Wait before the next retry of a node, unless cancelled.
+	 * Returns whether the retry may run, so the caller stops retrying after a cancel.
+	 */
+	private async waitForRetry(waitBetweenTries: number): Promise<boolean> {
+		if (this.isCancelled) return false;
+
+		// TODO(legacy): Improve that in the future and check if other nodes can be executed in the meantime
+		await sleep(waitBetweenTries, this.abortController.signal).catch(() => {});
+
+		return !this.isCancelled;
+	}
+
 	/** The pinned output of a node, or undefined if the node has none. */
 	private getPinnedOutput(node: INode): INodeExecutionData[][] | undefined {
 		const { pinData } = this.runExecutionData.resultData;
@@ -1913,6 +1946,10 @@ export class WorkflowExecute {
 		}
 
 		if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
+			// Pair output items before the split. After the split there are two output
+			// arrays and `assignPairedItems` can no longer match items by count, so
+			// items the node did not pair itself would lose their lineage.
+			this.assignPairedItems(nodeSuccessData, executionData);
 			this.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, runIndex);
 		}
 
@@ -2360,18 +2397,11 @@ export class WorkflowExecute {
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 						try {
 							if (tryIndex !== 0) {
+								// Keep the error of the previous try if the execution was cancelled
+								if (!(await this.waitForRetry(waitBetweenTries))) break;
+
 								// Reset executionError from previous error try
 								executionError = undefined;
-								if (waitBetweenTries !== 0) {
-									// TODO: Improve that in the future and check if other nodes can
-									//       be executed in the meantime
-
-									await new Promise((resolve) => {
-										setTimeout(() => {
-											resolve(undefined);
-										}, waitBetweenTries);
-									});
-								}
 							}
 
 							const pinnedOutput = this.getPinnedOutput(executionNode);
@@ -2400,7 +2430,7 @@ export class WorkflowExecute {
 								let nodeFailed = checkFailure(runNodeData);
 
 								while (nodeFailed && tryIndex !== maxTries - 1) {
-									await sleep(waitBetweenTries);
+									if (!(await this.waitForRetry(waitBetweenTries))) break;
 
 									runNodeData = await this.runNode(
 										workflow,
@@ -3101,19 +3131,27 @@ export class WorkflowExecute {
 
 						const sourceData = executionData.source[NodeConnectionTypes.Main][pairedItemInputIndex];
 
-						const constPairedItem = dataProxy.$getPairedItem(
-							sourceData!.previousNode,
-							sourceData,
-							pairedItemData,
-						);
+						let pairedInputItem: INodeExecutionData | null = null;
+						try {
+							pairedInputItem = dataProxy.$getPairedItem(
+								sourceData!.previousNode,
+								sourceData,
+								pairedItemData,
+							);
+						} catch (error) {
+							Logger.debug('Could not resolve the input item of an error item', {
+								node: executionData.node.name,
+								error: error instanceof Error ? error.message : String(error),
+							});
+						}
 
-						if (constPairedItem === null) {
+						if (!pairedInputItem) {
 							errorItems.push(item);
 						} else {
 							errorItems.push({
 								...item,
 								json: {
-									...constPairedItem.json,
+									...pairedInputItem.json,
 									...item.json,
 								},
 							});
@@ -3154,6 +3192,10 @@ export class WorkflowExecute {
 		executionData: IExecuteData,
 	) {
 		if (nodeSuccessData?.length) {
+			// Some nodes (e.g. Execute Sub-workflow < v1.3 with "Continue" on error)
+			// return sparse output arrays. Fill the empty slots so later steps can iterate them.
+			nodeSuccessData = Array.from(nodeSuccessData, (output) => output ?? []);
+
 			// Check if the output data contains pairedItem data and if not try
 			// to automatically fix it
 
@@ -3173,9 +3215,6 @@ export class WorkflowExecute {
 				(executionData.data.main[0]?.length ?? 0) > 1;
 
 			checkOutputData: for (const outputData of nodeSuccessData) {
-				if (outputData === null) {
-					continue;
-				}
 				for (const [index, item] of outputData.entries()) {
 					if (item.pairedItem === undefined) {
 						// The pairedItem data is missing, so check if it can get automatically fixed

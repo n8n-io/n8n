@@ -9,10 +9,10 @@ import isEqual from 'lodash/isEqual';
 import {
 	deepCopy,
 	jsonParse,
-	UserError,
 	type DataTableColumnType,
 	type ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { ok } from 'node:assert/strict';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
@@ -214,7 +214,8 @@ export async function generateSshKeyPair(keyType: KeyPairType): Promise<KeyPair>
 	return await generateGitSshKeyPair(keyType, SOURCE_CONTROL_GIT_KEY_COMMENT);
 }
 
-export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
+export function getRepoType(repoUrl?: string): 'github' | 'gitlab' | 'other' {
+	if (!repoUrl) return 'other';
 	if (repoUrl.includes('github.com')) {
 		return 'github';
 	} else if (repoUrl.includes('gitlab.com')) {

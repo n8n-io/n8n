@@ -93,8 +93,11 @@ export async function validateAuth(context: IWebhookFunctions): Promise<IUser | 
 		}
 	} else if (authentication === 'n8nUserAuth') {
 		const webhookName = context.getWebhookName();
+		const mode = context.getNodeParameter('mode', 'hostedChat') as 'hostedChat' | 'webhook';
 
-		if (webhookName !== 'setup') {
+		// The hosted chat page authenticates itself through the OAuth2 handshake, so only
+		// that GET skips this check. In other modes `setup` is not a page.
+		if (!(webhookName === 'setup' && mode === 'hostedChat')) {
 			// The sandboxed frame carries this instead of the session cookie, which an opaque
 			// origin never sends. Checked first so the frame doesn't depend on that cookie.
 			// Verified against n8n's internal AS (not just decoded) so the token also seeds
@@ -102,7 +105,6 @@ export async function validateAuth(context: IWebhookFunctions): Promise<IUser | 
 			// Restricted to hostedChat: that's the only mode with a page to run the frame on,
 			// so a token from it must never authenticate a webhook-mode call — e.g. a stale
 			// token replayed after the node's mode was switched from hostedChat to webhook.
-			const mode = context.getNodeParameter('mode', 'hostedChat') as 'hostedChat' | 'webhook';
 			const resourceUrl =
 				mode === 'hostedChat' ? context.getWebhookResourceUrl('default') : undefined;
 			if (mode === 'hostedChat') {

@@ -29,10 +29,10 @@ const agentItem: RecentChatItem = {
 };
 
 describe('RecentChatIcon', () => {
-	it('shows the AI sparkle for an Assistant thread', () => {
+	it('shows the Assistant icon for an Assistant thread', () => {
 		expect(
 			mount(RecentChatIcon, { props: { item: assistantItem } })
-				.find('[data-icon="sparkles"]')
+				.find('[data-icon="n8n-assistant"]')
 				.exists(),
 		).toBe(true);
 	});
