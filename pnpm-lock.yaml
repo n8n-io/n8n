@@ -7403,9 +7403,15 @@ importers:
 
   packages/modules/execution-ledger/backend:
     dependencies:
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-common
       '@n8n/config':
         specifier: workspace:*
         version: link:../../../@n8n/config
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../../../@n8n/constants
       '@n8n/db':
         specifier: workspace:*
         version: link:../../../@n8n/db
@@ -7418,6 +7424,12 @@ importers:
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../../core
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
@@ -7452,6 +7464,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
 
   packages/modules/execution-limits/backend:
     dependencies:

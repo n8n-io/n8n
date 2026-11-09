@@ -36,11 +36,15 @@
     "test:dev": "vitest --silent=false"
   },
   "dependencies": {
+    "@n8n/backend-common": "workspace:*",
     "@n8n/config": "workspace:*",
+    "@n8n/constants": "workspace:*",
     "@n8n/db": "workspace:*",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/typeorm": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*"
   },
   "devDependencies": {
@@ -53,7 +57,8 @@
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
