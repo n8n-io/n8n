@@ -37,7 +37,7 @@ import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ExternalHooks } from '@/external-hooks';
 import type { Telemetry } from '@/telemetry';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';

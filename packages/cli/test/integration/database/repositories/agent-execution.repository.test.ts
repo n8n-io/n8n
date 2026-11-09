@@ -28,7 +28,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { Telemetry } from '@/telemetry';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
