@@ -539,6 +539,7 @@ describe('admitted start turns', () => {
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
 			mock<AgentKnowledgeUsageTracker>(),
+			mock<AgentSandboxFilesService>(),
 		);
 		const agentInstance = mock<RuntimeAgent>();
 		agentInstance.stream.mockResolvedValue({
