@@ -150,3 +150,4 @@ If a decision sits between repository reads, move it into a pure function first 
 - Tests outside the module use the fixtures in `testing/` to create skills and versions, read them back, and clear the tables. They never import the repository or the entities.
 - `testing/` holds only what tests outside the module import. It is the one test path that the boundary rules allow, as `index.ts` is for code. Before you add a file to `testing/`, find the test outside the module that imports it. If no such test exists, put the file in `__tests__/test-utils/`. Move it to `testing/` with the first outside test that needs it. A fake or a contract suite for a strategy of this module, such as `InMemorySkillSourceClient`, stays in `__tests__/test-utils/`.
 - AI tools report a refused write through `toSkillToolRefusal`, so MCP and n8n Assistant tell the model the same thing.
+- Dummy line to test PR preview flags. Do not merge.
