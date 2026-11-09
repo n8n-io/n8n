@@ -378,15 +378,18 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 
 <style lang="scss" module>
 .timeline {
+	/** Keep the activity rail extension equal to the gap between blocks. */
+	--n8n--ai-activity-step-gap: var(--spacing--2xs);
 	display: flex;
 	flex-direction: column;
+	gap: var(--n8n--ai-activity-step-gap);
 }
 
 .answerGroup {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	margin-block: var(--spacing--sm);
+	margin-block: calc(var(--spacing--sm) - var(--n8n--ai-activity-step-gap));
 
 	&:first-child {
 		margin-top: 0;
