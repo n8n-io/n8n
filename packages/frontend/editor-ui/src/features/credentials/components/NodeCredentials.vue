@@ -250,7 +250,6 @@ const canCreateCredentials = computed(
 		).credential.create,
 );
 
-/** A policy that blocks a credential type also blocks creating credentials of it. */
 function canCreateCredentialType(credentialType: string): boolean {
 	return !!canCreateCredentials.value && !getCredentialTypeRestriction(credentialType);
 }
