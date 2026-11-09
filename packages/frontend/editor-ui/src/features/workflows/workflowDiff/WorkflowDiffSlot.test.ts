@@ -14,6 +14,7 @@ type DiffProps = {
 	showFullscreenButton?: boolean;
 	canvasIdPrefix?: string;
 	hideTitle?: boolean;
+	requireCanvasFocus?: boolean;
 };
 const { captured } = vi.hoisted(() => ({ captured: [] as DiffProps[] }));
 vi.mock('./WorkflowDiffView.vue', () => ({
@@ -26,6 +27,7 @@ vi.mock('./WorkflowDiffView.vue', () => ({
 			'showFullscreenButton',
 			'canvasIdPrefix',
 			'hideTitle',
+			'requireCanvasFocus',
 		],
 		setup(props) {
 			captured.push(props as DiffProps);
@@ -84,7 +86,7 @@ it('maps snapshots to detached non-reactive editor workflows', () => {
 	expect(target.nodes[0].name).toBe('Node');
 });
 
-it('preserves labels, first-publish text, and the fullscreen control', () => {
+it('preserves labels, first-publish text, and the canvas controls', () => {
 	const { getByText } = renderComponent({
 		props: {
 			workflowId: 'workflow',
@@ -95,6 +97,7 @@ it('preserves labels, first-publish text, and the fullscreen control', () => {
 			showFullscreenButton: true,
 			canvasIdPrefix: 'workflow',
 			hideTitle: true,
+			requireCanvasFocus: true,
 		},
 		slots: {
 			sourceLabel: '<span>Previous version</span>',
@@ -109,6 +112,7 @@ it('preserves labels, first-publish text, and the fullscreen control', () => {
 		showFullscreenButton: true,
 		canvasIdPrefix: 'workflow',
 		hideTitle: true,
+		requireCanvasFocus: true,
 	});
 	expect(getByText('Previous version')).toBeInTheDocument();
 	expect(getByText('Proposed version')).toBeInTheDocument();
