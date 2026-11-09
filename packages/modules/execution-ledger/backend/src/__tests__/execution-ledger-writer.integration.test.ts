@@ -195,6 +195,15 @@ describe('ExecutionLedgerRowWriter', () => {
 			]);
 		});
 
+		it('stores a runtime longer than 24.8 days', async () => {
+			const runtimeMs = 30 * 24 * 60 * 60 * 1000;
+
+			await ledger.recordEnded(endedFacts({ runtimeMs }));
+
+			expect(await claimAll()).toEqual([expect.objectContaining({ runtimeMs })]);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
 		it('logs a workflow without an owner project and does not throw', async () => {
 			const unowned = await createWorkflow({ name: 'Unowned' });
 

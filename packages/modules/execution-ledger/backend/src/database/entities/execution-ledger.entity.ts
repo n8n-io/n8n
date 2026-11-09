@@ -6,6 +6,7 @@ import type {
 	ExecutionLedgerOutcome,
 } from '@n8n/db';
 import {
+	bigintStringToNumber,
 	DateTimeColumn,
 	dbType,
 	EXECUTION_LEDGER_ENTITY_NAME_MAX_LENGTH,
@@ -53,7 +54,8 @@ export class ExecutionLedgerEntity extends BaseEntity {
 	@Column({ type: 'varchar', length: 32, default: 'none' })
 	blockedBy: ExecutionLedgerBlockedBy;
 
-	@Column({ type: 'int', default: 0 })
+	/** `bigint` on Postgres, where the driver returns it as a string. */
+	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
 	runtimeMs: number;
 
 	@Column({ type: 'int', default: 0 })

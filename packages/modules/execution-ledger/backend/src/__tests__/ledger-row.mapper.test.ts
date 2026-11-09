@@ -87,13 +87,20 @@ describe('toEndedRow', () => {
 		[1499.6, 1500],
 		[-20, 0],
 		[Number.NaN, 0],
+		[2 ** 31, 2 ** 31],
+		[Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER],
+	])('stores the runtime %d as %d', (runtimeMs, expected) => {
+		expect(toEndedRow(endedFacts({ runtimeMs }), 'p', 'e').runtimeMs).toBe(expected);
+	});
+
+	it.each([
+		[3.6, 4],
+		[-20, 0],
+		[Number.NaN, 0],
 		[2 ** 31, 2 ** 31 - 1],
 		[Number.POSITIVE_INFINITY, 2 ** 31 - 1],
-	])('stores the runtime %d as %d', (runtimeMs, expected) => {
-		const row = toEndedRow(endedFacts({ runtimeMs, timeSavedMin: runtimeMs }), 'p', 'e');
-
-		expect(row.runtimeMs).toBe(expected);
-		expect(row.timeSavedMin).toBe(expected);
+	])('stores the time saved %d as %d', (timeSavedMin, expected) => {
+		expect(toEndedRow(endedFacts({ timeSavedMin }), 'p', 'e').timeSavedMin).toBe(expected);
 	});
 });
 

@@ -4,6 +4,8 @@ import { EXECUTION_LEDGER_ENTITY_NAME_MAX_LENGTH } from '@n8n/db';
 import type { NewExecutionLedgerRow } from './database/repositories/execution-ledger.repository';
 
 const INT_COLUMN_MAX = 2 ** 31 - 1;
+/** Above this, a JavaScript number no longer holds every whole value. */
+const BIGINT_COLUMN_MAX = Number.MAX_SAFE_INTEGER;
 
 export function toStartedRow(
 	facts: ExecutionLedgerStartedFacts,
@@ -30,8 +32,8 @@ export function toEndedRow(
 		event: 'ended',
 		outcome: facts.outcome,
 		blockedBy: facts.outcome === 'blocked' ? facts.blockedBy : 'none',
-		runtimeMs: toIntColumn(facts.runtimeMs),
-		timeSavedMin: toIntColumn(facts.timeSavedMin),
+		runtimeMs: toWholeNumber(facts.runtimeMs, BIGINT_COLUMN_MAX),
+		timeSavedMin: toWholeNumber(facts.timeSavedMin, INT_COLUMN_MAX),
 	};
 }
 
@@ -65,8 +67,8 @@ function truncateByCharacter(value: string, maxLength: number) {
 	return characters.length <= maxLength ? value : characters.slice(0, maxLength).join('');
 }
 
-/** The columns are `int`: a run that waits for more than 24.8 days would overflow. */
-function toIntColumn(value: number) {
+/** Integer columns reject fractions, `NaN` and `Infinity`. A negative duration means a clock jump. */
+function toWholeNumber(value: number, max: number) {
 	if (Number.isNaN(value)) return 0;
-	return Math.min(Math.max(Math.round(value), 0), INT_COLUMN_MAX);
+	return Math.min(Math.max(Math.round(value), 0), max);
 }

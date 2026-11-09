@@ -38,7 +38,13 @@ export { parseListQuerySortBy } from './utils/list-query-sort';
 export type { ListQuerySort, ListQuerySortDirection } from './utils/list-query-sort';
 export { separate } from './utils/separate';
 export { sql } from './utils/sql';
-export { idStringifier, lowerCaser, objectRetriever, sqlite } from './utils/transformers';
+export {
+	bigintStringToNumber,
+	idStringifier,
+	lowerCaser,
+	objectRetriever,
+	sqlite,
+} from './utils/transformers';
 export { withTransaction } from './utils/transaction';
 
 export * from './constants';
