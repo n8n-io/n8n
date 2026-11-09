@@ -130,9 +130,3 @@ export const EMPTY_ASSISTANT_MENTION_COUNTS: AssistantMentionCounts = {
 	node: 0,
 	group: 0,
 };
-
-export interface AssistantMentionArtifactReference {
-	referenceId: string;
-	workflowId: string;
-	workflowName: string;
-}

@@ -55,7 +55,6 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import type { InstanceAiMessageAuthorship } from '../prefills';
 import type {
-	AssistantMentionArtifactReference,
 	AssistantMentionCounts,
 	WorkflowArtifactReference,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
@@ -131,8 +130,10 @@ watch(
 	},
 	{ immediate: true },
 );
-const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined>(
-	'openWorkflowPreview',
+// Shows the tab of a workflow a sent message mentions. Only a host with a
+// preview provides it; an embedding panel without mentions has none.
+const showMentionedWorkflow = inject<((workflowId: string) => boolean) | undefined>(
+	'showMentionedWorkflow',
 	undefined,
 );
 const { isLowCredits, isOutOfCredits } = storeToRefs(store);
@@ -191,21 +192,6 @@ const mentionActiveWorkflowId = computed(() => {
 		? activeArtifactId
 		: undefined;
 });
-
-function addMentionReference(reference: AssistantMentionArtifactReference): void {
-	thread.upsertTransientWorkflowReference({
-		...reference,
-		...(thread.projectId ? { projectId: thread.projectId } : {}),
-	});
-}
-
-function removeMentionReference(referenceId: string): void {
-	thread.removeTransientWorkflowReference(referenceId);
-}
-
-function openMentionWorkflow(workflowId: string): void {
-	void nextTick(() => openWorkflowPreview?.(workflowId));
-}
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -644,7 +630,6 @@ async function handleSubmit(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs?: number,
-	acceptDraft: () => void = () => {},
 	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
@@ -707,7 +692,11 @@ async function handleSubmit(
 				restoreFailedSubmission(restoreDraft);
 				return;
 			}
-			acceptDraft();
+			// A mentioned workflow gets its tab from the message it rides on, so it
+			// shows only now that the message is sent, not when it was picked. The
+			// first mention is the one shown, as with the attachments of a hand-off.
+			const [firstMentionedWorkflowId] = mentionedWorkflowIds;
+			if (firstMentionedWorkflowId) showMentionedWorkflow?.(firstMentionedWorkflowId);
 			// Track message-with-nodes only after a successful send, so failed
 			// sends and retries don't inflate the node-count metric.
 			if (nodeCount > 0) {
@@ -1031,9 +1020,6 @@ defineExpose({
 										@submit="handleSubmit"
 										@stop="handleStop"
 										@dismiss-context-chip="dismissComposerContextChip"
-										@mention-reference-added="addMentionReference"
-										@mention-reference-removed="removeMentionReference"
-										@mention-workflow-open="openMentionWorkflow"
 									>
 										<template
 											v-if="$slots['composer-start'] && !hasFloatingConfirmation"
