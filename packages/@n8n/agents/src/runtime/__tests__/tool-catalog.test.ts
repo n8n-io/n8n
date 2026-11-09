@@ -184,4 +184,29 @@ describe('ToolCatalog', () => {
 		expect(findTool?.systemInstruction).toBe(TOOL_CATALOG_GUIDANCE);
 		expect(TOOL_CATALOG_GUIDANCE).not.toContain('save_issue');
 	});
+
+	it('names unloaded skills that use the tool group of the returned tools', async () => {
+		const loaded = new Set<string>();
+		const withSkills = new ToolCatalog(tools, {
+			toolGroups: { list_issues: 'linear', save_issue: 'linear', send_message: 'slack' },
+			unloadedSkillsForGroup: (group) =>
+				group === 'linear' && !loaded.has('linear-triage') ? ['linear-triage'] : [],
+		});
+		const findTool = withSkills
+			.getControllerTools()
+			.find((tool) => tool.name === FIND_TOOLS_TOOL_NAME)!;
+
+		const before = await findTool.handler!({ group: 'linear' }, {} as never);
+		expect(before).toMatchObject({ skillsToLoad: ['linear-triage'] });
+		expect(before).toHaveProperty('skillNote');
+
+		expect(await findTool.handler!({ group: 'slack' }, {} as never)).not.toHaveProperty(
+			'skillsToLoad',
+		);
+
+		loaded.add('linear-triage');
+		expect(await findTool.handler!({ tools: ['list_issues'] }, {} as never)).not.toHaveProperty(
+			'skillsToLoad',
+		);
+	});
 });

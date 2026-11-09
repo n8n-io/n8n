@@ -258,6 +258,17 @@ export class AgentRuntime {
 					toolGroupDescriptions: config.deferredToolGroupDescriptions,
 					// A lookup for an always-available tool says to call it directly.
 					activeTools: config.tools,
+					// Without active-skill state the runtime cannot tell which skills are loaded.
+					unloadedSkillsForGroup: (group) => {
+						const activeSkills = this.activeSkills;
+						if (!activeSkills) return [];
+						return (config.skillSource?.registry.skills ?? [])
+							.filter(
+								(skill) =>
+									skill.recommendedToolGroups?.includes(group) && !activeSkills.isLoaded(skill.id),
+							)
+							.map((skill) => skill.id);
+					},
 				});
 			}
 		}
@@ -479,7 +490,7 @@ export class AgentRuntime {
 	): Promise<StreamResult> {
 		this.runId = options.runId;
 		const state = await this.runState.resume(this.runId);
-		if (!state || state.finishReason !== 'paused' || Object.keys(state.pendingToolCalls).length) {
+		if (state?.finishReason !== 'paused' || Object.keys(state.pendingToolCalls).length) {
 			throw new StaleResumeError('This run is not paused');
 		}
 		if (options.hostMetadata !== undefined && !state.persistence) {

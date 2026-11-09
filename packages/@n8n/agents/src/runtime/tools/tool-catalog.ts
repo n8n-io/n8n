@@ -69,6 +69,12 @@ export interface ToolCatalogOptions {
 	toolGroupDescriptions?: Readonly<Record<string, string>>;
 	/** Always-available tools, so a lookup for one says to call it directly. */
 	activeTools?: BuiltTool[];
+	/**
+	 * Skills that recommend a tool group and are not loaded yet. A lookup that returns
+	 * tools from such a group names those skills, because the tool catalog makes the
+	 * tools reachable without the skill's guidance.
+	 */
+	unloadedSkillsForGroup?: (group: string) => string[];
 }
 
 /** Model tool input arrives as an object or, during repair, as a JSON string. */
@@ -115,6 +121,8 @@ export class ToolCatalog {
 
 	private readonly toolGroupDescriptions: Readonly<Record<string, string>>;
 
+	private readonly unloadedSkillsForGroup?: (group: string) => string[];
+
 	private readonly findTool: BuiltTool;
 
 	private readonly callTool: BuiltTool;
@@ -150,6 +158,7 @@ export class ToolCatalog {
 		this.activeToolNames = new Set((options.activeTools ?? []).map((tool) => tool.name));
 		this.topK = options.topK ?? DEFAULT_TOP_K;
 		this.toolGroupDescriptions = options.toolGroupDescriptions ?? {};
+		this.unloadedSkillsForGroup = options.unloadedSkillsForGroup;
 		this.findTool = this.createFindTool();
 		this.callTool = this.createCallTool();
 	}
@@ -271,7 +280,11 @@ export class ToolCatalog {
 					missing.push({ name, note: 'Already in your toolset. Call it directly.' });
 				else missing.push({ name, didYouMean: this.suggest(name) });
 			}
-			return { tools: found.map((entry) => this.describe(entry, true)), missing };
+			return {
+				tools: found.map((entry) => this.describe(entry, true)),
+				missing,
+				...this.skillsToLoad(found),
+			};
 		}
 
 		let matches: ToolCatalogEntry[];
@@ -288,7 +301,22 @@ export class ToolCatalog {
 		const full = matches.length <= FULL_SCHEMA_LIMIT;
 		return {
 			tools: matches.map((entry) => this.describe(entry, full)),
+			...this.skillsToLoad(matches),
 			...(matches.length === 0 ? { note: 'No tools matched. Try other keywords.' } : {}),
+		};
+	}
+
+	/** Names the unloaded skills that recommend the groups of the returned tools. */
+	private skillsToLoad(entries: ToolCatalogEntry[]) {
+		const unloadedSkillsForGroup = this.unloadedSkillsForGroup;
+		if (!unloadedSkillsForGroup) return {};
+		const groups = new Set(entries.map((entry) => entry.group));
+		const skills = [...new Set([...groups].flatMap((group) => unloadedSkillsForGroup(group)))];
+		if (skills.length === 0) return {};
+		return {
+			skillsToLoad: skills,
+			skillNote:
+				'These skills use the tools above and are not loaded. Load the skill that matches the request with load_skill before you run these tools with call_tool.',
 		};
 	}
 
