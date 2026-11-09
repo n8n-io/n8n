@@ -29,8 +29,11 @@ spawned step, so it must be a node of the graph.
    engine treats it as an opaque string.
 2. **A sub-node is a graph node of the new type `attached`.** It has the same configuration as a
    `v1-node`. The engine never plans it from edges, never uses it as a trigger and never seeds it.
-   It runs only as a spawned step.
-3. **No algorithm that reads the edges changes.** Attachments are not edges.
+   It runs as a step only when an action targets it. Other sub-nodes, such as a chat model or a
+   memory, run inside the root node's step, as in engine v1 (decision 6).
+3. **No algorithm that follows the edges changes.** Attachments are not edges. Code that picks nodes
+   because no edge leaves them, such as the terminal nodes of a sub-execution, skips `attached`
+   nodes.
 4. **The engine validates attachments.** Both ends exist. An `attached` node has no edge. Each
    `attached` node leads, through attachments, to a node that the trigger reaches. Attachments
    have no cycles.
@@ -74,7 +77,6 @@ Solid arrows are edges. Dashed arrows are attachments.
 - Chat model and memory nodes become graph nodes, but they are never action targets.
 - A sub-node that two roots share is one node with two attachments.
 - Pinned data on a sub-node is not supported, because only reachable nodes can be seeded.
-- Any code that treats a node without outgoing edges as a terminal node must skip `attached` nodes.
 - The read path shows a spawned step under its declaring node, with the output under the
   attachment kind, as engine v1 does.
 

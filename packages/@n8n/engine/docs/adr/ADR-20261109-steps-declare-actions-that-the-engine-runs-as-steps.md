@@ -45,7 +45,9 @@ shim refuses an `EngineRequest`, so an agent with tools fails.
    continue is to run the node again, with the same inputs as the first turn plus a continuation.
    The continuation lists every earlier turn in order, each with its payload and the outcome of
    each of its actions. The engine derives the continuation from stored rows. It never stores it.
-   The last action that settles wakes the declaring step, exactly once.
+   The last action that settles wakes the declaring step once, the way a finished sub-execution
+   wakes its parent: only if the declaring step is still `waiting`. A step that was cancelled with
+   its execution is not woken.
 5. **A failed action is data.** Its error goes into the continuation. It does not fail the declaring
    step or the execution. The node decides what the error means.
 6. **A continue runs node code. A resume after a deadline or a resume request does not.** The rule

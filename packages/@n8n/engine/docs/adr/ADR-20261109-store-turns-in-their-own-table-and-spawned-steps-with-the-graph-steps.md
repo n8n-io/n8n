@@ -24,11 +24,14 @@ derives inputs.
 
 1. **Each turn is one row in a new table, `workflow_step_turn`.** The primary key is the step id
    and the turn number. The row holds the execution id, the actions (which the engine reads) and
-   the turn payload (which the engine does not read). One transaction writes the row, suspends the
-   step and creates one queued spawned step for each action. So the execution never shows a turn
-   without its spawned steps. A duplicate write does nothing.
-2. **A turn row holds only what is new in that turn.** The node rebuilds its whole conversation from
-   all turn rows. An action's result exists once, as the outputs of its spawned step.
+   the turn payload (which the engine does not read). For a turn with actions, one transaction
+   writes the row, suspends the step and creates one queued spawned step for each action. So the
+   execution never shows a turn without its spawned steps. A turn that ends with outputs settles the
+   step as any step does. A duplicate write does nothing.
+2. **A turn row holds only what is new in that turn.** The engine builds the continuation from all
+   turn rows and their spawned steps: each action's outcome is its spawned step's outputs or error.
+   The node rebuilds its whole conversation from the continuation. An outcome is stored only once,
+   in its spawned step.
 3. **Spawned steps live in `workflow_step_execution`.** A `kind` column tells a graph step from a
    spawned step. A spawned step also has its declaring step's id, the turn and the call id. A check
    constraint ties these columns to `kind`. The unique index on node and iteration applies to graph
