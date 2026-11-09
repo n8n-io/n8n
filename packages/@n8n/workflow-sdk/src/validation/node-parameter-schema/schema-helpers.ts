@@ -150,3 +150,8 @@ export const textSplitterInstanceSchema = subnodeInstanceBaseSchema;
  * Reranker subnode instance (ai_reranker)
  */
 export const rerankerInstanceSchema = subnodeInstanceBaseSchema;
+
+/**
+ * Decision Model subnode instance (ai_decisionModel)
+ */
+export const decisionModelInstanceSchema = subnodeInstanceBaseSchema;
