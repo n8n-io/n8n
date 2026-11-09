@@ -64,13 +64,19 @@ describe('MicrosoftWorkIqOAuth2Api Credential', () => {
 			]);
 		});
 
-		it('adds WorkIQ.Act only when write access is allowed', () => {
+		it('adds WorkIQ.Act only when write access is switched on', () => {
 			expect(propertyNamed('allowWriteAccess')?.default).toBe(false);
-			expect(evaluate('scope', { allowWriteAccess: false })).not.toContain('WorkIQ.Act');
 			expect(evaluate('scope', { allowWriteAccess: true })).toContain(
 				`${WORK_IQ_RESOURCE_ID}/WorkIQ.Act`,
 			);
 		});
+
+		it.each([false, undefined, '', 'false', 0])(
+			'withholds WorkIQ.Act for %j, so only the toggle can widen consent',
+			(allowWriteAccess) => {
+				expect(evaluate('scope', { allowWriteAccess })).not.toContain('WorkIQ.Act');
+			},
+		);
 
 		it('qualifies every Work IQ permission with the resource ID', () => {
 			// Entra rejects the bare `WorkIQ.Read` form Microsoft's setup docs use.

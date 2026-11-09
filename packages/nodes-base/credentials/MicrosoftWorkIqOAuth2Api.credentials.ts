@@ -57,10 +57,12 @@ export class MicrosoftWorkIqOAuth2Api implements ICredentialType {
 		{
 			// offline_access is what makes the token refreshable; without it every
 			// credential would need an interactive reconnect once the hour is up.
+			// The write scope is gated on an exact `true` so nothing but the toggle
+			// itself can widen consent to Microsoft 365 writes.
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: `={{ "${READ_SCOPES}" + ($self["allowWriteAccess"] ? " ${WRITE_SCOPE}" : "") + " offline_access" }}`,
+			default: `={{ "${READ_SCOPES}" + ($self["allowWriteAccess"] === true ? " ${WRITE_SCOPE}" : "") + " offline_access" }}`,
 		},
 		{
 			// Inherited from microsoftOAuth2Api but unused: Work IQ is reached at
