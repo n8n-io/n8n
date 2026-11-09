@@ -308,10 +308,6 @@ const pruneTimeDisplay = computed(() => {
 
 	// The gap above the header. The timeline line spans it.
 	--timeline-gap: var(--spacing--lg);
-
-	&:first-child {
-		--timeline-gap: 0;
-	}
 }
 
 .groupTimelineColumn {
@@ -325,6 +321,11 @@ const pruneTimeDisplay = computed(() => {
 
 	@include timeline-line;
 	--timeline-hole: var(--spacing--sm);
+
+	// Nothing is above the first header, so no line runs above its chevron.
+	.groupHeader:first-child &::before {
+		display: none;
+	}
 }
 
 .groupLabel {

@@ -12,15 +12,17 @@ const props = defineProps<{
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
 
-// A version has its own engine only with the engine-v2 module.
-const isVisible = computed(() => settingsStore.isModuleActive('engine-v2'));
-// A version without an engine runs on v1.
-const engine = computed(() => props.settings?.engineType ?? 'v1');
+const label = computed(() => {
+	const engine = props.settings?.engineType;
+	if (!settingsStore.isModuleActive('engine-v2') || !engine) return null;
+
+	return i18n.baseText('workflowHistory.item.engine', { interpolate: { engine } });
+});
 </script>
 
 <template>
-	<N8nBadge v-if="isVisible" :class="$style.badge" data-test-id="workflow-history-engine-badge">
-		{{ i18n.baseText('workflowHistory.item.engine', { interpolate: { engine } }) }}
+	<N8nBadge v-if="label" :class="$style.badge" data-test-id="workflow-history-engine-badge">
+		{{ label }}
 	</N8nBadge>
 </template>
 

@@ -25,10 +25,16 @@ describe('WorkflowVersionEngineBadge', () => {
 		expect(getByTestId('workflow-history-engine-badge')).toHaveTextContent('Engine v2');
 	});
 
-	it('shows v1 for a version without an engine', () => {
-		const { getByTestId } = renderBadge(null);
+	it('shows v1 for a version on v1', () => {
+		const { getByTestId } = renderBadge({ engineType: 'v1' });
 
 		expect(getByTestId('workflow-history-engine-badge')).toHaveTextContent('Engine v1');
+	});
+
+	it.each([null, {}])('shows nothing for a version without an engine: %o', (settings) => {
+		const { queryByTestId } = renderBadge(settings);
+
+		expect(queryByTestId('workflow-history-engine-badge')).not.toBeInTheDocument();
 	});
 
 	it('shows nothing without the engine-v2 module', () => {

@@ -3,31 +3,30 @@
 // Draws the timeline line through the full height of a row's timeline column,
 // plus the gap above the row. The consumer sets `--timeline-gap` to that gap.
 // The line skips `--timeline-hole` at the vertical center, so it does not show
-// through a hollow status dot.
+// through a hollow status dot. To draw no hole, do not set `--timeline-hole`:
+// a unitless `0` makes the `calc()` below invalid, and the browser drops the line.
 @mixin timeline-line {
-	--timeline-hole: 0;
-
 	&::before,
 	&::after {
 		content: '';
 		position: absolute;
-		left: 50%;
+		left: 0;
+		right: 0;
+		margin-inline: auto;
 		width: var(--border-width);
-		transform: translateX(-50%);
 		background-color: var(--color--foreground);
 	}
 
 	&::before {
-		top: calc(-1 * var(--timeline-gap));
-		bottom: calc(50% + var(--timeline-hole) / 2);
+		top: calc(-1 * var(--timeline-gap, 0px));
+		bottom: calc(50% + var(--timeline-hole, 0px) / 2);
 	}
 
 	&::after {
-		top: calc(50% + var(--timeline-hole) / 2);
+		top: calc(50% + var(--timeline-hole, 0px) / 2);
 		bottom: 0;
 	}
 
-	// Keep the status dot above the line.
 	> * {
 		position: relative;
 	}

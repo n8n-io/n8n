@@ -504,9 +504,10 @@ onBeforeUnmount(() => {
 	&.timelineLineBelow {
 		position: absolute;
 		top: calc(100% - var(--timeline-indicator-padding));
-		left: 50%;
+		left: 0;
+		right: 0;
+		margin-inline: auto;
 		height: calc(var(--timeline-item-padding) + var(--timeline-indicator-padding));
-		transform: translateX(-50%);
 	}
 
 	&.timelineLineHidden {
