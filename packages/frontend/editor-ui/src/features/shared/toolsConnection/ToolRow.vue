@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, ref, watch } from 'vue';
+import { computed, inject, nextTick, onMounted, ref, watch } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
 import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
@@ -114,6 +115,32 @@ const isActivationBlocked = computed(
 );
 
 const rowRef = ref<HTMLElement | null>(null);
+
+/**
+ * Skill descriptions can be long, so a skill row cuts its description to a few lines. The full
+ * text shows in a tooltip, but only when the text is cut.
+ */
+const cutsDescription = computed(() => props.item.kind === 'skill');
+const descriptionRef = ref<InstanceType<typeof N8nText> | null>(null);
+const descriptionCut = ref(false);
+
+function measureDescription() {
+	const element: unknown = descriptionRef.value?.$el;
+	descriptionCut.value =
+		element instanceof HTMLElement && element.scrollHeight > element.clientHeight + 1;
+}
+
+onMounted(() => {
+	if (cutsDescription.value) measureDescription();
+});
+useResizeObserver(
+	computed(() => (cutsDescription.value ? descriptionRef.value?.$el : null)),
+	measureDescription,
+);
+watch(
+	() => props.item.description,
+	() => void nextTick(measureDescription),
+);
 
 /**
  * For most rows the button only repeated what clicking the row already does.
@@ -242,15 +269,26 @@ function handleConnect() {
 							{{ creditsPill.text }}
 						</N8nBadge>
 					</span>
-					<N8nText
+					<N8nTooltip
 						v-if="item.description"
-						:class="$style.description"
-						tag="span"
-						size="small"
-						color="text-light"
+						:disabled="!descriptionCut"
+						as-child
+						placement="top-start"
+						:content-class="$style.descriptionTooltip"
 					>
-						{{ item.description }}
-					</N8nText>
+						<template #content>{{ item.description }}</template>
+						<N8nText
+							ref="descriptionRef"
+							:class="[$style.description, cutsDescription && $style.descriptionCut]"
+							tag="span"
+							size="small"
+							color="text-light"
+							:data-cut="descriptionCut || undefined"
+							data-test-id="tools-connection-row-description"
+						>
+							{{ item.description }}
+						</N8nText>
+					</N8nTooltip>
 				</span>
 			</template>
 		</component>
@@ -512,6 +550,20 @@ function handleConnect() {
 	// Wrap onto further lines rather than truncating; the virtual scroller
 	// measures each row's real height, so taller rows lay out correctly.
 	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.descriptionCut {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+}
+
+.descriptionTooltip {
+	max-width: calc(var(--spacing--5xl) * 2);
+	white-space: pre-line;
 	overflow-wrap: anywhere;
 }
 

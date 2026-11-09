@@ -8,7 +8,8 @@ import { useI18n } from '@n8n/i18n';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { preferenceUserName } from '@/features/settings/context/context.utils';
 
-type VersionAction = 'open' | 'restore' | 'use';
+// A click on the row opens a version, so the menu has no open item.
+type VersionAction = 'restore' | 'use';
 
 const props = defineProps<{
 	/** Newest first, so the first one is the latest. */
@@ -52,7 +53,6 @@ function savedBy(version: SkillVersionSummary): string {
 
 function actionsFor(index: number, version: number): Array<ActionDropdownItem<VersionAction>> {
 	return [
-		{ id: 'open', label: i18n.baseText('agents.builder.skills.versions.open'), icon: 'eye' },
 		...(props.agent && version !== props.agent.draft
 			? [
 					{
@@ -78,8 +78,7 @@ function actionsFor(index: number, version: number): Array<ActionDropdownItem<Ve
 }
 
 function onAction(version: number, action: VersionAction) {
-	if (action === 'open') emit('open', version);
-	else if (action === 'use') emit('use', version);
+	if (action === 'use') emit('use', version);
 	else emit('restore', version);
 }
 
@@ -140,8 +139,13 @@ function dotClass(version: number, index: number) {
 					<N8nText size="small" color="text-light">{{ savedBy(version) }}</N8nText>
 				</div>
 				<span :class="$style.actions" @click.stop>
+					<!-- The shown version cannot compare with itself. The button keeps its place, so the
+					     row does not change size when the user opens another version. -->
 					<N8nIconButton
-						v-if="version.version !== props.shownVersion"
+						:class="version.version === props.shownVersion && $style.placeholder"
+						:disabled="version.version === props.shownVersion"
+						:aria-hidden="version.version === props.shownVersion || undefined"
+						:tabindex="version.version === props.shownVersion ? -1 : undefined"
 						variant="ghost"
 						size="small"
 						icon="file-diff"
@@ -267,5 +271,9 @@ function dotClass(version: number, index: number) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--5xs);
+}
+
+.placeholder {
+	visibility: hidden;
 }
 </style>

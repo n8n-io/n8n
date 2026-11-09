@@ -9904,7 +9904,6 @@
 	"agents.builder.skills.versions.latest": "· Latest",
 	"agents.builder.skills.versions.savedBy": "{author}, {date} at {time}",
 	"agents.builder.skills.versions.unknownUser": "Unknown user",
-	"agents.builder.skills.versions.open": "Open version",
 	"agents.builder.skills.versions.restore": "Restore as new version",
 	"agents.builder.skills.versions.viewing": "Viewing an older version of the skill (v{version}), saved by {author} on {date} at {time}.",
 	"agents.builder.skills.versions.viewingLatest": "Viewing the latest version of the skill (v{version}), saved by {author} on {date} at {time}.",

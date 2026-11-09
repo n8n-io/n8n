@@ -208,7 +208,7 @@ function testIdForPath(path: string) {
 	cursor: pointer;
 
 	&:hover {
-		background: var(--color--background--light-2);
+		background: var(--background--hover);
 	}
 }
 
@@ -230,7 +230,7 @@ function testIdForPath(path: string) {
 
 	&:hover,
 	&:focus-within {
-		background: var(--color--background--light-2);
+		background: var(--background--hover);
 
 		.removeReference {
 			opacity: 1;
@@ -268,8 +268,11 @@ function testIdForPath(path: string) {
 	color: var(--color--danger);
 }
 
-.selected {
-	/* A translucent overlay, so the selected file stands out on a grey or a white list. */
+/* A translucent overlay, so the selected file stands out on a grey or a white list. A hover
+   keeps it, so the selected file does not go lighter under the pointer. */
+.selected,
+.selected:hover,
+.selected:focus-within {
 	background: var(--background--active);
 }
 
