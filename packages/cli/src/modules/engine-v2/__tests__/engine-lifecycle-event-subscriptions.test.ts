@@ -9,9 +9,9 @@ import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service
 import type { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 import {
 	EngineV2LifecycleSubscriptions,
-	LIFECYCLE_SUBSCRIBE_TIMEOUT_MS,
 	type LifecycleEventReceiver,
 } from '../engine-lifecycle-event-subscriptions';
+import { SUBSCRIBE_TIMEOUT_MS } from '../webhook-response/webhook-response-registry.service';
 
 const completed: LifecycleEvent = {
 	type: 'execution:completed',
@@ -151,9 +151,9 @@ describe('EngineV2LifecycleSubscriptions', () => {
 
 			const subscribing = subscriptions.subscribe('exec-1');
 			const rejection = expect(subscribing).rejects.toThrow(
-				`within ${LIFECYCLE_SUBSCRIBE_TIMEOUT_MS / 1000}s`,
+				`within ${SUBSCRIBE_TIMEOUT_MS / 1000}s`,
 			);
-			await vi.advanceTimersByTimeAsync(LIFECYCLE_SUBSCRIBE_TIMEOUT_MS);
+			await vi.advanceTimersByTimeAsync(SUBSCRIBE_TIMEOUT_MS);
 			await rejection;
 
 			// A subscription that completes late must not outlive the call.

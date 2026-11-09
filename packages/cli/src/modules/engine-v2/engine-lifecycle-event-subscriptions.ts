@@ -6,6 +6,7 @@ import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 
 import { EngineLifecycleEventPushRelay } from './engine-lifecycle-event-push-relay';
+import { SUBSCRIBE_TIMEOUT_MS } from './webhook-response/webhook-response-registry.service';
 
 /** Receives the lifecycle events of one execution, one event at a time. */
 export interface LifecycleEventReceiver {
@@ -14,12 +15,6 @@ export interface LifecycleEventReceiver {
 		handler: (event: LifecycleEvent) => void,
 	): Promise<UnsubscribeFromExecutionChannel>;
 }
-
-/**
- * How long (in ms) a subscription can take. A transport can wait for its
- * broker, for example Redis while it reconnects.
- */
-export const LIFECYCLE_SUBSCRIBE_TIMEOUT_MS = 30_000;
 
 /**
  * Subscribes to the lifecycle events of the executions that an editor watches,
@@ -60,7 +55,7 @@ export class EngineV2LifecycleSubscriptions {
 	 *
 	 * @throws {UnexpectedError} If the receiver is not set.
 	 * @throws {OperationalError} If the subscription fails or does not become
-	 * active within `LIFECYCLE_SUBSCRIBE_TIMEOUT_MS`.
+	 * active within `SUBSCRIBE_TIMEOUT_MS`.
 	 */
 	async subscribe(executionId: string): Promise<void> {
 		const { receiver } = this;
@@ -77,7 +72,7 @@ export class EngineV2LifecycleSubscriptions {
 
 		let timer: NodeJS.Timeout | undefined;
 		const timedOut = new Promise<'timed-out'>((resolve) => {
-			timer = setTimeout(() => resolve('timed-out'), LIFECYCLE_SUBSCRIBE_TIMEOUT_MS).unref();
+			timer = setTimeout(() => resolve('timed-out'), SUBSCRIBE_TIMEOUT_MS).unref();
 		});
 
 		let result: UnsubscribeFromExecutionChannel | 'timed-out';
@@ -101,7 +96,7 @@ export class EngineV2LifecycleSubscriptions {
 				() => {},
 			);
 			throw new OperationalError(
-				`Engine v2 could not subscribe to the lifecycle events within ${LIFECYCLE_SUBSCRIBE_TIMEOUT_MS / 1000}s.`,
+				`Engine v2 could not subscribe to the lifecycle events within ${SUBSCRIBE_TIMEOUT_MS / 1000}s.`,
 				{ extra: { executionId } },
 			);
 		}
