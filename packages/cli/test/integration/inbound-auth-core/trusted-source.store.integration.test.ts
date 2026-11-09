@@ -14,6 +14,7 @@ import { Cipher } from 'n8n-core';
 
 import { TrustedSourceIdentityEntity } from '@/modules/inbound-auth-core/database/entities/trusted-source-identity.entity';
 import { TrustedSourceEntity } from '@/modules/inbound-auth-core/database/entities/trusted-source.entity';
+import { TrustedSourceRepository } from '@/modules/inbound-auth-core/database/repositories/trusted-source.repository';
 import {
 	SystemTrustedSourceModificationError,
 	TrustedSourceDbStore,
@@ -128,11 +129,11 @@ describe('TrustedSourceStore (integration)', () => {
 				type: 'oauth2',
 				managedBy: 'admin',
 				status: 'unchecked',
-				configVersion: 1,
+				configVersion: 2,
 			});
 			expect(row.config).not.toContain('oauth2');
 			expect(JSON.parse(await cipher.decryptV2(row.config))).toMatchObject({
-				version: 1,
+				version: 2,
 				authentication: { type: 'oauth2', clockSkewSeconds: 60 },
 				identity: { subject: 'binding' },
 			});
@@ -195,7 +196,7 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(await store.getById(row.id)).toMatchObject({
 				id: row.id,
 				name: 'Acme',
-				config: { version: 1 },
+				config: { version: 2 },
 			});
 			expect(await store.getByIssuer('https://acme.example.com')).toMatchObject({ id: row.id });
 			expect(await store.getById('missing')).toBeUndefined();
@@ -283,7 +284,7 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(updated).toMatchObject({
 				name: 'New',
 				issuer: 'https://new.example.com',
-				configVersion: 1,
+				configVersion: 2,
 			});
 			expect(updated.config).not.toBe(row.config);
 
@@ -384,7 +385,7 @@ describe('TrustedSourceStore (integration)', () => {
 			await store.getById(row.id);
 			await store.listBySurface('public-api');
 
-			await store.delete(row.id);
+			expect(await store.delete(row.id)).toEqual({ id: row.id, issuer: row.issuer });
 
 			expect(await rows.findOneBy({ id: row.id })).toBeNull();
 			expect(await store.getById(row.id)).toBeUndefined();
@@ -651,6 +652,169 @@ describe('TrustedSourceStore (integration)', () => {
 				unchecked.id,
 				neverChecked.id,
 			]);
+		});
+	});
+
+	describe('upgradeStoredConfigs', () => {
+		const storedDocument = async (id: string) =>
+			JSON.parse(await cipher.decryptV2((await rows.findOneByOrFail({ id })).config));
+		// A system row as 2.44 seeded it, before the apps surface existed.
+		const v1SystemWithoutApps = async (surfaces?: Parameters<typeof minimalConfig>[0]) =>
+			await cipher.encryptV2(trustedSourceConfigSchemaFor('system').parse(minimalConfig(surfaces)));
+
+		it('rewrites admin and system rows to the latest version and keeps their other state', async () => {
+			const user = await createOwner();
+			const v1Jit = trustedSourceConfigSchemaFor('admin').parse({
+				...minimalConfig(),
+				identity: {
+					provision: { human: 'jit' },
+					roleMapping: { mode: 'on-provision', fallbackInstanceRole: 'global:member' },
+				},
+			});
+			const admin = await seedRow({
+				config: await cipher.encryptV2(v1Jit),
+				status: 'healthy',
+				lastCheckedAt: secondsAgo(60),
+				metadata: JSON.stringify({ version: 1, documents: [] }),
+			});
+			const system = await seedRow({
+				managedBy: 'system',
+				config: await v1SystemWithoutApps({
+					'public-api': {},
+					trigger: { audiences: ['custom-audience'] },
+				}),
+			});
+			await bindings.save(
+				bindings.create({
+					sourceId: admin.id,
+					subject: 'alice',
+					userId: user.id,
+					provenance: 'jit',
+					status: 'active',
+					lastSeenAt: null,
+				}),
+			);
+
+			expect(await store.upgradeStoredConfigs()).toBe(2);
+
+			for (const row of [admin, system]) {
+				const after = await rows.findOneByOrFail({ id: row.id });
+				expect(after).toMatchObject({
+					configVersion: 2,
+					status: row.status,
+					lastCheckedAt: row.lastCheckedAt,
+					metadata: row.metadata,
+				});
+				expect(await storedDocument(row.id)).toMatchObject({ version: 2 });
+			}
+			const adminDocument = await storedDocument(admin.id);
+			expect(adminDocument.identity.provision).toEqual({ person: 'jit' });
+			expect(adminDocument.surfaces).toEqual({ 'public-api': {} });
+			expect((await storedDocument(system.id)).surfaces).toEqual({
+				'public-api': {},
+				trigger: { audiences: ['custom-audience'] },
+				apps: {},
+			});
+			expect(await bindings.countBy({ sourceId: admin.id })).toBe(1);
+		});
+
+		it('reads a system row without the apps surface as one that serves it', async () => {
+			const system = await seedRow({ managedBy: 'system', config: await v1SystemWithoutApps() });
+
+			expect((await loadSource(system.id)).config.surfaces).toEqual({
+				'public-api': {},
+				apps: {},
+			});
+		});
+
+		it('drops a cached copy of an upgraded row', async () => {
+			const row = await seedRow();
+			await store.getById(row.id);
+			const deleteMany = vi.spyOn(cacheService, 'deleteMany');
+
+			await store.upgradeStoredConfigs();
+
+			expect(deleteMany).toHaveBeenCalledWith(
+				expect.arrayContaining([
+					`trusted-source:id:${row.id}`,
+					`trusted-source:issuer:${row.issuer}`,
+					'trusted-source:all',
+				]),
+			);
+		});
+
+		it('keeps upgrading when the cache cannot be invalidated', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+			vi.spyOn(cacheService, 'deleteMany').mockRejectedValueOnce(new Error('cache down'));
+			const first = await seedRow();
+			const second = await seedRow();
+
+			expect(await store.upgradeStoredConfigs()).toBe(2);
+
+			for (const row of [first, second]) {
+				expect((await rows.findOneByOrFail({ id: row.id })).configVersion).toBe(2);
+			}
+			expect(warn).toHaveBeenCalledWith(
+				'Config upgraded but the cache could not be invalidated',
+				expect.objectContaining({ error: expect.objectContaining({ message: 'cache down' }) }),
+			);
+		});
+
+		it('neither counts nor invalidates a row whose conditional write lost', async () => {
+			await seedRow();
+			vi.spyOn(Container.get(TrustedSourceRepository), 'upgradeConfig').mockResolvedValueOnce(
+				false,
+			);
+			const deleteMany = vi.spyOn(cacheService, 'deleteMany');
+
+			expect(await store.upgradeStoredConfigs()).toBe(0);
+
+			expect(deleteMany).not.toHaveBeenCalled();
+		});
+
+		it('changes nothing when every row is at the latest version', async () => {
+			await seedRow();
+			await store.upgradeStoredConfigs();
+			const before = await rows.find();
+
+			expect(await store.upgradeStoredConfigs()).toBe(0);
+
+			expect(await rows.find()).toEqual(before);
+		});
+
+		it('logs and skips a row it cannot read, and upgrades the others', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+			const bad = await seedRow({ config: 'garbage' });
+			const good = await seedRow();
+
+			expect(await store.upgradeStoredConfigs()).toBe(1);
+
+			expect(await rows.findOneByOrFail({ id: bad.id })).toMatchObject({
+				configVersion: 1,
+				config: 'garbage',
+			});
+			expect((await rows.findOneByOrFail({ id: good.id })).configVersion).toBe(2);
+			expect(warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ id: bad.id }),
+			);
+		});
+
+		it('does not overwrite a row that moved on since it was read', async () => {
+			const row = await seedRow();
+			// An admin save lands between the read and the write.
+			await store.update(row.id, { config: minimalConfig({ 'instance-mcp': {} }) });
+			const saved = await rows.findOneByOrFail({ id: row.id });
+
+			const written = await Container.get(TrustedSourceRepository).upgradeConfig(
+				row.id,
+				1,
+				{ config: row.config, configVersion: 2 },
+				{},
+			);
+
+			expect(written).toBe(false);
+			expect((await rows.findOneByOrFail({ id: row.id })).config).toBe(saved.config);
 		});
 	});
 

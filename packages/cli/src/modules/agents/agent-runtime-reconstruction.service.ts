@@ -15,6 +15,7 @@ import {
 } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	N8N_CHAT_CONTEXT_TOOL_NAME,
 	N8N_CHAT_INTEGRATION_TYPE,
@@ -55,6 +56,7 @@ import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import { WorkflowRunner } from '@/workflow-runner';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
@@ -91,7 +93,6 @@ import {
 import { toAgentDocument } from './json-config/agent-document';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { resolveCredentialAwareModelConfig } from './json-config/model-config';
-import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
@@ -127,6 +128,12 @@ export interface ReconstructedAgentRuntime {
 	mcpServerAttributions: Map<string, string>;
 	/** Saved budget config, including a turned-off guardrail. Absent when unset. */
 	budget?: BudgetGuardrailConfig;
+	/**
+	 * The main model credential is the Gateway credits marker: the run debits
+	 * the shared wallet, so the budget guardrail also attaches the gateway 402
+	 * classifier — a depleted wallet ends the run with `budget.credits`.
+	 */
+	modelCredentialGatewayManaged?: boolean;
 }
 
 export interface SubAgentDelegationConfig {
@@ -312,7 +319,7 @@ export class AgentRuntimeReconstructionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
@@ -709,6 +716,9 @@ export class AgentRuntimeReconstructionService {
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			...(options.config.config?.guardrails?.budget !== undefined
 				? { budget: options.config.config.guardrails.budget }
+				: {}),
+			...(options.config.credential === AI_GATEWAY_MANAGED_TAG
+				? { modelCredentialGatewayManaged: true }
 				: {}),
 		};
 	}

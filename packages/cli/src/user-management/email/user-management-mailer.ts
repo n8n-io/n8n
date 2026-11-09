@@ -2,7 +2,7 @@ import { inTest, Logger } from '@n8n/backend-common';
 import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ApiKey, User } from '@n8n/db';
-import { accountFirstName, PersonRepository } from '@n8n/db';
+import { accountSummary, accountFirstName, isPerson, PersonRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { AssignableProjectRole } from '@n8n/permissions';
 import { existsSync } from 'fs';
@@ -34,13 +34,10 @@ function formatRevokedAt(date: Date): string {
 	return REVOKED_AT_FORMATTER.format(date);
 }
 
-function formatRevokedBy(user: {
-	firstName?: string | null;
-	lastName?: string | null;
-	email: string;
-}): string {
-	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
-	return fullName || user.email;
+function formatRevokedBy(user: User): string {
+	const { firstName, lastName, email } = accountSummary(user);
+	const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+	return fullName || email || '';
 }
 
 type Template = HandlebarsTemplateDelegate<unknown>;
@@ -135,7 +132,8 @@ export class UserManagementMailer {
 		apiKey: ApiKey;
 		revoker: User;
 	}): Promise<SendEmailResult> {
-		if (!this.mailer) return { emailSent: false };
+		// Only a person has an email to send to.
+		if (!this.mailer || !isPerson(apiKey.user)) return { emailSent: false };
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const template = await this.getTemplate('api-key-revoked');

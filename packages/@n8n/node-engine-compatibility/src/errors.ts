@@ -87,16 +87,21 @@ export class EngineRequestNotSupportedError extends UserError {
 	}
 }
 
-/**
- * A wait that engine v2 cannot end yet. Engine v2 has no sub-workflow steps
- * and no step-bound resume requests.
- */
+/** A wait that engine v2 cannot end yet. */
 export class UnsupportedWaitError extends UserError {
 	constructor(nodeName: string, waitsFor: 'a sub-execution' | 'an approval') {
 		super(
 			waitsFor === 'a sub-execution'
 				? `Node "${nodeName}" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.`
 				: `Node "${nodeName}" sends a message and waits, and engine v2 cannot end that wait yet.`,
+		);
+	}
+}
+
+export class MissingResumeSecretError extends UserError {
+	constructor(nodeName: string) {
+		super(
+			`Node "${nodeName}" needs a signed resume URL or approval callback, but engine v2 has no resume secret to sign it`,
 		);
 	}
 }
@@ -135,12 +140,6 @@ export class UnsupportedSubWorkflowCallerError extends UserError {
 		super(
 			`Node "${nodeName}" (${nodeType}) calls a sub-workflow. Engine v2 runs sub-workflows from the Execute Sub-workflow node only.`,
 		);
-	}
-}
-
-export class SubWorkflowsNotSupportedError extends UserError {
-	constructor(nodeName: string) {
-		super(`Node "${nodeName}" calls a sub-workflow. This host cannot run sub-workflows.`);
 	}
 }
 

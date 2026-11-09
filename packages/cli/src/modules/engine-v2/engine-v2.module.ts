@@ -64,13 +64,13 @@ export class EngineV2Module implements ModuleInterface {
 			// The remote data plane publishes over Redis, so only the subscribing end
 			// runs here.
 			const { startRedisExecutionChannelSubscriber } = await import(
-				'./response-channel/redis-execution-response-channel.js'
+				'./execution-channel/redis-execution-channel.js'
 			);
 			const { ExecutionChannelReceiver } = await import(
-				'./response-channel/in-memory-execution-response-receiver.js'
+				'./execution-channel/execution-channel-receiver.js'
 			);
 			const { createExecutionResponseCodec } = await import(
-				'./response-channel/execution-response-frame.js'
+				'./execution-channel/execution-response-frame.js'
 			);
 			const subscriber = await startRedisExecutionChannelSubscriber(logger);
 			this.channelSubscriber = subscriber;
@@ -90,16 +90,16 @@ export class EngineV2Module implements ModuleInterface {
 
 	private async initInMemoryResponseChannel(logger: Logger) {
 		const { createInMemoryExecutionChannel } = await import(
-			'./response-channel/in-memory-execution-response-channel.js'
+			'./execution-channel/in-memory-execution-channel.js'
 		);
 		const { ExecutionChannelSender } = await import(
-			'./response-channel/in-memory-execution-response-sender.js'
+			'./execution-channel/execution-channel-sender.js'
 		);
 		const { ExecutionChannelReceiver } = await import(
-			'./response-channel/in-memory-execution-response-receiver.js'
+			'./execution-channel/execution-channel-receiver.js'
 		);
 		const { createExecutionResponseCodec } = await import(
-			'./response-channel/execution-response-frame.js'
+			'./execution-channel/execution-response-frame.js'
 		);
 		const { publisher, subscriber } = createInMemoryExecutionChannel();
 		const responseCodec = createExecutionResponseCodec(logger);
