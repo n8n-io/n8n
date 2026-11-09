@@ -199,7 +199,11 @@ describe('applyEngineEnv', () => {
 
 		applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: true, ...engineOptions });
 
-		expect(env).toMatchObject({ N8N_ENABLED_MODULES: 'engine-v2', N8N_ENGINE_MODE: 'remote' });
+		expect(env).toMatchObject({
+			N8N_ENABLED_MODULES: 'engine-v2',
+			N8N_ENGINE_MODE: 'remote',
+			N8N_DEFAULT_BINARY_DATA_MODE: 'filesystem',
+		});
 	});
 
 	test('rejects a stack without a main, since the engine would be started as one', () => {
