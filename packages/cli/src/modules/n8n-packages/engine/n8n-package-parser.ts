@@ -27,10 +27,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
 import { toImportBlockedError } from './import-blocked.error';
 import { agentBodyIssues } from '../entities/agent/agent-body-issues';
-import {
-	keepConfirmedCredentialData,
-	resolveCredentialProperties,
-} from '../entities/credential/credential-display-controllers';
+import { dropUnconfirmedCredentialData } from '../entities/credential/credential-display-controllers';
 import type { PreparedAgent } from '../entities/agent/agent-import.types';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
@@ -507,26 +504,17 @@ export class N8nPackageParser {
 		return this.dropUnconfirmedPlainValues(credential, path);
 	}
 
-	/**
-	 * A package carries a plain credential value only for a field that decides which other fields
-	 * show. A plain value of any other field is dropped and reported by field name, never by value.
-	 */
 	private dropUnconfirmedPlainValues(
 		credential: SerializedCredential,
 		path: string,
 	): SerializedCredential {
-		if (credential.data === undefined) return credential;
-
-		const properties = resolveCredentialProperties(this.credentialTypes, credential.type);
-		const { data, dropped } = keepConfirmedCredentialData(credential.data, properties);
-		if (dropped.length === 0) return credential;
-
-		this.logger.warn(
-			`Package credential file at ${path}: dropped values of ${dropped.join(', ')}. Only expressions and values that control which fields show can travel in a package.`,
-		);
-
-		const { data: _discarded, ...rest } = credential;
-		return { ...rest, ...(data !== undefined ? { data } : {}), dataIsComplete: false };
+		const result = dropUnconfirmedCredentialData(credential, this.credentialTypes);
+		if (result.dropped.length > 0) {
+			this.logger.warn(
+				`Package credential file at ${path}: dropped values of ${result.dropped.join(', ')}. Only expressions and values that control which fields show can travel in a package.`,
+			);
+		}
+		return result.credential;
 	}
 
 	private async readJson<T = unknown>(

@@ -1,3 +1,4 @@
+import type { SerializedCredentialData } from '@n8n/api-types';
 import type { INodeProperties } from 'n8n-workflow';
 
 import { mock } from 'vitest-mock-extended';
@@ -5,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialTypes } from '@/credential-types';
 
 import {
+	dropUnconfirmedCredentialData,
 	findDisplayControllers,
 	isConfirmedControllerValue,
 	keepConfirmedCredentialData,
@@ -382,5 +384,71 @@ describe('keepConfirmedCredentialData', () => {
 
 		expect(data).toEqual({ caCertificate: EXPRESSION });
 		expect(dropped.sort()).toEqual(['allowUnauthorizedCerts', 'ssl']);
+	});
+});
+
+describe('dropUnconfirmedCredentialData', () => {
+	const EXPRESSION = '={{ $secrets.ca }}';
+
+	function knownPostgres() {
+		const credentialTypes = mock<CredentialTypes>();
+		credentialTypes.recognizes.mockReturnValue(true);
+		credentialTypes.getByName.mockReturnValue(postgresLikeCredentialType);
+		return credentialTypes;
+	}
+
+	const file = (data?: SerializedCredentialData) => ({
+		id: 'c1',
+		name: 'Postgres',
+		type: 'postgres',
+		...(data ? { data } : {}),
+	});
+
+	it('returns the credential as it is when nothing is dropped', () => {
+		const credential = file({ caCertificate: EXPRESSION, ssl: 'require' });
+
+		expect(dropUnconfirmedCredentialData(credential, knownPostgres())).toEqual({
+			credential,
+			dropped: [],
+		});
+	});
+
+	it('returns a credential without data as it is', () => {
+		expect(dropUnconfirmedCredentialData(file(), knownPostgres())).toEqual({
+			credential: file(),
+			dropped: [],
+		});
+	});
+
+	it('removes the dropped values, names the fields, and marks the data as incomplete', () => {
+		const result = dropUnconfirmedCredentialData(
+			file({ caCertificate: EXPRESSION, password: 'plain-secret' }),
+			knownPostgres(),
+		);
+
+		expect(result).toEqual({
+			credential: { ...file({ caCertificate: EXPRESSION }), dataIsComplete: false },
+			dropped: ['password'],
+		});
+	});
+
+	it('omits data when every value is dropped', () => {
+		const { credential, dropped } = dropUnconfirmedCredentialData(
+			file({ password: 'plain-secret' }),
+			knownPostgres(),
+		);
+
+		expect(credential).not.toHaveProperty('data');
+		expect(dropped).toEqual(['password']);
+	});
+
+	it('drops every plain value when the credential type is not known', () => {
+		const { credential, dropped } = dropUnconfirmedCredentialData(
+			file({ caCertificate: EXPRESSION, ssl: 'require' }),
+			mock<CredentialTypes>(),
+		);
+
+		expect(credential.data).toEqual({ caCertificate: EXPRESSION });
+		expect(dropped).toEqual(['ssl']);
 	});
 });
