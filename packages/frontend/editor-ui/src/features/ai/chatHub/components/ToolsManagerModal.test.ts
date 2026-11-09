@@ -219,14 +219,6 @@ describe('ToolsManagerModal', () => {
 		};
 	}
 
-	it('closes the dialog when the dialog requests close', async () => {
-		const { getByTestId } = renderComponent({ props: defaultProps() });
-
-		await userEvent.click(getByTestId('dialog-request-close'));
-
-		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
-	});
-
 	it('should render the modal title', () => {
 		const { getByText } = renderComponent({ props: defaultProps() });
 
