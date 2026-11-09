@@ -187,6 +187,12 @@ export interface BuiltTool {
 	/** Treat every model-facing result and error from this tool as external reference data. */
 	readonly outputTrust?: 'untrusted';
 	/**
+	 * The handler uses the agent's workspace. The runtime starts preparing the
+	 * workspace when the model begins to stream this tool's input, so a cold
+	 * sandbox can start while the arguments generate.
+	 */
+	readonly requiresWorkspace?: true;
+	/**
 	 * Ends the run after this call's batch settles, without another model call,
 	 * when it returns true for the output. For tools whose result is the last
 	 * thing the turn should do, so the model cannot repeat them.

@@ -6,12 +6,13 @@ import {
 	type SharedSecretTokenSpec,
 } from './shared-secret-token';
 
-/**
- * What an action token authorizes. Scoped, so a leaked token buys only one of
- * the things the data plane can already do: report lifecycle events, or read a
- * credential for a step it runs.
- */
-export const ACTION_SCOPES = ['lifecycle-events:write', 'credentials:read'] as const;
+/** What an action token authorizes. Scoped, so a leaked token buys only one of them. */
+export const ACTION_SCOPES = [
+	'lifecycle-events:write',
+	'credentials:read',
+	'data-tables:use',
+	'sub-workflows:resolve',
+] as const;
 
 export type ActionScope = (typeof ACTION_SCOPES)[number];
 

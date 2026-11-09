@@ -79,14 +79,18 @@ const builderPreWriteStatus = agentStatus.describe("Agent status before the buil
 const pushRef = z.string().describe('Editor push reference (pushRef)');
 
 const agentConfigFingerprint = z.object({
-	instructions: z.string(),
-	tools: z.array(z.string()),
+	instructions: z
+		.string()
+		.optional()
+		.meta({ deprecated: true })
+		.describe('Deprecated: carried the raw agent instructions. No longer emitted.'),
+	tools: z.array(z.string()).optional().meta({ deprecated: true }),
 	skills: z.array(z.string()),
 	tasks: z.array(z.string()),
 	triggers: z.array(z.string()),
-	vector_stores: z.array(z.string()),
+	vector_stores: z.array(z.string()).optional().meta({ deprecated: true }),
 	memory: z.object({ enabled: z.boolean(), storage: z.literal('n8n') }).nullable(),
-	model: z.string().nullable(),
+	model: z.string().nullable().optional().meta({ deprecated: true }),
 	config_version: z.string(),
 });
 
@@ -94,7 +98,7 @@ const agentConfigFingerprint = z.object({
 // workflow, custom tools carry custom_id, MCP servers carry server_name.
 const toolIdentity = {
 	node_type: z.string().optional(),
-	workflow: z.string().optional(),
+	workflow: z.string().optional().meta({ deprecated: true }),
 	custom_id: z.string().optional(),
 	server_name: z.string().optional(),
 };
@@ -765,7 +769,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ASKED_QUESTIONS: {
 		name: 'Builder asked questions',
 		description:
-			'The Instance AI builder used the agent_builder_ask_questions tool and suspended, showing the user a batch of questions to determine the shape of the agent.',
+			'The Instance AI builder showed the questions step of agent_builder_finish_setup. Before Oct 2026 it also fired for the retired agent_builder_ask_questions tool.',
 		properties: z.object({
 			...builderSessionIdentity,
 			question_count: z.number(),
@@ -775,7 +779,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_ANSWERED_BUILDER_QUESTIONS: {
 		name: 'User answered builder questions',
 		description:
-			'The user resumed a builder agent_builder_ask_questions card by answering, skipping, or dismissing it.',
+			'The user answered, skipped, or dismissed the questions step of agent_builder_finish_setup. Before Oct 2026 it also fired for the retired agent_builder_ask_questions tool.',
 		properties: z.object({
 			...builderSessionIdentity,
 			outcome: z.enum(['answered', 'skipped', 'dismissed']),

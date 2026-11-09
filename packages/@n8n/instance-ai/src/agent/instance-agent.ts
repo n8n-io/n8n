@@ -189,7 +189,7 @@ export async function createInstanceAgent(
 	const hasDeferredExternalMcpTools =
 		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
-	const baseSystemPrompt = getVersionedSystemPrompt(
+	const systemPrompt = getVersionedSystemPrompt(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
 		{
@@ -213,18 +213,15 @@ export async function createInstanceAgent(
 		},
 	);
 
-	const systemPrompt = orchestrationContext?.skillAvailabilityNotice
-		? `${baseSystemPrompt}\n\n${orchestrationContext.skillAvailabilityNotice}`
-		: baseSystemPrompt;
-
 	setTracePromptVersion(
 		orchestrationContext?.tracing,
 		orchestrationContext?.promptConfiguration?.version,
 	);
 	setTraceModelId(orchestrationContext?.tracing, modelId);
+	const functionId = 'instance-ai.orchestrator';
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
-		functionId: 'instance-ai.orchestrator',
+		functionId,
 		executionMode: 'foreground',
 		metadata: modelIdTraceMetadata(modelId),
 	});
@@ -241,6 +238,7 @@ export async function createInstanceAgent(
 		agent.mcpConnectionFailures(mcpConnectionFailures);
 	}
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
+	if (options.requestLabels) agent.functionId(functionId);
 	if (options.thinkingEnabled !== false) {
 		applyAgentThinking(agent, modelId);
 	}

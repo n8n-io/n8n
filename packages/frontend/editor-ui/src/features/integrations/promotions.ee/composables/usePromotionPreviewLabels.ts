@@ -19,7 +19,7 @@ const MOVED_DETAIL = {
 	},
 } as const;
 
-/** The labels that the tree rows and the change cards share, so both say the same. */
+/** Labels for change details and blockers in the promotion preview. */
 export function usePromotionPreviewLabels() {
 	const i18n = useI18n();
 

@@ -12,8 +12,42 @@ import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { GLOBAL_OWNER_ROLE } from '../constants';
-import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { ApiKey, AuthIdentity, Project, ProjectRelation, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
+
+export type EligibleAccountsQuery = {
+	projectId: string;
+	projectRoleSlugs: string[];
+	globalRoleSlugs: string[];
+	userIds?: string[];
+};
+
+/**
+ * The `where` of `findEligibleByProjectOrGlobalRoles` in `UserRepository` and
+ * `PersonRepository`, or `null` when no account can match.
+ */
+export function eligibleAccountsWhere({
+	projectId,
+	projectRoleSlugs,
+	globalRoleSlugs,
+	userIds,
+}: EligibleAccountsQuery): Array<FindOptionsWhere<User>> | null {
+	if (userIds?.length === 0) return null;
+
+	const requestedUsers = userIds ? { id: In(userIds) } : {};
+	const where: Array<FindOptionsWhere<User>> = [];
+	if (globalRoleSlugs.length > 0) {
+		where.push({ ...requestedUsers, disabled: false, role: { slug: In(globalRoleSlugs) } });
+	}
+	if (projectRoleSlugs.length > 0) {
+		where.push({
+			...requestedUsers,
+			disabled: false,
+			projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
+		});
+	}
+	return where.length > 0 ? where : null;
+}
 
 /**
  * SQL condition for a user in the `deactivated` status of the users list.
@@ -36,6 +70,17 @@ const DEACTIVATED_USER_PARAMETERS = { userListDeactivated: true };
 export class UserRepository extends BaseRepository<User> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(User, dataSource.manager, transactionRunner);
+	}
+
+	async deleteAccount(
+		userId: string,
+		personalProjectId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
+		await manager.delete(AuthIdentity, { userId });
+		await manager.delete(Project, { id: personalProjectId });
+		await manager.delete(User, { id: userId });
 	}
 
 	async findManyByIds(
@@ -75,7 +120,11 @@ export class UserRepository extends BaseRepository<User> {
 	 * and so has no password would read as pending.
 	 */
 	async findAllWithRoleAndAuthIdentities(): Promise<User[]> {
-		return await this.find({ relations: ['role', 'authIdentities'], order: { id: 'ASC' } });
+		return await this.find({
+			relations: ['role', 'authIdentities'],
+			order: { id: 'ASC' },
+			loadEagerRelations: false,
+		});
 	}
 
 	async findByIdWithRole(id: string, ctx: OperationContext = {}): Promise<User | null> {
@@ -229,34 +278,9 @@ export class UserRepository extends BaseRepository<User> {
 	 * both to compute `isPending` (a raw `password IS NOT NULL` filter would
 	 * wrongly drop SSO/LDAP users).
 	 */
-	async findEligibleByProjectOrGlobalRoles({
-		projectId,
-		projectRoleSlugs,
-		globalRoleSlugs,
-		userIds,
-	}: {
-		projectId: string;
-		projectRoleSlugs: string[];
-		globalRoleSlugs: string[];
-		userIds?: string[];
-	}): Promise<User[]> {
-		if (userIds?.length === 0) return [];
-
-		const requestedUsers = userIds ? { id: In(userIds) } : {};
-		const where: Array<FindOptionsWhere<User>> = [];
-		if (globalRoleSlugs.length > 0) {
-			where.push({ ...requestedUsers, disabled: false, role: { slug: In(globalRoleSlugs) } });
-		}
-		if (projectRoleSlugs.length > 0) {
-			where.push({
-				...requestedUsers,
-				disabled: false,
-				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
-			});
-		}
-		if (where.length === 0) {
-			return [];
-		}
+	async findEligibleByProjectOrGlobalRoles(query: EligibleAccountsQuery): Promise<User[]> {
+		const where = eligibleAccountsWhere(query);
+		if (!where) return [];
 
 		return await this.find({
 			where,

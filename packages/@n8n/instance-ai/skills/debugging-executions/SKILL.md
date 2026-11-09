@@ -8,7 +8,13 @@ description: >-
   with an error from a node or an external service (for example a 401), before
   you explain the cause to the user.
 recommended_tools:
-  - workflow_builder_executions
+  - list_executions
+  - get_execution
+  - run_workflow
+  - run_workflow_step
+  - debug_execution
+  - get_execution_node_output
+  - get_resolved_node_parameters
   - get_workflow
   - get_workflow_as_code
 ---
@@ -20,7 +26,7 @@ with wrong or empty values.
 
 ## When the user reports it still fails
 
-Re-run the failing path with `workflow_builder_executions(action="run")` (or
+Re-run the failing path with `run_workflow` (or
 `workflow_builder_verify_built_workflow`) and inspect the real result before responding. Do not
 restate that the workflow is "fixed", "verified", or "working", and do not
 attribute the reported failure to a test-harness artifact, stale state, or "it
@@ -48,7 +54,7 @@ run them unprompted:
   such as Header Auth, can pass its test without a call to the service, so a
   pass does not show that the service accepts it. Say so when you report the
   check.
-- **Other node errors.** Start from `workflow_builder_executions(action="debug")` and the
+- **Other node errors.** Start from `debug_execution` and the
   resolved parameters of the failed node.
 
 Then report the checks and their results, and only after that give a cause.
@@ -72,7 +78,7 @@ own.
 
 Two consequences when the user reports a live workflow failing:
 
-- **Read the version each execution ran.** `workflow_builder_executions(action="list", workflowId)`
+- **Read the version each execution ran.** `list_executions( workflowId)`
   returns `workflowVersionId` on every row, plus `workflow.activeVersionId`
   (the published version) and `workflow.draftVersionId`. Only a row whose
   `workflowVersionId` equals `workflow.activeVersionId` ran the published code.
@@ -89,7 +95,7 @@ the fix — an earlier execution ran the old version.
 
 ## Testing event-triggered workflows
 
-Use `workflow_builder_executions(action="run")` with `inputData` matching the trigger's output
+Use `run_workflow` with `inputData` matching the trigger's output
 shape — do not rebuild the workflow with a Manual Trigger. For trigger
 `inputData` shapes, read the workspace file
 `knowledge-base/reference/trigger-input-data-shapes.md`
@@ -111,7 +117,7 @@ write nodes first (see below).
 
 ## Failed execution
 
-`workflow_builder_executions(action="debug")` already includes `failedNode.resolvedParameters` —
+`debug_execution` already includes `failedNode.resolvedParameters` —
 start there. That bundle has `parameters` (raw, with expressions intact),
 `resolved` (substituted), `failedExpressions` (those that threw), and
 `emptyResolutions` (those that resolved to `null`/`undefined`/`""` silently).
@@ -123,11 +129,11 @@ time; we just don't have it here.
 
 ## Confirming a fix on the node that failed
 
-`workflow_builder_executions(action="debug")` tells you what the node received. It does not tell
+`debug_execution` tells you what the node received. It does not tell
 you whether your fix works. To learn that, run the node itself:
 
 ```
-workflow_builder_executions(action="run-step", workflowId, nodeName, reuseExecutionId=<the failed execution>)
+run_workflow_step(workflowId, nodeName, reuseExecutionId=<the failed execution>)
 ```
 
 `reuseExecutionId` replays the data the node really received and re-runs only
@@ -136,7 +142,7 @@ first move whenever the user is debugging a **read** node that already failed a
 real execution: the node ran for real once already, and a mock-only check is
 what sends the user back for a second session.
 
-The action refuses a replay that would re-run a node above the target: an
+The tool refuses a replay that would re-run a node above the target: an
 unpinned one the execution never reached, one that failed there, or a loop
 that did not finish. Pick another execution, or tell the user which node would run again.
 
@@ -144,7 +150,7 @@ that did not finish. Pick another execution, or tell the user which node would r
 
 A step run is a real run. The node uses the user's real credentials and reaches
 the user's real systems, on the user's real data. Check what the node does
-before you reach for `run-step`:
+before you reach for `run_workflow_step`:
 
 - **Safe to run.** A read (`get`, `getAll`, `search`, `list`, `download`, a GET
   HTTP Request), or a transform that touches nothing outside the workflow (Set,
@@ -157,8 +163,8 @@ before you reach for `run-step`:
   an un-asked write to the user's data is not.
 
 For a write node, debug without running it: read the failed execution with
-`debug`, inspect the resolved parameters with
-`get-resolved-node-parameters`, and explain the fix. That is usually enough,
+`debug_execution`, inspect the resolved parameters with
+`get_resolved_node_parameters`, and explain the fix. That is usually enough,
 because a write node's failures are nearly always in its input or its
 parameters, both of which you can see without sending anything.
 
@@ -211,15 +217,15 @@ that Agent:
   and it does not report which. Do not name a single Agent to the user when
   this field holds more than one.
 - A tool on two Agents where one runs above the other is refused. Run the
-  upper Agent, then read the tool with `workflow_builder_executions(action="get-node-output")`.
+  upper Agent, then read the tool with `get_execution_node_output`.
 
 The tool's own arguments come from `toolArguments` — the values the agent would
 normally decide:
 
 ```
-workflow_builder_executions(action="run-step", workflowId, nodeName="Search Tickets Tool",
-           reuseExecutionId=<the failed execution>,
-           toolArguments={"query": "login fails", "status": "open"})
+run_workflow_step(workflowId, nodeName="Search Tickets Tool",
+                  reuseExecutionId=<the failed execution>,
+                  toolArguments={"query": "login fails", "status": "open"})
 ```
 
 The example targets a **read** tool on purpose. The write rule above holds here
@@ -242,13 +248,13 @@ the node's output from that execution.
 
 A sub-node that is not a tool — a model, memory, embeddings — cannot be run this
 way at all. Run the Agent, and read the sub-node with
-`workflow_builder_executions(action="get-node-output")` on **that** execution: n8n records every
+`get_execution_node_output` on **that** execution: n8n records every
 call a sub-node made while the Agent ran.
 
 ## Successful execution with wrong or empty value
 
-When `debug` doesn't apply because nothing errored, call
-`workflow_builder_executions(action="get-resolved-node-parameters", executionId, nodeName)` on the
+When `debug_execution` doesn't apply because nothing errored, call
+`get_resolved_node_parameters(executionId, nodeName)` on the
 node whose output looks off and on the nodes that feed it —
 **do this unprompted**, don't ask the user for permission first. It's a cheap
 read-only inspection and the only reliable way to confirm whether an empty value came

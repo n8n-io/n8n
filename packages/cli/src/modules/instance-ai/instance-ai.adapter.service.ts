@@ -2,6 +2,9 @@ import type { FetchFn } from '@n8n/agents';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	CreateAppDto,
+	ListAppsQueryDto,
+	SetAppBindingsDto,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
@@ -41,6 +44,7 @@ import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig, IExecutionResponse } from '@n8n/db';
 import {
 	AiBuilderTemporaryWorkflowRepository,
+	CredentialsRepository,
 	ExecutionRepository,
 	FolderRepository,
 	ProjectRepository,
@@ -52,6 +56,7 @@ import {
 import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
+	InstanceAiAppService,
 	InstanceAiContext,
 	InstanceAiConversationHistoryReader,
 	InstanceAiWorkflowService,
@@ -153,9 +158,6 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
-	OperationalError,
-	UnexpectedError,
-	UserError,
 	isTriggerNodeType,
 	jsonParse,
 	createRunExecutionData,
@@ -171,7 +173,15 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
+import {
+	ConflictError,
+	LockedError,
+	NotFoundError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -192,8 +202,8 @@ import {
 import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
+
 import { SkillsGate } from '@/modules/skills';
 import {
 	MCP_REGISTRY_PACKAGE_NAME,
@@ -234,6 +244,7 @@ import {
 	exceedsMaxExecutionTimeout,
 } from '@/workflows/execution-timeout-validation';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
+import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -690,6 +701,7 @@ export class InstanceAiAdapterService {
 				: {}),
 			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
 			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
+			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -1056,12 +1068,12 @@ export class InstanceAiAdapterService {
 		}
 		if (!this.license.isLicensed('feat:folders')) {
 			hints.push(
-				'**Folders** — organizing workflows into folders (list-folders, create-folder, delete-folder, move-workflow-to-folder) is available on registered Community Edition or paid plans.',
+				'**Folders** — organizing workflows into folders (list_folders, create_folder, delete_folder, move_workflow_to_folder) is available on registered Community Edition or paid plans.',
 			);
 		}
 		if (!this.teamProjectsLicensed()) {
 			hints.push(
-				'**Team projects** — this instance has no team-project license. `list-projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
+				'**Team projects** — this instance has no team-project license. `list_projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
 			);
 		}
 		return hints;
@@ -1136,13 +1148,22 @@ export class InstanceAiAdapterService {
 			}
 		};
 
-		const assertCredentialInBoundProject = async (credentialId: string) => {
+		const assertCredentialInBoundProject = async (
+			credentialId: string,
+			{ requireOwner = false }: { requireOwner?: boolean } = {},
+		) => {
 			if (boundProjectId === undefined) return;
 			const owner = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
 				credentialId,
 			);
-			// A missing credential falls through to the caller's not-found path.
-			if (owner) assertInBoundProject(owner.id);
+			if (!owner && requireOwner) {
+				// An absent owner can mean a missing credential or an instance-wide credential.
+				const existingIds = await Container.get(CredentialsRepository).findExistingIds([
+					credentialId,
+				]);
+				if (existingIds.length === 0) throw new CredentialNotFoundError(credentialId);
+			}
+			if (owner || requireOwner) assertInBoundProject(owner?.id);
 		};
 
 		return {
@@ -1261,7 +1282,7 @@ export class InstanceAiAdapterService {
 
 		/**
 		 * The folders the caller may name, per project. Access is checked with the
-		 * same scope the workspace tool's `list-folders` uses, so a folder name is
+		 * same scope the `list_folders` tool uses, so a folder name is
 		 * never revealed through a project the user cannot list folders in.
 		 * Returns undefined when folders cannot be read at all (unlicensed or
 		 * missing dependency), which the resolver reports as `unsupported`.
@@ -1825,11 +1846,12 @@ export class InstanceAiAdapterService {
 				}
 
 				// Without an explicit order the engine falls back to legacy v0, which walks
-				// the graph breadth-first. Generated code still wins if it sets its own.
-				const settings = {
+				// the graph breadth-first. Generated code still wins if it sets its own order
+				// or engine.
+				const settings = Container.get(WorkflowEngineDefaults).applyTo({
 					executionOrder: 'v1',
 					...(json.settings ?? {}),
-				} as IWorkflowSettings;
+				});
 				assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
 
 				// Strip redactionPolicy if the user lacks the required scope —
@@ -2646,7 +2668,7 @@ export class InstanceAiAdapterService {
 						throw new UserError(
 							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
 								`Run ${roots} instead, then read this node with ` +
-								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
+								'get_execution_node_output on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -2661,7 +2683,7 @@ export class InstanceAiAdapterService {
 							`Node "${nodeName}" runs through ${roots}, and ${upper} runs above another of them, ` +
 								`so a step run would run ${upper} and the nodes after it again. ` +
 								`Run ${upper} instead, then read this node with ` +
-								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
+								'get_execution_node_output on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -3055,6 +3077,11 @@ export class InstanceAiAdapterService {
 					type: credential.type,
 					...(credential.description !== undefined && { description: credential.description }),
 				} satisfies CredentialDetail;
+			},
+
+			async updateDescription(credentialId, description) {
+				await assertCredentialInBoundProject(credentialId, { requireOwner: true });
+				await credentialsService.updateDescription(user, credentialId, description);
 			},
 
 			async delete(credentialId: string) {
@@ -3517,6 +3544,85 @@ export class InstanceAiAdapterService {
 				await assertWorkflowInBoundProject(workflowId);
 				await findWorkflow(workflowId, 'workflow:update');
 				await evaluationConfigService.delete(workflowId, configId);
+			},
+		};
+	}
+
+	private createAppAdapter(
+		user: User,
+		projectId?: string,
+		threadId?: string,
+	): InstanceAiAppService | undefined {
+		if (!projectId || !Container.get(ModuleRegistry).isActive('apps')) return undefined;
+		const { assertProjectScope } = this.createProjectScopeHelpers(user, projectId);
+		const actor = { userId: user.id, threadId };
+		const services = async (scope: Scope) => {
+			if (scope === 'app:create' || scope === 'app:update') this.assertInstanceNotReadOnly('apps');
+			await assertProjectScope([scope], projectId);
+			const { AppsService, AppSourceArchiveService, AppBindingsService, renderBindingTypes } =
+				await import('@n8n/backend-module-apps');
+			return {
+				apps: Container.get(AppsService),
+				sources: Container.get(AppSourceArchiveService),
+				bindings: () => Container.get(AppBindingsService),
+				renderBindingTypes,
+			};
+		};
+
+		return {
+			createApp: async ({ name, namespace, visibility, id }) => {
+				const { apps } = await services('app:create');
+				return await apps.createApp(
+					projectId,
+					CreateAppDto.parse({ name, namespace, visibility }),
+					{ id, actor },
+				);
+			},
+			listApps: async ({ name }) => {
+				const { apps } = await services('app:list');
+				return await apps.listApps(projectId, ListAppsQueryDto.parse({ name, take: '50' }));
+			},
+			getApp: async (appId) => {
+				const { apps } = await services('app:read');
+				return await apps.getApp(projectId, appId);
+			},
+			findApp: async (appId) => {
+				const { apps } = await services('app:read');
+				try {
+					return await apps.getApp(projectId, appId);
+				} catch (error) {
+					if (error instanceof NotFoundError) return undefined;
+					throw error;
+				}
+			},
+			exportDraft: async (appId) => {
+				const { sources } = await services('app:read');
+				return await sources.exportDraft(projectId, appId);
+			},
+			commit: async (appId, baseVersionId, archive, label) => {
+				const { sources } = await services('app:update');
+				return await sources.commit(projectId, appId, baseVersionId, archive, label, actor);
+			},
+			getBindings: async (appId) => {
+				const { bindings, renderBindingTypes } = await services('app:read');
+				const result = await bindings().getBindings(projectId, appId);
+				return { ...result, types: renderBindingTypes(result.bindings) };
+			},
+			setBindings: async (appId, baseVersionId, next) => {
+				const { bindings, renderBindingTypes } = await services('app:update');
+				const dto = SetAppBindingsDto.parse({ baseVersionId, bindings: next });
+				const result = await bindings().setBindings(
+					user,
+					projectId,
+					appId,
+					dto.baseVersionId,
+					dto.bindings,
+				);
+				return { ...result, types: renderBindingTypes(result.bindings) };
+			},
+			exportSdk: async () => {
+				const { sources } = await services('app:read');
+				return await sources.exportSdk();
 			},
 		};
 	}

@@ -768,7 +768,7 @@ Workflows with `workflow_call` trigger:
 | Workflow                           | Inputs                                        | Purpose               |
 |------------------------------------|-----------------------------------------------|-----------------------|
 | `test-unit-reusable.yml`           | `ref`, `nodeVersion`, `collectCoverage`       | Unit tests            |
-| `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
+| `test-linting-reusable.yml`        | `ref`, `nodeVersion`, `affectedBase`          | Lint (affected packages when `affectedBase` is set) |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag`, `create_attestations` | Docker build |
@@ -1239,6 +1239,12 @@ keep the vulnerability out of public branch names, commits, and test description
 ## Slack Notifications
 
 All workflows post via `.github/scripts/slack/notify.mjs` — a direct `fetch` to `chat.postMessage` that exits non-zero on any Slack error. No third-party action; no silent swallowing.
+
+`release-schedule-patch-prs.yml` sends one alert to `#alerts-build` if any patch
+track fails, including a nested npm-install closure check. The alert includes
+the workflow name and run URL. It applies to manual `workflow_dispatch` runs
+while the cron trigger is disabled. Successful runs, no-change skips, and runs
+with only cancellations send no alert.
 
 ```yaml
 notify-on-failure:

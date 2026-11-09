@@ -10,6 +10,7 @@ import { BadRequestError } from '@n8n/errors';
 import { raceAbort } from '@n8n/utils/race-abort';
 
 import { APP_BUILD_SCRIPT } from './app-build-script';
+import { loadAppSdkFiles } from './app-sdk-files';
 import { APP_DEPENDENCY_KEY } from '../scaffold/app-scaffold';
 import { AppSandboxSettings, type AppSandboxResolveOptions } from './app-sandbox-settings';
 import { AppBuildError, type AppBuildAttempt, type AppBuildStage } from './app-build.types';
@@ -61,6 +62,11 @@ export class AppWorkspaceService {
 			await filesystem.writeFile(`${stage}/source.tgz`, await this.archives.pack(files), {
 				abortSignal: signal,
 			});
+			await filesystem.writeFile(
+				`${stage}/sdk.tgz`,
+				await this.archives.pack(await loadAppSdkFiles()),
+				{ abortSignal: signal },
+			);
 			await filesystem.writeFile(`${stage}/build.sh`, APP_BUILD_SCRIPT, { abortSignal: signal });
 			const deadline = attempt.startedAt.getTime() + this.config.buildTimeoutMs;
 			const remaining = deadline - Date.now();

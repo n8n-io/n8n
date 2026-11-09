@@ -296,6 +296,7 @@ describe('GET /executions/:id', () => {
 				seeded: [],
 			},
 			workflow: ranWorkflow(workflowId),
+			parent: null,
 			createdAt: '2026-08-25T10:00:00.000Z',
 			updatedAt: '2026-08-25T10:00:05.000Z',
 			finishedAt: '2026-08-25T10:00:05.000Z',

@@ -9,6 +9,7 @@ import {
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
@@ -75,7 +76,6 @@ import {
 	type OrchestratorRunStopSignal,
 	type StreamRunResult,
 	type SuspendedRunState,
-	type SuspensionInfo,
 	type WorkflowLoopWorkItemRecord,
 	type WorkflowSetupRoutingClaim,
 	type WorkflowVerificationObligation,
@@ -93,11 +93,16 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ForbiddenError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -178,6 +183,7 @@ import {
 	type AssistantTurnInputRuntime,
 } from './turn-setup/assistant-turn-input.builder';
 import type { AssistantTurnRuntime } from './turn-setup/assistant-turn-runtime';
+import { buildAssistantTurnTraceInput } from './turn-setup/assistant-turn-trace-input';
 
 export {
 	isAssistantCreditBalanceExhausted,
@@ -194,32 +200,10 @@ import {
 	type MessageTraceFinalization,
 	type OrchestratorResumeReason,
 } from './tracing';
+import { buildResumeTraceInput } from './tracing/resume-trace-input';
+import { buildSuspensionTraceOutputs } from './tracing/suspension-trace';
 import { WorkflowVerificationObligationService } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
-
-/**
- * A resource attachment as the trace records it: the reference, not its contents.
- */
-type TracedResourceAttachment = {
-	type: InstanceAiResourceAttachment['type'];
-	id: string;
-	projectId?: string;
-	executionId?: string;
-};
-
-/** Root-run outputs for a suspended segment — keep the LangSmith turn readable (AGENT-371). */
-function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo | undefined) {
-	const rawMessage = suspension?.suspendPayload.message;
-	const message = typeof rawMessage === 'string' && rawMessage ? rawMessage : undefined;
-	return {
-		status: 'suspended',
-		runId,
-		...(suspension?.requestId ? { requestId: suspension.requestId } : {}),
-		...(suspension?.toolCallId ? { pendingToolCallId: suspension.toolCallId } : {}),
-		...(suspension?.toolName ? { toolName: suspension.toolName } : {}),
-		...(message ? { message } : {}),
-	};
-}
 
 function isTelemetryConfigurableAgent(
 	agent: unknown,
@@ -229,6 +213,10 @@ function isTelemetryConfigurableAgent(
 		agent !== null &&
 		typeof Reflect.get(agent, 'telemetry') === 'function'
 	);
+}
+
+function toTelemetryInputType(inputType: string): string {
+	return inputType === 'app-blueprint' ? 'app_blueprint' : inputType;
 }
 
 const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
@@ -1705,7 +1693,7 @@ export class InstanceAiService {
 			if (run.abortController.signal.aborted) continue;
 
 			// Runs holding an inline HITL confirmation (for example
-			// `workflow_builder_ask_user`) sit in `activeRuns` because the orchestrator
+			// `ask_user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
 			// `instance_ai_pending_confirmations` row survives the restart and
 			// `handleOrphanedConfirmation` will issue the user-visible
@@ -2417,10 +2405,15 @@ export class InstanceAiService {
 			(attachment): attachment is InstanceAiNodesAttachment => attachment.type === 'nodes',
 		);
 
+		const elementAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiElementAttachment => attachment.type === 'element',
+		);
+
 		return [
 			...workflowAttachments,
 			...agentAttachments,
 			...(nodeContextEnabled ? nodeAttachments : []),
+			...elementAttachments,
 		];
 	}
 
@@ -2498,44 +2491,13 @@ export class InstanceAiService {
 			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(runId);
 
 			messageId = nanoid();
-			const traceInput: Record<string, unknown> = { message };
-			if (fileAttachments.length) {
-				traceInput.attachments = fileAttachments.map((attachment) => ({
-					mimeType: attachment.mimeType,
-					size: attachment.data.length,
-				}));
-			}
-
-			// `message` is the user's raw text, so without this the trace has no
-			// record that the editor handed the agent a resource.
-			if (contextAttachments.length) {
-				traceInput.resourceAttachments = contextAttachments.map((attachment) => {
-					if (attachment.type === 'nodes') {
-						return { type: attachment.type, id: attachment.workflowId };
-					}
-
-					const resource: TracedResourceAttachment = {
-						type: attachment.type,
-						id: attachment.id,
-					};
-
-					if (attachment.type === 'agent') {
-						resource.projectId = attachment.projectId;
-					}
-
-					if (attachment.type === 'workflow' && attachment.executionId) {
-						resource.executionId = attachment.executionId;
-					}
-
-					return resource;
-				});
-			}
-			if (threadArtifacts?.artifacts.length) {
-				traceInput.threadArtifacts = threadArtifacts;
-			}
-			if (messageGroupId) {
-				traceInput.messageGroupId = messageGroupId;
-			}
+			const traceInput = buildAssistantTurnTraceInput({
+				message,
+				fileAttachments,
+				contextAttachments,
+				threadArtifacts,
+				messageGroupId,
+			});
 
 			// Shared with createExecutionEnvironment so one ProxyTokenManager backs tracing + the run.
 			const proxyRunConfig = await this.createProxyRunConfig(user);
@@ -3685,16 +3647,7 @@ export class InstanceAiService {
 			runId,
 			userId: activeUser.id,
 			modelId,
-			input: {
-				requestId,
-				toolCallId,
-				approved: data.approved,
-				resumeFields: Object.keys(resumeData),
-				...(data.userInput ? { userInput: data.userInput } : {}),
-				...(data.action ? { action: data.action } : {}),
-				...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
-				...(data.answers ? { answers: data.answers } : {}),
-			},
+			input: { requestId, toolCallId, ...buildResumeTraceInput(resumeData) },
 			resumeReason: 'approval',
 			metadata: {
 				...(await this.readThreadProvenance(activeUser.id, threadId)),
@@ -4656,7 +4609,7 @@ export class InstanceAiService {
 			?.servers;
 		let type: string;
 		if (inputType) {
-			type = inputType;
+			type = toTelemetryInputType(inputType);
 		} else if (Array.isArray(payload.setupRequests) && payload.setupRequests.length > 0) {
 			type = 'setup';
 		} else if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0) {
@@ -5179,7 +5132,8 @@ export class InstanceAiService {
 					llmTitle = await titleTracing.withActiveSpan(titleTracing.rootRun, async () => {
 						const title = await generateTitleForRun(modelId, userText, {
 							...(titleTelemetry ? { telemetry: titleTelemetry } : {}),
-							modelFetch: this.modelService.getModelFetch(),
+							modelFetch: this.modelService.getLabeledModelFetch({ threadId }),
+							requestLabels: this.instanceAiConfig.modelRequestLabels,
 						});
 						if (title) {
 							await titleTracing.finishRun(titleTracing.rootRun, {
@@ -5199,7 +5153,8 @@ export class InstanceAiService {
 				}
 			} else {
 				llmTitle = await generateTitleForRun(modelId, userText, {
-					modelFetch: this.modelService.getModelFetch(),
+					modelFetch: this.modelService.getLabeledModelFetch({ threadId }),
+					requestLabels: this.instanceAiConfig.modelRequestLabels,
 				});
 			}
 			if (!llmTitle) return;

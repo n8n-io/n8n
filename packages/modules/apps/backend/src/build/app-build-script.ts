@@ -38,6 +38,10 @@ if [ ! -d node_modules ] || [ ! -f "$root/dependencies" ] || [ "$(cat "$root/dep
   npm ci --include=dev --no-audit --no-fund 2>&1 | tail -c "$max_log_bytes"
   printf '%s' "$cache_key" > "$root/dependencies"
 fi
+# npm does not manage the SDK, so install the copy of this instance on every build.
+rm -rf node_modules/@n8n/app-sdk
+mkdir -p node_modules/@n8n/app-sdk
+tar -xzf "$stage/sdk.tgz" -C node_modules/@n8n/app-sdk
 printf build > "$stage/stage"
 ulimit -c 0
 npm run build -- --base=/ 2>&1 | tail -c "$max_log_bytes"

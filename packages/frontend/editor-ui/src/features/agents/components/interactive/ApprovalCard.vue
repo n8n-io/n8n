@@ -13,6 +13,7 @@ import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsC
 const props = withDefaults(
 	defineProps<{
 		input: ApprovalInput;
+		taskTitle?: string;
 		agentName?: string;
 		tools?: AgentJsonConfig['tools'];
 		disabled?: boolean;
@@ -71,6 +72,19 @@ function submit(key: string) {
 		@select="submit"
 	>
 		<template #title>
+			<N8nText
+				v-if="taskTitle"
+				bold
+				step="sm"
+				:class="$style.taskTitle"
+				data-testid="agent-approval-task-title"
+			>
+				{{
+					i18n.baseText('agents.chat.backgroundTasks.approvalFor', {
+						interpolate: { title: taskTitle },
+					})
+				}}
+			</N8nText>
 			<N8nText step="sm">
 				<I18nT keypath="agents.chat.approval.agentDescription" scope="global">
 					<template #agentName>
@@ -90,6 +104,12 @@ function submit(key: string) {
 </template>
 
 <style module lang="scss">
+.taskTitle {
+	display: block;
+	margin-block-end: var(--spacing--3xs);
+	overflow-wrap: anywhere;
+}
+
 .nameBadge {
 	display: inline-flex;
 	justify-content: center;

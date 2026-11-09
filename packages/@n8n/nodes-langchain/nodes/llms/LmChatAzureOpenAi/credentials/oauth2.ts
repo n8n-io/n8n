@@ -2,8 +2,8 @@ import { getBearerTokenProvider } from '@azure/identity';
 import { NodeOperationError, type ISupplyDataFunctions } from 'n8n-workflow';
 
 import { N8nOAuth2TokenCredential } from './N8nOAuth2TokenCredential';
-import { normalizeEndpoint } from './normalizeEndpoint';
 import { requireFoundryEndpoint } from './requireFoundryEndpoint';
+import { normalizeEndpoint } from '../../../../utils/normalizeEndpoint';
 import type {
 	AzureEntraCognitiveServicesOAuth2ApiCredential,
 	AzureOpenAIOAuth2ModelConfig,

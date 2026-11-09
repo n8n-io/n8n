@@ -336,7 +336,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'workflow_builder_ask_user',
+				toolName: 'ask_user',
 				input: { prompt: 'Confirm?' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -390,7 +390,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'workflow_builder_ask_user',
+				toolName: 'ask_user',
 				args: { prompt: 'Confirm?' },
 				severity: 'destructive',
 				message: 'Need approval',
@@ -611,6 +611,38 @@ describe('mapAgentChunkToEvent', () => {
 				message: 'Set up the slack channel',
 				projectId: 'project-1',
 				channelConfig: { integrationType: 'slack', agentId: 'agent-9' },
+			},
+		});
+	});
+
+	it('maps confirmations with an app blueprint', () => {
+		const appBlueprint = {
+			name: 'Planner',
+			namespace: 'planner',
+			visibility: 'project',
+			description: 'Plan weekly tasks.',
+			theme: 'both',
+		};
+
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'apps',
+				input: { action: 'create', blueprint: appBlueprint },
+				suspendPayload: {
+					requestId: 'request-1',
+					severity: 'info',
+					message: 'Review the app blueprint',
+					inputType: 'app-blueprint',
+					appBlueprint,
+				},
+			}),
+		).toMatchObject({
+			type: 'confirmation-request',
+			payload: {
+				inputType: 'app-blueprint',
+				appBlueprint,
 			},
 		});
 	});

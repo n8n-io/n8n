@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
@@ -22,7 +23,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { DataTable } from '@/modules/data-table/data-table.entity';
+import { DataTable } from '@n8n/backend-module-data-table';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
@@ -246,7 +247,7 @@ describe('SourceControlService', () => {
 	const fsWriteFile = vi.mocked(writeFile);
 
 	beforeAll(async () => {
-		await testModules.loadModules(['data-table']);
+		await testModules.loadModules(['data-table'], packagedModules);
 		await testDb.init();
 
 		cipher = Container.get(Cipher);

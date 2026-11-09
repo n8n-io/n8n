@@ -24,6 +24,7 @@ import {
 	LayoutConflictPolicy,
 	OverwriteDeletionPolicy,
 	TagConflictPolicy,
+	WorkflowPublishingPolicy,
 	type ImportSelection,
 	type ImportSelectionRequest,
 } from '@/modules/n8n-packages/n8n-packages.types';
@@ -61,6 +62,8 @@ export function applySelectionRequest(
 			: DataTableSchemaConflictPolicy.OverwriteNonDestructive,
 		tagConflictPolicy: TagConflictPolicy.Rename,
 		credentialConflictPolicy: CredentialConflictPolicy.Overwrite,
+		// Promotion moves content only. Publish state stays with the target until autopublish exists.
+		publishingPolicy: WorkflowPublishingPolicy.PreserveTargetState,
 		// Apply moves and renames workflows and folders within their project to match the branch.
 		layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 		// A credential must be usable by the project, not only by the user who applies.

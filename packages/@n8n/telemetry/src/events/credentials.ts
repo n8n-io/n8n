@@ -12,6 +12,15 @@ const descriptionProperties = {
 		.describe('Length of the trimmed, saved description in UTF-16 code units. Zero when absent.'),
 };
 
+const managedAppVersion = z
+	.number()
+	.int()
+	.positive()
+	.optional()
+	.describe(
+		'Version of the managed app that the credential uses, or that a new connection would use. Absent for a user-owned app or a type with no managed app. Use it to follow a managed app rollout. Reported when the credential is saved, so it does not show that the OAuth flow finished.',
+	);
+
 export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 	USER_VIEWED_GATEWAY_CREDITS_CREDENTIAL_ERROR_NUDGE: {
 		name: 'User viewed Gateway credits credential error nudge',
@@ -48,12 +57,13 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 			jwe_enabled: z.boolean().optional(),
 			credential_supports_managed_auth: z.boolean().optional(),
 			credential_uses_managed_auth: z.boolean().optional(),
+			credential_managed_app_version: managedAppVersion,
 		}),
 	},
 	USER_UPDATED_CREDENTIALS: {
 		name: 'User updated credentials',
 		description:
-			'The server updated a credential through the internal credential API. Description metadata comes from the saved record. Description text is never included.',
+			'The server updated a credential through the internal credential API, Assistant, or MCP. Description metadata comes from the saved record. Description text is never included.',
 		properties: z.object({
 			user_id: z.string(),
 			user_role: z.string().optional(),
@@ -63,10 +73,11 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 			has_description: descriptionProperties.has_description.optional(),
 			description_length: descriptionProperties.description_length.optional(),
 			is_private: z.boolean(),
-			uses_external_secrets: z.boolean(),
-			jwe_enabled: z.boolean(),
-			credential_supports_managed_auth: z.boolean(),
-			credential_uses_managed_auth: z.boolean(),
+			uses_external_secrets: z.boolean().optional(),
+			jwe_enabled: z.boolean().optional(),
+			credential_supports_managed_auth: z.boolean().optional(),
+			credential_uses_managed_auth: z.boolean().optional(),
+			credential_managed_app_version: managedAppVersion,
 		}),
 	},
 	USER_STARTED_CREDENTIAL_CONNECTION: {

@@ -27,7 +27,7 @@ export async function toSkillToolRefusal(
 	if (error instanceof SkillSyncedError) {
 		return {
 			code: 'skill_synced',
-			message: skillSyncedToolMessage(error.skillName, error.sourceLabel),
+			message: skillSyncedToolMessage(error.skillName, error.sourceLabel, error.action),
 		};
 	}
 	if (!update || !(error instanceof ConflictError)) return undefined;

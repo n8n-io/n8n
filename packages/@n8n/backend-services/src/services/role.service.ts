@@ -458,9 +458,13 @@ export class RoleService {
 		namespace: RoleNamespace,
 		scopes: Scope | Scope[],
 		loadRoles?: RoleLoader,
+		anyOf?: Scope[],
 	): Promise<string[]> {
 		if (!Array.isArray(scopes)) {
 			scopes = [scopes];
+		}
+		if (anyOf) {
+			return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, loadRoles, anyOf);
 		}
 		// Get database roles from cache
 		return loadRoles

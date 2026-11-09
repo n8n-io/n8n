@@ -79,7 +79,6 @@ import { describeCallAgentFailure } from './call-agent-failure';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import {
-	buildAskQuestionsTool,
 	buildConfigureChannelTool,
 	buildFinishSetupTool,
 	buildResolveLlmTool,
@@ -715,7 +714,6 @@ export class AgentsBuilderToolsService {
 			this.withConfigMutationMarker(unpublishAgentTool, agentId),
 			callAgentTool,
 			this.createLlmTool(credentialProvider, modelLookup, user, projectId),
-			buildAskQuestionsTool({ track }),
 			this.withConfigMutationMarker(
 				this.withConfigSnapshotOnResume(
 					this.createConfigureChannelTool(agentId, projectId, user, track),

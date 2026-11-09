@@ -65,7 +65,8 @@ import {
 	createRunStateFromTree,
 	normalizeAgentTreeToolNames,
 } from './instanceAi.reducer';
-import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
+import { createArtifactPreviewMemory } from './artifactPreviewMemory';
+import { getLatestBuildResult } from './canvasPreview.utils';
 import {
 	useResourceRegistry,
 	type TransientWorkflowArtifactReference,
@@ -77,7 +78,9 @@ import {
 	INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	NEW_CONVERSATION_TITLE,
 } from './constants';
 import {
@@ -150,10 +153,10 @@ interface PendingResponseMetric {
 	isFirstUserMessage: boolean;
 	actionSource: InstanceAiThreadSourcePersisted;
 	generation: number;
-	// Context of the message that started the run, repeated on the response event
-	// so outcome cuts by context need no join back to the send event.
+	// Repeat the message context on the response event for outcome analysis.
 	mentionCounts: AssistantMentionCounts;
 	attachmentCount: number;
+	selectedElementCount: number;
 }
 
 /**
@@ -244,6 +247,41 @@ export function getPendingAgentTargetFromThreadMetadata(
 	return { agentId: target.agentId, projectId: target.projectId };
 }
 
+export function getAppTargetsFromThreadMetadata(metadata: Record<string, unknown> | undefined) {
+	const targets = metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY];
+	if (!Array.isArray(targets)) return [];
+	return targets.flatMap((target) => {
+		if (
+			!isRecord(target) ||
+			typeof target.appId !== 'string' ||
+			typeof target.projectId !== 'string'
+		) {
+			return [];
+		}
+		return [
+			{
+				appId: target.appId,
+				projectId: target.projectId,
+				...(typeof target.name === 'string' ? { name: target.name } : {}),
+			},
+		];
+	});
+}
+
+export function getPendingAppTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const target = metadata?.[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY];
+	if (
+		!isRecord(target) ||
+		typeof target.appId !== 'string' ||
+		typeof target.projectId !== 'string'
+	) {
+		return undefined;
+	}
+	return { appId: target.appId, projectId: target.projectId };
+}
+
 export function getAgentPreviewViewFromThreadMetadata(
 	metadata: Record<string, unknown> | undefined,
 ) {
@@ -312,7 +350,8 @@ function collectActionableConfirmations(
 
 /** Confirmations the panel owns: everything except the timeline-rendered kinds. */
 function isPanelConfirmation(item: PendingConfirmationItem): boolean {
-	return !item.toolCall.confirmation.mcpConnectRequest;
+	const confirmation = item.toolCall.confirmation;
+	return !confirmation.mcpConnectRequest && !confirmation.appBlueprint;
 }
 
 /**
@@ -578,35 +617,14 @@ export function createThreadRuntime(
 		transientWorkflowReferences.delete(referenceId);
 	}
 
-	// Latest user-triggered (non-agent) preview run per workflow. Lives on the
-	// thread runtime so it survives the preview canvas unmounting on a tab switch
-	// and is re-seeded on remount; a fresh runtime per thread resets it (INS-611).
-	// Plain Map: only read imperatively (on push events / remount), never rendered.
-	const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
-	function rememberManualExecution(
-		workflowId: string,
-		executionId: string,
-		agentExecutionId: string | undefined,
-	): void {
-		rememberedManualExecutions.set(workflowId, { executionId, agentExecutionId });
-	}
-	function getRememberedManualExecution(workflowId: string): RememberedManualExecution | undefined {
-		return rememberedManualExecutions.get(workflowId);
-	}
-	function forgetManualExecution(workflowId: string): void {
-		rememberedManualExecutions.delete(workflowId);
-	}
-
-	// Artifact logs panel auto-open bookkeeping. It lives here because the preview
-	// remounts on every tab switch. A fresh runtime per thread resets it (INS-1192).
-	const logsPanelMemory = {
-		// The user collapsed the panel in this thread, so later runs do not open it again.
-		collapsedByUser: false,
-		// Only a panel that opened automatically collapses after a successful run.
-		autoOpened: false,
-		// Latest started run per workflow id. Only the success of that run collapses the panel.
-		latestStartedExecutionIds: new Map<string, string>(),
-	};
+	// Preview state that survives the preview canvas unmounting on a tab switch.
+	// A fresh runtime per thread resets it (INS-611, INS-1192).
+	const {
+		rememberManualExecution,
+		getRememberedManualExecution,
+		forgetManualExecution,
+		logsPanelMemory,
+	} = createArtifactPreviewMemory();
 
 	// --- Reducer routing state ---
 	// Plain Maps: the routing tables themselves are never rendered. The run
@@ -636,19 +654,21 @@ export function createThreadRuntime(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
-	} = useResourceRegistry(
-		() => messages.value,
-		(id) => workflowsListStore.getWorkflowById(id)?.name,
-		() => archivedWorkflowIds.value,
-		() => getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
-		() => {
+	} = useResourceRegistry(() => messages.value, {
+		workflowNameLookup: (id) => workflowsListStore.getWorkflowById(id)?.name,
+		archivedWorkflowIds: () => archivedWorkflowIds.value,
+		agentBuilderTarget: () =>
+			getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		pendingAgentTarget: () => {
 			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
-		() => pendingWorkflowAttachment.value ?? undefined,
-		() => [...transientWorkflowReferences.values()],
-		() => getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
-	);
+		pendingWorkflowAttachment: () => pendingWorkflowAttachment.value ?? undefined,
+		transientWorkflowReferences: () => [...transientWorkflowReferences.values()],
+		agentBuilderTargets: () =>
+			getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		appTargets: () => getAppTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+	});
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
 		useResponseFeedback({
@@ -778,6 +798,7 @@ export function createThreadRuntime(
 				tab_visible: tabVisible,
 				mention_counts: metric.mentionCounts,
 				attachment_count: metric.attachmentCount,
+				selected_element_count: metric.selectedElementCount,
 			});
 		});
 	}
@@ -1521,6 +1542,7 @@ export function createThreadRuntime(
 		actionSource: InstanceAiThreadSourcePersisted,
 		mentionCounts: AssistantMentionCounts,
 		attachmentCount: number,
+		selectedElementCount: number,
 	): void {
 		const isPrefill = authorship.kind === 'prefill';
 		const setupContext =
@@ -1540,6 +1562,7 @@ export function createThreadRuntime(
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
 			mention_counts: mentionCounts,
 			attachment_count: attachmentCount,
+			selected_element_count: selectedElementCount,
 		});
 	}
 
@@ -1637,12 +1660,15 @@ export function createThreadRuntime(
 			seedArtifactOrigins(mentionedWorkflowIds, 'mentioned');
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
 			const attachmentCount = attachments?.length ?? 0;
+			const selectedElementCount =
+				attachments?.filter(({ type }) => type === 'element').length ?? 0;
 			trackUserMessageSent(
 				isFirstMessage,
 				authorship,
 				actionSource,
 				mentionCounts,
 				attachmentCount,
+				selectedElementCount,
 			);
 
 			const runId = await dispatchUserMessage(message, attachments, handoffContext, pushRef);
@@ -1659,6 +1685,7 @@ export function createThreadRuntime(
 				generation: metricGeneration,
 				mentionCounts,
 				attachmentCount,
+				selectedElementCount,
 			});
 			return true;
 		} finally {

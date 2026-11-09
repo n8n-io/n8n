@@ -16,6 +16,7 @@ import { sleep } from '@n8n/utils/sleep';
 
 import type { LaneAllocator } from './lane-allocator';
 import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
+import { prepareMcpBuildSeed, type McpBuildSeed } from './mcp-seed';
 import { collectExpectations } from '../build-expectations/collect';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
@@ -43,6 +44,7 @@ import {
 	redactLocalRunSecrets,
 	searchableBuildText,
 	scrubLocalSecretsFromBuild,
+	workflowExpectedForCase,
 	type BuildResult,
 } from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
@@ -68,13 +70,20 @@ import {
 	providerRetryBackoffMs,
 } from '../harness/transient-error';
 import type {
+	ArtifactRef,
 	BuildExpectationResult,
 	ExecutionScenario,
 	TestCaseCredential,
 	TranscriptTurn,
 	WorkflowTestCase,
 } from '../types';
-import { conversationUserTurnsAsText } from '../utils/conversation-text';
+import {
+	agentTurnsAsText,
+	conversationUserTurnsAsText,
+	failedBuildsPerTurn,
+	userTurnsAsText,
+} from '../utils/conversation-text';
+import { UserProxyLlm } from '../utils/user-proxy';
 
 /** Attempts (initial + retries) for a build hitting transient network errors. */
 export const MAX_BUILD_ATTEMPTS = 3;
@@ -198,7 +207,13 @@ function mcpBuildSettingsFromArgs(args: CliArgs): McpBuildSettings {
 async function buildWorkflowViaMcpOnLane(config: {
 	lane: Lane;
 	conversation: WorkflowTestCase['conversation'];
+	messageBudget?: number;
 	credentials?: TestCaseCredential[];
+	seed?: WorkflowTestCase['seed'];
+	executionScenarios?: ExecutionScenario[];
+	/** False for answer-only cases: a finished conversation without a workflow
+	 *  is then graded on the conversation, as on the Instance AI arm. */
+	workflowExpected: boolean;
 	slug: string;
 	iteration: number;
 	args: CliArgs;
@@ -207,24 +222,37 @@ async function buildWorkflowViaMcpOnLane(config: {
 	/** Run-wide spend collector; every attempt is recorded, success or not. */
 	buildSpend: McpBuildSpend[];
 }): Promise<BuildResult> {
-	const { lane, conversation, credentials, slug, iteration, args, logDir, logger, buildSpend } =
-		config;
-	const failure = (error: string): BuildResult => ({
+	const {
+		lane,
+		messageBudget,
+		credentials,
+		seed,
+		executionScenarios,
+		slug,
+		iteration,
+		args,
+		logDir,
+		logger,
+		buildSpend,
+	} = config;
+	const failure = (error: string, transcript?: TranscriptTurn[]): BuildResult => ({
 		success: false,
 		error,
 		workflowJsons: [],
 		createdWorkflowIds: [],
 		createdDataTableIds: [],
+		...(transcript ? { transcript } : {}),
 	});
 	if (!lane.buildUserPool) {
 		return failure(`Lane ${lane.baseUrl} has no build user pool — cannot build via MCP`);
 	}
 
-	let mcpApiKey: string;
+	let buildUser: { mcpApiKey: string; userId: string };
+	const memberClient = new N8nClient(lane.baseUrl);
 	try {
-		mcpApiKey = await provisionCaseBuildUser({
+		buildUser = await provisionCaseBuildUser({
 			pool: lane.buildUserPool,
-			memberClient: new N8nClient(lane.baseUrl),
+			memberClient,
 			credentials,
 			onCredentialCreated: (id) => lane.createdCredentialIds.add(id),
 			logger,
@@ -233,22 +261,49 @@ async function buildWorkflowViaMcpOnLane(config: {
 		return failure(`MCP build user/credential setup failed: ${extractErrorMessage(error)}`);
 	}
 
+	let prepared: McpBuildSeed | undefined;
+	try {
+		prepared = await prepareMcpBuildSeed({
+			ownerClient: lane.client,
+			memberClient,
+			memberUserId: buildUser.userId,
+			conversation: config.conversation ?? [],
+			seed,
+			executionScenarios,
+			logger,
+		});
+	} catch (error) {
+		// Not the builder's failure: `claude` never started.
+		return {
+			...failure(`MCP seeding failed: ${extractErrorMessage(error)}`),
+			seedingFailed: true,
+		};
+	}
+	const conversation = prepared?.conversation ?? config.conversation ?? [];
+
 	const mcpConfigPath = stageLaneMcpConfig({
 		serverName: args.mcpServerName,
 		url: `${lane.baseUrl}/mcp-server/http`,
-		apiKey: mcpApiKey,
+		apiKey: buildUser.mcpApiKey,
 	});
 
 	let result: McpBuildResult;
 	try {
 		result = await buildWorkflowViaMcp({
-			conversation: conversation ?? [],
+			conversation,
 			slug,
 			iteration,
 			mcpConfigPath,
 			settings: mcpBuildSettingsFromArgs(args),
 			logDir,
 			log: (message) => logger.info(message),
+			// Same simulated user as the Instance AI arm, so both arms get the same follow-ups.
+			createDriver: () => new UserProxyLlm({ conversation, messageBudget, logger }),
+			openingMessagePrefix: prepared?.openingPrefix,
+			openingNote: prepared?.openingNote,
+			openingMessageSuffix: prepared?.openingSuffix,
+			seededWorkflowIds: prepared?.workflowIds,
+			seededAgentIds: prepared?.agentRefs.map((ref) => ref.id),
 		});
 	} finally {
 		unlinkStagedMcpConfig(mcpConfigPath);
@@ -267,11 +322,77 @@ async function buildWorkflowViaMcpOnLane(config: {
 		lane.workflowIdsToDelete.add(result.workflowId);
 	}
 
+	// Agents live in the build user's project, so build-user cleanup deletes them.
+	// A seeded Agent's ref carries the project an edit result lacks.
+	const builtAgent = result.agent;
+	const artifactRefs: ArtifactRef[] = builtAgent
+		? [
+				prepared?.agentRefs.find((ref) => ref.id === builtAgent.id) ?? {
+					type: 'agent',
+					...builtAgent,
+				},
+			]
+		: [];
+	const transcript = prepared?.transcriptPrefix.length
+		? [...prepared.transcriptPrefix, ...result.transcript]
+		: result.transcript;
+	const seedFields: Pick<
+		BuildResult,
+		'seedThreadId' | 'seededScenarioTableIdsByName' | 'createdProjectIds' | 'priorRunFailed'
+	> = prepared
+		? {
+				seedThreadId: prepared.threadId,
+				seededScenarioTableIdsByName: prepared.scenarioTableIdsByName,
+				createdProjectIds: prepared.projectIds,
+				...(prepared.priorRunFailed ? { priorRunFailed: prepared.priorRunFailed } : {}),
+			}
+		: {};
+
+	// A conversation the build timeout ended is graded on what it saved, with its
+	// verdicts kept out of the rate, as on the Instance AI arm.
+	const timeoutField = result.timeout ? { timeout: result.timeout } : {};
+
 	if (!result.workflowId) {
-		return failure(`MCP build produced no workflow (${result.failureReason ?? 'unknown'})`);
+		if (artifactRefs.length > 0) {
+			return {
+				success: true,
+				workflowJsons: [],
+				createdWorkflowIds: [],
+				createdDataTableIds: [],
+				artifactRefs,
+				...seedFields,
+				...timeoutField,
+				transcript,
+			};
+		}
+		if (!config.workflowExpected && result.finished) {
+			return {
+				success: true,
+				workflowJsons: [],
+				createdWorkflowIds: [],
+				createdDataTableIds: [],
+				...seedFields,
+				transcript,
+			};
+		}
+		return {
+			...failure(
+				`MCP build produced no workflow (${result.failureReason ?? 'unknown'})`,
+				transcript,
+			),
+			...seedFields,
+			...timeoutField,
+		};
 	}
 
-	return await fetchPrebuiltBuild(lane.client, result.workflowId, logger);
+	const fetched = await fetchPrebuiltBuild(lane.client, result.workflowId, logger);
+	return {
+		...fetched,
+		...(artifactRefs.length > 0 ? { artifactRefs } : {}),
+		...seedFields,
+		...(fetched.success ? timeoutField : {}),
+		transcript,
+	};
 }
 
 // Direct fetch (not N8nClient) so a hung lane can't stall the probe.
@@ -391,10 +512,13 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	const orphanedBuilds: Array<{ build: BuildResult; client: N8nClient }> = [];
 	const buildDurations = new Map<string, number>();
 
-	function stashTranscript(build: BuildResult): void {
+	/** A build without a thread (MCP) is keyed by its `iteration:fileSlug` build
+	 *  key, which can't collide with a thread id. */
+	function stashTranscript(build: BuildResult, buildKey?: string): void {
 		scrubLocalSecretsFromBuild(build);
-		if (build.threadId && build.transcript) {
-			transcriptByThreadId.set(build.threadId, build.transcript);
+		const key = build.threadId ?? buildKey;
+		if (key && build.transcript) {
+			transcriptByThreadId.set(key, build.transcript);
 		}
 	}
 
@@ -459,6 +583,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		client: N8nClient,
 		build: BuildResult,
 		isPrebuilt: boolean,
+		mcpBuild = false,
 	): void {
 		// `scrubLocalSecrets` (in stashTranscript, which always runs first) has
 		// already redacted a local run's transcript and kept the pre-scrub text
@@ -527,6 +652,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			transcript: build.transcript,
 			buildSucceeded: build.success,
 			isPrebuilt,
+			mcpBuild,
 			logger,
 		});
 		// Attributed here, where we still know WHY the build ended: a build that
@@ -558,12 +684,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		};
 		// Recorded as incomplete rather than dropped, so the case keeps its unit
 		// count and the report says why they weren't graded.
-		if (unjudged.length > 0) {
-			buildExpectationsByKey.set(key, withInjected(attribute(unjudged)));
-			return;
-		}
+		const unjudgedVerdicts = attribute(unjudged);
 		if (expectations.length === 0) {
-			if (injected) buildExpectationsByKey.set(key, withInjected([]));
+			if (unjudged.length > 0 || injected) {
+				buildExpectationsByKey.set(key, withInjected(unjudgedVerdicts));
+			}
 			return;
 		}
 		buildExpectationsByKey.set(
@@ -619,7 +744,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 							`judge error: ${error instanceof Error ? error.message : String(error)}`,
 						),
 					)
-					.then(attribute),
+					.then((verdicts) => [...attribute(verdicts), ...unjudgedVerdicts]),
 			),
 		);
 	}
@@ -648,7 +773,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					build = await buildWorkflowViaMcpOnLane({
 						lane: lane.runner,
 						conversation: entry.conversation,
+						messageBudget: entry.messageBudget,
 						credentials: entry.credentials,
+						seed: entry.seed,
+						executionScenarios: entry.executionScenarios,
+						workflowExpected: workflowExpectedForCase(entry),
 						slug: fileSlug,
 						iteration,
 						args,
@@ -671,20 +800,28 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				// Cleanup registration happens inside buildWorkflowViaMcpOnLane (as soon
 				// as `claude` reports the id), so even a failed fetch-back is covered.
 				buildDurations.set(key, buildDurationMs);
-				stashTranscript(build);
-				// isPrebuilt=true: MCP builds have no build transcript, so only
-				// outcome expectations are judged (against the workflow), like prebuilt.
+				stashTranscript(build, key);
+				stashAgentContext(key, lane.runner.client, build);
+				// isPrebuilt=true skips the premise check only: the `claude` transcript
+				// still lets process expectations be judged.
 				// Ordered before stashBuildExpectations so runDebugByThreadId already has
 				// this build's promise stashed by the time that call reads it.
 				stashRunDebug(lane.runner.client, build);
 				// No premise check on this path (isPrebuilt), so memory is not read.
 				stashThreadMemory(lane.runner.client, build, false);
-				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true, true);
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
-						prompt: conversationUserTurnsAsText(entry.conversation ?? [], entry.seed),
-						agentText: undefined,
+						// The turns that were sent, as on the Instance AI arm: the simulated user
+						// may end early, and a replay case's live turn is not authored.
+						prompt: build.transcript
+							? userTurnsAsText(build.transcript)
+							: conversationUserTurnsAsText(entry.conversation ?? [], entry.seed),
+						agentText: build.transcript ? agentTurnsAsText(build.transcript) : undefined,
+						...(build.transcript
+							? { failedBuildsPerTurn: failedBuildsPerTurn(build.transcript) }
+							: {}),
 						logger,
 					});
 				}

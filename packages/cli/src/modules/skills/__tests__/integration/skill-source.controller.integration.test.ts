@@ -24,6 +24,7 @@ import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import type { RemoteSkillRef } from '../../sources/skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
+import { linkSkill } from '../test-utils/skill-source-fixtures';
 import { PostHogClient } from '@/posthog';
 
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
@@ -101,7 +102,7 @@ describe('SkillSourceController', () => {
 	});
 
 	/** The response body: `data` on success, `meta` with the reason code on a failure. */
-	type Body<T> = { data: T; meta?: { reason: string } };
+	type Body<T> = { data: T; message?: string; meta?: { reason: string } };
 
 	const discover = async (agent: SuperAgentTest, body: Record<string, unknown>, status = 200) =>
 		(await agent.post('/skill-sources/discover').send(body).expect(status))
@@ -159,6 +160,52 @@ describe('SkillSourceController', () => {
 			]);
 		});
 
+		it('gives each skill the verdict and the findings of the security check', async () => {
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.'),
+				'huge/SKILL.md': skillMd('huge', 'x'.repeat(2000)),
+				'broken/SKILL.md': 'no frontmatter here\n',
+			});
+
+			const { data } = await discover(owner, {
+				url: 'https://github.com/acme/checked',
+				scope: 'instance',
+			});
+
+			const checkOf = (location: string) =>
+				data.skills.find((skill) => skill.location === location)?.check;
+			expect(checkOf('clean')).toEqual({ verdict: 'pass', findings: [] });
+			expect(checkOf('hidden')).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					{
+						rule: 'hidden_unicode',
+						severity: 'needs_review',
+						file: 'SKILL.md',
+						detail: expect.any(String),
+					},
+				],
+			});
+			expect(checkOf('huge')).toEqual({
+				verdict: 'blocked',
+				findings: [
+					{ rule: 'over_limit', severity: 'blocked', file: 'SKILL.md', detail: expect.any(String) },
+				],
+			});
+			expect(checkOf('broken')).toEqual({
+				verdict: 'blocked',
+				findings: [
+					{
+						rule: 'invalid_skill',
+						severity: 'blocked',
+						file: 'SKILL.md',
+						detail: expect.any(String),
+					},
+				],
+			});
+		});
+
 		it('marks a skill whose name the scope already has', async () => {
 			await createSkill({ projectId: team.id, content: { name: 'PDF' } });
 
@@ -201,7 +248,7 @@ describe('SkillSourceController', () => {
 	});
 
 	describe('connect', () => {
-		it('refuses a skill whose name is only spaces as a parse error', async () => {
+		it('refuses a skill whose name is only spaces as blocked by the security check', async () => {
 			github.push('acme/blank', { '  /SKILL.md': '---\ndescription: Blank\n---\n\nBody.\n' });
 			const url = 'https://github.com/acme/blank';
 			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
@@ -209,13 +256,16 @@ describe('SkillSourceController', () => {
 			const body = await connect(
 				owner,
 				{ url, scope: 'instance', skillKeys: discovery.skills.map((skill) => skill.key) },
-				400,
+				422,
 			);
 
 			expect(discovery.skills).toEqual([
-				expect.objectContaining({ error: expect.objectContaining({ reason: 'parse_error' }) }),
+				expect.objectContaining({
+					error: null,
+					check: expect.objectContaining({ verdict: 'blocked' }),
+				}),
 			]);
-			expect(body.meta).toEqual({ reason: 'parse_error' });
+			expect(body.meta).toEqual({ reason: 'blocked_by_check' });
 		});
 
 		it('imports the picked skills as read-only synced skills of a new source', async () => {
@@ -246,6 +296,7 @@ describe('SkillSourceController', () => {
 				type: 'github',
 				label: 'acme/skills',
 				webUrl: 'https://github.com/acme/skills/tree/main/skills/pdf',
+				canStopSyncing: true,
 			});
 			expect(detail.data.skill.references).toEqual([
 				{ path: 'references/pages.md', content: '# Pages\n' },
@@ -277,6 +328,187 @@ describe('SkillSourceController', () => {
 			expect(data.failed).toEqual([
 				{ key: expect.any(String), name: 'docx', reason: 'name_taken' },
 			]);
+		});
+
+		it('leaves out a skill that the security check blocks, and imports the others', async () => {
+			const importedFromSource = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
+			const bigFrontmatter = `metadata: ${'x'.repeat(17_000)}\n`;
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.'),
+				'big/SKILL.md': `---\nname: big\ndescription: Big\n${bigFrontmatter}---\n\nBody.\n`,
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['clean', 'hidden', 'big']),
+				reviewedSkillKeys: keysOf(discovery, ['hidden']),
+			});
+
+			expect(importedFromSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					access: 'public',
+					selected: 3,
+					imported: 2,
+					blocked: 1,
+					needs_review: 1,
+					status: 'success',
+				}),
+				ownerUser.id,
+			);
+			importedFromSource.mockRestore();
+			expect(discovery.skills.find((skill) => skill.name === 'big')?.check?.verdict).toBe(
+				'blocked',
+			);
+			expect(data.imported.map((skill) => skill.name).sort()).toEqual(['clean', 'hidden']);
+			expect(data.failed).toEqual([
+				{ key: expect.any(String), name: 'big', reason: 'blocked_by_check' },
+			]);
+		});
+
+		it('reports a skill that n8n cannot read as blocked by the security check', async () => {
+			const importedFromSource = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'broken/SKILL.md': 'no frontmatter here\n',
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: discovery.skills.map((skill) => skill.key),
+			});
+
+			expect(importedFromSource).toHaveBeenCalledWith(
+				expect.objectContaining({ selected: 2, imported: 1, blocked: 1, status: 'success' }),
+				ownerUser.id,
+			);
+			importedFromSource.mockRestore();
+			expect(data.imported.map((skill) => skill.name)).toEqual(['clean']);
+			expect(data.failed).toEqual([
+				{ key: expect.any(String), name: null, reason: 'blocked_by_check' },
+			]);
+		});
+
+		it('leaves out a skill that needs review when the user did not review the warnings', async () => {
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.'),
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['clean', 'hidden']),
+			});
+
+			expect(data.imported.map((skill) => skill.name)).toEqual(['clean']);
+			expect(data.failed).toEqual([
+				{ key: expect.any(String), name: 'hidden', reason: 'review_required' },
+			]);
+		});
+
+		it('checks each skill again at connect, after a new commit changed it', async () => {
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden'),
+				'long/SKILL.md': skillMd('long'),
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+			expect(discovery.skills.map((skill) => skill.check?.verdict)).toEqual([
+				'pass',
+				'pass',
+				'pass',
+			]);
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow​ this.'),
+				'long/SKILL.md': skillMd('long', 'x'.repeat(2000)),
+			});
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['clean', 'hidden', 'long']),
+			});
+
+			expect(data.imported.map((skill) => skill.name)).toEqual(['clean']);
+			expect(data.failed).toEqual(
+				expect.arrayContaining([
+					{ key: keysOf(discovery, ['hidden'])[0], name: 'hidden', reason: 'review_required' },
+					{ key: keysOf(discovery, ['long'])[0], name: 'long', reason: 'blocked_by_check' },
+				]),
+			);
+			expect(data.failed).toHaveLength(2);
+		});
+
+		it('imports a skill that needs review only when the user reviewed the warnings of that skill', async () => {
+			github.push('acme/checked', {
+				'flagged/SKILL.md': skillMd('flagged', 'Hidden text', 'Follow​ this.'),
+				'changed/SKILL.md': skillMd('changed'),
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+			github.push('acme/checked', {
+				'flagged/SKILL.md': skillMd('flagged', 'Hidden text', 'Follow​ this.'),
+				'changed/SKILL.md': skillMd('changed', 'Hidden text', 'Follow​ this.'),
+			});
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['flagged', 'changed']),
+				reviewedSkillKeys: keysOf(discovery, ['flagged']),
+			});
+
+			expect(data.imported.map((skill) => skill.name)).toEqual(['flagged']);
+			expect(data.failed).toEqual([
+				{ key: keysOf(discovery, ['changed'])[0], name: 'changed', reason: 'review_required' },
+			]);
+		});
+
+		it('stores nothing when every picked skill is blocked by the security check', async () => {
+			github.push('acme/checked', {
+				'big/SKILL.md': `---\nname: big\ndescription: Big\nmetadata: ${'x'.repeat(17_000)}\n---\n\nBody.\n`,
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const body = await connect(
+				owner,
+				{ url, scope: 'instance', skillKeys: discovery.skills.map((skill) => skill.key) },
+				422,
+			);
+
+			expect(body.meta).toEqual({ reason: 'blocked_by_check' });
+			expect(body.message).toBe('The security check blocked every picked skill.');
+			expect(await countSources()).toBe(0);
+		});
+
+		it('names no single cause when the picked skills fail for different reasons', async () => {
+			github.push('acme/checked', {
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.'),
+				'big/SKILL.md': `---\nname: big\ndescription: Big\nmetadata: ${'x'.repeat(17_000)}\n---\n\nBody.\n`,
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const body = await connect(
+				owner,
+				{ url, scope: 'instance', skillKeys: discovery.skills.map((skill) => skill.key) },
+				422,
+			);
+
+			expect(body.message).toBe('n8n could not import any of the picked skills.');
+			expect(await countSources()).toBe(0);
 		});
 
 		it('stores nothing when no picked skill can come in, and reports the failed import', async () => {
@@ -502,9 +734,10 @@ describe('SkillSourceController', () => {
 			]);
 			expect(created).toHaveBeenCalledWith(
 				ownerUser.id,
-				[{ id: data.imported[0].skillId, projectId: null, agentId: null }],
+				[{ id: data.imported[0].skillId, projectId: null }],
 				'github',
 				'sync',
+				{ source_provider: 'github', source_access: 'public' },
 			);
 		});
 
@@ -520,6 +753,7 @@ describe('SkillSourceController', () => {
 				[expect.objectContaining({ projectId: personal.id })],
 				'github',
 				'sync',
+				{ source_provider: 'github', source_access: 'public' },
 			);
 		});
 
@@ -631,6 +865,63 @@ describe('SkillSourceController', () => {
 			expect(connectedSource).not.toHaveBeenCalled();
 		});
 
+		it('reports each skill that the security check flags at discover, with its rule codes', async () => {
+			const flaggedSkill = vi.spyOn(Container.get(SkillsTelemetry), 'flaggedSkill');
+			github.push('acme/checked', {
+				'clean/SKILL.md': skillMd('clean'),
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.\u202e'),
+				'broken/SKILL.md': 'no frontmatter here\n',
+			});
+
+			await discover(owner, { url: 'https://github.com/acme/checked', scope: 'instance' });
+
+			expect(flaggedSkill.mock.calls).toEqual(
+				expect.arrayContaining([
+					[
+						{
+							provider: 'github',
+							stage: 'import',
+							verdict: 'blocked',
+							rule_codes: ['invalid_skill'],
+						},
+						ownerUser.id,
+					],
+					[
+						{
+							provider: 'github',
+							stage: 'import',
+							verdict: 'needs_review',
+							rule_codes: ['hidden_unicode'],
+						},
+						ownerUser.id,
+					],
+				]),
+			);
+			expect(flaggedSkill).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports no flagged skill for a picker that does not show its verdict', async () => {
+			const flaggedSkill = vi.spyOn(Container.get(SkillsTelemetry), 'flaggedSkill');
+			github.push('acme/checked', {
+				'pdf/SKILL.md': skillMd('pdf', 'Hidden text', 'Follow\u200b this.'),
+			});
+			const url = 'https://github.com/acme/checked';
+			await connectPdf(owner, { scope: 'instance' });
+			flaggedSkill.mockClear();
+
+			// The name of the flagged skill is taken, so its row shows "Name taken".
+			await discover(owner, { url, scope: 'instance' });
+			// Global has the source, so the picker does not open.
+			github.push('acme/skills', {
+				...FILES,
+				'skills/hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.'),
+			});
+			await discover(editor, { url: REPO, scope: 'project', projectId: team.id });
+
+			expect(flaggedSkill).not.toHaveBeenCalled();
+			flaggedSkill.mockRestore();
+		});
+
 		it.each([
 			[{ truncated: true }, 'too_many_skills'],
 			[{ tooDeep: 3 }, 'too_deep'],
@@ -712,6 +1003,123 @@ describe('SkillSourceController', () => {
 			});
 
 			expect(data.duplicate).toEqual({ kind: 'none' });
+		});
+	});
+
+	describe('stop syncing', () => {
+		const importPdf = async (agent: SuperAgentTest, scope: Record<string, unknown>) => {
+			const { data: discovery } = await discover(agent, { url: REPO, ...scope });
+			const { data } = await connect(agent, {
+				url: REPO,
+				...scope,
+				skillKeys: keysOf(discovery, ['pdf']),
+			});
+			return data.imported[0].skillId;
+		};
+
+		const stop = async (agent: SuperAgentTest, skillId: string, status = 200) =>
+			await agent.post(`/skill-sources/skills/${skillId}/stop-syncing`).send().expect(status);
+
+		it('turns a synced skill into a normal skill that keeps its versions', async () => {
+			const skillId = await importPdf(editor, { scope: 'project', projectId: team.id });
+			const { body: before } = await editor.get(`/skills/${skillId}`).expect(200);
+			expect(before.data).toMatchObject({ canEdit: false, canStopSyncing: true });
+			expect(before.data.syncedFrom).toMatchObject({ canStopSyncing: true });
+
+			await stop(editor, skillId);
+
+			const { body: after } = await editor.get(`/skills/${skillId}`).expect(200);
+			expect(after.data).toMatchObject({ source: 'github', canEdit: true, syncedFrom: null });
+			expect(after.data.latestVersion).toBe(before.data.latestVersion);
+			const { body: saved } = await editor
+				.patch(`/skills/${skillId}`)
+				.send({ baseSkillHash: after.data.skillHash, instructions: 'Changed in n8n.' })
+				.expect(200);
+			expect(saved.data).toMatchObject({ created: true, version: 2 });
+			const { body: list } = await editor.get('/skills').expect(200);
+			expect(list.data.data.find((skill: { id: string }) => skill.id === skillId)).toMatchObject({
+				canEdit: true,
+				canStopSyncing: false,
+			});
+		});
+
+		it('lets the skill move on its own once it stopped syncing', async () => {
+			const skillId = await importPdf(owner, { scope: 'project', projectId: team.id });
+			const { body } = await owner.get(`/skills/${skillId}`).expect(200);
+			const move = { scope: 'instance', baseSkillHash: body.data.skillHash };
+
+			await owner.patch(`/skills/${skillId}`).send(move).expect(400);
+			await stop(owner, skillId);
+			await owner.patch(`/skills/${skillId}`).send(move).expect(200);
+
+			const { body: moved } = await owner.get(`/skills/${skillId}`).expect(200);
+			expect(moved.data).toMatchObject({ scope: 'instance', projectId: null });
+		});
+
+		it('tracks one event for each stop, with whether an update waited', async () => {
+			const stoppedSync = vi.spyOn(Container.get(SkillsTelemetry), 'stoppedSync');
+			const skillId = await importPdf(editor, { scope: 'project', projectId: team.id });
+			const { id: pending } = await createSkill({
+				projectId: team.id,
+				content: { name: 'pending' },
+			});
+			await linkSkill(
+				pending,
+				{ projectId: team.id, createdById: ownerUser.id },
+				{ pendingContentHash: 'hash-of-update' },
+			);
+
+			await stop(editor, skillId);
+			await stop(editor, skillId, 404);
+			await stop(viewer, pending, 403);
+			await stop(editor, pending);
+
+			expect(stoppedSync.mock.calls).toEqual([
+				[{ provider: 'github', had_pending_update: false }, expect.any(String)],
+				[{ provider: 'github', had_pending_update: true }, expect.any(String)],
+			]);
+			stoppedSync.mockRestore();
+		});
+
+		it('needs the global update permission for a Global synced skill', async () => {
+			const skillId = await importPdf(owner, { scope: 'instance' });
+
+			const { body: list } = await member.get('/skills').expect(200);
+			expect(list.data.data.find((skill: { id: string }) => skill.id === skillId)).toMatchObject({
+				canStopSyncing: false,
+			});
+			await stop(member, skillId, 403);
+			await stop(owner, skillId);
+
+			const { body } = await owner.get(`/skills/${skillId}`).expect(200);
+			expect(body.data).toMatchObject({ scope: 'instance', canEdit: true, syncedFrom: null });
+		});
+
+		it('answers 404 for a skill that is not synced, also after a stop', async () => {
+			const skillId = await importPdf(editor, { scope: 'project', projectId: team.id });
+			const { id: plain } = await createSkill({ projectId: team.id, content: { name: 'plain' } });
+
+			await stop(editor, skillId);
+			await stop(editor, skillId, 404);
+			await stop(editor, plain, 404);
+		});
+
+		it('refuses a viewer, hides the skill from an outsider, and answers 404 with the flag off', async () => {
+			const skillId = await importPdf(editor, { scope: 'project', projectId: team.id });
+
+			const { body } = await viewer.get(`/skills/${skillId}`).expect(200);
+			expect(body.data.syncedFrom).toMatchObject({ canStopSyncing: false });
+			await stop(viewer, skillId, 403);
+			await stop(member, skillId, 404);
+			postHog.getFeatureFlags.mockResolvedValue({});
+			await stop(editor, skillId, 404);
+			// With the flag off, no surface offers an action that the route refuses.
+			const { body: detail } = await editor.get(`/skills/${skillId}`).expect(200);
+			const { body: list } = await editor.get('/skills').expect(200);
+			expect(detail.data.syncedFrom).toMatchObject({ canStopSyncing: false });
+			expect(list.data.data.find((skill: { id: string }) => skill.id === skillId)).toMatchObject({
+				canStopSyncing: false,
+			});
 		});
 	});
 
