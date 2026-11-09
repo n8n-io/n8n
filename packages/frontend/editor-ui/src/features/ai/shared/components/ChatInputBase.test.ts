@@ -364,6 +364,17 @@ describe('ChatInputBase', () => {
 		expect(lastValue).not.toMatch(/^\s/);
 	});
 
+	it('stops active voice input when the composer becomes disabled', async () => {
+		mockIsListening.value = true;
+		const { rerender } = renderComponent({
+			props: makeProps({ showVoice: true, modelValue: 'draft' }),
+		});
+
+		await rerender(makeProps({ showVoice: true, modelValue: 'draft', disabled: true }));
+
+		expect(mockStop).toHaveBeenCalledOnce();
+	});
+
 	describe('oversized attachments', () => {
 		/** `size` is what the guard reads; content is irrelevant to the check. */
 		function fileOfSize(name: string, decodedBytes: number): File {

@@ -122,6 +122,13 @@ watch(
 	{ flush: 'post' },
 );
 
+watch(
+	() => props.disabled,
+	(disabled) => {
+		if (disabled && speechInput.isListening.value) speechInput.stop();
+	},
+);
+
 function handleMic() {
 	committedSpokenMessage.value = props.modelValue;
 	if (speechInput.isListening.value) {
