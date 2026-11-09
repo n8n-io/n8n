@@ -2,6 +2,7 @@ import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentDraftState } from '@/modules/agents/agent-draft.contracts';
 import type { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import type { SystemAgentThreadMetadataService } from '@/modules/agents/system-agents/system-agent-thread-metadata.service';
 
@@ -37,11 +38,8 @@ describe('AssistantAgentTargetsService', () => {
 	}
 
 	function draft(name: string): PersistedDraft {
-		return mock<PersistedDraft>({
-			id: AGENT_ID,
-			name,
-			getState: vi.fn(async () => ({ id: AGENT_ID, name })),
-		});
+		const state = { id: AGENT_ID, name } as AgentDraftState;
+		return { id: AGENT_ID, name, getState: async () => state } as PersistedDraft;
 	}
 
 	beforeEach(() => {
