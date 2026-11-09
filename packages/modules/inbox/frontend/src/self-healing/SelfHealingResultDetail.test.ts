@@ -41,8 +41,15 @@ const renderComponent = createComponentRenderer(SelfHealingResultDetail, {
 	global: {
 		stubs: {
 			SelfHealingResultContent: {
-				props: ['detail', 'pendingAction', 'publishAccess', 'canChat'],
-				template: `<div data-test-id="result-content" :data-state="detail.reviewState" :data-pending="pendingAction" :data-publish-access="publishAccess" :data-can-chat="canChat">
+				props: [
+					'detail',
+					'workflowNames',
+					'projectName',
+					'pendingAction',
+					'publishAccess',
+					'canChat',
+				],
+				template: `<div data-test-id="result-content" :data-state="detail.reviewState" :data-pending="pendingAction" :data-publish-access="publishAccess" :data-can-chat="canChat" :data-project-name="projectName" :data-workflow-name="workflowNames.get(detail.workflowId)">
 <span>{{ detail.report }}</span>
 <button v-for="action in ['editor', 'approve-and-publish', 'dismiss', 'chat']" :key="action" :data-test-id="action" @click="$emit('action', action)" />
 <slot name="notice" />
@@ -657,6 +664,41 @@ it('treats publish access as unknown until workflow permissions load', async () 
 	view.getByRole('button', { name: 'Retry' }).click();
 	await waitAllPromises();
 	expect(view.getByTestId('result-content')).toHaveAttribute('data-publish-access', 'allowed');
+});
+
+it.each([
+	{ homeProject: { type: 'personal', name: 'Nathan Smith <nathan@n8n.io>' }, expected: 'Personal' },
+	{ homeProject: { type: 'team', name: 'Operations' }, expected: 'Operations' },
+	{ homeProject: undefined, expected: null },
+] as const)(
+	'names the project $expected of the failing workflow',
+	async ({ homeProject, expected }) => {
+		vi.mocked(api.fetchResultWorkflow).mockResolvedValue({
+			name: 'Daily report',
+			scopes: ['workflow:read'],
+			homeProject,
+		});
+		const view = renderComponent();
+		await waitAllPromises();
+
+		expect(view.getByTestId('result-content').getAttribute('data-project-name')).toBe(expected);
+	},
+);
+
+it('names an unchanged failing workflow from the result when its metadata does not load', async () => {
+	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(
+		result({
+			suggestions: [suggestion({ workflowId: 'sub-workflow-1' })],
+			workflows: [
+				{ workflowId: 'workflow-1', name: 'Daily report', change: 'unchanged', suggestionId: null },
+			],
+		}),
+	);
+	vi.mocked(api.fetchResultWorkflow).mockRejectedValue(new Error('Offline'));
+	const view = renderComponent();
+	await waitAllPromises();
+
+	expect(view.getByTestId('result-content')).toHaveAttribute('data-workflow-name', 'Daily report');
 });
 
 describe('a fix that changes sub-workflows', () => {

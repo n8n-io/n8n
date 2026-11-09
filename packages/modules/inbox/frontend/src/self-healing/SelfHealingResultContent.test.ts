@@ -341,6 +341,7 @@ describe('SelfHealingResultContent', () => {
 		});
 
 		expect(queryByTestId('self-healing-activity-panel')).not.toBeInTheDocument();
+		expect(queryByTestId('self-healing-metadata')).not.toBeInTheDocument();
 		const menu = await openMenu('Continue in…');
 		await userEvent.click(within(menu).getByRole('menuitem', { name: 'Continue with Assistant' }));
 		expect(emitted('action')).toEqual([['chat']]);
@@ -516,6 +517,37 @@ describe('SelfHealingResultContent', () => {
 			expect(getAllByTestId('self-healing-changes-card')).toHaveLength(2);
 			expect(queryByTestId('self-healing-metadata')).not.toBeInTheDocument();
 			expect(queryByTestId('self-healing-changes-outdated-notice')).not.toBeInTheDocument();
+		});
+
+		it('shows the unchanged failing workflow above a single sub-workflow fix', () => {
+			const { getAllByTestId, getByRole, queryByTestId } = renderContent({
+				detail: detail({
+					suggestions: [suggestion({ suggestionId: 'suggestion-2', workflowId: 'child-1' })],
+					workflows: [
+						{
+							workflowId: 'workflow-1',
+							name: 'Daily report',
+							change: 'unchanged',
+							suggestionId: null,
+						},
+						{
+							workflowId: 'child-1',
+							name: 'Send email',
+							change: 'modified',
+							suggestionId: 'suggestion-2',
+						},
+					],
+					calls: [{ callerWorkflowId: 'workflow-1', calledWorkflowId: 'child-1' }],
+				}),
+				workflowNames,
+				tab: 'changes',
+			});
+
+			expect(getByRole('tab', { name: 'Changes' })).toBeInTheDocument();
+			expect(
+				getAllByTestId('self-healing-changes-nav-item').map((item) => item.getAttribute('title')),
+			).toEqual(['Daily report', 'Send email']);
+			expect(queryByTestId('self-healing-metadata')).not.toBeInTheDocument();
 		});
 
 		it('keeps review actions for the whole fix on the Changes tab', async () => {

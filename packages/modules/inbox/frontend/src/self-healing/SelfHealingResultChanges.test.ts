@@ -1,3 +1,4 @@
+import type { SelfHealingResultDetail, SelfHealingResultWorkflow } from '@n8n/api-types';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
@@ -39,14 +40,53 @@ const workflowNames = new Map([
 	['workflow-1', 'Daily report'],
 	['child-1', 'Send email'],
 	['child-2', 'Write log'],
+	['middle', 'Check order'],
 ]);
+const listed = (workflowId: string, suggestionId: string | null = null) =>
+	({
+		workflowId,
+		name: `Listed ${workflowId}`,
+		change: suggestionId ? 'modified' : 'unchanged',
+		suggestionId,
+	}) satisfies SelfHealingResultWorkflow;
+const call = (callerWorkflowId: string, calledWorkflowId: string) => ({
+	callerWorkflowId,
+	calledWorkflowId,
+});
 
-async function renderChanges(items = suggestions) {
+type ChangesDetail = Pick<
+	SelfHealingResultDetail,
+	'workflowId' | 'workflows' | 'calls' | 'suggestions'
+>;
+
+async function renderChanges(detail: Partial<ChangesDetail> = {}, projectName?: string) {
 	const view = renderComponent({
-		props: { suggestions: items, triggeringWorkflowId: 'workflow-1', workflowNames },
+		props: {
+			detail: {
+				workflowId: 'workflow-1',
+				suggestions,
+				workflows: [
+					listed('workflow-1', 'suggestion-1'),
+					listed('child-1', 'suggestion-2'),
+					listed('child-2', 'suggestion-3'),
+				],
+				calls: [call('workflow-1', 'child-1'), call('workflow-1', 'child-2')],
+				...detail,
+			},
+			workflowNames,
+			projectName,
+		},
 	});
 	await nextTick();
 	return view;
+}
+
+function navItems(view: Awaited<ReturnType<typeof renderChanges>>) {
+	return view.getAllByTestId('self-healing-changes-nav-item').map((item) => ({
+		name: item.getAttribute('title'),
+		unchanged: within(item).queryByText('Unchanged') !== null,
+		indent: item.style.getPropertyValue('--changes-tree--indent'),
+	}));
 }
 
 function activeNames(view: Awaited<ReturnType<typeof renderChanges>>) {
@@ -54,6 +94,10 @@ function activeNames(view: Awaited<ReturnType<typeof renderChanges>>) {
 		.getAllByTestId('self-healing-changes-nav-item')
 		.filter((item) => item.getAttribute('aria-current') === 'true')
 		.map((item) => item.textContent?.trim());
+}
+
+function scrolledCard() {
+	return vi.mocked(Element.prototype.scrollIntoView).mock.contexts.at(-1);
 }
 
 beforeEach(() => {
@@ -79,10 +123,18 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 
-it('shows one workflow diff in the same card layout without navigation', async () => {
-	const view = await renderChanges([suggestion()]);
+it('lists one workflow below its project with its diff in the same card layout', async () => {
+	const view = await renderChanges(
+		{
+			suggestions: [suggestion()],
+			workflows: [listed('workflow-1', 'suggestion-1')],
+			calls: [],
+		},
+		'Operations',
+	);
 
-	expect(view.queryByRole('navigation')).not.toBeInTheDocument();
+	expect(view.getByTestId('self-healing-changes-project')).toHaveTextContent('Operations');
+	expect(navItems(view)).toEqual([{ name: 'Daily report', unchanged: false, indent: '1' }]);
 	const card = within(view.getByTestId('self-healing-changes-card'));
 	expect(
 		card.getByRole('heading', { level: 3, name: 'Daily report Failing workflow' }),
@@ -101,13 +153,14 @@ it('shows one workflow diff in the same card layout without navigation', async (
 
 it('lists every changed workflow, the failing workflow first, with one diff each', async () => {
 	const view = await renderChanges();
-	const nav = within(view.getByRole('navigation', { name: 'Changed workflows' }));
+	const nav = within(view.getByRole('navigation', { name: 'Workflows in this fix' }));
 
 	expect(nav.getAllByRole('listitem').map((item) => item.textContent?.trim())).toEqual([
 		'Daily report',
 		'Send email',
 		'Write log',
 	]);
+	expect(navItems(view).map(({ indent }) => indent)).toEqual(['0', '1', '1']);
 	expect(
 		view
 			.getAllByTestId('self-healing-changes-card')
@@ -143,22 +196,65 @@ it('lists every changed workflow, the failing workflow first, with one diff each
 	expect(activeNames(view)).toEqual([expect.stringContaining('Daily report')]);
 });
 
-it('lists the failing workflow first when the suggestions start with a sub-workflow', async () => {
-	const view = await renderChanges([suggestions[1], suggestions[0], suggestions[2]]);
+it('nests a changed sub-workflow below unchanged callers that have no diff', async () => {
+	const view = await renderChanges({
+		suggestions: [suggestions[2]],
+		workflows: [listed('workflow-1'), listed('middle'), listed('child-2', 'suggestion-3')],
+		calls: [call('workflow-1', 'middle'), call('middle', 'child-2')],
+	});
 
-	expect(view.getAllByTestId('saved-workflow-diff').map((diff) => diff.dataset.workflowId)).toEqual(
-		['workflow-1', 'child-1', 'child-2'],
+	expect(navItems(view)).toEqual([
+		{ name: 'Daily report', unchanged: true, indent: '0' },
+		{ name: 'Check order', unchanged: true, indent: '1' },
+		{ name: 'Write log', unchanged: false, indent: '2' },
+	]);
+	const cards = view.getAllByTestId('self-healing-changes-card');
+	expect(within(cards[0]).getByTestId('self-healing-changes-card-unchanged')).toHaveTextContent(
+		'No proposed changes.',
 	);
-	expect(view.getAllByTestId('self-healing-changes-nav-item')[0]).toHaveTextContent('Daily report');
-	expect(activeNames(view)).toEqual([expect.stringContaining('Daily report')]);
+	expect(within(cards[1]).queryByTestId('saved-workflow-diff')).not.toBeInTheDocument();
+	expect(within(cards[2]).getByTestId('saved-workflow-diff')).toHaveAttribute(
+		'data-workflow-id',
+		'child-2',
+	);
+	expect(within(cards[2]).getByTestId('self-healing-changes-card-callers')).toHaveTextContent(
+		'Called by Check order',
+	);
 });
 
-it('does not indent the sub-workflows when the failing workflow is not changed', async () => {
-	const view = await renderChanges([suggestions[1], suggestions[2]]);
-	const items = view.getAllByTestId('self-healing-changes-nav-item');
+it('lists the workflows below their project', async () => {
+	const view = await renderChanges({}, 'Operations');
 
-	expect(items.map((item) => item.textContent?.trim())).toEqual(['Send email', 'Write log']);
-	for (const item of items) expect(item.className).not.toMatch(/nested/);
+	expect(view.getByTestId('self-healing-changes-project')).toHaveTextContent('Operations');
+	expect(navItems(view)).toEqual([
+		{ name: 'Daily report', unchanged: false, indent: '1' },
+		{ name: 'Send email', unchanged: false, indent: '2' },
+		{ name: 'Write log', unchanged: false, indent: '2' },
+	]);
+});
+
+it('names every caller of a shared sub-workflow and opens a caller from the card', async () => {
+	const view = await renderChanges({
+		calls: [
+			call('workflow-1', 'child-1'),
+			call('workflow-1', 'child-2'),
+			call('child-1', 'child-2'),
+		],
+	});
+
+	expect(navItems(view).map(({ name }) => name)).toEqual([
+		'Daily report',
+		'Send email',
+		'Write log',
+	]);
+	const shared = within(view.getAllByTestId('self-healing-changes-card')[2]);
+	expect(shared.getByTestId('self-healing-changes-card-callers')).toHaveTextContent(
+		'Called by Daily report and Send email',
+	);
+
+	await fireEvent.click(shared.getByRole('button', { name: 'Send email' }));
+	expect(scrolledCard()).toBe(view.getAllByTestId('self-healing-changes-card')[1]);
+	expect(activeNames(view)).toEqual([expect.stringContaining('Send email')]);
 });
 
 it('scrolls to a workflow diff when its navigation item is clicked', async () => {
@@ -166,7 +262,8 @@ it('scrolls to a workflow diff when its navigation item is clicked', async () =>
 	await fireEvent.click(view.getAllByTestId('self-healing-changes-nav-item')[2]);
 
 	const cards = view.getAllByTestId('self-healing-changes-card');
-	expect(cards[2].scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+	expect(Element.prototype.scrollIntoView).toHaveBeenLastCalledWith({ block: 'start' });
+	expect(scrolledCard()).toBe(cards[2]);
 	expect(activeNames(view)).toEqual([expect.stringContaining('Write log')]);
 });
 
@@ -184,7 +281,7 @@ it('collapses a workflow diff and opens it again from the navigation', async () 
 	await fireEvent.click(view.getAllByTestId('self-healing-changes-nav-item')[1]);
 	await nextTick();
 	expect(toggle).toHaveAttribute('aria-expanded', 'true');
-	expect(view.getAllByTestId('self-healing-changes-card')[1].scrollIntoView).toHaveBeenCalled();
+	expect(scrolledCard()).toBe(view.getAllByTestId('self-healing-changes-card')[1]);
 	expect(activeNames(view)).toEqual([expect.stringContaining('Send email')]);
 });
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WorkflowSuggestionProposalDetail } from '@n8n/api-types';
+import type { SelfHealingResultDetail } from '@n8n/api-types';
 import {
 	N8nCallout,
 	N8nIcon,
@@ -14,58 +14,61 @@ import { useI18n } from '@n8n/i18n';
 import { useIntersectionObserver, useTimeout } from '@vueuse/core';
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, nextTick, ref, watch } from 'vue';
+import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
+import SelfHealingWorkflowLinks from './SelfHealingWorkflowLinks.vue';
+import { buildWorkflowTree } from './selfHealingWorkflowTree';
+
 const props = defineProps<{
-	suggestions: WorkflowSuggestionProposalDetail[];
-	triggeringWorkflowId: string;
+	detail: Pick<SelfHealingResultDetail, 'workflowId' | 'workflows' | 'calls' | 'suggestions'>;
 	workflowNames: Map<string, string>;
+	projectName?: string;
 }>();
 
 const i18n = useI18n();
 const router = useRouter();
 const WorkflowDiffView = computed(() => componentRegistry.get('workflow-diff'));
 
+const nameOf = (workflowId: string) => props.workflowNames.get(workflowId) ?? workflowId;
+
 const entries = computed(() =>
-	props.suggestions
-		.map((suggestion) => {
-			const isFailing = suggestion.workflowId === props.triggeringWorkflowId;
-			return {
-				suggestion,
-				name: props.workflowNames.get(suggestion.workflowId) ?? suggestion.workflowId,
-				// A new window needs a resolved path. The link stringifies a route object.
-				href: router.resolve({
-					name: VIEWS.WORKFLOW,
-					params: { workflowId: suggestion.workflowId },
-				}).href,
-				isFailing,
-				role: i18n.baseText(
-					isFailing
-						? 'inbox.selfHealing.changes.failingWorkflow'
-						: 'inbox.selfHealing.changes.subWorkflow',
-				),
-			};
-		})
-		.sort((a, b) => Number(b.isFailing) - Number(a.isFailing)),
+	buildWorkflowTree(props.detail).map(({ workflowId, suggestion, indent, callerIds }) => {
+		const isFailing = workflowId === props.detail.workflowId;
+		return {
+			workflowId,
+			suggestion,
+			indent: props.projectName ? indent + 1 : indent,
+			name: nameOf(workflowId),
+			callers: callerIds.map((callerId) => ({ workflowId: callerId, name: nameOf(callerId) })),
+			// A new window needs a resolved path. The link stringifies a route object.
+			href: router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId } }).href,
+			role: i18n.baseText(
+				isFailing
+					? 'inbox.selfHealing.changes.failingWorkflow'
+					: 'inbox.selfHealing.changes.subWorkflow',
+			),
+		};
+	}),
 );
 const isMultiple = computed(() => entries.value.length > 1);
-const hasFailingEntry = computed(() => entries.value.some(({ isFailing }) => isFailing));
+const hasSuggestion = computed(() => props.detail.suggestions.length > 0);
 
 const collapsedIds = ref(new Set<string>());
 
-function setOpen(suggestionId: string, open: boolean) {
-	if (open) collapsedIds.value.delete(suggestionId);
-	else collapsedIds.value.add(suggestionId);
+function setOpen(workflowId: string, open: boolean) {
+	if (open) collapsedIds.value.delete(workflowId);
+	else collapsedIds.value.add(workflowId);
 }
 
 const panes = ref<HTMLElement | null>(null);
-const navResizer = useResizablePanel({
+const treeResizer = useResizablePanel({
 	container: panes,
 	width: {
 		localStorageKey: 'N8N_SELF_HEALING_CHANGES_NAV_WIDTH',
-		defaultSize: (size) => Math.min(Math.max(size * 0.25, 200), 280),
-		minSize: 180,
-		maxSize: (size) => Math.min(size * 0.5, 480),
+		defaultSize: (size) => Math.min(Math.max(size * 0.28, 240), 360),
+		minSize: 200,
+		maxSize: (size) => Math.min(size * 0.5, 640),
 		snap: true,
 	},
 });
@@ -86,7 +89,7 @@ const { isSupported: canObserve } = useIntersectionObserver(
 	(records) => {
 		const next = new Set(visibleIds.value);
 		for (const record of records) {
-			const id = record.target.getAttribute('data-suggestion-id');
+			const id = record.target.getAttribute('data-entry-id');
 			if (!id) continue;
 			if (record.isIntersecting) next.add(id);
 			else next.delete(id);
@@ -97,7 +100,7 @@ const { isSupported: canObserve } = useIntersectionObserver(
 );
 
 function cardsOf(container: HTMLElement) {
-	return [...container.querySelectorAll<HTMLElement>('[data-suggestion-id]')];
+	return [...container.querySelectorAll<HTMLElement>('[data-entry-id]')];
 }
 
 function syncActive() {
@@ -111,38 +114,36 @@ function syncActive() {
 	const cards = cardsOf(container);
 	const atBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 1;
 	if (atBottom) {
-		activeId.value = cards.at(-1)?.dataset.suggestionId;
+		activeId.value = cards.at(-1)?.dataset.entryId;
 		return;
 	}
 
 	const probe = container.getBoundingClientRect().top + container.clientHeight / 3;
 	const current = cards.filter((card) => card.getBoundingClientRect().top <= probe).at(-1);
-	activeId.value = (current ?? cards[0])?.dataset.suggestionId;
+	activeId.value = (current ?? cards[0])?.dataset.entryId;
 }
 
-async function select(suggestionId: string) {
-	activeId.value = suggestionId;
-	if (collapsedIds.value.has(suggestionId)) {
-		setOpen(suggestionId, true);
+async function select(workflowId: string) {
+	activeId.value = workflowId;
+	if (collapsedIds.value.has(workflowId)) {
+		setOpen(workflowId, true);
 		await nextTick();
 	}
 	const container = list.value;
 	if (!container) return;
 
-	const card = cardsOf(container).find((item) => item.dataset.suggestionId === suggestionId);
+	const card = cardsOf(container).find((item) => item.dataset.entryId === workflowId);
 	// The scroll position must not pick another card, also when the last cards cannot reach the top.
 	holdActiveCard();
 	card?.scrollIntoView({ block: 'start' });
 }
 
-const suggestionIds = computed(() =>
-	entries.value.map(({ suggestion }) => suggestion.suggestionId),
-);
+const workflowIds = computed(() => entries.value.map(({ workflowId }) => workflowId));
 
 watch(
-	() => suggestionIds.value.join(),
+	() => workflowIds.value.join(),
 	() => {
-		activeId.value = suggestionIds.value[0];
+		activeId.value = workflowIds.value[0];
 		collapsedIds.value = new Set();
 	},
 	{ immediate: true },
@@ -150,41 +151,65 @@ watch(
 </script>
 
 <template>
-	<N8nCallout v-if="!WorkflowDiffView || entries.length === 0" theme="warning">
+	<N8nCallout v-if="!WorkflowDiffView || !hasSuggestion" theme="warning">
 		{{ i18n.baseText('inbox.selfHealing.changes.unavailable') }}
 	</N8nCallout>
 	<div v-else ref="panes" :class="$style.panes" data-test-id="self-healing-changes-list">
 		<N8nResizeWrapper
-			v-if="isMultiple"
-			:class="$style.navPane"
-			:style="{ width: `${navResizer.width.value}px` }"
-			:resizer="navResizer"
+			:class="$style.treePane"
+			:style="{ width: `${treeResizer.width.value}px` }"
+			:resizer="treeResizer"
 			:supported-directions="['right']"
 		>
-			<nav :class="$style.nav" :aria-label="i18n.baseText('inbox.selfHealing.changes.navigation')">
-				<N8nText tag="div" size="xsmall" bold color="text-base" :class="$style.navHeading">
-					{{ i18n.baseText('inbox.selfHealing.changes.workflows') }}
-				</N8nText>
-				<ul :class="$style.navList">
-					<li v-for="entry in entries" :key="entry.suggestion.suggestionId">
+			<nav :class="$style.tree" :aria-label="i18n.baseText('inbox.selfHealing.changes.navigation')">
+				<div :class="$style.heading">
+					<N8nText step="2xs" bold color="text-base">
+						{{ i18n.baseText('inbox.selfHealing.changes.workflows') }}
+					</N8nText>
+				</div>
+				<ul :class="$style.list" role="list">
+					<li
+						v-if="projectName"
+						:class="[$style.row, $style.project]"
+						data-test-id="self-healing-changes-project"
+					>
+						<span :class="$style.name" :title="projectName">
+							<N8nIcon icon="layers" size="small" :class="$style.icon" />
+							<span :class="$style.text">
+								<N8nText step="xs" color="text-dark" :class="$style.label">
+									{{ projectName }}
+								</N8nText>
+							</span>
+						</span>
+					</li>
+					<li
+						v-for="entry in entries"
+						:key="entry.workflowId"
+						:class="[$style.row, { [$style.inspected]: activeId === entry.workflowId }]"
+					>
 						<button
 							type="button"
-							:class="[
-								$style.navItem,
-								{
-									[$style.active]: activeId === entry.suggestion.suggestionId,
-									[$style.nested]: hasFailingEntry && !entry.isFailing,
-								},
-							]"
+							:class="[$style.name, $style.select]"
+							:style="{ '--changes-tree--indent': entry.indent }"
 							:title="entry.name"
-							:aria-current="activeId === entry.suggestion.suggestionId ? 'true' : undefined"
+							:aria-current="activeId === entry.workflowId ? 'true' : undefined"
 							data-test-id="self-healing-changes-nav-item"
-							@click="select(entry.suggestion.suggestionId)"
+							@click="select(entry.workflowId)"
 						>
 							<N8nIcon icon="workflow" size="small" :class="$style.icon" />
-							<N8nText size="small" color="text-dark" :class="$style.truncate">
-								{{ entry.name }}
-							</N8nText>
+							<span :class="$style.text">
+								<N8nText step="xs" color="text-dark" :class="$style.label">
+									{{ entry.name }}
+								</N8nText>
+								<N8nText
+									v-if="!entry.suggestion"
+									step="2xs"
+									color="text-light"
+									:class="$style.meta"
+								>
+									{{ i18n.baseText('inbox.selfHealing.changes.unchanged') }}
+								</N8nText>
+							</span>
 						</button>
 					</li>
 				</ul>
@@ -197,40 +222,42 @@ watch(
 		>
 			<CollapsibleRoot
 				v-for="entry in entries"
-				:key="entry.suggestion.suggestionId"
-				:open="!collapsedIds.has(entry.suggestion.suggestionId)"
+				:key="entry.workflowId"
+				:open="!collapsedIds.has(entry.workflowId)"
 				as-child
-				@update:open="setOpen(entry.suggestion.suggestionId, $event)"
+				@update:open="setOpen(entry.workflowId, $event)"
 			>
 				<article
 					ref="cardElements"
 					:class="[
 						$style.card,
-						{ [$style.activeCard]: isMultiple && activeId === entry.suggestion.suggestionId },
+						{ [$style.inspected]: isMultiple && activeId === entry.workflowId },
 					]"
-					:data-suggestion-id="entry.suggestion.suggestionId"
+					:data-entry-id="entry.workflowId"
 					data-test-id="self-healing-changes-card"
 				>
-					<header :class="$style.cardHeader">
-						<N8nText tag="h3" size="medium" :class="$style.cardHeading">
+					<header :class="$style.header">
+						<N8nText tag="h3" size="medium" :class="$style.headingLevel">
 							<component
 								:is="isMultiple ? CollapsibleTrigger : 'span'"
-								:class="[$style.cardTitle, { [$style.trigger]: isMultiple }]"
+								:class="[$style.trigger, { [$style.toggle]: isMultiple }]"
 								data-test-id="self-healing-changes-card-toggle"
 							>
 								<N8nIcon icon="workflow" size="small" :class="$style.icon" />
-								<N8nText
-									bold
-									size="medium"
-									color="text-dark"
-									:title="entry.name"
-									:class="$style.truncate"
-								>
-									{{ entry.name }}
-								</N8nText>
-								<N8nText size="small" color="text-light" :class="$style.role">
-									{{ entry.role }}
-								</N8nText>
+								<span :class="$style.cardHeading">
+									<N8nText
+										bold
+										size="medium"
+										color="text-dark"
+										:title="entry.name"
+										:class="$style.label"
+									>
+										{{ entry.name }}
+									</N8nText>
+									<N8nText step="xs" color="text-light" :class="$style.meta">
+										{{ entry.role }}
+									</N8nText>
+								</span>
 								<N8nIcon
 									v-if="isMultiple"
 									icon="chevron-down"
@@ -258,21 +285,46 @@ watch(
 							</span>
 						</N8nLink>
 					</header>
-					<CollapsibleContent :class="$style.cardDiff">
-						<component
-							:is="WorkflowDiffView"
-							v-if="!canObserve || visibleIds.has(entry.suggestion.suggestionId)"
-							:source-snapshot="entry.suggestion.payload.original"
-							:target-snapshot="entry.suggestion.payload.proposed"
-							:workflow-id="entry.suggestion.workflowId"
-							:workflow-name="entry.name"
-							:source-label="i18n.baseText('inbox.selfHealing.changes.original')"
-							:target-label="i18n.baseText('inbox.selfHealing.changes.proposed')"
-							:canvas-id-prefix="entry.suggestion.suggestionId"
-							:require-canvas-focus="isMultiple"
-							hide-title
-							show-fullscreen-button
-						/>
+					<CollapsibleContent :class="$style.body">
+						<div v-if="entry.suggestion" :class="$style.diff">
+							<component
+								:is="WorkflowDiffView"
+								v-if="!canObserve || visibleIds.has(entry.workflowId)"
+								:source-snapshot="entry.suggestion.payload.original"
+								:target-snapshot="entry.suggestion.payload.proposed"
+								:workflow-id="entry.workflowId"
+								:workflow-name="entry.name"
+								:source-label="i18n.baseText('inbox.selfHealing.changes.original')"
+								:target-label="i18n.baseText('inbox.selfHealing.changes.proposed')"
+								:canvas-id-prefix="entry.suggestion.suggestionId"
+								:require-canvas-focus="isMultiple"
+								hide-title
+								show-fullscreen-button
+							/>
+						</div>
+						<N8nText
+							v-else
+							tag="div"
+							step="xs"
+							color="text-light"
+							:class="$style.padded"
+							data-test-id="self-healing-changes-card-unchanged"
+						>
+							{{ i18n.baseText('inbox.selfHealing.changes.noChanges') }}
+						</N8nText>
+						<footer v-if="entry.callers.length > 0" :class="$style.footer">
+							<N8nText
+								step="2xs"
+								color="text-light"
+								data-test-id="self-healing-changes-card-callers"
+							>
+								<I18nT keypath="inbox.selfHealing.changes.calledBy" scope="global">
+									<template #names>
+										<SelfHealingWorkflowLinks :workflows="entry.callers" @select="select" />
+									</template>
+								</I18nT>
+							</N8nText>
+						</footer>
 					</CollapsibleContent>
 				</article>
 			</CollapsibleRoot>
@@ -290,53 +342,72 @@ watch(
 	min-width: 0;
 }
 
-.navPane {
+/* The tree and cards copy the promotion review, so both reviews of the inbox look the same. */
+.treePane {
 	flex-shrink: 0;
 	min-height: 0;
+	/* Takes back the inset of the tree and its rows, so the row text lines up with the heading. */
+	margin-left: calc(-2 * var(--spacing--2xs));
 	border-right: var(--border);
 }
 
-.nav {
+.tree {
+	display: flex;
+	flex-direction: column;
 	height: 100%;
 	min-height: 0;
 	overflow-y: auto;
-	padding-block: var(--spacing--sm) var(--spacing--md);
-	padding-inline-end: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--2xs);
 }
 
-.navList {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
+.list {
 	margin: 0;
 	padding: 0;
 	list-style: none;
 }
 
-.navHeading {
+.heading {
 	display: flex;
 	align-items: center;
 	min-height: var(--height--sm);
-	margin-bottom: var(--spacing--4xs);
 	padding: 0 var(--spacing--2xs);
 }
 
-.navItem {
+.row {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	width: 100%;
 	min-height: var(--height--md);
 	padding: 0 var(--spacing--2xs);
-	border: none;
 	border-radius: var(--radius--3xs);
+
+	&:not(.project):hover {
+		background-color: var(--background--hover);
+	}
+}
+
+.row.inspected,
+.row.inspected:hover {
+	background-color: var(--background--active);
+}
+
+.name {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+	align-self: stretch;
+	padding-left: calc(var(--changes-tree--indent, 0) * var(--spacing--xs));
+}
+
+.select {
+	padding-block: 0;
+	padding-right: 0;
+	border: none;
 	background: none;
 	text-align: left;
 	cursor: pointer;
-
-	&:hover {
-		background-color: var(--background--hover);
-	}
 
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--focus--outline-color);
@@ -344,24 +415,27 @@ watch(
 	}
 }
 
-.nested {
-	padding-inline-start: calc(var(--spacing--2xs) + var(--spacing--sm));
-}
-
-.active,
-.active:hover {
-	background-color: var(--background--active);
-}
-
 .icon {
 	flex-shrink: 0;
 	color: var(--icon-color);
 }
 
-.truncate {
+.text {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.label {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.meta {
+	flex-shrink: 0;
 	white-space: nowrap;
 }
 
@@ -373,8 +447,7 @@ watch(
 	min-width: 0;
 	min-height: 0;
 	overflow-y: auto;
-	padding-block: var(--spacing--sm) var(--spacing--md);
-	padding-inline-start: var(--spacing--sm);
+	padding: var(--spacing--sm) 0 var(--spacing--sm) var(--spacing--sm);
 	scroll-behavior: smooth;
 	scroll-padding-block-start: var(--spacing--sm);
 
@@ -393,11 +466,11 @@ watch(
 	overflow: hidden;
 }
 
-.activeCard {
+.card.inspected {
 	border-color: var(--border-color--strong);
 }
 
-.cardHeader {
+.header {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
@@ -409,7 +482,7 @@ watch(
 	}
 }
 
-.cardHeading {
+.headingLevel {
 	display: flex;
 	flex: 1;
 	min-width: 0;
@@ -417,7 +490,7 @@ watch(
 	margin: 0;
 }
 
-.cardTitle {
+.trigger {
 	display: flex;
 	flex: 1;
 	align-items: center;
@@ -425,7 +498,7 @@ watch(
 	min-width: 0;
 }
 
-.trigger {
+.toggle {
 	padding: 0;
 	border: none;
 	background: none;
@@ -436,6 +509,13 @@ watch(
 		outline: var(--focus--border-width) solid var(--focus--outline-color);
 		outline-offset: calc(-1 * var(--focus--border-width));
 	}
+}
+
+.cardHeading {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 
 .chevron {
@@ -449,11 +529,6 @@ watch(
 	}
 }
 
-.role {
-	flex-shrink: 0;
-	white-space: nowrap;
-}
-
 .openLink {
 	flex-shrink: 0;
 }
@@ -464,28 +539,40 @@ watch(
 	gap: var(--spacing--4xs);
 }
 
-.cardDiff {
+.body {
+	display: flex;
+	flex-direction: column;
+}
+
+.diff {
 	height: max(28rem, 70vh);
 }
 
-.single {
-	padding-block: 0;
-	padding-inline-start: 0;
+.padded {
+	padding: var(--spacing--xs) var(--spacing--sm);
+}
 
-	.card {
+.footer {
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-top: var(--border);
+}
+
+.single {
+	.card,
+	.body,
+	.diff {
 		flex: 1;
+		min-height: 0;
 	}
 
-	.cardDiff {
-		flex: 1;
+	.diff {
 		height: auto;
-		min-height: 0;
 	}
 }
 
 /* The detail breakpoint of SelfHealingResultContent. Container queries cannot use CSS variables. */
 @container assistant-detail (max-width: 44rem) {
-	.navPane {
+	.treePane {
 		display: none;
 	}
 

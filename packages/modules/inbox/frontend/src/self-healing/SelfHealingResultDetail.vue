@@ -54,18 +54,27 @@ const canChat = computed(() => chat?.canStart(props.selection.projectId) ?? fals
 const chatRetry = ref<ChatRetry | null>(null);
 let reconcileOnRetry: ((current: SelfHealingResultDetail) => Promise<boolean>) | null = null;
 
-const workflowNames = computed(
-	() =>
-		new Map(
-			workflowIds.value.map((id) => [
+const workflowNames = computed(() => {
+	const listed = detail.value?.workflows ?? [];
+	const ids = new Set([...workflowIds.value, ...listed.map(({ workflowId }) => workflowId)]);
+	return new Map(
+		[...ids].map((id) => [
+			id,
+			workflows.value.get(id)?.name ??
+				listed.find(({ workflowId }) => workflowId === id)?.name ??
+				detail.value?.suggestions.find(({ workflowId }) => workflowId === id)?.payload.original
+					.name ??
 				id,
-				workflows.value.get(id)?.name ??
-					detail.value?.suggestions.find(({ workflowId }) => workflowId === id)?.payload.original
-						.name ??
-					id,
-			]),
-		),
-);
+		]),
+	);
+});
+const projectName = computed(() => {
+	const project = detail.value && workflows.value.get(detail.value.workflowId)?.homeProject;
+	if (!project) return undefined;
+	return project.type === 'personal'
+		? i18n.baseText('projects.menu.personal')
+		: (project.name ?? undefined);
+});
 // Approval publishes every workflow of the fix.
 const publishAccess = computed<SelfHealingPublishAccess>(() => {
 	const metadata = (detail.value?.suggestions ?? []).map(({ workflowId }) =>
@@ -305,6 +314,7 @@ async function onAction(action: SelfHealingResultAction) {
 			<SelfHealingResultContent
 				:detail="detail"
 				:workflow-names="workflowNames"
+				:project-name="projectName"
 				:tab="tab"
 				:pending-action="pendingAction"
 				:publish-access="publishAccess"

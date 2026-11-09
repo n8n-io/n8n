@@ -25,6 +25,7 @@ type MenuAction = Exclude<SelfHealingResultAction, 'dismiss'>;
 const props = defineProps<{
 	detail: SelfHealingResultDetail;
 	workflowNames: Map<string, string>;
+	projectName?: string;
 	tab: DetailTab;
 	pendingAction: SelfHealingResultAction | null;
 	publishAccess: SelfHealingPublishAccess;
@@ -196,9 +197,7 @@ function onTabChange(tab: string) {
 					</N8nDropdownMenu>
 				</div>
 			</div>
-			<div
-				:class="[$style.detailBody, { [$style.flush]: activeTab === 'changes' && isMultiWorkflow }]"
-			>
+			<div :class="[$style.detailBody, { [$style.flush]: activeTab === 'changes' }]">
 				<div
 					v-if="activeTab === 'activity'"
 					:class="$style.activityPanel"
@@ -256,13 +255,13 @@ function onTabChange(tab: string) {
 						{{ outdatedBody }}
 					</N8nCallout>
 					<SelfHealingResultChanges
-						:suggestions="detail.suggestions"
-						:triggering-workflow-id="detail.workflowId"
+						:detail="detail"
 						:workflow-names="workflowNames"
+						:project-name="projectName"
 					/>
 				</div>
 				<SelfHealingResultMetadata
-					v-if="activeTab === 'activity' || !isMultiWorkflow"
+					v-if="activeTab === 'activity'"
 					:detail="detail"
 					:workflow-names="workflowNames"
 					:status-label="statusLabel"
@@ -355,7 +354,8 @@ function onTabChange(tab: string) {
 
 .flush {
 	padding-top: 0;
-	margin-bottom: calc(-1 * var(--spacing--md));
+	/* The workflow tree takes back its inset to the left of the column. */
+	overflow: visible;
 
 	.changesNotice {
 		margin-top: var(--spacing--sm);
@@ -436,17 +436,6 @@ function onTabChange(tab: string) {
 		flex: 0 0 auto;
 		max-width: none;
 		margin-inline-end: 0;
-	}
-
-	.changesPanel {
-		flex: 1 0 auto;
-		/* Keep the canvas usable above the metadata when the detail columns stack. */
-		min-height: calc(var(--spacing--5xl) + var(--spacing--4xl));
-	}
-
-	/* Without the metadata below it, the panel keeps the row height so that the card list scrolls. */
-	.flush .changesPanel {
-		flex: 1 1 0;
 	}
 }
 </style>
