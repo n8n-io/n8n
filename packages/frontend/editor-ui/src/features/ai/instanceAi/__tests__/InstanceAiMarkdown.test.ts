@@ -6,6 +6,7 @@ import type { ThreadRuntime } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import { computed } from 'vue';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY } from '../embed/instanceAiEmbed.types';
+import { createArtifactTestRouter } from './artifactTestRouter';
 
 // Stub ChatMarkdownChunk to expose the processed content. v-html mirrors the
 // real component (VueMarkdown renders via innerHTML): plain text stays plain
@@ -21,7 +22,11 @@ vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
 }));
 
 let thread: ThreadRuntime;
-const renderComponent = createThreadComponentRenderer(InstanceAiMarkdown, {}, () => thread);
+const renderComponent = createThreadComponentRenderer(
+	InstanceAiMarkdown,
+	{ global: { plugins: [createArtifactTestRouter()] } },
+	() => thread,
+);
 
 function makeRegistry(
 	entries: Array<{ type: string; id: string; name: string; projectId?: string }>,
@@ -531,6 +536,108 @@ describe('InstanceAiMarkdown', () => {
 			expect(links).toHaveLength(2);
 			expect(links[0].dataset.resourceId).toBe('agent-2');
 			expect(links[1].dataset.agentPreviewId).toBe('agent-1');
+		});
+	});
+
+	describe('links with a router base', () => {
+		function renderWithBase(
+			content: string,
+			{
+				base = '/n8n/',
+				provide = {},
+			}: { base?: string; provide?: Record<string | symbol, unknown> } = {},
+		) {
+			const { getByTestId } = renderComponent({
+				props: { content },
+				global: { plugins: [createArtifactTestRouter(base)], provide },
+			});
+			return getByTestId('markdown-output');
+		}
+
+		it('resolves resource chips with the base', () => {
+			thread.resourceNameIndex = makeRegistry([
+				{ type: 'credential', id: 'cred-1', name: 'Credential', projectId: 'project-1' },
+			]);
+
+			const links = renderWithBase(
+				'<a href="n8n-resource://credential/cred-1">Credential</a> ' +
+					'<a href="n8n-resource://skill/skill%201%26x">Skill</a>',
+			).querySelectorAll('a');
+
+			expect(links[0].getAttribute('href')).toBe('/n8n/projects/project-1/credentials/cred-1');
+			expect(links[1].getAttribute('href')).toBe(
+				'/n8n/settings/context/skills?skillId=skill+1%26x',
+			);
+			expect(links[1].dataset.resourceId).toBe('skill 1&x');
+		});
+
+		it.each([
+			{ base: '/n8n/', href: '/workflow/wf-1' },
+			{ base: '/n8n/', href: '/n8n/workflow/wf-1' },
+			{ base: '/workflow/', href: '/workflow/wf-1' },
+			{ base: '/workflow/', href: '/workflow/workflow/wf-1' },
+		])('adds the base $base once to the internal link $href', ({ base, href }) => {
+			const query = '?tab=a%20b&x=1+2#node';
+			const link = renderWithBase(`<a href="${href}${query}">Workflow</a>`, {
+				base,
+			}).querySelector('a');
+
+			expect(link?.getAttribute('href')).toBe(`${base}workflow/wf-1${query}`);
+			expect(link?.dataset.resourceChip).toBe('workflow');
+			expect(link?.target).toBe('_blank');
+		});
+
+		it('leaves unrecognized and cross-origin links unchanged', () => {
+			const links = renderWithBase(
+				'<a href="/n8n/settings/personal">Settings</a> ' +
+					'<a href="https://example.com/workflow/wf-1">Other site</a>',
+			).querySelectorAll('a');
+
+			expect(links[0].getAttribute('href')).toBe('/n8n/settings/personal');
+			expect(links[1].getAttribute('href')).toBe('https://example.com/workflow/wf-1');
+			expect(links[0].dataset.resourceChip).toBeUndefined();
+			expect(links[1].dataset.resourceChip).toBeUndefined();
+		});
+
+		it.each([
+			{ base: '/n8n/', href: '/projects/project-1/agents/agent-1/preview' },
+			{ base: '/n8n/', href: '/n8n/projects/project-1/agents/agent-1?openPreview=true' },
+			{ base: '/projects/', href: '/projects/project-1/agents/agent-1/preview' },
+			{ base: '/projects/', href: '/projects/projects/project-1/agents/agent-1/preview' },
+		])('opens the agent Preview link $href under the base $base', ({ base, href }) => {
+			const openAgentChatPreview = vi.fn(() => true);
+			const link = renderWithBase(`<a href="${href}">Preview</a>`, {
+				base,
+				provide: { openAgentChatPreview },
+			}).querySelector('a');
+			if (!link) throw new Error('expected Preview anchor');
+
+			expect(link.getAttribute('href')).toBe(
+				`${base}projects/project-1/agents/agent-1?openPreview=true`,
+			);
+			const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+			link.dispatchEvent(event);
+
+			expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
+			expect(event.defaultPrevented).toBe(true);
+		});
+
+		it('unwraps a prefixed link to the subject agent', () => {
+			const output = renderWithBase(
+				'<a href="/n8n/projects/project-1/agents/agent-1">Subject Agent</a>',
+				{
+					provide: {
+						[INSTANCE_AI_EMBED_SUBJECT_KEY as symbol]: computed(() => ({
+							type: 'agent',
+							id: 'agent-1',
+							projectId: 'project-1',
+						})),
+					},
+				},
+			);
+
+			expect(output.querySelector('a')).toBeNull();
+			expect(output.textContent).toBe('Subject Agent');
 		});
 	});
 });

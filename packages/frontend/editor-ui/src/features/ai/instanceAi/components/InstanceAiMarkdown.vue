@@ -8,7 +8,7 @@ import {
 } from '@/features/agents/utils/agentTestUrl';
 import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useThread } from '../instanceAi.store';
-import { appHref, skillsHubHref } from '../canvasPreview.utils';
+import { isArtifactLinkType, useArtifactLinks } from '../artifactLinks';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 
 const props = defineProps<{
@@ -28,6 +28,7 @@ const props = defineProps<{
 const thread = useThread();
 const i18n = useI18n();
 const styles = useCssModule();
+const { artifactHref, routerPathHref, toRouterPaths } = useArtifactLinks();
 const wrapperRef = ref<HTMLElement | null>(null);
 
 /**
@@ -74,15 +75,6 @@ const ICON_SVGS: Record<string, string> = {
 	app: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="7" x="3" y="3" rx="1"/><rect width="9" height="7" x="3" y="14" rx="1"/><rect width="5" height="7" x="16" y="14" rx="1"/></svg>',
 	skill:
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>',
-};
-
-/** URL builders for each resource type — fallbacks when the registry has no projectId. */
-const URL_BUILDERS: Record<string, (id: string) => string> = {
-	workflow: (id) => `/workflow/${id}`,
-	credential: (id) => `/home/credentials/${id}`,
-	'data-table': () => '/home/datatables',
-	agent: () => '/home/agents',
-	skill: (id) => skillsHubHref(id),
 };
 
 /**
@@ -243,19 +235,13 @@ const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
 	{ pattern: /^\/projects\/[^/]+\/apps(?:\/|$)/, type: 'app' },
 ];
 const AGENT_ROUTE_PATTERN = /^\/projects\/[^/]+\/agents\/([^/]+)\/?$/;
-const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 
-function getSameOriginUrl(href: string): URL | undefined {
-	const isRootRelative = href.startsWith('/') && !href.startsWith('//');
-	const isAbsolute = ABSOLUTE_URL_PATTERN.test(href);
-	if (!isRootRelative && !isAbsolute) return undefined;
-
-	try {
-		const url = new URL(href, window.location.origin);
-		return url.origin === window.location.origin ? url : undefined;
-	} catch {
-		return undefined;
+function findInternalRoute(href: string) {
+	for (const routerPath of toRouterPaths(href)) {
+		const route = INTERNAL_ROUTE_PATTERNS.find(({ pattern }) => pattern.test(routerPath.pathname));
+		if (route) return { routerPath, type: route.type };
 	}
+	return undefined;
 }
 
 function decodeResourceId(value: string): string {
@@ -282,23 +268,11 @@ function applyResourceChip(link: HTMLAnchorElement, type: string): void {
 	}
 }
 
-/**
- * Build the real app URL for a resource. Project-scoped routes are preferred
- * when the registry knows the resource's projectId; otherwise we fall back to
- * the home view, which works for any resource the user has access to.
- */
-function buildResourceUrl(type: string, id: string, projectId: string | undefined): string {
-	if (projectId) {
-		if (type === 'data-table') return `/projects/${projectId}/datatables/${id}`;
-		if (type === 'credential') return `/projects/${projectId}/credentials/${id}`;
-		if (type === 'agent') return `/projects/${projectId}/agents/${id}`;
-		if (type === 'app') return appHref(projectId, id);
-	}
-	return URL_BUILDERS[type]?.(id) ?? '#';
-}
-
+/** Accepts links with or without the router base. The returned `href` has no base. */
 function resolveContextualAgentPreviewLink(href: string) {
-	const resolved = resolveAgentTestLink(href);
+	const resolved = toRouterPaths(href)
+		.map(({ fullPath }) => resolveAgentTestLink(fullPath))
+		.find((target) => target !== undefined);
 	if (!resolved || !props.agentPreviewTarget) return resolved;
 	const resolvedUrl = new URL(resolved.href, window.location.origin);
 
@@ -341,12 +315,11 @@ function enhanceResourceLinks(): void {
 		}
 
 		// 1. Handle n8n-resource:// custom scheme links
-		const resourceMatch =
-			/^n8n-resource:\/\/(workflow|credential|data-table|agent|skill|app)\/(.+)$/.exec(href);
-		if (resourceMatch) {
-			const [, type, encodedId] = resourceMatch;
-			const id = decodeResourceId(encodedId);
-			if (isCurrentSubject(type, id)) {
+		const resourceMatch = /^n8n-resource:\/\/([^/]+)\/(.+)$/.exec(href);
+		const resourceType = resourceMatch?.[1];
+		if (resourceMatch && resourceType && isArtifactLinkType(resourceType)) {
+			const id = decodeResourceId(resourceMatch[2]);
+			if (isCurrentSubject(resourceType, id)) {
 				link.replaceWith(...link.childNodes);
 				continue;
 			}
@@ -356,14 +329,14 @@ function enhanceResourceLinks(): void {
 			// resources — a user may click through to a resource the agent
 			// only referenced via a list call.
 			const registryEntry = [...thread.resourceNameIndex.values()].find(
-				(r) => r.type === type && r.id === id,
+				(r) => r.type === resourceType && r.id === id,
 			);
 
-			link.href = buildResourceUrl(type, id, registryEntry?.projectId);
+			link.href = artifactHref(resourceType, id, registryEntry?.projectId) ?? '#';
 			link.target = '_blank';
 			link.rel = 'noopener noreferrer';
 			link.dataset.resourceId = id;
-			applyResourceChip(link, type);
+			applyResourceChip(link, resourceType);
 
 			continue;
 		}
@@ -372,30 +345,27 @@ function enhanceResourceLinks(): void {
 		const agentPreviewTarget = resolveContextualAgentPreviewLink(href);
 		if (agentPreviewTarget) {
 			const { projectId, agentId } = agentPreviewTarget;
-			link.href = agentPreviewTarget.href;
+			link.href = routerPathHref(agentPreviewTarget.href);
 			link.removeAttribute('target');
 			link.removeAttribute('rel');
 			link.dataset.agentPreviewId = agentId;
 			link.dataset.agentPreviewProjectId = projectId;
 			continue;
 		}
-		const internalUrl = getSameOriginUrl(href);
-		if (!internalUrl) continue;
+		const internalRoute = findInternalRoute(href);
+		if (!internalRoute) continue;
 
-		const agentId = AGENT_ROUTE_PATTERN.exec(internalUrl.pathname)?.[1];
+		const { routerPath, type } = internalRoute;
+		const agentId = AGENT_ROUTE_PATTERN.exec(routerPath.pathname)?.[1];
 		if (agentId && isCurrentSubject('agent', decodeResourceId(agentId))) {
 			link.replaceWith(...link.childNodes);
 			continue;
 		}
 
-		for (const { pattern, type } of INTERNAL_ROUTE_PATTERNS) {
-			if (pattern.test(internalUrl.pathname)) {
-				link.target = '_blank';
-				link.rel = 'noopener noreferrer';
-				applyResourceChip(link, type);
-				break;
-			}
-		}
+		link.href = routerPathHref(routerPath.fullPath);
+		link.target = '_blank';
+		link.rel = 'noopener noreferrer';
+		applyResourceChip(link, type);
 	}
 }
 
