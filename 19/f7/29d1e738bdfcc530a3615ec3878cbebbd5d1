@@ -72,13 +72,14 @@ packages/cli/src/modules/n8n-packages/entities/credential/credential-conflict-po
   s_a6870d3b039cb7::t_3ebe60bedfca31 14,114
 packages/cli/src/credentials/credential-data-merge.ts
   s_50b1b090121afc::t_fa74ea803ad2de 2,98
+  s_50b1b090121afc::t_9588e1ddce8bd4 1,3-97,99-103
 packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-conflict-policy.test.ts
   s_50b1b090121afc::t_6c28908db1b9a8 6,57-71
   s_50b1b090121afc::t_f8f9671ffe1351 41-43,257-259
   s_a6870d3b039cb7::t_308cb6f7f3e27e 49,183-184,193,200,218,227-230
   s_50b1b090121afc::t_d18cc3444a19ef 1-5,7-40,44-48,50-56,72-182,185-192,194-199,201-217,219-226,231-256,260-306
 packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
-  s_50b1b090121afc::t_d731fa1e4d466c 168-203
+  s_50b1b090121afc::t_d731fa1e4d466c 168-203,168-190,192-193,196-201,203
 packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
   s_a6870d3b039cb7::t_308cb6f7f3e27e 398-404,467-470
   s_50b1b090121afc::t_d54daa02a429b6 1-2,13,29,44-46,53-58,96,396-397,405-466,471-562
@@ -93,6 +94,19 @@ packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
   s_50b1b090121afc::t_55e821169814a5 3438,3509
 packages/cli/src/modules/n8n-packages/__tests__/blocking-issue-schema-contract.test.ts
   s_50b1b090121afc::t_5cf77489005c52 32-34
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.credentials.test.ts
+  s_50b1b090121afc::t_ad424064521ef6 1-106,115-127,134-143,146-205
+  s_50b1b090121afc::t_7fbfe5dda4aa33 128-133,144-145
+  s_50b1b090121afc::t_a57110617154af 107,114
+  h_9b272a633435fb 108-113
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_50b1b090121afc::t_36f09449e321bc 19,77-81
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_999ca94ca9b959::t_4176ffe2d7d938 99
+packages/cli/src/credentials/__tests__/credential-data-merge.test.ts
+  s_50b1b090121afc::t_0ba0a806d95248 1-261
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_50b1b090121afc::t_e6a530da141fe1 32-35,146-162,439-474
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -112,6 +126,14 @@ packages/cli/src/modules/n8n-packages/__tests__/blocking-issue-schema-contract.t
         "model": "claude-opus-5-5"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_999ca94ca9b959": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54a76de5-9240-4ff3-a4c9-8d8fb1d03861",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
     },
     "s_a6870d3b039cb7": {
       "agent_id": {

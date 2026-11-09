@@ -1,0 +1,21 @@
+.github/workflows/sbom-validation-callable.yml
+  s_4e4e9c05ae7111::t_88e310fff71e85 26-27,35-41
+.github/scripts/workflow-validation.test.mjs
+  s_4e4e9c05ae7111::t_88e310fff71e85 199-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a2ad3f49268f3b5de673ffce01d5e0b40f13633",
+  "prompts": {},
+  "sessions": {
+    "s_4e4e9c05ae7111": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e40cb2d58ffex349RiyBd7nPWK",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
