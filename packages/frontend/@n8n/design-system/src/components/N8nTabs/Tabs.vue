@@ -11,6 +11,8 @@ import type { TabsProps } from './Tabs.types';
 import N8nTooltip from '../N8nTooltip';
 import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 
+const OVERFLOW_TOLERANCE = 1; // Allow for sub-pixel rounding.
+
 const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	modelValue: undefined,
 	options: () => [],
@@ -35,7 +37,14 @@ function updateScrollState() {
 	scrollPosition.value = container.scrollLeft;
 	canScrollRight.value = container.scrollWidth - container.clientWidth - container.scrollLeft > 1;
 	/** Compare against the full row to keep reserved controls stable at both ends. */
-	hasOverflow.value = !props.justified && container.scrollWidth > (root.value?.clientWidth ?? 0);
+	const rootWidth = root.value?.clientWidth ?? 0;
+	if (props.justified) {
+		hasOverflow.value = false;
+	} else if (container.scrollWidth > rootWidth + OVERFLOW_TOLERANCE) {
+		hasOverflow.value = true;
+	} else if (container.scrollWidth <= rootWidth - OVERFLOW_TOLERANCE) {
+		hasOverflow.value = false;
+	}
 }
 
 onMounted(() => {

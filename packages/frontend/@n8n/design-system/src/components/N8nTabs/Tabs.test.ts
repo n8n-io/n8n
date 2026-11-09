@@ -142,6 +142,61 @@ describe('N8nTabs', () => {
 		expect(queryByRole('button')).not.toBeInTheDocument();
 	});
 
+	it('keeps overflow controls hidden within the threshold when tabs fit', async () => {
+		const { getByRole, queryByRole } = render(N8nTabs, {
+			props: { options: overflowOptions },
+		});
+		const tablist = getByRole('tablist');
+		setOverflowLayout(tablist);
+		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 265 });
+		await fireEvent.scroll(tablist);
+
+		expect(queryByRole('button', { name: 'Show previous tabs' })).not.toBeInTheDocument();
+		expect(queryByRole('button', { name: 'Show next tabs' })).not.toBeInTheDocument();
+	});
+
+	it('shows overflow controls above the threshold and retains them inside the deadband', async () => {
+		const { getByRole } = render(N8nTabs, {
+			props: { options: overflowOptions },
+		});
+		const tablist = getByRole('tablist');
+		setOverflowLayout(tablist);
+		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 266 });
+		await fireEvent.scroll(tablist);
+
+		expect(getByRole('button', { name: 'Show previous tabs' })).toBeInTheDocument();
+		expect(getByRole('button', { name: 'Show next tabs' })).toBeInTheDocument();
+
+		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 264.5 });
+		await fireEvent.scroll(tablist);
+
+		expect(getByRole('button', { name: 'Show previous tabs' })).toBeInTheDocument();
+		expect(getByRole('button', { name: 'Show next tabs' })).toBeInTheDocument();
+
+		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 265 });
+		await fireEvent.scroll(tablist);
+
+		expect(getByRole('button', { name: 'Show previous tabs' })).toBeInTheDocument();
+		expect(getByRole('button', { name: 'Show next tabs' })).toBeInTheDocument();
+	});
+
+	it('removes overflow controls below the threshold', async () => {
+		const { getByRole, queryByRole } = render(N8nTabs, {
+			props: { options: overflowOptions },
+		});
+		const tablist = getByRole('tablist');
+		setOverflowLayout(tablist);
+		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 266 });
+		await fireEvent.scroll(tablist);
+		expect(getByRole('button', { name: 'Show next tabs' })).toBeInTheDocument();
+
+		Object.defineProperty(tablist, 'scrollWidth', { configurable: true, value: 263 });
+		await fireEvent.scroll(tablist);
+
+		expect(queryByRole('button', { name: 'Show previous tabs' })).not.toBeInTheDocument();
+		expect(queryByRole('button', { name: 'Show next tabs' })).not.toBeInTheDocument();
+	});
+
 	it.each([
 		{ value: 'plain', label: 'Plain', tag: 'New' },
 		{ value: 'external', label: 'External', tag: 'New', href: 'https://example.com' },
