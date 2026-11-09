@@ -7,6 +7,7 @@ import type {
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nActionDropdown,
 	N8nIconButton,
@@ -46,7 +47,9 @@ import {
 	usePreviewPanelWidth,
 	usePreviewToggle,
 } from '../composables/useArtifactsLayout';
+import type { AgentTestHandoffParams } from '../composables/useInstanceAiAgentTestHandoff';
 import {
+	buildInstanceAiAgentPreviewHandoffContext,
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingWorkflowAttachment,
@@ -55,19 +58,17 @@ import {
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	getPendingWorkflowAttachment,
-	buildInstanceAiAgentPreviewHandoffContext,
 	type PendingFirstMessage,
 } from '../composables/useInstanceAiHandoff';
-import type { AgentTestHandoffParams } from '../composables/useInstanceAiAgentTestHandoff';
-import { useToast } from '@n8n/composables/useToast';
-import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { INSTANCE_AI_VIEW } from '../constants';
 import { buildFixWithAiPrompt } from '../fixWithAi';
+import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { firstMessageTitle } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext } from '../threadArtifacts';
 import { useCanvasPreview } from '../useCanvasPreview';
+import { toAgentPreviewComposerAttachment } from './assistantAgentPreviewHandoff';
 import {
 	fetchAssistantAgentThreadTabs,
 	saveAssistantAgentThreadTabs,
@@ -91,10 +92,9 @@ import {
 	readNodesAttachment,
 	toNodesComposerAttachment,
 } from './assistantNodeAttachments';
+import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
-import { useAssistantAgentTargets } from './useAssistantAgentTargets';
-import { toAgentPreviewComposerAttachment } from './assistantAgentPreviewHandoff';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
 
