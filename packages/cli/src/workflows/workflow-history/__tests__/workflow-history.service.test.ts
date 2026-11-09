@@ -241,7 +241,7 @@ describe('WorkflowHistoryService', () => {
 			workflow.versionId = '456';
 			workflow.settings = { engineType: 'v2', availableInMCP: true };
 
-			await workflowHistoryService.saveVersion(testUser, workflow, '123');
+			await workflowHistoryService.saveVersion(testPerson, workflow, '123');
 
 			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
 				expect.objectContaining({ settings: { engineType: 'v2' } }),
