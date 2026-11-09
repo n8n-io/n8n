@@ -127,7 +127,7 @@ export class CredentialsController {
 			...scope,
 			excludePersonalRoute: forAgent === 'true',
 			excludeResolvable: forAgent === 'true',
-			excludeInstanceWideRoute: forAssistant === 'true',
+			ownAccessOnly: forAssistant === 'true',
 		});
 	}
 

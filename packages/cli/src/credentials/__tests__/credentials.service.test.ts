@@ -65,6 +65,7 @@ import {
 	type DcrManagedCredentialField,
 } from '@/oauth/dcr-managed-fields';
 import * as checkAccess from '@/permissions.ee/check-access';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -136,6 +137,7 @@ describe('CredentialsService', () => {
 	const eventService = mock<EventService>();
 	const transactionRunner = mock<TransactionRunner>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 	const cleared = mock<PolicyCleared<'credentialSave'>>();
 
 	const service = new CredentialsService(
@@ -164,6 +166,7 @@ describe('CredentialsService', () => {
 		transactionRunner,
 		policyEnforcementService,
 		credentialDescriptions,
+		credentialsPermissionChecker,
 	);
 
 	beforeEach(() => {
@@ -4130,7 +4133,7 @@ describe('CredentialsService', () => {
 				['project', { projectId: 'target-project' }],
 				['workflow', { workflowId: 'workflow-1' }],
 			] as const)(
-				'drops the instance-wide personal credentials of other users for a %s, when excludeInstanceWideRoute is set',
+				'keeps only the credentials the user can use through their own access for a %s, when ownAccessOnly is set',
 				async (_scope, scope) => {
 					const foreignCredential = makePersonalCredential();
 					foreignCredential.shared = [
@@ -4140,23 +4143,51 @@ describe('CredentialsService', () => {
 							projectId: 'alice-personal-project',
 						},
 					] as SharedCredentials[];
-					credentialsFinderService.findCredentialsForUser.mockResolvedValue([foreignCredential]);
+					const ownCredential = Object.assign(makePersonalCredential(), { id: 'cred-own' });
+					credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+						foreignCredential,
+						ownCredential,
+					]);
 					userRepository.findPersonalOwnerForProject.mockResolvedValue(ownerUser);
 					userRepository.findPersonalOwnerForWorkflow.mockResolvedValue(ownerUser);
-					credentialsRepository.findAllPersonalCredentials.mockResolvedValue([foreignCredential]);
-					credentialsRepository.findAllCredentialsForProject.mockResolvedValue([]);
-					credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([]);
+					credentialsRepository.findAllPersonalCredentials.mockResolvedValue([
+						foreignCredential,
+						ownCredential,
+					]);
+					credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+						'cred-personal',
+					]);
 
 					const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
 						...scope,
 						excludePersonalRoute: true,
-						excludeInstanceWideRoute: true,
+						ownAccessOnly: true,
 					});
 
-					expect(result).toEqual([]);
-					expect(credentialsRepository.findAllPersonalCredentials).not.toHaveBeenCalled();
+					expect(result.map((c) => c.id)).toEqual(['cred-own']);
+					expect(
+						credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+					).toHaveBeenCalledWith(user, ['cred-personal', 'cred-own'], {
+						ignoreGlobalUseScope: true,
+					});
 				},
 			);
+
+			it('does not ask about own access when ownAccessOnly is not set', async () => {
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				userRepository.findPersonalOwnerForProject.mockResolvedValue(ownerUser);
+				credentialsRepository.findAllPersonalCredentials.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+
+				await service.getCredentialsAUserCanUseInAWorkflow(user, { projectId: 'target-project' });
+
+				expect(
+					credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+				).not.toHaveBeenCalled();
+			});
 
 			it('includes the credential via the personal route for an unsaved workflow (projectId option)', async () => {
 				credentialsFinderService.findCredentialsForUser.mockResolvedValue([

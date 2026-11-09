@@ -3007,13 +3007,13 @@ export class InstanceAiAdapterService {
 				// In a project-bound thread the credential list is always the bound
 				// project's usable set (project-shared + global) — the same intersection
 				// `preventTampering` (workflow.service.ee.ts) accepts. A caller-supplied
-				// workflowId/projectId must not broaden it. The Assistant never offers
-				// or auto-binds another user's personal credential, so the list skips
-				// the instance-wide route of an owner's or admin's personal project.
+				// workflowId/projectId must not broaden it. The Assistant offers and
+				// auto-binds only credentials the user can use through their own access,
+				// the same ones whose run data redaction lets them see.
 				if (boundProjectId) {
 					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 						projectId: boundProjectId,
-						excludeInstanceWideRoute: true,
+						ownAccessOnly: true,
 					});
 					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
 					return filtered.map(
@@ -3033,11 +3033,11 @@ export class InstanceAiAdapterService {
 					const scoped = options.workflowId
 						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 								workflowId: options.workflowId,
-								excludeInstanceWideRoute: true,
+								ownAccessOnly: true,
 							})
 						: await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 								projectId: options.projectId!,
-								excludeInstanceWideRoute: true,
+								ownAccessOnly: true,
 							});
 
 					const filtered = options.type ? scoped.filter((c) => c.type === options.type) : scoped;

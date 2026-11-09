@@ -63,6 +63,7 @@ import {
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -280,6 +281,7 @@ export class CredentialsService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
@@ -645,17 +647,18 @@ export class CredentialsService {
 	 * user bring their own personal credentials into a team project they are a
 	 * member of. Agents set this because they do not support it yet.
 	 * @param options.excludeResolvable Skip credentials that need an end-user identity.
-	 * @param options.excludeInstanceWideRoute Skip the instance-wide route, which
-	 * gives the personal project of an owner or admin every personal credential
-	 * on the instance. The n8n Assistant sets this so it never offers or picks
-	 * another user's personal credential.
+	 * @param options.ownAccessOnly Keep only the credentials the user can use
+	 * through their own access: owned, shared with them, in a project they belong
+	 * to, or global. An owner's or admin's instance-wide `credential:use` does not
+	 * count. Execution redaction asks the same question, so the n8n Assistant sets
+	 * this and never offers a credential whose run data the user could not see.
 	 */
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
 		options: ({ workflowId: string } | { projectId: string }) & {
 			excludePersonalRoute?: boolean;
 			excludeResolvable?: boolean;
-			excludeInstanceWideRoute?: boolean;
+			ownAccessOnly?: boolean;
 		},
 	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
@@ -667,15 +670,10 @@ export class CredentialsService {
 		]);
 
 		// get all credentials the workflow or project has access to
-		const routeOptions = { excludeInstanceWideRoute: options.excludeInstanceWideRoute };
 		const credentialIdsForWorkflow = new Set(
 			'workflowId' in options
-				? (await this.findAllCredentialIdsForWorkflow(options.workflowId, routeOptions)).map(
-						(c) => c.id,
-					)
-				: (await this.findAllCredentialIdsForProject(options.projectId, routeOptions)).map(
-						(c) => c.id,
-					),
+				? (await this.findAllCredentialIdsForWorkflow(options.workflowId)).map((c) => c.id)
+				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id),
 		);
 
 		const personalRouteCredentialIds = options.excludePersonalRoute
@@ -684,11 +682,14 @@ export class CredentialsService {
 
 		// the union of all three is every credential the user can use in this
 		// workflow or project
-		const usableCredentials = allCredentials.filter(
+		const routedCredentials = allCredentials.filter(
 			(c) =>
 				(!options.excludeResolvable || !c.isResolvable) &&
 				(credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal),
 		);
+		const usableCredentials = options.ownAccessOnly
+			? await this.keepOwnAccess(user, routedCredentials)
+			: routedCredentials;
 
 		if (usableCredentials.length > 0) {
 			const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
@@ -734,6 +735,26 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Drops the credentials that `user` can use only through an instance-wide
+	 * grant, with the same helper that execution redaction uses.
+	 */
+	private async keepOwnAccess<T extends { id: string }>(
+		user: User,
+		credentials: T[],
+	): Promise<T[]> {
+		if (credentials.length === 0) return credentials;
+
+		const inaccessibleIds = new Set(
+			await this.credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser(
+				user,
+				credentials.map((c) => c.id),
+				{ ignoreGlobalUseScope: true },
+			),
+		);
+		return credentials.filter((c) => !inaccessibleIds.has(c.id));
+	}
+
+	/**
 	 * The ids, among `candidateCredentials`, that the user can use here only
 	 * via the personal route: granted to the user's own personal project (owned
 	 * by it, or shared with it directly), where the user also belongs to the
@@ -774,16 +795,11 @@ export class CredentialsService {
 		return globalCredentials;
 	}
 
-	async findAllCredentialIdsForWorkflow(
-		workflowId: string,
-		{ excludeInstanceWideRoute = false }: { excludeInstanceWideRoute?: boolean } = {},
-	): Promise<CredentialsEntity[]> {
+	async findAllCredentialIdsForWorkflow(workflowId: string): Promise<CredentialsEntity[]> {
 		// If the workflow is owned by a personal project and the owner of the project
 		// may use any credential on the instance, it can use all personal credentials.
 		// Keyed on the personal-project owner, not the requester.
-		const user = excludeInstanceWideRoute
-			? null
-			: await this.userRepository.findPersonalOwnerForWorkflow(workflowId);
+		const user = await this.userRepository.findPersonalOwnerForWorkflow(workflowId);
 		if (user && hasGlobalScope(user, 'credential:use')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
 		}
@@ -793,16 +809,11 @@ export class CredentialsService {
 		return await this.credentialsRepository.findAllCredentialsForWorkflow(workflowId);
 	}
 
-	async findAllCredentialIdsForProject(
-		projectId: string,
-		{ excludeInstanceWideRoute = false }: { excludeInstanceWideRoute?: boolean } = {},
-	): Promise<CredentialsEntity[]> {
+	async findAllCredentialIdsForProject(projectId: string): Promise<CredentialsEntity[]> {
 		// If this is a personal project and the owner of the project may use any
 		// credential on the instance, then all workflows in that project can use all
 		// credentials of all personal projects.
-		const user = excludeInstanceWideRoute
-			? null
-			: await this.userRepository.findPersonalOwnerForProject(projectId);
+		const user = await this.userRepository.findPersonalOwnerForProject(projectId);
 		if (user && hasGlobalScope(user, 'credential:use')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
 		}

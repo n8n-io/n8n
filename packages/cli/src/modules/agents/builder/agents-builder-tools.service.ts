@@ -48,7 +48,7 @@ import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
-import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -522,7 +522,7 @@ export class AgentsBuilderToolsService {
 		private readonly telemetry: Telemetry,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
-		private readonly credentialsService: CredentialsService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	/**
@@ -608,8 +608,8 @@ export class AgentsBuilderToolsService {
 		// test runs keep the full provider.
 		const suggestionProvider = withSuggestibleCredentials(
 			credentialProvider,
-			this.credentialsService,
-			projectId,
+			this.credentialsPermissionChecker,
+			user,
 		);
 		return {
 			json: this.getJsonTools(

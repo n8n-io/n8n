@@ -9,7 +9,12 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import type { Project, User, ListQueryDb } from '@n8n/db';
-import { GLOBAL_MEMBER_ROLE, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	GLOBAL_MEMBER_ROLE,
+	ProjectRepository,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
@@ -453,13 +458,15 @@ describe('GET /credentials/for-workflow', () => {
 
 	describe('forAssistant', () => {
 		test.each(['projectId', 'workflowId'])(
-			'offers the owner only own and shared credentials in their personal project, if "%s" is used',
+			'offers the owner only own, shared, and global credentials in their personal project, if "%s" is used',
 			async (queryParam) => {
 				const ownerWorkflow = await createWorkflow({}, owner);
 				const ownCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 				const sharedWithOwner = await saveCredential(randomCredentialPayload(), { user: member });
 				await shareCredentialWithUsers(sharedWithOwner, [owner]);
 				const memberCredential = await saveCredential(randomCredentialPayload(), { user: member });
+				const globalCredential = await saveCredential(randomCredentialPayload(), { user: member });
+				await Container.get(CredentialsRepository).update(globalCredential.id, { isGlobal: true });
 
 				const response = await authOwnerAgent.get('/credentials/for-workflow').query({
 					[queryParam]: queryParam === 'projectId' ? ownerPersonalProject.id : ownerWorkflow.id,
@@ -471,6 +478,7 @@ describe('GET /credentials/for-workflow', () => {
 				const ids = response.body.data.map((c: { id: string }) => c.id);
 				expect(ids).toContain(ownCredential.id);
 				expect(ids).toContain(sharedWithOwner.id);
+				expect(ids).toContain(globalCredential.id);
 				expect(ids).not.toContain(memberCredential.id);
 			},
 		);

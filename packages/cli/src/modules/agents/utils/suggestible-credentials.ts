@@ -1,32 +1,31 @@
 import type { CredentialProvider } from '@n8n/agents';
+import type { User } from '@n8n/db';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 
 /**
- * Keeps the credentials that the project owns or that are shared with it, and
- * global credentials. In the personal project of an owner or admin, the usable
- * set also holds every other user's personal credentials. An owner or admin
- * may use those, but suggestions stick to the credentials the user owns or
- * that are shared with them.
+ * Keeps the credentials that `user` can use through their own access: owned,
+ * shared with them, in a project they belong to, or global. An owner or admin
+ * may use any personal credential in their personal project, but suggestions
+ * stick to their own access. Execution redaction asks the same question, so a
+ * suggested credential never leads to a run whose data the user cannot see.
  */
 export async function filterSuggestibleCredentials<T extends { id: string }>(
-	credentialsService: CredentialsService,
-	projectId: string,
+	credentialsPermissionChecker: CredentialsPermissionChecker,
+	user: User,
 	credentials: T[],
 ): Promise<T[]> {
 	if (credentials.length === 0) return credentials;
 
-	const [projectCredentials, globalCredentials] = await Promise.all([
-		credentialsService.findAllCredentialIdsForProject(projectId, {
-			excludeInstanceWideRoute: true,
-		}),
-		credentialsService.findAllGlobalCredentialIds(),
-	]);
-	const suggestibleIds = new Set(
-		[...projectCredentials, ...globalCredentials].map((credential) => credential.id),
+	const inaccessibleIds = new Set(
+		await credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser(
+			user,
+			credentials.map((credential) => credential.id),
+			{ ignoreGlobalUseScope: true },
+		),
 	);
 
-	return credentials.filter((credential) => suggestibleIds.has(credential.id));
+	return credentials.filter((credential) => !inaccessibleIds.has(credential.id));
 }
 
 /**
@@ -35,12 +34,12 @@ export async function filterSuggestibleCredentials<T extends { id: string }>(
  */
 export function withSuggestibleCredentials(
 	provider: CredentialProvider,
-	credentialsService: CredentialsService,
-	projectId: string,
+	credentialsPermissionChecker: CredentialsPermissionChecker,
+	user: User,
 ): CredentialProvider {
 	return {
 		resolve: async (credentialId) => await provider.resolve(credentialId),
 		list: async () =>
-			await filterSuggestibleCredentials(credentialsService, projectId, await provider.list()),
+			await filterSuggestibleCredentials(credentialsPermissionChecker, user, await provider.list()),
 	};
 }

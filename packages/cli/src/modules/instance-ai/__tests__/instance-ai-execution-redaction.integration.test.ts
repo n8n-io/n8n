@@ -3,11 +3,13 @@ import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflowWithHistory,
+	getPersonalProject,
 	linkUserToProject,
 	mockInstance,
 	randomCredentialPayload,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { ExecutionRepository } from '@n8n/db';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
@@ -25,7 +27,7 @@ import { InstanceRedactionEnforcementService } from '@/modules/redaction/instanc
 import '@/modules/redaction/redaction-context-hook';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
-import { affixRoleToSaveCredential } from '@test-integration/db/credentials';
+import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
 import { LicenseMocker } from '@test-integration/license';
 import { createExecution } from '@test-integration/db/executions';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -378,6 +380,50 @@ describe('Instance AI execution redaction (integration)', () => {
 			const result = await executeNodeFor(alice).execute({
 				...secretNode,
 				config: { parameters: {} },
+			});
+
+			expect(result).toMatchObject({ status: 'success' });
+			expect(JSON.stringify(result)).toContain('tok_secret');
+		});
+
+		it("refuses the owner a member's personal credential in the owner's personal project, without a run", async () => {
+			redactionFloor.get.mockResolvedValue('off');
+			const ownerProject = await getPersonalProject(owner);
+
+			const result = await executeNodeFor(owner, ownerProject.id).execute({
+				...secretNode,
+				config: {
+					parameters: {},
+					credentials: { actionNetworkApi: { id: credential.id, name: credential.name } },
+				},
+			});
+
+			expect(result).toMatchObject({
+				status: 'error',
+				error: {
+					message: `Node "Node" uses the credential "${credential.name}", which you cannot use`,
+				},
+			});
+			// Only the execution the test set up exists.
+			expect(await Container.get(ExecutionRepository).count()).toBe(1);
+		});
+
+		it("runs with a global credential in the owner's personal project", async () => {
+			redactionFloor.get.mockResolvedValue('off');
+			const ownerProject = await getPersonalProject(owner);
+			const globalCredential = await createCredentials(
+				{ name: 'Global Action Network', type: 'actionNetworkApi', data: '', isGlobal: true },
+				await getPersonalProject(alice),
+			);
+
+			const result = await executeNodeFor(owner, ownerProject.id).execute({
+				...secretNode,
+				config: {
+					parameters: {},
+					credentials: {
+						actionNetworkApi: { id: globalCredential.id, name: globalCredential.name },
+					},
+				},
 			});
 
 			expect(result).toMatchObject({ status: 'success' });

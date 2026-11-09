@@ -73,6 +73,7 @@ describe('CredentialsController', () => {
 		mock(), // transactionRunner
 		mock(), // policyEnforcementService
 		credentialDescriptions,
+		mock(), // credentialsPermissionChecker
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -138,9 +139,15 @@ describe('CredentialsController', () => {
 	});
 
 	describe('getProjectCredentials', () => {
-		it.each(['true', 'false', undefined] as const)(
-			'requests agent credential restrictions only when forAgent is true (forAgent=%s)',
-			async (forAgent) => {
+		it.each([
+			{ forAgent: 'true', forAssistant: undefined },
+			{ forAgent: 'false', forAssistant: undefined },
+			{ forAgent: undefined, forAssistant: undefined },
+			{ forAgent: undefined, forAssistant: 'true' },
+			{ forAgent: 'true', forAssistant: 'false' },
+		] as const)(
+			'requests agent and Assistant restrictions only when asked (forAgent=$forAgent, forAssistant=$forAssistant)',
+			async ({ forAgent, forAssistant }) => {
 				const fixed = mock<
 					Awaited<ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>>[number]
 				>({ id: 'fixed', isResolvable: false });
@@ -149,7 +156,7 @@ describe('CredentialsController', () => {
 					.mockResolvedValue([fixed]);
 				const request = mock<CredentialRequest.ForWorkflow>({
 					user: req.user,
-					query: { projectId: 'project-1', forAgent },
+					query: { projectId: 'project-1', forAgent, forAssistant },
 				});
 
 				await expect(credentialsController.getProjectCredentials(request)).resolves.toEqual([
@@ -159,6 +166,7 @@ describe('CredentialsController', () => {
 					projectId: 'project-1',
 					excludePersonalRoute: forAgent === 'true',
 					excludeResolvable: forAgent === 'true',
+					ownAccessOnly: forAssistant === 'true',
 				});
 			},
 		);

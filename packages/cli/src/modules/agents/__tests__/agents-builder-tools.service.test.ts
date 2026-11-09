@@ -25,7 +25,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ZodTypeAny } from 'zod';
 
 import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { ConflictError, LockedError, UserError } from '@n8n/errors';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypes } from '@/node-types';
@@ -114,7 +114,7 @@ function makeService() {
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
 	const collaborationService = mock<CollaborationService>();
-	const credentialsService = mock<CredentialsService>();
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 
 	const service = new AgentsBuilderToolsService(
 		agentsService as unknown as AgentsService,
@@ -138,13 +138,13 @@ function makeService() {
 		telemetry,
 		collaborationService,
 		createAgentSkillRefsService(),
-		credentialsService,
+		credentialsPermissionChecker,
 	);
 
 	return {
 		service,
 		collaborationService,
-		credentialsService,
+		credentialsPermissionChecker,
 		builderModelLiveLookupService,
 		agentsService: purposeServices,
 		secureRuntime,
@@ -2015,17 +2015,15 @@ describe('AgentsBuilderToolsService', () => {
 				colleagueCredential,
 				globalCredential,
 			]);
-			setup.credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
-				ownCredential,
-			] as never);
-			setup.credentialsService.findAllGlobalCredentialIds.mockResolvedValue([
-				globalCredential,
-			] as never);
+			setup.credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+				colleagueCredential.id,
+			]);
 			return setup;
 		}
 
-		it('resolves the main model only from credentials the project owns or was shared', async () => {
-			const { service, builderModelLiveLookupService } = makeServiceWithCredentials();
+		it('resolves the main model only from credentials the user can use through their own access', async () => {
+			const { service, builderModelLiveLookupService, credentialsPermissionChecker } =
+				makeServiceWithCredentials();
 			builderModelLiveLookupService.list.mockResolvedValue([
 				{ name: 'Claude Sonnet 5', value: 'claude-sonnet-5' },
 			]);
@@ -2040,6 +2038,13 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(result).toEqual(
 				expect.objectContaining({ ok: true, credentialId: 'own', credentialName: 'My Anthropic' }),
+			);
+			expect(
+				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+			).toHaveBeenCalledWith(
+				user,
+				[ownCredential.id, colleagueCredential.id, globalCredential.id],
+				{ ignoreGlobalUseScope: true },
 			);
 		});
 	});

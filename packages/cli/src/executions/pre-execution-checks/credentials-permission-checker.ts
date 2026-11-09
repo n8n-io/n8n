@@ -89,8 +89,15 @@ export class CredentialsPermissionChecker {
 	 * (inline/parameter, file, url): these carry no project of their own, so their
 	 * credentials must be evaluated against the user triggering the run rather than
 	 * against the parent workflow's project.
+	 *
+	 * @param options.ignoreGlobalUseScope - check the user's own access only, as
+	 * if they held no instance-wide `credential:use`.
 	 */
-	async checkForUser(userId: string, nodes: INode[]) {
+	async checkForUser(
+		userId: string,
+		nodes: INode[],
+		options: { ignoreGlobalUseScope?: boolean } = {},
+	) {
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
@@ -99,6 +106,7 @@ export class CredentialsPermissionChecker {
 		const { instanceScoped, notGranted } = await this.findUnusable(
 			await this.loadUserWithRole(userId),
 			workflowCredIds,
+			options,
 		);
 
 		// No owner to ask: sharing a provider connection cannot make a workflow able
