@@ -1604,7 +1604,30 @@ describe('openai api-style selection (real SDK)', () => {
 		});
 
 		it('streams usage and sends only the openai options the server can read', async () => {
-			const { fetchFn, calls } = fakeEndpoint({ '/v1/chat/completions': CHAT_STREAM_OK });
+			// With `include_usage`, the server sends usage in a last frame that has no choices.
+			const { fetchFn, calls } = fakeEndpoint({
+				'/v1/chat/completions': sse([
+					{
+						id: 'chatcmpl_1',
+						created: 0,
+						model: 'gpt-5.6',
+						choices: [{ index: 0, delta: { role: 'assistant', content: 'from chat' } }],
+					},
+					{
+						id: 'chatcmpl_1',
+						created: 0,
+						model: 'gpt-5.6',
+						choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+					},
+					{
+						id: 'chatcmpl_1',
+						created: 0,
+						model: 'gpt-5.6',
+						choices: [],
+						usage: { prompt_tokens: 7, completion_tokens: 3, total_tokens: 10 },
+					},
+				]),
+			});
 			const model = build(
 				{ url: CHAT_ONLY, apiStyle: 'chat' },
 				fetchFn,
@@ -1616,8 +1639,11 @@ describe('openai api-style selection (real SDK)', () => {
 					openai: { reasoningEffort: 'high', reasoningSummary: null, promptCacheKey: 'agent-key' },
 				},
 			});
-			await readStream(stream);
+			const parts = await readStream(stream);
 
+			expect(parts.find((part) => part.type === 'finish')).toMatchObject({
+				usage: { inputTokens: { total: 7 }, outputTokens: { total: 3 } },
+			});
 			expect(calls[0].body).toMatchObject({
 				reasoning_effort: 'high',
 				stream_options: { include_usage: true },
