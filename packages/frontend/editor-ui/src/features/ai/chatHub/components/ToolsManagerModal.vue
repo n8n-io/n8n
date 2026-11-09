@@ -530,6 +530,8 @@ function onDialogOpenUpdate(open: boolean) {
 
 .listWrapper {
 	gap: var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
 	max-height: 60vh;
 }
 
