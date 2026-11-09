@@ -91,11 +91,7 @@ export class PromotionCheckoutCleanupService {
 		}
 	}
 
-	/**
-	 * The message can arrive late or twice, so this reads the database first and
-	 * removes only a checkout that is no longer current. It never publishes, so
-	 * messages cannot loop.
-	 */
+	/** The message can arrive late or twice. It never publishes, so messages cannot loop. */
 	@OnPubSubEvent('promotion-environment-changed', { instanceType: 'main' })
 	async handleEnvironmentChangeFromOtherMain({
 		environmentIds,
