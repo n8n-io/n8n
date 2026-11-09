@@ -22,7 +22,7 @@ variable "PC_RUNTIME_IMAGE" {
 }
 
 variable "DHI_REF" {
-  default = "dhi.io/node:26.12.1-alpine3.24-dev@sha256:4b1591bfce570a17f9562e206b62e76be84d6df32c3a86bfc677fc87959402cc"
+  default = "dhi.io/node:26.13.0-alpine3.24-dev@sha256:3e61a81f5d83780aff01cb2d8f2251698bf3fe7d522bef71a9656fa93333b504"
 }
 
 variable "N8N_TAGS" { default = "" }
