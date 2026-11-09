@@ -9,13 +9,7 @@ export function nodeToolsSkill(): RuntimeSkill {
 		name: 'Agent Builder Node Tools',
 		description:
 			'Use whenever adding, removing, or updating an n8n node-backed tool, including search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions, and HTTP Request Tool configuration.',
-		recommendedTools: [
-			'agent-context',
-			'search_nodes',
-			'get_node_types',
-			'setup_credentials',
-			'agent_builder_patch_config',
-		],
+		recommendedNamespaces: ['agents', 'nodes', 'credentials'],
 		allowedTools: [
 			'agent-context',
 			'search_nodes',

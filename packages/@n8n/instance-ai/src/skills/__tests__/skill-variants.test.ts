@@ -51,20 +51,20 @@ describe('skill variant composition', () => {
 		).rejects.toThrow('requires disabled tool');
 	});
 
-	it('removes disabled recommendations without treating them as required dependencies', async () => {
+	it('keeps recommended namespaces when a tool is disabled', async () => {
 		const optional = createRuntimeSkillSource([
 			{
 				id: 'review',
 				name: 'review',
 				description: 'Review work.',
 				instructions: 'Review the result.',
-				recommendedTools: ['inspect', 'save'],
+				recommendedNamespaces: ['workflows'],
 			},
 		]);
 		const result = await composeSkillVariants(optional, [
 			{ id: 'read-only@1', changes: [], disabledTools: ['save'] },
 		]);
-		expect((await result.source.loadSkill('review'))?.recommendedTools).toEqual(['inspect']);
+		expect((await result.source.loadSkill('review'))?.recommendedNamespaces).toEqual(['workflows']);
 		expect((await result.source.loadSkill('review'))?.instructions).toBe('Review the result.');
 	});
 });

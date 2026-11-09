@@ -2,6 +2,7 @@ import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
 	resolveBuilderToolName,
+	unwrapCatalogToolCall,
 	instanceAiApprovalDetailsSchema,
 	instanceAiQuestionSchema,
 	credentialRequestSchema,
@@ -214,6 +215,20 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 
 type EventBase = { runId: string; agentId: string; responseId?: string };
 
+/**
+ * The tool and arguments for a tool event. A catalog `call_tool` call reports
+ * the tool it runs, so the UI labels and renders the real tool.
+ */
+function displayedToolCall(
+	toolName: unknown,
+	input: unknown,
+): { toolName: string; args: Record<string, unknown> } {
+	return unwrapCatalogToolCall(
+		typeof toolName === 'string' ? toolName : '',
+		isRecord(input) ? input : {},
+	);
+}
+
 /** A non-empty string, or undefined for anything else (matches the legacy `value ? value : undefined` gate). */
 function presentString(value: unknown): string | undefined {
 	return typeof value === 'string' && value ? value : undefined;
@@ -268,11 +283,7 @@ function mapToolCallChunk(
 	return {
 		type: 'tool-call',
 		...base,
-		payload: {
-			toolCallId: chunk.toolCallId,
-			toolName: chunk.toolName,
-			args: isRecord(chunk.input) ? chunk.input : {},
-		},
+		payload: { toolCallId: chunk.toolCallId, ...displayedToolCall(chunk.toolName, chunk.input) },
 	};
 }
 
@@ -307,6 +318,7 @@ function mapSuspendedChunk(
 			: toolCallId;
 
 	if (!requestId || !toolCallId) return null;
+	const call = displayedToolCall(chunk.toolName, chunk.input);
 
 	const credentialRequests = parseSchemaArray(
 		suspendPayload.credentialRequests,
@@ -344,8 +356,7 @@ function mapSuspendedChunk(
 	const appBlueprint = parseSchemaRecord(suspendPayload.appBlueprint, appBlueprintSchema);
 	// A test run of the target Agent pauses for the target's own tool approvals.
 	const isTargetTestRun =
-		typeof chunk.toolName === 'string' &&
-		resolveBuilderToolName(chunk.toolName) === AGENT_BUILDER_TOOL_NAMES.CALL_AGENT;
+		resolveBuilderToolName(call.toolName) === AGENT_BUILDER_TOOL_NAMES.CALL_AGENT;
 	const targetApprovalResult = isTargetTestRun
 		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
 		: undefined;
@@ -365,8 +376,8 @@ function mapSuspendedChunk(
 		payload: {
 			requestId,
 			toolCallId,
-			toolName: typeof chunk.toolName === 'string' ? chunk.toolName : '',
-			args: isRecord(chunk.input) ? chunk.input : {},
+			toolName: call.toolName,
+			args: call.args,
 			severity: parseSeverity(suspendPayload.severity),
 			message:
 				typeof suspendPayload.message === 'string'
@@ -403,8 +414,7 @@ function toolCallFromContent(part: unknown, base: EventBase): InstanceAiEvent | 
 		...base,
 		payload: {
 			toolCallId: typeof part.toolCallId === 'string' ? part.toolCallId : '',
-			toolName: typeof part.toolName === 'string' ? part.toolName : '',
-			args: isRecord(part.input) ? part.input : {},
+			...displayedToolCall(part.toolName, part.input),
 		},
 	};
 }

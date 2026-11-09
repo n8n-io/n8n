@@ -382,9 +382,8 @@ export function toNodeOutputShape(
 	const operation = params.operation ?? 'message';
 	if (resource !== 'text' || operation !== 'message' || params.simplify === false) return items;
 	return items.flatMap((item) =>
-		Array.isArray(item.candidates) && item.candidates.length > 0
-			? item.candidates.filter(isRecord)
-			: [item],
+		// The node maps `candidates: []` to zero items, so unwrap empty arrays too.
+		Array.isArray(item.candidates) ? item.candidates.filter(isRecord) : [item],
 	);
 }
 

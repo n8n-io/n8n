@@ -5,19 +5,10 @@ description: >-
   on what the user just typed: a short or ambiguous opener ("fix it", "carry on",
   "what should I look at"), a reference to earlier work in a new conversation, or
   any question about what has recently run or broken.
-recommended_tools:
-  - activity
-  - list_workflows
-  - get_workflow_node_usage
-  - get_workflow
-  - list_executions
-  - get_execution
-  - debug_execution
-  - list_credentials
-  - search_credential_types
-  - setup_credentials
-  - test_credential
-  - delete_credential
+recommended_namespaces:
+  - workflows
+  - executions
+  - credentials
 ---
 
 # Instance Awareness

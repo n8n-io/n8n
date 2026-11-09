@@ -6,7 +6,7 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '..';
 import type { InstanceAiContext, OrchestrationContext } from '../../types';
-import { ALWAYS_LOADED_TOOL_NAMES } from '../tool-ids';
+import { ALWAYS_LOADED_TOOL_NAMES, getToolNamespace } from '../tool-ids';
 
 vi.mock('../attachments/parse-file.tool', () => ({
 	createParseFileTool: vi.fn(() => ({ id: 'parse-file' })),
@@ -230,9 +230,18 @@ describe('domain tool construction', () => {
 		});
 	});
 
-	it('never defers model catalog search behind search_tools', () => {
+	it('lists n8n resource tools in the catalog under their namespace', () => {
 		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain('search_models');
-		expect(ALWAYS_LOADED_TOOL_NAMES.has('search_models')).toBe(true);
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('search_models')).toBe(false);
+		expect(getToolNamespace('search_models')).toBe('nodes');
+		expect(getToolNamespace('list_workflows')).toBe('workflows');
+		expect(getToolNamespace('workflow_builder_build_workflow')).toBe('workflows');
+		expect(getToolNamespace('run_workflow')).toBe('executions');
+		expect(getToolNamespace('insert_data_table_rows')).toBe('data_tables');
+		expect(getToolNamespace('setup_credentials')).toBe('credentials');
+		expect(getToolNamespace('agent_builder_write_config')).toBe('agents');
+		expect(getToolNamespace('list_folders')).toBe('instance');
+		expect(getToolNamespace('ask_user')).toBeUndefined();
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {

@@ -205,7 +205,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 		.description(
 			'Standard post-build verifier: runs a built workflow with sidecar verification context from the build outcome ' +
 				'(pin data, mocked credentials, trigger-shaped inputData; all trigger types supported). ' +
-				'Use `run_workflow` only for ad hoc runs outside build verification. ' +
+				'Run `run_workflow` through `call_tool` only for ad hoc runs outside build verification. ' +
 				'CRITICAL: `inputData` shape depends on the trigger type (see the field description) — a wrong shape produces ' +
 				'null downstream values that look like an expression bug; re-run verify with the correct shape instead of patching the workflow.',
 		)

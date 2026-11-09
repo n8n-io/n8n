@@ -22,7 +22,11 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES } from '../tools/tool-ids';
+import {
+	ALWAYS_LOADED_TOOL_NAMES,
+	getToolNamespace,
+	getToolNamespaceDescription,
+} from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
@@ -243,7 +247,28 @@ export async function createInstanceAgent(
 		applyAgentThinking(agent, modelId);
 	}
 	if (hasDeferrableTools) {
-		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
+		// Catalog mode keeps the toolset fixed for the whole run, so the prompt cache
+		// survives, and a deferred tool costs one call_tool call instead of a load step.
+		agent.toolDeferral({ mode: 'catalog' });
+		// MCP tools are listed under their server and n8n tools under their resource
+		// (workflows, data_tables, agents, ...), so the model can browse one area
+		// with find_tools({ namespace }) instead of searching the whole set.
+		const byNamespace = new Map<string | undefined, InstanceAiToolRegistry>();
+		for (const [name, tool] of deferredTools) {
+			const namespace = tool.mcpServerName ?? getToolNamespace(name);
+			const group = byNamespace.get(namespace) ?? createToolRegistry();
+			group.set(name, tool);
+			byNamespace.set(namespace, group);
+		}
+		for (const [namespace, group] of byNamespace) {
+			const namespaceDescription = namespace
+				? (getToolNamespaceDescription(namespace) ?? `tools from the ${namespace} MCP server`)
+				: undefined;
+			agent.deferredTool(
+				toolRegistryValues(group),
+				namespace ? { namespace, namespaceDescription } : undefined,
+			);
+		}
 	}
 	// The agents module owns the builder skills that are generated from its config schema.
 	const builderSkills = context.builderDelegate?.getRuntimeSkills() ?? [];
@@ -316,7 +341,7 @@ export async function createInstanceAgent(
 					}
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,
-			inputProcessors: hasDeferrableTools ? ['NativeToolSearch'] : undefined,
+			inputProcessors: hasDeferrableTools ? ['ToolCatalog'] : undefined,
 			skills: skills?.registry,
 		}),
 	);
