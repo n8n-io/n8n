@@ -1461,9 +1461,9 @@ describe('WorkflowExecute', () => {
 			}
 
 			//                      PD
-			//┌───────┐1  ┌─────────────────┐0        ┌─────┐ ►►
-			//│trigger├──►│http (error out.)├────────►│merge│
-			//└───────┘   └────────┬────────┘   ┌───►│     │
+			//┌───────┐1  ┌─────────────────┐0         ┌─────┐ ►►
+			//│trigger├──►│http (error out.)├─────────►│merge│
+			//└───────┘   └────────┬────────┘       ┌─►│     │
 			//                    1│  ┌───────────┐ │  └─────┘
 			//                     └─►│handleError├─┘
 			//                        └───────────┘
@@ -1485,8 +1485,8 @@ describe('WorkflowExecute', () => {
 			//┌───────┐1  ┌──┐1                ┌─────┐ ►►
 			//│trigger├──►│if├────────────────►│merge│
 			//└───────┘   └┬─┘            ┌───►│     │
-			//            0│  ┌───────┐0   │    └─────┘
-			//             └─►│onFalse├────┘
+			//            0│  ┌───────┐0  │    └─────┘
+			//             └─►│onFalse├───┘
 			//                └───────┘
 			function unusedIfBranch(parameters: INode['parameters']) {
 				const merge = createMerge(parameters);
