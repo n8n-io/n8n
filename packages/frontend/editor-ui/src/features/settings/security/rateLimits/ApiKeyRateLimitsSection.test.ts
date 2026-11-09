@@ -94,6 +94,18 @@ describe('ApiKeyRateLimitsSection', () => {
 			expect(getByRole('switch', { name: 'Enable API key rate limits' })).toBeInTheDocument();
 		});
 
+		it('links the description to the API keys page and the rate limits docs', async () => {
+			const { getByTestId, getByRole } = await renderLoaded();
+
+			expect(getByTestId('rate-limits-description')).toHaveTextContent(
+				'Cap how many requests your public API keys can make with rate limits',
+			);
+			expect(getByTestId('rate-limits-api-keys-link')).toHaveTextContent('API keys');
+			const docsLink = getByRole('link', { name: 'rate limits' });
+			expect(docsLink).toHaveAttribute('href', 'https://docs.n8n.io/connect/n8n-api/rate-limits');
+			expect(docsLink).toHaveAttribute('target', '_blank');
+		});
+
 		it('does not show the limits while rate limiting is off', async () => {
 			const { queryByTestId } = await renderLoaded();
 
@@ -148,9 +160,19 @@ describe('ApiKeyRateLimitsSection', () => {
 
 			expect(
 				screen.getByText(
-					'Limits how many Public API requests each API key can make. Requests over the limit get a 429 response until it resets.',
+					'Limits how many requests each API key can make. Requests over the limit get a 429 response until it resets.',
 				),
 			).toBeInTheDocument();
+		});
+
+		it('shows the reset icon on the reset all button', async () => {
+			const { getByTestId } = await renderLoaded({ enabled: true, globalReadLimit: 5 });
+
+			await userEvent.click(getByTestId('rate-limits-edit'));
+
+			expect(
+				screen.getByTestId('rate-limits-reset-all').querySelector('[data-icon="undo-2"]'),
+			).not.toBeNull();
 		});
 
 		it('names each limit and window input after its group and kind', async () => {

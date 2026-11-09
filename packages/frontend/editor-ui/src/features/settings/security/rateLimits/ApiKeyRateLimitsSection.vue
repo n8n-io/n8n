@@ -16,7 +16,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { VIEWS } from '@/app/constants';
+import { PUBLIC_API_RATE_LIMITS_DOCS_URL, VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import * as rateLimitSettingsApi from '@n8n/rest-api-client/api/public-api-rate-limit-settings';
@@ -118,16 +118,30 @@ async function save(next: PublicApiRateLimitSettings) {
 					<N8nText :bold="true">
 						{{ i18n.baseText('settings.security.rateLimits.enable.title') }}
 					</N8nText>
-					<N8nText size="small" color="text-light">
+					<N8nText size="small" color="text-light" data-test-id="rate-limits-description">
 						<I18nT
 							keypath="settings.security.rateLimits.enable.description"
 							tag="span"
 							scope="global"
 						>
 							<template #apiKeys>
-								<RouterLink :to="{ name: VIEWS.API_SETTINGS }">
+								<RouterLink
+									:to="{ name: VIEWS.API_SETTINGS }"
+									data-test-id="rate-limits-api-keys-link"
+								>
 									{{ i18n.baseText('settings.security.rateLimits.enable.description.apiKeys') }}
 								</RouterLink>
+							</template>
+							<template #rateLimits>
+								<a
+									:href="PUBLIC_API_RATE_LIMITS_DOCS_URL"
+									target="_blank"
+									rel="noopener noreferrer"
+									:class="$style.docsLink"
+								>
+									{{ i18n.baseText('settings.security.rateLimits.enable.description.rateLimits') }}
+									<N8nIcon icon="arrow-up-right" size="xsmall" />
+								</a>
 							</template>
 						</I18nT>
 					</N8nText>
@@ -157,7 +171,11 @@ async function save(next: PublicApiRateLimitSettings) {
 										<N8nIcon icon="info" size="small" color="text-light" />
 									</N8nTooltip>
 								</div>
-								<N8nText size="small" :data-test-id="`rate-limits-summary-${group}`">
+								<N8nText
+									size="small"
+									:class="$style.summaryValue"
+									:data-test-id="`rate-limits-summary-${group}`"
+								>
 									{{ summarizeLimits(settings, group, i18n) }}
 								</N8nText>
 							</div>
@@ -193,6 +211,12 @@ async function save(next: PublicApiRateLimitSettings) {
 </template>
 
 <style lang="scss" module>
+.docsLink {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+}
+
 .summary {
 	display: flex;
 	align-items: center;
@@ -215,7 +239,13 @@ async function save(next: PublicApiRateLimitSettings) {
 
 .summaryLabel {
 	display: flex;
+	flex-shrink: 0;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	white-space: nowrap;
+}
+
+.summaryValue {
+	text-align: right;
 }
 </style>
