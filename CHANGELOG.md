@@ -1,3 +1,17 @@
+## [2.47.3](https://github.com/n8n-io/n8n/compare/n8n@2.47.2...n8n@2.47.3) (2026-11-09)
+
+
+### Bug Fixes
+
+* **core:** Only allow users who can edit a workflow to own its migration findings ([#43101](https://github.com/n8n-io/n8n/issues/43101)) ([cff4342](https://github.com/n8n-io/n8n/commit/cff43429ed34fadf95d0c688d7325db8e9df5c72))
+* **core:** Retire stale scheduled tasks in repeated batches in each reaper pass ([#43096](https://github.com/n8n-io/n8n/issues/43096)) ([4ba6e50](https://github.com/n8n-io/n8n/commit/4ba6e50a8a1e54e1dc9db261d12283b4cfba49a5))
+
+
+### Features
+
+* Open the migration report filtered to the recipient from notification emails ([#43095](https://github.com/n8n-io/n8n/issues/43095)) ([a83b981](https://github.com/n8n-io/n8n/commit/a83b9812a5e04f429e64faa0d4f82396c6970264))
+
+
 ## [2.47.2](https://github.com/n8n-io/n8n/compare/n8n@2.47.1...n8n@2.47.2) (2026-11-04)
 
 
