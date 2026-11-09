@@ -20,7 +20,6 @@ import { useAssistantMentionAttachments } from '@/features/ai/assistant-at-menti
 import { useAssistantMentionAvailability } from '@/features/ai/assistant-at-mentions/composables/useAssistantMentionAvailability';
 import { useAssistantAtMentionsTelemetry } from '@/features/ai/assistant-at-mentions/assistantAtMentions.telemetry';
 import type {
-	AssistantMentionArtifactReference,
 	AssistantMentionCounts,
 	AssistantMentionSelection,
 	WorkflowArtifactReference,
@@ -146,22 +145,20 @@ const emit = defineEmits<{
 	// false when the user has already typed something newer, so the caller can
 	// tell whether the draft was recovered. It also restores the pre-fill the
 	// draft came from, so a retry stays attributed to the surface that wrote it.
+	// `mentionedWorkflowIds` lists the workflows the mentions point at, in the
+	// order they were picked: the mentions reach the thread only as attachments.
 	submit: [
 		message: string,
 		attachments: InstanceAiAttachment[] | undefined,
 		restoreDraft: () => boolean,
 		authorship: InstanceAiMessageAuthorship,
 		responseStartedAtEpochMs: number,
-		acceptDraft: () => void,
 		mentionCounts: AssistantMentionCounts,
 		mentionedWorkflowIds: readonly string[],
 	];
 	stop: [];
 	'dismiss-context-chip': [];
 	'workflow-preview': [workflowFile: string | null];
-	'mention-reference-added': [reference: AssistantMentionArtifactReference];
-	'mention-reference-removed': [referenceId: string];
-	'mention-workflow-open': [workflowId: string];
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	// Fires when the composer goes between empty and non-empty so the split
 	// empty state can pause its cycling placeholders only once the user types
@@ -378,14 +375,16 @@ const mentionAttachments = useAssistantMentionAttachments({
 	resources: attachedResources,
 	projectId: () => props.mentionProjectId,
 	reservedAttachmentCount: () => props.reservedAttachmentCount,
-	onReferenceAdded: (reference) => emit('mention-reference-added', reference),
-	onReferenceRemoved: (referenceId) => emit('mention-reference-removed', referenceId),
 	onMentionRemoved: mentionTelemetry.trackMentionRemoved,
 	onCleared: () => mentions.close(false, 'unavailable'),
 });
 
+/**
+ * A pick only stages the mention as a draft attachment. The mentioned workflow
+ * gets its tab with the message it rides on, once that message is sent, so
+ * picking it does not move the thread's tabs or preview around.
+ */
 async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
-	// Read before the pick stages anything: a workflow mention opens its own tab.
 	const existingArtifact = props.mentionArtifacts.find(
 		(artifact) => artifact.id === selection.item.workflowId,
 	);
@@ -406,7 +405,6 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 			i18n.baseText('instanceAi.nodeContext.truncated.title'),
 		);
 	}
-	emit('mention-workflow-open', selection.item.workflowId);
 	await mentions.replaceActiveRange(selection.item.label);
 }
 
@@ -488,7 +486,6 @@ function emitSubmittedMessage(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs: number,
-	acceptDraft: () => void,
 	mentionCounts: AssistantMentionCounts,
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
@@ -500,7 +497,6 @@ function emitSubmittedMessage(
 		restoreDraft,
 		authorship,
 		responseStartedAtEpochMs,
-		acceptDraft,
 		mentionCounts,
 		mentionedWorkflowIds,
 	);
@@ -581,7 +577,7 @@ function submitComposerMessage(
 	draftSnapshot?: {
 		files: File[];
 		resources: InstanceAiResourceAttachment[];
-		mentionReferenceIds: readonly string[];
+		mentionRecordIds: readonly string[];
 		mentionCounts: AssistantMentionCounts;
 		mentionedWorkflowIds: readonly string[];
 	},
@@ -597,18 +593,17 @@ function submitComposerMessage(
 	const mentionCounts = draftSnapshot?.mentionCounts ?? mentionAttachments.snapshotCounts();
 	const mentionedWorkflowIds =
 		draftSnapshot?.mentionedWorkflowIds ?? mentionAttachments.snapshotMentionedWorkflowIds();
-	const mentionSubmission = mentionAttachments.detachSubmission(draftSnapshot?.mentionReferenceIds);
+	const restoreMentions = mentionAttachments.detachSubmission(draftSnapshot?.mentionRecordIds);
 	emitSubmittedMessage(
 		message,
 		attachments,
 		() => {
 			const restored = restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill);
-			mentionSubmission.restore();
+			restoreMentions();
 			return restored;
 		},
 		resolveAuthorship(message, prefill),
 		responseStartedAtEpochMs,
-		mentionSubmission.accept,
 		mentionCounts,
 		mentionedWorkflowIds,
 	);
@@ -644,7 +639,7 @@ async function handleSubmit() {
 
 	const submittedFiles = [...attachedFiles.value];
 	const submittedResources = [...attachedResources.value];
-	const mentionReferenceIds = mentionAttachments.snapshotSubmission();
+	const mentionRecordIds = mentionAttachments.snapshotSubmission();
 	const mentionCounts = mentionAttachments.snapshotCounts();
 	const mentionedWorkflowIds = mentionAttachments.snapshotMentionedWorkflowIds();
 	isPreparingSubmission.value = true;
@@ -671,7 +666,7 @@ async function handleSubmit() {
 		{
 			files: submittedFiles,
 			resources: submittedResources,
-			mentionReferenceIds,
+			mentionRecordIds,
 			mentionCounts,
 			mentionedWorkflowIds,
 		},

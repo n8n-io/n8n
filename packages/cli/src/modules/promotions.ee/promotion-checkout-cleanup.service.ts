@@ -1,11 +1,9 @@
 import type { PromotionEnvironmentRemote } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { Publisher } from '@n8n/backend-services';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { PromotionEnvironment } from './database/entities/promotion-environment.entity';
 import { PromotionEnvironmentRepository } from './database/repositories/promotion-environment.repository';

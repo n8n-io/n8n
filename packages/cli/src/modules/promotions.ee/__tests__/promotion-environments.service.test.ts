@@ -11,7 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import type { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';

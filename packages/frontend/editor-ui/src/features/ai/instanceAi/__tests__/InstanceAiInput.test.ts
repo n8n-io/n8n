@@ -574,7 +574,6 @@ describe('InstanceAiInput', () => {
 				promptModified: false,
 			},
 			expect.any(Number),
-			expect.any(Function),
 			EMPTY_ASSISTANT_MENTION_COUNTS,
 			[],
 		]);
@@ -889,7 +888,6 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
-				expect.any(Function),
 				EMPTY_ASSISTANT_MENTION_COUNTS,
 				[],
 			],
