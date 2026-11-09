@@ -13,10 +13,12 @@ import type { StorageLocation } from '@n8n/blob-storage';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
+import groupBy from 'lodash/groupBy';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 
 import { ConflictError, OperationalError, UnexpectedError } from '@n8n/errors';
 
+import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type {
 	AgentRunTelemetryType,
@@ -206,6 +208,7 @@ export class AgentExecutionService {
 		private readonly queueRepository: AgentMessageQueueRepository,
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly systemAgents: SystemAgentRegistry,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
 	) {}
 
 	async startExecutionRecording(
@@ -230,10 +233,24 @@ export class AgentExecutionService {
 		ctx: OperationContext,
 		lockedQueueThread?: AgentExecutionThread,
 	): Promise<AgentExecutionReservation> {
+		return await this.projectDeletion.withWritableProject(
+			params.projectId,
+			async (ctx) => await this.reserveWritableExecution(params, startedAt, ctx, lockedQueueThread),
+			ctx,
+		);
+	}
+
+	private async reserveWritableExecution(
+		params: StartExecutionParams,
+		startedAt: Date,
+		ctx: OperationContext,
+		lockedQueueThread?: AgentExecutionThread,
+	): Promise<AgentExecutionReservation> {
 		// The queue already locked the session. Its consumer validates the owner before execution.
 		const prepared = lockedQueueThread
 			? { thread: lockedQueueThread, created: false }
 			: await this.prepareThread(params, ctx);
+		await this.agentExecutionThreadRepository.assertOwnerActive(prepared.thread, ctx);
 		const { queueItem, predecessorId } = await this.checkAdmission(params, ctx);
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,
@@ -490,7 +507,7 @@ export class AgentExecutionService {
 			const currentLocation = await this.agentExecutionRepository.findTimelineStorageLocation(
 				ref.executionId,
 			);
-			if (currentLocation === 'db')
+			if (currentLocation === 'db' || currentLocation === null)
 				await this.agentExecutionLogStore.delete([{ ...ref, storedAt }]);
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -764,6 +781,23 @@ export class AgentExecutionService {
 		}
 	}
 
+	/** Include logs from instance agents that have sessions in the deleted project. */
+	async deleteExecutionLogsForProject(projectId: string): Promise<void> {
+		const refs = this.toBlobRefs(
+			await this.agentExecutionRepository.findBlobRefsByProjectId(projectId),
+		);
+		for (const batch of chunk(refs, AgentExecutionService.logDeletionBatchSize)) {
+			await this.agentExecutionLogStore.delete(
+				batch.map((ref) => ({
+					agentId: ref.agentId,
+					threadId: ref.threadId,
+					executionId: ref.id,
+					storedAt: ref.storedAt,
+				})),
+			);
+		}
+	}
+
 	/**
 	 * Delete the SDK-memory threads of an agent's sessions. Call before the agent
 	 * is removed: the cascade then deletes the execution threads that list them.
@@ -773,6 +807,22 @@ export class AgentExecutionService {
 		const threadIds = await this.agentExecutionThreadRepository.findIdsByAgentId(agentId);
 		for (const batch of chunk(threadIds, AgentExecutionService.logDeletionBatchSize)) {
 			await memory.deleteThreads(batch);
+		}
+	}
+
+	/** Include instance-agent sessions before the project cascade removes their thread ids. */
+	async deleteMemoryThreadsForProject(projectId: string): Promise<void> {
+		const sessions =
+			await this.agentExecutionThreadRepository.findMemoryThreadsForProject(projectId);
+		for (const [agentId, threads] of Object.entries(
+			groupBy(sessions, (session) => session.agentId),
+		)) {
+			const memory = this.n8nMemory.getImplementation(agentId);
+			for (const batch of chunk(threads, AgentExecutionService.logDeletionBatchSize)) {
+				const threadIds = batch.map((thread) => thread.id);
+				await memory.deleteThreads(threadIds);
+				await this.agentExecutionThreadRepository.deleteCheckpointsForThreads(threadIds);
+			}
 		}
 	}
 
@@ -1205,7 +1255,9 @@ export class AgentExecutionService {
 		try {
 			await this.agentExecutionLogStore.write(logRef, { timeline: record.timeline }, storedAt);
 			blobWritten = true;
-			await this.agentExecutionRepository.moveTimelineToBlob(executionId, storedAt);
+			await this.projectDeletion.withWritableProject(params.projectId, async (ctx) => {
+				await this.agentExecutionRepository.moveTimelineToBlob(executionId, storedAt, ctx);
+			});
 		} catch (error) {
 			this.errorReporter.error(error);
 			if (blobWritten) await this.deleteUnreferencedTimelineBlob(logRef, storedAt);
