@@ -55,6 +55,24 @@ describe('ProjectSelect', () => {
 		expect(getByRole('menuitemcheckbox', { name: /Personal space/ })).toBeInTheDocument();
 	});
 
+	it('clears the search term when the search field is removed', async () => {
+		const { getByRole, getByPlaceholderText, queryByPlaceholderText, queryByRole } =
+			renderComponent({ props: { modelValue: 'personal' } });
+
+		await userEvent.click(getByRole('button', { name: /Personal space/ }));
+		await userEvent.type(getByPlaceholderText('Search projects'), 'sa');
+		await waitFor(() => {
+			expect(queryByRole('menuitemcheckbox', { name: /Marketing/ })).not.toBeInTheDocument();
+		});
+
+		mockedStore(useProjectsStore).myProjects = PROJECTS.slice(0, 5);
+
+		await waitFor(() => {
+			expect(queryByPlaceholderText('Search projects')).not.toBeInTheDocument();
+		});
+		expect(getByRole('menuitemcheckbox', { name: /Marketing/ })).toBeInTheDocument();
+	});
+
 	it('shows the empty text when no project matches', async () => {
 		const { getByRole, getByPlaceholderText, findByText } = renderComponent({
 			props: { modelValue: 'personal' },

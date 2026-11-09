@@ -62,6 +62,11 @@ watch(open, (isOpen, wasOpen) => {
 	}
 });
 
+// The search field clears its term only when the menu closes, not when the field is removed.
+watch(showSearch, (isSearchShown) => {
+	if (!isSearchShown) searchTerm.value = '';
+});
+
 onBeforeUnmount(() => {
 	clearTimeout(tooltipSuppressTimeout);
 });
