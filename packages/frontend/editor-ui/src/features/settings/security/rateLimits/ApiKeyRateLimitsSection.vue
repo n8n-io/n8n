@@ -246,6 +246,8 @@ async function save(next: PublicApiRateLimitSettings) {
 }
 
 .summaryValue {
+	min-width: 0;
+	overflow-wrap: anywhere;
 	text-align: right;
 }
 </style>
