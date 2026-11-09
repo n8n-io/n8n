@@ -13,9 +13,9 @@ const i18n = useI18n();
 const settingsStore = useSettingsStore();
 
 const label = computed(() => {
-	const engine = props.settings?.engineType;
-	if (!settingsStore.isModuleActive('engine-v2') || !engine) return null;
+	if (!settingsStore.isModuleActive('engine-v2')) return null;
 
+	const engine = props.settings?.engineType ?? 'v1';
 	return i18n.baseText('workflowHistory.item.engine', { interpolate: { engine } });
 });
 </script>
