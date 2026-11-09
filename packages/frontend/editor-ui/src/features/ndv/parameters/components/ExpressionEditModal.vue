@@ -182,7 +182,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 				{{ i18n.baseText('expressionEdit.editExpression') }}
 			</N8nDialogTitle>
 		</N8nDialogHeader>
-		<N8nDialogBody :class="$style.body">
+		<N8nDialogBody>
 			<div :class="$style.container">
 				<N8nResizeWrapper
 					:width="sidebarWidth"
@@ -290,22 +290,11 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 <style module lang="scss">
 @use '@/app/css/variables' as *;
 
-.body {
-	&.body {
-		display: flex;
-		min-height: 0;
-		overflow: hidden;
-	}
-}
-
 .container {
 	display: flex;
 	flex: 1 1 auto;
 	flex-flow: row nowrap;
 	gap: var(--spacing--2xs);
-	min-height: 0;
-	min-width: 0;
-	width: 100%;
 }
 
 .sidebar {
