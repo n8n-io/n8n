@@ -4,6 +4,8 @@
  * expression filter. Pure functions, so the tool catalog can stay free of scoring.
  */
 
+import { createContext, runInContext } from 'node:vm';
+
 export interface SearchableTool {
 	readonly name: string;
 	readonly description: string;
@@ -14,6 +16,24 @@ const K1 = 1.2;
 const B = 0.75;
 
 export const MAX_PATTERN_LENGTH = 200;
+
+/**
+ * Most time a `pattern` filter can run. A short pattern with nested quantifiers can
+ * backtrack for seconds, and a regular expression blocks the event loop while it runs.
+ */
+export const PATTERN_TIMEOUT_MS = 100;
+
+const MATCH_SCRIPT =
+	"texts.map(([name, description]) => { const regex = new RegExp(pattern, 'i'); return regex.test(name) || regex.test(description); })";
+
+function isTimeoutError(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'code' in error &&
+		error.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT'
+	);
+}
 
 /** Lowercase words, with camelCase, snake_case, kebab-case and dotted names split. */
 export function tokenize(value: string): string[] {
@@ -69,18 +89,34 @@ export function rankTools<T extends SearchableTool>(tools: readonly T[], query: 
 
 /** Tools whose name or description matches `pattern`, case-insensitive. Throws on a bad pattern. */
 export function filterTools<T extends SearchableTool>(tools: readonly T[], pattern: string): T[] {
-	// A cap limits catastrophic backtracking; the searched text is only tool names and descriptions.
 	if (pattern.length > MAX_PATTERN_LENGTH) {
 		throw new Error(
 			`Pattern is too long (max ${MAX_PATTERN_LENGTH} characters). Use a shorter pattern or a query.`,
 		);
 	}
-	let regex: RegExp;
 	try {
-		regex = new RegExp(pattern, 'i');
+		new RegExp(pattern, 'i');
 	} catch (error) {
 		const reason = error instanceof Error ? error.message : String(error);
 		throw new Error(`Invalid pattern "${pattern}": ${reason}`);
 	}
-	return tools.filter((tool) => regex.test(tool.name) || regex.test(tool.description));
+	// The match runs in a separate context only so that a timeout can stop it. This is the
+	// approach of `safeRegex` in n8n-workflow, which this SDK does not depend on. One timeout
+	// covers all tools, not each test.
+	const context = createContext({
+		pattern,
+		texts: tools.map((tool) => [tool.name, tool.description]),
+	});
+	let matches: unknown;
+	try {
+		matches = runInContext(MATCH_SCRIPT, context, { timeout: PATTERN_TIMEOUT_MS });
+	} catch (error) {
+		if (!isTimeoutError(error)) throw error;
+		throw new Error(
+			`Pattern "${pattern}" took too long to match. Use a simpler pattern or a query.`,
+		);
+	}
+	if (!Array.isArray(matches)) return [];
+	const matched: unknown[] = matches;
+	return tools.filter((_, index) => matched[index] === true);
 }

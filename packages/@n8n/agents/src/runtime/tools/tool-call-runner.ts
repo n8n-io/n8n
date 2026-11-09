@@ -144,9 +144,10 @@ export class ToolCallRunner {
 		const input = validation.input;
 
 		const guardrails = GuardrailRunner.from(params.guardrails);
+		// Guardrails check the tool that runs, so a dispatched call reports that tool, not call_tool.
 		const guardCtx = guardrails?.toolCallContext({
 			toolCallId,
-			toolName,
+			toolName: builtTool.name,
 			input,
 			runId: params.runId,
 		});

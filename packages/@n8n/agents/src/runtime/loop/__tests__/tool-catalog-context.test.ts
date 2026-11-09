@@ -62,6 +62,29 @@ describe('tool catalog context message', () => {
 		expect(removed).toContain('No longer applies');
 	});
 
+	it('adds the list again when compaction hides it', () => {
+		const list = new AgentMessageList();
+		const context = builder(['get_cell']);
+		context.synchronizeToolCatalog(list);
+		const [hidden] = list.messages();
+		list.maskObservedMessages({
+			lastObservedAt: new Date(Date.now() + 1000),
+			lastObservedMessageId: hidden.id,
+		});
+		expect(list.llmVisibleMessages()).toHaveLength(0);
+
+		vi.useFakeTimers({ now: Date.now() + 5000 });
+		try {
+			context.synchronizeToolCatalog(list);
+		} finally {
+			vi.useRealTimers();
+		}
+
+		const visible = list.llmVisibleMessages().filter(isRuntimeToolCatalog);
+		expect(visible).toHaveLength(1);
+		expect(visible[0].data.toolCatalog).toBe('- tools: get_cell');
+	});
+
 	it('adds nothing when there was never a tool catalog', () => {
 		const list = new AgentMessageList();
 		builder([]).synchronizeToolCatalog(list);

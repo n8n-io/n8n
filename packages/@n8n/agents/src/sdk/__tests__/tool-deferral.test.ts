@@ -49,4 +49,16 @@ describe('Agent tool deferral', () => {
 			await expect(build(agent)).rejects.toThrow(`reserved for the tool catalog: ${toolName}`);
 		},
 	);
+
+	it('accepts a static tool named call_tool when the provider searches deferred tools', async () => {
+		const agent = new Agent('deferral')
+			.model('anthropic', 'claude-sonnet-4-5')
+			.instructions('Test agent.')
+			.tool(makeTool(CALL_TOOL_TOOL_NAME))
+			.deferredTool(makeTool('lookup'));
+
+		const config = await build(agent);
+
+		expect(config.tools?.map((tool) => tool.name)).toContain(CALL_TOOL_TOOL_NAME);
+	});
 });

@@ -233,7 +233,12 @@ export class ToolCatalog {
 				wrap: (toolName, input) => {
 					const entry = this.lookup(toolName, input);
 					if (!entry) return undefined;
-					return { tool: entry.name, arguments: toArguments(input) };
+					const args = toArguments(input);
+					// A tool split by action does not accept the `action` of its former name.
+					if (entry.name !== toolName && entry.tool.legacyActions?.[toolName] !== undefined) {
+						delete args.action;
+					}
+					return { tool: entry.name, arguments: args };
 				},
 			},
 			// Runs only when `dispatch.resolve` finds no tool: report it with suggestions.

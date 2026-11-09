@@ -75,7 +75,12 @@ import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { resolveNativeToolDeferral } from '../model/model-factory';
 import { ToolCatalog } from '../tools/tool-catalog';
 import { fixToolCall } from '../tools/fix-tool-call';
-import { buildToolMap, reportedToolCall, resolveToolForCall } from '../tools/tool-adapter';
+import {
+	buildToolMap,
+	reportedToolCall,
+	resolveToolCallTarget,
+	resolveToolForCall,
+} from '../tools/tool-adapter';
 import { ToolCallExecutor } from '../tools/tool-call-executor';
 import type {
 	PendingResume,
@@ -94,10 +99,19 @@ export type {
 
 const MAX_LOOP_ITERATIONS = 100;
 
+/** The tool that ran a call. A tool from the tool catalog can run under its own name or call_tool. */
+function toolThatRan(
+	toolMap: Map<string, BuiltTool>,
+	toolName: string,
+	input: unknown,
+): BuiltTool | undefined {
+	return resolveToolCallTarget(toolMap, toolName, input)?.tool;
+}
+
 function endsTurn(batch: ToolCallBatchResult, toolMap: Map<string, BuiltTool>): boolean {
 	return batch.results.some(
 		({ toolName, input, toolEntry }) =>
-			resolveToolForCall(toolMap, toolName, input)?.endsTurn?.(toolEntry.output) === true,
+			toolThatRan(toolMap, toolName, input)?.endsTurn?.(toolEntry.output) === true,
 	);
 }
 
@@ -120,7 +134,7 @@ function resumedTurnEnds(
 			(c) =>
 				c.type === 'tool-call' &&
 				c.state === 'resolved' &&
-				resolveToolForCall(toolMap, c.toolName, c.input)?.endsTurn?.(c.output) === true,
+				toolThatRan(toolMap, c.toolName, c.input)?.endsTurn?.(c.output) === true,
 		) ?? false
 	);
 }

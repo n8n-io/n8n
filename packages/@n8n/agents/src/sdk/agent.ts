@@ -21,6 +21,7 @@ import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import { FLAG_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory-capture';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
 import { AgentMessageList } from '../runtime/model/message-list';
+import { resolveNativeToolDeferral } from '../runtime/model/model-factory';
 import type { FetchFn } from '../runtime/model/model-factory';
 import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
@@ -1136,9 +1137,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			);
 		}
 
-		// The tool catalog adds find_tools and call_tool when deferred tools exist,
-		// and would silently replace a direct or MCP tool with the same name.
-		if (finalDeferredTools.length > 0) {
+		// The tool catalog adds find_tools and call_tool, and would silently replace a direct
+		// or MCP tool with the same name. Provider tool search adds neither.
+		const usesToolCatalog =
+			this.toolDeferralConfig?.mode === 'tool-catalog' ||
+			!this.modelConfig ||
+			resolveNativeToolDeferral(this.modelConfig) === undefined;
+		if (finalDeferredTools.length > 0 && usesToolCatalog) {
 			const toolCatalogNames = new Set([FIND_TOOLS_TOOL_NAME, CALL_TOOL_TOOL_NAME]);
 			const reserved = [...finalStaticTools, ...mcpTools]
 				.filter((t) => toolCatalogNames.has(t.name))

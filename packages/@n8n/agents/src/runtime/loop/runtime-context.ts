@@ -273,6 +273,8 @@ export class RuntimeContextBuilder {
 		activeSkills: ActiveSkills | undefined;
 	}) {
 		this.synchronizeSkillCatalog(list);
+		// Compaction can hide the list that was added at the start of the turn. Add it again.
+		this.synchronizeToolCatalog(list);
 		const combinedVolatileInstructions = [tools.volatileInstructions, hostVolatileInstructions]
 			.map((value) => value?.trim())
 			.filter((value): value is string => Boolean(value))

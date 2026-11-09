@@ -234,13 +234,14 @@ back to memory, checkpoints, or `AgentMessageList`):
   read the cached prefix instead of reprocessing the whole transcript on
   every call.
 - **Tool-definitions breakpoint.** The runtime puts a `cacheControl` marker on
-  the last eligible local tool when the catalog is static. This includes the
-  complete eager catalog, native tool search, and the tool catalog (which sends
-only the fixed `find_tools` / `call_tool` controllers). In native mode, the selected
+  the last eligible local tool when the toolset is static. This includes a
+  complete eager toolset, native tool search, and the tool catalog. The tool
+  catalog sends the eager tools and the fixed `find_tools` / `call_tool`
+  controllers. It does not send the deferred tools. In native mode, the selected
   tool must be non-deferred. The runtime never puts a generated cache marker on
   a deferred tool. A caller-supplied marker makes that tool eager and stays
-  unchanged. Runtime memory
-  tools do not change this rule. Their definitions stay stable within a run.
+  unchanged. Runtime memory tools do not change this rule. Their definitions
+  stay stable within a run.
 
 Both markers reuse the configured Anthropic TTL (`getAnthropicCacheTtl`).
 

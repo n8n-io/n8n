@@ -4523,6 +4523,27 @@ describe('AgentRuntime — deferred tool loading', () => {
 		expect(handler).not.toHaveBeenCalled();
 		expect(JSON.stringify(result)).toContain('Input schema:');
 	});
+
+	it('ends the turn when a tool catalog tool called by its own name ends it', async () => {
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [
+				{ ...makeMockTool('silence', async () => ({ silent: true })), endsTurn: () => true },
+			],
+			toolDeferral: { mode: 'tool-catalog' },
+		});
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-direct', toolName: 'silence', args: {} }]),
+		);
+
+		const result = await runtime.generate('say nothing', { maxIterations: 5 });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(result.finishReason).toBe('stop');
+	});
 });
 
 describe('AgentRuntime — concurrent tool execution', () => {

@@ -66,6 +66,14 @@ describe('tool search', () => {
 		]);
 		expect(() => filterTools(tools, '(')).toThrow('Invalid pattern');
 	});
+
+	it('stops a pattern that backtracks for too long', () => {
+		const longTool = { name: `${'a'.repeat(30)}!`, description: 'a'.repeat(3000) };
+		const startedAt = Date.now();
+		expect(() => filterTools([longTool], '^(\\w+)*$')).toThrow('took too long');
+		expect(() => filterTools([longTool], '\\w*\\w*\\w*#')).toThrow('took too long');
+		expect(Date.now() - startedAt).toBeLessThan(2000);
+	});
 });
 
 describe('ToolCatalog', () => {
@@ -128,11 +136,24 @@ describe('ToolCatalog', () => {
 		);
 	});
 
-	it('leaves a direct call to a tool catalog tool unrepaired', async () => {
+	it('repairs a direct call to a tool from the tool catalog into a call_tool call', async () => {
 		const map = buildToolMap(catalog().getControllerTools());
 		const repaired = await fixToolCall(
 			{
 				toolCall: { toolCallId: 'tc-1', toolName: 'get_cell', input: '{"id":"c1"}' },
+				error: { name: 'AI_NoSuchToolError' } as never,
+			},
+			map,
+		);
+		expect(repaired?.toolName).toBe(CALL_TOOL_TOOL_NAME);
+		expect(JSON.parse(repaired!.input)).toEqual({ tool: 'get_cell', arguments: { id: 'c1' } });
+	});
+
+	it('leaves a direct call to an unknown tool unrepaired', async () => {
+		const map = buildToolMap(catalog().getControllerTools());
+		const repaired = await fixToolCall(
+			{
+				toolCall: { toolCallId: 'tc-1', toolName: 'not_a_tool', input: '{}' },
 				error: { name: 'AI_NoSuchToolError' } as never,
 			},
 			map,
