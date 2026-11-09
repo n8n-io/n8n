@@ -54,7 +54,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
 | [public.app](public.app.md) | 9 |  | BASE TABLE |
 | [public.app_artifact](public.app_artifact.md) | 8 |  | BASE TABLE |
-| [public.app_version](public.app_version.md) | 10 |  | BASE TABLE |
+| [public.app_version](public.app_version.md) | 12 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
@@ -78,7 +78,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_annotation_tags](public.execution_annotation_tags.md) | 2 |  | BASE TABLE |
 | [public.execution_annotations](public.execution_annotations.md) | 6 |  | BASE TABLE |
 | [public.execution_data](public.execution_data.md) | 4 |  | BASE TABLE |
-| [public.execution_entity](public.execution_entity.md) | 19 |  | BASE TABLE |
+| [public.execution_entity](public.execution_entity.md) | 20 |  | BASE TABLE |
 | [public.execution_ledger](public.execution_ledger.md) | 16 |  | BASE TABLE |
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 6 |  | BASE TABLE |
@@ -131,7 +131,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
-| [public.scheduled_job](public.scheduled_job.md) | 25 |  | BASE TABLE |
+| [public.scheduled_job](public.scheduled_job.md) | 26 |  | BASE TABLE |
 | [public.scheduled_task](public.scheduled_task.md) | 19 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
@@ -998,11 +998,13 @@ erDiagram
 }
 "public.app_version" {
   uuid appId FK
+  json bindings
   integer buildAttempts
   varchar_16_ buildStatus
   timestamp_3__with_time_zone buildStatusUpdatedAt
   integer bundleArtifactId FK
   timestamp_3__with_time_zone createdAt
+  text description
   uuid id
   varchar_255_ label
   integer sourceArtifactId FK
@@ -1237,6 +1239,7 @@ erDiagram
   integer id
   bigint jsonSizeBytes
   varchar mode
+  smallint resumeAttempts
   varchar retryOf
   varchar retrySuccessId
   timestamp_3__with_time_zone startedAt
@@ -1730,6 +1733,7 @@ erDiagram
   integer id
   integer intervalSeconds
   varchar_16_ kind
+  timestamp_3__with_time_zone lastDispatchedAt
   timestamp_3__with_time_zone lastFiredAt
   integer maxAttempts
   integer misfireGraceSeconds

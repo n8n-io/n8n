@@ -52,7 +52,7 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 	}
 
 	async canAccess(app: App, user: ResourcePrincipal): Promise<boolean> {
-		return app.visibility !== 'project' || (await this.canRead(app, user));
+		return app.visibility === 'instance' || (await this.canRead(app, user));
 	}
 
 	async canRead(app: App, user: ResourcePrincipal): Promise<boolean> {

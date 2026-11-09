@@ -26,6 +26,14 @@ describe('WorkflowVersionForm', () => {
 		expect(queryByTestId('workflow-version-description-character-count')).not.toBeInTheDocument();
 	});
 
+	it('should label the description input without an optional marker', () => {
+		const { getByText } = renderComponent({
+			props: { versionName: '', description: '' },
+		});
+
+		expect(getByText('Describe changes')).toBeInTheDocument();
+	});
+
 	it('should update versionName model when input changes', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {

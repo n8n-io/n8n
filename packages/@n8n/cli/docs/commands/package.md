@@ -44,6 +44,11 @@ exports require `project:export`, including projects with Agents.
 Export summaries include Agent counts from the server, including added dependencies.
 JSON output includes these counts and the selected Agent IDs.
 
+The package keeps the channels of each Agent without their credential IDs. A
+credential that only a channel uses is not a package requirement. The import
+keeps a connected destination channel. Set up each channel that the import
+marks `setup-required`. See the import section for details.
+
 `--version-policy` applies to workflows and agents, including agents in a
 project export. The selected version supplies the definition and its references.
 Workflow names, settings (including `errorWorkflow`), and tags always use their
@@ -112,6 +117,8 @@ Requires the API key to hold:
 - `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish` — when the import plans that action. Skipped Agents require no write grants.
 - `skill:create` — when the import creates a project or instance skill. The skills of one Agent need only the Agent grants.
 - `skill:update` — when the import saves a new version of a matched project or instance skill.
+- `workflow:activate` — when the import publishes a workflow, including a republish under the default `--publishing-policy=preserve-published-state`. Skipped workflows and workflows marked as archived in the package need no activation grant.
+- `workflow:deactivate` — when `--publishing-policy=match-source` or `unpublish-all` unpublishes a workflow. Archiving a workflow needs only `workflow:delete`.
 - `workflow:delete` — when `--conflict-policy=new-version` archives or restores a matched workflow, or when the effective folder conflict policy is `overwrite` (set directly, or inherited from `--project-conflict-policy=overwrite`)
 - `folder:delete` — when the effective folder conflict policy is `overwrite` (set directly, or inherited from `--project-conflict-policy=overwrite`)
 - `dataTable:create` — when the package references data tables and `--data-table-missing-mode` is `create`
@@ -261,6 +268,8 @@ n8n-cli package import-selection --file=project.n8np --selected-project-id=<id> 
 Requires the API key to hold:
 
 - `workflow:import` — always
+- `workflow:activate` — when the fixed `match-source` publication publishes a selected workflow
+- `workflow:deactivate` — when the fixed `match-source` publication unpublishes a selected workflow
 - `workflow:delete` — when `--deleted-workflow-ids` contains IDs or an imported workflow changes between archived and unarchived
 - `project:create` and `project:update` — always, even when the selected project already exists
 - `folder:create` and `folder:update` — when the package contains folders, including folders outside the selected project

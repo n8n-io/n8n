@@ -1,9 +1,10 @@
-import { isZodSchema } from '@n8n/agents';
+import { isZodSchema, type BuiltTool } from '@n8n/agents';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import {
 	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
 	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	type AppResponse,
+	type AppBlueprint,
 } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,11 +12,18 @@ import { executeTool, parseToolInput } from '../../../__tests__/tool-test-utils'
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiAppService, InstanceAiContext } from '../../../types';
 import { createAppsTool } from '../apps.tool';
-import { checkOutDraft, packAppFolder, readBaseVersion, writeBaseVersion } from '../app-workspace';
+import {
+	checkOutDraft,
+	installSdk,
+	packAppFolder,
+	readBaseVersion,
+	writeBaseVersion,
+} from '../app-workspace';
 
 vi.mock('../app-workspace', () => ({
 	appFolder: (appId: string) => `apps/${appId}`,
 	checkOutDraft: vi.fn(),
+	installSdk: vi.fn(),
 	packAppFolder: vi.fn(),
 	readBaseVersion: vi.fn(),
 	writeBaseVersion: vi.fn(),
@@ -59,6 +67,38 @@ function app(id: string, projectId = 'project-1') {
 }
 
 const ARCHIVE = Buffer.from('archive');
+const BLUEPRINT: AppBlueprint = {
+	name: 'Todos',
+	namespace: 'todos',
+	visibility: 'project',
+	description: 'Track tasks and mark them complete.',
+	theme: 'both',
+	bindings: [
+		{
+			kind: 'dataTable',
+			name: 'Tasks',
+			description: 'Stores the tasks shown in the app.',
+			status: 'existing',
+			resourceId: 'table-1',
+		},
+		{
+			kind: 'workflow',
+			name: 'Task reminders',
+			description: 'Sends reminders for tasks that are due.',
+			status: 'new',
+		},
+	],
+};
+
+function createInput(blueprint: AppBlueprint = BLUEPRINT) {
+	return { action: 'create' as const, blueprint };
+}
+
+async function approveCreate(tool: BuiltTool, approvedBlueprint: AppBlueprint = BLUEPRINT) {
+	return await executeTool(tool, createInput(), {
+		resumeData: { approved: true, blueprint: approvedBlueprint },
+	});
+}
 
 function setup(metadata: Record<string, unknown> = {}) {
 	const appService = mock<InstanceAiAppService>();
@@ -93,25 +133,124 @@ function setup(metadata: Record<string, unknown> = {}) {
 describe('apps tool', () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	it('creates the first app under the pending id, opens it and adds it to the thread', async () => {
+	it('suspends with the proposed blueprint before creating an app', async () => {
+		const { tool, appService } = setup();
+		const suspend = vi.fn(async (payload: unknown) => await Promise.resolve(payload));
+
+		await executeTool(tool, createInput(), { suspend });
+
+		expect(suspend).toHaveBeenCalledWith({
+			requestId: expect.any(String),
+			message: 'Review the blueprint for Todos',
+			severity: 'info',
+			inputType: 'app-blueprint',
+			appBlueprint: BLUEPRINT,
+		});
+		expect(appService.createApp).not.toHaveBeenCalled();
+	});
+
+	it('does not let the model prefill additional instructions', () => {
+		const { tool } = setup();
+		const parsed = parseToolInput(
+			tool,
+			createInput({ ...BLUEPRINT, additionalInstructions: 'Use compact cards.' }),
+		);
+
+		expect(parsed.success).toBe(true);
+		if (parsed.success) expect(parsed.data).toEqual(createInput());
+	});
+
+	it('cancels without creating an app', async () => {
+		const { tool, appService } = setup();
+
+		const result = await executeTool(tool, createInput(), {
+			resumeData: { approved: false, blueprint: BLUEPRINT },
+		});
+
+		expect(result).toEqual({
+			approved: false,
+			blueprint: BLUEPRINT,
+		});
+		expect(appService.createApp).not.toHaveBeenCalled();
+	});
+
+	it('returns optional build instructions after approval', async () => {
+		const { tool, appService } = setup();
+		appService.createApp.mockResolvedValue(app(SERVER_ID));
+		const blueprint = { ...BLUEPRINT, additionalInstructions: 'Use compact cards.' };
+
+		const result = await executeTool(tool, createInput(), {
+			resumeData: {
+				approved: true,
+				blueprint,
+			},
+		});
+
+		expect(result).toMatchObject({
+			approved: true,
+			blueprint,
+		});
+	});
+
+	it('creates the first app under the pending id and adds it to the thread without opening it', async () => {
 		const { tool, appService, thread, onArtifactChanged } = setup({
 			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: { appId: PENDING_ID, projectId: 'project-1' },
 		});
 		appService.findApp.mockResolvedValue(undefined);
 		appService.createApp.mockResolvedValue(app(PENDING_ID));
 
-		const result = await executeTool(tool, {
-			action: 'create',
-			name: 'Todos',
-			namespace: 'todos',
-		});
+		const result = await approveCreate(tool);
 
-		expect(result).toMatchObject({ path: `apps/${PENDING_ID}` });
+		expect(result).toMatchObject({ app: { id: PENDING_ID } });
+		expect(result).not.toHaveProperty('path');
 		expect(appService.createApp).toHaveBeenCalledWith({
 			name: 'Todos',
 			namespace: 'todos',
+			visibility: 'project',
 			id: PENDING_ID,
 		});
+		expect(readBaseVersion).not.toHaveBeenCalled();
+		expect(checkOutDraft).not.toHaveBeenCalled();
+		expect(thread.metadata).toEqual({
+			[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [{ appId: PENDING_ID, projectId: 'project-1' }],
+		});
+		expect(onArtifactChanged).toHaveBeenCalledWith({
+			type: 'app',
+			id: PENDING_ID,
+			name: 'Todos',
+			projectId: 'project-1',
+		});
+	});
+
+	it('keeps the pending id when opening the new app fails', async () => {
+		const pendingTarget = { appId: PENDING_ID, projectId: 'project-1' };
+		const { tool, thread, onArtifactChanged } = setup({
+			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: pendingTarget,
+		});
+		vi.mocked(checkOutDraft).mockRejectedValue(new Error('Sandbox command failed'));
+
+		const result = await executeTool(tool, { action: 'open', appId: PENDING_ID });
+
+		expect(result).toEqual({ error: 'Sandbox command failed' });
+
+		expect(thread.metadata).toEqual({
+			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: pendingTarget,
+		});
+		expect(onArtifactChanged).not.toHaveBeenCalled();
+	});
+
+	it('checks out an app when it is opened and adds it to the thread', async () => {
+		const { tool, appService, thread, onArtifactChanged } = setup({
+			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: {
+				appId: PENDING_ID,
+				projectId: 'project-1',
+			},
+		});
+		appService.getApp.mockResolvedValue(app(PENDING_ID));
+
+		const result = await executeTool(tool, { action: 'open', appId: PENDING_ID });
+
+		expect(result).toEqual({ path: `apps/${PENDING_ID}`, baseVersionId: null });
 		expect(checkOutDraft).toHaveBeenCalledWith({}, appService, PENDING_ID);
 		expect(thread.metadata).toEqual({
 			[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [{ appId: PENDING_ID, projectId: 'project-1' }],
@@ -124,42 +263,30 @@ describe('apps tool', () => {
 		});
 	});
 
-	it('keeps the pending id when the checkout of a new app fails', async () => {
-		const pendingTarget = { appId: PENDING_ID, projectId: 'project-1' };
-		const { tool, appService, thread, onArtifactChanged } = setup({
-			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: pendingTarget,
-		});
-		appService.findApp.mockResolvedValue(undefined);
-		appService.createApp.mockResolvedValue(app(PENDING_ID));
-		vi.mocked(checkOutDraft).mockRejectedValue(new Error('Sandbox command failed'));
-
-		const result = await executeTool(tool, { action: 'create', name: 'Todos', namespace: 'todos' });
-
-		expect(result).toEqual({ error: 'Sandbox command failed' });
-
-		expect(thread.metadata).toEqual({
-			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: pendingTarget,
-		});
-		expect(onArtifactChanged).not.toHaveBeenCalled();
-	});
-
-	it('gives a second app a server id and keeps both targets', async () => {
+	it('binds a second app without opening it', async () => {
 		const { tool, appService, thread } = setup({
 			[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [{ appId: PENDING_ID, projectId: 'project-1' }],
 		});
 		appService.createApp.mockResolvedValue(app(SERVER_ID));
 
-		await executeTool(tool, { action: 'create', name: 'Admin', namespace: 'admin' });
+		await approveCreate(tool, {
+			...BLUEPRINT,
+			name: 'Admin',
+			namespace: 'admin',
+			visibility: 'instance',
+		});
 
 		expect(appService.createApp).toHaveBeenCalledWith({
 			name: 'Admin',
 			namespace: 'admin',
+			visibility: 'instance',
 			id: undefined,
 		});
 		expect(thread.metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY]).toEqual([
 			{ appId: PENDING_ID, projectId: 'project-1' },
 			{ appId: SERVER_ID, projectId: 'project-1' },
 		]);
+		expect(checkOutDraft).not.toHaveBeenCalled();
 	});
 
 	it('ignores a pending id from another project', async () => {
@@ -168,7 +295,7 @@ describe('apps tool', () => {
 		});
 		appService.createApp.mockResolvedValue(app(SERVER_ID));
 
-		await executeTool(tool, { action: 'create', name: 'Todos', namespace: 'todos' });
+		await approveCreate(tool);
 
 		expect(appService.findApp).not.toHaveBeenCalled();
 		expect(appService.createApp).toHaveBeenCalledWith(expect.objectContaining({ id: undefined }));
@@ -180,11 +307,7 @@ describe('apps tool', () => {
 		});
 		appService.findApp.mockResolvedValue(app(PENDING_ID));
 
-		const result = await executeTool(tool, {
-			action: 'create',
-			name: 'Todos',
-			namespace: 'todos',
-		});
+		const result = await approveCreate(tool);
 
 		expect(result).toMatchObject({ alreadyCreated: true });
 		expect(appService.createApp).not.toHaveBeenCalled();
@@ -195,25 +318,198 @@ describe('apps tool', () => {
 			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: { appId: PENDING_ID, projectId: 'project-1' },
 		});
 		appService.findApp.mockRejectedValue(new Error('Database unavailable'));
+		const blueprint = { ...BLUEPRINT, additionalInstructions: 'Use compact cards.' };
 
-		const result = await executeTool(tool, {
-			action: 'create',
-			name: 'Todos',
-			namespace: 'todos',
-		});
+		const result = await approveCreate(tool, blueprint);
 
-		expect(result).toEqual({ error: 'Database unavailable' });
+		expect(result).toEqual({ approved: true, blueprint, error: 'Database unavailable' });
 		expect(appService.createApp).not.toHaveBeenCalled();
 	});
 
-	it('keeps an open app folder and its uncommitted edits', async () => {
-		const { tool } = setup();
+	it('keeps an open app folder, binds it to the thread and preserves uncommitted edits', async () => {
+		const { tool, appService, thread, onArtifactChanged } = setup();
 		vi.mocked(readBaseVersion).mockResolvedValue('v1');
+		appService.getApp.mockResolvedValue(app(SERVER_ID));
 
 		const result = await executeTool(tool, { action: 'open', appId: SERVER_ID });
 
 		expect(result).toEqual({ path: `apps/${SERVER_ID}`, baseVersionId: 'v1', alreadyOpen: true });
 		expect(checkOutDraft).not.toHaveBeenCalled();
+		expect(installSdk).toHaveBeenCalledWith({}, expect.anything());
+		expect(thread.metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY]).toEqual([
+			{ appId: SERVER_ID, projectId: 'project-1' },
+		]);
+		expect(onArtifactChanged).toHaveBeenCalledWith({
+			type: 'app',
+			id: SERVER_ID,
+			name: 'Todos',
+			projectId: 'project-1',
+		});
+	});
+
+	it('installs the app SDK before it checks out a new app', async () => {
+		const { tool, appService } = setup();
+
+		await executeTool(tool, { action: 'open', appId: SERVER_ID });
+
+		expect(installSdk).toHaveBeenCalledWith({}, appService);
+		expect(vi.mocked(installSdk).mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(checkOutDraft).mock.invocationCallOrder[0],
+		);
+	});
+
+	describe('binding changes', () => {
+		const tasks = {
+			key: 'tasks',
+			kind: 'dataTable' as const,
+			dataTableId: 't1',
+			permissions: ['read' as const],
+		};
+		const submit = { key: 'submit', kind: 'workflow' as const, workflowId: 'w1' };
+		const saved = { versionId: 'v2', bindings: [], warnings: [], types: '' };
+
+		function withBindings() {
+			const ctx = setup();
+			ctx.appService.getBindings.mockResolvedValue({
+				versionId: 'v1',
+				bindings: [
+					{ ...tasks, name: 'Tasks', columns: [], row: {} },
+					{ ...submit, name: 'Submit', published: true, input: {}, output: {} },
+				],
+				warnings: [],
+				types: '',
+			});
+			ctx.appService.setBindings.mockResolvedValue(saved);
+			ctx.appService.getApp.mockResolvedValue(app(SERVER_ID));
+			return ctx;
+		}
+
+		it('replaces the binding with the same key and keeps the others', async () => {
+			const { tool, appService, onArtifactChanged } = withBindings();
+			const writable = { ...tasks, permissions: ['read' as const, 'insert' as const] };
+
+			const result = await executeTool(tool, {
+				action: 'bind',
+				appId: SERVER_ID,
+				binding: writable,
+			});
+
+			expect(result).toEqual(saved);
+			expect(appService.setBindings).toHaveBeenCalledWith(SERVER_ID, 'v1', [submit, writable]);
+			expect(onArtifactChanged).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'app', id: SERVER_ID }),
+			);
+		});
+
+		it('adds the first binding to an app without a version', async () => {
+			const { tool, appService } = setup();
+			appService.getBindings.mockResolvedValue({
+				versionId: null,
+				bindings: [],
+				warnings: [],
+				types: '',
+			});
+			appService.setBindings.mockResolvedValue(saved);
+
+			await executeTool(tool, { action: 'bind', appId: SERVER_ID, binding: tasks });
+
+			expect(appService.setBindings).toHaveBeenCalledWith(SERVER_ID, null, [tasks]);
+		});
+
+		it('removes a binding by its key', async () => {
+			const { tool, appService } = withBindings();
+
+			await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'tasks' });
+
+			expect(appService.setBindings).toHaveBeenCalledWith(SERVER_ID, 'v1', [submit]);
+		});
+
+		it('reports an unknown key and saves nothing', async () => {
+			const { tool, appService } = withBindings();
+
+			const result = await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'other' });
+
+			expect(result).toEqual({ error: 'The app has no binding with the key "other".' });
+			expect(appService.setBindings).not.toHaveBeenCalled();
+		});
+
+		it('moves an open folder on the old draft to the new version', async () => {
+			const { tool } = withBindings();
+			vi.mocked(readBaseVersion).mockResolvedValue('v1');
+
+			await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'tasks' });
+
+			expect(writeBaseVersion).toHaveBeenCalledWith({}, SERVER_ID, 'v2');
+		});
+
+		it.each([
+			{ name: 'is not open', base: undefined },
+			{ name: 'is on another version', base: 'v0' },
+		])('leaves the folder alone when it $name', async ({ base }) => {
+			const { tool } = withBindings();
+			vi.mocked(readBaseVersion).mockResolvedValue(base);
+
+			await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'tasks' });
+
+			expect(writeBaseVersion).not.toHaveBeenCalled();
+		});
+
+		it('keeps the saved bindings when the workspace is unavailable', async () => {
+			const { tool, logger } = withBindings();
+			vi.mocked(readBaseVersion).mockRejectedValue(new Error('Sandbox unavailable'));
+
+			const result = await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'tasks' });
+
+			expect(result).toEqual(saved);
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		it('rejects an invalid binding key in the input', () => {
+			const { tool } = setup();
+
+			expect(
+				parseToolInput(tool, {
+					action: 'bind',
+					appId: SERVER_ID,
+					binding: { ...submit, key: 'Not valid' },
+				}).success,
+			).toBe(false);
+		});
+
+		it.each([
+			{ key: 'support', kind: 'agent', agentId: 'a1', permissions: ['chat', 'history'] },
+			{ key: 'tasks', kind: 'dataTable', dataTableId: 't1', permissions: ['read', 'insert'] },
+		])('accepts the permissions of a $kind binding in the input', (binding) => {
+			const { tool } = setup();
+
+			expect(parseToolInput(tool, { action: 'bind', appId: SERVER_ID, binding }).success).toBe(
+				true,
+			);
+		});
+	});
+
+	it('returns the bindings of the draft with their types', async () => {
+		const { tool, appService } = setup();
+		const bindings = {
+			versionId: 'v1',
+			bindings: [
+				{
+					key: 'submit',
+					kind: 'workflow' as const,
+					workflowId: 'w1',
+					name: 'Submit',
+					missing: true as const,
+				},
+			],
+			warnings: [],
+			types: '// Generated by n8n',
+		};
+		appService.getBindings.mockResolvedValue(bindings);
+
+		const result = await executeTool(tool, { action: 'bindings', appId: SERVER_ID });
+
+		expect(result).toEqual(bindings);
+		expect(appService.getBindings).toHaveBeenCalledWith(SERVER_ID);
 	});
 
 	it('refuses to commit an app that is not open', async () => {
@@ -286,14 +582,14 @@ describe('apps tool', () => {
 		});
 	});
 
-	it('returns a created app when the artifact report fails', async () => {
+	it('returns an open app when the artifact report fails', async () => {
 		const { tool, appService, onArtifactChanged, logger } = setup();
-		appService.createApp.mockResolvedValue(app(SERVER_ID));
+		appService.getApp.mockResolvedValue(app(SERVER_ID));
 		onArtifactChanged.mockRejectedValue(new Error('Event bus unavailable'));
 
-		const result = await executeTool(tool, { action: 'create', name: 'Todos', namespace: 'todos' });
+		const result = await executeTool(tool, { action: 'open', appId: SERVER_ID });
 
-		expect(result).toMatchObject({ app: { id: SERVER_ID }, path: `apps/${SERVER_ID}` });
+		expect(result).toEqual({ path: `apps/${SERVER_ID}`, baseVersionId: null });
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
@@ -359,7 +655,10 @@ describe('apps tool', () => {
 		const { tool } = setup();
 
 		expect(
-			parseToolInput(tool, { action: 'create', name: 'Todos', namespace: 'Todo App' }).success,
+			parseToolInput(tool, {
+				action: 'create',
+				blueprint: { ...BLUEPRINT, namespace: 'Todo App' },
+			}).success,
 		).toBe(false);
 	});
 

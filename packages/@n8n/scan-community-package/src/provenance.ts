@@ -32,7 +32,7 @@ export const checkPackageProvenance = (
 	if (!packageVersion) {
 		return {
 			passed: false,
-			message: `No package metadata found for version ${version}`,
+			message: `No package metadata found for version "${version}"`,
 		};
 	}
 

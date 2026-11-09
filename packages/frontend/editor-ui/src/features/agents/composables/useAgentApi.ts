@@ -1085,6 +1085,21 @@ export const listSystemAgentThreads = async (
 		},
 	);
 
+/** Renames one of the user's own threads with a system agent. */
+export const renameSystemAgentThread = async (
+	context: IRestApiContext,
+	agentId: string,
+	threadId: string,
+	title: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/agents/system/${encodeURIComponent(agentId)}/threads/${encodeURIComponent(threadId)}`,
+		{ title },
+	);
+};
+
 /** Deletes one of the user's own threads with a system agent. */
 export const deleteSystemAgentThread = async (
 	context: IRestApiContext,
@@ -1147,7 +1162,7 @@ export const cancelAgentChatRun = async (
 		context,
 		'DELETE',
 		`${agentChatPath(projectId, agentId, channel)}/runs/${encodeURIComponent(runId)}`,
-		...(channel === 'chat' ? [{ scope: 'foreground' }] : []),
+		...(channel !== 'system' ? [{ scope: 'foreground' }] : []),
 	);
 };
 
@@ -1163,7 +1178,7 @@ export const cancelAgentChatExecution = async (
 		context,
 		'DELETE',
 		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}`,
-		...(channel === 'chat' ? [{ scope: 'foreground' }] : []),
+		...(channel !== 'system' ? [{ scope: 'foreground' }] : []),
 	);
 };
 
@@ -1221,11 +1236,12 @@ export const getAgentTaskCancellation = async (
 	projectId: string,
 	agentId: string,
 	threadId: string,
+	channel: AgentChatChannel = 'chat',
 ): Promise<AgentTaskCancellationState | null> =>
 	await makeRestApiRequest(
 		context,
 		'GET',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/task-cancellation`,
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/task-cancellation`,
 	);
 
 export const getAgentPlan = async (

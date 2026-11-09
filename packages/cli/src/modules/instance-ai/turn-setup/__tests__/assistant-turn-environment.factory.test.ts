@@ -47,7 +47,6 @@ function createSetupFactory() {
 				setupPanelVariant: 'control',
 				folderExplorationEnabled: false,
 				credentialDescriptionsEnabled: false,
-				aiPreferencesEnabled: false,
 				instanceContextEnabled: false,
 				nodeUsageEnabled: false,
 			})),

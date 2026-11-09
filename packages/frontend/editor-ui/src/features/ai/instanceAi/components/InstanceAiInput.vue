@@ -116,6 +116,8 @@ const props = withDefaults(
 		isOutOfCredits?: boolean;
 		/** Undefined keeps the default "+" menu; a string replaces it with a plain attach button restricted to those MIME types (`''` hides attaching). */
 		attachOnlyMimeTypes?: string;
+		/** Restricts the accepted file types, as an `accept` string, and keeps the "+" menu. `attachOnlyMimeTypes` wins when both are set. */
+		acceptedMimeTypes?: string;
 	}>(),
 	{
 		isStreaming: false,
@@ -687,6 +689,9 @@ watch(
 		const consumed = instanceAiStore.consumePendingAttachments();
 		for (const attachment of consumed) {
 			if (attachment.type === 'file') continue;
+			if (attachment.type === 'element') {
+				attachedResources.value = attachedResources.value.filter((a) => a.type !== 'element');
+			}
 			if (attachment.type === 'nodes') {
 				const existing = attachedResources.value.find(
 					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
@@ -703,6 +708,17 @@ watch(
 	},
 	{ deep: true, immediate: true },
 );
+
+watch(
+	() => {
+		const element = attachedResources.value.find((a) => a.type === 'element');
+		return element?.type === 'element' ? element.appId : null;
+	},
+	(appId) => instanceAiStore.setComposerElementAppId(appId),
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => instanceAiStore.setComposerElementAppId(null));
 
 function handleStop() {
 	mentions.close();
@@ -883,7 +899,8 @@ const resizable = computed(() => {
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
 			:show-attach="showAttach"
-			:accepted-mime-types="props.attachOnlyMimeTypes"
+			:show-attach-button="props.attachOnlyMimeTypes !== undefined"
+			:accepted-mime-types="props.attachOnlyMimeTypes ?? props.acceptedMimeTypes"
 			:attached-encoded-bytes="attachedEncodedBytes"
 			@update:model-value="mentions.handleTextChange"
 			@submit="handleSubmit"

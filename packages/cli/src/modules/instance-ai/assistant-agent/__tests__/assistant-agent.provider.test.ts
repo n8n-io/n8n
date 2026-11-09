@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type {
@@ -26,7 +26,7 @@ import type {
 import type { AssistantTurnRuntime } from '../../turn-setup/assistant-turn-runtime';
 import { QuotaExhaustedStreamError } from '../../turn-setup/assistant-credits';
 import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
-import { AssistantAgentProvider } from '../assistant-agent.provider';
+import { AssistantAgentProvider, FILES_ONLY_MESSAGE } from '../assistant-agent.provider';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
 import type { AssistantTurnTrace, AssistantTurnTracer } from '../assistant-turn-trace';
 import type {
@@ -127,6 +127,7 @@ function startTurn(
 		checkpointStore: mock<SystemAgentStartTurn['checkpointStore']>(),
 		sessionGrants: mock<SystemAgentStartTurn['sessionGrants']>(),
 		readAttachment: vi.fn(async () => undefined),
+		readFile: vi.fn(async () => undefined),
 		executionId: 'exec-1',
 		message: 'Build a digest',
 		attachments: [],
@@ -278,34 +279,214 @@ describe('AssistantAgentProvider', () => {
 			});
 		});
 
-		it('gives the file tools the content of the turn files, and keeps the input as text', async () => {
+		it('keeps the element a user picked in an app preview, whatever the node gate says', async () => {
 			const { provider, turnInput } = setup();
-			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
+			const element = { type: 'element', appId: 'app-1', tagName: 'button', text: 'Save' };
 			const turn = startTurn({
-				attachments: [ref, { ...ref, id: 'att-gone' }],
-				readAttachment: vi.fn(async (attachment) =>
-					attachment.id === 'att-1' ? Buffer.from('a,b') : undefined,
-				),
+				options: { ...startTurn().options, request: { attachments: [element] } },
+			});
+
+			await provider.prepareTurn(turn);
+
+			expect(turnInput.buildInput).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ contextAttachments: [element] }),
+			);
+		});
+
+		it('gives parse-file the stored files of the thread, and keeps the input as text', async () => {
+			const { provider, turnInput, environment } = setup();
+			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
+			const stored = {
+				fileName: 'notes.csv',
+				mimeType: 'text/csv',
+				sizeBytes: 3,
+				readContent: vi.fn(async () => Buffer.from('a,b')),
+			};
+			const turn = startTurn({
+				attachments: [ref],
+				readFile: vi.fn(async (fileId: string) => (fileId === 'att-1' ? stored : undefined)),
 			});
 
 			const handle = await provider.prepareTurn(turn);
 
-			const file = {
-				type: 'file',
-				data: Buffer.from('a,b').toString('base64'),
-				mimeType: 'text/csv',
-				fileName: 'notes.csv',
-			};
+			// No file content is loaded up front, so parse-file is not tied to this message.
+			expect(turn.readAttachment).not.toHaveBeenCalled();
 			expect(turnInput.applyTurnScope).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ fileAttachments: [file] }),
+				expect.objectContaining({ fileAttachments: [] }),
 			);
 			expect(turnInput.buildInput).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.anything(),
-				expect.objectContaining({ fileAttachments: [file] }),
+				expect.objectContaining({ fileAttachments: [] }),
 			);
+			await expect(environment.context.storedFiles?.read('att-1')).resolves.toBe(stored);
+			await expect(environment.context.storedFiles?.read('other')).resolves.toBeUndefined();
 			expect(handle.input).toBe('Build a digest');
+		});
+
+		it('asks the model to inspect the files of a message without text', async () => {
+			const { provider, turnInput } = setup();
+			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
+
+			await provider.prepareTurn(startTurn({ message: '', attachments: [ref] }));
+
+			expect(turnInput.buildInput).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ message: FILES_ONLY_MESSAGE }),
+			);
+		});
+
+		it('gives parse-file the stored files on a resumed turn', async () => {
+			const { provider, environment } = setup();
+			const start = startTurn();
+			const stored = {
+				fileName: 'notes.csv',
+				mimeType: 'text/csv',
+				sizeBytes: 3,
+				readContent: vi.fn(async () => Buffer.from('a,b')),
+			};
+			const turn: SystemAgentResumeTurn<AssistantSandboxLease> = {
+				type: 'resume',
+				user,
+				thread,
+				resourceId: start.resourceId,
+				abortSignal: start.abortSignal,
+				emitHostEvent: start.emitHostEvent,
+				memory: start.memory,
+				checkpointStore: start.checkpointStore,
+				sessionGrants: start.sessionGrants,
+				readFile: vi.fn(async () => stored),
+				runId: 'agent-run-1',
+				toolCallId: 'tool-call-1',
+				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+				resumeData: { approved: true },
+			};
+
+			await provider.prepareTurn(turn);
+
+			await expect(environment.context.storedFiles?.read('att-1')).resolves.toBe(stored);
+			expect(turn.readFile).toHaveBeenCalledWith('att-1');
+		});
+
+		describe('attached agent', () => {
+			type ThreadPatchArgs = {
+				threadId: string;
+				update: (current: {
+					id: string;
+					metadata?: Record<string, unknown>;
+				}) => { metadata?: Record<string, unknown> } | null | undefined;
+			};
+
+			/** A turn whose memory behaves like `N8nMemory`: a patch replaces the metadata,
+			 *  and it returns `null` when the thread row does not exist yet. */
+			function agentTurn(
+				agent: Record<string, unknown>,
+				metadata: Record<string, unknown> | undefined = undefined,
+			) {
+				const memory = mock<SystemAgentStartTurn['memory']>();
+				const written: { metadata?: Record<string, unknown> } = {};
+				const patchThread = vi.fn(async ({ threadId, update }: ThreadPatchArgs) => {
+					if (!metadata) return null;
+					const patch = update({ id: threadId, metadata: { ...metadata } });
+					if (patch?.metadata) written.metadata = patch.metadata;
+					return { id: threadId, metadata: written.metadata ?? metadata };
+				});
+				Object.assign(memory, { patchThread });
+				const base = startTurn();
+				const turn = startTurn({
+					memory,
+					options: {
+						...base.options,
+						request: { attachments: [{ type: 'agent', projectId: 'project-1', ...agent }] },
+					},
+				});
+				return { turn, written };
+			}
+
+			it('binds a saved agent to a new thread', async () => {
+				const { provider } = setup();
+				const { turn } = agentTurn({ id: 'agent-1', name: 'Triage' });
+
+				await provider.prepareTurn(turn);
+
+				expect(turn.memory.saveThread).toHaveBeenCalledWith({
+					id: 'thread-1',
+					resourceId: 'system-chat:user-1',
+					metadata: {
+						instanceAiAgentBuilderTarget: {
+							agentId: 'agent-1',
+							projectId: 'project-1',
+							name: 'Triage',
+						},
+						instanceAiAgentBuilderTargets: {},
+					},
+				});
+			});
+
+			it('marks a pending agent, so the build reuses its id', async () => {
+				const { provider } = setup();
+				const { turn, written } = agentTurn({ id: 'agent-new', pending: true }, { emoji: '🤖' });
+
+				await provider.prepareTurn(turn);
+
+				expect(written.metadata).toEqual({
+					emoji: '🤖',
+					instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-new' },
+				});
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
+			});
+
+			it('replaces the pending marker with the binding once the editor saved the agent', async () => {
+				const { provider } = setup();
+				const { turn, written } = agentTurn(
+					{ id: 'agent-new' },
+					{
+						emoji: '🤖',
+						instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-new' },
+					},
+				);
+
+				await provider.prepareTurn(turn);
+
+				// The whole metadata is written, so the pending marker is gone.
+				expect(written.metadata).toEqual({
+					emoji: '🤖',
+					instanceAiAgentBuilderTarget: { agentId: 'agent-new', projectId: 'project-1' },
+					instanceAiAgentBuilderTargets: {},
+				});
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
+			});
+
+			it.each([
+				[
+					'the thread already targets an agent',
+					{ id: 'agent-2' },
+					{ instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+				],
+				[
+					'the thread already has another pending agent',
+					{ id: 'agent-2' },
+					{ instanceAiPendingAgentTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+				],
+				[
+					'the pending agent is still unsaved',
+					{ id: 'agent-1', pending: true },
+					{ instanceAiPendingAgentTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+				],
+				['the agent is in another project', { id: 'agent-2', projectId: 'project-2' }, undefined],
+			])('keeps the thread metadata when %s', async (_case, agent, metadata) => {
+				const { provider } = setup();
+				const { turn, written } = agentTurn(agent, metadata);
+
+				await provider.prepareTurn(turn);
+
+				expect(written.metadata).toBeUndefined();
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
+			});
 		});
 
 		it('records the accepted input once, on the first chunk', async () => {
@@ -625,6 +806,7 @@ describe('AssistantAgentProvider', () => {
 				memory: start.memory,
 				checkpointStore: start.checkpointStore,
 				sessionGrants: start.sessionGrants,
+				readFile: start.readFile,
 				runId: 'agent-run-1',
 				toolCallId: 'tool-call-1',
 				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
@@ -772,6 +954,7 @@ describe('AssistantAgentProvider', () => {
 					memory: start.memory,
 					checkpointStore: start.checkpointStore,
 					sessionGrants: start.sessionGrants,
+					readFile: start.readFile,
 					runId: 'agent-run-1',
 					toolCallId: 'tool-call-1',
 					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
@@ -786,6 +969,118 @@ describe('AssistantAgentProvider', () => {
 				);
 				expect(trace.tracePromptBuild).not.toHaveBeenCalled();
 				expect(trace.startOrchestratorRun).toHaveBeenCalled();
+			});
+
+			describe('attached agent snapshot', () => {
+				const agentAttachment = {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'project-1',
+					name: 'Triage',
+				} as const;
+				const config = { name: 'Triage', instructions: 'Sort the tickets' };
+
+				function snapshotSetup() {
+					const setupResult = setup();
+					const { tracer, agentFactory, environment, agent } = setupResult;
+					const { trace, context } = traceMock();
+					tracer.startForTurn.mockResolvedValue(trace);
+					const orchestratorRun = { id: 'orchestrator-run' };
+					const snapshotRun = { id: 'snapshot-run' };
+					Object.assign(context, {
+						actorRun: { id: 'root-run' },
+						startChildRun: vi.fn(async () => snapshotRun),
+						finishRun: vi.fn(async () => {}),
+					});
+					trace.startOrchestratorRun.mockImplementation(async () => {
+						context.actorRun = orchestratorRun as typeof context.actorRun;
+					});
+					// Like the real factory, which gives the turn's trace to the domain tools.
+					agentFactory.createAgent.mockImplementation(async (env, _runtime, params) => {
+						env.orchestrationContext.tracing = params.tracing;
+						return agent as unknown as Awaited<ReturnType<AssistantAgentFactory['createAgent']>>;
+					});
+					const readAgentArtifact = vi.fn(async () => ({
+						config,
+						skills: {},
+						configHash: 'hash-1',
+					}));
+					environment.orchestrationContext.domainContext = {
+						builderDelegate: { readAgentArtifact },
+					} as unknown as AssistantTurnEnvironment['orchestrationContext']['domainContext'];
+					return { ...setupResult, context, orchestratorRun, snapshotRun, readAgentArtifact };
+				}
+
+				it('records the attached agent under the orchestrator span', async () => {
+					const { provider, context, orchestratorRun, snapshotRun, readAgentArtifact } =
+						snapshotSetup();
+					const base = startTurn();
+
+					await provider.prepareTurn(
+						startTurn({
+							options: {
+								...base.options,
+								request: {
+									attachments: [agentAttachment, { type: 'workflow', id: 'wf-1', name: 'Digest' }],
+								},
+							},
+						}),
+					);
+
+					expect(readAgentArtifact).toHaveBeenCalledTimes(1);
+					expect(readAgentArtifact).toHaveBeenCalledWith('agent-1');
+					expect(context.startChildRun).toHaveBeenCalledWith(
+						orchestratorRun,
+						expect.objectContaining({
+							name: 'agent-snapshot',
+							metadata: expect.objectContaining({
+								agent_id: 'agent-1',
+								snapshot_reason: 'attached',
+							}),
+						}),
+					);
+					expect(context.finishRun).toHaveBeenCalledWith(snapshotRun, {
+						outputs: {
+							agentId: 'agent-1',
+							projectId: 'project-1',
+							configHash: 'hash-1',
+							reason: 'attached',
+							config,
+							skills: {},
+						},
+						rawOutputs: true,
+					});
+				});
+
+				it('does not record the attached agent again when a turn resumes', async () => {
+					const { provider, readAgentArtifact } = snapshotSetup();
+					const start = startTurn();
+
+					await provider.prepareTurn({
+						type: 'resume',
+						user,
+						thread,
+						resourceId: start.resourceId,
+						abortSignal: start.abortSignal,
+						emitHostEvent: start.emitHostEvent,
+						memory: start.memory,
+						checkpointStore: start.checkpointStore,
+						sessionGrants: start.sessionGrants,
+						readFile: start.readFile,
+						runId: 'agent-run-1',
+						toolCallId: 'tool-call-1',
+						checkpointHostMetadata: {
+							assistantTurn: {
+								runId: 'run-1',
+								messageGroupId: 'mg-1',
+								request: { attachments: [agentAttachment] },
+							},
+						},
+						resumeData: { approved: true },
+					});
+
+					expect(readAgentArtifact).not.toHaveBeenCalled();
+				});
 			});
 		});
 

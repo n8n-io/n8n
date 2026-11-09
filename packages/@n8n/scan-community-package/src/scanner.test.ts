@@ -1,14 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
 	analyzePackage,
 	buildScanConfig,
 	checkSourcePackageLayout,
+	EXIT_CODES,
 	findPackageRoot,
+	formatPackageSpec,
+	getExitCode,
 	isExistingPackageInMonorepoGracePeriod,
+	isSourceUnavailable,
 	parseSourceRepo,
 	resolvePackage,
 	resolveVersion,
@@ -187,6 +192,13 @@ describe('resolvePackage', () => {
 	});
 });
 
+describe('formatPackageSpec', () => {
+	it('adds the version only when there is one', () => {
+		expect(formatPackageSpec('n8n-nodes-foo', '1.2.3')).toBe('n8n-nodes-foo@1.2.3');
+		expect(formatPackageSpec('n8n-nodes-foo', null)).toBe('n8n-nodes-foo');
+	});
+});
+
 describe('resolveVersion', () => {
 	const metadata = {
 		'dist-tags': { latest: '1.2.0', beta: '2.0.0-beta.1' },
@@ -203,7 +215,7 @@ describe('resolveVersion', () => {
 	});
 
 	it('throws when no version matches the range', () => {
-		expect(() => resolveVersion(metadata, '3.x')).toThrow('No version found matching 3.x');
+		expect(() => resolveVersion(metadata, '3.x')).toThrow('No version found matching "3.x"');
 	});
 
 	it('throws when there is no latest dist-tag', () => {
@@ -531,5 +543,43 @@ describe('analyzePackage', () => {
 
 		expect(result.passed).toBe(true);
 		expect(result.message).toBe('No files found to analyze');
+	});
+
+	it('marks a crash during analysis as an error, not a failed check', async () => {
+		fixtureDir = makeFixturePackage({ 'index.js': 'module.exports = {};\n' });
+		const patternsWithEmptyPattern = [''];
+
+		const result = await analyzePackage(fixtureDir, patternsWithEmptyPattern);
+
+		expect(
+			getExitCode(result),
+			'patternsWithEmptyPattern holds an empty file pattern, which crashes the analysis',
+		).toBe(EXIT_CODES.INTERNAL_ERROR);
+	});
+});
+
+describe('getExitCode', () => {
+	it('maps each scan result to its exit code', () => {
+		const failed = { passed: false, message: 'ESLint violations found' } as const;
+
+		expect(getExitCode({ passed: true })).toBe(EXIT_CODES.SCAN_SUCCEEDED);
+		expect(getExitCode(failed)).toBe(EXIT_CODES.SCAN_FAILED);
+		expect(getExitCode({ ...failed, error: new Error('npm pack failed') })).toBe(
+			EXIT_CODES.INTERNAL_ERROR,
+		);
+	});
+});
+
+describe('isSourceUnavailable', () => {
+	const httpError = (status: number) =>
+		new AxiosError('Request failed', undefined, undefined, undefined, { status } as AxiosResponse);
+
+	it('treats only a 4xx response as a problem with the package', () => {
+		expect(isSourceUnavailable(httpError(404))).toBe(true);
+		expect(isSourceUnavailable(httpError(408)), 'request timeout').toBe(false);
+		expect(isSourceUnavailable(httpError(429)), 'rate limited').toBe(false);
+		expect(isSourceUnavailable(httpError(502))).toBe(false);
+		expect(isSourceUnavailable(new AxiosError('timeout', AxiosError.ECONNABORTED))).toBe(false);
+		expect(isSourceUnavailable(new Error('tar extraction failed'))).toBe(false);
 	});
 });

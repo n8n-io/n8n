@@ -11,7 +11,6 @@ import { User } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
-	OperationalError,
 	type INodeCredentials,
 	type IWorkflowBase,
 	jsonStringify,
@@ -19,10 +18,9 @@ import {
 	INodeParameters,
 	INode,
 	type IBinaryData,
-	UserError,
 } from 'n8n-workflow';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, OperationalError, UserError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

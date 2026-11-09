@@ -1,6 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Attributes, Context, Exception, Span, TimeInput } from '@opentelemetry/api';
+import type {
+	Attributes,
+	Baggage,
+	BaggageEntry,
+	Context,
+	Exception,
+	Span,
+	TimeInput,
+} from '@opentelemetry/api';
 import {
 	context,
 	defaultTextMapGetter,
@@ -11,6 +19,7 @@ import {
 	trace,
 } from '@opentelemetry/api';
 import { isTimeInputHrTime, W3CTraceContextPropagator } from '@opentelemetry/core';
+import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import type { ExecutionStatus } from 'n8n-workflow';
 
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
@@ -32,7 +41,9 @@ import {
 	isEndNodeError,
 } from './execution-level-tracer.types';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
+import { toBaggageHeader, toCallerBaggage } from './caller-baggage';
 import { ATTR, BUILT_IN_ATTRIBUTE_KEYS } from './otel.constants';
+import { OtelConfigureHook } from './otel-configure-hook';
 import type { TracingContext } from './tracing-context';
 
 const propagator = new W3CTraceContextPropagator();
@@ -47,6 +58,7 @@ type TrackedSpan = { span: Span };
 type TrackedWorkflowSpan = TrackedSpan & {
 	context: Context;
 	projectCustomAttributes: Record<string, string>;
+	baggage?: Baggage;
 };
 
 @Service()
@@ -57,6 +69,7 @@ export class ExecutionLevelTracer {
 	constructor(
 		private readonly logger: Logger,
 		private readonly customAttributesConfig: OtelCustomAttributesConfig,
+		private readonly configureHook: OtelConfigureHook,
 	) {}
 
 	private get tracer() {
@@ -88,11 +101,13 @@ export class ExecutionLevelTracer {
 
 			const span = this.tracer.startSpan('workflow.execute', { attributes, links }, parentCtx);
 			const workflowContext = trace.setSpan(parentCtx, span);
+			const baggage = toCallerBaggage(params.tracingContext?.baggage);
 
 			this.activeWorkflowSpans.set(params.executionId, {
 				span,
 				context: workflowContext,
 				projectCustomAttributes,
+				baggage,
 			});
 
 			if (params.emitStartSpan) {
@@ -104,7 +119,7 @@ export class ExecutionLevelTracer {
 				);
 			}
 
-			return toTracingParentContext(span, identity);
+			return toTracingParentContext(span, identity, baggage);
 		} catch (error) {
 			this.logger.warn('Failed to start workflow span', {
 				executionId: params.executionId,
@@ -307,7 +322,16 @@ export class ExecutionLevelTracer {
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
-			propagation.inject(trace.setSpan(ROOT_CONTEXT, span), headers, defaultTextMapSetter);
+			const callerBaggage = this.activeWorkflowSpans.get(executionId)?.baggage;
+			const hookEntries = this.configureHook.buildOutboundBaggage(
+				hasAttributes(span) ? span.attributes : {},
+			);
+
+			propagation.inject(
+				spanContext(span, withHookEntries(callerBaggage, hookEntries)),
+				headers,
+				defaultTextMapSetter,
+			);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,
@@ -407,10 +431,47 @@ function resolveCrashedWorkflowIdentity(params: EndCrashedWorkflowParams): Execu
 	);
 }
 
-function toTracingParentContext(span: Span, identity: ExecutionIdentity): TracingContext {
+function spanContext(span: Span, baggage: Baggage | undefined): Context {
+	const ctx = trace.setSpan(ROOT_CONTEXT, span);
+	return baggage ? propagation.setBaggage(ctx, baggage) : ctx;
+}
+
+function toTracingParentContext(
+	span: Span,
+	identity: ExecutionIdentity,
+	baggage: Baggage | undefined,
+): TracingContext {
 	const carrier: Record<string, string> = {};
 	propagator.inject(trace.setSpan(ROOT_CONTEXT, span), carrier, defaultTextMapSetter);
-	return { traceparent: carrier.traceparent, tracestate: carrier.tracestate, identity };
+	const baggageHeader = baggage && toBaggageHeader(baggage);
+	return {
+		traceparent: carrier.traceparent,
+		tracestate: carrier.tracestate,
+		identity,
+		...(baggageHeader && { baggage: baggageHeader }),
+	};
+}
+
+/**
+ * The `otel.configure` entries first, then the caller baggage where the hook
+ * did not set the key. The hook is operator configuration, so it wins on a
+ * shared key, and it survives when the propagator cuts the header at its limit.
+ */
+function withHookEntries(
+	baggage: Baggage | undefined,
+	entries: Record<string, string>,
+): Baggage | undefined {
+	const hookEntries = Object.entries(entries);
+	if (hookEntries.length === 0) return baggage;
+
+	const merged: Record<string, BaggageEntry> = {};
+	for (const [key, value] of hookEntries) merged[key] = { value };
+	for (const [key, entry] of baggage?.getAllEntries() ?? []) merged[key] ??= entry;
+	return propagation.createBaggage(merged);
+}
+
+function hasAttributes(span: Span): span is Span & Pick<ReadableSpan, 'attributes'> {
+	return 'attributes' in span && typeof span.attributes === 'object' && span.attributes !== null;
 }
 
 // Only a recorded SDK span has a start time. The API span type does not expose it.

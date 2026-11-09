@@ -1,5 +1,5 @@
 import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
 import type { PlacedCredentialRequirement } from '../entities/credential/credential.types';

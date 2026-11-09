@@ -33,8 +33,11 @@ export const createDeploymentKeyStore = () => {
 					r.type === OAUTH_SIGNING_KEY_TYPE && r.algorithm === algorithm && r.status === 'active',
 			) ?? null,
 	);
-	repository.findOAuthSigningKeys.mockImplementation(async () =>
-		rows.filter((r) => r.type === OAUTH_SIGNING_KEY_TYPE),
+	repository.findPublishableOAuthSigningKeys.mockImplementation(async (retiredAfter) =>
+		rows.filter(
+			(r) =>
+				r.type === OAUTH_SIGNING_KEY_TYPE && (r.status === 'active' || r.updatedAt > retiredAfter),
+		),
 	);
 	repository.insertActiveOAuthSigningKey.mockImplementation(async (id, value, algorithm) => {
 		const now = new Date();

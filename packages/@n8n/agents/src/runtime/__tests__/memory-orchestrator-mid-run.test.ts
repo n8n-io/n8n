@@ -938,6 +938,31 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 });
 
 describe('MemoryOrchestrator budget estimate', () => {
+	it('counts runtime catalogue reminders but ignores custom messages hidden from the model', async () => {
+		const counted: string[] = [];
+		const { orchestrator } = buildOrchestrator(
+			new InMemoryMemory(),
+			{ observerThresholdTokens: 100_000, observe: vi.fn(), observationLogTailLimit: 20 },
+			async (text) => {
+				counted.push(text);
+				return await Promise.resolve(text.length);
+			},
+		);
+		const list = new AgentMessageList();
+		list.addInput([userMsg('Review an invoice')]);
+		list.addResponse([
+			{ type: 'custom', data: { type: 'n8n:runtime-skill-catalog', content: 'Current catalogue' } },
+			{ type: 'custom', data: { dummy: 'Hidden application state' } },
+		]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		expect(counted.join('\n')).toContain(
+			'<system-reminder>\nCurrent catalogue\n</system-reminder>',
+		);
+		expect(counted.join('\n')).not.toContain('Hidden application state');
+	});
+
 	it('does not count the bytes of a file in a tool output', async () => {
 		const counted: string[] = [];
 		const { orchestrator } = buildOrchestrator(
