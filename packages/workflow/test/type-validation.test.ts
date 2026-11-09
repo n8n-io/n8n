@@ -545,3 +545,18 @@ describe('Type Validation', () => {
 		});
 	});
 });
+
+describe('tryToParseUrl whitespace handling', () => {
+	it('should trim surrounding whitespace before adding the https scheme', () => {
+		expect(tryToParseUrl('  example.com  ')).toBe('https://example.com');
+		expect(tryToParseUrl('\texample.com/path\n')).toBe('https://example.com/path');
+	});
+
+	it('should not return a URL that still contains surrounding whitespace', () => {
+		expect(tryToParseUrl('  https://example.com  ')).toBe('https://example.com');
+	});
+
+	it('should keep protocol-less URLs without whitespace unchanged', () => {
+		expect(tryToParseUrl('example.com')).toBe('https://example.com');
+	});
+});

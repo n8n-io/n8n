@@ -296,8 +296,9 @@ export const getValueDescription = <T>(value: T): string => {
 const ALLOWED_URL_PROTOCOLS = ['http:', 'https:', 'ftp:', 'file:'];
 
 export const tryToParseUrl = (value: unknown): string => {
-	if (typeof value === 'string' && !value.includes('://')) {
-		value = `https://${value}`;
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		value = trimmed.includes('://') ? trimmed : `https://${trimmed}`;
 	}
 
 	try {
