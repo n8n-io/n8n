@@ -389,28 +389,31 @@ function onDialogOpenUpdate(open: boolean) {
 		:container-class="$style.modal"
 		@update:open="onDialogOpenUpdate"
 	>
-		<N8nDialogHeader>
+		<N8nDialogHeader :class="currentView === 'list' ? $style.listHeader : undefined">
 			<!-- List view header -->
-			<N8nDialogTitle v-if="currentView === 'list'">
-				{{ modalTitle }}
-			</N8nDialogTitle>
+			<template v-if="currentView === 'list'">
+				<N8nDialogTitle :class="$style.listTitle">
+					{{ modalTitle }}
+				</N8nDialogTitle>
+				<N8nInput
+					v-model="searchQuery"
+					:placeholder="i18n.baseText('chatHub.toolsManager.searchPlaceholder')"
+					clearable
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
+			</template>
 
 			<!-- Settings view header -->
 			<div v-else :class="$style.settingsHeader">
 				<div :class="$style.settingsHeaderLeft">
-					<N8nIconButton
-						icon="arrow-left"
-						text
-						size="large"
-						variant="ghost"
-						:class="$style.backButton"
-						@click="handleBack"
-					/>
+					<N8nIconButton icon="arrow-left" text size="large" variant="ghost" @click="handleBack" />
 					<N8nDialogTitle>
 						<N8nInlineTextEdit
 							:model-value="settingsNodeName"
 							:max-width="350"
-							:class="$style.title"
 							@update:model-value="handleSettingsChangeName"
 						/>
 					</N8nDialogTitle>
@@ -422,19 +425,7 @@ function onDialogOpenUpdate(open: boolean) {
 		</N8nDialogHeader>
 
 		<N8nDialogBody>
-			<N8nInput
-				v-show="currentView === 'list'"
-				v-model="searchQuery"
-				:placeholder="i18n.baseText('chatHub.toolsManager.searchPlaceholder')"
-				clearable
-				:class="$style.searchInput"
-			>
-				<template #prefix>
-					<N8nIcon icon="search" />
-				</template>
-			</N8nInput>
-
-			<!-- List view: scrolls itself, scrollbar in padding gutter -->
+			<!-- List view: the body padding is reset so this scrollbar sits on the dialog edge. -->
 			<div v-show="currentView === 'list'" data-tools-manager-modal :class="$style.listWrapper">
 				<div v-if="filteredConfiguredTools.length > 0" :class="$style.section">
 					<N8nHeading size="small" color="text-light" tag="h3">
@@ -444,7 +435,7 @@ function onDialogOpenUpdate(open: boolean) {
 							})
 						}}
 					</N8nHeading>
-					<div :class="$style.toolsList">
+					<div>
 						<ToolListItem
 							v-for="tool in filteredConfiguredTools"
 							:key="tool.definition.id"
@@ -468,7 +459,7 @@ function onDialogOpenUpdate(open: boolean) {
 							})
 						}}
 					</N8nHeading>
-					<div :class="$style.toolsList">
+					<div>
 						<ToolListItem
 							v-for="nodeType in filteredAvailableTools"
 							:key="nodeType.name"
@@ -493,7 +484,7 @@ function onDialogOpenUpdate(open: boolean) {
 			</div>
 
 			<!-- Settings view: doesn't scroll, lets NodeToolSettingsContent.tabContent scroll -->
-			<div v-if="currentView === 'settings' && settingsNode" :class="$style.settingsWrapper">
+			<div v-if="currentView === 'settings' && settingsNode">
 				<NodeToolSettingsContent
 					ref="settingsContentRef"
 					:initial-node="settingsNode"
@@ -513,12 +504,20 @@ function onDialogOpenUpdate(open: boolean) {
 	}
 }
 
+.listHeader {
+	flex-direction: column;
+	align-items: stretch;
+	padding-inline-end: var(--n8n-dialog-region--padding, var(--spacing--md));
+	gap: var(--spacing--sm);
+}
+
+.listTitle {
+	padding-inline-end: calc(var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs));
+}
+
 .settingsHeader {
 	display: flex;
-	flex: 1;
-	align-items: center;
 	justify-content: space-between;
-	min-width: 0;
 }
 
 .settingsHeaderLeft {
@@ -529,50 +528,15 @@ function onDialogOpenUpdate(open: boolean) {
 	flex: 1;
 }
 
-.icon {
-	flex-shrink: 0;
-	flex-grow: 0;
-}
-
-.title {
-	flex: 1;
-	min-width: 0;
-}
-
 .listWrapper {
-	display: flex;
-	flex-direction: column;
 	gap: var(--spacing--sm);
 	max-height: 60vh;
-	overflow-y: auto;
-	margin-right: calc(-1 * var(--spacing--lg));
-	padding-right: var(--spacing--lg);
-	padding-top: var(--spacing--sm);
-}
-
-.settingsWrapper {
-	display: flex;
-	flex-direction: column;
-	max-height: 60vh;
-	overflow: hidden;
-	margin-right: calc(-1 * var(--spacing--lg));
-	padding-top: var(--spacing--sm);
-}
-
-.searchInput {
-	padding: var(--spacing--sm) 0;
-	width: 100%;
 }
 
 .section {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-}
-
-.toolsList {
-	display: flex;
-	flex-direction: column;
 }
 
 .emptyState {
