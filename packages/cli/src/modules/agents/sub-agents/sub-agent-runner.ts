@@ -1,3 +1,4 @@
+import { PLAN_TASK_METADATA_KEY } from '../plans/agent-plan-task-context';
 import {
 	assertSubAgentTaskPath,
 	deriveSubAgentTelemetry,
@@ -15,13 +16,17 @@ import {
 	type JSONObject,
 	type JSONValue,
 	type SerializableAgentState,
+	type SideCallUsageReport,
 	type StreamChunk,
 	type StreamResult,
 	type SubAgentTaskDifficulty,
 	type SubAgentTaskPath,
+	type TokenUsage,
 } from '@n8n/agents';
 import type {
 	AgentBudgetNotice,
+	AgentPlanTaskRef,
+	AgentToolOutputFile,
 	ResolvedSubAgentSource,
 	RunnableAgentJsonConfig,
 	SubAgentSource,
@@ -32,12 +37,18 @@ import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 
 import type { AgentRunTelemetryType } from '@/interfaces';
 
+import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { StartExecutionParams } from '../agent-execution.service';
+import {
+	AgentExecutionRepository,
+	type AgentExecutionLinks,
+} from '../repositories/agent-execution.repository';
 import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
 import { episodicScopeHostMetadata } from '../utils/episodic-scope-metadata';
 import { bindExecutionInput } from '../utils/execution-input';
@@ -66,6 +77,8 @@ import {
 	SubAgentSourceResolver,
 	type ResolvedSubAgentRuntimeSource,
 } from './sub-agent-source-resolver';
+import { SystemAgentUsageRelay } from '../system-agents/system-agent-usage-relay';
+import type { AgentTurnStatus } from '../types/agent-turn-outcome';
 
 export interface SubAgentRunContext {
 	/** The parent turn's episodic scope decision. A disabled decision stays disabled for the child. */
@@ -118,6 +131,7 @@ export interface SubAgentRunContext {
 	selfDelegationDifficulty?: SubAgentTaskDifficulty;
 	/** Persist reconstruction data before a background child can suspend. */
 	backgroundJobId?: string;
+	planTask?: AgentPlanTaskRef;
 	parentMessageContext?: IntegrationMessageContext | null;
 	onResumeClaimed?: () => Promise<void>;
 	beforeResume?: () => Promise<void>;
@@ -135,6 +149,10 @@ export interface SubAgentRunResult {
 	result: GenerateResult;
 	/** Opaque, checkpoint-safe host context required to reconstruct this child exactly. */
 	resumeContext?: JSONValue;
+	/** Files that the child made. The parent can read them. */
+	files?: AgentToolOutputFile[];
+	/** Set when the files of the child could not be listed. */
+	filesError?: string;
 }
 
 type SubAgentResumeRequest = Pick<
@@ -176,6 +194,9 @@ export class SubAgentRunner {
 		private readonly logger: Logger,
 		private readonly aiConfig: AiConfig,
 		private readonly toolApprovalService: AgentToolApprovalService,
+		private readonly executionRepository: AgentExecutionRepository,
+		private readonly usageRelay: SystemAgentUsageRelay,
+		private readonly attachmentService: AgentChatAttachmentService,
 	) {}
 
 	async run(
@@ -286,6 +307,7 @@ export class SubAgentRunner {
 		const telemetry = deriveSubAgentTelemetry(context.telemetry);
 		const userMessage =
 			operation.type === 'run' ? renderDelegateSubAgentPrompt(operation.request) : null;
+		const executionLinks = await this.resolveExecutionLinks(operation, threadId);
 		const recording: StartExecutionParams = {
 			// Saved parents supply access in the thread creation transaction.
 			access: { accessScope: 'user', ownerId: null },
@@ -298,6 +320,7 @@ export class SubAgentRunner {
 			resumeRunId: operation.type !== 'run' ? operation.request.childRunId : undefined,
 			sessionMode: operation.type !== 'run' ? 'existing' : 'new',
 			source: 'subagent',
+			...(executionLinks !== undefined ? { executionLinks } : {}),
 			threadMetadata: {
 				parentThreadId: operation.request.parentThreadId,
 				parentAgentId: context.parentAgentId,
@@ -318,7 +341,10 @@ export class SubAgentRunner {
 		const { executionId } = admission;
 		let executionStarted = false;
 		let executionError: unknown;
+		let runId: string | undefined;
 		let agent: BuiltAgent | undefined;
+		let finish: FinishUsage | undefined;
+
 		try {
 			context.abortSignal?.throwIfAborted();
 			if (operation.type !== 'run') await context.beforeResume?.();
@@ -374,6 +400,17 @@ export class SubAgentRunner {
 					...modelStreamStallOptions(this.aiConfig),
 					executionCounter: context.executionCounter,
 					shouldPause: context.shouldPause,
+					...(executionLinks !== undefined
+						? {
+								onSideCallUsage: (report: SideCallUsageReport) =>
+									this.usageRelay.reportDelegatedSideCall({
+										...report,
+										executionId,
+										threadId,
+										parentExecutionId: executionLinks.parentExecutionId,
+									}),
+							}
+						: {}),
 				},
 				{
 					useRootSessionCap: true,
@@ -388,8 +425,21 @@ export class SubAgentRunner {
 				},
 			);
 			context.abortSignal?.throwIfAborted();
+			// The child thread exists now, so the grant can check that it is a sub-agent of the parent.
+			if (operation.type === 'run' && operation.request.fileIds?.length) {
+				const { parentThreadId } = operation.request;
+				if (!parentThreadId) {
+					throw new UserError('Files can only be passed to sub-agents in a conversation');
+				}
+				await this.attachmentService.grantToSubAgent(operation.request.fileIds, {
+					projectId: context.projectId,
+					parentThreadId,
+					childThreadId: threadId,
+				});
+			}
 			executionStarted = operation.type === 'run';
 			let resultStream: StreamResult;
+
 			if (operation.type === 'run') {
 				resultStream = await agent.stream(
 					bindExecutionInput(userMessage ?? '', admission.inputMessageIds),
@@ -415,7 +465,10 @@ export class SubAgentRunner {
 			} else if (operation.type === 'resumePaused') {
 				resultStream = await agent.resumePaused({
 					...executionOptions,
-					hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
+					hostMetadata: {
+						[EXECUTION_METADATA_KEY]: executionId,
+						...(context.planTask ? { [PLAN_TASK_METADATA_KEY]: { ...context.planTask } } : {}),
+					},
 					runId: operation.request.childRunId,
 					onResumeClaimed: async () => {
 						await context.onResumeClaimed?.();
@@ -425,7 +478,10 @@ export class SubAgentRunner {
 			} else {
 				resultStream = await agent.resume('stream', operation.request.resumeData, {
 					...executionOptions,
-					hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
+					hostMetadata: {
+						[EXECUTION_METADATA_KEY]: executionId,
+						...(context.planTask ? { [PLAN_TASK_METADATA_KEY]: { ...context.planTask } } : {}),
+					},
 					runId: operation.request.childRunId,
 					toolCallId: operation.request.childToolCallId,
 					onResumeClaimed: async () => {
@@ -438,16 +494,21 @@ export class SubAgentRunner {
 					},
 				});
 			}
+
+			runId = resultStream.runId;
 			const consumed = await consumeAgentStream(
 				resultStream,
 				recorder,
 				createAttributionTracker(reconstructed.mcpServerAttributions),
 				context.onChunk,
 			);
+
 			executionError = consumed.executionError;
+			finish = consumed.finish;
 			const { result } = consumed;
 			const suspended = recorder.suspended;
 			let status: SubAgentRunResult['status'] = 'completed';
+
 			if (result.finishReason === 'paused') status = 'paused';
 			else if (suspended) status = 'suspended';
 			else if (result.finishReason === 'error' || result.error !== undefined) status = 'failed';
@@ -461,12 +522,19 @@ export class SubAgentRunner {
 				}
 			}
 
+			const returned = await this.returnFilesToParent(
+				operation.request.parentThreadId,
+				threadId,
+				context.projectId,
+			);
+
 			return {
 				taskPath: operation.taskPath,
 				threadId,
 				status,
 				result,
 				...(suspended ? { resumeContext: createResumeContext(runtimeSource.source) } : {}),
+				...returned,
 			};
 		} catch (error) {
 			executionError = error;
@@ -474,6 +542,11 @@ export class SubAgentRunner {
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
+			const usageStatus = delegatedRunStatus(
+				context.abortSignal?.aborted === true,
+				recorder.suspended,
+				executionError !== undefined || recorder.getMessageRecord().error !== null,
+			);
 			try {
 				const record = recorder.getMessageRecord();
 				await this.turnExecutionService.finalizeExecution({
@@ -491,8 +564,18 @@ export class SubAgentRunner {
 								? 'resumed'
 								: undefined,
 					},
+					runId,
 				});
 			} finally {
+				// After the store attempt, so a provider usually sees the final row.
+				// Report even when storing fails, so the usage is not lost.
+				this.reportDelegatedRunUsage({
+					executionId,
+					threadId,
+					executionLinks,
+					finish,
+					status: usageStatus,
+				});
 				await agent?.close().catch((error) => {
 					this.logger.warn(`Failed to close subagent after ${operation.type}`, {
 						taskPath: operation.taskPath,
@@ -500,6 +583,81 @@ export class SubAgentRunner {
 					});
 				});
 			}
+		}
+	}
+
+	/**
+	 * The child already ran. A file lookup error must not lose its answer, so
+	 * log the error and tell the parent that the files are missing.
+	 */
+	private async returnFilesToParent(
+		parentThreadId: string | undefined,
+		childThreadId: string,
+		projectId: string,
+	): Promise<Pick<SubAgentRunResult, 'files' | 'filesError'>> {
+		if (!parentThreadId) return {};
+		try {
+			const files = await this.attachmentService.returnToParent({
+				projectId,
+				parentThreadId,
+				childThreadId,
+			});
+			return files.length > 0 ? { files } : {};
+		} catch (error) {
+			this.logger.warn('Failed to return sub-agent files to the parent', {
+				childThreadId,
+				error,
+			});
+			return { filesError: 'The files of the sub-agent could not be listed' };
+		}
+	}
+
+	/**
+	 * Report the usage of this execution to the system agent of the turn that
+	 * delegated it. Without a parent link or usage there is nothing to route.
+	 */
+	private reportDelegatedRunUsage(params: {
+		executionId: string;
+		threadId: string;
+		executionLinks: AgentExecutionLinks | undefined;
+		finish: FinishUsage | undefined;
+		status: AgentTurnStatus;
+	}): void {
+		const { executionLinks, finish } = params;
+		if (!executionLinks || !finish) return;
+		this.usageRelay.reportDelegatedRun({
+			executionId: params.executionId,
+			threadId: params.threadId,
+			parentExecutionId: executionLinks.parentExecutionId,
+			status: params.status,
+			model: finish.model,
+			usage: finish.usage,
+		});
+	}
+
+	/**
+	 * A new run links to the parent execution that delegates it. A resumed run
+	 * keeps the links of the child's first execution, so every execution of one
+	 * child points at the turn that delegated it, even when a later turn resumes it.
+	 */
+	private async resolveExecutionLinks(
+		operation: ForegroundOperation,
+		threadId: string,
+	): Promise<AgentExecutionLinks | undefined> {
+		try {
+			if (operation.type !== 'run') {
+				return (await this.executionRepository.findFirstLinksInThread(threadId)) ?? undefined;
+			}
+			const { parentExecutionId } = operation.request;
+			if (parentExecutionId === undefined) return undefined;
+			return (await this.executionRepository.findLinksForChildOf(parentExecutionId)) ?? undefined;
+		} catch (error) {
+			// Links serve usage reads only. A failed lookup must not stop the delegated run.
+			this.logger.warn('Failed to resolve sub-agent execution links', {
+				taskPath: operation.taskPath,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
 		}
 	}
 
@@ -543,16 +701,37 @@ async function getReconstructionService() {
 	return Container.get(AgentRuntimeReconstructionService);
 }
 
+/** The usage and model from the `finish` chunk of a delegated run. */
+interface FinishUsage {
+	usage: TokenUsage;
+	model: string | null;
+}
+
+function delegatedRunStatus(
+	cancelled: boolean,
+	suspended: boolean,
+	errored: boolean,
+): AgentTurnStatus {
+	if (cancelled) return 'cancelled';
+	if (suspended) return 'suspended';
+	return errored ? 'errored' : 'completed';
+}
+
 async function consumeAgentStream(
 	resultStream: StreamResult,
 	recorder: ExecutionRecorder,
 	attributionTracker: ReturnType<typeof createAttributionTracker>,
 	onChunk?: (chunk: StreamChunk) => void,
-): Promise<{ result: GenerateResult; executionError: unknown }> {
+): Promise<{
+	result: GenerateResult;
+	executionError: unknown;
+	finish: FinishUsage | undefined;
+}> {
 	const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
 	let structuredOutput: unknown;
 	let executionError: unknown;
 	let guardrail: GenerateResult['guardrail'];
+	let finish: FinishUsage | undefined;
 
 	for await (const value of streamAgentChunks(resultStream.stream)) {
 		recorder.record(value);
@@ -579,12 +758,16 @@ async function consumeAgentStream(
 			// The recorder keeps only the finish reason; the stop code lives
 			// on the chunk, so capture it here or it is lost.
 			if (value.guardrail !== undefined) guardrail = value.guardrail;
+			// The recorder keeps only the token totals. The chunk also has the
+			// cache details and the prompt-size split that billing needs.
+			if (value.usage !== undefined) finish = { usage: value.usage, model: value.model ?? null };
 		}
 	}
 
 	const messageRecord = recorder.getMessageRecord();
 	return {
 		executionError,
+		finish,
 		result: buildGenerateResultFromRecord(
 			resultStream.runId,
 			messageRecord,
@@ -605,6 +788,10 @@ function createHostMetadata(
 	let metadata = principalHash
 		? encodeAgentSandboxHostMetadata({ projectId: context.projectId, principalHash })
 		: undefined;
+
+	if (context.planTask)
+		metadata = { ...metadata, [PLAN_TASK_METADATA_KEY]: { ...context.planTask } };
+
 	if (context.backgroundJobId) {
 		metadata = {
 			...metadata,

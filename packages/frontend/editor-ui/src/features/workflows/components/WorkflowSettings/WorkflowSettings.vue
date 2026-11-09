@@ -202,6 +202,7 @@ const helpTexts = computed(() => ({
 	redactProductionData: i18n.baseText('workflowSettings.helpTexts.redactProductionData'),
 	redactManualData: i18n.baseText('workflowSettings.helpTexts.redactManualData'),
 	redactCallerExecutions: i18n.baseText('workflowSettings.helpTexts.redactCallerExecutions'),
+	engineType: i18n.baseText('workflowSettings.helpTexts.engineType'),
 }));
 
 const defaultValues = ref({
@@ -254,6 +255,24 @@ const isDataRedactionLicensed = computed(
 );
 
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
+
+const isEngineTypeSettingVisible = computed(() => settingsStore.isModuleActive('engine-v2'));
+
+const engineTypeOptions = computed(() => [
+	{ key: 'v1', value: i18n.baseText('workflowSettings.engineType.v1') },
+	{ key: 'v2', value: i18n.baseText('workflowSettings.engineType.v2') },
+]);
+
+// The backend runs a workflow without `engineType` on v1. Show that as v1, but write the
+// value only when the user selects an option.
+const engineType = computed({
+	get(): 'v1' | 'v2' {
+		return workflowSettings.value.engineType ?? 'v1';
+	},
+	set(value: 'v1' | 'v2') {
+		workflowSettings.value.engineType = value;
+	},
+});
 
 const isProductionRedactionLockedByFloor = computed(
 	() => instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all',
@@ -1040,6 +1059,33 @@ onBeforeUnmount(() => {
 				:class="$style['workflow-settings']"
 				data-test-id="workflow-settings-dialog"
 			>
+				<ElRow v-if="isEngineTypeSettingVisible" data-test-id="workflow-settings-engine-type">
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.engineType') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div v-text="helpTexts.engineType"></div>
+							</template>
+							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
+						<N8nSelect
+							v-model="engineType"
+							size="medium"
+							:disabled="isWorkflowSettingsReadOnly"
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-engine-type-select"
+						>
+							<N8nOption
+								v-for="option in engineTypeOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							/>
+						</N8nSelect>
+					</ElCol>
+				</ElRow>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.executionLogic') }}

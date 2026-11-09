@@ -147,6 +147,8 @@ describe('InstanceAiView', () => {
 				workflowBuilderAvailable: false,
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
+				workflowSuggestionsEnabled: false,
+				assistantAgentEnabled: false,
 			},
 		};
 		routeState.name = 'InstanceAiThread';
@@ -177,6 +179,8 @@ describe('InstanceAiView', () => {
 				workflowBuilderAvailable: true,
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
+				workflowSuggestionsEnabled: false,
+				assistantAgentEnabled: false,
 			},
 		};
 
@@ -202,6 +206,8 @@ describe('InstanceAiView', () => {
 				workflowBuilderAvailable: true,
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
+				workflowSuggestionsEnabled: false,
+				assistantAgentEnabled: false,
 			},
 		};
 		const { getByTestId, queryByTestId } = renderView({ pinia });

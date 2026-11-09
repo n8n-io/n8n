@@ -2,7 +2,7 @@ import { raceWithAbort, throwIfAborted } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -110,7 +110,7 @@ export class AgentEvaluationService {
 		const error = await this.accessError(user, projectId, snapshot.agent.id, abortSignal);
 		if (error) throw new UserError(error);
 		const skills = await raceWithAbort(
-			async () => await this.skillRefs.skillsForRefs(snapshot.agent, snapshot.skillRefs, {}),
+			async () => await this.skillRefs.skillsForRefs(snapshot.skillRefs, {}),
 			abortSignal,
 		);
 		return await raceWithAbort(async () => {

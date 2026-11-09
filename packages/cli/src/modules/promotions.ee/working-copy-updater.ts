@@ -11,7 +11,7 @@ import { BadRequestError, InternalServerError } from '@n8n/errors';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { containerMoves, isUnder, staleWorkflowTargets } from './branch-placement';
+import { containerMoves, isUnder, projectHolding, staleWorkflowTargets } from './branch-placement';
 import type { BranchLayout, ContainerMove } from './branch-placement';
 import { writeImportManifest } from './import-manifest-bridge';
 import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
@@ -154,7 +154,13 @@ export class WorkingCopyUpdater {
 
 				const kind = ENTITY_FILES[entry.name as keyof typeof ENTITY_FILES];
 				if (kind !== undefined) {
-					collected[kind].push(await this.readEntityFile(fullPath, target, relativeFile));
+					const { entry, isArchived } = await this.readEntityFile(fullPath, target, relativeFile);
+					// Only a workflow entry carries the flag; the other kinds list id, name and target.
+					if (kind === 'workflows') {
+						collected.workflows.push({ ...entry, isArchived });
+						continue;
+					}
+					collected[kind].push(entry);
 					continue;
 				}
 
@@ -223,7 +229,7 @@ export class WorkingCopyUpdater {
 		file: string,
 		target: string,
 		relativeFile: string,
-	): Promise<ManifestEntry> {
+	): Promise<{ entry: ManifestEntry; isArchived: boolean }> {
 		let raw: string;
 		try {
 			raw = await fs.readFile(file, 'utf-8');
@@ -250,7 +256,8 @@ export class WorkingCopyUpdater {
 				`"${relativeFile}" on the branch is missing an id or a name. Remove it and retry.`,
 			);
 		}
-		return { id: (parsed as { id: string }).id, name: (parsed as { name: string }).name, target };
+		const { id, name, isArchived } = parsed as { id: string; name: string; isArchived?: unknown };
+		return { entry: { id, name, target }, isArchived: isArchived === true };
 	}
 
 	async assertSelectionFitsBranch(
@@ -311,7 +318,12 @@ export class WorkingCopyUpdater {
 			(w) => selected.has(w.id) && (!projectTarget || !isUnder(w.target, projectTarget)),
 		);
 		if (moved.length > 0) {
-			throw new PromotionsWorkflowsMovedCrossProjectError(moved.map((workflow) => workflow.id));
+			throw new PromotionsWorkflowsMovedCrossProjectError(
+				moved.map(({ id, target }) => {
+					const project = projectHolding(branch.projects, target);
+					return { id, detail: project && `in project "${project.name}" on the branch` };
+				}),
+			);
 		}
 	}
 
@@ -332,7 +344,7 @@ export class WorkingCopyUpdater {
 		);
 		if (foreign) {
 			throw new BadRequestError(
-				`"${foreign.from}" belongs to another project on the branch. A selective push cannot move it. Push all projects instead.`,
+				`"${foreign.from}" belongs to another project on the branch. Promotion can't move it between projects. Move it back on this instance, then promote again.`,
 			);
 		}
 	}

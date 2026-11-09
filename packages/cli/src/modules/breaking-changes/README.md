@@ -31,7 +31,7 @@ breaking-changes/
    sync/
       migration-finding-diff.ts  # Pure diff of scan hits against stored findings
       migration-finding-sync.service.ts  # Runs a scan and writes the diff, one transaction per batch
-      migration-finding-sync.listener.ts # Re-checks one workflow on create, save, publish, and pull
+      migration-finding-sync.listener.ts # Re-checks one workflow on create, save, publish, unpublish, archive, and pull
    query/
       migration-finding-query.service.ts  # Shapes finding table reads into the report response types
    triage/
@@ -148,11 +148,13 @@ Body:
 
 Sets the status of the finding of one workflow rule on one workflow. A user can set `open` or `wont_fix`. The rule's metadata gives the target version. The route needs the `breakingChanges:list` scope and edit access to the workflow (`workflow:update`), and returns no data. The bulk status, owner and migrate routes use the same check. The bulk route changes only the listed workflows that the user can edit.
 
-- A `wont_fix` finding counts as resolved. A `notified` finding does not: the owner was emailed, but nothing is fixed. The overview gives each rule its `open` plus `notified` count in `nbAffectedWorkflows` and its `wont_fix` count in `nbWontFixWorkflows`.
+- A `wont_fix` finding counts as resolved. A `notified` finding does not: the owner was emailed, but nothing is fixed. A `fixed_unpublished` finding does not either: the published version still has the issue. The overview gives each rule its `open`, `notified` and `fixed_unpublished` count in `nbAffectedWorkflows` and its `wont_fix` count in `nbWontFixWorkflows`.
 - The overview keeps a rule with only `wont_fix` findings, with a count of zero. Its detail page is the only place to set them back to `open`.
-- The rule detail lists `open`, `notified` and `wont_fix` findings, each with its `status` and, once notified, its `notifiedAt`.
+- The rule detail lists `open`, `notified`, `fixed_unpublished` and `wont_fix` findings, each with its `status` and, once notified, its `notifiedAt`. A finding whose latest version has no issues takes the issues of the published version, when an older version is published.
+- A user can set a `fixed_unpublished` finding to `open` or `wont_fix`. A notification leaves it `fixed_unpublished`.
 - Setting a `notified` finding to `open` clears its `notifiedAt`, so the next notification is not a reminder.
-- When a scan no longer detects a `wont_fix` or `notified` finding, the sync marks it `fixed`.
+- When a scan no longer detects a finding in the latest version of the workflow, the sync marks it `fixed_unpublished` if the published version still has the issue, and `fixed` otherwise. A workflow with nothing published counts as fixed. A `wont_fix` finding stays `wont_fix` while the published version has the issue. A new detection in the latest version reopens a `fixed` or `fixed_unpublished` finding.
+- Batch rules check the latest version only.
 - The route returns 404 when the user cannot edit the workflow, as for a workflow that does not exist.
 - The route returns 404 when the rule is unknown or is not a workflow rule.
 - The route returns 404 when the finding does not exist or is in a status that only the scan sets, for example `fixed`. This is also true when a sync marks the finding `fixed` during the request.
@@ -167,7 +169,7 @@ Body:
 { "workflowIds": ["wf-1", "wf-2"] }
 ```
 
-Emails the owner of each listed workflow about the rule's finding on it. One email per owner lists all of their workflows. A finding is marked `notified` and gets a `notifiedAt` only when the email went out, so a repeated call is a reminder that bumps `notifiedAt`. The route needs the `breakingChanges:migrate` scope.
+Emails the owner of each listed workflow about the rule's finding on it. One email per owner lists all of their workflows. A finding is marked `notified` and gets a `notifiedAt` only when the email went out, so a repeated call is a reminder that bumps `notifiedAt`. A `fixed_unpublished` finding is included in the email, but it keeps its status and gets no `notifiedAt`. The route needs the `breakingChanges:migrate` scope.
 
 Response:
 ```json
@@ -177,9 +179,10 @@ Response:
 }
 ```
 
-- `no_finding`: the workflow has no `open` or `notified` finding for the rule.
+- `no_finding`: the workflow has no `open`, `notified` or `fixed_unpublished` finding for the rule.
 - `no_owner`: the workflow has no owner, or the owner has no email.
 - `send_failed`: the email could not be sent. The finding stays as it is.
+- `recently_notified`: the owner was notified about the finding less than 60 seconds ago. The finding stays as it is.
 - The route returns 400 when SMTP is not set up on the instance, and 404 when the rule is unknown or is not a workflow rule.
 
 ## Rule Impact

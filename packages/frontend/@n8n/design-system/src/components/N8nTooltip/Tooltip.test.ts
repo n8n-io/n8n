@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
+import { useZIndex } from 'element-plus';
 
 // eslint-disable-next-line import-x/no-duplicates -- ?raw imports the source as a string
 import Tooltip from './Tooltip.vue';
@@ -287,6 +288,50 @@ describe('components/N8nTooltip', () => {
 
 			const tooltipContent = await getTooltip();
 			expect(container).toContainElement(tooltipContent);
+		});
+	});
+
+	describe('stacking order', () => {
+		it('should open a hovered tooltip above a menu opened after mount', async () => {
+			const { nextZIndex } = useZIndex();
+			const wrapper = render(Tooltip, {
+				props: { content: 'Test tooltip' },
+				slots: { default: '<button>Hover me</button>' },
+			});
+			const menuZIndex = nextZIndex();
+
+			hoverTooltipTrigger(wrapper.getByText('Hover me'));
+
+			const tooltip = await getTooltip();
+			expect(Number(tooltip.style.getPropertyValue('--tooltip--z'))).toBeGreaterThan(menuZIndex);
+		});
+
+		it('should open a visible tooltip above existing menus', async () => {
+			const { nextZIndex } = useZIndex();
+			const menuZIndex = nextZIndex();
+			render(Tooltip, {
+				props: { content: 'Test tooltip', visible: true },
+				slots: { default: '<button>Hover me</button>' },
+			});
+
+			const tooltip = await getTooltip();
+			expect(Number(tooltip.style.getPropertyValue('--tooltip--z'))).toBeGreaterThan(menuZIndex);
+		});
+
+		it('should update the stacking order each time the tooltip opens', async () => {
+			const { nextZIndex } = useZIndex();
+			const wrapper = render(Tooltip, {
+				props: { content: 'Test tooltip', visible: false },
+				slots: { default: '<button>Hover me</button>' },
+			});
+
+			for (let openCount = 0; openCount < 2; openCount++) {
+				const menuZIndex = nextZIndex();
+				await wrapper.rerender({ visible: true });
+				const tooltip = await getTooltip();
+				expect(Number(tooltip.style.getPropertyValue('--tooltip--z'))).toBeGreaterThan(menuZIndex);
+				await wrapper.rerender({ visible: false });
+			}
 		});
 	});
 

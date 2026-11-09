@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { DialogContent, DialogTitle, DialogDescription, VisuallyHidden } from 'reka-ui';
+import { DialogContent, DialogTitle, DialogDescription } from 'reka-ui';
 import { computed, provide, useCssModule } from 'vue';
 
+import N8nVisuallyHidden from '../N8nVisuallyHidden';
 import N8nDialogClose from './DialogClose.vue';
 import { dialogCloseButtonKey } from './dialogContext';
 
@@ -146,14 +147,14 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 		@close-auto-focus="emit('closeAutoFocus', $event)"
 	>
 		<!-- Fallback accessible title for screen readers when DialogTitle is not provided -->
-		<VisuallyHidden v-if="needsFallbackTitle" as-child>
+		<N8nVisuallyHidden v-if="needsFallbackTitle" as-child>
 			<DialogTitle>{{ ariaLabel }}</DialogTitle>
-		</VisuallyHidden>
+		</N8nVisuallyHidden>
 
 		<!-- Fallback accessible description for screen readers when DialogDescription is not provided -->
-		<VisuallyHidden v-if="needsFallbackDescription" as-child>
+		<N8nVisuallyHidden v-if="needsFallbackDescription" as-child>
 			<DialogDescription>{{ ariaDescription }}</DialogDescription>
-		</VisuallyHidden>
+		</N8nVisuallyHidden>
 
 		<slot />
 
@@ -200,16 +201,22 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 	--n8n-dialog-close--inset-inline-end: var(--n8n-dialog-region--padding);
 
 	&:not(:has([data-slot='dialog-header'])) [data-slot='dialog-body'] {
-		padding-block-start: var(--n8n-dialog-region--padding);
+		padding-block-start: var(
+			--n8n-dialog-body--padding-block-start,
+			var(--n8n-dialog-region--padding)
+		);
 		margin-block-start: 0;
 	}
 
 	&:not(:has([data-slot='dialog-header'])):has(.dismiss) [data-slot='dialog-body'] {
-		padding-block-start: calc(var(--n8n-dialog-close--size) + var(--spacing--xs));
+		padding-block-start: var(
+			--n8n-dialog-body--padding-block-start,
+			calc(var(--n8n-dialog-close--size) + var(--spacing--xs))
+		);
 	}
 
 	&:has([data-slot='dialog-footer']) [data-slot='dialog-body'] {
-		padding-block-end: var(--focus--border-width);
+		padding-block-end: var(--n8n-dialog-body--padding-block-end, var(--focus--border-width));
 		margin-block-end: calc(var(--focus--border-width) * -1);
 	}
 

@@ -1,11 +1,17 @@
 import crypto from 'crypto';
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import snowflake from 'snowflake-sdk';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import {
+	connect,
+	destroy,
 	escapeSnowflakeObjectIdentifier,
+	execute,
 	getConnectionOptions,
 	isFileTransferQuery,
 	prepareQueryResults,
+	type SnowflakeCredential,
 } from '../GenericFunctions';
 
 vi.mock('crypto');
@@ -258,5 +264,79 @@ describe('prepareQueryResults', () => {
 		const result = await prepareQueryResults.call(context, undefined, 0, 1.1);
 
 		expect(result).toEqual([]);
+	});
+});
+
+describe('SDK error wrapping', () => {
+	const node = mock<INode>({ typeVersion: 1.1 });
+	let conn: MockProxy<snowflake.Connection>;
+	const credential: SnowflakeCredential = {
+		account: 'test-account',
+		authentication: 'password',
+		username: 'test-username',
+		password: 'test-password',
+	};
+	const sdkError = Object.assign(new Error('SQL compilation error: Object does not exist'), {
+		name: 'OperationFailedError',
+		sqlState: '42S02',
+	}) as snowflake.SnowflakeError;
+
+	beforeEach(() => {
+		conn = mock<snowflake.Connection>();
+		vi.spyOn(snowflake, 'createConnection').mockReturnValue(conn);
+	});
+
+	it('should reject with a NodeOperationError when the statement fails', async () => {
+		conn.execute.mockImplementation(({ complete }) => {
+			complete?.(sdkError, mock(), undefined);
+			return mock();
+		});
+
+		await expect(execute(conn, 'SELECT 1', [], node, 2)).rejects.toMatchObject({
+			name: 'NodeOperationError',
+			message: sdkError.message,
+			cause: sdkError,
+			context: expect.objectContaining({ itemIndex: 2 }),
+			level: 'warning',
+		});
+	});
+
+	it('should wrap an error that the SDK throws synchronously', async () => {
+		const bindError = Object.assign(new Error('Invalid binds'), { name: 'InvalidParameterError' });
+		conn.execute.mockImplementation(() => {
+			throw bindError;
+		});
+
+		await expect(execute(conn, 'UPDATE T SET A = ?', [], node, 1)).rejects.toMatchObject({
+			name: 'NodeOperationError',
+			cause: bindError,
+			context: expect.objectContaining({ itemIndex: 1 }),
+		});
+	});
+
+	it('should reject with a NodeOperationError when connection setup throws', async () => {
+		const setupError = Object.assign(new Error('A user name must be specified.'), {
+			name: 'MissingParameterError',
+		});
+		vi.mocked(snowflake.createConnection).mockImplementation(() => {
+			throw setupError;
+		});
+
+		await expect(connect(credential, node)).rejects.toMatchObject({
+			name: 'NodeOperationError',
+			cause: setupError,
+		});
+	});
+
+	it.each([
+		['connect', async () => await connect(credential, node)],
+		['destroy', async () => await destroy(conn, node)],
+	] as const)('should reject with a NodeOperationError when %s fails', async (method, run) => {
+		conn[method].mockImplementation((callback) => {
+			callback?.(sdkError, conn);
+			return conn;
+		});
+
+		await expect(run()).rejects.toMatchObject({ name: 'NodeOperationError', cause: sdkError });
 	});
 });

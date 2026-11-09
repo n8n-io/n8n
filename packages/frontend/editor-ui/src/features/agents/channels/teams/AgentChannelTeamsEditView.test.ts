@@ -28,7 +28,9 @@ vi.mock('@n8n/composables/useToast', () => ({
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
 const confirm = vi.fn();
-vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
+vi.mock('../../composables/useAgentConfirmationModal', () => ({
+	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: confirm }),
+}));
 
 vi.mock('./api', () => ({
 	checkTeamsCredential: vi.fn(),
@@ -160,8 +162,8 @@ describe('AgentChannelTeamsEditView', () => {
 			await waitFor(() => expect(emitted().restart).toEqual([[{ credentialId: 'cred-2' }]]));
 		});
 
-		it('keeps the saved credential when the user cancels', async () => {
-			confirm.mockResolvedValue('cancel');
+		it.each(['cancel', 'close'])('keeps the saved credential on %s', async (result) => {
+			confirm.mockResolvedValue(result);
 			const { getByTestId, emitted } = renderView({ props: viewProps });
 
 			await fireEvent.click(getByTestId('pick-credential'));

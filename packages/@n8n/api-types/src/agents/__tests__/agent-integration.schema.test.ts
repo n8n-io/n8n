@@ -84,6 +84,29 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
+	it.each([true, false])(
+		'preserves the Slack mention-only setting: %s',
+		(onlyRespondWhenMentioned) => {
+			const config = {
+				type: 'slack',
+				credentialId: 'cred-123',
+				settings: { messagingExperience: 'agent', onlyRespondWhenMentioned },
+			};
+			expect(AgentIntegrationSchema.parse(config)).toEqual(config);
+			expect(AgentIntegrationConfigSchema.parse(config)).toEqual(config);
+		},
+	);
+
+	it('rejects a non-boolean Slack mention-only setting', () => {
+		expect(
+			AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+				settings: { messagingExperience: 'agent', onlyRespondWhenMentioned: 'true' },
+			}).success,
+		).toBe(false);
+	});
+
 	it('rejects Telegram private settings without allowed users', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'telegram',

@@ -24,6 +24,7 @@ import {
 	takeIdempotencyClaimId,
 } from '@/idempotency/idempotency.middleware';
 import { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
+import { N8N_CLIENT_HEADER } from '@n8n/api-types';
 import { BadRequestError, UnsupportedMediaTypeError } from '@n8n/errors';
 import { License } from '@/license';
 import { assertContentType } from '@/public-api/media-types/content-type';
@@ -43,6 +44,7 @@ import {
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
+import { resolvePublicApiClient } from '@/public-api/public-api-client';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
@@ -336,11 +338,13 @@ export class PublicApiControllerRegistry {
 
 	private createAuthMiddleware(apiVersion: string, prefix: string): RequestHandler {
 		return async (req, res, next) => {
-			const authenticated = await this.authStrategyRegistry.authenticate(
-				req as AuthenticatedRequest,
-			);
+			const result = await this.authStrategyRegistry.authenticate(req as AuthenticatedRequest);
 
-			if (!authenticated) {
+			if (!result.authenticated) {
+				// RFC 7235 §4.1: one header, the challenges comma-separated.
+				if (result.challenges.length > 0) {
+					res.setHeader('WWW-Authenticate', result.challenges.join(', '));
+				}
 				res.status(401).json({ message: 'Unauthorized' });
 				return;
 			}
@@ -354,6 +358,7 @@ export class PublicApiControllerRegistry {
 					method: req.method,
 					apiVersion,
 					userAgent: req.headers['user-agent'],
+					client: resolvePublicApiClient(req.headers[N8N_CLIENT_HEADER]),
 				});
 			}
 

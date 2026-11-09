@@ -65,6 +65,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ discoveryClaimToken
   datetime_3_ discoveryClaimedAt
+  datetime_3_ firstAuthenticatedAt
   varchar_36_ id PK
   varchar issuer
   datetime_3_ lastCheckedAt
@@ -82,6 +83,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   varchar id PK
+  VARCHAR_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled

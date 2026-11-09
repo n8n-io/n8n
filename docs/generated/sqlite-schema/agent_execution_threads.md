@@ -102,6 +102,7 @@ erDiagram
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER publicationRevision
   INTEGER revision
   TEXT schema
   varchar_16_ scope
@@ -115,6 +116,8 @@ erDiagram
   BOOLEAN acceptsSteering
   TEXT attachments
   TEXT author
+  INTEGER cacheReadTokens
+  INTEGER cacheWriteTokens
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
@@ -126,6 +129,7 @@ erDiagram
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
+  varchar_36_ parentExecutionId FK
   INTEGER promptTokens
   varchar_32_ source
   datetime_3_ startedAt
@@ -172,6 +176,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   varchar id PK
+  VARCHAR_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -198,6 +203,8 @@ erDiagram
   varchar_36_ agentId FK
   varchar_255_ author
   datetime_3_ createdAt
+  TEXT description
+  TEXT name
   varchar publishedById FK
   TEXT schema
   TEXT skills

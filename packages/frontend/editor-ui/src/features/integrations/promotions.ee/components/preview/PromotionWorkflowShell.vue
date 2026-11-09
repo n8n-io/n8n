@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { PromotionDirection } from '@n8n/api-types';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -11,8 +10,6 @@ import PromotionWorkflowSideLabel from './PromotionWorkflowSideLabel.vue';
 defineProps<{
 	status: WorkflowShellStatus;
 	workflowName: string;
-	direction: PromotionDirection;
-	branchName?: string;
 }>();
 const emit = defineEmits<{ activate: []; retry: []; refresh: [] }>();
 const i18n = useI18n();
@@ -22,10 +19,10 @@ const i18n = useI18n();
 	<!-- The real diff follows a loading state, so the illustration would only flash. -->
 	<WorkflowDiffPlaceholder :hide-illustration="status === 'loading'">
 		<template #sourceLabel>
-			<PromotionWorkflowSideLabel side="before" :direction="direction" :branch-name="branchName" />
+			<PromotionWorkflowSideLabel side="before" />
 		</template>
 		<template #targetLabel>
-			<PromotionWorkflowSideLabel side="after" :direction="direction" :branch-name="branchName" />
+			<PromotionWorkflowSideLabel side="after" />
 		</template>
 		<N8nButton
 			v-if="status === 'idle'"

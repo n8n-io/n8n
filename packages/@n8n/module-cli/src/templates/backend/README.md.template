@@ -22,4 +22,6 @@ service, repository, entity, configuration, and testing patterns.
 - Keep the module entrypoint in the `./module` export. Do not export it from `src/index.ts`.
   Importing the entrypoint runs the `@BackendModule` decorator.
 - Use dynamic imports inside the module entrypoint. This keeps disabled modules unloaded.
-- Keep TypeORM imports in entity and repository files.
+- Keep TypeORM imports in entity and repository files. A repository composes a
+  file-private `BaseRepository` table and exposes only use-case methods. It does
+  not extend `BaseRepository`.

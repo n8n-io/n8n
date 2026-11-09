@@ -8,12 +8,11 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
 import type { Client } from 'langsmith';
-import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION } from '@/constants';
-import { ConflictError, NotFoundError, ServiceUnavailableError } from '@n8n/errors';
+import { ConflictError, NotFoundError, ServiceUnavailableError, UserError } from '@n8n/errors';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
@@ -339,6 +338,8 @@ function buildEventRun(event: TimelineEvent, execution: AgentExecution, path: st
 			return buildSuspensionRun(event, path);
 		case 'hitl-response':
 			return buildHitlResponseRun(event, path);
+		case 'host-event':
+			return buildHostEventRun(event, path);
 		case 'tool-call':
 			return buildToolCallRun(event, path);
 		case 'guardrail':
@@ -441,6 +442,23 @@ function buildHitlResponseRun(
 		inputs: { toolCallId: event.toolCallId },
 		outputs: toRecord(event.response),
 		metadata: {},
+		children: [],
+	};
+}
+
+function buildHostEventRun(
+	event: Extract<TimelineEvent, { type: 'host-event' }>,
+	path: string,
+): DraftRun {
+	return {
+		path,
+		name: `Host event: ${event.name}`,
+		runType: 'chain',
+		startTime: event.timestamp,
+		endTime: event.timestamp,
+		inputs: {},
+		outputs: { payload: event.payload },
+		metadata: event.key !== undefined ? { key: event.key } : {},
 		children: [],
 	};
 }

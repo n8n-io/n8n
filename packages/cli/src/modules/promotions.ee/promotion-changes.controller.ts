@@ -1,9 +1,7 @@
 import {
-	ApplyCheckQueryDto,
 	PromotionChangesQueryDto,
 	PromotionResourceDetailsRequestDto,
 	promotionDirectionSchema,
-	type ApplyCheckResult,
 	type PromotionDirection,
 	type PromotionPreview,
 	type PromotionResourceDetails,
@@ -25,18 +23,14 @@ import type { Response } from 'express';
 import { NotFoundError } from '@n8n/errors';
 
 import { PromotionChangeService } from './promotion-change.service';
-import { PromotionsService } from './promotions.service';
 
 @RestController('/promotions')
 export class PromotionChangesController {
-	constructor(
-		private readonly changeService: PromotionChangeService,
-		private readonly promotionsService: PromotionsService,
-	) {}
+	constructor(private readonly changeService: PromotionChangeService) {}
 
 	@Get('/:projectId/changes/:direction')
-	@GlobalScope('gitConnection:read')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@GlobalScope('promotions:read')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	async getChanges(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -52,22 +46,9 @@ export class PromotionChangesController {
 		);
 	}
 
-	// Apply needs the pull scope, so its check does too.
-	@Get('/:projectId/changes/apply/blockers')
-	@GlobalScope('gitConnection:pull')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	async getApplyBlockers(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Param('projectId') projectId: string,
-		@Query query: ApplyCheckQueryDto,
-	): Promise<ApplyCheckResult> {
-		return await this.promotionsService.checkApplyBlockers(projectId, query.commitSha);
-	}
-
 	@Post('/:projectId/changes/:direction/details')
-	@GlobalScope('gitConnection:read')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@GlobalScope('promotions:read')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	async getDetails(
 		req: AuthenticatedRequest,
 		_res: Response,

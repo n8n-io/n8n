@@ -9,8 +9,8 @@
  * carries the triggers; the body is loaded on demand and must read as a compact,
  * self-contained, actionable operating manual.
  *
- * Shared by the `agent_builder_create_skills` builder tool, the `agent-builder-target-skills`
- * skill, and the builder prompt so the guidance is identical everywhere.
+ * The `agent-builder-target-skills` skill shows it. The always-loaded builder tools
+ * point to that skill instead of repeating it.
  */
 
 /** How to write the `description` (the routing contract). */
@@ -45,6 +45,3 @@ export const SKILL_BODY_TEMPLATE = `## Overview
 
 ## Gotchas
 <Common mistakes or edge cases, and how to handle them.>`;
-
-/** The body rule followed by the template, for embedding in tool / field descriptions. */
-export const SKILL_BODY_GUIDANCE = `${SKILL_BODY_FORMAT_RULE}\n\n${SKILL_BODY_TEMPLATE}`;

@@ -1,9 +1,16 @@
 import { render, waitFor } from '@testing-library/vue';
 import { vi } from 'vitest';
+import { h } from 'vue';
 
 import Icon from './Icon.vue';
 import { deprecatedIconSet, isSupportedIconName, type IconName } from './icons';
 import { IconBodyLoaderKey } from '../../composables/useIconBodyLoader';
+
+// The node icon set loads after the loader replies, as a slow chunk can in the app.
+vi.mock('./node-icons', async () => {
+	await new Promise((resolve) => setTimeout(resolve, 20));
+	return { nodeIconSet: { 'node:ftp': { render: () => h('svg', { 'data-node-icon': 'ftp' }) } } };
+});
 
 const loaderStub = vi.fn(async (iconName: string) =>
 	iconName === 'app-window-mac' ? '<path d="M1 1h22v22H1z" />' : null,
@@ -83,6 +90,78 @@ describe('Icon', () => {
 			'<path',
 		);
 		expect(loaderStub).toHaveBeenCalledWith('app-window-mac');
+	});
+
+	it('should draw nothing for an icon name no icon set has', async () => {
+		const wrapper = render(Icon, { props: { icon: 'not-an-icon' }, ...renderOptions });
+
+		await waitFor(() => expect(loaderStub).toHaveBeenCalledWith('not-an-icon'));
+		// Let the loader reply before checking that nothing was drawn.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(wrapper.container.querySelector('svg')).toBeNull();
+	});
+
+	it('should draw the fallback icon for an icon name no icon set has', async () => {
+		const wrapper = render(Icon, {
+			props: { icon: 'not-an-icon', fallbackIcon: 'bot' },
+			...renderOptions,
+		});
+
+		await waitFor(() =>
+			expect(wrapper.container.querySelector('svg[data-icon="bot"]')).toBeTruthy(),
+		);
+	});
+
+	it('should draw the fallback icon when it comes from the loader', async () => {
+		const wrapper = render(Icon, {
+			props: { icon: 'not-an-icon', fallbackIcon: 'app-window-mac' as IconName },
+			...renderOptions,
+		});
+
+		await waitFor(() => {
+			expect(wrapper.container.querySelector('svg')?.innerHTML).toContain('<path');
+		});
+		expect(loaderStub).toHaveBeenCalledWith('app-window-mac');
+	});
+
+	it('should draw a node icon over the fallback once the node icon set loads', async () => {
+		const wrapper = render(Icon, {
+			props: { icon: 'node:ftp', fallbackIcon: 'bot' },
+			...renderOptions,
+		});
+
+		await waitFor(() => {
+			expect(wrapper.container.querySelector('[data-node-icon="ftp"]')).toBeTruthy();
+		});
+	});
+
+	it('should keep the requested icon when it loads', async () => {
+		const wrapper = render(Icon, {
+			props: { icon: 'app-window-mac', fallbackIcon: 'bot' },
+			...renderOptions,
+		});
+
+		await waitFor(() => {
+			expect(wrapper.container.querySelector('svg')?.innerHTML).toContain('M1 1h22v22H1z');
+		});
+	});
+
+	it('should load an icon again when it is selected again after a failed load', async () => {
+		loaderStub.mockRejectedValueOnce(new Error('chunk failed'));
+		const wrapper = render(Icon, {
+			props: { icon: 'app-window-mac', fallbackIcon: 'bot' },
+			...renderOptions,
+		});
+		await waitFor(() =>
+			expect(wrapper.container.querySelector('svg[data-icon="bot"]')).toBeTruthy(),
+		);
+
+		await wrapper.rerender({ icon: 'check' });
+		await wrapper.rerender({ icon: 'app-window-mac' });
+
+		await waitFor(() => {
+			expect(wrapper.container.querySelector('svg')?.innerHTML).toContain('M1 1h22v22H1z');
+		});
 	});
 });
 

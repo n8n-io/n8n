@@ -11,8 +11,36 @@ index 99f4fbf9c347a74594f975df62ee353d06c85c55..316f9e8b537e294230c5123789c224c4
            ? objValue
            : (isIndex(path[index + 1]) ? [] : {});
        }
+diff --git a/_baseUnset.js b/_baseUnset.js
+index e4eccb0af62004dfe31d53308c6492d08f0c48e1..f2a849c59ea604d08a30803e45609291a05c47d6 100644
+--- a/_baseUnset.js
++++ b/_baseUnset.js
+@@ -1,6 +1,5 @@
+ var castPath = require('./_castPath'),
+     last = require('./last'),
+-    parent = require('./_parent'),
+     toKey = require('./_toKey');
+ 
+ /** Used for built-in method references. */
+@@ -45,7 +44,15 @@ function baseUnset(object, path) {
+     }
+   }
+ 
+-  var obj = parent(object, path);
++  // Only follow own properties while walking the path.
++  var obj = object;
++  for (index = 0; index < length - 1; index++) {
++    key = toKey(path[index]);
++    if (obj == null || !hasOwnProperty.call(obj, key)) {
++      return true;
++    }
++    obj = obj[key];
++  }
+   return obj == null || delete obj[toKey(last(path))];
+ }
+ 
 diff --git a/lodash.js b/lodash.js
-index 8634cab16747f81f9336d1a231dc501af460179d..b1939f267103be4e76b4828b37472797f4859632 100644
+index 8634cab16747f81f9336d1a231dc501af460179d..00a8720da1c9b49003803c962825fae9e0e04ecc 100644
 --- a/lodash.js
 +++ b/lodash.js
 @@ -4045,7 +4045,7 @@
@@ -24,3 +52,20 @@ index 8634cab16747f81f9336d1a231dc501af460179d..b1939f267103be4e76b4828b37472797
                ? objValue
                : (isIndex(path[index + 1]) ? [] : {});
            }
+@@ -4401,7 +4401,15 @@
+         }
+       }
+ 
+-      var obj = parent(object, path);
++      // Only follow own properties while walking the path.
++      var obj = object;
++      for (index = 0; index < length - 1; index++) {
++        key = toKey(path[index]);
++        if (obj == null || !hasOwnProperty.call(obj, key)) {
++          return true;
++        }
++        obj = obj[key];
++      }
+       return obj == null || delete obj[toKey(last(path))];
+     }
+ 

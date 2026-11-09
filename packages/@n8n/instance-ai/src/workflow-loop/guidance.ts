@@ -3,7 +3,7 @@ import type { VerificationClaim, WorkflowLoopAction } from './workflow-loop-stat
 
 export interface WorkflowLoopGuidanceOptions {
 	workItemId?: string;
-	/** Setup panel v2: `workflow_builder_workflows(action="setup")` announces instead of opening a card. */
+	/** Setup panel v2: `setup_workflow` announces instead of opening a card. */
 	setupPanelEnabled?: boolean;
 }
 
@@ -96,19 +96,19 @@ export function formatWorkflowLoopGuidance(
 				if (options.setupPanelEnabled) {
 					return (
 						`${claimLead} It still uses temporary mock data. ` +
-						`Call \`workflow_builder_workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" once: ` +
+						`Call \`setup_workflow\` with workflowId "${action.workflowId ?? 'unknown'}" once: ` +
 						'it lists the remaining credentials and values in the setup panel and returns them to you. ' +
 						'When the result has `announced: true`, summarize it, report any validation warnings, and end your turn. ' +
 						'Otherwise follow the returned guidance for validation errors, approvals, skipped items, or an existing setup card. ' +
-						'Do not call `workflow_builder_credentials(action="setup")` or `workflow_builder_apply_workflow_credentials`, and do not tell the user to open the editor or canvas.'
+						'Do not call `setup_credentials` or `workflow_builder_apply_workflow_credentials`, and do not tell the user to open the editor or canvas.'
 					);
 				}
 				return (
 					`${claimLead} It still uses temporary mock data. ` +
-					`Call \`workflow_builder_workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
+					`Call \`setup_workflow\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
 					'to open the inline setup card in the n8n Assistant panel for credentials, parameters, and triggers. ' +
 					'Do not tell the user to open the editor, use the canvas, or click a Setup button. ' +
-					'Do not call `workflow_builder_credentials(action="setup")` or `workflow_builder_apply_workflow_credentials` — `workflow_builder_workflows(action="setup")` handles everything.'
+					'Do not call `setup_credentials` or `workflow_builder_apply_workflow_credentials` — `setup_workflow` handles everything.'
 				);
 			}
 			// Only a verified draft earns the publish question. Below `verified` the
@@ -124,13 +124,13 @@ export function formatWorkflowLoopGuidance(
 		}
 		case 'verify':
 			return (
-				`VERIFY: Inspect the persisted workflow ${action.workflowId}: read the bound workspace source file you just built, or call \`workflow_builder_workflows(action="get-as-code", workflowId)\` when you need to check for outside changes — it refreshes the file when the saved workflow changed and returns a node index. If it reports status "conflict", the file has unbuilt edits: build or discard them and call it again before trusting the index. Compare the relevant lines to the requested outcome. ` +
+				`VERIFY: Inspect the persisted workflow ${action.workflowId}: read the bound workspace source file you just built, or call \`get_workflow_as_code(workflowId)\` when you need to check for outside changes — it refreshes the file when the saved workflow changed and returns a node index. If it reports status "conflict", the file has unbuilt edits: build or discard them and call it again before trusting the index. Compare the relevant lines to the requested outcome. ` +
 				'Build/save success only means a workflow was saved. ' +
 				`Use \`workflow_builder_verify_built_workflow\` with workflowId "${action.workflowId ?? 'unknown'}"` +
 				(options.workItemId ? ` and workItemId "${options.workItemId}"` : '') +
 				'; it reuses the build outcome simulation plan and is safe to call multiple times. ' +
 				'For alternate deterministic scenarios, pass `fixtureOverrides` for nodes already classified as simulated. ' +
-				'If it fails, use `workflow_builder_executions(action="debug")` to diagnose. ' +
+				'If it fails, use `debug_execution` to diagnose. ' +
 				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep repairing the same workflow source file. ' +
 				`Then call \`workflow_builder_report_verification_verdict\` with workItemId "${options.workItemId ?? 'unknown'}", \`workflowInspection\`, and your findings.`
 			);

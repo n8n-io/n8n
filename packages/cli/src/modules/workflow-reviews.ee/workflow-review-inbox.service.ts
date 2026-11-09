@@ -52,14 +52,17 @@ export class WorkflowReviewInboxService {
 	async listForInbox(user: User, query: InboxSourceQuery): Promise<InboxWorkflowReviewItem[]> {
 		await this.featureGate.assertAvailable();
 		const visibility = await this.authorizationService.resolveInboxVisibility(user);
-		const rows = await this.workflowReviewInboxRepository.findRequests({
-			visibility,
-			state: query.state,
-			category:
-				query.category === undefined ? undefined : { userId: user.id, category: query.category },
-			limit: query.limit,
-			boundary: query.boundary,
-		});
+		const rows = await this.workflowReviewInboxRepository.findRequests(
+			{
+				visibility,
+				state: query.state,
+				category:
+					query.category === undefined ? undefined : { userId: user.id, category: query.category },
+				limit: query.limit,
+				boundary: query.boundary,
+			},
+			{},
+		);
 		const [linkedWorkflowByRequestId, participants] = await Promise.all([
 			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds(
 				rows.map((row) => row.id),
@@ -80,7 +83,7 @@ export class WorkflowReviewInboxService {
 	async getInboxSummaryForUser(user: User): Promise<InboxCounts> {
 		await this.featureGate.assertAvailable();
 		const visibility = await this.authorizationService.resolveInboxVisibility(user);
-		return await this.workflowReviewInboxRepository.countRequestsByState(visibility);
+		return await this.workflowReviewInboxRepository.countRequestsByState(visibility, {});
 	}
 
 	async getDetail(

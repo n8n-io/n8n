@@ -10,6 +10,7 @@ import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoi
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
+import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
 import type {
 	SystemAgentProvider,
 	SystemAgentTurn,
@@ -138,7 +139,7 @@ describe('System agent turn abort', () => {
 		await testModules.loadModules(['agents']);
 		await testDb.init();
 		service = Container.get(SystemAgentExecutionService);
-		await service.register(provider);
+		await Container.get(SystemAgentRegistrationService).register(provider);
 		Container.get(AgentMessageQueueConsumer).start();
 		owner = await createOwner();
 		projectId = (await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id))

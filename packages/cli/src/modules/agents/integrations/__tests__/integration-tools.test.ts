@@ -53,6 +53,25 @@ function makeInterruptibleCtx(
 }
 
 describe('integration tools', () => {
+	it.each([false, true])('passes cancellation to context queries (batch: %s)', async (batch) => {
+		const abortSignal = new AbortController().signal;
+		const queryExecutor = mock<IntegrationContextQueryExecutor>();
+		const tool = createIntegrationContextTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1')[0],
+			queryExecutor,
+		}).build();
+		const operation = { query: 'search_users', input: { query: 'Alice' } };
+
+		await tool.handler!(
+			batch ? { queries: [operation] } : operation,
+			makeInterruptibleCtx({ abortSignal }),
+		);
+
+		expect(queryExecutor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({ abortSignal, query: 'search_users' }),
+		);
+	});
+
 	it('generates canonical names for first connection and 2-based suffixes for duplicates', () => {
 		const descriptors = getIntegrationToolConnectionDescriptors([slackB, linear, slackA]);
 
@@ -1457,6 +1476,45 @@ describe('integration tools', () => {
 				threadId: 'task-1-uuid',
 				resourceId: 'task:task-1',
 			});
+		});
+
+		it('binds the outbound thread for send_template too', async () => {
+			const whatsapp: AgentIntegrationConfig = { type: 'whatsapp', credentialId: 'cred-w' };
+			const templateContext = {
+				integrationConnectionId: 'whatsapp:cred-w',
+				platform: 'whatsapp',
+				target: {
+					type: 'dm' as const,
+					userId: '447700900123',
+					threadId: 'whatsapp:111:447700900123',
+				},
+				messageId: 'wamid.1',
+				updatedAt: '2026-08-20T10:00:00.000Z',
+			};
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({ ok: true, messageContext: templateContext });
+
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([whatsapp], 'agent-1', () => ({
+					actions: ['send_template'],
+				}))[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+
+			await tool.handler!(
+				{
+					action: 'send_template',
+					input: { userId: '447700900123', templateName: 'order_update', language: 'en_US' },
+				},
+				makeInterruptibleCtx({ persistence: taskPersistence }),
+			);
+
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:whatsapp:111:447700900123',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+			);
 		});
 
 		it('does not bind for respond (operates on an existing thread)', async () => {

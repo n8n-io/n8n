@@ -1,6 +1,6 @@
 /**
  * Pins what a real credential type policy decides for a workflow: a save that grandfathers
- * what is stored, and a publish, a run and a transfer that do not.
+ * what is stored, and a publish, a run and a transfer preview that do not.
  *
  * The check's unit tests mock the policy store, so they prove the diff logic but not that a
  * node's `credentials` map reaches the real host paths — which is the whole mechanism here,
@@ -411,9 +411,9 @@ describe('starting a run', () => {
 	});
 });
 
-describe('PUT /workflows/:workflowId/transfer', () => {
-	test('judges the workflow against the target project, with no grandfathering', async () => {
-		const workflow = await createWorkflow(
+describe('moving a workflow to another project', () => {
+	const movingWorkflow = async () =>
+		await createWorkflow(
 			{
 				name: 'Moving workflow',
 				nodes: [node(MANUAL_TRIGGER), nodeWith(BLOCKED, projectCredentials)],
@@ -421,33 +421,40 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			},
 			otherProject,
 		);
+
+	test('previews the workflow against the target project, with no grandfathering', async () => {
+		const workflow = await movingWorkflow();
 		await putCredentialTypePolicy(adminAgent, project.id, {
 			rules: [denyRule('deny-github', BLOCKED)],
 		});
 
 		const response = await adminAgent
-			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ destinationProjectId: project.id })
-			.expect(403);
+			.get(`/workflows/${workflow.id}/transfer-preview`)
+			.query({ destinationProjectId: project.id })
+			.expect(200);
 
-		expect(response.body).toMatchObject({
-			code: 403,
-			meta: {
-				violations: [violationFor(BLOCKED, 'project', 'deny-github', { projectId: project.id })],
-			},
-		});
+		expect(response.body.data.restricted).toEqual([
+			violationFor(BLOCKED, 'project', 'deny-github', { projectId: project.id }),
+		]);
 	});
 
-	test('allows the transfer when only the source project restricts the type', async () => {
-		const workflow = await createWorkflow(
-			{
-				name: 'Moving workflow',
-				nodes: [node(MANUAL_TRIGGER), nodeWith(BLOCKED, projectCredentials)],
-				connections: {},
-			},
-			otherProject,
-		);
+	test('previews nothing when only the source project restricts the type', async () => {
+		const workflow = await movingWorkflow();
 		await putCredentialTypePolicy(adminAgent, otherProject.id, {
+			rules: [denyRule('deny-github', BLOCKED)],
+		});
+
+		const response = await adminAgent
+			.get(`/workflows/${workflow.id}/transfer-preview`)
+			.query({ destinationProjectId: project.id })
+			.expect(200);
+
+		expect(response.body.data.restricted).toEqual([]);
+	});
+
+	test('moves the workflow although the target project restricts the type', async () => {
+		const workflow = await movingWorkflow();
+		await putCredentialTypePolicy(adminAgent, project.id, {
 			rules: [denyRule('deny-github', BLOCKED)],
 		});
 

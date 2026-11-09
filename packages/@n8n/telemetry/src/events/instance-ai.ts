@@ -42,9 +42,19 @@ const setupSnapshotProps = {
 	web_search_provider: z.enum(['brave', 'searxng']).nullable(),
 };
 
+/** The runtimes that run an n8n Assistant thread. */
+export const ASSISTANT_RUNTIMES = ['instance-ai', 'agents'] as const;
+export type AssistantRuntime = (typeof ASSISTANT_RUNTIMES)[number];
+const assistantRuntime = z
+	.enum(ASSISTANT_RUNTIMES)
+	.describe(
+		"The runtime that runs the thread: 'instance-ai' is the current Assistant runtime, 'agents' is the Assistant agent on the Agents runtime",
+	);
+
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 const workflowPreviewsAboveAssistantVariant = z.enum(['control', 'variant']);
+const taxonomyInspirationVariant = z.enum(['control', 'variant', 'variant-bis']);
 const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
 const assistantMentionTriggerSource = z.enum(['typed', 'button']);
 /** Cap on the query text the empty-search event carries; the emitter cuts to it after redaction. */
@@ -67,8 +77,7 @@ const assistantMentionCounts = z
 		group: mentionCount,
 	})
 	.describe('Picker mentions attached to the message, by kind');
-// Shared by the send and the response events so a with/without-mentions cut reads
-// the same columns on both.
+// Shared by the send and response events so context cuts use the same columns.
 const mentionContextProperties = {
 	mention_counts: assistantMentionCounts,
 	attachment_count: z
@@ -76,8 +85,13 @@ const mentionContextProperties = {
 		.int()
 		.nonnegative()
 		.describe(
-			'All outbound attachments: files, workflow, agent and nodes attachments, including ones the host adds',
+			'All outbound attachments: files, workflows, agents, nodes, and selected app preview elements, including ones the host adds',
 		),
+	selected_element_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.describe('Selected app preview elements included in the outbound attachments'),
 };
 // Experiment cleanup: remove with openWorkflowInAssistant.
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
@@ -91,6 +105,125 @@ const threadActionSource = z.enum([
 const prefillType = z.enum([...INSTANCE_AI_PREFILL_TYPES, INSTANCE_AI_PREFILL_TYPE_FALLBACK]);
 
 const instanceContextTurnSchema = z.object({
+	hub_skill_snapshot_sequence: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Cumulative Hub skill snapshot number. Select the highest number per run_id; do not sum snapshots.',
+		),
+	hub_skill_attempt_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Distinct main Hub skill load tool calls, including failed and pending calls. Measures Assistant selection intent.',
+		),
+	hub_skill_load_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Successful main Hub skill loads. Does not prove that the model followed the instructions.',
+		),
+	hub_skill_failure_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Failed main Hub skill attempts.'),
+	hub_skill_carried_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Previously active, unchanged Hub skills included in model context during this run. Excludes skills first loaded in this run.',
+		),
+	hub_skill_refresh_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Distinct Hub skill versions delivered after a change to an active skill.'),
+	hub_skill_revocation_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Previously active Hub skills that the runtime removed as non-retryable unavailability.',
+		),
+	hub_skill_unavailable_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Previously active Hub skill versions omitted because current content was temporarily unavailable.',
+		),
+	hub_skill_reference_attempt_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Distinct Hub reference read tool calls, including failed and pending calls.'),
+	hub_skill_reference_read_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Successful Hub reference reads. Not main skill loads.'),
+	hub_skill_reference_failure_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Failed Hub reference reads.'),
+	hub_skill_attempted_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct canonical Hub IDs requested in main load calls in this run. Unknown IDs are omitted. Built-ins are excluded.',
+		),
+	hub_skill_loaded_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct canonical Hub IDs successfully loaded in this run. Unknown IDs are omitted. Built-ins are excluded.',
+		),
+	hub_skill_carried_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct canonical Hub IDs carried unchanged into model context in this run. Unknown IDs are omitted. Built-ins are excluded.',
+		),
+	hub_skill_refreshed_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct canonical Hub IDs delivered with updated instructions in this run. Unknown IDs are omitted. Built-ins are excluded.',
+		),
+	hub_skill_failures: z
+		.array(
+			z.object({
+				operation: z.enum(['main', 'reference']),
+				reason: z.enum([
+					'temporarily_unavailable',
+					'unavailable',
+					'invalid_reference',
+					'tool_error',
+				]),
+				count: z.number().int().nonnegative(),
+			}),
+		)
+		.optional()
+		.describe(
+			'Cumulative failed tool calls by operation and bounded reason. Contains no error text.',
+		),
 	surface: assistantSurfaceSchema,
 	user_id: z.string(),
 	thread_id: z.string().optional(),
@@ -204,6 +337,20 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			),
 			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/124_workflow_previews_above_assistant': workflowPreviewsAboveAssistantVariant,
+		}),
+	},
+	// EOF Experiment cleanup
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	INSPIRATION_FROM_TAXONOMY_EXPOSED: {
+		name: 'AI Assistant inspiration from taxonomy exposed',
+		description:
+			'A sales-and-marketing respondent assigned to 129_aia_inspiration_from_taxonomy_v2 reached the n8n Assistant empty state, the view that shows the prompt suggestions, including the control variant. Fires once per visit. Does not fire on a thread, nor for the proactive starter, split empty-state, n8n Chat agent picker, or workflow-preview layouts, which replace this suggestion list. Not fired for any other experiment.',
+		properties: z.object({
+			variant: taxonomyInspirationVariant.describe(
+				'Variant of the 129_aia_inspiration_from_taxonomy_v2 feature flag the user saw: control, variant, or variant-bis',
+			),
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/129_aia_inspiration_from_taxonomy_v2': taxonomyInspirationVariant,
 		}),
 	},
 	// EOF Experiment cleanup
@@ -357,7 +504,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_RECEIVED_AI_ASSISTANT_RESPONSE: {
 		name: 'User received AI Assistant response',
 		description:
-			'The initial foreground AI Assistant reply was rendered after a user submitted a chat message. Starts before attachment processing and first-thread creation, then fires once when the initial run completes or pauses for user input. Automated follow-up runs do not create another sample. Repeats the mention and attachment counts of the message that started the run, so outcome cuts by context need no join back to "User sent builder message".',
+			'The initial foreground AI Assistant reply was rendered after a user submitted a chat message. Starts before attachment processing and first-thread creation, then fires once when the initial run completes or pauses for user input. Automated follow-up runs do not create another sample. Repeats the mention, attachment, and selected element counts of the message that started the run, so outcome cuts by context need no join back to "User sent builder message".',
 		properties: z.object({
 			instance_id: z.string(),
 			thread_id: z.string(),
@@ -424,7 +571,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_MODEL: {
 		name: 'User configured AI Assistant model',
 		description:
-			'An admin saved an n8n Assistant model connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
+			'An admin saved an n8n Assistant model connection (PUT /assistant/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
 		properties: z.object({
 			provider: z
 				.string()
@@ -442,7 +589,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_SANDBOX: {
 		name: 'User configured AI Assistant sandbox',
 		description:
-			'An admin saved an n8n Assistant sandbox connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
+			'An admin saved an n8n Assistant sandbox connection (PUT /assistant/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
 		properties: z.object({
 			sandbox_type: z.enum(['n8n-sandbox', 'daytona']),
 			previous_sandbox_type: z
@@ -456,7 +603,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_WEB_SEARCH: {
 		name: 'User configured AI Assistant web search',
 		description:
-			'An admin saved an n8n Assistant web search connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
+			'An admin saved an n8n Assistant web search connection (PUT /assistant/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
 		properties: z.object({
 			provider: z.enum(['brave', 'searxng']),
 			previous_provider: z
@@ -470,7 +617,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	AI_ASSISTANT_CONNECTION_FAILED: {
 		name: 'AI Assistant connection failed',
 		description:
-			'A setup verification call (POST /instance-ai/settings/verify/*) failed for a model, sandbox, or web search connection. One event covers all three components; the component property tells them apart. Fires once per failed verify attempt, including retries.',
+			'A setup verification call (POST /assistant/settings/verify/*) failed for a model, sandbox, or web search connection. One event covers all three components; the component property tells them apart. Fires once per failed verify attempt, including retries.',
 		properties: z.object({
 			component: z.enum(['model', 'sandbox', 'web_search']),
 			provider: z
@@ -521,6 +668,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The user sent an Instance AI chat message that carried node context. Fires only when the submitted message includes at least one node attachment; node_count is the total nodes across every attached set in the message.',
 		properties: z.object({
 			node_count: z.number().describe('Total nodes attached across the sent message'),
+			runtime: assistantRuntime,
 		}),
 	},
 	USER_OPENED_AI_ASSISTANT_MENTION_PICKER: {
@@ -666,7 +814,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	BUILDER_LISTED_WORKFLOWS: {
 		name: 'Builder listed workflows',
 		description:
-			'Instance AI called workflows(action="list"). Emitted on every list call, in both arms of the folder-exploration rollout, so folder-scoped calls have a denominator. Carries no folder names.',
+			'Instance AI called list_workflows. Emitted on every list call, in both arms of the folder-exploration rollout, so folder-scoped calls have a denominator. Carries no folder names.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string().optional(),

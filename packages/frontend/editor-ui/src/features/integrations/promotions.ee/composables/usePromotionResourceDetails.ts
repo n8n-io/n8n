@@ -1,9 +1,7 @@
-import type { PromotionDirection, PromotionPreview, PromotionResourceDetail } from '@n8n/api-types';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import type { PromotionResourceDetail, PromotionResourceDetails } from '@n8n/api-types';
 import chunk from 'lodash/chunk';
 import { ref, watch, type Ref } from 'vue';
 
-import { getPromotionResourceDetails } from '../promotions.api';
 import { PROMOTION_DETAILS_BATCH_SIZE } from '../promotions.constants';
 import type { ResourceKey, SelectionGraph } from '../promotionPreview.selection';
 
@@ -14,18 +12,19 @@ export type DetailEntry =
 	| { status: 'missing' }
 	| { status: 'error' };
 
+/** Reads one batch of details at the commits of the loaded preview. */
+export type FetchResourceDetails = (keys: ResourceKey[]) => Promise<PromotionResourceDetails>;
+
 /**
  * Loads the before and after content of the changed resources with each preview, in batches
  * that the endpoint accepts. A workflow loads only when the user activates its diff.
  */
 export function usePromotionResourceDetails(
-	projectId: Ref<string>,
-	direction: Ref<PromotionDirection>,
-	preview: Ref<PromotionPreview | null>,
+	fetchDetails: FetchResourceDetails,
+	preview: Ref<object | null>,
 	graph: Ref<SelectionGraph | null>,
 	activeWorkflowKey: Ref<ResourceKey | undefined>,
 ) {
-	const rootStore = useRootStore();
 	const entries = ref(new Map<ResourceKey, DetailEntry>());
 	// A new preview starts a new generation, so answers for the old one are dropped.
 	let generation = 0;
@@ -45,18 +44,9 @@ export function usePromotionResourceDetails(
 		if (key) await request([key]);
 	});
 
-	async function fetchBatch(
-		keys: ResourceKey[],
-		commitSha: string | null,
-		batchGeneration: number,
-	) {
+	async function fetchBatch(keys: ResourceKey[], batchGeneration: number) {
 		try {
-			const { details, missingKeys } = await getPromotionResourceDetails(
-				rootStore.restApiContext,
-				projectId.value,
-				direction.value,
-				{ commitSha, keys },
-			);
+			const { details, missingKeys } = await fetchDetails(keys);
 			if (batchGeneration !== generation) return;
 			for (const detail of details) entries.value.set(detail.key, { status: 'loaded', detail });
 			for (const key of missingKeys) entries.value.set(key, { status: 'missing' });
@@ -78,11 +68,10 @@ export function usePromotionResourceDetails(
 		});
 		for (const key of pending) entries.value.set(key, { status: 'loading' });
 
-		const { commitSha } = preview.value;
 		const batchGeneration = generation;
 		await Promise.all(
 			chunk(pending, PROMOTION_DETAILS_BATCH_SIZE).map(
-				async (batch) => await fetchBatch(batch, commitSha, batchGeneration),
+				async (batch) => await fetchBatch(batch, batchGeneration),
 			),
 		);
 	}

@@ -1,7 +1,7 @@
 /**
  * Replays expression resolution for a node's parameters against a past
  * execution's saved data — the server-side equivalent of the editor's
- * "resolved parameters" view. Used by `workflow_builder_executions(action="get-resolved-node-parameters")`
+ * "resolved parameters" view. Used by `get_resolved_node_parameters`
  * and folded into the `debug` action's failedNode payload.
  *
  * Lives in its own module to keep `instance-ai.adapter.service.ts` focused.
@@ -26,9 +26,8 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 } from 'n8n-workflow';
 
+import { getExecutionRedaction } from '@/executions/execution-viewer-reader';
 import type { NodeTypes } from '@/node-types';
-
-import { getExecutionRedaction } from './instance-ai-execution-reader';
 
 /**
  * Maximum characters for a single resolved parameter leaf. Resolved parameter

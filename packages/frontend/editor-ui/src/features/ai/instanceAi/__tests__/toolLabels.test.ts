@@ -6,6 +6,8 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => {
 			const translations: Record<string, string> = {
+				'instanceAi.tools.ask_user': 'Asking user',
+				'instanceAi.tools.agent_builder_ask_questions': 'Asking questions',
 				'instanceAi.tools.read_config': 'Reading agent config',
 				'instanceAi.tools.resolve_integration': 'Adding integration',
 				'instanceAi.tools.agent_builder_build_agent': 'Working with agent',
@@ -13,9 +15,15 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.agent-context': 'Exploring agent context',
 				'instanceAi.tools.agent-context.config': 'Reading agent config',
 				'instanceAi.tools.agent-context.sessions': 'Checking agent sessions',
+				'instanceAi.tools.get_node_types': 'Reading node schema',
 				'instanceAi.tools.agent_builder_get_node_types': 'Reading node schema',
-				'instanceAi.tools.agent_builder_list_credentials': 'Inspecting credentials',
+				'instanceAi.tools.list_credentials': 'Inspecting credentials',
+				'instanceAi.tools.setup_credentials': 'Setting up credentials',
+				'instanceAi.tools.delete_credential': 'Deleting credential',
 				'instanceAi.tools.list_workflows': 'Listing workflows',
+				'instanceAi.tools.setup_workflow': 'Setting up workflow',
+				'instanceAi.tools.workflow_builder_workflows': 'Workflows',
+				'instanceAi.tools.workflow_builder_workflows.get-version': 'Reading workflow version',
 				'instanceAi.tools.workflow_builder_nodes': 'Search nodes',
 				'instanceAi.tools.workflow_builder_executions': 'Run workflow',
 				'instanceAi.tools.activity': 'Activity',
@@ -42,6 +50,8 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.load_skill.scriptFallback': 'script',
 				'instanceAi.tools.load_skill.template': 'Reading',
 				'instanceAi.tools.load_skill.templateFallback': 'template',
+				'instanceAi.tools.data_tables.query': 'Querying data table',
+				'instanceAi.tools.data_tables.insert-rows': 'Inserting rows',
 				'instanceAi.stepTimeline.showData': 'Show data',
 				'instanceAi.stepTimeline.hideData': 'Hide data',
 				'instanceAi.stepTimeline.showBrief': 'Show brief',
@@ -63,10 +73,6 @@ function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): Instanc
 }
 
 describe('getToolIcon', () => {
-	test('returns circle-check for the complete checkpoint tool', () => {
-		expect(getToolIcon('workflow_builder_complete_checkpoint')).toBe('circle-check');
-	});
-
 	test('returns default icon for removed delegate tool', () => {
 		expect(getToolIcon('delegate')).toBe('wrench');
 	});
@@ -81,6 +87,8 @@ describe('getToolIcon', () => {
 
 	test('returns table for data-table tools', () => {
 		expect(getToolIcon('data_tables')).toBe('table');
+		expect(getToolIcon('list_data_tables')).toBe('table');
+		expect(getToolIcon('insert_data_table_rows')).toBe('table');
 	});
 
 	test('returns workflow for workflow-related tools', () => {
@@ -108,7 +116,29 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns key-round for credential tools', () => {
+		expect(getToolIcon('credentials')).toBe('key-round');
 		expect(getToolIcon('workflow_builder_credentials')).toBe('key-round');
+		expect(getToolIcon('setup_credentials')).toBe('key-round');
+	});
+
+	test.each([
+		['credentials', 'list', 'Inspecting credentials'],
+		['credentials', 'get', 'Inspecting credentials'],
+		['workflow_builder_credentials', 'setup', 'Setting up credentials'],
+		['workflow_builder_credentials', 'delete', 'Deleting credential'],
+	])('labels a former %s call with action %s as the shared tool', (toolName, action, label) => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel(toolName, { action })).toBe(label);
+	});
+
+	test.each([
+		['workflow_builder_workflows', 'setup', 'Setting up workflow'],
+		['workflow_builder_workflows', 'get-version', 'Reading workflow version'],
+		['workflows', 'get-version', 'Reading workflow version'],
+		['workflows', 'unknown', 'Workflows'],
+	])('labels a former %s call with action %s', (toolName, action, label) => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel(toolName, { action })).toBe(label);
 	});
 
 	test('returns file-text for filesystem tools', () => {
@@ -117,6 +147,8 @@ describe('getToolIcon', () => {
 
 	test('returns folder for workspace tools', () => {
 		expect(getToolIcon('workspace')).toBe('folder');
+		expect(getToolIcon('list_projects')).toBe('folder');
+		expect(getToolIcon('move_workflow_to_folder')).toBe('folder');
 		expect(getToolIcon('workspace_execute_command')).toBe('folder');
 		expect(getToolIcon('workspace_read_file')).toBe('folder');
 	});
@@ -146,13 +178,11 @@ describe('getToolIcon', () => {
 	});
 
 	test('keeps the wrench icon for prefixed builder tools without a dedicated mapping', () => {
-		expect(getToolIcon('workflow_builder_ask_user')).toBe('wrench');
-		expect(getToolIcon('workflow_builder_create_tasks')).toBe('wrench');
+		expect(getToolIcon('ask_user')).toBe('wrench');
 		expect(getToolIcon('workflow_builder_build_workflow')).toBe('workflow');
 	});
 
 	test('resolves legacy builder tool names to the current icon', () => {
-		expect(getToolIcon('complete-checkpoint')).toBe('circle-check');
 		expect(getToolIcon('data-tables')).toBe('table');
 		expect(getToolIcon('workflows')).toBe('workflow');
 		expect(getToolIcon('credentials')).toBe('key-round');
@@ -233,6 +263,13 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('list_credentials')).toBe('Inspecting credentials');
 	});
 
+	test('getToolLabel resolves legacy question tools to the ask_user label', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('agent_builder_ask_questions')).toBe('Asking user');
+		expect(getToolLabel('ask-user')).toBe('Asking user');
+		expect(getToolLabel('ask_user')).toBe('Asking user');
+	});
+
 	test('getToolLabel formats the tool name when no label exists', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('unknown-tool')).toBe('Unknown tool');
@@ -241,8 +278,15 @@ describe('useToolLabel', () => {
 
 	test('getToolLabel drops the builder prefix when no label exists', () => {
 		const { getToolLabel } = useToolLabel();
-		expect(getToolLabel('workflow_builder_search_models')).toBe('Search models');
+		expect(getToolLabel('search_models')).toBe('Search models');
 		expect(getToolLabel('finish_setup')).toBe('Finish setup');
+	});
+
+	test('getToolLabel resolves split data table tools to the action label', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('query_data_table')).toBe('Querying data table');
+		expect(getToolLabel('insert_data_table_rows')).toBe('Inserting rows');
+		expect(getToolLabel('data_tables', { action: 'insert-rows' })).toBe('Inserting rows');
 	});
 
 	test('getToolLabel returns action-specific n8n docs labels', () => {
