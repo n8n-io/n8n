@@ -112,7 +112,9 @@ comma and a space: `fix(core, editor): ...`.
    ```
 
 7. **Apply preview flag labels automatically**: Follow Feature Flags for
-   Previews below. Report the applied labels with the PR URL.
+   Previews below. After you verify the labels, update the PR body's How to test
+   section to list the applied labels. Report any required labels that could not
+   be applied in that section. Report the verified labels with the PR URL.
 
 ## Feature Flags for Previews
 
@@ -138,14 +140,20 @@ flag, even when the flag declaration or check is not in the diff.
    ```bash
    gh label create "flag:136_skill_sync" --color "1D76DB" --description "Enable 136_skill_sync in PR previews"
    ```
-4. Apply the labels to the new PR without a separate confirmation:
+4. Read the current PR labels with `gh pr view <pr-number> --json labels`.
+   If the PR already has an explicit value for a key, preserve it unless the task
+   requires a different value. Before adding the selected label, remove every
+   other label for that exact key with
+   `gh pr edit <pr-number> --remove-label "<old-label>"`.
+   Check both `flag:<key>` and `flag:<key>=<value>` forms for conflicts.
+   Keep unrelated labels.
+5. Apply the selected labels without a separate confirmation:
    ```bash
    gh pr edit <pr-number> --add-label "flag:136_skill_sync"
    gh pr view <pr-number> --json labels
    ```
-   Repeat `--add-label` for multiple flags. Keep unrelated labels. If the PR
-   already has an explicit value for a key, preserve it unless the task requires
-   a different value. Keep only one value for each key.
+   Repeat `--add-label` for multiple flags. Verify that each key has exactly one
+   label and that its value matches the selected value.
 
 Add labels before clicking Deploy. Labels also work on a running preview;
 a label change restarts it once and takes about two minutes. Check the
@@ -201,7 +209,8 @@ Together, the alternatives must be shorter than the core Why section.
   module via `N8N_ENABLED_MODULES`, an enterprise license, a feature flag, or
   similar), note which env vars/license are needed so the tester can deploy a
   correctly configured instance
-- Include the applied `flag:*` labels and any required variant for a preview.
+- Include the required `flag:*` labels and any required variant for a preview.
+  Confirm which labels were applied after step 7.
 
 ### Related Links Section
 - Link to Linear ticket: `https://linear.app/n8n/issue/[TICKET-ID]`
