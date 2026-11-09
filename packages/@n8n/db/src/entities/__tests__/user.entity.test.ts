@@ -241,6 +241,8 @@ describe('User type', () => {
 		'password',
 		'mfaSecret',
 		'personalizationAnswers',
+		'mfaEnabled',
+		'mfaRecoveryCodes',
 		'lastActiveAt',
 		'isPending',
 		'authIdentities',

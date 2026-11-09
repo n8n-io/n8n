@@ -44,6 +44,11 @@ export class Person extends User implements IUser {
 	@Column({ type: String, nullable: true })
 	mfaSecret?: string | null;
 
+	// The columns are declared on `User`, so they stay `NOT NULL`.
+	public declare mfaEnabled: boolean;
+
+	public declare mfaRecoveryCodes: string[];
+
 	@Column({ type: 'date', nullable: true })
 	lastActiveAt?: Date | null;
 

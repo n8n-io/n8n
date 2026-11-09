@@ -74,17 +74,18 @@ export class User extends WithTimestamps implements AuthPrincipal {
 	settings: IUserSettings | null;
 
 	/*
-	 * These two are `NOT NULL`, so they stay here although only a person uses
-	 * them. TypeORM marks every column of a child entity as nullable and, after a
-	 * save, sets an unset nullable column to `null`. On a child, the next save of
-	 * the same object would write `NULL` and fail.
+	 * These two are `NOT NULL`, so the column metadata stays here although only a
+	 * person uses them. TypeORM marks every column of a child entity as nullable
+	 * and, after a save, sets an unset nullable column to `null`. On a child, the
+	 * next save of the same object would write `NULL` and fail. They are
+	 * `protected`, and `Person` exposes them, so a read on a `User` does not compile.
 	 */
 
 	@Column({ type: Boolean, default: false })
-	mfaEnabled: boolean;
+	protected mfaEnabled: boolean;
 
 	@Column({ type: 'simple-array', default: '' })
-	mfaRecoveryCodes: string[];
+	protected mfaRecoveryCodes: string[];
 
 	/*
 	 * TypeORM runs the listeners of a child entity on every row of the table,

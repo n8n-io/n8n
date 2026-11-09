@@ -52,6 +52,26 @@ describe('PersonRepository', () => {
 		return row?.email;
 	}
 
+	/** `mfaEnabled` is protected on `ServiceAccount`, so write and read the stored column directly. */
+	async function setStoredMfaEnabled(id: string) {
+		await Container.get(DataSource)
+			.createQueryBuilder()
+			.update('user')
+			.set({ mfaEnabled: true })
+			.where('id = :id', { id })
+			.execute();
+	}
+
+	async function readStoredMfaEnabled(id: string) {
+		const row = await Container.get(DataSource)
+			.getRepository(User)
+			.createQueryBuilder('user')
+			.select('user.mfaEnabled', 'mfaEnabled')
+			.where('user.id = :id', { id })
+			.getRawOne<{ mfaEnabled: boolean | number }>();
+		return Boolean(row?.mfaEnabled);
+	}
+
 	describe('lookups', () => {
 		it('finds a person by id and by email, but not a service account by id', async () => {
 			const person = await createMember();
@@ -89,7 +109,8 @@ describe('PersonRepository', () => {
 
 		it('counts people with MFA, but not service accounts', async () => {
 			await createUserWithMfaEnabled();
-			await createServiceAccount({ mfaEnabled: true });
+			const serviceAccount = await createServiceAccount();
+			await setStoredMfaEnabled(serviceAccount.id);
 
 			expect(await personRepository.countWithMfaEnabled()).toBe(1);
 		});
@@ -97,14 +118,12 @@ describe('PersonRepository', () => {
 
 	describe('writes', () => {
 		it('does not disable MFA of a service account', async () => {
-			const serviceAccount = await createServiceAccount({ mfaEnabled: true });
+			const serviceAccount = await createServiceAccount();
+			await setStoredMfaEnabled(serviceAccount.id);
 
 			await personRepository.disableMfa(serviceAccount.id);
 
-			const reloaded = await Container.get(DataSource)
-				.getRepository(ServiceAccount)
-				.findOneByOrFail({ id: serviceAccount.id });
-			expect(reloaded.mfaEnabled).toBe(true);
+			expect(await readStoredMfaEnabled(serviceAccount.id)).toBe(true);
 		});
 
 		it('saves survey answers of a person', async () => {
