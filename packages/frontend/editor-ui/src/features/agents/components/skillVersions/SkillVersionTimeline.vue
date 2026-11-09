@@ -82,6 +82,10 @@ function onAction(version: number, action: VersionAction) {
 	else emit('restore', version);
 }
 
+function isShown(version: SkillVersionSummary) {
+	return version.version === props.shownVersion;
+}
+
 /** The dot of a row: the draft and the published agent in the builder, the latest in Settings. */
 function dotClass(version: number, index: number) {
 	if (!props.agent) return index === 0 && $style.latestDot;
@@ -110,7 +114,7 @@ function dotClass(version: number, index: number) {
 			<li
 				v-for="(version, index) in props.versions"
 				:key="version.id"
-				:class="[$style.row, version.version === props.shownVersion && $style.shown]"
+				:class="[$style.row, isShown(version) && $style.shown]"
 				:data-testid="`skill-version-row-${version.version}`"
 				@click="emit('open', version.version)"
 			>
@@ -142,10 +146,10 @@ function dotClass(version: number, index: number) {
 					<!-- The shown version cannot compare with itself. The button keeps its place, so the
 					     row does not change size when the user opens another version. -->
 					<N8nIconButton
-						:class="version.version === props.shownVersion && $style.placeholder"
-						:disabled="version.version === props.shownVersion"
-						:aria-hidden="version.version === props.shownVersion || undefined"
-						:tabindex="version.version === props.shownVersion ? -1 : undefined"
+						:class="isShown(version) && $style.placeholder"
+						:disabled="isShown(version)"
+						:aria-hidden="isShown(version) || undefined"
+						:tabindex="isShown(version) ? -1 : undefined"
 						variant="ghost"
 						size="small"
 						icon="file-diff"

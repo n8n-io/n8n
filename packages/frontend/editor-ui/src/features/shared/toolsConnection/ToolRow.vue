@@ -139,7 +139,11 @@ useResizeObserver(
 );
 watch(
 	() => props.item.description,
-	() => void nextTick(measureDescription),
+	async () => {
+		if (!cutsDescription.value) return;
+		await nextTick();
+		measureDescription();
+	},
 );
 
 /**

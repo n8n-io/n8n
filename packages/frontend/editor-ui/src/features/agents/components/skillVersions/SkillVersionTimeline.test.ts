@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { configure } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { SkillVersionSummary } from '@n8n/api-types';
 
@@ -14,6 +15,8 @@ const actionDropdownStub = {
 		<button v-for="item in items" :key="item.id" :data-testid="'version-menu-' + item.id" @click="$emit('select', item.id)">{{ item.label }}</button>
 	</span>`,
 };
+
+configure({ testIdAttribute: 'data-testid' });
 
 const renderTimeline = createComponentRenderer(SkillVersionTimeline, {
 	global: { stubs: { N8nActionDropdown: actionDropdownStub, ActionDropdown: actionDropdownStub } },
@@ -31,17 +34,10 @@ function version(n: number): SkillVersionSummary {
 const versions = [version(3), version(2), version(1)];
 
 function render(props: Partial<InstanceType<typeof SkillVersionTimeline>['$props']> = {}) {
-	const result = renderTimeline({
+	return renderTimeline({
 		props: { versions, shownVersion: 3, canRestore: true, ...props },
 		pinia: createTestingPinia(),
 	});
-	// The component uses `data-testid`, which the default queries of the renderer do not read.
-	const getByTestId = (id: string) => {
-		const element = result.container.querySelector<HTMLElement>(`[data-testid="${id}"]`);
-		if (!element) throw new Error(`No element with data-testid "${id}"`);
-		return element;
-	};
-	return { ...result, getByTestId };
 }
 
 describe('SkillVersionTimeline', () => {
