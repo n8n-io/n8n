@@ -176,6 +176,32 @@ export class UserRepository extends BaseRepository<User> {
 		return await super.update(...args);
 	}
 
+	async updateProfileNames(
+		userId: string,
+		names: { firstName?: string; lastName?: string },
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.runInTransaction(ctx, async (trx) => {
+			const user = await trx.findOneOrFail(User, {
+				where: { id: userId },
+				...(trx.connection.options.type === 'postgres'
+					? { lock: { mode: 'pessimistic_write' as const } }
+					: {}),
+			});
+			Object.assign(user, names);
+			await trx.save(User, user);
+		});
+	}
+
+	async setMfaCredentials(userId: string, secret: string, recoveryCodes: string[]): Promise<void> {
+		await this.findOneByOrFail({ id: userId });
+		await this.manager.update(
+			User,
+			{ id: userId },
+			{ mfaSecret: secret, mfaRecoveryCodes: recoveryCodes },
+		);
+	}
+
 	/**
 	 * True when a claimed instance owner exists. A claimed owner has logged in
 	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password

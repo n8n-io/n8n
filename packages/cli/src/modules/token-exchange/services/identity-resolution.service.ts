@@ -389,7 +389,7 @@ export class IdentityResolutionService {
 		}
 
 		if (Object.keys(profileUpdates).length > 0) {
-			await this.userService.update(user.id, profileUpdates);
+			await this.userRepository.updateProfileNames(user.id, profileUpdates);
 			needsReload = true;
 		}
 

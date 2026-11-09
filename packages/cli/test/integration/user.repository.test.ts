@@ -1,6 +1,6 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, randomEmail, testDb } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, type User, UserRepository } from '@n8n/db';
+import { ProjectRelationRepository, TransactionRunner, type User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import {
@@ -283,6 +283,23 @@ describe('UserRepository', () => {
 				.getQueryAndParameters();
 			expect(sql).not.toContain('role_scope');
 			expect(await userRepository.query(sql, parameters)).toHaveLength(4);
+		});
+	});
+
+	describe('updateProfileNames()', () => {
+		test('rolls back profile changes with the caller transaction', async () => {
+			const user = await createMember();
+			const firstName = user.firstName;
+
+			await expect(
+				Container.get(TransactionRunner).run({}, async (ctx) => {
+					await userRepository.updateProfileNames(user.id, { firstName: 'Changed' }, ctx);
+					throw new Error('abort profile update');
+				}),
+			).rejects.toThrow('abort profile update');
+
+			const updated = await userRepository.findOneByOrFail({ id: user.id });
+			expect(updated.firstName).toBe(firstName);
 		});
 	});
 });

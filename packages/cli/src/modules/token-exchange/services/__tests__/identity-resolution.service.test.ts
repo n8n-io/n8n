@@ -240,7 +240,9 @@ describe('IdentityResolutionService', () => {
 
 			const resolved = await service.resolve(makeClaims({ given_name: 'New' }), undefined, ctx());
 
-			expect(userService.update).toHaveBeenCalledWith('existing-1', { firstName: 'New' });
+			expect(userRepository.updateProfileNames).toHaveBeenCalledWith('existing-1', {
+				firstName: 'New',
+			});
 			expect(resolved).toBe(user);
 		});
 

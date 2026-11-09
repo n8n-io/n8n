@@ -8,7 +8,7 @@ import type {
 import { LIST_API_KEYS_SORT_OPTIONS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { ApiKey, ApiKeyRepository, escapeLike, LIKE_ESCAPE_CLAUSE, withTransaction } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, escapeLike, LIKE_ESCAPE_CLAUSE } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from '@n8n/permissions';
@@ -257,16 +257,7 @@ export class PublicApiKeyService {
 	}
 
 	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.apiKeyRepository.manager, tx, async (em) => {
-			const userApiKeys = await em.find(ApiKey, {
-				where: { userId: user.id, audience: API_KEY_AUDIENCE },
-			});
-
-			return await Promise.all(
-				userApiKeys.map(async (apiKey) => await em.delete(ApiKey, { id: apiKey.id })),
-			);
-		});
+		return await this.apiKeyRepository.deleteForUserByAudience(user.id, API_KEY_AUDIENCE, tx);
 	}
 
 	async updateApiKeyForUser(

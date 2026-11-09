@@ -1,5 +1,10 @@
 import { DataTableCreateColumnSchema } from '@n8n/api-types';
-import { BaseRepository, type OperationContext, TransactionRunner, withTransaction } from '@n8n/db';
+import {
+	BaseRepository,
+	type OperationContext,
+	TransactionRunner,
+	contextFromEntityManager,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In } from '@n8n/typeorm';
 import {
@@ -119,8 +124,7 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 		trx?: EntityManager,
 		explicitId?: string,
 	) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.manager, trx, async (em) => {
+		return await this.runInTransaction(contextFromEntityManager(trx), async (em) => {
 			this.validateNotSystemColumn(schema.name);
 			await this.validateUniqueColumnName(schema.name, dataTableId, em);
 
@@ -149,8 +153,7 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 	}
 
 	async deleteColumn(dataTableId: string, column: DataTableColumn, trx?: EntityManager) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		await withTransaction(this.manager, trx, async (em) => {
+		await this.runInTransaction(contextFromEntityManager(trx), async (em) => {
 			await em.remove(DataTableColumn, column);
 
 			await this.ddlService.dropColumnFromTable(
@@ -231,8 +234,7 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 		targetIndex: number,
 		trx?: EntityManager,
 	) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		await withTransaction(this.manager, trx, async (em) => {
+		await this.runInTransaction(contextFromEntityManager(trx), async (em) => {
 			const columnCount = await em.countBy(DataTableColumn, { dataTableId });
 
 			if (targetIndex < 0) {
@@ -257,8 +259,7 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 		newName: string,
 		trx?: EntityManager,
 	) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.manager, trx, async (em) => {
+		return await this.runInTransaction(contextFromEntityManager(trx), async (em) => {
 			this.validateNotSystemColumn(newName);
 			await this.validateUniqueColumnName(newName, dataTableId, em);
 
@@ -279,8 +280,7 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 	}
 
 	async shiftColumns(dataTableId: string, lowestIndex: number, delta: -1 | 1, trx?: EntityManager) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		await withTransaction(this.manager, trx, async (em) => {
+		await this.runInTransaction(contextFromEntityManager(trx), async (em) => {
 			await em
 				.createQueryBuilder()
 				.update(DataTableColumn)

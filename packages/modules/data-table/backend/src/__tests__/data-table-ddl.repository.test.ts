@@ -1,9 +1,10 @@
 import { testModules } from '@n8n/backend-test-utils';
+import { contextFromEntityManager, type TransactionRunner } from '@n8n/db';
 import type { DataSource, DataSourceOptions, EntityManager } from '@n8n/typeorm';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { DataTableDDLService } from '../persistence/data-table-ddl';
+import { DataTableDDLRepository } from '../data-table-ddl.repository';
 import * as sqlUtils from '../utils/sql-utils';
 
 // Mock the sql-utils module
@@ -14,10 +15,10 @@ vi.mock('../utils/sql-utils', async () => ({
 	toTableName: vi.fn(),
 }));
 
-describe('DataTableDDLService', () => {
-	let ddlService: DataTableDDLService;
-	let mockDataSource: DataSource;
+describe('DataTableDDLRepository', () => {
+	let ddlService: DataTableDDLRepository;
 	let mockEntityManager: Mocked<EntityManager>;
+	const transactionRunner = mock<TransactionRunner>();
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table'], {
@@ -32,21 +33,13 @@ describe('DataTableDDLService', () => {
 			} as DataSource,
 		});
 
-		// Mock the transaction method to execute the runInTransaction immediately
-		(mockEntityManager.transaction as Mock) = vi.fn(
-			async (runInTransaction: (em: EntityManager) => Promise<unknown>) => {
-				return await runInTransaction(mockEntityManager);
-			},
-		);
-
 		// Mock the query method
 		mockEntityManager.query = vi.fn().mockResolvedValue(undefined);
 
-		mockDataSource = mock<DataSource>({
-			manager: mockEntityManager,
-		});
-
-		ddlService = new DataTableDDLService(mockDataSource);
+		transactionRunner.run.mockImplementation(
+			async (ctx, fn) => await fn(ctx.trx ? ctx : contextFromEntityManager(mockEntityManager)),
+		);
+		ddlService = new DataTableDDLRepository(transactionRunner);
 
 		// Reset all mocks
 		vi.clearAllMocks();
@@ -217,7 +210,7 @@ describe('DataTableDDLService', () => {
 				await ddlService.renameColumn(dataTableId, oldColumnName, newColumnName, dbType);
 
 				// Assert
-				expect(mockEntityManager.transaction).toHaveBeenCalled();
+				expect(transactionRunner.run).toHaveBeenCalled();
 				expect(mockEntityManager.query).toHaveBeenCalledWith(expectedQuery);
 			});
 		});

@@ -24,6 +24,26 @@ export class TypeOrmTransaction extends Transaction {
 	}
 }
 
+/** Adapt a caller that still passes a TypeORM manager to the transaction port. */
+export function contextFromEntityManager(manager?: EntityManager): OperationContext {
+	return manager ? { trx: new TypeOrmTransaction(manager) } : {};
+}
+
+/** Run a legacy repository operation with the manager owned by the active transaction. */
+export async function runWithEntityManager<T>(
+	runner: TransactionRunner,
+	manager: EntityManager | undefined,
+	fn: (manager: EntityManager) => Promise<T>,
+): Promise<T> {
+	return await runner.run(contextFromEntityManager(manager), async (ctx) => {
+		const trx = ctx.trx;
+		if (!(trx instanceof TypeOrmTransaction)) {
+			throw new UnexpectedError('Transaction was not created by the TypeORM runner');
+		}
+		return await fn(trx.getEntityManager());
+	});
+}
+
 /** TypeORM implementation of the {@link TransactionRunner} port. */
 @Service()
 export class TypeOrmTransactionRunner extends TransactionRunner {

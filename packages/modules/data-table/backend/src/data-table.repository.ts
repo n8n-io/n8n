@@ -5,7 +5,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { parseListQuerySortBy, Project, withTransaction } from '@n8n/db';
+import { parseListQuerySortBy, Project, TransactionRunner, runWithEntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import {
@@ -31,6 +31,7 @@ export class DataTableRepository extends Repository<DataTable> {
 		private ddlService: DataTableDDLService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly transactionRunner: TransactionRunner,
 	) {
 		super(DataTable, dataSource.manager);
 	}
@@ -69,8 +70,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	 * update failures don't affect the primary data operations.
 	 */
 	async touchUpdatedAt(dataTableId: string, trx?: EntityManager) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		await withTransaction(this.manager, trx, async (em) => {
+		await runWithEntityManager(this.transactionRunner, trx, async (em) => {
 			await em.update(DataTable, { id: dataTableId }, { updatedAt: new Date() });
 		}).catch((error) => {
 			this.logger.warn('Failed to update DataTable timestamp', { dataTableId, error });
@@ -85,8 +85,7 @@ export class DataTableRepository extends Repository<DataTable> {
 		explicitId?: string,
 		explicitColumnIds?: Array<string | undefined>,
 	) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.manager, trx, async (em) => {
+		return await runWithEntityManager(this.transactionRunner, trx, async (em) => {
 			if (columns.some((c) => !isValidColumnName(c.name))) {
 				throw new DataTableValidationError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
 			}
@@ -143,8 +142,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	}
 
 	async deleteDataTable(dataTableId: string, trx?: EntityManager) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.manager, trx, async (em) => {
+		return await runWithEntityManager(this.transactionRunner, trx, async (em) => {
 			await em.delete(DataTable, { id: dataTableId });
 			await this.ddlService.dropTable(dataTableId, em);
 			return true;
@@ -158,8 +156,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	) {
 		if (fromProjectId === toProjectId) return false;
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.manager, trx, async (em) => {
+		return await runWithEntityManager(this.transactionRunner, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId: fromProjectId });
 
 			let transferred = false;
@@ -195,8 +192,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	}
 
 	async deleteDataTableByProjectId(projectId: string, trx?: EntityManager) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.manager, trx, async (em) => {
+		return await runWithEntityManager(this.transactionRunner, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId });
 
 			let changed = false;
@@ -210,8 +206,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	}
 
 	async deleteDataTableAll(trx?: EntityManager) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.manager, trx, async (em) => {
+		return await runWithEntityManager(this.transactionRunner, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, {});
 
 			let changed = false;
