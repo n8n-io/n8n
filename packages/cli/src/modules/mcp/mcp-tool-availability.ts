@@ -5,7 +5,6 @@ import { hasGlobalScope, type AuthPrincipal } from '@n8n/permissions';
 import type { FeatureFlags } from 'n8n-workflow';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import type { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
 
 import type { McpConfig } from './mcp.config';
 
@@ -30,14 +29,6 @@ export function areAgentToolsAvailable(
 		moduleRegistry.isActive('agents') &&
 		moduleRegistry.settings.get('agents')?.enabled !== false
 	);
-}
-
-/**
- * The skill tools follow the skills gate, as the REST API and n8n Assistant do. Tool
- * registration and the consent scopes both use this check, so they always agree.
- */
-export function areSkillToolsAvailable(skillsHub: Pick<SkillsHubRollout, 'isEnabled'>): boolean {
-	return skillsHub.isEnabled;
 }
 
 /**

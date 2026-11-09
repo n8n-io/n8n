@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { UserRepository } from '@n8n/db';
+import { PersonRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -15,7 +15,7 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 	constructor(
 		eventService: EventService,
 		private readonly mailer: UserManagementMailer,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly logger: Logger,
 	) {
 		super(eventService);
@@ -47,10 +47,10 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 		}
 
 		try {
-			// Get the user to send email to
-			const user = await this.userRepository.findOneBy({ id: userId });
+			// Only a person has an email, so a service account owner gets nothing
+			const person = await this.personRepository.findById(userId);
 
-			if (!user?.email) {
+			if (!person?.email) {
 				this.logger.warn(
 					'Cannot send first production failure email - user not found or no email',
 					{
@@ -63,8 +63,8 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 
 			// Send email notification
 			await this.mailer.workflowFailure({
-				email: user.email,
-				firstName: user.firstName,
+				email: person.email,
+				firstName: person.firstName,
 				workflowId,
 				workflowName,
 			});
@@ -72,7 +72,7 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 			this.logger.info('Sent first production failure email', {
 				workflowId,
 				userId,
-				email: user.email,
+				email: person.email,
 			});
 		} catch (error) {
 			this.logger.error('Failed to send first production failure email', {

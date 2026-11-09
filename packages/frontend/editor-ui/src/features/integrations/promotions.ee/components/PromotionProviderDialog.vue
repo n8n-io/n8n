@@ -313,12 +313,12 @@ async function submit() {
 					<N8nInputLabel
 						input-name="promotion-provider-name"
 						:label="i18n.baseText('settings.promotions.provider.form.name')"
-						required
 					>
 						<N8nInput
 							id="promotion-provider-name"
 							ref="nameInput"
 							v-model="form.name"
+							aria-required="true"
 							:disabled="isLoading || isSubmitting"
 							data-test-id="promotion-provider-name-input"
 						/>
@@ -328,11 +328,11 @@ async function submit() {
 						v-if="capabilities.hasHostApi"
 						input-name="promotion-provider-base-url"
 						:label="i18n.baseText('settings.promotions.provider.form.baseUrl')"
-						required
 					>
 						<N8nInput
 							id="promotion-provider-base-url"
 							v-model="form.baseUrl"
+							aria-required="true"
 							:placeholder="i18n.baseText('settings.promotions.provider.form.baseUrl.placeholder')"
 							:disabled="isLoading || isSubmitting"
 							data-test-id="promotion-provider-base-url-input"
@@ -416,11 +416,11 @@ async function submit() {
 							v-if="!capabilities.tokenUsername"
 							input-name="promotion-provider-username"
 							:label="i18n.baseText('settings.promotions.provider.form.username')"
-							:required="!isEdit"
 						>
 							<N8nInput
 								id="promotion-provider-username"
 								v-model="form.username"
+								:aria-required="!isEdit"
 								:disabled="isLoading || isSubmitting"
 								data-test-id="promotion-provider-username-input"
 							/>
@@ -435,11 +435,11 @@ async function submit() {
 										: 'settings.promotions.provider.form.password',
 								)
 							"
-							:required="!isEdit || hasHostUrlChange"
 						>
 							<N8nInput
 								id="promotion-provider-password"
 								v-model="form.password"
+								:aria-required="!isEdit || hasHostUrlChange"
 								type="password"
 								autocomplete="new-password"
 								:placeholder="isEdit && !hasHostUrlChange ? '••••••••' : undefined"

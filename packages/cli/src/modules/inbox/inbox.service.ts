@@ -20,7 +20,11 @@ import { z } from 'zod';
 
 import { InboxSourceRegistry, type InboxSourceBoundary } from './inbox-source.registry';
 
-const sourceOrder: InboxSourceType[] = ['workflow_review', 'self_healing_result'];
+const sourceOrder: InboxSourceType[] = [
+	'workflow_review',
+	'self_healing_result',
+	'promotion_review',
+];
 
 const cursorSchema = z
 	.object({

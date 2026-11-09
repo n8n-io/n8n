@@ -49,6 +49,25 @@ export function toError(value: unknown): Error {
 	return new Error(String(value));
 }
 
+/**
+ * Masks the parts of a URL that can carry credentials, so the URL can be logged. Masks each
+ * query parameter value, and removes the username, the password and the hash.
+ */
+export function redactUrlForLogging(endpoint: string): string {
+	try {
+		const url = new URL(endpoint);
+		for (const name of new Set(url.searchParams.keys())) {
+			url.searchParams.set(name, 'REDACTED');
+		}
+		url.hash = '';
+		url.username = '';
+		url.password = '';
+		return url.toString();
+	} catch {
+		return '(unparseable endpoint)';
+	}
+}
+
 /** Wrap an error as a structured MCP error response. */
 export function formatErrorResponse(error: McpBrowserError): CallToolResult {
 	const data: Record<string, string> = { error: error.message };

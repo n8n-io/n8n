@@ -108,6 +108,7 @@ vi.mock('../channels/registry', async () => {
 				<button data-testid="platform-own-flow" @click="startOwnFlow(); $emit('connected')" />
 				<button data-testid="platform-restart" @click="$emit('restart', { credentialId: 'credential-new' })" />
 				<span data-testid="platform-credential">{{ modelValue }}</span>
+				<slot name="additionalSettings" />
 			</div>
 		`,
 	};
@@ -777,11 +778,12 @@ describe('AgentChannelModal', () => {
 	});
 
 	describe('action approval', () => {
-		it('saves the approval that is on the channel, and an edit to it', async () => {
-			statuses.value.example = 'connected';
-			connectedCredentials.value.example = 'credential-old';
-			integrationApproval.value.example = { mode: 'selected', tools: ['send_dm'] };
-			const wrapper = mountModal('example_edit');
+		it.each(['example', 'slack'] as const)('saves the approval and edits for %s', async (type) => {
+			catalog.value = [{ ...exampleIntegration, type }];
+			statuses.value[type] = 'connected';
+			connectedCredentials.value[type] = 'credential-old';
+			integrationApproval.value[type] = { mode: 'selected', tools: ['send_dm'] };
+			const wrapper = mountModal(`${type}_edit`);
 			await flushPromises();
 
 			expect(wrapper.get('[data-testid="approval-setting"]').attributes('data-model')).toBe(
@@ -791,7 +793,7 @@ describe('AgentChannelModal', () => {
 			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
 			await flushPromises();
 			expect(mocks.connect).toHaveBeenLastCalledWith(
-				'example',
+				type,
 				'credential-old',
 				{
 					accessMode: 'all',
@@ -803,7 +805,7 @@ describe('AgentChannelModal', () => {
 			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
 			await flushPromises();
 			expect(mocks.connect).toHaveBeenLastCalledWith(
-				'example',
+				type,
 				'credential-old',
 				{
 					accessMode: 'all',

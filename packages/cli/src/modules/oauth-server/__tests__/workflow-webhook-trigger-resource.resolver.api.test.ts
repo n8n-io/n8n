@@ -20,7 +20,10 @@ import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
+	endpointGroups: ['mcp'],
+});
 
 let owner: User;
 let member: User;
@@ -42,11 +45,13 @@ const webhookNode = ({
 	requireExecuteAccess,
 	options,
 	typeVersion = 2.1,
+	trustedSource,
 }: {
 	name?: string;
 	authentication?: string;
 	disabled?: boolean;
 	requireExecuteAccess?: boolean;
+	trustedSource?: string;
 	options?: { oauthClient?: string };
 	typeVersion?: number;
 } = {}): INode => ({
@@ -62,6 +67,7 @@ const webhookNode = ({
 		authentication,
 		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
 		...(options === undefined ? {} : { options }),
+		...(trustedSource === undefined ? {} : { trustedSource }),
 	},
 });
 
@@ -251,6 +257,19 @@ describe('protected resource metadata for webhook triggers', () => {
 	// URL and nothing else), so only a GET-resolved trigger may act as its own virtual
 	// client. A POST trigger keeps its prior shape: arbitrary OAuth clients (DCR) still
 	// work, but the trigger URL itself imposes no redirect-URI restriction.
+	test.each([
+		['the internal source when the node stores none', undefined, ['n8n-internal']],
+		['the source the node selected', 'okta', ['okta']],
+	])('should accept only %s', async (_label, trustedSource, expected) => {
+		const webhookPath = randomUUID();
+		await createPublishedWebhookWorkflow(webhookPath, webhookNode({ trustedSource }));
+
+		const resource = await resolveResource(webhookPath);
+
+		expect(resource?.surface).toBe('trigger');
+		expect(resource?.getAcceptedSourceIds?.()).toEqual(expected);
+	});
+
 	test('should resolve a POST trigger as non-first-party (arbitrary OAuth clients)', async () => {
 		const webhookPath = randomUUID();
 		await createPublishedWebhookWorkflow(webhookPath, webhookNode());

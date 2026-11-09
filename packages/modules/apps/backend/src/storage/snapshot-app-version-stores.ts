@@ -2,17 +2,19 @@ import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 
-import { AppArchive } from './app-archive';
+import { AppArchive } from '../app-archive';
 import {
 	AppSourceVersionStore,
 	AppBuildResultStore,
 	type AppFiles,
 	type NewSourceVersion,
 } from './app-version-stores';
-import { AppArtifactService } from '../app-artifact.service';
-import { appStorageLockSubKey } from '../app-storage-lock';
-import { AppVersionRepository } from '../app-version.repository';
+import { AppArtifactService } from './app-artifact.service';
+import type { AppBuildAttempt } from '../build/app-build.types';
+import { appStorageLockSubKey } from './app-storage-lock';
+import { AppVersionRepository } from '../versions/app-version.repository';
 import { AppRepository } from '../app.repository';
+import { AppsConfig } from '../apps.config';
 
 @Service()
 export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
@@ -42,6 +44,7 @@ export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
 							appId: version.appId,
 							label: version.label,
 							sourceArtifactId: artifact.id,
+							bindings: version.bindings,
 						},
 						ctx,
 					);
@@ -62,6 +65,34 @@ export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
 			await this.artifacts.discard(artifact);
 			throw error;
 		}
+	}
+
+	async copyDraft(version: NewSourceVersion & { expectedDraftVersionId: string }): Promise<void> {
+		await this.locks.withLockContext(
+			DbLock.APPS_STORAGE,
+			async (ctx) => {
+				const source = await this.versions.findVersionById(version.expectedDraftVersionId, ctx);
+				if (!source || source.appId !== version.appId) {
+					throw new NotFoundError('App version not found.');
+				}
+				await this.versions.insertCopy(
+					source,
+					{ id: version.id, label: version.label, bindings: version.bindings },
+					ctx,
+				);
+				if (
+					!(await this.apps.advanceDraft(
+						version.appId,
+						version.expectedDraftVersionId,
+						version.id,
+						ctx,
+					))
+				) {
+					throw new ConflictError('The app draft changed. Reload the app before saving.');
+				}
+			},
+			{ subKey: appStorageLockSubKey(version.appId) },
+		);
 	}
 
 	async readSource(versionId: string): Promise<AppFiles> {
@@ -94,11 +125,17 @@ export class SnapshotAppBuildResultStore extends AppBuildResultStore {
 		private readonly artifacts: AppArtifactService,
 		private readonly versions: AppVersionRepository,
 		private readonly locks: DbLockService,
+		private readonly config: AppsConfig,
 	) {
 		super();
 	}
 
-	async recordSuccess(appId: string, versionId: string, files: AppFiles): Promise<void> {
+	async recordSuccess(
+		appId: string,
+		versionId: string,
+		files: AppFiles,
+		attempt: AppBuildAttempt,
+	): Promise<void> {
 		const artifact = await this.artifacts.upload(appId, await this.archives.pack(files, true));
 		try {
 			await this.locks.withLockContext(
@@ -108,11 +145,15 @@ export class SnapshotAppBuildResultStore extends AppBuildResultStore {
 					if (!version || version.appId !== appId)
 						throw new NotFoundError('App version not found.');
 					await this.artifacts.completeUpload(artifact, ctx);
-					if (!(await this.versions.attachBundle(versionId, artifact.id, ctx))) {
+					this.assertBuildNotTimedOut(attempt);
+					if (
+						!(await this.versions.attachBundle(versionId, artifact.id, attempt.attemptNumber, ctx))
+					) {
 						throw new ConflictError(
 							'This app version cannot accept a bundle. Check its build status.',
 						);
 					}
+					this.assertBuildNotTimedOut(attempt);
 				},
 				{ subKey: appStorageLockSubKey(appId) },
 			);
@@ -131,5 +172,11 @@ export class SnapshotAppBuildResultStore extends AppBuildResultStore {
 
 	async removeBundles(versionIds: string[], ctx: OperationContext): Promise<void> {
 		await this.versions.clearBundles(versionIds, ctx);
+	}
+
+	private assertBuildNotTimedOut(attempt: AppBuildAttempt): void {
+		if (Date.now() >= attempt.startedAt.getTime() + this.config.buildTimeoutMs) {
+			throw new ConflictError('The app build timed out. Retry the build.');
+		}
 	}
 }

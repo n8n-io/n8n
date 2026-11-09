@@ -201,6 +201,8 @@ function mergeAnalyses(
 		nodesExecuted: [...reachedNames],
 		simulationNote: buildSimulationNote(reachedSimulatedNodes, false),
 		coverageNote,
+		// Every pass runs the same workflow for the same user, so one note covers them.
+		redactionNote: passes.find((pass) => pass.analysis.redactionNote)?.analysis.redactionNote,
 		errorMessage: failing?.analysis.errorMessage,
 		nodeErrors,
 	};

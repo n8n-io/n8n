@@ -1,12 +1,14 @@
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import type {
-	NodeExecuteAfterContext,
-	NodeExecuteBeforeContext,
-	WorkflowExecuteAfterContext,
-	WorkflowExecuteBeforeContext,
+import {
+	PubSubMetadata,
+	type NodeExecuteAfterContext,
+	type NodeExecuteBeforeContext,
+	type WorkflowExecuteAfterContext,
+	type WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
@@ -1104,11 +1106,20 @@ describe('OtelLifecycleHandler', () => {
 			expect(tracer.startNode).not.toHaveBeenCalled();
 		});
 
-		it('should call tracer.endNode with counted items and coerced customAttributes', () => {
+		const chatModelTracing = {
+			'gen_ai.operation.name': 'chat',
+			'gen_ai.provider.name': 'openai',
+			'gen_ai.usage.input_tokens': 5,
+			'gen_ai.usage.output_tokens': 10,
+		};
+
+		it('should call tracer.endNode with counted items, coerced customAttributes and raw GenAI attributes', () => {
 			const ctx = makeEndCtx({
 				source: [{ previousNode: 'Trigger', previousNodeRun: 0 }],
 				data: { main: [[{ json: {} }, { json: {} }]] },
-				metadata: { tracing: { 'llm.model': 'gpt-4o', 'llm.tokens': 500 } },
+				metadata: {
+					tracing: { 'llm.model': 'gpt-4o', 'llm.tokens': 500, ...chatModelTracing },
+				},
 			} as unknown as Partial<NodeExecuteAfterContext['taskData']>);
 			(ctx.executionData as unknown as IRunExecutionData).resultData.runData = {
 				Trigger: [
@@ -1131,6 +1142,7 @@ describe('OtelLifecycleHandler', () => {
 				outputItemCount: 2,
 				error: undefined,
 				customAttributes: { 'llm.model': 'gpt-4o', 'llm.tokens': '500' },
+				genAiAttributes: chatModelTracing,
 			});
 		});
 
@@ -1142,18 +1154,153 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
-		it('should omit node customAttributes when custom OTel span attributes are not licensed', () => {
+		it('should omit node customAttributes but keep GenAI attributes when custom OTel span attributes are not licensed', () => {
 			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(false);
 
 			handler.onNodeEnd(
 				makeEndCtx({
-					metadata: { tracing: { 'llm.model': 'gpt-4o', 'llm.tokens': 500 } },
+					metadata: {
+						tracing: { 'llm.model': 'gpt-4o', 'llm.tokens': 500, ...chatModelTracing },
+					},
 				} as unknown as Partial<NodeExecuteAfterContext['taskData']>),
 			);
 
 			expect(tracer.endNode).toHaveBeenCalledWith(
-				expect.objectContaining({ customAttributes: undefined }),
+				expect.objectContaining({
+					customAttributes: undefined,
+					genAiAttributes: chatModelTracing,
+				}),
 			);
+		});
+
+		describe('AI Agent span', () => {
+			const agentNode = {
+				id: 'agent-id',
+				name: 'AI Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 3,
+			};
+
+			const task = (
+				executionIndex: number,
+				source: ({ previousNode: string; previousNodeRun: number } | null)[],
+				tracing?: Record<string, string | number | boolean>,
+			) => ({
+				startTime: 0,
+				executionTime: 1,
+				executionIndex,
+				source,
+				data: {},
+				metadata: tracing ? { tracing } : undefined,
+			});
+
+			const chatCall = (
+				executionIndex: number,
+				tracing: Record<string, string | number | boolean>,
+				previousNode = 'AI Agent',
+				previousNodeRun = 0,
+			) =>
+				task(executionIndex, [{ previousNode, previousNodeRun }], {
+					'gen_ai.operation.name': 'chat',
+					...tracing,
+				});
+
+			const languageModelOf = (agentName: string) => ({
+				ai_languageModel: [[{ node: agentName, type: 'ai_languageModel', index: 0 }]],
+			});
+
+			const endAgent = (runData: Record<string, unknown[]>) => {
+				const agentTask = task(10, []);
+				handler.onNodeEnd({
+					type: 'nodeExecuteAfter',
+					workflow: {
+						id: 'wf-1',
+						name: 'Test',
+						nodes: [agentNode],
+						connections: {
+							'OpenAI Chat Model': languageModelOf('AI Agent'),
+							'Other Chat Model': languageModelOf('Other Agent'),
+						},
+					},
+					nodeName: 'AI Agent',
+					executionId: 'exec-1',
+					taskData: agentTask,
+					executionData: {
+						resultData: { runData: { 'AI Agent': [agentTask], ...runData }, pinData: {} },
+					},
+				} as unknown as NodeExecuteAfterContext);
+				return tracer.endNode.mock.calls[0][0].genAiAttributes;
+			};
+
+			it('should sum the usage of the chat calls of this Agent run', () => {
+				const genAiAttributes = endAgent({
+					'OpenAI Chat Model': [
+						chatCall(2, {
+							'gen_ai.provider.name': 'openai',
+							'gen_ai.request.model': 'gpt-4o-mini',
+							'gen_ai.usage.input_tokens': 7,
+							'gen_ai.usage.output_tokens': 3,
+						}),
+						chatCall(1, {
+							'gen_ai.provider.name': 'openai',
+							'gen_ai.request.model': 'gpt-4o',
+							'gen_ai.usage.input_tokens': 5,
+							'gen_ai.usage.output_tokens': 10,
+						}),
+						chatCall(
+							3,
+							{ 'gen_ai.usage.input_tokens': 100, 'gen_ai.usage.output_tokens': 100 },
+							'AI Agent',
+							1,
+						),
+					],
+					'Other Chat Model': [
+						chatCall(
+							4,
+							{ 'gen_ai.usage.input_tokens': 100, 'gen_ai.usage.output_tokens': 100 },
+							'Other Agent',
+						),
+					],
+				});
+
+				expect(genAiAttributes).toEqual({
+					'gen_ai.operation.name': 'invoke_agent',
+					'gen_ai.agent.name': 'AI Agent',
+					'gen_ai.agent.id': 'agent-id',
+					'gen_ai.provider.name': 'openai',
+					'gen_ai.request.model': 'gpt-4o',
+					'gen_ai.usage.input_tokens': 12,
+					'gen_ai.usage.output_tokens': 13,
+				});
+			});
+
+			it('should mark usage as not reported when a chat call has no usage', () => {
+				const genAiAttributes = endAgent({
+					'OpenAI Chat Model': [
+						chatCall(1, { 'gen_ai.usage.input_tokens': 5, 'gen_ai.usage.output_tokens': 10 }),
+						chatCall(2, { 'n8n.llm.usage_reported': false }),
+					],
+				});
+
+				expect(genAiAttributes).toMatchObject({
+					'gen_ai.usage.input_tokens': 5,
+					'gen_ai.usage.output_tokens': 10,
+					'n8n.llm.usage_reported': false,
+				});
+			});
+
+			it('should set only the agent attributes when the Agent made no chat calls', () => {
+				const genAiAttributes = endAgent({
+					Trigger: [task(0, [])],
+					Tool: [task(1, [null])],
+				});
+
+				expect(genAiAttributes).toEqual({
+					'gen_ai.operation.name': 'invoke_agent',
+					'gen_ai.agent.name': 'AI Agent',
+					'gen_ai.agent.id': 'agent-id',
+				});
+			});
 		});
 
 		it('should forward taskData.error to tracer.endNode', () => {
@@ -1389,13 +1536,25 @@ describe('onReloadOtelConfig', () => {
 		vi.clearAllMocks();
 	});
 
-	it('restarts the OTel tracer provider', async () => {
+	it('reloads the saved settings without shutting tracing down', async () => {
 		const handler = makeHandler();
-		otelService.restart.mockResolvedValue(undefined);
+		otelService.reloadSettings.mockResolvedValue(undefined);
 
 		await handler.onReloadOtelConfig();
 
-		expect(otelService.restart).toHaveBeenCalledTimes(1);
+		expect(otelService.reloadSettings).toHaveBeenCalledTimes(1);
+		expect(otelService.shutdown).not.toHaveBeenCalled();
+	});
+
+	it.each(['reload-otel-config', 'pubsub-reconnected'])('runs on %s', (eventName) => {
+		const handlers = Container.get(PubSubMetadata)
+			.getHandlers()
+			.filter(
+				({ eventName: name, eventHandlerClass }) =>
+					name === eventName && eventHandlerClass.name === 'OtelLifecycleHandler',
+			);
+
+		expect(handlers.map(({ methodName }) => methodName)).toEqual(['onReloadOtelConfig']);
 	});
 });
 

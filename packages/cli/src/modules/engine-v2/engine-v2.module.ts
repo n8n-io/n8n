@@ -4,7 +4,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ExecutionResponseSender } from '@n8n/engine';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { randomBytes } from 'node:crypto';
 
 /**
@@ -129,6 +129,12 @@ function assertRemoteConfig(config: EngineConfig): void {
 	if (!config.baseUrl) {
 		throw new UserError(
 			'N8N_ENGINE_MODE=remote needs N8N_ENGINE_BASE_URL. The default points at this process, which does not run the data plane.',
+		);
+	}
+
+	if (config.resumeSecret) {
+		throw new UserError(
+			'N8N_ENGINE_MODE=remote must not set N8N_ENGINE_RESUME_SECRET on this main. The data plane runs elsewhere; set the secret in its environment only.',
 		);
 	}
 }

@@ -20,6 +20,7 @@ import {
 	type InstanceAiThreadInfo,
 	type InstanceAiThreadSummary,
 	type InstanceAiAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type PushMessage,
 } from '@n8n/api-types';
@@ -28,7 +29,6 @@ import {
 	getInstanceAiCredits,
 	type InstanceAiThreadLaunchInput,
 } from './instanceAi.api';
-import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadHistory,
@@ -61,7 +61,6 @@ const emptyThreadHistory = (search = '') => ({
 
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
-	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const persistedThreadIds = new Set<string>();
@@ -121,11 +120,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		runtimeScopes.delete(threadId);
 		runtimes.delete(threadId);
 	}
-
-	// --- Settings delegation ---
-	const isGatewayConnected = computed(() => instanceAiSettingsStore.isGatewayConnected);
-	const gatewayDirectory = computed(() => instanceAiSettingsStore.gatewayDirectory);
-	const activeDirectory = computed(() => gatewayDirectory.value);
 
 	// --- Computed credits ---
 	const creditsRemaining = computed(() => {
@@ -408,6 +402,18 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	function stageElement(element: InstanceAiElementAttachment): void {
+		pendingComposerAttachments.value = [...pendingComposerAttachments.value, element];
+	}
+
+	const composerElementAppId = ref<string | null>(null);
+	function setComposerElementAppId(appId: string | null): void {
+		composerElementAppId.value = appId;
+	}
+	function hasComposerElementFor(appId: string): boolean {
+		return composerElementAppId.value === appId;
+	}
+
 	function consumePendingAttachments(): InstanceAiAttachment[] {
 		const staged = pendingComposerAttachments.value;
 		pendingComposerAttachments.value = [];
@@ -464,9 +470,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		creditsClaimed,
 
 		// Computed
-		isGatewayConnected,
-		gatewayDirectory,
-		activeDirectory,
 		creditsRemaining,
 		creditsPercentageRemaining,
 		isLowCredits,
@@ -492,6 +495,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		syncThread,
 		pendingComposerAttachments,
 		stageNodeSets,
+		stageElement,
+		setComposerElementAppId,
+		hasComposerElementFor,
 		consumePendingAttachments,
 		composerFocusRequest,
 		requestComposerFocus,

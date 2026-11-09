@@ -4,16 +4,17 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	AgentContextLookup,
+	AgentSessionList,
+	AgentSessionListOptions,
 	AgentSessionSummary,
 	AgentContextReader,
 	AgentContextResult,
 	AgentSessionDetail,
 } from './agent-context.contracts';
-import { UserError } from 'n8n-workflow';
 
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 
 import {
 	AgentExecutionService,
@@ -31,7 +32,7 @@ import { AgentsToolsService } from './agents-tools.service';
 import { AgentsService } from './agents.service';
 import { AttachableWorkflowsService } from './attachable-workflows.service';
 import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
-import { toAgentSessionDetail } from './agent-session-read';
+import { toAgentSessionDetail, toSessionTitle } from './agent-session-read';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import { jsonSchemaToCompactText } from './json-config/schema-text-serializer';
@@ -41,7 +42,7 @@ const toSessionSummary = (thread: ThreadListItem): AgentSessionSummary => ({
 	threadId: thread.id,
 	agentId: thread.agentId,
 	agentName: thread.agentName,
-	title: thread.title?.trim() || `Session #${thread.sessionNumber}`,
+	title: toSessionTitle(thread.title, thread.sessionNumber),
 	sessionNumber: thread.sessionNumber,
 	createdAt: thread.createdAt.toISOString(),
 	updatedAt: thread.updatedAt.toISOString(),
@@ -65,7 +66,7 @@ const toSessionDetailSummary = (detail: ThreadDetail): AgentSessionSummary => {
 		threadId: detail.thread.id,
 		agentId: detail.thread.agentId,
 		agentName: detail.thread.agentName,
-		title: detail.thread.title?.trim() || `Session #${detail.thread.sessionNumber}`,
+		title: toSessionTitle(detail.thread.title, detail.thread.sessionNumber),
 		sessionNumber: detail.thread.sessionNumber,
 		createdAt: detail.thread.createdAt.toISOString(),
 		updatedAt: detail.thread.updatedAt.toISOString(),
@@ -143,6 +144,41 @@ export class AgentContextService {
 		return toAgentSessionDetail(detail);
 	}
 
+	async listSessions(
+		user: User,
+		projectId: string,
+		agentId: string,
+		options: AgentSessionListOptions,
+	): Promise<AgentSessionList> {
+		await this.assertReadAccess(user, projectId);
+		return await this.findSessions(user, projectId, agentId, options);
+	}
+
+	private async findSessions(
+		user: User,
+		projectId: string,
+		agentId: string,
+		options: AgentSessionListOptions,
+	): Promise<AgentSessionList> {
+		const result = await this.agentExecutionService.getThreads(
+			projectId,
+			agentId,
+			user.id,
+			options.limit ?? 20,
+			options.cursor,
+			{
+				...(options.status ? { status: options.status } : {}),
+				...(options.origin ? { origin: options.origin } : {}),
+				...(options.updatedAfter ? { updatedAfter: new Date(options.updatedAfter) } : {}),
+				...(options.updatedBefore ? { updatedBefore: new Date(options.updatedBefore) } : {}),
+			},
+		);
+		return {
+			sessions: result.threads.map(toSessionSummary),
+			nextCursor: result.nextCursor,
+		};
+	}
+
 	createReader(user: User, projectId: string): AgentContextReader {
 		return {
 			lookup: async (input) => {
@@ -192,7 +228,7 @@ export class AgentContextService {
 
 		if (input.type === 'capabilities') {
 			return {
-				channels: this.agentIntegrationService.listChatIntegrations(),
+				channels: await this.agentIntegrationService.listBuilderChatIntegrations(user),
 				agentCapabilities: [...AGENT_CAPABILITIES],
 				limitations: [...AGENT_LIMITATIONS],
 			};
@@ -200,7 +236,7 @@ export class AgentContextService {
 
 		if (input.type === 'integrations') {
 			if (!input.queries) {
-				return { channels: this.agentIntegrationService.listChatIntegrations() };
+				return { channels: await this.agentIntegrationService.listBuilderChatIntegrations(user) };
 			}
 			const mcpResults = (await this.mcpRegistryService.search(input.queries)).filter(
 				(result) => !result.isTemplated,
@@ -242,8 +278,8 @@ export class AgentContextService {
 					configHash: getAgentConfigHash(config),
 				};
 			case 'skills': {
-				// The skills hub keeps no skill on an agent that is not attached.
-				const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, {});
+				// The skills module keeps no skill on an agent that is not attached.
+				const skills = await this.agentSkillRefs.skillsForRefs(skillRefs, {});
 				return {
 					skills: Object.entries(skills).map(([id, skill]) => ({
 						id,
@@ -279,25 +315,8 @@ export class AgentContextService {
 				if (!tool) throw new UserError('Custom tool not found.');
 				return { id: input.toolId, ...tool };
 			}
-			case 'sessions': {
-				const result = await this.agentExecutionService.getThreads(
-					projectId,
-					agent.id,
-					user.id,
-					input.limit ?? 20,
-					input.cursor,
-					{
-						...(input.status ? { status: input.status } : {}),
-						...(input.origin ? { origin: input.origin } : {}),
-						...(input.updatedAfter ? { updatedAfter: new Date(input.updatedAfter) } : {}),
-						...(input.updatedBefore ? { updatedBefore: new Date(input.updatedBefore) } : {}),
-					},
-				);
-				return {
-					sessions: result.threads.map(toSessionSummary),
-					nextCursor: result.nextCursor,
-				};
-			}
+			case 'sessions':
+				return await this.findSessions(user, projectId, agent.id, input);
 			case 'session': {
 				const detail = await this.agentExecutionService.getThreadDetail(
 					input.threadId,

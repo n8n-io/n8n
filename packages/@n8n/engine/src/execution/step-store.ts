@@ -135,9 +135,6 @@ export interface StepStore {
 	 *
 	 * Whether a given resume is allowed against a given wait is checked by
 	 * whoever accepts it, not here.
-	 *
-	 * TODO(CAT-2928): nothing calls this yet. The resolve endpoint that accepts
-	 * a resume request is the caller.
 	 */
 	resumeStep(id: string, resumeCause: ResumeCause): Promise<boolean>;
 
@@ -174,6 +171,13 @@ export interface StepStore {
 
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
+
+	/**
+	 * Fail a step that waits on a sub-execution the engine could not start. As
+	 * `failStep`, but a compare-and-set on `waiting`: the step suspended before
+	 * the start was attempted, so no worker owns it.
+	 */
+	failWaitingStep(id: string, error: StepError): Promise<boolean>;
 
 	/**
 	 * Settle a claimed step that will not run, because its execution ended
@@ -241,6 +245,16 @@ export interface StepStore {
 	 */
 	loadAllSteps(executionId: string): Promise<StepRecord[]>;
 
+	/** The steps of the given nodes, every pass of each, with their outputs. */
+	loadStepsByNodeIds(executionId: string, nodeIds: string[]): Promise<StepRecord[]>;
+
+	/**
+	 * Every step of the execution in the `waiting` status, with its wait
+	 * declaration, whatever that declaration says. The caller decides which
+	 * waits it can act on.
+	 */
+	loadWaitingSteps(executionId: string): Promise<StepRecord[]>;
+
 	/**
 	 * How many of the execution's steps have settled (completed, failed,
 	 * skipped, or cancelled). Rows are unique per `(node, iteration)`, only exist
@@ -253,4 +267,7 @@ export interface StepStore {
 
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;
+
+	/** The execution's failed steps, by node and then by pass. */
+	loadFailedSteps(executionId: string): Promise<StepRecord[]>;
 }

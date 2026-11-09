@@ -2,8 +2,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import ProjectTabs from './ProjectTabs.vue';
-import { within } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
+import { within } from '@testing-library/vue';
 import { useProjectsStore } from '../projects.store';
 import type { Project } from '../projects.types';
 
@@ -140,5 +140,15 @@ describe('ProjectTabs', () => {
 
 		const tabValues = getTabValuesInOrder(container);
 		expect(tabValues[tabValues.length - 1]).toBe('agents');
+	});
+
+	it('hides an additional tab that is not available', () => {
+		const available = vi.fn((projectId: string | undefined) => projectId === 'other-project');
+		const { queryByText } = renderComponent({
+			props: { additionalTabs: [{ label: 'Apps', value: 'apps', available }] },
+		});
+
+		expect(queryByText('Apps')).not.toBeInTheDocument();
+		expect(available).toHaveBeenCalledWith(undefined);
 	});
 });

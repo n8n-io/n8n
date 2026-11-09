@@ -20,7 +20,11 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
+import {
+	callEvalMockHandler,
+	normalizeLegacyRequest,
+	resolveEvalMockRequestUrl,
+} from '@/execution-engine/eval-mock-helpers';
 
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import {
@@ -76,7 +80,7 @@ export async function httpRequestWithAuthentication(
 	if (additionalData.evalLlmMockHandler) {
 		const evalMockResponse = await callEvalMockHandler(
 			additionalData.evalLlmMockHandler,
-			requestOptions,
+			resolveEvalMockRequestUrl(requestOptions, credentialsType),
 			node,
 			requestOptions.returnFullResponse,
 		);
@@ -220,7 +224,7 @@ export async function requestWithAuthentication(
 	if (additionalData.evalLlmMockHandler) {
 		const evalMockResponse = await callEvalMockHandler(
 			additionalData.evalLlmMockHandler,
-			normalizeLegacyRequest(requestOptions),
+			normalizeLegacyRequest(resolveEvalMockRequestUrl(requestOptions, credentialsType)),
 			node,
 			requestOptions.resolveWithFullResponse,
 			'legacy',
