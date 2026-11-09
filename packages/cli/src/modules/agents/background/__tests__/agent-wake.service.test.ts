@@ -12,6 +12,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Publisher } from '@n8n/backend-services';
 
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
+import { AgentExecutionRecordingError } from '../../agent-execution-recording.error';
 import { AgentConversationStateService } from '../../agent-conversation-state.service';
 import type { AgentPlanService, AgentPlanSnapshot } from '../../agent-plan.service';
 import type { AgentPlanTask } from '../../plans/agent-plan.schema';
@@ -975,6 +976,96 @@ describe('AgentWakeService', () => {
 			await service.attemptWake('thread-1');
 
 			expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('wake attempts', () => {
+		const finalizeFailure = (executionStarted: boolean) =>
+			new AgentExecutionRecordingError({
+				phase: 'finalize',
+				executionId: 'execution-1',
+				executionStarted,
+				cause: new Error('connection reset after commit'),
+			});
+
+		function failAfterAdmission(
+			orchestrator: ReturnType<typeof setup>['orchestrator'],
+			error: Error,
+		) {
+			orchestrator.executeForWake.mockImplementation(async (config) => {
+				await config.onAdmitted?.();
+				throw error;
+			});
+		}
+
+		it('claims the selected results before the agent starts', async () => {
+			const { service, orchestrator, jobRepository } = setup();
+			orchestrator.executeForWake.mockImplementation(async (config) => {
+				expect(jobRepository.claimForWake).not.toHaveBeenCalled();
+				await config.onAdmitted?.();
+			});
+
+			await service.attemptWake('thread-1');
+
+			expect(jobRepository.claimForWake).toHaveBeenCalledWith(
+				'thread-1',
+				['job-1'],
+				expect.any(String),
+			);
+			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], false);
+		});
+
+		it('consumes the results when recording fails after the agent started', async () => {
+			const { service, orchestrator, jobRepository } = setup();
+			failAfterAdmission(orchestrator, finalizeFailure(true));
+
+			await service.attemptWake('thread-1');
+
+			expect(jobRepository.releaseWakeClaim).not.toHaveBeenCalled();
+			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], true);
+		});
+
+		it('does not run the agent again when the consumption update fails', async () => {
+			const { service, orchestrator, jobRepository } = setup();
+			failAfterAdmission(orchestrator, finalizeFailure(true));
+			jobRepository.markMailConsumed.mockRejectedValueOnce(new Error('database unavailable'));
+
+			await service.attemptWake('thread-1');
+			const attempt = jobRepository.claimForWake.mock.calls[0][2];
+			jobRepository.findWakeableUnconsumed.mockResolvedValue([makeJob({ wakeAttemptId: attempt })]);
+			await service.attemptWake('thread-1');
+
+			expect(orchestrator.executeForWake).toHaveBeenCalledTimes(1);
+			expect(jobRepository.markMailConsumed).toHaveBeenLastCalledWith('thread-1', ['job-1'], true);
+		});
+
+		it('wakes for a newly settled result while consuming a received one', async () => {
+			const { service, orchestrator, jobRepository } = setup();
+			jobRepository.findWakeableUnconsumed.mockResolvedValue([
+				makeJob({ wakeAttemptId: 'attempt-1' }),
+				makeJob({ id: 'job-2' }),
+			]);
+
+			await service.attemptWake('thread-1');
+
+			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], true);
+			expect(orchestrator.executeForWake).toHaveBeenCalledTimes(1);
+			expect(jobRepository.markMailConsumed).toHaveBeenLastCalledWith('thread-1', ['job-2'], false);
+		});
+
+		it.each([
+			['the agent did not start', finalizeFailure(false)],
+			['the run failed', new Error('model unavailable')],
+		])('releases the claim for a retry when %s', async (_case, error) => {
+			const { service, orchestrator, jobRepository } = setup();
+			failAfterAdmission(orchestrator, error);
+
+			await service.attemptWake('thread-1');
+
+			expect(jobRepository.releaseWakeClaim).toHaveBeenCalledWith(
+				jobRepository.claimForWake.mock.calls[0][2],
+			);
 			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		});
 	});

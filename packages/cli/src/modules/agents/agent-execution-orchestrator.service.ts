@@ -233,6 +233,8 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 	backgroundJobSignal: AgentBackgroundJobSignal;
 	pauseReport?: boolean;
 	abortSignal: AbortSignal;
+	/** Runs after the execution record exists and before the agent starts. */
+	onAdmitted?: () => Promise<void>;
 	identity:
 		| { type: 'draft'; user: User; principalHash: AgentSandboxPrincipalHash }
 		| {
@@ -1892,6 +1894,7 @@ export class AgentExecutionOrchestratorService {
 			pauseReport: config.pauseReport,
 			sessionMode: 'existing',
 			backgroundJobSignal: config.pauseReport ? undefined : config.backgroundJobSignal,
+			onAdmitted: config.onAdmitted,
 		});
 	}
 }
