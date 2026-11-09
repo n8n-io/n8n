@@ -60,6 +60,30 @@ export const Default: Story = {
 	},
 };
 
+export const LongList: Story = {
+	render: () => ({
+		components: { DropdownMenu },
+		setup() {
+			const items: Array<DropdownMenuItemProps<string>> = Array.from(
+				{ length: 40 },
+				(_, index) => ({
+					id: `item-${index + 1}`,
+					label: `Item ${index + 1}`,
+				}),
+			);
+			return { items };
+		},
+		template: `
+		<div>
+			<DropdownMenu placement="bottom-start" :items="items" />
+		</div>
+		`,
+	}),
+	args: {
+		items: [] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
 export const WithCustomTrigger: Story = {
 	render: (args) => ({
 		components: { DropdownMenu, N8nButton },

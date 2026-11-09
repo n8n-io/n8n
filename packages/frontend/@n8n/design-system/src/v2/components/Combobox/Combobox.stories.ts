@@ -322,6 +322,26 @@ export const Items = {
 	},
 } satisfies Story;
 
+export const LongList = {
+	name: 'Long list',
+	render: () => ({
+		components: { Combobox },
+		setup() {
+			const items = Array.from({ length: 40 }, (_, index) => ({
+				label: `Option ${index + 1}`,
+				value: `option-${index + 1}`,
+			}));
+			const value = ref<string>();
+			return { items, value };
+		},
+		template: `
+		<div style="${storyContainerStyle}">
+			<Combobox :items="items" v-model="value" placeholder="Search options..." />
+		</div>
+		`,
+	}),
+} satisfies Story;
+
 export const ItemsTypes = {
 	render: (args) => ({
 		components: { Combobox },
