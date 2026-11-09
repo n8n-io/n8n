@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_73289d460c0380::t_3e7a635882165c 214-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "421902946f5506faf2a5faff787bf7901b5db527",
+  "prompts": {},
+  "sessions": {
+    "s_73289d460c0380": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a3d5474-5723-429a-afa7-13afa91f1405",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
