@@ -1,5 +1,5 @@
 import { IncomingMessage } from 'http';
-import { decode, encodingExists } from 'iconv-lite';
+import { decode } from 'iconv-lite';
 import type { Readable } from 'stream';
 
 import { binaryToBuffer } from './binary-buffer';
@@ -18,8 +18,13 @@ export async function binaryToString(body: Buffer | Readable, encoding?: string)
 	return decode(buffer, encoding ?? 'utf-8');
 }
 
-export function isCharsetSupported(charset: string) {
-	return Buffer.isEncoding(charset) || encodingExists(charset);
+export function isCharsetSupported(charset: string): boolean {
+	try {
+		bufferToString(Buffer.alloc(0), charset);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 export function bufferToString(buffer: Buffer, charset = 'utf-8') {

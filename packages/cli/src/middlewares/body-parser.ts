@@ -34,7 +34,9 @@ const payloadSizeMax = Container.get(GlobalConfig).endpoints.payloadSizeMax;
 const stripBom = (text: string) => (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
 
 const usesUtf8Escapes = (charset: string) =>
-	/^(utf(8|16|32)(le|be)?|ucs[24])$/.test(charset.toLowerCase().replace(/[^\da-z]/g, ''));
+	/^(utf(8|16|32)(le|be)?|ucs[24]|(us)?ascii)$/.test(
+		charset.toLowerCase().replace(/[^\da-z]/g, ''),
+	);
 
 const hexValue = (byte: number) => {
 	if (byte >= 0x30 && byte <= 0x39) return byte - 0x30;
