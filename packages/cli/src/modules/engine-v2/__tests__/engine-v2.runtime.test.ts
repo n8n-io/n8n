@@ -1,7 +1,9 @@
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EngineConfig } from '@n8n/config';
 import { mintResumeToken, type ExecutionResponseSender } from '@n8n/engine';
 import type { BinaryDataService } from 'n8n-core';
+import type { DataTableProxyProvider } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -10,10 +12,12 @@ import type { NodeTypes } from '@/node-types';
 
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneClient } from '../engine-control-plane-client';
+import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsClient } from '../engine-credentials-client';
 import type { EngineSubWorkflowClient } from '../engine-sub-workflow-client';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { RemoteCredentialsHelper } from '../remote-credentials-helper';
+import { RemoteDataTableProxyProvider } from '../remote-data-table-proxy-provider';
 
 // Hoisted so the `vi.mock` factories below, which vitest lifts above the imports,
 // can close over them.
@@ -50,7 +54,11 @@ const mocks = vi.hoisted(() => {
 	const v1StepExecutor = { execute: vi.fn() };
 	const stepDataLoader = vi.fn();
 
-	type AdditionalData = { executionId?: string; credentialsHelper?: unknown };
+	type AdditionalData = {
+		executionId?: string;
+		credentialsHelper?: unknown;
+		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
+	};
 
 	type V1StepExecutorDeps = {
 		additionalDataFactory: (context: {
@@ -110,6 +118,8 @@ describe('EngineV2Runtime', () => {
 
 	let controlPlaneClient: EngineControlPlaneClient;
 	let credentialsClient: EngineCredentialsClient;
+	let transport: EngineControlPlaneTransport;
+	let dataTablesHttp: HttpRequestClient;
 	let subWorkflowClient: EngineSubWorkflowClient;
 	const credentialsHelper = mock<CredentialsHelper>();
 	const credentialTypes = mock<CredentialTypes>();
@@ -126,6 +136,7 @@ describe('EngineV2Runtime', () => {
 			mockLogger(),
 			controlPlaneClient,
 			credentialsClient,
+			transport,
 			subWorkflowClient,
 			credentialsHelper,
 			credentialTypes,
@@ -161,11 +172,14 @@ describe('EngineV2Runtime', () => {
 		mocks.listen.error = undefined;
 		controlPlaneClient = mock<EngineControlPlaneClient>();
 		credentialsClient = mock<EngineCredentialsClient>();
+		dataTablesHttp = mock<HttpRequestClient>();
+		transport = mock<EngineControlPlaneTransport>({ forScope: vi.fn(() => dataTablesHttp) });
 		subWorkflowClient = mock<EngineSubWorkflowClient>();
 		additionalDataBuilder.build.mockImplementation(
-			(_context, helper) =>
+			(_context, helper, dataTableProxyProvider) =>
 				({
 					credentialsHelper: helper,
+					'data-table': { dataTableProxyProvider },
 				}) as unknown as ReturnType<EngineAdditionalDataBuilder['build']>,
 		);
 	});
@@ -289,6 +303,7 @@ describe('EngineV2Runtime', () => {
 			expect(additionalDataBuilder.build).toHaveBeenCalledExactlyOnceWith(
 				stepContext,
 				expect.any(RemoteCredentialsHelper),
+				expect.any(RemoteDataTableProxyProvider),
 			);
 		});
 
@@ -315,6 +330,44 @@ describe('EngineV2Runtime', () => {
 			const additionalData = await additionalDataFactory()(stepContext);
 
 			expect(additionalData.credentialsHelper).toBeInstanceOf(RemoteCredentialsHelper);
+		});
+
+		it('gives the step a data table provider that asks the control plane', async () => {
+			await newRuntime().init(responseSender());
+
+			const additionalData = await additionalDataFactory()(stepContext);
+
+			expect(additionalData['data-table']?.dataTableProxyProvider).toBeInstanceOf(
+				RemoteDataTableProxyProvider,
+			);
+		});
+
+		it('binds the data table provider to the execution of the step', async () => {
+			await newRuntime().init(responseSender());
+			vi.mocked(dataTablesHttp.request).mockResolvedValue({
+				statusCode: 200,
+				body: { data: [] },
+				headers: {},
+			});
+
+			const additionalData = await additionalDataFactory()(stepContext);
+			const table = await additionalData['data-table']!.dataTableProxyProvider.getDataTableProxy(
+				mock(),
+				mock({ type: 'n8n-nodes-base.dataTable' }),
+				'dt-1',
+			);
+			await table.getColumns();
+
+			expect(transport.forScope).toHaveBeenCalledWith('data-tables:use');
+			expect(dataTablesHttp.request).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					body: expect.objectContaining({
+						execution: { executionId: 'exec-1', workflowId: 'wf-1' },
+						consumer: { nodeType: 'n8n-nodes-base.dataTable' },
+					}),
+					abortSignal: expect.any(AbortSignal),
+				}),
+			);
 		});
 
 		it('binds the credentials helper to the execution of the step', async () => {

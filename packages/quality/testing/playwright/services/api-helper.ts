@@ -20,6 +20,7 @@ import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { AgentApiHelper } from './agent-api-helper';
 import { CommunityPackagesApiHelper } from './community-packages-api-helper';
+import { DataTableApiHelper } from './data-table-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
 import { InstanceAiApiHelper } from './instance-ai-api-helper';
@@ -90,6 +91,7 @@ export class ApiHelpers {
 	mcpOauth: McpOAuthApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
+	dataTables: DataTableApiHelper;
 	agents: AgentApiHelper;
 	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
@@ -121,6 +123,7 @@ export class ApiHelpers {
 		this.mcpOauth = new McpOAuthApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
+		this.dataTables = new DataTableApiHelper(this);
 		this.agents = new AgentApiHelper(this);
 		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
