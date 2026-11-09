@@ -238,6 +238,16 @@ describe('CreateExecutionLedgerTable Migration', () => {
 		context = createTestMigrationContext(dataSource);
 	});
 
+	it('down succeeds when the table is already gone', async () => {
+		await context.runQuery(`DROP TABLE ${ledger()}`);
+		await context.queryRunner.release();
+
+		await expect(undoLastSingleMigration()).resolves.not.toThrow();
+
+		await runSingleMigration(MIGRATION_NAME);
+		context = createTestMigrationContext(dataSource);
+	});
+
 	it('down drops the table, and up runs again after it', async () => {
 		await context.queryRunner.release();
 
