@@ -105,7 +105,7 @@ const speechInput = useSpeechRecognition({
 });
 
 watch(speechInput.result, (spoken) => {
-	if (props.showVoice) {
+	if (props.showVoice && !props.disabled) {
 		const prefix = committedSpokenMessage.value;
 		const separator = prefix.length > 0 ? ' ' : '';
 		emit('update:modelValue', prefix + separator + spoken.trimStart());

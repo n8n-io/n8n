@@ -364,15 +364,21 @@ describe('ChatInputBase', () => {
 		expect(lastValue).not.toMatch(/^\s/);
 	});
 
-	it('stops active voice input when the composer becomes disabled', async () => {
+	it('stops voice input and ignores late results when the composer becomes disabled', async () => {
 		mockIsListening.value = true;
-		const { rerender } = renderComponent({
+		const { rerender, emitted } = renderComponent({
 			props: makeProps({ showVoice: true, modelValue: 'draft' }),
 		});
 
 		await rerender(makeProps({ showVoice: true, modelValue: 'draft', disabled: true }));
 
 		expect(mockStop).toHaveBeenCalledOnce();
+
+		mockIsFinal.value = true;
+		mockResult.value = 'late speech result';
+		await nextTick();
+
+		expect(emitted()['update:modelValue']).toBeUndefined();
 	});
 
 	describe('oversized attachments', () => {
