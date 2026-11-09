@@ -1,6 +1,6 @@
 import type { AgentJsonToolConfig, AiGatewayConfigDto, NodeToolConfig } from '@n8n/api-types';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
-import { NodeTypesProviderMissingError } from '@n8n/backend-services';
+import { UserError } from '@n8n/errors';
 import type { INodeParameters, INodeTypeDescription, INodeTypes } from 'n8n-workflow';
 import { NodeHelpers, resolveSupportedCredentialActivation } from 'n8n-workflow';
 
@@ -10,6 +10,11 @@ const N8N_CONNECT_CREDENTIAL_NAME = 'Gateway credits';
 const AI_GATEWAY_MANAGED_CREDENTIAL_FLAG = '__aiGatewayManaged';
 
 type NodeToolCredential = NonNullable<NodeToolConfig['credentials']>[string];
+
+/** Unknown or tool-incapable node types are bad config; any other lookup failure is a bug. */
+function isNodeToolConfigError(error: unknown): boolean {
+	return error instanceof UserError;
+}
 
 function aiGatewayManagedCredential(): NodeToolCredential {
 	return {
@@ -150,7 +155,7 @@ export function listAiGatewayManagedCredentialTypes(
 		try {
 			description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
 		} catch (error) {
-			if (error instanceof NodeTypesProviderMissingError) throw error;
+			if (!isNodeToolConfigError(error)) throw error;
 			continue;
 		}
 
@@ -191,7 +196,7 @@ export function assignCredentialToNodeTools(
 		try {
 			description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
 		} catch (error) {
-			if (error instanceof NodeTypesProviderMissingError) throw error;
+			if (!isNodeToolConfigError(error)) throw error;
 			continue;
 		}
 		if (!description.credentials?.some((c) => c.name === credentialType)) continue;
@@ -217,7 +222,7 @@ function reconcileNode(
 	try {
 		description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
 	} catch (error) {
-		if (error instanceof NodeTypesProviderMissingError) throw error;
+		if (!isNodeToolConfigError(error)) throw error;
 		dropAiGatewayMarkers(node);
 		return;
 	}
