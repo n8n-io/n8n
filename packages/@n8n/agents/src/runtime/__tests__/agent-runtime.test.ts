@@ -8340,7 +8340,11 @@ describe('promptCaching', () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const memory = new InMemoryMemory();
 		await memory.episodic.saveEntryWithSources(
-			{ resourceId: 'resource-1', content: 'User chose Postgres.', embedding: [1, 0] },
+			{
+				resourceId: 'resource-1',
+				content: 'User chose Postgres.',
+				embedding: new Float32Array([1, 0]),
+			},
 			[],
 		);
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
@@ -8396,9 +8400,20 @@ describe('promptCaching', () => {
 		it('offers recall_memory once the scope has an active entry', async () => {
 			const memory = new InMemoryMemory();
 			await memory.episodic.saveEntryWithSources(
-				{ resourceId: 'resource-1', content: 'User chose Postgres.', embedding: [1, 0] },
+				{
+					resourceId: 'resource-1',
+					content: 'User chose Postgres.',
+					embedding: new Float32Array([1, 0]),
+				},
 				[],
 			);
+
+			expect(await toolNamesForRun(memory)).toContain('recall_memory');
+		});
+
+		it('keeps recall_memory for a store without hasActiveEntries', async () => {
+			const memory = new InMemoryMemory();
+			memory.episodic.hasActiveEntries = undefined;
 
 			expect(await toolNamesForRun(memory)).toContain('recall_memory');
 		});

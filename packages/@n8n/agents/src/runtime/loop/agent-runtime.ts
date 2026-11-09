@@ -697,7 +697,6 @@ export class AgentRuntime {
 		});
 		this.eventBus.emit({ type: AgentEvent.AgentStart });
 		await this.ensureModelCost();
-		await this.context.refreshEpisodicRecallAvailability(options?.persistence);
 		const normalizedInput = normalizeInput(input);
 		incrementMessageCount(options?.executionCounter);
 		return await this.buildMessageList(normalizedInput, options);
@@ -912,6 +911,8 @@ export class AgentRuntime {
 			cacheTtlMs: getPromptCacheRetentionMs(this.config.promptCaching, this.context.modelId),
 		});
 		this.context.hydrateDeferredToolsFromList(list);
+		// Fresh, resumed and crash-resumed runs all start here, so each one checks its own scope.
+		await this.context.refreshEpisodicRecallAvailability(options?.persistence);
 		// This note reaches the model but is not stored in conversation history.
 		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
 

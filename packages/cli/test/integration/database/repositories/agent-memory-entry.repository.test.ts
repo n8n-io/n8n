@@ -110,6 +110,7 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 
 		await expect(entryRepository.hasActiveEntries(agentId, [resourceId])).resolves.toBe(true);
 		await expect(entryRepository.hasActiveEntries(uuid(), [resourceId])).resolves.toBe(false);
+		await expect(entryRepository.hasActiveEntries(agentId, [uuid()])).resolves.toBe(false);
 		await expect(entryRepository.hasActiveEntries(agentId, [])).resolves.toBe(false);
 
 		await entryRepository.markDeleted(agentId, id);

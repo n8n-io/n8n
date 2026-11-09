@@ -22,7 +22,7 @@ export const DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION = [
 	'Episodic memory is enabled.',
 	'When to search: when the user refers to earlier work ("the renewal", "like last time"), and before you produce an output the user may have rules for (an email, report, summary, reply or plan). Do not search for greetings, general knowledge, or requests that are complete as written.',
 	'How to search: use 2-5 content words per query, not words like "discussed" or "previous". In one recall_memory call, pass one query for the subject ("Acme renewal") and one for the user\'s preferences for that kind of output ("email style length sign-off"). Add a query for an earlier decision only when the task depends on one.',
-	"Using results: the current message and thread override memory; a specific entry overrides a general one. Apply matching preferences without mentioning them. Use only entries about the same person, account or task. If no entry answers the question, say that nothing is saved about it; you may mention a related entry as related, never as the answer. Your own earlier suggestions are not the user's decisions.",
+	"Using results: the current message and thread override memory; a specific entry overrides a general one. Apply matching preferences without mentioning them. Use only entries that apply: entries about the same person, account or task, and the user's general preferences for this kind of output. If no entry answers the question, say that nothing is saved about it; you may mention a related entry as related, never as the answer. Your own earlier suggestions are not the user's decisions.",
 ].join('\n');
 
 export const DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION =

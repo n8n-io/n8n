@@ -347,18 +347,18 @@ describe('createRecallMemoryTool', () => {
 			await saveEpisodicEntry(memory, {
 				resourceId: 'user-1',
 				content,
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 			});
 		}
 		await saveEpisodicEntry(memory, {
 			resourceId: 'user-1',
 			content: 'Customer emails stay under 150 words.',
-			embedding: [0, 1],
+			embedding: new Float32Array([0, 1]),
 		});
 		await saveEpisodicEntry(memory, {
 			resourceId: 'user-1',
 			content: 'Acme emails go to Kim.',
-			embedding: [0.7, 0.7],
+			embedding: new Float32Array([0.7, 0.7]),
 		});
 		const tool = createRecallMemoryTool({
 			memory,
