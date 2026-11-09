@@ -1,0 +1,9 @@
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  ai_agent 360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b6986feedbee9d7338e5e2c345f4754532ef254d",
+  "prompts": {}
+}

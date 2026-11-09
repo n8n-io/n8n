@@ -1,0 +1,57 @@
+docs/generated/postgres-schema/public.execution_annotations.md
+  ai_agent 57
+docs/generated/sqlite-schema/scheduled_job.md
+  ai_agent 9,26,87
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentMissingProjects.generated.yml
+  ai_agent 1-93
+docs/generated/postgres-schema/public.scheduled_task.md
+  ai_agent 97
+docs/generated/postgres-schema/public.execution_metadata.md
+  ai_agent 52
+docs/generated/sqlite-schema/workflow_entity.md
+  ai_agent 212
+docs/generated/postgres-schema/public.scheduled_job.md
+  ai_agent 15,91
+docs/generated/postgres-schema/public.test_case_execution.md
+  ai_agent 75
+docs/generated/sqlite-schema/execution_data.md
+  ai_agent 64
+docs/generated/postgres-schema/public.workflow_entity.md
+  ai_agent 213
+docs/generated/sqlite-schema/execution_annotations.md
+  ai_agent 63
+pnpm-lock.yaml
+  ai_agent 645-646,2787-2789,2793-2795,2805-2807,2968,4799-4801,5035,7243-7276,8432,19899-19900,38164,40878,40907
+docs/generated/postgres-schema/public.execution_data.md
+  ai_agent 50
+docs/generated/sqlite-schema/README.md
+  ai_agent 81,134,1226,1720
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 297-299
+docs/generated/postgres-schema/public.chat_hub_messages.md
+  ai_agent 109
+docs/generated/sqlite-schema/execution_metadata.md
+  ai_agent 58
+.github/scripts/pnpm-lock.yaml
+  ai_agent 182-183,551-552,891-892,1491,1624,1888,2003,2005
+docs/generated/sqlite-schema/execution_entity.md
+  ai_agent 9,26,79
+packages/frontend/@n8n/design-system/src/components/EnterpriseReadinessBadge/__snapshots__/EnterpriseReadinessBadge.test.ts.snap
+  ai_agent 22,56
+docs/generated/sqlite-schema/chat_hub_messages.md
+  ai_agent 113
+docs/generated/postgres-schema/public.execution_entity.md
+  ai_agent 15,39,81
+docs/generated/sqlite-schema/scheduled_task.md
+  ai_agent 95
+docs/generated/sqlite-schema/test_case_execution.md
+  ai_agent 90
+docs/generated/postgres-schema/README.md
+  ai_agent 81,134,1240,1734
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e4c7335728e9d3815567346e09c7003103f41179",
+  "prompts": {}
+}

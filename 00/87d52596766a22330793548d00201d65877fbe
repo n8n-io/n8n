@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/hostEventRenderers.test.ts
+  s_24fc75b055b55f::t_8608e8339ad2c3 138-142
+  s_24fc75b055b55f::t_2c06f72dfbe65c 101,105-108,112,116-126,128-131
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_24fc75b055b55f::t_8608e8339ad2c3 2284-2286
+  s_24fc75b055b55f::t_885b3bcbebb759 2249-2283,2287-2292
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/constants.ts
+  s_24fc75b055b55f::t_77ea2041d20746 14-15,21
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_24fc75b055b55f::t_87cd7ef15ae3e4 323,325-328,338-341,349-355,825,1066
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantHostEvents.test.ts
+  s_24fc75b055b55f::t_58e52cf34a0c3f 33,36
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  s_24fc75b055b55f::t_77ea2041d20746 97-98,204-206,211,217,221-226,230-231
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantHostEvents.ts
+  s_24fc75b055b55f::t_58e52cf34a0c3f 40,47
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension.ts
+  s_24fc75b055b55f::t_2c06f72dfbe65c 91,133-137
+packages/frontend/editor-ui/src/features/agents/components/AgentChatHostEvents.vue
+  s_24fc75b055b55f::t_58e52cf34a0c3f 12,26-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0087d52596766a22330793548d00201d65877fbe",
+  "prompts": {},
+  "sessions": {
+    "s_24fc75b055b55f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6a31afd-317d-4b43-b65c-a246aab46ec1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

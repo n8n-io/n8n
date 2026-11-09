@@ -1,0 +1,29 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-environment.dto.ts
+  s_33ba3f3229b2e2::t_4e120ea6569906 5,258
+packages/@n8n/cli/src/client.ts
+  s_33ba3f3229b2e2::t_4e120ea6569906 8,204
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionMissingProjectsButton.vue
+  s_33ba3f3229b2e2::t_4e120ea6569906 2,26
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_33ba3f3229b2e2::t_4e120ea6569906 290
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionMissingProjectsDialog.vue
+  s_33ba3f3229b2e2::t_4e120ea6569906 2,44,206
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentMissingProjects.generated.yml
+  s_33ba3f3229b2e2::t_e8fbed1ac3755e 61-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2dc556acfdc24c4c00ae0914cbfa0f647734b51c",
+  "prompts": {},
+  "sessions": {
+    "s_33ba3f3229b2e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "474c42eb-c1f5-4e36-9714-2d0e6d6e558d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

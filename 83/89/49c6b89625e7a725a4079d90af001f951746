@@ -1,0 +1,25 @@
+packages/@n8n/agents/src/runtime/__tests__/provider-quirks.test.ts
+  s_dc4665f4ffeb48::t_9088859ca5cf2a 54-58,72-76,92-96
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_dc4665f4ffeb48::t_40104b45358694 4-5,384
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_dc4665f4ffeb48::t_5752a31b6ec056 41-44,55-59,137-140
+  s_dc4665f4ffeb48::t_4bb4c8af226100 48
+  s_dc4665f4ffeb48::t_9088859ca5cf2a 133-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "838949c6b89625e7a725a4079d90af001f951746",
+  "prompts": {},
+  "sessions": {
+    "s_dc4665f4ffeb48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e0cc0e5-3bf5-4e95-be7f-482b6bdc86ac",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

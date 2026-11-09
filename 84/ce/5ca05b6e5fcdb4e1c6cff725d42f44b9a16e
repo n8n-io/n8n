@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-input.builder.test.ts
+  s_3eab3bd25bb557::t_2d23dc6e07f742 659-686
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-input.builder.ts
+  s_3eab3bd25bb557::t_c31991ad1f7afa 81-84,88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "84ce5ca05b6e5fcdb4e1c6cff725d42f44b9a16e",
+  "prompts": {},
+  "sessions": {
+    "s_3eab3bd25bb557": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64d85eea-f944-4df3-942d-345f5e1cd860",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
