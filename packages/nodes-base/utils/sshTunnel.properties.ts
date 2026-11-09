@@ -62,6 +62,20 @@ export const sshTunnelProperties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'SSH Host Key Fingerprint',
+		name: 'sshHostKeyFingerprint',
+		type: 'string',
+		default: '',
+		placeholder: 'SHA256:...',
+		description:
+			'SHA256 fingerprint of the SSH server host key. If set, the connection fails when the server presents a different key. Get it with <code>ssh-keyscan -t ed25519 HOST | ssh-keygen -lf -</code>, using the key type the server offers first. Leave empty to skip the check.',
+		displayOptions: {
+			show: {
+				sshTunnel: [true],
+			},
+		},
+	},
+	{
 		displayName: 'SSH Password',
 		name: 'sshPassword',
 		type: 'string',
