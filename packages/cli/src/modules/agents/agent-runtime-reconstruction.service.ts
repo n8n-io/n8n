@@ -115,8 +115,8 @@ export interface ReconstructedAgentRuntime {
 	budget?: BudgetGuardrailConfig;
 	/**
 	 * The main model credential is the Gateway credits marker: the run debits
-	 * the shared wallet, so the budget guardrail also attaches the wallet
-	 * preflight.
+	 * the shared wallet, so the budget guardrail also attaches the gateway 402
+	 * classifier — a depleted wallet ends the run with `budget.credits`.
 	 */
 	modelCredentialGatewayManaged?: boolean;
 }

@@ -29,8 +29,7 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.chat.budget.credits.title': 'Your Gateway credits are empty.',
 				'agents.chat.budget.credits.message':
 					'This agent stopped because the shared Gateway credits balance is empty. Top up to keep it running.',
-				'agents.chat.budget.credits.dismissed':
-					'The chat resumes once the new balance is detected.',
+				'agents.chat.budget.credits.dismissed': 'Top up, then send your message again.',
 				'agents.chat.budget.credits.topUp': 'Top up',
 			})[key] ?? key,
 	}),
