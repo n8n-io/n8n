@@ -70,6 +70,9 @@ export const UNKNOWN_FAILURE_REASON = 'Unknown failure reason';
 export const WORKFLOW_REACTIVATE_INITIAL_TIMEOUT = 1000; // 1 second
 export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 
+/** A reactivated trigger that stays up at least this long starts its retry backoff over. */
+export const WORKFLOW_REACTIVATE_STABLE_PERIOD = 60 * 1000; // 1 minute
+
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
