@@ -47,6 +47,15 @@ describe('activateSkillDependencyTools', () => {
 		expect(activateSkillDependencyTools(original)).toBe(original);
 	});
 
+	it('keeps skill dependencies in the catalog in catalog mode', () => {
+		const original = makeConfig({
+			skillSource,
+			toolDeferral: { mode: 'catalog' },
+			deferredTools: [makeTool('search_models')],
+		});
+		expect(activateSkillDependencyTools(original)).toBe(original);
+	});
+
 	it('returns the same config without a skill source', () => {
 		const original = makeConfig({ deferredTools: [makeTool('search_models')] });
 		expect(activateSkillDependencyTools(original)).toBe(original);

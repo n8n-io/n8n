@@ -253,6 +253,13 @@ export interface CustomAgentMessages {
 		type: 'n8n:runtime-skill-catalog';
 		content: string;
 	};
+	runtimeToolCatalog: {
+		type: 'n8n:runtime-tool-catalog';
+		/** The namespace lines the model last saw; empty when no catalog applies. */
+		catalog: string;
+		/** The text the model sees, already wrapped. */
+		content: string;
+	};
 	runtimeSkillUpdate: {
 		type: 'n8n:runtime-skill-update';
 		skillUpdate: {
@@ -262,6 +269,13 @@ export interface CustomAgentMessages {
 			name?: string;
 			change?: 'updated' | 'restored' | 'unavailable';
 		};
+	};
+	runtimeContextNote: {
+		type: 'n8n:runtime-context-note';
+		/** Stable note ids, so a conversation receives each note only once. */
+		noteIds: string[];
+		/** The note text the model sees, without the reminder wrapper. */
+		content: string;
 	};
 	// Apps can add message types through declaration merging.
 }
