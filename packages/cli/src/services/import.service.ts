@@ -107,7 +107,7 @@ export class ImportService {
 		projectId: string,
 		userId: string,
 		{ activeState = 'false' }: { activeState?: 'false' | 'fromJson' },
-	): Promise<{ violations: WorkflowImportViolations[] }> {
+	): Promise<{ violations: WorkflowImportViolations[]; failedActivations: string[] }> {
 		await this.initRecords();
 
 		const user = await this.userRepository.findOneOrFail({
@@ -154,6 +154,11 @@ export class ImportService {
 			workflow: IWorkflowWithVersionMetadata;
 			cleared: PolicyCleared<'contentImport'>;
 		}> = [];
+
+		// The import honors the JSON's active flag only when asked to; `true` is required
+		// (not merely truthy) so the deactivation skip and the activation decision agree.
+		const wantsActive = (workflow: IWorkflowWithVersionMetadata) =>
+			activeState === 'fromJson' && workflow.active === true;
 
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
@@ -221,7 +226,14 @@ export class ImportService {
 		// Nothing is deactivated until the whole batch is admitted: admission can abort the import,
 		// and a workflow stopped by then would stay stopped with nothing imported in its place.
 		// Still before the transaction, to prevent orphaned trigger listeners.
+		//
+		// Workflows that will be re-activated below keep their triggers (and their
+		// durable jobs) running: deactivating them first would delete the durable
+		// jobs in the transaction, and the subsequent publish would not re-create
+		// them for unchanged Schedule Trigger nodes, leaving them permanently gone.
 		for (const { workflow } of admitted) {
+			if (wantsActive(workflow)) continue;
+
 			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
 				await this.workflowService.deactivateWorkflow(user, workflow.id, { source: 'import' });
 			}
@@ -237,7 +249,7 @@ export class ImportService {
 
 				// Store the old activeVersionId to record the deactivation of the old version
 				const oldActiveVersionId = workflow.id ? activeVersionIdByWorkflow.get(workflow.id) : null;
-				const shouldActivate = activeState === 'fromJson' && workflow.active;
+				const shouldActivate = wantsActive(workflow);
 				const versionIdToActivate = workflow.versionId;
 
 				// Always upsert with active=false and activeVersionId=null.
@@ -308,8 +320,10 @@ export class ImportService {
 			insertedWorkflows,
 			workflowsToActivate,
 		);
+		const failedActivations: string[] = [];
 		for (const { workflowId, versionId } of orderedWorkflowsToActivate) {
-			await this.activateWorkflow(workflowId, versionId, user);
+			const error = await this.activateWorkflow(workflowId, versionId, user);
+			if (error) failedActivations.push(workflowId);
 		}
 
 		// Directly update the index for the important workflows, since they don't generate
@@ -318,7 +332,7 @@ export class ImportService {
 			await this.workflowIndexService.updateIndexForDraft(workflow);
 		}
 
-		return { violations };
+		return { violations, failedActivations };
 	}
 
 	/**
@@ -407,15 +421,17 @@ export class ImportService {
 		workflowId: string,
 		versionIdToActivate: string,
 		user: User,
-	): Promise<void> {
+	): Promise<Error | undefined> {
 		try {
 			await this.workflowService.activateWorkflow(user, workflowId, {
 				versionId: versionIdToActivate,
 				source: 'import',
 			});
 		} catch (e) {
-			this.logger.error(`Failed to activate workflow ${workflowId}`, { error: ensureError(e) });
+			return ensureError(e);
 		}
+
+		return undefined;
 	}
 
 	async replaceInvalidCreds(workflow: IWorkflowBase, projectId: string) {

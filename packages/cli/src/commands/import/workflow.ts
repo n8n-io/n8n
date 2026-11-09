@@ -162,7 +162,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		const { violations } = await Container.get(ImportService).importWorkflows(
+		const { violations, failedActivations } = await Container.get(ImportService).importWorkflows(
 			workflows,
 			project.id,
 			userId,
@@ -170,6 +170,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		);
 
 		this.logSkippedWorkflows(violations);
+
+		if (failedActivations.length > 0) {
+			this.logger.error(
+				`Failed to activate ${failedActivations.length} imported workflow(s): ${failedActivations.join(', ')}`,
+			);
+		}
 
 		const importedCount = workflows.length - violations.length;
 
