@@ -19,10 +19,12 @@ describe('AddSettingsToWorkflowHistory Migration', () => {
 	let dataSource: DataSource;
 	let context: TestMigrationContext;
 
-	// A runs on v2. Its draft is newer than its published version.
+	// A runs on v2. Its draft is newer than its published version. Its active
+	// version differs from its published mapping, so each source is checked alone.
 	const v2Workflow = {
 		id: newWorkflowId(),
 		oldVersion: randomUUID(),
+		active: randomUUID(),
 		published: randomUUID(),
 		draft: randomUUID(),
 	};
@@ -50,10 +52,10 @@ describe('AddSettingsToWorkflowHistory Migration', () => {
 		);
 	}
 
-	async function publish(workflowId: string, versionId: string) {
+	async function publish(workflowId: string, versionId: string, activeVersionId = versionId) {
 		await context.runQuery(
-			`UPDATE ${table('workflow_entity')} SET active = true, ${column('activeVersionId')} = :versionId WHERE id = :workflowId`,
-			{ workflowId, versionId },
+			`UPDATE ${table('workflow_entity')} SET active = true, ${column('activeVersionId')} = :activeVersionId WHERE id = :workflowId`,
+			{ workflowId, activeVersionId },
 		);
 		await context.runQuery(
 			`INSERT INTO ${table('workflow_published_version')} (${column('workflowId')}, ${column('publishedVersionId')}, ${column('createdAt')}, ${column('updatedAt')})
@@ -92,9 +94,10 @@ describe('AddSettingsToWorkflowHistory Migration', () => {
 
 		await insertWorkflow(v2Workflow.id, JSON.stringify({ engineType: 'v2' }), v2Workflow.draft);
 		await insertVersion(v2Workflow.id, v2Workflow.oldVersion);
+		await insertVersion(v2Workflow.id, v2Workflow.active);
 		await insertVersion(v2Workflow.id, v2Workflow.published);
 		await insertVersion(v2Workflow.id, v2Workflow.draft);
-		await publish(v2Workflow.id, v2Workflow.published);
+		await publish(v2Workflow.id, v2Workflow.published, v2Workflow.active);
 
 		await insertWorkflow(
 			noEngineWorkflow.id,
@@ -128,7 +131,8 @@ describe('AddSettingsToWorkflowHistory Migration', () => {
 		await Container.get(DbConnection).close();
 	});
 
-	it('pins v2 on the published and draft versions of a v2 workflow', async () => {
+	it('pins v2 on the active, published and draft versions of a v2 workflow', async () => {
+		expect(await settingsOf(v2Workflow.active)).toEqual({ engineType: 'v2' });
 		expect(await settingsOf(v2Workflow.published)).toEqual({ engineType: 'v2' });
 		expect(await settingsOf(v2Workflow.draft)).toEqual({ engineType: 'v2' });
 	});
