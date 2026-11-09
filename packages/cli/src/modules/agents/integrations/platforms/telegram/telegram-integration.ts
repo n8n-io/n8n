@@ -34,8 +34,8 @@ import { buildTelegramOriginDraft } from './telegram-origin';
 import type { DecodedThread, OriginInput } from '../../integration-origin-support';
 
 // Without an explicit list Telegram keeps whatever filter an earlier client set
-// on the bot, which can drop button clicks. This matches Telegram's default for
-// the update types the adapter handles.
+// on the bot, which can drop button clicks. These are the types the adapter
+// handles, minus message_reaction, which Telegram also leaves out by default.
 const ALLOWED_UPDATES = [
 	'message',
 	'edited_message',
