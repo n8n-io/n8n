@@ -1,55 +1,80 @@
-packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
-  s_22e68c351b3f9a::t_8ce1d448ef76cf 44,69
-packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.test.ts
-  s_22e68c351b3f9a::t_06f744a20af116 278-290
-packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
-  s_22e68c351b3f9a::t_6460948fcecd5b 307-322
-packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
-  s_22e68c351b3f9a::t_aa966d9b62f177 314-335
-packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionErrors.ts
-  s_22e68c351b3f9a::t_9137583e6ec7ee 1-8
 packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_0da4b348b3b902::t_70ea0de8494f91 4,971
   s_22e68c351b3f9a::t_00d3caabfea8ef 4,971
-packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionOperation.test.ts
-  s_22e68c351b3f9a::t_8d5497ac631e7d 1-65
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_0da4b348b3b902::t_0979749fc28ec5 156,162,337,343,361,366,385,391,408,413,506,512,533,541,563,570,631,637-638,661,669,686,693
+  s_22e68c351b3f9a::t_71a199ce7bf9b6 156,162,337,343,361,366,385,391,413,506,512,533,541,563,570,631,637-638,661,669,686,693
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_0da4b348b3b902::t_12409cc8d28303 5,62-63
+  s_22e68c351b3f9a::t_de6a49062b322e 5,62-63
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_0da4b348b3b902::t_585e5d63ab7ac6 5,75-76
+  s_22e68c351b3f9a::t_ddc64716486567 5,75-76
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/connectPromotionCheckout.generated.yml
+  s_0da4b348b3b902::t_b10a579f85f19d 5,35-36
+  s_22e68c351b3f9a::t_2d4791a217809a 5,35-36
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_0da4b348b3b902::t_233310eaa1072d 5,68-69
+  s_22e68c351b3f9a::t_a132e731eead06 5,68-69
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_0da4b348b3b902::t_da065052833453 5,79-80
+  s_22e68c351b3f9a::t_d4713cb19b81ad 5,79-80
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionEnvironment.generated.yml
+  s_0da4b348b3b902::t_6e665383a3ee0b 5,24-25
+  s_22e68c351b3f9a::t_04e608ba6c45f6 5,24-25
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  s_0da4b348b3b902::t_3c1edb39a94232 5,28-29
+  s_22e68c351b3f9a::t_99eabf57c1a148 28-29
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_0da4b348b3b902::t_333611b42ba2bc 5,51-52
+  s_22e68c351b3f9a::t_e00ffd68c8dd0f 5,51-52
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_0da4b348b3b902::t_d63741e6db1cdc 5,58-59
+  s_22e68c351b3f9a::t_7d1137b466a856 5,58-59
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionEnvironment.generated.yml
+  s_0da4b348b3b902::t_930e05ba153c58 5,98-99
+  s_22e68c351b3f9a::t_af347c8a11ce71 5,98-99
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
+  s_0da4b348b3b902::t_c4f88b07fed258 5,93-94
+  s_22e68c351b3f9a::t_62524b7f076a35 5,93-94
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_0da4b348b3b902::t_687379c4600fb3 307-322
+  s_22e68c351b3f9a::t_6460948fcecd5b 307-322
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_0da4b348b3b902::t_c69d37ce663a81 44,69
+  s_22e68c351b3f9a::t_8ce1d448ef76cf 44,69
 packages/cli/src/public-api/v1/shared/spec/responses/locked.yml
+  s_0da4b348b3b902::t_46d0814cb478e5 1
   s_22e68c351b3f9a::t_8ce1d448ef76cf 1
 packages/cli/test/integration/public-api/promotions.test.ts
+  s_0da4b348b3b902::t_67befef6d5846e 2857-2890
   s_22e68c351b3f9a::t_a364ec621bd360 2857-2890
-packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
-  s_22e68c351b3f9a::t_71a199ce7bf9b6 156,162,337,343,361,366,385,391,408,413,506,512,533,541,563,570,631,637-638,661,669,686,693
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0da4b348b3b902::t_06125aa7402bba 10475
+  s_22e68c351b3f9a::t_3cbc628d369973 10475
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_0da4b348b3b902::t_d5fe0f6f4a7d18 314-335
+  s_22e68c351b3f9a::t_aa966d9b62f177 314-335
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.vue
+  s_0da4b348b3b902::t_faef3b364ff740 18,132-135
   s_22e68c351b3f9a::t_e0ff0df4f52be4 18
   s_22e68c351b3f9a::t_acc0971d59b17e 132-135
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.test.ts
+  s_0da4b348b3b902::t_620dcb51a70994 6,344-369
   s_22e68c351b3f9a::t_06f744a20af116 6,344-365
   s_22e68c351b3f9a::t_cf55b1a5ed6cf8 366-369
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.test.ts
+  s_0da4b348b3b902::t_c5c958ca450a7f 278-290
+  s_22e68c351b3f9a::t_06f744a20af116 278-290
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.ts
+  s_0da4b348b3b902::t_7d2bec74064ad5 8,39-40,253-255
   s_22e68c351b3f9a::t_3cbc628d369973 8,39-40,253-255
-packages/frontend/@n8n/i18n/src/locales/en.json
-  s_22e68c351b3f9a::t_3cbc628d369973 10475
-packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
-  s_22e68c351b3f9a::t_de6a49062b322e 5,62-63
-packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
-  s_22e68c351b3f9a::t_ddc64716486567 5,75-76
-packages/cli/src/public-api/v1/handlers/promotions/spec/paths/connectPromotionCheckout.generated.yml
-  s_22e68c351b3f9a::t_2d4791a217809a 5,35-36
-packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
-  s_22e68c351b3f9a::t_a132e731eead06 5,68-69
-packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
-  s_22e68c351b3f9a::t_d4713cb19b81ad 5,79-80
-packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionEnvironment.generated.yml
-  s_22e68c351b3f9a::t_04e608ba6c45f6 5,24-25
-packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
-  s_22e68c351b3f9a::t_99eabf57c1a148 5,28-29
-packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
-  s_22e68c351b3f9a::t_e00ffd68c8dd0f 5,51-52
-packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
-  s_22e68c351b3f9a::t_7d1137b466a856 5,58-59
-packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionEnvironment.generated.yml
-  s_22e68c351b3f9a::t_af347c8a11ce71 5,98-99
-packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
-  s_22e68c351b3f9a::t_62524b7f076a35 5,93-94
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionOperation.test.ts
+  s_0da4b348b3b902::t_e98f35ce3baed3 1-65
+  s_22e68c351b3f9a::t_8d5497ac631e7d 1-4,7,9-18,20-27,29-46,48-65
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionErrors.ts
+  s_0da4b348b3b902::t_60523c93229c63 1-8
+  s_22e68c351b3f9a::t_9137583e6ec7ee 1-8
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -57,6 +82,14 @@ packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionPro
   "base_commit_sha": "5ef31e261dd56d637bf227f0cbcc1499d81ecdf8",
   "prompts": {},
   "sessions": {
+    "s_0da4b348b3b902": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39a28ab-fdbc-4a8e-8e76-7040acec36d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_22e68c351b3f9a": {
       "agent_id": {
         "tool": "claude",
