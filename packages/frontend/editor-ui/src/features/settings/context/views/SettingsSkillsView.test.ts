@@ -558,6 +558,26 @@ describe('SettingsSkillsView', () => {
 			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 		});
 
+		it('shows the generic translated error when the file cannot be read', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const unreadable = skillFile();
+			Object.defineProperty(unreadable, 'text', {
+				value: async () => await Promise.reject(new Error('disk')),
+			});
+
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [unreadable] },
+			});
+
+			await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+			expect(showErrorMock).toHaveBeenCalledWith(
+				new Error('Could not import the skill. Check the selected files and try again.'),
+				'Could not upload the skill',
+			);
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+
 		it('ignores a cancelled picker', async () => {
 			const view = renderView();
 			await new Promise(process.nextTick);

@@ -323,16 +323,16 @@ function openModal(data: AgentSkillModalData) {
 }
 
 /**
- * Starts at the SKILL.md upload step, which also offers "Add manually". `start` opens the
- * form at once, or with a skill that the user uploaded from the create menu.
+ * Opens the create modal. Without `preset` it starts at the SKILL.md upload step, which also
+ * offers "Add manually". The create menu presets the form step, or a skill the user uploaded.
  */
 function openCreateModal(
-	start: Pick<AgentSkillModalData, 'initialStep' | 'skill' | 'initialMethod'> = {},
+	preset: Pick<AgentSkillModalData, 'initialStep' | 'skill' | 'initialMethod'> = {},
 ) {
 	const options = scopeOptions.value;
 	if (options.length === 0) return;
 	openModal({
-		...start,
+		...preset,
 		scopeOptions: options,
 		initialScope: options[0].value,
 		...(mcpSkillsEnabled.value ? { availableToMCP: false } : {}),
@@ -404,10 +404,12 @@ async function onSkillFilesPicked(event: Event) {
 		const skill = await importSkillFiles(files);
 		openCreateModal({ skill, initialMethod: 'upload' });
 	} catch (error) {
-		showError(
-			error instanceof AgentSkillImportError ? new Error(i18n.baseText(error.i18nKey)) : error,
-			i18n.baseText('settings.context.skills.upload.error'),
-		);
+		// The same texts as the upload step in the modal, so both paths read alike.
+		const key =
+			error instanceof AgentSkillImportError
+				? error.i18nKey
+				: 'agents.builder.skills.import.invalidFolder';
+		showError(new Error(i18n.baseText(key)), i18n.baseText('settings.context.skills.upload.error'));
 	}
 }
 
