@@ -3,6 +3,7 @@ import {
 	STARTING_NODES,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
+	WORKFLOW_REACTIVATE_STABLE_PERIOD,
 } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
@@ -68,9 +69,18 @@ interface QueuedActivation {
 	workflowData: IWorkflowDb;
 }
 
+/** The wait before the last reactivation attempt, so a quick failure continues the backoff. */
+interface RecentReactivation {
+	lastTimeout: number;
+	/** When the activation call returned. Unset while it still runs. */
+	activatedAt?: number;
+}
+
 @Service()
 export class ActiveWorkflowManager {
 	private queuedActivations: Record<WorkflowId, QueuedActivation> = {};
+
+	private readonly recentReactivations = new Map<WorkflowId, RecentReactivation>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -854,6 +864,11 @@ export class ActiveWorkflowManager {
 				workflowId,
 				workflowName,
 			});
+			const attempt: RecentReactivation = {
+				lastTimeout:
+					this.queuedActivations[workflowId]?.lastTimeout ?? WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
+			};
+			this.recentReactivations.set(workflowId, attempt);
 			try {
 				await this.add(workflowId, activationMode, workflowData);
 			} catch (error) {
@@ -878,6 +893,7 @@ export class ActiveWorkflowManager {
 				this.queuedActivations[workflowId].timeout = setTimeout(retryFunction, lastTimeout);
 				return;
 			}
+			if (this.recentReactivations.get(workflowId) === attempt) attempt.activatedAt = Date.now();
 			this.logger.info(`Activation of workflow "${workflowName}" (${workflowId}) was successful!`, {
 				workflowId,
 				workflowName,
@@ -888,12 +904,32 @@ export class ActiveWorkflowManager {
 		// multiple run in parallel
 		this.removeQueuedWorkflowActivation(workflowId);
 
+		const initialTimeout = this.getReactivationTimeout(workflowId);
 		this.queuedActivations[workflowId] = {
 			activationMode,
-			lastTimeout: WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
-			timeout: setTimeout(retryFunction, WORKFLOW_REACTIVATE_INITIAL_TIMEOUT),
+			lastTimeout: initialTimeout,
+			timeout: setTimeout(retryFunction, initialTimeout),
 			workflowData,
 		};
+	}
+
+	/**
+	 * A trigger that fails again soon after a successful reactivation continues the backoff
+	 * instead of starting over, or a trigger that dies right after it connects is retried
+	 * every second without end. The backoff starts over once the trigger has stayed up for
+	 * `WORKFLOW_REACTIVATE_STABLE_PERIOD` after its activation call returned.
+	 */
+	private getReactivationTimeout(workflowId: WorkflowId) {
+		const recent = this.recentReactivations.get(workflowId);
+		if (!recent) return WORKFLOW_REACTIVATE_INITIAL_TIMEOUT;
+
+		const { activatedAt } = recent;
+		if (activatedAt !== undefined && Date.now() - activatedAt > WORKFLOW_REACTIVATE_STABLE_PERIOD) {
+			this.recentReactivations.delete(workflowId);
+			return WORKFLOW_REACTIVATE_INITIAL_TIMEOUT;
+		}
+
+		return Math.min(recent.lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
 	}
 
 	/**
@@ -913,6 +949,7 @@ export class ActiveWorkflowManager {
 		for (const workflowId in this.queuedActivations) {
 			this.removeQueuedWorkflowActivation(workflowId);
 		}
+		this.recentReactivations.clear();
 	}
 
 	/**
@@ -955,6 +992,7 @@ export class ActiveWorkflowManager {
 		if (this.queuedActivations[workflowId] !== undefined) {
 			this.removeQueuedWorkflowActivation(workflowId);
 		}
+		this.recentReactivations.delete(workflowId);
 
 		// if it's active in memory then it's a trigger
 		// so remove from list of actives workflows
@@ -966,6 +1004,7 @@ export class ActiveWorkflowManager {
 		workflowId,
 	}: PubSubCommandMap['remove-triggers-and-pollers']) {
 		await this.removeActivationError(workflowId);
+		this.recentReactivations.delete(workflowId);
 		await this.removeWorkflowTriggersAndPollers(workflowId);
 
 		await this.workflowPushNotifier.notify(workflowId, {
