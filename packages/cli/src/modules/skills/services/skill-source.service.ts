@@ -21,10 +21,7 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v7 as uuidv7 } from 'uuid';
 
-import type {
-	SkillSourceConnection,
-	SkillSourceType,
-} from '../database/entities/skill-source-connection.entity';
+import type { SkillSourceType } from '../database/entities/skill-source-connection.entity';
 import {
 	DuplicateSkillSourceError,
 	SkillSourceRepository,
@@ -215,39 +212,20 @@ export class SkillSourceService {
 		}
 	}
 
-	/**
-	 * The sources that the user can see, for their group rows in the skills table: Global and
-	 * every project where the user can list skills, with the number of skills and updates of each.
-	 */
+	/** Visible sources and pending update counts for the skills table. */
 	async list(user: User): Promise<SkillSourceListItem[]> {
 		await this.flagGate.assertEnabled(user);
 		const projectIds = await this.skillAccess.visibleSourceProjects(user);
 		const sources = await this.sourceRepository.findVisibleSources(projectIds);
-		return await this.describeSources(user, sources);
-	}
-
-	/** The group row of each source whose type has a client on this build. */
-	async describeSources(
-		user: User,
-		sources: SkillSourceConnection[],
-	): Promise<SkillSourceListItem[]> {
 		const shown = sources.flatMap((source) => {
 			const client = this.clients.get(source.type);
 			return client ? [{ source, client }] : [];
 		});
-		// The rights depend only on the scope, so each project is checked once.
-		const scopes = [...new Set(shown.map(({ source }) => source.projectId))];
-		const [counts, projects, rights] = await Promise.all([
+		const [counts, projects, canReview] = await Promise.all([
 			this.sourceRepository.countLinksBySource(shown.map(({ source }) => source.id)),
 			this.skillRepository.findProjects(shown.flatMap(({ source }) => source.projectId ?? [])),
-			Promise.all(
-				scopes.map(
-					async (projectId) =>
-						[projectId, await this.skillAccess.canOnSource(user, { projectId }, 'review')] as const,
-				),
-			),
+			this.skillAccess.accessCheck(user, 'update'),
 		]);
-		const canReviewIn = new Map(rights);
 		return shown.map(({ source, client }) => {
 			const project = source.projectId ? projects.get(source.projectId) : undefined;
 			const count = counts.get(source.id) ?? { skills: 0, available: 0, blocked: 0 };
@@ -259,11 +237,12 @@ export class SkillSourceService {
 				projectId: source.projectId,
 				projectName: project?.name ?? null,
 				projectType: project ? (project.type === 'personal' ? 'personal' : 'team') : null,
+				projectIcon: project?.icon ?? null,
 				skillCount: count.skills,
-				updatesAvailable: canReviewIn.get(source.projectId) ? count.available : 0,
-				updatesBlocked: canReviewIn.get(source.projectId) ? count.blocked : 0,
+				updatesAvailable: canReview(source) ? count.available : 0,
+				updatesBlocked: canReview(source) ? count.blocked : 0,
 				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
-				canReview: canReviewIn.get(source.projectId) ?? false,
+				canReview: canReview(source),
 			};
 		});
 	}
@@ -599,11 +578,11 @@ export class SkillSourceService {
 			same.find((source) => source.projectId === null) ??
 			same.find((source) => source.projectId === projectId);
 		if (blocking) {
-			const canView = await this.skillAccess.canOnSource(user, blocking, 'view');
+			const canAdd = await this.skillAccess.canOnSource(user, blocking, 'addSkills');
 			return {
 				kind: 'blocked',
 				where: blocking.projectId === null ? 'global' : 'scope',
-				sourceId: canView ? blocking.id : null,
+				sourceId: canAdd ? blocking.id : null,
 			};
 		}
 		const visible = await this.skillAccess.visibleSourceProjects(user);

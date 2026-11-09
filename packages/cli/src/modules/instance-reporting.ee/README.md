@@ -67,11 +67,11 @@ why a failed day is simply covered again by the next one — even under a new
 A report row carries its own retry state, so `status` says where it stands
 without reading this document:
 
-| `status`                    | Meaning                                                                                                                                                                                     |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pending`                   | Not delivered yet, and attempts remain                                                                                                                                                      |
-| `sending`                   | One main holds the report while it sends a request                                                                                                                                          |
-| `delivered`                 | The receiver answered 201                                                                                                                                                                   |
+| `status` | Meaning |
+|---|---|
+| `pending` | Not delivered yet, and attempts remain |
+| `sending` | One main holds the report while it sends a request |
+| `delivered` | The receiver answered 201 |
 | `skipped_after_max_retries` | The instance stopped delivering that day: after three failed attempts, because the report's own slot passed before it landed, or because the receiver rejected the payload (`400` or `413`) |
 
 A skipped report is **not** lost data. Only a delivered report crosses a day
@@ -170,12 +170,12 @@ host.
 
 ## Configuration
 
-| Env var                             | Default | Notes                                                                                                                                                                                                 |
-| ----------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `N8N_INSTANCE_REPORTING_BASE_URL`   | `''`    | Base URL of the receiver. The report is POSTed to `<base>/api/v1/instance-reports`. Left unset, the module loads but warns and never sends: it registers no reporting task and claims no report time. |
-| `N8N_INSTANCE_REPORTING_LABEL`      | `''`    | Sent as `label` in the payload, when set.                                                                                                                                                             |
-| `N8N_INSTANCE_REPORTING_AUTH_TOKEN` | `''`    | Sent as `Authorization: Bearer …`, when set. Replaces the license certificate as the credential; `licenseCert` is then omitted from the body.                                                         |
-| `N8N_LICENSE_CERT`                  | `''`    | Not owned by this module. Its value, or the persisted certificate of an activated license, is sent as `licenseCert` and is the credential the receiver checks, unless a token is set.                 |
+| Env var | Default | Notes |
+|---|---|---|
+| `N8N_INSTANCE_REPORTING_BASE_URL` | `''` | Base URL of the receiver. The report is POSTed to `<base>/api/v1/instance-reports`. Left unset, the module loads but warns and never sends: it registers no reporting task and claims no report time. |
+| `N8N_INSTANCE_REPORTING_LABEL` | `''` | Sent as `label` in the payload, when set. |
+| `N8N_INSTANCE_REPORTING_AUTH_TOKEN` | `''` | Sent as `Authorization: Bearer …`, when set. Replaces the license certificate as the credential; `licenseCert` is then omitted from the body. |
+| `N8N_LICENSE_CERT` | `''` | Not owned by this module. Its value, or the persisted certificate of an activated license, is sent as `licenseCert` and is the credential the receiver checks, unless a token is set. |
 
 ## Report time
 
@@ -194,10 +194,10 @@ is enabled on this instance:
 
 ```json
 {
-	"instance-reporting": {
-		"enabled": true,
-		"reportTime": "07:42"
-	}
+  "instance-reporting": {
+    "enabled": true,
+    "reportTime": "07:42"
+  }
 }
 ```
 

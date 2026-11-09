@@ -1,7 +1,12 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
-import type { SkillDetail, SkillListItem, SkillSourceListItem } from '@n8n/api-types';
+import type {
+	SkillDetail,
+	SkillListCollapsedSource,
+	SkillListItem,
+	SkillSourceListItem,
+} from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
@@ -346,6 +351,7 @@ describe('SkillsTable', () => {
 			projectId: 'team-1',
 			projectName: 'Marketing',
 			projectType: 'team',
+			projectIcon: null,
 			skillCount: 2,
 			updatesAvailable: 0,
 			updatesBlocked: 0,
@@ -361,9 +367,8 @@ describe('SkillsTable', () => {
 			props: Partial<{
 				skills: SkillListItem[];
 				sources: SkillSourceListItem[];
-				emptySources: SkillSourceListItem[];
 				collapsedSourceIds: string[];
-				collapsedSources: Array<{ sourceId: string; index: number }>;
+				collapsedSources: SkillListCollapsedSource[];
 				checkingSourceIds: string[];
 			}> = {},
 		) {
@@ -397,6 +402,14 @@ describe('SkillsTable', () => {
 			expect(getByTestId('skill-group-title')).toHaveTextContent('Unknown source');
 		});
 
+		it('shows the configured project icon on the source scope badge', () => {
+			const { getAllByTestId } = renderGrouped({
+				sources: [source({ projectIcon: { type: 'emoji', value: '🚀' } })],
+			});
+			expect(getAllByTestId('skill-scope-badge')[0]).toHaveTextContent('🚀');
+			expect(getAllByTestId('skill-scope-badge')[1]).not.toHaveTextContent('🚀');
+		});
+
 		it('folds and unfolds a source from its row', async () => {
 			const { getByTestId, emitted } = renderGrouped();
 
@@ -422,7 +435,7 @@ describe('SkillsTable', () => {
 			const { getByTestId, queryByTestId } = renderGrouped({
 				skills: [],
 				sources: [empty],
-				emptySources: [empty],
+				collapsedSources: [{ sourceId: empty.id, index: 0, skillCount: 0 }],
 			});
 
 			expect(getByTestId('skill-group-title')).toHaveTextContent('acme/empty · main');

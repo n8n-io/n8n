@@ -154,6 +154,7 @@ export class SkillService {
 	// ---------------------------------------------------------------- user actions
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
+		if (query.groupBy === 'source') await this.skillSyncFlagGate.assertEnabled(user);
 		if (query.attachableTo !== undefined && (query.scope || query.projectId || query.agentId)) {
 			throw new UserError('Filter by attachableTo alone, without scope, projectId or agentId.');
 		}
@@ -178,7 +179,6 @@ export class SkillService {
 			sort: query.sortBy && LIST_SORTS[query.sortBy],
 		};
 		if (query.groupBy === 'source') {
-			await this.skillSyncFlagGate.assertEnabled(user);
 			const page = await this.findGroupedPage(
 				visibility,
 				match,

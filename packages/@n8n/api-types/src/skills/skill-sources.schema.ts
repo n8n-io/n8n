@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Z } from '../zod-class';
+import type { ProjectIcon } from '../schemas/project.schema';
 
 /**
  * Why a Skill Sync action failed, or why one skill could not come in. Telemetry and the
@@ -81,7 +82,7 @@ export type SkillSourceSummary = {
 
 /**
  * Whether the scope can take the source. `blocked`: the same source is in Global or in the
- * chosen scope. `sourceId` is set when the user may view that source.
+ * chosen scope. `sourceId` is set when the user may add skills to that source.
  * `warning`: the same source is in other projects that the user can see.
  */
 export type SkillSourceDuplicate =
@@ -233,6 +234,7 @@ export type SkillSourceListItem = {
 	projectId: string | null;
 	projectName: string | null;
 	projectType: 'personal' | 'team' | null;
+	projectIcon: ProjectIcon | null;
 	/** Synced skills of the source. */
 	skillCount: number;
 	/** Updates that wait for review and that the security check did not block. */

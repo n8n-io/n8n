@@ -16,7 +16,11 @@ const GUILD_B = { id: '800000000000000002', name: 'Second Server' };
 type ChannelFixture = { id: string; name: string; type: number };
 
 function createHttpClientStub(
-	onRequest: (request: { method: string; url: URL; body: Record<string, unknown> }) => {
+	onRequest: (request: {
+		method: string;
+		url: URL;
+		body: Record<string, unknown>;
+	}) => {
 		apiCall: { method: string; body: Record<string, unknown> };
 		responseBody: unknown;
 		status?: number;
@@ -25,7 +29,11 @@ function createHttpClientStub(
 	const apiCalls: Array<{ method: string; body: Record<string, unknown> }> = [];
 	const httpClient = {
 		request: vi.fn(
-			async (request: { method?: string; url: string; body?: Record<string, unknown> }) => {
+			async (request: {
+				method?: string;
+				url: string;
+				body?: Record<string, unknown>;
+			}) => {
 				const result = onRequest({
 					method: request.method ?? 'GET',
 					url: new URL(request.url),

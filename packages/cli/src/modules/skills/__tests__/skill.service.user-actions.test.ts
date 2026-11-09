@@ -129,7 +129,8 @@ describe('SkillService user actions', () => {
 				new Map(visible.filter((s) => ids.includes(s.id)).map((s) => [s.id, row(s, 2)] as const)),
 		);
 		repository.findProjects.mockImplementation(
-			async (ids) => new Map(ids.map((id) => [id, { name: 'Team', type: 'team' as const }])),
+			async (ids) =>
+				new Map(ids.map((id) => [id, { name: 'Team', type: 'team' as const, icon: null }])),
 		);
 		canAccess = vi.spyOn(access, 'canAccess').mockResolvedValue(true);
 		accessCheck = vi.spyOn(access, 'accessCheck').mockResolvedValue(() => true);
@@ -365,7 +366,7 @@ describe('SkillService user actions', () => {
 				],
 			});
 			repository.findProjects.mockResolvedValue(
-				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
+				new Map([['project-1', { name: 'Team', type: 'team' as const, icon: null }]]),
 			);
 			accessCheck.mockImplementation(async (_user, op) => () => op === 'update');
 
@@ -847,7 +848,7 @@ describe('SkillService user actions', () => {
 		it('moves the skill and saves it in one transaction, then refreshes after the commit', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 			repository.findProjects.mockResolvedValue(
-				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
+				new Map([['project-1', { name: 'Team', type: 'team' as const, icon: null }]]),
 			);
 			saveTrusted.mockResolvedValue(saved);
 			assertCanMove.mockResolvedValue({ projectId: null });

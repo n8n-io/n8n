@@ -697,23 +697,14 @@ const usersStore = useUsersStore();
 const collapsedSourceIds = useLocalStorage<string[]>(
 	() => `n8n-skills-collapsed-sources:${usersStore.currentUserId ?? 'anonymous'}`,
 	[],
+	// A storage event must not change folds without fetching their server page.
+	{ listenToStorageChanges: false },
 );
 
 /** The sources with a check that runs, so their rows show progress. */
 const checkingSourceIds = ref<string[]>([]);
 
 const tableSources = computed(() => (skillSyncEnabled.value ? skillsStore.sources : undefined));
-
-/** Empty sources use the same page boundaries as the other source rows. */
-const emptySources = computed(() => {
-	if (!skillSyncEnabled.value) return [];
-	const emptyIds = new Set(
-		skillsStore.collapsedSources
-			.filter(({ skillCount }) => skillCount === 0)
-			.map(({ sourceId }) => sourceId),
-	);
-	return skillsStore.sources.filter(({ id }) => emptyIds.has(id));
-});
 
 async function loadSources() {
 	if (!skillSyncEnabled.value) return;
@@ -779,7 +770,7 @@ async function onCheckSource(source: SkillSourceListItem) {
 					}),
 		type: 'success',
 	});
-	await Promise.all([load(), loadSources()]);
+	await loadSources();
 }
 
 async function onOpenSource(sourceId: string) {
@@ -967,11 +958,10 @@ onMounted(async () => {
 			:items-length="skillsStore.count"
 			:page-count="skillsStore.pageCount"
 			:loading="showLoading"
-			:show-empty="emptyState !== 'none' && emptySources.length === 0"
+			:show-empty="emptyState !== 'none' && skillsStore.collapsedSources.length === 0"
 			:show-assistant-availability="assistantSkillsEnabled"
 			:show-mcp-availability="mcpSkillsEnabled"
 			:sources="tableSources"
-			:empty-sources="emptySources"
 			:collapsed-source-ids="collapsedSourceIds"
 			:collapsed-sources="skillsStore.collapsedSources"
 			:checking-source-ids="checkingSourceIds"

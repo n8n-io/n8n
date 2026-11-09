@@ -9,15 +9,15 @@ checks, delegation, and continuation use this calculation. Job transitions do
 not update the plan document or its revision. Revisions track plan edits and
 job bindings.
 
-| Job status                           | Task status   |
-| ------------------------------------ | ------------- |
-| `running`                            | `in_progress` |
-| `suspended` for approval             | `in_progress` |
-| `suspended` for a resume reservation | `paused`      |
-| `paused`                             | `paused`      |
-| `completed`                          | `done`        |
-| `failed`                             | `failed`      |
-| `cancelled`                          | `cancelled`   |
+| Job status | Task status |
+| --- | --- |
+| `running` | `in_progress` |
+| `suspended` for approval | `in_progress` |
+| `suspended` for a resume reservation | `paused` |
+| `paused` | `paused` |
+| `completed` | `done` |
+| `failed` | `failed` |
+| `cancelled` | `cancelled` |
 
 Groups use this priority: `in_progress`, `paused`, `pending`, `failed`,
 `cancelled`, then `done`. Empty groups stay `pending`. A successful fallback

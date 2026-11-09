@@ -15,6 +15,7 @@ import type {
 } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -118,13 +119,13 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	}
 
 	const sources = ref<SkillSourceListItem[]>([]);
-	let latestSourcesRead = 0;
+	const { next: nextSourcesRead } = useLatestFetch();
 
 	/** The sources that the user can see. A newer read wins, as for skills. */
 	async function fetchSources() {
-		const read = ++latestSourcesRead;
+		const isLatest = nextSourcesRead();
 		const response = await api.listSkillSources(rootStore.restApiContext);
-		if (read !== latestSourcesRead) return undefined;
+		if (!isLatest()) return undefined;
 		sources.value = response;
 		return response;
 	}

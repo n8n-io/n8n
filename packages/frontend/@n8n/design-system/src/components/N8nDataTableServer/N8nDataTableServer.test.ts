@@ -5,7 +5,7 @@ import { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 import N8nDataTableServer, { type TableHeader } from './N8nDataTableServer.vue';
 import { createComponentRenderer } from '../../__tests__/render';
 
-const renderComponent = createComponentRenderer(N8nDataTableServer);
+const renderComponent = createComponentRenderer(N8nDataTableServer<Item>);
 
 const getRenderedOptions = async () => {
 	const dropdown = await waitFor(() => screen.getByRole('listbox'));
@@ -49,8 +49,7 @@ const headers: Array<TableHeader<Item>> = [
 
 describe('N8nDataTableServer', () => {
 	it('should render a table', () => {
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items, headers, itemsLength: items.length },
 		});
 
@@ -61,8 +60,7 @@ describe('N8nDataTableServer', () => {
 
 	it('should render dynamic slots', () => {
 		const slotName = 'item.id' as `item.${string}`;
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items, headers, itemsLength: items.length },
 			slots: {
 				[slotName]: ({ item }: { item: Item }) => {
@@ -79,10 +77,9 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('uses the server page count when a source exceeds the page size', async () => {
-		const { getByTestId, getByRole } = render(N8nDataTableServer, {
+		const { getByTestId, getByRole } = render(N8nDataTableServer<Item>, {
 			props: {
 				items: [],
-				//@ts-expect-error testing-library errors due to header generics
 				headers,
 				itemsLength: 100,
 				itemsPerPage: 10,
@@ -90,8 +87,8 @@ describe('N8nDataTableServer', () => {
 			},
 		});
 		expect(getByTestId('pagination')).toBeInTheDocument();
-		expect(getByRole('button', { name: 'Page 2', exact: true })).toBeInTheDocument();
-		expect(() => getByRole('button', { name: 'Page 10', exact: true })).toThrow();
+		expect(getByRole('button', { name: 'Page 2' })).toBeInTheDocument();
+		expect(() => getByRole('button', { name: 'Page 10' })).toThrow();
 	});
 
 	it('shows a group row before the first row of each group, with one cell per column', () => {
@@ -101,10 +98,9 @@ describe('N8nDataTableServer', () => {
 			{ id: '3', firstName: 'c', lastName: '' },
 			{ id: '4', firstName: 'd', lastName: 'y' },
 		];
-		const { container } = render(N8nDataTableServer, {
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: {
 				items: grouped,
-				//@ts-expect-error testing-library errors due to header generics
 				headers,
 				itemsLength: grouped.length,
 				// A row without a group gets no group row.
@@ -150,10 +146,9 @@ describe('N8nDataTableServer', () => {
 			{ id: '1', firstName: 'a', lastName: 'x' },
 			{ id: '2', firstName: 'b', lastName: 'y' },
 		];
-		const { container } = render(N8nDataTableServer, {
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: {
 				items: grouped,
-				//@ts-expect-error testing-library errors due to header generics
 				headers,
 				itemsLength: grouped.length,
 				groupBy: (row: Record<string, string>) => row.lastName,
@@ -170,10 +165,9 @@ describe('N8nDataTableServer', () => {
 
 	it('emits click:group with the group of the clicked group row, and applies its props', async () => {
 		const grouped: Item[] = [{ id: '1', firstName: 'a', lastName: 'x' }];
-		const { container, emitted } = render(N8nDataTableServer, {
+		const { container, emitted } = render(N8nDataTableServer<Item>, {
 			props: {
 				items: grouped,
-				//@ts-expect-error testing-library errors due to header generics
 				headers,
 				itemsLength: grouped.length,
 				groupBy: (row: Record<string, string>) => row.lastName,
@@ -198,10 +192,9 @@ describe('N8nDataTableServer', () => {
 			{ id: '1', firstName: 'a', lastName: '' },
 			{ id: '2', firstName: 'b', lastName: 'y' },
 		];
-		const { container } = render(N8nDataTableServer, {
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: {
 				items: grouped,
-				//@ts-expect-error testing-library errors due to header generics
 				headers,
 				itemsLength: grouped.length,
 				groupBy: (row: Record<string, string>) => row.lastName || undefined,
@@ -222,10 +215,9 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('shows the extra groups when the page has no rows', () => {
-		const { container } = render(N8nDataTableServer, {
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: {
 				items: [],
-				//@ts-expect-error testing-library errors due to header generics
 				headers,
 				itemsLength: 1,
 				groupBy: (row: Record<string, string>) => row.lastName,
@@ -237,8 +229,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should synchronize the state', async () => {
-		const { container, rerender } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container, rerender } = render(N8nDataTableServer<Item>, {
 			props: { items, headers, itemsLength: items.length },
 		});
 
@@ -318,8 +309,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should not show the pagination if there are no items', async () => {
-		const { queryByTestId } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { queryByTestId } = render(N8nDataTableServer<Item>, {
 			props: { items: [], headers, itemsLength: 0 },
 		});
 
@@ -327,8 +317,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should not show the pagination if there are less items than the smallest page size value', async () => {
-		const { queryByTestId } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { queryByTestId } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 3), headers, itemsLength: 3 },
 		});
 
@@ -337,8 +326,7 @@ describe('N8nDataTableServer', () => {
 
 	it('should sync external selection model changes into row checkboxes', async () => {
 		const selectionItems = items.slice(0, 3);
-		const { container, emitted, rerender } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container, emitted, rerender } = render(N8nDataTableServer<Item>, {
 			props: { items: selectionItems, headers, itemsLength: 3, showSelect: true, selection: [] },
 		});
 
@@ -359,8 +347,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should render one skeleton row per page size while the first page loads', () => {
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: [], headers, itemsLength: 100, loading: true, itemsPerPage: 25 },
 		});
 
@@ -368,10 +355,9 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should render a bounded skeleton while All is loading', () => {
-		const { container } = render(N8nDataTableServer, {
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: {
 				items: [],
-				//@ts-expect-error testing-library errors due to header generics
 				headers,
 				itemsLength: 100,
 				loading: true,
@@ -405,8 +391,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should pin the first column, and the selection column, when asked to', async () => {
-		const { container, rerender } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container, rerender } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 1 },
 		});
 
@@ -435,8 +420,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should pin the leading columns when given a count', () => {
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 2 },
 		});
 
@@ -454,8 +438,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should not pin any column by default', () => {
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2 },
 		});
 
@@ -463,8 +446,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should show the pinned edge only after the table has scrolled sideways', async () => {
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 1 },
 		});
 
@@ -496,8 +478,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should show the right-edge hint only while columns remain past that edge', async () => {
-		const { container } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2 },
 		});
 

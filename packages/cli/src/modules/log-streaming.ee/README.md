@@ -102,10 +102,10 @@ REST API endpoints:
 
 ```typescript
 {
-	id: string; // UUID
-	destination: JSON; // Serialized destination config
-	createdAt: DateTime;
-	updatedAt: DateTime;
+  id: string;              // UUID
+  destination: JSON;       // Serialized destination config
+  createdAt: DateTime;
+  updatedAt: DateTime;
 }
 ```
 
@@ -131,16 +131,16 @@ Add to `packages/workflow/src/Interfaces.ts`:
 
 ```typescript
 export enum MessageEventBusDestinationTypeNames {
-	// ... existing types
-	myNewType = 'myNewType',
+  // ... existing types
+  myNewType = 'myNewType',
 }
 
 export interface MessageEventBusDestinationMyNewTypeOptions
-	extends MessageEventBusDestinationOptions {
-	__type: MessageEventBusDestinationTypeNames.myNewType;
-	// Add your config properties
-	host: string;
-	apiKey?: string;
+  extends MessageEventBusDestinationOptions {
+  __type: MessageEventBusDestinationTypeNames.myNewType;
+  // Add your config properties
+  host: string;
+  apiKey?: string;
 }
 ```
 
@@ -154,42 +154,42 @@ import type { MessageWithCallback } from '@/eventbus/message-event-bus/message-e
 import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 
 export class MessageEventBusDestinationMyNewType extends MessageEventBusDestination {
-	host: string;
+  host: string;
 
-	constructor(eventBusInstance, options) {
-		super(eventBusInstance, options);
-		this.host = options.host;
-		this.__type = MessageEventBusDestinationTypeNames.myNewType;
-		// Initialize your client
-	}
+  constructor(eventBusInstance, options) {
+    super(eventBusInstance, options);
+    this.host = options.host;
+    this.__type = MessageEventBusDestinationTypeNames.myNewType;
+    // Initialize your client
+  }
 
-	async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
-		const { msg, confirmCallback } = emitterPayload;
+  async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
+    const { msg, confirmCallback } = emitterPayload;
 
-		try {
-			const payload = this.anonymizeAuditMessages ? msg.anonymize() : msg.payload;
+    try {
+      const payload = this.anonymizeAuditMessages ? msg.anonymize() : msg.payload;
 
-			// Send to your destination
-			// await this.client.send({ ... });
+      // Send to your destination
+      // await this.client.send({ ... });
 
-			confirmCallback(msg, { id: this.id, name: this.label });
-			return true;
-		} catch (error) {
-			this.logger.error(`Failed to send to ${this.label}`, { error });
-			throw error; // Triggers circuit breaker
-		}
-	}
+      confirmCallback(msg, { id: this.id, name: this.label });
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to send to ${this.label}`, { error });
+      throw error; // Triggers circuit breaker
+    }
+  }
 
-	serialize() {
-		return { ...super.serialize(), host: this.host };
-	}
+  serialize() {
+    return { ...super.serialize(), host: this.host };
+  }
 
-	static deserialize(eventBusInstance, data) {
-		if (data.__type === MessageEventBusDestinationTypeNames.myNewType) {
-			return new MessageEventBusDestinationMyNewType(eventBusInstance, data);
-		}
-		return null;
-	}
+  static deserialize(eventBusInstance, data) {
+    if (data.__type === MessageEventBusDestinationTypeNames.myNewType) {
+      return new MessageEventBusDestinationMyNewType(eventBusInstance, data);
+    }
+    return null;
+  }
 }
 ```
 
@@ -259,11 +259,11 @@ Subscribe to events using glob patterns:
 
 ```typescript
 subscribedEvents: [
-	'*', // All events
-	'n8n.workflow.*', // All workflow events
-	'n8n.workflow.failed', // Specific event
-	'n8n.audit.*', // All audit events
-];
+  '*',                    // All events
+  'n8n.workflow.*',       // All workflow events
+  'n8n.workflow.failed',  // Specific event
+  'n8n.audit.*',          // All audit events
+]
 ```
 
 Get available events: `GET /eventbus/eventnames`

@@ -66,86 +66,82 @@ Module.init()
 ## API Endpoint
 
 ### Detect Breaking Changes
-
 ```
 GET /breaking-changes/report?version=v2
 ```
 
 Returns:
-
 ```json
 {
-	"report": {
-		"generatedAt": "2025-10-17T00:00:00.000Z",
-		"targetVersion": "v2",
-		"currentVersion": "1.x.x",
-		"instanceResults": [
-			{
-				"ruleId": "process-env-access-v2",
-				"ruleTitle": "Process Environment Access Restrictions",
-				"ruleDescription": "Access to process.env is now restricted",
-				"ruleImpact": "executionsFail",
-				"instanceIssues": [
-					{
-						"title": "Environment access detected",
-						"description": "Workflows using process.env may be affected",
-						"level": "warning"
-					}
-				],
-				"recommendations": [
-					{
-						"action": "Review environment variable usage",
-						"description": "Update workflows to use secure environment variable access"
-					}
-				]
-			}
-		],
-		"workflowResults": [
-			{
-				"ruleId": "removed-nodes-v2",
-				"ruleTitle": "Removed Deprecated Nodes",
-				"ruleDescription": "Several deprecated nodes have been removed",
-				"ruleImpact": "executionsFail",
-				"affectedWorkflows": [
-					{
-						"id": "wf-001",
-						"name": "Customer Onboarding",
-						"active": true,
-						"numberOfExecutions": 142,
-						"lastUpdatedAt": "2025-10-15T10:30:00.000Z",
-						"lastExecutedAt": "2025-10-16T14:22:00.000Z",
-						"issues": [
-							{
-								"title": "Node 'n8n-nodes-base.spontit' with name 'Spontit' has been removed",
-								"description": "The node type 'n8n-nodes-base.spontit' is no longer available",
-								"level": "error",
-								"nodeId": "node-123",
-								"nodeName": "Spontit"
-							}
-						]
-					}
-				],
-				"recommendations": [
-					{
-						"action": "Update affected workflows",
-						"description": "Replace removed nodes with their updated versions or alternatives"
-					}
-				]
-			}
-		]
-	},
-	"shouldCache": false
+ "report": {
+  "generatedAt": "2025-10-17T00:00:00.000Z",
+  "targetVersion": "v2",
+  "currentVersion": "1.x.x",
+  "instanceResults": [
+   {
+    "ruleId": "process-env-access-v2",
+    "ruleTitle": "Process Environment Access Restrictions",
+    "ruleDescription": "Access to process.env is now restricted",
+    "ruleImpact": "executionsFail",
+    "instanceIssues": [
+     {
+      "title": "Environment access detected",
+      "description": "Workflows using process.env may be affected",
+      "level": "warning"
+     }
+    ],
+    "recommendations": [
+     {
+      "action": "Review environment variable usage",
+      "description": "Update workflows to use secure environment variable access"
+     }
+    ]
+   }
+  ],
+  "workflowResults": [
+   {
+    "ruleId": "removed-nodes-v2",
+    "ruleTitle": "Removed Deprecated Nodes",
+    "ruleDescription": "Several deprecated nodes have been removed",
+    "ruleImpact": "executionsFail",
+    "affectedWorkflows": [
+     {
+      "id": "wf-001",
+      "name": "Customer Onboarding",
+      "active": true,
+      "numberOfExecutions": 142,
+      "lastUpdatedAt": "2025-10-15T10:30:00.000Z",
+      "lastExecutedAt": "2025-10-16T14:22:00.000Z",
+      "issues": [
+       {
+        "title": "Node 'n8n-nodes-base.spontit' with name 'Spontit' has been removed",
+        "description": "The node type 'n8n-nodes-base.spontit' is no longer available",
+        "level": "error",
+        "nodeId": "node-123",
+        "nodeName": "Spontit"
+       }
+      ]
+     }
+    ],
+    "recommendations": [
+     {
+      "action": "Update affected workflows",
+      "description": "Replace removed nodes with their updated versions or alternatives"
+     }
+    ]
+   }
+  ]
+ },
+ "shouldCache": false
 }
 ```
 
 ### Set the Status of a Finding
-
 ```
 PATCH /breaking-changes/report/:ruleId/workflows/:workflowId
 ```
 
 Body:
-
 ```json
 { "status": "wont_fix" }
 ```
@@ -164,13 +160,11 @@ Sets the status of the finding of one workflow rule on one workflow. A user can 
 - The route returns 404 when the finding does not exist or is in a status that only the scan sets, for example `fixed`. This is also true when a sync marks the finding `fixed` during the request.
 
 ### Notify the Owners of Findings
-
 ```
 POST /breaking-changes/report/:ruleId/workflows/notify
 ```
 
 Body:
-
 ```json
 { "workflowIds": ["wf-1", "wf-2"] }
 ```
@@ -178,11 +172,10 @@ Body:
 Emails the owner of each listed workflow about the rule's finding on it. One email per owner lists all of their workflows. A finding is marked `notified` and gets a `notifiedAt` only when the email went out, so a repeated call is a reminder that bumps `notifiedAt`. A `fixed_unpublished` finding is included in the email, but it keeps its status and gets no `notifiedAt`. The route needs the `breakingChanges:migrate` scope.
 
 Response:
-
 ```json
 {
-	"notifiedWorkflowIds": ["wf-1"],
-	"skipped": [{ "workflowId": "wf-2", "reason": "no_owner" }]
+ "notifiedWorkflowIds": ["wf-1"],
+ "skipped": [{ "workflowId": "wf-2", "reason": "no_owner" }]
 }
 ```
 
@@ -196,13 +189,13 @@ Response:
 
 Each rule states what happens if the user does not fix it before the update. Set `impact` in `getMetadata()` to one of these values:
 
-| Impact                | Meaning                                                                                                                                      | Example                                                                         |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `upgradeBlocked`      | The instance does not start, or the update cannot proceed.                                                                                   | A removed storage or deployment mode that the new version refuses to boot with. |
-| `executionsFail`      | Affected executions error.                                                                                                                   | A removed node or expression helper.                                            |
-| `executionsMightFail` | A default changes. Affected executions can error, depending on the workload, and the admin can keep the current value through configuration. | A lowered default limit or timeout.                                             |
-| `behaviorChanges`     | Executions keep running, but the result changes.                                                                                             | A changed default that gives a different result, or fixed semantics.            |
-| `capabilityRemoved`   | No runtime impact. A removed capability is no longer available.                                                                              | A removed UI option or CLI flag.                                                |
+| Impact | Meaning | Example |
+| --- | --- | --- |
+| `upgradeBlocked` | The instance does not start, or the update cannot proceed. | A removed storage or deployment mode that the new version refuses to boot with. |
+| `executionsFail` | Affected executions error. | A removed node or expression helper. |
+| `executionsMightFail` | A default changes. Affected executions can error, depending on the workload, and the admin can keep the current value through configuration. | A lowered default limit or timeout. |
+| `behaviorChanges` | Executions keep running, but the result changes. | A changed default that gives a different result, or fixed semantics. |
+| `capabilityRemoved` | No runtime impact. A removed capability is no longer available. | A removed UI option or CLI flag. |
 
 A changed default whose runs keep going with a different result is `behaviorChanges`. A changed default that can make runs error is `executionsMightFail`.
 
@@ -262,59 +255,59 @@ import type { INode } from 'n8n-workflow';
 
 import { BreakingChangeRule } from '@n8n/decorators';
 import type {
-	BreakingChangeRuleMetadata,
-	IBreakingChangeWorkflowRule,
-	WorkflowDetectionReport,
+  BreakingChangeRuleMetadata,
+  IBreakingChangeWorkflowRule,
+  WorkflowDetectionReport,
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
 @BreakingChangeRule({ version: 'v2' })
 export class MyWorkflowRule implements IBreakingChangeWorkflowRule {
-	id: string = 'my-workflow-rule-v2';
+  id: string = 'my-workflow-rule-v2';
 
-	getMetadata(): BreakingChangeRuleMetadata {
-		return {
-			version: 'v2',
-			title: 'My Workflow Breaking Change',
-			description: 'Description of what changed in workflows',
-			category: BreakingChangeCategory.workflow,
-			impact: 'executionsFail',
-			documentationUrl: 'https://docs.n8n.io/migration/v2/...',
-		};
-	}
+  getMetadata(): BreakingChangeRuleMetadata {
+    return {
+      version: 'v2',
+      title: 'My Workflow Breaking Change',
+      description: 'Description of what changed in workflows',
+      category: BreakingChangeCategory.workflow,
+      impact: 'executionsFail',
+      documentationUrl: 'https://docs.n8n.io/migration/v2/...',
+    };
+  }
 
-	async getRecommendations(
-		_workflowResults: BreakingChangeAffectedWorkflow[],
-	): Promise<BreakingChangeRecommendation[]> {
-		return [
-			{
-				action: 'Update affected workflows',
-				description: 'Replace or update the affected nodes',
-			},
-		];
-	}
+  async getRecommendations(
+    _workflowResults: BreakingChangeAffectedWorkflow[],
+  ): Promise<BreakingChangeRecommendation[]> {
+    return [
+      {
+        action: 'Update affected workflows',
+        description: 'Replace or update the affected nodes',
+      },
+    ];
+  }
 
-	async detectWorkflow(
-		_workflow: WorkflowEntity,
-		nodesGroupedByType: Map<string, INode[]>,
-	): Promise<WorkflowDetectionReport> {
-		const affectedNodes = nodesGroupedByType.get('n8n-nodes-base.someNode') ?? [];
+  async detectWorkflow(
+    _workflow: WorkflowEntity,
+    nodesGroupedByType: Map<string, INode[]>,
+  ): Promise<WorkflowDetectionReport> {
+    const affectedNodes = nodesGroupedByType.get('n8n-nodes-base.someNode') ?? [];
 
-		if (affectedNodes.length === 0) {
-			return { isAffected: false, issues: [] };
-		}
+    if (affectedNodes.length === 0) {
+      return { isAffected: false, issues: [] };
+    }
 
-		return {
-			isAffected: true,
-			issues: affectedNodes.map((node) => ({
-				title: `Node '${node.type}' with name '${node.name}' is affected`,
-				description: 'This node requires updates for v2 compatibility',
-				level: 'warning',
-				nodeId: node.id,
-				nodeName: node.name,
-			})),
-		};
-	}
+    return {
+      isAffected: true,
+      issues: affectedNodes.map((node) => ({
+        title: `Node '${node.type}' with name '${node.name}' is affected`,
+        description: 'This node requires updates for v2 compatibility',
+        level: 'warning',
+        nodeId: node.id,
+        nodeName: node.name,
+      })),
+    };
+  }
 }
 ```
 
@@ -325,56 +318,55 @@ Create `rules/v2/my-instance-rule.rule.ts`:
 ```typescript
 import { BreakingChangeRule } from '@n8n/decorators';
 import type {
-	BreakingChangeRuleMetadata,
-	IBreakingChangeInstanceRule,
-	InstanceDetectionReport,
+  BreakingChangeRuleMetadata,
+  IBreakingChangeInstanceRule,
+  InstanceDetectionReport,
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
 @BreakingChangeRule({ version: 'v2' })
 export class MyInstanceRule implements IBreakingChangeInstanceRule {
-	id: string = 'my-instance-rule-v2';
+  id: string = 'my-instance-rule-v2';
 
-	getMetadata(): BreakingChangeRuleMetadata {
-		return {
-			version: 'v2',
-			title: 'My Instance Breaking Change',
-			description: 'Description of what changed at instance level',
-			category: BreakingChangeCategory.instance,
-			impact: 'behaviorChanges',
-			documentationUrl: 'https://docs.n8n.io/migration/v2/...',
-		};
-	}
+  getMetadata(): BreakingChangeRuleMetadata {
+    return {
+      version: 'v2',
+      title: 'My Instance Breaking Change',
+      description: 'Description of what changed at instance level',
+      category: BreakingChangeCategory.instance,
+      impact: 'behaviorChanges',
+      documentationUrl: 'https://docs.n8n.io/migration/v2/...',
+    };
+  }
 
-	async detect(): Promise<InstanceDetectionReport> {
-		const hasIssue = false; // Your detection logic here
+  async detect(): Promise<InstanceDetectionReport> {
+    const hasIssue = false; // Your detection logic here
 
-		if (!hasIssue) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
-		}
+    if (!hasIssue) {
+      return { isAffected: false, instanceIssues: [], recommendations: [] };
+    }
 
-		return {
-			isAffected: true,
-			instanceIssues: [
-				{
-					title: 'Configuration issue detected',
-					description: 'Description of the issue',
-					level: 'warning',
-				},
-			],
-			recommendations: [
-				{
-					action: 'Fix the configuration',
-					description: 'Steps to resolve the issue',
-				},
-			],
-		};
-	}
+    return {
+      isAffected: true,
+      instanceIssues: [
+        {
+          title: 'Configuration issue detected',
+          description: 'Description of the issue',
+          level: 'warning',
+        },
+      ],
+      recommendations: [
+        {
+          action: 'Fix the configuration',
+          description: 'Steps to resolve the issue',
+        },
+      ],
+    };
+  }
 }
 ```
 
 The rule will be automatically:
-
 - Registered in `BreakingChangeRuleMetadata` by the `@BreakingChangeRule` decorator
 - Instantiated via DI and added to `RuleRegistry` when the service starts
 - Available for detection when calling the API with the matching version
@@ -384,7 +376,6 @@ The rule will be automatically:
 To add breaking changes for a new version (e.g., v3):
 
 1. Create the version directory:
-
    ```bash
    mkdir -p packages/cli/src/modules/breaking-changes/rules/v3
    ```

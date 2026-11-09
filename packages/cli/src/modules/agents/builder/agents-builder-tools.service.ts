@@ -1088,10 +1088,7 @@ export class AgentsBuilderToolsService {
 				async ({
 					operations,
 					baseConfigHash,
-				}: {
-					operations: unknown;
-					baseConfigHash: string | null;
-				}) =>
+				}: { operations: unknown; baseConfigHash: string | null }) =>
 					await this.patchBuilderConfig(
 						agentId,
 						projectId,

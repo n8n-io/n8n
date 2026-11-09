@@ -1130,6 +1130,7 @@ describe('SettingsSkillsView', () => {
 				projectId: null,
 				projectName: null,
 				projectType: null,
+				projectIcon: null,
 				skillCount: 1,
 				updatesAvailable: 0,
 				updatesBlocked: 0,
@@ -1204,6 +1205,19 @@ describe('SettingsSkillsView', () => {
 					expect(view.getByTestId('skill-group-toggle')).toHaveAttribute('aria-expanded', 'true'),
 				);
 				expect(localStorage.getItem('n8n-skills-collapsed-sources:alice')).toBe('["src-1"]');
+			});
+
+			it('keeps the loaded fold state when another tab changes the saved preference', async () => {
+				const view = await renderWithSource();
+				window.dispatchEvent(
+					new StorageEvent('storage', {
+						key: 'n8n-skills-collapsed-sources:anonymous',
+						newValue: '["src-1"]',
+						storageArea: localStorage,
+					}),
+				);
+				await new Promise(process.nextTick);
+				expect(view.getByTestId('skill-group-toggle')).toHaveAttribute('aria-expanded', 'true');
 			});
 
 			it('asks for the plain list with Skill Sync off', async () => {
@@ -1303,7 +1317,7 @@ describe('SettingsSkillsView', () => {
 					message: '1 skill has an update.',
 				},
 			])(
-				'checks a source for updates ($updatesFound, throttled $throttled) and reloads both lists',
+				'checks a source for updates ($updatesFound, throttled $throttled) and refreshes the source row',
 				async ({ updatesFound, throttled, title, message }) => {
 					skillsStore.checkSource.mockResolvedValue({
 						label: 'acme/skills',
@@ -1314,7 +1328,8 @@ describe('SettingsSkillsView', () => {
 					const view = await renderWithSource();
 
 					await clickCheck(view);
-					await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+					await waitFor(() => expect(skillsStore.fetchSources).toHaveBeenCalled());
+					expect(skillsStore.fetchSkills).not.toHaveBeenCalled();
 
 					expect(skillsStore.checkSource).toHaveBeenCalledWith('src-1');
 					expect(skillsStore.fetchSources).toHaveBeenCalled();

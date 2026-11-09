@@ -67,6 +67,8 @@ describe('Sources in the skills table', () => {
 		viewer = server.authAgentFor(viewerUser);
 		outsider = server.authAgentFor(await createMember());
 		team = await createTeamProject('Marketing');
+		team.icon = { type: 'emoji', value: '🚀' };
+		await db().save(team);
 		await linkUserToProject(memberUser, team, 'project:editor');
 		await linkUserToProject(viewerUser, team, 'project:viewer');
 	});
@@ -130,6 +132,7 @@ describe('Sources in the skills table', () => {
 					projectId: team.id,
 					projectName: 'Marketing',
 					projectType: 'team',
+					projectIcon: { type: 'emoji', value: '🚀' },
 					skillCount: 3,
 					updatesAvailable: 1,
 					updatesBlocked: 0,
@@ -185,6 +188,7 @@ describe('Sources in the skills table', () => {
 		it('answers 404 for grouped lists with Skill Sync off and keeps the plain list available', async () => {
 			postHog.getFeatureFlags.mockResolvedValue({});
 			await editor.get('/skills').query({ groupBy: 'source' }).expect(404);
+			await outsider.get('/skills').query({ groupBy: 'source', projectId: team.id }).expect(404);
 			await editor.get('/skills').expect(200);
 		});
 

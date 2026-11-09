@@ -24,15 +24,17 @@ We should improve on this in the future.
 [Video Demo](https://www.loom.com/share/8615d3d8380f4e26901e1628785ad90f)
 
 - create a github repo
-  - copy the ssh repository url
+	- copy the ssh repository url
 - In n8n
-  - go to settings/Environments
-  - paste the ssh repository url
-  - copy the ssh
+	- go to settings/Environments
+	- paste the ssh repository url
+	- copy the ssh
 - Back in github
-  - go to Settings/Deploy Keys
-  - Click Add deploy key
-  - Pate the ssh
-  - **important** Tick "Allow write access"
+	- go to Settings/Deploy Keys
+	- Click Add deploy key
+	- Pate the ssh
+	- **important** Tick "Allow write access"
 - Back in n8n
-  - Click Connect
+	- Click Connect
+
+

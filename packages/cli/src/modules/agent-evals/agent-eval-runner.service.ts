@@ -826,10 +826,9 @@ function toSummaryCounts(counts: {
 }
 
 /** The execution result reports token counts optionally; default missing to 0. */
-function normalizeUsage(usage?: {
-	inputTokens?: number;
-	outputTokens?: number;
-}): CaseUsage | undefined {
+function normalizeUsage(usage?: { inputTokens?: number; outputTokens?: number }):
+	| CaseUsage
+	| undefined {
 	if (!usage) return undefined;
 	return { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 };
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
-import type { SkillListItem, SkillSourceListItem } from '@n8n/api-types';
+import type { SkillListCollapsedSource, SkillListItem, SkillSourceListItem } from '@n8n/api-types';
 import {
 	N8nActionToggle,
 	N8nBadge,
@@ -45,17 +45,12 @@ const props = defineProps<{
 	/** The table renders its cover row whenever the slot exists, so the slot is withheld. */
 	showEmpty?: boolean;
 	showMcpAvailability?: boolean;
-	/**
-	 * The connected sources the user can see. When set, each source heads its synced skills as
-	 * a group row, and the rows must arrive grouped, as `groupBy: 'source'` lists them.
-	 */
+	/** Enables source rows. Skills must arrive grouped by source. */
 	sources?: SkillSourceListItem[];
-	/** Sources with no synced skills, shown as rows of their own before the other rows. */
-	emptySources?: SkillSourceListItem[];
 	/** The sources that the user folded. */
 	collapsedSourceIds?: string[];
-	/** Where each folded source sits on the page, as the server placed it. */
-	collapsedSources?: Array<{ sourceId: string; index: number }>;
+	/** Where each folded or empty source sits on the page. */
+	collapsedSources?: SkillListCollapsedSource[];
 	/** The sources with a check that runs, so their rows show progress. */
 	checkingSourceIds?: string[];
 }>();
@@ -131,31 +126,27 @@ function onAction(skill: SkillListItem, action: SkillAction) {
 }
 
 const sourcesById = computed(
-	() =>
-		new Map(
-			[...(props.sources ?? []), ...(props.emptySources ?? [])].map((source) => [
-				source.id,
-				source,
-			]),
-		),
+	() => new Map((props.sources ?? []).map((source) => [source.id, source])),
 );
 
 const collapsed = computed(() => new Set(props.collapsedSourceIds ?? []));
 
-const emptySourceIds = computed(() => new Set((props.emptySources ?? []).map(({ id }) => id)));
+const emptySourceIds = computed(
+	() =>
+		new Set(
+			(props.collapsedSources ?? [])
+				.filter(({ skillCount }) => skillCount === 0)
+				.map(({ sourceId }) => sourceId),
+		),
+);
 
-/** The group of a row: its source. A skill that no source syncs has no group row. */
 function groupOf(skill: SkillListItem): string | undefined {
 	return skill.sourceId ?? undefined;
 }
 
-/** Empty sources come first. Folded sources sit where the server put them. */
-const extraGroups = computed(() => [
-	...(props.emptySources ?? [])
-		.filter(({ id }) => !props.collapsedSources?.some(({ sourceId }) => sourceId === id))
-		.map(({ id }) => ({ group: id, index: 0 })),
-	...(props.collapsedSources ?? []).map(({ sourceId, index }) => ({ group: sourceId, index })),
-]);
+const extraGroups = computed(() =>
+	(props.collapsedSources ?? []).map(({ sourceId, index }) => ({ group: sourceId, index })),
+);
 
 /** A source with no synced skills has nothing to fold. */
 function canFold(sourceId: string): boolean {
@@ -174,14 +165,12 @@ function sourceName(sourceId: string): string {
 	return [source.label, source.ref].filter(Boolean).join(' · ');
 }
 
-/** The scope badge reads the fields of a skill. A source is never one agent's. */
 function scopeOf(source: SkillSourceListItem) {
 	return {
 		scope: source.projectId ? ('project' as const) : ('instance' as const),
 		projectId: source.projectId,
 		projectName: source.projectName,
 		projectType: source.projectType,
-		agentName: null,
 	};
 }
 
@@ -212,7 +201,6 @@ function onSourceAction(source: SkillSourceListItem, action: SourceAction) {
 	else window.open(source.webUrl, '_blank', 'noopener,noreferrer');
 }
 
-/** A synced skill sits under the group row of its source, so its name is indented. */
 function isNested(skill: SkillListItem): boolean {
 	return !!props.sources && !!skill.sourceId;
 }
@@ -341,7 +329,11 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			</template>
 
 			<template #[`group.scope`]="{ group }">
-				<SkillScopeBadge v-if="sourcesById.get(group)" :skill="scopeOf(sourcesById.get(group)!)" />
+				<SkillScopeBadge
+					v-if="sourcesById.get(group)"
+					:skill="scopeOf(sourcesById.get(group)!)"
+					:project-icon="sourcesById.get(group)!.projectIcon"
+				/>
 			</template>
 
 			<!-- The update count and the progress sit in the empty cell of the source row, left of its menu. -->

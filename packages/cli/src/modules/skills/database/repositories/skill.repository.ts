@@ -156,11 +156,7 @@ export class SkillRepository {
 		return skills;
 	}
 
-	/**
-	 * How many visible skills match the filter in each source group, in table order: each
-	 * source by repository, then the skills that no source syncs (`sourceId` null). A group
-	 * with no match is left out.
-	 */
+	/** Matching group sizes in table order. Local skills have `sourceId` null and come last. */
 	async findSourceGroupSizes(
 		visibility: SkillVisibility,
 		filter: SkillMatchFilter,
@@ -575,18 +571,21 @@ export class SkillRepository {
 	async findProjects(
 		projectIds: string[],
 		ctx: OperationContext = {},
-	): Promise<Map<string, Pick<Project, 'name' | 'type'>>> {
+	): Promise<Map<string, Pick<Project, 'name' | 'type' | 'icon'>>> {
 		const manager = this.table.managerFor(ctx);
 		const projects = await inChunks(
 			projectIds,
 			async (chunk) =>
 				await manager.find(Project, {
 					where: { id: In(chunk) },
-					select: ['id', 'name', 'type'],
+					select: ['id', 'name', 'type', 'icon'],
 				}),
 		);
 		return new Map(
-			projects.map((project) => [project.id, { name: project.name, type: project.type }]),
+			projects.map((project) => [
+				project.id,
+				{ name: project.name, type: project.type, icon: project.icon },
+			]),
 		);
 	}
 

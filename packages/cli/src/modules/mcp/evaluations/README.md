@@ -25,6 +25,7 @@ The rest of this guide covers the two-phase flow:
 2. Generate an MCP-built workflow cohort with `eval:build-mcp-manifest`.
 3. Evaluate that manifest with `eval:instance-ai --prebuilt-workflows`.
 
+
 ```text
 +-------------------------+       writes        +--------------------------+       reads       +------------------------+
 | eval:build-mcp-manifest | ------------------> | output-dir/manifest.json | ----------------> | eval:instance-ai       |
@@ -188,11 +189,11 @@ iteration can use a different prebuilt workflow. The concurrency flags affect
 speed and load, not confidence, but keeping them aligned makes the recipes easy
 to copy.
 
-| Recipe            | Build flags | Eval flags                       | Use                     |
-| ----------------- | ----------- | -------------------------------- | ----------------------- |
-| Quick eval        | `-n 1 -j 1` | `--iterations 1 --concurrency 1` | Fast smoke test         |
-| Medium confidence | `-n 3 -j 3` | `--iterations 3 --concurrency 3` | Local comparison run    |
-| Best confidence   | `-n 5 -j 5` | `--iterations 5 --concurrency 5` | Higher-confidence batch |
+| Recipe | Build flags | Eval flags | Use |
+|--------|-------------|------------|-----|
+| Quick eval | `-n 1 -j 1` | `--iterations 1 --concurrency 1` | Fast smoke test |
+| Medium confidence | `-n 3 -j 3` | `--iterations 3 --concurrency 3` | Local comparison run |
+| Best confidence | `-n 5 -j 5` | `--iterations 5 --concurrency 5` | Higher-confidence batch |
 
 ## Run the `mcp` tier
 
