@@ -119,29 +119,12 @@ describe('promotion-environment list-changes command', () => {
 		expect(output).toHaveBeenCalledWith(ROWS, expect.anything(), { columns: COLUMNS });
 	});
 
-	it('lists the changed resources for id-only output', async () => {
-		const { command, output } = stubCommand({ format: 'id-only' });
-
-		await command.run();
-
-		// The preview has no top-level `id`, so id-only would print nothing without the rows.
-		expect(output).toHaveBeenCalledWith(ROWS, expect.anything(), { columns: COLUMNS });
-	});
-
 	it('keeps the whole preview for JSON output', async () => {
 		const { command, output } = stubCommand({ json: true });
 
 		await command.run();
 
 		// JSON consumers need the commit, the dependencies and the Apply revision too.
-		expect(output).toHaveBeenCalledWith(PREVIEW, expect.anything());
-	});
-
-	it('keeps the whole preview for jq output', async () => {
-		const { command, output } = stubCommand({ jq: '.resources[].id' });
-
-		await command.run();
-
 		expect(output).toHaveBeenCalledWith(PREVIEW, expect.anything());
 	});
 

@@ -27,6 +27,7 @@ import { PromotionsGitService } from '@/modules/promotions.ee/promotions-git.ser
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
 import {
 	createAdminWithApiKey,
+	createMember,
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
 } from '@test-integration/db/users';
@@ -2296,7 +2297,7 @@ describe('Promotions in Public API', () => {
 	});
 
 	describe('change preview', () => {
-		it('checks the scope of the requested direction', async () => {
+		it('checks the scope of the requested direction, for the preview and its details', async () => {
 			const preview = {
 				commitSha: 'a'.repeat(40),
 				source: { environmentId: 'env1', branchName: 'main' },
@@ -2325,6 +2326,14 @@ describe('Promotions in Public API', () => {
 
 				expect((await pushOnly.get('/promotions/projects/proj1/changes/apply')).status).toBe(403);
 				expect((await pullOnly.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
+				// A key for one direction cannot read the content of the other direction either.
+				const details = await pushOnly
+					.post('/promotions/projects/proj1/changes/apply/details')
+					.send({ commitSha: null, keys: ['workflow:wf1'] });
+				expect(details.status).toBe(403);
+				// The UI session of a member has no promotion scope, so it sees no preview.
+				const member = testServer.publicApiAgentWithCookie(await createMember());
+				expect((await member.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
 
 				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply');
 				expect(apply.status, JSON.stringify(apply.body)).toBe(200);
