@@ -8,9 +8,9 @@ import {
 	PostHogClient,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { Person, PublicUser } from '@n8n/db';
+import type { AuthIdentity, Person, PublicUser } from '@n8n/db';
 import {
-	AuthIdentity,
+	TransactionRunner,
 	Project,
 	ProjectRelation,
 	User,
@@ -35,7 +35,6 @@ import {
 	type AssignableGlobalRole,
 } from '@n8n/permissions';
 import type { IUserSettings } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
 import { OwnershipService } from './ownership.service';
@@ -43,7 +42,13 @@ import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+	UserError,
+} from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
@@ -88,6 +93,7 @@ export class UserService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly personRepository: PersonRepository,
 		private readonly scimSwitchReader: ScimSwitchReader,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	/** Updates the profile or password of a person. A service account id is a no-op. */
@@ -687,15 +693,16 @@ export class UserService {
 			await ownershipTransferService.deleteModuleOwnedResources([personalProjectToDelete.id]);
 		}
 
-		// Private module resources (e.g. system agent sessions) belong to the
-		// user, not to a project. Delete them also on transfer, and before the
-		// delete transaction, which sets their owner column to null.
+		// Clean up user-owned module data before account deletion, including on transfer.
 		await ownershipTransferService.deleteUserOwnedModuleResources([userToDelete.id]);
 
-		await this.getManager().transaction(async (trx) => {
-			await trx.delete(AuthIdentity, { userId: userToDelete.id });
-			await trx.delete(Project, { id: personalProjectToDelete.id });
-			await trx.delete(User, { id: userToDelete.id });
+		await this.txRunner.run({}, async (ctx) => {
+			await ownershipTransferService.finalizeUserDeletion(
+				userToDelete.id,
+				personalProjectToDelete.id,
+				ctx,
+			);
+			await this.userRepository.deleteAccount(userToDelete.id, personalProjectToDelete.id, ctx);
 		});
 
 		this.eventService.emit('user-deleted', {

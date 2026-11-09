@@ -15,6 +15,7 @@ import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 import type { Telemetry } from '@/telemetry';
 
 import { runInBuilderTelemetrySession } from '../builder/builder-telemetry-session';
@@ -104,7 +105,7 @@ function makeTaskSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTask
 	} as AgentTaskSnapshot;
 }
 
-function makeService() {
+function makeService({ isKnowledgeActive = true } = {}) {
 	const agentRepository = mock<AgentRepository>();
 	const agentHistoryRepository = mock<AgentHistoryRepository>();
 	const publishHistory = mock<AgentPublishHistoryRepository>();
@@ -155,8 +156,9 @@ function makeService() {
 	Container.set(AgentTaskService, taskService);
 
 	const skillRefs = createAgentSkillRefsService();
+	const logger = mockLogger();
 	const service = new AgentPublishService(
-		mockLogger(),
+		logger,
 		agentRepository,
 		agentHistoryRepository,
 		runtimeCacheService,
@@ -189,11 +191,13 @@ function makeService() {
 		skillRefs,
 		agentFileRepository,
 		publishHistory,
+		makeKnowledgeAvailabilityService({ isKnowledgeActive }),
 	);
 
 	return {
 		publishHistory,
 		service,
+		logger,
 		agentFileRepository,
 		skillRefs,
 		agentPolicyService,
@@ -951,6 +955,27 @@ describe('AgentPublishService', () => {
 			);
 		},
 	);
+
+	it('publishes and sends the event without knowledge totals when the knowledge module is inactive', async () => {
+		const { service, agentRepository, agentFileRepository, telemetry, logger } = makeService({
+			isKnowledgeActive: false,
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+		await service.publishAgent(agentId, projectId, user, byUser);
+
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalled();
+		expect(agentFileRepository.getKnowledgeTotals).not.toHaveBeenCalled();
+		expect(logger.warn).not.toHaveBeenCalled();
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT,
+			expect.not.objectContaining({ knowledge_file_count: expect.anything() }),
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT,
+			expect.not.objectContaining({ knowledge_total_bytes: expect.anything() }),
+		);
+	});
 
 	it('publishes and sends the event without knowledge totals when the totals read fails', async () => {
 		const { service, agentRepository, agentFileRepository, telemetry } = makeService();

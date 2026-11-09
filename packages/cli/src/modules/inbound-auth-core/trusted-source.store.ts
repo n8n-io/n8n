@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UserError } from '@n8n/errors';
 import {
 	migrateToLatest,
 	trustedSourceConfigSchemaFor,
@@ -15,7 +15,7 @@ import {
 } from '@n8n/inbound-auth';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import type { TrustedSourceEntity } from './database/entities/trusted-source.entity';

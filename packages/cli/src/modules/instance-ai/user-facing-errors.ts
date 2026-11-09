@@ -1,7 +1,7 @@
 import { formatAttachmentSizeLimit } from '@n8n/api-types';
 import { isQuotaExhaustedError } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import { isStreamTransportError } from './stream-transport-error';
 

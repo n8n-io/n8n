@@ -132,6 +132,15 @@ describe('InstanceAiConfirmRequestDto', () => {
 						visibility: 'project',
 						description: 'Plan weekly tasks.',
 						theme: 'both',
+						bindings: [
+							{
+								kind: 'workflow',
+								name: 'Weekly summary',
+								description: 'Creates a summary for the app.',
+								status: 'existing',
+								resourceId: 'workflow-1',
+							},
+						],
 						additionalInstructions: 'Use compact cards.',
 					},
 				},

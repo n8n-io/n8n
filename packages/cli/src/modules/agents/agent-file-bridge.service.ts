@@ -10,7 +10,8 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
 import { extension } from 'mime-types';
 import { BinaryDataService } from 'n8n-core';
-import { deepCopy, UserError } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { IBinaryData, IBinaryKeyData, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -26,6 +27,8 @@ export const FILES_INPUT_SCHEMA = z
 	);
 
 export interface AgentFileScope {
+	/** Keep the memory scope when the session is removed during a tool call. */
+	resourceId: string;
 	/** Null for inline agents, which have no `agents` row. */
 	agentId: string | null;
 	projectId: string;

@@ -32,6 +32,20 @@ export class AgentChatAttachmentRepository {
 		this.table = new AgentChatAttachmentTable(dataSource, transactionRunner);
 	}
 
+	async findProjectDeletionBatch(
+		projectId: string,
+		limit: number,
+		ctx: OperationContext,
+	): Promise<Array<Pick<AgentChatAttachment, 'id' | 'binaryDataId'>>> {
+		return await this.table.managerFor(ctx).find(AgentChatAttachment, {
+			where: { projectId },
+			// The project/thread index orders batches. Deleted rows need no pagination offset.
+			order: { threadId: 'ASC' },
+			select: ['id', 'binaryDataId'],
+			take: limit,
+		});
+	}
+
 	async saveInboundAttachment(
 		params: InboundAttachment,
 		ctx: OperationContext,

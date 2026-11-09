@@ -16,11 +16,8 @@ import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
-import {
-	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
-	OperationalError,
-} from 'n8n-workflow';
+import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { buildDateAnchors } from './date-anchors';
