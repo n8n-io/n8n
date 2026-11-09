@@ -246,6 +246,22 @@ export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
 }
 
+/**
+ * Whether the model calls Anthropic's own API. A pre-built model hides its base
+ * URL, and n8n builds one only for a proxy, so it counts as not official.
+ */
+export function usesOfficialAnthropicApi(model: ModelConfig): boolean {
+	if (typeof model === 'string') return true;
+	if (!('id' in model)) return false;
+	const baseURL = 'baseURL' in model && typeof model.baseURL === 'string' ? model.baseURL : '';
+	if (!baseURL) return true;
+	try {
+		return new URL(baseURL).origin === 'https://api.anthropic.com';
+	} catch {
+		return false;
+	}
+}
+
 /** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
 export function supportsSplitSystemMessages(model: ModelConfig): boolean {
 	const modelId = getModelIdString(model);

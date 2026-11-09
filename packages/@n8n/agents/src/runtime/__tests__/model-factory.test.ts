@@ -1,3 +1,4 @@
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleVertex } from '@ai-sdk/google-vertex';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { LanguageModel } from 'ai';
@@ -7,6 +8,7 @@ import {
 	createEmbeddingModel,
 	createModel,
 	supportsSplitSystemMessages,
+	usesOfficialAnthropicApi,
 } from '../model/model-factory';
 import { forgetEndpointApiStyles } from '../model/openai-api-style';
 
@@ -1401,6 +1403,32 @@ describe('supportsSplitSystemMessages', () => {
 		['azure-openai/my-chat', false],
 	] as const)('checks split system messages for %s', (model, expected) => {
 		expect(supportsSplitSystemMessages(model)).toBe(expected);
+	});
+});
+
+describe('usesOfficialAnthropicApi', () => {
+	it.each([
+		['a model id string', 'anthropic/claude-sonnet-5', true],
+		['a config with no base URL', { id: 'anthropic/claude-sonnet-5', apiKey: 'k' }, true],
+		[
+			'a config with the Anthropic base URL',
+			{ id: 'anthropic/claude-sonnet-5', apiKey: 'k', baseURL: 'https://api.anthropic.com' },
+			true,
+		],
+		[
+			'a config with a custom base URL',
+			{ id: 'anthropic/claude-sonnet-5', apiKey: 'k', baseURL: 'https://gateway.example.com/v1' },
+			false,
+		],
+		[
+			'a pre-built model',
+			createAnthropic({ apiKey: 'k', baseURL: 'https://proxy.example.com/anthropic/v1' })(
+				'claude-haiku-5-5',
+			),
+			false,
+		],
+	] as const)('returns the expected value for %s', (_name, model, expected) => {
+		expect(usesOfficialAnthropicApi(model)).toBe(expected);
 	});
 });
 
