@@ -15,8 +15,7 @@ import {
 } from '@n8n/backend-module-apps';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { UserError } from 'n8n-workflow';
+import { BadRequestError, NotFoundError, UserError } from '@n8n/errors';
 
 import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
 import { userHasScopes } from '@/permissions.ee/check-access';

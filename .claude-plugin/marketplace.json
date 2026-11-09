@@ -6,7 +6,7 @@
 	"plugins": [
 		{
 			"name": "n8n",
-			"source": "./"
+			"source": "./.claude/plugins/n8n"
 		}
 	]
 }

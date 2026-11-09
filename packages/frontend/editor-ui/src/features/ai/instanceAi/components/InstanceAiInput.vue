@@ -687,6 +687,9 @@ watch(
 		const consumed = instanceAiStore.consumePendingAttachments();
 		for (const attachment of consumed) {
 			if (attachment.type === 'file') continue;
+			if (attachment.type === 'element') {
+				attachedResources.value = attachedResources.value.filter((a) => a.type !== 'element');
+			}
 			if (attachment.type === 'nodes') {
 				const existing = attachedResources.value.find(
 					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
@@ -703,6 +706,17 @@ watch(
 	},
 	{ deep: true, immediate: true },
 );
+
+watch(
+	() => {
+		const element = attachedResources.value.find((a) => a.type === 'element');
+		return element?.type === 'element' ? element.appId : null;
+	},
+	(appId) => instanceAiStore.setComposerElementAppId(appId),
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => instanceAiStore.setComposerElementAppId(null));
 
 function handleStop() {
 	mentions.close();

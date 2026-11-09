@@ -1,5 +1,9 @@
-import { ResponseError, ServiceUnavailableError, TooManyRequestsError } from '@n8n/errors';
-import { UserError } from 'n8n-workflow';
+import {
+	ResponseError,
+	ServiceUnavailableError,
+	TooManyRequestsError,
+	UserError,
+} from '@n8n/errors';
 
 import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 

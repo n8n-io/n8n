@@ -29,9 +29,8 @@ import {
 import { redactTelemetryProperties } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
-import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UnexpectedError } from '@n8n/errors';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
@@ -553,7 +552,6 @@ export class AssistantTurnEnvironmentFactory {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			skills: skills.source,
-			skillAvailabilityNotice: skills.availabilityNotice,
 			mapSkillEventForDisplay: skills.mapSkillEventForDisplay,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			cancelBackgroundTask: runtime.cancelBackgroundTask,

@@ -40,18 +40,22 @@ export type {
 
 // The publisher stays internal: no host constructs or swaps one.
 export {
+	LIFECYCLE_EVENT_SUBSCRIPTION_KINDS,
 	MAX_LIFECYCLE_EVENTS_PER_BATCH,
 	lifecycleEventBatchSchema,
 	lifecycleEventSchema,
+	lifecycleEventSubscriptionSchema,
 } from './lifecycle-events';
 export type {
 	LifecycleEventCallback,
 	LifecycleEvent,
 	LifecycleEventBatch,
+	LifecycleEventSubscription,
 } from './lifecycle-events';
 
 export {
 	createResponseEmitter,
+	EXECUTION_CHANNEL_TOPICS,
 	executionResponseSchema,
 	noopExecutionResponseSender,
 	noopResponseEmitter,
@@ -61,13 +65,20 @@ export {
 export type {
 	ChunkMessage,
 	EndedMessage,
+	ExecutionChannelCodec,
+	ExecutionChannelFrameHandler,
+	ExecutionChannelPublisher,
+	ExecutionChannelSubscriber,
+	ExecutionChannelTopic,
 	ExecutionResponse,
 	ExecutionResponseSender,
+	FrameResult,
 	ResponseEmitter,
 	ResponseExpectation,
 	ResponseExpectationKind,
 	ResponseMessage,
 	UndeliverableMessage,
+	UnsubscribeFromExecutionChannel,
 } from './response-channel';
 
 export { jsonObjectSchema, UnimplementedError } from './common';
@@ -116,6 +127,9 @@ export type {
 export { ExecutionNotFoundError, InvalidParentLinkError, StepNotFoundError } from './execution';
 export type {
 	CallerContext,
+	SubExecutionOutcome,
+	SubExecutionResult,
+	SubExecutionResumeCause,
 	ExecutionMode,
 	ExecutionViewStore,
 	ExecutionRecord,

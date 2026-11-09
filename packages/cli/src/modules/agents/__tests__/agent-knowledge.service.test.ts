@@ -1,5 +1,6 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -160,6 +161,11 @@ class InMemoryAgentFileRepository {
 	}
 }
 
+const projectDeletion = mock<AgentProjectDeletionRepository>();
+projectDeletion.withWritableProject.mockImplementation(
+	async (_projectId, write, ctx = {}) => await write(ctx),
+);
+
 describe('AgentKnowledgeService', () => {
 	let agentRepository: Mocked<AgentRepository>;
 	let agentFileRepository: InMemoryAgentFileRepository;
@@ -183,6 +189,7 @@ describe('AgentKnowledgeService', () => {
 			logger,
 			knowledgeAvailabilityService,
 			mock<GlobalConfig>({ diagnostics: { enabled: diagnosticsEnabled } }),
+			projectDeletion,
 		);
 	}
 
