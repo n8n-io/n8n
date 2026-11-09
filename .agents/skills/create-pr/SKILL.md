@@ -105,7 +105,7 @@ comma and a space: `fix(core, editor): ...`.
    4. Each sentence is true for the diff.
 
    When a later commit changes a fact in the body, update the body.
-   Include the feature flag test settings from step 5 in **How to test**.
+   If step 5 found new flags, include their test settings in **How to test**.
 
    ```bash
    gh pr create --draft --title "<type>(<scope>): <summary>" --body "$(cat <<'EOF'
@@ -130,9 +130,10 @@ comma and a space: `fix(core, editor): ...`.
    Do not assume that boolean `true` selects a named variant.
    If the required variant is unclear, report it instead of guessing.
    Preserve any value that the user explicitly requested for the same key.
-3. Include `N8N_FEATURE_FLAG_OVERRIDES` in **How to test**. This environment
-   variable accepts a JSON object that maps PostHog keys to boolean values or
-   named variants. Tell the tester to set it before starting the test instance.
+3. If step 1 found at least one new flag, include `N8N_FEATURE_FLAG_OVERRIDES`
+   in **How to test**. This environment variable accepts a JSON object that maps
+   PostHog keys to boolean values or named variants. Tell the tester to set it
+   before starting the test instance.
    For example:
    ```bash
    export N8N_FEATURE_FLAG_OVERRIDES='{"136_skill_sync":true}'
