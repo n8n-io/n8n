@@ -185,7 +185,7 @@ describe('ExternalHooks', () => {
 			});
 		});
 
-		it('should project a service account with its name as the first name', () => {
+		it('should project a service account without email or names', () => {
 			const serviceAccount = Object.assign(new ServiceAccount(), {
 				id: 'sa-1',
 				details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
@@ -195,7 +195,7 @@ describe('ExternalHooks', () => {
 			expect(toWorkflowLifecycleHookActor(serviceAccount)).toEqual({
 				id: 'sa-1',
 				email: null,
-				firstName: 'Deploy bot',
+				firstName: null,
 				lastName: null,
 				role: 'global:member',
 			});

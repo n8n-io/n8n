@@ -4,8 +4,8 @@ import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { GlobalConfig } from '@n8n/config';
 import type { TagEntity, User, ICredentialsDb, CloudHooksPeople, PublicUser } from '@n8n/db';
 import {
-	accountSummary,
 	CredentialsRepository,
+	isPerson,
 	WorkflowRepository,
 	SettingsRepository,
 	PersonRepository,
@@ -61,8 +61,13 @@ export function toWorkflowLifecycleHookActor(user?: User): WorkflowLifecycleHook
 		return undefined;
 	}
 
+	// A service account has no email or name.
+	const person = isPerson(user) ? user : undefined;
 	return {
-		...accountSummary(user),
+		id: user.id,
+		email: person?.email ?? null,
+		firstName: person?.firstName ?? null,
+		lastName: person?.lastName ?? null,
 		role: user.role?.slug,
 	};
 }
