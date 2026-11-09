@@ -1,0 +1,26 @@
+packages/@n8n/db/src/repositories/workflow-dependency.repository.ts
+  s_7f67b52a2ab2a1::t_f6cd6d7d2ae8e6 360-371
+packages/cli/test/integration/workflows/workflow-index.test.ts
+  s_7f67b52a2ab2a1::t_9452ec6cac6ecd 13
+  s_7f67b52a2ab2a1::t_02eaaeed5bca5b 328-361
+packages/cli/src/modules/workflow-index/workflow-index.service.ts
+  s_7f67b52a2ab2a1::t_e5914daaf37259 93-98,100
+packages/cli/src/modules/workflow-index/__tests__/workflow-index.service.test.ts
+  s_7f67b52a2ab2a1::t_698b9797062663 31-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f3149d3f431be17a2c976e6c12782970152ee50",
+  "prompts": {},
+  "sessions": {
+    "s_7f67b52a2ab2a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fd03241-56e0-4929-823f-6be8983e127d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

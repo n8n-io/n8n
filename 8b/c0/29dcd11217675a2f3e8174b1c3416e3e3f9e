@@ -1,0 +1,87 @@
+packages/cli/src/services/ownership-transfer/ownership-transfer.service.ts
+  s_abe416d94b4232::t_5244432a9f9c61 1,138
+  s_abe416d94b4232::t_16c6b8d983fdc3 132-136
+packages/cli/src/services/project.service.ee.ts
+  s_abe416d94b4232::t_5244432a9f9c61 8,95,277-283
+packages/cli/src/modules/agents/__tests__/agent-file-bridge.service.test.ts
+  s_abe416d94b4232::t_16c6b8d983fdc3 24-29
+packages/cli/src/modules/agents/register-user-deletion-handler.ts
+  s_abe416d94b4232::t_5244432a9f9c61 23-26
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_abe416d94b4232::t_e13820d2fce172 605,607
+  s_abe416d94b4232::t_1a715f84e147d9 606
+  s_abe416d94b4232::t_16c6b8d983fdc3 610-615
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_abe416d94b4232::t_16c6b8d983fdc3 75-79
+  s_abe416d94b4232::t_5244432a9f9c61 15,80-83
+  s_abe416d94b4232::t_8e01e16ee5d2bf 84-85
+packages/cli/src/modules/agents/repositories/agent-project-deletion.repository.ts
+  s_abe416d94b4232::t_5244432a9f9c61 34-35
+  s_abe416d94b4232::t_47939e6c71f972 10
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_abe416d94b4232::t_1a715f84e147d9 1567
+packages/@n8n/backend-services/src/services/ownership-transfer-handler.registry.ts
+  s_abe416d94b4232::t_5244432a9f9c61 1,27
+  s_abe416d94b4232::t_16c6b8d983fdc3 28-32
+packages/@n8n/db/src/repositories/project.repository.ts
+  s_abe416d94b4232::t_5244432a9f9c61 29-32
+packages/cli/src/modules/agents/agent-project-cleanup.service.ts
+  s_abe416d94b4232::t_29f766f00591cc 67
+  s_abe416d94b4232::t_5244432a9f9c61 1,68
+  s_abe416d94b4232::t_47939e6c71f972 5
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_abe416d94b4232::t_16c6b8d983fdc3 243-246
+  s_abe416d94b4232::t_e13820d2fce172 258
+  s_abe416d94b4232::t_1a715f84e147d9 250
+packages/cli/test/integration/agents/system-agent-user-deletion.test.ts
+  s_abe416d94b4232::t_281b1db4d4519a 8-14,524-529,531-533,539-542,548-551,567-575,581-586
+  s_abe416d94b4232::t_41930a41af9ad5 18,21-22,518-523,530,534-538,543-547,552-558,564-566,576-580,587-597
+  s_abe416d94b4232::t_ed0b31d19618c3 559-563
+  s_abe416d94b4232::t_b352d1cb9613c5 598
+packages/cli/test/integration/agents/agent-project-cleanup.test.ts
+  s_abe416d94b4232::t_281b1db4d4519a 37-42,44-46,51-55
+  s_abe416d94b4232::t_41930a41af9ad5 32-36,43,47-50,56-59
+packages/cli/src/services/user.service.ts
+  s_abe416d94b4232::t_5244432a9f9c61 7,91,694,700,702
+  s_abe416d94b4232::t_16c6b8d983fdc3 695-699
+packages/cli/src/modules/agents/repositories/agent-user-deletion.repository.ts
+  s_abe416d94b4232::t_47939e6c71f972 4
+  s_abe416d94b4232::t_5244432a9f9c61 28-29
+packages/cli/src/modules/agents/agent-file-bridge.service.ts
+  s_abe416d94b4232::t_e13820d2fce172 31
+  s_abe416d94b4232::t_29f766f00591cc 30
+packages/cli/src/modules/agents/tools/node-tool-factory.ts
+  s_abe416d94b4232::t_16c6b8d983fdc3 213-214,217-222
+  s_abe416d94b4232::t_e13820d2fce172 212
+packages/cli/src/modules/agents/tools/__tests__/node-tool-factory.test.ts
+  s_abe416d94b4232::t_03b45f5dc4912b 418-419,423-425
+  s_abe416d94b4232::t_16c6b8d983fdc3 385-387,404-407,420-422,510-512
+  s_abe416d94b4232::t_1a715f84e147d9 391,452,480,485
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_abe416d94b4232::t_e13820d2fce172 1,75-76,96,1058,1067,1069,1071-1073,1089,1158
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_abe416d94b4232::t_e13820d2fce172 1,65-66,82,883,894,905,913,943,965,987,1022,1037,1048,1069,1113,1138,1204,1235
+  s_abe416d94b4232::t_16c6b8d983fdc3 957-960,997-1000,1157-1160,1250-1253
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_abe416d94b4232::t_16c6b8d983fdc3 957-959,979-982,1510-1512
+  s_abe416d94b4232::t_fb4034ab1fd965 963,1437,1475,1546
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_abe416d94b4232::t_5244432a9f9c61 110-111
+  s_abe416d94b4232::t_16c6b8d983fdc3 116-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8bc029dcd11217675a2f3e8174b1c3416e3e3f9e",
+  "prompts": {},
+  "sessions": {
+    "s_abe416d94b4232": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19c1e-ab9b-7db2-b5b6-6f22b848d545",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

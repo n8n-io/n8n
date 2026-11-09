@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/approval/SPIKE.md
+  s_dfe3f914c8bb46::t_1a111c0ec4e46c 57-59
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_e6998e8a509a48 114-134,136-138,141,157
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.test.ts
+  s_dfe3f914c8bb46::t_4a03baf9bb5fa8 1-67
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.ts
+  s_dfe3f914c8bb46::t_79a40d5620859b 3-5,28,33-64,69-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "34fb77137c42844457a61a18d9ccd9ca4207e593",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

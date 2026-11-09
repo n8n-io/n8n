@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_be978965b23e19::t_f3330be2ad3716 49-51
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_be978965b23e19::t_ce0546700d1424 85-86,1090-1091
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatTaskControls.ts
+  s_be978965b23e19::t_f3330be2ad3716 4,359,371-373,378,380,384,389-392,434
+  s_be978965b23e19::t_e455e09e579b69 374-377,379,381-383,385-388
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_be978965b23e19::t_964ba41ba312ac 8
+  s_be978965b23e19::t_25c41b13acd4d2 321,2708,2710-2713
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_be978965b23e19::t_ee655ed917d5d5 1467-1473
+  s_be978965b23e19::t_f3330be2ad3716 482,1483
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_be978965b23e19::t_25c41b13acd4d2 314-315,322-332
+  s_be978965b23e19::t_e455e09e579b69 316-321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "46f94f8389aabc0ca94c806ae7cb23136f9bb22a",
+  "prompts": {},
+  "sessions": {
+    "s_be978965b23e19": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efc03c59-23c2-4305-9353-d19b0b0f18a9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

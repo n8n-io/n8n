@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/agent-file-bridge.service.ts
+  s_96a04a2395d393::t_2f1987dc038080 50-51,57,78,80
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_96a04a2395d393::t_2f1987dc038080 963
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_96a04a2395d393::t_2f1987dc038080 781,783
+packages/cli/src/modules/agents/__tests__/agent-file-bridge.service.test.ts
+  s_96a04a2395d393::t_2f1987dc038080 156-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a962494b492981614018775c4b0bd76134e41f44",
+  "prompts": {},
+  "sessions": {
+    "s_96a04a2395d393": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba687f9c-84fd-4737-8428-66083ff40308",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

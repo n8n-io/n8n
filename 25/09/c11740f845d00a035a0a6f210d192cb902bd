@@ -1,0 +1,30 @@
+packages/modules/insights/frontend/oxlint.config.mts
+  s_fdd6cf6d79ee0b::t_93fbdbed8647db 4
+scripts/lint-parity/snapshot.mjs
+  s_fdd6cf6d79ee0b::t_93fbdbed8647db 39,55
+packages/@n8n/eslint-config/src/configs/frontend-oxlint-residual.ts
+  s_fdd6cf6d79ee0b::t_93fbdbed8647db 17-29
+packages/modules/insights/frontend/src/components/InsightsDateRangeAlert.test.ts
+  s_fdd6cf6d79ee0b::t_93fbdbed8647db 130
+  s_fdd6cf6d79ee0b::t_fffbe56c5d5711 4,131
+packages/@n8n/eslint-config/src/configs/frontend-oxlint-residual.test.ts
+  s_fdd6cf6d79ee0b::t_51d0e1a95d4ca0 1-25
+packages/@n8n/oxlint-config/src/configs/frontend.ts
+  s_fdd6cf6d79ee0b::t_93fbdbed8647db 1,5-6,10-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2509c11740f845d00a035a0a6f210d192cb902bd",
+  "prompts": {},
+  "sessions": {
+    "s_fdd6cf6d79ee0b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e79590a04ffeZvlC8mMYsLMXAC",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

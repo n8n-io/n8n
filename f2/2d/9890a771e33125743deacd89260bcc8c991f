@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_82789c69de1855::t_393425144b2600 53,60,62,65,68,70,72,75,83,85,94,98,124,296-310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f22d9890a771e33125743deacd89260bcc8c991f",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}

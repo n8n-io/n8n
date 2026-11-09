@@ -1,0 +1,33 @@
+packages/@n8n/backend-services/src/executions/__tests__/execution-redaction-proxy.service.test.ts
+  s_ae4540a807da89::t_2db32011579416 39-51
+  s_ae4540a807da89::t_cf82813b98bcc7 82-126
+packages/cli/test/integration/executions.controller.test.ts
+  s_ae4540a807da89::t_916ecdfe6255fb 260
+  s_ae4540a807da89::t_98df81d5b83adb 227-259,261-276
+  s_ae4540a807da89::t_a99809dcc62258 19
+packages/@n8n/backend-services/src/executions/execution-redaction.ts
+  s_ae4540a807da89::t_6b6cfffcd592d5 11-12
+  s_ae4540a807da89::t_1847cfb22222c5 40-43
+packages/@n8n/backend-services/src/executions/execution-redaction-proxy.service.ts
+  s_ae4540a807da89::t_05d26aa27612e1 40
+  s_ae4540a807da89::t_58bc5a9a3cac6f 9-16
+  s_ae4540a807da89::t_b5a78fce058ffb 29
+packages/cli/test/integration/public-api/executions.test.ts
+  s_ae4540a807da89::t_ec7acc9465c970 837-858
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0b420bb228b6f82c45208a2ac51be59401b73c7",
+  "prompts": {},
+  "sessions": {
+    "s_ae4540a807da89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49c7553b-a256-44d0-b806-f8ffcbe2d0c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

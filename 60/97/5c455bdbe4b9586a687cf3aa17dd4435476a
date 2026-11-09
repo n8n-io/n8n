@@ -1,0 +1,38 @@
+packages/nodes-base/nodes/EmailReadImap/v2/EmailReadImapV2.node.test.ts
+  s_12fb1d45781cd5::t_a7e757c2b008c5 83
+  s_12fb1d45781cd5::t_c3fb359427d3d8 96-103
+  s_12fb1d45781cd5::t_43ba3194191445 185
+  s_12fb1d45781cd5::t_48c01a87339bf9 179-184,186-192
+packages/core/src/execution-engine/node-execution-context/trigger-context.ts
+  s_12fb1d45781cd5::t_576876af59a05e 60
+packages/core/src/execution-engine/node-execution-context/__tests__/trigger-context.test.ts
+  s_12fb1d45781cd5::t_cc89f10a4f2ebb 72-82
+packages/nodes-base/nodes/EmailReadImap/v1/EmailReadImapV1.node.ts
+  s_12fb1d45781cd5::t_4b98de794a5c95 433-436
+packages/nodes-base/nodes/EmailReadImap/v2/EmailReadImapV2.node.ts
+  s_12fb1d45781cd5::t_173529600b179c 315-328
+packages/nodes-base/nodes/EmailReadImap/v1/EmailReadImapV1.node.test.ts
+  s_12fb1d45781cd5::t_b4f265cd0654ad 86-88
+  s_12fb1d45781cd5::t_4e41f915849291 123
+  s_12fb1d45781cd5::t_443d569df6a3ee 246-259
+  s_12fb1d45781cd5::t_a2e951f599ea41 72-73,77-84
+packages/workflow/src/interfaces.ts
+  s_12fb1d45781cd5::t_6327b1925c68d6 1653-1654
+  s_12fb1d45781cd5::t_7d76a020236519 1199-1206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "60975c455bdbe4b9586a687cf3aa17dd4435476a",
+  "prompts": {},
+  "sessions": {
+    "s_12fb1d45781cd5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c7e5836-a1f2-4e61-8bf3-8c11af193e75",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

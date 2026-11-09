@@ -1,0 +1,21 @@
+packages/@n8n/inbound-auth/src/__tests__/trusted-source-facets.test.ts
+  s_a073fa9d8a702c::t_b7b3263afd8a62 39-44,55
+packages/@n8n/telemetry/src/events/trusted-sources.ts
+  s_a073fa9d8a702c::t_5ba9cfd924d912 16,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3a80df3d5731c8b9ac7fb8e08e3ac52a807fcbc5",
+  "prompts": {},
+  "sessions": {
+    "s_a073fa9d8a702c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "809324ae-b7ec-4c6e-a695-c965041caa84",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

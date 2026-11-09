@@ -1,0 +1,27 @@
+packages/@n8n/db/src/repositories/deployment-key.repository.ts
+  s_8a74584c7fd3ab::t_c91b67bd9a24ae 2,306-317
+packages/cli/src/modules/oauth-server/__tests__/oauth-signing-key.service.test.ts
+  s_8a74584c7fd3ab::t_c91b67bd9a24ae 243-280,291,392,401,414,420
+packages/cli/src/modules/oauth-server/__tests__/signing-key-fixtures.ts
+  s_8a74584c7fd3ab::t_c91b67bd9a24ae 36-40
+packages/cli/src/modules/oauth-server/oauth-signing-key.service.ts
+  s_8a74584c7fd3ab::t_c91b67bd9a24ae 220-235,237-249,251
+packages/cli/src/modules/oauth-server/__tests__/oauth-signing-key.service.integration.test.ts
+  s_8a74584c7fd3ab::t_c91b67bd9a24ae 152-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3004b03e91e1f287b40b8780cd6423b9cea3e057",
+  "prompts": {},
+  "sessions": {
+    "s_8a74584c7fd3ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f509e2a-f59c-4f21-ae40-6e4be782f6d0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

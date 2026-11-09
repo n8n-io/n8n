@@ -1,5 +1,7 @@
 packages/cli/src/modules/agents/tools/__tests__/node-tool-factory.test.ts
   s_ef2fe8491daaf9::t_01b5423b4735c0 437-439
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  ai_agent 1390
 ---
 {
   "schema_version": "authorship/3.0.0",
