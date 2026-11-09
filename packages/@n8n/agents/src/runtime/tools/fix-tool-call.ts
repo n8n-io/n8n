@@ -44,8 +44,11 @@ export const fixToolCall = async (
 	toolMap: Map<string, BuiltTool>,
 	// eslint-disable-next-line @typescript-eslint/require-await
 ): ReturnType<ToolCallRepairFunction<NoInfer<ToolSet>>> => {
+	if (options.toolCall.providerExecuted) return null;
 	const tool = resolveToolForCall(toolMap, options.toolCall.toolName, options.toolCall.input);
-	if (!tool || options.toolCall.providerExecuted) return null;
+	// A direct call to a tool from the tool catalog stays unrepaired. The tool runner answers
+	// it with an error that says to use find_tools and call_tool.
+	if (!tool) return null;
 
 	// The tool map also registers former tool names. A model can still call a
 	// tool by a former name, for example after it reads an older conversation.

@@ -51,6 +51,7 @@ import type {
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
+import { isRuntimeContextNote } from '../../sdk/message';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
@@ -71,9 +72,10 @@ import { startStreamSession } from '../streaming/stream-session';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import { buildFunctionIdHeaders } from '../telemetry/function-id';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
-import { DeferredToolManager } from '../tools/deferred-tool-manager';
+import { resolveNativeToolDeferral } from '../model/model-factory';
+import { ToolCatalog } from '../tools/tool-catalog';
 import { fixToolCall } from '../tools/fix-tool-call';
-import { buildToolMap, resolveToolForCall } from '../tools/tool-adapter';
+import { buildToolMap, reportedToolCall, resolveToolForCall } from '../tools/tool-adapter';
 import { ToolCallExecutor } from '../tools/tool-call-executor';
 import type {
 	PendingResume,
@@ -83,6 +85,9 @@ import type {
 
 export type {
 	AgentRuntimeConfig,
+	ContextNote,
+	ContextNoteProvider,
+	ContextNoteRequest,
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
 } from '../../types/runtime/agent-runtime';
@@ -118,6 +123,15 @@ function resumedTurnEnds(
 				resolveToolForCall(toolMap, c.toolName, c.input)?.endsTurn?.(c.output) === true,
 		) ?? false
 	);
+}
+
+/**
+ * Provider tool search is the default for deferred tools. The tool catalog is used
+ * when the agent asks for it, or when the model or endpoint has no tool search.
+ */
+function usesNativeToolDeferral(config: AgentRuntimeConfig): boolean {
+	if (config.toolDeferral?.mode === 'tool-catalog') return false;
+	return resolveNativeToolDeferral(config.model) !== undefined;
 }
 
 /** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
@@ -187,7 +201,7 @@ export class AgentRuntime {
 
 	private backgroundTasks = new BackgroundTaskTracker();
 
-	private deferredToolManager: DeferredToolManager | undefined;
+	private toolCatalog: ToolCatalog | undefined;
 
 	private runId: string;
 
@@ -201,7 +215,8 @@ export class AgentRuntime {
 	private activeSkills?: ActiveSkills;
 
 	constructor(runtimeConfig: AgentRuntimeConfig) {
-		const config = activateSkillDependencyTools(runtimeConfig);
+		// Copied: the deferral choice below writes `nativeToolDeferral`.
+		const config = { ...activateSkillDependencyTools(runtimeConfig) };
 		this.config = config;
 		// Keep full tool results when the memory backend cannot persist active skill IDs.
 		if (config.skillSource && (!config.memory || config.memory.skillState)) {
@@ -214,15 +229,25 @@ export class AgentRuntime {
 		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
-		if (!config.nativeToolDeferral && config.deferredTools && config.deferredTools.length > 0) {
-			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
-				...config.toolSearch,
-				// Let the discovery tools recognize the always-available toolset, so a
-				// `load_tool` call for one of those answers `already_loaded`.
-				activeTools: config.tools,
-			});
+		if (config.deferredTools && config.deferredTools.length > 0) {
+			if (usesNativeToolDeferral(config)) {
+				// Provider tool search is the default. Without an explicit eager list,
+				// the tools added with `.tool()` stay eager and only deferred tools are searched.
+				config.nativeToolDeferral ??= {
+					eagerToolNames: (config.tools ?? []).map((tool) => tool.name),
+				};
+			} else {
+				config.nativeToolDeferral = undefined;
+				this.toolCatalog = new ToolCatalog(config.deferredTools, {
+					...config.toolSearch,
+					toolGroups: config.deferredToolGroups,
+					toolGroupDescriptions: config.deferredToolGroupDescriptions,
+					// A lookup for an always-available tool says to call it directly.
+					activeTools: config.tools,
+				});
+			}
 		}
-		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
+		this.context = new RuntimeContextBuilder(config, this.toolCatalog);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
 		this.eventBus = config.eventBus ?? new AgentEventBus();
 		this.memory = new MemoryOrchestrator(
@@ -544,14 +569,14 @@ export class AgentRuntime {
 
 		const list = await this.restoreCheckpointMessages(state);
 
-		// A skill dependency loads a deferred tool without a `load_tool` record, and
-		// skills restore only when the loop starts. Accept any registered deferred tool.
+		// A suspended call can name a tool from the tool catalog directly, for example from an
+		// older conversation. Accept any registered deferred tool.
 		const tool =
 			resolveToolForCall(
 				buildToolMap(this.context.getCurrentTools(state.persistence)),
 				toolCall.toolName,
 				toolCall.input,
-			) ?? this.deferredToolManager?.getTool(toolCall.toolName, toolCall.input);
+			) ?? this.toolCatalog?.getTool(toolCall.toolName, toolCall.input);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
@@ -590,7 +615,6 @@ export class AgentRuntime {
 		state: SerializableAgentState,
 	): Promise<AgentMessageList> {
 		const list = AgentMessageList.deserialize(state.messageList);
-		this.context.hydrateDeferredToolsFromList(list);
 		await hydrateFileParts(list.messages(), this.config.fileStore, {
 			threadId: state.persistence?.threadId,
 		});
@@ -666,6 +690,8 @@ export class AgentRuntime {
 	): Promise<AgentMessageList> {
 		const list = new AgentMessageList();
 		await this.memory.loadInto(list, options);
+		// Before the input, so a new tool catalog list reads at the start of the user's turn.
+		this.context.synchronizeToolCatalog(list);
 		list.addInput(input);
 
 		// Persist input now (after history load, so the prompt isn't polluted) so it
@@ -910,7 +936,6 @@ export class AgentRuntime {
 			freshRun: ctx.isFreshRun,
 			cacheTtlMs: getPromptCacheRetentionMs(this.config.promptCaching, this.context.modelId),
 		});
-		this.context.hydrateDeferredToolsFromList(list);
 		// This note reaches the model but is not stored in conversation history.
 		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
 
@@ -1084,6 +1109,7 @@ export class AgentRuntime {
 			list,
 		);
 		const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
+		await this.addContextNotes(ctx);
 		const prompt = this.context.buildModelPrompt({
 			list,
 			tools,
@@ -1242,7 +1268,7 @@ export class AgentRuntime {
 				suspendRunId: this.runId,
 				list,
 				usage: state.totalUsage,
-				suspensions: batch.suspensions,
+				suspensions: batch.suspensions.map((suspension) => reportedToolCall(toolMap, suspension)),
 			});
 			this.assertNotAborted(abortScope);
 			completed = true;
@@ -1289,6 +1315,55 @@ export class AgentRuntime {
 				state.iterationCount + 1,
 			);
 		}
+	}
+
+	/**
+	 * Ask the context note providers for notes and append the new ones as one
+	 * message. Notes already in the visible conversation are not sent again. After
+	 * compaction hides a note, a provider can send it again.
+	 */
+	private async addContextNotes(ctx: PreparedLoopContext): Promise<void> {
+		const providers = this.config.contextNoteProviders;
+		if (!providers?.length) return;
+		const { list, options, abortScope } = ctx;
+		const messages = list.llmVisibleMessages();
+		const sentNoteIds = new Set(
+			messages.filter(isRuntimeContextNote).flatMap((message) => message.data.noteIds),
+		);
+		const request = {
+			messages,
+			activeSkillIds: list.activeSkillIds ?? [],
+			sentNoteIds,
+			persistence: options?.persistence,
+			abortSignal: abortScope.signal,
+		};
+		const results = await Promise.all(
+			providers.map(async (provider) => {
+				try {
+					return await provider(request);
+				} catch (error) {
+					// Notes are optional guidance: a failed provider must not fail the run.
+					logger.warn('Failed to resolve context notes', { runId: this.runId, error });
+					return [];
+				}
+			}),
+		);
+		const notes = new Map<string, string>();
+		for (const note of results.flat()) {
+			if (sentNoteIds.has(note.id) || notes.has(note.id) || !note.content.trim()) continue;
+			notes.set(note.id, note.content.trim());
+		}
+		if (notes.size === 0) return;
+		list.addInput([
+			{
+				type: 'custom',
+				data: {
+					type: 'n8n:runtime-context-note',
+					noteIds: [...notes.keys()],
+					content: [...notes.values()].join('\n'),
+				},
+			},
+		]);
 	}
 
 	private async resolveVolatileInstructions(
