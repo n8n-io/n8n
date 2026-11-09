@@ -60,6 +60,8 @@ const props = withDefaults(
 		items: T[];
 		headers: Array<TableHeader<T>>;
 		itemsLength: number;
+		/** Server page count when groups make pages differ in size. */
+		pageCount?: number;
 		loading?: boolean;
 		multiSort?: boolean;
 
@@ -374,7 +376,9 @@ const paginationState = computed<PaginationState>(() => ({
 }));
 
 const showPagination = computed(
-	() => props.pagination && props.itemsLength > Math.min(...props.pageSizes),
+	() =>
+		props.pagination &&
+		(props.itemsLength > Math.min(...props.pageSizes) || (props.pageCount ?? 0) > 1),
 );
 
 const sortBy = defineModel<SortingState>('sort-by', { default: [], required: false });
@@ -469,6 +473,9 @@ const table = useVueTable({
 	// after mount (e.g. contextual columns that depend on the active tab).
 	get columns() {
 		return columnsDefinition.value;
+	},
+	get pageCount() {
+		return props.pageCount;
 	},
 	get rowCount() {
 		return props.itemsLength;
@@ -677,7 +684,7 @@ const table = useVueTable({
 			<N8nPagination
 				:page="page + 1"
 				:items-per-page="itemsPerPage"
-				:total="itemsLength"
+				:total="pageCount === undefined ? itemsLength : pageCount * itemsPerPage"
 				:page-sizes="pageSizes"
 				:show-all="showAll"
 				:show-total="false"

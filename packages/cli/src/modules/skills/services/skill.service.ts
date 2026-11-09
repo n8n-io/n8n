@@ -58,6 +58,7 @@ import {
 	type SkillUpdate,
 } from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
+import { skillGroupPage } from '../utils/skill-group-page';
 import { getSkillHash } from '../utils/skill-hash';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
@@ -177,17 +178,21 @@ export class SkillService {
 			sort: query.sortBy && LIST_SORTS[query.sortBy],
 		};
 		if (query.groupBy === 'source') {
+			await this.skillSyncFlagGate.assertEnabled(user);
 			const page = await this.findGroupedPage(
 				visibility,
 				match,
 				new Set(query.collapsedSourceIds ?? []),
-				query.skip,
+				query.page ?? 0,
 				query.take,
+				query.focusSourceId,
 			);
 			return {
 				count: page.count,
 				data: await this.toListItems(user, page.skills),
 				collapsedSources: page.collapsedSources,
+				page: page.page,
+				pageCount: page.pageCount,
 			};
 		}
 		const { skills, count } = await this.skillRepository.findVisiblePage(visibility, {
@@ -198,45 +203,61 @@ export class SkillService {
 		return { count, data: await this.toListItems(user, skills) };
 	}
 
-	/**
-	 * One page of the source groups: each source by repository, then the skills that no source
-	 * syncs. A source that the user folded is one row in place of its skills. The pages cut
-	 * the rows in order, so a long open group continues on the next page, where the table
-	 * shows its group row again. The page reads the group sizes once, then one slice for each
-	 * open group on it.
-	 */
 	private async findGroupedPage(
 		visibility: SkillVisibility,
 		match: SkillMatchFilter,
 		collapsed: Set<string>,
-		skip: number,
+		pageIndex: number,
 		take: number | undefined,
-	): Promise<{ skills: Skill[]; count: number; collapsedSources: SkillListCollapsedSource[] }> {
-		const groups = await this.skillRepository.findSourceGroupSizes(visibility, match);
-		const pageEnd = take === undefined ? Number.POSITIVE_INFINITY : skip + take;
-		const skills: Skill[] = [];
-		const collapsedSources: SkillListCollapsedSource[] = [];
-		let position = 0;
-		for (const { sourceId, count } of groups) {
-			const folded = sourceId !== null && collapsed.has(sourceId);
-			const start = position;
-			position += folded ? 1 : count;
-			if (position <= skip || start >= pageEnd) continue;
-			if (folded) {
-				collapsedSources.push({ sourceId, index: skills.length, skillCount: count });
-				continue;
-			}
-			const from = Math.max(skip, start) - start;
-			const to = Math.min(pageEnd, position) - start;
-			const slice = await this.skillRepository.findVisibleSlice(visibility, {
-				...match,
-				...(sourceId === null ? { withoutSource: true } : { sourceId }),
-				skip: from,
-				take: to - from,
-			});
-			skills.push(...slice);
+		focusSourceId?: string,
+	) {
+		let groups = await this.skillRepository.findSourceGroupSizes(visibility, match);
+		// Empty sources remain manageable in the unfiltered list.
+		if (
+			!match.search &&
+			!match.scope &&
+			!match.projectId &&
+			!match.createdById &&
+			!match.usedBySkillIds &&
+			!match.attachableToProjectId
+		) {
+			const sources = await this.sourceRepository.findVisibleSources(visibility.projectIds);
+			const counts = new Map(groups.map((group) => [group.sourceId, group.count]));
+			groups = sources
+				.sort((a, b) => a.identityKey.localeCompare(b.identityKey) || a.id.localeCompare(b.id))
+				.map((source) => ({ sourceId: source.id, count: counts.get(source.id) ?? 0 }));
+			const localCount = counts.get(null);
+			if (localCount) groups.push({ sourceId: null, count: localCount });
 		}
-		return { skills, count: position, collapsedSources };
+		const page = skillGroupPage(groups, collapsed, pageIndex, take, focusSourceId);
+		const sourceIds = page.groups
+			.filter((group) => group.count > 0 && !collapsed.has(group.sourceId))
+			.map((group) => group.sourceId);
+		const [sourceSkills, localSkills] = await Promise.all([
+			this.skillRepository.findVisibleSourceSkills(visibility, match, sourceIds),
+			page.localTake > 0
+				? this.skillRepository.findVisibleSlice(visibility, {
+						...match,
+						withoutSource: true,
+						skip: page.localSkip,
+						take: page.localTake,
+					})
+				: [],
+		]);
+		const collapsedSources: SkillListCollapsedSource[] = [];
+		let index = 0;
+		for (const group of page.groups) {
+			if (group.count === 0 || collapsed.has(group.sourceId)) {
+				collapsedSources.push({ sourceId: group.sourceId, index, skillCount: group.count });
+			} else index += group.count;
+		}
+		return {
+			skills: [...sourceSkills, ...localSkills],
+			count: page.count,
+			page: page.page,
+			pageCount: page.pageCount,
+			collapsedSources,
+		};
 	}
 
 	/** The users who created a skill that the user may see, for the creator filter. */

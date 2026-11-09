@@ -51,6 +51,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:open': [open: boolean];
 	connected: [result: SkillSourceConnected];
+	openSource: [sourceId: string];
 }>();
 
 /** A loose check only: the server reads the link and answers with the exact reason. */
@@ -391,6 +392,9 @@ const duplicateMessage = computed(() => {
 });
 
 const isBlocked = computed(() => duplicate.value.kind === 'blocked');
+const duplicateSourceId = computed(() =>
+	duplicate.value.kind === 'blocked' ? duplicate.value.sourceId : null,
+);
 
 const canGoNext = computed(
 	() =>
@@ -802,6 +806,14 @@ const title = computed(() => {
 				data-test-id="skill-source-duplicate"
 			>
 				{{ duplicateMessage }}
+				<N8nButton
+					v-if="duplicateSourceId"
+					variant="subtle"
+					size="small"
+					:label="i18n.baseText('settings.context.skills.sources.view')"
+					data-test-id="skill-source-view-existing"
+					@click="emit('openSource', duplicateSourceId)"
+				/>
 			</N8nCallout>
 		</N8nDialogBody>
 

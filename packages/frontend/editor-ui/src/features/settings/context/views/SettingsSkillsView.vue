@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn, useLocalStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
@@ -178,6 +179,7 @@ function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 		...(skillSyncEnabled.value
 			? {
 					groupBy: 'source' as const,
+					page,
 					...(collapsedSourceIds.value.length > 0
 						? { collapsedSourceIds: collapsedSourceIds.value.join(',') }
 						: {}),
@@ -224,10 +226,10 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 // Only the newest load updates the page state, so a slow earlier search cannot win.
 const { next: nextLoad } = useLatestFetch();
 
-async function load() {
+async function load(focusSourceId?: string) {
 	const isLatest = nextLoad();
 	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
-	const query = listQuery(page, itemsPerPage);
+	const query = { ...listQuery(page, itemsPerPage), ...(focusSourceId ? { focusSourceId } : {}) };
 	// Sort and paging do not narrow the list, so they do not count as filters.
 	const filtered = [query.search, query.scope, query.agentId, query.createdById].some(
 		(value) => value !== undefined,
@@ -236,8 +238,14 @@ async function load() {
 		await skillsStore.fetchSkills(query);
 		if (!isLatest()) return;
 		// Deleting the last rows of a page can leave the page past the end.
-		const lastPage = Math.max(0, Math.ceil(skillsStore.count / itemsPerPage) - 1);
-		if (page > lastPage) {
+		const lastPage = Math.max(
+			0,
+			(skillsStore.pageCount ?? Math.ceil(skillsStore.count / itemsPerPage)) - 1,
+		);
+		if (skillsStore.page !== undefined && skillsStore.page !== page) {
+			tableOptions.value = { ...tableOptions.value, page: skillsStore.page };
+		}
+		if (skillsStore.page === undefined && page > lastPage) {
 			tableOptions.value = { ...tableOptions.value, page: lastPage };
 			await skillsStore.fetchSkills(listQuery(lastPage, itemsPerPage));
 			if (!isLatest()) return;
@@ -685,30 +693,33 @@ async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 }
 
 /** The sources that the user folded, kept in this browser, so the table opens as it was left. */
-const collapsedSourceIds = useLocalStorage<string[]>('n8n-skills-collapsed-sources', []);
+const usersStore = useUsersStore();
+const collapsedSourceIds = useLocalStorage<string[]>(
+	() => `n8n-skills-collapsed-sources:${usersStore.currentUserId ?? 'anonymous'}`,
+	[],
+);
 
 /** The sources with a check that runs, so their rows show progress. */
 const checkingSourceIds = ref<string[]>([]);
 
 const tableSources = computed(() => (skillSyncEnabled.value ? skillsStore.sources : undefined));
 
-/**
- * Sources with no synced skills keep a row. With a filter on, only the sources with a match
- * show, so an empty source shows only on the first page of the unfiltered list.
- */
+/** Empty sources use the same page boundaries as the other source rows. */
 const emptySources = computed(() => {
-	if (!skillSyncEnabled.value || loadedFiltered.value || (tableOptions.value.page ?? 0) > 0) {
-		return [];
-	}
-	// A source that the page shows folded has skills, whatever an older count says.
-	const folded = new Set(skillsStore.collapsedSources.map(({ sourceId }) => sourceId));
-	return skillsStore.sources.filter((source) => source.skillCount === 0 && !folded.has(source.id));
+	if (!skillSyncEnabled.value) return [];
+	const emptyIds = new Set(
+		skillsStore.collapsedSources
+			.filter(({ skillCount }) => skillCount === 0)
+			.map(({ sourceId }) => sourceId),
+	);
+	return skillsStore.sources.filter(({ id }) => emptyIds.has(id));
 });
 
 async function loadSources() {
 	if (!skillSyncEnabled.value) return;
 	try {
 		const sources = await skillsStore.fetchSources();
+		if (!sources) return;
 		// Forget folds of sources that are gone, so the list stays within what the API accepts.
 		const known = new Set(sources.map(({ id }) => id));
 		const kept = collapsedSourceIds.value.filter((id) => known.has(id));
@@ -723,11 +734,12 @@ async function onToggleSource(sourceId: string) {
 	if (ids.has(sourceId)) ids.delete(sourceId);
 	else ids.add(sourceId);
 	collapsedSourceIds.value = [...ids];
-	await load();
+	await load(sourceId);
 }
 
 /** Check for updates on a source: progress on its row, then a toast with the result. */
 async function onCheckSource(source: SkillSourceListItem) {
+	if (checkingSourceIds.value.includes(source.id)) return;
 	checkingSourceIds.value = [...checkingSourceIds.value, source.id];
 	let result;
 	try {
@@ -770,13 +782,26 @@ async function onCheckSource(source: SkillSourceListItem) {
 	await Promise.all([load(), loadSources()]);
 }
 
+async function onOpenSource(sourceId: string) {
+	connectOpen.value = false;
+	search.value = '';
+	filters.value = { ...NO_FILTERS };
+	collapsedSourceIds.value = collapsedSourceIds.value.filter((id) => id !== sourceId);
+	await Promise.all([load(sourceId), loadSources()]);
+	await nextTick();
+	const row = document.getElementById(`skill-source-${sourceId}`);
+	row?.scrollIntoView({ block: 'center' });
+	row?.focus({ preventScroll: true });
+}
+
 async function goBack() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT });
 }
 
 // The flags can arrive after the page: with Skill Sync on, the list groups and the sources load.
 watch(skillSyncEnabled, async (enabled) => {
-	if (enabled) await Promise.all([load(), loadSources()]);
+	tableOptions.value = { ...tableOptions.value, page: 0 };
+	await Promise.all([load(), ...(enabled ? [loadSources()] : [])]);
 });
 
 onMounted(async () => {
@@ -791,9 +816,11 @@ onMounted(async () => {
 	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
 	// page, so it is read by id rather than from the list.
-	const { skillId, create } = route.query;
+	const { skillId, create, sourceId } = route.query;
 	if (typeof skillId === 'string') {
 		await openEditModal({ id: skillId });
+	} else if (typeof sourceId === 'string' && skillSyncEnabled.value) {
+		await onOpenSource(sourceId);
 	} else if (create === 'true') {
 		openCreateModal();
 	}
@@ -938,6 +965,7 @@ onMounted(async () => {
 			v-model:table-options="tableOptions"
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
+			:page-count="skillsStore.pageCount"
 			:loading="showLoading"
 			:show-empty="emptyState !== 'none' && emptySources.length === 0"
 			:show-assistant-availability="assistantSkillsEnabled"
@@ -988,6 +1016,7 @@ onMounted(async () => {
 			v-model:open="connectOpen"
 			:scope-options="scopeOptions"
 			@connected="onSourceConnected"
+			@open-source="onOpenSource"
 		/>
 	</N8nSettingsLayout>
 </template>

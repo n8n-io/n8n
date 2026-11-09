@@ -39,6 +39,7 @@ type SkillActionItem = {
 const props = defineProps<{
 	skills: SkillListItem[];
 	itemsLength: number;
+	pageCount?: number;
 	loading?: boolean;
 	showAssistantAvailability?: boolean;
 	/** The table renders its cover row whenever the slot exists, so the slot is withheld. */
@@ -129,18 +130,6 @@ function onAction(skill: SkillListItem, action: SkillAction) {
 	else emit('delete', skill);
 }
 
-/** The badge of a synced skill whose source has new content that waits for review. */
-const SYNC_BADGES = {
-	update_available: { variant: 'info', key: 'settings.context.skills.sync.updateAvailable' },
-	update_blocked: { variant: 'danger', key: 'settings.context.skills.sync.updateBlocked' },
-} as const;
-
-function syncBadgeOf({ syncState }: SkillListItem) {
-	if (syncState !== 'update_available' && syncState !== 'update_blocked') return undefined;
-	const { variant, key } = SYNC_BADGES[syncState];
-	return { variant, label: i18n.baseText(key), tooltip: i18n.baseText(`${key}.tooltip`) };
-}
-
 const sourcesById = computed(
 	() =>
 		new Map(
@@ -162,7 +151,9 @@ function groupOf(skill: SkillListItem): string | undefined {
 
 /** Empty sources come first. Folded sources sit where the server put them. */
 const extraGroups = computed(() => [
-	...(props.emptySources ?? []).map(({ id }) => ({ group: id, index: 0 })),
+	...(props.emptySources ?? [])
+		.filter(({ id }) => !props.collapsedSources?.some(({ sourceId }) => sourceId === id))
+		.map(({ id }) => ({ group: id, index: 0 })),
 	...(props.collapsedSources ?? []).map(({ sourceId, index }) => ({ group: sourceId, index })),
 ]);
 
@@ -230,6 +221,10 @@ function groupRowProps(sourceId: string) {
 	return { class: canFold(sourceId) ? $style.groupRowFoldable : undefined };
 }
 
+function onGroupClick(_event: MouseEvent, { group }: { group: string }) {
+	toggleSource(group);
+}
+
 function onRowClick(_event: MouseEvent, payload: { item: SkillListItem }) {
 	emit('open', payload.item);
 }
@@ -286,6 +281,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			:headers="headers"
 			:items="props.skills"
 			:items-length="props.itemsLength"
+			:page-count="props.pageCount"
 			:loading="props.loading"
 			:page-sizes="PREFERENCES_PAGE_SIZES"
 			:row-props="{ class: $style.row }"
@@ -295,11 +291,16 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			:group-row-props="groupRowProps"
 			@update:options="emit('update:options', $event)"
 			@click:row="onRowClick"
-			@click:group="(_event: MouseEvent, { group }: { group: string }) => toggleSource(group)"
+			@click:group="onGroupClick"
 		>
 			<!-- A source heads its synced skills. Its scope and its actions sit in their columns. -->
 			<template #[`group.name`]="{ group }">
-				<div :class="$style.group" data-test-id="skill-group-header">
+				<div
+					:id="`skill-source-${group}`"
+					tabindex="-1"
+					:class="$style.group"
+					data-test-id="skill-group-header"
+				>
 					<button
 						v-if="canFold(group)"
 						type="button"
@@ -334,7 +335,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						:class="$style.groupNote"
 						data-test-id="skill-group-empty"
 					>
-						· {{ i18n.baseText('settings.context.skills.sources.noSyncedSkills') }}
+						{{ i18n.baseText('settings.context.skills.sources.noSyncedSkills') }}
 					</N8nText>
 				</div>
 			</template>
@@ -386,14 +387,6 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						<N8nText size="medium" color="text-dark" data-test-id="skill-name">
 							{{ item.name }}
 						</N8nText>
-						<N8nTooltip v-if="syncBadgeOf(item)" :content="syncBadgeOf(item)?.tooltip">
-							<N8nBadge
-								:variant="syncBadgeOf(item)?.variant"
-								:data-test-id="`skill-sync-badge-${item.syncState}`"
-							>
-								{{ syncBadgeOf(item)?.label }}
-							</N8nBadge>
-						</N8nTooltip>
 						<N8nTooltip
 							v-if="props.showAssistantAvailability && item.availableToAssistant"
 							:content="i18n.baseText('settings.context.skills.assistant.label')"

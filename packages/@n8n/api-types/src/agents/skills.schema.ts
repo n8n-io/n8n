@@ -81,7 +81,7 @@ export type SkillListItem = {
 	updatedAt: string;
 };
 
-/** A folded source: one row of the page in place of its skills. */
+/** A folded or empty source with no skill rows on this page. */
 export type SkillListCollapsedSource = {
 	sourceId: string;
 	/** Where its row goes in `data`: before the skill at this index, or last for `data.length`. */
@@ -94,8 +94,11 @@ export type SkillListResponse = {
 	/** The rows of all pages. With `groupBy: 'source'`, a folded source counts as one row. */
 	count: number;
 	data: SkillListItem[];
-	/** The folded sources on this page. Only with `groupBy: 'source'`. */
+	/** Folded and empty sources on this page. Only with `groupBy: 'source'`. */
 	collapsedSources?: SkillListCollapsedSource[];
+	/** The selected page and page count when source groups have different sizes. */
+	page?: number;
+	pageCount?: number;
 };
 
 /** The agents that use a skill, limited to the agents the caller may read. */
@@ -176,7 +179,7 @@ const sourceIdList = z
 	.string()
 	.optional()
 	.transform((value) => (value ? value.split(',') : undefined))
-	.pipe(z.array(z.string().uuid()).max(SKILLS_MAX_PAGE_SIZE).optional());
+	.pipe(z.array(z.string().uuid()).optional());
 
 export class ListSkillsQueryDto extends Z.class({
 	skip: paginationSchema.skip,
@@ -206,6 +209,10 @@ export class ListSkillsQueryDto extends Z.class({
 	 * then the skills that no source syncs. `sortBy` sorts the skills in each group.
 	 */
 	groupBy: z.enum(['source']).optional(),
+	/** Zero-based page for source groups. `take` is a target; a larger group stays whole. */
+	page: z.coerce.number().int().nonnegative().optional(),
+	/** Select the page of this visible source, for navigation from the connect dialog. */
+	focusSourceId: z.string().uuid().optional(),
 	/**
 	 * Comma-separated ids of the sources that the user folded: each is one row of the page in
 	 * place of its skills. Only with `groupBy: 'source'`.

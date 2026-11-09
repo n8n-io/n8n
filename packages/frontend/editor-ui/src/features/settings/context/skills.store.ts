@@ -27,6 +27,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 
 	const skills = ref<SkillListItem[]>([]);
 	const count = ref(0);
+	const pageCount = ref<number>();
+	const page = ref<number>();
 	/** The folded sources of the current page, with grouped lists. */
 	const collapsedSources = ref<SkillListCollapsedSource[]>([]);
 	const loading = ref(false);
@@ -42,6 +44,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 			if (read === latestRead) {
 				skills.value = response.data;
 				count.value = response.count;
+				pageCount.value = response.pageCount;
+				page.value = response.page;
 				collapsedSources.value = response.collapsedSources ?? [];
 			}
 			return response;
@@ -120,7 +124,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	async function fetchSources() {
 		const read = ++latestSourcesRead;
 		const response = await api.listSkillSources(rootStore.restApiContext);
-		if (read === latestSourcesRead) sources.value = response;
+		if (read !== latestSourcesRead) return undefined;
+		sources.value = response;
 		return response;
 	}
 
@@ -132,6 +137,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	return {
 		skills,
 		count,
+		pageCount,
+		page,
 		loading,
 		fetchSkills,
 		fetchSkillCount,

@@ -137,7 +137,12 @@ describe('Sources in the skills table', () => {
 				}),
 			]);
 			expect((await viewer.get('/skill-sources').expect(200)).body.data).toEqual([
-				expect.objectContaining({ id: zeta, canReview: false }),
+				expect.objectContaining({
+					id: zeta,
+					canReview: false,
+					updatesAvailable: 0,
+					updatesBlocked: 0,
+				}),
 			]);
 			expect((await outsider.get('/skill-sources').expect(200)).body.data).toEqual([]);
 		});
@@ -177,6 +182,12 @@ describe('Sources in the skills table', () => {
 	});
 
 	describe('GET /skills?groupBy=source', () => {
+		it('answers 404 for grouped lists with Skill Sync off and keeps the plain list available', async () => {
+			postHog.getFeatureFlags.mockResolvedValue({});
+			await editor.get('/skills').query({ groupBy: 'source' }).expect(404);
+			await editor.get('/skills').expect(200);
+		});
+
 		it('puts each source first, by repository, then the skills that no source syncs', async () => {
 			const zeta = await connect('acme/zeta');
 			const alpha = await connect('acme/alpha');
@@ -197,21 +208,36 @@ describe('Sources in the skills table', () => {
 			expect(page.collapsedSources).toEqual([]);
 		});
 
-		it('cuts pages in row order, so a long group continues on the next page', async () => {
+		it('keeps each source group whole, including a group larger than the page target', async () => {
 			await connect('acme/zeta');
 			await connect('acme/alpha');
 
-			const first = await list(editor, { groupBy: 'source', sortBy: 'name:asc', take: 3 });
+			const first = await list(editor, { groupBy: 'source', sortBy: 'name:asc', take: 2 });
 			const second = await list(editor, {
 				groupBy: 'source',
 				sortBy: 'name:asc',
-				skip: 3,
-				take: 3,
+				page: 1,
+				take: 2,
 			});
 
-			expect(namesOf(first)).toEqual(['a1', 'a2', 'z1']);
-			expect(namesOf(second)).toEqual(['z2', 'z3']);
+			expect(namesOf(first)).toEqual(['a1', 'a2']);
+			expect(namesOf(second)).toEqual(['z1', 'z2', 'z3']);
 			expect(first.count).toBe(5);
+			expect(first.pageCount).toBe(2);
+			expect(second.page).toBe(1);
+		});
+
+		it('paginates empty sources and finds the page of a source', async () => {
+			const zeta = await connect('acme/zeta');
+			const alpha = await connect('acme/alpha');
+			await db().delete(SkillSourceLink, { sourceId: alpha });
+			const first = await list(editor, { groupBy: 'source', take: 1 });
+			expect(first.collapsedSources).toEqual([{ sourceId: alpha, index: 0, skillCount: 0 }]);
+			const focused = await list(editor, { groupBy: 'source', take: 1, focusSourceId: zeta });
+			expect(focused.page).toBe(1);
+			expect(focused.data.every(({ sourceId }) => sourceId === zeta)).toBe(true);
+			expect(focused.data).toHaveLength(3);
+			expect(focused.collapsedSources).toEqual([]);
 		});
 
 		it('counts a folded source as one row in place of its skills', async () => {

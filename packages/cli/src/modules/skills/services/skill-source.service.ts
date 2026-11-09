@@ -260,8 +260,8 @@ export class SkillSourceService {
 				projectName: project?.name ?? null,
 				projectType: project ? (project.type === 'personal' ? 'personal' : 'team') : null,
 				skillCount: count.skills,
-				updatesAvailable: count.available,
-				updatesBlocked: count.blocked,
+				updatesAvailable: canReviewIn.get(source.projectId) ? count.available : 0,
+				updatesBlocked: canReviewIn.get(source.projectId) ? count.blocked : 0,
 				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
 				canReview: canReviewIn.get(source.projectId) ?? false,
 			};
@@ -599,11 +599,11 @@ export class SkillSourceService {
 			same.find((source) => source.projectId === null) ??
 			same.find((source) => source.projectId === projectId);
 		if (blocking) {
-			const canAdd = await this.skillAccess.canOnSource(user, blocking, 'addSkills');
+			const canView = await this.skillAccess.canOnSource(user, blocking, 'view');
 			return {
 				kind: 'blocked',
 				where: blocking.projectId === null ? 'global' : 'scope',
-				sourceId: canAdd ? blocking.id : null,
+				sourceId: canView ? blocking.id : null,
 			};
 		}
 		const visible = await this.skillAccess.visibleSourceProjects(user);

@@ -81,7 +81,7 @@ export type SkillSourceSummary = {
 
 /**
  * Whether the scope can take the source. `blocked`: the same source is in Global or in the
- * chosen scope. `sourceId` is set when the user may add more skills to that source.
+ * chosen scope. `sourceId` is set when the user may view that source.
  * `warning`: the same source is in other projects that the user can see.
  */
 export type SkillSourceDuplicate =

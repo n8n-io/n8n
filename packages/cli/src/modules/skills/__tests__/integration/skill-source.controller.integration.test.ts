@@ -965,12 +965,16 @@ describe('SkillSourceController', () => {
 			expect(body.meta).toEqual({ reason: 'duplicate_source' });
 		});
 
-		it('blocks a project source when Global has the repository, without the source for a member', async () => {
+		it('blocks a project source when Global has the repository and links to the visible source', async () => {
 			await connectPdf(owner, { scope: 'instance' });
 
 			const { data } = await discover(editor, { url: REPO, scope: 'project', projectId: team.id });
 
-			expect(data.duplicate).toEqual({ kind: 'blocked', where: 'global', sourceId: null });
+			expect(data.duplicate).toEqual({
+				kind: 'blocked',
+				where: 'global',
+				sourceId: expect.any(String),
+			});
 		});
 
 		it('blocks a second source in the same project', async () => {

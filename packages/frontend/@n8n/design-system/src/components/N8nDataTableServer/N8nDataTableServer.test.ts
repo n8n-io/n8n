@@ -78,6 +78,22 @@ describe('N8nDataTableServer', () => {
 		});
 	});
 
+	it('uses the server page count when a source exceeds the page size', async () => {
+		const { getByTestId, getByRole } = render(N8nDataTableServer, {
+			props: {
+				items: [],
+				//@ts-expect-error testing-library errors due to header generics
+				headers,
+				itemsLength: 100,
+				itemsPerPage: 10,
+				pageCount: 2,
+			},
+		});
+		expect(getByTestId('pagination')).toBeInTheDocument();
+		expect(getByRole('button', { name: 'Page 2', exact: true })).toBeInTheDocument();
+		expect(() => getByRole('button', { name: 'Page 10', exact: true })).toThrow();
+	});
+
 	it('shows a group row before the first row of each group, with one cell per column', () => {
 		const grouped: Item[] = [
 			{ id: '1', firstName: 'a', lastName: 'x' },

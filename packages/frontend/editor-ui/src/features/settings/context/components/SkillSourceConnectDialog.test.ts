@@ -354,6 +354,18 @@ describe('SkillSourceConnectDialog', () => {
 		expect(view.getByTestId('skill-source-next')).toBeDisabled();
 	});
 
+	it('opens the visible source from the duplicate message', async () => {
+		skillsStore.discoverSource.mockResolvedValue(
+			discovery({ duplicate: { kind: 'blocked', where: 'scope', sourceId: 'source-1' } }),
+		);
+		const view = render();
+		await startLinkMode(view);
+		await pasteLink(view, 'https://github.com/acme/skills');
+		await userEvent.click(view.getByTestId('skill-source-next'));
+		await userEvent.click(await view.findByTestId('skill-source-view-existing'));
+		expect(view.emitted('openSource')).toEqual([['source-1']]);
+	});
+
 	it('warns about a source connected in other projects and lets the user go on', async () => {
 		skillsStore.discoverSource.mockResolvedValue(
 			discovery({

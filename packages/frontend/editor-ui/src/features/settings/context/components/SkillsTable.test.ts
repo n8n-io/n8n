@@ -408,9 +408,8 @@ describe('SkillsTable', () => {
 
 		it('hides the skills of a folded source and keeps its row', () => {
 			const { getAllByTestId, queryByText, getByTestId } = renderGrouped({
-				skills: [skill({ id: 'local', name: 'local' })],
+				skills: [synced('a'), skill({ id: 'local', name: 'local' })],
 				collapsedSourceIds: ['src-1'],
-				collapsedSources: [{ sourceId: 'src-1', index: 0 }],
 			});
 
 			expect(getAllByTestId('data-table-group-row')).toHaveLength(1);
@@ -512,14 +511,13 @@ describe('SkillsTable', () => {
 		});
 	});
 
-	it.each([
-		{ syncState: 'update_available' as const, text: 'Update available' },
-		{ syncState: 'update_blocked' as const, text: 'Update blocked' },
-	])('shows $text on a synced skill whose source has an update', ({ syncState, text }) => {
-		const { getByTestId } = render([skill({ source: 'github', syncState })]);
-
-		expect(getByTestId(`skill-sync-badge-${syncState}`)).toHaveTextContent(text);
-	});
+	it.each(['update_available', 'update_blocked'] as const)(
+		'shows no per-skill badge for %s',
+		(syncState) => {
+			const { queryByTestId } = render([skill({ syncState })]);
+			expect(queryByTestId(/skill-sync-badge/)).toBeNull();
+		},
+	);
 
 	it.each([{ syncState: 'up_to_date' as const }, { syncState: null }])(
 		'shows no sync badge for sync state $syncState',

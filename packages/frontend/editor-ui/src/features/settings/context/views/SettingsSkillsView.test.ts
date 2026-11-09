@@ -132,6 +132,7 @@ function setPermissions({
 describe('SettingsSkillsView', () => {
 	beforeEach(() => {
 		createTestingPinia();
+		localStorage.clear();
 		skillsStore = mockedStore(useSkillsStore);
 		skillsStore.loading = false;
 		skillsStore.skills = [];
@@ -1041,10 +1042,11 @@ describe('SettingsSkillsView', () => {
 		const ConnectDialogStub = {
 			name: 'SkillSourceConnectDialog',
 			props: ['open', 'scopeOptions'],
-			emits: ['update:open', 'connected'],
+			emits: ['update:open', 'connected', 'openSource'],
 			setup: () => ({ connected }),
 			template: `
 				<div v-if="open" data-test-id="connect-dialog-stub" />
+				<button data-test-id="connect-dialog-open-source" @click="$emit('openSource', 'src-1')" />
 				<button data-test-id="connect-dialog-done" @click="$emit('connected', connected)" />
 			`,
 		};
@@ -1167,6 +1169,43 @@ describe('SettingsSkillsView', () => {
 				expect(view.getByTestId('skill-group-title')).toHaveTextContent('acme/skills · main');
 			});
 
+			it('opens and focuses the page of a duplicate source', async () => {
+				enableSkillSync();
+				localStorage.setItem('n8n-skills-collapsed-sources:anonymous', JSON.stringify(['src-1']));
+				skillsStore.skills = [skill({ sourceId: 'src-1' })];
+				skillsStore.sources = [source];
+				skillsStore.fetchSources.mockResolvedValue([source]);
+				skillsStore.fetchSkills.mockImplementation(async (query) => {
+					if (query?.focusSourceId) skillsStore.page = 2;
+					return { data: skillsStore.skills, count: 21, page: 2, pageCount: 3 };
+				});
+				const view = renderWithDialogStub();
+				await userEvent.click(view.getByTestId('connect-dialog-open-source'));
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+						expect.objectContaining({ focusSourceId: 'src-1' }),
+					),
+				);
+				expect(
+					JSON.parse(localStorage.getItem('n8n-skills-collapsed-sources:anonymous') ?? '[]'),
+				).toEqual([]);
+				await waitFor(() => expect(view.getByTestId('skill-group-header')).toHaveFocus());
+			});
+
+			it('keeps folds separate for users of the same browser', async () => {
+				mockedStore(useUsersStore).currentUserId = 'alice';
+				const view = await renderWithSource();
+				await userEvent.click(view.getByTestId('skill-group-toggle'));
+				await waitFor(() =>
+					expect(localStorage.getItem('n8n-skills-collapsed-sources:alice')).toBe('["src-1"]'),
+				);
+				mockedStore(useUsersStore).currentUserId = 'bob';
+				await waitFor(() =>
+					expect(view.getByTestId('skill-group-toggle')).toHaveAttribute('aria-expanded', 'true'),
+				);
+				expect(localStorage.getItem('n8n-skills-collapsed-sources:alice')).toBe('["src-1"]');
+			});
+
 			it('asks for the plain list with Skill Sync off', async () => {
 				renderView();
 				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
@@ -1188,30 +1227,31 @@ describe('SettingsSkillsView', () => {
 						expect.objectContaining({ collapsedSourceIds: 'src-1' }),
 					),
 				);
-				expect(JSON.parse(localStorage.getItem('n8n-skills-collapsed-sources') ?? '[]')).toEqual([
-					'src-1',
-				]);
-				localStorage.removeItem('n8n-skills-collapsed-sources');
+				expect(
+					JSON.parse(localStorage.getItem('n8n-skills-collapsed-sources:anonymous') ?? '[]'),
+				).toEqual(['src-1']);
+				localStorage.removeItem('n8n-skills-collapsed-sources:anonymous');
 			});
 
 			it('forgets the folds of sources that are gone', async () => {
 				localStorage.setItem(
-					'n8n-skills-collapsed-sources',
+					'n8n-skills-collapsed-sources:anonymous',
 					JSON.stringify(['src-1', 'deleted-source']),
 				);
 				await renderWithSource();
 
 				await waitFor(() =>
-					expect(JSON.parse(localStorage.getItem('n8n-skills-collapsed-sources') ?? '[]')).toEqual([
-						'src-1',
-					]),
+					expect(
+						JSON.parse(localStorage.getItem('n8n-skills-collapsed-sources:anonymous') ?? '[]'),
+					).toEqual(['src-1']),
 				);
-				localStorage.removeItem('n8n-skills-collapsed-sources');
+				localStorage.removeItem('n8n-skills-collapsed-sources:anonymous');
 			});
 
 			it('shows a source with no synced skills instead of the empty state', async () => {
 				enableSkillSync();
 				const empty = { ...source, skillCount: 0 };
+				skillsStore.collapsedSources = [{ sourceId: source.id, index: 0, skillCount: 0 }];
 				skillsStore.fetchSources.mockImplementation(async () => {
 					skillsStore.sources = [empty];
 					return [empty];

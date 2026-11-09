@@ -37,6 +37,8 @@ export type SkillListQuery = {
 	sortBy?: SkillSortOption;
 	/** `source` groups the synced skills under their source. */
 	groupBy?: 'source';
+	page?: number;
+	focusSourceId?: string;
 	/** Comma-separated ids of the sources that the user folded. */
 	collapsedSourceIds?: string;
 };
@@ -165,7 +167,6 @@ export async function connectSkillSource(
 	);
 }
 
-/** Stops syncing one skill: it keeps its versions and becomes a normal, editable skill. */
 /** The sources that the user can see, for their rows in the skills table. */
 export async function listSkillSources(context: IRestApiContext): Promise<SkillSourceListItem[]> {
 	return await makeRestApiRequest<SkillSourceListItem[]>(context, 'GET', SOURCES_ENDPOINT);
@@ -183,6 +184,7 @@ export async function checkSkillSource(
 	);
 }
 
+/** Stops syncing one skill: it keeps its versions and becomes a normal, editable skill. */
 export async function stopSyncingSkill(context: IRestApiContext, skillId: string): Promise<void> {
 	await makeRestApiRequest<{ ok: true }>(
 		context,

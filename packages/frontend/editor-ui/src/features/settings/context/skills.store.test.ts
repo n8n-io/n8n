@@ -1,4 +1,4 @@
-import type { SkillListItem, SkillListResponse } from '@n8n/api-types';
+import type { SkillListItem, SkillListResponse, SkillSourceListItem } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -7,6 +7,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSkillsStore } from './skills.store';
 
 const list = vi.fn();
+const sources = vi.fn();
+const checkSource = vi.fn();
 const creators = vi.fn();
 const agents = vi.fn();
 const discoverSource = vi.fn();
@@ -15,6 +17,8 @@ const sourceCredentials = vi.fn();
 const sourceRepositories = vi.fn();
 
 vi.mock('./skills.api', () => ({
+	listSkillSources: async (...args: unknown[]) => await sources(...args),
+	checkSkillSource: async (...args: unknown[]) => await checkSource(...args),
 	getSkills: async (...args: unknown[]) => await list(...args),
 	getSkillCreators: async (...args: unknown[]) => await creators(...args),
 	getSkillAgents: async (...args: unknown[]) => await agents(...args),
@@ -40,6 +44,49 @@ describe('useSkillsStore', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		list.mockReset();
+	});
+
+	it('discards a superseded source response so callers cannot prune current folds with it', async () => {
+		const older = deferred<SkillSourceListItem[]>();
+		const newer = deferred<SkillSourceListItem[]>();
+		sources.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
+		const store = useSkillsStore();
+		const first = store.fetchSources();
+		const second = store.fetchSources();
+		const current = [{ id: 'current' }] as SkillSourceListItem[];
+		newer.settle(current);
+		expect(await second).toBe(current);
+		older.settle([]);
+		expect(await first).toBeUndefined();
+		expect(store.sources).toEqual(current);
+		expect(sources).toHaveBeenCalledWith(useRootStore().restApiContext);
+	});
+
+	it('checks a source with the REST context and returns its result', async () => {
+		const result = { updatesFound: 2, throttled: false };
+		checkSource.mockResolvedValue(result);
+		const store = useSkillsStore();
+		expect(await store.checkSource('source-1')).toBe(result);
+		expect(checkSource).toHaveBeenCalledWith(useRootStore().restApiContext, 'source-1');
+	});
+
+	it('keeps the previous sources when a read fails', async () => {
+		const store = useSkillsStore();
+		store.sources = [{ id: 'current' }] as SkillSourceListItem[];
+		sources.mockRejectedValueOnce(new Error('unavailable'));
+		await expect(store.fetchSources()).rejects.toThrow('unavailable');
+		expect(store.sources.map(({ id }) => id)).toEqual(['current']);
+	});
+
+	it('stores grouped page metadata and clears it for an ungrouped list', async () => {
+		const store = useSkillsStore();
+		list.mockResolvedValueOnce({ ...page('a'), page: 2, pageCount: 3, collapsedSources: [] });
+		await store.fetchSkills({ groupBy: 'source' });
+		expect(store.page).toBe(2);
+		expect(store.pageCount).toBe(3);
+		list.mockResolvedValueOnce(page('a'));
+		await store.fetchSkills();
+		expect(store.pageCount).toBeUndefined();
 	});
 
 	it('keeps the newest list when an older request answers last', async () => {
