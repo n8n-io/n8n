@@ -399,8 +399,4 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 		margin-bottom: 0;
 	}
 }
-
-.timelineItem {
-	max-width: 90%;
-}
 </style>

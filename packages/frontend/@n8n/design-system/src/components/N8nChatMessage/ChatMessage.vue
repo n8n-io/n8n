@@ -90,7 +90,7 @@ defineSlots<{
 	color: var(--assistant--color--text--user-bubble, var(--text-color));
 	white-space: pre-wrap;
 	word-break: break-word;
-	line-height: var(--line-height--lg);
+	line-height: var(--line-height--xl);
 }
 
 .assistantMessage {

@@ -321,10 +321,25 @@
 	.n8n-markdown-table-container:not(:where(.not-prose, .not-prose *)) {
 		width: 100%;
 		overflow-x: auto;
+		border: 1px solid var(--border-color);
+		border-radius: var(--n8n-markdown--radius);
+		background-color: var(--background--surface);
+		box-shadow: var(--shadow--xs);
+		margin: calc(var(--n8n-markdown--spacing) * 2) 0;
+
+		> table:not(:where(.not-prose, .not-prose *)) {
+			border: none;
+			border-radius: 0;
+			box-shadow: none;
+			margin: 0;
+		}
 	}
 
 	table:not(:where(.not-prose, .not-prose *)) {
 		width: 100%;
+		min-width: min-content;
+		word-break: normal;
+		overflow-wrap: normal;
 		table-layout: auto;
 		border-collapse: separate;
 		border-spacing: 0;
@@ -364,6 +379,10 @@
 	tfoot td:not(:where(.not-prose, .not-prose *)) {
 		vertical-align: baseline;
 		padding: var(--spacing--xs) var(--spacing--sm);
+	}
+
+	:is(th, td) :is(a, code):not(:where(.not-prose, .not-prose *)) {
+		white-space: nowrap;
 	}
 
 	td code:not(:where(.not-prose, .not-prose *)) {
