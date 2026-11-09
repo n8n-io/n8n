@@ -9,6 +9,33 @@ describe('setFilename', () => {
 		expect(setFilename(preparedBinaryData, requestOptions, undefined)).toBe('image.png');
 	});
 
+	it('returns the pathname filename when the URI includes search parameters', () => {
+		const preparedBinaryData = { fileExtension: 'png' } as IBinaryData;
+		const requestOptions = {
+			uri: 'https://example.com/image.png?size=large.png',
+		} as IRequestOptions;
+
+		expect(setFilename(preparedBinaryData, requestOptions, undefined)).toBe('image.png');
+	});
+
+	it('uses the default filename when the pathname has no file extension', () => {
+		const preparedBinaryData = { fileExtension: 'png' } as IBinaryData;
+		const requestOptions = {
+			uri: 'https://example.com/download?format=preview.png',
+		} as IRequestOptions;
+
+		expect(setFilename(preparedBinaryData, requestOptions, undefined)).toBe('data.png');
+	});
+
+	it('uses the default filename when the URI cannot be parsed', () => {
+		const preparedBinaryData = { fileExtension: 'png' } as IBinaryData;
+		const requestOptions = {
+			uri: 'http://[invalid/download?format=preview.png',
+		} as IRequestOptions;
+
+		expect(setFilename(preparedBinaryData, requestOptions, undefined)).toBe('data.png');
+	});
+
 	it('returns constructed filename if fileName is missing and URI does not end with fileExtension', () => {
 		const preparedBinaryData = { fileExtension: 'jpg' } as IBinaryData;
 		const requestOptions = { uri: 'https://example.com/image.png' } as IRequestOptions;

@@ -1,7 +1,8 @@
 import { EventService } from '@n8n/backend-services';
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb, type User, type UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
-import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import { ERROR_MESSAGE_REDACTED_MESSAGE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -67,11 +68,16 @@ describe('LogStreamingEventRelay', () => {
 				projectIds: ['proj-brie', 'proj-stilton'],
 				folderId: 'folder-cheese',
 				workflowIds: ['wf-cheddar', 'wf-brie'],
+				agentIds: ['agent1', 'agent2'],
 				options: {
 					workflowConflictPolicy: 'new-version',
-					workflowIdPolicy: 'new',
+					conflictPolicy: 'new-version',
+					agentIdPolicy: 'source',
+					agentPublishingPolicy: 'match-source',
+					workflowIdPolicy: 'source',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
+					credentialConflictPolicy: 'keep-existing',
 					workflowPublishingPolicy: 'preserve-published-state',
 					missingNodeTypeMode: 'fail',
 					projectConflictPolicy: 'merge',
@@ -95,6 +101,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				// Telemetry-only; must not appear in the audit payload below.
 				counts: {
+					agents: { created: 1, updated: 1, skipped: 1 },
 					workflows: {
 						created: 1,
 						updated: 1,
@@ -108,6 +115,7 @@ describe('LogStreamingEventRelay', () => {
 					credentials: {
 						matched: 1,
 						created: 0,
+						updated: 0,
 						requirements: 1,
 					},
 					dataTables: {
@@ -148,11 +156,16 @@ describe('LogStreamingEventRelay', () => {
 					projectIds: ['proj-brie', 'proj-stilton'],
 					folderId: 'folder-cheese',
 					workflowIds: ['wf-cheddar', 'wf-brie'],
+					agentIds: ['agent1', 'agent2'],
 					options: {
 						workflowConflictPolicy: 'new-version',
-						workflowIdPolicy: 'new',
+						conflictPolicy: 'new-version',
+						agentIdPolicy: 'source',
+						agentPublishingPolicy: 'match-source',
+						workflowIdPolicy: 'source',
 						credentialMatchingMode: 'id-only',
 						credentialMissingMode: 'must-preexist',
+						credentialConflictPolicy: 'keep-existing',
 						workflowPublishingPolicy: 'preserve-published-state',
 						missingNodeTypeMode: 'fail',
 						projectConflictPolicy: 'merge',
@@ -187,11 +200,13 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'User',
 					role: { slug: 'global:admin' },
 				},
+				agentIds: ['agent1'],
 				workflowIds: ['wf-cheddar', 'wf-brie'],
 				folderIds: ['folder-gouda'],
 				projectIds: ['proj-stilton'],
 				// Telemetry-only; must not appear in the audit payload below.
 				counts: {
+					agents: 1,
 					workflows: 2,
 					folders: 1,
 					credentials: 1,
@@ -214,6 +229,7 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Export',
 					_lastName: 'User',
 					globalRole: 'global:admin',
+					agentIds: ['agent1'],
 					workflowIds: ['wf-cheddar', 'wf-brie'],
 					folderIds: ['folder-gouda'],
 					projectIds: ['proj-stilton'],
@@ -231,6 +247,7 @@ describe('LogStreamingEventRelay', () => {
 					role: { slug: 'global:admin' },
 				},
 				reason: 'access-denied',
+				agentIds: ['agent1'],
 				workflowIds: ['wf-stilton'],
 			};
 
@@ -246,6 +263,7 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:admin',
 					operation: 'export',
 					reason: 'access-denied',
+					agentIds: ['agent1'],
 					workflowIds: ['wf-stilton'],
 				},
 			});
@@ -618,38 +636,30 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `workflow-pre-execute` with IWorkflowExecutionDataProcess data', () => {
-			const executionData = {
-				executionData: undefined,
-				executionMode: 'manual' as const,
-				userId: 'user-abc',
-				projectId: 'proj-from-data',
-				projectName: 'Data Project',
-				workflowData: mock<IWorkflowBase>({ id: 'wf303', name: 'Data Workflow' }),
-			} as unknown as IWorkflowExecutionDataProcess;
-
+		it('should mark a manual `workflow-pre-execute` event with workflow data as manual', () => {
 			const event: RelayEventMap['workflow-pre-execute'] = {
-				executionId: 'exec456',
-				data: executionData,
+				executionId: 'exec-manual',
+				userId: 'user-manual',
+				data: mock<IWorkflowBase>({ id: 'wf-manual', name: 'Manual Workflow' }),
 				mode: 'manual',
-				projectId: 'proj-fallback',
-				projectName: 'Fallback Project',
+				projectId: 'proj-123',
+				projectName: 'Test Project',
 			};
 
 			eventService.emit('workflow-pre-execute', event);
 
 			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.workflow.started',
-				payload: {
-					executionId: 'exec456',
-					userId: 'user-abc',
-					workflowId: 'wf303',
+				payload: expect.objectContaining({
+					executionId: 'exec-manual',
+					userId: 'user-manual',
+					workflowId: 'wf-manual',
+					workflowName: 'Manual Workflow',
 					isManual: true,
 					mode: 'manual',
-					workflowName: 'Data Workflow',
-					projectId: 'proj-from-data',
-					projectName: 'Data Project',
-				},
+					projectId: 'proj-123',
+					projectName: 'Test Project',
+				}),
 			});
 		});
 
@@ -764,6 +774,107 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should redact the error message on `workflow-post-execute` when the workflow policy covers the run', () => {
+			const runData = mock<IRun>({
+				status: 'error',
+				mode: 'manual',
+				finished: false,
+				data: {
+					resultData: {
+						lastNodeExecuted: 'some-node',
+						error: {
+							name: 'NodeApiError',
+							httpCode: '500',
+							node: mock<INode>({ type: 'some-type' }),
+							message: 'secret value',
+						},
+					},
+				},
+			} as never) as unknown as IRun;
+
+			eventService.emit('workflow-post-execute', {
+				executionId: 'some-id',
+				workflow: mock<IWorkflowBase>({
+					id: 'some-id',
+					name: 'some-name',
+					settings: { redactionPolicy: 'all' },
+				}),
+				runData,
+			});
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.failed',
+				payload: expect.objectContaining({
+					lastNodeExecuted: 'some-node',
+					errorNodeType: 'some-type',
+					errorMessage: ERROR_MESSAGE_REDACTED_MESSAGE,
+					errorType: 'NodeApiError',
+					errorHttpCode: '500',
+				}),
+			});
+			expect(JSON.stringify(eventBus.sendWorkflowEvent.mock.calls)).not.toContain('secret value');
+		});
+
+		it('should redact the error message on `workflow-post-execute` when the run snapshot covers the mode', () => {
+			const runData = mock<IRun>({
+				status: 'error',
+				mode: 'trigger',
+				finished: false,
+				data: {
+					resultData: {
+						error: { name: 'NodeOperationError', message: 'secret value' },
+					},
+					executionData: {
+						runtimeData: { redaction: { version: 2, production: true, manual: false } },
+					},
+				},
+			} as never) as unknown as IRun;
+
+			eventService.emit('workflow-post-execute', {
+				executionId: 'some-id',
+				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name', settings: {} }),
+				runData,
+			});
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.failed',
+				payload: expect.objectContaining({
+					errorMessage: ERROR_MESSAGE_REDACTED_MESSAGE,
+					errorType: 'NodeOperationError',
+				}),
+			});
+			const [{ payload }] = eventBus.sendWorkflowEvent.mock.calls[0];
+			expect(payload).not.toHaveProperty('errorHttpCode');
+			expect(JSON.stringify(eventBus.sendWorkflowEvent.mock.calls)).not.toContain('secret value');
+		});
+
+		it('should keep the error message on `workflow-post-execute` when the policy does not cover the mode', () => {
+			const runData = mock<IRun>({
+				status: 'error',
+				mode: 'manual',
+				finished: false,
+				data: {
+					resultData: { error: { name: 'NodeOperationError', message: 'visible value' } },
+					executionData: {
+						runtimeData: { redaction: { version: 2, production: true, manual: false } },
+					},
+				},
+			} as never) as unknown as IRun;
+
+			eventService.emit('workflow-post-execute', {
+				executionId: 'some-id',
+				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name', settings: {} }),
+				runData,
+			});
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.failed',
+				payload: expect.objectContaining({ errorMessage: 'visible value' }),
+			});
+			const [{ payload }] = eventBus.sendWorkflowEvent.mock.calls[0];
+			expect(payload).not.toHaveProperty('errorType');
+		});
+
 		it('should log job failure on `workflow-post-execute` for failed job', () => {
 			const runData = mock<IRun>({
 				finished: false,
@@ -858,6 +969,24 @@ describe('LogStreamingEventRelay', () => {
 					_lastName: 'Doe',
 					globalRole: 'some-role',
 				},
+			});
+		});
+
+		it('names the system and the deleted user on a `user-deleted` event without a user', () => {
+			const event: RelayEventMap['user-deleted'] = {
+				user: null,
+				source: 'scim',
+				targetUserOldStatus: 'active',
+				publicApi: false,
+				migrationStrategy: 'delete_data',
+				targetUserId: '456',
+			};
+
+			eventService.emit('user-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.deleted',
+				payload: { userId: null, source: 'scim', targetUserId: '456' },
 			});
 		});
 
@@ -1725,6 +1854,35 @@ describe('LogStreamingEventRelay', () => {
 					userEmail: 'user@example.com',
 					authenticationMethod: 'email',
 					reason: 'Invalid password',
+				},
+			});
+		});
+
+		it('should log on `user-login-email-conflict` event', () => {
+			const event: RelayEventMap['user-login-email-conflict'] = {
+				user: {
+					id: 'user404',
+					email: 'linked@example.com',
+					firstName: 'Linked',
+					lastName: 'User',
+					role: { slug: 'global:member' },
+				},
+				authenticationMethod: 'saml',
+				assertedEmail: 'asserted@example.com',
+			};
+
+			eventService.emit('user-login-email-conflict', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.login.emailConflict',
+				payload: {
+					userId: 'user404',
+					_email: 'linked@example.com',
+					_firstName: 'Linked',
+					_lastName: 'User',
+					globalRole: 'global:member',
+					authenticationMethod: 'saml',
+					_assertedEmail: 'asserted@example.com',
 				},
 			});
 		});
@@ -3027,6 +3185,60 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log `public-api-rate-limit.enabled` when public_api_rate_limit is turned on', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user707',
+					email: 'admin10@example.com',
+					firstName: 'Tenth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'public_api_rate_limit',
+				value: true,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.public-api-rate-limit.enabled',
+				payload: {
+					userId: 'user707',
+					_email: 'admin10@example.com',
+					_firstName: 'Tenth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
+		it('should log `public-api-rate-limit.disabled` when public_api_rate_limit is turned off', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user707',
+					email: 'admin10@example.com',
+					firstName: 'Tenth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'public_api_rate_limit',
+				value: false,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.public-api-rate-limit.disabled',
+				payload: {
+					userId: 'user707',
+					_email: 'admin10@example.com',
+					_firstName: 'Tenth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
 	});
 
 	describe('policy enforcement events', () => {
@@ -3537,5 +3749,81 @@ describe('LogStreamingEventRelay', () => {
 				expect.objectContaining({ eventName: 'n8n.instanceReporting.failed' }),
 			);
 		});
+	});
+	describe('trusted source events', () => {
+		it.each([
+			['trusted-source-created', 'n8n.audit.trusted-source.created'],
+			['trusted-source-updated', 'n8n.audit.trusted-source.updated'],
+			['trusted-source-deleted', 'n8n.audit.trusted-source.deleted'],
+		] as const)('should log on `%s` event with redacted user', (eventName, auditEventName) => {
+			const event = {
+				user: {
+					id: 'user-1',
+					email: 'owner@n8n.io',
+					firstName: 'Own',
+					lastName: 'Er',
+					role: { slug: 'global:owner' },
+				},
+				sourceId: 'source-1',
+				issuer: 'https://idp.example.com',
+			};
+
+			eventService.emit(eventName, event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: auditEventName,
+				payload: {
+					userId: 'user-1',
+					_email: 'owner@n8n.io',
+					_firstName: 'Own',
+					_lastName: 'Er',
+					globalRole: 'global:owner',
+					sourceId: 'source-1',
+					issuer: 'https://idp.example.com',
+				},
+			});
+		});
+
+		it.each([
+			['trusted-source-created', 'n8n.audit.trusted-source.created'],
+			['trusted-source-updated', 'n8n.audit.trusted-source.updated'],
+		] as const)(
+			'keeps the config facets of `%s` out of the audit payload',
+			(eventName, auditEventName) => {
+				eventService.emit(eventName, {
+					user: {
+						id: 'user-1',
+						email: 'owner@n8n.io',
+						firstName: 'Own',
+						lastName: 'Er',
+						role: { slug: 'global:owner' },
+					},
+					sourceId: 'source-1',
+					issuer: 'https://idp.example.com',
+					facets: {
+						discoveryMode: 'auto',
+						clientKind: null,
+						surfaces: ['public-api'],
+						identitySubject: 'binding',
+						linkByEmail: 'verified-only',
+						provisionHuman: 'off',
+						roleMappingMode: 'off',
+					},
+				});
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: auditEventName,
+					payload: {
+						userId: 'user-1',
+						_email: 'owner@n8n.io',
+						_firstName: 'Own',
+						_lastName: 'Er',
+						globalRole: 'global:owner',
+						sourceId: 'source-1',
+						issuer: 'https://idp.example.com',
+					},
+				});
+			},
+		);
 	});
 });

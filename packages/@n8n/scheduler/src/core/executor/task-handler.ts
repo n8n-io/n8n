@@ -76,20 +76,29 @@ export function createDispatchReporter(onDispatch: () => void): DispatchReporter
  *     after this point is still safe to retry — a redelivery that found the effect
  *     already exists, or nothing done so far.
  *
- * A handler may run as long as it needs: the executor renews the claim's lease
- * while `execute` is pending. `signal` aborts with a `LeaseLostError` when the
+ * A handler may run up to the task's `timeoutSeconds`: the executor renews the
+ * claim's lease while `execute` is pending. `run.signal` aborts with a `LeaseLostError` when the
  * claim is gone, or no renewal succeeded for a whole lease, and no dispatch
  * marker is stored, so another instance may run the same occurrence. Honoring
  * it is optional, but a handler that ignores it may overlap that run. Once
  * `report.dispatched()` has stored the marker, the signal never aborts for a
  * lost claim: no instance runs that occurrence again.
+ *
+ * At the timeout, `run.signal` aborts with a `TaskTimeoutError` and the lease is no
+ * longer renewed, whether or not the handler dispatched. A run that did not
+ * dispatch counts as a failed attempt. A run that dispatched completes. A
+ * handler that returns cleanly after the abort still completes the occurrence.
  */
 export interface TaskHandler {
-	execute(
-		task: ClaimedTask,
-		report: DispatchReporter,
-		signal: AbortSignal,
-	): Promise<DispatchDecision>;
+	execute(task: ClaimedTask, report: DispatchReporter, run: TaskRun): Promise<DispatchDecision>;
+}
+
+/** The lifetime of one handler run. */
+export interface TaskRun {
+	/** Aborts with a `LeaseLostError` or a `TaskTimeoutError`. */
+	readonly signal: AbortSignal;
+	/** Milliseconds until the timeout aborts `signal`. 0 once it did. */
+	remainingMs(): number;
 }
 
 /**

@@ -132,6 +132,33 @@ describe('AlicloudModelStudio Operations', () => {
 			expect(result.json).toEqual({ content: 'Hi there!' });
 		});
 
+		it.each([
+			['deepseek-v4-pro', '/api/v1/services/aigc/text-generation/generation'],
+			['deepseek-v4-pro-0813', '/api/v1/services/aigc/text-generation/generation'],
+			['deepseek-v4-flash-0731', '/api/v1/services/aigc/text-generation/generation'],
+			['deepseek-v4.1-flash', '/api/v1/services/aigc/multimodal-generation/generation'],
+		])('should route %s to %s', async (modelId, endpoint) => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: any) => {
+					const params: Record<string, unknown> = {
+						modelId,
+						messages: { messageValues: [{ role: 'user', content: 'Hello' }] },
+						options: {},
+						simplify: true,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+			mockApiRequest.mockResolvedValue({
+				output: { text: 'Hi there!' },
+				usage: { input_tokens: 5, output_tokens: 3 },
+			});
+
+			await textMessageExecute.call(mockExecuteFunctions, 0);
+
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', endpoint, expect.anything());
+		});
+
 		it('should use multimodal endpoint and convert string content to array format for multimodal models', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {

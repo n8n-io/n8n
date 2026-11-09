@@ -1,5 +1,7 @@
 import { auditOperations } from '../AuditDescription';
 import { N8n } from '../N8n.node';
+import { projectOperations } from '../ProjectDescription';
+import { userOperations } from '../UserDescription';
 
 function collectUrls(value: unknown): string[] {
 	if (Array.isArray(value)) return value.flatMap(collectUrls);
@@ -12,8 +14,12 @@ function collectUrls(value: unknown): string[] {
 }
 
 describe('n8n Node Structure', () => {
-	it('audit operation default should be one of its options', () => {
-		const operation = auditOperations[0];
+	it.each([
+		['audit', auditOperations],
+		['project', projectOperations],
+		['user', userOperations],
+	])('%s operation default should be one of its options', (_resource, operations) => {
+		const operation = operations[0];
 		const values = (operation.options as Array<{ value: string }>).map((o) => o.value);
 		expect(values).toContain(operation.default);
 	});

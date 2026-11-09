@@ -1,6 +1,121 @@
 import { InMemoryMemory } from '../memory/memory-store';
+import type { ObservationCursor, ObservationLogBatch } from '../../types';
+
+const batchTime = new Date('2026-05-12T10:00:00Z');
+
+function observationBatch(expectedCursor: ObservationCursor | null = null): ObservationLogBatch {
+	return {
+		observationScopeId: 'thread-1',
+		expectedCursor,
+		nextCursor: {
+			observationScopeId: 'thread-1',
+			lastObservedMessageId: 'm2',
+			lastObservedAt: new Date(2),
+			updatedAt: new Date(batchTime),
+		},
+		entries: [
+			{
+				marker: 'important',
+				text: 'Decision',
+				parentIndex: null,
+				tokenCount: 2,
+				createdAt: batchTime,
+			},
+			{
+				marker: 'completion',
+				text: 'Completed',
+				parentIndex: 0,
+				tokenCount: 3,
+				createdAt: new Date(batchTime.getTime() + 1),
+			},
+		],
+	};
+}
 
 describe('observation log store', () => {
+	it('commits a complete batch once and clones its stored values', async () => {
+		const store = new InMemoryMemory();
+		const batch = observationBatch();
+		expect(await store.commitObservationLogBatch(batch)).toBe('committed');
+		const rows = await store.getObservationLog(batch);
+		expect(rows).toMatchObject([
+			{ text: 'Decision', parentId: null, tokenCount: 2, createdAt: batchTime },
+			{ text: 'Completed', parentId: rows[0].id, tokenCount: 3 },
+		]);
+		const cursor = await store.getCursor('thread-1');
+		expect(cursor).toEqual(batch.nextCursor);
+		expect(await store.commitObservationLogBatch(batch)).toBe('stale');
+		expect(await store.getObservationLog(batch)).toEqual(rows);
+		batch.nextCursor.updatedAt.setTime(0);
+		batch.entries[1].createdAt.setTime(0);
+		rows[0].createdAt.setTime(0);
+		cursor!.updatedAt.setTime(0);
+		expect(await store.getCursor('thread-1')).toMatchObject({ updatedAt: batchTime });
+		expect((await store.getObservationLog(batch))[0].createdAt).toEqual(batchTime);
+		expect((await store.getObservationLog(batch))[1].createdAt.getTime()).toBe(
+			batchTime.getTime() + 1,
+		);
+	});
+
+	it.each([false, true])(
+		'accepts only one competing writer with an existing cursor: %s',
+		async (existing) => {
+			const store = new InMemoryMemory();
+			if (existing) await store.commitObservationLogBatch(observationBatch());
+			const expected = await store.getCursor('thread-1');
+			const input = observationBatch(expected);
+			if (existing) {
+				input.nextCursor.lastObservedMessageId = 'm3';
+				input.nextCursor.lastObservedAt = new Date(3);
+				input.nextCursor.updatedAt = new Date(0);
+			}
+			const results = await Promise.all([
+				store.commitObservationLogBatch(input),
+				store.commitObservationLogBatch(input),
+			]);
+			expect(results.sort()).toEqual(['committed', 'stale']);
+			expect(await store.getObservationLog({ observationScopeId: 'thread-1' })).toHaveLength(
+				existing ? 4 : 2,
+			);
+			expect(await store.getCursor('thread-1')).toEqual({
+				...input.nextCursor,
+				updatedAt: new Date(batchTime.getTime() + (existing ? 1 : 0)),
+			});
+		},
+	);
+
+	it.each(['message', 'time', 'revision', 'backwards-time', 'backwards-id'])(
+		'rejects %s cursor changes without changing stored state',
+		async (change) => {
+			const store = new InMemoryMemory();
+			await store.commitObservationLogBatch(observationBatch());
+			const cursor = await store.getCursor('thread-1');
+			const rows = await store.getObservationLog({ observationScopeId: 'thread-1' });
+			const batch = observationBatch(cursor);
+			if (change === 'message') batch.expectedCursor = { ...cursor!, lastObservedMessageId: 'm1' };
+			if (change === 'time') batch.expectedCursor = { ...cursor!, lastObservedAt: new Date(0) };
+			if (change === 'revision') batch.expectedCursor = { ...cursor!, updatedAt: new Date(0) };
+			if (change === 'backwards-time') batch.nextCursor.lastObservedAt = new Date(1);
+			if (change === 'backwards-id') batch.nextCursor.lastObservedMessageId = 'm1';
+			expect(await store.commitObservationLogBatch(batch)).toBe('stale');
+			expect(await store.getObservationLog(batch)).toEqual(rows);
+			expect(await store.getCursor('thread-1')).toEqual(cursor);
+		},
+	);
+
+	it('stages parent links before changing either observations or the cursor', async () => {
+		const store = new InMemoryMemory();
+		const batch = observationBatch();
+		batch.entries[1].parentIndex = 1;
+		await expect(async () => await store.commitObservationLogBatch(batch)).rejects.toThrow(
+			'earlier entries',
+		);
+		expect(await store.getObservationLog(batch)).toEqual([]);
+		expect(await store.getCursor('thread-1')).toBeNull();
+		batch.entries[1].parentIndex = 0;
+		expect(await store.commitObservationLogBatch(batch)).toBe('committed');
+	});
+
 	it('persists marker-based active observations with default mechanics', async () => {
 		const store = new InMemoryMemory();
 		const createdAt = new Date('2026-05-12T10:00:00Z');

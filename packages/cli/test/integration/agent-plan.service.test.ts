@@ -1,3 +1,4 @@
+import { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { TransactionRunner } from '@n8n/db';
@@ -5,6 +6,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
+import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentPlanService } from '@/modules/agents/agent-plan.service';
 import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { Agent } from '@/modules/agents/entities/agent.entity';
@@ -88,7 +90,7 @@ describe('AgentPlanService', () => {
 			{
 				id: randomUUID(),
 				threadId,
-				formatVersion: 1,
+				formatVersion: 2,
 				data,
 			},
 			{},
@@ -106,7 +108,7 @@ describe('AgentPlanService', () => {
 				threadId,
 				planId: initial.id,
 				expectedRevision: 1,
-				formatVersion: 1,
+				formatVersion: 2,
 				data: {
 					...document({ ...first, status: 'done', resultSummary: 'Ready' }, second),
 					presentation: { label: 'Research finished', detail: 'One source remains unchecked.' },
@@ -114,7 +116,17 @@ describe('AgentPlanService', () => {
 			},
 			{},
 		);
-		const fresh = new AgentPlanService(new AgentPlanRepository(dataSource, transactionRunner));
+		const fresh = new AgentPlanService(
+			new AgentPlanRepository(
+				dataSource,
+				transactionRunner,
+				Container.get(AgentExecutionThreadRepository),
+			),
+			transactionRunner,
+			Container.get(AgentExecutionThreadRepository),
+			Container.get(AgentExecutionUpdateBroadcaster),
+		);
+
 		expect(await fresh.findActivePlan(threadId, {})).toEqual(updated);
 		expect(updated.readiness.ready).toEqual([second.id]);
 		expect(updated.data.items[0].startedAt).toEqual(updated.data.items[0].endedAt);
@@ -138,13 +150,15 @@ describe('AgentPlanService', () => {
 					threadId: 'other-thread',
 					planId: initial.id,
 					expectedRevision: 2,
-					formatVersion: 1,
+					formatVersion: 2,
 					data: updated.data,
 				},
 				{},
 			),
 		).rejects.toThrow(AgentPlanWriteConflictError);
+
 		const closed = await fresh.closePlan({ threadId, planId: initial.id, expectedRevision: 2 }, {});
+
 		expect(closed.data).toEqual(updated.data);
 		expect(closed.data.items[1].status).toBe('pending');
 		expect(await fresh.findRevision(threadId, initial.id, 3, {})).toMatchObject({
@@ -162,7 +176,7 @@ describe('AgentPlanService', () => {
 				threadId,
 				planId: initial.id,
 				expectedRevision: 1,
-				formatVersion: 1,
+				formatVersion: 2,
 				data: document({ ...original, status: 'failed' }, dependent),
 			},
 			{},
@@ -173,11 +187,12 @@ describe('AgentPlanService', () => {
 				threadId,
 				planId: initial.id,
 				expectedRevision: 2,
-				formatVersion: 1,
+				formatVersion: 2,
 				data: { ...failed.data, items: [...failed.data.items, replacement] },
 			},
 			{},
 		);
+
 		expect(next.revision).toBe(3);
 		expect(next.data.items[0]).toEqual(failed.data.items[0]);
 		expect(next.data.items[1].dependsOn).toEqual([replacement.id]);
@@ -190,7 +205,7 @@ describe('AgentPlanService', () => {
 					threadId,
 					planId: initial.id,
 					expectedRevision: 3,
-					formatVersion: 1,
+					formatVersion: 2,
 					data: {
 						...next.data,
 						items: [next.data.items[0], { ...next.data.items[1], status: 'done' }, replacement],
@@ -205,27 +220,113 @@ describe('AgentPlanService', () => {
 
 	it('accepts only one concurrent update for a revision', async () => {
 		const initial = await create();
+		const tool = createAgentPlanTools(service).find((entry) => entry.name === 'update_plan');
+		if (!tool?.handler) throw new Error('Missing update tool');
 		const input = {
-			threadId,
 			planId: initial.id,
 			expectedRevision: 1,
-			formatVersion: 1,
-			data: initial.data,
 		};
-		const outcomes = await Promise.allSettled([
-			service.replacePlan(input, {}),
-			service.replacePlan(input, {}),
+		const context = { persistence: { threadId, resourceId: agentId } };
+		const outcomes = await Promise.all([
+			tool.handler({ ...input, document: { title: 'First writer' } }, context),
+			tool.handler({ ...input, document: { description: 'Second writer' } }, context),
 		]);
-		expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
-		const rejected = outcomes.find((outcome) => outcome.status === 'rejected');
-		expect(rejected?.status === 'rejected' && rejected.reason).toBeInstanceOf(
-			AgentPlanWriteConflictError,
+		expect(outcomes).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ revision: 2 }),
+				expect.objectContaining({ error: 'conflict' }),
+			]),
 		);
+		const saved = await service.findActivePlan(threadId, {});
+		expect(saved?.data).toEqual(expect.objectContaining({ items: initial.data.items }));
+		expect([
+			{ ...initial.data, title: 'First writer' },
+			{ ...initial.data, description: 'Second writer' },
+		]).toContainEqual(saved?.data);
 		expect((await service.listHistory(threadId, initial.id, {}, {})).items).toHaveLength(2);
+	});
+
+	it('saves partial completion updates without changing omitted tasks or descriptions', async () => {
+		const done = task();
+		const research = task();
+		const merge = task({ dependsOn: [research.id] });
+		const initial = await create(document(done, research, merge));
+		const running = await service.replacePlan(
+			{
+				threadId,
+				planId: initial.id,
+				expectedRevision: 1,
+				formatVersion: 2,
+				data: document(
+					{ ...done, status: 'done', resultSummary: 'Saved result' },
+					{ ...research, status: 'in_progress' },
+					merge,
+				),
+			},
+			{},
+		);
+		const tool = createAgentPlanTools(service).find((entry) => entry.name === 'update_plan');
+
+		if (!tool?.handler) throw new Error('Missing update tool');
+
+		const context = { persistence: { threadId, resourceId: agentId } };
+		const input = { planId: initial.id, expectedRevision: 2 };
+
+		for (const update of [
+			{ document: {}, removeItemIds: [done.id] },
+			{ document: { items: [{ id: done.id, description: 'Changed final task' }] } },
+			{ document: { items: [{ id: merge.id, status: 'done' }] } },
+			{
+				document: {
+					title: 'Rejected batch',
+					items: [{ id: research.id, description: 'Changed work' }],
+				},
+			},
+		]) {
+			expect(await tool.handler({ ...input, ...update }, context)).toMatchObject({
+				error: 'invalid_plan',
+			});
+			expect(await service.findActivePlan(threadId, {})).toEqual(running);
+			expect((await service.listHistory(threadId, initial.id, {}, {})).items).toHaveLength(2);
+		}
+
+		expect(
+			await tool.handler(
+				{
+					...input,
+					document: {
+						items: [
+							{ id: research.id, status: 'done', resultSummary: 'Partial findings' },
+							{ id: merge.id, status: 'done' },
+						],
+						presentation: { label: 'Research reviewed' },
+					},
+				},
+				context,
+			),
+		).toMatchObject({ revision: 3 });
+
+		const saved = await service.findActivePlan(threadId, {});
+
+		expect(saved?.data.items[0]).toEqual(running.data.items[0]);
+		expect(saved?.data.items[1]).toMatchObject({
+			...running.data.items[1],
+			status: 'done',
+			resultSummary: 'Partial findings',
+			endedAt: expect.any(String),
+		});
+		expect(saved?.data.items[2]).toMatchObject({ status: 'done', dependsOn: [research.id] });
+		expect(await service.findRevision(threadId, initial.id, 2, {})).toMatchObject({
+			data: running.data,
+		});
+		expect(await service.findRevision(threadId, initial.id, 3, {})).toMatchObject({
+			data: saved?.data,
+		});
 	});
 
 	it('joins an outer transaction and rolls back the document and history', async () => {
 		const initial = await create();
+
 		await expect(
 			transactionRunner.run({}, async (ctx) => {
 				const changed = await service.replacePlan(
@@ -233,13 +334,15 @@ describe('AgentPlanService', () => {
 						threadId,
 						planId: initial.id,
 						expectedRevision: 1,
-						formatVersion: 1,
+						formatVersion: 2,
 						data: { ...initial.data, title: 'Changed' },
 					},
 					ctx,
 				);
+
 				expect(await service.findPlan(threadId, initial.id, ctx)).toEqual(changed);
 				expect(await service.findRevision(threadId, initial.id, 2, ctx)).not.toBeNull();
+
 				throw new Error('Rollback');
 			}),
 		).rejects.toThrow('Rollback');
@@ -267,10 +370,17 @@ describe('AgentPlanService', () => {
 
 	it('supports plan tools across turns and reconstructed tool instances', async () => {
 		const call = async (name: string, input: unknown) => {
-			const tool = createAgentPlanTools(new AgentPlanService(repository)).find(
-				(entry) => entry.name === name,
-			);
+			const tool = createAgentPlanTools(
+				new AgentPlanService(
+					repository,
+					transactionRunner,
+					Container.get(AgentExecutionThreadRepository),
+					Container.get(AgentExecutionUpdateBroadcaster),
+				),
+			).find((entry) => entry.name === name);
+
 			if (!tool?.handler) throw new Error(`Missing tool: ${name}`);
+
 			return await tool.handler(input, { persistence: { threadId, resourceId: agentId } });
 		};
 		const proposed = {
@@ -287,38 +397,55 @@ describe('AgentPlanService', () => {
 				},
 			],
 		};
+
 		expect(await call('read_plan', {})).toBeNull();
+
 		const created = await call('create_plan', { document: proposed });
 		const current = await service.findActivePlan(threadId, {});
+
 		if (!current) throw new Error('Expected active plan');
+
 		expect(await call('read_plan', {})).toEqual(created);
 		expect(await call('create_plan', { document: proposed })).toMatchObject({ error: 'conflict' });
+
 		const write = { planId: current.id, expectedRevision: 1 };
 		const running = {
 			...proposed,
 			items: [{ ...proposed.items[0], id: current.data.items[0].id, status: 'in_progress' }],
 		};
-		expect(await call('update_plan', { ...write, document: running })).toMatchObject({
+		const statusUpdate = { items: [{ id: current.data.items[0].id, status: 'in_progress' }] };
+
+		expect(await call('update_plan', { ...write, document: statusUpdate })).toMatchObject({
 			revision: 2,
 		});
+
 		const started = await service.findActivePlan(threadId, {});
+
 		expect(started?.data.items[0].startedAt).not.toBeNull();
-		expect(await call('update_plan', { ...write, document: running })).toMatchObject({
+		expect(await call('update_plan', { ...write, document: statusUpdate })).toMatchObject({
 			error: 'conflict',
 		});
 		expect(
 			await call('update_plan', {
 				...write,
 				expectedRevision: 2,
-				document: { ...running, items: [{ ...running.items[0], description: 'Different work' }] },
+				document: { items: [{ id: running.items[0].id, description: 'Different work' }] },
 			}),
 		).toMatchObject({ error: 'invalid_plan' });
 		expect((await service.listHistory(threadId, current.id, {}, {})).items).toHaveLength(2);
+
 		const finished = { ...running, items: [{ ...running.items[0], status: 'done' }] };
+
 		expect(
-			await call('update_plan', { ...write, expectedRevision: 2, document: finished }),
+			await call('update_plan', {
+				...write,
+				expectedRevision: 2,
+				document: { items: [{ id: running.items[0].id, status: 'done' }] },
+			}),
 		).toMatchObject({ revision: 3 });
+
 		const done = await service.findActivePlan(threadId, {});
+
 		expect(done?.data.items[0].startedAt).toEqual(started?.data.items[0].startedAt);
 		expect(done?.data.items[0].endedAt).not.toBeNull();
 		expect(await call('close_plan', { ...write, expectedRevision: 3 })).toMatchObject({
@@ -381,11 +508,12 @@ describe('AgentPlanService', () => {
 			{
 				id: randomUUID(),
 				threadId,
-				formatVersion: 2,
+				formatVersion: 3,
 				data: { future: true },
 			},
 			{},
 		);
+
 		await expect(service.findPlan(threadId, unsupported.id, {})).rejects.toThrow(
 			'Unsupported plan format',
 		);

@@ -152,6 +152,34 @@ export class DeprecationService {
 				value !== undefined && ['false', '0'].includes(value.toLowerCase()),
 		},
 		{
+			envVar: 'N8N_SCHEDULER_ENABLED',
+			message: `The durable scheduler is now on by default. ${SAFE_TO_REMOVE}`,
+			checkValue: (value?: string) =>
+				value !== undefined && !['false', '0'].includes(value.toLowerCase()),
+		},
+		{
+			envVar: 'N8N_SCHEDULER_ENABLED',
+			message:
+				'The in-memory scheduler is deprecated and will be removed in a future version, together with this variable. Remove this variable to run your schedules on the durable scheduler, which is the default. It keeps scheduled runs across restarts and runs each one only once across instances.',
+			checkValue: (value?: string) =>
+				value !== undefined && ['false', '0'].includes(value.toLowerCase()),
+		},
+		{
+			envVar: 'N8N_SCHEDULER_TRIGGER_NODE_MODE',
+			message: `The \`new\` mode is now the default. ${SAFE_TO_REMOVE}`,
+			checkValue: (value?: string) => value === 'new',
+		},
+		{
+			envVar: 'N8N_SCHEDULER_TRIGGER_NODE_MODE',
+			message:
+				'The `legacy` mode is deprecated and will be removed in a future version, together with this variable. Today it keeps "every N seconds/minutes" schedules aligned to the clock (on the minute, on the hour). Remove this variable to use the default `new` mode, which spaces runs a steady N apart, timed from when the workflow was activated.',
+			checkValue: (value?: string) => value === 'legacy',
+		},
+		{
+			envVar: 'N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER',
+			message: `The "Skip Durable Scheduler" option of the Schedule Trigger node no longer exists. Schedule Triggers use the durable scheduler only when the workflow publication service is enabled; otherwise they remain on the in-memory scheduler. To run all schedules on the in-memory scheduler when the workflow publication service is enabled, set N8N_SCHEDULER_ENABLED=false. ${SAFE_TO_REMOVE}`,
+		},
+		{
 			envVar: 'EXECUTIONS_PROCESS',
 			message: SAFE_TO_REMOVE,
 			checkValue: (value: string | undefined) => value !== undefined && value !== 'own',

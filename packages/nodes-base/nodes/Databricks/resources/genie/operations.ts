@@ -30,10 +30,10 @@ export const genieOperations: INodeProperties = {
 			action: 'Get a conversation message',
 		},
 		{
-			name: 'Get Genie Space',
+			name: 'Get Genie Agent',
 			value: 'getSpace',
-			description: 'Get details of a Genie space',
-			action: 'Get a Genie space',
+			description: 'Get details of a Genie agent',
+			action: 'Get a Genie agent',
 		},
 		{
 			name: 'Get Query Results',

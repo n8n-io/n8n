@@ -145,6 +145,34 @@ describe('install_community_node MCP tool', () => {
 		});
 	});
 
+	describe('policy restrictions', () => {
+		test('reports the node types a policy restricts', async () => {
+			const policyRestrictions = {
+				nodeTypes: [{ type: NODE_TYPE, blockedOn: 'instance' as const, optInAvailable: false }],
+			};
+			lifecycleService.describePolicyRestrictions.mockResolvedValue(policyRestrictions);
+
+			const structured = await call();
+
+			expect(lifecycleService.describePolicyRestrictions).toHaveBeenCalledWith(
+				expect.objectContaining({ packageName: PACKAGE }),
+			);
+			expect(structured).toHaveProperty('policyRestrictions', policyRestrictions);
+		});
+
+		test('reports an empty list when no policy restricts the package', async () => {
+			lifecycleService.describePolicyRestrictions.mockResolvedValue({ nodeTypes: [] });
+
+			expect(await call()).toHaveProperty('policyRestrictions', { nodeTypes: [] });
+		});
+
+		test('omits policy restrictions when no policy was evaluated', async () => {
+			lifecycleService.describePolicyRestrictions.mockResolvedValue(undefined);
+
+			expect(await call()).not.toHaveProperty('policyRestrictions');
+		});
+	});
+
 	describe('already installed', () => {
 		test('reports it as a normal result, not an error, and does not reinstall', async () => {
 			communityNodeTypesService.findVettedNodeType.mockResolvedValue(

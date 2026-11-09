@@ -214,7 +214,7 @@ function toggleExpanded() {
 }
 
 .count {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .notVisibleNote {

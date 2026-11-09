@@ -1,3 +1,4 @@
+import type { OperationContext } from '@n8n/db';
 import { OwnershipTransferHandlerRegistry } from '@n8n/backend-services';
 import {
 	SharedCredentialsRepository,
@@ -113,6 +114,28 @@ export class OwnershipTransferService {
 			for (const handler of this.transferHandlers.getAll()) {
 				await handler.deleteAll(projectId);
 			}
+		}
+	}
+
+	/**
+	 * Clean up user-owned module data before account deletion, with or without
+	 * a transferee. Each module decides which data it must keep for audit history.
+	 */
+	async deleteUserOwnedModuleResources(userIds: string[]): Promise<void> {
+		for (const userId of userIds) {
+			for (const handler of this.transferHandlers.getAll()) {
+				await handler.deleteAllForUser?.(userId);
+			}
+		}
+	}
+
+	async finalizeUserDeletion(
+		userId: string,
+		personalProjectId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		for (const handler of this.transferHandlers.getAll()) {
+			await handler.finalizeUserDeletion?.(userId, personalProjectId, ctx);
 		}
 	}
 }

@@ -60,6 +60,42 @@ describe('toTokenUsage — input token details', () => {
 		expect(result?.inputTokenDetails).toEqual({ noCache: 1200 });
 	});
 
+	it('keeps cache counts that the provider reported as zero', () => {
+		const result = toTokenUsage({
+			inputTokens: 1200,
+			outputTokens: 50,
+			totalTokens: 1250,
+			inputTokenDetails: { noCacheTokens: 1200, cacheReadTokens: 0, cacheWriteTokens: 0 },
+		});
+
+		expect(result?.inputTokenDetails).toEqual({ noCache: 1200, cacheRead: 0, cacheWrite: 0 });
+	});
+
+	it('leaves out the counts that the provider did not report', () => {
+		const result = toTokenUsage({
+			inputTokens: 1200,
+			outputTokens: 50,
+			totalTokens: 1250,
+			inputTokenDetails: { cacheReadTokens: 0 },
+		});
+
+		expect(result?.inputTokenDetails).toEqual({ cacheRead: 0 });
+	});
+
+	it('uses the OpenAI providerMetadata fallback when the generic counts are all zero', () => {
+		const result = toTokenUsage(
+			{
+				inputTokens: 1200,
+				outputTokens: 50,
+				totalTokens: 1250,
+				inputTokenDetails: { cacheReadTokens: 0 },
+			},
+			{ openai: { cachedPromptTokens: 1000 } },
+		);
+
+		expect(result?.inputTokenDetails).toEqual({ noCache: 200, cacheRead: 1000 });
+	});
+
 	it('ignores a zero or missing cachedPromptTokens in providerMetadata', () => {
 		const result = toTokenUsage(
 			{ inputTokens: 1200, outputTokens: 50, totalTokens: 1250 },

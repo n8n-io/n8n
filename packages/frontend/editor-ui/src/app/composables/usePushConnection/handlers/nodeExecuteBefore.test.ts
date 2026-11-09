@@ -47,6 +47,7 @@ describe('nodeExecuteBefore', () => {
 		expect(workflowExecutionStateStore.executingNode.addExecutingNode).toHaveBeenCalledWith(
 			'Test Node',
 			4,
+			0,
 		);
 	});
 

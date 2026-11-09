@@ -21,7 +21,11 @@ export async function nodeExecuteBefore(
 		return;
 	}
 
-	workflowExecutionStateStore.executingNode.addExecutingNode(data.nodeName, data.sequenceNumber);
+	workflowExecutionStateStore.executingNode.addExecutingNode(
+		data.nodeName,
+		data.sequenceNumber,
+		data.data.executionIndex,
+	);
 	// Each run of an Execute Sub-workflow node starts a new child, so drop the last one's progress.
 	useSubworkflowProgressStore().clear(data.executionId, data.nodeName);
 

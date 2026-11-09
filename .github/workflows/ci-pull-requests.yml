@@ -27,6 +27,7 @@ jobs:
       frontend_declarations: ${{ fromJSON(steps.ci-filter.outputs.results)['frontend-declarations'] == true }}
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
+      sbom: ${{ fromJSON(steps.ci-filter.outputs.results).sbom == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
       db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
@@ -39,9 +40,11 @@ jobs:
           || contains(github.event.pull_request.labels.*.name, 'force-e2e')) }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
+      lint_base: ${{ steps.lint-base.outputs.sha }}
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
+      lockfile_impact: ${{ steps.affected-packages.outputs.lockfile-impact }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
       currents_record_key: ${{ secrets.CURRENTS_RECORD_KEY != '' && 'present' || '' }}
     steps:
@@ -55,6 +58,15 @@ jobs:
       - name: Capture commit SHA for cache consistency
         id: commit-sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Lint compares the checked-out commit against this base. On a PR it is the
+      # first parent of the merge commit. A merge group can hold more than one PR,
+      # so it uses the queue base.
+      - name: Resolve lint base
+        id: lint-base
+        env:
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+        run: echo "sha=${MERGE_GROUP_BASE_SHA:-$(git rev-parse HEAD^1)}" >> "$GITHUB_OUTPUT"
 
       - name: Check for relevant changes
         uses: ./.github/actions/ci-filter
@@ -80,6 +92,7 @@ jobs:
               !**/*.test.ts
               !**/*.spec.ts
               !packages/quality/testing/playwright/**
+              !packages/quality/efficiency/**
               !packages/frontend/@n8n/storybook/**
               !.devcontainer/**
               !scripts/agent-setup.mjs
@@ -135,6 +148,8 @@ jobs:
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
+              .github/workflows/ci-pull-requests.yml
+              .github/workflows/sbom-validation-callable.yml
               .devcontainer/codespaces/*.mjs
               OWNERS
               scripts/*.test.mjs
@@ -143,13 +158,32 @@ jobs:
               scripts/codespace-preview/**
               scripts/licenses/**
               scripts/mutation-health/**
+              scripts/telemetry/**
               cubic.yaml
               .agents/review-rules/**
+            sbom:
+              package.json
+              pnpm-lock.yaml
+              pnpm-workspace.yaml
+              .github/scripts/package.json
+              .github/scripts/pnpm-lock.yaml
+              scripts/licenses/**
+              scripts/build-n8n.mjs
+              .github/actions/setup-nodejs/**
+              .github/workflows/ci-pull-requests.yml
+              .github/workflows/sbom-validation-callable.yml
             e2e-performance:
+              packages/quality/efficiency/memory/idle/**
+              packages/quality/efficiency/playwright.config.ts
+              packages/quality/efficiency/package.json
+              packages/quality/testing/playwright/package.json
+              packages/quality/testing/playwright/quality-*.ts
+              packages/quality/testing/playwright/fixtures/**
               packages/quality/testing/playwright/tests/performance/**
               packages/quality/testing/playwright/utils/performance-helper.ts
               packages/quality/environments/containers/**
               .github/workflows/test-e2e-performance-reusable.yml
+              .github/workflows/test-e2e-reusable.yml
             # Whole directories, not the `engine-*` files alone. Engine v2
             # routing lives in ordinary control plane code: `workflow-runner.ts`
             # and the webhook and trigger paths decide whether a run reaches the
@@ -190,6 +224,7 @@ jobs:
               packages/@n8n/db/**
               packages/@n8n/backend-test-utils/**
               packages/@n8n/scheduler/src/**
+              packages/cli/src/scheduling/**
               packages/cli/src/**/*.integration.test.ts
               packages/cli/src/modules/instance-registry/**
               packages/cli/vitest.*
@@ -232,22 +267,30 @@ jobs:
         run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
 
       # Generated here because a reusable workflow cannot resolve its own matrix.
-      # PRs run SQLite plus the primary Postgres leg. The merge queue runs the
-      # full Postgres range, so every merge still gates on the older majors.
+      # PRs run SQLite plus the primary Postgres leg.
+      # CLI_INTEGRATION_RUNS must match `fullCliIntegration` of unit-test: when that
+      # job runs the SQLite suite in full, the DB matrix drops its duplicate run.
       - name: Generate DB test matrix
         id: generate-db-test-matrix
-        if: fromJSON(steps.ci-filter.outputs.results).db
+        if: github.event_name != 'merge_group' && fromJSON(steps.ci-filter.outputs.results).db
         env:
-          DB_MATRIX_SCOPE: ${{ github.event_name == 'merge_group' && 'full' || 'pr' }}
-        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope="$DB_MATRIX_SCOPE")" >> "$GITHUB_OUTPUT"
+          CLI_INTEGRATION_RUNS: ${{ fromJSON(steps.ci-filter.outputs.results).unit }}
+        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope=pr --cli-integration-runs="$CLI_INTEGRATION_RUNS")" >> "$GITHUB_OUTPUT"
 
       - name: Compute affected packages
         id: affected-packages
-        if: fromJSON(steps.ci-filter.outputs.results).unit
+        if: github.event_name != 'merge_group' && fromJSON(steps.ci-filter.outputs.results).unit
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
+          MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
         run: |
-          PACKAGES=$(node packages/quality/testing/janitor/dist/cli.js affected-packages | tr '\n' ' ' | sed 's/ *$//')
+          JANITOR=packages/quality/testing/janitor/dist/cli.js
+          # Without a built janitor (a workflow-only PR skips the build), report no
+          # signal: every package then treats a lockfile change as a full run.
+          LOCKFILE_IMPACT=$(node "$JANITOR" lockfile-impact "--base=$MERGE_BASE" || echo ALL)
+          echo "Lockfile impact: $LOCKFILE_IMPACT"
+          echo "lockfile-impact=$LOCKFILE_IMPACT" >> "$GITHUB_OUTPUT"
+          PACKAGES=$(LOCKFILE_IMPACTED_PACKAGES="$LOCKFILE_IMPACT" node "$JANITOR" affected-packages | tr '\n' ' ' | sed 's/ *$//')
           echo "Affected packages: $PACKAGES"
           echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
 
@@ -276,14 +319,16 @@ jobs:
 
   unit-test:
     name: Unit tests
-    if: needs.install-and-build.outputs.unit == 'true'
+    if: github.event_name != 'merge_group' && needs.install-and-build.outputs.unit == 'true'
     uses: ./.github/workflows/test-unit-reusable.yml
     needs: [install-and-build, format-check]
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
-      collectCoverage: ${{ github.event_name != 'merge_group' }}
+      collectCoverage: true
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
+      lockfileImpactedPackages: ${{ needs.install-and-build.outputs.lockfile_impact }}
+      fullCliIntegration: ${{ needs.install-and-build.outputs.db == 'true' }}
     secrets: inherit
 
   typecheck:
@@ -314,6 +359,7 @@ jobs:
     needs: [install-and-build, format-check]
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
+      affectedBase: ${{ needs.install-and-build.outputs.lint_base }}
 
   check-packaging:
     name: Check packaging
@@ -383,6 +429,10 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...
+
+      # Line-level selection reads the commit the impact map was built from.
+      - name: Fetch impact map commit
+        run: node packages/quality/testing/playwright/scripts/fetch-impact-map-commit.mjs
 
       - name: Generate shard matrix
         id: generate-matrix
@@ -469,13 +519,14 @@ jobs:
   db-tests:
     name: DB Tests
     needs: [install-and-build, format-check]
-    if: needs.install-and-build.outputs.db == 'true'
+    if: github.event_name != 'merge_group' && needs.install-and-build.outputs.db == 'true'
     uses: ./.github/workflows/test-db-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
       run-migrations: ${{ needs.install-and-build.outputs.db_migrations == 'true' }}
       changed-files: ${{ needs.install-and-build.outputs.changed_files }}
+      lockfile-impacted-packages: ${{ needs.install-and-build.outputs.lockfile_impact }}
 
   e2e-performance:
     name: E2E Performance
@@ -510,7 +561,17 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
-  # In-process discovery eval — asserts the orchestrator reaches for browser/computer-use
+  validate-sbom:
+    name: Release SBOM
+    needs: [install-and-build, format-check]
+    if: needs.install-and-build.outputs.sbom == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/sbom-validation-callable.yml
+    with:
+      sha: ${{ needs.install-and-build.outputs.commit_sha }}
+
+  # In-process discovery eval — asserts the orchestrator reaches for Browser Use
   # tools at OAuth/screenshot moments. Lightweight (no Docker), runs in parallel with the
   # heavy workflow eval. Non-blocking initially; promote to required after stability.
   instance-ai-discovery-evals:
@@ -549,6 +610,7 @@ jobs:
         db-tests,
         security-checks,
         workflow-scripts,
+        validate-sbom,
       ]
     if: always()
     runs-on: ubuntu-slim

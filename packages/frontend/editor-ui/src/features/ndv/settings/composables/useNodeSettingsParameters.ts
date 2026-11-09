@@ -18,6 +18,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import {
 	mustHideDuringCustomApiCall,
+	resetValuesOfChangedShape,
 	setValue,
 	updateDynamicConnections,
 	updateParameterByPath,
@@ -103,6 +104,12 @@ export function useNodeSettingsParameters() {
 			nodeTypeDescription,
 			node.typeVersion,
 		);
+
+		if (nodeParameters) {
+			nodeParameters = resetValuesOfChangedShape(nodeTypeDescription, node, nodeParameters, [
+				parameterPath,
+			]);
+		}
 
 		// Get the parameters with the now new defaults according to the
 		// from the user actually defined parameters

@@ -7,6 +7,10 @@ import {
 	N8nIcon,
 	N8nMarkdownEditor,
 } from '@n8n/design-system';
+import {
+	getViolationVerdict,
+	SCOPE_LABEL_KEY,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
 import { computed, toRef } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
@@ -29,10 +33,15 @@ import {
 	writeTodosSummaryLabel,
 } from '../utils/write-todos-tool';
 import { TOOL_CALL_STATE } from '../constants';
+import { parseToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
+import AgentChatToolPolicyRefusal from './AgentChatToolPolicyRefusal.vue';
+import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
+import { getToolOutputAttachments } from '../utils/tool-output-files';
 
 const props = defineProps<{
 	toolCalls: ToolCall[];
 	projectId?: string;
+	agentId?: string;
 	canFixWithAssistant?: boolean;
 	dismissedToolCallIds?: string[];
 	executionId?: string;
@@ -48,15 +57,29 @@ const showFix = computed(() => Boolean(props.canFixWithAssistant && props.execut
 
 const dismissedToolCallIds = computed(() => new Set(props.dismissedToolCallIds ?? []));
 
+const outputFilesByToolCallId = computed(
+	() => new Map(props.toolCalls.map((tc) => [tc.toolCallId, getToolOutputAttachments(tc.output)])),
+);
+
+function outputFiles(tc: ToolCall) {
+	return outputFilesByToolCallId.value.get(tc.toolCallId) ?? [];
+}
+
 const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 	if (!showFix.value) return [];
 
 	const dismissed = dismissedToolCallIds.value;
 	const failures: AgentFixWithAssistantFailure[] = [];
+
 	for (const toolCall of props.toolCalls) {
 		if (dismissed.has(toolCall.toolCallId)) continue;
+
+		if (isCanceledToolCall(toolCall)) continue;
+
 		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
 		if (isRecoverablePlanError(toolCall)) continue;
+		// The assistant cannot lift a policy.
+		if (toolStepRefusal(toolCall)) continue;
 
 		const error = toolStepError(toolCall)?.trim();
 		if (!error) continue;
@@ -113,6 +136,8 @@ function toolStepLabel(tc: ToolCall, isCompact = false): string {
 }
 
 function toolStepMetadata(tc: ToolCall): string[] {
+	if (isCanceledToolCall(tc)) return [i18n.baseText('agentSessions.status.cancelled')];
+
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return [
 			resolveSubAgentName(tc.input, subAgentNameById.value),
@@ -174,9 +199,31 @@ function toolStepView(tc: ToolCall): ToolStepDisplay {
 	};
 }
 
+function toolStepRefusal(tc: ToolCall) {
+	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
+	return parseToolPolicyRefusal(tc.output);
+}
+
+function isCanceledToolCall(tc: ToolCall): boolean {
+	return (
+		tc.canceled === true ||
+		tc.state === TOOL_CALL_STATE.CANCELLED ||
+		// Older saved cancellations used the tool-error path.
+		(tc.state === TOOL_CALL_STATE.ERROR &&
+			tc.output === 'Error: Tool call stopped by guardrail: tasks-cancelled')
+	);
+}
+
 function toolStepError(tc: ToolCall): string | undefined {
+	if (isCanceledToolCall(tc)) return undefined;
+
 	if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
 	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
+	const refusal = toolStepRefusal(tc);
+	if (refusal) {
+		const { scope } = getViolationVerdict(refusal.violations[0]);
+		return i18n.baseText(SCOPE_LABEL_KEY[scope ?? 'instance']);
+	}
 	if (isEmptyToolErrorPayload(tc.output)) {
 		return i18n.baseText('agents.chat.toolError.generic');
 	}
@@ -184,7 +231,13 @@ function toolStepError(tc: ToolCall): string | undefined {
 }
 
 function hideToolErrorCallout(tc: ToolCall): boolean {
+	if (toolStepRefusal(tc)) return false;
 	return isRecoverablePlanError(tc) || (showFix.value && tc.state === TOOL_CALL_STATE.ERROR);
+}
+
+/** The refusal payload is for the model; the callout explains it to the user. */
+function showToolOutput(tc: ToolCall): boolean {
+	return tc.output !== undefined && !toolStepRefusal(tc);
 }
 
 function emitFixWithAssistant() {
@@ -225,9 +278,16 @@ function hasActiveToolCall(): boolean {
 						:label="view.label"
 						:loading="isToolStepLoading(tc)"
 						:error="toolStepError(tc)"
+						:error-icon="toolStepRefusal(tc) ? 'lock' : undefined"
 						:hide-error-callout="hideToolErrorCallout(tc)"
 						:has-content="view.expandable"
 					>
+						<template v-if="toolStepRefusal(tc)" #errorCallout>
+							<AgentChatToolPolicyRefusal
+								:refusal="toolStepRefusal(tc)!"
+								:fallback-name="toolStepLabel(tc)"
+							/>
+						</template>
 						<div
 							v-if="tc.childProgress"
 							:class="$style.childProgress"
@@ -270,7 +330,7 @@ function hasActiveToolCall(): boolean {
 								</span>
 								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
 							</div>
-							<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
+							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>
@@ -278,6 +338,13 @@ function hasActiveToolCall(): boolean {
 							</div>
 						</div>
 					</N8nAiActivityStep>
+					<AgentChatMessageAttachments
+						v-if="outputFiles(tc).length && projectId && agentId"
+						:class="$style.outputFiles"
+						:attachments="outputFiles(tc)"
+						:project-id="projectId"
+						:agent-id="agentId"
+					/>
 				</template>
 			</N8nAiActivityStepGroup>
 		</template>
@@ -288,9 +355,16 @@ function hasActiveToolCall(): boolean {
 					:label="toolStepView(tc).label"
 					:loading="isToolStepLoading(tc)"
 					:error="toolStepError(tc)"
+					:error-icon="toolStepRefusal(tc) ? 'lock' : undefined"
 					:hide-error-callout="hideToolErrorCallout(tc)"
 					:has-content="toolStepView(tc).expandable"
 				>
+					<template v-if="toolStepRefusal(tc)" #errorCallout>
+						<AgentChatToolPolicyRefusal
+							:refusal="toolStepRefusal(tc)!"
+							:fallback-name="toolStepLabel(tc)"
+						/>
+					</template>
 					<template v-for="view in [toolStepView(tc)]" :key="view.label">
 						<div
 							v-if="tc.childProgress"
@@ -334,7 +408,7 @@ function hasActiveToolCall(): boolean {
 								</span>
 								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
 							</div>
-							<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
+							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>
@@ -343,6 +417,13 @@ function hasActiveToolCall(): boolean {
 						</div>
 					</template>
 				</N8nAiActivityStep>
+				<AgentChatMessageAttachments
+					v-if="outputFiles(tc).length && projectId && agentId"
+					:class="$style.outputFiles"
+					:attachments="outputFiles(tc)"
+					:project-id="projectId"
+					:agent-id="agentId"
+				/>
 			</template>
 		</template>
 
@@ -362,7 +443,7 @@ function hasActiveToolCall(): boolean {
 				<template #trailingContent>
 					<N8nButton
 						size="small"
-						variant="subtle"
+						variant="outline"
 						:class="$style.fixCalloutButton"
 						data-test-id="agent-chat-tool-fix-with-assistant"
 						@click="emitFixWithAssistant"
@@ -408,6 +489,10 @@ function hasActiveToolCall(): boolean {
 
 .errorList li + li {
 	margin-top: var(--spacing--4xs);
+}
+
+.outputFiles {
+	margin: var(--spacing--4xs) 0 var(--spacing--2xs);
 }
 
 .childProgress {

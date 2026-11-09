@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../InstanceAiInput.vue';
 import AttachmentPreview from '../AttachmentPreview.vue';
@@ -13,6 +13,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AssistantMentionSelection } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import type { InstanceAiElementAttachment } from '@n8n/api-types';
 
 const telemetryTrack = vi.hoisted(() => vi.fn());
 
@@ -20,6 +21,11 @@ const telemetryTrack = vi.hoisted(() => vi.fn());
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({ push: vi.fn() }),
+}));
+
+const showMessageMock = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage: showMessageMock, showError: vi.fn() }),
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -34,7 +40,6 @@ const defaultProps = () => ({
 	isStreaming: false,
 	isSubmitting: false,
 	isAwaitingConfirmation: false,
-	isAwaitingPlanReview: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
 	contextualSuggestion: null,
@@ -52,10 +57,11 @@ describe('InstanceAiInput — staged node attachments', () => {
 		telemetryTrack.mockClear();
 	});
 
-	it('keeps the existing input menu enabled outside the mentions rollout', () => {
-		const { getByTestId } = renderComponent();
+	it('keeps the existing input menu enabled outside the mentions rollout, with no paperclip', () => {
+		const { getByTestId, queryByTestId } = renderComponent();
 
 		expect(getByTestId('instance-ai-input-menu')).toBeEnabled();
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 	});
 
 	it('consumes staged attachments into the draft without touching already-typed text', async () => {
@@ -111,48 +117,78 @@ describe('InstanceAiInput — staged node attachments', () => {
 		expect(restoreDraft()).toBe(true);
 		await findAllByTestId('nodes-chip-node');
 	});
+});
 
-	// Plan feedback is resumed as a plain string, so attachments cannot ride along.
-	// They must stay staged for the next real message rather than vanish on send.
-	it('keeps staged chips out of plan feedback instead of dropping them', async () => {
-		const { emitted, findAllByTestId, findByTestId, getByRole, rerender } = renderComponent();
-		const store = useInstanceAiStore();
-
-		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
-		await findAllByTestId('nodes-chip-node');
-
-		await rerender({ ...defaultProps(), isAwaitingPlanReview: true, isStreaming: true });
-		await userEvent.type(getByRole('textbox'), 'Drop the third workflow');
-		await userEvent.click(await findByTestId('instance-ai-send-button'));
-
-		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
-		const [message, attachments] = emitted().submit[0] as [string, unknown];
-		expect(message).toBe('Drop the third workflow');
-		expect(attachments).toBeUndefined();
-
-		// Still staged, so the user can see them and send them deliberately later.
-		await findAllByTestId('nodes-chip-node');
+describe('attach-only composer', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
 	});
-	// Attachments are never submitted with plan feedback, so `isDirty()` stays true
-	// from the staged chips alone — the text restore must not depend on it.
-	it('restores plan feedback text on a failed send even with chips still staged', async () => {
-		const { emitted, findAllByTestId, findByTestId, getByRole, rerender } = renderComponent();
-		const store = useInstanceAiStore();
 
-		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
-		await findAllByTestId('nodes-chip-node');
+	it('replaces the "+" menu with a paperclip restricted to the agent\'s file types', () => {
+		const { getByTestId, queryByTestId, container } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*,application/pdf' },
+		});
 
-		await rerender({ ...defaultProps(), isAwaitingPlanReview: true, isStreaming: true });
-		const textbox = getByRole('textbox');
-		await userEvent.type(textbox, 'Drop the third workflow');
-		await userEvent.click(await findByTestId('instance-ai-send-button'));
+		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
+		expect(getByTestId('chat-input-attach-button')).toBeInTheDocument();
+		const fileInput = container.querySelector('input[type="file"]');
+		expect(fileInput).toHaveAttribute('accept', 'image/*,application/pdf');
+	});
 
-		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
-		const [, , restoreDraft] = emitted().submit[0] as [string, unknown, () => boolean];
+	it('tells the user when a dropped file type is not accepted', async () => {
+		const { getByRole } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*' },
+		});
+		const file = new File(['%PDF'], 'report.pdf', { type: 'application/pdf' });
+		const drop = new Event('drop', { bubbles: true, cancelable: true });
+		Object.defineProperty(drop, 'dataTransfer', {
+			value: { files: [file], types: ['Files'], items: [{ kind: 'file', type: file.type }] },
+		});
 
-		expect(restoreDraft).toBeTypeOf('function');
-		expect(restoreDraft()).toBe(true);
-		await waitFor(() => expect(textbox).toHaveValue('Drop the third workflow'));
+		getByRole('textbox').dispatchEvent(drop);
+		await nextTick();
+
+		expect(showMessageMock).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'report.pdf is not a supported file type',
+		});
+	});
+
+	it('restricts the file types and keeps the "+" menu with acceptedMimeTypes', async () => {
+		const { getByTestId, queryByTestId, getByRole, container } = renderComponent({
+			props: { acceptedMimeTypes: 'text/csv,.csv' },
+		});
+
+		expect(getByTestId('instance-ai-input-menu')).toBeInTheDocument();
+		// The "+" menu has the attach action, so the composer shows no second attach button.
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		expect(container.querySelector('input[type="file"]')).toHaveAttribute(
+			'accept',
+			'text/csv,.csv',
+		);
+
+		const file = new File(['zip'], 'archive.zip', { type: 'application/zip' });
+		const drop = new Event('drop', { bubbles: true, cancelable: true });
+		Object.defineProperty(drop, 'dataTransfer', {
+			value: { files: [file], types: ['Files'], items: [{ kind: 'file', type: file.type }] },
+		});
+		getByRole('textbox').dispatchEvent(drop);
+		await nextTick();
+
+		expect(showMessageMock).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'archive.zip is not a supported file type',
+		});
+	});
+
+	it('hides attaching entirely when the agent accepts no file types', () => {
+		const { queryByTestId, container } = renderComponent({
+			props: { attachOnlyMimeTypes: '' },
+		});
+
+		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
 	});
 });
 
@@ -552,5 +588,78 @@ describe('InstanceAiInput — mention attachments', () => {
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
 			{ thread_id: 'thread-1', kind: 'workflow' },
 		);
+	});
+});
+
+describe('InstanceAiInput — staged element attachment', () => {
+	const element = (
+		overrides: Partial<InstanceAiElementAttachment> = {},
+	): InstanceAiElementAttachment => ({
+		type: 'element',
+		appId: 'app-1',
+		tagName: 'button',
+		text: 'Save',
+		...overrides,
+	});
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
+	it('shows the picked element as a removable chip and tells the store which app it is for', async () => {
+		const { findByTestId, queryByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+
+		store.stageElement(element());
+
+		expect(await findByTestId('attachment-preview-element')).toHaveTextContent('button: "Save"');
+		expect(store.hasComposerElementFor('app-1')).toBe(true);
+
+		await userEvent.click(await findByTestId('attachment-preview-remove-element'));
+
+		await waitFor(() =>
+			expect(queryByTestId('attachment-preview-element')).not.toBeInTheDocument(),
+		);
+		expect(store.hasComposerElementFor('app-1')).toBe(false);
+	});
+
+	it('shortens long element text in the chip', async () => {
+		const { findByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+
+		store.stageElement(element({ tagName: 'span', text: 'Programme is taking shape for the day' }));
+
+		expect(await findByTestId('attachment-preview-element')).toHaveTextContent(
+			'span: "Programme is taking shap..."',
+		);
+	});
+
+	it('replaces the earlier element when another one is picked', async () => {
+		const { findByTestId, queryAllByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+		store.stageElement(element());
+		await findByTestId('attachment-preview-element');
+
+		store.stageElement(element({ tagName: 'h1', text: 'Title' }));
+
+		await waitFor(() =>
+			expect(queryAllByTestId('attachment-preview-element')[0]).toHaveTextContent('h1: "Title"'),
+		);
+		expect(queryAllByTestId('attachment-preview-element')).toHaveLength(1);
+	});
+
+	it('sends the element with the message', async () => {
+		const { emitted, findByTestId, getByRole } = renderComponent();
+		const store = useInstanceAiStore();
+		store.stageElement(element());
+		await findByTestId('attachment-preview-element');
+		await userEvent.type(getByRole('textbox'), 'remove this');
+
+		await userEvent.click(await findByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		const [message, attachments] = emitted().submit[0] as [string, unknown[]];
+		expect(message).toBe('remove this');
+		expect(attachments).toEqual([expect.objectContaining({ type: 'element', appId: 'app-1' })]);
 	});
 });

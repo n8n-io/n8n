@@ -12,10 +12,27 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+} from '@/features/agents/constants';
+import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
+import type { AgentResource } from '@/features/agents/types';
 
 const MAX_RECENT_ITEMS = 5;
 const MAX_RECENT_WORKFLOWS_TO_DISPLAY = 5;
 const RECENT_NODES_STORAGE_KEY = 'n8n-recent-nodes';
+const RECENT_AGENTS_STORAGE_KEY = 'n8n-recent-agents';
+const AGENT_VIEWS: unknown[] = [
+	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+];
 
 interface RecentNode {
 	nodeId: string;
@@ -23,6 +40,17 @@ interface RecentNode {
 }
 
 type RecentNodesMap = Record<string, RecentNode[]>;
+
+interface RecentResourceOpen {
+	id: string;
+	openedAt: number;
+}
+
+interface RecentEntry {
+	resourceId: string;
+	openedAt: number;
+	item: CommandBarItem;
+}
 
 export function useRecentResources(): CommandGroup & {
 	trackResourceOpened: (to: RouteLocationNormalized) => void;
@@ -33,10 +61,14 @@ export function useRecentResources(): CommandGroup & {
 	const workflowsListStore = useWorkflowsListStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const recentWorkflowsStore = useRecentWorkflowsStore();
+	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
 	const { setNodeActive } = useCanvasOperations();
 
 	const recentNodes = useLocalStorage<RecentNodesMap>(RECENT_NODES_STORAGE_KEY, {});
-	const recentWorkflows = ref<IWorkflowDb[]>([]);
+	const recentAgentOpens = useLocalStorage<RecentResourceOpen[]>(RECENT_AGENTS_STORAGE_KEY, []);
+	const recentWorkflowEntries = ref<RecentEntry[]>([]);
+	const recentAgentEntries = ref<RecentEntry[]>([]);
 
 	function trackResourceOpened(to: RouteLocationNormalized): void {
 		if (to.name === VIEWS.WORKFLOW && typeof to.params.workflowId === 'string') {
@@ -51,6 +83,17 @@ export function useRecentResources(): CommandGroup & {
 				}
 			}
 		}
+
+		if (AGENT_VIEWS.includes(to.name) && typeof to.params.agentId === 'string') {
+			registerAgentOpen(to.params.agentId);
+		}
+	}
+
+	function registerAgentOpen(agentId: string): void {
+		recentAgentOpens.value = [
+			{ id: agentId, openedAt: Date.now() },
+			...recentAgentOpens.value.filter(({ id }) => id !== agentId),
+		].slice(0, MAX_RECENT_WORKFLOWS_TO_DISPLAY + 1);
 	}
 
 	function registerWorkflowOpen(workflowId: string): void {
@@ -86,6 +129,14 @@ export function useRecentResources(): CommandGroup & {
 			: null;
 	});
 
+	const currentAgentId = computed(() => {
+		const currentRoute = router.currentRoute.value;
+		return AGENT_VIEWS.includes(currentRoute.name) &&
+			typeof currentRoute.params.agentId === 'string'
+			? currentRoute.params.agentId
+			: null;
+	});
+
 	const recentNodeCommands = computed<CommandBarItem[]>(() => {
 		const workflowId = currentWorkflowId.value;
 		if (!workflowId) return [];
@@ -118,35 +169,63 @@ export function useRecentResources(): CommandGroup & {
 		});
 	});
 
-	const recentWorkflowCommands = computed<CommandBarItem[]>(() =>
-		recentWorkflows.value
-			.filter((workflow) => workflow.id !== currentWorkflowId.value)
-			.slice(0, MAX_RECENT_WORKFLOWS_TO_DISPLAY)
-			.map((workflow) => {
-				const { href } = router.resolve({
-					name: VIEWS.WORKFLOW,
-					params: { workflowId: workflow.id },
-				});
+	const toWorkflowItem = (workflow: IWorkflowDb): CommandBarItem => {
+		const { href } = router.resolve({
+			name: VIEWS.WORKFLOW,
+			params: { workflowId: workflow.id },
+		});
 
-				return {
-					id: `recent-workflow-${workflow.id}`,
-					title: workflow.name || i18n.baseText('commandBar.workflows.unnamed'),
-					section: i18n.baseText('commandBar.sections.recent'),
-					icon: { type: 'icon', value: 'workflow' },
-					href,
-					handler: () => {
-						window.location.href = href;
-					},
-				};
-			}),
+		return {
+			id: `recent-workflow-${workflow.id}`,
+			title: workflow.name || i18n.baseText('commandBar.workflows.unnamed'),
+			section: i18n.baseText('commandBar.sections.recent'),
+			icon: { type: 'icon', value: 'workflow' },
+			href,
+			handler: () => {
+				window.location.href = href;
+			},
+		};
+	};
+
+	const toAgentItem = (agent: AgentResource): CommandBarItem => {
+		const location = {
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: agent.projectId, agentId: agent.id },
+		};
+
+		return {
+			id: `recent-agent-${agent.id}`,
+			title: agent.name,
+			section: i18n.baseText('commandBar.sections.recent'),
+			icon: { type: 'icon', value: 'bot' },
+			href: router.resolve(location).href,
+			handler: () => {
+				void router.push(location);
+			},
+		};
+	};
+
+	const recentResourceItems = computed<CommandBarItem[]>(() =>
+		[...recentWorkflowEntries.value, ...recentAgentEntries.value]
+			.filter(
+				({ resourceId }) =>
+					resourceId !== currentWorkflowId.value && resourceId !== currentAgentId.value,
+			)
+			.sort((a, b) => b.openedAt - a.openedAt)
+			.slice(0, MAX_RECENT_WORKFLOWS_TO_DISPLAY)
+			.map(({ item }) => item),
 	);
 
 	const recentResourceCommands = computed<CommandBarItem[]>(() => [
 		...recentNodeCommands.value,
-		...recentWorkflowCommands.value,
+		...recentResourceItems.value,
 	]);
 
 	async function initialize() {
+		await Promise.all([loadRecentWorkflows(), loadRecentAgents()]);
+	}
+
+	async function loadRecentWorkflows() {
 		const recentOpens = recentWorkflowsStore.globalRecentWorkflowOpens.slice(
 			0,
 			MAX_RECENT_WORKFLOWS_TO_DISPLAY + 1,
@@ -164,9 +243,28 @@ export function useRecentResources(): CommandGroup & {
 		if (!workflows) return;
 
 		const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
-		recentWorkflows.value = recentOpens
-			.map(({ id }) => workflowsById.get(id))
-			.filter((workflow): workflow is IWorkflowDb => workflow !== undefined);
+		recentWorkflowEntries.value = recentOpens.flatMap(({ id, openedAt }) => {
+			const workflow = workflowsById.get(id);
+			return workflow ? { resourceId: id, openedAt, item: toWorkflowItem(workflow) } : [];
+		});
+	}
+
+	async function loadRecentAgents() {
+		const recentOpens = recentAgentOpens.value;
+		if (!settingsStore.isAgentsEnabled || recentOpens.length === 0) return;
+
+		const agents = await listAgentsPageGlobal(rootStore.restApiContext, {
+			skip: 0,
+			take: recentOpens.length,
+			filter: { ids: recentOpens.map(({ id }) => id) },
+		}).catch(() => undefined);
+		if (!agents) return;
+
+		const agentsById = new Map(agents.data.map((agent) => [agent.id, agent]));
+		recentAgentEntries.value = recentOpens.flatMap(({ id, openedAt }) => {
+			const agent = agentsById.get(id);
+			return agent ? { resourceId: id, openedAt, item: toAgentItem(agent) } : [];
+		});
 	}
 
 	return {

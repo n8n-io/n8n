@@ -392,6 +392,44 @@ describe('type availability policy repositories', () => {
 		it('locks nothing and returns an empty list for an empty input', async () => {
 			expect(await scopeRepo.lockScopesByIds([], ROOT)).toEqual([]);
 		});
+
+		describe('readFingerprint', () => {
+			it('reads zeros from an empty table', async () => {
+				expect(await scopeRepo.readFingerprint(ROOT)).toEqual({
+					count: 0,
+					versionSum: 0,
+					newestCreatedAt: 0,
+				});
+			});
+
+			it('changes when a version is bumped', async () => {
+				const scope = await createInstanceScope();
+				const before = await scopeRepo.readFingerprint(ROOT);
+
+				await scopeRepo.bumpVersion(scope.id, ROOT);
+
+				expect(await scopeRepo.readFingerprint(ROOT)).not.toEqual(before);
+			});
+
+			it('changes when a scope is replaced by another at the same version', async () => {
+				const first = await createProjectScope((await createTeamProject()).id);
+				const projectId = (await createTeamProject()).id;
+				const before = await scopeRepo.readFingerprint(ROOT);
+
+				await scopeRepo.delete({ id: first.id });
+				// The timestamp has millisecond precision, so a same-millisecond insert would tie.
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				const second = await createProjectScope(projectId, 'deny');
+
+				const after = await scopeRepo.readFingerprint(ROOT);
+				expect(second.version).toBe(first.version);
+				expect({ count: after.count, versionSum: after.versionSum }).toEqual({
+					count: before.count,
+					versionSum: before.versionSum,
+				});
+				expect(after.newestCreatedAt).toBeGreaterThan(before.newestCreatedAt);
+			});
+		});
 	});
 
 	describe('TypeAvailabilityPolicyAttachmentRepository', () => {

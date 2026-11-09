@@ -129,11 +129,9 @@ describe('publish check for the Owner in a team project', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['WorkflowEntity', 'CredentialsEntity']);
-		process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
 	});
 
 	afterEach(() => {
-		delete process.env.N8N_ENV_FEAT_CRED_SHARING;
 		ownershipService.getWorkflowProjectCached.mockReset();
 	});
 
@@ -155,13 +153,6 @@ describe('publish check for the Owner in a team project', () => {
 				role: 'credential:user',
 			}),
 		);
-
-		await expect(publish()).resolves.toEqual({ isValid: true });
-	});
-
-	test('does not check credentials with the flag off', async () => {
-		const { publish } = await setUp();
-		delete process.env.N8N_ENV_FEAT_CRED_SHARING;
 
 		await expect(publish()).resolves.toEqual({ isValid: true });
 	});

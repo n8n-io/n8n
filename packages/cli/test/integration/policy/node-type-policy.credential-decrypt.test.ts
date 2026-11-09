@@ -16,7 +16,7 @@ import { saveCredential } from '../shared/db/credentials';
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 const CHECK_ID = 'node-type-availability';
 
@@ -91,7 +91,7 @@ afterEach(async () => {
 		'SharedCredentials',
 		'CredentialsEntity',
 	]);
-	await clearPolicyCache();
+	await reloadPolicySnapshot();
 });
 
 describe('credential lock', () => {

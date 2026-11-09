@@ -18,7 +18,7 @@ describe('deriveSubAgentTelemetry()', () => {
 		expect(deriveSubAgentTelemetry(undefined)).toBeUndefined();
 	});
 
-	it('clears functionId, sets rootAnchored: false, and tags source: sub-agent while preserving other metadata', () => {
+	it('clears functionId and the parent agent_id, sets rootAnchored: false, and tags source: sub-agent while preserving other metadata', () => {
 		const tracer = { startActiveSpan: () => {} };
 		const parentTelemetry = builtTelemetry({
 			tracer,
@@ -31,7 +31,7 @@ describe('deriveSubAgentTelemetry()', () => {
 		expect(derived).toEqual({
 			...parentTelemetry,
 			functionId: undefined,
-			metadata: { agent_id: 'agent-1', thread_id: 'thread-1', source: 'sub-agent' },
+			metadata: { thread_id: 'thread-1', source: 'sub-agent' },
 			rootAnchored: false,
 		});
 		expect(derived?.tracer).toBe(tracer);

@@ -59,12 +59,6 @@ Both jobs use the configured Instance AI model.
 Observational memory is **thread-scoped** — it tracks the operational history
 of the current task.
 
-### Tier 3: Plan Storage
-
-The `create-tasks` tool stores execution plans in thread-scoped storage. Plans
-are structured task graphs that persist across reconnects within a conversation.
-See the [tools](./tools.md) documentation for the task graph schema.
-
 ## Scoping Model
 
 All memory is thread-scoped (isolated per conversation):

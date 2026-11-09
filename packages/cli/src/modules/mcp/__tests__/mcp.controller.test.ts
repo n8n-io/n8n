@@ -37,7 +37,7 @@ import {
 import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
-import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
+import type { McpCallerAuth } from '@n8n/backend-services/auth';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
 
@@ -99,6 +99,9 @@ describe('McpController', () => {
 	const mcpService = {
 		getServer: vi.fn(),
 		resolveFeatureFlags: vi.fn(),
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		recordDiscoveryConnection: vi.fn().mockResolvedValue(undefined),
+		// EOF Experiment cleanup
 	} as unknown as McpService;
 	const mcpSettingsService = { getEnabled: vi.fn() } as unknown as McpSettingsService;
 	const mcpProtectedResource = {
@@ -185,6 +188,12 @@ describe('McpController', () => {
 			res,
 		);
 
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		expect(mcpService.recordDiscoveryConnection).toHaveBeenCalledWith('user-1', 'Claude', {
+			authType: 'oauth',
+			clientId: 'client-abc',
+		});
+		// EOF Experiment cleanup
 		expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 			user_id: 'user-1',
 			client_name: 'Claude',
@@ -417,7 +426,7 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: false, variant: 'unassigned' },
-			aiPreferencesEnabled: true,
+			instanceContextEnabled: true,
 		});
 		const res = createRes();
 
@@ -440,7 +449,7 @@ describe('McpController', () => {
 
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
-			expect.objectContaining({ aiPreferencesEnabled: true }),
+			expect.objectContaining({ instanceContextEnabled: true }),
 			{ name: 'Claude', version: '1.0.0' },
 			{ caller: undefined, grantedScopes: undefined },
 		);

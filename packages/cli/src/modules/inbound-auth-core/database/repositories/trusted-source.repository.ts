@@ -15,10 +15,6 @@ class TrustedSourceTable extends BaseRepository<TrustedSourceEntity> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(TrustedSourceEntity, dataSource.manager, transactionRunner);
 	}
-
-	override managerFor(ctx: OperationContext) {
-		return super.managerFor(ctx);
-	}
 }
 
 export type NewTrustedSourceRow = Pick<
@@ -79,16 +75,28 @@ export class TrustedSourceRepository {
 		this.isPostgres = config.type === 'postgresdb';
 	}
 
-	async findById(id: string, ctx: OperationContext = {}) {
+	async findById(id: string, ctx: OperationContext) {
 		return await this.table.managerFor(ctx).findOneBy(TrustedSourceEntity, { id });
 	}
 
-	async findByIssuer(issuer: string, ctx: OperationContext = {}) {
+	async findByIssuer(issuer: string, ctx: OperationContext) {
 		return await this.table.managerFor(ctx).findOneBy(TrustedSourceEntity, { issuer });
 	}
 
-	async findAll(ctx: OperationContext = {}) {
+	async findAll(ctx: OperationContext) {
 		return await this.table.managerFor(ctx).find(TrustedSourceEntity, { order: { name: 'ASC' } });
+	}
+
+	/** Stamps the first authentication from the database clock; `false` when the row already carries one. */
+	async markFirstAuthenticated(id: string, ctx: OperationContext): Promise<boolean> {
+		const result = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder()
+			.update(TrustedSourceEntity)
+			.set({ firstAuthenticatedAt: () => dbNowLiteral(this.isPostgres) })
+			.where('id = :id AND "firstAuthenticatedAt" IS NULL', { id })
+			.execute();
+		return result.affected === 1;
 	}
 
 	/**
@@ -98,7 +106,7 @@ export class TrustedSourceRepository {
 	 */
 	async findDue(
 		{ errorRetrySeconds, healthyRefreshSeconds, limit }: DueQuery,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<TrustedSourceEntity[]> {
 		const errorCutoff = dbNowPlusMsLiteral(this.isPostgres, -errorRetrySeconds * 1000);
 		const healthyCutoff = dbNowPlusMsLiteral(this.isPostgres, -healthyRefreshSeconds * 1000);
@@ -119,15 +127,34 @@ export class TrustedSourceRepository {
 	}
 
 	/** `save`, not `insert`: the `@BeforeInsert` id generator only runs on an entity instance. */
-	async insertRow(row: NewTrustedSourceRow, ctx: OperationContext = {}) {
+	async insertRow(row: NewTrustedSourceRow, ctx: OperationContext) {
 		return await this.table.managerFor(ctx).save(TrustedSourceEntity, this.table.create(row));
 	}
 
-	async updateById(id: string, changes: TrustedSourceRowChanges, ctx: OperationContext = {}) {
+	/**
+	 * Inserts the row unless one already holds its id, name or issuer. Concurrent seeders on several
+	 * processes: the losers' inserts are no-ops. `values` skips `@BeforeInsert`, so the caller
+	 * passes the id; the timestamps take their database defaults.
+	 */
+	async insertIfAbsent(
+		row: NewTrustedSourceRow & Pick<TrustedSourceEntity, 'id'>,
+		ctx: OperationContext,
+	) {
+		await this.table
+			.managerFor(ctx)
+			.createQueryBuilder()
+			.insert()
+			.into(TrustedSourceEntity)
+			.values(row)
+			.orIgnore()
+			.execute();
+	}
+
+	async updateById(id: string, changes: TrustedSourceRowChanges, ctx: OperationContext) {
 		await this.table.managerFor(ctx).update(TrustedSourceEntity, { id }, changes);
 	}
 
-	async deleteById(id: string, ctx: OperationContext = {}) {
+	async deleteById(id: string, ctx: OperationContext) {
 		await this.table.managerFor(ctx).delete(TrustedSourceEntity, { id });
 	}
 
@@ -136,7 +163,7 @@ export class TrustedSourceRepository {
 		id: string,
 		token: string,
 		leaseSeconds: number,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<boolean> {
 		const staleBefore = dbNowPlusMsLiteral(this.isPostgres, -leaseSeconds * 1000);
 		const result = await this.table
@@ -160,7 +187,7 @@ export class TrustedSourceRepository {
 		id: string,
 		token: string,
 		changes: DiscoveryRowChanges,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<boolean> {
 		const result = await this.table
 			.managerFor(ctx)

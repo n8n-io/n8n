@@ -1,12 +1,10 @@
 /**
  * Pins the `workflowTransfer` and `credentialTransfer` host wiring through the real request
- * path, on every route that moves content into another project. Unit tests mock
- * `PolicyEnforcementService`, so they prove the service method is called but not that a
- * registered check actually runs — a removed call site or a new transfer path would look
- * identical to an allow-all policy.
+ * path. A move does not refuse: the destination's publish, run and decrypt checks restrict
+ * the content after it lands. A delete with a transferee moves without unpublishing, so it
+ * still refuses.
  */
 import {
-	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
 	getPersonalProject,
@@ -141,69 +139,9 @@ const expectOwnedBy = async (workflow: IWorkflowBase, project: Project) => {
 };
 
 describe('PUT /workflows/:workflowId/transfer', () => {
-	test('blocks the transfer with the structured violation when the target project is denied', async () => {
+	test('moves the workflow although a transfer check objects', async () => {
 		const workflow = await createWorkflow({}, sourceProject);
 		deniedTargetProjectIds.add(targetProject.id);
-
-		const response = await authMemberAgent
-			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ destinationProjectId: targetProject.id })
-			.expect(403);
-
-		expect(response.body).toMatchObject({
-			code: 403,
-			message: deniedMessage(targetProject.id),
-			meta: {
-				violations: [
-					{
-						kind: VIOLATION_KIND,
-						checkId: CHECK_ID,
-						message: deniedMessage(targetProject.id),
-						subject: targetProject.id,
-						subjectType: 'project',
-						scope: 'project',
-					},
-				],
-			},
-		});
-
-		await expectOwnedBy(workflow, sourceProject);
-	});
-
-	test('validates against the target project, not the source', async () => {
-		const workflow = await createWorkflow({}, sourceProject);
-
-		// Only the project the workflow is leaving is denied. Checking the wrong project would
-		// block this transfer and defeat the point of the enforcement point.
-		deniedTargetProjectIds.add(sourceProject.id);
-
-		await authMemberAgent
-			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ destinationProjectId: targetProject.id })
-			.expect(200);
-
-		await expectOwnedBy(workflow, targetProject);
-	});
-
-	test('leaves the workflow untouched when the transfer is blocked', async () => {
-		const workflow = await createActiveWorkflow({}, sourceProject);
-		deniedTargetProjectIds.add(targetProject.id);
-
-		await authMemberAgent
-			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ destinationProjectId: targetProject.id })
-			.expect(403);
-
-		await expectOwnedBy(workflow, sourceProject);
-
-		// Deactivation happens after the check, so a blocked transfer must not take a live
-		// workflow down on its way out.
-		expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
-		expect(activeWorkflowManager.add).not.toHaveBeenCalled();
-	});
-
-	test('transfers as usual when no check objects', async () => {
-		const workflow = await createWorkflow({}, sourceProject);
 
 		await authMemberAgent
 			.put(`/workflows/${workflow.id}/transfer`)
@@ -215,48 +153,24 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 });
 
 describe('PUT /api/v1/workflows/:id/transfer', () => {
-	test('blocks the transfer when the target project is denied', async () => {
+	test('moves the workflow although a transfer check objects', async () => {
 		const workflow = await createWorkflow({}, sourceProject);
 		deniedTargetProjectIds.add(targetProject.id);
 
-		const response = await publicApiMemberAgent
+		await publicApiMemberAgent
 			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ destinationProjectId: targetProject.id });
+			.send({ destinationProjectId: targetProject.id })
+			.expect(204);
 
-		expect(response.statusCode).toBe(403);
-
-		// Status and message only: on master `serializePublicApiError` whitelists `meta.issues`,
-		// so the violation list stays internal on this surface. IAM-1129 adds `violations` to
-		// that whitelist — tighten this to assert the list once that lands.
-		expect(response.body).toMatchObject({ message: deniedMessage(targetProject.id) });
-
-		await expectOwnedBy(workflow, sourceProject);
+		await expectOwnedBy(workflow, targetProject);
 	});
 });
 
 describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
-	test('blocks the move with the structured violation when the target project is denied', async () => {
-		const folder = await createFolder(sourceProject, { name: 'Folder' });
-		const workflow = await createActiveWorkflow({ parentFolder: folder }, sourceProject);
-		deniedTargetProjectIds.add(targetProject.id);
-
-		const response = await authMemberAgent
-			.put(`/projects/${sourceProject.id}/folders/${folder.id}/transfer`)
-			.send({ destinationProjectId: targetProject.id, destinationParentFolderId: '0' })
-			.expect(403);
-
-		expect(response.body).toMatchObject({
-			code: 403,
-			meta: { violations: [{ kind: VIOLATION_KIND, checkId: CHECK_ID }] },
-		});
-
-		await expectOwnedBy(workflow, sourceProject);
-		expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
-	});
-
-	test('moves the folder as usual when no check objects', async () => {
+	test('moves the folder although a transfer check objects', async () => {
 		const folder = await createFolder(sourceProject, { name: 'Folder' });
 		const workflow = await createWorkflow({ parentFolder: folder }, sourceProject);
+		deniedTargetProjectIds.add(targetProject.id);
 
 		await authMemberAgent
 			.put(`/projects/${sourceProject.id}/folders/${folder.id}/transfer`)
@@ -268,33 +182,12 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 });
 
 describe('PUT /credentials/:credentialId/transfer', () => {
-	test('blocks the transfer with the structured violation when the target project is denied', async () => {
+	test('moves the credential although a transfer check objects', async () => {
 		const credential = await saveCredential(randomCredentialPayload(), {
 			project: sourceProject,
 			role: 'credential:owner',
 		});
 		deniedTargetProjectIds.add(targetProject.id);
-
-		const response = await authMemberAgent
-			.put(`/credentials/${credential.id}/transfer`)
-			.send({ destinationProjectId: targetProject.id })
-			.expect(403);
-
-		expect(response.body).toMatchObject({
-			code: 403,
-			meta: { violations: [{ kind: VIOLATION_KIND, checkId: CHECK_ID }] },
-		});
-
-		const sharings = await getCredentialSharings(credential);
-		expect(sharings).toHaveLength(1);
-		expect(sharings[0]).toMatchObject({ projectId: sourceProject.id, role: 'credential:owner' });
-	});
-
-	test('transfers as usual when no check objects', async () => {
-		const credential = await saveCredential(randomCredentialPayload(), {
-			project: sourceProject,
-			role: 'credential:owner',
-		});
 
 		await authMemberAgent
 			.put(`/credentials/${credential.id}/transfer`)

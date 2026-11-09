@@ -149,9 +149,9 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 	height: min(700px, calc(100dvh - 2 * var(--spacing--md)));
 	min-height: 420px;
 	background: var(--background--subtle);
-	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	border: var(--border);
 	border-radius: var(--radius--xl);
-	box-shadow: var(--shadow--light);
+	box-shadow: var(--shadow--sm);
 	overflow: hidden;
 
 	// In a popup window the window itself is the card — no chrome, fill the viewport
@@ -177,14 +177,8 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 }
 
 .logo {
-	display: block;
+	justify-content: flex-start;
 	margin-bottom: var(--spacing--lg);
-
-	:deep(svg) {
-		margin-left: 0;
-		width: auto;
-		height: 24px;
-	}
 }
 
 .title {
@@ -193,13 +187,13 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 	gap: var(--spacing--xs);
 	font-size: var(--font-size--lg);
 	font-weight: var(--font-weight--medium);
-	color: var(--color--text--shade-1);
+	color: var(--text-color);
 	margin: 0 0 var(--spacing--lg);
 }
 
 .status-dot {
-	width: 12px;
-	height: 12px;
+	width: var(--height--4xs);
+	height: var(--height--4xs);
 	border-radius: 50%;
 	background: var(--color--success);
 	flex-shrink: 0;
@@ -213,7 +207,7 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 
 .divider {
 	border: none;
-	border-top: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	border-top: var(--border);
 	margin: 0;
 }
 
@@ -229,10 +223,10 @@ const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.val
 	border-radius: var(--radius);
 	cursor: pointer;
 	font-size: var(--font-size--xs);
-	color: var(--color--text--shade-1);
+	color: var(--text-color);
 
 	&:hover {
-		background: var(--color--background);
+		background: var(--background--hover);
 	}
 }
 

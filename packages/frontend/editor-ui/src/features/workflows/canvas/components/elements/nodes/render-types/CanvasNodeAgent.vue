@@ -53,6 +53,7 @@ const {
 	executionWaitingForNext,
 	executionRunning,
 	hasRunData,
+	isRestricted,
 } = useCanvasNode();
 
 const renderOptions = computed(() => render.value.options as CanvasNodeAgentRender['options']);
@@ -64,6 +65,7 @@ const isInline = computed(() => renderOptions.value.agentSource === 'inline');
 // glow while running/waiting, red border on error).
 const classes = computed(() => ({
 	[$style.selected]: isSelected.value,
+	[$style.restricted]: isRestricted.value,
 	[$style.success]: Boolean(hasRunData.value && executionStatus.value === 'success'),
 	[$style.error]: executionStatus.value === 'error' || executionStatus.value === 'crashed',
 	[$style.running]: Boolean(executionRunning.value || executionWaitingForNext.value),
@@ -314,6 +316,15 @@ watch(
 	isolation: isolate;
 	// Width is bound inline from AGENT_NODE_SIZE — see cardStyle in the script.
 	border-radius: var(--agent-card--radius);
+}
+
+.restricted {
+	--agent-card--border-color: var(--color--foreground);
+	--agent-card--header-dot-color: var(--color--foreground);
+
+	.surface {
+		opacity: 0.6;
+	}
 }
 
 .surface {

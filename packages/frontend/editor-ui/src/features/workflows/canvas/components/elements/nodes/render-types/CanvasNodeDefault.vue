@@ -39,6 +39,7 @@ const {
 	subtitle,
 	connections,
 	isDisabled,
+	isDeprecated,
 	isReadOnly,
 	isSelected,
 	executionStatus,
@@ -91,6 +92,7 @@ const classes = computed(() => {
 			isDisabled.value ||
 			isRestricted.value ||
 			(isNotInstalledCommunityNode.value && !isDemoRoute.value),
+		[$style.deprecated]: isDeprecated.value,
 		[$style.success]: Boolean(
 			hasRunData.value && executionStatus.value === 'success' && !hasExecutionPinData.value,
 		),
@@ -259,7 +261,7 @@ function onActivate(event: MouseEvent) {
 			:icon-source="iconSource"
 			:size="iconSize"
 			:shrink="false"
-			:disabled="isDisabled || isRestricted"
+			:disabled="isDisabled || isRestricted || isDeprecated"
 			:class="$style.icon"
 		/>
 		<CanvasNodeSettingsIcons
@@ -289,7 +291,10 @@ function onActivate(event: MouseEvent) {
 				{{ displaySubtitle }}
 			</div>
 		</div>
-		<CanvasNodeStatusIcons v-if="!isDisabled || isRestricted" :class="$style.statusIcons" />
+		<CanvasNodeStatusIcons
+			v-if="!isDisabled || isRestricted || isDeprecated"
+			:class="$style.statusIcons"
+		/>
 	</div>
 </template>
 
@@ -412,6 +417,11 @@ function onActivate(event: MouseEvent) {
 			--color-canvas-node-pinned-border-color,
 			var(--node--border-color--pinned)
 		);
+	}
+
+	&.deprecated {
+		--canvas-node--border-width: 2px;
+		--canvas-node--border-color: var(--color--danger);
 	}
 
 	&.disabled {

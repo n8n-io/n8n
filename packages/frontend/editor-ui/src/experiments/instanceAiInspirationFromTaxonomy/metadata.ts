@@ -1,3 +1,4 @@
+// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 import type { CloudPersonalizationMetadata } from '@/experiments/instanceAiPersonalizedPromptSuggestions/metadata';
 import type {
 	PersonalizedPromptDisplaySuggestion,
@@ -8,28 +9,38 @@ import type {
 import {
 	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS,
 	INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
+	type INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS_VERSION,
 	TAXONOMY_SEE_MORE_ENABLED,
 	type TaxonomyPromptSuggestion,
 	type TaxonomyRole,
+	type TaxonomySuggestionSection,
 } from './prompts';
 
 const TEAM_METADATA_KEY = 'what_team_are_you_on';
 
-const SUGGESTIONS_PER_BUCKET = 4;
+const ROLE_SECTION_SIZE = 4;
+const EVERYONE_SECTION_SIZE = 2;
+
+export type TaxonomyDisplaySuggestion = PersonalizedPromptDisplaySuggestion & {
+	section: TaxonomySuggestionSection;
+};
 
 const TAXONOMY_ROLE_ANSWERS = {
 	Sales: 'sales-and-marketing',
 	Marketing: 'sales-and-marketing',
-	IT: 'it',
 } as const satisfies Record<string, TaxonomyRole>;
+
+export type TaxonomySuggestionFormat = 'list' | 'rows';
 
 export type TaxonomyPromptSegment =
 	| { source: 'taxonomy'; taxonomyRole: TaxonomyRole; segmentKey: TaxonomyRole }
-	| { source: 'control' };
+	| { source: 'excluded' };
 
 export type TaxonomyPromptTelemetryPayload = {
-	suggestion_catalog_version: typeof INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION;
-	suggestion_format: 'list';
+	suggestion_catalog_version:
+		| typeof INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION
+		| typeof INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS_VERSION;
+	suggestion_format: TaxonomySuggestionFormat;
 	suggestion_source: 'taxonomy';
 	segment_key: TaxonomyRole;
 	metadata_load_state: PersonalizedPromptMetadataLoadState;
@@ -38,11 +49,11 @@ export type TaxonomyPromptTelemetryPayload = {
 export type TaxonomyPromptSuggestionResolution =
 	| {
 			source: 'taxonomy';
-			suggestions: PersonalizedPromptDisplaySuggestion[];
+			suggestions: TaxonomyDisplaySuggestion[];
 			showSeeMore: boolean;
 			telemetryPayload: TaxonomyPromptTelemetryPayload;
 	  }
-	| { source: 'control' };
+	| { source: 'excluded' };
 
 export function isTaxonomyPromptSuggestionResolution(
 	resolution: PersonalizedPromptSuggestionResolution | TaxonomyPromptSuggestionResolution | null,
@@ -61,12 +72,12 @@ export function resolveTaxonomySegment(
 ): TaxonomyPromptSegment {
 	const roleAnswer = metadata?.[TEAM_METADATA_KEY];
 	if (typeof roleAnswer !== 'string') {
-		return { source: 'control' };
+		return { source: 'excluded' };
 	}
 
 	const taxonomyRole = TAXONOMY_ROLE_ANSWERS[roleAnswer as keyof typeof TAXONOMY_ROLE_ANSWERS];
 	if (!taxonomyRole) {
-		return { source: 'control' };
+		return { source: 'excluded' };
 	}
 
 	return { source: 'taxonomy', taxonomyRole, segmentKey: taxonomyRole };
@@ -75,43 +86,58 @@ export function resolveTaxonomySegment(
 function getBucketSuggestions(
 	taxonomyRole: TaxonomyRole,
 	catalog: readonly TaxonomyPromptSuggestion[],
-): PersonalizedPromptDisplaySuggestion[] | null {
+): TaxonomyDisplaySuggestion[] | null {
 	const suggestions = catalog
 		.filter((suggestion) => suggestion.taxonomyRole === taxonomyRole)
 		.sort((a, b) => a.order - b.order)
-		.map(({ id, shortTitle, description, builderPrompt }) => ({
+		.map(({ id, shortTitle, description, builderPrompt, section }) => ({
 			id,
 			shortTitle,
 			description,
 			builderPrompt,
+			section,
 		}));
+	const roleCount = suggestions.filter((suggestion) => suggestion.section === 'role').length;
+	const everyoneCount = suggestions.filter(
+		(suggestion) => suggestion.section === 'everyone',
+	).length;
 
-	return suggestions.length === SUGGESTIONS_PER_BUCKET ? suggestions : null;
+	if (roleCount !== ROLE_SECTION_SIZE || everyoneCount !== EVERYONE_SECTION_SIZE) {
+		return null;
+	}
+
+	return suggestions;
 }
 
-const CONTROL_RESOLUTION = { source: 'control' } as const;
+const EXCLUDED_RESOLUTION = { source: 'excluded' } as const;
 
 export function resolveTaxonomyPromptSuggestions({
 	metadata,
 	metadataLoadState,
+	suggestionFormat = 'list',
 	catalog = INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS,
+	catalogVersion = INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
 }: {
 	metadata: CloudPersonalizationMetadata;
 	metadataLoadState: PersonalizedPromptMetadataLoadState;
+	suggestionFormat?: TaxonomySuggestionFormat;
 	catalog?: readonly TaxonomyPromptSuggestion[];
+	catalogVersion?:
+		| typeof INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION
+		| typeof INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_BIS_VERSION;
 }): TaxonomyPromptSuggestionResolution {
 	if (metadataLoadState !== 'loaded') {
-		return CONTROL_RESOLUTION;
+		return EXCLUDED_RESOLUTION;
 	}
 
 	const segment = resolveTaxonomySegment(metadata);
-	if (segment.source === 'control') {
-		return CONTROL_RESOLUTION;
+	if (segment.source === 'excluded') {
+		return EXCLUDED_RESOLUTION;
 	}
 
 	const suggestions = getBucketSuggestions(segment.taxonomyRole, catalog);
 	if (!suggestions) {
-		return CONTROL_RESOLUTION;
+		return EXCLUDED_RESOLUTION;
 	}
 
 	return {
@@ -119,8 +145,8 @@ export function resolveTaxonomyPromptSuggestions({
 		suggestions,
 		showSeeMore: TAXONOMY_SEE_MORE_ENABLED,
 		telemetryPayload: {
-			suggestion_catalog_version: INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION,
-			suggestion_format: 'list',
+			suggestion_catalog_version: catalogVersion,
+			suggestion_format: suggestionFormat,
 			suggestion_source: 'taxonomy',
 			segment_key: segment.segmentKey,
 			metadata_load_state: metadataLoadState,

@@ -1,46 +1,54 @@
 import type { INode } from 'n8n-workflow';
 
-/** One workflow's node list, keyed by the id the usage entries should reference. */
-export interface WorkflowNodeTypeSource {
-	workflowId: string;
-	nodes: INode[];
-}
+import type {
+	PackageNodeTypeRequirement,
+	PackageRequirementConsumer,
+} from '../../spec/requirements.schema';
+import type { RequirementSource } from '../requirement-source';
 
-/** A unique `(type, typeVersion)` pair and the workflows that use it. Matches the manifest requirements shape. */
-export interface NodeTypeUsage {
-	type: string;
-	typeVersion: number;
-	usedByWorkflows: string[];
-}
+export type NodeTypeSource = RequirementSource & {
+	nodes: Array<Pick<INode, 'type' | 'typeVersion'>>;
+};
+
+/** A unique node type/version pair and its package consumers. */
+export type NodeTypeUsage = PackageNodeTypeRequirement;
 
 /**
- * Folds every node of the given workflows into unique `(type, typeVersion)`
- * pairs with deduped `usedByWorkflows`. Disabled nodes still count — they
- * render on canvas and are part of the content. Pure — no registry lookups.
+ * Include disabled nodes because they remain part of the authored definition.
+ * Collect usage without node registry lookups.
  */
-export function collectNodeTypeUsage(workflows: WorkflowNodeTypeSource[]): NodeTypeUsage[] {
-	const usage = new Map<string, { type: string; typeVersion: number; workflowIds: Set<string> }>();
+export function collectNodeTypeUsage(sources: NodeTypeSource[]): NodeTypeUsage[] {
+	const usage = new Map<
+		string,
+		{
+			type: string;
+			typeVersion: number;
+			workflowIds: Set<string>;
+			agentIds: Set<string>;
+		}
+	>();
 
-	for (const { workflowId, nodes } of workflows) {
-		for (const node of nodes) {
+	for (const source of sources) {
+		for (const node of source.nodes) {
 			const key = `${node.type}@${node.typeVersion}`;
-			const entry = usage.get(key);
-			if (entry) {
-				entry.workflowIds.add(workflowId);
-				continue;
-			}
-
-			usage.set(key, {
+			const entry = usage.get(key) ?? {
 				type: node.type,
 				typeVersion: node.typeVersion,
-				workflowIds: new Set([workflowId]),
-			});
+				workflowIds: new Set<string>(),
+				agentIds: new Set<string>(),
+			};
+			if ('workflowId' in source) entry.workflowIds.add(source.workflowId);
+			else entry.agentIds.add(source.agentId);
+			usage.set(key, entry);
 		}
 	}
 
-	return [...usage.values()].map(({ type, typeVersion, workflowIds }) => ({
+	return [...usage.values()].map(({ type, typeVersion, workflowIds, agentIds }) => ({
 		type,
 		typeVersion,
-		usedByWorkflows: [...workflowIds],
+		usedBy: [
+			...[...workflowIds].map<PackageRequirementConsumer>((id) => ({ kind: 'workflow', id })),
+			...[...agentIds].map<PackageRequirementConsumer>((id) => ({ kind: 'agent', id })),
+		],
 	}));
 }

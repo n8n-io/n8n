@@ -195,6 +195,7 @@ export const defaultSettings: FrontendSettings = {
 		collectionsEnabled: false,
 		configEvalsEnabled: false,
 		agentEvalsEnabled: false,
+		forceAgentWorthTesting: false,
 	},
 	activeModules: [],
 	canvasOnly: false,
@@ -208,5 +209,4 @@ export const defaultSettings: FrontendSettings = {
 		},
 	},
 	useWorkflowPublicationService: false,
-	granularCredentialSharing: false,
 };

@@ -32,6 +32,7 @@ const result = (id: string): AgentEvalResultRecord => ({
 	output: { finalText: `answer ${id}` },
 	toolCalls: null,
 	metrics: null,
+	verdict: null,
 	runAt: '2026-01-01T00:00:00.000Z',
 	completedAt: '2026-01-01T00:00:30.000Z',
 	errorCode: null,

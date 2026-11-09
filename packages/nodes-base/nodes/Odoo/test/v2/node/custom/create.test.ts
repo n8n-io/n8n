@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
@@ -57,6 +58,26 @@ describe('OdooV2 — custom:create', () => {
 			vals_list: [{ name: 'Test Record' }],
 		});
 		expect(result[0][0].json).toEqual({ id: MOCK_RECORD_ID });
+	});
+
+	it('converts manually mapped DateTime values to Odoo format before create', async () => {
+		// The resource mapper passes dateTime fields to execute() as Luxon DateTime objects
+		setupParams({
+			customResource: 'calendar.event',
+			'fieldsToSend.value': {
+				name: 'Test Event',
+				start: DateTime.fromISO('2026-07-14T12:00:00.000+02:00', { setZone: true }),
+			},
+		});
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({ name: { type: 'char' }, start: { type: 'datetime' } })
+			.mockResolvedValue([MOCK_RECORD_ID]);
+
+		await node.execute.call(exec);
+
+		expect(transport.odooApiRequest).toHaveBeenCalledWith('calendar.event', 'create', {
+			vals_list: [{ name: 'Test Event', start: '2026-07-14 10:00:00' }],
+		});
 	});
 
 	it('uses item json directly when mappingMode is autoMapInputData', async () => {
