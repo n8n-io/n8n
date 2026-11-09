@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { setActivePinia, createPinia } from 'pinia';
-import { defineComponent, h, ref, type Component, type PropType } from 'vue';
+import { defineComponent, h, ref, type Component, type PropType, type Ref } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -32,6 +32,7 @@ type InputTestProps = {
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
 	placeholder?: string;
+	placeholderPreview?: Readonly<Ref<string | undefined>>;
 	contextChip?: ContextChip | null;
 };
 
@@ -278,6 +279,20 @@ describe('InstanceAiInput', () => {
 				{ id: 'quick-examples', type: 'menu' },
 			],
 		);
+	});
+
+	it('keeps contextual and unavailable placeholders above an animated preview', async () => {
+		const placeholderPreview = ref<string | undefined>('Build me an agent');
+		const { getByRole, rerender } = renderComponent({
+			props: inputProps({ placeholderPreview }),
+		});
+		const input = getByRole('textbox');
+		expect(input).toHaveAttribute('placeholder', 'Build me an agent');
+		await rerender({ contextualSuggestion: 'Explain the result' });
+		expect(input).toHaveAttribute('placeholder', 'Explain the result');
+		placeholderPreview.value = 'Build me another agent';
+		await rerender({ isWorkflowBuilderAvailable: false });
+		expect(input).toHaveAttribute('placeholder', 'Workflow builder unavailable');
 	});
 
 	it('reports initial and edited draft content without submitting placeholder previews', async () => {

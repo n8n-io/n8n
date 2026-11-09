@@ -11,6 +11,7 @@ import {
 	onBeforeUnmount,
 	useTemplateRef,
 	nextTick,
+	type Ref,
 } from 'vue';
 import {
 	N8nAiActivityStepGroup,
@@ -142,6 +143,7 @@ const props = withDefaults(
 		 * question card and for a non-empty queue still take priority.
 		 */
 		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
 		/**
 		 * Shows the attach button of the composer. A host that opens the file
@@ -709,11 +711,32 @@ function focusInput(options?: FocusOptions) {
 	if (props.visible) chatInput.value?.focus(options);
 }
 
+let forceFocusPending = true;
 watch(
 	[chatInput, () => props.autofocus, () => props.visible],
-	async ([input, autofocus, visible]) => {
-		if (!input || !autofocus || !visible) return;
+	async ([input, autofocus, visible], [, previousAutofocus, wasVisible], onCleanup) => {
+		if (!autofocus || !visible) {
+			forceFocusPending = false;
+			return;
+		}
+		if (!previousAutofocus || !wasVisible) forceFocusPending = true;
+		if (!input) return;
+		let cancelled = false;
+		onCleanup(() => {
+			cancelled = true;
+		});
 		await nextTick();
+		if (cancelled || !props.autofocus || !props.visible || chatInput.value !== input) return;
+		const activeElement = document.activeElement;
+		if (
+			!forceFocusPending &&
+			activeElement instanceof HTMLElement &&
+			activeElement !== document.body &&
+			activeElement !== document.documentElement
+		) {
+			return;
+		}
+		forceFocusPending = false;
 		focusInput();
 	},
 );
@@ -1732,6 +1755,11 @@ onBeforeUnmount(() => {
 					v-model="inputText"
 					:block-canvas-shortcuts="false"
 					:placeholder="chatPlaceholder"
+					:placeholder-preview="
+						!hasOpenInteractiveQuestion && queuedMessages.length === 0
+							? props.placeholderPreview
+							: undefined
+					"
 					:composer-height="composerHeight"
 					:is-streaming="false"
 					:show-stop-button="showStop"

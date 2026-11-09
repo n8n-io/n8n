@@ -14,7 +14,7 @@ import type {
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, provide, ref, useTemplateRef, watch } from 'vue';
+import { computed, provide, ref, useTemplateRef, watch, type Ref } from 'vue';
 
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
@@ -56,6 +56,7 @@ const props = withDefaults(
 		/** True for a thread that the panel just created: it has no history to load. */
 		newSession: boolean;
 		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		visible?: boolean;
 		composerHeight?: string;
 		beforeSend?: () => Promise<void>;
@@ -236,6 +237,7 @@ defineExpose({
 		:interaction-extensions="interactionExtensions"
 		:before-send="props.beforeSend"
 		:placeholder="props.placeholder"
+		:placeholder-preview="props.placeholderPreview"
 		:visible="props.visible"
 		autofocus
 		:composer-height="props.composerHeight"

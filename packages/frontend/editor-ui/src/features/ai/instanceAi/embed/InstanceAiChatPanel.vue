@@ -21,6 +21,7 @@ import {
 	provide,
 	ref,
 	watch,
+	type Ref,
 } from 'vue';
 import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
@@ -83,6 +84,7 @@ const props = withDefaults(
 		closable?: boolean;
 		showOpenFullAssistant?: boolean;
 		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
 		/** Runs before a new thread is minted (e.g. flush a pending autosave). */
 		beforeNewThread?: () => Promise<void>;
@@ -598,6 +600,7 @@ const ThreadScope = defineComponent({
 					subject: props.subject,
 					beforeSend: props.beforeSend,
 					placeholder: props.placeholder,
+					placeholderPreview: props.placeholderPreview,
 					autofocus: props.visible,
 					composerHeight: props.composerHeight,
 					onMessageSent: () => emit('message-sent'),
@@ -707,6 +710,7 @@ function handleCloseShortcut(event: KeyboardEvent) {
 				:subject="props.subject"
 				:new-session="panelAgentThreads.get(activeThreadId) === true"
 				:placeholder="props.placeholder"
+				:placeholder-preview="props.placeholderPreview"
 				:visible="props.visible"
 				:composer-height="props.composerHeight"
 				:before-send="props.beforeSend"

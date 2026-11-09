@@ -9,6 +9,7 @@ import {
 	shallowReactive,
 	useTemplateRef,
 	watch,
+	type Ref,
 } from 'vue';
 import { storeToRefs } from 'pinia';
 import { N8nChatMessage, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
@@ -85,6 +86,7 @@ const props = withDefaults(
 		/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
 		beforeSend?: () => Promise<void>;
 		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		autofocus?: boolean;
 		composerHeight?: string;
 		/**
@@ -477,12 +479,16 @@ function focusChatInputIfFocusIsIdle() {
 	chatInputRef.value?.focus();
 }
 
-// Focus input on initial render (ref rebinds when messages load)
-watch([chatInputRef, () => props.autofocus], ([input, autofocus]) => {
-	if (!input || autofocus === false) return;
+// Confirmations can remount the composer while the user edits another field.
+let hasMountedChatInput = false;
+watch([chatInputRef, () => props.autofocus], ([input, autofocus], [, previousAutofocus]) => {
+	if (!input) return;
+	const forceFocus = autofocus === true && (!hasMountedChatInput || previousAutofocus !== true);
+	hasMountedChatInput = true;
+	if (autofocus === false) return;
 	void nextTick(() => {
-		if (props.autofocus === false) return;
-		if (props.autofocus) input.focus();
+		if (chatInputRef.value !== input || props.autofocus === false) return;
+		if (forceFocus) input.focus();
 		else focusChatInputIfFocusIsIdle();
 	});
 });
@@ -1004,6 +1010,7 @@ defineExpose({
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
 										:placeholder="props.placeholder"
+										:placeholder-preview="props.placeholderPreview"
 										:composer-height="props.composerHeight"
 										:placeholder-key="
 											isPendingAgentComposer ? 'instanceAi.input.newAgentPlaceholder' : undefined

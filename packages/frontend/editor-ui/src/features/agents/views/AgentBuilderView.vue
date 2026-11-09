@@ -3484,7 +3484,7 @@ const builderPromptHasContent = ref(false);
 const templatePrompts = computed(() =>
 	AGENT_TEMPLATES.map((template) => locale.baseText(template.placeholderKey)),
 );
-const animatedPromptPlaceholder = useAgentPromptInspiration({
+const promptInspiration = useAgentPromptInspiration({
 	prompts: templatePrompts,
 	enabled: () =>
 		showAgentIntro.value &&
@@ -3673,12 +3673,12 @@ useKeybindings({
 						:show-open-full-assistant="false"
 						:composer-height="inlineTestChat ? 'var(--agent-builder-composer-height)' : undefined"
 						:placeholder="
-							animatedPromptPlaceholder ??
-							(inlineTestChat
+							inlineTestChat
 								? locale.baseText('agents.builder.chatMode.buildPlaceholder')
-								: undefined)
+								: undefined
 						"
 						@message-sent="hasSentBuilderMessage = true"
+						:placeholder-preview="promptInspiration.placeholder"
 						@content-change="builderPromptHasContent = $event"
 						:key="agentId"
 						:subject="instanceAiEmbedSubject"

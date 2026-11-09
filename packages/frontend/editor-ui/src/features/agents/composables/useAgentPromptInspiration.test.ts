@@ -23,7 +23,7 @@ describe('useAgentPromptInspiration', () => {
 		vi.useRealTimers();
 	});
 	function setup(prompts = ref(['Hi', 'Bye']), enabled = ref(true)) {
-		const placeholder = scope.run(() => useAgentPromptInspiration({ prompts, enabled }))!;
+		const { placeholder } = scope.run(() => useAgentPromptInspiration({ prompts, enabled }))!;
 		return { placeholder, prompts, enabled };
 	}
 	it('types, holds for five seconds, erases, and cycles through all prompts', () => {

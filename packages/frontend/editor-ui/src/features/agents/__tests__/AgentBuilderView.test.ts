@@ -12,6 +12,7 @@ import {
 import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { N8nToggle } from '@n8n/design-system';
+import { AGENT_PROMPT_INSPIRATION_TIMING } from '@/app/constants/durations';
 import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import {
 	forgetAssistantAgentThread,
@@ -544,6 +545,7 @@ async function renderView({
 	props,
 	seedStores,
 	stubs,
+	onBuilderUpdated,
 }: {
 	knowledgeBaseEnabled?: boolean;
 	waitForAsyncSetup?: boolean;
@@ -551,6 +553,7 @@ async function renderView({
 	/** Runs against the fresh pinia before mount, for state the view reads on setup. */
 	seedStores?: () => void;
 	stubs?: Record<string, Component>;
+	onBuilderUpdated?: () => void;
 } = {}) {
 	const pinia = createPinia();
 	setActivePinia(pinia);
@@ -572,6 +575,19 @@ async function renderView({
 		props: { builderLayout: { chatWidth: 'current', testChat: 'dock' }, ...props },
 		global: {
 			plugins: [pinia],
+			mixins: onBuilderUpdated
+				? [
+						{
+							updated() {
+								if (
+									this.$options.name === 'AgentBuilderView' ||
+									this.$options.__name === 'AgentBuilderView'
+								)
+									onBuilderUpdated();
+							},
+						},
+					]
+				: [],
 			stubs: { ...commonStubs, ...stubs },
 		},
 	});
@@ -740,6 +756,7 @@ const commonStubs = {
 			'<button data-testid="ai-panel-emit-building" @click="$emit(\'update:building\', true)" />' +
 			'<button data-testid="ai-panel-stop-building" @click="$emit(\'update:building\', false)" />' +
 			'<button data-testid="ai-panel-emit-close" @click="$emit(\'close\')" />' +
+			'<textarea data-testid="ai-panel-prompt" :placeholder="placeholderPreview?.value ?? placeholder" />' +
 			'<slot name="empty" /><slot name="composer-start" /><slot name="composer-footer" />' +
 			'</div>',
 		props: [
@@ -752,6 +769,7 @@ const commonStubs = {
 			'closable',
 			'showOpenFullAssistant',
 			'placeholder',
+			'placeholderPreview',
 		],
 		emits: [
 			'update:threadId',
@@ -4009,20 +4027,69 @@ describe('AgentBuilderView — three-column shell', () => {
 		mockConfig.value = withDefaultLlm(intendedConfig);
 		const wrapper = await renderView({ props: { builderLayout } });
 		const panel = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
-		await vi.waitFor(() => expect(panel.props('placeholder')?.startsWith('Build me')).toBe(true));
-		const prompt = panel.props('placeholder');
+		await vi.waitFor(() =>
+			expect(
+				panel
+					.get('[data-testid="ai-panel-prompt"]')
+					.attributes('placeholder')
+					?.startsWith('Build me'),
+			).toBe(true),
+		);
+		const prompt = panel.get('[data-testid="ai-panel-prompt"]').attributes('placeholder');
 		panel.vm.$emit('content-change', true);
 		await nextTick();
-		expect(panel.props('placeholder')).not.toBe(prompt);
+		expect(panel.get('[data-testid="ai-panel-prompt"]').attributes('placeholder')).not.toBe(prompt);
 		expect(submitSuggestionMock).not.toHaveBeenCalled();
 		panel.vm.$emit('content-change', false);
 		await nextTick();
-		await vi.waitFor(() => expect(panel.props('placeholder')?.startsWith('Build me')).toBe(true));
+		await vi.waitFor(() =>
+			expect(
+				panel
+					.get('[data-testid="ai-panel-prompt"]')
+					.attributes('placeholder')
+					?.startsWith('Build me'),
+			).toBe(true),
+		);
 		panel.vm.$emit('message-sent');
 		await nextTick();
-		expect(panel.props('placeholder')).toBe(
+		expect(panel.get('[data-testid="ai-panel-prompt"]').attributes('placeholder')).toBe(
 			builderLayout.testChat === 'inline' ? 'agents.builder.chatMode.buildPlaceholder' : undefined,
 		);
+	});
+
+	it('updates the prompt preview without rendering the builder on animation ticks', async () => {
+		const defaultMediaQuery = window.matchMedia('');
+		const mediaQuery = vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+			...defaultMediaQuery,
+			media: query,
+			matches: !query.includes('prefers-reduced-motion'),
+		}));
+		try {
+			history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+			localStorage.removeItem('N8N_AGENT_BUILDER_CHAT_STARTED:p1:a1');
+			intendedConfig = { name: 'New Agent', instructions: '' };
+			mockConfig.value = withDefaultLlm(intendedConfig);
+			const onBuilderUpdated = vi.fn();
+			const wrapper = await renderView({ onBuilderUpdated });
+			const panel = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			wrapper.vm.$forceUpdate();
+			await nextTick();
+			expect(onBuilderUpdated).toHaveBeenCalled();
+			panel.vm.$emit('content-change', true);
+			await nextTick();
+			vi.useFakeTimers();
+			panel.vm.$emit('content-change', false);
+			await nextTick();
+			const updatesBeforeAnimation = onBuilderUpdated.mock.calls.length;
+			await vi.advanceTimersByTimeAsync(AGENT_PROMPT_INSPIRATION_TIMING.TYPE * 10);
+			expect(panel.get('[data-testid="ai-panel-prompt"]').attributes('placeholder')).toBe(
+				'Build me a',
+			);
+			expect(onBuilderUpdated).toHaveBeenCalledTimes(updatesBeforeAnimation);
+		} finally {
+			vi.useRealTimers();
+			mediaQuery.mockRestore();
+		}
 	});
 
 	it('shows the template intro for a blank pending agent and hides it for a saved one', async () => {

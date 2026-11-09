@@ -1,7 +1,7 @@
 import { i18nInstance } from '@n8n/i18n';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
-import { computed, defineComponent, h, isReadonly, ref, nextTick } from 'vue';
+import { computed, defineComponent, h, isReadonly, ref, nextTick, type Ref } from 'vue';
 import Draggable from 'vuedraggable';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
@@ -267,6 +267,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 			props: [
 				'modelValue',
 				'placeholder',
+				'placeholderPreview',
 				'isStreaming',
 				'showStopButton',
 				'canSubmit',
@@ -448,6 +449,7 @@ describe('AgentChatPanel', () => {
 			newSession: boolean;
 			clientContext: () => Record<string, unknown> | undefined;
 			placeholder: string;
+			placeholderPreview: Readonly<Ref<string | undefined>>;
 			showAttachButton: boolean;
 			interactionExtensions: readonly AgentsChatInteractionExtension[];
 		}> = {},
@@ -489,6 +491,28 @@ describe('AgentChatPanel', () => {
 			await wrapper.setProps({ visible: true });
 			await flushPromises();
 			expect(focusInputMock).toHaveBeenCalled();
+		},
+	);
+
+	it.each(['visible', 'autofocus'] as const)(
+		'focuses the Assistant on page load and when %s is enabled',
+		async (prop) => {
+			const outside = document.createElement('input');
+			document.body.append(outside);
+			outside.focus();
+			const wrapper = mountPanel({ autofocus: true }, document.body);
+			try {
+				await flushPromises();
+				expect(document.activeElement).toBe(wrapper.get('textarea').element);
+				await wrapper.setProps({ [prop]: false });
+				outside.focus();
+				await wrapper.setProps({ [prop]: true });
+				await flushPromises();
+				expect(document.activeElement).toBe(wrapper.get('textarea').element);
+			} finally {
+				wrapper.unmount();
+				outside.remove();
+			}
 		},
 	);
 
@@ -3595,6 +3619,50 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it.each([true, false])(
+		'restores the Assistant composer after approval without changing an active field (outside focus: %s)',
+		async (focusOutside) => {
+			const wrapper = mountPanel({ autofocus: true }, document.body);
+			const outside = document.createElement('input');
+			document.body.append(outside);
+			try {
+				await flushPromises();
+				messagesMock.value = [
+					{
+						...openInteractiveMessage(),
+						interactive: {
+							toolName: APPROVAL_TOOL_NAME,
+							toolCallId: 'tc-1',
+							runId: 'run-1',
+							input: { type: 'approval', toolName: 'send_message', args: {} },
+						},
+					},
+				];
+				await flushPromises();
+				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
+				if (focusOutside) {
+					outside.focus();
+				} else if (document.activeElement instanceof HTMLElement) {
+					document.activeElement.blur();
+				}
+				focusInputMock.mockClear();
+				messagesMock.value[0].interactive!.resolvedAt = 1;
+				await flushPromises();
+				expect(wrapper.find('[data-testid="agent-chat-approvals"]').exists()).toBe(false);
+				if (focusOutside) {
+					expect(document.activeElement).toBe(outside);
+					expect(focusInputMock).not.toHaveBeenCalled();
+				} else {
+					expect(document.activeElement).toBe(wrapper.get('textarea').element);
+					expect(focusInputMock).toHaveBeenCalled();
+				}
+			} finally {
+				wrapper.unmount();
+				outside.remove();
+			}
+		},
+	);
+
 	it.each([
 		{ action: 'allow-once', decision: { approved: true } },
 		{ action: 'deny', decision: { approved: false } },
@@ -4532,6 +4600,30 @@ describe('AgentChatPanel', () => {
 				expect(composer(mountPanel({ placeholder: 'Ask anything' })).props('placeholder')).toBe(
 					'agents.chat.answerQuestionPlaceholder',
 				);
+			});
+
+			it('forwards the preview ref while keeping question and queue placeholders first', async () => {
+				const preview = ref<string>();
+				const wrapper = mountPanel({ placeholderPreview: preview });
+				const input = composer(wrapper);
+				expect(input.props('placeholderPreview')).toBe(preview);
+				messagesMock.value = [openInteractiveMessage()];
+				await nextTick();
+				expect(input.props('placeholderPreview')).toBeUndefined();
+				messagesMock.value = [];
+				queuedMessagesMock.value = [
+					{
+						id: '1',
+						steeringExecutionId: null,
+						message: 'queued',
+						createdAt: new Date().toISOString(),
+					},
+				];
+				await nextTick();
+				expect(input.props('placeholderPreview')).toBeUndefined();
+				queuedMessagesMock.value = [];
+				await nextTick();
+				expect(input.props('placeholderPreview')).toBe(preview);
 			});
 
 			it('hides the attach button when the host turns it off', () => {

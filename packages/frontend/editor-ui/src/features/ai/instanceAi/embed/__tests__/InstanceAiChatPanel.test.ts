@@ -89,7 +89,7 @@ const submitSuggestionMock = vi.hoisted(() => vi.fn());
 
 const InstanceAiConversationStub = defineComponent({
 	name: 'InstanceAiConversation',
-	props: ['beforeSend', 'placeholder', 'autofocus'],
+	props: ['beforeSend', 'placeholder', 'placeholderPreview', 'autofocus'],
 	emits: ['thread-missing', 'agent-attachment-restored', 'message-sent', 'content-change'],
 	methods: {
 		focus: focusMock,
@@ -109,7 +109,7 @@ const agentApplyHandoffMock = vi.hoisted(() => vi.fn());
 
 const AssistantAgentPanelThreadStub = defineComponent({
 	name: 'AssistantAgentPanelThread',
-	props: ['threadId', 'subject', 'newSession', 'beforeSend', 'visible'],
+	props: ['threadId', 'subject', 'newSession', 'beforeSend', 'visible', 'placeholderPreview'],
 	emits: ['content-change'],
 	methods: {
 		focus: vi.fn(),

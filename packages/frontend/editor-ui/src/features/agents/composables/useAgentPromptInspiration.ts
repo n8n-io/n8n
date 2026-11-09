@@ -59,5 +59,6 @@ export function useAgentPromptInspiration(options: {
 	);
 
 	onScopeDispose(clearTimer);
-	return placeholder;
+	// Keep the ref nested so hosts can forward it without reading each frame.
+	return { placeholder };
 }
