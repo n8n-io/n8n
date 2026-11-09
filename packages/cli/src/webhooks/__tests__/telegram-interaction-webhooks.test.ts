@@ -383,6 +383,7 @@ describe('TelegramInteractionWebhooks', () => {
 			expect(isTelegramInteractionRequest(req)).toBe(true);
 			expect(getWebhookExecutionData).toHaveBeenCalledWith(
 				expect.objectContaining({
+					execution: expect.objectContaining({ id: EXECUTION_ID }),
 					executionId: EXECUTION_ID,
 					suffix: 'node-1',
 					lastNodeExecuted: 'Telegram',
@@ -415,6 +416,16 @@ describe('TelegramInteractionWebhooks', () => {
 			await svc.executeWebhook(makeReq(reference), res);
 
 			expect(res.status).toHaveBeenCalledWith(409);
+			expect(getWebhookExecutionData).not.toHaveBeenCalled();
+		});
+
+		it('answers 404 when the snapshot cannot be mapped to a stand-in', async () => {
+			executionReader.fromSnapshot.mockResolvedValue(undefined);
+			const res = makeRes();
+
+			await svc.executeWebhook(makeReq(reference), res);
+
+			expect(res.status).toHaveBeenCalledWith(404);
 			expect(getWebhookExecutionData).not.toHaveBeenCalled();
 		});
 

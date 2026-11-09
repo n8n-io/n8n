@@ -2031,13 +2031,14 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 	const executionReader = mock<EngineV2ExecutionReader>();
 	const webhookService = mock<WebhookService>();
 	const executionPersistence = mock<ExecutionPersistence>();
+	const eventService = mock<EventService>();
 	const waitingWebhooks = new WaitingWebhooks(
 		mock(),
 		mock(),
 		executionPersistence,
 		webhookService,
 		mock<InstanceSettings>(),
-		mock<EventService>(),
+		eventService,
 		mock<EndpointsConfig>({ webhookWaiting: 'webhook-waiting', formWaiting: 'form-waiting' }),
 		dataPlane,
 		executionReader,
@@ -2235,6 +2236,11 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 				expect(res.render).toHaveBeenCalledWith('send-and-wait-no-action-required', {
 					isTestWebhook: false,
 				});
+				expect(res.status).not.toHaveBeenCalled();
+				expect(res.setHeader).toHaveBeenCalledWith(
+					'Content-Security-Policy',
+					expect.stringContaining('sandbox'),
+				);
 			},
 		);
 
@@ -2247,6 +2253,21 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 			await expect(waitingWebhooks.executeWebhook(toNode('slack-id'), response())).rejects.toThrow(
 				`The execution "${EXECUTION_ID}" is running already.`,
 			);
+		});
+
+		it('names the execution, not the step in the path, when it answers 409', async () => {
+			const STEP_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
+			dataPlane.locateResume.mockResolvedValue({
+				ok: true,
+				value: { execution: settled('running'), target: null },
+			});
+
+			await expect(
+				waitingWebhooks.executeWebhook(
+					request({ [WAITING_TOKEN_QUERY_PARAM]: 't' }, {}, STEP_ID),
+					response(),
+				),
+			).rejects.toThrow(`The execution "${EXECUTION_ID}" is running already.`);
 		});
 
 		it('answers 409 for a node that does not send and wait', async () => {
@@ -2291,21 +2312,25 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 	it('locates a step-bound URL by the step id and the literal path and query, and resumes under the execution id', async () => {
 		const STEP_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
 		const { executeWebhookSpy } = acceptResume();
+		const req = request({ approved: 'true', [WAITING_TOKEN_QUERY_PARAM]: 'token' }, {}, STEP_ID);
+		req.url = req.originalUrl = `/webhook-waiting/${STEP_ID}?approved=true&q=a%20b&signature=token`;
 
-		await waitingWebhooks.executeWebhook(
-			request({ approved: 'true', [WAITING_TOKEN_QUERY_PARAM]: 'token' }, {}, STEP_ID),
-			response(),
-		);
+		await waitingWebhooks.executeWebhook(req, response());
 
 		expect(dataPlane.locateResume).toHaveBeenCalledWith({
 			id: STEP_ID,
 			token: 'token',
-			pathAndQuery: `/webhook-waiting/${STEP_ID}?approved=true`,
+			pathAndQuery: `/webhook-waiting/${STEP_ID}?approved=true&q=a%20b`,
 		});
 		const [, , , , , , , executionId, , , , , options] = executeWebhookSpy.mock.calls[0];
 		expect(executionId).toBe(EXECUTION_ID);
 		expect(options).toEqual(
 			expect.objectContaining({ engineResume: { stepId: 'step-1', token: 'token' } }),
+		);
+		options?.onResume?.();
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'execution-resumed',
+			expect.objectContaining({ executionId: EXECUTION_ID }),
 		);
 	});
 
@@ -2408,6 +2433,14 @@ describe('literalPathAndQuery', () => {
 		['/webhook-waiting/s/n?xsignature=1&signature=t', '/webhook-waiting/s/n?xsignature=1'],
 		['/webhook-waiting/s/n?q=a%20b&signature=t', '/webhook-waiting/s/n?q=a%20b'],
 	])('cuts the token out of %s as a substring', (url, expected) => {
+		expect(literalPathAndQuery(url)).toBe(expected);
+	});
+
+	// The data plane then refuses the request, because the string differs from the binding.
+	it.each([
+		['/webhook-waiting/s/n?signature=a&signature=b', '/webhook-waiting/s/n?signature=b'],
+		['/webhook-waiting/s/n?%73ignature=t', '/webhook-waiting/s/n?%73ignature=t'],
+	])('keeps a second or an encoded token parameter in %s', (url, expected) => {
 		expect(literalPathAndQuery(url)).toBe(expected);
 	});
 });
