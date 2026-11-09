@@ -129,7 +129,7 @@ A benchmark scenario defines one or multiple steps to execute and measure. It co
 
 Available scenarios are located in [`./scenarios`](./scenarios/).
 
-The CLI imports the workflow files in the order of `workflowFiles` and n8n gives each workflow a new id. To call a workflow from another workflow (for example as a sub-workflow), set an `id` in the workflow file that is called and use that `id` in the workflow that calls it. Put the called workflow first in `workflowFiles`. The CLI replaces the `id` with the new id in the workflows that come after it.
+A workflow keeps the `id` from its file when the CLI imports it. Before the import, the CLI deletes the workflows that have the same name or the same `id`. To call a workflow from another workflow (for example as a sub-workflow), set a fixed `id` in the workflow file that is called and use that `id` in the workflow that calls it.
 
 ## n8n setups
 

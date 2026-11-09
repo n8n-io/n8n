@@ -60,16 +60,8 @@ export class ScenarioDataImporter {
 			}
 		}
 
-		for (const [index, workflow] of data.workflows.entries()) {
-			const createdWorkflow = await this.importWorkflow({ existingWorkflows, workflow });
-
-			// Workflows that come later can reference this one (e.g. as a sub-workflow),
-			// so we need to update the id in them
-			if (workflow.id) {
-				for (const laterWorkflow of data.workflows.slice(index + 1)) {
-					this.replaceValuesInObject(laterWorkflow, workflow.id, createdWorkflow.id);
-				}
-			}
+		for (const workflow of data.workflows) {
+			await this.importWorkflow({ existingWorkflows, workflow });
 		}
 
 		let dataTableId: string | undefined;
@@ -127,7 +119,8 @@ export class ScenarioDataImporter {
 	}
 
 	/**
-	 * Imports a single workflow into n8n removing any existing workflows with the same name
+	 * Imports a single workflow into n8n removing any existing workflows with the same name or id.
+	 * The workflow keeps the id from its file, so other workflows can reference it (e.g. as a sub-workflow)
 	 */
 	private async importWorkflow(opts: { existingWorkflows: Workflow[]; workflow: Workflow }) {
 		const existingWorkflows = this.findExistingWorkflows(opts.existingWorkflows, opts.workflow);
@@ -141,13 +134,11 @@ export class ScenarioDataImporter {
 			}
 		}
 
-		// n8n generates a new id, so the id in the file can't collide with an existing workflow
-		const { id: _id, ...workflow } = opts.workflow;
 		const createdWorkflow = await this.workflowApiClient.createWorkflow({
-			...workflow,
+			...opts.workflow,
 			name: this.getBenchmarkWorkflowName(opts.workflow),
 			...(this.engineType
-				? { settings: { ...workflow.settings, engineType: this.engineType } }
+				? { settings: { ...opts.workflow.settings, engineType: this.engineType } }
 				: {}),
 		});
 
@@ -172,7 +163,9 @@ export class ScenarioDataImporter {
 		const benchmarkWorkflowName = this.getBenchmarkWorkflowName(workflowToImport);
 
 		return existingWorkflows.filter(
-			(existingWorkflow) => existingWorkflow.name === benchmarkWorkflowName,
+			(existingWorkflow) =>
+				existingWorkflow.name === benchmarkWorkflowName ||
+				(workflowToImport.id !== undefined && existingWorkflow.id === workflowToImport.id),
 		);
 	}
 

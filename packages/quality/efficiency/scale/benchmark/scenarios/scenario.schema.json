@@ -5,7 +5,7 @@
 			"properties": {
 				"workflowFiles": {
 					"type": "array",
-					"description": "Workflow files to import, in this order. The id of a workflow is replaced with its new id in the workflows that come after it",
+					"description": "Workflow files to import, in this order. A workflow keeps the id from its file",
 					"items": {
 						"type": "string"
 					}
