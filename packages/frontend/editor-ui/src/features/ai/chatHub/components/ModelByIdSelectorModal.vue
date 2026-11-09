@@ -72,7 +72,7 @@ function onCancel() {
 	<N8nDialog
 		:open="modalOpen"
 		size="medium"
-		:stacked="data.stacked === true"
+		:stacked="data.stacked"
 		:container-class="$style.dialog"
 		@update:open="onDialogOpenUpdate"
 	>
