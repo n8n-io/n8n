@@ -3,7 +3,9 @@ import { mock } from 'vitest-mock-extended';
 
 import { PendingAuthorizationCleanupTask } from '@/credentials/pending-authorization-cleanup.task';
 import { LicenseRenewalTask } from '@/license/license-renewal.task';
+import { IdempotencyKeyCleanupTask } from '@/public-api/idempotency-key-cleanup.task';
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
+import { ExecutionPruningHardDeleteTask } from '@/services/pruning/execution-pruning-hard-delete.task';
 import { ExecutionPruningSoftDeleteTask } from '@/services/pruning/execution-pruning-soft-delete.task';
 import { WorkflowHistoryCompactionOptimizeTask } from '@/services/pruning/workflow-history-compaction-optimize.task';
 import { WorkflowHistoryCompactionTrimTask } from '@/services/pruning/workflow-history-compaction-trim.task';
@@ -17,6 +19,7 @@ import { mainSystemTasks } from '../main-system-tasks';
 const configWith = ({
 	pruneData = true,
 	useWorkflowPublicationService = true,
+	autoRenewalEnabled = true,
 	diagnosticsEnabled = true,
 	historyPruneTimeHours = -1,
 	dbType = 'postgresdb',
@@ -24,6 +27,7 @@ const configWith = ({
 	mock<GlobalConfig>({
 		executions: { pruneData },
 		workflows: { useWorkflowPublicationService },
+		license: { autoRenewalEnabled },
 		diagnostics: { enabled: diagnosticsEnabled },
 		workflowHistory: { pruneTime: historyPruneTimeHours },
 		workflowHistoryCompaction: { trimmingMinimumAgeDays: 6 },
@@ -35,12 +39,14 @@ it('should return every main task when all features are on', async () => {
 
 	expect(tasks).toEqual([
 		ActivityPruningTask,
-		LicenseRenewalTask,
 		WorkflowHistoryCompactionOptimizeTask,
 		WorkflowHistoryPruningTask,
 		PendingAuthorizationCleanupTask,
+		IdempotencyKeyCleanupTask,
 		WorkflowHistoryCompactionTrimTask,
+		LicenseRenewalTask,
 		ExecutionPruningSoftDeleteTask,
+		ExecutionPruningHardDeleteTask,
 		TelemetryPulseTask,
 		WorkflowPublicationOutboxCleanupTask,
 		WorkflowStatisticsRollupTask,
@@ -53,10 +59,11 @@ it('should leave out the telemetry pulse when diagnostics are off', async () => 
 	expect(tasks).not.toContain(TelemetryPulseTask);
 });
 
-it('should leave out execution pruning soft delete when pruning is off', async () => {
+it('should leave out execution pruning when pruning is off', async () => {
 	const tasks = await mainSystemTasks(configWith({ pruneData: false }));
 
 	expect(tasks).not.toContain(ExecutionPruningSoftDeleteTask);
+	expect(tasks).not.toContain(ExecutionPruningHardDeleteTask);
 	expect(tasks).toContain(WorkflowPublicationOutboxCleanupTask);
 });
 
@@ -71,6 +78,13 @@ it('should leave out outbox cleanup when the publication service is off', async 
 	const tasks = await mainSystemTasks(configWith({ useWorkflowPublicationService: false }));
 
 	expect(tasks).not.toContain(WorkflowPublicationOutboxCleanupTask);
+	expect(tasks).toContain(ExecutionPruningSoftDeleteTask);
+});
+
+it('should leave out license renewal when auto-renewal is off', async () => {
+	const tasks = await mainSystemTasks(configWith({ autoRenewalEnabled: false }));
+
+	expect(tasks).not.toContain(LicenseRenewalTask);
 	expect(tasks).toContain(ExecutionPruningSoftDeleteTask);
 });
 

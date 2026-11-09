@@ -13,6 +13,7 @@ export {
 	isUnsupportedEphemeralNodeOperation,
 	unsupportedEphemeralNodeOperationMessage,
 } from './node-tool-operation-support';
+export { resolveToolNodeType } from './resolve-tool-node-type';
 export type {
 	ExecuteNodeRequest,
 	ExecuteNodeOutputItem,

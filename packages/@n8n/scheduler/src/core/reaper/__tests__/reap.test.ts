@@ -14,6 +14,8 @@ const retired = (
 	heldByConcurrencyLimit: RetiredTask[] = [],
 ): RetireMissedResult => ({ retired: count, heldByConcurrencyLimit });
 
+const options = { batchSize: 100, maxRetireBatches: 3 };
+
 const expiredTask = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow => ({
 	id: '1',
 	jobId: 1,
@@ -24,6 +26,7 @@ const expiredTask = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow 
 	status: 'running',
 	attempts: 0,
 	maxAttempts: 3,
+	timeoutSeconds: 300,
 	leaseEpoch: 1,
 	// Pre-dispatch by default; post-dispatch tests set a concrete `dispatchedAt`.
 	dispatchedAt: null,
@@ -41,7 +44,7 @@ const setup = () => {
 	store.completeExpired.mockResolvedValue(1);
 	store.retireMissedPending.mockResolvedValue(retired(0));
 	const run = async () =>
-		await reap(store, { batchSize: 100 }, { onRowError, onDeadLetter, onCompletedAfterDispatch });
+		await reap(store, options, { onRowError, onDeadLetter, onCompletedAfterDispatch });
 	return { store, onRowError, onDeadLetter, onCompletedAfterDispatch, run };
 };
 
@@ -136,7 +139,7 @@ describe('reap', () => {
 		const task = expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: null });
 		store.findExpiredLeases.mockResolvedValue([task]);
 
-		const result = await reap(store, { batchSize: 100 }, { onDeadLetter });
+		const result = await reap(store, options, { onDeadLetter });
 
 		expect(store.deadLetterExpired).toHaveBeenCalledWith(
 			{ id: task.id, claimedEpoch: task.leaseEpoch },
@@ -154,11 +157,7 @@ describe('reap', () => {
 		const task = expiredTask({ attempts: 0, maxAttempts: 1, dispatchedAt: new Date() });
 		store.findExpiredLeases.mockResolvedValue([task]);
 
-		const result = await reap(
-			store,
-			{ batchSize: 100 },
-			{ onCompletedAfterDispatch, onDeadLetter },
-		);
+		const result = await reap(store, options, { onCompletedAfterDispatch, onDeadLetter });
 
 		expect(store.completeExpired).toHaveBeenCalledWith({
 			id: task.id,
@@ -179,7 +178,7 @@ describe('reap', () => {
 		const task = expiredTask({ attempts: 0, maxAttempts: 3, dispatchedAt: new Date() });
 		store.findExpiredLeases.mockResolvedValue([task]);
 
-		const result = await reap(store, { batchSize: 100 }, { onCompletedAfterDispatch });
+		const result = await reap(store, options, { onCompletedAfterDispatch });
 
 		expect(store.completeExpired).toHaveBeenCalledWith({
 			id: task.id,
@@ -315,7 +314,7 @@ describe('reap', () => {
 			return await Promise.resolve(1);
 		});
 
-		const result = await reap(store, { batchSize: 100 }, {}, controller.signal);
+		const result = await reap(store, options, {}, controller.signal);
 
 		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
 		expect(store.reclaimExpired).toHaveBeenCalledTimes(1);
@@ -327,7 +326,7 @@ describe('reap', () => {
 		controller.abort();
 		store.findExpiredLeases.mockResolvedValue([expiredTask()]);
 
-		const result = await reap(store, { batchSize: 100 }, {}, controller.signal);
+		const result = await reap(store, options, {}, controller.signal);
 
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 0, missed: 0 });
 		expect(store.reclaimExpired).not.toHaveBeenCalled();
@@ -342,7 +341,7 @@ describe('reap', () => {
 		store.retireMissedPending.mockResolvedValue(retired(2, held));
 		store.findExpiredLeases.mockResolvedValue([]);
 
-		const result = await reap(store, { batchSize: 100 }, { onHeldByConcurrencyLimit });
+		const result = await reap(store, options, { onHeldByConcurrencyLimit });
 
 		expect(result.missed).toBe(2);
 		expect(onHeldByConcurrencyLimit).toHaveBeenCalledWith(held);
@@ -354,7 +353,7 @@ describe('reap', () => {
 		store.retireMissedPending.mockResolvedValue(retired(2));
 		store.findExpiredLeases.mockResolvedValue([]);
 
-		await reap(store, { batchSize: 100 }, { onHeldByConcurrencyLimit });
+		await reap(store, options, { onHeldByConcurrencyLimit });
 
 		expect(onHeldByConcurrencyLimit).not.toHaveBeenCalled();
 	});
@@ -369,7 +368,7 @@ describe('reap', () => {
 		);
 		store.findExpiredLeases.mockResolvedValue([]);
 
-		const result = await reap(store, { batchSize: 100 }, { onHeldByConcurrencyLimit });
+		const result = await reap(store, options, { onHeldByConcurrencyLimit });
 
 		expect(result).toEqual({ reclaimed: 0, deadLettered: 0, missed: 1 });
 	});
@@ -381,9 +380,93 @@ describe('reap', () => {
 		store.retireMissedPending.mockRejectedValue(new Error('statement timeout'));
 		store.findExpiredLeases.mockResolvedValue([expiredTask()]);
 
-		const result = await reap(store, { batchSize: 100 }, { onRetireError });
+		const result = await reap(store, options, { onRetireError });
 
 		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
 		expect(onRetireError).toHaveBeenCalledWith(new Error('statement timeout'));
+	});
+
+	describe('retiring a backlog of stale occurrences', () => {
+		it('retires batch after batch until a batch comes back short', async () => {
+			const { store, run } = setup();
+			store.findExpiredLeases.mockResolvedValue([]);
+			store.retireMissedPending
+				.mockResolvedValueOnce(retired(100))
+				.mockResolvedValueOnce(retired(40));
+
+			const result = await run();
+
+			expect(store.retireMissedPending).toHaveBeenCalledTimes(2);
+			expect(result.missed).toBe(140);
+		});
+
+		it('stops at maxRetireBatches and leaves the rest to the next sweep', async () => {
+			const { store, run } = setup();
+			store.findExpiredLeases.mockResolvedValue([]);
+			store.retireMissedPending.mockResolvedValue(retired(100));
+
+			const result = await run();
+
+			expect(store.retireMissedPending).toHaveBeenCalledTimes(3);
+			expect(result.missed).toBe(300);
+		});
+
+		it('reports the held-back occurrences of every batch once', async () => {
+			const store = mock<ReaperTaskStore>();
+			const onHeldByConcurrencyLimit = vi.fn();
+			const first = { id: '1', jobId: 3, taskType: 'system:pruning' };
+			const second = { id: '2', jobId: 3, taskType: 'system:pruning' };
+			store.retireMissedPending
+				.mockResolvedValueOnce(retired(100, [first]))
+				.mockResolvedValueOnce(retired(1, [second]));
+			store.findExpiredLeases.mockResolvedValue([]);
+
+			await reap(store, options, { onHeldByConcurrencyLimit });
+
+			expect(onHeldByConcurrencyLimit).toHaveBeenCalledTimes(1);
+			expect(onHeldByConcurrencyLimit).toHaveBeenCalledWith([first, second]);
+		});
+
+		it('keeps the count of earlier batches when a later batch fails', async () => {
+			const store = mock<ReaperTaskStore>();
+			const onRetireError = vi.fn();
+			store.retireMissedPending
+				.mockResolvedValueOnce(retired(100))
+				.mockRejectedValueOnce(new Error('SQLITE_BUSY'));
+			store.findExpiredLeases.mockResolvedValue([]);
+
+			const result = await reap(store, options, { onRetireError });
+
+			expect(result.missed).toBe(100);
+			expect(onRetireError).toHaveBeenCalledWith(new Error('SQLITE_BUSY'));
+		});
+
+		it('recovers expired leases before it retires stale occurrences', async () => {
+			const { store, run } = setup();
+			store.findExpiredLeases.mockResolvedValue([expiredTask()]);
+			store.retireMissedPending.mockResolvedValue(retired(100));
+
+			const result = await run();
+
+			expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 300 });
+			const [reclaimOrder] = store.reclaimExpired.mock.invocationCallOrder;
+			const [retireOrder] = store.retireMissedPending.mock.invocationCallOrder;
+			expect(reclaimOrder).toBeLessThan(retireOrder);
+		});
+
+		it('stops between batches when the sweep is cancelled', async () => {
+			const controller = new AbortController();
+			const store = mock<ReaperTaskStore>();
+			store.retireMissedPending.mockImplementation(async () => {
+				controller.abort();
+				return retired(100);
+			});
+			store.findExpiredLeases.mockResolvedValue([]);
+
+			const result = await reap(store, options, {}, controller.signal);
+
+			expect(store.retireMissedPending).toHaveBeenCalledTimes(1);
+			expect(result.missed).toBe(100);
+		});
 	});
 });

@@ -291,6 +291,7 @@ describe('emit-instance-ai', () => {
 			'isAiRootNodeType',
 			'literalParameter',
 			'parsePinDataResponse',
+			'readDataTableLocator',
 			'readDataTableReadParameters',
 			'repairStructuredOutput',
 			'workflowToMermaid',
@@ -300,6 +301,9 @@ describe('emit-instance-ai', () => {
 			'dropInvalidWorkflowJsonGroups',
 			'toEngineConnections',
 			'toGroupValidationNodes',
+			// Canvas geometry for host-side node placement
+			'getWorkflowNodeDimensions',
+			'resolveNodePorts',
 			// Plugin registration
 			'registerDefaultPlugins',
 			// Generate-types module (build-time type generation, never appears in workflows)

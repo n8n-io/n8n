@@ -14,3 +14,87 @@
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--regular);
 }
+
+// A wide control is 17.5rem. Stack the row when that control, a 16rem label,
+// and the row gap no longer fit on one line.
+.settingRow {
+	--agent-setting-control-wide: calc(var(--spacing--5xl) + var(--spacing--lg));
+
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	min-height: var(--spacing--xl);
+	width: 100%;
+	container: agent-setting-row / inline-size;
+}
+
+.settingLabel {
+	opacity: var(--agent-row-label-opacity, 1);
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: min(100%, var(--spacing--5xl));
+}
+
+.settingControl {
+	flex: 0 0 auto;
+	max-width: 100%;
+	min-width: 0;
+}
+
+// 8.75rem keeps the previous short input width (8rem + 0.75rem).
+.settingControlShort {
+	flex: 0 1 auto;
+	width: calc(var(--spacing--4xl) + var(--spacing--xs));
+	max-width: 100%;
+	min-width: 0;
+}
+
+.settingControlWide {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
+	flex: 0 1 var(--agent-setting-control-wide);
+	width: var(--agent-setting-control-wide);
+	max-width: 100%;
+	min-width: min(100%, var(--agent-setting-control-wide));
+}
+
+.settingControlWide > :first-child {
+	flex: 1 1 0;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.settingControlWide > :only-child {
+	width: 100%;
+}
+
+// The menu width follows the trigger. Keep the trigger inside the control.
+.settingControlWide > :first-child :global(button) {
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.settingControlWide > :not(:first-child) {
+	flex-shrink: 0;
+}
+
+// A container query does not resolve a custom property.
+// 34.5rem is the 16rem label, the 17.5rem control, and the 1rem gap.
+@container agent-setting-row (max-width: 34.5rem) {
+	.settingLabel {
+		flex-basis: 100%;
+	}
+
+	.settingControlWide {
+		flex-basis: 100%;
+		width: 100%;
+		min-width: 0;
+	}
+}

@@ -1,5 +1,12 @@
 import {
 	createWriteTodosTool,
+	raceWithAbort,
+	throwIfAborted,
+	CORE_WORKSPACE_TOOL_NAMES,
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	FLAG_MEMORY_TOOL_NAME,
+	RECALL_MEMORY_TOOL_NAME,
+	WRITE_TODOS_TOOL_NAME,
 	type Agent as RuntimeAgent,
 	type CreateDelegateSubAgentToolOptions,
 	BuiltTool,
@@ -31,12 +38,13 @@ import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@n8n/backend-services';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
@@ -46,11 +54,15 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { WorkflowRunner } from '@/workflow-runner';
+import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
+import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
+import { AgentKnowledgeUsageTracker } from './agent-knowledge-usage-tracker';
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import {
 	AgentSandboxRuntimeService,
@@ -58,9 +70,9 @@ import {
 	type AgentSandboxRuntime,
 } from './agent-sandbox-runtime.service';
 import { AgentWorkspaceService } from './agent-workspace.service';
-import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
-import { Agent } from './entities/agent.entity';
+import type { AgentRuntimeInstrumentation } from './evaluation/agent-evaluation.contracts';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { buildFileUploadGuidance } from './integrations/integration-tool-descriptions';
 import {
 	createIntegrationActionTool,
 	createIntegrationContextTool,
@@ -76,6 +88,7 @@ import {
 	type ManagedEmbeddingProviderOptions,
 	type ToolResolver,
 } from './json-config/from-json-config';
+import { toAgentDocument } from './json-config/agent-document';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { AgentFileRepository } from './repositories/agent-file.repository';
@@ -84,12 +97,20 @@ import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentRunner } from './sub-agents/sub-agent-runner';
 import { buildToolRegistry, type ReferencedToolKind, type ToolRegistry } from './tool-registry';
-import { createGetEnvironmentTool } from './tools/environment-tool';
-import { createMarkSessionFailedTool } from './tools/mark-session-failed.tool';
+import { AGENT_PLAN_TOOL_NAMES } from './plans/agent-plan.schema';
+import { BACKGROUND_JOBS_TOOL_NAME } from './background/background-job-messages';
+import { createGetEnvironmentTool, GET_ENVIRONMENT_TOOL_NAME } from './tools/environment-tool';
+import {
+	createMarkSessionFailedTool,
+	MARK_SESSION_FAILED_TOOL_NAME,
+} from './tools/mark-session-failed.tool';
+import {
+	createReadBinaryDataTool,
+	READ_BINARY_DATA_TOOL_NAME,
+} from './tools/read-binary-data.tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
-import { WorkflowToolUnavailableError } from './tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
-import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
+import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 /**
@@ -149,6 +170,7 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	attributionUserId?: string;
 	/** Runtime seams inherited from the delegating parent run (see {@link AgentRuntimeInstrumentation}). */
 	instrumentation?: AgentRuntimeInstrumentation;
+	abortSignal?: AbortSignal;
 	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 	/**
 	 * Parent run's live workspace sandbox handle for delegated sub-agent runs.
@@ -189,7 +211,6 @@ interface RuntimeDependencies
 		| 'supportsHitl'
 		| 'allowBackgroundTasks'
 		| 'unavailableTools'
-		| 'previewChat'
 	> {
 	agent: RuntimeAgent;
 	agentId: string;
@@ -236,17 +257,38 @@ async function getWorkflowRunner(): Promise<WorkflowRunner> {
 }
 
 /**
- * The access grants `filterToolsForUser` verified when it built a runtime's
- * tool list. Its presence implies at least one node/workflow tool was kept,
- * which always requires `workflow:execute` on the project. Cached runtimes
- * re-check these grants periodically so access revoked after the build stops
- * being honored (see `AgentRuntimeCacheService`).
+ * The access grants verified when a runtime's tools and draft integrations
+ * were filtered for a user. Cached runtimes re-check these grants
+ * periodically so access revoked after the build stops being honored (see
+ * `AgentRuntimeCacheService`).
  */
 export interface UserToolAccessSnapshot {
 	/** Credential ids that passed a `credential:read` check. */
 	credentialIds: string[];
 	/** Workflow ids that passed a `workflow:execute` check. */
 	workflowIds: string[];
+	/** Draft integration credential ids that passed the agent-usable check. */
+	integrationCredentialIds?: string[];
+	/**
+	 * False when no node/workflow tool was kept. Kept tools always require
+	 * `workflow:execute` on the project, integrations do not.
+	 */
+	requiresWorkflowExecute?: boolean;
+}
+
+/** Add the kept draft integration credentials to the snapshot so cached runtimes re-check them. */
+function withIntegrationCredentials(
+	snapshot: UserToolAccessSnapshot | undefined,
+	integrations: AgentIntegrationConfig[],
+): UserToolAccessSnapshot | undefined {
+	const integrationCredentialIds = integrations
+		.filter(isCredentialAgentIntegration)
+		.map((integration) => integration.credentialId);
+	if (integrationCredentialIds.length === 0) return snapshot;
+	return {
+		...(snapshot ?? { credentialIds: [], workflowIds: [], requiresWorkflowExecute: false }),
+		integrationCredentialIds,
+	};
 }
 
 /**
@@ -287,10 +329,13 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly credentialsService: CredentialsService,
+		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
+		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
 
 	async reconstructFromAgentEntity(
-		agentEntity: Agent,
+		{ agent: agentEntity, skillRefs, skills }: AgentRunSource,
 		credentialProvider: CredentialProvider,
 		runType: AgentRunTelemetryType,
 		integrationType?: string,
@@ -304,6 +349,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks = true,
 			allowPlanTools = true,
 			attributionUserId,
+			abortSignal,
 		}: {
 			/** Pass false when the caller cannot resume a suspended run (workflow executions). */
 			supportsHitl?: boolean;
@@ -313,12 +359,13 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks?: boolean;
 			allowPlanTools?: boolean;
 			attributionUserId?: string;
+			abortSignal?: AbortSignal;
 		} = {},
 	): Promise<ReconstructedAgentRuntime & { userToolAccessSnapshot?: UserToolAccessSnapshot }> {
-		let config = agentEntity.schema;
-		if (!config) {
+		if (!agentEntity.schema) {
 			throw new UserError('Agent has no JSON config.');
 		}
+		let config = toAgentDocument(agentEntity.schema, skillRefs);
 
 		// Published/integration runs have no interactive n8n user and keep
 		// today's project-scoped trust boundary. When a user is present (in-app
@@ -328,16 +375,33 @@ export class AgentRuntimeReconstructionService {
 		let userToolAccessSnapshot: UserToolAccessSnapshot | undefined;
 		let unavailableTools: UnavailableTool[] = [];
 		if (user && config.tools?.length) {
-			const filtered = await this.filterToolsForUser(config.tools, agentEntity.projectId, user);
+			const tools = config.tools;
+			const filtered = await raceWithAbort(
+				async () => await this.filterToolsForUser(tools, agentEntity.projectId, user),
+				abortSignal,
+			);
 			config = { ...config, tools: filtered.tools };
 			userToolAccessSnapshot = filtered.snapshot;
 			unavailableTools = filtered.unavailable;
 		}
 
-		const { toolDescriptors, toolCodeByName } = getAgentRuntimeAssets(agentEntity);
-		const subAgentDelegation = await this.createSubAgentDelegationConfig(
-			config,
-			agentEntity.projectId,
+		let credentialIntegrations = agentEntity.integrations ?? [];
+		if (user && runType === 'test') {
+			const integrations = credentialIntegrations;
+			credentialIntegrations = await raceWithAbort(
+				async () => await this.filterIntegrationsForUser(integrations, agentEntity.projectId, user),
+				abortSignal,
+			);
+			userToolAccessSnapshot = withIntegrationCredentials(
+				userToolAccessSnapshot,
+				credentialIntegrations,
+			);
+		}
+
+		const { toolDescriptors, toolCodeByName } = getAgentRuntimeAssets(agentEntity, skills);
+		const subAgentDelegation = await raceWithAbort(
+			async () => await this.createSubAgentDelegationConfig(config, agentEntity.projectId),
+			abortSignal,
 		);
 
 		const runtime = await this.reconstructRuntime({
@@ -347,18 +411,19 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			toolDescriptors,
 			toolCodeByName,
-			skills: agentEntity.skills ?? {},
+			skills,
 			runtimeProfile: 'top-level',
 			supportsHitl,
 			runType,
 			workflowToolExecutionMode,
 			parentAgentIdForDelegation: agentEntity.id,
 			integrationType,
-			credentialIntegrations: agentEntity.integrations ?? [],
+			credentialIntegrations,
 			subAgentDelegation,
 			user,
 			attributionUserId,
 			instrumentation,
+			abortSignal,
 			sandboxPrincipalHash,
 			unavailableTools,
 			allowBackgroundTasks,
@@ -391,6 +456,10 @@ export class AgentRuntimeReconstructionService {
 		unavailable: UnavailableTool[];
 	}> {
 		const canExecute = await userHasScopes(user, ['workflow:execute'], false, { projectId });
+		// Load once per pass, and only when a node tool uses credentials.
+		let usableIdsLoad: Promise<Set<string>> | undefined;
+		const loadUsableIds = async () =>
+			await (usableIdsLoad ??= this.loadAgentUsableCredentialIds(projectId, user));
 		const filtered: AgentJsonToolConfig[] = [];
 		const unavailable: UnavailableTool[] = [];
 		const grantedCredentialIds = new Set<string>();
@@ -403,7 +472,7 @@ export class AgentRuntimeReconstructionService {
 				filtered.push(ref);
 				continue;
 			}
-			const access = await this.checkToolAccess(ref, projectId, user, canExecute);
+			const access = await this.checkToolAccess(ref, projectId, user, canExecute, loadUsableIds);
 			if (access && 'reason' in access) {
 				unavailable.push(access);
 				continue;
@@ -429,11 +498,40 @@ export class AgentRuntimeReconstructionService {
 		};
 	}
 
+	/**
+	 * Drop draft integrations whose credential the calling user can't use, the
+	 * same credential rule `filterToolsForUser` applies to node tools. Published
+	 * runs keep the integrations the publisher configured.
+	 */
+	private async filterIntegrationsForUser(
+		integrations: AgentIntegrationConfig[],
+		projectId: string,
+		user: User,
+	): Promise<AgentIntegrationConfig[]> {
+		if (!integrations.some(isCredentialAgentIntegration)) return integrations;
+		const usableIds = await this.loadAgentUsableCredentialIds(projectId, user);
+		return integrations.filter(
+			(integration) =>
+				!isCredentialAgentIntegration(integration) || usableIds.has(integration.credentialId),
+		);
+	}
+
+	/** Returns the credential IDs agents can use. */
+	private async loadAgentUsableCredentialIds(projectId: string, user: User): Promise<Set<string>> {
+		const usable = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+			projectId,
+			excludePersonalRoute: true,
+			excludeResolvable: true,
+		});
+		return new Set(usable.map((credential) => credential.id));
+	}
+
 	private async checkToolAccess(
 		ref: Exclude<AgentJsonToolConfig, { type: 'custom' }>,
 		projectId: string,
 		user: User,
 		canExecute: boolean,
+		loadUsableIds: () => Promise<Set<string>>,
 	): Promise<UserToolAccessSnapshot | UnavailableTool | undefined> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
@@ -457,6 +555,10 @@ export class AgentRuntimeReconstructionService {
 			);
 			if (credentials.some((credential) => credential === null)) {
 				return denied('The user cannot read a credential the tool uses');
+			}
+			const usableIds = credentialIds.length > 0 ? await loadUsableIds() : undefined;
+			if (usableIds && !credentialIds.every((id) => usableIds.has(id))) {
+				return denied('The tool uses a credential that agents cannot use yet');
 			}
 			return { credentialIds, workflowIds: [] };
 		}
@@ -486,7 +588,13 @@ export class AgentRuntimeReconstructionService {
 		projectId: string,
 		user: User,
 	): Promise<boolean> {
-		if (!(await userHasScopes(user, ['workflow:execute'], false, { projectId }))) return false;
+		const requiresExecute = snapshot.requiresWorkflowExecute !== false;
+		if (
+			requiresExecute &&
+			!(await userHasScopes(user, ['workflow:execute'], false, { projectId }))
+		) {
+			return false;
+		}
 
 		const credentials = await Promise.all(
 			snapshot.credentialIds.map(
@@ -495,6 +603,14 @@ export class AgentRuntimeReconstructionService {
 			),
 		);
 		if (credentials.some((credential) => credential === null)) return false;
+		const agentCredentialIds = [
+			...snapshot.credentialIds,
+			...(snapshot.integrationCredentialIds ?? []),
+		];
+		if (agentCredentialIds.length > 0) {
+			const usableIds = await this.loadAgentUsableCredentialIds(projectId, user);
+			if (!agentCredentialIds.every((id) => usableIds.has(id))) return false;
+		}
 
 		const workflows = await Promise.all(
 			snapshot.workflowIds.map(
@@ -524,12 +640,20 @@ export class AgentRuntimeReconstructionService {
 		if (params.user && config.tools?.length) {
 			// Sub-agent runtimes are built per delegation and never cached, so the
 			// grant snapshot is not needed here.
-			const filtered = await this.filterToolsForUser(config.tools, params.projectId, params.user);
+			const user = params.user;
+			const tools = config.tools;
+			const filtered = await raceWithAbort(
+				async () => await this.filterToolsForUser(tools, params.projectId, user),
+				params.abortSignal,
+			);
 			config = { ...config, tools: filtered.tools };
 			unavailableTools = filtered.unavailable;
 		}
 
-		const subAgentDelegation = await this.createSubAgentDelegationConfig(config, params.projectId);
+		const subAgentDelegation = await raceWithAbort(
+			async () => await this.createSubAgentDelegationConfig(config, params.projectId),
+			params.abortSignal,
+		);
 
 		return await this.reconstructRuntime({
 			...params,
@@ -548,7 +672,11 @@ export class AgentRuntimeReconstructionService {
 			options.runtimeProfile === 'top-level' &&
 			(options.allowBackgroundTasks ?? true) &&
 			Container.get(AgentsConfig).backgroundTasksEnabled;
-		const runtime = await this.buildConfiguredRuntime(options, backgroundTasksEnabled, unavailable);
+		const runtime = await this.buildCancellableRuntime(
+			options,
+			backgroundTasksEnabled,
+			unavailable,
+		);
 		if (unavailable.length > 0) {
 			this.logger.warn('Agent runtime built with unavailable tools', {
 				agentId: options.memoryOwnerAgentId,
@@ -556,14 +684,25 @@ export class AgentRuntimeReconstructionService {
 				tools: unavailable,
 			});
 		}
-		await this.injectRuntimeDependencies({
-			...options,
-			agent: runtime.agent,
-			agentId: options.memoryOwnerAgentId,
-			workflowToolExecutionMode: options.workflowToolExecutionMode ?? 'manual',
-			parentAgentIdForDelegation: options.parentAgentIdForDelegation ?? options.memoryOwnerAgentId,
-			backgroundTasksEnabled,
-		});
+		try {
+			await raceWithAbort(
+				async () =>
+					await this.injectRuntimeDependencies({
+						...options,
+						agent: runtime.agent,
+						agentId: options.memoryOwnerAgentId,
+						workflowToolExecutionMode: options.workflowToolExecutionMode ?? 'manual',
+						parentAgentIdForDelegation:
+							options.parentAgentIdForDelegation ?? options.memoryOwnerAgentId,
+						backgroundTasksEnabled,
+					}),
+				options.abortSignal,
+			);
+			throwIfAborted(options.abortSignal);
+		} catch (error) {
+			if (options.abortSignal?.aborted) void this.closeCancelledRuntime(runtime.agent);
+			throw error;
+		}
 		return {
 			agent: runtime.agent,
 			toolRegistry: buildToolRegistry(runtime.resolvedTools),
@@ -572,6 +711,33 @@ export class AgentRuntimeReconstructionService {
 				? { budget: options.config.config.guardrails.budget }
 				: {}),
 		};
+	}
+
+	private async buildCancellableRuntime(
+		options: RuntimeReconstructionOptions,
+		backgroundTasksEnabled: boolean,
+		unavailable: UnavailableTool[],
+	) {
+		return await raceWithAbort(async () => {
+			const runtime = await this.buildConfiguredRuntime(
+				options,
+				backgroundTasksEnabled,
+				unavailable,
+			);
+			if (options.abortSignal?.aborted) await this.closeCancelledRuntime(runtime.agent);
+			throwIfAborted(options.abortSignal);
+			return runtime;
+		}, options.abortSignal);
+	}
+
+	private async closeCancelledRuntime(agent: RuntimeAgent) {
+		try {
+			await agent.close();
+		} catch (error) {
+			this.logger.warn('Failed to close cancelled Agent runtime', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	private async buildConfiguredRuntime(
@@ -615,6 +781,8 @@ export class AgentRuntimeReconstructionService {
 			buildMcpClient,
 			resolveManagedEmbeddingProviderOptions: async () =>
 				await this.resolveManagedEmbeddingProviderOptions(projectId),
+			onVectorStoreSearch: (runId) =>
+				this.knowledgeUsageTracker.startToolCall(runId, 'vector_store_search'),
 			modelFetch: instrumentation?.modelFetch ?? aiProxyFetch,
 			fallbackWebSearch: instrumentation?.webSearch,
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
@@ -679,10 +847,13 @@ export class AgentRuntimeReconstructionService {
 		aiMcpFetch: ReturnType<typeof createAiMcpFetch>,
 		mcpServerAttributions: Map<string, string>,
 	) {
-		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation } = options;
+		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation, runtimeProfile } =
+			options;
 		return async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
+				// Inline agents have no checkpoint storage, and their schema rejects approval policies.
+				nonInterrupting: runtimeProfile === 'inline',
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,
@@ -806,6 +977,7 @@ export class AgentRuntimeReconstructionService {
 				return await resolveNodeTool(ref, {
 					executor: this.ephemeralNodeExecutor,
 					projectId: runIdentity.projectId,
+					agentId: runIdentity.agentId,
 					instrumentToolAdditionalData,
 				});
 			}
@@ -835,7 +1007,7 @@ export class AgentRuntimeReconstructionService {
 			'./tools/workflow-tool-factory.js'
 		);
 		const context = {
-			workflowLoader: Container.get(WorkflowToolWorkflowLoader),
+			workflowLoader: Container.get(CallableWorkflowLoader),
 			executor: this.ephemeralNodeExecutor,
 			workflowRunner: await getWorkflowRunner(),
 			subworkflowPolicyChecker: Container.get(SubworkflowPolicyChecker),
@@ -857,7 +1029,7 @@ export class AgentRuntimeReconstructionService {
 		} catch (error) {
 			// A missing or incompatible workflow costs the agent one tool call, not
 			// the whole run: the stub keeps the tool listed and reports the reason.
-			if (!(error instanceof WorkflowToolUnavailableError)) throw error;
+			if (!(error instanceof CallableWorkflowUnavailableError)) throw error;
 			unavailable.push({
 				toolName: toolRefName(ref),
 				toolType: 'workflow',
@@ -869,23 +1041,50 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private async injectRuntimeDependencies(params: RuntimeDependencies): Promise<void> {
-		const { agent, agentId, projectId, runtimeProfile, config } = params;
+		const { agent, agentId, projectId, runtimeProfile, config, abortSignal } = params;
+
+		throwIfAborted(abortSignal);
+		// Harness tools stay eager, so the model sees their schemas without a tool search.
+		// The user's own tools (workflow, node, integration, MCP) stay deferred.
+		agent.nativeToolDeferral({
+			eagerToolNames: [
+				...CORE_WORKSPACE_TOOL_NAMES,
+				'load_skill',
+				MARK_SESSION_FAILED_TOOL_NAME,
+				DELEGATE_SUB_AGENT_TOOL_NAME,
+				WRITE_TODOS_TOOL_NAME,
+				READ_BINARY_DATA_TOOL_NAME,
+				GET_ENVIRONMENT_TOOL_NAME,
+				RECALL_MEMORY_TOOL_NAME,
+				FLAG_MEMORY_TOOL_NAME,
+				...Object.values(AGENT_PLAN_TOOL_NAMES),
+				// Only top-level runs with background tasks get these tools.
+				...(params.backgroundTasksEnabled ? [BACKGROUND_JOBS_TOOL_NAME] : []),
+			],
+		});
+
 		agent.tool(createGetEnvironmentTool());
 		const parentWorkspaceHandle = await this.attachWorkspaceAndKnowledge(params);
+		throwIfAborted(abortSignal);
 		if (runtimeProfile === 'top-level') {
 			await this.attachIntegrationTools(params);
+			throwIfAborted(abortSignal);
 			await this.attachTopLevelTools(params, parentWorkspaceHandle);
 		}
+		throwIfAborted(abortSignal);
 		// Inline agents have no entity for checkpoint or attachment rows.
 		if (runtimeProfile === 'inline') return;
 		if (!agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 		}
-		agent.fileStore(
-			this.agentChatAttachmentService.getFileStore(
-				{ agentId, projectId },
-				getProviderPrefix(config.model),
-			),
+		const provider = getProviderPrefix(config.model);
+		agent.fileStore(this.agentChatAttachmentService.getFileStore({ agentId, projectId }, provider));
+		agent.tool(
+			createReadBinaryDataTool({
+				projectId,
+				provider,
+				attachmentService: this.agentChatAttachmentService,
+			}),
 		);
 	}
 
@@ -893,16 +1092,24 @@ export class AgentRuntimeReconstructionService {
 		if (params.runtimeProfile === 'inline' || !this.agentSandboxRuntimeService.isEnabled())
 			return undefined;
 		const parentWorkspaceHandle = await this.attachWorkspace(params);
+		throwIfAborted(params.abortSignal);
 		const { agent, agentId, projectId } = params;
-		if (await this.agentFileRepository.hasFilesForAgent(agentId)) {
+		// Module check first, so the file repository is not touched while knowledge is off.
+		const hasFiles =
+			this.knowledgeAvailabilityService.isModuleActive() &&
+			(await this.agentFileRepository.hasFilesForAgent(agentId, {}));
+		throwIfAborted(params.abortSignal);
+		if (hasFiles) {
 			const { createKnowledgeRetrievalTools } = await import(
 				'./tools/knowledge/search-knowledge.tool.js'
 			);
+			throwIfAborted(params.abortSignal);
 			agent.tool(
 				createKnowledgeRetrievalTools({
 					projectId,
 					agentId,
 					knowledgeMirrorService: this.agentKnowledgeMirrorService,
+					startToolCall: (runId, call) => this.knowledgeUsageTracker.startToolCall(runId, call),
 				}),
 			);
 		}
@@ -937,9 +1144,11 @@ export class AgentRuntimeReconstructionService {
 				agentId,
 				sandboxPrincipalHash,
 			);
+			throwIfAborted(params.abortSignal);
 			agent.workspace(workspace);
 			return handle;
 		} catch (error) {
+			throwIfAborted(params.abortSignal);
 			this.logger.warn('Failed to attach agent workspace', {
 				projectId,
 				agentId,
@@ -950,7 +1159,7 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private async attachIntegrationTools(params: RuntimeDependencies): Promise<void> {
-		const { agent, agentId, integrationType, credentialIntegrations } = params;
+		const { agent, agentId, projectId, integrationType, credentialIntegrations } = params;
 		const includeN8nChat = integrationType === N8N_CHAT_INTEGRATION_TYPE;
 		if (credentialIntegrations.length === 0 && !includeN8nChat) return;
 		const integrationRegistry = Container.get(ChatIntegrationRegistry);
@@ -969,7 +1178,9 @@ export class AgentRuntimeReconstructionService {
 
 		for (const descriptor of descriptors) {
 			agent.tool(createIntegrationContextTool({ descriptor, queryExecutor }));
-			agent.tool(createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor }));
+			agent.tool(
+				createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor, projectId }),
+			);
 		}
 	}
 
@@ -989,7 +1200,17 @@ export class AgentRuntimeReconstructionService {
 					contextQueries: integrationDef?.contextQueries,
 					actions: integrationDef?.actions,
 					contextToolGuidance: integrationDef?.contextToolGuidance,
-					actionToolGuidance: integrationDef?.actionToolGuidance,
+					actionToolGuidance: [
+						...(integrationDef?.actionToolGuidance ?? []),
+						...(integrationDef?.fileUploadLimits
+							? [
+									buildFileUploadGuidance(
+										integrationDef.fileUploadLimits,
+										!integrationDef.disableStreaming,
+									),
+								]
+							: []),
+					],
 				};
 			},
 		);
@@ -1046,7 +1267,26 @@ export class AgentRuntimeReconstructionService {
 			delegation: subAgentDelegation,
 			user,
 			instrumentation,
+			abortSignal: params.abortSignal,
 		};
+		let runBackgroundSubAgent: CreateDelegateSubAgentToolOptions['runBackgroundSubAgent'];
+
+		if (backgroundTasksEnabled) {
+			// Background tools attach only to the root agent, so its cap is the root cap.
+			const budget = config.config?.guardrails?.budget;
+			const sessionCap = budget?.enabled ? budget.sessionCostCapUsd : undefined;
+			const rootSessionCapUsd = sessionCap !== undefined && sessionCap > 0 ? sessionCap : undefined;
+			runBackgroundSubAgent = await this.attachBackgroundJobTools({
+				...delegationParams,
+				// Same condition as the plan tools: a run with plans can link background jobs to them.
+				planTasksEnabled:
+					params.allowPlanTools !== false && Container.get(AgentsConfig).planToolsEnabled,
+				...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
+				...(rootSessionCapUsd !== undefined ? { rootSessionCapUsd } : {}),
+			});
+		}
+
+		throwIfAborted(params.abortSignal);
 		await this.attachSubAgentDelegationTool({
 			...delegationParams,
 			config,
@@ -1054,25 +1294,19 @@ export class AgentRuntimeReconstructionService {
 			rootSessionId: params.rootSessionId,
 			rootSessionCapUsd: params.rootSessionCapUsd,
 			budgetForwarded: params.budgetForwarded,
+			runBackgroundSubAgent,
 		});
+		throwIfAborted(params.abortSignal);
 		if (params.allowPlanTools !== false && Container.get(AgentsConfig).planToolsEnabled) {
 			const { AgentPlanService } = await import('./agent-plan.service.js');
 			const { createAgentPlanTools } = await import('./plans/agent-plan-tools.js');
+			throwIfAborted(params.abortSignal);
 			agent.tool(createAgentPlanTools(Container.get(AgentPlanService)));
 		} else {
 			this.attachWriteTodosTool(agent, agentId);
 		}
 		agent.tool(createMarkSessionFailedTool());
 		if (!backgroundTasksEnabled) return;
-		// Background tools attach only to the root agent, so its cap is the root cap.
-		const budget = config.config?.guardrails?.budget;
-		const sessionCap = budget?.enabled ? budget.sessionCostCapUsd : undefined;
-		const rootSessionCapUsd = sessionCap !== undefined && sessionCap > 0 ? sessionCap : undefined;
-		await this.attachBackgroundJobTools({
-			...delegationParams,
-			...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
-			...(rootSessionCapUsd !== undefined ? { rootSessionCapUsd } : {}),
-		});
 		agent.volatileInstructionsProvider(async ({ persistence }) => {
 			if (!persistence?.threadId) return undefined;
 			const { AgentWakeService } = await import('./background/agent-wake.service.js');
@@ -1098,6 +1332,8 @@ export class AgentRuntimeReconstructionService {
 		rootSessionId?: string;
 		rootSessionCapUsd?: number;
 		budgetForwarded?: boolean;
+		runBackgroundSubAgent?: CreateDelegateSubAgentToolOptions['runBackgroundSubAgent'];
+		abortSignal?: AbortSignal;
 	}): Promise<void> {
 		const {
 			agent,
@@ -1114,11 +1350,15 @@ export class AgentRuntimeReconstructionService {
 			rootSessionId,
 			rootSessionCapUsd,
 			budgetForwarded,
+			runBackgroundSubAgent,
+			abortSignal,
 		} = params;
 		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
 			config,
 			credentialProvider,
+			abortSignal,
 		);
+		throwIfAborted(abortSignal);
 		agent.tool(
 			createN8nDelegateSubAgentTool({
 				runner: Container.get(SubAgentRunner),
@@ -1132,6 +1372,7 @@ export class AgentRuntimeReconstructionService {
 				user,
 				instrumentation,
 				parentBudget: config.config?.guardrails?.budget,
+				runBackgroundSubAgent,
 				...(budgetForwarded ? { rootSessionId, rootSessionCapUsd, budgetForwarded: true } : {}),
 				policy: this.buildSubAgentPolicy(config),
 				...(inlineSubAgentModelsByDifficulty !== undefined
@@ -1147,6 +1388,7 @@ export class AgentRuntimeReconstructionService {
 	private async resolveInlineSubAgentModelsByDifficulty(
 		config: AgentJsonConfig,
 		credentialProvider: CredentialProvider,
+		abortSignal?: AbortSignal,
 	): Promise<Partial<Record<SubAgentTaskDifficulty, ModelConfig>> | undefined> {
 		const mappings = config.subAgents?.modelsByDifficulty;
 		if (!mappings) return undefined;
@@ -1155,10 +1397,14 @@ export class AgentRuntimeReconstructionService {
 		for (const difficulty of SUB_AGENT_TASK_DIFFICULTIES) {
 			const mapping = mappings[difficulty];
 			if (!mapping) continue;
-			resolved[difficulty] = await resolveCredentialAwareModelConfig(
-				mapping.model,
-				mapping.credential,
-				credentialProvider,
+			resolved[difficulty] = await raceWithAbort(
+				async () =>
+					await resolveCredentialAwareModelConfig(
+						mapping.model,
+						mapping.credential,
+						credentialProvider,
+					),
+				abortSignal,
 			);
 		}
 
@@ -1171,6 +1417,7 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private async attachBackgroundJobTools(params: {
+		planTasksEnabled: boolean;
 		agent: RuntimeAgent;
 		parentAgentId: string;
 		projectId: string;
@@ -1182,26 +1429,31 @@ export class AgentRuntimeReconstructionService {
 		instrumentation?: AgentRuntimeInstrumentation;
 		parentWorkspaceHandle?: AgentSandboxRuntime;
 		rootSessionCapUsd?: number;
-	}): Promise<void> {
-		const { agent, parentAgentId, projectId, delegation, ...runContext } = params;
+		abortSignal?: AbortSignal;
+	}): Promise<NonNullable<CreateDelegateSubAgentToolOptions['runBackgroundSubAgent']>> {
 		const {
-			createSpawnBackgroundSubAgentTool,
-			createCheckBackgroundJobsTool,
-			createCancelBackgroundJobTool,
-			createResumeBackgroundJobsTool,
-		} = await import('./background/background-job-tools.js');
+			agent,
+			parentAgentId,
+			projectId,
+			delegation,
+			planTasksEnabled,
+			abortSignal,
+			...runContext
+		} = params;
+		const { createBackgroundSubAgentHandler, createBackgroundJobsTool } = await import(
+			'./background/background-job-tools.js'
+		);
 		const { AgentBackgroundJobService } = await import(
 			'./background/agent-background-job.service.js'
 		);
 		const { SubAgentBackgroundRunner } = await import(
 			'./background/sub-agent-background-runner.js'
 		);
+		throwIfAborted(abortSignal);
 		const jobService = Container.get(AgentBackgroundJobService);
 
-		agent.tool(createCheckBackgroundJobsTool(jobService));
-		agent.tool(createCancelBackgroundJobTool(jobService));
 		agent.tool(
-			createResumeBackgroundJobsTool({
+			createBackgroundJobsTool({
 				jobService,
 				backgroundRunner: Container.get(SubAgentBackgroundRunner),
 				projectId,
@@ -1210,20 +1462,18 @@ export class AgentRuntimeReconstructionService {
 			}),
 		);
 
-		// Attached even with no configured sub-agents: inline self-delegation is
-		// always available.
-		agent.tool(
-			createSpawnBackgroundSubAgentTool({
-				jobService,
-				backgroundRunner: Container.get(SubAgentBackgroundRunner),
-				sourcesById: delegation.sourcesById,
-				availableSubAgents: delegation.availableSubAgents,
-				projectId,
-				parentAgentId,
-				runContext,
-			}),
-		);
-		this.logger.debug('Injected background job tools', { agentId: parentAgentId });
+		this.logger.debug('Injected background jobs tool', { agentId: parentAgentId });
+
+		return createBackgroundSubAgentHandler({
+			planTasksEnabled,
+			jobService,
+			backgroundRunner: Container.get(SubAgentBackgroundRunner),
+			sourcesById: delegation.sourcesById,
+			availableSubAgents: delegation.availableSubAgents,
+			projectId,
+			parentAgentId,
+			runContext,
+		});
 	}
 
 	private buildSubAgentPolicy(config: AgentJsonConfig): SubAgentRunPolicy {

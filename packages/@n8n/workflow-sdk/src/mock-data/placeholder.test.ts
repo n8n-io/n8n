@@ -175,28 +175,6 @@ describe('buildSchemaPlaceholderItem', () => {
 		expect(item).toEqual({ id: 1, name: 'sample' });
 	});
 
-	it('keeps every column of an exact contract, even past the property cap', () => {
-		const columns = Array.from({ length: 55 }, (_, i) => ({
-			name: `col${String(i)}`,
-			type: 'string',
-		}));
-
-		const item = buildSchemaPlaceholderItem(
-			ctx({
-				nodeType: 'n8n-nodes-base.dataTable',
-				dataTableColumns: columns,
-				declaredFields: {
-					keys: columns.map((column) => column.name),
-					exact: true,
-					source: 'data-table-columns',
-				},
-			}),
-			options,
-		);
-
-		expect(Object.keys(item)).toHaveLength(55);
-	});
-
 	it('takes the item shape from the element schema when the output is an array', () => {
 		const item = buildSchemaPlaceholderItem(
 			ctx({
@@ -277,8 +255,6 @@ describe('buildSchemaPlaceholderItem', () => {
 				declaredFields: {
 					keys: ['sentiment', 'score'],
 					envelopeKey: 'output',
-					exact: false,
-					source: 'declared-schema',
 				},
 			}),
 			options,
@@ -292,45 +268,12 @@ describe('buildSchemaPlaceholderItem', () => {
 			ctx({
 				declaredFields: {
 					keys: ['invoice_total'],
-					exact: false,
-					source: 'declared-schema',
 				},
 			}),
 			options,
 		);
 
 		expect(item).toEqual({ invoice_total: 'sample' });
-	});
-
-	it('emits exactly the Data Table columns, typed, for an exact contract', () => {
-		const item = buildSchemaPlaceholderItem(
-			ctx({
-				nodeType: 'n8n-nodes-base.dataTable',
-				schema: { type: 'object', properties: { irrelevant: { type: 'string' } } },
-				dataTableColumns: [
-					{ name: 'email', type: 'string' },
-					{ name: 'visits', type: 'number' },
-					{ name: 'active', type: 'boolean' },
-					{ name: 'seenAt', type: 'date' },
-				],
-				declaredFields: {
-					keys: ['id', 'createdAt', 'updatedAt', 'email', 'visits', 'active', 'seenAt'],
-					exact: true,
-					source: 'data-table-columns',
-				},
-			}),
-			options,
-		);
-
-		expect(item).toEqual({
-			id: 1,
-			createdAt: '2026-09-01T10:30:00.000Z',
-			updatedAt: '2026-09-01T10:30:00.000Z',
-			email: 'sample',
-			visits: 1,
-			active: true,
-			seenAt: '2026-09-01T10:30:00.000Z',
-		});
 	});
 
 	it('falls back to the AI root envelope when no schema resolves', () => {

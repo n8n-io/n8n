@@ -10,7 +10,7 @@ import type { Project, User } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-preference.service';
+import { AiPreferenceService, renderAiPreferencesBlock } from '@n8n/backend-services';
 
 import { createAdmin, createMember, createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
@@ -63,6 +63,7 @@ async function seed(attributes: {
 	projectId?: string | null;
 	source?: AiPreferenceSource;
 	createdAt?: Date;
+	updatedAt?: Date;
 }) {
 	const row = await repository().save(
 		repository().create({
@@ -78,6 +79,9 @@ async function seed(attributes: {
 	// tie. A test that asserts an order sets the value it means.
 	if (attributes.createdAt) {
 		await repository().update(row.id, { createdAt: attributes.createdAt });
+	}
+	if (attributes.updatedAt) {
+		await repository().update(row.id, { updatedAt: attributes.updatedAt });
 	}
 	return row;
 }
@@ -208,6 +212,22 @@ describe('POST /ai-preferences', () => {
 
 		const stored = await repository().findOneByOrFail({ id: response.body.data.id });
 		expect(stored.createdById).toBe(member.id);
+	});
+
+	test('returns the author on the row, to the author and to other readers', async () => {
+		const created = await ownerAgent
+			.post('/ai-preferences')
+			.send({ content: 'Everyone.', scope: 'instance' });
+		const author = { id: owner.id, email: owner.email };
+		expect(created.body.data.createdBy).toMatchObject(author);
+
+		const listed = await memberAgent.get('/ai-preferences');
+		expect(listed.body.data.data).toEqual([
+			expect.objectContaining({
+				id: created.body.data.id,
+				createdBy: expect.objectContaining(author),
+			}),
+		]);
 	});
 
 	test('trims the content and refuses a blank preference', async () => {
@@ -418,6 +438,37 @@ describe('GET /ai-preferences', () => {
 		expect(contentsOf(response)).toEqual(['first', 'second', 'third']);
 	});
 
+	test('sorts the rows by the requested date', async () => {
+		await seed({
+			content: 'a',
+			userId: member.id,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-03-01'),
+		});
+		await seed({
+			content: 'b',
+			userId: member.id,
+			createdAt: new Date('2026-02-01'),
+			updatedAt: new Date('2026-01-15'),
+		});
+		await seed({
+			content: 'c',
+			userId: member.id,
+			createdAt: new Date('2026-03-01'),
+			updatedAt: new Date('2026-02-01'),
+		});
+
+		const response = await memberAgent.get('/ai-preferences').query({ sortBy: 'updatedAt:desc' });
+
+		expect(contentsOf(response)).toEqual(['a', 'c', 'b']);
+	});
+
+	test('refuses an unknown sort', async () => {
+		const response = await memberAgent.get('/ai-preferences').query({ sortBy: 'content:asc' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('hides the rows of a project the caller is not a member of', async () => {
 		await seed({ content: 'Marketing', projectId: project.id });
 
@@ -580,6 +631,58 @@ describe('GET /ai-preferences?ids=', () => {
 
 	test.each([' , ', ''])('refuses an empty ids filter (%j)', async (ids) => {
 		const response = await memberAgent.get('/ai-preferences').query({ ids });
+
+		expect(response.statusCode).toBe(400);
+	});
+});
+
+describe('GET /ai-preferences?search=', () => {
+	test('returns the rows whose text contains the term, ignoring case, and counts only them', async () => {
+		await seed({ content: 'Keep replies SHORT.', userId: member.id });
+		await seed({ content: 'Short names for nodes', projectId: project.id });
+		await seed({ content: 'Use British spelling' });
+
+		const response = await memberAgent.get('/ai-preferences').query({ search: ' short ' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(2);
+		expect(contentsOf(response).sort()).toEqual(['Keep replies SHORT.', 'Short names for nodes']);
+	});
+
+	test('matches the wildcard characters literally', async () => {
+		await seed({ content: 'Cap retries at 100%', userId: member.id });
+		await seed({ content: 'Cap retries at 1000', userId: member.id });
+		await seed({ content: 'snake_case names', userId: member.id });
+		await seed({ content: 'snakeXcase names', userId: member.id });
+
+		const percent = await memberAgent.get('/ai-preferences').query({ search: '100%' });
+		const underscore = await memberAgent.get('/ai-preferences').query({ search: 'snake_case' });
+
+		expect(contentsOf(percent)).toEqual(['Cap retries at 100%']);
+		expect(contentsOf(underscore)).toEqual(['snake_case names']);
+	});
+
+	test('does not widen what the caller may see', async () => {
+		await seed({ content: 'Short, theirs', userId: outsider.id });
+		await seed({ content: 'Short, mine', userId: member.id });
+
+		const response = await memberAgent.get('/ai-preferences').query({ search: 'short' });
+
+		expect(contentsOf(response)).toEqual(['Short, mine']);
+	});
+
+	test('returns every row for a blank term', async () => {
+		await seed({ content: 'one', userId: member.id });
+		await seed({ content: 'two', userId: member.id });
+
+		const response = await memberAgent.get('/ai-preferences').query({ search: '   ' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(2);
+	});
+
+	test('refuses a term that is too long', async () => {
+		const response = await memberAgent.get('/ai-preferences').query({ search: 'a'.repeat(201) });
 
 		expect(response.statusCode).toBe(400);
 	});

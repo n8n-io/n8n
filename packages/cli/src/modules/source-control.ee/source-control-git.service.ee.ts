@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { execSync } from 'child_process';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import * as path from 'path';
 import type {
 	CommitResult,
@@ -141,6 +141,7 @@ export class SourceControlGitService {
 				...this.gitOptions,
 				config,
 				unsafe: { allowUnsafeCredentialHelper: true },
+				allowEnvironment: ['GIT_TERMINAL_PROMPT'],
 			};
 
 			this.git = simpleGit(httpsGitOptions)
@@ -159,6 +160,7 @@ export class SourceControlGitService {
 			this.git = simpleGit({
 				...this.gitOptions,
 				unsafe: { allowUnsafeSshCommand: true },
+				allowEnvironment: ['GIT_SSH_COMMAND', 'GIT_TERMINAL_PROMPT'],
 			})
 				.env('GIT_SSH_COMMAND', sshCommand)
 				.env('GIT_TERMINAL_PROMPT', '0');

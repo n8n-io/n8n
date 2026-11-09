@@ -22,7 +22,7 @@ withDefaults(defineProps<LinkProps>(), {
 	to: undefined,
 	size: undefined,
 	bold: false,
-	underline: false,
+	underline: true,
 	theme: 'primary',
 });
 </script>

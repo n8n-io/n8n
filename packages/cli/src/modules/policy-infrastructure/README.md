@@ -141,6 +141,34 @@ to hold an unattended sync to a different standard than a hand-run import. The
 host reads it too, to pick its fail posture: a package import refuses the whole
 package, a source-control pull skips and reports the workflow.
 
+## Agents and embedded nodes
+
+An agent has no enforcement point of its own. It goes through the workflow
+points, so every check that reads `nodes` covers agents with no change.
+
+- **An agent is a `PolicedWorkflow` with `artifactKind: 'agent'`.** Its `nodes`
+  are its node tools, one node each, built by `toPolicedNodes` in
+  `src/policy/policed-agent-nodes.ts`. Each node has the type the tool runs as,
+  which is its `…Tool` variant when one exists, and the tool's own parameters.
+  The mapper reads tools through the agent config schema, so a renamed field
+  breaks the build. A tool that fails the schema is still policed by what it
+  names. The token binds to an `agent` subject, and the audit line records
+  `agentId` and `agentName`.
+- **Agent hosts:** config update and create (`workflowSave`), revert
+  (`workflowSave` over the current draft), and publish (`workflowPublish`).
+- **Agent node tools run through `EphemeralNodeExecutor`, not `WorkflowRunner`.**
+  So `workflowExecuteBefore` never fires. Each run path of the executor calls
+  `workflowStart` on the one-node workflow it builds, and returns a refusal as a
+  tool error. Expression evaluation for a workflow tool runs no node, so it is
+  not policed there.
+- **Inline agents.** `PolicyEnforcementService` adds the node tools of an inline
+  agent in a Message an Agent node to the nodes it gives the checks, at every
+  workflow point. An agent tool that is itself a Message an Agent node adds its
+  inline tools the same way, at any depth. The added nodes are for the checks only. The token
+  binds to the host's own subject, and the host does not write the added nodes.
+  An inline agent set by an expression is not expanded; the executor polices its
+  tools when they run.
+
 ## Fail posture
 
 - **No check registered for a point:** allowed.
@@ -186,6 +214,8 @@ warn  Policy blocked workflowSave  {
   row — the seal discards it for the same reason, binding a create to its content. The
   line does not reproduce that content subject: computing it is the enforcement point's
   job, and mirroring it here would let the two drift.
+- **An agent logs `agentId` and `agentName`** instead of the workflow fields, with
+  the same `null` rule for a create.
 - **`warn`, not `info`**, so the line survives an operator quietening logs. It matches
   the `warning` level `PolicyViolationError` already gives itself.
 

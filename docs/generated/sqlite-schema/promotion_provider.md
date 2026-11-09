@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "promotion_provider" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "type" varchar(32) NOT NULL, "authType" varchar(32) NOT NULL, "config" text NOT NULL, "auth" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_promotion_provider_type" CHECK ("type" IN ('git')), CONSTRAINT "CHK_promotion_provider_authType" CHECK ("authType" IN ('ssh-key', 'token')))
+CREATE TABLE "promotion_provider" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "type" varchar(32) NOT NULL, "authType" varchar(32) NOT NULL, "config" text NOT NULL, "auth" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_promotion_provider_authType" CHECK (("authType" IN ('ssh-key', 'token'))), CONSTRAINT "CHK_promotion_provider_type" CHECK ("type" IN ('git', 'gitlab')))
 ```
 
 </details>
@@ -19,7 +19,7 @@ CREATE TABLE "promotion_provider" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 | authType | varchar(32) |  | false |  |  |  |
 | config | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [promotion_connection](promotion_connection.md) |  |  |
+| id | varchar(36) |  | false | [promotion_environment](promotion_environment.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | type | varchar(32) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -28,8 +28,8 @@ CREATE TABLE "promotion_provider" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("type" IN ('git')) |
-| - | CHECK | CHECK ("authType" IN ('ssh-key', 'token')) |
+| - | CHECK | CHECK (("authType" IN ('ssh-key', 'token'))) |
+| - | CHECK | CHECK ("type" IN ('git', 'gitlab')) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_promotion_provider_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -44,7 +44,7 @@ CREATE TABLE "promotion_provider" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 ```mermaid
 erDiagram
 
-"promotion_connection" }o--|| "promotion_provider" : "FOREIGN KEY (providerId) REFERENCES promotion_provider (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"promotion_environment" }o--|| "promotion_provider" : "FOREIGN KEY (providerId) REFERENCES promotion_provider (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 
 "promotion_provider" {
   TEXT auth
@@ -56,13 +56,15 @@ erDiagram
   varchar_32_ type
   datetime_3_ updatedAt
 }
-"promotion_connection" {
+"promotion_environment" {
   datetime_3_ createdAt
-  varchar_36_ id PK
+  varchar_16_ direction
+  varchar id PK
   varchar_128_ name
   varchar_36_ providerId FK
+  TEXT remote
   varchar_16_ scope
-  TEXT target
+  TEXT settings
   datetime_3_ updatedAt
 }
 ```

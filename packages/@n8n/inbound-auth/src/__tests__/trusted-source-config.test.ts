@@ -2,6 +2,7 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import {
 	configMigrations,
+	JwtAlgorithmSchema,
 	migrateToLatest,
 	TrustedSourceConfigSchema,
 	trustedSourceConfigSchemaFor,
@@ -22,18 +23,8 @@ const fullyDefaultedDocument = {
 		discovery: { mode: 'auto' },
 		keys: { kind: 'jwks-uri' },
 		verification: { mode: 'jwt' },
-		algorithms: [
-			'RS256',
-			'RS384',
-			'RS512',
-			'ES256',
-			'ES384',
-			'ES512',
-			'PS256',
-			'PS384',
-			'PS512',
-			'EdDSA',
-		],
+		algorithms: [...JwtAlgorithmSchema.options],
+		allowedTokenTypes: ['at+jwt', 'application/at+jwt'],
 		maxTokenLifetimeSeconds: 86400,
 		clockSkewSeconds: 60,
 	},
@@ -152,6 +143,15 @@ describe('TrustedSourceConfigSchema refinement rules', () => {
 			rule: 'a role-mapping mode requires a fallback role',
 			document: withRoleMapping({ mode: 'on-provision' }),
 			path: ['identity', 'roleMapping', 'fallbackInstanceRole'],
+		},
+		{
+			rule: 'jit provisioning requires email linking',
+			document: withIdentity({
+				linkByEmail: 'off',
+				provision: { human: 'jit' },
+				roleMapping: { mode: 'on-provision', fallbackInstanceRole: 'global:member' },
+			}),
+			path: ['identity', 'linkByEmail'],
 		},
 		{
 			rule: 'manual discovery with jwks-uri keys requires jwksUri or metadataUrl',

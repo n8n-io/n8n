@@ -1,0 +1,1 @@
+When a new email arrives in Gmail, use an AI model to decide if it is urgent. If it is urgent, send a Slack message to #support with the subject and the sender. If it is not urgent, add a row with the subject, sender and date to the Google Sheet "Inbox log".

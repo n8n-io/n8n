@@ -50,9 +50,10 @@ functions and configuration, and the scheduler composes its algorithms over them
 test in isolation with a fake store. The work is split into a few focused
 submodules, described below.
 
-Everything sits behind the `N8N_SCHEDULER_ENABLED` flag (off by default). Turning
-it off reverts n8n to its previous in-memory scheduling, which is the rollback
-path during rollout.
+Everything sits behind the `N8N_SCHEDULER_ENABLED` flag (on by default). Schedule
+Trigger nodes move to the durable scheduler only while the workflow publication
+service is also on. Turning the flag off reverts n8n to its previous in-memory
+scheduling.
 
 ## The moving parts
 
@@ -411,8 +412,11 @@ The design leans on a few ideas working together.
   matches, the executor counts the failed attempt. It retries only while
   attempts remain. If the claim no longer matches, the write changes nothing.
   A clean return completes an occurrence that the executor still owns.
-  A run still running after sixty leases, or after about 24 days if that comes
-  first, logs a warning, since it may be stuck.
+  Each job stores a timeout, and each occurrence copies it. A run that reaches
+  it gets its signal aborted with a `TaskTimeoutError`, and its lease is no
+  longer renewed, so the recovery pass takes back a handler that ignores the
+  signal. A run that did not dispatch counts a failed attempt. A run that
+  dispatched completes.
 - **Fencing.** Each claim carries a version number (an *epoch*) that increases every
   time a run is claimed. Every final write ("mark succeeded", "mark failed") is
   guarded by that number. So if a slow server comes back from the dead after its

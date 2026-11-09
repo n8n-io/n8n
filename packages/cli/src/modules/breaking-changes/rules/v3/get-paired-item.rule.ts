@@ -36,7 +36,7 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Replace $getPairedItem usages',
 				description:
-					'Rewrite the affected expressions using $input.all() or $("Node").all(), $("Node").item, or $("Node").itemMatching() instead of $getPairedItem.',
+					"Replace $getPairedItem with $('Node').item, $('Node').itemMatching(n), or $('Node').pairedItem(n).",
 			},
 		];
 	}

@@ -24,11 +24,11 @@ import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subw
 import { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@n8n/backend-services';
+import { UrlService, WorkflowPublishedDataService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { shapeToStandardSchema } from '../tool-schema.util';

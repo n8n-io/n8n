@@ -1,0 +1,37 @@
+import { BaseError } from '../base.error';
+import { UnexpectedError } from '../unexpected.error';
+
+describe('UnexpectedError', () => {
+	it('should be an instance of UnexpectedError', () => {
+		const error = new UnexpectedError('test');
+		expect(error).toBeInstanceOf(UnexpectedError);
+	});
+
+	it('should be an instance of BaseError', () => {
+		const error = new UnexpectedError('test');
+		expect(error).toBeInstanceOf(BaseError);
+	});
+
+	it('should set name to the class name', () => {
+		const error = new UnexpectedError('test');
+		expect(error.name).toBe('UnexpectedError');
+	});
+
+	it('should keep name in the spread copy the engine saves', () => {
+		const error = new UnexpectedError('test');
+		const saved = { ...error, message: error.message, stack: error.stack };
+		expect(saved.name).toBe('UnexpectedError');
+	});
+
+	it('should have correct defaults', () => {
+		const error = new UnexpectedError('test');
+		expect(error.level).toBe('error');
+		expect(error.shouldReport).toBe(true);
+	});
+
+	it('should allow overriding the default level and shouldReport', () => {
+		const error = new UnexpectedError('test', { level: 'fatal', shouldReport: false });
+		expect(error.level).toBe('fatal');
+		expect(error.shouldReport).toBe(false);
+	});
+});

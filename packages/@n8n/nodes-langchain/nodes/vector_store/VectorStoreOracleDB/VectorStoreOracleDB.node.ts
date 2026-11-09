@@ -4,8 +4,14 @@ import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 import { DistanceStrategy, OracleVS, type OracleDBVSArgs } from '@oracle/langchain-oracledb';
 import type { OracleDBNodeCredentials } from 'n8n-nodes-base/dist/nodes/Oracle/Sql/helpers/interfaces';
 import { configureOracleDB } from 'n8n-nodes-base/dist/nodes/Oracle/Sql/transport';
-import type { IExecuteFunctions, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
+import type { INode, IExecuteFunctions, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type oracledb from 'oracledb';
+
+import {
+	findUnsupportedJsonPathFilterKey,
+	isSafeQualifiedSqlIdentifier,
+} from '@utils/sqlIdentifier';
 
 const sharedFields: INodeProperties[] = [
 	{
@@ -19,6 +25,40 @@ const sharedFields: INodeProperties[] = [
 ];
 
 const DEFAULT_INITIALIZATION_TEXT = 'n8n vector store initialization text';
+
+const DEFAULT_TABLE_NAME = 'n8n_vectors';
+
+/** Reads the Table Name, falling back to the default when an expression resolves to empty. */
+function getTableName(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	itemIndex: number,
+): string {
+	const tableName =
+		(context.getNodeParameter('tableName', itemIndex, '', { extractValue: true }) as string) ||
+		DEFAULT_TABLE_NAME;
+
+	if (!isSafeQualifiedSqlIdentifier(tableName)) {
+		throw new NodeOperationError(context.getNode(), `Invalid table name \"${tableName}\"`, {
+			itemIndex,
+			description:
+				'The table name must be a plain name, or a schema and name separated by a dot. Letters, digits and underscores only.',
+		});
+	}
+
+	return tableName;
+}
+
+/** Rejects a metadata filter the Oracle store cannot resolve into a SQL/JSON path. */
+function assertSupportedFilter(node: INode, filter: unknown, itemIndex?: number): void {
+	const unsupported = findUnsupportedJsonPathFilterKey(filter);
+	if (unsupported === undefined) return;
+
+	throw new NodeOperationError(node, `Invalid metadata filter key \"${unsupported}\"`, {
+		itemIndex,
+		description:
+			'A metadata filter name must start with a letter or underscore and contain only letters, digits and underscores.',
+	});
+}
 
 const NO_ROWS_FOUND_ERROR_MESSAGE = 'No rows found.';
 
@@ -146,11 +186,15 @@ const createLazyOraclePool = (
  * with any ad-hoc filter provided at runtime.
  */
 class ExtendedOracleDBVectorStore extends OracleVS {
+	n8nNode!: INode;
+
 	static async initialize(
 		embeddings: EmbeddingsInterface,
-		args: OracleDBVSArgs,
+		args: OracleDBVSArgs & { n8nNode: INode },
 	): Promise<ExtendedOracleDBVectorStore> {
-		const oracleDBVectorStore = new this(embeddings, args);
+		const { n8nNode, ...rest } = args;
+		const oracleDBVectorStore = new this(embeddings, rest);
+		oracleDBVectorStore.n8nNode = n8nNode;
 
 		await oracleDBVectorStore.initialize();
 		return oracleDBVectorStore;
@@ -162,6 +206,9 @@ class ExtendedOracleDBVectorStore extends OracleVS {
 		filter?: OracleVS['FilterType'],
 	) {
 		const mergedFilter = mergeFilters(this.filter, filter);
+		// Checked here as well as at construction, because load and both
+		// retrieve-as-tool modes supply the filter at search time.
+		assertSupportedFilter(this.n8nNode, mergedFilter);
 
 		try {
 			return await super.similaritySearchVectorWithScore(query, k, mergedFilter);
@@ -199,17 +246,17 @@ export class VectorStoreOracleDB extends createVectorStoreNode<ExtendedOracleDBV
 		embeddings: EmbeddingsInterface,
 		itemIndex: number,
 	): Promise<ExtendedOracleDBVectorStore> {
-		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
-			extractValue: true,
-		}) as string;
+		const tableName = getTableName(context, itemIndex);
+		assertSupportedFilter(context.getNode(), filter, itemIndex);
 		const credentials = (await context.getCredentials('oracleDBApi')) as OracleDBNodeCredentials;
 		const client = createLazyOraclePool(context, credentials);
 		const query = DEFAULT_INITIALIZATION_TEXT;
-		const config: OracleDBVSArgs = {
+		const config: OracleDBVSArgs & { n8nNode: INode } = {
 			client,
 			tableName,
 			query,
 			filter: filter as ExtendedOracleDBVectorStore['FilterType'] | undefined,
+			n8nNode: context.getNode(),
 		};
 
 		config.distanceStrategy = context.getNodeParameter(
@@ -227,9 +274,7 @@ export class VectorStoreOracleDB extends createVectorStoreNode<ExtendedOracleDBV
 		documents: Array<Document<Record<string, unknown>>>,
 		itemIndex: number,
 	): Promise<void> {
-		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
-			extractValue: true,
-		}) as string;
+		const tableName = getTableName(context, itemIndex);
 		const credentials = (await context.getCredentials('oracleDBApi')) as OracleDBNodeCredentials;
 		const client = createLazyOraclePool(context, credentials);
 		const query = DEFAULT_INITIALIZATION_TEXT;

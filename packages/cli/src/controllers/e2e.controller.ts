@@ -18,8 +18,6 @@ import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
 import type nodeFs from 'node:fs';
-import type { Profiler } from 'node:inspector';
-import type * as nodeInspectorPromises from 'node:inspector/promises';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -36,6 +34,8 @@ import { HeapDiagnosticsService } from '@/services/heap-diagnostics.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { ProcessInternalsService } from '@/services/process-internals.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+import { CoverageWindows } from './e2e-coverage-windows';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -102,11 +102,12 @@ export class E2EController {
 		[LICENSE_FEATURES.SHARING]: false,
 		[LICENSE_FEATURES.LDAP]: false,
 		[LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES]: false,
+		[LICENSE_FEATURES.EXECUTION_LIMITS]: false,
 		[LICENSE_FEATURES.SAML]: false,
 		[LICENSE_FEATURES.LOG_STREAMING]: false,
 		[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
 		[LICENSE_FEATURES.SOURCE_CONTROL]: false,
-		[LICENSE_FEATURES.GIT_CONNECTIONS]: false,
+		[LICENSE_FEATURES.PROMOTIONS]: false,
 		[LICENSE_FEATURES.VARIABLES]: false,
 		[LICENSE_FEATURES.API_DISABLED]: false,
 		[LICENSE_FEATURES.EXTERNAL_SECRETS]: false,
@@ -147,6 +148,7 @@ export class E2EController {
 		[LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES]: false,
 		[LICENSE_FEATURES.WORKER_POOLS]: false,
 		[LICENSE_FEATURES.SCIM]: false,
+		[LICENSE_FEATURES.TRUSTED_SOURCE_MANAGE]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {
@@ -404,81 +406,34 @@ export class E2EController {
 	// E2E impact map (today the map is frontend-only). Test-only: the whole
 	// controller hard-exits outside E2E (see top of file).
 	//
-	// Uses `Profiler.getBestEffortCoverage` (NON-draining) + a server-side
-	// baseline/delta so it never resets the global V8 counters — the shard-level
-	// `NODE_V8_COVERAGE` exit dump (the Codecov report path) is left untouched.
+	// Each start and take ends a coverage window (see CoverageWindows), so each
+	// spec gets the call counts of its own window. Best-effort coverage is not
+	// usable here: it reports 0 or 1 for each function, so only the first spec
+	// in a container got credit for code that every spec runs.
 	//
 	// REQUIRES the coverage run to be single-worker (it is — coverage project
 	// runs `--workers=1`). Precise coverage is process-global, so the start→take
 	// window is only attributable to one spec when specs don't run concurrently.
-	private coverageSession?: nodeInspectorPromises.Session;
+	private readonly coverageWindows = new CoverageWindows();
 
-	private coverageBaseline = new Map<string, number>();
-
-	private async ensureCoverageSession(): Promise<nodeInspectorPromises.Session> {
-		if (!this.coverageSession) {
-			const inspector = require('node:inspector/promises') as typeof nodeInspectorPromises;
-			this.coverageSession = new inspector.Session();
-			this.coverageSession.connect();
-			// `enable` only — NODE_V8_COVERAGE already turned precise coverage on at
-			// boot. We never call start/takePreciseCoverage (those reset the global
-			// counters and would empty the shard exit dump).
-			await this.coverageSession.post('Profiler.enable');
-		}
-		return this.coverageSession;
-	}
-
-	private static coverageKey(url: string, fn: Profiler.FunctionCoverage): string {
-		return `${url} ${fn.functionName} ${fn.ranges[0]?.startOffset ?? 0}`;
-	}
-
-	private static coverageCount(fn: Profiler.FunctionCoverage): number {
-		return fn.ranges.reduce((sum, range) => sum + range.count, 0);
-	}
-
-	private static indexCoverage(scripts: Profiler.ScriptCoverage[]): Map<string, number> {
-		const index = new Map<string, number>();
-		for (const script of scripts) {
-			for (const fn of script.functions) {
-				index.set(E2EController.coverageKey(script.url, fn), E2EController.coverageCount(fn));
-			}
-		}
-		return index;
-	}
-
-	/** Keep only functions whose hit count rose since the baseline (this spec). */
-	private static deltaCoverage(
-		scripts: Profiler.ScriptCoverage[],
-		baseline: Map<string, number>,
-	): Profiler.ScriptCoverage[] {
-		const delta: Profiler.ScriptCoverage[] = [];
-		for (const script of scripts) {
-			const functions = script.functions.filter(
-				(fn) =>
-					E2EController.coverageCount(fn) >
-					(baseline.get(E2EController.coverageKey(script.url, fn)) ?? 0),
-			);
-			if (functions.length) delta.push({ ...script, functions });
-		}
-		return delta;
-	}
-
-	/** Test-only: mark the start of a spec's backend-coverage window. */
+	/**
+	 * Test-only: mark the start of a spec's backend-coverage window. The first
+	 * call returns the code that ran at boot, which every spec depends on.
+	 */
 	@Post('/coverage/start', { skipAuth: true })
-	async startCoverage() {
-		const session = await this.ensureCoverageSession();
-		const { result } = await session.post('Profiler.getBestEffortCoverage');
-		this.coverageBaseline = E2EController.indexCoverage(result);
-		return { success: true };
+	startCoverage() {
+		const window = this.coverageWindows.take();
+		if (!window) return { success: false };
+		return window.boot ? { success: true, boot: window.result } : { success: true };
 	}
 
 	/** Test-only: return the V8 coverage executed since `start` (this spec's
-	 * delta), as raw `ScriptCoverage[]` for the coverage emitter to resolve. */
+	 * window), as raw `ScriptCoverage[]` for the coverage emitter to resolve. */
 	@Post('/coverage/take', { skipAuth: true })
-	async takeCoverage() {
-		if (!this.coverageSession) return { success: false, result: [] };
-		const { result } = await this.coverageSession.post('Profiler.getBestEffortCoverage');
-		return { success: true, result: E2EController.deltaCoverage(result, this.coverageBaseline) };
+	takeCoverage() {
+		const window = this.coverageWindows.take();
+		if (!window) return { success: false, result: [] };
+		return { success: true, result: window.result };
 	}
 
 	/**

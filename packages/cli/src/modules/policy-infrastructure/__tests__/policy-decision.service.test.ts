@@ -14,7 +14,7 @@ import {
 	workflowContentSubject,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
@@ -437,6 +437,29 @@ describe('PolicyDecisionService', () => {
 				workflowName: 'Untitled workflow',
 			});
 			expect(JSON.stringify(audit.mock.calls[0][1])).not.toContain('wf-claimed');
+		});
+
+		it('names an agent as an agent, not as a workflow', async () => {
+			const { service, audit } = auditedServiceWith(SlackCheck);
+			const agent = {
+				id: 'agent-1',
+				name: 'Support agent',
+				nodes: [],
+				artifactKind: 'agent' as const,
+			};
+
+			await service.enforce(
+				'workflowSave',
+				{ workflow: agent, storedWorkflow: agent, projectId: 'proj-1' },
+				asAlice,
+			);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				agentId: 'agent-1',
+				agentName: 'Support agent',
+				projectId: 'proj-1',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
 		});
 
 		it('records the project a transfer moves into', async () => {

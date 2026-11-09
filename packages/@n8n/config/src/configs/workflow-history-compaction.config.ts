@@ -39,19 +39,4 @@ export class WorkflowHistoryCompactionConfig {
 	/** Delay in milliseconds after processing `batchSize` versions before moving to the next workflow. */
 	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_BATCH_DELAY_MS')
 	batchDelayMs: number = 1_000;
-
-	/**
-	 * Whether to run a trim pass on startup (for example, to fix existing history or for development).
-	 *
-	 * @warning Blocking; can significantly increase startup time.
-	 */
-	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_TRIM_ON_START_UP')
-	trimOnStartUp: boolean = false;
-
-	/**
-	 * Whether to skip the compaction pass that normally runs on startup.
-	 * Scheduled runs are unaffected. Takes precedence over `trimOnStartUp`.
-	 */
-	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_SKIP_ON_START_UP')
-	skipOnStartUp: boolean = false;
 }

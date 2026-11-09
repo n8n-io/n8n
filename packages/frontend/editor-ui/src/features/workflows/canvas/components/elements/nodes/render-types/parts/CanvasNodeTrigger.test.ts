@@ -5,8 +5,10 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
 import CanvasNodeTrigger from './CanvasNodeTrigger.vue';
 
 const runEntireWorkflow = vi.hoisted(() => vi.fn());
@@ -26,10 +28,9 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 const renderComponent = createComponentRenderer(CanvasNodeTrigger);
 
-const renderWithCredentials = (currentUserCanUse: boolean, sharingEnabled = true) => {
+const renderWithCredentials = (currentUserCanUse: boolean) => {
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
-	useSettingsStore().settings.granularCredentialSharing = sharingEnabled;
 
 	const documentStore = {
 		documentId: 'workflow-1',
@@ -100,11 +101,62 @@ describe('CanvasNodeTrigger', () => {
 
 			expect(runEntireWorkflow).toHaveBeenCalledWith('node', 'Schedule Trigger');
 		});
+	});
 
-		it('should keep the button enabled when credential sharing is off', () => {
-			const { getByTestId } = renderWithCredentials(false, false);
+	describe('when the node type is restricted', () => {
+		const renderRestricted = (type = 'n8n-nodes-base.slack', scope = 'instance') => {
+			const pinia = createTestingPinia({ stubActions: false });
+			setActivePinia(pinia);
+			vi.spyOn(useTypeAvailabilityPoliciesStore(pinia), 'getNodeTypeAvailability').mockReturnValue({
+				name: type,
+				available: false,
+				scope,
+			} as never);
 
-			expect(getByTestId('execute-workflow-button-Schedule Trigger')).toBeEnabled();
+			return renderComponent({
+				pinia,
+				props: { name: 'Trigger', type, isExperimentalNdvActive: false },
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { type } }),
+						[WorkflowDocumentStoreKey as symbol]: shallowRef({
+							documentId: 'workflow-1',
+							usedCredentials: {},
+							allNodes: [],
+						}),
+					},
+				},
+			});
+		};
+
+		it('should disable the execute button and not run the workflow', async () => {
+			const { getByTestId } = renderRestricted();
+			const button = getByTestId('execute-workflow-button-Trigger');
+
+			expect(button).toBeDisabled();
+
+			await userEvent.click(button);
+
+			expect(runEntireWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should disable Open chat on a restricted chat trigger and show the scope in a tooltip', async () => {
+			const { getByTestId } = renderRestricted(CHAT_TRIGGER_NODE_TYPE);
+			const button = getByTestId('execute-workflow-button-Trigger');
+
+			expect(button).toBeDisabled();
+
+			await hoverTooltipTrigger(button);
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Restricted on this instance'));
+		});
+
+		it('should show the scope in a tooltip', async () => {
+			const { getByTestId } = renderRestricted('n8n-nodes-base.slack', 'project');
+
+			await hoverTooltipTrigger(getByTestId('execute-workflow-button-Trigger'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Restricted in this project'));
 		});
 	});
 });

@@ -235,6 +235,64 @@ describe('Canvas', () => {
 		expect(container.querySelector(`[data-id="${connections[0].id}"]`)).toBeInTheDocument();
 	});
 
+	it('places an added sticky at the canvas right-click after the canvas is panned', async () => {
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+
+		const { container, emitted, getByTestId } = renderComponent({
+			props: { nodes: [], connections: [] },
+		});
+		const { setViewport } = useVueFlow(canvasId);
+		await setViewport({ x: 400, y: 0, zoom: 1 });
+
+		const pane = container.querySelector('.vue-flow__pane');
+		expect(pane).not.toBeNull();
+		await fireEvent.contextMenu(pane!, { clientX: 80, clientY: 64 });
+
+		const cursorPosition = emitted<[{ x: number; y: number }]>()['cursor:position']?.at(-1)?.[0];
+		expect(cursorPosition?.x).toBeLessThan(0);
+
+		await waitFor(() => expect(getByTestId('context-menu-item-add_sticky')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('context-menu-item-add_sticky'));
+
+		expect(emitted()['create:sticky']?.at(-1)).toEqual([cursorPosition]);
+		useContextMenu().close();
+	});
+
+	it('clears the selection and opens the canvas menu on an empty-canvas right-click', async () => {
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+		workflowDocumentStore.setNodes([createTestNode({ id: 'sticky-1', name: 'Note' })]);
+		const note = createCanvasNodeElement({
+			id: 'sticky-1',
+			label: 'Note',
+			position: { x: 400, y: 200 },
+		});
+		const { container, emitted, getByTestId, queryByTestId } = renderComponent({
+			props: { nodes: [note], connections: [] },
+		});
+		await waitFor(() =>
+			expect(container.querySelector(`[data-id="${note.id}"]`)).toBeInTheDocument(),
+		);
+
+		const vueFlow = useVueFlow(canvasId);
+		vueFlow.addSelectedNodes([vueFlow.findNode(note.id)!]);
+		await waitFor(() => expect(vueFlow.getSelectedNodes.value).toHaveLength(1));
+
+		const pane = container.querySelector('.vue-flow__pane');
+		expect(pane).not.toBeNull();
+		await fireEvent.contextMenu(pane!);
+
+		await waitFor(() => expect(vueFlow.getSelectedNodes.value).toHaveLength(0));
+		expect(emitted()['update:node:selected']?.at(-1)).toEqual([undefined]);
+		await waitFor(() => expect(getByTestId('context-menu-item-add_sticky')).toBeInTheDocument());
+		expect(useContextMenu().target.value).toEqual(
+			expect.objectContaining({ source: 'canvas', nodeIds: [] }),
+		);
+		expect(queryByTestId('context-menu-item-open')).not.toBeInTheDocument();
+		useContextMenu().close();
+	});
+
 	it('tidies hidden members when using the context menu on a collapsed group', async () => {
 		workflowDocumentStore.setScopes(['workflow:update']);
 		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);

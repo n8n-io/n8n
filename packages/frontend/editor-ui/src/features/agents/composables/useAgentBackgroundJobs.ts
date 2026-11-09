@@ -15,6 +15,7 @@ import {
 	getAgentBackgroundJobs,
 	resumeAgentBackgroundJob,
 	stopAgentBackgroundJobs,
+	type AgentChatChannel,
 } from './useAgentApi';
 
 interface BackgroundJobsTarget {
@@ -22,6 +23,7 @@ interface BackgroundJobsTarget {
 	agentId: MaybeRefOrGetter<string>;
 	threadId: MaybeRefOrGetter<string | undefined>;
 	active: MaybeRefOrGetter<boolean>;
+	channel?: MaybeRefOrGetter<AgentChatChannel>;
 	receivedJobs?: MaybeRefOrGetter<AgentBackgroundJobSignal['tasks']>;
 }
 
@@ -42,6 +44,13 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		}));
 		if (current.some((job) => job.status === 'running' || job.status === 'suspended'))
 			return current;
+
+		if (
+			toValue(target.channel) !== 'n8n-chat' &&
+			current.some((job) => job.status === 'paused' || job.pauseRequested)
+		)
+			return current;
+
 		return group.value.pendingTaskIds?.some((id) => !received.has(id)) ? current : [];
 	});
 	const active = computed(() => toValue(target.active) && visibility.value === 'visible');
@@ -84,6 +93,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 				projectId,
 				agentId,
 				threadId,
+				toValue(target.channel),
 			);
 			if (isCurrent()) {
 				group.value = {
@@ -138,6 +148,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 				toValue(target.agentId),
 				threadId,
 				payload,
+				toValue(target.channel),
 			);
 			if (generation === requestGeneration) {
 				for (const job of group.value.tasks) {
@@ -166,6 +177,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 				toValue(target.projectId),
 				toValue(target.agentId),
 				threadId,
+				toValue(target.channel),
 			);
 			if (!disposed && generation === requestGeneration) group.value = result;
 		} catch (error) {
@@ -229,5 +241,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		removeListener();
 	});
 
-	return { jobs, respondToApproval, stopAll, isStopping };
+	const allJobs = computed(() => group.value.tasks);
+
+	return { jobs, allJobs, respondToApproval, stopAll, isStopping };
 }
