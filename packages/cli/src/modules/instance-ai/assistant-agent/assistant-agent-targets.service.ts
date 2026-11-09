@@ -5,7 +5,7 @@ import type {
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import {
 	readAgentTargetsMetadata,
 	threadAuthorizesAgentAdoption,
@@ -14,7 +14,9 @@ import {
 } from '@n8n/instance-ai';
 
 import { AgentDraftService } from '@/modules/agents/agent-draft.service';
+import { AgentsService } from '@/modules/agents/agents.service';
 import { SystemAgentThreadMetadataService } from '@/modules/agents/system-agents/system-agent-thread-metadata.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
 
@@ -47,6 +49,7 @@ export class AssistantAgentTargetsService {
 	constructor(
 		private readonly threadMetadata: SystemAgentThreadMetadataService,
 		private readonly agentDrafts: AgentDraftService,
+		private readonly agents: AgentsService,
 	) {}
 
 	async getState(user: User, threadId: string): Promise<AssistantAgentTargetsState> {
@@ -57,7 +60,8 @@ export class AssistantAgentTargetsService {
 	/**
 	 * Bind a saved agent, so the next turn edits it. Drops the pending agent
 	 * marker. A thread binds only agents of its working project, because the
-	 * builder does not act on an agent of another project.
+	 * builder does not act on an agent of another project. The agent must
+	 * exist, and the user must be able to read it.
 	 */
 	async bind(
 		user: User,
@@ -66,6 +70,13 @@ export class AssistantAgentTargetsService {
 	): Promise<AssistantAgentTargetsState> {
 		const { projectId } = await this.threadMetadata.readThread(ASSISTANT_AGENT_ID, user, threadId);
 		assertThreadProject(projectId, target.projectId);
+		// Check the scope first, so the route does not tell a user without access which agents exist.
+		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to access agents in this project');
+		}
+		if (!(await this.agents.findById(target.agentId, projectId))) {
+			throw new NotFoundError('Agent not found');
+		}
 		return await this.writeBinding(user, threadId, target);
 	}
 

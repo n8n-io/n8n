@@ -1,9 +1,11 @@
 import type { User } from '@n8n/db';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentDraftState } from '@/modules/agents/agent-draft.contracts';
 import type { AgentDraftService } from '@/modules/agents/agent-draft.service';
+import type { AgentsService } from '@/modules/agents/agents.service';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import type { SystemAgentThreadMetadataService } from '@/modules/agents/system-agents/system-agent-thread-metadata.service';
 
 import {
@@ -11,6 +13,9 @@ import {
 	toAgentTargetsState,
 } from '../assistant-agent-targets.service';
 import { ASSISTANT_AGENT_ID } from '../assistant-turn-options';
+
+const { userHasScopes } = vi.hoisted(() => ({ userHasScopes: vi.fn() }));
+vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes }));
 
 const THREAD_ID = 'thread-1';
 const PROJECT_ID = 'project-1';
@@ -23,7 +28,8 @@ describe('AssistantAgentTargetsService', () => {
 	const user = mock<User>({ id: 'user-1' });
 	const threadMetadata = mock<SystemAgentThreadMetadataService>();
 	const agentDrafts = mock<AgentDraftService>();
-	const service = new AssistantAgentTargetsService(threadMetadata, agentDrafts);
+	const agents = mock<AgentsService>();
+	const service = new AssistantAgentTargetsService(threadMetadata, agentDrafts, agents);
 
 	/** The thread row. `patch` applies the change the way the real service does. */
 	let row: { projectId: string; metadata: Metadata | undefined };
@@ -44,6 +50,8 @@ describe('AssistantAgentTargetsService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		userHasScopes.mockResolvedValue(true);
+		agents.findById.mockResolvedValue(mock<ProjectAgent>({ id: AGENT_ID }));
 	});
 
 	describe('toAgentTargetsState', () => {
@@ -114,6 +122,32 @@ describe('AssistantAgentTargetsService', () => {
 			await expect(
 				service.bind(user, THREAD_ID, { agentId: AGENT_ID, projectId: 'other', name: 'Triage' }),
 			).rejects.toThrow(ForbiddenError);
+			expect(threadMetadata.patch).not.toHaveBeenCalled();
+		});
+
+		it('rejects an agent that the user cannot read', async () => {
+			useThread({});
+			userHasScopes.mockResolvedValue(false);
+
+			await expect(
+				service.bind(user, THREAD_ID, { agentId: AGENT_ID, projectId: PROJECT_ID, name: 'Triage' }),
+			).rejects.toThrow(ForbiddenError);
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+				projectId: PROJECT_ID,
+			});
+			// The scope check comes first, so the response does not say whether the agent exists.
+			expect(agents.findById).not.toHaveBeenCalled();
+			expect(threadMetadata.patch).not.toHaveBeenCalled();
+		});
+
+		it('rejects an agent that does not exist in the project', async () => {
+			useThread({});
+			agents.findById.mockResolvedValue(null);
+
+			await expect(
+				service.bind(user, THREAD_ID, { agentId: AGENT_ID, projectId: PROJECT_ID, name: 'Triage' }),
+			).rejects.toThrow(NotFoundError);
+			expect(agents.findById).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID);
 			expect(threadMetadata.patch).not.toHaveBeenCalled();
 		});
 	});
