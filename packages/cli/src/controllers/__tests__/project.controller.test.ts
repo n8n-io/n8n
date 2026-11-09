@@ -1,5 +1,5 @@
 import { ListProjectsQueryDto } from '@n8n/api-types';
-import type { AuthenticatedRequest } from '@n8n/db';
+import { Person, ServiceAccount, ServiceAccountDetails, type AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -300,13 +300,13 @@ describe('ProjectController', () => {
 			});
 			(projectsService.getProjectRelations as Mock).mockResolvedValue([]);
 			(projectsService.getImplicitProjectMembers as Mock).mockResolvedValue([
-				{
+				Object.assign(new Person(), {
 					id: 'u-admin',
 					email: 'admin@n8n.io',
 					firstName: 'Ada',
 					lastName: 'Min',
 					role: { slug: 'global:admin', displayName: 'Admin' },
-				},
+				}),
 			]);
 
 			const scopedReq = {
@@ -346,12 +346,15 @@ describe('ProjectController', () => {
 			(projectsService.getProjectRelations as Mock).mockResolvedValue([
 				{
 					userId: 'admin-1',
-					user: adminUser,
+					user: Object.assign(new Person(), adminUser),
 					role: { slug: 'project:editor', scopes: [] },
 				},
 			]);
 			(projectsService.getImplicitProjectMembers as Mock).mockResolvedValue([
-				{ ...adminUser, role: { slug: 'global:admin', displayName: 'Admin' } },
+				Object.assign(new Person(), {
+					...adminUser,
+					role: { slug: 'global:admin', displayName: 'Admin' },
+				}),
 			]);
 
 			const scopedReq = {
@@ -363,6 +366,43 @@ describe('ProjectController', () => {
 			expect(result.relations).toEqual([{ ...adminUser, role: 'project:editor' }]);
 			expect(result.implicitMembers).toEqual([
 				{ ...adminUser, globalRole: { slug: 'global:admin', displayName: 'Admin' } },
+			]);
+		});
+
+		it('shows a service account member by its name and with an empty email on getProject', async () => {
+			provisioningService.isProjectRoleManaged.mockResolvedValue(false);
+			(projectsService.getProject as Mock).mockResolvedValue({
+				id: 'p1',
+				name: 'Project',
+				icon: null,
+				type: 'team',
+				description: null,
+				customTelemetryTags: [],
+			});
+			const serviceAccount = Object.assign(new ServiceAccount(), {
+				id: 'sa-1',
+				role: { slug: 'global:admin', displayName: 'Admin' },
+				details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+			});
+			(projectsService.getProjectRelations as Mock).mockResolvedValue([
+				{
+					userId: 'sa-1',
+					user: serviceAccount,
+					role: { slug: 'project:editor', scopes: [] },
+				},
+			]);
+			(projectsService.getImplicitProjectMembers as Mock).mockResolvedValue([serviceAccount]);
+
+			const scopedReq = {
+				user: { id: 'actor-user', role: { slug: 'global:owner', scopes: [] } },
+			} as unknown as AuthenticatedRequest;
+
+			const result = await controller.getProject(scopedReq, makeRes(), 'p1');
+
+			const member = { id: 'sa-1', email: '', firstName: 'Deploy bot', lastName: '' };
+			expect(result.relations).toEqual([{ ...member, role: 'project:editor' }]);
+			expect(result.implicitMembers).toEqual([
+				{ ...member, globalRole: { slug: 'global:admin', displayName: 'Admin' } },
 			]);
 		});
 

@@ -28,7 +28,12 @@ export { isUniqueConstraintError } from './utils/is-unique-constraint-error';
 export { isValidEmail } from './utils/is-valid-email';
 export { principalFromUser } from './utils/principal-from-user';
 export { isPerson, isServiceAccount } from './utils/account-guards';
-export { accountFirstName, accountFullName } from './utils/account-display-name';
+export {
+	accountFirstName,
+	accountFullName,
+	accountSummary,
+	type AccountSummary,
+} from './utils/account-display-name';
 export { parseListQuerySortBy } from './utils/list-query-sort';
 export type { ListQuerySort, ListQuerySortDirection } from './utils/list-query-sort';
 export { separate } from './utils/separate';
