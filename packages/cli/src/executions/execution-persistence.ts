@@ -921,8 +921,8 @@ export class ExecutionPersistence {
 
 		const { affected: endedRows } = await update(endingWhere, columns);
 		if ((endedRows ?? 0) > 0) return { updated: true, ended: true };
-		// The required status is already unfinished, so the plain statement would match nothing too.
-		if (endingWhere === where) return { updated: false, ended: false };
+		// The required status is unfinished here, so the plain statement would match nothing too.
+		if (conditions?.requireStatus) return { updated: false, ended: false };
 
 		const { affected } = await update(where, columns);
 		return { updated: (affected ?? 0) > 0, ended: false };

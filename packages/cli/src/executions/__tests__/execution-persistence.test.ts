@@ -29,6 +29,8 @@ import type { ExecutionDataPayload } from '@/executions/execution-data/types';
 import { UnreadableRunDataError } from '@/executions/execution-data/unreadable-run-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
+const affected = (count: number) => ({ affected: count, raw: [], generatedMaps: [] });
+
 describe('ExecutionPersistence', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const binaryDataService = mock<BinaryDataService>();
@@ -690,7 +692,6 @@ describe('ExecutionPersistence', () => {
 
 		describe('saveExecutionOutcome', () => {
 			const unfinished = In(['new', 'running', 'unknown', 'waiting']);
-			const affected = (count: number) => ({ affected: count, generatedMaps: [], raw: {} });
 
 			it('should report ended when the write on an unfinished run matches', async () => {
 				const executionPersistence = createPersistenceService('db');
@@ -2346,7 +2347,6 @@ describe('ExecutionPersistence', () => {
 	describe('deleteUnsaved', () => {
 		const target = { workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' as const };
 		const outcome = { status: 'success' as const, finished: true, stoppedAt: new Date() };
-		const affected = (count: number) => ({ affected: count, raw: [], generatedMaps: [] });
 
 		beforeEach(() => {
 			executionRepository.update.mockReset();
@@ -2408,7 +2408,6 @@ describe('ExecutionPersistence', () => {
 
 	describe('softDeleteWithOutcome', () => {
 		const outcome = { status: 'error' as const, finished: false, stoppedAt: new Date() };
-		const affected = (count: number) => ({ affected: count, raw: [], generatedMaps: [] });
 
 		beforeEach(() => {
 			executionRepository.update.mockReset();
