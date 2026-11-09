@@ -54,13 +54,21 @@ export async function settleAbandonedToolCallsInMemory(
 	args: { threadId: string; resourceId: string },
 ): Promise<number> {
 	const messages = await memory.getMessages(args.threadId, { resourceId: args.resourceId });
-	const settled = settleOrphanedToolMessages(messages);
-	// Unchanged messages keep their identity, so only settled ones are rewritten.
-	const changed = settled.filter((message, index) => message !== messages[index]);
+	const { changed } = settleOrphanedToolMessagesWithChanges(messages);
 	if (changed.length === 0) return 0;
 
 	await memory.saveMessages({ ...args, messages: changed });
 	return changed.length;
+}
+
+/** `settleOrphanedToolMessages`, plus the messages that it changed. */
+export function settleOrphanedToolMessagesWithChanges<T extends AgentMessage>(
+	messages: T[],
+): { settled: T[]; changed: T[] } {
+	const settled = settleOrphanedToolMessages(messages);
+	// Unchanged messages keep their identity, so only settled ones are rewritten.
+	const changed = settled.filter((message, index) => message !== messages[index]);
+	return { settled, changed };
 }
 
 function buildAbandonedSuspensionError(

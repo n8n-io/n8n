@@ -554,4 +554,10 @@ export type AgentPersistenceOptions = {
 	 * exactly instead of guessing by recency.
 	 */
 	hostRunId?: string;
+	/**
+	 * Set only when the host starts a fresh run only after every suspension in the
+	 * thread has ended. The runtime then writes back the tool calls that it settles
+	 * as abandoned when it loads history. A stored pending call stops the Observer.
+	 */
+	persistSettledSuspensions?: true;
 };
