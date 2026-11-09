@@ -1429,7 +1429,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		 */
 		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
 		sendMessageToUI(message: any): void;
-		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
+		/**
+		 * Whether the run's resolved redaction policy redacts output that leaves the
+		 * execution-data pipeline (console output, AI event payloads) for this
+		 * execution's mode
+		 */
 		isConsoleOutputRedacted(): boolean;
 		sendResponse(response: IExecuteResponsePromiseData): Promise<void>;
 		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
