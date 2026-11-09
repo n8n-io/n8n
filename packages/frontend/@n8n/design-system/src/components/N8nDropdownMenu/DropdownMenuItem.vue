@@ -572,6 +572,12 @@ onBeforeUnmount(() => {
 	max-height: inherit;
 	overflow-y: auto;
 	@include scrollbar-mixins.hoverable-scroll-bar;
+	mask-image: linear-gradient(
+		to bottom,
+		black 0,
+		black calc(100% - var(--spacing--sm)),
+		transparent 100%
+	);
 }
 
 .section-header {
