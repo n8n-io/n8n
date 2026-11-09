@@ -73,12 +73,16 @@ describe('InstanceAiMarkdown with the shared renderer', () => {
 		const openAgentChatPreview = vi.fn(() => true);
 		const { container } = renderComponent({
 			props: { content: `[Preview](${href})` },
-			global: { provide: {
-				openAgentChatPreview,
-				[INSTANCE_AI_EMBED_SUBJECT_KEY]: computed(() => ({
-					type: 'agent' as const, id: 'agent-1', projectId: 'project-1',
-				})),
-			} },
+			global: {
+				provide: {
+					openAgentChatPreview,
+					[INSTANCE_AI_EMBED_SUBJECT_KEY]: computed(() => ({
+						type: 'agent' as const,
+						id: 'agent-1',
+						projectId: 'project-1',
+					})),
+				},
+			},
 		});
 		await flushPromises();
 		const link = container.querySelector('a');
