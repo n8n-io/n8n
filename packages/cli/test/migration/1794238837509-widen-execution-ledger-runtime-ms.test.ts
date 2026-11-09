@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
-const MIGRATION_NAME = 'WidenExecutionLedgerRuntimeMs1794213979923';
+const MIGRATION_NAME = 'WidenExecutionLedgerRuntimeMs1794238837509';
 const CREATE_MIGRATION_NAME = 'CreateExecutionLedgerTable1793280161358';
 const isSqlite = (process.env.DB_TYPE ?? 'sqlite') === 'sqlite';
 

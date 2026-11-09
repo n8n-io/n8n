@@ -9,7 +9,7 @@ const intMax = 2_147_483_647;
  * SQLite stores `INTEGER` in 64 bits, so it needs no change. Narrowing back clamps a longer
  * runtime to the `int` maximum.
  */
-export class WidenExecutionLedgerRuntimeMs1794213979923 implements ReversibleMigration {
+export class WidenExecutionLedgerRuntimeMs1794238837509 implements ReversibleMigration {
 	async up({ escape, runQuery }: MigrationContext) {
 		await runQuery(
 			`ALTER TABLE ${escape.tableName(tableName)} ALTER COLUMN ${escape.columnName(columnName)} TYPE BIGINT`,
