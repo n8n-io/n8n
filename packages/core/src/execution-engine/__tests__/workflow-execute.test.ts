@@ -39,6 +39,7 @@ import type {
 import {
 	UnexpectedError,
 	createRunExecutionData,
+	Expression,
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeHelpers,
@@ -1598,6 +1599,49 @@ describe('WorkflowExecute', () => {
 				expect(fullRunData.merge !== undefined).toBe(mergeRuns);
 				expect(executedNodes(partialRunData)).toEqual(executedNodes(fullRunData));
 				expect(partialRunData.merge?.[0]?.data).toEqual(fullRunData.merge?.[0]?.data);
+			});
+
+			test('runs a merge node that gets data on one input only when expressions run in the vm engine', async () => {
+				// ARRANGE
+				await Expression.initExpressionEngine({
+					engine: 'vm',
+					bridgeTimeout: 1000,
+					bridgeMemoryLimit: 128,
+					poolSize: 1,
+					maxCodeCacheSize: 10,
+				});
+
+				try {
+					const waitPromise = createDeferredPromise<IRun>();
+					const workflow = unusedIfBranch(append).toWorkflow({
+						name: '',
+						active: false,
+						nodeTypes,
+						settings: { executionOrder: 'v1' },
+					});
+					const item = { json: { value: 1 } };
+					const runData: IRunData = {
+						trigger: [toITaskData([{ data: { value: 1 } }])],
+						if: [{ ...toITaskData([]), data: { main: [[item], []] } }],
+					};
+
+					// ACT
+					await new WorkflowExecute(
+						Helpers.WorkflowExecuteAdditionalData(waitPromise),
+						'manual',
+					).runPartialWorkflow2(workflow, runData, {}, [], {
+						nodeName: 'merge',
+						mode: 'inclusive',
+					});
+					const result = await waitPromise.promise;
+
+					// ASSERT
+					expect(result.data.resultData.error).toBeUndefined();
+					const mergeOutput = result.data.resultData.runData.merge?.[0]?.data?.main?.[0];
+					expect(mergeOutput?.map(({ json }) => json)).toEqual([item.json]);
+				} finally {
+					await Expression.disposeExpressionEngine();
+				}
 			});
 		});
 	});

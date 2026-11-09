@@ -360,11 +360,6 @@ export class WorkflowExecute {
 			resumeToken: this.runExecutionData.resumeToken,
 		});
 
-		// The engine checks the waiting nodes only after it ran a node. A waiting
-		// node can be the only node to run, e.g. a Merge node whose other input
-		// gets no data. So check the waiting nodes once before the start.
-		this.addWaitingNodeToEmptyStack(workflow);
-
 		// Still passing the original workflow here, because the WorkflowDataProxy
 		// needs it to create more useful error messages, e.g. differentiate
 		// between a node not being connected to the node referencing it or a node
@@ -2477,6 +2472,11 @@ export class WorkflowExecute {
 			const returnPromise = (async () => {
 				await this.initializeExecution(workflow, hooks);
 				this.checkForWorkflowIssues(workflow);
+				// The engine checks the waiting nodes only after it ran a node. In a
+				// partial execution a waiting node can be the only node to run, e.g. a
+				// Merge node whose other input gets no data. The check evaluates
+				// expressions, so it must run after `initializeExecution`.
+				this.addWaitingNodeToEmptyStack(workflow);
 
 				executionLoop: while (this.isExecutionStackNotEmpty()) {
 					if (this.shouldStopExecuting()) {
