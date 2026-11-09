@@ -397,8 +397,9 @@ const hasImagePreview = computed(
 	border-radius: var(--radius--md);
 	background-color: var(--n8n-attachment--background-color, var(--background--surface));
 	outline: 1px solid var(--color--black-alpha-100);
-	outline-offset: -1px;
 	border: 1px solid transparent;
+	/** This needs to be double border so offset sits over media **/
+	outline-offset: -2px;
 	transition: translate var(--duration--snappy) var(--easing--ease-out);
 
 	@include motion.reduced-motion;
