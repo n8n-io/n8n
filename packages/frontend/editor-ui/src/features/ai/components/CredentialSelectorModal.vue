@@ -126,7 +126,7 @@ function onCancel() {
 			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 		</N8nDialogHeader>
 		<N8nDialogBody>
-			<N8nDialogDescription size="small" color="text-base">
+			<N8nDialogDescription>
 				{{ description }}
 			</N8nDialogDescription>
 			<div :class="$style.credentialContainer">
