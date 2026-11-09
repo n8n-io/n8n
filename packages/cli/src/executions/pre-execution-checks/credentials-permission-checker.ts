@@ -257,8 +257,8 @@ export class CredentialsPermissionChecker {
 	 * on a triggered one. Consulted only for credentials the project route already
 	 * rejected, so a workflow whose credentials are all shared with its project
 	 * never needs one.
-	 * @returns how many credentials the run may use only through the acting
-	 * user's own access (the personal route), for execution telemetry.
+	 * @returns for execution telemetry, how many credentials the run uses that the
+	 * workflow's projects do not carry and that the acting user's personal space owns.
 	 */
 	async check(
 		workflowId: string,
@@ -275,7 +275,11 @@ export class CredentialsPermissionChecker {
 			await this.findInaccessible(workflowId, workflowCredIds, actingUserId);
 
 		if (inaccessibleIds.length === 0) {
-			return { personalCredentialsCount: personalRouteIds.length };
+			const personalCredentialsCount = await this.countOwnedByPersonalProjectOf(
+				actingUserId,
+				personalRouteIds,
+			);
+			return { personalCredentialsCount };
 		}
 
 		const unusable = unusableForActingUser.find((c) => c.id === inaccessibleIds[0]);
@@ -283,6 +287,33 @@ export class CredentialsPermissionChecker {
 		throw unusable
 			? new UnusableCredentialForUserError(nodeToFlag, unusable)
 			: new InaccessibleCredentialError(nodeToFlag, homeProject);
+	}
+
+	/**
+	 * How many of `credentialIds` the personal project of `userId` owns. The user
+	 * route also accepts direct shares, other team memberships, and an instance-wide
+	 * grant, which telemetry must not count as personal credentials.
+	 */
+	private async countOwnedByPersonalProjectOf(
+		userId: string | undefined,
+		credentialIds: string[],
+	): Promise<number> {
+		if (!userId || credentialIds.length === 0) return 0;
+
+		const ownerProjects =
+			await this.sharedCredentialsRepository.findOwnerProjectsByCredentialIds(credentialIds);
+		const personalProjectIds = [...ownerProjects.values()]
+			.filter((project) => project.type === 'personal')
+			.map((project) => project.id);
+		if (personalProjectIds.length === 0) return 0;
+
+		const personalProjectOwners =
+			await this.ownershipService.getPersonalProjectOwnersCached(personalProjectIds);
+
+		return credentialIds.filter((id) => {
+			const ownerProject = ownerProjects.get(id);
+			return ownerProject && personalProjectOwners.get(ownerProject.id)?.id === userId;
+		}).length;
 	}
 
 	/**
