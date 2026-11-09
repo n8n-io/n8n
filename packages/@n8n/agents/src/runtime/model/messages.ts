@@ -132,18 +132,6 @@ function isReasoningMergedByProvider(part: AiContentPart): boolean {
 	);
 }
 
-/** Whether a reasoning block carries replay data that the provider binds to the prompt prefix. */
-export function isReasoningBoundToPrefix(block: MessageContent): boolean {
-	if (!isReasoning(block)) return false;
-	const namespaces = [
-		...Object.keys(block.providerMetadata ?? {}),
-		...Object.keys(block.providerOptions ?? {}),
-	];
-	return namespaces.some(
-		(namespace) => getProviderQuirks(namespace).reasoningBoundToPrefix === true,
-	);
-}
-
 export type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
 
 export function isContentToolResultOutput(value: unknown): value is ContentToolResultOutput {

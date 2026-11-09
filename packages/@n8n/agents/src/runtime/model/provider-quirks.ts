@@ -27,12 +27,6 @@ export interface ProviderQuirks {
 	 * turns still drop them.
 	 */
 	replayReasoningText?: boolean;
-	/**
-	 * Signed reasoning is bound to the prompt it was created under. After the
-	 * runtime rewrites that prompt (mid-run observation), the provider rejects
-	 * the replay, so the runtime drops it.
-	 */
-	reasoningBoundToPrefix?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
@@ -44,17 +38,25 @@ export interface ProviderQuirks {
 	) => Record<string, Record<string, unknown>>;
 }
 
-/** Shared Anthropic Messages thinking mapping (also used by Vertex Anthropic). */
+/**
+ * Shared Anthropic Messages thinking mapping (also used by Vertex Anthropic).
+ * `blockBinding` applies to the adaptive shape only: the budget shape does not accept it.
+ */
 function anthropicThinkingToProviderOptions(
 	thinking: ThinkingConfig,
 	modelId: string,
+	blockBinding?: { prefixMismatchBehavior: 'drop_block' },
 ): Record<string, Record<string, unknown>> {
 	const cfg = thinking as AnthropicThinkingConfig;
 	const adaptive = cfg.mode === 'adaptive' ? cfg : undefined;
 	if (anthropicUsesAdaptiveThinking(modelId)) {
 		return {
 			anthropic: {
-				thinking: { type: 'adaptive', display: adaptive?.display ?? 'summarized' },
+				thinking: {
+					type: 'adaptive',
+					display: adaptive?.display ?? 'summarized',
+					...(blockBinding !== undefined ? { blockBinding } : {}),
+				},
 				effort: adaptive?.effort ?? 'medium',
 			},
 		};
@@ -118,12 +120,6 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// that produced them, so a merged message with signed reasoning from two
 		// responses is rejected with "thinking blocks ... cannot be modified".
 		mergesAdjacentAssistantMessages: true,
-		// QUIRK(anthropic): the signature binds a thinking block to the system
-		// prompt and the messages before it. Mid-run observation replaces the
-		// first message and the system prompt, so the replay is rejected with
-		// "thinking block bound to a different conversation". A tool loop that
-		// continues without the thinking blocks is accepted.
-		reasoningBoundToPrefix: true,
 		// QUIRK(anthropic): defaults every function tool to eager_input_streaming,
 		// which forwards the model's raw argument tokens without server-side JSON
 		// validation — malformed inputs (e.g. unquoted string values) then reach
@@ -134,7 +130,14 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// QUIRK(anthropic): the two thinking APIs are mutually exclusive — an
 		// adaptive model rejects `type: 'enabled'` and vice versa — so the model
 		// decides the shape and the config only fills in its details.
-		thinkingToProviderOptions: anthropicThinkingToProviderOptions,
+		// QUIRK(anthropic): Anthropic binds signed thinking to the content before
+		// it. The runtime rewrites that content on purpose (mid-run observation,
+		// deferred tool and skill instructions), so ask Anthropic to drop stale
+		// thinking blocks instead of rejecting the request.
+		thinkingToProviderOptions: (thinking, modelId) =>
+			anthropicThinkingToProviderOptions(thinking, modelId, {
+				prefixMismatchBehavior: 'drop_block',
+			}),
 	},
 	// Vertex Claude uses AnthropicLanguageModel under the hood — providerOptions
 	// stay under the `anthropic` namespace even though the model id prefix differs.

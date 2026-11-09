@@ -294,44 +294,6 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		expect(await store.getCursor(THREAD_ID)).not.toBeNull();
 	});
 
-	it('stops replaying signed reasoning of visible messages after activation', async () => {
-		const store = new InMemoryMemory();
-		const d = deferred<string>();
-		const { orchestrator, tracker } = buildOrchestrator(store, {
-			observerThresholdTokens: 1000,
-			observe: async () => await d.promise,
-			observationLogTailLimit: 20,
-		});
-		const list = new AgentMessageList();
-		list.addInput([userMsg('x'.repeat(750))]);
-		await orchestrator.maybeObserveMidRun(list, runOptions());
-
-		// Added after the observed window, so the mask leaves it visible.
-		list.addResponse([
-			{
-				role: 'assistant',
-				content: [
-					{
-						type: 'reasoning',
-						text: 'thinking',
-						providerMetadata: { anthropic: { signature: 'sig' } },
-					},
-					{ type: 'text', text: 'reply' },
-				],
-			},
-		]);
-		const hasReasoning = () =>
-			JSON.stringify(list.forLlm('base', undefined, 'anthropic').messages).includes('thinking');
-		expect(hasReasoning()).toBe(true);
-
-		d.resolve('* CRITICAL (14:30) Background observation.');
-		await tracker.flush();
-		await orchestrator.maybeObserveMidRun(list, runOptions());
-
-		expect(list.observationLogMemory).toContain('Background observation.');
-		expect(hasReasoning()).toBe(false);
-	});
-
 	it('joins the in-flight observer when the hard threshold is crossed', async () => {
 		const store = new InMemoryMemory();
 		const d = deferred<string>();

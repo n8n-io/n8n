@@ -657,8 +657,6 @@ export class MemoryOrchestrator {
 		const { cursor } = await readObservationState(memory, persistence.threadId);
 		if (!cursor) return;
 		list.maskObservedMessages(cursor);
-		// The mask and the new observation log rewrite the prompt prefix.
-		list.markPromptPrefixRewritten();
 		this.pruneVisibleTokenEstimates(list);
 		await this.setListObservationLogMemory(list, persistence);
 	}
