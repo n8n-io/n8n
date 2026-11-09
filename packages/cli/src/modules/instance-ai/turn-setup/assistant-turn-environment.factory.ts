@@ -88,7 +88,6 @@ export interface AssistantTurnEnvironment {
 	memoryModelId: ModelConfig | undefined;
 	orchestrationContext: OrchestrationContext;
 	conversationHistory: ScopedConversationHistory | undefined;
-	aiPreferencesEnabled: boolean;
 	instanceContextEnabled: boolean;
 	nodeUsageEnabled: boolean;
 	skillScope: InstanceAiSkillScope;
@@ -280,7 +279,6 @@ export class AssistantTurnEnvironmentFactory {
 			setupPanelVariant,
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
 			assistantSkillsEnabled,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
@@ -331,7 +329,6 @@ export class AssistantTurnEnvironmentFactory {
 			folderExplorationEnabled,
 			onboardingThread,
 			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
 			assistantSkillsEnabled,
 			modelId,
 			modelFetch: this.modelService.getModelFetch(),
@@ -575,7 +572,6 @@ export class AssistantTurnEnvironmentFactory {
 			memoryModelId,
 			orchestrationContext,
 			conversationHistory,
-			aiPreferencesEnabled,
 			// Reuse the gate results so a rollout change cannot split this turn.
 			instanceContextEnabled,
 			nodeUsageEnabled,
