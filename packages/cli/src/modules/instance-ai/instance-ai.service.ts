@@ -24,6 +24,7 @@ import {
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
+	TOOL_CATALOG_CALL_TOOL_NAME,
 	resolveBuilderToolName,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
@@ -2110,8 +2111,11 @@ export class InstanceAiService {
 	): string | undefined {
 		if (!toolName || !suspendPayload) return undefined;
 		// Only setup suspends with `setupRequests`, so a former multi-action call is a setup.
-		if (resolveBuilderToolName(toolName, 'setup') !== WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW)
-			return undefined;
+		// A deferred `setup_workflow` suspends under the tool catalog's `call_tool` name.
+		const isSetupTool =
+			toolName === TOOL_CATALOG_CALL_TOOL_NAME ||
+			resolveBuilderToolName(toolName, 'setup') === WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW;
+		if (!isSetupTool) return undefined;
 		if (!Array.isArray(suspendPayload.setupRequests)) return undefined;
 		return typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
 	}

@@ -18,7 +18,7 @@ export const RUNTIME_SKILL_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const RUNTIME_SKILL_FRONTMATTER_FIELDS = [
 	'name',
 	'description',
-	'recommended_tools',
+	'recommended_tool_groups',
 	'allowed_tools',
 	'interface',
 	'policy',
@@ -80,7 +80,11 @@ export function parseRuntimeSkillMarkdown(
 	}
 
 	const description = requiredFrontmatterString(frontmatter.data, 'description', errors);
-	const recommendedTools = optionalStringArray(frontmatter.data, 'recommended_tools', errors);
+	const recommendedToolGroups = optionalStringArray(
+		frontmatter.data,
+		'recommended_tool_groups',
+		errors,
+	);
 	const allowedTools = optionalStringArray(frontmatter.data, 'allowed_tools', errors);
 	const skillInterface = optionalSkillInterface(frontmatter.data, errors);
 	const policy = optionalSkillPolicy(frontmatter.data, errors);
@@ -107,7 +111,7 @@ export function parseRuntimeSkillMarkdown(
 		...(options.directory ? { directory: options.directory } : {}),
 		...(options.sourceDirectory ? { sourceDirectory: options.sourceDirectory } : {}),
 		...(options.category ? { category: options.category } : {}),
-		...(recommendedTools ? { recommendedTools } : {}),
+		...(recommendedToolGroups ? { recommendedToolGroups } : {}),
 		...(allowedTools ? { allowedTools } : {}),
 		...(skillInterface ? { interface: skillInterface } : {}),
 		...(policy ? { policy } : {}),

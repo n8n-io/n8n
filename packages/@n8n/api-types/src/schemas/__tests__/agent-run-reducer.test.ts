@@ -853,6 +853,31 @@ describe('agent-run-reducer', () => {
 			expect(tc.renderHint).toBe('builder');
 		});
 
+		it('shows the tool that a tool catalog call_tool call runs', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'tool-input-start',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-catalog', toolName: 'call_tool' },
+			});
+			reduceEvent(state, {
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-catalog',
+					toolName: 'call_tool',
+					args: { tool: 'build-workflow', arguments: '{"name":"Tickets"}' },
+				},
+			});
+
+			const tc = state.toolCallsById['tc-catalog'];
+			expect(tc.toolName).toBe('workflow_builder_build_workflow');
+			expect(tc.args).toEqual({ name: 'Tickets' });
+			expect(tc.renderHint).toBe('builder');
+		});
+
 		it('applies rich render hints to background agent tools', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(
