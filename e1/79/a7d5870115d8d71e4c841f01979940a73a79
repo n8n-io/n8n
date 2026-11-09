@@ -1,0 +1,11 @@
+packages/nodes-base/nodes/Netlify/test/NetlifyTrigger.node.test.ts
+  ai_agent 96,109-110
+packages/nodes-base/nodes/Netlify/NetlifyTrigger.node.ts
+  ai_agent 133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e179a7d5870115d8d71e4c841f01979940a73a79",
+  "prompts": {}
+}
