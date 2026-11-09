@@ -25,7 +25,7 @@ export class AgentNodeVersionRule implements IBreakingChangeWorkflowRule {
 			version: 'v3',
 			title: 'AI Agent versions below 2 are removed',
 			description:
-				'AI Agent versions below 2 are removed. After the update, AI Agent nodes that are currently on a version below 2 will run with version 2 behavior, which only supports the Tools Agent.',
+				'AI Agent versions below 2 are removed. After the update, AI Agent nodes on a version below 2 run with version 2 behavior. Replace each affected AI Agent node with an AI Agent on the latest version.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'behaviorChanges',
 		};
@@ -55,7 +55,8 @@ export class AgentNodeVersionRule implements IBreakingChangeWorkflowRule {
 
 		return reportAffectedNodes(affectedNodes, (node) => ({
 			title: `Node '${node.name}' uses AI Agent version ${node.typeVersion}`,
-			description: 'After the update, this node will run with version 2 behavior.',
+			description:
+				'After the update, this node runs with version 2 behavior. Replace it with an AI Agent on the latest version.',
 			level: 'warning',
 		}));
 	}

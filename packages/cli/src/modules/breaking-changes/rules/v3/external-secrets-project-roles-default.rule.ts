@@ -25,7 +25,7 @@ export class ExternalSecretsProjectRolesDefaultRule implements IBreakingChangeIn
 			version: 'v3',
 			title: 'External secrets access for project roles is on by default',
 			description:
-				'In v3, project editors and admins get external-secrets scopes in their projects by default, and the Settings → External Secrets toggle is removed. Instances that keep this toggle off today widen these role permissions after the update.',
+				'In v3, project editors and admins get external-secrets scopes in their projects by default, and the Settings → External Secrets toggle is removed. Instances that keep this toggle off today widen these role permissions after the update. To limit access, change the project roles of people who must not use external secrets before the update.',
 			category: BreakingChangeCategory.environment,
 			impact: 'behaviorChanges',
 			documentationUrl: 'https://docs.n8n.io/external-secrets/#access-for-project-roles',
@@ -55,9 +55,9 @@ export class ExternalSecretsProjectRolesDefaultRule implements IBreakingChangeIn
 			],
 			recommendations: [
 				{
-					action: 'Review project editors and admins who gain access',
+					action: 'Check which project editors and admins get external secrets access',
 					description:
-						'Check which project editors and admins get external-secrets access under the new default. No action is needed to keep the new default. To limit access, review project memberships before the update.',
+						'Under the new default, every project editor and admin can read and use external secrets in their projects. No action is needed to keep the new default. If a person must not use external secrets in a project, change their role in that project before the update.',
 				},
 			],
 		};

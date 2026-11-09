@@ -25,7 +25,7 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 			version: 'v3',
 			title: '"Always Output Data" behavior fix on nodes with multiple outputs',
 			description:
-				'On nodes with multiple outputs, "Always Output Data" currently adds an empty item to the first output even when another output produced data, which misroutes items. n8n 3.0 fixes this: it adds the empty item only when every output is empty. Workflows relying on the current behavior produce different output after the update.',
+				'On nodes with multiple outputs, "Always Output Data" currently adds an empty item to the first output even when another output produced data, which misroutes items. n8n 3.0 fixes this: it adds the empty item only when every output is empty. Check the nodes connected to the first output of each affected node, and change them if they rely on the empty item.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'behaviorChanges',
 		};
@@ -36,9 +36,9 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 	): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
-				action: 'Review nodes using "Always Output Data" with multiple outputs',
+				action: 'Update logic that relies on the "Always Output Data" empty item',
 				description:
-					'After the update to n8n 3.0, these nodes no longer add an empty item to the first output when another output has data. Update any downstream logic that relies on that empty first-output item (for example a branch off the first output that runs on the empty case).',
+					'For each affected node, check the nodes connected to its first output. If they run on the empty item while another output has data, change them so they do not depend on it. After the update, the node sends the empty item only when every output is empty.',
 			},
 		];
 	}
@@ -59,7 +59,7 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 		return reportAffectedNodes(affectedNodes, (node) => ({
 			title: `Node '${node.name}' uses "Always Output Data" and has multiple outputs`,
 			description:
-				'"Always Output Data" currently adds an empty item to this node\'s first output even when another output has data. n8n 3.0 fixes this: it adds the empty item only when every output is empty, so this node\'s output changes. Review any logic downstream of its first output.',
+				'"Always Output Data" currently adds an empty item to this node\'s first output even when another output has data. n8n 3.0 fixes this: it adds the empty item only when every output is empty, so this node\'s output changes. Check the nodes connected to its first output, and change them if they rely on the empty item.',
 			level: 'warning',
 		}));
 	}

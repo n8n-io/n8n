@@ -23,7 +23,7 @@ export class EvaluateExpressionCodeNodeRule implements IBreakingChangeWorkflowRu
 			version: 'v3',
 			title: '$evaluateExpression() is removed from the Code node',
 			description:
-				'The $evaluateExpression() method is removed from the Code node (JavaScript). Task runners in secure mode, the default since n8n 2.0, already fail on this call. Task runners in insecure mode (N8N_RUNNERS_INSECURE_MODE=true) fail after the update. $evaluateExpression() still works in {{ }} expression fields.',
+				'The $evaluateExpression() method is removed from the Code node (JavaScript). Task runners in secure mode, the default since n8n 2.0, already fail on this call. Task runners in insecure mode (N8N_RUNNERS_INSECURE_MODE=true) fail after the update. $evaluateExpression() still works in {{ }} expression fields. Move each expression into a node field before the Code node.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
 		};
@@ -60,7 +60,7 @@ export class EvaluateExpressionCodeNodeRule implements IBreakingChangeWorkflowRu
 
 		return reportAffectedNodes(affectedNodes, (node) => ({
 			title: `Node '${node.name}' calls ${HELPER_NAME}()`,
-			description: `The JavaScript code in this node calls ${HELPER_NAME}(), which is removed from the Code node. The node fails after the update.`,
+			description: `The JavaScript code in this node calls ${HELPER_NAME}(), which is removed from the Code node. The node fails after the update. Move the expression into a node field before this node, and read the result from the input item.`,
 			level: 'error',
 		}));
 	}
