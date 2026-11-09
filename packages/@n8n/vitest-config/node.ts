@@ -7,6 +7,7 @@ import type { InlineConfig } from 'vitest/node';
 import { changedFileCoverage } from './changed-file-coverage.js';
 import { coverageExcludes } from './coverage-excludes.js';
 import { profilingConfig, profilingReporters } from './profiling.js';
+import { retryConfig } from './retry.js';
 
 export { profilingReporters } from './profiling.js';
 
@@ -66,6 +67,7 @@ export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig
 	// Externalized, pnpm can link it to a second vitest copy, which breaks snapshot state.
 	server: { deps: { inline: ['vitest-mock-extended'] } },
 	...forkPoolOptions(),
+	...retryConfig(),
 	outputFile: { junit: './junit.xml' },
 	...(process.env.COVERAGE_ENABLED === 'true'
 		? {

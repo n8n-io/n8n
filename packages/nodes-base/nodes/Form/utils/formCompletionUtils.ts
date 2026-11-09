@@ -90,7 +90,8 @@ export const renderFormCompletion = async (
 	const completionMessage = handleNewlines(
 		sanitizeHtml(context.getNodeParameter('completionMessage', '') as string),
 	);
-	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
+	const redirectUrl =
+		validateSafeRedirectUrl(context.getNodeParameter('redirectUrl', '') as string) ?? undefined;
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
 		customCss?: string;
@@ -121,8 +122,15 @@ export const renderFormCompletion = async (
 			`{{ ${triggerRef}.params.options?.appendAttribution === false ? false : true }}`,
 		) as boolean);
 
-	if (respondWith !== 'redirect' && !isFormHtmlSandboxingDisabled()) {
+	// Without a valid URL the page shows the completion card, so it keeps the sandbox.
+	const redirects = respondWith === 'redirect' && redirectUrl !== undefined;
+
+	if (!redirects && !isFormHtmlSandboxingDisabled()) {
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+	} else {
+		// The form route sandboxes every response. Remove it here: the redirect does not
+		// work under the sandbox (n8n-io/n8n#20303).
+		res.removeHeader('Content-Security-Policy');
 	}
 
 	// Embed the form auth token so the completion page's auto-POST (which
@@ -146,7 +154,7 @@ export const renderFormCompletion = async (
 		responseText,
 		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
-		redirectUrl: validateSafeRedirectUrl(redirectUrl) ?? undefined,
+		redirectUrl,
 		authToken,
 		// The completion page reloads itself while the run finishes, and that hop is
 		// subject to the same cookie semantics as every other page of the form, so it

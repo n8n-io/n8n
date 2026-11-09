@@ -233,7 +233,10 @@ type EntityName =
 	| 'TokenExchangeJti'
 	| 'TrustedKeySourceEntity'
 	| 'TrustedKeyEntity'
-	| 'WorkflowStatisticsDelta';
+	| 'TrustedSourceEntity'
+	| 'TrustedSourceIdentityEntity'
+	| 'WorkflowStatisticsDelta'
+	| 'ExecutionLedgerEntity';
 
 /**
  * Truncate specific DB tables in a test DB.

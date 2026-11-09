@@ -99,16 +99,28 @@ export const Sizes: Story = {
 			},
 			components: { N8nBadge },
 			template: `
-				<div style="display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing--sm)">
-					<N8nBadge
-						v-for="size in sizes"
-						:key="size"
-						:size="size"
-						leading-icon="circle-check"
-						variant="success"
-					>
-						Active
-					</N8nBadge>
+				<div style="display: flex; flex-direction: column; gap: var(--spacing--sm)">
+					<div style="display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing--sm)">
+						<N8nBadge
+							v-for="size in sizes"
+							:key="size"
+							:size="size"
+							leading-icon="circle-check"
+							variant="success"
+						>
+							Active
+						</N8nBadge>
+					</div>
+					<div style="display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing--sm)">
+						<N8nBadge
+							v-for="size in sizes"
+							:key="size + '-text'"
+							:size="size"
+							variant="success"
+						>
+							Active
+						</N8nBadge>
+					</div>
 				</div>
 			`,
 		};

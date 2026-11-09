@@ -81,6 +81,10 @@ describe('startStreamSession', () => {
 
 		expect(cleanupRun).toHaveBeenCalledTimes(1);
 		expect(flushTelemetry).toHaveBeenCalledTimes(1);
+		expect(chunks.find((chunk) => chunk.type === 'error')?.error).toMatchObject({
+			name: 'AbortError',
+			message: 'Agent run was aborted',
+		});
 		// guard.fail still ran, so the consumer receives a terminal finish chunk.
 		expect(chunks.some((c) => c.type === 'finish')).toBe(true);
 	});

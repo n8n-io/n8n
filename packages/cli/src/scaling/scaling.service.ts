@@ -8,7 +8,8 @@ import { Container, Service } from '@n8n/di';
 import { decodeBufferBody, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonStringify, OperationalError, UnexpectedError } from 'n8n-workflow';
+import { jsonStringify } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import type { IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
@@ -21,6 +22,7 @@ import { assertNever } from '@/utils';
 import { JOB_TYPE_NAME } from './constants';
 import { JobOutcomeTracker } from './job-outcome-tracker';
 import { JobProcessor } from './job-processor';
+import { throwJobBackToQueue } from './job-return';
 import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
 import type {
 	JobQueue,
@@ -44,6 +46,8 @@ const CANCEL_WRITE_BUDGET_SHARE = 0.5;
 /** Ceiling for the cancellation write, so a long shutdown window does not stall on it. */
 const MAX_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 
+const CURRENT_JOBS_SETTLE_TIMEOUT_MS = 5 * Time.seconds.toMilliseconds;
+
 @Service()
 export class ScalingService {
 	/** Bull queues keyed by queue name. Pool queues are created lazily. */
@@ -52,6 +56,8 @@ export class ScalingService {
 	private initialQueueName = DEFAULT_QUEUE_NAME;
 
 	private createBullQueue?: (name: string) => JobQueue;
+
+	private stopping = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -169,6 +175,17 @@ export class ScalingService {
 		this.assertQueue();
 
 		void this.defaultQueue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+			if (this.stopping) {
+				const { executionId } = job.data;
+				const jobId = job.id;
+				this.logger.warn(
+					`Worker received job ${jobId} for execution ${executionId} after it began to stop`,
+					{ executionId, jobId },
+				);
+				// A job started this late may not finish before the force exit, so another worker runs it.
+				await throwJobBackToQueue(job, this.logger);
+			}
+
 			try {
 				this.eventService.emit('job-dequeued', {
 					executionId: job.data.executionId,
@@ -249,6 +266,10 @@ export class ScalingService {
 	}
 
 	private async stopWorker() {
+		this.stopping = true;
+
+		const start = Date.now();
+
 		await this.pauseAllQueues();
 
 		const shutdownWindowMs =
@@ -258,12 +279,15 @@ export class ScalingService {
 		// unbounded, so a long queued execution still runs to completion.
 		const drainTimeoutMs = shutdownWindowMs * 0.8;
 
-		const start = Date.now();
-
 		const hasQueuedJobsToDrain = () => this.getRunningJobsCount() !== 0;
 		const hasInProcessExecutionsToDrain = () =>
 			this.activeExecutions.getRunningExecutionIds().length !== 0;
 		const isWithinDrainBudget = () => Date.now() - start < drainTimeoutMs;
+		const getRemainingWindowMs = () => Math.max(0, shutdownWindowMs - (Date.now() - start));
+
+		if (this.globalConfig.queue.suspendExecutionsOnShutdown) {
+			this.jobProcessor.suspendRunningJobs();
+		}
 
 		let count = 0;
 
@@ -280,6 +304,8 @@ export class ScalingService {
 			await sleep(sleepMs);
 		}
 
+		await this.waitForCurrentQueueJobs(getRemainingWindowMs());
+
 		// Cancel the stragglers rather than leave them to run. The task runner stops
 		// next, so they cannot make progress.
 		if (drainTimeoutMs > 0 && hasInProcessExecutionsToDrain() && !isWithinDrainBudget()) {
@@ -292,7 +318,7 @@ export class ScalingService {
 
 			// The force-exit timer is armed at the full window, so the write gets a share of
 			// what is left of it. The rest stays for the shutdown hooks that run after this one.
-			const remainingWindowMs = Math.max(0, shutdownWindowMs - (Date.now() - start));
+			const remainingWindowMs = getRemainingWindowMs();
 			const writeDeadlineMs = Math.min(
 				MAX_CANCEL_WRITE_TIMEOUT_MS,
 				Math.round(remainingWindowMs * CANCEL_WRITE_BUDGET_SHARE),
@@ -310,6 +336,33 @@ export class ScalingService {
 		}
 	}
 
+	// Waits for fetches in flight at the pause, so a job that reaches the handler is returned to the queue before exit.
+	private async waitForCurrentQueueJobs(remainingWindowMs: number) {
+		let timeout: NodeJS.Timeout | undefined;
+
+		const timedOut = new Promise<void>((resolve) => {
+			timeout = setTimeout(
+				resolve,
+				// Leave the other half of what is left for the cancel step that follows.
+				Math.min(CURRENT_JOBS_SETTLE_TIMEOUT_MS, remainingWindowMs / 2),
+			);
+			timeout.unref();
+		});
+
+		const settled = Promise.all(
+			[...this.queueByName.values()].map(async (queue) => await queue.whenCurrentJobsFinished()),
+		).catch((error) => {
+			// Keep stopping; a dropped connection here must not block the cancel step.
+			this.logger.warn('Failed to wait for current queue jobs before stopping', { error });
+		});
+
+		try {
+			await Promise.race([settled, timedOut]);
+		} finally {
+			clearTimeout(timeout);
+		}
+	}
+
 	private logExecutionsToDrain() {
 		const summaries = this.jobProcessor.getRunningJobsSummary();
 		const executionIds = summaries.map((summary) => summary.executionId);
@@ -318,6 +371,17 @@ export class ScalingService {
 			this.logger.info(
 				`Waiting for ${executionIds.length} active executions to finish... (execution IDs: ${executionIds.join(', ')})`,
 				{ executionIds },
+			);
+		}
+
+		const preflightExecutionIds = this.jobProcessor
+			.getJobsInPreflight()
+			.map(({ executionId }) => executionId);
+
+		if (preflightExecutionIds.length > 0) {
+			this.logger.info(
+				`Waiting for ${preflightExecutionIds.length} executions to start... (execution IDs: ${preflightExecutionIds.join(', ')})`,
+				{ executionIds: preflightExecutionIds },
 			);
 		}
 
@@ -340,8 +404,8 @@ export class ScalingService {
 	// #region Jobs
 
 	/** Get and remove the result for a completed job. */
-	popJobResult(executionId: string): JobFinishedProps | undefined {
-		return this.jobOutcomeTracker.popResult(executionId);
+	popJobResult(job: Job): JobFinishedProps | undefined {
+		return this.jobOutcomeTracker.popResult(job);
 	}
 
 	/** Wait until the job ends. Rejects with the failure reason, like Bull's `job.finished()`. */
@@ -418,7 +482,7 @@ export class ScalingService {
 		const props = { jobId: job.id, executionId: job.data.executionId };
 
 		// A removed job emits no completion event, and the caller handles the cancellation
-		this.jobOutcomeTracker.drop(job.data.executionId);
+		this.jobOutcomeTracker.drop(job);
 
 		try {
 			if (await job.isActive()) {
@@ -445,7 +509,26 @@ export class ScalingService {
 	}
 
 	getRunningJobsCount() {
-		return this.jobProcessor.getRunningJobIds().length;
+		return this.jobProcessor.getTrackedJobIds().length;
+	}
+
+	/**
+	 * Sizes of the in-memory collections, for diagnostics and tests.
+	 * `queueListeners` counts Bull event listeners across this process's queues.
+	 */
+	getDiagnosticCounts() {
+		let queueListeners = 0;
+		for (const queue of this.queueByName.values()) {
+			for (const eventName of queue.eventNames()) {
+				queueListeners += queue.listenerCount(eventName);
+			}
+		}
+
+		return {
+			...this.jobOutcomeTracker.getDiagnosticCounts(),
+			queueListeners,
+			runningJobs: this.getRunningJobsCount(),
+		};
 	}
 
 	// #endregion
@@ -538,6 +621,8 @@ export class ScalingService {
 					 * still ends the wait for the job.
 					 */
 					this.jobOutcomeTracker.recordFinished(
+						queue.name,
+						jobId,
 						msg.executionId,
 						msg.version === 2
 							? {
@@ -547,12 +632,14 @@ export class ScalingService {
 									lastNodeExecuted: msg.lastNodeExecuted,
 									usedDynamicCredentials: msg.usedDynamicCredentials,
 									metadata: msg.metadata,
+									...(msg.failedBeforeStart && { failedBeforeStart: true }),
 									startedAt: new Date(msg.startedAt),
 									stoppedAt: new Date(msg.stoppedAt),
 									// Dropping `waitTill` here makes main mistake a waiting execution
 									// for a finished one and delete it when the workflow does not
 									// save successful executions
 									waitTill: msg.waitTill ? new Date(msg.waitTill) : null,
+									nodeTimeSavedMinutes: msg.nodeTimeSavedMinutes,
 								}
 							: undefined,
 					);
@@ -579,7 +666,12 @@ export class ScalingService {
 					);
 
 					// The worker already reported the underlying error, so this copy is only a handled signal
-					this.jobOutcomeTracker.recordFailed(msg.executionId, new OperationalError(msg.errorMsg));
+					this.jobOutcomeTracker.recordFailed(
+						queue.name,
+						jobId,
+						msg.executionId,
+						new OperationalError(msg.errorMsg),
+					);
 					break;
 				case 'abort-job':
 					break; // only for worker
@@ -645,6 +737,7 @@ export class ScalingService {
 
 				// Convert to IRun format
 				const runData: IRun = {
+					// oxlint-disable-next-line typescript/no-deprecated
 					finished: executionData.finished,
 					mode: executionData.mode,
 					startedAt: executionData.startedAt,

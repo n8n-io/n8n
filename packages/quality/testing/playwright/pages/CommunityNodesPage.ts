@@ -19,6 +19,18 @@ export class CommunityNodesPage extends BasePage {
 		return this.page.getByTestId('empty-state');
 	}
 
+	getCommunityCard(packageName: string): Locator {
+		return this.getCommunityCards().filter({ hasText: packageName });
+	}
+
+	getInstallModalError(text: string | RegExp): Locator {
+		return this.getInstallModal().getByText(text);
+	}
+
+	getFailedToLoadIcon(packageName: string): Locator {
+		return this.getCommunityCard(packageName).locator('[data-icon="triangle-alert"]');
+	}
+
 	getInstallButton(): Locator {
 		// Try the empty state first, fallback to header install button
 		const emptyStateButton = this.getEmptyState().locator('button');
@@ -55,8 +67,11 @@ export class CommunityNodesPage extends BasePage {
 		return this.actionToggle.getAction('uninstall');
 	}
 
-	getUpdateButton(): Locator {
-		return this.getCommunityCards().first().getByRole('button', { name: 'Update' });
+	getUpdateButton(packageName?: string): Locator {
+		const card = packageName
+			? this.getCommunityCard(packageName)
+			: this.getCommunityCards().first();
+		return card.getByRole('button', { name: 'Update' });
 	}
 
 	getConfirmUpdateButton(): Locator {
@@ -92,8 +107,8 @@ export class CommunityNodesPage extends BasePage {
 		await this.getUninstallAction().click();
 	}
 
-	async clickUpdateButton(): Promise<void> {
-		await this.getUpdateButton().click();
+	async clickUpdateButton(packageName?: string): Promise<void> {
+		await this.getUpdateButton(packageName).click();
 	}
 
 	async clickConfirmUpdate(): Promise<void> {
@@ -105,18 +120,23 @@ export class CommunityNodesPage extends BasePage {
 	}
 
 	// Helper methods for common workflows
-	async installPackage(packageName: string): Promise<void> {
+	/** Fills and submits the install dialog without waiting for the result. */
+	async submitInstall(packageName: string): Promise<void> {
 		await this.clickInstallButton();
 		await this.fillPackageName(packageName);
 		await this.clickUserAgreementCheckbox();
 		await this.clickInstallPackageButton();
+	}
+
+	async installPackage(packageName: string): Promise<void> {
+		await this.submitInstall(packageName);
 
 		// Wait for install modal to close
 		await this.getInstallModal().waitFor({ state: 'hidden' });
 	}
 
-	async updatePackage(): Promise<void> {
-		await this.clickUpdateButton();
+	async updatePackage(packageName?: string): Promise<void> {
+		await this.clickUpdateButton(packageName);
 		await this.clickConfirmUpdate();
 	}
 

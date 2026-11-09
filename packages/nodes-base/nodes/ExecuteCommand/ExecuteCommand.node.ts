@@ -45,7 +45,13 @@ async function execPromise(command: string, abortSignal?: AbortSignal): Promise<
 		// that detached console and their stdout never reaches our pipe. Windows kills
 		// the tree via `taskkill /T`, so detaching is unnecessary there.
 		const detached = process.platform !== 'win32';
-		const child = spawn(command, { cwd: process.cwd(), shell: true, detached });
+		// `windowsHide` stops Windows from opening a visible console window for the command.
+		const child = spawn(command, {
+			cwd: process.cwd(),
+			shell: true,
+			detached,
+			windowsHide: true,
+		});
 
 		child.stdout.setEncoding('utf8');
 		child.stderr.setEncoding('utf8');
@@ -79,7 +85,7 @@ async function execPromise(command: string, abortSignal?: AbortSignal): Promise<
 				return;
 			}
 			if (process.platform === 'win32') {
-				spawn('taskkill', ['/pid', child.pid.toString(), '/T', '/F']);
+				spawn('taskkill', ['/pid', child.pid.toString(), '/T', '/F'], { windowsHide: true });
 				return;
 			}
 			try {

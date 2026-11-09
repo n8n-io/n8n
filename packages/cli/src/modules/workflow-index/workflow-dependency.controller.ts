@@ -31,6 +31,7 @@ export class WorkflowDependencyController {
 			body.resourceIds,
 			body.resourceType,
 			req.user,
+			{ listUnavailableCredentials: true },
 		);
 	}
 

@@ -80,6 +80,20 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 		return (result.affected ?? 0) > 0;
 	}
 
+	async markUserPaused(
+		runId: string,
+		agentId: string,
+		state: string,
+		pausedState: string,
+		updatedAt: Date,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ runId, agentId, state, expired: false, updatedAt },
+			{ state: pausedState, updatedAt },
+		);
+		return result.affected === 1;
+	}
+
 	async expireByRunIdAndAgentId(
 		runId: string,
 		agentId: string,

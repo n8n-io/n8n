@@ -1,5 +1,5 @@
 import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
 
 @SystemTask()
 export class DummySystemTask implements SystemTask {
@@ -7,15 +7,7 @@ export class DummySystemTask implements SystemTask {
 
 	schedule: SystemTaskSchedule = intervalFromSeconds(60);
 
-	effects: SystemTaskEffects = 'idempotent';
-
-	placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
-
-	retryDelaySeconds?: number;
-
-	maxAttempts?: number;
-
-	misfireGraceSeconds?: number;
+	target: SystemTaskTarget = { scope: 'cluster', leaderTimer: {} };
 
 	runCount = 0;
 
@@ -37,7 +29,7 @@ export class OtherDummySystemTask extends DummySystemTask {
 export class PerInstanceDummySystemTask extends DummySystemTask {
 	name = 'per-instance-dummy';
 
-	placement: SystemTaskPlacement = {
+	target: SystemTaskTarget = {
 		scope: 'instance',
 		instanceTypes: ['main', 'worker', 'webhook'],
 	};

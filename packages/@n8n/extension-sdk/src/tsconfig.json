@@ -1,0 +1,8 @@
+{
+	"extends": "../tsconfig.common.json",
+	"compilerOptions": {
+		"composite": false,
+		"noEmit": true
+	},
+	"include": ["**/*.ts"]
+}

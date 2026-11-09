@@ -1,7 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
+import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import { EngineConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
-import { ErrorReporter } from 'n8n-core';
+import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import * as CrashJournal from '@/crash-journal';
@@ -12,8 +14,8 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
-import { RedisExecutionResponseSender } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
-import type { RedisResponsePublisher } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
+import { ExecutionChannelSender } from '@/modules/engine-v2/execution-channel/execution-channel-sender';
+import type { RedisChannelPublisher } from '@/modules/engine-v2/execution-channel/redis-execution-channel-publisher';
 import { NodeTypes } from '@/node-types';
 import { OtelService } from '@/modules/otel/otel.service';
 import { PostHogClient } from '@/posthog';
@@ -32,7 +34,13 @@ loadNodesAndCredentials.init.mockResolvedValue(undefined);
 loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
 const runtime = mockInstance(EngineV2Runtime);
 const taskRunnerModule = mockInstance(TaskRunnerModule);
-const publisher = mock<RedisResponsePublisher>();
+const binaryDataConfig = mockInstance(BinaryDataConfig, { mode: 'filesystem' });
+const binaryDataService = mockInstance(BinaryDataService);
+const objectStoreService = mockInstance(ObjectStoreService);
+// Mocked so the tests do not depend on the storage env of the machine.
+const objectStoreConfig = mockInstance(ObjectStoreConfig, { bucket: { name: '', region: '' } });
+const azureBlobConfig = mockInstance(AzureBlobConfig, { containerName: '' });
+const publisher = mock<RedisChannelPublisher>();
 const redisClientService = mockInstance(RedisClientService, {
 	toValidPrefix: (prefix: string) => prefix,
 	createClient: vi.fn(() => publisher) as unknown as RedisClientService['createClient'],
@@ -55,6 +63,9 @@ describe('Engine', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		binaryDataConfig.mode = 'filesystem';
+		objectStoreConfig.bucket.name = '';
+		azureBlobConfig.containerName = '';
 		// The package test script sets `DB_TYPE`, which the command refuses. Start
 		// from an env with no control plane database and no encryption key.
 		process.env = Object.fromEntries(
@@ -177,7 +188,7 @@ describe('Engine', () => {
 			await createEngine().init();
 
 			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'publisher(n8n)' });
-			expect(runtime.init).toHaveBeenCalledWith(expect.any(RedisExecutionResponseSender));
+			expect(runtime.init).toHaveBeenCalledWith(expect.any(ExecutionChannelSender));
 		});
 
 		it('starts the data plane after the base init and finishes loading the nodes', async () => {
@@ -188,6 +199,56 @@ describe('Engine', () => {
 				vi.mocked(loadNodesAndCredentials.init).mock.invocationCallOrder[0],
 			);
 			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
+		});
+
+		describe('binary data store', () => {
+			it('initialises the store without reading the signing secret from the control plane', async () => {
+				await createEngine().init();
+
+				expect(binaryDataService.init).toHaveBeenCalledTimes(1);
+				expect(binaryDataConfig.initialize).not.toHaveBeenCalled();
+			});
+
+			it('refuses database mode at start, before the data plane runs', async () => {
+				binaryDataConfig.mode = 'database';
+
+				await expect(createEngine().init()).rejects.toThrow('N8N_DEFAULT_BINARY_DATA_MODE');
+				expect(binaryDataService.init).not.toHaveBeenCalled();
+				expect(runtime.init).not.toHaveBeenCalled();
+			});
+
+			it('refuses s3 mode without a bucket name', async () => {
+				binaryDataConfig.mode = 's3';
+
+				await expect(createEngine().init()).rejects.toThrow('N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME');
+				expect(binaryDataService.init).not.toHaveBeenCalled();
+				expect(runtime.init).not.toHaveBeenCalled();
+			});
+
+			it('refuses azure mode without a container name', async () => {
+				binaryDataConfig.mode = 'azure';
+
+				await expect(createEngine().init()).rejects.toThrow(
+					'N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME',
+				);
+				expect(binaryDataService.init).not.toHaveBeenCalled();
+				expect(runtime.init).not.toHaveBeenCalled();
+			});
+
+			it('initialises the store before the data plane starts', async () => {
+				await createEngine().init();
+
+				expect(vi.mocked(runtime.init).mock.invocationCallOrder[0]).toBeGreaterThan(
+					vi.mocked(binaryDataService.init).mock.invocationCallOrder[0],
+				);
+			});
+
+			it('starts without an S3 bucket in filesystem mode', async () => {
+				await createEngine().init();
+
+				expect(objectStoreService.init).not.toHaveBeenCalled();
+				expect(binaryDataService.setManager).not.toHaveBeenCalled();
+			});
 		});
 	});
 

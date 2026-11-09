@@ -174,11 +174,20 @@
         "usage": {
             "type": "object",
             "properties": {
+                "measuredTokens": {
+                    "type": "integer"
+                },
+                "outputTokens": {
+                    "type": "integer"
+                },
+                "scaledTokens": {
+                    "type": "integer"
+                },
                 "tokens": {
                     "type": "integer"
                 }
             }
         }
     },
-    "version": 8
+    "version": 9
 }

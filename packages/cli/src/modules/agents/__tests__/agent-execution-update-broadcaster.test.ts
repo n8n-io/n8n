@@ -98,6 +98,27 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		for (const [, userIds] of push.sendToUsers.mock.calls) expect(userIds).toEqual(['user-2']);
 	});
 
+	it('resolves the owner of a private thread by agent:execute, so chat-only members get updates', async () => {
+		threadRepository.findOneBy.mockResolvedValue({
+			...thread,
+			accessScope: 'user',
+			ownerId: 'user-2',
+		});
+
+		broadcaster.notify(update);
+
+		await vi.waitFor(() => expect(push.sendToUsers).toHaveBeenCalled());
+		expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:execute']);
+		expect(roleService.rolesWithScope).not.toHaveBeenCalledWith('project', ['agent:read']);
+	});
+
+	it('resolves the readers of a shared project thread by agent:read', async () => {
+		broadcaster.notify(update);
+
+		await vi.waitFor(() => expect(push.sendToUsers).toHaveBeenCalled());
+		expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:read']);
+	});
+
 	it.each(['isWorker', 'isMultiMain'] as const)(
 		'delivers parent task updates locally and relays them with %s',
 		async (mode) => {

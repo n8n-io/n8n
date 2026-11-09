@@ -67,18 +67,6 @@ export default defineConfig(
 		},
 	},
 	{
-		files: ['evaluations/computer-use/report-html.ts'],
-		rules: {
-			// Large template literal + inline CSS: type-aware `no-unsafe-*` rules
-			// can false-positive (imports/fields show as `error` in some editors).
-			// `tsc -p` still typechecks this file (evaluations/** is in tsconfig).
-			'@typescript-eslint/no-unsafe-assignment': 'off',
-			'@typescript-eslint/no-unsafe-member-access': 'off',
-			'@typescript-eslint/no-unsafe-argument': 'off',
-			'@typescript-eslint/no-unsafe-call': 'off',
-		},
-	},
-	{
 		files: ['evaluations/clients/n8n-client.ts'],
 		// An evaluation harness that talks to a local instance it started
 		// itself, so the guarded client buys nothing here.

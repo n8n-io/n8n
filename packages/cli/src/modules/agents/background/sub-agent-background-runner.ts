@@ -1,14 +1,15 @@
 import { createChildSubAgentTaskPath } from '@n8n/agents';
-import type { SubAgentSource, SubAgentTaskDifficulty } from '@n8n/api-types';
+import type { AgentPlanTaskRef, SubAgentSource, SubAgentTaskDifficulty } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 
 import {
 	AgentBackgroundJobService,
+	EXPIRED_BACKGROUND_CHECKPOINT_ERROR,
 	SUB_AGENT_BACKGROUND_TIMEOUT_MS,
 	type BackgroundJobReceipt,
 } from './agent-background-job.service';
@@ -17,6 +18,7 @@ import type {
 	ExpectedBackgroundJobState,
 } from '../repositories/agent-background-job.repository';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
+import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentWorkspaceService } from '../agent-workspace.service';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
@@ -39,15 +41,23 @@ export type BackgroundSubAgentRunContext = Pick<
 >;
 
 export interface BackgroundSpawnRequest {
+	sourceExecutionId?: string;
+	planTask?: AgentPlanTaskRef;
+	validatePlanTask?: boolean;
+	inheritedPlanTask?: boolean;
 	subAgentId: string;
 	source: SubAgentSource;
 	taskName: string;
 	goal: string;
 	context?: string;
 	expectedOutput?: string;
+	/** Files of the parent that the child can read. The runner grants them before the child runs. */
+	fileIds?: string[];
 	/** Self-delegation only: model tier override applied by the runner. */
 	difficulty?: SubAgentTaskDifficulty;
 	parentThreadId: string;
+	/** Execution of the parent turn that dispatches the job. Links the child execution to it. */
+	parentExecutionId?: string;
 	parentResourceId: string;
 	parentSandboxPrincipalHash: string;
 	parentMessageContext?: IntegrationMessageContext | null;
@@ -70,6 +80,7 @@ export class SubAgentBackgroundRunner {
 		private readonly logger: Logger,
 		private readonly jobRepository: AgentBackgroundJobRepository,
 		private readonly workspaceService: AgentWorkspaceService,
+		private readonly attachmentService: AgentChatAttachmentService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -84,6 +95,14 @@ export class SubAgentBackgroundRunner {
 		// Throws on an unusable task name — before the job row exists, so a bad
 		// name cannot leave a phantom `running` row holding a thread slot.
 		const taskPath = createChildSubAgentTaskPath(request.taskName, this.dispatchCounter++);
+		// The run grants the files later. Check them here so that a bad fileId fails the tool call.
+		for (const fileId of request.fileIds ?? []) {
+			const file = await this.attachmentService.getReadable(fileId, {
+				projectId: context.projectId,
+				threadId: request.parentThreadId,
+			});
+			if (!file) throw new UserError(`File "${fileId}" not found in this conversation`);
+		}
 
 		const jobId = uuid();
 		const childThreadId = uuid();
@@ -92,12 +111,17 @@ export class SubAgentBackgroundRunner {
 			id: jobId,
 			parentAgentId: context.parentAgentId,
 			parentThreadId: request.parentThreadId,
+			sourceExecutionId: request.sourceExecutionId,
+			planTask: request.planTask,
+			validatePlanTask: request.validatePlanTask,
+			inheritedPlanTask: request.inheritedPlanTask,
 			parentResourceId: request.parentResourceId,
 			parentPrincipalHash: request.parentSandboxPrincipalHash,
 			title: request.taskName,
 			subAgentId: request.subAgentId,
 			childThreadId,
 		});
+
 		if (receipt.status !== 'started') return receipt;
 
 		// The job runs on its own abort scope: the parent's signal dies with the
@@ -113,6 +137,7 @@ export class SubAgentBackgroundRunner {
 				abortController.signal.throwIfAborted();
 			}
 			expected.timeoutAt = job?.timeoutAt;
+
 			return await this.runner.run(
 				{
 					goal: request.goal,
@@ -121,7 +146,11 @@ export class SubAgentBackgroundRunner {
 					...(request.expectedOutput !== undefined
 						? { expectedOutput: request.expectedOutput }
 						: {}),
+					...(request.fileIds !== undefined ? { fileIds: request.fileIds } : {}),
 					parentThreadId: request.parentThreadId,
+					...(request.parentExecutionId !== undefined
+						? { parentExecutionId: request.parentExecutionId }
+						: {}),
 					parentResourceId: request.parentResourceId,
 					parentSandboxPrincipalHash: request.parentSandboxPrincipalHash,
 					childThreadId,
@@ -137,6 +166,8 @@ export class SubAgentBackgroundRunner {
 					instrumentation: context.instrumentation,
 					abortSignal: abortController.signal,
 					backgroundJobId: jobId,
+					planTask: request.planTask,
+					shouldPause: async () => await this.jobService.shouldPause(jobId),
 					parentMessageContext: request.parentMessageContext,
 					// The parent thread is the root session: the child debits it, not
 					// its own thread id, and its descendants keep the same bucket.
@@ -163,7 +194,8 @@ export class SubAgentBackgroundRunner {
 		response: { token: string; resumeData: unknown },
 		context: { projectId: string; parentAgentId: string } & BackgroundSubAgentRunContext,
 	): Promise<void> {
-		const approval = job.status === 'suspended' && (await this.jobService.getApproval(job));
+		const approval =
+			job.status === 'suspended' && !job.pauseRequestId && (await this.jobService.getApproval(job));
 		if (
 			!approval ||
 			approval.token !== response.token ||
@@ -204,27 +236,33 @@ export class SubAgentBackgroundRunner {
 					},
 					{
 						...context,
+						planTask:
+							job.planId && job.planTaskId
+								? { planId: job.planId, planTaskId: job.planTaskId }
+								: undefined,
+						shouldPause: async () => await this.jobService.shouldPause(job.id),
 						abortSignal: controller.signal,
 						selfDelegationDifficulty: metadata.difficulty,
+						runtimeSnapshot: metadata.runtimeSnapshot,
 						parentWorkspaceHandle: workspace?.handle,
 						beforeResume: async () => {
 							// The child thread is reserved here. Recheck the gate after admission.
 							const currentJob = await this.jobRepository.findById(job.id);
 							const currentApproval =
 								currentJob?.status === 'suspended' &&
+								!currentJob.pauseRequestId &&
 								(await this.jobService.getApproval(currentJob));
 							if (!currentApproval || currentApproval.token !== response.token) {
 								throw new UserError('This background approval is no longer available');
 							}
 						},
 						onResumeClaimed: async () => {
-							claimed = true;
 							this.jobService.registerAbortController(job.id, controller);
 							const timeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
 							if (!(await this.jobService.resume(job.id, timeoutAt))) {
-								controller.abort();
 								throw new UserError('This background task has already ended');
 							}
+							claimed = true;
 							expected.status = 'running';
 							expected.timeoutAt = timeoutAt;
 							admitted = true;
@@ -232,7 +270,9 @@ export class SubAgentBackgroundRunner {
 						},
 					},
 				);
+
 				if (!admitted) throw new UserError('This background approval could not be resumed');
+
 				return result;
 			},
 			() => claimed,
@@ -244,6 +284,122 @@ export class SubAgentBackgroundRunner {
 			.catch((error: unknown) => {
 				started.reject(ensureError(error));
 				this.logger.warn('Failed to resume background sub-agent', { jobId: job.id, error });
+			});
+		await started.promise;
+	}
+
+	async resumePaused(
+		job: AgentBackgroundJob,
+		context: { projectId: string; parentAgentId: string } & BackgroundSubAgentRunContext,
+		reservationTimeoutAt: Date,
+	): Promise<void> {
+		if (job.status !== 'paused' || !job.pauseRequestId || !job.notifiedAt) {
+			throw new UserError('Wait for the combined status report, then ask to continue again');
+		}
+		const suspension = await this.jobService.getCheckpoint(job);
+		if (!suspension) throw new UserError(EXPIRED_BACKGROUND_CHECKPOINT_ERROR);
+		const { metadata, scope, checkpoint } = suspension;
+		if (scope.projectId !== context.projectId || job.parentAgentId !== context.parentAgentId) {
+			throw new UserError('This background task is not available');
+		}
+		if (Object.keys(checkpoint.pendingToolCalls).length > 0) {
+			if (!(await this.jobService.getApproval(job)))
+				throw new UserError('This background task cannot be resumed');
+			if (
+				!(await this.jobRepository.resumeIfPaused(
+					job.id,
+					job.pauseRequestId,
+					'suspended',
+					suspension.expiresAt,
+					reservationTimeoutAt,
+				))
+			) {
+				throw new UserError('This background task has already resumed');
+			}
+			await this.jobService.notifyResumed(job.id);
+			return;
+		}
+		const workspace = metadata.sharedWorkspace
+			? await this.workspaceService.getAgentWorkspace(
+					context.projectId,
+					job.parentAgentId,
+					scope.principalHash,
+				)
+			: undefined;
+		const controller = new AbortController();
+		const started = createDeferredPromise();
+		const expected: ExpectedBackgroundJobState = { status: 'running' };
+		const pauseRequestId = job.pauseRequestId;
+		let claimed = false;
+		let admitted = false;
+		void this.dispatch(
+			job.id,
+			controller,
+			expected,
+			async () => {
+				return await this.runner.resumePaused(
+					{
+						subAgentId: metadata.resumeContext.agentId,
+						childThreadId: job.childThreadId ?? undefined,
+						parentThreadId: job.parentThreadId,
+						childRunId: suspension.runId,
+						taskPath: metadata.taskPath,
+						resumeContext: metadata.resumeContext,
+					},
+					{
+						...context,
+						planTask:
+							job.planId && job.planTaskId
+								? { planId: job.planId, planTaskId: job.planTaskId }
+								: undefined,
+						abortSignal: controller.signal,
+						selfDelegationDifficulty: metadata.difficulty,
+						runtimeSnapshot: metadata.runtimeSnapshot,
+						parentWorkspaceHandle: workspace?.handle,
+						rootSessionId: job.parentThreadId,
+						budgetForwarded: true,
+						shouldPause: async () => await this.jobService.shouldPause(job.id),
+						beforeResume: async () => {
+							const current = await this.jobRepository.findById(job.id);
+							if (
+								current?.status !== 'suspended' ||
+								current.pauseRequestId !== pauseRequestId ||
+								current.timeoutAt?.getTime() !== reservationTimeoutAt.getTime()
+							) {
+								throw new UserError('This background task has already resumed');
+							}
+						},
+						onResumeClaimed: async () => {
+							this.jobService.registerAbortController(job.id, controller);
+							const timeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
+							if (
+								!(await this.jobRepository.resumeIfPaused(
+									job.id,
+									pauseRequestId,
+									'running',
+									timeoutAt,
+									reservationTimeoutAt,
+								))
+							) {
+								throw new UserError('This background task has already ended');
+							}
+							claimed = true;
+							expected.timeoutAt = timeoutAt;
+							await this.jobService.notifyResumed(job.id);
+							admitted = true;
+							started.resolve();
+						},
+					},
+				);
+			},
+			() => claimed,
+		)
+			.then(() => {
+				if (!admitted) started.reject(new UserError('This background task could not be resumed'));
+			})
+			.catch((error: unknown) => {
+				started.reject(ensureError(error));
+				this.logger.warn('Failed to resume paused background task', { jobId: job.id, error });
 			});
 		await started.promise;
 	}
@@ -289,6 +445,10 @@ export class SubAgentBackgroundRunner {
 				return;
 			}
 			clearTimeout(timeout);
+			if (result.status === 'paused') {
+				await this.jobService.settlePausedSubAgent(jobId, expected);
+				return;
+			}
 			if (result.status === 'suspended' && (await this.jobService.suspend(jobId))) return;
 			await this.jobService.settle(jobId, settlementFor(result), expected);
 		} finally {
@@ -299,6 +459,11 @@ export class SubAgentBackgroundRunner {
 }
 
 function settlementFor(result: SubAgentRunResult): AgentBackgroundJobSettlement {
+	// The parent can read these files even when the child failed, so list them for every status.
+	return { ...outcomeFor(result), ...(result.files?.length ? { files: result.files } : {}) };
+}
+
+function outcomeFor(result: SubAgentRunResult): AgentBackgroundJobSettlement {
 	const output = formatSubAgentToolOutput(result);
 	if (output.status === 'completed') {
 		return { status: 'completed', result: output.answer };

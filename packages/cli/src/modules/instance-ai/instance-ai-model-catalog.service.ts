@@ -6,8 +6,11 @@ import {
 } from '@n8n/api-types';
 import type { ProviderCatalog } from '@n8n/agents/catalog';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 const CATALOG_CACHE_TTL_MS = 60 * 60 * 1000;
 const CATALOG_FETCH_TIMEOUT_MS = 5000;
@@ -73,7 +76,10 @@ export class InstanceAiModelCatalogService {
 
 	private fetchPromise?: Promise<InstanceAiModelCatalogResponse>;
 
-	constructor(logger: Logger) {
+	constructor(
+		logger: Logger,
+		private readonly outboundHttp: OutboundHttp,
+	) {
 		this.logger = logger.scoped('instance-ai');
 	}
 
@@ -122,7 +128,7 @@ export class InstanceAiModelCatalogService {
 
 	protected async fetchCatalog(signal: AbortSignal): Promise<ProviderCatalog> {
 		const { fetchProviderCatalog } = await import('@n8n/agents/catalog');
-		return await fetchProviderCatalog({ signal });
+		return await fetchProviderCatalog({ signal, fetch: createAiProxyFetch(this.outboundHttp) });
 	}
 
 	private toResponse(catalog: ProviderCatalog): InstanceAiModelCatalogResponse {

@@ -1,6 +1,8 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import * as aiModule from 'ai';
+import { APICallError } from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import type { Mock, MockedFunction } from 'vitest';
 import { z } from 'zod';
@@ -24,6 +26,7 @@ import type {
 	ModelGuardrail,
 } from '../../types/sdk/guardrail';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
+import { stripHydratedFileData } from '../../types/sdk/message';
 import type {
 	BuiltTool,
 	InterruptibleToolContext,
@@ -32,8 +35,12 @@ import type {
 } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { Workspace, getToolResultRunDirectory } from '../../workspace';
-import { createBudgetGuardrail, InMemorySpendLedger } from '../guardrails/budget-guardrail';
+import { createBudgetGuardrail } from '../guardrails/budget-guardrail';
+import { spendLedger } from '../guardrails/__tests__/spend-ledger';
 import { AgentRuntime } from '../loop/agent-runtime';
+import { MAX_HYDRATED_FILE_PARTS } from '../loop/hydrate-file-parts';
+import { StreamSink } from '../loop/stream-sink';
+import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from '../memory/episodic-memory-defaults';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
@@ -52,7 +59,8 @@ import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 // ---------------------------------------------------------------------------
 
 // Mock provider packages so createModel() doesn't fail when no API key is set
-vi.mock('@ai-sdk/openai', () => ({
+vi.mock('@ai-sdk/openai', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@ai-sdk/openai')>()),
 	createOpenAI: () =>
 		Object.assign(
 			() => ({
@@ -77,7 +85,8 @@ vi.mock('@ai-sdk/openai', () => ({
 		),
 }));
 
-vi.mock('@ai-sdk/anthropic', () => ({
+vi.mock('@ai-sdk/anthropic', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@ai-sdk/anthropic')>()),
 	createAnthropic: () => () => ({
 		provider: 'anthropic',
 		modelId: 'mock',
@@ -96,12 +105,56 @@ type AiImport = typeof import('ai');
 // Mock generateText and streamText from the 'ai' package
 vi.mock('ai', async () => {
 	const actual = await vi.importActual<AiImport>('ai');
+	// Keep existing model fixtures in one place while exercising the current SDK result shape.
+	const generateMock = vi.fn();
+	const streamMock = vi.fn();
 	return {
 		...actual,
 		embed: vi.fn(),
 		embedMany: vi.fn(),
-		generateText: vi.fn(),
-		streamText: vi.fn(),
+		generateText: new Proxy(generateMock, {
+			apply: async (target, thisArg, args) => {
+				const result: unknown = await Reflect.apply(target, thisArg, args);
+				if (!result || typeof result !== 'object') return result;
+				const legacy = result as {
+					response?: { messages: unknown[] };
+					responseMessages?: unknown[];
+					providerMetadata?: unknown;
+					finalStep?: unknown;
+				};
+				return {
+					...legacy,
+					responseMessages: legacy.responseMessages ?? legacy.response?.messages,
+					finalStep: legacy.finalStep ?? { providerMetadata: legacy.providerMetadata },
+				};
+			},
+		}),
+		streamText: new Proxy(streamMock, {
+			apply: (target, thisArg, args) => {
+				const result: unknown = Reflect.apply(target, thisArg, args);
+				if (!result || typeof result !== 'object') return result;
+				const legacy = result as {
+					response?: PromiseLike<{ messages: unknown[] }>;
+					responseMessages?: PromiseLike<unknown[]>;
+					providerMetadata?: PromiseLike<unknown>;
+					finalStep?: PromiseLike<unknown>;
+				};
+				const responseMessages =
+					legacy.responseMessages ??
+					Promise.resolve(legacy.response).then((response) => response?.messages);
+				// Aborted streams need no result. Mark the derived promise as handled.
+				void Promise.resolve(responseMessages).catch(() => {});
+				return {
+					...legacy,
+					responseMessages,
+					finalStep:
+						legacy.finalStep ??
+						Promise.resolve(legacy.providerMetadata).then((providerMetadata) => ({
+							providerMetadata,
+						})),
+				};
+			},
+		}),
 		tool: vi.fn((config: unknown) => config),
 		jsonSchema: vi.fn((schema: unknown) => ({ _type: 'jsonSchema', schema })),
 		Output: {
@@ -1026,6 +1079,67 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
 	});
 
+	it.each([true, false])(
+		'streams cumulative usage before tools finish (priced: %s)',
+		async (priced) => {
+			vi.mocked(getModelCost).mockResolvedValueOnce(priced ? { input: 1, output: 2 } : undefined);
+			const started = createDeferredPromise();
+			const release = createDeferredPromise();
+			const tool = makeMockTool('search', async () => {
+				started.resolve();
+				await release.promise;
+				return 'found';
+			});
+			streamText
+				.mockReturnValueOnce(
+					makeStreamWithToolCalls([{ toolCallId: 'search-1', toolName: 'search', args: {} }]),
+				)
+				.mockReturnValueOnce(makeStreamSuccess('done'));
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Test',
+				tools: [tool],
+				eventBus: new AgentEventBus(),
+			});
+			const result = await runtime.stream('search');
+			const chunks: StreamChunk[] = [];
+			const reading = (async () => {
+				const reader = result.stream.getReader();
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) return;
+					chunks.push(value);
+					if (value.type === 'input-boundary') value.acknowledge();
+				}
+			})();
+			await started.promise;
+			try {
+				expect(chunks.filter((chunk) => chunk.type === 'usage')).toEqual([
+					expect.objectContaining({
+						usage: expect.objectContaining({
+							promptTokens: 10,
+							completionTokens: 5,
+							totalTokens: 15,
+						}),
+					}),
+				]);
+				expect(chunks.some((chunk) => chunk.type === 'finish')).toBe(false);
+			} finally {
+				release.resolve();
+				await reading;
+			}
+			const updates = chunks.filter((chunk) => chunk.type === 'usage');
+			expect(updates.map((chunk) => chunk.usage.totalTokens)).toEqual([15, 30]);
+			if (priced) {
+				expect(updates[0].usage.cost).toBeCloseTo(0.00002);
+				expect(updates[1].usage.cost).toBeCloseTo(0.00004);
+			} else {
+				expect(updates.every((chunk) => chunk.usage.cost === undefined)).toBe(true);
+			}
+		},
+	);
+
 	it('forwards onStepStart and onStepEnd to generateText and streamText', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		streamText.mockReturnValue(makeStreamSuccess());
@@ -1049,6 +1163,47 @@ describe('AgentRuntime — execution counters', () => {
 		}
 	});
 
+	it('preserves messages and final-step metadata in generate and stream results', async () => {
+		const usage = { inputTokens: 10, outputTokens: 5, totalTokens: 15 };
+		const providerMetadata = { openai: { cachedPromptTokens: 3 } };
+		const responseMessages = [{ role: 'assistant', content: [{ type: 'text', text: 'Hello' }] }];
+		generateText.mockResolvedValue({
+			finishReason: 'stop',
+			usage,
+			responseMessages,
+			finalStep: { providerMetadata },
+			toolCalls: [],
+		});
+		streamText.mockReturnValue({
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'Hello' }]),
+			finishReason: Promise.resolve('stop'),
+			usage: Promise.resolve(usage),
+			responseMessages: Promise.resolve(responseMessages),
+			finalStep: Promise.resolve({ providerMetadata }),
+			toolCalls: Promise.resolve([]),
+		});
+		const { runtime } = createRuntime();
+		const generated = await runtime.generate('hi');
+		const streamed = await collectChunks((await runtime.stream('hi')).stream);
+		const expectedUsage = {
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			inputTokenDetails: { noCache: 7, cacheRead: 3 },
+		};
+		expect(generated.messages).toMatchObject(responseMessages);
+		expect(generated.finishReason).toBe('stop');
+		expect(generated.usage).toMatchObject(expectedUsage);
+		expect(streamed).toContainEqual(
+			expect.objectContaining({ type: 'text-delta', delta: 'Hello' }),
+		);
+		expect(streamed.at(-1)).toMatchObject({
+			type: 'finish',
+			finishReason: 'stop',
+			usage: expectedUsage,
+		});
+	});
+
 	it('allows system-role messages in generateText and streamText history', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		streamText.mockReturnValue(makeStreamSuccess());
@@ -1069,6 +1224,38 @@ describe('AgentRuntime — execution counters', () => {
 			expect.objectContaining({ allowSystemInMessages: true }),
 		);
 	});
+
+	it.each(['generate', 'stream'] as const)(
+		'disables tool calls for one %s execution and keeps tool definitions',
+		async (mode) => {
+			generateText.mockResolvedValue(makeGenerateSuccess());
+			streamText.mockImplementation(() => makeStreamSuccess());
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Report the saved progress.',
+				tools: [makeMockTool('work', vi.fn())],
+				providerTools: [{ name: 'openai.web_search', args: {} }],
+			});
+
+			for (const toolsEnabled of [false, undefined]) {
+				if (mode === 'generate') await runtime.generate('Report', { toolsEnabled });
+				else {
+					const result = await runtime.stream('Report', { toolsEnabled });
+					await collectChunks(result.stream);
+				}
+				const model = mode === 'generate' ? generateText : streamText;
+				const request = model.mock.lastCall?.[0];
+
+				expect(request.toolChoice).toBe(toolsEnabled === false ? 'none' : undefined);
+				expect(request.tools.work).toBeDefined();
+				expect(request.tools['openai.web_search']).toMatchObject({
+					type: 'provider',
+					isProviderExecuted: true,
+				});
+			}
+		},
+	);
 
 	it('counts provider-executed tool calls when surfaced by the model', async () => {
 		generateText
@@ -1116,6 +1303,68 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementMessageCount).toHaveBeenCalledTimes(1);
 		expect(counter.incrementToolCallCount).toHaveBeenCalledTimes(1);
 		expect(counter.incrementTokenCount).toHaveBeenCalledTimes(2);
+	});
+
+	it('resumes a suspended call persisted under a legacy tool name', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+
+		const first = await runtime.generate('needs approval');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		Object.assign(suspendTool, { name: 'approve_v2', legacyNames: ['approve'] });
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(resumed.error).toBeUndefined();
+		expect(resumed.finishReason).not.toBe('error');
+	});
+
+	it('resumes a suspended call of a split tool in the tool that owns its action', async () => {
+		const resumedBy: string[] = [];
+		const makeActionTool = (name: string, handlerLabel: string): BuiltTool => ({
+			...makeInterruptibleTool(),
+			name,
+			inputSchema: z.object({ question: z.string(), action: z.string().optional() }),
+			handler: async (_input: unknown, ctx: unknown) => {
+				const { suspend, resumeData } = ctx as InterruptibleToolContext;
+				if (!resumeData) return await suspend({ question: 'approve?' });
+				resumedBy.push(handlerLabel);
+				return { approved: true };
+			},
+		});
+		const splitTool = makeActionTool('approve', 'delete handler');
+		const otherTool = makeActionTool('other', 'publish handler');
+		const { runtime } = createRuntimeWithTools([splitTool, otherTool], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{
+					toolCallId: 'tc-1',
+					toolName: 'approve',
+					args: { question: 'continue?', action: 'publish' },
+				},
+			]),
+		);
+
+		const first = await runtime.generate('needs approval');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		Object.assign(splitTool, { name: 'delete_item', legacyActions: { approve: ['delete'] } });
+		Object.assign(otherTool, { name: 'publish_item', legacyActions: { approve: ['publish'] } });
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(resumed.error).toBeUndefined();
+		expect(resumedBy).toEqual(['publish handler']);
 	});
 
 	it('exposes the checkpointed suspend payload to a resumed tool handler via ctx.suspendPayload', async () => {
@@ -1411,6 +1660,46 @@ describe('AgentRuntime — empty stop turn retry', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
 	});
 
+	it('starts an empty-turn retry while usage reporting is pending', async () => {
+		const reporting = createDeferredPromise();
+		const release = createDeferredPromise();
+		const reportUsage = StreamSink.prototype.reportUsage;
+		const reportSpy = vi
+			.spyOn(StreamSink.prototype, 'reportUsage')
+			.mockImplementationOnce(async function (this: StreamSink, usage) {
+				const reported = reportUsage.call(this, usage);
+				reporting.resolve();
+				await reported;
+				await release.promise;
+			});
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('stop'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 0, totalTokens: 10 }),
+				response: Promise.resolve({ messages: [] }),
+				toolCalls: Promise.resolve([]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Recovered'));
+		const counter = makeExecutionCounter();
+		const { runtime } = createRuntime();
+		const { stream } = await runtime.stream('hi', { executionCounter: counter });
+		const reading = collectChunks(stream);
+		try {
+			await reporting.promise;
+			await vi.waitFor(() => expect(streamText).toHaveBeenCalledTimes(2));
+			expect(counter.incrementTokenCount).toHaveBeenCalledWith(10);
+		} finally {
+			release.resolve();
+			await reading;
+			reportSpy.mockRestore();
+		}
+		const chunks = await reading;
+		expect(chunks.find((chunk) => chunk.type === 'finish')).toMatchObject({
+			usage: { promptTokens: 20, completionTokens: 5, totalTokens: 25 },
+		});
+	});
+
 	it('accepts the empty turn once the retry budget is exhausted', async () => {
 		generateText.mockResolvedValue(makeGenerateEmpty());
 
@@ -1495,6 +1784,101 @@ describe('AgentRuntime — guardrails', () => {
 		return assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
 	}
 
+	it.each(['generate', 'stream'] as const)(
+		'%s reports an applied skill revocation when cancellation interrupts restoration',
+		async (mode) => {
+			const memory = new InMemoryMemory();
+			const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
+			const scope = { ...persistence, agentName: 'test' };
+			await memory.skillState.save(scope, {
+				skillIds: ['revoked-skill'],
+				versions: { 'revoked-skill': 'v1' },
+			});
+			const controller = new AbortController();
+			const save = memory.skillState.save.bind(memory.skillState);
+			vi.spyOn(memory.skillState, 'save').mockImplementationOnce(async (scope, state) => {
+				controller.abort();
+				await save(scope, state);
+			});
+			const source = createRuntimeSkillSource([]);
+			const onContext = vi.fn();
+			source.onContext = onContext;
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Test',
+				skillSource: source,
+				memory,
+			});
+			try {
+				const options = { persistence, abortSignal: controller.signal };
+				if (mode === 'stream') {
+					const { stream } = await runtime.stream('hi', options);
+					await collectChunks(stream);
+				} else {
+					await runtime.generate('hi', options);
+				}
+				expect(generateText).not.toHaveBeenCalled();
+				expect(streamText).not.toHaveBeenCalled();
+				expect(await memory.skillState.load(scope)).toEqual({
+					skillIds: [],
+					versions: { 'revoked-skill': null },
+				});
+				expect(onContext).toHaveBeenCalledExactlyOnceWith([
+					{ skillId: 'revoked-skill', kind: 'revoked' },
+				]);
+				onContext.mockClear();
+				generateText.mockResolvedValueOnce(makeGenerateSuccess());
+				await runtime.generate('continue', { persistence });
+				expect(onContext).toHaveBeenCalledExactlyOnceWith([]);
+			} finally {
+				await runtime.dispose();
+			}
+		},
+	);
+
+	it('reports skill context only when model-call guards allow delivery', async () => {
+		const memory = new InMemoryMemory();
+		const persistence = { threadId: 'thread-1', resourceId: 'user-1' };
+		const source = createRuntimeSkillSource([
+			{
+				id: 'test-skill',
+				name: 'test-skill',
+				description: 'Test',
+				instructions: 'Test instructions',
+			},
+		]);
+		source.shouldAppendSkillUpdates = () => true;
+		const version = source.registry.skills[0].hash;
+		await memory.skillState.save(
+			{ ...persistence, agentName: 'test' },
+			{ skillIds: ['test-skill'], versions: { 'test-skill': version } },
+		);
+		const onContext = vi.fn();
+		source.onContext = onContext;
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Test',
+			skillSource: source,
+			memory,
+		});
+		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
+		try {
+			await runtime.generate('hi', { persistence, guardrails: guardrailsOption(hook) });
+			expect(onContext).not.toHaveBeenCalled();
+			expect(generateText).not.toHaveBeenCalled();
+			generateText.mockResolvedValueOnce(makeGenerateSuccess());
+			await runtime.generate('hi', { persistence });
+			expect(onContext).toHaveBeenCalledExactlyOnceWith([
+				{ skillId: 'test-skill', version, kind: 'carried' },
+			]);
+			expect(JSON.stringify(generateText.mock.calls[0][0])).toContain('Test instructions');
+		} finally {
+			await runtime.dispose();
+		}
+	});
+
 	it('ends a generate run with finishReason guardrail when before() stops', async () => {
 		const hook = makeGuardrail({ before: vi.fn().mockResolvedValue(stopDecision('test.stop')) });
 		const { runtime } = createRuntime();
@@ -1570,6 +1954,28 @@ describe('AgentRuntime — guardrails', () => {
 		expect(onInputBoundary).toHaveBeenCalledTimes(2);
 	});
 
+	it('prices a Foundry deployment by the model it serves', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+		const modelFetch = vi.fn<typeof fetch>();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: {
+				id: 'azure-openai/my-chat',
+				catalogModelId: 'azure-openai/gpt-4.1',
+				apiKey: 'az-key',
+				endpointType: 'foundry',
+				baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+			},
+			modelFetch,
+			instructions: 'You are a test assistant.',
+			eventBus: new AgentEventBus(),
+		});
+
+		await runtime.generate('hi');
+
+		expect(getModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1', modelFetch);
+	});
+
 	it('does not start the next model call after a turn spends the session cap', async () => {
 		vi.mocked(getModelCost).mockResolvedValueOnce({ input: 1_000_000, output: 1_000_000 });
 		streamText.mockReturnValueOnce({
@@ -1596,7 +2002,7 @@ describe('AgentRuntime — guardrails', () => {
 		});
 		const runtime = createRuntimeWithEchoTool(async () => ({ ok: true }));
 		const hook = createBudgetGuardrail({
-			ledger: new InMemorySpendLedger(),
+			ledger: spendLedger(),
 			sessionId: 'session-1',
 			sessionCostCapUsd: 1,
 		});
@@ -1724,7 +2130,7 @@ describe('AgentRuntime — guardrails', () => {
 		expect(toolResult).toEqual({ echoed: 'x' });
 	});
 
-	it('does not run beforeTool() again when a suspended tool resumes', async () => {
+	it.each([false, true])('checks approval once with native deferral %s', async (native) => {
 		const approvalTool = new ToolBuilder('delete')
 			.description('Delete a record')
 			.input(z.object({ id: z.string() }))
@@ -1738,9 +2144,11 @@ describe('AgentRuntime — guardrails', () => {
 		const guardrails = guardrailsOption(hook);
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'openai/gpt-4o-mini',
+			model: native ? 'openai/gpt-5.4' : 'openai/gpt-4o-mini',
 			instructions: 'test',
-			tools: [approvalTool],
+			tools: native ? [] : [approvalTool],
+			deferredTools: native ? [approvalTool] : [],
+			nativeToolDeferral: native ? { eagerToolNames: [] } : undefined,
 			checkpointStorage: 'memory',
 		});
 
@@ -2568,6 +2976,69 @@ describe('AgentRuntime.stream() — fallback error observability', () => {
 });
 
 // ---------------------------------------------------------------------------
+// stream() — prompt-size split of usage
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.stream() — prompt-size split of usage', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('splits the finish usage by the prompt size of each model call', async () => {
+		const tool = makeMockTool('lookup', async () => await Promise.resolve({ ok: true }));
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 40_000, outputTokens: 5, totalTokens: 40_005 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', args: { value: 'x' } },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-1', toolName: 'lookup', input: { value: 'x' } },
+				]),
+			})
+			.mockReturnValueOnce({
+				...makeStreamSuccess('done'),
+				usage: Promise.resolve({ inputTokens: 150_000, outputTokens: 7, totalTokens: 150_007 }),
+			});
+
+		const { stream } = await runtime.stream('hello');
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 190_000,
+			completionTokens: 12,
+			byPromptSize: [
+				{
+					promptTokensOver: 32_000,
+					maxPromptTokens: 40_000,
+					usage: { promptTokens: 40_000, completionTokens: 5 },
+				},
+				{
+					promptTokensOver: 128_000,
+					maxPromptTokens: 150_000,
+					usage: { promptTokens: 150_000, completionTokens: 7 },
+				},
+			],
+		});
+	});
+});
+
+// ---------------------------------------------------------------------------
 // stream() — usage billing on abort
 // ---------------------------------------------------------------------------
 
@@ -2808,6 +3279,14 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 			totalTokens: 38,
 			inputTokenDetails: { noCache: 20 },
 		});
+		// The in-flight turn is in the prompt-size split too.
+		expect(finish?.usage?.byPromptSize).toEqual([
+			expect.objectContaining({
+				promptTokensOver: 0,
+				maxPromptTokens: 20,
+				usage: expect.objectContaining({ promptTokens: 30, completionTokens: 8 }),
+			}),
+		]);
 		expect(runtime.getState().status).toBe('cancelled');
 	});
 
@@ -3417,7 +3896,271 @@ function makeStreamWithToolCalls(
 	};
 }
 
+describe('AgentRuntime — user pause', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it.each(['generate', 'stream'] as const)(
+		'finishes the current %s tool batch and resumes once without replay',
+		async (mode) => {
+			const store = makeClaimingCheckpointStore();
+			const entered = createDeferredPromise();
+			const release = createDeferredPromise();
+			const handler = vi.fn(async () => {
+				entered.resolve();
+				await release.promise;
+				return 'Saved partial result';
+			});
+			const tool = makeMockTool('work', handler);
+			const calls = ['first', 'second'].map((toolCallId) => ({
+				toolCallId,
+				toolName: 'work',
+				args: {},
+			}));
+			generateText.mockResolvedValueOnce(makeGenerateWithToolCalls(calls));
+			streamText.mockReturnValueOnce(makeStreamWithToolCalls(calls));
+			const runtime = createRuntimeWithCheckpointStore([tool], store);
+			let requested = false;
+			let finished = false;
+			let runId = '';
+			const options = {
+				shouldPause: async () => requested,
+				persistence: { threadId: 'child', resourceId: 'user' },
+			};
+			const completion = (async () => {
+				if (mode === 'generate') {
+					const result = await runtime.generate('Do two steps', options);
+					runId = result.runId;
+					return result;
+				}
+				const result = await runtime.stream('Do two steps', options);
+				runId = result.runId;
+				return await collectChunks(result.stream);
+			})().finally(() => {
+				finished = true;
+			});
+			await entered.promise;
+			requested = true;
+			expect(finished).toBe(false);
+			expect(store.save).not.toHaveBeenCalled();
+			release.resolve();
+			const result = await completion;
+			expect(Array.isArray(result) ? result.at(-1) : result).toMatchObject({
+				finishReason: 'paused',
+			});
+			expect(handler).toHaveBeenCalledTimes(2);
+			const state = runtime.getState();
+			expect(state.status).toBe('suspended');
+			const checkpoint = await store.load(runId);
+			expect(checkpoint).toMatchObject({
+				finishReason: 'paused',
+				pendingToolCalls: {},
+				iterationCount: 1,
+				persistence: options.persistence,
+			});
+
+			streamText.mockReset().mockReturnValue(makeStreamSuccess('Finished from the saved results'));
+			const resumes = await Promise.allSettled(
+				[runtime, createRuntimeWithCheckpointStore([tool], store)].map(
+					async (resumeRuntime) => await resumeRuntime.resumePaused({ runId }),
+				),
+			);
+			expect(resumes.filter((resume) => resume.status === 'fulfilled')).toHaveLength(1);
+			for (const resume of resumes) {
+				if (resume.status === 'rejected') expect(resume.reason).toBeInstanceOf(StaleResumeError);
+				else
+					expect((await collectChunks(resume.value.stream)).at(-1)).toMatchObject({
+						finishReason: 'stop',
+					});
+			}
+			expect(runtime.getState()).toMatchObject({ status: 'success', finishReason: undefined });
+			expect(handler).toHaveBeenCalledTimes(2);
+			expect(JSON.stringify(streamText.mock.calls[0][0].messages)).toContain(
+				'Saved partial result',
+			);
+			expect(await store.load(runId)).toBeUndefined();
+		},
+	);
+
+	it.each([
+		['admission', 'Admission failed'],
+		['options', 'Cannot decrease maxIterations'],
+		['metadata', 'Cannot update host metadata without persistence'],
+	] as const)(
+		'pauses before the first model call and permits a retry after %s fails',
+		async (failure, message) => {
+			const store = makeClaimingCheckpointStore();
+			const runtime = createRuntimeWithCheckpointStore([], store);
+			const result = await runtime.generate('Start later', {
+				shouldPause: async () => true,
+				maxIterations: 10,
+				persistence:
+					failure === 'metadata'
+						? undefined
+						: {
+								threadId: 'child',
+								resourceId: 'user',
+								hostMetadata: { actor: 'saved', source: 'checkpoint' },
+							},
+			});
+			expect(result.finishReason).toBe('paused');
+			expect(generateText).not.toHaveBeenCalled();
+			const original = await store.load(result.runId);
+			const resumeRuntime = createRuntimeWithCheckpointStore([], store);
+			await expect(
+				resumeRuntime.resumePaused({
+					runId: result.runId,
+					maxIterations: failure === 'options' ? 1 : 10,
+					hostMetadata: { actor: 'selected' },
+					onResumeClaimed: async () => {
+						throw new Error('Admission failed');
+					},
+				}),
+			).rejects.toThrow(message);
+			const expectedCheckpoint =
+				failure === 'admission'
+					? {
+							...original,
+							persistence: {
+								threadId: 'child',
+								resourceId: 'user',
+								hostMetadata: { actor: 'selected', source: 'checkpoint' },
+							},
+						}
+					: original;
+			expect(await store.load(result.runId)).toEqual(expectedCheckpoint);
+			if (failure === 'admission') expect(resumeRuntime.getState()).toEqual(expectedCheckpoint);
+			expect(streamText).not.toHaveBeenCalled();
+
+			streamText.mockReturnValue(makeStreamSuccess());
+			const restarted = createRuntimeWithCheckpointStore([], store);
+			const resumed = await restarted.resumePaused({ runId: result.runId, maxIterations: 10 });
+			expect((await collectChunks(resumed.stream)).at(-1)).toMatchObject({
+				finishReason: 'stop',
+			});
+			expect(await store.load(result.runId)).toBeUndefined();
+		},
+	);
+
+	it.each(['pause polling', 'checkpoint persistence'] as const)(
+		'cancels and removes the checkpoint when abort arrives during %s',
+		async (phase) => {
+			const bus = new AgentEventBus();
+			const store = makeClaimingCheckpointStore();
+			const entered = createDeferredPromise();
+			const release = createDeferredPromise();
+			const save = store.save;
+			store.save = async (...args) => {
+				await save(...args);
+				if (phase !== 'checkpoint persistence') return;
+				entered.resolve();
+				await release.promise;
+			};
+			const runtime = createRuntimeWithCheckpointStore([], store, bus);
+			const completion = runtime.generate('Start later', {
+				shouldPause: async () => {
+					if (phase === 'pause polling') {
+						entered.resolve();
+						await release.promise;
+					}
+					return true;
+				},
+			});
+			await entered.promise;
+			bus.abort();
+			release.resolve();
+			const result = await completion;
+
+			expect(result.finishReason).toBe('error');
+			expect(runtime.getState().status).toBe('cancelled');
+			expect(await store.load(result.runId)).toBeUndefined();
+		},
+	);
+
+	it.each([
+		['stop', 'success'],
+		['error', 'failed'],
+	] as const)(
+		'keeps the terminal %s result when pause is requested during the model call',
+		async (finishReason, status) => {
+			const store = makeClaimingCheckpointStore();
+			const runtime = createRuntimeWithCheckpointStore([], store);
+			let requested = false;
+			generateText.mockImplementationOnce(async () => {
+				requested = true;
+				if (finishReason === 'error') throw new Error('Model failed');
+				return makeGenerateSuccess();
+			});
+			const result = await runtime.generate('Start', {
+				shouldPause: async () => requested,
+				onInputBoundary: async () => [],
+			});
+
+			expect(result.finishReason).toBe(finishReason);
+			expect(runtime.getState().status).toBe(status);
+			expect(await store.load(result.runId)).toBeUndefined();
+		},
+	);
+
+	it('preserves an approval reached by the current step', async () => {
+		const handler = vi.fn();
+		const tool = wrapToolForApproval(makeMockTool('approve_work', handler), {
+			requireApproval: true,
+		});
+		const store = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([tool], store);
+		let requested = false;
+		generateText.mockImplementationOnce(async () => {
+			requested = true;
+			return makeGenerateWithToolCall('approval', tool.name, {});
+		});
+		const result = await runtime.generate('Start', { shouldPause: async () => requested });
+		expect(handler).not.toHaveBeenCalled();
+		expect(result.pendingSuspend).toHaveLength(1);
+		await expect(runtime.resumePaused({ runId: result.runId })).rejects.toBeInstanceOf(
+			StaleResumeError,
+		);
+		expect((await store.load(result.runId))?.pendingToolCalls.approval.suspended).toBe(true);
+	});
+});
+
 describe('AgentRuntime — deferred tool loading', () => {
+	it.each<ModelConfig>([
+		'openai/gpt-5.4',
+		'openai/gpt-4o-mini',
+		{ id: 'openai/gpt-5.4', apiStyle: 'chat' },
+		{ id: 'openai/gpt-5.4', baseURL: 'https://proxy.example/v1', apiStyle: 'responses' },
+	])('executes the complete native-mode catalog on %j', async (model) => {
+		const action = new Tool('lookup_total')
+			.description('Compute the total.')
+			.input(z.object({ value: z.number() }))
+			.handler(async ({ value }) => ({ total: value * 2 }))
+			.build();
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('call_1', action.name, { value: 21 }))
+			.mockResolvedValueOnce(makeGenerateSuccess('42'));
+		const runtime = new AgentRuntime({
+			name: 'native',
+			model,
+			instructions: 'Use tools.',
+			deferredTools: [action],
+			nativeToolDeferral: { eagerToolNames: [] },
+		});
+		const result = await runtime.generate('Get the total.');
+		expect(result.finishReason).toBe('stop');
+		expect(result.toolCalls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ tool: 'lookup_total', output: { total: 42 } }),
+			]),
+		);
+		const tools = generateText.mock.calls[0][0].tools;
+		expect(tools).toHaveProperty('lookup_total');
+		expect(tools).not.toHaveProperty('search_tools');
+		expect(tools).not.toHaveProperty('load_tool');
+	});
+
 	beforeEach(() => {
 		generateText.mockReset();
 		streamText.mockReset();
@@ -4353,6 +5096,49 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		for (const entry of result.toolCalls ?? []) {
 			expect(JSON.stringify(entry.output)).toContain('"status":"completed"');
 		}
+	});
+
+	it('uses regular tool concurrency for background dispatch', async () => {
+		let activeDispatches = 0;
+		let peakDispatches = 0;
+		const delegateTool = createDelegateSubAgentTool({
+			policy: { maxChildren: 5 },
+			runBackgroundSubAgent: async (input) => {
+				activeDispatches++;
+				peakDispatches = Math.max(peakDispatches, activeDispatches);
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				activeDispatches--;
+				return { status: 'started', jobId: input.taskName };
+			},
+		});
+		const { runtime } = createRuntimeWithTools([delegateTool], 2);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls(
+					Array.from({ length: 4 }, (_, index) => ({
+						toolCallId: `tc-${index + 1}`,
+						toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+						args: {
+							subAgentId: 'inline',
+							taskName: `research_${index + 1}`,
+							goal: 'Research this topic.',
+							mode: 'background',
+						},
+					})),
+				),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Jobs started'));
+
+		const result = await runtime.generate('Start research jobs');
+
+		expect(result.finishReason).toBe('stop');
+		expect(peakDispatches).toBe(2);
+		expect(result.toolCalls?.map((call) => call.output)).toEqual([
+			{ status: 'started', jobId: 'research_1' },
+			{ status: 'started', jobId: 'research_2' },
+			{ status: 'started', jobId: 'research_3' },
+			{ status: 'started', jobId: 'research_4' },
+		]);
 	});
 
 	it('batches a renamed delegate tool by maxChildren via metadata, not by tool name', async () => {
@@ -5412,7 +6198,7 @@ describe('AgentRuntime — runtime input schema validation', () => {
 		vi.clearAllMocks();
 	});
 
-	it('surfaces a ZodError as a tool error outcome when LLM provides invalid input', async () => {
+	it.each([false, true])('rejects invalid tool input with native deferral %s', async (native) => {
 		// Tool expects { id: z.string() } but LLM will provide { id: 123 } (wrong type)
 		const strictTool: BuiltTool = {
 			name: 'strict',
@@ -5429,9 +6215,11 @@ describe('AgentRuntime — runtime input schema validation', () => {
 
 		const runtimeWithTool = new AgentRuntime({
 			name: 'test',
-			model: 'openai/gpt-4o-mini',
+			model: native ? 'openai/gpt-5.4' : 'openai/gpt-4o-mini',
 			instructions: 'test',
-			tools: [strictTool],
+			tools: native ? [] : [strictTool],
+			deferredTools: native ? [strictTool] : [],
+			nativeToolDeferral: native ? { eagerToolNames: [] } : undefined,
 		});
 
 		const result = await runtimeWithTool.generate('go');
@@ -6946,31 +7734,58 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 		expect((await checkpointStore.load(runId))?.status).toBe('suspended');
 	});
 
-	it('claims the checkpoint after resume validation passes', async () => {
+	it('restores a rejected resume with current metadata and permits a retry', async () => {
 		const checkpointStore = makeClaimingCheckpointStore();
-		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
-		const onResumeClaimed = vi.fn();
+		const tool = makeApprovalTool();
+		const handler = vi.spyOn(tool, 'handler');
+		const runtime = createRuntimeWithCheckpointStore([tool], checkpointStore);
+		const persistence = {
+			threadId: 'thread-1',
+			resourceId: 'resource-1',
+			hostMetadata: { owner: 'previous', scope: 'retained' },
+		};
 
 		generateText.mockResolvedValueOnce(
 			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
 		);
-		const first = await runtime.generate('run tool');
+		const first = await runtime.generate('run tool', { persistence });
 		const { runId, toolCallId } = first.pendingSuspend![0];
+		const checkpoint = await checkpointStore.load(runId);
+		handler.mockClear();
+		const rejectedRuntime = createRuntimeWithCheckpointStore([tool], checkpointStore);
+		const error = new Error('Resume admission rejected');
+		await expect(
+			rejectedRuntime.resume(
+				'stream',
+				{ approved: true },
+				{
+					runId,
+					toolCallId,
+					hostMetadata: { owner: 'current' },
+					onResumeClaimed: async () => {
+						expect((await checkpointStore.load(runId))?.status).toBe('running');
+						throw error;
+					},
+				},
+			),
+		).rejects.toBe(error);
+		expect(await checkpointStore.load(runId)).toEqual({
+			...checkpoint,
+			persistence: {
+				...persistence,
+				hostMetadata: { owner: 'current', scope: 'retained' },
+			},
+		});
+		expect(rejectedRuntime.getState().status).toBe('suspended');
+		expect(handler).not.toHaveBeenCalled();
+		expect(streamText).not.toHaveBeenCalled();
 
 		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
-		const resumed = await runtime.resume(
-			'generate',
-			{ approved: true },
-			{ runId, toolCallId, onResumeClaimed },
-		);
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
 
 		expect(resumed.finishReason).toBe('stop');
-		expect(checkpointStore.claimForResume).toHaveBeenCalledTimes(1);
-		expect(checkpointStore.claimForResume).toHaveBeenCalledWith(
-			runId,
-			expect.objectContaining({ status: 'suspended' }),
-		);
-		expect(onResumeClaimed).toHaveBeenCalledTimes(1);
+		expect(handler).toHaveBeenCalledOnce();
+		expect(await checkpointStore.load(runId)).toBeUndefined();
 	});
 
 	it('does not emit a runtime error when another resume wins the checkpoint claim', async () => {
@@ -7195,6 +8010,51 @@ describe('tool systemInstruction merging', () => {
 		expect(text).toContain('</built_in_rules>');
 		expect(text).toContain('You are a helpful assistant.');
 		expect(text.indexOf('<built_in_rules>')).toBeLessThan(text.indexOf('You are a helpful'));
+	});
+
+	it('adds episodic capture guidance to the flag_memory instruction and content field only when set', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+		const runWith = async (guidance?: { include?: string[]; exclude?: string[] }) => {
+			generateText.mockClear();
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'You are a test assistant.',
+				memory: new InMemoryMemory(),
+				episodicMemory: { embedder: fakeEmbedder, guidance },
+			});
+			await runtime.generate('hello', {
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			});
+			const callArgs = generateText.mock.calls[0][0] as {
+				tools: { flag_memory: { inputSchema: z.ZodObject<{ content: z.ZodString }> } };
+			};
+			const flagTool = callArgs.tools.flag_memory.inputSchema.shape.content.description ?? '';
+			return { text: getSystemMessageText(), flagTool };
+		};
+
+		const { text, flagTool } = await runWith({
+			include: ['timezone'],
+			exclude: ['client "names"'],
+		});
+		expect(text).toContain(
+			`${DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION}\n<capture_guidance>`,
+		);
+		expect(text).toContain('Prioritize: "timezone".');
+		expect(text).toContain(
+			'Exclude: "client \\"names\\"". This rule overrides every other flag_memory rule',
+		);
+		expect(flagTool).toContain('Must not contain details about:');
+
+		const empty = await runWith({ include: [], exclude: [] });
+		expect(empty.text).toContain(DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION);
+		expect(empty.text).not.toContain('<capture_guidance>');
+		expect(empty.flagTool).not.toContain('Must not contain details about:');
+
+		const includeOnly = await runWith({ include: ['timezone'] });
+		expect(includeOnly.text).toContain('Prioritize: "timezone".');
+		expect(includeOnly.text).not.toContain('Exclude:');
 	});
 
 	it('joins multiple tools systemInstructions into a single block', async () => {
@@ -7772,7 +8632,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			memory.episodic.searchEntries(
 				{ resourceId: 'resource-1', threadId: 'thread-1' },
 				'Remember',
-				{ topK: 10 },
+				{ queryEmbedding: [1, 1], topK: 10 },
 			),
 		).resolves.toHaveLength(2);
 	});
@@ -7785,7 +8645,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			{
 				resourceId: 'resource-1',
 				content: 'Earlier session: user chose Postgres for memory storage.',
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 			},
 			[
 				{
@@ -7799,7 +8659,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			{
 				resourceId: 'resource-2',
 				content: 'Earlier session: user chose SQLite for memory storage.',
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 			},
 			[
 				{
@@ -7847,7 +8707,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			{
 				resourceId: 'resource-1',
 				content: 'Earlier session: user chose Postgres for memory storage.',
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 			},
 			[
 				{
@@ -8110,7 +8970,6 @@ describe('AgentRuntime — observation log jobs', () => {
 				makeGenerateWithToolCall('tc-memory', 'flag_memory', {
 					content: 'Remember this detail.',
 					evidence: 'Please remember this.',
-					kind: 'explicit_remember',
 				}),
 			)
 			.mockResolvedValueOnce(makeGenerateSuccess('Remembered response'));
@@ -8190,12 +9049,14 @@ describe('AgentRuntime — mid-run observation', () => {
 			deferredTools?: BuiltTool[];
 			checkpointStorage?: CheckpointStore;
 			model?: ModelConfig;
+			instructionProviderOptions?: ProviderOptions;
 		},
 	): AgentRuntime {
 		return new AgentRuntime({
 			name: 'mid-run-agent',
 			model: extra?.model ?? 'openai/gpt-4o-mini',
 			instructions: 'You are a test assistant.',
+			instructionProviderOptions: extra?.instructionProviderOptions,
 			memory,
 			tools: extra?.tools ?? [makeStepTool()],
 			deferredTools: extra?.deferredTools,
@@ -8239,6 +9100,55 @@ describe('AgentRuntime — mid-run observation', () => {
 		});
 		expect(observations.length).toBeGreaterThanOrEqual(1);
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
+	});
+
+	it('streams and persists a skill update before the model responds', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save(
+			{ ...PERSISTENCE, agentName: 'mid-run-agent' },
+			{ skillIds: ['builder'], versions: { builder: 'previous-version' } },
+		);
+		const skillSource = {
+			...createRuntimeSkillSource([
+				{
+					id: 'builder',
+					name: 'Builder',
+					description: 'Build workflows.',
+					instructions: 'Use the latest guidance.',
+				},
+			]),
+			shouldAppendSkillUpdates: () => true,
+		};
+		const runtime = buildMidRunRuntime(memory, { skillSource });
+		streamText.mockReturnValueOnce(makeStreamSuccess('Done'));
+		const { stream } = await runtime.stream('Continue', { persistence: PERSISTENCE });
+		const chunks = await collectChunks(stream);
+		await runtime.dispose();
+		const notices = chunks
+			.filter((chunk) => chunk.type === 'message')
+			.filter((chunk) => chunk.message.type === 'custom');
+		expect(notices).toEqual([
+			{
+				type: 'message',
+				message: {
+					type: 'custom',
+					data: {
+						type: 'n8n:runtime-skill-update',
+						skillUpdate: expect.objectContaining({
+							skillId: 'builder',
+							name: 'Builder',
+							change: 'updated',
+						}),
+					},
+				},
+			},
+		]);
+		expect(chunks.indexOf(notices[0])).toBeLessThan(
+			chunks.findIndex((chunk) => chunk.type === 'text-delta'),
+		);
+		expect(await memory.getMessages(PERSISTENCE.threadId)).toContainEqual(
+			expect.objectContaining(notices[0].message),
+		);
 	});
 
 	it('persists full skill content when the memory adapter has no skill state store', async () => {
@@ -8313,8 +9223,46 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
 	});
 
+	it('keeps the base instructions unchanged when compaction moves a skill into the system prompt', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Wait for a real execution before extending the workflow.',
+			},
+		]);
+		const cacheOptions = { anthropic: { cacheControl: { type: 'ephemeral' } } };
+		const runtime = buildMidRunRuntime(new InMemoryMemory(), {
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+			model: 'anthropic/claude-sonnet-4-5',
+			instructionProviderOptions: cacheOptions,
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
+
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const before = capturedCall(0).instructions;
+		const after = capturedCall(1).instructions;
+		if (Array.isArray(before) || !Array.isArray(after)) throw new Error('Unexpected system shape');
+		expect(after[0]).toEqual(before);
+		expect(after[1]).toEqual({
+			role: 'system',
+			content: expect.stringContaining('Wait for a real execution'),
+			providerOptions: cacheOptions,
+		});
+		expect(after[2].content).toContain('Mid-run observation captured.');
+		expect(after[2]).not.toHaveProperty('providerOptions');
+	});
+
 	it.each(['load_skill', 'inspect_node'])(
-		'activates skill tool dependencies after %s and restores them on the next turn',
+		'keeps skill tool dependencies in the tool list before and after %s',
 		async (activationTool) => {
 			const source = createRuntimeSkillSource([
 				{
@@ -8352,8 +9300,9 @@ describe('AgentRuntime — mid-run observation', () => {
 			await runtime.generate('Build it', { persistence: PERSISTENCE });
 			await runtime.dispose();
 
-			expect(capturedCall(0).tools).not.toHaveProperty('catalog');
-			expect(capturedCall(1).tools).toHaveProperty('catalog');
+			// The tool list must not change when the skill activates, or the cached prompt is rewritten.
+			expect(Object.keys(capturedCall(1).tools)).toEqual(Object.keys(capturedCall(0).tools));
+			expect(capturedCall(0).tools).toHaveProperty('catalog');
 			expect(capturedCall(1).tools).not.toHaveProperty('optional_tool');
 			expect(flattenInstructions(capturedCall(1).instructions)).toContain(
 				'Choose a model from the catalog.',
@@ -8418,6 +9367,55 @@ describe('AgentRuntime — mid-run observation', () => {
 		await resumed.dispose();
 		expect(flattenInstructions(capturedCall(2).instructions)).toContain('Current workflow policy.');
 		expect(JSON.stringify(capturedCall(2))).not.toContain('Old workflow policy.');
+	});
+
+	it('resumes a deferred tool that a skill dependency loaded', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'planning',
+				name: 'planning',
+				description: 'Plan multi-step work.',
+				instructions: 'Ask the user to approve the plan.',
+				dependencies: { tools: ['approve'] },
+			},
+		]);
+		const checkpointStore = makeClaimingCheckpointStore();
+		const memory = new InMemoryMemory();
+		const options = {
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+			deferredTools: [makeInterruptibleTool()],
+			checkpointStorage: checkpointStore,
+		};
+		const first = buildMidRunRuntime(memory, options);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-planning', 'load_skill', { skillId: 'planning' }),
+			)
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('confirm', 'approve', { question: 'Run the plan?' }),
+			);
+		const result = await first.generate('Plan it', { persistence: PERSISTENCE });
+		await first.dispose();
+		const suspension = result.pendingSuspend?.[0];
+		if (!suspension) throw new Error('Expected a plan confirmation');
+
+		const resumed = buildMidRunRuntime(memory, options);
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Plan approved.'));
+		const resumeResult = await resumed.resume(
+			'generate',
+			{ approved: true },
+			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
+		);
+		await resumed.dispose();
+
+		expect(resumeResult.error).toBeUndefined();
+		expect(resumeResult.toolCalls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ tool: 'approve', output: { approved: true } }),
+			]),
+		);
+		expect(capturedCall(2).tools).toHaveProperty('approve');
 	});
 
 	it('merges system messages after compaction for custom OpenAI-compatible endpoints', async () => {
@@ -9070,61 +10068,72 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 		};
 	}
 
-	it('auto-bypass: does NOT call the tool handler on cancellation', async () => {
-		const onCancellation = makeCancellationSpy();
-		const handlerSpy = vi.fn().mockImplementation(async (_input: unknown, ctx: unknown) => {
-			const { suspend, resumeData } = ctx as InterruptibleToolContext;
-			if (!resumeData) {
-				return await suspend({ prompt: 'What should I do?' });
-			}
-			return { result: (resumeData as { answer: string }).answer };
-		});
-		const tool: BuiltTool = {
-			name: 'interactive_tool',
-			description: 'A tool that suspends',
-			inputSchema: z.object({ prompt: z.string() }),
-			suspendSchema: z.object({ prompt: z.string() }),
-			resumeSchema: z.object({ answer: z.string() }),
-			handler: handlerSpy,
-			onCancellation,
-		};
+	it.each([false, true])(
+		'cancels a suspended tool without execution with native deferral %s',
+		async (native) => {
+			const onCancellation = makeCancellationSpy();
+			const handlerSpy = vi.fn().mockImplementation(async (_input: unknown, ctx: unknown) => {
+				const { suspend, resumeData } = ctx as InterruptibleToolContext;
+				if (!resumeData) {
+					return await suspend({ prompt: 'What should I do?' });
+				}
+				return { result: (resumeData as { answer: string }).answer };
+			});
+			const tool: BuiltTool = {
+				name: 'interactive_tool',
+				description: 'A tool that suspends',
+				inputSchema: z.object({ prompt: z.string() }),
+				suspendSchema: z.object({ prompt: z.string() }),
+				resumeSchema: z.object({ answer: z.string() }),
+				handler: handlerSpy,
+				onCancellation,
+			};
 
-		const { runtime } = createRuntimeWithTools([tool], 1);
+			const runtime = new AgentRuntime({
+				name: 'cancel-test',
+				model: native ? 'openai/gpt-5.4' : 'openai/gpt-4o-mini',
+				instructions: 'Use tools.',
+				tools: native ? [] : [tool],
+				deferredTools: native ? [tool] : [],
+				nativeToolDeferral: native ? { eagerToolNames: [] } : undefined,
+				checkpointStorage: 'memory',
+			});
 
-		generateText
-			.mockResolvedValueOnce(
-				makeGenerateWithToolCalls([
-					{ toolCallId: 'tc-1', toolName: 'interactive_tool', args: { prompt: 'continue?' } },
-				]),
-			)
-			.mockResolvedValueOnce(makeGenerateSuccess('Done after cancel'));
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([
+						{ toolCallId: 'tc-1', toolName: 'interactive_tool', args: { prompt: 'continue?' } },
+					]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess('Done after cancel'));
 
-		const first = await runtime.generate('start', {});
-		const { runId, toolCallId } = first.pendingSuspend![0];
+			const first = await runtime.generate('start', {});
+			const { runId, toolCallId } = first.pendingSuspend![0];
 
-		// Reset call count to check the handler is NOT called on resume
-		handlerSpy.mockClear();
+			// Reset call count to check the handler is NOT called on resume
+			handlerSpy.mockClear();
 
-		const resumed = await runtime.resume(
-			'generate',
-			createCancellation('do something else instead'),
-			{ runId, toolCallId },
-		);
+			const resumed = await runtime.resume(
+				'generate',
+				createCancellation('do something else instead'),
+				{ runId, toolCallId },
+			);
 
-		// Handler should NOT have been called for the resume
-		expect(handlerSpy).not.toHaveBeenCalled();
-		expect(onCancellation).toHaveBeenCalledWith(
-			{ prompt: 'continue?' },
-			expect.objectContaining({
-				cancellation: { message: 'do something else instead' },
-				runId,
-				toolCallId,
-				suspendPayload: { prompt: 'What should I do?' },
-			}),
-		);
-		// The generation should have continued after cancellation
-		expect(resumed.finishReason).toBe('stop');
-	});
+			// Handler should NOT have been called for the resume
+			expect(handlerSpy).not.toHaveBeenCalled();
+			expect(onCancellation).toHaveBeenCalledWith(
+				{ prompt: 'continue?' },
+				expect.objectContaining({
+					cancellation: { message: 'do something else instead' },
+					runId,
+					toolCallId,
+					suspendPayload: { prompt: 'What should I do?' },
+				}),
+			);
+			// The generation should have continued after cancellation
+			expect(resumed.finishReason).toBe('stop');
+		},
+	);
 
 	it('auto-bypass: injects the steering message and the LLM sees it', async () => {
 		const tool = makeSuspendToolForCancel();
@@ -9490,7 +10499,7 @@ describe('AgentRuntime — empty model responses', () => {
 		};
 	}
 
-	it.each(['other', 'unknown', 'content-filter'])(
+	it.each(['other', 'unknown', 'interrupted', 'content-filter'])(
 		'stream: yields an error chunk when the model returns no output with finish reason "%s"',
 		async (finishReason) => {
 			streamText.mockReturnValue(makeEmptyStream(finishReason));
@@ -9883,8 +10892,11 @@ describe('AgentRuntime — oversized tool results', () => {
 			type: 'content' as const,
 			value: [
 				{
-					type: 'file-data' as const,
-					data: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.repeat(8_000),
+					type: 'file' as const,
+					data: {
+						type: 'data' as const,
+						data: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.repeat(8_000),
+					},
 					mediaType: 'application/pdf',
 				},
 			],
@@ -9942,6 +10954,99 @@ describe('AgentRuntime — oversized tool results', () => {
 		) as (StreamChunk & { type: 'tool-result' }) | undefined;
 
 		expect(streamResult?.output).toEqual(modelOutput);
+	});
+
+	it('streams trace output to the host without sending it to the model', async () => {
+		const tool: BuiltTool = {
+			name: 'traced_result',
+			description: 'Return a traced result',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ ids: ['a'], text: 'visible' }),
+			toModelOutput: () => ({ text: 'visible' }),
+			toTraceOutput: () => ({ ids: ['a'] }),
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-traced', toolName: tool.name, args: {} },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([{ toolCallId: 'tc-traced', toolName: tool.name, input: {} }]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess());
+
+		const { stream } = await runtime.stream('run');
+		const chunks = await collectChunks(stream);
+		const toolResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolCallId === 'tc-traced',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(toolResult?.output).toEqual({ text: 'visible' });
+		expect(toolResult?.traceOutput).toEqual({ ids: ['a'] });
+
+		const modelMessages = streamText.mock.calls[1][0].messages as Array<{
+			role: string;
+			content: Array<{ type: string; output?: { type: string; value: unknown } }>;
+		}>;
+		const modelToolResult = modelMessages
+			.find((message) => message.role === 'tool')
+			?.content.find((part) => part.type === 'tool-result');
+		expect(modelToolResult?.output?.value).toEqual({ text: 'visible' });
+		expect(JSON.stringify(modelMessages)).not.toContain('"ids"');
+	});
+
+	it('keeps the tool call successful when the trace output hook throws', async () => {
+		const tool: BuiltTool = {
+			name: 'trace_failure',
+			description: 'Return a result with a failing trace hook',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ text: 'visible' }),
+			toModelOutput: () => ({ text: 'visible' }),
+			toTraceOutput: () => {
+				throw new Error('trace failed');
+			},
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{ type: 'tool-call', toolCallId: 'tc-trace-fail', toolName: tool.name, args: {} },
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-trace-fail', toolName: tool.name, input: {} },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess());
+
+		const { stream } = await runtime.stream('run');
+		const chunks = await collectChunks(stream);
+		const toolResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolCallId === 'tc-trace-fail',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(toolResult?.isError).toBeFalsy();
+		expect(toolResult?.output).toEqual({ text: 'visible' });
+		expect(toolResult?.traceOutput).toBeUndefined();
 	});
 
 	it('bounds an oversized transformed result while preserving raw output', async () => {
@@ -10117,7 +11222,7 @@ describe('AgentRuntime — oversized tool results', () => {
 			estimatedTokenCount: number;
 			requiredAction: {
 				toolName: 'workspace_read_tool_result';
-				input: { path: string; view: 'describe' };
+				input: { path: string; view: 'json'; pointer: '' };
 			};
 		};
 
@@ -10269,8 +11374,8 @@ describe('AgentRuntime — oversized tool results', () => {
 				},
 			];
 			const filePart = {
-				type: 'file-data' as const,
-				data: 'base64-pdf',
+				type: 'file' as const,
+				data: { type: 'data' as const, data: 'base64-pdf' },
 				mediaType: 'application/pdf',
 			};
 			const tool: BuiltTool = {
@@ -10349,7 +11454,7 @@ describe('AgentRuntime — oversized tool results', () => {
 			expect(envelopes.map(({ requiredAction }) => requiredAction)).toEqual(
 				envelopes.map(({ path }) => ({
 					toolName: 'workspace_read_tool_result',
-					input: { path, view: 'describe' },
+					input: { path, view: 'json', pointer: '' },
 				})),
 			);
 			expect(storedResultsSeenByNextModel).toEqual([
@@ -10935,5 +12040,408 @@ describe('AgentRuntime — MCP tool provenance', () => {
 				expect.objectContaining({ type: 'tool-result', toolCallId, mcpServerName: 'Genie' }),
 			]),
 		);
+	});
+});
+
+describe('AgentRuntime — tools that end the turn', () => {
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function silenceTool(endsTurn: (output: unknown) => boolean): BuiltTool {
+		return {
+			...makeMockTool('silence', async () => ({ silent: true })),
+			endsTurn,
+		};
+	}
+
+	it('stops after the call, without asking the model again', async () => {
+		const { runtime } = createRuntimeWithTools([silenceTool(() => true)], 1);
+		generateText.mockResolvedValue(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'silence', args: {} }]),
+		);
+
+		const result = await runtime.generate('say nothing', { maxIterations: 5 });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(result.finishReason).toBe('stop');
+	});
+
+	it('stops after the call when streaming', async () => {
+		const { runtime } = createRuntimeWithTools([silenceTool(() => true)], 1);
+		streamText.mockReturnValue(
+			makeStreamWithToolCalls([{ toolCallId: 'tc-1', toolName: 'silence', args: {} }]),
+		);
+
+		const chunks = await collectChunks(
+			(await runtime.stream('say nothing', { maxIterations: 5 })).stream,
+		);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
+	});
+
+	it('stops after a batch that mixes the call with another tool', async () => {
+		const other = makeMockTool('other', async () => ({ ok: true }));
+		const { runtime } = createRuntimeWithTools([silenceTool(() => true), other], 2);
+		generateText.mockResolvedValue(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'other', args: {} },
+				{ toolCallId: 'tc-2', toolName: 'silence', args: {} },
+			]),
+		);
+
+		await runtime.generate('say nothing', { maxIterations: 5 });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops after resuming a call that suspended next to it', async () => {
+		const { runtime } = createRuntimeWithTools(
+			[silenceTool(() => true), makeInterruptibleTool()],
+			2,
+		);
+		generateText.mockResolvedValue(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+				{ toolCallId: 'tc-2', toolName: 'silence', args: {} },
+			]),
+		);
+
+		const first = await runtime.generate('say nothing', { maxIterations: 5 });
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(resumed.finishReason).toBe('stop');
+	});
+
+	it('keeps going when the output does not end the turn', async () => {
+		const { runtime } = createRuntimeWithTools([silenceTool(() => false)], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'silence', args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const result = await runtime.generate('say nothing', { maxIterations: 5 });
+
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+	});
+});
+
+describe('Tool builder — ending the turn', () => {
+	it('rejects a tool that ends the turn and transforms its model output', () => {
+		const tool = new Tool('silence')
+			.description('Stay silent')
+			.input(z.object({}))
+			.handler(async () => ({ silent: true }))
+			.endsTurnWhen(() => true)
+			.toModelOutput((output) => output);
+
+		expect(() => tool.build()).toThrow('cannot combine .endsTurnWhen() with .toModelOutput()');
+	});
+});
+
+describe('AgentRuntime — model error classification', () => {
+	function depletedGatewayError() {
+		return new APICallError({
+			message: 'Payment Required',
+			url: 'https://gateway.example/v1/responses',
+			requestBodyValues: {},
+			statusCode: 402,
+			responseBody: '{"error":"Your Gateway credits have been depleted"}',
+		});
+	}
+
+	const classifyAsCredits = (error: unknown) =>
+		APICallError.isInstance(error) && error.statusCode === 402
+			? { code: 'budget.credits' }
+			: undefined;
+
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it('ends a generate run as a guardrail stop when the classifier maps the error', async () => {
+		generateText.mockRejectedValue(depletedGatewayError());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', { classifyModelError: classifyAsCredits });
+
+		expect(result.finishReason).toBe('guardrail');
+		expect(result.guardrail).toEqual({ code: 'budget.credits' });
+		expect(result.error).toBeUndefined();
+	});
+
+	it('ends a stream run with a guardrail finish chunk carrying the mapped code', async () => {
+		const error = depletedGatewayError();
+		streamText.mockReturnValue({
+			stream: makeChunkStream([]),
+			finishReason: silentReject(error),
+			usage: silentReject(error),
+			response: silentReject(error),
+			toolCalls: silentReject(error),
+		});
+		const { runtime } = createRuntime();
+
+		const { stream } = await runtime.stream('hi', { classifyModelError: classifyAsCredits });
+		const chunks = await collectChunks(stream);
+
+		expect(chunks[chunks.length - 1]).toMatchObject({
+			type: 'finish',
+			finishReason: 'guardrail',
+			guardrail: { code: 'budget.credits' },
+		});
+	});
+
+	it('keeps the error finish when the classifier returns undefined', async () => {
+		generateText.mockRejectedValue(depletedGatewayError());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', {
+			classifyModelError: () => undefined,
+		});
+
+		expect(result.finishReason).toBe('error');
+		expect(result.guardrail).toBeUndefined();
+	});
+
+	it('keeps the error finish when no classifier is attached', async () => {
+		generateText.mockRejectedValue(depletedGatewayError());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi');
+
+		expect(result.finishReason).toBe('error');
+		expect(result.guardrail).toBeUndefined();
+	});
+
+	it('lets cancellation win when the run aborts while the call rejects', async () => {
+		const controller = new AbortController();
+		generateText.mockImplementation(async () => {
+			controller.abort();
+			throw depletedGatewayError();
+		});
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', {
+			abortSignal: controller.signal,
+			classifyModelError: classifyAsCredits,
+		});
+
+		expect(result.finishReason).not.toBe('guardrail');
+		expect(result.guardrail).toBeUndefined();
+	});
+});
+
+describe('AgentRuntime — workspace prewarm', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	function makeStreamStartingToolInput(toolName: string) {
+		return {
+			stream: makeChunkStream([
+				{ type: 'tool-input-start', id: 'tc-1', toolName },
+				{ type: 'text-delta', id: 'text-1', text: 'Done' },
+			]),
+			finishReason: Promise.resolve('stop'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [{ role: 'assistant', content: [{ type: 'text', text: 'Done' }] }],
+			}),
+			toolCalls: Promise.resolve([]),
+		};
+	}
+
+	function createAgent(prewarm: () => void, tools: BuiltTool[] = []) {
+		const agent = new Agent('prewarm-test')
+			.model('openai/gpt-4o-mini')
+			.instructions('Test')
+			.workspace(new Workspace({ filesystem: new InMemoryFilesystem(), prewarm }));
+		return tools.length > 0 ? agent.tool(tools) : agent;
+	}
+
+	async function streamOnce(agent: Agent): Promise<void> {
+		const result = await agent.stream('run');
+		await collectChunks(result.stream);
+	}
+
+	const sandboxTool = new Tool('compile')
+		.description('Compile in the sandbox')
+		.input(z.object({}))
+		.requiresWorkspace()
+		.handler(async () => await Promise.resolve('ok'))
+		.build();
+
+	const plainTool = new Tool('search')
+		.description('Search the web')
+		.input(z.object({}))
+		.handler(async () => await Promise.resolve('ok'))
+		.build();
+
+	it('prepares the workspace when the model starts the input of a tool that needs it', async () => {
+		const prewarm = vi.fn();
+		streamText.mockReturnValueOnce(makeStreamStartingToolInput('compile'));
+
+		await streamOnce(createAgent(prewarm, [sandboxTool]));
+
+		expect(prewarm).toHaveBeenCalledOnce();
+	});
+
+	it('prepares the workspace for the built-in workspace tools', async () => {
+		const prewarm = vi.fn();
+		streamText.mockReturnValueOnce(makeStreamStartingToolInput('workspace_write_file'));
+
+		await streamOnce(createAgent(prewarm));
+
+		expect(prewarm).toHaveBeenCalledOnce();
+	});
+
+	it('does not prepare the workspace for a tool that does not need it', async () => {
+		const prewarm = vi.fn();
+		streamText.mockReturnValueOnce(makeStreamStartingToolInput('search'));
+
+		await streamOnce(createAgent(prewarm, [plainTool]));
+
+		expect(prewarm).not.toHaveBeenCalled();
+	});
+
+	it('finishes the run when the prewarm hook throws', async () => {
+		const prewarm = vi.fn(() => {
+			throw new Error('sandbox unavailable');
+		});
+		streamText.mockReturnValueOnce(makeStreamStartingToolInput('compile'));
+
+		const result = await createAgent(prewarm, [sandboxTool]).stream('run');
+		const chunks = await collectChunks(result.stream);
+
+		expect(prewarm).toHaveBeenCalledOnce();
+		expect(chunks.some((chunk) => chunk.type === 'error')).toBe(false);
+		expect(chunks.at(-1)?.type).toBe('finish');
+	});
+});
+
+describe('AgentRuntime — tool output files', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+	});
+
+	const bytes = new Uint8Array([1, 2, 3]);
+
+	const readTool: BuiltTool = {
+		name: 'read',
+		description: 'Read a file',
+		inputSchema: z.object({ fileId: z.string() }),
+		handler: async (input: unknown) => {
+			const { fileId } = input as { fileId: string };
+			return {
+				type: 'content',
+				value: [
+					{ type: 'text', text: fileId },
+					{ type: 'file', mediaType: 'image/png', fileRef: { id: fileId } },
+				],
+			};
+		},
+	};
+
+	function filePartsOfCall(callIndex: number) {
+		const messages: aiModule.ModelMessage[] = generateText.mock.calls[callIndex][0].messages ?? [];
+		return messages.flatMap((message) => {
+			if (!Array.isArray(message.content)) return [];
+			return message.content.flatMap((part) => {
+				if (part.type !== 'tool-result' || part.output.type !== 'content') return [];
+				return part.output.value.filter((value) => value.type === 'file');
+			});
+		});
+	}
+
+	function readFileCalls(count: number) {
+		for (let i = 0; i < count; i++) {
+			generateText.mockResolvedValueOnce(
+				makeGenerateWithToolCall(`call-${i}`, 'read', { fileId: `file-${i}` }),
+			);
+		}
+		generateText.mockResolvedValueOnce(makeGenerateSuccess());
+	}
+
+	const attached = { type: 'file', data: { type: 'data', data: bytes }, mediaType: 'image/png' };
+
+	it('keeps a file attached in later steps of the turn without loading it again', async () => {
+		const load = vi.fn().mockResolvedValue(bytes);
+		const runtime = new AgentRuntime({
+			name: 'tool-file-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Test',
+			tools: [readTool],
+			fileStore: { load },
+		});
+		readFileCalls(2);
+
+		const result = await runtime.generate('Read the files', { maxIterations: 20 });
+
+		expect(result.error).toBeUndefined();
+		expect(filePartsOfCall(0)).toHaveLength(0);
+		expect(filePartsOfCall(1)).toEqual([attached]);
+		// Step 3 still has the file of step 1.
+		expect(filePartsOfCall(2)).toEqual([attached, attached]);
+		expect(load).toHaveBeenCalledTimes(2);
+	});
+
+	it('shows a short text for the oldest file when the file count budget is used up', async () => {
+		const runtime = new AgentRuntime({
+			name: 'tool-file-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Test',
+			tools: [readTool],
+			fileStore: { load: vi.fn().mockResolvedValue(bytes) },
+		});
+		readFileCalls(MAX_HYDRATED_FILE_PARTS + 1);
+
+		await runtime.generate('Read the files', { maxIterations: 30 });
+
+		const lastIndex = MAX_HYDRATED_FILE_PARTS + 1;
+		expect(filePartsOfCall(lastIndex)).toHaveLength(MAX_HYDRATED_FILE_PARTS);
+		const lastCall: aiModule.ModelMessage[] = generateText.mock.calls[lastIndex][0].messages ?? [];
+		expect(JSON.stringify(lastCall)).toEqual(
+			expect.stringContaining('(fileId: file-0) is not attached now.'),
+		);
+	});
+
+	it('keeps a file attached in the next turn and does not store its bytes', async () => {
+		const persistence = { threadId: 'tool-file-thread', resourceId: 'user-1' };
+		const memory = new InMemoryMemory();
+		// Store messages the way the n8n backend does.
+		const save = memory.saveMessages.bind(memory);
+		const saved: string[] = [];
+		memory.saveMessages = async (args) => {
+			const messages = structuredClone(args.messages.map(stripHydratedFileData));
+			saved.push(JSON.stringify(messages));
+			await save({ ...args, messages });
+		};
+		const load = vi.fn().mockResolvedValue(bytes);
+		const build = () =>
+			new AgentRuntime({
+				name: 'tool-file-test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Test',
+				tools: [readTool],
+				memory,
+				fileStore: { load },
+			});
+		readFileCalls(1);
+		await build().generate('Read the file', { persistence });
+		generateText.mockResolvedValueOnce(makeGenerateSuccess());
+
+		await build().generate('What was in it?', { persistence });
+
+		expect(filePartsOfCall(2)).toEqual([attached]);
+		expect(load).toHaveBeenCalledTimes(2);
+		expect(saved.join()).toContain('"fileRef":{"id":"file-0"}');
+		expect(saved.join()).not.toContain('"data"');
 	});
 });

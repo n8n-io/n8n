@@ -8,7 +8,8 @@ import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { jsonParse, OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
 import {
 	decodeAgentSandboxHostMetadata,
@@ -300,6 +301,25 @@ export class N8NCheckpointStorage {
 		for (const row of rows) {
 			if (row.agentId === agentId) await this.deleteDelegation(row.runId, agentId, visited);
 		}
+	}
+
+	async markUserPaused(
+		agentId: string,
+		suspension: {
+			runId: string;
+			checkpoint: SerializableAgentState;
+			serializedState: string;
+			updatedAt: Date;
+		},
+	): Promise<boolean> {
+		// Preserve the approval and its expiry. A concurrent resume must win or lose atomically.
+		return await this.agentCheckpointRepository.markUserPaused(
+			suspension.runId,
+			agentId,
+			suspension.serializedState,
+			JSON.stringify({ ...suspension.checkpoint, finishReason: 'paused' }),
+			suspension.updatedAt,
+		);
 	}
 
 	private async deleteDelegation(

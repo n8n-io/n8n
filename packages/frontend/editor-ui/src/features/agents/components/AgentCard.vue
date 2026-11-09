@@ -17,8 +17,7 @@ import PublicationIndicator from '@/app/components/PublicationIndicator.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
 import { deleteAgent } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
@@ -56,6 +55,10 @@ const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPe
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
 
+// Saving a draft bumps `versionId`, so a mismatch means unpublished edits.
+const hasUnpublishedChanges = computed(
+	() => isPublished.value && props.agent.versionId !== props.agent.activeVersionId,
+);
 const isUntitled = computed(() => props.agent.name === locale.baseText('agents.new.defaultName'));
 
 const isMcpEnabled = computed(
@@ -161,6 +164,7 @@ async function onAction(action: string) {
 			description: locale.baseText('agents.delete.modal.description', {
 				interpolate: { name: props.agent.name },
 			}),
+			isDestructive: true,
 			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
 			cancelButtonText: locale.baseText('generic.cancel'),
 		});
@@ -225,15 +229,21 @@ async function toggleMCPAccess(enabled: boolean) {
 			<div :class="$style.cardActions" @click.stop>
 				<PublicationIndicator
 					v-if="isPublished"
-					:label="locale.baseText('agents.list.published')"
+					:label="
+						locale.baseText(
+							hasUnpublishedChanges ? 'agents.list.changesToPublish' : 'agents.list.published',
+						)
+					"
+					:variant="hasUnpublishedChanges ? 'warning' : 'success'"
+					:data-state="hasUnpublishedChanges ? 'changes-to-publish' : 'published'"
 					data-test-id="agent-card-publish-indicator"
 				/>
-				<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">
+				<N8nTooltip :content="locale.baseText('agents.list.actions.newTest')">
 					<N8nIconButton
-						icon="message-circle-plus"
+						icon="flask-conical"
 						variant="ghost"
 						size="medium"
-						:aria-label="locale.baseText('agents.list.actions.newChat')"
+						:aria-label="locale.baseText('agents.list.actions.newTest')"
 						data-test-id="agent-card-new-chat"
 						@click="emit('new-chat', agent.id, projectId)"
 					/>
@@ -254,14 +264,9 @@ async function toggleMCPAccess(enabled: boolean) {
 @use '@n8n/design-system/css/mixins/breakpoints';
 
 .cardLink {
-	transition: box-shadow 0.3s ease;
 	cursor: pointer;
 	padding: 0;
 	align-items: stretch;
-
-	&:hover {
-		box-shadow: var(--shadow--card-hover);
-	}
 }
 
 .cardHeading {

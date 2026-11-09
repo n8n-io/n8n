@@ -7,7 +7,6 @@ import {
 import {
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 	getWorkflowToolIncompatibilityReason,
-	type WorkflowToolIncompatibilityReason,
 } from '@n8n/api-types';
 import nodePopularity from 'virtual:node-popularity-data';
 
@@ -113,30 +112,11 @@ export function useAgentToolCatalog() {
 		),
 	);
 
-	/**
-	 * Workflows that can't be attached as agent tools, with the reason why.
-	 * Surfaced greyed-out at the bottom of the picker so the user can see why a
-	 * workflow is missing instead of it simply being absent. Archived workflows
-	 * are excluded — they're not relevant in the picker either way.
-	 */
-	const incompatibleWorkflows = computed<
-		Array<{ workflow: IWorkflowDb; reason: WorkflowToolIncompatibilityReason }>
-	>(() =>
-		projectWorkflows.value
-			.filter((workflow) => !workflow.isArchived)
-			.flatMap((workflow) => {
-				const reason = getWorkflowToolIncompatibilityReason(workflow);
-				return reason ? [{ workflow, reason }] : [];
-			}),
-	);
-
-	async function loadWorkflows(projectId?: string): Promise<void> {
+	async function loadWorkflows(projectId?: string): Promise<boolean> {
 		try {
-			// Fetch all project workflows (not just those with a supported trigger)
-			// so unsupported ones can be shown greyed-out with a reason in the picker.
-			// `connections` is needed to scope the incompatibility check to nodes
+			// `connections` is needed to scope the compatibility check to nodes
 			// actually reachable from a supported trigger. A null `activeVersionId`
-			// marks unpublished workflows, which the published agent cannot call yet.
+			// marks unpublished workflows (shown by the tool config panel).
 			projectWorkflows.value = await workflowsListStore.searchWorkflows({
 				projectId,
 				select: [
@@ -150,15 +130,16 @@ export function useAgentToolCatalog() {
 					'updatedAt',
 				],
 			});
+			return true;
 		} catch (error) {
 			console.warn('[useAgentToolCatalog] failed to load workflows for project', error);
+			return false;
 		}
 	}
 
 	return {
 		availableToolTypes,
 		availableWorkflows,
-		incompatibleWorkflows,
 		projectWorkflows,
 		loadWorkflows,
 		resolveToolNodeType,

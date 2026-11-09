@@ -1,10 +1,15 @@
 {
 	"globalEnv": ["CI", "BUILD_WITH_COVERAGE"],
-	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN"],
+	// VITEST_RETRY is not hashed, so a merge queue run can still use cached master test results.
+	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN", "VITEST_RETRY"],
 	"boundaries": {
 		// `~icons/*` is a vite virtual module injected by unplugin-icons (design-system
 		// icon barrel), not a real package — declare it so boundaries doesn't flag it.
 		"implicitDependencies": ["~icons"]
+	},
+	"futureFlags": {
+		// `--affected` uses task `inputs`, so it selects a task that reads a file from another package.
+		"affectedUsingTaskInputs": true
 	},
 	"tasks": {
 		"clean": { "cache": false },
@@ -55,119 +60,20 @@
 		"format": {},
 		"format:check": {},
 		"lint": {
-			"dependsOn": ["^build", "@n8n/eslint-config#build"]
-		},
-		// Oxlint packages run Oxlint instead of ESLint, so
-		// they need the oxlint layer built, not the ESLint one.
-		"@n8n/ai-node-sdk#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/agents#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/ai-utilities#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/ai-workflow-builder#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/backend-common#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/backend-network#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/backend-services#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/backend-test-utils#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/blob-storage#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/cli#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/code-health#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/client-oauth2#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/computer-use#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/config#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/crdt#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/db#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/decorators#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/di#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/engine#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/errors#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/imap#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/instance-ai#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/local-gateway#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/mcp-browser#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/n8n-benchmark#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/playwright-janitor#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/rules-engine#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/scheduler#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/syslog-client#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/task-runner#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"@n8n/workflow-sdk#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"n8n-core#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"n8n-containers#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"n8n-playwright#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		},
-		"n8n#lint": {
-			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+			"dependsOn": ["^build", "@n8n/eslint-config#build", "@n8n/oxlint-config#build"]
 		},
 		// The n8n-nodes-base lint script also validates load-options methods
 		// against dist/methods/*.json, which only its own build emits.
 		"n8n-nodes-base#lint": {
 			"dependsOn": ["^build", "build", "@n8n/eslint-config#build"]
+		},
+		// The @n8n/db lint configs read this manifest from the cli package.
+		"@n8n/db#lint": {
+			"dependsOn": ["^build", "@n8n/eslint-config#build", "@n8n/oxlint-config#build"],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"$TURBO_ROOT$/packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json"
+			]
 		},
 		"lint:fix": {},
 		"lint:styles": {
@@ -185,7 +91,7 @@
 		"test:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "LOCKFILE_IMPACTED_PACKAGES"],
 			"cache": false
 		},
 		"test:unit": {
@@ -197,7 +103,7 @@
 		"test:unit:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "LOCKFILE_IMPACTED_PACKAGES"],
 			"cache": false
 		},
 		"test:integration": {
@@ -206,10 +112,24 @@
 			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
 			"passThroughEnv": ["CHANGED_FILES"]
 		},
+		// DB suites (testcontainers). The image is part of the hash, so each
+		// Postgres version caches its own result.
+		"test:postgres:integration:tc": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE", "TEST_IMAGE_POSTGRES"],
+			"passThroughEnv": ["CHANGED_FILES", "DOCKER_HOST", "TESTCONTAINERS_*"]
+		},
+		"test:postgres": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE", "TEST_IMAGE_POSTGRES"],
+			"passThroughEnv": ["CHANGED_FILES", "DOCKER_HOST", "TESTCONTAINERS_*"]
+		},
 		"test:integration:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "LOCKFILE_IMPACTED_PACKAGES"],
 			"cache": false
 		},
 		"watch": { "cache": false, "persistent": true },

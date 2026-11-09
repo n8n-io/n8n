@@ -3,7 +3,7 @@ import { CronLoggingConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { CronJob, CronTime } from 'cron';
-import type { CronContext } from 'n8n-workflow';
+import type { Cron } from 'n8n-workflow';
 
 import { InstanceSettings } from '@/instance-settings';
 
@@ -21,7 +21,7 @@ export type ScheduledTaskContext = {
 	targetId: string;
 	timezone: string;
 	expression: string;
-	recurrence?: CronContext['recurrence'];
+	recurrence?: Cron['recurrence'];
 };
 
 @Service()
@@ -174,6 +174,15 @@ export class ScheduledTaskManager {
 
 	getGroupIds(groupType: string): string[] {
 		return Array.from(this.cronsByGroupType.get(groupType)?.keys() ?? []);
+	}
+
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		let crons = 0;
+		for (const cronsByGroup of this.cronsByGroupType.values()) {
+			for (const groupCrons of cronsByGroup.values()) crons += groupCrons.size;
+		}
+		return { crons };
 	}
 
 	getTargetIds(group: ScheduledTaskGroup): string[] {

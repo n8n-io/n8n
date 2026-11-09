@@ -6,7 +6,7 @@ export function principalFromUser(user: User): Principal {
 	// The columns are nullable, but the entity types them as `string`.
 	return {
 		id: user.id,
-		type: 'human',
+		type: 'person',
 		role: user.role,
 		email: user.email ?? undefined,
 		firstName: user.firstName ?? undefined,

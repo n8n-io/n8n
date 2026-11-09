@@ -1,9 +1,10 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="2.5" cy="12" r="1.75" stroke="currentColor" stroke-width="1.5"/>
-<path d="M4.25 12H6.75" stroke="currentColor" stroke-width="1.5"/>
-<path d="M10.25 12H12.125C13.1605 12 14 11.1605 14 10.125C14 9.08947 14.8395 8.25 15.875 8.25H19.75" stroke="currentColor" stroke-width="1.5"/>
-<path d="M10.25 12H12.125C13.1605 12 14 12.8395 14 13.875C14 14.9105 14.8395 15.75 15.875 15.75H17.25" stroke="currentColor" stroke-width="1.5"/>
-<circle cx="8.5" cy="12" r="1.75" stroke="currentColor" stroke-width="1.5"/>
-<circle cx="21.5" cy="8.5" r="1.75" stroke="currentColor" stroke-width="1.5"/>
-<circle cx="19" cy="15.5" r="1.75" stroke="currentColor" stroke-width="1.5"/>
+<svg width="240" height="96" viewBox="0 0 240 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_589_82)">
+<path d="M48 96C52.5 96 54 94.5 54 90V78C54 60 60 54 78 54H90C108 54 114 60 114 78V90C114 94.5 115.5 96 120 96C124.5 96 126 94.5 126 90V78C126 60 132 54 150 54H162C180 54 186 60 186 78V90C186 94.5 187.5 96 192 96C196.5 96 198 94.5 198 90V78C198 60 204 54 222 54H234C238.5 54 240 52.5 240 48C240 43.5 238.5 42 234 42H222C204 42 198 36 198 18V6C198 1.5 196.5 0 192 0C187.5 0 186 1.5 186 6V18C186 36 180 42 162 42H150C132 42 126 36 126 18V6C126 1.5 124.5 0 120 0C115.5 0 114 1.5 114 6V18C114 36 108 42 90 42H78C60 42 54 36 54 18V6C54 1.5 52.5 0 48 0C43.5 0 42 1.5 42 6V18C42 36 36 42 18 42H6C1.5 42 0 43.5 0 48C0 52.5 1.5 54 6 54H18C36 54 42 60 42 78V90C42 94.5 43.5 96 48 96Z" fill="#FF91AC"/>
+</g>
+<defs>
+<clipPath id="clip0_589_82">
+<rect width="240" height="96" fill="white"/>
+</clipPath>
+</defs>
 </svg>

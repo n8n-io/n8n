@@ -67,7 +67,7 @@ function sanitizeOffloadedContentResult(output: ContentToolResultOutput): JSONVa
 	return toJsonValue({
 		type: 'content',
 		value: output.value.map((part) => {
-			if (part.type !== 'text' || !isSerializedOffloadedToolResult(part.text)) return part;
+			if (!('text' in part) || !isSerializedOffloadedToolResult(part.text)) return part;
 			return { ...part, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
 		}),
 	});

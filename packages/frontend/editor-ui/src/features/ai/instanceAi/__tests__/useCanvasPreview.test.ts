@@ -1,11 +1,14 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { ref, reactive, nextTick, type Ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
+import { createTestingPinia } from '@pinia/testing';
+import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { DEBOUNCE_TIME } from '@/app/constants';
-import type {
-	InstanceAiMessage,
-	InstanceAiAgentNode,
-	InstanceAiToolCallState,
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	type InstanceAiMessage,
+	type InstanceAiAgentNode,
+	type InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
@@ -81,8 +84,13 @@ type MockThread = ReturnType<typeof createMockThread>;
 // activeWorkflowId / activeDataTableId can derive values from tabs.
 // ---------------------------------------------------------------------------
 
-function registerWorkflow(thread: MockThread, id: string, name = `Workflow ${id}`) {
-	const entry: ResourceEntry = { type: 'workflow', id, name };
+function registerWorkflow(
+	thread: MockThread,
+	id: string,
+	name = `Workflow ${id}`,
+	projectId?: string,
+) {
+	const entry: ResourceEntry = { type: 'workflow', id, name, projectId };
 	const nextProduced = new Map(thread.producedArtifacts);
 	nextProduced.set(id, entry);
 	thread.producedArtifacts = nextProduced;
@@ -116,6 +124,13 @@ function registerAgent(thread: MockThread, id: string, name = `Agent ${id}`, pro
 	thread.resourceNameIndex = nextByName;
 }
 
+function registerSkill(thread: MockThread, id: string, name = `Skill ${id}`) {
+	const entry: ResourceEntry = { type: 'skill', id, name };
+	const nextProduced = new Map(thread.producedArtifacts);
+	nextProduced.set(id, entry);
+	thread.producedArtifacts = nextProduced;
+}
+
 // ---------------------------------------------------------------------------
 // Route mock
 // ---------------------------------------------------------------------------
@@ -141,6 +156,7 @@ function createMockRoute(threadId = 'thread-1') {
 function setup(options?: {
 	threadOverrides?: Partial<MockThread>;
 	initialAgentId?: () => string | undefined;
+	initialAppId?: () => string | undefined;
 	tabsStorage?: ThreadTabsStorage;
 }) {
 	const thread = createMockThread();
@@ -152,6 +168,7 @@ function setup(options?: {
 		thread: thread as any,
 		threadId: () => route.params.threadId,
 		initialAgentId: options?.initialAgentId,
+		initialAppId: options?.initialAppId,
 		tabsStorage: options?.tabsStorage,
 	});
 
@@ -165,6 +182,7 @@ function setup(options?: {
 describe('useCanvasPreview', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		createTestingPinia();
 	});
 
 	describe('openTabs', () => {
@@ -282,6 +300,34 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 
+		test('records a workflow that the user opens in the recent workflows', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'Orders', 'proj-1');
+			registerDataTable(ctx.thread, 'dt-1', 'Orders table', 'proj-1');
+
+			ctx.selectTab('wf-1');
+			ctx.selectTab('dt-1');
+
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+				'wf-1',
+				'proj-1',
+			);
+		});
+
+		test('records a workflow that the user opens while it is already on screen', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'Orders', 'proj-1');
+			ctx.selectTab('wf-1');
+			vi.mocked(useRecentWorkflowsStore().registerWorkflowOpen).mockClear();
+
+			expect(ctx.openWorkflowPreview('wf-1')).toBe(false);
+
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+				'wf-1',
+				'proj-1',
+			);
+		});
+
 		test('closePreview hides the preview without clearing the selected tab', () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
@@ -318,6 +364,93 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
+	describe('showMentionedWorkflow', () => {
+		function buildMessage(toolCallId: string, workflowId: string) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({
+							toolCallId,
+							toolName: 'workflow_builder_build_workflow',
+							result: { success: true, workflowId },
+						}),
+					],
+				}),
+			});
+		}
+
+		test('shows the tab, opens the preview, and records the open in the recent workflows', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'Orders', 'proj-1');
+			registerWorkflow(ctx.thread, 'wf-2', 'Leads', 'proj-1');
+			ctx.selectTab('wf-1');
+			vi.mocked(useRecentWorkflowsStore().registerWorkflowOpen).mockClear();
+
+			expect(ctx.showMentionedWorkflow('wf-2')).toBe(true);
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+				'wf-2',
+				'proj-1',
+			);
+		});
+
+		test('does not pin the tab, so the artifact the agent builds next takes over', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			// The send is in flight when the mention shows, so the agent counts as working.
+			ctx.thread.isStreaming = true;
+			ctx.showMentionedWorkflow('wf-2');
+			expect(ctx.activeTabId.value).toBe('wf-2');
+
+			ctx.thread.messages = [buildMessage('tc-1', 'wf-1')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+		});
+
+		test('leaves a tab the user picked while the agent works', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.thread.isStreaming = true;
+			ctx.thread.messages = [buildMessage('tc-1', 'wf-1')];
+			await nextTick();
+			ctx.selectTab('wf-2');
+
+			expect(ctx.showMentionedWorkflow('wf-1')).toBe(true);
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+		});
+
+		test('opens a tab the user closed earlier in the thread again', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.selectTab('wf-2');
+			ctx.closeTab('wf-1');
+			expect(ctx.openTabs.value.map(({ id }) => id)).toEqual(['wf-2']);
+
+			ctx.showMentionedWorkflow('wf-1');
+
+			expect(ctx.openTabs.value.map(({ id }) => id)).toEqual(['wf-2', 'wf-1']);
+			expect(ctx.activeTabId.value).toBe('wf-1');
+		});
+
+		test('does nothing for a workflow that has no tab', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			expect(ctx.showMentionedWorkflow('wf-missing')).toBe(false);
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('activeWorkflowExecutionResult', () => {
 		test('returns the latest verification execution for the active workflow', async () => {
 			const ctx = setup();
@@ -329,7 +462,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'verify-built-workflow',
+								toolName: 'workflow_builder_verify_built_workflow',
 								args: { workflowId: 'wf-1' },
 								result: { executionId: 'exec-1', status: 'success' },
 							}),
@@ -356,7 +489,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'verify-built-workflow',
+								toolName: 'workflow_builder_verify_built_workflow',
 								args: { workflowId: 'wf-1' },
 								result: { executionId: 'exec-1', status: 'success' },
 							}),
@@ -487,7 +620,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { success: true, workflowId: 'wf-new' },
 							}),
 						],
@@ -497,6 +630,8 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.activeWorkflowId.value).toBe('wf-new');
+			// The agent opened it, not the user.
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).not.toHaveBeenCalled();
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 
@@ -512,7 +647,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { success: true, workflowId: 'wf-historical' },
 							}),
 						],
@@ -538,7 +673,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { success: true, workflowId: 'wf-1' },
 							}),
 						],
@@ -564,7 +699,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-1',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { success: true, workflowId: 'wf-1' },
 							}),
 						],
@@ -591,7 +726,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-update',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'update', workflowId: 'wf-1' },
 								result: { success: true, workflowId: 'wf-1' },
 							}),
@@ -617,7 +752,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-update',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'update', workflowId: 'wf-1' },
 								result: { success: true },
 							}),
@@ -645,7 +780,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-update',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'update', workflowId: 'wf-1' },
 								result: { success: true },
 							}),
@@ -672,7 +807,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { success: true, workflowId: 'wf-1' },
 							}),
 						],
@@ -690,12 +825,12 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { success: true, workflowId: 'wf-1' },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-update',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'update', workflowId: 'wf-1' },
 								result: { success: true, workflowId: 'wf-1' },
 							}),
@@ -910,6 +1045,60 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBe('agent-7');
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
+
+		test.each([
+			{
+				label: 'creates an Agent',
+				toolName: AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+				result: { ok: true, agentId: 'agent-7', projectId: 'p1', agentChange: 'created' },
+			},
+			{
+				label: 'changes an Agent config',
+				toolName: AGENT_BUILDER_TOOL_NAMES.WRITE_CONFIG,
+				result: { ok: true, agentId: 'agent-7', projectId: 'p1', configMutated: true },
+			},
+		])(
+			'auto-opens preview when an orchestrator builder tool $label',
+			async ({ toolName, result }) => {
+				const ctx = setup();
+				registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
+
+				ctx.thread.messages = [
+					makeMessage({
+						agentTree: makeAgentNode({
+							toolCalls: [makeToolCall({ toolCallId: 'tc-builder', toolName, result })],
+						}),
+					}),
+				];
+				await nextTick();
+
+				expect(ctx.activeTabId.value).toBe('agent-7');
+				expect(ctx.isPreviewVisible.value).toBe(true);
+			},
+		);
+
+		test('auto-opens when the orchestrator selects an existing Agent', async () => {
+			const ctx = setup();
+			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-select',
+								toolName: AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+								result: { ok: true, agentId: 'agent-7', projectId: 'p1', agentChange: 'none' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('agent-7');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
 	});
 
 	describe('auto-open data table preview', () => {
@@ -924,7 +1113,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
@@ -951,7 +1140,7 @@ describe('useCanvasPreview', () => {
 							toolCalls: [
 								makeToolCall({
 									toolCallId: `tc-${action}-dt`,
-									toolName: 'data-tables',
+									toolName: 'data_tables',
 									args: { action, dataTableId: 'Inspect Table' },
 									result: {
 										dataTableId: 'dt-inspect',
@@ -982,7 +1171,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
@@ -1006,7 +1195,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
@@ -1030,7 +1219,7 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1' } },
 							}),
@@ -1041,6 +1230,183 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.dataTableRefreshKey.value).toBe(initialKey + 1);
+		});
+	});
+
+	describe('auto-open app preview', () => {
+		const app = { id: 'app-1', name: 'Todos', projectId: 'project-1' };
+
+		function appsCall(toolCallId: string, args: Record<string, unknown>) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({ toolCallId, toolName: 'apps', args, result: { app, versionId: 'v1' } }),
+					],
+				}),
+			});
+		}
+
+		function registerApp(thread: MockThread) {
+			const nextProduced = new Map(thread.producedArtifacts);
+			nextProduced.set(app.id, { type: 'app', ...app });
+			thread.producedArtifacts = nextProduced;
+		}
+
+		test('opens an app the assistant created and reloads it on each commit', async () => {
+			const ctx = setup();
+			registerApp(ctx.thread);
+
+			ctx.thread.messages = [appsCall('tc-create', { action: 'create' })];
+			await nextTick();
+
+			expect(ctx.activeApp.value).toEqual({ id: 'app-1', projectId: 'project-1' });
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			const initialKey = ctx.appRefreshKey.value;
+
+			ctx.thread.messages = [
+				...ctx.thread.messages,
+				appsCall('tc-commit', { action: 'commit', appId: 'app-1' }),
+			];
+			await nextTick();
+
+			expect(ctx.appRefreshKey.value).toBe(initialKey + 1);
+		});
+
+		test('does not open an app the assistant only read', async () => {
+			const ctx = setup();
+			registerApp(ctx.thread);
+
+			ctx.thread.messages = [appsCall('tc-get', { action: 'get', appId: 'app-1' })];
+			await nextTick();
+
+			expect(ctx.activeApp.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('opens an app linked to the thread', async () => {
+			const ctx = setup({ initialAppId: () => app.id });
+			registerApp(ctx.thread);
+			await nextTick();
+
+			expect(ctx.activeApp.value).toEqual({ id: 'app-1', projectId: 'project-1' });
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+	});
+
+	describe('auto-open skill preview', () => {
+		function skillsCall(
+			toolCallId: string,
+			args: Record<string, unknown>,
+			result: Record<string, unknown>,
+		) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [makeToolCall({ toolCallId, toolName: 'skills', args, result })],
+				}),
+			});
+		}
+
+		test('opens a skill the assistant created', async () => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+
+			ctx.thread.messages = [
+				skillsCall(
+					'tc-create-skill',
+					{ action: 'create', scope: 'instance' },
+					{ success: true, skill: { id: 'skill-1', name: 'Brand voice' } },
+				),
+			];
+			await nextTick();
+
+			expect(ctx.activeSkillId.value).toBe('skill-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('opens a skill the assistant saved and reloads it on the next save', async () => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+			const initialKey = ctx.skillRefreshKey.value;
+
+			ctx.thread.messages = [
+				skillsCall(
+					'tc-update-1',
+					{ action: 'update', skillId: 'skill-1' },
+					{ success: true, saved: { id: 'skill-1', name: 'Brand voice', created: true } },
+				),
+			];
+			await nextTick();
+			expect(ctx.activeSkillId.value).toBe('skill-1');
+			expect(ctx.skillRefreshKey.value).toBe(initialKey + 1);
+
+			ctx.thread.messages = [
+				...ctx.thread.messages,
+				skillsCall(
+					'tc-update-2',
+					{ action: 'update', skillId: 'skill-1' },
+					{ success: true, saved: { id: 'skill-1', name: 'Brand voice', created: true } },
+				),
+			];
+			await nextTick();
+			expect(ctx.skillRefreshKey.value).toBe(initialKey + 2);
+		});
+
+		test.each([
+			['list', { action: 'list' }, { count: 1, skills: [{ id: 'skill-1', name: 'Brand voice' }] }],
+			['get', { action: 'get', skillId: 'skill-1' }, { id: 'skill-1', name: 'Brand voice' }],
+			[
+				'denied create',
+				{ action: 'create' },
+				{ success: false, denied: true, reason: 'User denied the action' },
+			],
+			[
+				'refused update',
+				{ action: 'update', skillId: 'skill-1' },
+				{ success: false, refused: true, reason: 'No permission' },
+			],
+			['delete', { action: 'delete', skillId: 'skill-1' }, { success: true, skillId: 'skill-1' }],
+		])('does not open a skill after a %s call', async (_label, args, result) => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+
+			ctx.thread.messages = [skillsCall('tc-skill', args, result)];
+			await nextTick();
+
+			expect(ctx.activeSkillId.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('does not open a skill while hydrating', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+
+			ctx.thread.messages = [
+				skillsCall(
+					'tc-create-skill',
+					{ action: 'create' },
+					{ success: true, skill: { id: 'skill-1', name: 'Brand voice' } },
+				),
+			];
+			await nextTick();
+
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('openSkillPreview shows the skill tab', () => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+
+			expect(ctx.openSkillPreview('skill-1')).toBe(true);
+			expect(ctx.activeSkillId.value).toBe('skill-1');
+			expect(ctx.openSkillPreview('skill-1')).toBe(false);
+		});
+
+		test('openAppPreview does not switch to an app without a tab', () => {
+			const ctx = setup();
+
+			expect(ctx.openAppPreview('app-unknown')).toBe(false);
+			expect(ctx.activeTabId.value).toBeUndefined();
 		});
 	});
 
@@ -1056,7 +1422,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'delete', dataTableId: 'dt-1' },
 								result: { success: true },
 							}),
@@ -1079,7 +1445,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'delete', dataTableId: 'dt-other' },
 								result: { success: true },
 							}),
@@ -1103,7 +1469,7 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'delete', dataTableId: 'dt-1' },
 								result: { success: true },
 							}),
@@ -1306,7 +1672,7 @@ describe('useCanvasPreview', () => {
 					toolCalls: [
 						makeToolCall({
 							toolCallId,
-							toolName: 'build-workflow',
+							toolName: 'workflow_builder_build_workflow',
 							result: { success: true, workflowId },
 						}),
 					],
@@ -1424,6 +1790,34 @@ describe('useCanvasPreview', () => {
 			} finally {
 				vi.useRealTimers();
 			}
+		});
+
+		test('stores the default tabs once the messages of a thread without stored tabs load', async () => {
+			const save = vi.fn().mockResolvedValue(undefined);
+			const ctx = setup({
+				threadOverrides: { isHydratingThread: true },
+				tabsStorage: { load: vi.fn().mockResolvedValue(null), save },
+			});
+			await flushPromises();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			await nextTick();
+
+			expect(save).not.toHaveBeenCalled();
+
+			ctx.thread.isHydratingThread = false;
+			await nextTick();
+
+			expect(save).toHaveBeenCalledTimes(1);
+			expect(save).toHaveBeenCalledWith({
+				tabs: [
+					{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' },
+					{ type: 'workflow', id: 'wf-2', name: 'Workflow wf-2' },
+				],
+				closedTabs: [],
+				activeTab: null,
+			});
+			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
 		test('shows a resource picked from the project in a new tab', () => {
@@ -1671,7 +2065,7 @@ describe('useCanvasPreview', () => {
 					toolCalls: [
 						makeToolCall({
 							toolCallId,
-							toolName: 'build-workflow',
+							toolName: 'workflow_builder_build_workflow',
 							result: { success: true, workflowId },
 						}),
 					],
@@ -1750,7 +2144,7 @@ describe('useCanvasPreview', () => {
 					toolCalls: [
 						makeToolCall({
 							toolCallId: 'tc-delete',
-							toolName: 'data-tables',
+							toolName: 'data_tables',
 							args: { action: 'delete', dataTableId: 'dt-1' },
 							result: { success: true },
 						}),

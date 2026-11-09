@@ -1,9 +1,21 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
+import {
+	CREDENTIAL_BLANKING_VALUE,
+	type INodeProperties,
+	type INodeListSearchResult,
+} from 'n8n-workflow';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialInputs from './CredentialInputs.vue';
+import { getCredentialOptions } from '../../credentials.api';
+
+vi.mock('../../credentials.api', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	getCredentialOptions: vi.fn(),
+}));
 
 const renderComponent = createComponentRenderer(CredentialInputs);
 
@@ -88,5 +100,268 @@ describe('compact CredentialInputs', () => {
 		});
 		expect(clientLabel).toBeVisible();
 		expect(secretLabel).toBeVisible();
+	});
+});
+
+describe('credential project options', () => {
+	const properties: INodeProperties[] = [
+		{
+			name: 'email',
+			displayName: 'Service Account Email',
+			type: 'string',
+			default: '',
+			required: true,
+		},
+		{
+			name: 'privateKey',
+			displayName: 'Private Key',
+			type: 'string',
+			default: '',
+			required: true,
+			typeOptions: { password: true },
+		},
+		{
+			name: 'project',
+			displayName: 'Project',
+			type: 'options',
+			options: [{ name: 'Custom', value: '__custom__' }],
+			default: '__custom__',
+			required: true,
+			typeOptions: { loadOptionsMethod: 'projects', loadOptionsDependsOn: ['email', 'privateKey'] },
+		},
+	];
+	const data = {
+		email: 'service@example.com',
+		privateKey: 'draft-key',
+		region: 'global',
+		project: '__custom__',
+		projectId: 'saved-project',
+	};
+	const renderOptions = createComponentRenderer(CredentialInputs, {
+		props: {
+			credentialProperties: properties,
+			credentialData: data,
+			documentationUrl: '',
+			credentialType: 'googleVertexAiApi',
+			n8nProjectId: 'n8n-project',
+		},
+	});
+	const lookup = vi.mocked(getCredentialOptions);
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		lookup.mockReset();
+		lookup.mockResolvedValue({
+			results: [{ name: 'Target project (target-project)', value: 'target-project' }],
+		});
+	});
+
+	it.each([undefined, 'saved-credential'])(
+		'loads pages on demand and keeps manual entry available for credential %s',
+		async (credentialId) => {
+			let resolveNextPage!: (result: INodeListSearchResult) => void;
+			lookup.mockResolvedValueOnce({
+				results: [{ name: 'First project (first-project)', value: 'first-project' }],
+				paginationToken: 'next-page',
+			});
+			lookup.mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveNextPage = resolve;
+				}),
+			);
+			const credentialData = {
+				...data,
+				project: 'first-project',
+				privateKey: credentialId ? CREDENTIAL_BLANKING_VALUE : 'draft-key',
+			};
+			const view = renderOptions({ props: { credentialId, credentialData } });
+			const input = await view.findByLabelText('Project');
+			await waitFor(() => expect(input).toHaveValue('First project (first-project)'));
+			expect(view.queryByRole('status')).toBeNull();
+			expect(lookup).toHaveBeenCalledTimes(1);
+			await userEvent.click(input);
+			expect(view.getByRole('option', { name: 'First project (first-project)' })).toBeVisible();
+			await userEvent.click(view.getByRole('button', { name: 'Load more' }));
+			expect(lookup).toHaveBeenLastCalledWith(
+				expect.anything(),
+				credentialId
+					? { kind: 'stored', credentialId }
+					: { kind: 'project', projectId: 'n8n-project' },
+				expect.objectContaining({ paginationToken: 'next-page' }),
+			);
+			expect(view.getByRole('status')).toBeVisible();
+			await userEvent.click(view.getByRole('option', { name: 'Custom' }));
+			expect(view.emitted('update')).toContainEqual([{ name: 'project', value: '__custom__' }]);
+			await view.rerender({
+				credentialData: { ...credentialData, project: '__custom__' },
+				credentialProperties: [
+					...properties,
+					{
+						name: 'projectId',
+						displayName: 'Project ID',
+						type: 'string',
+						default: '',
+						required: true,
+						placeholder: 'my-project-id',
+						displayOptions: { show: { project: ['__custom__'] } },
+					},
+				],
+			});
+			const manualProjectInput = view.getByPlaceholderText('my-project-id');
+			expect(manualProjectInput).toHaveValue('saved-project');
+			await fireEvent.update(manualProjectInput, 'manual-project');
+			expect(view.emitted('update')).toContainEqual([
+				{ name: 'projectId', value: 'manual-project' },
+			]);
+			expect(view.getByRole('status')).toBeVisible();
+			resolveNextPage({
+				results: [{ name: 'Target project (target-project)', value: 'target-project' }],
+			});
+			await waitFor(() => expect(view.queryByRole('status')).toBeNull());
+			await userEvent.click(input);
+			expect(await view.findByText('First project (first-project)')).toBeVisible();
+			const updatesBeforeFiltering = view.emitted('update')?.slice();
+			await userEvent.type(input, 'Target', { skipClick: true });
+			await waitFor(() =>
+				expect(lookup).toHaveBeenLastCalledWith(
+					expect.anything(),
+					credentialId
+						? { kind: 'stored', credentialId }
+						: { kind: 'project', projectId: 'n8n-project' },
+					{
+						type: 'googleVertexAiApi',
+						data: { ...credentialData, project: '__custom__' },
+						propertyName: 'project',
+						filter: 'Target',
+						paginationToken: undefined,
+					},
+				),
+			);
+			expect(view.emitted('update')).toEqual(updatesBeforeFiltering);
+			expect(view.queryByRole('option', { name: 'First project (first-project)' })).toBeNull();
+			await userEvent.keyboard('{Enter}');
+			expect(view.emitted('update')).toContainEqual([{ name: 'project', value: 'target-project' }]);
+		},
+	);
+
+	it('loads projects when both service account fields are filled without opening the list', async () => {
+		const view = renderOptions({
+			props: {
+				showValidationWarnings: true,
+				credentialData: { ...data, email: '', privateKey: '' },
+			},
+		});
+		const input = await view.findByLabelText('Project');
+		expect(input).toHaveValue('Custom');
+		expect(input).toBeEnabled();
+		expect(within(input.closest('form')!).queryByRole('alert')).toBeNull();
+		expect(within(input.closest('form')!).queryByRole('status')).toBeNull();
+		await view.rerender({ credentialData: { ...data, privateKey: '' } });
+		expect(lookup).not.toHaveBeenCalled();
+		await view.rerender({ credentialData: data });
+		await waitFor(() => expect(lookup).toHaveBeenCalled());
+		await waitFor(() => expect(input).toBeEnabled());
+		expect(input).toHaveValue('Custom');
+		await userEvent.click(input);
+		expect(await view.findByText('Target project (target-project)')).toBeVisible();
+	});
+
+	it('discards old results and keeps the project and cached options when Region changes', async () => {
+		let resolveOldRequest!: (result: INodeListSearchResult) => void;
+		lookup.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveOldRequest = resolve;
+			}),
+		);
+		const view = renderOptions();
+		const input = await view.findByLabelText('Project');
+		await waitFor(() => expect(lookup).toHaveBeenCalledTimes(1));
+		await view.rerender({ credentialData: { ...data, privateKey: 'updated-key' } });
+		await waitFor(() => expect(input).toBeEnabled());
+		await userEvent.click(input);
+		expect(await view.findByText('Target project (target-project)')).toBeVisible();
+		resolveOldRequest({ results: [{ name: 'Outdated project', value: 'old-project' }] });
+		await flushPromises();
+		expect(view.queryByText('Outdated project')).toBeNull();
+		await view.rerender({ credentialData: { ...data, privateKey: 'updated-key', region: 'eu' } });
+		await userEvent.keyboard('{Escape}');
+		expect(input).toHaveValue('Custom');
+		await userEvent.click(input);
+		expect(await view.findByText('Target project (target-project)')).toBeVisible();
+		expect(lookup).toHaveBeenCalledTimes(2);
+		expect(view.emitted('update')).toBeUndefined();
+	});
+
+	it.each(['success', 'failure'])(
+		'ignores an old page %s after the search changes',
+		async (result) => {
+			let resolveOldPage!: (value: INodeListSearchResult) => void;
+			let rejectOldPage!: (error: Error) => void;
+			lookup.mockResolvedValueOnce({
+				results: [{ name: 'First project', value: 'first-project' }],
+				paginationToken: 'next-page',
+			});
+			lookup.mockReturnValueOnce(
+				new Promise((resolve, reject) => {
+					resolveOldPage = resolve;
+					rejectOldPage = reject;
+				}),
+			);
+			const view = renderOptions();
+			const input = await view.findByLabelText('Project');
+			await userEvent.click(input);
+			await userEvent.click(await view.findByRole('button', { name: 'Load more' }));
+			await userEvent.type(input, 'Target', { skipClick: true });
+			expect(await view.findByText('Target project (target-project)')).toBeVisible();
+			if (result === 'failure') {
+				rejectOldPage(new Error('Outdated error'));
+			} else {
+				resolveOldPage({
+					results: [{ name: 'Outdated project', value: 'old-project' }],
+					paginationToken: 'outdated-page',
+				});
+			}
+			await flushPromises();
+			expect(view.queryByText('Outdated project')).toBeNull();
+			expect(view.queryByRole('alert')).toBeNull();
+			expect(view.queryByRole('button', { name: 'Load more' })).toBeNull();
+			expect(view.getByRole('option', { name: 'Target project (target-project)' })).toBeVisible();
+		},
+	);
+
+	it('shows lookup errors with the Custom fallback and clears them after credentials change', async () => {
+		const message = 'Could not load the list. Try again or enter an ID.';
+		lookup.mockRejectedValueOnce(new Error(message));
+		const view = renderOptions();
+		const input = await view.findByLabelText('Project');
+		const alert = await view.findByRole('alert');
+		expect(alert).toHaveTextContent(message);
+		expect(alert).toHaveTextContent('Select Custom to enter an ID.');
+		expect(input).toHaveAttribute('aria-describedby', alert.id);
+		expect(input).toBeEnabled();
+		expect(input).toHaveValue('Custom');
+		expect(view.emitted('update')).toBeUndefined();
+		await userEvent.click(input);
+		await userEvent.click(view.getByRole('option', { name: 'Custom' }));
+		await view.rerender({ credentialData: { ...data, privateKey: 'updated-key' } });
+		await userEvent.click(input);
+		expect(await view.findByText('Target project (target-project)')).toBeVisible();
+		expect(view.queryByRole('alert')).toBeNull();
+		expect(input).not.toHaveAttribute('aria-describedby');
+	});
+
+	it('keeps Custom without an error when no projects are found', async () => {
+		lookup.mockResolvedValue({ results: [] });
+		const view = renderOptions();
+		const input = await view.findByLabelText('Project');
+		await waitFor(() => expect(input).toBeEnabled());
+		expect(input).toHaveValue('Custom');
+		expect(view.queryByRole('status')).toBeNull();
+		expect(view.queryByRole('alert')).toBeNull();
+		expect(view.emitted('update')).toBeUndefined();
+		await userEvent.click(input);
+		expect(view.getAllByRole('option')).toHaveLength(1);
+		await userEvent.click(await view.findByText('Custom'));
+		expect(input).toHaveValue('Custom');
 	});
 });

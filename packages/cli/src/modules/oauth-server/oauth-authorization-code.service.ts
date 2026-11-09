@@ -1,5 +1,6 @@
 import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Time } from '@n8n/constants';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
 
@@ -28,22 +29,26 @@ export class OAuthAuthorizationCodeService {
 		state: string | null,
 		resource?: string,
 		scopes: string[] = [],
+		ctx: OperationContext = {},
 	): Promise<string> {
 		const code = randomBytes(32).toString('hex');
 
-		await this.authorizationCodeRepository.insert({
-			code,
-			clientId,
-			userId,
-			redirectUri,
-			codeChallenge,
-			codeChallengeMethod: 'S256',
-			state,
-			resource: resource ?? null,
-			scope: scopes,
-			expiresAt: Date.now() + this.AUTHORIZATION_CODE_EXPIRY_MS,
-			used: false,
-		});
+		await this.authorizationCodeRepository.insertCode(
+			{
+				code,
+				clientId,
+				userId,
+				redirectUri,
+				codeChallenge,
+				codeChallengeMethod: 'S256',
+				state,
+				resource: resource ?? null,
+				scope: scopes,
+				expiresAt: Date.now() + this.AUTHORIZATION_CODE_EXPIRY_MS,
+				used: false,
+			},
+			ctx,
+		);
 
 		return code;
 	}
@@ -135,14 +140,11 @@ export class OAuthAuthorizationCodeService {
 
 	// Single `UPDATE ... WHERE used = false` (no read-then-write) so that concurrent token
 	// exchanges with the same code can't both succeed — one wins, the other gets invalid_grant.
-	async markAuthorizationCodeAsUsed(authorizationCode: string): Promise<void> {
-		const result = await this.authorizationCodeRepository.update(
-			{ code: authorizationCode, used: false },
-			{ used: true },
-		);
-
-		const numAffected = result.affected ?? 0;
-		if (numAffected < 1) {
+	async markAuthorizationCodeAsUsed(
+		authorizationCode: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		if (!(await this.authorizationCodeRepository.consumeCode(authorizationCode, ctx))) {
 			throw new InvalidGrantError('Authorization code already used');
 		}
 	}

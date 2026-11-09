@@ -114,7 +114,7 @@ export class InlineExpressionEditor {
 	async type(text: string, parameterName?: string): Promise<void> {
 		const editor = this.getInput(parameterName);
 		await editor.click();
-		await editor.type(text);
+		await editor.pressSequentially(text);
 	}
 
 	/** Open the teleported expression modal for a parameter. */

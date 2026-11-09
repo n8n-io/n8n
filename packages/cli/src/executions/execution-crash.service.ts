@@ -1,5 +1,5 @@
 import { EventService } from '@n8n/backend-services';
-import type { CrashedExecution } from '@n8n/db';
+import type { CrashedExecution, ResumableExecutionStatus } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -31,16 +31,34 @@ export class ExecutionCrashService {
 		});
 	}
 
+	/** Mark a `waiting` or `new` execution as `crashed`, which `markAsCrashed` skips. */
+	async markAsCrashedFrom(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		detector: CrashDetector,
+		expectedAttempts?: number,
+	): Promise<CrashedExecution[]> {
+		return await this.executionRepository.markAsCrashedFrom(executionId, status, {
+			expectedAttempts,
+			onTransitioned: (batch) => {
+				this.count(batch);
+				this.announce(batch, detector);
+			},
+		});
+	}
+
 	/**
 	 * Claim and announce without counting, for a caller that runs `workflowExecuteAfter`
-	 * for the same executions, which counts them itself.
+	 * for the same executions, which counts them itself. A given `stoppedAt` replaces the
+	 * claim time in the announcement, for a caller that knows when the work stopped.
 	 */
 	async markAsCrashedWithoutCounting(
 		executionIds: string | string[],
 		detector: CrashDetector,
+		options: { stoppedAt?: Date } = {},
 	): Promise<CrashedExecution[]> {
 		return await this.executionRepository.markAsCrashed(executionIds, (batch) =>
-			this.announce(batch, detector),
+			this.announce(batch, detector, options.stoppedAt),
 		);
 	}
 
@@ -59,7 +77,11 @@ export class ExecutionCrashService {
 		this.workflowStatisticsService.emit('executionsCrashed', { executions });
 	}
 
-	private announce(executions: CrashedExecution[], detector: CrashDetector) {
+	private announce(
+		executions: CrashedExecution[],
+		detector: CrashDetector,
+		stoppedAtOverride?: Date,
+	) {
 		for (const {
 			id,
 			workflowId,
@@ -81,7 +103,7 @@ export class ExecutionCrashService {
 				mode,
 				retryOf,
 				startedAt: startedAt ?? undefined,
-				stoppedAt,
+				stoppedAt: stoppedAtOverride ?? stoppedAt,
 				detector,
 				hostId: this.instanceSettings.hostId,
 				tracingContext,

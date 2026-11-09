@@ -1,5 +1,5 @@
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { TrustedKeyService } from './trusted-key.service';
 
@@ -16,9 +16,7 @@ export class TrustedKeyRefreshTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(REFRESH_POLL_INTERVAL_SECONDS);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
+	readonly target = clusterTarget({ scheduler: { retryOnFailure: true } });
 
 	constructor(private readonly trustedKeyService: TrustedKeyService) {}
 

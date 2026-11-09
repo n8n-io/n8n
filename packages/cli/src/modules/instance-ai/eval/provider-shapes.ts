@@ -71,8 +71,38 @@ function isOpenAiCompletion(path: string): 'responses' | 'chat' | null {
 	return null;
 }
 
+/** OpenAI-style inference calls with no envelope normalizer: embeddings, moderations, audio. */
+function isOpenAiOtherInference(path: string): boolean {
+	return /\/v\d+\/(embeddings|moderations|audio\/(transcriptions|translations|speech))\/?$/.test(
+		path,
+	);
+}
+
 function isGeminiGenerate(host: string, path: string): boolean {
 	return host === 'generativelanguage.googleapis.com' && path.includes('generatecontent');
+}
+
+function isAnthropicMessages(host: string, path: string): boolean {
+	return host === 'api.anthropic.com' && /\/v\d+\/messages\/?$/.test(path);
+}
+
+/**
+ * True for a model-provider inference call: OpenAI-style responses, chat
+ * completions, image generation, embeddings, moderations and audio
+ * (transcriptions, translations, speech), Anthropic messages, Gemini
+ * generateContent.
+ * Such a POST generates an answer; it changes no data a later request reads.
+ */
+export function isModelInferenceRequest(info: ProviderRequestInfo): boolean {
+	const path = info.pathname.toLowerCase();
+	const host = (info.hostname ?? '').toLowerCase();
+	return (
+		isOpenAiCompletion(path) !== null ||
+		isOpenAiImagesGeneration(path) ||
+		isOpenAiOtherInference(path) ||
+		isGeminiGenerate(host, path) ||
+		isAnthropicMessages(host, path)
+	);
 }
 
 function isRedditWrite(host: string, path: string, method: string): 'submit' | 'comment' | null {

@@ -1,9 +1,11 @@
+import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { ExecutionResponseSender } from '@n8n/engine';
-import { ErrorReporter } from 'n8n-core';
-import { Expression, UserError } from 'n8n-workflow';
+import type { ExecutionChannelPublisher } from '@n8n/engine';
+import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
+import { Expression } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
@@ -28,7 +30,7 @@ export class Engine extends BaseCommand {
 
 	private runtime?: EngineV2Runtime;
 
-	private responseSender?: ExecutionResponseSender;
+	private channelPublisher?: ExecutionChannelPublisher;
 
 	async init() {
 		// The guards below run before `super.init()` wires the reporter, and the
@@ -42,17 +44,63 @@ export class Engine extends BaseCommand {
 
 		await super.init();
 
-		// The control plane runs in another process, so responses travel over Redis.
-		const { createRedisExecutionResponseSender } = await import(
-			'@/modules/engine-v2/response-channel/redis-execution-response-channel.js'
+		await this.initBinaryDataStore();
+
+		// The control plane runs in another process, so the execution channel uses Redis.
+		const logger = this.logger.scoped('engine-v2');
+		const { createRedisExecutionChannelPublisher } = await import(
+			'@/modules/engine-v2/execution-channel/redis-execution-channel.js'
 		);
-		this.responseSender = await createRedisExecutionResponseSender(this.logger.scoped('engine-v2'));
+		const { ExecutionChannelSender } = await import(
+			'@/modules/engine-v2/execution-channel/execution-channel-sender.js'
+		);
+		const { createExecutionResponseCodec } = await import(
+			'@/modules/engine-v2/execution-channel/execution-response-frame.js'
+		);
+		this.channelPublisher = await createRedisExecutionChannelPublisher(logger);
 
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
-		await this.runtime.init(this.responseSender);
+		await this.runtime.init(
+			new ExecutionChannelSender(this.channelPublisher, createExecutionResponseCodec(logger)),
+		);
 
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	/**
+	 * Both planes share one binary data store, so this host registers the same
+	 * blob managers as the control plane. `database` mode stores the bytes in the
+	 * control plane database, which this process does not have, so it is refused
+	 * here: otherwise the error shows only when a run handles its first file. The
+	 * same goes for an `s3` or `azure` mode with no store configured: the manager
+	 * setup skips a store that is not configured, and the service would then keep
+	 * every file inline. No license check yet: the certificate lives in the control
+	 * plane database too.
+	 */
+	private async initBinaryDataStore() {
+		const { mode } = Container.get(BinaryDataConfig);
+
+		if (mode === 'database') {
+			throw new UserError(
+				'The engine process has no control plane database, so it cannot store binary data in `database` mode. Set N8N_DEFAULT_BINARY_DATA_MODE to filesystem, s3 or azure.',
+			);
+		}
+
+		if (mode === 's3' && Container.get(ObjectStoreConfig).bucket.name === '') {
+			throw new UserError(
+				'S3 binary data storage requires `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME` to be set.',
+			);
+		}
+
+		if (mode === 'azure' && Container.get(AzureBlobConfig).containerName === '') {
+			throw new UserError(
+				'Azure Blob binary data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
+			);
+		}
+
+		await this.initBinaryDataBlobManagers({ s3: mode === 's3', azure: mode === 'azure' });
+		await Container.get(BinaryDataService).init();
 	}
 
 	async run() {
@@ -74,7 +122,7 @@ export class Engine extends BaseCommand {
 				await this.runtime?.shutdown();
 			} finally {
 				// After the engine, so a final response still has somewhere to go.
-				await this.responseSender?.stop();
+				await this.channelPublisher?.stop();
 			}
 			await Expression.disposeExpressionEngine();
 		} catch (error) {

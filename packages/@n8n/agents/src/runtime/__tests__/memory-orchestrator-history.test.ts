@@ -1,7 +1,7 @@
 import { builtTelemetry, fakeSpan, fakeTracer } from './support/fake-tracer';
 import type { AgentDbMessage } from '../../types/sdk/message';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
-import { MemoryOrchestrator } from '../memory/memory-orchestrator';
+import { loadReplayedMessages, MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
 import { runObservationLogObserver } from '../memory/observation-log-observer';
 import { AgentMessageList } from '../model/message-list';
@@ -216,5 +216,56 @@ describe('MemoryOrchestrator.loadHistoryMessages telemetry', () => {
 
 		expect(loaded.map((m) => m.id)).toEqual(['m1']);
 		expect(describeSpy).not.toHaveBeenCalled();
+	});
+});
+
+describe('loadReplayedMessages', () => {
+	const m1 = message('m1', 'first', new Date(2026, 4, 12, 14, 30));
+	const m2 = message('m2', 'second', new Date(2026, 4, 12, 14, 31));
+	const m3 = message('m3', 'third', new Date(2026, 4, 12, 14, 32));
+
+	async function seedObservedThread(): Promise<InMemoryMemory> {
+		const store = new InMemoryMemory();
+		await seedThread(store, [m1, m2, m3]);
+		await store.appendObservationLogEntries([
+			{
+				observationScopeId: THREAD_ID,
+				marker: 'critical',
+				text: 'The user said first.',
+				parentId: null,
+				createdAt: m1.createdAt,
+			},
+		]);
+		await store.setCursor({
+			observationScopeId: THREAD_ID,
+			lastObservedMessageId: m1.id,
+			lastObservedAt: m1.createdAt,
+			updatedAt: m1.createdAt,
+		});
+		return store;
+	}
+
+	it('returns the messages after the cursor with observational memory', async () => {
+		const store = await seedObservedThread();
+
+		const loaded = await loadReplayedMessages(
+			store,
+			{ threadId: THREAD_ID, resourceId: RESOURCE_ID },
+			{ observationalMemory: true },
+		);
+
+		expect(loaded.map((m) => m.id)).toEqual(['m2', 'm3']);
+	});
+
+	it('returns the full history without observational memory', async () => {
+		const store = await seedObservedThread();
+
+		const loaded = await loadReplayedMessages(
+			store,
+			{ threadId: THREAD_ID, resourceId: RESOURCE_ID },
+			{ observationalMemory: false },
+		);
+
+		expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
 	});
 });

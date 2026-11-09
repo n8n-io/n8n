@@ -1,6 +1,6 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
 import type { ActionScope, LifecycleEvent } from '@n8n/engine';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneClient } from '../engine-control-plane-client';

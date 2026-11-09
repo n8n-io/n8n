@@ -21,6 +21,10 @@ function statusForFinishReason(finishReason: FinishReason): DiscoveryStreamStatu
 			return 'completed';
 		case 'max-iterations':
 			return 'step-exhausted';
+		case 'paused':
+			return 'suspended';
+		case 'cancelled':
+			return 'timed-out';
 		case 'tool-calls':
 		case 'length':
 		case 'content-filter':

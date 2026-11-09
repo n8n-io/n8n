@@ -47,7 +47,7 @@ function onSetupFirstStep(): void {
 				<N8nText size="medium">
 					{{ locale.baseText('executionsLandingPage.emptyState.message') }}
 				</N8nText>
-				<N8nButton variant="subtle" class="mt-l" size="large" @click="onSetupFirstStep">
+				<N8nButton variant="outline" class="mt-l" size="large" @click="onSetupFirstStep">
 					{{ locale.baseText('executionsLandingPage.emptyState.noTrigger.buttonText') }}
 				</N8nButton>
 			</div>

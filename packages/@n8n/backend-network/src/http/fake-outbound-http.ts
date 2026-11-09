@@ -132,6 +132,7 @@ export function createFakeOutboundHttp(routes: Route[], fn: MockFnFactory) {
 			requestLegacy: () => {
 				throw new Error('requestLegacy is not supported by the fake OutboundHttp');
 			},
+			close: () => {},
 		}),
 	);
 	const outboundHttp = {

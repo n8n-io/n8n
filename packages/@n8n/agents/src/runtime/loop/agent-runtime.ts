@@ -1,5 +1,6 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { TelemetryOptions, ToolCallRepairFunction, ToolSet } from 'ai';
+import { createAbortError } from '../../sdk/abort';
 
 import {
 	buildCheckpointOptions,
@@ -17,6 +18,7 @@ import type {
 	RunOutputSink,
 	RunServices,
 } from '../../types/runtime/agent-loop';
+import { withPromptSizeBreakdown } from './prompt-size-usage';
 import { RuntimeContextBuilder, type StaticLoopContext } from './runtime-context';
 import {
 	extractSettledToolCalls,
@@ -50,7 +52,7 @@ import type {
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
 import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { createFilteredLogger } from '../logger';
@@ -59,16 +61,19 @@ import { sanitizeOffloadedToolResultsForMemory } from '../memory/tool-result-mem
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { createModelTokenCounter } from '../model/model-token-counter';
-import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
+import { getEffectiveAnthropicCacheTtl, getPromptCacheRetentionMs } from '../model/prompt-cache';
 import { ActiveSkills } from '../skills/active-skills';
+import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
 import { startStreamSession } from '../streaming/stream-session';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
+import { buildFunctionIdHeaders } from '../telemetry/function-id';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { fixToolCall } from '../tools/fix-tool-call';
+import { buildToolMap, resolveToolForCall } from '../tools/tool-adapter';
 import { ToolCallExecutor } from '../tools/tool-call-executor';
 import type {
 	PendingResume,
@@ -83,6 +88,37 @@ export type {
 } from '../../types/runtime/agent-runtime';
 
 const MAX_LOOP_ITERATIONS = 100;
+
+function endsTurn(batch: ToolCallBatchResult, toolMap: Map<string, BuiltTool>): boolean {
+	return batch.results.some(
+		({ toolName, input, toolEntry }) =>
+			resolveToolForCall(toolMap, toolName, input)?.endsTurn?.(toolEntry.output) === true,
+	);
+}
+
+/**
+ * A resumed batch holds only the calls that were pending, so the calls that
+ * settled before the suspension are read back from their assistant message.
+ */
+function resumedTurnEnds(
+	messages: readonly AgentMessage[],
+	resumedToolCallId: string,
+	toolMap: Map<string, BuiltTool>,
+): boolean {
+	const calls = messages
+		.flatMap((message) => ('content' in message ? [message.content] : []))
+		.find((content) =>
+			content.some((c) => c.type === 'tool-call' && c.toolCallId === resumedToolCallId),
+		);
+	return (
+		calls?.some(
+			(c) =>
+				c.type === 'tool-call' &&
+				c.state === 'resolved' &&
+				resolveToolForCall(toolMap, c.toolName, c.input)?.endsTurn?.(c.output) === true,
+		) ?? false
+	);
+}
 
 /** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
 const MAX_EMPTY_TURN_RETRIES = 2;
@@ -164,7 +200,8 @@ export class AgentRuntime {
 	private toolExecutor: ToolCallExecutor;
 	private activeSkills?: ActiveSkills;
 
-	constructor(config: AgentRuntimeConfig) {
+	constructor(runtimeConfig: AgentRuntimeConfig) {
+		const config = activateSkillDependencyTools(runtimeConfig);
 		this.config = config;
 		// Keep full tool results when the memory backend cannot persist active skill IDs.
 		if (config.skillSource && (!config.memory || config.memory.skillState)) {
@@ -177,7 +214,7 @@ export class AgentRuntime {
 		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
-		if (config.deferredTools && config.deferredTools.length > 0) {
+		if (!config.nativeToolDeferral && config.deferredTools && config.deferredTools.length > 0) {
 			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
 				...config.toolSearch,
 				// Let the discovery tools recognize the always-available toolset, so a
@@ -341,6 +378,7 @@ export class AgentRuntime {
 		const { state, list, resumeData } = await this.prepareToolResume(data, options);
 		let abortScope: AgentAbortScope | undefined;
 		let resumeClaimed = false;
+		let resumeAdmitted = false;
 
 		try {
 			// Merge persisted execution options with fresh caller options
@@ -364,6 +402,7 @@ export class AgentRuntime {
 			};
 			this.updateState({ persistence: resumeOptions.persistence });
 			await options.onResumeClaimed?.();
+			resumeAdmitted = true;
 
 			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
 			const activeAbortScope = abortScope;
@@ -385,7 +424,54 @@ export class AgentRuntime {
 			if (method === 'generate') return await this.generateResumedRun(ctx);
 			return this.createResumedStream(ctx);
 		} catch (error) {
+			if (resumeClaimed && !resumeAdmitted) {
+				const suspendedState = { ...state, persistence: this.currentState.persistence };
+				await this.runState.suspend(this.runId, suspendedState);
+				this.updateState(suspendedState);
+				throw error;
+			}
 			return await this.handleResumeFailure(method, error, abortScope, resumeClaimed);
+		}
+	}
+
+	/** Resume a user pause without settling or replaying a tool call. */
+	async resumePaused(
+		options: Omit<ResumeOptions, 'toolCallId'> & ExecutionOptions,
+	): Promise<StreamResult> {
+		this.runId = options.runId;
+		const state = await this.runState.resume(this.runId);
+		if (!state || state.finishReason !== 'paused' || Object.keys(state.pendingToolCalls).length) {
+			throw new StaleResumeError('This run is not paused');
+		}
+		if (options.hostMetadata !== undefined && !state.persistence) {
+			throw new Error('Cannot update host metadata without persistence');
+		}
+		const { runId: _runId, hostMetadata, onResumeClaimed, ...executionOptions } = options;
+		const resumeOptions: RuntimeExecutionOptions = {
+			...mergeResumeExecutionOptions(state, executionOptions),
+			persistence: mergeResumePersistence(state.persistence, hostMetadata),
+		};
+		const list = await this.restoreCheckpointMessages(state);
+		if (!(await this.runState.claimResume(this.runId, state))) {
+			throw new StaleResumeError('This run has already resumed');
+		}
+		this.updateState({
+			status: 'running',
+			finishReason: undefined,
+			persistence: resumeOptions.persistence,
+		});
+		const abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
+		try {
+			await onResumeClaimed?.();
+			await this.prepareResumeMemory(list, state.persistence);
+			return this.createResumedStream({ list, options: resumeOptions, abortScope });
+		} catch (error) {
+			abortScope.dispose();
+			// No task action has started. Keep the checkpoint available for a retry.
+			const suspendedState = { ...state, persistence: resumeOptions.persistence };
+			await this.runState.suspend(this.runId, suspendedState);
+			this.updateState(suspendedState);
+			throw error;
 		}
 	}
 
@@ -458,9 +544,14 @@ export class AgentRuntime {
 
 		const list = await this.restoreCheckpointMessages(state);
 
-		const tool = this.context
-			.getCurrentTools(state.persistence)
-			.find((t) => t.name === toolCall.toolName);
+		// A skill dependency loads a deferred tool without a `load_tool` record, and
+		// skills restore only when the loop starts. Accept any registered deferred tool.
+		const tool =
+			resolveToolForCall(
+				buildToolMap(this.context.getCurrentTools(state.persistence)),
+				toolCall.toolName,
+				toolCall.input,
+			) ?? this.deferredToolManager?.getTool(toolCall.toolName, toolCall.input);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
@@ -619,7 +710,7 @@ export class AgentRuntime {
 		result.runId = this.runId;
 		result.usage = this.applyCost(result.usage);
 		result.model = this.modelIdString;
-		if (!result.pendingSuspend?.length) {
+		if (!result.pendingSuspend?.length && result.finishReason !== 'paused') {
 			this.updateState({ status: 'success', messageList: list.serialize() });
 			this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: result.messages });
 		}
@@ -631,16 +722,18 @@ export class AgentRuntime {
 		options?: ExecutionOptions,
 	): {
 		telemetry?: TelemetryOptions;
+		toolChoice?: 'none';
+		headers?: Record<string, string>;
 		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 		onStepStart?: ExecutionOptions['onStepStart'];
 		onStepEnd?: ExecutionOptions['onStepEnd'];
 	} {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
+			...(options?.toolsEnabled === false ? { toolChoice: 'none' as const } : {}),
+			...buildFunctionIdHeaders(this.config.functionId),
 			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
-			...(options?.onStepEnd || options?.onStepFinish
-				? { onStepEnd: options.onStepEnd ?? options.onStepFinish }
-				: {}),
+			...(options?.onStepEnd ? { onStepEnd: options.onStepEnd } : {}),
 			repairToolCall: async (options) => {
 				return await fixToolCall(
 					{
@@ -657,7 +750,7 @@ export class AgentRuntime {
 	private assertNotAborted(abortScope: AgentAbortScope): void {
 		if (abortScope.isAborted) {
 			this.updateState({ status: 'cancelled' });
-			throw new Error('Agent run was aborted');
+			throw createAbortError('Agent run was aborted');
 		}
 	}
 
@@ -690,9 +783,12 @@ export class AgentRuntime {
 			threadId: options.persistence.threadId,
 			resourceId: options.persistence.resourceId,
 			titleConfig: this.config.titleGeneration,
+			telemetry: this.telemetry.resolve(options),
 			agentModel: this.config.model,
 			modelFetch: this.config.modelFetch,
+			functionId: this.config.functionId,
 			turnDelta: list.turnDelta(),
+			...(options.titleText !== undefined ? { titleText: options.titleText } : {}),
 			executionCounter: options.executionCounter,
 			onSideCallUsage: options.onSideCallUsage,
 			promptCaching: this.config.promptCaching,
@@ -732,6 +828,26 @@ export class AgentRuntime {
 			// consuming it. End the run even if a consumer still returned messages.
 			if (state.guardrailStop) break;
 			if (state.reachedStopCondition && !hasInput) break;
+			this.assertNotAborted(prepared.abortScope);
+			if (await prepared.options?.shouldPause?.()) {
+				await this.persistSuspension(
+					{},
+					prepared.options,
+					prepared.list,
+					state.totalUsage,
+					state.maxIterations,
+					state.iterationCount,
+					'paused',
+				);
+				this.assertNotAborted(prepared.abortScope);
+				return await sink.finishSuspended({
+					suspendRunId: this.runId,
+					list: prepared.list,
+					usage: state.totalUsage,
+					suspensions: [],
+					finishReason: 'paused',
+				});
+			}
 			state.reachedStopCondition = false;
 			const settlement = await this.runLoopIteration(prepared, sink, state);
 			if (settlement.suspended) return settlement.result;
@@ -790,7 +906,10 @@ export class AgentRuntime {
 		state: LoopState;
 	}> {
 		const { list, options } = ctx;
-		await this.activeSkills?.restore(list, options?.persistence);
+		await this.activeSkills?.restore(list, options?.persistence, {
+			freshRun: ctx.isFreshRun,
+			cacheTtlMs: getPromptCacheRetentionMs(this.config.promptCaching, this.context.modelId),
+		});
 		this.context.hydrateDeferredToolsFromList(list);
 		// This note reaches the model but is not stored in conversation history.
 		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
@@ -867,7 +986,7 @@ export class AgentRuntime {
 		state: LoopState,
 		pendingResume: PendingResume,
 	): Promise<ToolBatchSettlement<T>> {
-		const { toolMap } = this.context.buildToolLoopContext(
+		const { toolMap } = await this.context.buildToolLoopContext(
 			ctx.staticContext.aiProviderTools,
 			ctx.options?.persistence,
 			ctx.options?.executionCounter,
@@ -888,6 +1007,10 @@ export class AgentRuntime {
 		if (settlement.suspended) return settlement;
 		// Resumed tool results form a new observation boundary before the next model call.
 		await this.memory.maybeObserveMidRun(ctx.list, ctx.options);
+		if (resumedTurnEnds(ctx.list.messages(), pendingResume.resumeToolCallId, toolMap)) {
+			state.lastFinishReason = 'stop';
+			state.reachedStopCondition = true;
+		}
 		return settlement;
 	}
 
@@ -898,7 +1021,14 @@ export class AgentRuntime {
 	): Promise<ToolBatchSettlement<T>> {
 		this.assertNotAborted(ctx.abortScope);
 		this.eventBus.emit({ type: AgentEvent.TurnStart });
+		// Load the files of tool results from the last step.
+		await hydrateFileParts(ctx.list.messages(), this.config.fileStore, {
+			threadId: ctx.options?.persistence?.threadId,
+		});
 		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
+		for (const update of this.activeSkills?.takeUpdates() ?? []) {
+			await sink.emitMessage?.(update);
+		}
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
 		// A guardrail refused the call. Usage from any discarded empty attempt
 		// is already folded in; end the run without a new model turn.
@@ -936,16 +1066,18 @@ export class AgentRuntime {
 			state.iterationCount + 1,
 		);
 		if (settlement.suspended) return settlement;
-		await this.completeToolTurn(ctx, state, turn);
+		const stop = endsTurn(batch, toolMap);
+		await this.completeToolTurn(ctx, state, turn, { stepCheckpoint: !stop });
+		if (stop) {
+			state.lastFinishReason = 'stop';
+			state.reachedStopCondition = true;
+		}
 		return settlement;
 	}
 
 	private async prepareModelCall(ctx: PreparedLoopContext) {
 		const { list, options, abortScope, staticContext } = ctx;
-		for (const toolName of this.activeSkills?.toolDependencies() ?? []) {
-			this.deferredToolManager?.load(toolName);
-		}
-		const tools = this.context.buildToolLoopContext(
+		const tools = await this.context.buildToolLoopContext(
 			staticContext.aiProviderTools,
 			options?.persistence,
 			options?.executionCounter,
@@ -956,6 +1088,7 @@ export class AgentRuntime {
 			list,
 			tools,
 			instructionProviderOptions: ctx.instructionProviderOptions,
+			providerOptions: staticContext.providerOptions,
 			hostVolatileInstructions,
 			activeSkills: this.activeSkills,
 		});
@@ -964,16 +1097,40 @@ export class AgentRuntime {
 			system: prompt.system,
 			messages: prompt.messages,
 			abortSignal: abortScope.signal,
+			// Provider tools are also needed to replay their earlier calls and results.
 			hasTools: tools.hasTools,
 			aiTools: prompt.aiTools,
 			reasoning: staticContext.reasoning,
-			providerOptions: staticContext.providerOptions,
+			providerOptions: prompt.providerOptions,
 			outputSpec: staticContext.outputSpec,
 			maxOutputTokens: staticContext.maxOutputTokens,
 			aiSdkOptions: this.buildAiSdkOptions(tools.toolMap, options),
 			onInputRejected: this.createInputRejectionHandler(ctx),
+			onToolInputStart: this.createWorkspacePrewarmHandler(tools.toolMap),
 		};
+
 		return { toolMap: tools.toolMap, modelCallContext };
+	}
+
+	/** Prepare the workspace while the model streams the input of a tool that uses it. */
+	private createWorkspacePrewarmHandler(
+		toolMap: Map<string, BuiltTool>,
+	): ModelCallContext['onToolInputStart'] {
+		const prewarm = this.config.prewarmWorkspace;
+		if (!prewarm) return undefined;
+		return (toolName) => {
+			if (!toolMap.get(toolName)?.requiresWorkspace) return;
+			try {
+				prewarm();
+			} catch (error) {
+				// Best effort: the tool call prepares the workspace itself if this fails.
+				logger.warn('Failed to start preparing the workspace', {
+					runId: this.runId,
+					toolName,
+					error,
+				});
+			}
+		};
 	}
 
 	private createInputRejectionHandler(
@@ -1004,35 +1161,53 @@ export class AgentRuntime {
 					return undefined;
 				}
 			}
-			const turn = await sink.callModel(modelCallContext);
+			this.activeSkills?.reportContext();
+			let turn: ModelTurnResult;
+			try {
+				turn = await sink.callModel(modelCallContext);
+			} catch (error) {
+				// A cancellation wins over error classification: an aborted run
+				// must end on the existing cancelled path, not as a guardrail stop.
+				this.assertNotAborted(ctx.abortScope);
+				// A host-mapped failure (e.g. a gateway 402) ends the run like a
+				// guardrail stop instead of a generic error finish.
+				const stop = ctx.options?.classifyModelError?.(error);
+				if (stop) {
+					state.guardrailStop = stop;
+					return undefined;
+				}
+				throw error;
+			}
 			// Price the turn before guardrails see it. The finish chunk prices
 			// the summed tokens later; mergeUsage drops per-turn cost.
 			turn.usage = this.applyCost(turn.usage);
 			if (guardrails && guardCtx) await guardrails.after(guardCtx, turn.usage);
 			return turn;
 		};
+		const retryModel = async () => {
+			this.assertNotAborted(ctx.abortScope);
+			return await callModel();
+		};
 
 		let turn = await callModel();
 		// Retry empty stop turns. Charge each attempt before checking for cancellation.
 		for (let retry = 0; turn && retry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn); retry++) {
-			this.recordTurnUsage(ctx, sink, state, turn);
-			this.assertNotAborted(ctx.abortScope);
-			turn = await callModel();
+			[, turn] = await Promise.all([this.recordTurnUsage(ctx, sink, state, turn), retryModel()]);
 		}
 		if (!turn) return undefined;
-		this.recordTurnUsage(ctx, sink, state, turn);
+		await this.recordTurnUsage(ctx, sink, state, turn);
 		return turn;
 	}
 
-	private recordTurnUsage<T>(
+	private async recordTurnUsage<T>(
 		ctx: PreparedLoopContext,
 		sink: RunOutputSink<T>,
 		state: LoopState,
 		turn: ModelTurnResult,
-	): void {
-		state.totalUsage = mergeUsage(state.totalUsage, turn.usage);
+	): Promise<void> {
+		state.totalUsage = mergeUsage(state.totalUsage, withPromptSizeBreakdown(turn.usage));
 		incrementTokenCountFromUsage(ctx.options?.executionCounter, turn.usage);
-		sink.reportUsage(state.totalUsage);
+		await sink.reportUsage(state.totalUsage);
 	}
 
 	private async finishToolBatch<T>(
@@ -1098,11 +1273,14 @@ export class AgentRuntime {
 		ctx: PreparedLoopContext,
 		state: LoopState,
 		turn: ModelTurnResult,
+		// A step checkpoint resumes at the next model call, which a run that
+		// ends here must not make.
+		{ stepCheckpoint }: { stepCheckpoint: boolean },
 	): Promise<void> {
 		this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(ctx.list.responseDelta()));
 		// All tools have settled. Observe before the next call and its checkpoint.
 		await this.memory.maybeObserveMidRun(ctx.list, ctx.options);
-		if (ctx.options?.stepCheckpoints) {
+		if (stepCheckpoint && ctx.options?.stepCheckpoints) {
 			await this.persistStepCheckpoint(
 				ctx.list,
 				state.totalUsage,
@@ -1215,6 +1393,7 @@ export class AgentRuntime {
 		totalUsage: TokenUsage | undefined,
 		maxIterations?: number,
 		iterationCount?: number,
+		finishReason?: 'paused',
 	): Promise<void> {
 		const checkpointOptions = buildCheckpointOptions(options, maxIterations, iterationCount);
 
@@ -1226,10 +1405,16 @@ export class AgentRuntime {
 			messageList: list.serialize(),
 			pendingToolCalls,
 			usage: totalUsage,
+			finishReason,
 			...checkpointOptions,
 		};
 		await this.runState.suspend(this.runId, state);
-		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
+		this.updateState({
+			status: 'suspended',
+			pendingToolCalls,
+			messageList: list.serialize(),
+			finishReason,
+		});
 		await this.memory.persistTurnDelta(list, options);
 	}
 
@@ -1305,7 +1490,10 @@ export class AgentRuntime {
 	private async ensureModelCost(): Promise<ModelCost | undefined> {
 		if (this.modelCost) return this.modelCost;
 		try {
-			this.modelCost = await getModelCost(this.modelIdString);
+			this.modelCost = await getModelCost(
+				getCatalogModelId(this.config.model),
+				this.config.modelFetch,
+			);
 		} catch {
 			// Catalog unavailable — proceed without cost data, will retry next call
 		}

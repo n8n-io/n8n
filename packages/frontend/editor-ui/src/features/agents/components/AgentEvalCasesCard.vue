@@ -389,7 +389,7 @@ async function onRegenerate() {
 
 			<N8nButton
 				v-if="isInFlight && canCancel"
-				variant="subtle"
+				variant="outline"
 				size="medium"
 				type="button"
 				icon="filled-square"

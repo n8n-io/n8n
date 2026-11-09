@@ -97,54 +97,72 @@ describe('InstanceAiConversation', () => {
 	// child wrapper's own `emitted()`.
 	function mountConversation(
 		props: { mentionsEnabled?: boolean } = {},
-		openWorkflowPreview = vi.fn(),
+		showMentionedWorkflow = vi.fn(),
 	) {
 		const Host = defineComponent({
 			setup() {
 				provideThread(thread);
-				provide('openWorkflowPreview', openWorkflowPreview);
+				provide('showMentionedWorkflow', showMentionedWorkflow);
 				return () => h(InstanceAiConversation, props);
 			},
 		});
 		return mount(Host, { global: { stubs: { InstanceAiInput: InstanceAiInputStub } } });
 	}
 
-	it('routes mention references and workflow opening through the thread host', async () => {
-		thread.producedArtifacts.set('wf-1', {
-			type: 'workflow',
-			id: 'wf-1',
-			name: 'Orders',
-		});
-		const openWorkflowPreview = vi.fn();
-		const wrapper = mountConversation({ mentionsEnabled: true }, openWorkflowPreview);
-		const input = wrapper.findComponent(InstanceAiInputStub);
-		const reference = {
-			referenceId: 'draft-1',
-			workflowId: 'wf-1',
-			workflowName: 'Orders',
-		};
+	/**
+	 * A submit from the composer with the mention bookkeeping of one workflow
+	 * mention. Returns the composer's restore callback, which a refused send
+	 * must call to give the draft back.
+	 */
+	function emitMentionSubmit(wrapper: ReturnType<typeof mountConversation>) {
+		const restoreDraft = vi.fn(() => true);
+		wrapper.findComponent(InstanceAiInputStub).vm.$emit(
+			'submit',
+			'Compare orders',
+			[{ type: 'workflow', id: 'wf-1', name: 'Orders' }],
+			restoreDraft,
+			USER_TYPED_MESSAGE,
+			Date.now(),
+			{
+				total: 1,
+				workflow: 1,
+				node: 0,
+				group: 0,
+			},
+			['wf-1'],
+		);
+		return { restoreDraft };
+	}
 
-		input.vm.$emit('mention-reference-added', reference);
-		input.vm.$emit('mention-workflow-open', 'wf-1');
-		await nextTick();
+	it('blocks the composer and keeps the out-of-credits notice when credits are gone', () => {
+		store.isOutOfCredits = true;
+		store.isLowCredits = true;
 
-		expect(thread.upsertTransientWorkflowReference).toHaveBeenCalledWith({
-			...reference,
-			projectId: 'thread-project',
-		});
-		expect(thread.transientWorkflowReferences.get('draft-1')).toMatchObject(reference);
-		expect(openWorkflowPreview).toHaveBeenCalledWith('wf-1');
-		expect(input.props('mentionArtifacts')).toEqual([{ id: 'wf-1', name: 'Orders' }]);
+		const wrapper = mountConversation();
 
-		input.vm.$emit('mention-reference-removed', 'draft-1');
-		expect(thread.removeTransientWorkflowReference).toHaveBeenCalledWith('draft-1');
-		expect(thread.transientWorkflowReferences.has('draft-1')).toBe(false);
+		expect(wrapper.get('[data-test-id="instance-ai-input-out-of-credits"]').text()).toBe('true');
+		expect(wrapper.get('[data-test-id="credit-warning-banner"]').text()).toContain(
+			"You've run out of AI credits",
+		);
+		expect(wrapper.find('[data-test-id="credit-banner-dismiss"]').exists()).toBe(false);
 	});
 
-	it('accepts the submitted mention draft only after the message is admitted', async () => {
-		const wrapper = mountConversation();
+	it('offers the workflow tabs of the thread, with their origin, as mention artifacts', () => {
+		thread.producedArtifacts.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Orders' });
+		thread.producedArtifacts.set('wf-2', { type: 'workflow', id: 'wf-2', name: 'Leads' });
+		thread.producedArtifactOrigins.set('wf-2', 'mentioned');
+		const wrapper = mountConversation({ mentionsEnabled: true });
 		const input = wrapper.findComponent(InstanceAiInputStub);
-		const acceptDraft = vi.fn();
+
+		expect(input.props('mentionArtifacts')).toEqual([
+			{ id: 'wf-1', name: 'Orders' },
+			{ id: 'wf-2', name: 'Leads', origin: 'mentioned' },
+		]);
+	});
+
+	it('shows the mentioned workflow only once the message is admitted', async () => {
+		const showMentionedWorkflow = vi.fn();
+		const wrapper = mountConversation({ mentionsEnabled: true }, showMentionedWorkflow);
 		let admit!: (sent: boolean) => void;
 		vi.mocked(thread.sendMessage).mockReturnValueOnce(
 			new Promise<boolean>((resolve) => {
@@ -152,21 +170,7 @@ describe('InstanceAiConversation', () => {
 			}),
 		);
 
-		input.vm.$emit(
-			'submit',
-			'Compare orders',
-			[{ type: 'workflow', id: 'wf-1', name: 'Orders' }],
-			vi.fn(),
-			USER_TYPED_MESSAGE,
-			Date.now(),
-			acceptDraft,
-			{
-				total: 1,
-				workflow: 1,
-				node: 0,
-				group: 0,
-			},
-		);
+		const { restoreDraft } = emitMentionSubmit(wrapper);
 		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
 		expect(thread.sendMessage).toHaveBeenCalledWith(
 			'Compare orders',
@@ -177,12 +181,26 @@ describe('InstanceAiConversation', () => {
 					node: 0,
 					group: 0,
 				},
+				mentionedWorkflowIds: ['wf-1'],
 			}),
 		);
-		expect(acceptDraft).not.toHaveBeenCalled();
+		// The pick itself moved nothing: the tab comes with the sent message.
+		expect(showMentionedWorkflow).not.toHaveBeenCalled();
 
 		admit(true);
-		await vi.waitFor(() => expect(acceptDraft).toHaveBeenCalledOnce());
+		await vi.waitFor(() => expect(showMentionedWorkflow).toHaveBeenCalledExactlyOnceWith('wf-1'));
+		expect(restoreDraft).not.toHaveBeenCalled();
+	});
+
+	it('gives the draft back and shows no mentioned workflow when the send is refused', async () => {
+		const showMentionedWorkflow = vi.fn();
+		const wrapper = mountConversation({ mentionsEnabled: true }, showMentionedWorkflow);
+		vi.mocked(thread.sendMessage).mockResolvedValueOnce(false);
+
+		const { restoreDraft } = emitMentionSubmit(wrapper);
+		await vi.waitFor(() => expect(restoreDraft).toHaveBeenCalledOnce());
+
+		expect(showMentionedWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('renders visible messages from the thread', () => {
@@ -270,7 +288,8 @@ describe('InstanceAiConversation', () => {
 		// Wraps the subject in `reactive` and returns it alongside the render
 		// result, so a test can mutate `subject.name` after mount and assert the
 		// chip follows the live value — the actual AGENT-954 scenario (a rename in
-		// the builder while the panel stays open).
+		// the builder while the panel stays open). The stashed agent is a saved
+		// one: a pending (brand-new) agent shows no chip at all.
 		function mountWithSubject(subject: InstanceAiEmbedSubject | undefined) {
 			thread.sseState = 'disconnected';
 			stashPendingAgentAttachment('thread-1', {
@@ -278,7 +297,6 @@ describe('InstanceAiConversation', () => {
 				id: 'agent-1',
 				projectId: 'proj-1',
 				name: 'Stashed Name',
-				pending: true,
 			});
 			const reactiveSubject = subject === undefined ? undefined : reactive({ ...subject });
 			const renderer = createThreadComponentRenderer(
@@ -338,6 +356,51 @@ describe('InstanceAiConversation', () => {
 			const { getByTestId } = mountWithSubject(undefined);
 			await vi.waitFor(() =>
 				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Stashed Name'),
+			);
+		});
+	});
+
+	describe('pending agent composer', () => {
+		function mountWithPendingAgent() {
+			thread.sseState = 'disconnected';
+			stashPendingAgentAttachment('thread-1', {
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				pending: true,
+			});
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			return renderer();
+		}
+
+		it('shows no context chip, but keeps the new-agent placeholder', async () => {
+			const { getByTestId } = mountWithPendingAgent();
+
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-placeholder-key').textContent).toBe(
+					'instanceAi.input.newAgentPlaceholder',
+				),
+			);
+			expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('');
+		});
+
+		it('still attaches the pending agent to the first message', async () => {
+			const { getByTestId } = mountWithPendingAgent();
+
+			await fireEvent.click(getByTestId('instance-ai-input-submit'));
+			await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				expect.objectContaining({
+					attachments: [{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true }],
+				}),
 			);
 		});
 	});

@@ -21,9 +21,12 @@ function makeRemover(placements: Placement[], archivableIds = placements.map(({ 
 		placements.map((placement) => ({ isArchived: false, ...placement })),
 	);
 	workflowFinderService.findOwnedWorkflowRemovalCandidates.mockImplementation(
-		async (_projectId, workflowIds) =>
+		async (_projectId, workflowIds, options) =>
 			placements
-				.filter(({ id, isArchived }) => workflowIds.includes(id) && !isArchived)
+				.filter(
+					({ id, isArchived }) =>
+						workflowIds.includes(id) && (options?.includeArchived || !isArchived),
+				)
 				.map(({ id, name, parentFolderId }) => ({ id, name, parentFolderId })),
 	);
 	workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(archivableIds));
@@ -145,6 +148,83 @@ describe('WorkflowRemover.plan', () => {
 		expect(plan.removals).toEqual([]);
 		expect(plan.occupiedFolderIds).toEqual(['F-target-only']);
 		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+	});
+
+	describe('with planned moves', () => {
+		const movedTo = (existingId: string, moveToFolderId: string | null) =>
+			({
+				action: 'update',
+				existing: mock<WorkflowEntity>({ id: existingId }),
+				moveToFolderId,
+			}) as unknown as WorkflowPlanItem;
+
+		it('counts the folder a workflow moves into as occupied, not the one it leaves', async () => {
+			const { remover } = makeRemover([{ id: 'w', name: 'W', parentFolderId: 'T' }]);
+
+			const plan = await remover.plan(context, {
+				workflowItems: [movedTo('w', 'F')],
+				packageFolderIds: ['F'],
+				folderConflictPolicy: 'overwrite',
+				deletionPolicy: 'archive',
+				importSource: 'git-pull',
+			});
+
+			expect(plan.removals).toEqual([]);
+			expect(plan.occupiedFolderIds).toEqual(['F']);
+		});
+
+		it('leaves no folder occupied when the workflow moves to the root', async () => {
+			const { remover } = makeRemover([{ id: 'w', name: 'W', parentFolderId: 'T' }]);
+
+			const plan = await remover.plan(context, {
+				workflowItems: [movedTo('w', null)],
+				packageFolderIds: [],
+				folderConflictPolicy: 'overwrite',
+				deletionPolicy: 'archive',
+				importSource: 'git-pull',
+			});
+
+			expect(plan.occupiedFolderIds).toEqual([]);
+		});
+
+		it('keeps the summary of a removed workflow at its current folder', async () => {
+			const { remover } = makeRemover([
+				{ id: 'stale', name: 'Stale', parentFolderId: 'T' },
+				{ id: 'w', name: 'W', parentFolderId: 'T' },
+			]);
+
+			const plan = await remover.plan(context, {
+				workflowItems: [movedTo('w', 'F')],
+				packageFolderIds: ['F'],
+				folderConflictPolicy: 'overwrite',
+				deletionPolicy: 'archive',
+				importSource: 'git-pull',
+			});
+
+			expect(plan.removals).toEqual([{ id: 'stale', name: 'Stale', parentFolderId: 'T' }]);
+			expect(plan.occupiedFolderIds).toEqual(['F']);
+		});
+
+		it('keeps a folder occupied while a workflow the caller may not remove stays in it', async () => {
+			const { remover } = makeRemover(
+				[
+					{ id: 'stale', name: 'Stale', parentFolderId: 'T' },
+					{ id: 'w', name: 'W', parentFolderId: 'T' },
+				],
+				['w'],
+			);
+
+			const plan = await remover.plan(context, {
+				workflowItems: [movedTo('w', 'F')],
+				packageFolderIds: ['F'],
+				folderConflictPolicy: 'overwrite',
+				deletionPolicy: 'archive',
+				importSource: 'git-pull',
+			});
+
+			expect(plan.failures.map(({ workflowId }) => workflowId)).toEqual(['stale']);
+			expect([...plan.occupiedFolderIds].sort()).toEqual(['F', 'T']);
+		});
 	});
 
 	it('checks delete permission only once, for the candidates', async () => {
@@ -291,7 +371,7 @@ describe('WorkflowRemover.planExplicitDeletes', () => {
 		expect(plan.occupiedFolderIds).toEqual([]);
 		expect(
 			workflowFinderService.findOwnedWorkflowRemovalCandidates,
-		).toHaveBeenCalledExactlyOnceWith('proj-1', ['target']);
+		).toHaveBeenCalledExactlyOnceWith('proj-1', ['target'], { includeArchived: false });
 		expect(workflowFinderService.findOwnedWorkflowPlacementsInProject).not.toHaveBeenCalled();
 		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledExactlyOnceWith(
 			['target'],
@@ -322,7 +402,7 @@ describe('WorkflowRemover.planExplicitDeletes', () => {
 		expect(workflowFinderService.findOwnedWorkflowPlacementsInProject).not.toHaveBeenCalled();
 		expect(
 			workflowFinderService.findOwnedWorkflowRemovalCandidates,
-		).toHaveBeenCalledExactlyOnceWith('proj-1', ['target']);
+		).toHaveBeenCalledExactlyOnceWith('proj-1', ['target'], { includeArchived: false });
 		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledExactlyOnceWith(
 			['target'],
 			user,
@@ -379,6 +459,31 @@ describe('WorkflowRemover.planExplicitDeletes', () => {
 		expect(plan.removals).toEqual([]);
 		expect(plan.failures).toEqual([]);
 		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+	});
+
+	it('removes an already-archived id under hard-delete', async () => {
+		const { remover, workflowFinderService } = makeRemover([
+			{ id: 'archived', name: 'Archived', parentFolderId: null, isArchived: true },
+		]);
+
+		const plan = await remover.plan(context, {
+			workflowItems: [],
+			packageFolderIds: [],
+			folderConflictPolicy: 'merge',
+			deletionPolicy: 'hard-delete',
+			explicitDeleteIds: ['archived'],
+		});
+
+		expect(plan.removals).toEqual([{ id: 'archived', name: 'Archived', parentFolderId: null }]);
+		expect(plan.failures).toEqual([]);
+		expect(
+			workflowFinderService.findOwnedWorkflowRemovalCandidates,
+		).toHaveBeenCalledExactlyOnceWith('proj-1', ['archived'], { includeArchived: true });
+		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledExactlyOnceWith(
+			['archived'],
+			user,
+			['workflow:delete'],
+		);
 	});
 });
 

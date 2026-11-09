@@ -3,7 +3,7 @@ import { test, expect } from '../../../fixtures/base';
 test.use({ capability: 'email' });
 
 test(
-	'EmailSend node sends via SMTP',
+	'EmailSend node sends via SMTP @engine:v2',
 	{
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
@@ -78,6 +78,9 @@ test(
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 			'Workflow executed successfully',
 		);
+
+		// The run starts from the canvas, so check the engine the execution reached.
+		await api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
 
 		const msg = await mailpit.waitForMessage({ to: toEmail, subject });
 
