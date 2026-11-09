@@ -54,10 +54,12 @@ describe('PersonRepository', () => {
 
 	/** `mfaEnabled` is protected on `ServiceAccount`, so write and read the stored column directly. */
 	async function setStoredMfaEnabled(id: string) {
+		// Typed as `Person` because `User` hides the column. The update targets `User`, so it reaches any kind.
+		const columns: Partial<Person> = { mfaEnabled: true };
 		await Container.get(DataSource)
 			.createQueryBuilder()
-			.update('user')
-			.set({ mfaEnabled: true })
+			.update(User)
+			.set(columns)
 			.where('id = :id', { id })
 			.execute();
 	}
