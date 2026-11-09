@@ -135,7 +135,7 @@ describe('McpProtectedResource', () => {
 			}
 		});
 
-		it('keeps only node usage in consent when the module is inactive', async () => {
+		it('keeps only the index tools in consent when the module is inactive', async () => {
 			moduleRegistry.isActive.mockImplementation((name) => name !== 'instance-ai');
 
 			const scopeTools = await resource.getScopeTools();
@@ -144,6 +144,7 @@ describe('McpProtectedResource', () => {
 				expect(scopeTools['workflow:read']).not.toContain(tool);
 			}
 			expect(scopeTools['workflow:read']).toContain('get_node_usage');
+			expect(scopeTools['workflow:read']).toContain('get_dependencies');
 			// Unrelated entries under the same scope are untouched.
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 		});

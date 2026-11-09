@@ -109,6 +109,7 @@ import {
 	INSTANCE_CONTEXT_RESOURCE_URI,
 	readInstanceContext,
 } from './tools/get-instance-context.tool';
+import { createGetDependenciesTool } from './tools/get-dependencies.tool';
 import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
 import { createGetUserPreferencesTool } from './tools/get-user-preferences.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -136,7 +137,10 @@ import { createUndoUserPreferenceTool } from './tools/undo-user-preference.tool'
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createUpdateFolderTool } from './tools/update-folder.tool';
 import { createUpdateUserPreferenceTool } from './tools/update-user-preference.tool';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL } from './tools/workflow-builder/constants';
+import {
+	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
+	MCP_UPDATE_WORKFLOW_TOOL,
+} from './tools/workflow-builder/constants';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
 import { createExploreNodeResourcesTool } from './tools/workflow-builder/explore-node-resources.tool';
@@ -791,13 +795,30 @@ export class McpService {
 				);
 			}
 
-			// Node usage reads the dependency index, which is not part of any module and is always
-			// available, so it is not gated on `instance-ai` the way the activity tools are.
+			// Node usage and dependencies read the dependency index, which is not part of any module
+			// and is always available, so they are not gated on `instance-ai` like the activity tools.
 			const { WorkflowDependencyQueryService } = await import(
 				'@/modules/workflow-index/workflow-dependency-query.service.js'
 			);
+			const workflowDependencyQueryService = Container.get(WorkflowDependencyQueryService);
 			registerIfAllowed(
-				createGetNodeUsageTool(user, Container.get(WorkflowDependencyQueryService), this.telemetry),
+				createGetNodeUsageTool(user, workflowDependencyQueryService, this.telemetry),
+			);
+			registerIfAllowed(
+				createGetDependenciesTool(
+					user,
+					workflowDependencyQueryService,
+					this.workflowFinderService,
+					this.telemetry,
+					{
+						credentialGranted,
+						dataTableGranted: allowedToolNames?.has('search_data_tables') ?? true,
+						agentGranted: allowedToolNames?.has('search_agents') ?? true,
+						// `update_workflow` is a builder tool, so it exists only when the builder is on.
+						workflowWriteAvailable:
+							builderEnabled && (allowedToolNames?.has(MCP_UPDATE_WORKFLOW_TOOL.toolName) ?? true),
+					},
+				),
 			);
 		}
 

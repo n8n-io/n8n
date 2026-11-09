@@ -2,6 +2,7 @@ import type {
 	DependenciesBatchResponse,
 	DependencyCountsBatchResponse,
 	DependencyResourceType,
+	DependencyVersion,
 	ResolvedDependency,
 } from '@n8n/api-types';
 import {
@@ -18,6 +19,13 @@ import { In, type FindManyOptions } from '@n8n/typeorm';
 
 import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
 import { DataTableRepository } from '@n8n/backend-module-data-table';
+import {
+	DATA_TABLE_NODE_TYPE,
+	DATA_TABLE_TOOL_NODE_TYPE,
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+} from 'n8n-workflow';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentUsageProviderProxy } from './agent-usage-provider-proxy.service';
@@ -30,6 +38,31 @@ const DEFAULT_NODE_USAGE_WORKFLOW_LIMIT = 10;
  *  rarely reaches for more types than this — but it stays bounded, because an instance-wide read
  *  otherwise returns every type in use. */
 const DEFAULT_NODE_USAGE_TYPE_LIMIT = 100;
+
+/** Nodes that call a sub-workflow. The indexer records a `workflowCall` row for each static call. */
+const WORKFLOW_SELECTOR_NODE_TYPES = [
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+	RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
+];
+
+/**
+ * Nodes that read or write a data table. The evaluation nodes are not here: they also accept
+ * other sources, so a missing `dataTableId` row on them does not mean a runtime reference.
+ */
+const DATA_TABLE_SELECTOR_NODE_TYPES = [DATA_TABLE_NODE_TYPE, DATA_TABLE_TOOL_NODE_TYPE];
+
+/**
+ * A reason why a dependency list can miss items. The index records only references it can
+ * read without running the workflow.
+ */
+export type DependencyListGap =
+	/** Other workflows pick a sub-workflow or data table at runtime, so they can use the resource. */
+	| { reason: 'runtimeCallers'; workflowCount: number }
+	/** The requested workflow picks a sub-workflow or data table at runtime. */
+	| { reason: 'runtimeReferences' }
+	/** The requested workflow changed after the index last read it. */
+	| { reason: 'indexOutdated' };
 
 const RESOURCE_DEPENDENCY_TYPES: Record<
 	DependencyResourceType,
@@ -69,6 +102,8 @@ interface RawDepMaps {
 	allAgentIds: Set<string>;
 	allWfIds: Set<string>;
 	allDtIds: Set<string>;
+	/** The versions that hold each link, keyed by `linkKey`. */
+	versionMap: Map<string, Set<DependencyVersion>>;
 }
 
 @Service()
@@ -165,7 +200,7 @@ export class WorkflowDependencyQueryService {
 		resourceIds: string[],
 		resourceType: DependencyResourceType,
 		user: User,
-		options: { listUnavailableCredentials?: boolean } = {},
+		options: { listUnavailableCredentials?: boolean; includeVersions?: boolean } = {},
 	): Promise<DependenciesBatchResponse> {
 		const loaded = await this.loadDepsForResources(resourceIds, resourceType, user);
 		if (!loaded) return {};
@@ -288,7 +323,110 @@ export class WorkflowDependencyQueryService {
 				dtNames,
 			},
 			{ existingAgentIds, existingWfIds, existingCredIds, existingDtIds },
+			options.includeVersions === true,
 		);
+	}
+
+	/**
+	 * Whether the user can read the resource. Unlike the batch reads, this also says no for an ID
+	 * that does not exist, so a caller can tell "no dependencies" from "no such resource".
+	 */
+	async canReadResource(
+		resourceId: string,
+		resourceType: DependencyResourceType,
+		user: User,
+	): Promise<boolean> {
+		// The data table access check passes every ID for a user with global scope.
+		if (resourceType === 'dataTable') {
+			const exists = await this.dataTableRepository.existsBy({ id: resourceId });
+			if (!exists) return false;
+		}
+
+		const accessible = await this.filterByAccess([resourceId], resourceType, user);
+		return accessible.length > 0;
+	}
+
+	/**
+	 * Reasons why the dependency list of a resource can miss items. The index skips references it
+	 * cannot read without running the workflow, such as a sub-workflow ID set by an expression. A
+	 * node of a referencing type that has no reference row is such a node, or a node with no
+	 * target yet, so the result can over-report. Evaluation nodes are not checked.
+	 *
+	 * The counts span every workflow on the instance, not only the ones the user can read: a
+	 * hidden workflow can still use the resource.
+	 */
+	async getDependencyListGaps(
+		resourceId: string,
+		resourceType: DependencyResourceType,
+	): Promise<DependencyListGap[]> {
+		const gaps: DependencyListGap[] = [];
+
+		if (resourceType === 'credential') return gaps;
+
+		if (resourceType === 'dataTable') {
+			const workflowIds = await this.findWorkflowsWithRuntimeReferences(
+				DATA_TABLE_SELECTOR_NODE_TYPES,
+				'dataTableId',
+			);
+			if (workflowIds.size > 0) {
+				gaps.push({ reason: 'runtimeCallers', workflowCount: workflowIds.size });
+			}
+			return gaps;
+		}
+
+		const [callers, ownWorkflowCalls, ownDataTables, indexCurrent] = await Promise.all([
+			this.findWorkflowsWithRuntimeReferences(WORKFLOW_SELECTOR_NODE_TYPES, 'workflowCall'),
+			this.findWorkflowsWithRuntimeReferences(
+				WORKFLOW_SELECTOR_NODE_TYPES,
+				'workflowCall',
+				resourceId,
+			),
+			this.findWorkflowsWithRuntimeReferences(
+				DATA_TABLE_SELECTOR_NODE_TYPES,
+				'dataTableId',
+				resourceId,
+			),
+			this.dependencyRepository.isDraftIndexCurrent(resourceId),
+		]);
+
+		callers.delete(resourceId);
+		if (callers.size > 0) gaps.push({ reason: 'runtimeCallers', workflowCount: callers.size });
+		if (ownWorkflowCalls.size > 0 || ownDataTables.size > 0) {
+			gaps.push({ reason: 'runtimeReferences' });
+		}
+		if (!indexCurrent) gaps.push({ reason: 'indexOutdated' });
+
+		return gaps;
+	}
+
+	/** Workflows with a node of the given types that has no `referenceType` row in the same version. */
+	private async findWorkflowsWithRuntimeReferences(
+		nodeTypes: string[],
+		referenceType: 'workflowCall' | 'dataTableId',
+		workflowId?: string,
+	): Promise<Set<string>> {
+		const rows = await this.dependencyRepository.findNodeReferenceRows(
+			nodeTypes,
+			referenceType,
+			workflowId,
+		);
+
+		const nodeKey = (row: (typeof rows)[number]) => {
+			const nodeId = row.dependencyInfo?.nodeId;
+			const version = row.publishedVersionId === null ? 'draft' : 'published';
+			return `${row.workflowId}:${version}:${typeof nodeId === 'string' ? nodeId : ''}`;
+		};
+
+		const referencedNodes = new Set(
+			rows.filter((row) => row.dependencyType === referenceType).map(nodeKey),
+		);
+
+		const result = new Set<string>();
+		for (const row of rows) {
+			if (row.dependencyType !== 'nodeType') continue;
+			if (!referencedNodes.has(nodeKey(row))) result.add(row.workflowId);
+		}
+		return result;
 	}
 
 	/**
@@ -352,7 +490,10 @@ export class WorkflowDependencyQueryService {
 	}
 
 	private buildDepMaps(
-		rawDeps: Array<Pick<WorkflowDependency, 'workflowId' | 'dependencyType' | 'dependencyKey'>>,
+		rawDeps: Array<
+			Pick<WorkflowDependency, 'workflowId' | 'dependencyType' | 'dependencyKey'> &
+				Partial<Pick<WorkflowDependency, 'publishedVersionId'>>
+		>,
 		agentDeps: Array<{ agentId: string; resourceId: string }>,
 		resourceType: DependencyResourceType,
 	): RawDepMaps {
@@ -367,16 +508,24 @@ export class WorkflowDependencyQueryService {
 		const allAgentIds = new Set<string>();
 		const allWfIds = new Set<string>();
 		const allDtIds = new Set<string>();
+		const versionMap = new Map<string, Set<DependencyVersion>>();
 
 		for (const dep of rawDeps) {
 			allWfIds.add(dep.workflowId);
+			const version: DependencyVersion = dep.publishedVersionId ? 'published' : 'draft';
+			const addVersion = (type: ResolvedDependency['type'], resourceId: string, id: string) =>
+				addToSet(versionMap, linkKey(type, resourceId, id), version);
+
 			// Batch queries also load outgoing dependencies. Only matching target types can add parents.
 			if (RESOURCE_DEPENDENCY_TYPES[resourceType].includes(dep.dependencyType)) {
+				const parentType =
+					dep.dependencyType === 'errorWorkflow' ? 'errorWorkflowParent' : 'workflowParent';
 				addToSet(
-					dep.dependencyType === 'errorWorkflow' ? errorWfParentMap : parentMap,
+					parentType === 'errorWorkflowParent' ? errorWfParentMap : parentMap,
 					dep.dependencyKey,
 					dep.workflowId,
 				);
+				addVersion(parentType, dep.dependencyKey, dep.workflowId);
 			}
 			if (resourceType !== 'workflow') continue;
 
@@ -384,18 +533,22 @@ export class WorkflowDependencyQueryService {
 				case 'credentialId':
 					addToSet(credMap, dep.workflowId, dep.dependencyKey);
 					allCredIds.add(dep.dependencyKey);
+					addVersion('credentialId', dep.workflowId, dep.dependencyKey);
 					break;
 				case 'dataTableId':
 					addToSet(dtMap, dep.workflowId, dep.dependencyKey);
 					allDtIds.add(dep.dependencyKey);
+					addVersion('dataTableId', dep.workflowId, dep.dependencyKey);
 					break;
 				case 'workflowCall':
 					addToSet(subMap, dep.workflowId, dep.dependencyKey);
 					allWfIds.add(dep.dependencyKey);
+					addVersion('workflowCall', dep.workflowId, dep.dependencyKey);
 					break;
 				case 'errorWorkflow':
 					addToSet(errorWfMap, dep.workflowId, dep.dependencyKey);
 					allWfIds.add(dep.dependencyKey);
+					addVersion('errorWorkflow', dep.workflowId, dep.dependencyKey);
 					break;
 			}
 		}
@@ -417,6 +570,7 @@ export class WorkflowDependencyQueryService {
 			allAgentIds,
 			allWfIds,
 			allDtIds,
+			versionMap,
 		};
 	}
 
@@ -440,12 +594,22 @@ export class WorkflowDependencyQueryService {
 			existingCredIds: Set<string>;
 			existingDtIds: Set<string>;
 		},
+		includeVersions: boolean,
 	): DependenciesBatchResponse {
 		const result: DependenciesBatchResponse = {};
 
 		for (const resourceId of resourceIds) {
 			const dependencies: ResolvedDependency[] = [];
 			let inaccessibleCount = 0;
+
+			const versionsOf = (type: ResolvedDependency['type'], id: string) => {
+				if (!includeVersions) return {};
+				const versions = maps.versionMap.get(linkKey(type, resourceId, id));
+				// Fixed order, so the output does not depend on the row order.
+				return versions
+					? { versions: (['draft', 'published'] as const).filter((v) => versions.has(v)) }
+					: {};
+			};
 
 			for (const id of maps.agentUsageMap.get(resourceId) ?? []) {
 				if (!existing.existingAgentIds.has(id)) continue;
@@ -473,9 +637,15 @@ export class WorkflowDependencyQueryService {
 					const name = nameMap.get(id);
 					const unavailableName = accessMaps.unavailableCredNames.get(id);
 					if (name !== undefined) {
-						dependencies.push({ id, name, type });
+						dependencies.push({ id, name, type, ...versionsOf(type, id) });
 					} else if (type === 'credentialId' && unavailableName !== undefined) {
-						dependencies.push({ id, name: unavailableName, type, unavailable: true });
+						dependencies.push({
+							id,
+							name: unavailableName,
+							type,
+							unavailable: true,
+							...versionsOf(type, id),
+						});
 					} else {
 						inaccessibleCount++;
 					}
@@ -495,6 +665,7 @@ export class WorkflowDependencyQueryService {
 							name: workflow.name,
 							type,
 							projectId: workflow.projectId,
+							...versionsOf(type, id),
 						});
 					} else {
 						inaccessibleCount++;
@@ -517,7 +688,13 @@ export class WorkflowDependencyQueryService {
 				if (!existing.existingDtIds.has(id)) continue;
 				const dt = accessMaps.dtNames.get(id);
 				if (dt) {
-					dependencies.push({ id, name: dt.name, type: 'dataTableId', projectId: dt.projectId });
+					dependencies.push({
+						id,
+						name: dt.name,
+						type: 'dataTableId',
+						projectId: dt.projectId,
+						...versionsOf('dataTableId', id),
+					});
 				} else {
 					inaccessibleCount++;
 				}
@@ -590,7 +767,11 @@ export class WorkflowDependencyQueryService {
 	}
 }
 
-function addToSet(map: Map<string, Set<string>>, key: string, val: string) {
+function linkKey(type: ResolvedDependency['type'], resourceId: string, id: string) {
+	return `${type}:${resourceId}:${id}`;
+}
+
+function addToSet<T>(map: Map<string, Set<T>>, key: string, val: T) {
 	let set = map.get(key);
 	if (!set) {
 		set = new Set();

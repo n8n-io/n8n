@@ -27,6 +27,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import {
+	ACTIVITY_LOG_TOOLS,
 	AGENT_TOOLS,
 	BUILDER_TOOLS,
 	COMMUNITY_PACKAGE_TOOLS,
@@ -451,7 +452,7 @@ describe('McpService scope enforcement', () => {
 	 * Node usage reads the dependency index, which belongs to no module, so it does not follow the
 	 * activity tools off the instance when the AI assistant is disabled.
 	 */
-	it('keeps node usage but drops the activity tools when the module is inactive', async () => {
+	it('keeps the index tools but drops the activity tools when the module is inactive', async () => {
 		mockInstance(WorkflowDependencyQueryService);
 
 		const server = await buildService({ instanceAiActive: false }).getServer(
@@ -460,11 +461,12 @@ describe('McpService scope enforcement', () => {
 		);
 
 		const registered = getRegisteredToolNames(server);
-		// Driven off the set so a fifth tool cannot be added without this case noticing.
-		const moduleBound = [...INSTANCE_CONTEXT_TOOLS].filter((name) => name !== 'get_node_usage');
+		// Driven off the sets so a new tool cannot be added without this case noticing.
+		const indexBound = [...INSTANCE_CONTEXT_TOOLS].filter((name) => !ACTIVITY_LOG_TOOLS.has(name));
 
-		expect(registered).toContain('get_node_usage');
-		for (const name of moduleBound) expect(registered).not.toContain(name);
+		expect(indexBound).toEqual(['get_node_usage', 'get_dependencies']);
+		for (const name of indexBound) expect(registered).toContain(name);
+		for (const name of ACTIVITY_LOG_TOOLS) expect(registered).not.toContain(name);
 		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
 	});
 

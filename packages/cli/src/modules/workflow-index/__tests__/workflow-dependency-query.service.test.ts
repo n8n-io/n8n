@@ -233,4 +233,169 @@ describe('WorkflowDependencyQueryService', () => {
 			expect(getResourceDependencies).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('getResourceDependencies with versions', () => {
+		const row = (
+			workflowId: string,
+			dependencyType: 'workflowCall' | 'credentialId',
+			dependencyKey: string,
+			publishedVersionId: string | null,
+		) => ({ workflowId, dependencyType, dependencyKey, publishedVersionId });
+
+		beforeEach(() => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['wf-1', 'wf-2', 'wf-3']),
+			);
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
+				new Set(['cred-1']),
+			);
+			credentialsRepository.find.mockResolvedValue([mock({ id: 'cred-1', name: 'Cred' })]);
+			workflowRepository.find.mockResolvedValue([
+				mock({ id: 'wf-1', name: 'Target', shared: [] as SharedWorkflow[] }),
+				mock({ id: 'wf-2', name: 'Caller A', shared: [] as SharedWorkflow[] }),
+				mock({ id: 'wf-3', name: 'Caller B', shared: [] as SharedWorkflow[] }),
+			]);
+			dependencyRepository.findDependenciesForResources.mockResolvedValue([
+				// wf-2 calls wf-1 from its draft and its published version.
+				row('wf-2', 'workflowCall', 'wf-1', null),
+				row('wf-2', 'workflowCall', 'wf-1', 'pub-2'),
+				// wf-3 calls wf-1 only from its published version.
+				row('wf-3', 'workflowCall', 'wf-1', 'pub-3'),
+				// wf-1 uses cred-1 only in its draft.
+				row('wf-1', 'credentialId', 'cred-1', null),
+			]);
+		});
+
+		it('labels each link with the versions that hold it', async () => {
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user, {
+				includeVersions: true,
+			});
+
+			expect(result['wf-1'].dependencies).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						id: 'wf-2',
+						type: 'workflowParent',
+						versions: ['draft', 'published'],
+					}),
+					expect.objectContaining({ id: 'wf-3', type: 'workflowParent', versions: ['published'] }),
+					expect.objectContaining({ id: 'cred-1', type: 'credentialId', versions: ['draft'] }),
+				]),
+			);
+		});
+
+		it('leaves the versions out unless asked', async () => {
+			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user);
+
+			for (const dependency of result['wf-1'].dependencies) {
+				expect(dependency).not.toHaveProperty('versions');
+			}
+		});
+	});
+
+	describe('canReadResource', () => {
+		it('is false for a data table that does not exist', async () => {
+			dataTableRepository.existsBy.mockResolvedValue(false);
+
+			await expect(service.canReadResource('dt-1', 'dataTable', user)).resolves.toBe(false);
+		});
+
+		it('checks access for a workflow', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+
+			await expect(service.canReadResource('wf-1', 'workflow', user)).resolves.toBe(true);
+			await expect(service.canReadResource('wf-2', 'workflow', user)).resolves.toBe(false);
+		});
+	});
+
+	describe('getDependencyListGaps', () => {
+		const nodeRow = (
+			workflowId: string,
+			nodeId: string,
+			publishedVersionId: string | null = null,
+		) => ({
+			workflowId,
+			publishedVersionId,
+			dependencyType: 'nodeType' as const,
+			dependencyInfo: { nodeId },
+		});
+		const callRow = (
+			workflowId: string,
+			nodeId: string,
+			publishedVersionId: string | null = null,
+		) => ({
+			workflowId,
+			publishedVersionId,
+			dependencyType: 'workflowCall' as const,
+			dependencyInfo: { nodeId },
+		});
+
+		beforeEach(() => {
+			dependencyRepository.findNodeReferenceRows.mockResolvedValue([]);
+			dependencyRepository.isDraftIndexCurrent.mockResolvedValue(true);
+		});
+
+		it('returns no gaps for a credential', async () => {
+			await expect(service.getDependencyListGaps('cred-1', 'credential')).resolves.toEqual([]);
+			expect(dependencyRepository.findNodeReferenceRows).not.toHaveBeenCalled();
+		});
+
+		it('returns no gaps when every sub-workflow node has a static reference', async () => {
+			dependencyRepository.findNodeReferenceRows.mockImplementation(
+				async (_types, referenceType, workflowId) =>
+					referenceType === 'workflowCall' && workflowId === undefined
+						? [nodeRow('wf-2', 'n1'), callRow('wf-2', 'n1')]
+						: [],
+			);
+
+			await expect(service.getDependencyListGaps('wf-1', 'workflow')).resolves.toEqual([]);
+		});
+
+		it('counts other workflows that pick a sub-workflow at runtime', async () => {
+			dependencyRepository.findNodeReferenceRows.mockImplementation(
+				async (_types, referenceType, workflowId) =>
+					referenceType === 'workflowCall' && workflowId === undefined
+						? [
+								// wf-2 has a static call in its draft, but not in its published version.
+								nodeRow('wf-2', 'n1'),
+								callRow('wf-2', 'n1'),
+								nodeRow('wf-2', 'n1', 'pub-2'),
+								nodeRow('wf-3', 'n1'),
+								// The requested workflow does not count as its own caller.
+								nodeRow('wf-1', 'n1'),
+							]
+						: [],
+			);
+
+			await expect(service.getDependencyListGaps('wf-1', 'workflow')).resolves.toEqual([
+				{ reason: 'runtimeCallers', workflowCount: 2 },
+			]);
+		});
+
+		it('reports runtime references and an outdated index on the requested workflow', async () => {
+			dependencyRepository.findNodeReferenceRows.mockImplementation(
+				async (_types, referenceType, workflowId) =>
+					referenceType === 'dataTableId' && workflowId === 'wf-1' ? [nodeRow('wf-1', 'n1')] : [],
+			);
+			dependencyRepository.isDraftIndexCurrent.mockResolvedValue(false);
+
+			await expect(service.getDependencyListGaps('wf-1', 'workflow')).resolves.toEqual([
+				{ reason: 'runtimeReferences' },
+				{ reason: 'indexOutdated' },
+			]);
+		});
+
+		it('counts workflows that pick a data table at runtime', async () => {
+			dependencyRepository.findNodeReferenceRows.mockResolvedValue([nodeRow('wf-2', 'n1')]);
+
+			await expect(service.getDependencyListGaps('dt-1', 'dataTable')).resolves.toEqual([
+				{ reason: 'runtimeCallers', workflowCount: 1 },
+			]);
+			expect(dependencyRepository.findNodeReferenceRows).toHaveBeenCalledWith(
+				['n8n-nodes-base.dataTable', 'n8n-nodes-base.dataTableTool'],
+				'dataTableId',
+				undefined,
+			);
+		});
+	});
 });

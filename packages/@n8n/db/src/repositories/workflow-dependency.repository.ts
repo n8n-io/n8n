@@ -72,7 +72,14 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		resourceIds: string[],
 		incomingTypes: Array<WorkflowDependency['dependencyType']>,
 		includeOutgoing: boolean,
-	): Promise<Array<Pick<WorkflowDependency, 'workflowId' | 'dependencyType' | 'dependencyKey'>>> {
+	): Promise<
+		Array<
+			Pick<
+				WorkflowDependency,
+				'workflowId' | 'dependencyType' | 'dependencyKey' | 'publishedVersionId'
+			>
+		>
+	> {
 		return await this.find({
 			where: [
 				...(includeOutgoing
@@ -93,8 +100,63 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 					dependencyType: In(incomingTypes),
 				},
 			],
-			select: ['workflowId', 'dependencyType', 'dependencyKey'],
+			select: ['workflowId', 'dependencyType', 'dependencyKey', 'publishedVersionId'],
 		});
+	}
+
+	/**
+	 * The `nodeType` rows for the given node types, and every row of `referenceType`, in
+	 * workflows that are not archived. Both kinds of row carry the node ID in `dependencyInfo`.
+	 * A caller can compare them to find nodes that have no static reference, for example a
+	 * node that picks its sub-workflow through an expression.
+	 */
+	async findNodeReferenceRows(
+		nodeTypes: string[],
+		referenceType: 'workflowCall' | 'dataTableId',
+		workflowId?: string,
+	): Promise<
+		Array<
+			Pick<
+				WorkflowDependency,
+				'workflowId' | 'publishedVersionId' | 'dependencyType' | 'dependencyInfo'
+			>
+		>
+	> {
+		if (nodeTypes.length === 0) return [];
+
+		const workflowFilter = {
+			...(workflowId ? { workflowId } : {}),
+			workflow: { isArchived: false },
+		};
+
+		return await this.find({
+			where: [
+				{ ...workflowFilter, dependencyType: 'nodeType', dependencyKey: In(nodeTypes) },
+				{ ...workflowFilter, dependencyType: referenceType },
+			],
+			select: ['workflowId', 'publishedVersionId', 'dependencyType', 'dependencyInfo'],
+		});
+	}
+
+	/**
+	 * Whether the draft rows of a workflow describe its current version. False when the workflow
+	 * changed after it was last indexed, or when it was never indexed.
+	 */
+	async isDraftIndexCurrent(workflowId: string): Promise<boolean> {
+		const row = await this.createQueryBuilder('dependency')
+			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = dependency.workflowId')
+			.where('dependency.workflowId = :workflowId', { workflowId })
+			.andWhere('dependency.publishedVersionId IS NULL')
+			.select('MAX(dependency.workflowVersionId)', 'indexedVersion')
+			.addSelect('MAX(workflow.versionCounter)', 'currentVersion')
+			.getRawOne<{
+				indexedVersion: number | string | null;
+				currentVersion: number | string | null;
+			}>();
+
+		if (row?.indexedVersion === null || row?.indexedVersion === undefined) return false;
+		// Postgres can return integer aggregates as strings.
+		return Number(row.indexedVersion) >= Number(row.currentVersion);
 	}
 
 	/**

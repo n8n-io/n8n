@@ -516,6 +516,114 @@ describe('WorkflowDependencyRepository', () => {
 		});
 	});
 
+	describe('findNodeReferenceRows()', () => {
+		const EXECUTE = 'n8n-nodes-base.executeWorkflow';
+
+		const index = async (
+			workflowId: string,
+			rows: Array<{ type: string; key: string; nodeId: string }>,
+			publishedVersionId: string | null = null,
+		) => {
+			const dependencies = new WorkflowDependencies(workflowId, 1, publishedVersionId);
+			for (const row of rows) {
+				dependencies.add({
+					dependencyType: row.type,
+					dependencyKey: row.key,
+					dependencyInfo: { nodeId: row.nodeId },
+				});
+			}
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflowId, dependencies);
+		};
+
+		it('returns the node rows of the given types and every reference row', async () => {
+			const workflow = await createWorkflow({ nodes: [] });
+			await index(workflow.id, [
+				{ type: 'nodeType', key: EXECUTE, nodeId: 'n1' },
+				{ type: 'nodeType', key: 'n8n-nodes-base.slack', nodeId: 'n2' },
+				{ type: 'workflowCall', key: 'sub-1', nodeId: 'n1' },
+				{ type: 'credentialId', key: 'cred-1', nodeId: 'n2' },
+			]);
+
+			const rows = await workflowDependencyRepository.findNodeReferenceRows(
+				[EXECUTE],
+				'workflowCall',
+			);
+
+			expect(rows).toHaveLength(2);
+			expect(rows).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						workflowId: workflow.id,
+						dependencyType: 'nodeType',
+						publishedVersionId: null,
+						dependencyInfo: { nodeId: 'n1' },
+					}),
+					expect.objectContaining({
+						workflowId: workflow.id,
+						dependencyType: 'workflowCall',
+						dependencyInfo: { nodeId: 'n1' },
+					}),
+				]),
+			);
+		});
+
+		it('skips archived workflows', async () => {
+			const workflow = await createWorkflow({ nodes: [], isArchived: true });
+			await index(workflow.id, [{ type: 'nodeType', key: EXECUTE, nodeId: 'n1' }]);
+
+			const rows = await workflowDependencyRepository.findNodeReferenceRows(
+				[EXECUTE],
+				'workflowCall',
+			);
+
+			expect(rows).toHaveLength(0);
+		});
+
+		it('narrows to one workflow when given its ID', async () => {
+			const first = await createWorkflow({ nodes: [] });
+			const second = await createWorkflow({ nodes: [] });
+			await index(first.id, [{ type: 'nodeType', key: EXECUTE, nodeId: 'n1' }]);
+			await index(second.id, [{ type: 'nodeType', key: EXECUTE, nodeId: 'n1' }]);
+
+			const rows = await workflowDependencyRepository.findNodeReferenceRows(
+				[EXECUTE],
+				'workflowCall',
+				first.id,
+			);
+
+			expect(rows.map((row) => row.workflowId)).toEqual([first.id]);
+		});
+	});
+
+	describe('isDraftIndexCurrent()', () => {
+		it('is true when the draft rows match the version counter', async () => {
+			const workflow = await createWorkflow({ nodes: [] });
+			const dependencies = new WorkflowDependencies(workflow.id, workflow.versionCounter);
+			dependencies.add({ dependencyType: 'nodeType', dependencyKey: 'x', dependencyInfo: null });
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
+
+			expect(await workflowDependencyRepository.isDraftIndexCurrent(workflow.id)).toBe(true);
+		});
+
+		it('is false when the workflow changed after it was indexed', async () => {
+			const workflow = await createWorkflow({ nodes: [] });
+			const dependencies = new WorkflowDependencies(workflow.id, workflow.versionCounter);
+			dependencies.add({ dependencyType: 'nodeType', dependencyKey: 'x', dependencyInfo: null });
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
+			await Container.get(WorkflowRepository).update(workflow.id, {
+				versionCounter: workflow.versionCounter + 1,
+			});
+
+			expect(await workflowDependencyRepository.isDraftIndexCurrent(workflow.id)).toBe(false);
+		});
+
+		it('is false when the workflow has no draft rows', async () => {
+			const workflow = await createWorkflow({ nodes: [] });
+
+			expect(await workflowDependencyRepository.isDraftIndexCurrent(workflow.id)).toBe(false);
+		});
+	});
+
 	describe('removeDependenciesForWorkflow()', () => {
 		it('should remove all dependencies for a workflow', async () => {
 			//
