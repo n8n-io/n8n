@@ -40,19 +40,20 @@ export class WorkflowApiClient {
 	async deleteWorkflow(workflowId: Workflow['id']): Promise<void> {
 		const RETRY_INTERVAL_MS = 500;
 		const TIMEOUT_MS = 30_000;
-		const startTime = Date.now();
+		const deadline = Date.now() + TIMEOUT_MS;
 
 		while (true) {
 			const response = await this.apiClient.delete<{ message?: string }>(
 				`/workflows/${workflowId}`,
 				{
+					timeout: Math.max(deadline - Date.now(), 1),
 					validateStatus: (status) => (status >= 200 && status < 300) || status === 409,
 				},
 			);
 
 			if (response.status !== 409) return;
 
-			if (Date.now() - startTime >= TIMEOUT_MS) {
+			if (Date.now() >= deadline) {
 				throw new Error(
 					`Could not delete workflow ${workflowId} within ${TIMEOUT_MS / 1000} seconds: ${response.data.message}`,
 				);
