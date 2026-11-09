@@ -380,9 +380,12 @@ const handleClick = (event: MouseEvent) => {
 		}
 	}
 
-	// Only the loading button is positioned. An idle dropdown still anchors to the button.
-	&.loading {
+	// Keep the spinner anchored until its exit animation ends.
+	&:has(> .loading-container) {
 		position: relative;
+	}
+
+	&.loading {
 		pointer-events: none;
 	}
 
@@ -402,6 +405,7 @@ const handleClick = (event: MouseEvent) => {
 .loading-container {
 	position: absolute;
 	inset: 0;
+	grid-area: auto;
 	display: flex;
 	align-items: center;
 	justify-content: center;
