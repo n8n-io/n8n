@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/AgentTimeline.artifacts.test.ts
+  s_412e852068513f::t_c3e856cbdde4f9 92-148
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_412e852068513f::t_797b3d1bb58021 381-382,385,392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "440fa235899faec6887e38cbc0a3fb019dd79096",
+  "prompts": {},
+  "sessions": {
+    "s_412e852068513f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c025-3ff5-7349-8ca5-35ed6f0240a4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
