@@ -484,8 +484,8 @@ n8n-cli promotion-environment apply-selection proj-abc
 
 The project's name, icon, description, and telemetry tags always come from the
 branch. Without `-w` and `--folder`, the command applies only the project.
-Selected IDs on the branch are imported. Instance workflows this project owns whose IDs are absent
-from the branch are removed. Unselected content stays unchanged. A selected
+Selected IDs on the branch are imported. A selected workflow that this project
+owns but the branch does not hold is removed. Unselected content stays unchanged. A selected
 workflow or folder is created, or moves within the project to match the branch,
 together with the folders above it, and those folders take the name on the
 branch. Other folders stay as they are. A selected workflow, or a folder that the

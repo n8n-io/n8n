@@ -2411,6 +2411,8 @@ describe('Create the projects of the Apply package that are missing here', () =>
 			(await loadApplyPreview(project.id)).resources.filter(({ change }) => change !== 'unchanged');
 		expect(await pendingChanges()).toEqual([]);
 
+		// An Apply that selects nothing applies only the project details from the branch.
+		await projectRepository.update(project.id, { name: 'Local orders', description: 'Local' });
 		const applied = await service.applyProjectSelection(project.id, owner, {});
 		expect(applied.status).toBe('applied');
 		expect(await projectRepository.findOneByOrFail({ id: project.id })).toMatchObject({
