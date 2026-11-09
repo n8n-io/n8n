@@ -699,14 +699,12 @@ watch(documentVisibility, (visibility) => {
 				</div>
 			</N8nDialogBody>
 			<N8nDialogFooter>
-				<div :class="$style.footer">
-					<N8nButton variant="outline" @click="closeDialog">
-						{{ i18n.baseText('chatHub.tools.editor.cancel') }}
-					</N8nButton>
-					<N8nButton variant="solid" :disabled="!isValid || isSaving" @click="onSave">
-						{{ saveButtonLabel }}
-					</N8nButton>
-				</div>
+				<N8nButton variant="outline" @click="closeDialog">
+					{{ i18n.baseText('chatHub.tools.editor.cancel') }}
+				</N8nButton>
+				<N8nButton variant="solid" :disabled="!isValid || isSaving" @click="onSave">
+					{{ saveButtonLabel }}
+				</N8nButton>
 			</N8nDialogFooter>
 		</template>
 		<N8nDialogBody v-else>
@@ -730,11 +728,7 @@ watch(documentVisibility, (visibility) => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	padding: var(--spacing--sm) 0;
-	padding-right: var(--spacing--lg);
 	max-height: 60vh;
-	overflow-y: auto;
-	margin-right: calc(-1 * var(--spacing--lg));
 }
 
 .vectorStoreCallout {
@@ -786,12 +780,6 @@ watch(documentVisibility, (visibility) => {
 
 .modelSelector {
 	width: fit-content;
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
 }
 
 .fileInput {
