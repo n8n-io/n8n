@@ -108,4 +108,13 @@ describe('invokeAxios', () => {
 		expect(response.status).toBe(200);
 		expect(response.data).toEqual({ success: true });
 	});
+
+	it('should throw the request error when a form-like body has no destroy method', async () => {
+		nock(baseUrl).post('/upload').reply(500, {});
+		const formLikeBody = { getHeaders: () => ({}), append: () => {} };
+
+		await expect(
+			invokeAxios({ url: `${baseUrl}/upload`, method: 'POST', data: formLikeBody }),
+		).rejects.toThrow('Request failed with status code 500');
+	});
 });

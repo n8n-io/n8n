@@ -8,7 +8,7 @@ import {
 	parseWorkflowToolFixedValue,
 } from '../workflowToolInputFields';
 
-function workflowWithTrigger(parameters: Record<string, unknown>): IWorkflowDb {
+function workflowWithTrigger(parameters: Record<string, unknown>, typeVersion = 1.1): IWorkflowDb {
 	return {
 		id: 'wf-1',
 		name: 'Tool Workflow',
@@ -20,7 +20,7 @@ function workflowWithTrigger(parameters: Record<string, unknown>): IWorkflowDb {
 				id: 't1',
 				name: 'When Executed by Another Workflow',
 				type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-				typeVersion: 1.1,
+				typeVersion,
 				position: [0, 0],
 				parameters,
 			},
@@ -49,6 +49,25 @@ describe('listWorkflowToolInputFields', () => {
 			{ name: 'chatId', type: 'string' },
 			{ name: 'botName', type: 'string' },
 		]);
+	});
+
+	it.each([1.1, 1.2, 1.3])(
+		'uses declared fields when version %s omits inputSource',
+		(typeVersion) => {
+			expect(
+				listWorkflowToolInputFields(
+					workflowWithTrigger({ workflowInputs: { values: [{ name: 'request' }] } }, typeVersion),
+				),
+			).toEqual([{ name: 'request' }]);
+		},
+	);
+
+	it('returns empty when a legacy trigger omits inputSource', () => {
+		expect(
+			listWorkflowToolInputFields(
+				workflowWithTrigger({ workflowInputs: { values: [{ name: 'request' }] } }, 1),
+			),
+		).toEqual([]);
 	});
 
 	it('returns empty for passthrough', () => {

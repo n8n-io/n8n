@@ -6,7 +6,7 @@ test.use(chatHubTestConfig);
 test.describe(
 	'Settings',
 	{
-		annotation: [{ type: 'owner', description: 'Chat' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test('set global credentials for a provider', async ({ n8n, anthropicCredential }) => {

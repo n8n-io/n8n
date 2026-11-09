@@ -157,6 +157,30 @@ describe('ExecutionsController', () => {
 		});
 	});
 
+	describe('retry', () => {
+		const req = mock<ExecutionRequest.Retry>({ params: { id: '999' }, query: {}, body: {} });
+
+		it('should retry the workflows the user can execute', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['1234']);
+
+			await executionsController.retry(req);
+
+			expect(workflowSharingService.getSharedWorkflowIds).toHaveBeenCalledWith(req.user, {
+				scopes: ['workflow:execute'],
+			});
+			expect(executionService.retry).toHaveBeenCalledWith(
+				expect.objectContaining({ executionId: '999', sharedWorkflowIds: ['1234'] }),
+			);
+		});
+
+		it('should throw NotFoundError when no workflow grants workflow:execute', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+
+			await expect(executionsController.retry(req)).rejects.toThrow(NotFoundError);
+			expect(executionService.retry).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getVersions', () => {
 		const workflowId = 'workflow-123';
 		const req = mock<ExecutionRequest.GetVersions>({ params: { workflowId } });

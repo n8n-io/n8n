@@ -18,7 +18,7 @@ import { mock } from 'vitest-mock-extended';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { ExternalHooks } from '@/external-hooks';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import { PasswordUtility } from '@/services/password.utility';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';

@@ -1,0 +1,102 @@
+diff --git a/dist/chat_models.cjs b/dist/chat_models.cjs
+index e6dc06503a56d586f2a7231b719f284b3a2678ae..81954d7b7d869762a6da4214cf5cb93500a947f6 100644
+--- a/dist/chat_models.cjs
++++ b/dist/chat_models.cjs
+@@ -461,7 +461,8 @@ var ChatGoogleGenerativeAI = class extends _langchain_core_language_models_chat_
+ 		}, {
+ 			apiVersion: fields.apiVersion,
+ 			baseUrl: fields.baseUrl,
+-			customHeaders: fields.customHeaders
++			customHeaders: fields.customHeaders,
++			fetch: fields.fetch
+ 		});
+ 		this.streamUsage = fields.streamUsage ?? this.streamUsage;
+ 	}
+diff --git a/dist/chat_models.d.cts b/dist/chat_models.d.cts
+index 977a7364b4c6beee214c56a72b7a74ab27d837e4..84ca64470a1744e810d57c2c8b1ce981d67b062a 100644
+--- a/dist/chat_models.d.cts
++++ b/dist/chat_models.d.cts
+@@ -115,6 +115,7 @@ interface GoogleGenerativeAIChatInput extends BaseChatModelParams, Pick<GoogleGe
+    * Google API custom headers to use
+    */
+   customHeaders?: Record<string, string>;
++  fetch?: typeof fetch;
+   /** Whether to stream the results or not */
+   streaming?: boolean;
+   /**
+diff --git a/dist/chat_models.d.ts b/dist/chat_models.d.ts
+index 8c16c9c0d0714c99a3bfa82864db471ed62f414d..6c5ec7d372861b04b463148eec9ef8e9abe5b443 100644
+--- a/dist/chat_models.d.ts
++++ b/dist/chat_models.d.ts
+@@ -115,6 +115,7 @@ interface GoogleGenerativeAIChatInput extends BaseChatModelParams, Pick<GoogleGe
+    * Google API custom headers to use
+    */
+   customHeaders?: Record<string, string>;
++  fetch?: typeof fetch;
+   /** Whether to stream the results or not */
+   streaming?: boolean;
+   /**
+diff --git a/dist/chat_models.js b/dist/chat_models.js
+index cf6fba8d6d1bc42d80be4a844200e22b512d8f13..d8022c07026d57dfaf7f772bbf5f8cd9fc67eefa 100644
+--- a/dist/chat_models.js
++++ b/dist/chat_models.js
+@@ -461,7 +461,8 @@ var ChatGoogleGenerativeAI = class extends BaseChatModel {
+ 		}, {
+ 			apiVersion: fields.apiVersion,
+ 			baseUrl: fields.baseUrl,
+-			customHeaders: fields.customHeaders
++			customHeaders: fields.customHeaders,
++			fetch: fields.fetch
+ 		});
+ 		this.streamUsage = fields.streamUsage ?? this.streamUsage;
+ 	}
+diff --git a/dist/embeddings.cjs b/dist/embeddings.cjs
+index 0398f26ca30d88bd2c515ee8156eedeadc3014ea..f924a9fecc28f432c6f8dadaec87f4672a2cd49f 100644
+--- a/dist/embeddings.cjs
++++ b/dist/embeddings.cjs
+@@ -43,7 +43,7 @@ var GoogleGenerativeAIEmbeddings = class extends _langchain_core_embeddings.Embe
+ 		if (this.title && this.taskType !== "RETRIEVAL_DOCUMENT") throw new Error("title can only be sepcified with TaskType.RETRIEVAL_DOCUMENT");
+ 		this.apiKey = fields?.apiKey ?? (0, _langchain_core_utils_env.getEnvironmentVariable)("GOOGLE_API_KEY");
+ 		if (!this.apiKey) throw new Error("Please set an API key for Google GenerativeAI in the environmentb variable GOOGLE_API_KEY or in the `apiKey` field of the GoogleGenerativeAIEmbeddings constructor");
+-		this.client = new _google_generative_ai.GoogleGenerativeAI(this.apiKey).getGenerativeModel({ model: this.model }, { baseUrl: fields?.baseUrl });
++		this.client = new _google_generative_ai.GoogleGenerativeAI(this.apiKey).getGenerativeModel({ model: this.model }, { baseUrl: fields?.baseUrl, fetch: fields?.fetch });
+ 	}
+ 	_convertToContent(text) {
+ 		return {
+diff --git a/dist/embeddings.d.cts b/dist/embeddings.d.cts
+index 707f1ef2e0788b0bfa02a40c7ea05498705e7f81..622f11ca763f65d2a55a677431d23e36a82dd882 100644
+--- a/dist/embeddings.d.cts
++++ b/dist/embeddings.d.cts
+@@ -46,6 +46,7 @@ interface GoogleGenerativeAIEmbeddingsParams extends EmbeddingsParams {
+    * Google API base URL to use
+    */
+   baseUrl?: string;
++  fetch?: typeof fetch;
+ }
+ /**
+  * Class that extends the Embeddings class and provides methods for
+diff --git a/dist/embeddings.d.ts b/dist/embeddings.d.ts
+index b9423c89a7c0486714a6de737d11b4b3a77f6f25..b568a040c6faf9d78380a128edcb07dc8e9c1ccb 100644
+--- a/dist/embeddings.d.ts
++++ b/dist/embeddings.d.ts
+@@ -46,6 +46,7 @@ interface GoogleGenerativeAIEmbeddingsParams extends EmbeddingsParams {
+    * Google API base URL to use
+    */
+   baseUrl?: string;
++  fetch?: typeof fetch;
+ }
+ /**
+  * Class that extends the Embeddings class and provides methods for
+diff --git a/dist/embeddings.js b/dist/embeddings.js
+index eb7e4cfd2d41aaceff278d811243c20e048d8a12..4c86d1618b3be504a0cc1446827e64773a940a27 100644
+--- a/dist/embeddings.js
++++ b/dist/embeddings.js
+@@ -43,7 +43,7 @@ var GoogleGenerativeAIEmbeddings = class extends Embeddings {
+ 		if (this.title && this.taskType !== "RETRIEVAL_DOCUMENT") throw new Error("title can only be sepcified with TaskType.RETRIEVAL_DOCUMENT");
+ 		this.apiKey = fields?.apiKey ?? getEnvironmentVariable("GOOGLE_API_KEY");
+ 		if (!this.apiKey) throw new Error("Please set an API key for Google GenerativeAI in the environmentb variable GOOGLE_API_KEY or in the `apiKey` field of the GoogleGenerativeAIEmbeddings constructor");
+-		this.client = new GoogleGenerativeAI(this.apiKey).getGenerativeModel({ model: this.model }, { baseUrl: fields?.baseUrl });
++		this.client = new GoogleGenerativeAI(this.apiKey).getGenerativeModel({ model: this.model }, { baseUrl: fields?.baseUrl, fetch: fields?.fetch });
+ 	}
+ 	_convertToContent(text) {
+ 		return {

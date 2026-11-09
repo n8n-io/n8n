@@ -1,16 +1,34 @@
+import { packageRequirementConsumerSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
-export const packageCredentialRequirementSchema = z.object({
-	id: z.string().min(1),
-	name: z.string().min(1),
-	type: z.string().min(1),
-	usedByWorkflows: z.array(z.string().min(1)).min(1),
-});
+const requirementUsage = {
+	usedBy: z.array(packageRequirementConsumerSchema).min(1),
+};
+
+export const packageCredentialRequirementSchema = z
+	.object({
+		id: z.string().min(1),
+		name: z.string().min(1).optional(),
+		type: z.string().min(1).optional(),
+		...requirementUsage,
+	})
+	.superRefine((credential, ctx) => {
+		if (!credential.usedBy.some(({ kind }) => kind === 'workflow')) return;
+		for (const field of ['name', 'type'] as const) {
+			if (credential[field] === undefined) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: [field],
+					message: `Credential ${field} is required for workflow consumers`,
+				});
+			}
+		}
+	});
 
 export const packageDataTableRequirementSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
-	usedByWorkflows: z.array(z.string().min(1)).min(1),
+	...requirementUsage,
 });
 
 // `name` is best-effort: a `reference-only` export lists workflows that are
@@ -19,23 +37,29 @@ export const packageDataTableRequirementSchema = z.object({
 export const packageWorkflowRequirementSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1).optional(),
-	usedByWorkflows: z.array(z.string().min(1)).min(1),
+	...requirementUsage,
+});
+
+export const packageAgentRequirementSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1).optional(),
+	...requirementUsage,
 });
 
 export const packageTagRequirementSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
-	usedByWorkflows: z.array(z.string().min(1)).min(1),
+	usedBy: z.array(packageRequirementConsumerSchema.extend({ kind: z.literal('workflow') })).min(1),
 });
 
-// Node types used by the packaged workflows, folded into unique
+// Node types used by packaged workflows and Agents, folded into unique
 // `(type, typeVersion)` pairs. Informational/derived only: import re-derives
 // node type usage from workflow content and never trusts this section.
 export const packageNodeTypeRequirementSchema = z.object({
 	type: z.string().min(1),
 	// `finite()`: JSON like `1e999` parses to Infinity (mirrors the workflow node schema).
 	typeVersion: z.number().finite(),
-	usedByWorkflows: z.array(z.string().min(1)).min(1),
+	...requirementUsage,
 });
 
 // Variables are keyed by name, not id: a `$vars.<name>` reference resolves
@@ -45,7 +69,7 @@ export const packageNodeTypeRequirementSchema = z.object({
 // any value the package carries travels in the bundled variable file.
 export const packageVariableRequirementSchema = z.object({
 	name: z.string().min(1),
-	usedByWorkflows: z.array(z.string().min(1)).min(1),
+	...requirementUsage,
 });
 
 function assertNoDuplicateKey<T>(
@@ -87,6 +111,10 @@ export const packageRequirementsSchema = z.object({
 		.superRefine((workflows, ctx) =>
 			assertNoDuplicateKey(workflows, ({ id }) => id, 'workflow id', ctx),
 		),
+	agents: z
+		.array(packageAgentRequirementSchema)
+		.optional()
+		.superRefine((agents, ctx) => assertNoDuplicateKey(agents, ({ id }) => id, 'Agent id', ctx)),
 	variables: z
 		.array(packageVariableRequirementSchema)
 		.optional()
@@ -110,9 +138,11 @@ export const packageRequirementsSchema = z.object({
 		),
 });
 
+export type PackageRequirementConsumer = z.infer<typeof packageRequirementConsumerSchema>;
 export type PackageCredentialRequirement = z.infer<typeof packageCredentialRequirementSchema>;
 export type PackageDataTableRequirement = z.infer<typeof packageDataTableRequirementSchema>;
 export type PackageWorkflowRequirement = z.infer<typeof packageWorkflowRequirementSchema>;
+export type PackageAgentRequirement = z.infer<typeof packageAgentRequirementSchema>;
 export type PackageTagRequirement = z.infer<typeof packageTagRequirementSchema>;
 export type PackageVariableRequirement = z.infer<typeof packageVariableRequirementSchema>;
 export type PackageNodeTypeRequirement = z.infer<typeof packageNodeTypeRequirementSchema>;

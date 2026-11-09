@@ -1,16 +1,23 @@
 import type {
 	ExecutionMode,
 	ExecutionStatus,
+	ParentLink,
 	StepError,
 	StepSlots,
 	StepStatus,
 	WorkflowDocument,
 } from '../execution';
-import type { ExecutionListQuery } from '../execution/execution-view-store';
-import type { WorkflowGraph } from '../graph';
+import type { ExecutionListFilter, ExecutionListQuery } from '../execution/execution-view-store';
+import type { StoredWorkflowGraph } from '../graph';
 
 /** A read-only search. The control plane supplies the visibility decision. */
 export type SearchExecutionsRequest = ExecutionListQuery;
+
+/**
+ * `POST /search/latest` body: the search filter without its paging. The
+ * response is the newest match as `GET /:id?includeSteps=true` reports it.
+ */
+export type FindLatestExecutionRequest = ExecutionListFilter;
 
 /**
  * `POST /:id/cancel` response. Only ever `cancelled`: any other status answers
@@ -19,6 +26,8 @@ export type SearchExecutionsRequest = ExecutionListQuery;
 export interface CancelExecutionResponse {
 	executionId: string;
 	status: 'cancelled';
+	/** When the execution ended, ISO-8601. The same time on a repeated cancel. */
+	finishedAt: string;
 }
 
 /** `T` without its `K` fields. */
@@ -48,12 +57,14 @@ export interface ExecutionSnapshot {
 	/** The host's finer execution mode. */
 	hostMode: string;
 	/** The graph captured at start, immutable for the execution's lifetime. */
-	graph: WorkflowGraph;
+	graph: StoredWorkflowGraph;
 	/**
 	 * The workflow the run came from, captured at start. Reported so a caller can
 	 * render the execution against the workflow that ran, not the current one.
 	 */
 	workflow: WorkflowDocument;
+	/** The parent link, or `null` for a top-level execution. */
+	parent: ParentLink | null;
 	createdAt: string;
 	updatedAt: string;
 	finishedAt: string | null;
@@ -77,4 +88,49 @@ export interface StepDetail {
 	error: StepError | null;
 	createdAt: string;
 	updatedAt: string;
+}
+
+/** Body of `POST /workflow-executions/:id/resume-target`. The control plane forwards the token unread. */
+export interface ResumeTargetRequest {
+	token: string;
+}
+
+/**
+ * Body of `POST /resume-requests/locate`, phase one of every kind of resume
+ * request. `id` is the id in the resume URL or in the approval callback. The
+ * token says whether it names an execution or a step. The control plane
+ * forwards the token unread.
+ */
+export interface ResumeLocateRequest {
+	id: string;
+	token: string;
+	/**
+	 * The path and query of the resume URL as the caller sent them, without the
+	 * token parameter, for example
+	 * `/webhook-waiting/<step id>/<node id>?approved=true`. A step-bound token
+	 * accepts the request only if this equals the string that it holds.
+	 */
+	pathAndQuery?: string;
+}
+
+/**
+ * The execution a resume request addresses, and the one step of it that
+ * accepts a request. `target` is `null` when no step does: `execution.status`
+ * says whether the execution ended or has not reached its wait yet.
+ */
+export interface ResumeTargetResponse {
+	execution: ExecutionSnapshot;
+	target: { stepId: string; nodeId: string } | null;
+}
+
+/** Body of `POST /step-executions/:id/resolve`. */
+export interface ResolveStepRequest {
+	token: string;
+	/** What the node's resume method produced, one entry for each output slot. */
+	outputs: StepSlots;
+}
+
+export interface ResolveStepResponse {
+	executionId: string;
+	stepId: string;
 }

@@ -75,7 +75,15 @@ export function buildChannelStatusReport(
 		entries.push({ type: 'n8n_chat', status: publishedChat ? 'connected' : 'configured' });
 	}
 
-	return { status: rollUp(entries), integrations: entries };
+	const drafts = (integrations ?? [])
+		.filter(isCredentialAgentIntegration)
+		.filter((integration) => isDraftIntegration(integration))
+		.map((integration) => ({
+			type: integration.type,
+			...('settings' in integration ? { settings: integration.settings } : {}),
+		}));
+
+	return { status: rollUp(entries), integrations: entries, drafts };
 }
 
 function channelKey(integrationType: string, credentialId: string): string {

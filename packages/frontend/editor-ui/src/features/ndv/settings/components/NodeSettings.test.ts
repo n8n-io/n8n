@@ -493,4 +493,94 @@ describe('NodeSettings', () => {
 			expect(getByTestId('embedded-ndv-header')).toHaveAttribute('data-hide-tabs', 'true');
 		});
 	});
+
+	it('ignores a parameter update from the event bus for a deprecated node', async () => {
+		const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+			node: freshHttpNode(),
+			nodeType: { ...httpNodeType, deprecated: true },
+			props: { readOnly: false },
+		});
+		await findByTestId('tab-params');
+
+		ndvEventBus.emit('updateParameterValue', urlUpdate);
+
+		expect(workflowDocumentStore.getNodeByName(httpNode.name)?.parameters.url).toBeUndefined();
+	});
+
+	describe('sub-workflow restriction callout', () => {
+		const calloutStub = {
+			RestrictedSubWorkflowCallout: {
+				props: ['parentWorkflowId', 'node', 'enabled', 'labelOf'],
+				template:
+					'<div data-test-id="sub-workflow-callout-stub" :data-parent="parentWorkflowId" :data-enabled="String(enabled)" :data-node="node.name" />',
+			},
+		};
+
+		it('checks the active node for a builder who can update the workflow', async () => {
+			const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+				stubs: calloutStub,
+				props: { readOnly: false },
+			});
+			workflowDocumentStore.setScopes(['workflow:update']);
+
+			const callout = await findByTestId('sub-workflow-callout-stub');
+			await vi.waitFor(() => expect(callout).toHaveAttribute('data-enabled', 'true'));
+			expect(callout).toHaveAttribute('data-parent', workflowDocumentStore.workflowId);
+			expect(callout).toHaveAttribute('data-node', httpNode.name);
+		});
+
+		it('does not check in a read-only panel', async () => {
+			const { findByTestId, workflowDocumentStore } = renderNodeSettings({ stubs: calloutStub });
+			workflowDocumentStore.setScopes(['workflow:update']);
+
+			expect(await findByTestId('sub-workflow-callout-stub')).toHaveAttribute(
+				'data-enabled',
+				'false',
+			);
+		});
+	});
+
+	describe('a node on a credential the user cannot use', () => {
+		const exposeReadOnlyStubs = {
+			ParameterInputList: {
+				props: ['isReadOnly'],
+				template: '<div data-test-id="parameters-stub" :data-read-only="isReadOnly"><slot /></div>',
+			},
+			NodeCredentials: {
+				props: ['readonly'],
+				template: '<div data-test-id="credentials-stub" :data-read-only="readonly" />',
+			},
+		};
+
+		/** Every rendered instance: the params and settings tabs each hold a parameter list. */
+		const readOnlyStates = async (
+			findAllByTestId: (id: string) => Promise<HTMLElement[]>,
+			testId: string,
+		) => (await findAllByTestId(testId)).map((element) => element.getAttribute('data-read-only'));
+
+		const renderOnForeignCredential = (readOnly = false) =>
+			renderNodeSettings({
+				props: { readOnly, foreignCredentials: ['alice-cred'] },
+				stubs: exposeReadOnlyStubs,
+			});
+
+		it('keeps the parameters locked but the picker usable', async () => {
+			const { findAllByTestId, getByText } = renderOnForeignCredential();
+
+			expect(new Set(await readOnlyStates(findAllByTestId, 'parameters-stub'))).toEqual(
+				new Set(['true']),
+			);
+			expect(await readOnlyStates(findAllByTestId, 'credentials-stub')).toEqual(['false']);
+			expect(getByText(/Switch to a credential you can use/)).toBeInTheDocument();
+		});
+
+		it('locks the picker on a read-only canvas', async () => {
+			const { findAllByTestId } = renderOnForeignCredential(true);
+
+			expect(new Set(await readOnlyStates(findAllByTestId, 'parameters-stub'))).toEqual(
+				new Set(['true']),
+			);
+			expect(await readOnlyStates(findAllByTestId, 'credentials-stub')).toEqual(['true']);
+		});
+	});
 });

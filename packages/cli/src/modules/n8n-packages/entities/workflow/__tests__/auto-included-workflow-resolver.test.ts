@@ -10,9 +10,12 @@ import {
 	PackageEntityNotFoundError,
 	PackageExportBlockedError,
 } from '../../package-export.errors';
-import { AutoIncludedWorkflowResolver } from '../auto-included-workflow-resolver';
+import {
+	AutoIncludedWorkflowResolver,
+	type WorkflowExportSeed,
+} from '../auto-included-workflow-resolver';
 import type { WorkflowSubWorkflowRequirement } from '../workflow.types';
-import { WorkflowVersionPolicy } from '../../../n8n-packages.types';
+import { ExportVersionPolicy } from '../../../n8n-packages.types';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -94,19 +97,17 @@ function requirement(
 }
 
 function resolveInput(options: {
-	topLevelWorkflowIds?: string[];
-	folderWorkflowIds?: string[];
-	projectWorkflowIds?: string[];
+	exportedWorkflowIds?: string[];
+	workflowSeeds: WorkflowExportSeed[];
 	requirements: WorkflowSubWorkflowRequirement[];
 }) {
 	return {
 		user,
-		topLevelWorkflowIds: options.topLevelWorkflowIds ?? [],
-		folderWorkflowIds: options.folderWorkflowIds ?? [],
-		projectWorkflowIds: options.projectWorkflowIds ?? [],
+		exportedWorkflowIds: options.exportedWorkflowIds ?? [],
+		workflowSeeds: options.workflowSeeds,
 		requirements: options.requirements,
 		includeTags: true,
-		workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+		versionPolicy: ExportVersionPolicy.Latest,
 	};
 }
 
@@ -118,7 +119,11 @@ describe('AutoIncludedWorkflowResolver', () => {
 
 		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
-				topLevelWorkflowIds: ['a', 'b'],
+				exportedWorkflowIds: ['a', 'b'],
+				workflowSeeds: [
+					{ workflowId: 'a', origin: 'top-level' },
+					{ workflowId: 'b', origin: 'top-level' },
+				],
 				requirements: [requirement('a', 'b')],
 			}),
 		);
@@ -126,24 +131,36 @@ describe('AutoIncludedWorkflowResolver', () => {
 		expect(autoIncludedWorkflows).toEqual([]);
 	});
 
-	it('auto-includes transitively reachable sub-workflows carrying the seed placement', async () => {
-		// seed a → b → c, only a is exported
-		const { resolver } = makeResolver({
-			workflows: [makeWorkflow('a'), makeWorkflow('b'), makeWorkflow('c')],
-			owners: { b: makeProject('p1'), c: makeProject('p1') },
-		});
+	it.each([
+		{ exported: true, origin: 'top-level' },
+		{ exported: false, origin: 'top-level' },
+		{ exported: true, origin: 'project' },
+		{ exported: false, origin: 'project' },
+	] as const)(
+		'includes dependencies from a $origin seed (already exported: $exported)',
+		async ({ exported, origin }) => {
+			const project = makeProject('p1');
+			const { resolver } = makeResolver({
+				workflows: [makeWorkflow('a'), makeWorkflow('b'), makeWorkflow('c')],
+				owners: { a: project, b: project, c: project },
+				projects: [project],
+			});
 
-		const { autoIncludedWorkflows } = await resolver.resolve(
-			resolveInput({
-				topLevelWorkflowIds: ['a'],
-				requirements: [requirement('a', 'b'), requirement('b', 'c')],
-			}),
-		);
+			const { autoIncludedWorkflows } = await resolver.resolve(
+				resolveInput({
+					exportedWorkflowIds: exported ? ['a'] : [],
+					workflowSeeds: [{ workflowId: 'a', origin }],
+					requirements: [requirement('a', 'b'), requirement('b', 'c')],
+				}),
+			);
 
-		expect(autoIncludedWorkflows.map((d) => d.workflow.id)).toEqual(['b', 'c']);
-		expect(autoIncludedWorkflows.every((d) => d.placement === 'top-level')).toBe(true);
-		expect(autoIncludedWorkflows.every((d) => d.folderChain.length === 0)).toBe(true);
-	});
+			expect(autoIncludedWorkflows.map((d) => d.workflow.id)).toEqual(
+				exported ? ['b', 'c'] : ['a', 'b', 'c'],
+			);
+			expect(autoIncludedWorkflows.every((d) => d.placement === origin)).toBe(true);
+			expect(autoIncludedWorkflows.every((d) => d.folderChain.length === 0)).toBe(true);
+		},
+	);
 
 	it('prefers folder over top-level when a workflow is reached from both a folder and a top-level seed', async () => {
 		// projectId is mutually exclusive with folder/workflow ids, so top-level
@@ -157,8 +174,11 @@ describe('AutoIncludedWorkflowResolver', () => {
 
 		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
-				topLevelWorkflowIds: ['topSeed'],
-				folderWorkflowIds: ['folderSeed'],
+				exportedWorkflowIds: ['topSeed', 'folderSeed'],
+				workflowSeeds: [
+					{ workflowId: 'topSeed', origin: 'top-level' },
+					{ workflowId: 'folderSeed', origin: 'folder' },
+				],
 				requirements: [requirement('topSeed', 'b'), requirement('folderSeed', 'b')],
 			}),
 		);
@@ -179,8 +199,11 @@ describe('AutoIncludedWorkflowResolver', () => {
 
 		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
-				folderWorkflowIds: ['folderSeed'],
-				projectWorkflowIds: ['projectSeed'],
+				exportedWorkflowIds: ['folderSeed', 'projectSeed'],
+				workflowSeeds: [
+					{ workflowId: 'folderSeed', origin: 'folder' },
+					{ workflowId: 'projectSeed', origin: 'project' },
+				],
 				requirements: [requirement('folderSeed', 'b'), requirement('projectSeed', 'b')],
 			}),
 		);
@@ -200,7 +223,8 @@ describe('AutoIncludedWorkflowResolver', () => {
 
 		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
-				folderWorkflowIds: ['seed'],
+				exportedWorkflowIds: ['seed'],
+				workflowSeeds: [{ workflowId: 'seed', origin: 'folder' }],
 				requirements: [requirement('seed', 'b')],
 			}),
 		);
@@ -220,7 +244,8 @@ describe('AutoIncludedWorkflowResolver', () => {
 
 		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
-				folderWorkflowIds: ['seed'],
+				exportedWorkflowIds: ['seed'],
+				workflowSeeds: [{ workflowId: 'seed', origin: 'folder' }],
 				requirements: [requirement('seed', 'b')],
 			}),
 		);
@@ -238,7 +263,8 @@ describe('AutoIncludedWorkflowResolver', () => {
 
 		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
-				topLevelWorkflowIds: ['seed'],
+				exportedWorkflowIds: ['seed'],
+				workflowSeeds: [{ workflowId: 'seed', origin: 'top-level' }],
 				requirements: [requirement('seed', 'b'), requirement('b', 'c'), requirement('c', 'b')],
 			}),
 		);
@@ -246,9 +272,7 @@ describe('AutoIncludedWorkflowResolver', () => {
 		expect(autoIncludedWorkflows.map((d) => d.workflow.id).sort()).toEqual(['b', 'c']);
 	});
 
-	it('merges the same workflow listed in multiple origin buckets before resolving placement', async () => {
-		// The same seed listed as both folder and project should propagate the
-		// richer project origin onto its dependency.
+	it('merges repeated seeds before resolving placement', async () => {
 		const project = makeProject('p1');
 		const { resolver } = makeResolver({
 			workflows: [makeWorkflow('seed'), makeWorkflow('b')],
@@ -258,8 +282,11 @@ describe('AutoIncludedWorkflowResolver', () => {
 
 		const { autoIncludedWorkflows } = await resolver.resolve(
 			resolveInput({
-				folderWorkflowIds: ['seed'],
-				projectWorkflowIds: ['seed'],
+				exportedWorkflowIds: ['seed'],
+				workflowSeeds: [
+					{ workflowId: 'seed', origin: 'folder' },
+					{ workflowId: 'seed', origin: 'project' },
+				],
 				requirements: [requirement('seed', 'b')],
 			}),
 		);
@@ -276,7 +303,8 @@ describe('AutoIncludedWorkflowResolver', () => {
 		await expect(
 			resolver.resolve(
 				resolveInput({
-					topLevelWorkflowIds: ['seed'],
+					exportedWorkflowIds: ['seed'],
+					workflowSeeds: [{ workflowId: 'seed', origin: 'top-level' }],
 					requirements: [requirement('seed', 'b')],
 				}),
 			),
@@ -293,7 +321,8 @@ describe('AutoIncludedWorkflowResolver', () => {
 		await expect(
 			resolver.resolve(
 				resolveInput({
-					topLevelWorkflowIds: ['seed'],
+					exportedWorkflowIds: ['seed'],
+					workflowSeeds: [{ workflowId: 'seed', origin: 'top-level' }],
 					requirements: [requirement('seed', 'b')],
 				}),
 			),
@@ -312,7 +341,8 @@ describe('AutoIncludedWorkflowResolver', () => {
 		await expect(
 			resolver.resolve(
 				resolveInput({
-					topLevelWorkflowIds: ['seed'],
+					exportedWorkflowIds: ['seed'],
+					workflowSeeds: [{ workflowId: 'seed', origin: 'top-level' }],
 					requirements: [requirement('seed', 'b')],
 				}),
 			),
@@ -329,10 +359,11 @@ describe('AutoIncludedWorkflowResolver', () => {
 		await expect(
 			resolver.resolve({
 				...resolveInput({
-					topLevelWorkflowIds: ['seed'],
+					exportedWorkflowIds: ['seed'],
+					workflowSeeds: [{ workflowId: 'seed', origin: 'top-level' }],
 					requirements: [requirement('seed', 'b')],
 				}),
-				workflowVersionPolicy: WorkflowVersionPolicy.IgnoreUnpublished,
+				versionPolicy: ExportVersionPolicy.IgnoreUnpublished,
 			}),
 		).rejects.toThrow('1 sub-workflow dependency has no published version. Export aborted.');
 	});
@@ -345,7 +376,8 @@ describe('AutoIncludedWorkflowResolver', () => {
 
 		await resolver.resolve(
 			resolveInput({
-				topLevelWorkflowIds: ['seed'],
+				exportedWorkflowIds: ['seed'],
+				workflowSeeds: [{ workflowId: 'seed', origin: 'top-level' }],
 				requirements: [requirement('seed', 'b')],
 			}),
 		);

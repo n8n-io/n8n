@@ -1,16 +1,19 @@
-import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
+import type {
+	WorkflowEntity,
+	WorkflowHistoryRepository,
+	WorkflowRepository,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
+import type { INode } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import type { CacheService } from '@n8n/backend-services';
 
 import { N8N_VERSION } from '../../../constants';
 import { MigrationRegistry } from '../breaking-changes.migration-registry.service';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
-import type { IBreakingChangeRule } from '../types';
+import type { IBreakingChangeRule, IBreakingChangeWorkflowRule } from '../types';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { createNode, createWorkflow } from './test-helpers';
 import { FileAccessRule } from '../rules/v2/file-access.rule';
@@ -22,9 +25,9 @@ describe('BreakingChangeService', () => {
 	const logger = mockLogger();
 
 	let workflowRepository: Mocked<WorkflowRepository>;
+	let workflowHistoryRepository: Mocked<WorkflowHistoryRepository>;
 	let workflowStatisticsRepository: Mocked<WorkflowStatisticsRepository>;
 	let ruleRegistry: RuleRegistry;
-	let cacheService: Mocked<CacheService>;
 	let errorReporter: Mocked<ErrorReporter>;
 	let service: BreakingChangeService;
 
@@ -32,18 +35,10 @@ describe('BreakingChangeService', () => {
 		vi.clearAllMocks();
 
 		workflowRepository = mock<WorkflowRepository>();
+		workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 		workflowStatisticsRepository = mock<WorkflowStatisticsRepository>();
 		ruleRegistry = new RuleRegistry(logger);
-		cacheService = mock<CacheService>();
 		errorReporter = mock<ErrorReporter>();
-
-		// Mock getHashValue to call refreshFn directly (bypass caching for tests)
-		cacheService.getHashValue.mockImplementation(async (_key, _hashKey, options) => {
-			if (options?.refreshFn) {
-				return await options.refreshFn(_key);
-			}
-			return undefined;
-		});
 
 		// Mock statistics repository to return empty array (tests focus on breaking change detection, not statistics)
 		workflowStatisticsRepository.find.mockResolvedValue([]);
@@ -52,8 +47,8 @@ describe('BreakingChangeService', () => {
 			ruleRegistry,
 			new MigrationRegistry(logger),
 			workflowRepository,
+			workflowHistoryRepository,
 			workflowStatisticsRepository,
-			cacheService,
 			logger,
 			errorReporter,
 		);
@@ -68,7 +63,7 @@ describe('BreakingChangeService', () => {
 
 	describe('detect()', () => {
 		it('should return a report with no issues when no workflows are affected', async () => {
-			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([]);
 
 			const report = await service.detect('v2');
 
@@ -91,7 +86,7 @@ describe('BreakingChangeService', () => {
 				createNode('File Node', 'n8n-nodes-base.readWriteFile'), // Triggers FileAccessRule
 			]);
 
-			workflowRepository.find.mockResolvedValue([workflow as never]);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([workflow as never]);
 			workflowRepository.count.mockResolvedValue(1);
 
 			const report = await service.detect('v2');
@@ -119,7 +114,7 @@ describe('BreakingChangeService', () => {
 		});
 
 		it('should include all required fields in the report', async () => {
-			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([]);
 			workflowRepository.count.mockResolvedValue(0);
 
 			const report = await service.detect('v2');
@@ -150,7 +145,10 @@ describe('BreakingChangeService', () => {
 				}),
 			]);
 
-			workflowRepository.find.mockResolvedValue([subWorkflow, parentWorkflow] as never);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([
+				subWorkflow,
+				parentWorkflow,
+			] as never);
 			workflowRepository.count.mockResolvedValue(2);
 
 			const report = await service.detect('v2');
@@ -164,51 +162,101 @@ describe('BreakingChangeService', () => {
 		});
 	});
 
-	describe('getDetectionResults()', () => {
-		it('should protect against concurrent detection operations', async () => {
-			workflowRepository.find.mockResolvedValue([]);
-			workflowRepository.count.mockResolvedValue(0);
-
-			// Create a spy on the detect method to track how many times it's called
-			const detectSpy = vi.spyOn(service, 'detect');
-
-			// Simulate multiple concurrent requests for the same version
-			const promise1 = service.getDetectionResults('v2');
-			const promise2 = service.getDetectionResults('v2');
-			const promise3 = service.getDetectionResults('v2');
-
-			// Wait for all promises to resolve
-			const [result1, result2, result3] = await Promise.all([promise1, promise2, promise3]);
-
-			// Verify that detect was only called once (not three times)
-			expect(detectSpy).toHaveBeenCalledTimes(1);
-
-			// Verify all three requests received the same result
-			expect(result1).toEqual(result2);
-			expect(result2).toEqual(result3);
-		});
-
-		it('should share one scan between a report request and a direct detect call', async () => {
-			workflowRepository.find.mockResolvedValue([]);
+	describe('detect() concurrency and failures', () => {
+		it('should share one scan between concurrent calls for the same version', async () => {
+			workflowRepository.findMigrationScanPage.mockResolvedValue([]);
 			workflowRepository.count.mockResolvedValue(0);
 
 			// `count` runs once per scan, so it tells how many scans really ran.
-			await Promise.all([service.getDetectionResults('v2'), service.detect('v2')]);
+			const results = await Promise.all([
+				service.detect('v2'),
+				service.detect('v2'),
+				service.detect('v2'),
+			]);
 
 			expect(workflowRepository.count).toHaveBeenCalledTimes(1);
+			expect(results[0]).toBe(results[1]);
+			expect(results[1]).toBe(results[2]);
+		});
+
+		it('should run a new scan once the previous one has completed', async () => {
+			workflowRepository.findMigrationScanPage.mockResolvedValue([]);
+			workflowRepository.count.mockResolvedValue(0);
+
+			await service.detect('v2');
+			await service.detect('v2');
+
+			expect(workflowRepository.count).toHaveBeenCalledTimes(2);
+		});
+
+		it('should pass one scan context to the rules for every workflow of a scan', async () => {
+			const first = createWorkflow('wf-1', 'First', []);
+			const second = createWorkflow('wf-2', 'Second', []);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([
+				first.workflow,
+				second.workflow,
+			] as never);
+			workflowRepository.count.mockResolvedValue(2);
+			const rule = ruleRegistry.getRule(
+				'file-access-restriction-v2',
+			) as IBreakingChangeWorkflowRule;
+			const detectWorkflow = vi.spyOn(rule, 'detectWorkflow');
+
+			await service.detect('v2');
+			await service.detect('v2');
+
+			const contexts = detectWorkflow.mock.calls.map(([, , context]) => context);
+			expect(contexts).toHaveLength(4);
+			expect(contexts[0]).toBeDefined();
+			expect(contexts[1]).toBe(contexts[0]);
+			expect(contexts[2]).not.toBe(contexts[0]);
+			expect(contexts[3]).toBe(contexts[2]);
+		});
+
+		it('should read the next page after the last workflow id until a page is not full', async () => {
+			const workflows = Array.from(
+				{ length: 101 },
+				(_, i) => createWorkflow(`wf-${String(i).padStart(3, '0')}`, `Workflow ${i}`, []).workflow,
+			);
+			workflowRepository.findMigrationScanPage
+				.mockResolvedValueOnce(workflows.slice(0, 100))
+				.mockResolvedValueOnce(workflows.slice(100));
+			workflowRepository.count.mockResolvedValue(101);
+
+			await service.detect('v2');
+
+			expect(workflowRepository.findMigrationScanPage).toHaveBeenCalledTimes(2);
+			expect(workflowRepository.findMigrationScanPage.mock.calls[0][0]).toBeUndefined();
+			expect(workflowRepository.findMigrationScanPage.mock.calls[1][0]).toBe('wf-099');
+		});
+
+		it('should stop after an empty page when the last page was full', async () => {
+			const workflows = Array.from(
+				{ length: 100 },
+				(_, i) => createWorkflow(`wf-${String(i).padStart(3, '0')}`, `Workflow ${i}`, []).workflow,
+			);
+			workflowRepository.findMigrationScanPage
+				.mockResolvedValueOnce(workflows)
+				.mockResolvedValueOnce([]);
+			workflowRepository.count.mockResolvedValue(100);
+
+			await service.detect('v2');
+
+			expect(workflowRepository.findMigrationScanPage).toHaveBeenCalledTimes(2);
+			expect(workflowRepository.findMigrationScanPage.mock.calls[1][0]).toBe('wf-099');
 		});
 
 		it('should skip a rule that throws for a workflow and keep the other results', async () => {
 			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
 			]);
-			workflowRepository.find.mockResolvedValue([workflow as never]);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([workflow as never]);
 			workflowRepository.count.mockResolvedValue(1);
 
 			const throwingRule = ruleRegistry.getRule('file-access-restriction-v2') as FileAccessRule;
 			vi.spyOn(throwingRule, 'detectWorkflow').mockRejectedValue(new Error('boom'));
 
-			const result = await service.getDetectionResults('v2');
+			const result = await service.detect('v2');
 
 			const ruleIds = result.report.workflowResults.map((r) => r.ruleId);
 			expect(ruleIds).toContain('removed-nodes-v2');
@@ -219,57 +267,30 @@ describe('BreakingChangeService', () => {
 			);
 		});
 
-		it('should list the rule checks that threw and keep them out of the report result', async () => {
+		it('should list the rule checks that threw', async () => {
 			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
 			]);
-			workflowRepository.find.mockResolvedValue([workflow as never]);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([workflow as never]);
 			workflowRepository.count.mockResolvedValue(1);
 
 			const throwingRule = ruleRegistry.getRule('file-access-restriction-v2') as FileAccessRule;
 			vi.spyOn(throwingRule, 'detectWorkflow').mockRejectedValue(new Error('boom'));
 
 			const scan = await service.detect('v2');
-			expect(scan.failedChecks).toEqual([{ ruleId: throwingRule.id, workflowId: 'wf-1' }]);
 
-			const result = await service.getDetectionResults('v2');
-			expect(result).not.toHaveProperty('failedChecks');
+			expect(scan.failedChecks).toEqual([{ ruleId: throwingRule.id, workflowId: 'wf-1' }]);
 		});
 
-		it('should reject when detection fails and allow a later detection to run', async () => {
+		it('should reject when the scan fails and allow a later scan to run', async () => {
 			workflowRepository.count.mockRejectedValueOnce(new Error('db down'));
 			workflowRepository.count.mockResolvedValue(0);
-			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([]);
 
-			await expect(service.getDetectionResults('v2')).rejects.toThrow('db down');
+			await expect(service.detect('v2')).rejects.toThrow('db down');
 
-			const detectSpy = vi.spyOn(service, 'detect');
-			await expect(service.getDetectionResults('v2')).resolves.toBeDefined();
-			expect(detectSpy).toHaveBeenCalledTimes(1);
-		});
-
-		it('should key the cache on the n8n version and the target version', async () => {
-			workflowRepository.find.mockResolvedValue([]);
-			workflowRepository.count.mockResolvedValue(0);
-
-			await service.getDetectionResults('v2');
-
-			expect(cacheService.get).toHaveBeenCalledWith(`breaking-changes:results:${N8N_VERSION}:v2`);
-		});
-
-		it('should clean up ongoing detection promise after completion', async () => {
-			workflowRepository.find.mockResolvedValue([]);
-			workflowRepository.count.mockResolvedValue(0);
-
-			const detectSpy = vi.spyOn(service, 'detect');
-
-			// First detection
-			await service.getDetectionResults('v2');
-			expect(detectSpy).toHaveBeenCalledTimes(1);
-
-			// Second detection after the first completes should trigger a new detect call
-			await service.getDetectionResults('v2');
-			expect(detectSpy).toHaveBeenCalledTimes(2);
+			await expect(service.detect('v2')).resolves.toBeDefined();
+			expect(workflowRepository.count).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -285,6 +306,7 @@ describe('BreakingChangeService', () => {
 			}),
 		];
 		let waitNodeRule: WaitNodeSubworkflowRule;
+		let page: WorkflowEntity[];
 
 		beforeEach(() => {
 			waitNodeRule = new WaitNodeSubworkflowRule();
@@ -300,7 +322,8 @@ describe('BreakingChangeService', () => {
 				'Parent Workflow',
 				parentWorkflowNodes,
 			);
-			workflowRepository.find.mockResolvedValue([subWorkflow, parentWorkflow] as never);
+			page = [subWorkflow, parentWorkflow];
+			workflowRepository.findMigrationScanPage.mockResolvedValue(page);
 			workflowRepository.count.mockResolvedValue(2);
 		});
 
@@ -322,7 +345,7 @@ describe('BreakingChangeService', () => {
 			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
 			]);
-			workflowRepository.find.mockResolvedValue([workflow as never]);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([workflow as never]);
 			workflowRepository.count.mockResolvedValue(1);
 			const removedNodesRule = ruleRegistry.getRule('removed-nodes-v2') as RemovedNodesRule;
 
@@ -334,7 +357,7 @@ describe('BreakingChangeService', () => {
 		});
 
 		it('should return undefined when the rule affects no workflow', async () => {
-			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([]);
 			workflowRepository.count.mockResolvedValue(0);
 
 			await expect(service.detectRule('v2', waitNodeRule)).resolves.toBeUndefined();
@@ -368,19 +391,20 @@ describe('BreakingChangeService', () => {
 				steps.push('produceReport');
 				return await produceReport();
 			});
-			let releaseCount: (total: number) => void = () => {};
-			workflowRepository.count.mockReturnValueOnce(
-				new Promise<number>((resolve) => {
-					releaseCount = resolve;
+			let releasePage: () => void = () => {};
+			workflowRepository.findMigrationScanPage.mockReturnValueOnce(
+				new Promise<WorkflowEntity[]>((resolve) => {
+					releasePage = () => resolve(page);
 				}),
 			);
 
 			const ruleScan = service.detectRule('v2', waitNodeRule);
 			const fullScan = service.detect('v2');
-			releaseCount(2);
+			releasePage();
 			const [single, full] = await Promise.all([ruleScan, fullScan]);
 
-			expect(workflowRepository.count).toHaveBeenCalledTimes(2);
+			// Both scans hold fewer workflows than one page, so each reads one page.
+			expect(workflowRepository.findMigrationScanPage).toHaveBeenCalledTimes(2);
 			// The batch rule state of one scan is never reset by the other.
 			expect(steps).toEqual(['reset', 'produceReport', 'reset', 'produceReport']);
 			expect(single?.affectedWorkflows.map((workflow) => workflow.id)).toEqual(['parent-wf-1']);
@@ -388,29 +412,6 @@ describe('BreakingChangeService', () => {
 				full.report.workflowResults.find((entry) => entry.ruleId === 'wait-node-subworkflow-v2')
 					?.affectedWorkflows,
 			).toHaveLength(1);
-		});
-	});
-
-	describe('getDetectionReportForRule()', () => {
-		it('should return undefined for unknown rule ID', async () => {
-			const result = await service.getDetectionReportForRule('unknown-rule-id');
-			expect(result).toBeUndefined();
-		});
-
-		it('should return correct report for a known workflow-level rule', async () => {
-			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
-			]);
-
-			workflowRepository.find.mockResolvedValue([workflow as never]);
-			workflowRepository.count.mockResolvedValue(1);
-
-			const result = (await service.getDetectionReportForRule(
-				'removed-nodes-v2',
-			)) as BreakingChangeWorkflowRuleResult;
-			expect(result).toBeDefined();
-			expect(result?.ruleId).toBe('removed-nodes-v2');
-			expect(result?.affectedWorkflows).toHaveLength(1);
 		});
 	});
 
@@ -434,15 +435,14 @@ describe('BreakingChangeService', () => {
 			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
 			]);
-			workflowRepository.findOne.mockResolvedValue(workflow as never);
+			workflowRepository.findMigrationScanWorkflow.mockResolvedValue(workflow as never);
 
 			const result = await service.detectWorkflowHits('v2', 'wf-1');
 
-			expect(workflowRepository.findOne).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { id: 'wf-1' } }),
-			);
+			expect(workflowRepository.findMigrationScanWorkflow).toHaveBeenCalledWith('wf-1');
 			expect(result).toEqual({
 				hits: [{ ruleId: 'removed-nodes-v2', workflowId: 'wf-1' }],
+				publishedHits: [],
 				failedChecks: [],
 			});
 			expect(batchRule.collectWorkflowData).not.toHaveBeenCalled();
@@ -453,7 +453,7 @@ describe('BreakingChangeService', () => {
 			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
 			]);
-			workflowRepository.findOne.mockResolvedValue(workflow as never);
+			workflowRepository.findMigrationScanWorkflow.mockResolvedValue(workflow as never);
 			const throwingRule = ruleRegistry.getRule('file-access-restriction-v2') as FileAccessRule;
 			vi.spyOn(throwingRule, 'detectWorkflow').mockRejectedValue(new Error('boom'));
 
@@ -461,6 +461,7 @@ describe('BreakingChangeService', () => {
 
 			expect(result).toEqual({
 				hits: [{ ruleId: 'removed-nodes-v2', workflowId: 'wf-1' }],
+				publishedHits: [],
 				failedChecks: [{ ruleId: throwingRule.id, workflowId: 'wf-1' }],
 			});
 			expect(errorReporter.error).toHaveBeenCalledWith(
@@ -470,11 +471,100 @@ describe('BreakingChangeService', () => {
 		});
 
 		it('returns no hits when the workflow no longer exists', async () => {
-			workflowRepository.findOne.mockResolvedValue(null);
+			workflowRepository.findMigrationScanWorkflow.mockResolvedValue(null);
 
 			const result = await service.detectWorkflowHits('v2', 'wf-gone');
 
-			expect(result).toEqual({ hits: [], failedChecks: [] });
+			expect(result).toEqual({ hits: [], publishedHits: [], failedChecks: [] });
+		});
+	});
+
+	describe('published version', () => {
+		const removedNode = () => createNode('Spontit Node', 'n8n-nodes-base.spontit');
+		const fileNode = () => createNode('File Node', 'n8n-nodes-base.readWriteFile');
+
+		/** A workflow whose latest version `v2` is ahead of the published version `v1`. */
+		function draftAheadOfPublished(id: string, draftNodes: INode[], publishedNodes: INode[]) {
+			const { workflow } = createWorkflow(id, 'Test Workflow', draftNodes);
+			workflow.versionId = `${id}-v2`;
+			workflow.activeVersionId = `${id}-v1`;
+			workflowHistoryRepository.findNodesByVersionIds.mockResolvedValue([
+				{ versionId: `${id}-v1`, nodes: publishedNodes },
+			] as never);
+			return workflow;
+		}
+
+		it('scans the published version of a workflow whose latest version is ahead of it', async () => {
+			const ahead = draftAheadOfPublished('wf-1', [], [removedNode()]);
+			const { workflow: same } = createWorkflow('wf-2', 'Same', [removedNode()]);
+			const { workflow: unpublished } = createWorkflow('wf-3', 'Unpublished', [], false);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([
+				ahead,
+				same,
+				unpublished,
+			] as never);
+			workflowRepository.count.mockResolvedValue(3);
+
+			const { publishedHits } = await service.detect('v2');
+
+			expect(workflowHistoryRepository.findNodesByVersionIds).toHaveBeenCalledTimes(1);
+			expect(workflowHistoryRepository.findNodesByVersionIds).toHaveBeenCalledWith(['wf-1-v1']);
+			expect(publishedHits).toEqual([{ ruleId: 'removed-nodes-v2', workflowId: 'wf-1' }]);
+		});
+
+		it('loads no published version when every workflow has its latest version published', async () => {
+			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [removedNode()]);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([workflow] as never);
+			workflowRepository.count.mockResolvedValue(1);
+
+			const { publishedHits } = await service.detect('v2');
+
+			expect(workflowHistoryRepository.findNodesByVersionIds).not.toHaveBeenCalled();
+			expect(publishedHits).toEqual([]);
+		});
+
+		it('checks the published version only against the rules the latest version passed', async () => {
+			const workflow = draftAheadOfPublished('wf-1', [removedNode()], [removedNode(), fileNode()]);
+			workflowRepository.findMigrationScanWorkflow.mockResolvedValue(workflow as never);
+			const removedNodesRule = ruleRegistry.getRule('removed-nodes-v2') as RemovedNodesRule;
+			const detectSpy = vi.spyOn(removedNodesRule, 'detectWorkflow');
+
+			const result = await service.detectWorkflowHits('v2', 'wf-1');
+
+			expect(result).toEqual({
+				hits: [{ ruleId: 'removed-nodes-v2', workflowId: 'wf-1' }],
+				publishedHits: [{ ruleId: 'file-access-restriction-v2', workflowId: 'wf-1' }],
+				failedChecks: [],
+			});
+			expect(detectSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not check the published version against a rule that threw on the latest version', async () => {
+			const workflow = draftAheadOfPublished('wf-1', [], [fileNode()]);
+			workflowRepository.findMigrationScanWorkflow.mockResolvedValue(workflow as never);
+			const throwingRule = ruleRegistry.getRule('file-access-restriction-v2') as FileAccessRule;
+			const detectSpy = vi
+				.spyOn(throwingRule, 'detectWorkflow')
+				.mockRejectedValue(new Error('boom'));
+
+			const result = await service.detectWorkflowHits('v2', 'wf-1');
+
+			expect(result).toEqual({
+				hits: [],
+				publishedHits: [],
+				failedChecks: [{ ruleId: throwingRule.id, workflowId: 'wf-1' }],
+			});
+			expect(detectSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not scan a published version for a single-rule detection', async () => {
+			const workflow = draftAheadOfPublished('wf-1', [], [removedNode()]);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([workflow] as never);
+			workflowRepository.count.mockResolvedValue(1);
+
+			await service.detectRule('v2', ruleRegistry.getRule('removed-nodes-v2') as RemovedNodesRule);
+
+			expect(workflowHistoryRepository.findNodesByVersionIds).not.toHaveBeenCalled();
 		});
 	});
 });

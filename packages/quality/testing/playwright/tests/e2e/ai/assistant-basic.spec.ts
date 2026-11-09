@@ -19,24 +19,20 @@ type ChatRequestBody = {
 	};
 };
 
-test.describe(
-	'AI Assistant::disabled',
-	{
-		annotation: [{ type: 'owner', description: 'AI' }],
-	},
-	() => {
-		test('does not show assistant button if feature is disabled', async ({
-			n8n,
-			setupRequirements,
-		}) => {
-			await setupRequirements(aiDisabledRequirements);
-			await n8n.start.fromBlankCanvas();
-			await expect(n8n.aiAssistant.getAskAssistantFloatingButton()).toHaveCount(0);
-		});
-	},
-);
+const assistantOwner = { annotation: [{ type: 'owner', description: 'instanceAI' }] };
 
-test.describe('AI Assistant::enabled', () => {
+test.describe('AI Assistant::disabled', assistantOwner, () => {
+	test('does not show assistant button if feature is disabled', async ({
+		n8n,
+		setupRequirements,
+	}) => {
+		await setupRequirements(aiDisabledRequirements);
+		await n8n.start.fromBlankCanvas();
+		await expect(n8n.aiAssistant.getAskAssistantFloatingButton()).toHaveCount(0);
+	});
+});
+
+test.describe('AI Assistant::enabled', assistantOwner, () => {
 	test('renders placeholder UI', async ({ n8n, setupRequirements }) => {
 		await setupRequirements(aiEnabledRequirements);
 		await n8n.start.fromBlankCanvas();

@@ -152,7 +152,7 @@ watch(
 					<div :class="$style.buttons" data-test-id="nps-survey-ratings">
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								iconOnly
 								:aria-label="(value - 1).toString()"
 								:label="(value - 1).toString()"
@@ -300,7 +300,7 @@ watch(
 			top: 12px;
 			right: 16px;
 			position: absolute;
-			font-weight: var(--font-weight--bold);
+			font-weight: var(--font-weight--medium);
 			color: var(--nps-survey--color--text);
 
 			@media (max-width: $breakpoint-xs) {

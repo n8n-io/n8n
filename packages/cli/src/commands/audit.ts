@@ -2,7 +2,7 @@ import { SecurityConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import z from 'zod';
 
 import { RISK_CATEGORIES } from '@/security-audit/constants';

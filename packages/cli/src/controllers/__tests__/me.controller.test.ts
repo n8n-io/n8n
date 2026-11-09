@@ -5,7 +5,14 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/db';
-import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import {
+	GLOBAL_OWNER_ROLE,
+	InvalidAuthTokenRepository,
+	Person,
+	PersonRepository,
+	ServiceAccount,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import jwt from 'jsonwebtoken';
@@ -14,7 +21,7 @@ import { mock, anyObject } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';
@@ -36,7 +43,8 @@ describe('MeController', () => {
 	const externalHooks = mockInstance(ExternalHooks);
 	const eventService = mockInstance(EventService);
 	const userService = mockInstance(UserService);
-	const userRepository = mockInstance(UserRepository);
+	mockInstance(UserRepository);
+	const personRepository = mockInstance(PersonRepository);
 	const mockMfaService = mockInstance(MfaService);
 	mockInstance(InvalidAuthTokenRepository);
 	mockInstance(LicenseState).getMaxUsers.mockReturnValue(UNLIMITED_LICENSE_QUOTA);
@@ -48,22 +56,53 @@ describe('MeController', () => {
 	});
 
 	describe('updateCurrentUser', () => {
+		it('should throw NotFoundError when the person no longer exists', async () => {
+			const user = Object.assign(new Person(), {
+				id: '123',
+				email: 'valid@email.com',
+				authIdentities: [],
+				role: GLOBAL_OWNER_ROLE,
+			});
+			const req = { user, browserId } as unknown as AuthenticatedRequest;
+			personRepository.findById.mockResolvedValue(null);
+
+			await expect(
+				controller.updateCurrentUser(req, mock(), new UserUpdateRequestDto({ firstName: 'John' })),
+			).rejects.toThrow(NotFoundError);
+			expect(userService.update).not.toHaveBeenCalled();
+		});
+
+		it('should reject a service account', async () => {
+			const req = {
+				user: Object.assign(new ServiceAccount(), { id: '123', role: GLOBAL_OWNER_ROLE }),
+			} as unknown as AuthenticatedRequest;
+
+			const execution = controller.updateCurrentUser(
+				req,
+				mock(),
+				new UserUpdateRequestDto({ firstName: 'John' }),
+			);
+
+			await expect(execution).rejects.toThrow(ForbiddenError);
+			expect(externalHooks.run).not.toHaveBeenCalled();
+		});
+
 		it('should update the user name in the DB', async () => {
-			const user = {
+			const user = Object.assign(new Person(), {
 				id: '123',
 				email: 'valid@email.com',
 				password: 'password',
 				authIdentities: [],
 				role: GLOBAL_OWNER_ROLE,
 				mfaEnabled: false,
-			} as unknown as User;
+			});
 			const payload = new UserUpdateRequestDto({
 				firstName: 'John',
 				lastName: 'Potato',
 			});
 			const req = { user, browserId } as unknown as AuthenticatedRequest;
 			const res = mock<Response>();
-			userRepository.findOneByOrFail.mockResolvedValue(user);
+			personRepository.findById.mockResolvedValue(user);
 			userService.findUserWithAuthIdentities.mockResolvedValue(user);
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
@@ -88,7 +127,7 @@ describe('MeController', () => {
 		});
 
 		it('should not change the email when an email field is sent', async () => {
-			const user = {
+			const user = Object.assign(new Person(), {
 				id: '123',
 				email: 'valid@email.com',
 				firstName: 'John',
@@ -97,10 +136,10 @@ describe('MeController', () => {
 				authIdentities: [],
 				role: GLOBAL_OWNER_ROLE,
 				mfaEnabled: false,
-			} as unknown as User;
+			});
 			const req = { user, browserId } as unknown as AuthenticatedRequest;
 			const res = mock<Response>();
-			userRepository.findOneByOrFail.mockResolvedValue(user);
+			personRepository.findById.mockResolvedValue(user);
 			userService.findUserWithAuthIdentities.mockResolvedValue(user);
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
@@ -124,7 +163,7 @@ describe('MeController', () => {
 		});
 
 		it('should throw BadRequestError if beforeUpdate hook throws BadRequestError', async () => {
-			const user = {
+			const user = Object.assign(new Person(), {
 				id: '123',
 				password: 'password',
 				email: 'current@email.com',
@@ -133,7 +172,7 @@ describe('MeController', () => {
 				authIdentities: [],
 				role: GLOBAL_OWNER_ROLE,
 				mfaEnabled: false,
-			} as unknown as User;
+			});
 			const req = { user } as unknown as AuthenticatedRequest;
 
 			externalHooks.run.mockImplementationOnce(async (hookName) => {
@@ -153,7 +192,7 @@ describe('MeController', () => {
 
 		describe('when user is authenticated via LDAP or OIDC', () => {
 			it('should throw BadRequestError when LDAP user tries to change their profile', async () => {
-				const user = {
+				const user = Object.assign(new Person(), {
 					id: '123',
 					email: 'ldap@email.com',
 					firstName: 'John',
@@ -162,7 +201,7 @@ describe('MeController', () => {
 					authIdentities: [],
 					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: false,
-				} as unknown as User;
+				});
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
 
 				userService.findSsoIdentity.mockResolvedValue({
@@ -186,7 +225,7 @@ describe('MeController', () => {
 			});
 
 			it('should throw BadRequestError when OIDC user tries to change their profile', async () => {
-				const user = {
+				const user = Object.assign(new Person(), {
 					id: '123',
 					email: 'oidc@email.com',
 					firstName: 'John',
@@ -195,7 +234,7 @@ describe('MeController', () => {
 					authIdentities: [],
 					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: false,
-				} as unknown as User;
+				});
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
 
 				userService.findSsoIdentity.mockResolvedValue({
@@ -219,7 +258,7 @@ describe('MeController', () => {
 			});
 
 			it('should allow non-LDAP/OIDC users to update their profile', async () => {
-				const user = {
+				const user = Object.assign(new Person(), {
 					id: '123',
 					email: 'valid@email.com',
 					firstName: 'John',
@@ -228,7 +267,7 @@ describe('MeController', () => {
 					authIdentities: [],
 					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: false,
-				} as unknown as User;
+				});
 				const payload = new UserUpdateRequestDto({
 					firstName: 'Jane',
 					lastName: 'Potato',
@@ -236,7 +275,7 @@ describe('MeController', () => {
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
 				const res = mock<Response>();
 
-				userRepository.findOneByOrFail.mockResolvedValue(user);
+				personRepository.findById.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
@@ -246,7 +285,7 @@ describe('MeController', () => {
 			});
 
 			it('should block user with multiple identities if one is LDAP', async () => {
-				const user = {
+				const user = Object.assign(new Person(), {
 					id: '123',
 					email: 'multi@email.com',
 					firstName: 'John',
@@ -255,7 +294,7 @@ describe('MeController', () => {
 					authIdentities: [],
 					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: false,
-				} as unknown as User;
+				});
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
 
 				// User has multiple identities, one of which is LDAP - findSsoIdentity returns the SSO one
@@ -282,13 +321,13 @@ describe('MeController', () => {
 
 		describe('when an auth_identity exists but the SSO provider is no longer active', () => {
 			const setUpdateMocks = (user: User) => {
-				userRepository.findOneByOrFail.mockResolvedValue(user);
+				personRepository.findById.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 			};
 
 			it('should throw BadRequestError when SAML user tries to change their profile while SAML is enabled', async () => {
-				const user = {
+				const user = Object.assign(new Person(), {
 					id: '123',
 					email: 'saml@email.com',
 					firstName: 'John',
@@ -297,7 +336,7 @@ describe('MeController', () => {
 					authIdentities: [],
 					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: false,
-				} as unknown as User;
+				});
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
 
 				userService.findSsoIdentity.mockResolvedValue({
@@ -321,7 +360,7 @@ describe('MeController', () => {
 			});
 
 			it('should allow profile update when SAML auth_identity exists but SAML is disabled', async () => {
-				const user = {
+				const user = Object.assign(new Person(), {
 					id: '123',
 					email: 'saml@email.com',
 					firstName: 'John',
@@ -330,7 +369,7 @@ describe('MeController', () => {
 					authIdentities: [],
 					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: false,
-				} as unknown as User;
+				});
 				const payload = new UserUpdateRequestDto({
 					firstName: 'NewFirst',
 					lastName: 'NewLast',
@@ -356,7 +395,7 @@ describe('MeController', () => {
 			});
 
 			it('should allow profile update when LDAP auth_identity exists but LDAP is disabled', async () => {
-				const user = {
+				const user = Object.assign(new Person(), {
 					id: '123',
 					email: 'ldap@email.com',
 					firstName: 'John',
@@ -365,7 +404,7 @@ describe('MeController', () => {
 					authIdentities: [],
 					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: false,
-				} as unknown as User;
+				});
 				const payload = new UserUpdateRequestDto({
 					firstName: 'NewFirst',
 					lastName: 'NewLast',
@@ -384,7 +423,7 @@ describe('MeController', () => {
 			});
 
 			it('should allow profile update when OIDC auth_identity exists but OIDC is disabled', async () => {
-				const user = {
+				const user = Object.assign(new Person(), {
 					id: '123',
 					email: 'oidc@email.com',
 					firstName: 'John',
@@ -393,7 +432,7 @@ describe('MeController', () => {
 					authIdentities: [],
 					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: false,
-				} as unknown as User;
+				});
 				const payload = new UserUpdateRequestDto({
 					firstName: 'NewFirst',
 					lastName: 'NewLast',
@@ -412,7 +451,7 @@ describe('MeController', () => {
 			});
 
 			it('should allow profile update when providerType is token-exchange', async () => {
-				const user = {
+				const user = Object.assign(new Person(), {
 					id: '123',
 					email: 'token@email.com',
 					firstName: 'John',
@@ -421,7 +460,7 @@ describe('MeController', () => {
 					authIdentities: [],
 					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: false,
-				} as unknown as User;
+				});
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
 				const res = mock<Response>();
 
@@ -443,7 +482,7 @@ describe('MeController', () => {
 			});
 
 			it('should bypass the SSO guard when no profile fields are changing', async () => {
-				const user = {
+				const user = Object.assign(new Person(), {
 					id: '123',
 					email: 'unchanged@email.com',
 					firstName: 'Same',
@@ -452,7 +491,7 @@ describe('MeController', () => {
 					authIdentities: [],
 					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: false,
-				} as unknown as User;
+				});
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
 				const res = mock<Response>();
 
@@ -492,12 +531,12 @@ describe('MeController', () => {
 		});
 
 		it('should reject profile update for env-managed user', async () => {
-			const user = {
+			const user = Object.assign(new Person(), {
 				id: '123',
 				email: 'managed@example.com',
 				password: 'password',
 				role: GLOBAL_OWNER_ROLE,
-			} as unknown as User;
+			});
 			const req = { user, browserId } as unknown as AuthenticatedRequest;
 
 			const execution = controller.updateCurrentUser(
@@ -514,10 +553,10 @@ describe('MeController', () => {
 
 		it('should reject password update for env-managed user', async () => {
 			const req = {
-				user: {
+				user: Object.assign(new Person(), {
 					email: 'managed@example.com',
 					password: '$2a$10$ffitcKrHT.Ls.m9FfWrMrOod76aaI0ogKbc3S96Q320impWpCbgj6',
-				} as unknown as User,
+				}),
 			} as unknown as AuthenticatedRequest;
 
 			const execution = controller.updatePassword(
@@ -533,17 +572,17 @@ describe('MeController', () => {
 		});
 
 		it('should allow profile update for non-env-managed owner', async () => {
-			const user = {
+			const user = Object.assign(new Person(), {
 				id: '456',
 				email: 'other-owner@example.com',
 				password: 'password',
 				authIdentities: [],
 				role: GLOBAL_OWNER_ROLE,
 				mfaEnabled: false,
-			} as unknown as User;
+			});
 			const req = { user, browserId } as unknown as AuthenticatedRequest;
 			const res = mock<Response>();
-			userRepository.findOneByOrFail.mockResolvedValue(user);
+			personRepository.findById.mockResolvedValue(user);
 			userService.findUserWithAuthIdentities.mockResolvedValue(user);
 			vi.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
@@ -561,9 +600,24 @@ describe('MeController', () => {
 	describe('updatePassword', () => {
 		const passwordHash = '$2a$10$ffitcKrHT.Ls.m9FfWrMrOod76aaI0ogKbc3S96Q320impWpCbgj6'; // Hashed 'old_password'
 
+		it('should reject a service account', async () => {
+			const req = {
+				user: Object.assign(new ServiceAccount(), { password: passwordHash }),
+			} as unknown as AuthenticatedRequest;
+
+			const execution = controller.updatePassword(
+				req,
+				mock(),
+				mock({ currentPassword: 'old_password', newPassword: 'NewPassword123' }),
+			);
+
+			await expect(execution).rejects.toThrow(ForbiddenError);
+			expect(personRepository.save).not.toHaveBeenCalled();
+		});
+
 		it('should throw if the user does not have a password set', async () => {
 			const req = {
-				user: mock({ password: undefined }),
+				user: Object.assign(new Person(), { password: undefined }),
 			} as unknown as AuthenticatedRequest;
 
 			const execution = controller.updatePassword(
@@ -578,7 +632,7 @@ describe('MeController', () => {
 
 		it("should throw if currentPassword does not match the user's password", async () => {
 			const req = {
-				user: mock({ password: passwordHash }),
+				user: Object.assign(new Person(), { password: passwordHash }),
 			} as unknown as AuthenticatedRequest;
 
 			const execution = controller.updatePassword(
@@ -595,7 +649,7 @@ describe('MeController', () => {
 			Object.entries(badPasswords).forEach(([newPassword, errorMessage]) => {
 				it(newPassword, async () => {
 					const req = {
-						user: mock({ password: passwordHash }),
+						user: Object.assign(new Person(), { password: passwordHash }),
 						browserId,
 					} as unknown as AuthenticatedRequest;
 
@@ -613,11 +667,15 @@ describe('MeController', () => {
 
 		it('should update the password in the DB, and issue a new cookie', async () => {
 			const req = {
-				user: mock({ password: passwordHash, mfaEnabled: false }),
+				user: Object.assign(new Person(), {
+					password: passwordHash,
+					mfaEnabled: false,
+					role: GLOBAL_OWNER_ROLE,
+				}),
 				browserId,
 			} as unknown as AuthenticatedRequest;
 			const res = mock<Response>();
-			userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
+			personRepository.save.mockImplementation(async (person) => person);
 			vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 
 			await controller.updatePassword(
@@ -653,7 +711,7 @@ describe('MeController', () => {
 		describe('mfa enabled', () => {
 			it('should throw BadRequestError if mfa code is missing', async () => {
 				const req = {
-					user: mock({ password: passwordHash, mfaEnabled: true }),
+					user: Object.assign(new Person(), { password: passwordHash, mfaEnabled: true }),
 				} as unknown as AuthenticatedRequest;
 
 				const execution = controller.updatePassword(
@@ -668,7 +726,7 @@ describe('MeController', () => {
 
 			it('should throw InvalidMfaCodeError if invalid mfa code is given', async () => {
 				const req = {
-					user: mock({ password: passwordHash, mfaEnabled: true }),
+					user: Object.assign(new Person(), { password: passwordHash, mfaEnabled: true }),
 				} as unknown as AuthenticatedRequest;
 				mockMfaService.validateMfa.mockResolvedValue(false);
 
@@ -687,11 +745,16 @@ describe('MeController', () => {
 
 			it('should succeed when mfa code is correct', async () => {
 				const req = {
-					user: mock({ password: passwordHash, mfaEnabled: true, mfaSecret: 'secret' }),
+					user: Object.assign(new Person(), {
+						password: passwordHash,
+						mfaEnabled: true,
+						mfaSecret: 'secret',
+						role: GLOBAL_OWNER_ROLE,
+					}),
 					browserId,
 				} as unknown as AuthenticatedRequest;
 				const res = mock<Response>();
-				userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
+				personRepository.save.mockImplementation(async (person) => person);
 				vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 				mockMfaService.validateMfa.mockResolvedValue(true);
 
@@ -712,8 +775,19 @@ describe('MeController', () => {
 	});
 
 	describe('storeSurveyAnswers', () => {
+		it('should reject a service account', async () => {
+			const req = mock<MeRequest.SurveyAnswers>({
+				user: Object.assign(new ServiceAccount(), { id: '123' }),
+				body: { version: 'v4', companySize: '<20' },
+			});
+
+			await expect(controller.storeSurveyAnswers(req)).rejects.toThrow(ForbiddenError);
+			expect(personRepository.saveSurveyAnswers).not.toHaveBeenCalled();
+		});
+
 		it('should throw BadRequestError if answers are missing in the payload', async () => {
 			const req = mock<MeRequest.SurveyAnswers>({
+				user: Object.assign(new Person(), { id: '123' }),
 				body: undefined,
 			});
 
@@ -724,7 +798,9 @@ describe('MeController', () => {
 		});
 
 		it('should not flag XSS attempt for `<` sign in company size', async () => {
-			const req = mock<MeRequest.SurveyAnswers>();
+			const req = mock<MeRequest.SurveyAnswers>({
+				user: Object.assign(new Person(), { id: '123' }),
+			});
 			req.body = {
 				version: 'v4',
 				personalization_survey_submitted_at: '2024-08-06T12:19:51.268Z',
@@ -750,7 +826,9 @@ describe('MeController', () => {
 			'automationGoalSm',
 			'usageModes',
 		])('should throw BadRequestError on XSS attempt for an array field %s', async (fieldName) => {
-			const req = mock<MeRequest.SurveyAnswers>();
+			const req = mock<MeRequest.SurveyAnswers>({
+				user: Object.assign(new Person(), { id: '123' }),
+			});
 			req.body = {
 				version: 'v4',
 				personalization_survey_n8n_version: '1.0.0',
@@ -770,7 +848,9 @@ describe('MeController', () => {
 			'reportedSource',
 			'reportedSourceOther',
 		])('should throw BadRequestError on XSS attempt for a string field %s', async (fieldName) => {
-			const req = mock<MeRequest.SurveyAnswers>();
+			const req = mock<MeRequest.SurveyAnswers>({
+				user: Object.assign(new Person(), { id: '123' }),
+			});
 			req.body = {
 				version: 'v4',
 				personalization_survey_n8n_version: '1.0.0',

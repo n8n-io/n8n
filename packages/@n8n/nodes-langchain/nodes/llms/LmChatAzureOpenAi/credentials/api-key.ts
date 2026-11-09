@@ -1,6 +1,7 @@
 import { NodeOperationError, OperationalError, type ISupplyDataFunctions } from 'n8n-workflow';
 
 import { requireFoundryEndpoint } from './requireFoundryEndpoint';
+import { normalizeEndpoint } from '../../../../utils/normalizeEndpoint';
 import type { AzureOpenAIApiKeyModelConfig } from '../types';
 
 /**
@@ -24,7 +25,7 @@ export async function setupApiKeyAuthentication(
 		if (!configCredentials.apiKey) {
 			throw new NodeOperationError(
 				this.getNode(),
-				'API Key is missing in the selected Azure OpenAI API credential. Please configure the API Key or choose Entra ID authentication.',
+				'API Key is missing in the selected Microsoft Foundry (API Key) credential. Please configure the API Key or choose Entra ID authentication.',
 			);
 		}
 
@@ -55,7 +56,7 @@ export async function setupApiKeyAuthentication(
 			azureOpenAIApiKey: configCredentials.apiKey,
 			azureOpenAIApiInstanceName: configCredentials.resourceName,
 			azureOpenAIApiVersion: configCredentials.apiVersion,
-			azureOpenAIEndpoint: configCredentials.endpoint,
+			azureOpenAIEndpoint: normalizeEndpoint(configCredentials.endpoint),
 		};
 	} catch (error) {
 		if (error instanceof OperationalError) {

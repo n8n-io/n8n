@@ -18,9 +18,13 @@ export type { StreamChunk };
  * keys are set.  In CI (replay) mode tests always run — cassettes substitute
  * for real credentials.
  */
-export function describeIf(...providers: Array<'anthropic' | 'openai'>) {
+export function describeIf(...providers: Array<'anthropic' | 'openai' | 'vercel'>) {
 	const hasAllKeys = providers.every((provider) => {
-		const envVar = provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
+		const envVar = {
+			anthropic: 'ANTHROPIC_API_KEY',
+			openai: 'OPENAI_API_KEY',
+			vercel: 'VERCEL_AI_GATEWAY_API_KEY',
+		}[provider];
 		return Boolean(process.env[envVar]);
 	});
 	const isReplayMode = Boolean(process.env.CI);

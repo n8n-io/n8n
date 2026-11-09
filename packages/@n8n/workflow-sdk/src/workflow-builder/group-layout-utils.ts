@@ -268,6 +268,7 @@ export function collapseNodeGroups(
 	// `__nodeGroup__:0`. Snapshot them before any folding and step around a clash,
 	// otherwise the synthetic node would overwrite the real one.
 	const takenKeys = new Set(parentGraph.nodes());
+	const originalEdges = parentGraph.edges();
 
 	for (const group of resolvedGroups) {
 		if (
@@ -313,6 +314,20 @@ export function collapseNodeGroups(
 			regularMemberKeys: group.regularMemberKeys,
 			stickyMemberKeys: group.stickyMemberKeys,
 		});
+	}
+
+	// Folding adds each edge to a chip last, and dagre orders sibling nodes by edge
+	// order. Add the edges again in their original order, so output 0 stays on top.
+	if (collapsed.length > 0) {
+		const graphIdByKey = new Map(
+			collapsed.flatMap((group) => group.regularMemberKeys.map((key) => [key, group.graphId])),
+		);
+		parentGraph.edges().forEach((edge) => parentGraph.removeEdge(edge.v, edge.w));
+		for (const edge of originalEdges) {
+			const source = graphIdByKey.get(edge.v) ?? edge.v;
+			const target = graphIdByKey.get(edge.w) ?? edge.w;
+			if (source !== target) parentGraph.setEdge(source, target);
+		}
 	}
 
 	return collapsed;

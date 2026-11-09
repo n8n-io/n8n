@@ -9,6 +9,7 @@ const SENSITIVE_PATTERNS = [
 	'cert',
 	'passphrase',
 	'apikey',
+	'accesskey',
 	'secretkey',
 	'privatekey',
 	'authkey',

@@ -1,5 +1,5 @@
 import { LicenseState, type LicenseProvider } from '@n8n/backend-common';
-import { testDb } from '@n8n/backend-test-utils';
+import { getPersonalProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
@@ -9,6 +9,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
@@ -21,6 +22,7 @@ import {
 	INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 	InstanceAiSettingsService,
 } from '@/modules/instance-ai/instance-ai-settings.service';
+import { InstanceAiThreadRepository } from '@/modules/instance-ai/repositories/instance-ai-thread.repository';
 
 import { createOwner } from './shared/db/users';
 import { initCredentialsTypes } from './shared/utils';
@@ -30,6 +32,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 	let credentialsRepository: CredentialsRepository;
 	let assignmentRepository: InstanceCredentialAssignmentRepository;
 	let settingsRepository: SettingsRepository;
+	let threadRepository: InstanceAiThreadRepository;
 	let owner: User;
 	let previousLicenseProvider: LicenseProvider | null;
 	let previousModelConfig: { model: string; modelApiKey: string; modelUrl: string };
@@ -40,6 +43,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 	};
 
 	beforeAll(async () => {
+		await testModules.loadModules(['instance-ai']);
 		await testDb.init();
 		const licenseState = Container.get(LicenseState);
 		previousLicenseProvider = licenseState.licenseProvider;
@@ -56,7 +60,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 		vi.stubEnv('N8N_INSTANCE_AI_MODEL', '');
 		await initCredentialsTypes();
 
-		// The instance-ai module is not booted here; register its credential uses directly.
+		// Register the credential uses without the module's post-initialization hooks.
 		const broker = Container.get(InstanceCredentialBroker);
 		broker.registerUse(INSTANCE_AI_MODEL_CREDENTIAL_POLICY);
 		broker.registerUse(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY);
@@ -67,12 +71,14 @@ describe('InstanceAiSettingsService (integration)', () => {
 		credentialsRepository = Container.get(CredentialsRepository);
 		assignmentRepository = Container.get(InstanceCredentialAssignmentRepository);
 		settingsRepository = Container.get(SettingsRepository);
+		threadRepository = Container.get(InstanceAiThreadRepository);
 		owner = await createOwner();
 	});
 
 	afterEach(async () => {
 		vi.restoreAllMocks();
 		await testDb.truncate(['InstanceCredentialAssignment', 'CredentialsEntity', 'Settings']);
+		await threadRepository.delete({});
 	});
 
 	afterAll(async () => {
@@ -218,5 +224,24 @@ describe('InstanceAiSettingsService (integration)', () => {
 		await expect(
 			credentialsRepository.findOneByOrFail({ id: workflowCredential.id }),
 		).resolves.toMatchObject({ name: 'Workflow credential', data: 'workflow-encrypted' });
+	});
+
+	it('saves enabled on Enterprise only once a thread exists', async () => {
+		vi.spyOn(Container.get(License), 'getPlanName').mockReturnValue('Enterprise');
+
+		await service.loadFromDb();
+
+		expect(service.isInstanceAiEnabled()).toBe(false);
+		await expect(settingsRepository.findByKey('instanceAi.settings')).resolves.toBeNull();
+
+		const project = await getPersonalProject(owner);
+		await threadRepository.save(
+			threadRepository.create({ id: randomUUID(), resourceId: owner.id, projectId: project.id }),
+		);
+		await service.loadFromDb();
+
+		const persisted = await settingsRepository.findByKey('instanceAi.settings');
+		expect(persisted?.value).toContain('"enabled":true');
+		expect(service.isInstanceAiEnabled()).toBe(true);
 	});
 });

@@ -13,7 +13,10 @@ import {
 } from '../../database';
 import { generateId } from '../../database/generate-id';
 import type { WorkflowGraph } from '../../graph';
-import { noopLifecycleEventPublisher } from '../../lifecycle-events';
+import {
+	LifecycleEventPublisherFactory,
+	noopLifecycleEventPublisher,
+} from '../../lifecycle-events';
 import {
 	InMemoryWorkQueue,
 	type OrchestrationMessage,
@@ -33,6 +36,10 @@ const graph: WorkflowGraph = {
 	],
 	edges: [{ from: 'trigger', to: 'step-a', outputIndex: 0, inputIndex: 0 }],
 };
+
+const lifecycleEventPublisherFactory = new LifecycleEventPublisherFactory(
+	noopLifecycleEventPublisher,
+);
 
 describe('execution start (integration)', () => {
 	let container: StartedPostgreSqlContainer;
@@ -67,14 +74,14 @@ describe('execution start (integration)', () => {
 				executionStore,
 				stepStore,
 				orchestrationQueue,
-				noopLifecycleEventPublisher,
+				lifecycleEventPublisherFactory,
 			),
 			new StepSettledHandler(
 				executionStore,
 				stepStore,
 				stepQueue,
 				orchestrationQueue,
-				noopLifecycleEventPublisher,
+				lifecycleEventPublisherFactory,
 				noopExecutionResponseSender,
 			),
 		);
@@ -82,6 +89,7 @@ describe('execution start (integration)', () => {
 		const startExecution = new StartExecutionService(
 			new AllowAllAdmittance(),
 			executionStore,
+			stepStore,
 			orchestrationQueue,
 		);
 
@@ -137,7 +145,7 @@ describe('execution start (integration)', () => {
 			executionStore,
 			stepStore,
 			queue,
-			noopLifecycleEventPublisher,
+			lifecycleEventPublisherFactory,
 		);
 
 		const executionId = generateId();
@@ -146,11 +154,12 @@ describe('execution start (integration)', () => {
 			workflowId: 'wf-2',
 			status: 'queued',
 			mode: 'production',
-			graph,
+			graph: { ...graph, seeded: [] },
 			workflow: {},
 			triggerOutputs: null,
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
+			parent: null,
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

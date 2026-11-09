@@ -1,10 +1,15 @@
 import {
+	credentialTypePolicyRuleSchemas,
+	nodeTypePolicyRuleSchemas,
 	nonDelegatingPolicyActionSchema,
-	nonDelegatingPolicyRuleListSchema,
 	policyActionSchema,
-	policyRuleListSchema,
-	policyRuleSchema,
 } from '../policy-rule.schema';
+
+const {
+	rule: policyRuleSchema,
+	ruleList: policyRuleListSchema,
+	nonDelegatingRuleList: nonDelegatingPolicyRuleListSchema,
+} = nodeTypePolicyRuleSchemas;
 
 const nameSelector = { kind: 'name' as const, value: 'n8n-nodes-base.slack' };
 
@@ -103,5 +108,33 @@ describe('nonDelegatingPolicyRuleListSchema', () => {
 		if (!result.success) {
 			expect(result.error.issues[0].message).toBe('Duplicate rule id: r1');
 		}
+	});
+});
+
+describe('rule schemas per kind', () => {
+	const extendsRule = {
+		id: 'r1',
+		action: 'deny',
+		selector: { kind: 'extends', value: 'oAuth2Api' },
+	};
+
+	it('rejects an extends rule in a node type policy', () => {
+		expect(nodeTypePolicyRuleSchemas.ruleList.safeParse([extendsRule]).success).toBe(false);
+		expect(nodeTypePolicyRuleSchemas.nonDelegatingRuleList.safeParse([extendsRule]).success).toBe(
+			false,
+		);
+	});
+
+	it('accepts an extends rule in a credential type policy', () => {
+		expect(credentialTypePolicyRuleSchemas.ruleList.safeParse([extendsRule]).success).toBe(true);
+		expect(
+			credentialTypePolicyRuleSchemas.nonDelegatingRuleList.safeParse([extendsRule]).success,
+		).toBe(true);
+	});
+
+	it('rejects duplicate rule ids in a credential type policy', () => {
+		expect(
+			credentialTypePolicyRuleSchemas.ruleList.safeParse([extendsRule, extendsRule]).success,
+		).toBe(false);
 	});
 });

@@ -11,7 +11,11 @@ import {
 
 let licensePruneTime: number | undefined = -1;
 const globalConfig = Container.get(GlobalConfig);
-const getValue = vi.fn().mockImplementation(() => licensePruneTime);
+const getValue = vi
+	.fn()
+	.mockImplementation((key) =>
+		key === LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT ? licensePruneTime : undefined,
+	);
 
 beforeAll(async () => {
 	mockInstance(LicenseState, {
@@ -20,6 +24,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+	getValue.mockClear();
 	licensePruneTime = -1;
 	globalConfig.workflowHistory.pruneTime = -1;
 });

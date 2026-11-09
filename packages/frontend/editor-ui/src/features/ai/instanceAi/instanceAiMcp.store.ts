@@ -10,17 +10,18 @@ import type {
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { i18n } from '@n8n/i18n';
+import { isMcpAiGatewayAuthentication } from 'n8n-workflow';
 import {
 	listenForCredentialChanges,
 	useCredentialsStore,
 } from '@/features/credentials/credentials.store';
+import { fetchMcpRegistryCatalog } from '@/features/shared/toolsConnection/mcpRegistry.api';
 import {
 	createMcpConnection,
 	deleteMcpConnection,
 	fetchAllMcpConnectionTools,
 	fetchMcpConnectionTools,
 	fetchMcpConnections,
-	fetchMcpRegistryServers,
 	updateMcpConnection,
 	type CreateMcpConnectionBody,
 	type UpdateMcpConnectionBody,
@@ -93,7 +94,17 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	async function loadCatalog(): Promise<void> {
 		isLoadingCatalog.value = true;
 		try {
-			catalog.value = await fetchMcpRegistryServers(rootStore.restApiContext);
+			const servers = await fetchMcpRegistryCatalog(rootStore.restApiContext);
+			// Instance AI connects with a stored credential only, so it never offers Gateway credits.
+			catalog.value = servers
+				.filter((server) => !server.isTemplated)
+				.map((server) => ({
+					...server,
+					credentials: server.credentials.filter(
+						({ credentialType }) => !isMcpAiGatewayAuthentication(credentialType),
+					),
+				}))
+				.filter((server) => server.credentials.length > 0);
 		} catch (error) {
 			catalogLoad = null;
 			toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchCatalog'));

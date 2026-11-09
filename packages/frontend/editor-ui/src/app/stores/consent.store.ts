@@ -20,14 +20,14 @@ export const useConsentStore = defineStore(STORES.CONSENT, () => {
 	// the most recently issued one.
 	let latestRequestId = 0;
 
-	const fetchConsentDetails = async () => {
+	const fetchConsentDetails = async (flow: string) => {
 		const requestId = ++latestRequestId;
 		isLoading.value = true;
 		error.value = null;
 		errorCode.value = null;
 
 		try {
-			const response = await consentApi.getConsentDetails(rootStore.restApiContext);
+			const response = await consentApi.getConsentDetails(rootStore.restApiContext, flow);
 			if (requestId !== latestRequestId) return consentDetails.value;
 			consentDetails.value = response;
 			return consentDetails.value;
@@ -48,12 +48,17 @@ export const useConsentStore = defineStore(STORES.CONSENT, () => {
 		}
 	};
 
-	const approveConsent = async (approved: boolean, scopes?: string[]) => {
+	const approveConsent = async (flow: string, approved: boolean, scopes?: string[]) => {
 		isLoading.value = true;
 		error.value = null;
 
 		try {
-			const response = await consentApi.approveConsent(rootStore.restApiContext, approved, scopes);
+			const response = await consentApi.approveConsent(
+				rootStore.restApiContext,
+				flow,
+				approved,
+				scopes,
+			);
 			return response;
 		} catch (err) {
 			error.value = err instanceof Error ? err.message : 'Failed to process consent';

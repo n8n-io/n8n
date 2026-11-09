@@ -159,6 +159,39 @@ export const recordFields: INodeProperties[] = [
 		},
 		description:
 			'The filter to delete records. To delete all records specify a filter that will include all records, for example {3.GT.0} where 3 is the ID of the Record ID field.',
+		hint: 'Use $1, $2, etc. and Where Parameters to reference dynamic values, rather than building this filter with an expression',
+	},
+	{
+		displayName: 'Where Parameters',
+		name: 'whereParameters',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['record'],
+				operation: ['delete'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Parameter',
+		description:
+			"Values to insert for $1, $2, etc. in 'Where'. When you add a parameter, every $ followed by a number in 'Where' refers to a parameter. A value cannot contain ', \", { or }.",
+		options: [
+			{
+				displayName: 'Parameter',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                record:getAll                               */
@@ -287,6 +320,33 @@ export const recordFields: INodeProperties[] = [
 				default: '',
 				description:
 					'The filter, using the <a href="https://help.quickbase.com/api-guide/componentsquery.html">Quick Base query language</a>, which determines the records to return',
+				hint: 'Use $1, $2, etc. and Where Parameters to reference dynamic values, rather than building this filter with an expression',
+			},
+			{
+				displayName: 'Where Parameters',
+				name: 'whereParameters',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				placeholder: 'Add Parameter',
+				description:
+					"Values to insert for $1, $2, etc. in 'Where'. When you add a parameter, every $ followed by a number in 'Where' refers to a parameter. A value cannot contain ', \", { or }.",
+				options: [
+					{
+						displayName: 'Parameter',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
 			},
 		],
 	},

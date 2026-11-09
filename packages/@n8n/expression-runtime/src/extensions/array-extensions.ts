@@ -116,33 +116,39 @@ function sum(value: unknown[]): number {
 function min(value: unknown[]): number {
 	ensureNumberArray(value, { fnName: 'min' });
 
-	return Math.min(
-		...value.map((v) => {
-			if (typeof v === 'string') {
-				return parseFloat(v);
-			}
-			if (typeof v !== 'number') {
-				return NaN;
-			}
-			return v;
-		}),
-	);
+	// Math.min(...value) passes every element as an argument and throws
+	// "Maximum call stack size exceeded" for arrays of ~125k numbers or more.
+	// A plain loop (not reduce) visits holes in sparse arrays as undefined.
+	let result = Infinity;
+	for (const v of value) {
+		if (typeof v === 'string') {
+			result = Math.min(result, parseFloat(v));
+		} else if (typeof v !== 'number') {
+			result = NaN;
+		} else {
+			result = Math.min(result, v);
+		}
+	}
+	return result;
 }
 
 function max(value: unknown[]): number {
 	ensureNumberArray(value, { fnName: 'max' });
 
-	return Math.max(
-		...value.map((v) => {
-			if (typeof v === 'string') {
-				return parseFloat(v);
-			}
-			if (typeof v !== 'number') {
-				return NaN;
-			}
-			return v;
-		}),
-	);
+	// Math.max(...value) passes every element as an argument and throws
+	// "Maximum call stack size exceeded" for arrays of ~125k numbers or more.
+	// A plain loop (not reduce) visits holes in sparse arrays as undefined.
+	let result = -Infinity;
+	for (const v of value) {
+		if (typeof v === 'string') {
+			result = Math.max(result, parseFloat(v));
+		} else if (typeof v !== 'number') {
+			result = NaN;
+		} else {
+			result = Math.max(result, v);
+		}
+	}
+	return result;
 }
 
 export function average(value: unknown[]) {
@@ -194,8 +200,8 @@ function smartJoin(value: unknown[], extraArgs: string[]): object {
 
 function chunk(value: unknown[], extraArgs: number[]) {
 	const [chunkSize] = extraArgs;
-	if (typeof chunkSize !== 'number' || chunkSize === 0) {
-		throw new ExpressionExtensionError('chunk(): expected non-zero numeric arg, e.g. .chunk(5)');
+	if (typeof chunkSize !== 'number' || Number.isNaN(chunkSize) || chunkSize <= 0) {
+		throw new ExpressionExtensionError('chunk(): expected positive numeric arg, e.g. .chunk(5)');
 	}
 	const chunks: unknown[][] = [];
 	for (let i = 0; i < value.length; i += chunkSize) {

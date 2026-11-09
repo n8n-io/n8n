@@ -38,6 +38,7 @@ export async function braveSearch(
 	apiKey: string,
 	query: string,
 	options: BraveSearchOptions,
+	fetchImpl: typeof globalThis.fetch = globalThis.fetch,
 ): Promise<WebSearchResponse> {
 	let searchQuery = query;
 
@@ -65,7 +66,7 @@ export async function braveSearch(
 	};
 
 	const runSearch = async () =>
-		await fetch(`${baseUrl}?${params}`, {
+		await fetchImpl(`${baseUrl}?${params}`, {
 			headers,
 			...(options.abortSignal ? { signal: options.abortSignal } : {}),
 		});
