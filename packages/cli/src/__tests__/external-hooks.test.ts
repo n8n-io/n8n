@@ -7,7 +7,7 @@ import type {
 	PersonRepository,
 	Role,
 } from '@n8n/db';
-import { Person } from '@n8n/db';
+import { Person, ServiceAccount, ServiceAccountDetails } from '@n8n/db';
 import type { Repository } from '@n8n/typeorm';
 import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -180,6 +180,22 @@ describe('ExternalHooks', () => {
 				id: 'user-1',
 				email: null,
 				firstName: null,
+				lastName: null,
+				role: 'global:member',
+			});
+		});
+
+		it('should project a service account with its name as the first name', () => {
+			const serviceAccount = Object.assign(new ServiceAccount(), {
+				id: 'sa-1',
+				details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+				role: mock<Role>({ slug: 'global:member' }),
+			});
+
+			expect(toWorkflowLifecycleHookActor(serviceAccount)).toEqual({
+				id: 'sa-1',
+				email: null,
+				firstName: 'Deploy bot',
 				lastName: null,
 				role: 'global:member',
 			});
