@@ -271,6 +271,7 @@ export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export {
+	AppNamespaceTakenError,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	WorkflowEditorLockedError,

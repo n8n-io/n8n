@@ -452,6 +452,7 @@ export {
 	confirmationInputTypeSchema,
 	appBlueprintSchema,
 	appBlueprintResumeSchema,
+	appBlueprintErrorsSchema,
 	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
 	mcpConnectServerSchema,
@@ -608,6 +609,7 @@ export type {
 	InstanceAiRunLimitMeta,
 	AppBlueprint,
 	AppBlueprintResume,
+	AppBlueprintErrors,
 } from './schemas/instance-ai.schema';
 
 export type {
