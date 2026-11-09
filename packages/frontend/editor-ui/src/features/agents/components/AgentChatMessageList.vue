@@ -946,7 +946,7 @@ watch(
 					/>
 					<div
 						v-else-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.content"
-						:class="[$style.chatMessage, $style.chatMessageUser]"
+						:class="$style.chatMessage"
 					>
 						{{ group.message.content }}
 					</div>
@@ -1254,15 +1254,6 @@ watch(
 	& + .chatMessage {
 		margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
 	}
-}
-
-.chatMessageUser {
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-radius: var(--radius--xl);
-	background: var(--assistant--color--background--user-bubble);
-	white-space: pre-wrap;
-	width: fit-content;
-	max-width: 100%;
 }
 
 .author {
