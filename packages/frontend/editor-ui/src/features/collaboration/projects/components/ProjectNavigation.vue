@@ -24,7 +24,7 @@ import {
 } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
-import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
+import { INBOX_PROTOTYPE_VIEW, INBOX_VIEW } from '@n8n/frontend-module-inbox';
 import {
 	AGENT_N8N_CHAT_VIEW,
 	AGENT_N8N_CHAT_RECENT_THREADS_LIMIT,
@@ -238,6 +238,13 @@ const inbox = computed<IMenuItem>(() => ({
 	label: locale.baseText('inbox.title'),
 	route: { to: { name: INBOX_VIEW } },
 }));
+const showInboxPrototype = import.meta.env.DEV;
+const inboxPrototype = computed<IMenuItem>(() => ({
+	id: 'inbox-prototype',
+	icon: 'inbox',
+	label: locale.baseText('inbox.prototype.menu'),
+	route: { to: { name: INBOX_PROTOTYPE_VIEW } },
+}));
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
 	icon: 'message-circle',
@@ -321,6 +328,13 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="sidebarActiveTabId === 'inbox'"
 				data-test-id="project-inbox-menu-item"
+			/>
+			<N8nMenuItem
+				v-if="showInboxPrototype"
+				:item="inboxPrototype"
+				:compact="props.collapsed"
+				:active="route.name === INBOX_PROTOTYPE_VIEW"
+				data-test-id="project-inbox-prototype-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"

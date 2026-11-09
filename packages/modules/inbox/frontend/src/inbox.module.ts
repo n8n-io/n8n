@@ -1,6 +1,8 @@
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import type { RouteRecordSingleView } from 'vue-router';
 
+import { INBOX_PROTOTYPE_VIEW } from './inbox.constants';
+
 const inboxView = {
 	component: async () => await import('./views/InboxView.vue'),
 
@@ -40,6 +42,17 @@ export const InboxModule = defineFrontendModule({
 			...inboxView,
 			path: '/inbox',
 			name: 'Inbox',
+		},
+		{
+			// Static sample items for a shared inbox layout. Development builds keep the route.
+			path: '/inbox/prototype',
+			name: INBOX_PROTOTYPE_VIEW,
+			component: async () => await import('./prototype/PrototypeInboxView.vue'),
+			beforeEnter() {
+				if (!import.meta.env.DEV) return '/';
+				return true;
+			},
+			meta: { layout: 'default', middleware: ['authenticated', 'custom'] },
 		},
 		{
 			...inboxView,

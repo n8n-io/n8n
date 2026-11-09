@@ -31,6 +31,7 @@
 	"inbox.noSelection.title.open": "{count} open review | {count} open reviews",
 	"inbox.noSelection.title.closed": "{count} closed review | {count} closed reviews",
 	"inbox.noSelection.body": "Select a review from the list to see its activity and changes.",
+	"inbox.prototype.menu": "Reviews prototype",
 	"inbox.selfHealing.detail.loadError.title": "Couldn't load result",
 	"inbox.selfHealing.detail.loadError.body": "Try again to load this Assistant result",
 	"inbox.selfHealing.detail.notFound.title": "Result unavailable",

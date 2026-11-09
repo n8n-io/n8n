@@ -164,3 +164,15 @@ it('restores selection and tabs when navigating back and forward', async () => {
 	expect(selectionFromRoute(router.currentRoute.value)?.id).toBe(result.id);
 	expect(router.currentRoute.value.query.tab).toBeUndefined();
 });
+
+it('keeps the layout prototype in development', async () => {
+	const router = createInboxRouter();
+	router.addRoute({ path: '/', name: 'home', component: { template: '<div />' } });
+	await router.push('/inbox/prototype');
+	if (import.meta.env.DEV) {
+		expect(router.currentRoute.value.path).toBe('/inbox/prototype');
+		expect(router.currentRoute.value.name).toBe('InboxPrototype');
+	} else {
+		expect(router.currentRoute.value.path).toBe('/');
+	}
+});
