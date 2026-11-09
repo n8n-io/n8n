@@ -1,4 +1,4 @@
-import { LockNamespace } from '@n8n/backend-common';
+import { LockAcquisitionTimeoutError, LockNamespace } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
@@ -93,6 +93,36 @@ describe('RedisLockService', () => {
 				OperationalError,
 			);
 			expect(fn).not.toHaveBeenCalled();
+		});
+
+		it('should report contention when an attempt saw the lock held', async () => {
+			client.set.mockResolvedValue(null); // held by another owner
+
+			const attempt = service.withLease(NS, 'k', vi.fn(), { waitTimeoutMs: 50 });
+
+			await expect(attempt).rejects.toBeInstanceOf(LockAcquisitionTimeoutError);
+			await expect(attempt).rejects.toMatchObject({ sawContention: true });
+		});
+
+		it('should report no contention when every attempt failed in Redis', async () => {
+			const redisError = new Error('Command timed out');
+			client.set.mockRejectedValue(redisError);
+			const fn = vi.fn();
+
+			const attempt = service.withLease(NS, 'k', fn, { waitTimeoutMs: 50 });
+
+			await expect(attempt).rejects.toBeInstanceOf(LockAcquisitionTimeoutError);
+			await expect(attempt).rejects.toMatchObject({ sawContention: false, cause: redisError });
+			expect(fn).not.toHaveBeenCalled();
+		});
+
+		it('should report contention when one attempt saw the lock held and another failed in Redis', async () => {
+			client.set.mockResolvedValueOnce(null).mockRejectedValue(new Error('Command timed out'));
+
+			const attempt = service.withLease(NS, 'k', vi.fn(), { waitTimeoutMs: 50 });
+
+			await expect(attempt).rejects.toBeInstanceOf(LockAcquisitionTimeoutError);
+			await expect(attempt).rejects.toMatchObject({ sawContention: true });
 		});
 
 		it('should release the lock when fn throws and propagate the error', async () => {

@@ -6,7 +6,10 @@ import {
 	UserError,
 } from '@n8n/errors';
 
-import { PromotionLockLostError } from './promotion-environment-lock.service';
+import {
+	PromotionLockLostError,
+	PromotionLockUnavailableError,
+} from './promotion-environment-lock.service';
 import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 
 export type PromotionFailureKind = 'user' | 'git_remote' | 'unexpected' | 'busy';
@@ -16,6 +19,7 @@ export function classifyPromotionFailure(error: unknown): PromotionFailureKind {
 	// Before the 4xx and 503 rules, which would otherwise match these first.
 	if (error instanceof LockedError) return 'busy';
 	if (error instanceof PromotionLockLostError) return 'unexpected';
+	if (error instanceof PromotionLockUnavailableError) return 'unexpected';
 	if (
 		error instanceof PromotionGitError ||
 		error instanceof ServiceUnavailableError ||

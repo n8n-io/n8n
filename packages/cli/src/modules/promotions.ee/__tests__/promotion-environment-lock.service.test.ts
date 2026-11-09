@@ -7,6 +7,7 @@ import { LockedError, ServiceUnavailableError } from '@n8n/errors';
 import {
 	PromotionEnvironmentLockService,
 	PromotionLockLostError,
+	PromotionLockUnavailableError,
 	promotionEnvironmentLockKey,
 	throwIfLockLost,
 } from '../promotion-environment-lock.service';
@@ -125,6 +126,24 @@ describe('PromotionEnvironmentLockService', () => {
 				throw inner;
 			}),
 		).rejects.toBe(inner);
+	});
+
+	it('fails with 503, not 423, when the lock backend failed instead of another holder', async () => {
+		const lockService = mock<LockService>();
+		lockService.withLease.mockRejectedValue(
+			new LockAcquisitionTimeoutError('redis failed', { sawContention: false }),
+		);
+		const fn = vi.fn(async () => 'never');
+
+		const attempt = new PromotionEnvironmentLockService(lockService).run(ENVIRONMENT_ID, fn);
+
+		await expect(attempt).rejects.toThrow(PromotionLockUnavailableError);
+		await expect(attempt).rejects.toMatchObject({
+			httpStatusCode: 503,
+			message:
+				'The promotion operation did not start because n8n could not check whether another operation is running on this environment. Try again.',
+		});
+		expect(fn).not.toHaveBeenCalled();
 	});
 });
 

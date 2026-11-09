@@ -16,6 +16,15 @@ export class PromotionLockLostError extends ServiceUnavailableError {
 	}
 }
 
+/** The lock backend (Redis) failed, so n8n cannot tell whether the environment is busy. */
+export class PromotionLockUnavailableError extends ServiceUnavailableError {
+	constructor() {
+		super(
+			'The promotion operation did not start because n8n could not check whether another operation is running on this environment. Try again.',
+		);
+	}
+}
+
 /** Call just before a step that cannot be undone. After that step, let the operation finish. */
 export function throwIfLockLost(signal: AbortSignal): void {
 	if (signal.aborted) throw new PromotionLockLostError();
@@ -45,7 +54,10 @@ export function throwIfLockLost(signal: AbortSignal): void {
 export class PromotionEnvironmentLockService {
 	constructor(private readonly lockService: LockService) {}
 
-	/** Runs `fn` while it holds the environment's lock. A busy lock fails at once with 423. */
+	/**
+	 * Runs `fn` while it holds the environment's lock. A busy lock fails at once with 423.
+	 * A lock backend that failed, so that busy cannot be confirmed, fails with 503.
+	 */
 	async run<T>(environmentId: string, fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
 		let started = false;
 		try {
@@ -61,6 +73,8 @@ export class PromotionEnvironmentLockService {
 		} catch (error) {
 			// Only a failed acquisition means busy. The same error from inside `fn` passes through.
 			if (!started && error instanceof LockAcquisitionTimeoutError) {
+				// On Redis, acquisition can also fail because Redis failed. That is not busy.
+				if (!error.sawContention) throw new PromotionLockUnavailableError();
 				throw new LockedError(
 					'Another promotion operation is running for this environment. Try again when it finishes.',
 				);

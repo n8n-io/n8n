@@ -10,7 +10,10 @@ import {
 } from '@n8n/errors';
 
 import { PromotionConflictError } from '../database/promotion-conflict.error';
-import { PromotionLockLostError } from '../promotion-environment-lock.service';
+import {
+	PromotionLockLostError,
+	PromotionLockUnavailableError,
+} from '../promotion-environment-lock.service';
 import { classifyPromotionFailure, observePromotion } from '../promotion-telemetry';
 import { PromotionGitError, PromotionLocalGitError } from '../promotions-git.error';
 
@@ -30,6 +33,7 @@ describe('classifyPromotionFailure', () => {
 		['a thrown string', 'oops', 'unexpected'],
 		['a held environment lock', new LockedError('busy'), 'busy'],
 		['a lost environment lock', new PromotionLockLostError(), 'unexpected'],
+		['an unavailable environment lock', new PromotionLockUnavailableError(), 'unexpected'],
 	])('classifies %s as %s', (_label, error, expected) => {
 		expect(classifyPromotionFailure(error)).toBe(expected);
 	});
