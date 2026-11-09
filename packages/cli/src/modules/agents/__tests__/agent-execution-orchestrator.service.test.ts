@@ -2201,6 +2201,7 @@ describe('AgentExecutionOrchestratorService', () => {
 							principalHash: userPrincipalHash,
 						}),
 					),
+					persistSettledSuspensions: true,
 				},
 				executionCounter: expect.any(Object),
 				abortSignal: expect.any(AbortSignal),
@@ -2813,6 +2814,7 @@ describe('AgentExecutionOrchestratorService', () => {
 							...encodeIntegrationMessageContext(selectedContext),
 							n8nExecutionId: 'execution-1',
 						},
+						persistSettledSuspensions: true,
 					},
 				}),
 			);

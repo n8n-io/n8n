@@ -16,6 +16,7 @@ import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
 import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { ExecutionRecorder } from '../execution-recorder';
+import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentTurnFinalizeOutcome } from '../types/agent-turn-outcome';
 import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
@@ -523,4 +524,64 @@ describe('onSideCallUsage', () => {
 			expect((await delivered).error).toEqual(new Error('claim failed'));
 		},
 	);
+});
+
+describe('admitted start turns', () => {
+	async function startTurn(persistence: { threadId: string; resourceId: string }) {
+		const executions = mock<AgentExecutionService>();
+		executions.finalizeExecution.mockResolvedValue('exec-1');
+		executions.getAbortSignal.mockReturnValue(new AbortController().signal);
+		const service = new AgentTurnExecutionService(
+			mock<Logger>(),
+			executions,
+			mock<AgentChatExecutionService>(),
+			mock<AgentMessageQueueService>(),
+			mock<AgentMessageSteeringService>(),
+			mock<AgentToolApprovalService>(),
+			mock<AgentKnowledgeUsageTracker>(),
+			mock<AgentSandboxFilesService>(),
+		);
+		const agentInstance = mock<RuntimeAgent>();
+		agentInstance.stream.mockResolvedValue({
+			stream: new ReadableStream<StreamChunk>({
+				start(controller) {
+					controller.enqueue({ type: 'finish', finishReason: 'stop' });
+					controller.close();
+				},
+			}),
+		} as never);
+		const recording = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
+		const turn = {
+			type: 'start',
+			input: 'hello',
+			options: { abortSignal: new AbortController().signal, persistence },
+			recording,
+		} as unknown as AgentTurnRequest;
+		for await (const _chunk of service.execute({
+			admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
+			agentInstance,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
+			context: recording,
+			prepare: async () => turn,
+		})) {
+			// Read the stream to the end.
+		}
+		return agentInstance;
+	}
+
+	it('lets the runtime write back abandoned tool calls that it settles in history', async () => {
+		const agentInstance = await startTurn({ threadId: 'thread-1', resourceId: 'user-1' });
+
+		expect(agentInstance.stream).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				persistence: expect.objectContaining({
+					threadId: 'thread-1',
+					persistSettledSuspensions: true,
+					hostMetadata: expect.objectContaining({ [EXECUTION_METADATA_KEY]: 'exec-1' }),
+				}),
+			}),
+		);
+	});
 });
