@@ -4,7 +4,7 @@ import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import {
 	createRule,
 	getPropertyKeyName,
-	getStringLiteralValue,
+	getStaticStringValue,
 	isFileType,
 } from '../utils/index.js';
 
@@ -35,7 +35,7 @@ export const NoHardcodedIdsRule = createRule({
 				!name ||
 				!value ||
 				!CONFIGURABLE_ID_NAME.test(name) ||
-				getStringLiteralValue(value) === null
+				getStaticStringValue(value) === null
 			) {
 				return;
 			}
@@ -58,7 +58,7 @@ export const NoHardcodedIdsRule = createRule({
 					check(node.left.name, node.right);
 				} else if (node.left.type === AST_NODE_TYPES.MemberExpression) {
 					const name = node.left.computed
-						? getStringLiteralValue(node.left.property)
+						? getStaticStringValue(node.left.property)
 						: node.left.property.type === AST_NODE_TYPES.Identifier
 							? node.left.property.name
 							: null;

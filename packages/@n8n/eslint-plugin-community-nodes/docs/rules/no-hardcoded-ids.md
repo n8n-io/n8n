@@ -12,6 +12,9 @@ in `.node.ts` and `.node.js` files. It also checks affiliate, reseller, account,
 tenant, customer, and client IDs. The rule applies to community node packages
 that use a recommended config.
 
+The rule also checks template literals without expressions. This includes
+computed property keys such as ``options[`partner_id`]``.
+
 Read these values from a node parameter or credential instead. The rule does not
 change a hardcoded value automatically.
 
