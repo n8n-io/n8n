@@ -400,7 +400,6 @@ const hasImagePreview = computed(
 	border: 1px solid transparent;
 	/** This needs to be double border so offset sits over media **/
 	outline-offset: -2px;
-	transition: translate var(--duration--snappy) var(--easing--ease-out);
 
 	@include motion.reduced-motion;
 
@@ -418,12 +417,7 @@ const hasImagePreview = computed(
 		place-items: center;
 		color: var(--text-color--subtle);
 		background-color: var(--background--subtle);
-		background-image: radial-gradient(
-			circle,
-			var(--border-color) calc(var(--spacing--5xs) / 2),
-			transparent calc(var(--spacing--5xs) / 2)
-		);
-		background-size: var(--spacing--2xs) var(--spacing--2xs);
+		@include mixins.dotted-background;
 	}
 
 	&:focus-visible {
