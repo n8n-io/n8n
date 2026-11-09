@@ -31,6 +31,8 @@ export interface ProjectExportRequest {
 	 * project shells only. Every id must belong to one of `projectIds`.
 	 */
 	workflowIds?: string[];
+	/** With `workflowIds`, also export these folders and the folders above them. */
+	folderIds?: string[];
 }
 
 interface ProjectExportResult {
@@ -156,6 +158,7 @@ export class ProjectExporter {
 			includeArchivedWorkflows: request.includeArchivedWorkflows,
 			basePrefix: target,
 			selectedWorkflowIds,
+			selectedFolderIds: request.folderIds ? new Set(request.folderIds) : undefined,
 		});
 	}
 

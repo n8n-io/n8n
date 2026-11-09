@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { getProject, ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { promoteSuccessToast, withMoveAndRenameNote } from '../promotionResult';
+import { promoteSuccessToast, withFolderNotes } from '../promotionResult';
 import { promotionEventBus } from '../promotions.eventBus';
 import type { AppliedResult } from '../promotions.types';
 
@@ -30,7 +30,7 @@ export function usePromotionOutcome() {
 	}
 
 	function showApplied(result: AppliedResult) {
-		const { workflows } = result.counts;
+		const { workflows, projects } = result.counts;
 		const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
 		const interpolate = {
 			created: String(workflows.created),
@@ -39,19 +39,23 @@ export function usePromotionOutcome() {
 			deleted: String(workflows.deleted),
 			notPublished: String(notPublished),
 		};
+		const message = withFolderNotes(
+			i18n,
+			i18n.baseText(
+				notPublished
+					? 'promotions.operation.incoming.applied.messageNotPublished'
+					: 'promotions.operation.incoming.applied.message',
+				{ interpolate },
+			),
+			result.counts,
+		);
 		// A workflow can be imported and still fail to publish, so success alone would mislead.
 		toast.showMessage({
 			title: i18n.baseText('promotions.operation.incoming.applied.title'),
-			message: withMoveAndRenameNote(
-				i18n,
-				i18n.baseText(
-					notPublished
-						? 'promotions.operation.incoming.applied.messageNotPublished'
-						: 'promotions.operation.incoming.applied.message',
-					{ interpolate },
-				),
-				result.counts,
-			),
+			message:
+				projects.updated > 0
+					? `${message} ${i18n.baseText('promotions.applied.projectUpdated')}`
+					: message,
 			type: notPublished ? 'warning' : 'success',
 		});
 	}

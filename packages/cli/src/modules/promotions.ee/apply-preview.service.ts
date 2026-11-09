@@ -23,6 +23,7 @@ import {
 	DataTableSchemaConflictPolicy,
 	LayoutConflictPolicy,
 	OverwriteDeletionPolicy,
+	ProjectConflictPolicy,
 	TagConflictPolicy,
 	WorkflowPublishingPolicy,
 	type ImportSelection,
@@ -51,10 +52,15 @@ export type ApplyPreview = {
  */
 export function applySelectionRequest(
 	user: User,
-	confirmDestructiveChanges = false,
+	{
+		confirmDestructiveChanges = false,
+		includeProject = false,
+	}: { confirmDestructiveChanges?: boolean; includeProject?: boolean } = {},
 ): ImportSelectionRequest {
 	return {
 		user,
+		// Only when asked, so a spread over the full Apply policy keeps its own project policy.
+		...(includeProject ? { projectConflictPolicy: ProjectConflictPolicy.Overwrite } : {}),
 		// Hard delete, so that the next preview has nothing left to show.
 		overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 		dataTableSchemaConflictPolicy: confirmDestructiveChanges
@@ -121,7 +127,8 @@ export class ApplyPreviewService {
 		const onBranch = inventory.projects.some(({ id }) => id === projectId);
 		const plan = onBranch
 			? await this.packagesService.planPackageSelection(
-					applySelectionRequest(user),
+					// Plans the project details too, so the preview shows their change.
+					applySelectionRequest(user, { includeProject: true }),
 					reader,
 					selection,
 					'check',
@@ -242,8 +249,9 @@ export class ApplyPreviewService {
 }
 
 /**
- * Every workflow of the project that the branch holds is applied. A workflow that this instance
- * owns and the branch lacks is deleted, unless it moved to another project: that is reported.
+ * Every workflow and folder of the project that the branch holds is applied. A workflow that this
+ * instance owns and the branch lacks is deleted, unless it moved to another project: that is
+ * reported.
  */
 function classifyProjectWorkflows(
 	inventory: PackageDirectoryInventory,
@@ -258,6 +266,9 @@ function classifyProjectWorkflows(
 	return {
 		selectedProjectId: projectId,
 		selectedWorkflowIds,
+		selectedFolderIds: inventory.folders
+			.filter((folder) => folder.projectId === projectId)
+			.map(({ folder }) => folder.id),
 		deletedWorkflowIds: ownedWorkflowIds.filter(
 			(id) => !selected.has(id) && !movedWorkflowIds.has(id),
 		),

@@ -46,6 +46,7 @@ import {
 import {
 	includedChangeCount,
 	resolveInclusion,
+	selectableKeys,
 	totalChangeCount,
 	type ResourceKey,
 } from '../promotionPreview.selection';
@@ -76,15 +77,10 @@ const promoteEnvironment = computed(() =>
 const scopedCheck = computed(() =>
 	check.value && graph.value ? scopeCheck(check.value, graph.value) : null,
 );
-const listedWorkflowKeys = computed(() =>
-	graph.value
-		? [...graph.value.resources.values()]
-				.filter(({ type, selectable }) => type === 'workflow' && selectable)
-				.map(({ key }) => key)
-		: [],
-);
+// A project-wide conflict blocks all of them, so it also stops a selection without workflows.
+const selectableResourceKeys = computed(() => (graph.value ? selectableKeys(graph.value) : []));
 const blockerList = computed(() => [
-	...(scopedCheck.value ? listBlockers(scopedCheck.value, listedWorkflowKeys.value) : []),
+	...(scopedCheck.value ? listBlockers(scopedCheck.value, selectableResourceKeys.value) : []),
 	...(props.direction === 'promote' && graph.value ? crossProjectMoveBlockers(graph.value) : []),
 ]);
 const blockers = computed(() => indexBlockers(blockerList.value));
@@ -192,15 +188,12 @@ const includedChanges = computed(() =>
 	graph.value ? includedChangeCount(graph.value, selection.inclusion.value) : 0,
 );
 
-const request = computed(() => {
-	const { workflowIds } = graph.value
+const request = computed(() => ({
+	...(graph.value
 		? toOperationRequest(graph.value, selection.selected.value)
-		: { workflowIds: [] };
-	return {
-		workflowIds,
-		confirmDestructiveChanges: touchesDestructiveChange(blockers.value, selection.selected.value),
-	};
-});
+		: { workflowIds: [], folderIds: [], includeProject: false }),
+	confirmDestructiveChanges: touchesDestructiveChange(blockers.value, selection.selected.value),
+}));
 const hasSelectedBlocked = computed(() =>
 	[...selection.selected.value].some((key) => blockers.value.blocked.has(key)),
 );
@@ -233,7 +226,6 @@ const canSubmit = computed(
 		!refreshing.value &&
 		!operation.isBusy.value &&
 		!submitBlockedReason.value &&
-		request.value.workflowIds.length > 0 &&
 		actionableChanges.value > 0 &&
 		(props.direction === 'promote' || !!check.value),
 );

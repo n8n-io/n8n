@@ -44,15 +44,21 @@ const emit = defineEmits<{
 }>();
 
 const check = (resource: PromotionResource) =>
-	selectionCheck(props.graph, resource, {
-		selected: props.selected,
-		inclusion: props.inclusion,
-		disabled: props.disabled,
-		locked: props.locked,
-	});
+	selectionCheck(
+		props.graph,
+		resource,
+		{
+			selected: props.selected,
+			inclusion: props.inclusion,
+			disabled: props.disabled,
+			locked: props.locked,
+		},
+		'card',
+	);
 
+// The card of a changed project or folder selects only that project or folder.
 function onToggle(resource: PromotionResource) {
-	if (isContainer(resource)) emit('toggleContainer', resource.key);
+	if (isContainer(resource) && !resource.selectable) emit('toggleContainer', resource.key);
 	else emit('toggle', resource.key);
 }
 

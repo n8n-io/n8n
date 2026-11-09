@@ -1,8 +1,10 @@
+import '../../openapi-extend';
+
 import { z } from 'zod';
 
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
-import { promotionCommitMessageSchema } from './promotion-common.dto';
+import { promotionCommitMessageSchema, promotionSelectedIdsSchema } from './promotion-common.dto';
 
 export class PromotionChangesQueryDto extends Z.class({
 	search: z.string().trim().optional(),
@@ -48,8 +50,16 @@ export type PromotionChanges = z.infer<typeof promotionChangesSchema>;
 
 export class PromotionChangesDto extends Z.class(promotionChangesSchema.shape) {}
 
+/**
+ * A Promote always writes the project itself, so a request without workflows and folders
+ * promotes only the project.
+ */
 export const promoteRequestSchema = z.object({
-	workflowIds: z.array(n8nIdSchema).min(1),
+	workflowIds: promotionSelectedIdsSchema('workflowIds'),
+	folderIds: promotionSelectedIdsSchema('folderIds').openapi({
+		description:
+			'Folders of the project to promote. Promote writes a selected folder with its current name and place, even when it is empty.',
+	}),
 	commitMessage: promotionCommitMessageSchema,
 });
 

@@ -2401,12 +2401,12 @@ describe('Promotions in Public API', () => {
 			}
 		});
 
-		it('rejects an empty selection with 400', async () => {
+		it('rejects a selection with a duplicate workflow id with 400', async () => {
 			const project = await createTeamProject('Team project', owner);
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post(`/promotions/projects/${project.id}/promote`)
-				.send({ workflowIds: [] });
+				.send({ workflowIds: ['w1', 'w1'] });
 			expect(response.status).toBe(400);
 		});
 
@@ -2423,9 +2423,11 @@ describe('Promotions in Public API', () => {
 					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
 				);
 
-				const first = await withVars
-					.post(`/promotions/projects/${project.id}/promote`)
-					.send({ workflowIds: ['w1', 'w2'], commitMessage: 'Promote checkout flow' });
+				const first = await withVars.post(`/promotions/projects/${project.id}/promote`).send({
+					workflowIds: ['w1', 'w2'],
+					folderIds: ['f1'],
+					commitMessage: 'Promote checkout flow',
+				});
 				expect(first.status, JSON.stringify(first.body)).toBe(200);
 				expect(first.body).toEqual(promoteResult);
 				expect(promote).toHaveBeenLastCalledWith(
@@ -2433,6 +2435,7 @@ describe('Promotions in Public API', () => {
 					expect.objectContaining({ id: expect.any(String) }),
 					expect.objectContaining({
 						workflowIds: ['w1', 'w2'],
+						folderIds: ['f1'],
 						commitMessage: 'Promote checkout flow',
 						canExportVariableValues: true,
 					}),
@@ -2466,6 +2469,8 @@ describe('Promotions in Public API', () => {
 	describe('selective apply', () => {
 		const selectionBody = {
 			workflowIds: ['w1', 'w2'],
+			folderIds: ['f1'],
+			includeProject: true,
 			expectedSource: { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) },
 		};
 
@@ -2511,10 +2516,7 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it.each([
-			{ selection: 'an empty', workflowIds: [] },
-			{ selection: 'a duplicate', workflowIds: ['w1', 'w1'] },
-		])(
+		it.each([{ selection: 'a duplicate', workflowIds: ['w1', 'w1'] }])(
 			'rejects $selection selection before calling either Apply service',
 			async ({ workflowIds }) => {
 				const service = Container.get(PromotionsService);
@@ -2533,10 +2535,10 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it('requires workflowIds and a supported source on Continue', async () => {
+		it('requires a selection and a supported source on Continue', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			for (const body of [
-				{ expectedSource: selectionBody.expectedSource }, // no workflowIds
+				{ expectedSource: selectionBody.expectedSource }, // selects nothing
 				{ workflowIds: ['w1'] }, // no expectedSource
 				{ ...selectionBody, force: true }, // unexpected field
 				{

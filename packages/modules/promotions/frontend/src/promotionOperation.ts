@@ -12,17 +12,36 @@ import type { ResourceKey, SelectionGraph } from './promotionPreview.selection';
  * The request and the blockers of a promote or an apply from the preview page.
  */
 
-/** The workflows that users selected. The server adds their dependencies. */
+export type OperationSelection = {
+	workflowIds: string[];
+	folderIds: string[];
+	/** Apply only: whether the project details change too. Promote always writes the project. */
+	includeProject: boolean;
+};
+
+/** What users selected. The server adds the dependencies and the folders above. */
 export function toOperationRequest(
 	graph: SelectionGraph,
 	selected: ReadonlySet<ResourceKey>,
-): { workflowIds: string[] } {
+): OperationSelection {
 	const workflowIds = new Set<string>();
+	const folderIds = new Set<string>();
+	let includeProject = false;
 	for (const key of selected) {
 		const resource = graph.resources.get(key);
 		if (resource?.type === 'workflow') workflowIds.add(resource.id);
+		if (resource?.type === 'folder') folderIds.add(resource.id);
+		if (resource?.type === 'project') includeProject = true;
 	}
-	return { workflowIds: [...workflowIds].sort() };
+	return {
+		workflowIds: [...workflowIds].sort(),
+		folderIds: [...folderIds].sort(),
+		includeProject,
+	};
+}
+
+export function isEmptySelection({ workflowIds, folderIds, includeProject }: OperationSelection) {
+	return workflowIds.length === 0 && folderIds.length === 0 && !includeProject;
 }
 
 /**
@@ -86,7 +105,7 @@ export function scopeCheck(check: ApplyCheckResult, graph: SelectionGraph): Appl
 	};
 }
 
-/** The blockers of the check. A project-wide conflict blocks every workflow in `listedWorkflowKeys`. */
+/** The blockers of the check. A project-wide conflict blocks every key in `listedKeys`. */
 export function listBlockers(
 	{
 		missingBindings,
@@ -96,7 +115,7 @@ export function listBlockers(
 		movedWorkflows,
 		movedFolders,
 	}: ApplyCheckResult,
-	listedWorkflowKeys: ResourceKey[],
+	listedKeys: ResourceKey[],
 ): Blocker[] {
 	const blockers: Blocker[] = [];
 	for (const binding of missingBindings) {
@@ -155,7 +174,7 @@ export function listBlockers(
 			blockers.push({
 				kind: 'conflict',
 				resourceKey: `project:${conflict.project.id}`,
-				workflowKeys: listedWorkflowKeys,
+				workflowKeys: listedKeys,
 			});
 		}
 	}

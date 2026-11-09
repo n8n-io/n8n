@@ -1,12 +1,12 @@
 import { Args, Flags } from '@oclif/core';
 
-import { PromotionApplyCommand, selectionContinueCommand } from './apply-command';
+import { PromotionApplyCommand, selectionContinueCommand, toApplySelection } from './apply-command';
 import { expectedSourceFlags, toExpectedSource } from './expected-source';
 import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentApplySelectionContinue extends PromotionApplyCommand {
 	static override description =
-		'Continue a selection Apply that was blocked on bindings, after they are set up. Resend the same workflow ids, and pass the environment ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the source changed since then and 4 when bindings are still missing or a destructive data table change is not confirmed with --confirm-destructive-changes; nothing is imported in either case.';
+		'Continue a selection Apply that was blocked on bindings, after they are set up. Resend the same --workflow, --folder and --include-project flags, and pass the environment ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the source changed since then and 4 when bindings are still missing or a destructive data table change is not confirmed with --confirm-destructive-changes; nothing is imported in either case.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment apply-selection-continue proj-abc -w wf-1 --expected-environment-id=env-1 --expected-branch=main --expected-commit-sha=<full sha>',
@@ -20,7 +20,14 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 			char: 'w',
 			description: 'Workflow ID to apply (repeat for more than one)',
 			multiple: true,
-			required: true,
+		}),
+		folder: Flags.string({
+			description: 'Folder ID to apply (repeat for more than one)',
+			multiple: true,
+		}),
+		includeProject: Flags.boolean({
+			description: "Also apply the project's name, icon, description and telemetry tags",
+			aliases: ['include-project'],
 		}),
 		...expectedSourceFlags({ required: true }),
 		confirmDestructiveChanges: Flags.boolean({
@@ -35,18 +42,16 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 		const expectedSource = toExpectedSource(flags);
 		// oclif enforces the required flags, so this only narrows the type.
 		if (!expectedSource) this.error('Pass all three --expected-* flags');
+		const selection = toApplySelection(flags);
+		if (!selection) this.error('Pass at least one --workflow, --folder or --include-project');
 		await this.execute(async () => {
 			const result = await this.getClient(flags).continueApplyProjectSelection(
 				args.projectId,
-				flags.workflow,
+				selection,
 				expectedSource,
 				flags.confirmDestructiveChanges,
 			);
-			this.reportApplyResult(
-				result,
-				flags,
-				selectionContinueCommand(args.projectId, flags.workflow),
-			);
+			this.reportApplyResult(result, flags, selectionContinueCommand(args.projectId, selection));
 		});
 	}
 }

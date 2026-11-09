@@ -25,8 +25,8 @@ export type InclusionReason =
 	/** `by` holds the selected resources that need this one. */
 	| { kind: 'required'; by: ResourceKey[] }
 	/**
-	 * A changed project or folder that the operation writes. `by` holds the selected resources
-	 * in it.
+	 * A changed project or folder that the operation writes with the selected resources in it.
+	 * `by` holds those resources.
 	 */
 	| { kind: 'container'; by: ResourceKey[] }
 	/** Referenced by a selected resource, but the operation does not include it. */
@@ -127,6 +127,17 @@ function requiredClosure(graph: SelectionGraph, key: ResourceKey): ResourceKey[]
 	return reached;
 }
 
+/**
+ * Whether the operation writes this project or folder together with a selected resource inside
+ * it. Promote always writes the project. Apply changes the project details only when users
+ * select the project.
+ */
+function writesWith(graph: SelectionGraph, key: ResourceKey): boolean {
+	const resource = graph.resources.get(key);
+	if (!resource || resource.change === 'unchanged') return false;
+	return graph.direction === 'promote' || resource.type !== 'project';
+}
+
 export function resolveInclusion(
 	graph: SelectionGraph,
 	selected: ReadonlySet<ResourceKey>,
@@ -141,20 +152,9 @@ export function resolveInclusion(
 		reasons.set(key, { kind: 'selected' });
 		for (const dependency of requiredClosure(graph, key)) addTo(required, dependency, key);
 		for (const ancestor of ancestorsOf(graph, key)) {
-			if (graph.resources.get(ancestor)?.change !== 'unchanged') addTo(containers, ancestor, key);
+			if (writesWith(graph, ancestor)) addTo(containers, ancestor, key);
 		}
 		for (const reference of graph.calls.get(key) ?? []) addTo(called, reference, key);
-	}
-
-	// Apply creates every new folder of the project, also one without a selected workflow. It
-	// moves or renames a folder only with a selected workflow inside it. It runs only with at
-	// least one selected workflow.
-	if (graph.direction === 'apply' && reasons.size > 0) {
-		for (const { key, type, change } of graph.resources.values()) {
-			if (type === 'folder' && change === 'added' && !containers.has(key)) {
-				containers.set(key, []);
-			}
-		}
 	}
 
 	// Direct selection wins over a derived reason, and inclusion wins over a reference.
@@ -202,11 +202,17 @@ export function selectableDescendants(graph: SelectionGraph, containerKey: Resou
 	return selectableKeys(graph).filter((key) => ancestorsOf(graph, key).includes(containerKey));
 }
 
+/** What the tree checkbox of a project or folder selects: the container itself and everything in it. */
+function containerKeys(graph: SelectionGraph, containerKey: ResourceKey): ResourceKey[] {
+	const descendants = selectableDescendants(graph, containerKey);
+	return canSelect(graph, containerKey) ? [containerKey, ...descendants] : descendants;
+}
+
 type CheckState = 'checked' | 'indeterminate' | 'unchecked';
 
 /**
- * A project or folder shows the state of the selectable resources inside it. A disabled
- * resource counts only while it is selected, because users cannot add it.
+ * A project or folder in the tree shows the state of itself and the selectable resources inside
+ * it. A disabled resource counts only while it is selected, because users cannot add it.
  */
 export function containerCheckState(
 	graph: SelectionGraph,
@@ -214,7 +220,7 @@ export function containerCheckState(
 	containerKey: ResourceKey,
 	disabled: DisabledKeys = noKeys,
 ): CheckState {
-	const keys = selectableDescendants(graph, containerKey).filter(
+	const keys = containerKeys(graph, containerKey).filter(
 		(key) => !disabled.has(key) || selected.has(key),
 	);
 	const count = keys.filter((key) => selected.has(key)).length;
@@ -225,9 +231,9 @@ export function containerCheckState(
 export type SelectionCheck = { checked: boolean; indeterminate: boolean; disabled: boolean };
 
 /**
- * The checkbox of a resource in the tree and on its change card. Workflows toggle themselves,
- * projects and folders toggle the workflows inside them, and dependencies stay read-only: they
- * are checked while a selected workflow needs them.
+ * The checkbox of a resource. Workflows toggle themselves. In the tree, a project or folder
+ * toggles itself and everything inside it; on its change card (`target: 'card'`), only itself.
+ * Dependencies stay read-only: they are checked while a selected workflow needs them.
  */
 export function selectionCheck(
 	graph: SelectionGraph,
@@ -238,10 +244,24 @@ export function selectionCheck(
 		disabled: DisabledKeys;
 		locked: boolean;
 	},
+	target: 'tree' | 'card' = 'tree',
 ): SelectionCheck {
 	const { selected, inclusion, disabled, locked } = state;
+	if (isContainer(resource) && (target === 'tree' || !resource.selectable)) {
+		const check = containerCheckState(graph, selected, resource.key, disabled);
+		const canAdd = containerKeys(graph, resource.key).some((key) => !disabled.has(key));
+		return {
+			checked: check === 'checked',
+			indeterminate: check === 'indeterminate',
+			disabled: locked || (!canAdd && check === 'unchecked'),
+		};
+	}
 	if (resource.selectable) {
 		const checked = selected.has(resource.key);
+		// A project or folder that the operation writes with a selected resource inside it.
+		if (!checked && inclusion.included.has(resource.key)) {
+			return { checked: true, indeterminate: false, disabled: true };
+		}
 		return {
 			checked,
 			indeterminate: false,
@@ -249,21 +269,12 @@ export function selectionCheck(
 			disabled: locked || (!checked && disabled.has(resource.key)),
 		};
 	}
-	if (isContainer(resource)) {
-		const check = containerCheckState(graph, selected, resource.key, disabled);
-		const canAdd = selectableDescendants(graph, resource.key).some((key) => !disabled.has(key));
-		return {
-			checked: check === 'checked',
-			indeterminate: check === 'indeterminate',
-			disabled: locked || (!canAdd && check === 'unchecked'),
-		};
-	}
 	return { checked: inclusion.included.has(resource.key), indeterminate: false, disabled: true };
 }
 
 /**
- * Selects every resource inside a project or folder that users can add, or clears them all when
- * those are selected. The container itself never becomes selected; it only gives structure.
+ * Selects a project or folder and every resource inside it that users can add, or clears them
+ * all when those are selected.
  */
 export function toggleContainer(
 	state: SelectionState,
@@ -271,7 +282,7 @@ export function toggleContainer(
 	containerKey: ResourceKey,
 	disabled: DisabledKeys = noKeys,
 ): SelectionState {
-	const keys = selectableDescendants(graph, containerKey);
+	const keys = containerKeys(graph, containerKey);
 	const available = keys.filter((key) => !disabled.has(key));
 	const selected = new Set(state.selected);
 	if (available.every((key) => selected.has(key))) {

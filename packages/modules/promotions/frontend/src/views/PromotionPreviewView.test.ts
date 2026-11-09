@@ -333,6 +333,7 @@ describe('PromotionPreviewView', () => {
 		await promote(getByTestId);
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
+			folderIds: [],
 		});
 	});
 
@@ -592,6 +593,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
+			folderIds: [],
 		});
 		expect(showMessage).toHaveBeenCalledWith({
 			title: 'Changes promoted',
@@ -627,6 +629,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
+			folderIds: [],
 		});
 	});
 
@@ -640,6 +643,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
+			folderIds: [],
 			commitMessage: 'Route leads by region',
 		});
 	});
@@ -745,6 +749,8 @@ describe('PromotionPreviewView', () => {
 		expect(api.applyProjectSelection).toHaveBeenCalledTimes(1);
 		expect(api.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w4'],
+			folderIds: [],
+			includeProject: false,
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 		});
@@ -777,6 +783,8 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w3', 'w4'],
+			folderIds: [],
+			includeProject: false,
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 		});
@@ -791,6 +799,8 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.continueApplyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
+			folderIds: [],
+			includeProject: false,
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 			confirmDestructiveChanges: true,

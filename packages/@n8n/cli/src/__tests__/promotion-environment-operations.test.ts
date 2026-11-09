@@ -414,7 +414,11 @@ describe('promotion-environment promote-selection command', () => {
 		await command.run();
 
 		// `-w` values travel as the `workflowIds` array, with no message flag set.
-		expect(promoteProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1', 'wf-2'], undefined);
+		expect(promoteProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1', 'wf-2'] },
+			undefined,
+		);
 		// A selection can be deletions only, so the summary names the branch and
 		// commit instead of a workflow count that would read "0" for that case.
 		expect(succeed).toHaveBeenCalledWith(
@@ -444,7 +448,7 @@ describe('promotion-environment promote-selection command', () => {
 
 		expect(promoteProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			['wf-1'],
+			{ workflowIds: ['wf-1'] },
 			'Promote checkout flow',
 		);
 	});
@@ -487,7 +491,11 @@ describe('promotion-environment apply-selection command', () => {
 
 		await run();
 
-		expect(applyProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1', 'wf-2'], undefined);
+		expect(applyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1', 'wf-2'], folderIds: [], includeProject: false },
+			undefined,
+		);
 	});
 
 	it('sends the reviewed source built from the three expected flags', async () => {
@@ -499,7 +507,11 @@ describe('promotion-environment apply-selection command', () => {
 
 		await run();
 
-		expect(applyProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1'], EXPECTED_SOURCE);
+		expect(applyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1'], folderIds: [], includeProject: false },
+			EXPECTED_SOURCE,
+		);
 	});
 
 	it('names the branch and commit it applied, and exits through succeed', async () => {
@@ -563,7 +575,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 
 		expect(continueApplyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			['wf-1'],
+			{ workflowIds: ['wf-1'], folderIds: [], includeProject: false },
 			EXPECTED_SOURCE,
 			undefined,
 		);
@@ -595,7 +607,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 
 		expect(continueApplyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			['wf-1'],
+			{ workflowIds: ['wf-1'], folderIds: [], includeProject: false },
 			EXPECTED_SOURCE,
 			true,
 		);
