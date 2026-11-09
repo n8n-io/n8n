@@ -1,3 +1,4 @@
+export { createAppAssistantHandoff } from './createAppAssistantHandoff';
 export { createSelfHealingChatHandoff } from './createSelfHealingChatHandoff';
 export { environmentsSettings } from './environmentsSettings';
 export { mcpExposeAllOffer } from './mcpExposeAllOffer';
