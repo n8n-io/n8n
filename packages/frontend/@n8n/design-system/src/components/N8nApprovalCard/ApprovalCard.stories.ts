@@ -47,6 +47,9 @@ export const NarrowWithLongUrl: Story = {
 		await expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth);
 		for (const row of canvasElement.querySelectorAll('[role="toolbar"] button')) {
 			const bounds = row.getBoundingClientRect();
+			await expect(bounds.height).toBe(
+				canvas.getByRole('button', { name: 'Allow once' }).getBoundingClientRect().height,
+			);
 			await expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
 			for (const child of row.children) {
 				const childBounds = child.getBoundingClientRect();
