@@ -1,4 +1,5 @@
 import { UserError } from '@n8n/errors';
+import { X509Certificate } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createServer as createHttpServer, type RequestListener, type Server } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
@@ -58,6 +59,8 @@ export function loadEngineTls(files: EngineTlsFiles): EngineTls | undefined {
 
 	try {
 		createSecureContext(tls);
+		// `createSecureContext` accepts an empty or non-PEM CA without an error.
+		new X509Certificate(tls.ca);
 	} catch (error) {
 		throw new UserError(`${ALL_ENV_NAMES} are not a valid certificate, key and CA`, {
 			cause: error,

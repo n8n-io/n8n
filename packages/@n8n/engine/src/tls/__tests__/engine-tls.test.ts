@@ -72,11 +72,15 @@ describe('engine TLS', () => {
 			expect(() => loadEngineTls(files)).toThrow(/not a valid certificate, key and CA/);
 		});
 
-		it('refuses a file that is not PEM', () => {
-			const garbage = join(dir, 'garbage.crt');
-			writeFileSync(garbage, 'not a certificate');
+		it.each([
+			['a certificate file that is not PEM', 'tlsCertFile', 'not a certificate'],
+			['a CA file that is not PEM', 'tlsCaFile', 'not a certificate'],
+			['an empty CA file', 'tlsCaFile', ''],
+		] as const)('refuses %s', (_label, key, content) => {
+			const invalid = join(dir, `invalid-${key}-${content.length}.crt`);
+			writeFileSync(invalid, content);
 
-			expect(() => loadEngineTls({ ...filesOf('server'), tlsCertFile: garbage })).toThrow(
+			expect(() => loadEngineTls({ ...filesOf('server'), [key]: invalid })).toThrow(
 				/not a valid certificate, key and CA/,
 			);
 		});
@@ -198,10 +202,13 @@ describe('engine TLS', () => {
 			const plain = createEngineHttpServer((_req, res) => res.writeHead(200).end('ok'), undefined);
 			await new Promise<void>((resolve) => plain.listen(0, '127.0.0.1', resolve));
 
-			const response = await fetch(`http://127.0.0.1:${(plain.address() as AddressInfo).port}/`);
+			try {
+				const response = await fetch(`http://127.0.0.1:${(plain.address() as AddressInfo).port}/`);
 
-			expect(response.status).toBe(200);
-			await new Promise<void>((resolve) => plain.close(() => resolve()));
+				expect(response.status).toBe(200);
+			} finally {
+				await new Promise<void>((resolve) => plain.close(() => resolve()));
+			}
 		});
 	});
 });
