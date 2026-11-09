@@ -115,6 +115,17 @@ describe('reconcileVariableSummary', () => {
 });
 
 describe('reconcileCredentialSummary', () => {
+	it('reports dropped fields only when there are some', () => {
+		const lists = { matched: [], stubbed: [], seeded: [], incomplete: [], updated: [] };
+
+		expect(reconcileCredentialSummary({ ...lists, droppedFields: {} })).not.toHaveProperty(
+			'droppedFields',
+		);
+		expect(
+			reconcileCredentialSummary({ ...lists, droppedFields: { 'cred-1': ['password'] } }),
+		).toHaveProperty('droppedFields', { 'cred-1': ['password'] });
+	});
+
 	it('lists an updated source id under updated only', () => {
 		expect(
 			reconcileCredentialSummary({

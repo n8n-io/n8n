@@ -86,6 +86,62 @@ function checkPackage(
 }
 
 describe('toPreviewCheck', () => {
+	it('warns that the Apply dropped values of a credential that the user must create', () => {
+		const issue = {
+			type: 'credential-unresolved',
+			kind: 'not_found',
+			sourceId: 'cred-1',
+			usedBy: [{ kind: 'workflow', id: 'w1' }],
+		} as BlockingIssue;
+		const inventory = {
+			projects: [ALPHA].map((project) => ({ ...project, path: `projects/${project.id}` })),
+			workflows: [workflow('w1', 'p1', [credentialNode('Test', 'githubApi', 'cred-1', 'GitHub')])],
+			folders: [],
+			credentials: [
+				{
+					path: 'projects/p1/credentials/github/credential.json',
+					projectId: 'p1',
+					credential: {
+						id: 'cred-1',
+						name: 'GitHub',
+						type: 'githubApi',
+						data: { token: '={{ $secrets.gh }}' },
+						droppedFields: ['password'],
+					},
+				},
+			],
+			variables: [],
+			dataTables: [],
+		} as unknown as PackageDirectoryInventory;
+		const plan = {
+			projectPlan: { items: [] },
+			scopes: [
+				{ project: { id: 'p1' }, plan: { blockingIssues: [issue], variablePlan: { matched: [] } } },
+			],
+			issues: [issue],
+		} as unknown as PackageImportPlan;
+
+		const check = toPreviewCheck({
+			plan,
+			inventory,
+			credentials: collectCredentialReferences(inventory),
+			variables: collectVariableReferences(inventory, new VariableRequirementsExtractor()),
+			moves: { workflows: [], folders: [] },
+		});
+
+		expect(check.missingBindings).toHaveLength(1);
+		expect(check.warnings).toEqual([
+			{
+				kind: 'credential',
+				code: 'credential-values-dropped',
+				sourceId: 'cred-1',
+				name: 'GitHub',
+				droppedFields: ['password'],
+				consumers: [consumer(ALPHA, 'w1')],
+			},
+		]);
+	});
+
 	it('names the project whose plan raised a blocker that stops the whole project', () => {
 		// An Apply of the whole instance plans Alpha and Beta. Only the plan of Beta is blocked.
 		const checkNotRun: BlockingIssue = { type: 'policy-check-failed', point: 'contentImport' };

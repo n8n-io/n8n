@@ -834,6 +834,8 @@ export interface ImportCredentialSummary {
 	incomplete: string[];
 	/** Source ids whose matched credential this import wrote under `credentialConflictPolicy=overwrite`. */
 	updated: string[];
+	/** Fields whose package values the reader dropped, by source id. Absent when it dropped none. */
+	droppedFields?: Record<string, string[]>;
 }
 
 export interface ImportVariableSummary {

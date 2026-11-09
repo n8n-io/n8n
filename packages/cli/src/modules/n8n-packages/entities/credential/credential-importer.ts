@@ -241,6 +241,7 @@ export class CredentialImporter {
 		const stubbed: string[] = [];
 		const seeded: string[] = [];
 		const incomplete: string[] = [];
+		const droppedFields: Record<string, string[]> = {};
 
 		const packageData = credentialMissingModeUsesPackageData(request.missingMode)
 			? packageDataBySourceId(request.requirements)
@@ -268,6 +269,10 @@ export class CredentialImporter {
 			);
 
 			bindings.set(sourceId, stubCredential.id);
+			const dropped = request.requirements?.find(({ id }) => id === sourceId)?.packageDroppedFields;
+			if (dropped !== undefined && credentialMissingModeUsesPackageData(request.missingMode)) {
+				droppedFields[sourceId] = dropped;
+			}
 			if (data === undefined) {
 				stubbed.push(sourceId);
 			} else {
@@ -278,7 +283,14 @@ export class CredentialImporter {
 			}
 		}
 
-		return { bindings, matched, stubbed, seeded, incomplete };
+		return {
+			bindings,
+			matched,
+			stubbed,
+			seeded,
+			incomplete,
+			...(Object.keys(droppedFields).length > 0 ? { droppedFields } : {}),
+		};
 	}
 
 	/**

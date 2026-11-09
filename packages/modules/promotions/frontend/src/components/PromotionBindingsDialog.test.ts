@@ -63,6 +63,34 @@ it('shows every missing binding with its destination scope without exposing sour
 	expect(getByRole('status')).toHaveTextContent('2 items still need setup');
 });
 
+it('shows which credential fields the Apply dropped, without any value', async () => {
+	const { getByText } = await renderDialog({
+		props: {
+			open: true,
+			blockedResult: blocked({
+				missingBindings: [credential],
+				warnings: [
+					{
+						kind: 'credential',
+						code: 'credential-values-dropped',
+						sourceId: credential.sourceId,
+						name: credential.name,
+						droppedFields: ['password', 'apiKey'],
+						consumers,
+					},
+				],
+			}),
+			createBinding: vi.fn(),
+		},
+	});
+
+	expect(
+		getByText(
+			/values for the credential Source credential that this instance does not accept: password, apiKey/,
+		),
+	).toBeInTheDocument();
+});
+
 it('blocks apply and asks to correct missing access', async () => {
 	const { getByRole, getByText, queryByRole } = await renderDialog({
 		props: {

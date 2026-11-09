@@ -4,6 +4,7 @@ import { credential, destructiveChange, variable } from './__tests__/bindings.fi
 import { billingPreview, billingResources } from './__tests__/preview.fixtures';
 import {
 	indexBlockers,
+	isBlocking,
 	listBlockers,
 	crossProjectMoveBlockers,
 	scopeCheck,
@@ -41,6 +42,29 @@ describe('promotion operation', () => {
 		expect(toOperationRequest(graph, new Set([reminders.key, reconciliation.key]))).toEqual({
 			workflowIds: ['w1', 'w2'],
 		});
+	});
+
+	it('marks a credential with dropped values as a warning, not as a blocker', () => {
+		const blockers = listBlockers(
+			check({
+				warnings: [
+					{
+						kind: 'credential',
+						code: 'credential-values-dropped',
+						sourceId: 'c1',
+						name: 'GitHub',
+						droppedFields: ['password'],
+						consumers: consumer('w1'),
+					},
+				],
+			}),
+			[],
+		);
+
+		expect(blockers).toEqual([
+			{ kind: 'warning', resourceKey: 'credential:c1', workflowKeys: expect.any(Array) },
+		]);
+		expect(blockers.some(isBlocking)).toBe(false);
 	});
 
 	it('should block only the workflows that need a missing binding or moved to another project', () => {

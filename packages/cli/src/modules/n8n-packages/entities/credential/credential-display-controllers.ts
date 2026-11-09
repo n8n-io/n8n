@@ -1,9 +1,10 @@
-import type { SerializedCredentialData } from '@n8n/api-types';
+import type { SerializedCredential, SerializedCredentialData } from '@n8n/api-types';
 import isEqual from 'lodash/isEqual';
 import { NodeHelpers, type ICredentialType, type INodeProperties } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 
+import type { BundledCredential } from './credential.types';
 import {
 	isExpressionOnly,
 	NEVER_EXPORTED_KEYS,
@@ -164,4 +165,27 @@ export function keepConfirmedCredentialData(
 	}
 
 	return { data: Object.keys(kept).length > 0 ? kept : undefined, dropped };
+}
+
+/**
+ * Applies the package reader rule to a credential file: keep expressions and the values of fields
+ * that control which expression fields show, and drop everything else.
+ */
+export function dropUnconfirmedCredentialData(
+	credential: SerializedCredential,
+	credentialTypes: CredentialTypes,
+): BundledCredential {
+	if (credential.data === undefined) return credential;
+
+	const properties = resolveCredentialProperties(credentialTypes, credential.type);
+	const { data, dropped } = keepConfirmedCredentialData(credential.data, properties);
+	if (dropped.length === 0) return credential;
+
+	const { data: _discarded, ...rest } = credential;
+	return {
+		...rest,
+		...(data !== undefined ? { data } : {}),
+		dataIsComplete: false,
+		droppedFields: dropped,
+	};
 }

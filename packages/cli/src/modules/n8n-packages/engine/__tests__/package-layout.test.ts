@@ -81,6 +81,17 @@ describe('package-layout', () => {
 			expect(placed).toEqual([{ ...requirement, packageData: { token: '={{ $secrets.gh }}' } }]);
 		});
 
+		it('carries the fields that the reader dropped', () => {
+			const placed = placeCredentialData({
+				requirements: [requirement],
+				bundledCredentials: new Map([
+					['cred-1', { id: 'cred-1', name: 'GitHub', type: 'githubApi', droppedFields: ['token'] }],
+				]),
+			});
+
+			expect(placed).toEqual([{ ...requirement, packageDroppedFields: ['token'] }]);
+		});
+
 		it('leaves the requirement bare when the bundle carries no data or no file', () => {
 			const noData = placeCredentialData({
 				requirements: [requirement],

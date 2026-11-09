@@ -1,5 +1,4 @@
 import {
-	type SerializedCredential,
 	serializedCredentialSchema,
 	type SerializedDataTable,
 	type SerializedFolder,
@@ -17,6 +16,10 @@ import { UserError } from '@n8n/errors';
 import type { z } from 'zod';
 import { ZodError } from 'zod';
 
+import { CredentialTypes } from '@/credential-types';
+
+import { dropUnconfirmedCredentialData } from '../../entities/credential/credential-display-controllers';
+import type { BundledCredential } from '../../entities/credential/credential.types';
 import {
 	WorkflowSerializer,
 	type WorkflowPackageContent,
@@ -50,7 +53,7 @@ export interface InventoryCredential {
 	path: string;
 	/** `null` when the file is outside every project. */
 	projectId: string | null;
-	credential: SerializedCredential;
+	credential: BundledCredential;
 }
 
 export interface InventoryVariable {
@@ -111,7 +114,10 @@ interface EntityFile {
  */
 @Service()
 export class PackageDirectoryInventoryReader {
-	constructor(private readonly workflowSerializer: WorkflowSerializer) {}
+	constructor(
+		private readonly workflowSerializer: WorkflowSerializer,
+		private readonly credentialTypes: CredentialTypes,
+	) {}
 
 	async read(source: PackageFileSource): Promise<PackageDirectoryInventory> {
 		const files = (await source.listEntries()).sort().flatMap((path) => classify(path) ?? []);
@@ -220,7 +226,10 @@ export class PackageDirectoryInventoryReader {
 
 		for (const file of files.filter((f) => f.kind === 'credentials')) {
 			if (!isCollectionLocation(file.segments, 'credentials')) throw unsupportedLocation(file);
-			const credential = await this.readEntity(source, file, serializedCredentialSchema);
+			const credential = dropUnconfirmedCredentialData(
+				await this.readEntity(source, file, serializedCredentialSchema),
+				this.credentialTypes,
+			);
 			assertUnseen(seenIds, credential.id, 'credential id');
 			credentials.push({ path: file.path, projectId: projectIdOf(file), credential });
 		}

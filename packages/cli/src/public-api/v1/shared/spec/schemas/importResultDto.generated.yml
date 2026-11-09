@@ -376,6 +376,13 @@ properties:
         items:
           type: string
         description: Source credential ids whose matched credential this import changed under `credentialConflictPolicy=overwrite`. These ids are not listed under `matched`. Empty for other policies.
+      droppedFields:
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
+        description: For credentials that this import created, the names of the fields whose values the package carried and the import dropped, by source credential id. The import keeps only expression values, and the plain values of fields that decide which other fields show. The value of any other field never reaches the destination. Absent when the import dropped nothing.
     required:
       - matched
       - stubbed

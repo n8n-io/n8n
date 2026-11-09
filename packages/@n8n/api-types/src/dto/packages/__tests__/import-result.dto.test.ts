@@ -1,4 +1,4 @@
-import { ImportBlockedErrorDto, ImportResultDto } from '../import-result.dto';
+import { ImportBlockedErrorDto, ImportResultDto, importResultSchema } from '../import-result.dto';
 
 describe('ImportResultDto', () => {
 	it('accepts a project-package happy-path result', () => {
@@ -181,4 +181,30 @@ describe('ImportBlockedErrorDto', () => {
 			expect(result.success).toBe(success);
 		},
 	);
+});
+
+describe('import result credential summary', () => {
+	const lists = { matched: [], stubbed: [], seeded: [], incomplete: ['cred-1'], updated: [] };
+
+	it('accepts the dropped fields of a credential by source id', () => {
+		const summary = importResultSchema.shape.credentials.safeParse({
+			...lists,
+			droppedFields: { 'cred-1': ['password'] },
+		});
+
+		expect(summary.success).toBe(true);
+	});
+
+	it('accepts a summary without dropped fields', () => {
+		expect(importResultSchema.shape.credentials.safeParse(lists).success).toBe(true);
+	});
+
+	it('rejects a dropped field list that is not a list of names', () => {
+		const summary = importResultSchema.shape.credentials.safeParse({
+			...lists,
+			droppedFields: { 'cred-1': 'password' },
+		});
+
+		expect(summary.success).toBe(false);
+	});
 });

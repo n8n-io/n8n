@@ -10698,6 +10698,7 @@
 	"promotions.bindings.deleteProjectsAndApply": "Delete {count} project and apply | Delete {count} projects and apply",
 	"promotions.bindings.bindingsSection.title": "Credentials and variables",
 	"promotions.bindings.warnings.title": "Warnings",
+	"promotions.bindings.warnings.credentialValuesDropped": "The package carries values for the credential {name} that this instance does not accept: {fields}. Enter them again in the credential if you need them.",
 	"promotions.bindings.warnings.variableShadowed": "A project variable overrides the global variable {name} for these workflows. You can continue.",
 	"promotions.operation.incoming.confirmSelected.title": "Apply the selected workflows?",
 	"promotions.operation.incoming.confirmSelected.message": "This applies only the selected workflows to this project. It does not change or remove anything else.",

@@ -218,68 +218,133 @@ oneOf:
       warnings:
         type: array
         items:
-          type: object
-          properties:
-            kind:
-              type: string
-              enum:
-                - variable
-            code:
-              type: string
-              enum:
-                - variable-shadowed
-            name:
-              type: string
-              minLength: 1
-            scope:
-              type: object
+          oneOf:
+            - type: object
               properties:
                 kind:
                   type: string
                   enum:
-                    - global
-              required:
-                - kind
-            consumers:
-              type: array
-              items:
-                type: object
-                properties:
-                  project:
+                    - variable
+                code:
+                  type: string
+                  enum:
+                    - variable-shadowed
+                name:
+                  type: string
+                  minLength: 1
+                scope:
+                  type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - global
+                  required:
+                    - kind
+                consumers:
+                  type: array
+                  items:
                     type: object
                     properties:
-                      id:
-                        type: string
-                        minLength: 1
-                      name:
-                        type: string
+                      project:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            minLength: 1
+                          name:
+                            type: string
+                        required:
+                          - id
+                          - name
+                      workflows:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              minLength: 1
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                        minItems: 1
                     required:
-                      - id
-                      - name
-                  workflows:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          minLength: 1
-                        name:
-                          type: string
-                      required:
-                        - id
-                        - name
-                    minItems: 1
-                required:
-                  - project
-                  - workflows
-              minItems: 1
-          required:
-            - kind
-            - code
-            - name
-            - scope
-            - consumers
+                      - project
+                      - workflows
+                  minItems: 1
+              required:
+                - kind
+                - code
+                - name
+                - scope
+                - consumers
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - credential
+                code:
+                  type: string
+                  enum:
+                    - credential-values-dropped
+                sourceId:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+                droppedFields:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                  minItems: 1
+                  description: Names of the credential fields whose values the package carried and the Apply dropped. The Apply keeps only expression values, and the plain values of fields that decide which other fields show. A value never appears here.
+                consumers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      project:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            minLength: 1
+                          name:
+                            type: string
+                        required:
+                          - id
+                          - name
+                      workflows:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              minLength: 1
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                        minItems: 1
+                    required:
+                      - project
+                      - workflows
+                  minItems: 1
+              required:
+                - kind
+                - code
+                - sourceId
+                - name
+                - droppedFields
+                - consumers
+          type: object
     required:
       - environmentId
       - git
@@ -1569,68 +1634,133 @@ oneOf:
           warnings:
             type: array
             items:
-              type: object
-              properties:
-                kind:
-                  type: string
-                  enum:
-                    - variable
-                code:
-                  type: string
-                  enum:
-                    - variable-shadowed
-                name:
-                  type: string
-                  minLength: 1
-                scope:
-                  type: object
+              oneOf:
+                - type: object
                   properties:
                     kind:
                       type: string
                       enum:
-                        - global
-                  required:
-                    - kind
-                consumers:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      project:
+                        - variable
+                    code:
+                      type: string
+                      enum:
+                        - variable-shadowed
+                    name:
+                      type: string
+                      minLength: 1
+                    scope:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - global
+                      required:
+                        - kind
+                    consumers:
+                      type: array
+                      items:
                         type: object
                         properties:
-                          id:
-                            type: string
-                            minLength: 1
-                          name:
-                            type: string
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
                         required:
-                          - id
-                          - name
-                      workflows:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                              minLength: 1
-                            name:
-                              type: string
-                          required:
-                            - id
-                            - name
-                        minItems: 1
-                    required:
-                      - project
-                      - workflows
-                  minItems: 1
-              required:
-                - kind
-                - code
-                - name
-                - scope
-                - consumers
+                          - project
+                          - workflows
+                      minItems: 1
+                  required:
+                    - kind
+                    - code
+                    - name
+                    - scope
+                    - consumers
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - credential
+                    code:
+                      type: string
+                      enum:
+                        - credential-values-dropped
+                    sourceId:
+                      type: string
+                      minLength: 1
+                    name:
+                      type: string
+                    droppedFields:
+                      type: array
+                      items:
+                        type: string
+                        minLength: 1
+                      minItems: 1
+                      description: Names of the credential fields whose values the package carried and the Apply dropped. The Apply keeps only expression values, and the plain values of fields that decide which other fields show. A value never appears here.
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                  required:
+                    - kind
+                    - code
+                    - sourceId
+                    - name
+                    - droppedFields
+                    - consumers
+              type: object
         required:
           - missingProjects
           - missingBindings

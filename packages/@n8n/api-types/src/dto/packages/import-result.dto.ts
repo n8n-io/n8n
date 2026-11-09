@@ -217,6 +217,16 @@ const importCredentialSummarySchema = z
 				'`credentialConflictPolicy=overwrite`. These ids are not listed under `matched`. ' +
 				'Empty for other policies.',
 		}),
+		droppedFields: z
+			.record(z.array(z.string()))
+			.optional()
+			.openapi({
+				description:
+					'For credentials that this import created, the names of the fields whose values the package ' +
+					'carried and the import dropped, by source credential id. The import keeps only expression ' +
+					'values, and the plain values of fields that decide which other fields show. The value of ' +
+					'any other field never reaches the destination. Absent when the import dropped nothing.',
+			}),
 	})
 	.openapi({
 		description:

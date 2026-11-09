@@ -490,6 +490,16 @@ function addCredentialRules(
 			ownerProject: projectOf(projectId),
 			...(file.credential.data !== undefined ? { expressionData: file.credential.data } : {}),
 		});
+		if (file.credential.droppedFields !== undefined) {
+			result.warnings.push({
+				kind: 'credential',
+				code: 'credential-values-dropped',
+				sourceId,
+				name,
+				droppedFields: file.credential.droppedFields,
+				consumers,
+			});
+		}
 	}
 }
 

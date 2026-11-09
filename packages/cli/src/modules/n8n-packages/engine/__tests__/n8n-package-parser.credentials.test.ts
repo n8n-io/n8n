@@ -221,6 +221,7 @@ describe('N8nPackageParser.getCredentials', () => {
 
 			expect(credential?.data).toEqual({ caCertificate: EXPRESSION });
 			expect(credential?.dataIsComplete).toBe(false);
+			expect(credential?.droppedFields).toEqual(['password']);
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(JSON.stringify(logger.warn.mock.calls)).toContain('password');
 			expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('plain-secret');

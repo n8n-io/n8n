@@ -1,8 +1,11 @@
-import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
+import type { SerializedVariable } from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
 
 import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
-import type { PlacedCredentialRequirement } from '../entities/credential/credential.types';
+import type {
+	BundledCredential,
+	PlacedCredentialRequirement,
+} from '../entities/credential/credential.types';
 import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { PlacedVariableRequirement } from '../entities/variable/variable.types';
 import {
@@ -46,7 +49,7 @@ export function placeCredentialData({
 }: {
 	requirements: PackageCredentialRequirement[] | undefined;
 	/** Package credential files by credential id. */
-	bundledCredentials?: ReadonlyMap<string, SerializedCredential>;
+	bundledCredentials?: ReadonlyMap<string, BundledCredential>;
 }): PlacedCredentialRequirement[] | undefined {
 	return requirements?.map((requirement) => {
 		const credential = bundledCredentials?.get(requirement.id);
@@ -57,6 +60,9 @@ export function placeCredentialData({
 			...(packageData !== undefined ? { packageData } : {}),
 			...(credential?.dataIsComplete !== undefined
 				? { packageDataIsComplete: credential.dataIsComplete }
+				: {}),
+			...(credential?.droppedFields !== undefined
+				? { packageDroppedFields: credential.droppedFields }
 				: {}),
 		};
 	});

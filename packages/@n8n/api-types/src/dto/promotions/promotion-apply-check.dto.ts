@@ -250,13 +250,31 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	}),
 ]);
 
-export const promotionBindingWarningSchema = z.object({
-	kind: z.literal('variable'),
-	code: z.literal('variable-shadowed'),
-	name: z.string().min(1),
-	scope: z.object({ kind: z.literal('global') }),
-	consumers: consumersSchema,
-});
+export const promotionBindingWarningSchema = z.discriminatedUnion('code', [
+	z.object({
+		kind: z.literal('variable'),
+		code: z.literal('variable-shadowed'),
+		name: z.string().min(1),
+		scope: z.object({ kind: z.literal('global') }),
+		consumers: consumersSchema,
+	}),
+	z.object({
+		kind: z.literal('credential'),
+		code: z.literal('credential-values-dropped'),
+		sourceId,
+		name: z.string(),
+		droppedFields: z
+			.array(z.string().min(1))
+			.min(1)
+			.openapi({
+				description:
+					'Names of the credential fields whose values the package carried and the Apply dropped. ' +
+					'The Apply keeps only expression values, and the plain values of fields that decide ' +
+					'which other fields show. A value never appears here.',
+			}),
+		consumers: consumersSchema,
+	}),
+]);
 
 /**
  * What stops an Apply. Source IDs define creation scope.

@@ -134,8 +134,10 @@ export function reconcileCredentialSummary(input: {
 	seeded: Iterable<string>;
 	incomplete: Iterable<string>;
 	updated: Iterable<string>;
+	droppedFields?: Record<string, string[]>;
 }): ImportCredentialSummary {
 	const updated = new Set(input.updated);
+	const hasDroppedFields = Object.keys(input.droppedFields ?? {}).length > 0;
 
 	return {
 		matched: [...new Set(input.matched)].filter((sourceId) => !updated.has(sourceId)),
@@ -143,6 +145,7 @@ export function reconcileCredentialSummary(input: {
 		seeded: [...new Set(input.seeded)],
 		incomplete: [...new Set(input.incomplete)],
 		updated: [...updated],
+		...(hasDroppedFields ? { droppedFields: input.droppedFields } : {}),
 	};
 }
 

@@ -253,6 +253,7 @@ export class ProjectPackageImporter {
 		let dataTablesUpdated = 0;
 		const seeded: string[] = [];
 		const incomplete: string[] = [];
+		const droppedFields: Record<string, string[]> = {};
 		const variablesMatched: string[] = [];
 		const variablesMissing: string[] = [];
 		const variablesCreated: string[] = [];
@@ -277,6 +278,7 @@ export class ProjectPackageImporter {
 			dataTablesUpdated += content.dataTablePlan.updates.length;
 			seeded.push(...content.credentialResult.seeded);
 			incomplete.push(...content.credentialResult.incomplete);
+			Object.assign(droppedFields, content.credentialResult.droppedFields);
 			variablesMatched.push(...content.variablePlan.matched.map(({ name }) => name));
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
@@ -308,6 +310,7 @@ export class ProjectPackageImporter {
 				stubbed,
 				seeded,
 				incomplete,
+				droppedFields,
 				updated: credentialsUpdatedAcrossScopes(
 					applied.map(({ content }) => content.credentialResult),
 				),

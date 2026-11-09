@@ -1059,6 +1059,35 @@ describe('CredentialImporter', () => {
 			expect(result.seeded).toEqual([]);
 		});
 
+		it('apply reports the dropped fields of a credential it created, also when all its data was dropped', async () => {
+			credentialsService.createStubCredential.mockResolvedValue({ id: 'created-1' } as never);
+
+			const partlyDropped = packageCredential({
+				id: 'partly',
+				packageData: { token: '={{ $secrets.github.token }}' },
+				packageDataIsComplete: false,
+				packageDroppedFields: ['password'],
+			});
+			const allDropped = packageCredential({ id: 'all', packageDroppedFields: ['password'] });
+
+			const result = await importer.apply(
+				context,
+				bindingRequest([partlyDropped, allDropped], { missingMode: 'create-with-values' }),
+				{
+					...emptyPlan(),
+					stubIds: new Map([
+						[partlyDropped.id, partlyDropped.id],
+						[allDropped.id, allDropped.id],
+					]),
+					failures: [notFoundFailure(partlyDropped), notFoundFailure(allDropped)],
+				},
+			);
+
+			expect(result.incomplete).toEqual(['partly']);
+			expect(result.stubbed).toEqual(['all']);
+			expect(result.droppedFields).toEqual({ partly: ['password'], all: ['password'] });
+		});
+
 		it('apply never seeds under create-stub even when the package carries data', async () => {
 			credentialsService.createStubCredential.mockResolvedValue({ id: 'created-1' } as never);
 
@@ -1089,6 +1118,27 @@ describe('CredentialImporter', () => {
 			expect(result.stubbed).toEqual(['missing-cred']);
 			expect(result.seeded).toEqual([]);
 			expect(result.incomplete).toEqual([]);
+		});
+
+		it('apply reports no dropped fields under create-stub, because it ignores package data', async () => {
+			credentialsService.createStubCredential.mockResolvedValue({ id: 'created-1' } as never);
+
+			const missingCredential = packageCredential({
+				id: 'missing-cred',
+				packageDroppedFields: ['password'],
+			});
+
+			const result = await importer.apply(
+				context,
+				bindingRequest([missingCredential], { missingMode: 'create-stub' }),
+				{
+					...emptyPlan(),
+					stubIds: new Map([[missingCredential.id, missingCredential.id]]),
+					failures: [notFoundFailure(missingCredential)],
+				},
+			);
+
+			expect(result).not.toHaveProperty('droppedFields');
 		});
 	});
 });

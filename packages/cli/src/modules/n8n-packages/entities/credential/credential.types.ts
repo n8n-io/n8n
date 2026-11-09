@@ -13,10 +13,18 @@ import type {
 } from '../../spec/requirements.schema';
 import type { AgentRequirementSource } from '../requirement-source';
 
+/**
+ * A credential file after the reader checked its data. `droppedFields` names the fields whose
+ * package values the reader removed. It never holds a value.
+ */
+export type BundledCredential = SerializedCredential & { droppedFields?: string[] };
+
 /** A requirement enriched with the expression data the package bundles for it, when any. */
 export type PlacedCredentialRequirement = PackageCredentialRequirement & {
 	packageData?: SerializedCredentialData;
 	packageDataIsComplete?: boolean;
+	/** Fields whose package values the reader dropped. */
+	packageDroppedFields?: string[];
 };
 
 export interface CredentialReference {
@@ -138,6 +146,8 @@ export interface CredentialBindResult {
 	stubbed: string[];
 	seeded: string[];
 	incomplete: string[];
+	/** Fields whose package values the reader dropped, by source id of the credential the import created. */
+	droppedFields?: Record<string, string[]>;
 }
 
 export interface CredentialApplyResult extends CredentialBindResult {

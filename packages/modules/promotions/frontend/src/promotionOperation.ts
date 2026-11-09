@@ -162,7 +162,10 @@ export function listBlockers(
 	for (const warning of warnings) {
 		blockers.push({
 			kind: 'warning',
-			resourceKey: variableKey(warning.name, warning.scope),
+			resourceKey:
+				warning.code === 'credential-values-dropped'
+					? `credential:${warning.sourceId}`
+					: variableKey(warning.name, warning.scope),
 			workflowKeys: consumerKeys(warning.consumers),
 		});
 	}

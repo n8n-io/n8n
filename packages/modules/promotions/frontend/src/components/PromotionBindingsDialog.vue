@@ -447,9 +447,13 @@ async function continueApply() {
 						<h3>{{ i18n.baseText('promotions.bindings.warnings.title') }}</h3>
 						<N8nCallout v-for="(item, index) in check.warnings" :key="index" theme="info">
 							{{
-								i18n.baseText('promotions.bindings.warnings.variableShadowed', {
-									interpolate: { name: item.name },
-								})
+								item.code === 'credential-values-dropped'
+									? i18n.baseText('promotions.bindings.warnings.credentialValuesDropped', {
+											interpolate: { name: item.name, fields: item.droppedFields.join(', ') },
+										})
+									: i18n.baseText('promotions.bindings.warnings.variableShadowed', {
+											interpolate: { name: item.name },
+										})
 							}}
 							<p>{{ consumerNames(item.consumers) }}</p>
 						</N8nCallout>
