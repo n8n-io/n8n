@@ -1942,6 +1942,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.1
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
@@ -1979,9 +1982,6 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
-      '@types/express':
-        specifier: 'catalog:'
-        version: 5.0.1
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.10
