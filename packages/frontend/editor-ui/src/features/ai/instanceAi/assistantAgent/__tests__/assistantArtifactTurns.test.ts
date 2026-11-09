@@ -186,6 +186,42 @@ describe('toAssistantArtifactTurns', () => {
 		expect(isAgentEditingWorkflow(turns, 'wf-1')).toBe(true);
 		expect(isAgentEditingWorkflow(turns, 'wf-2')).toBe(false);
 	});
+
+	it('keeps the resolved copy of a call that the history stores open and then resolved', () => {
+		const setupCall = (overrides: Partial<ToolCall>) =>
+			toolCall({ tool: 'setup_workflow', toolCallId: 'tc-setup', ...overrides });
+		const turns = mapMessages(
+			[
+				{ id: 'u1', role: 'user', content: 'Set it up' },
+				{
+					id: 'a1',
+					role: 'assistant',
+					content: '',
+					toolCalls: [
+						setupCall({ input: { workflowId: 'wf-1' }, output: undefined, state: 'suspended' }),
+					],
+				},
+				{
+					id: 'a2',
+					role: 'assistant',
+					content: 'Done',
+					toolCalls: [setupCall({ input: undefined, output: { success: true }, state: 'done' })],
+				},
+			],
+			false,
+		);
+
+		expect(turns[1].toolCalls).toEqual([
+			{
+				toolCallId: 'tc-setup',
+				toolName: 'setup_workflow',
+				args: { workflowId: 'wf-1' },
+				result: { success: true },
+				isLoading: false,
+			},
+		]);
+		expect(isAgentEditingWorkflow(turns, 'wf-1')).toBe(false);
+	});
 });
 
 describe('findLatestAssistantTasks', () => {

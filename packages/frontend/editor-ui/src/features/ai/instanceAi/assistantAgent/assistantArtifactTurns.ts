@@ -50,6 +50,29 @@ export function toArtifactToolCall(toolCall: DeepReadonly<ToolCall>): ArtifactTo
 	};
 }
 
+/**
+ * Adds the tool calls of a later message to a turn. The chat stores a message
+ * when a stream suspends and again when it completes, so the history can hold
+ * the same call twice: open, then resolved. The later copy replaces the
+ * earlier one, so an open copy does not keep the call in flight.
+ */
+function appendToolCalls(turnCalls: ArtifactToolCall[], next: ArtifactToolCall[]): void {
+	for (const toolCall of next) {
+		const index = toolCall.toolCallId
+			? turnCalls.findIndex((call) => call.toolCallId === toolCall.toolCallId)
+			: -1;
+		if (index === -1) {
+			turnCalls.push(toolCall);
+			continue;
+		}
+		const previous = turnCalls[index];
+		turnCalls[index] = {
+			...toolCall,
+			args: Object.keys(toolCall.args).length > 0 ? toolCall.args : previous.args,
+		};
+	}
+}
+
 /** The latest task list of the thread, from the `tasks-update` host events. */
 export function findLatestAssistantTasks(messages: ReadonlyChatMessages): TaskList | null {
 	for (let i = messages.length - 1; i >= 0; i--) {
@@ -111,7 +134,7 @@ export function toAssistantArtifactTurns(
 		const announcedWorkflowId = findAnnouncedWorkflowId(message);
 		const current = turns.at(-1);
 		if (current?.role === 'assistant') {
-			current.toolCalls.push(...toolCalls);
+			appendToolCalls(current.toolCalls, toolCalls);
 			if (announcedWorkflowId) current.announcedWorkflowId = announcedWorkflowId;
 			continue;
 		}
