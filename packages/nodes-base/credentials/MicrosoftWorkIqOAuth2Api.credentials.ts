@@ -1,8 +1,9 @@
 import type { Icon, ICredentialType, INodeProperties } from 'n8n-workflow';
 
-// Work IQ is its own Entra resource, so its delegated permissions are only valid
-// as fully qualified scope strings. The bare `WorkIQ.Read` form Microsoft's setup
-// docs use is rejected by the token endpoint.
+// Work IQ is its own Entra resource, so its permissions are requested as fully
+// qualified scope strings. This is the form the server itself advertises in
+// /.well-known/oauth-protected-resource/mcp, rather than the bare `WorkIQ.Read`
+// that Microsoft's setup docs use.
 const WORK_IQ_RESOURCE_ID = 'fdcc1f02-fc51-4226-8753-f668596af7f7';
 const workIqScope = (permission: string) => `${WORK_IQ_RESOURCE_ID}/${permission}`;
 

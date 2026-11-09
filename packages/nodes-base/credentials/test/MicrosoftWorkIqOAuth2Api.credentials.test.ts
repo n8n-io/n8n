@@ -79,7 +79,7 @@ describe('MicrosoftWorkIqOAuth2Api Credential', () => {
 		);
 
 		it('qualifies every Work IQ permission with the resource ID', () => {
-			// Entra rejects the bare `WorkIQ.Read` form Microsoft's setup docs use.
+			// The server advertises this qualified form; the setup docs show a bare one.
 			const workIqScopes = evaluate('scope', { allowWriteAccess: true })
 				.split(' ')
 				.filter((scope) => scope !== 'offline_access');
