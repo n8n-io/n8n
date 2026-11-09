@@ -977,7 +977,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				nodeUsageEnabled: !instanceContextEnabled,
 				nodeContextEnabled: false,
 				folderExplorationEnabled: false,
-				aiPreferencesEnabled: false,
 				instanceContextEnabled,
 			}),
 		};
@@ -1344,7 +1343,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				nodeUsageEnabled: false,
 				nodeContextEnabled: false,
 				folderExplorationEnabled: true,
-				aiPreferencesEnabled: false,
 				assistantSkillsEnabled: enabled,
 			}),
 		};
@@ -5103,6 +5101,7 @@ describe('InstanceAiService run input gates', () => {
 			snapshotAttachedAgents: vi.fn(),
 			backgroundTasks: { getRunningTasks: vi.fn(() => []) },
 			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+			resolveAiPreferencesTurn: vi.fn(async () => undefined),
 			resolveProjectContextSection: vi.fn(async () => ''),
 			createAgentFromEnvironment: vi.fn(async () => ({})),
 			buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),

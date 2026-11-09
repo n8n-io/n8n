@@ -1,4 +1,4 @@
 import { defineConfig } from 'eslint/config';
-import { frontendConfig } from '@n8n/eslint-config/frontend';
+import { frontendOxlintResidualConfig } from '@n8n/eslint-config/frontend-oxlint-residual';
 
-export default defineConfig(frontendConfig);
+export default defineConfig(frontendOxlintResidualConfig);

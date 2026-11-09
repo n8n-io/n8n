@@ -2,6 +2,7 @@ import type { AppResponse, AppVersionResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import type { Scope } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 
@@ -10,12 +11,18 @@ import AppPublishButton from './AppPublishButton.vue';
 
 vi.mock('../apps.api');
 
-const { confirm, showError } = vi.hoisted(() => ({ confirm: vi.fn(), showError: vi.fn() }));
+const { confirm, showError, showMessage, track } = vi.hoisted(() => ({
+	confirm: vi.fn(),
+	showError: vi.fn(),
+	showMessage: vi.fn(),
+	track: vi.fn(),
+}));
 vi.mock('@n8n/design-system', async (importOriginal) => ({
 	...(await importOriginal()),
 	useMessage: () => ({ confirm }),
 }));
-vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError, showMessage }) }));
+vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 
 const PUBLISHED_URL = 'https://expenses.apps.example.com/';
 
@@ -136,11 +143,57 @@ describe('AppPublishButton', () => {
 		await waitFor(() => expect(getByTestId('app-publish-menu-trigger')).toBeDisabled());
 	});
 
-	it('hides the menu when the app is not published', () => {
+	it('shows versions and show code in the menu when the app is not published', () => {
 		providePermissions(['app:update']);
-		const { queryByTestId } = renderComponent();
+		const { getByTestId, queryByTestId } = renderComponent();
 
-		expect(queryByTestId('app-publish-menu-trigger')).not.toBeInTheDocument();
+		expect(getByTestId('app-publish-menu-trigger')).toBeInTheDocument();
+		expect(getByTestId('menu-versions')).toBeInTheDocument();
+		expect(getByTestId('menu-showCode')).toBeInTheDocument();
+		expect(queryByTestId('menu-open')).not.toBeInTheDocument();
+		expect(queryByTestId('menu-unpublish')).not.toBeInTheDocument();
+	});
+
+	it('tracks a show code click once and shows a coming-soon message', async () => {
+		providePermissions(['app:read']);
+		const { getByTestId, emitted } = renderComponent({ props: { app: app('v2') } });
+
+		await userEvent.click(getByTestId('menu-showCode'));
+
+		expect(track).toHaveBeenCalledExactlyOnceWith(TELEMETRY_EVENT.APPS.USER_CLICKED_SHOW_APP_CODE, {
+			app_id: 'app-1',
+			project_id: 'project-1',
+		});
+		expect(showMessage).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ type: 'info', title: 'Code view is coming soon' }),
+		);
+		expect(confirm).not.toHaveBeenCalled();
+		expect(emitted('updated')).toBeUndefined();
+	});
+
+	it('opens the versions panel when the app is not published', async () => {
+		providePermissions(['app:read']);
+		const { getByTestId, queryByTestId, emitted } = renderComponent();
+
+		expect(queryByTestId('menu-open')).not.toBeInTheDocument();
+		expect(queryByTestId('menu-unpublish')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('menu-versions'));
+
+		expect(emitted('showVersions')).toHaveLength(1);
+	});
+
+	it('offers the versions next to the published app actions', async () => {
+		providePermissions(['app:update']);
+		const open = vi.spyOn(window, 'open').mockReturnValue(null);
+		const { getByTestId, emitted } = renderComponent({ props: { app: app('v2') } });
+		expect(getByTestId('menu-open')).toBeInTheDocument();
+		expect(getByTestId('menu-unpublish')).toBeInTheDocument();
+
+		await userEvent.click(getByTestId('menu-versions'));
+
+		expect(emitted('showVersions')).toHaveLength(1);
+		expect(open).not.toHaveBeenCalled();
+		expect(confirm).not.toHaveBeenCalled();
 	});
 
 	it('opens the published URL in a new tab', async () => {

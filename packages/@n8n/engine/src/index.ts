@@ -55,6 +55,7 @@ export type {
 
 export {
 	createResponseEmitter,
+	EXECUTION_CHANNEL_TOPICS,
 	executionResponseSchema,
 	noopExecutionResponseSender,
 	noopResponseEmitter,
@@ -64,13 +65,20 @@ export {
 export type {
 	ChunkMessage,
 	EndedMessage,
+	ExecutionChannelCodec,
+	ExecutionChannelFrameHandler,
+	ExecutionChannelPublisher,
+	ExecutionChannelSubscriber,
+	ExecutionChannelTopic,
 	ExecutionResponse,
 	ExecutionResponseSender,
+	FrameResult,
 	ResponseEmitter,
 	ResponseExpectation,
 	ResponseExpectationKind,
 	ResponseMessage,
 	UndeliverableMessage,
+	UnsubscribeFromExecutionChannel,
 } from './response-channel';
 
 export { jsonObjectSchema, UnimplementedError } from './common';
