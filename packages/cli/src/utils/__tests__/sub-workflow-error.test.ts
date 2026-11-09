@@ -3,9 +3,48 @@ import type { INode, Workflow } from 'n8n-workflow';
 import { NodeOperationError, parseErrorMetadata } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { objectToError } from '../object-to-error';
+import { buildSubWorkflowError } from '../sub-workflow-error';
 
-describe('objectToError', () => {
+const subExecution = { executionId: 'sub-execution-1', workflowId: 'sub-workflow-1' };
+
+describe('buildSubWorkflowError', () => {
+	describe('error source', () => {
+		it('should rebuild a thrown `Error` as a new error with its message and stack', () => {
+			const thrown = new Error('Test error');
+			const workflow = mock<Workflow>();
+
+			const result = buildSubWorkflowError(thrown, workflow, subExecution);
+
+			expect(result).not.toBe(thrown);
+			expect(result.message).toBe('Test error');
+			expect(result.stack).toBe(thrown.stack);
+		});
+
+		it('should replace the execution and workflow ids of the error with the ones of the sub-execution', () => {
+			const errorObject = {
+				message: 'Test error',
+				executionId: 'nested-execution',
+				workflowId: 'nested-workflow',
+			};
+			const workflow = mock<Workflow>();
+
+			const result = buildSubWorkflowError(errorObject, workflow, subExecution);
+
+			expect(result).toMatchObject(subExecution);
+		});
+
+		it.each([undefined, null, 'Test error', {}])(
+			'should create a generic `Error` when the sub-execution error is `%j`',
+			(error) => {
+				const workflow = mock<Workflow>();
+
+				const result = buildSubWorkflowError(error, workflow, subExecution);
+
+				expect(result.message).toBe('An error occurred');
+			},
+		);
+	});
+
 	describe('node error handling', () => {
 		it('should create `NodeOperationError` when node is found', () => {
 			const errorObject = {
@@ -18,7 +57,7 @@ describe('objectToError', () => {
 			const node = mock<INode>();
 			workflow.getNode.mockReturnValue(node);
 
-			const result = objectToError(errorObject, workflow);
+			const result = buildSubWorkflowError(errorObject, workflow, subExecution);
 
 			expect(workflow.getNode).toHaveBeenCalledWith('testNode');
 			expect(result).toBeInstanceOf(NodeOperationError);
@@ -33,7 +72,7 @@ describe('objectToError', () => {
 			};
 			const workflow = mock<Workflow>();
 
-			const result = objectToError(errorObject, workflow);
+			const result = buildSubWorkflowError(errorObject, workflow, subExecution);
 
 			expect(workflow.getNode).not.toHaveBeenCalled();
 			expect(result).toBeInstanceOf(Error);
@@ -53,7 +92,7 @@ describe('objectToError', () => {
 				};
 				const workflow = mock<Workflow>();
 
-				const result = objectToError(errorObject, workflow);
+				const result = buildSubWorkflowError(errorObject, workflow, subExecution);
 
 				expect(result).toBeInstanceOf(BaseError);
 				expect(result).toMatchObject({
@@ -66,18 +105,13 @@ describe('objectToError', () => {
 		);
 
 		it('should keep the sub-execution metadata of a `warning` error for continue-on-fail callers', () => {
-			const errorObject = {
-				message: 'Test error',
-				level: 'warning',
-				executionId: 'sub-execution-1',
-				workflowId: 'sub-workflow-1',
-			};
+			const errorObject = { message: 'Test error', level: 'warning' };
 			const workflow = mock<Workflow>();
 
-			const result = objectToError(errorObject, workflow);
+			const result = buildSubWorkflowError(errorObject, workflow, subExecution);
 
 			expect(parseErrorMetadata(result)).toEqual({
-				subExecution: { executionId: 'sub-execution-1', workflowId: 'sub-workflow-1' },
+				subExecution,
 				subExecutionsCount: 1,
 			});
 		});
@@ -88,7 +122,7 @@ describe('objectToError', () => {
 				const errorObject = { message: 'Test error', level };
 				const workflow = mock<Workflow>();
 
-				const result = objectToError(errorObject, workflow);
+				const result = buildSubWorkflowError(errorObject, workflow, subExecution);
 
 				expect(result).not.toBeInstanceOf(BaseError);
 				expect(Object.hasOwn(result, 'level')).toBe(false);
@@ -114,7 +148,7 @@ describe('objectToError', () => {
 			};
 			const workflow = mock<Workflow>();
 
-			const result = objectToError(errorObject, workflow);
+			const result = buildSubWorkflowError(errorObject, workflow, subExecution);
 
 			expect((result as unknown as { violations: unknown[] }).violations).toEqual([violation]);
 		});
@@ -126,7 +160,7 @@ describe('objectToError', () => {
 			};
 			const workflow = mock<Workflow>();
 
-			const result = objectToError(errorObject, workflow);
+			const result = buildSubWorkflowError(errorObject, workflow, subExecution);
 
 			expect(Object.hasOwn(result, 'isPolicyRefusal')).toBe(false);
 		});
