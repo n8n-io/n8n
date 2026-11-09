@@ -1,0 +1,100 @@
+packages/cli/src/modules/instance-reporting.ee/LOCAL_VERIFICATION.md
+  s_b35db572acb2e0::t_51672fe51b1abe 16,187,215-229
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_b35db572acb2e0::t_0567259ba5fcf4 700-701,773,961
+packages/cli/src/modules/agents/PLAN_TASK_STATUS.md
+  s_b35db572acb2e0::t_51672fe51b1abe 12-20
+packages/cli/src/modules/log-streaming.ee/README.md
+  s_b35db572acb2e0::t_51672fe51b1abe 105-108,134-135,139-143,157-192,262-266
+packages/cli/src/modules/source-control.ee/README.md
+  s_b35db572acb2e0::t_51672fe51b1abe 27,29-31,33-36,38-40
+packages/@n8n/api-types/src/skills/skill-sources.schema.ts
+  s_b35db572acb2e0::t_0567259ba5fcf4 4,85,237
+packages/cli/src/modules/breaking-changes/README.md
+  s_b35db572acb2e0::t_51672fe51b1abe 76-135,177-178,192-198,258-260,266-310,321-323,329-365
+packages/cli/src/modules/skills/__tests__/integration/skill-source.controller.integration.test.ts
+  s_b35db572acb2e0::t_888db72077be00 968,973
+packages/cli/src/modules/skills/services/skill.service.ts
+  s_b35db572acb2e0::t_511a3f92cbd258 157
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_b35db572acb2e0::t_f60f29adf96fa1 1212-1218
+  s_b35db572acb2e0::t_8a27a50f6d844e 1320,1331-1332
+  s_b35db572acb2e0::t_306d7581f4bdb4 1133,1210-1211,1219-1220
+packages/cli/src/modules/policy-infrastructure/README.md
+  s_b35db572acb2e0::t_51672fe51b1abe 93-102,122-131
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_b35db572acb2e0::t_51672fe51b1abe 124-127
+packages/cli/src/modules/instance-ai/self-healing/README.md
+  s_b35db572acb2e0::t_51672fe51b1abe 269-270
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.test.ts
+  s_b35db572acb2e0::t_97a6d9a7d5cac4 90-91
+  s_b35db572acb2e0::t_888db72077be00 8,52,63,80,101,149,168,195,218,232,312,320,329,350,358,394,423,441,449,481
+packages/cli/src/modules/type-availability-policies/README.md
+  s_b35db572acb2e0::t_51672fe51b1abe 103-104,106-108
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_b35db572acb2e0::t_51672fe51b1abe 83-101,156-160,214-218
+packages/cli/src/modules/agents/builder/builder-session.ts
+  s_b35db572acb2e0::t_51672fe51b1abe 11-13
+packages/frontend/editor-ui/src/features/settings/context/components/SkillScopeBadge.vue
+  s_b35db572acb2e0::t_988fce140e4bad 3,5,11,29
+  s_b35db572acb2e0::t_f60f29adf96fa1 23-28
+packages/cli/src/modules/community-packages/community-packages.service.ts
+  s_b35db572acb2e0::t_51672fe51b1abe 670
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_b35db572acb2e0::t_51672fe51b1abe 107
+packages/cli/src/modules/instance-ai/onboarding-opening.ts
+  s_b35db572acb2e0::t_51672fe51b1abe 49,63,67-73
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_b35db572acb2e0::t_51672fe51b1abe 70-74,173-178,197-200
+packages/cli/src/modules/otel/README.md
+  s_b35db572acb2e0::t_51672fe51b1abe 73-79,168-169,171,327,333-336,360
+packages/cli/src/modules/skills/services/skill-source.service.ts
+  s_b35db572acb2e0::t_b6222a9eb0bd39 24,215
+  s_b35db572acb2e0::t_0567259ba5fcf4 224,227,240,242-243,245,581,585
+packages/cli/src/modules/agents/integrations/__tests__/discord-operations.test.ts
+  s_b35db572acb2e0::t_51672fe51b1abe 19-23,32-36
+packages/cli/src/modules/agents/integrations/CHANNEL_INTEGRATION_TESTS.md
+  s_b35db572acb2e0::t_51672fe51b1abe 32-38,80
+packages/cli/src/modules/instance-ai/eval/README.md
+  s_b35db572acb2e0::t_51672fe51b1abe 121
+packages/frontend/editor-ui/src/features/settings/context/skills.store.ts
+  s_b35db572acb2e0::t_0567259ba5fcf4 18,122,126,128
+packages/cli/src/modules/mcp/evaluations/README.md
+  s_b35db572acb2e0::t_51672fe51b1abe 28,192-196
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-temporary-workflow-markers.test.ts
+  s_b35db572acb2e0::t_51672fe51b1abe 14
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_b35db572acb2e0::t_51672fe51b1abe 829-831
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.test.ts
+  s_b35db572acb2e0::t_8a27a50f6d844e 354,371,405,409-412,438
+  s_b35db572acb2e0::t_f60f29adf96fa1 4-9,406-408
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.vue
+  s_b35db572acb2e0::t_988fce140e4bad 3,52-53,147-149
+  s_b35db572acb2e0::t_f60f29adf96fa1 129,134-141,332-336
+  s_b35db572acb2e0::t_b6222a9eb0bd39 48
+packages/cli/src/modules/skills/__tests__/integration/skill-source-rows.integration.test.ts
+  s_b35db572acb2e0::t_306d7581f4bdb4 70-71,135
+  s_b35db572acb2e0::t_511a3f92cbd258 191
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_b35db572acb2e0::t_51672fe51b1abe 1091
+packages/cli/src/modules/skills/database/repositories/skill.repository.ts
+  s_b35db572acb2e0::t_f60f29adf96fa1 585-588
+  s_b35db572acb2e0::t_b6222a9eb0bd39 159
+  s_b35db572acb2e0::t_0567259ba5fcf4 574,581
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "513274afad3ba2f13e26b10f7c6d49a704aaaf48",
+  "prompts": {},
+  "sessions": {
+    "s_b35db572acb2e0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c03e-43d9-7472-8eeb-eca19f4195b3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

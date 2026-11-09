@@ -1,0 +1,34 @@
+packages/@n8n/agents/src/runtime/memory/strip-orphaned-tool-messages.ts
+  s_d24297dc76dbe7::t_4470415cbe27d2 57,64-71
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-history.test.ts
+  s_d24297dc76dbe7::t_d84be79288c462 272-305,307-312,314-317,324-354
+  s_d24297dc76dbe7::t_c7cc74f0707f71 306,313,318-321
+  s_d24297dc76dbe7::t_8d3bbe771909af 322-323
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_d24297dc76dbe7::t_efc355bfa4e20a 665-671
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_d24297dc76dbe7::t_141b13a9634739 557
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_d24297dc76dbe7::t_1fe31cf7e4a9fd 550-555
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_d24297dc76dbe7::t_acc623524998ae 346-357,359-364,366-374
+  s_d24297dc76dbe7::t_70c20709a5cfd0 22
+  s_d24297dc76dbe7::t_712e70ec8aedd6 358,365
+  s_d24297dc76dbe7::t_bc27869e82f6b6 265-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2166ef933fca113c1a3874b9d274fc774a117e97",
+  "prompts": {},
+  "sessions": {
+    "s_d24297dc76dbe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "932164b5-2ab5-4a99-b9ff-1d636c56156b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
