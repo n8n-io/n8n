@@ -49,20 +49,25 @@ import {
 } from '../instanceAi.handoffContext';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
-const props = defineProps<{
-	threadId: string;
-	subject: InstanceAiAgentAttachment;
-	/** True for a thread that the panel just created: it has no history to load. */
-	newSession: boolean;
-	placeholder?: string;
-	composerHeight?: string;
-	beforeSend?: () => Promise<void>;
-}>();
+const props = withDefaults(
+	defineProps<{
+		threadId: string;
+		subject: InstanceAiAgentAttachment;
+		/** True for a thread that the panel just created: it has no history to load. */
+		newSession: boolean;
+		placeholder?: string;
+		visible?: boolean;
+		composerHeight?: string;
+		beforeSend?: () => Promise<void>;
+	}>(),
+	{ visible: true },
+);
 
 const emit = defineEmits<{
 	'update:building': [building: boolean];
 	'update:working': [working: boolean];
 	'message-sent': [];
+	'content-change': [hasContent: boolean];
 	'session-created': [];
 }>();
 
@@ -231,8 +236,11 @@ defineExpose({
 		:interaction-extensions="interactionExtensions"
 		:before-send="props.beforeSend"
 		:placeholder="props.placeholder"
+		:visible="props.visible"
+		autofocus
 		:composer-height="props.composerHeight"
 		data-test-id="instance-ai-embed-assistant-agent-thread"
+		@content-change="emit('content-change', $event)"
 		@session-created="onSessionCreated"
 		@message-accepted="onMessageAccepted"
 		@update:streaming="onStreamingChange"

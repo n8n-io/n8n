@@ -106,6 +106,16 @@ describe('AssistantAgentPanelThread', () => {
 		clearPendingHandoffContext('thread-1');
 	});
 
+	it('passes visibility and draft changes between the builder and the chat', async () => {
+		const wrapper = await render();
+		expect(panelProps.current.autofocus).toBe('');
+		await wrapper.setProps({ visible: false });
+		expect(panelProps.current.visible).toBe(false);
+		const onContentChange = panelProps.current.onContentChange as (hasContent: boolean) => void;
+		onContentChange(true);
+		expect(wrapper.emitted('content-change')).toEqual([[true]]);
+	});
+
 	it('opens a new thread of the Assistant agent on the system channel', async () => {
 		await render();
 

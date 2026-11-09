@@ -96,6 +96,7 @@ import ApprovalCard from './interactive/ApprovalCard.vue';
 const props = withDefaults(
 	defineProps<{
 		visible?: boolean;
+		autofocus?: boolean;
 		projectId: string;
 		agentId: string;
 		mode?: 'panel' | 'inline';
@@ -181,6 +182,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
+	'content-change': [hasContent: boolean];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
@@ -704,8 +706,17 @@ const backgroundJobStopButton =
 const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 
 function focusInput(options?: FocusOptions) {
-	chatInput.value?.focus(options);
+	if (props.visible) chatInput.value?.focus(options);
 }
+
+watch(
+	[chatInput, () => props.autofocus, () => props.visible],
+	async ([input, autofocus, visible]) => {
+		if (!input || !autofocus || !visible) return;
+		await nextTick();
+		focusInput();
+	},
+);
 
 watch(
 	[
@@ -1358,6 +1369,8 @@ function getConversationMarkdown(): string {
 function isDirty(): boolean {
 	return hasDraft.value || composerAttachments.value.length > 0;
 }
+
+watch(isDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
 
 /** Puts text into the composer without sending it. */
 function setDraft(text: string) {

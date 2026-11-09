@@ -159,10 +159,7 @@ const emit = defineEmits<{
 	stop: [];
 	'dismiss-context-chip': [];
 	'workflow-preview': [workflowFile: string | null];
-	// Experiment cleanup: remove with instanceAiSplitEmptyState.
-	// Fires when the composer goes between empty and non-empty so the split
-	// empty state can pause its cycling placeholders only once the user types
-	// (auto-focus on mount must NOT pause the cycle).
+	// Placeholder previews pause for draft content.
 	'content-change': [hasContent: boolean];
 }>();
 
@@ -324,8 +321,7 @@ const attachedEncodedBytes = computed(() =>
 	attachedFiles.value.reduce((sum, file) => sum + base64EncodedSize(file.size), 0),
 );
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-// Experiment cleanup: remove with instanceAiSplitEmptyState.
-watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
+watch(isComposerDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );

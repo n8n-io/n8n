@@ -55,6 +55,16 @@ Keep the panel state when the Agent is saved or published. For published or
 read-only Agents, use the saved panel preference. Apply these defaults in the
 control layout. Keep the experiment layouts unchanged.
 
+Focus the visible Assistant composer when it becomes available on page load.
+Use the same behavior in all builder layouts. Focus it again when users return
+from Test. Keep hidden composers out of the focus path.
+
+In the first-build welcome state, cycle the template prompts in the empty
+composer placeholder. Type each prompt, hold it for five seconds, then erase it
+before the next prompt. Keep these previews out of the draft. Pause while the
+composer has content or the panel or browser tab is hidden. Stop after the first
+message. Show one static prompt when the user prefers reduced motion.
+
 ## Builder side panel widths
 
 Start the Assistant and Preview panels at 30% of the builder container width.

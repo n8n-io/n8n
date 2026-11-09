@@ -280,6 +280,23 @@ describe('InstanceAiInput', () => {
 		);
 	});
 
+	it('reports initial and edited draft content without submitting placeholder previews', async () => {
+		const { emitted, getByRole, rerender } = renderComponent({
+			props: inputProps({ placeholder: 'Build a news agent' }),
+		});
+		const textbox = getByRole('textbox');
+		expect(emitted()['content-change']).toEqual([[false]]);
+		expect(textbox).toHaveValue('');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+		expect(emitted().submit).toBeUndefined();
+		await fireEvent.update(textbox, 'My draft');
+		await rerender({ placeholder: 'Build a different agent' });
+		expect(textbox).toHaveValue('My draft');
+		expect(emitted()['content-change']).toEqual([[false], [true]]);
+		await fireEvent.update(textbox, '');
+		expect(emitted()['content-change']).toEqual([[false], [true], [false]]);
+	});
+
 	it('renders the four empty-state suggestions when the textarea is empty', () => {
 		const { getByTestId } = renderComponent({
 			props: {

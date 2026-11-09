@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import {
 	ref,
@@ -3479,6 +3480,21 @@ function onSwitchAgent(nextAgentId: string) {
 	});
 }
 
+const builderPromptHasContent = ref(false);
+const templatePrompts = computed(() =>
+	AGENT_TEMPLATES.map((template) => templateStarterMessage(template).message),
+);
+const animatedPromptPlaceholder = useAgentPromptInspiration({
+	prompts: templatePrompts,
+	enabled: () =>
+		showAgentIntro.value &&
+		showAiPanel.value &&
+		(!inlineTestChat.value || !isPreviewDockOpen.value) &&
+		!(compactChatLayout.value && showConfiguration.value) &&
+		!hasSentBuilderMessage.value &&
+		!builderPromptHasContent.value,
+});
+
 useKeybindings({
 	ctrl_j: {
 		disabled: function isAiPanelShortcutDisabled() {
@@ -3657,11 +3673,13 @@ useKeybindings({
 						:show-open-full-assistant="false"
 						:composer-height="inlineTestChat ? 'var(--agent-builder-composer-height)' : undefined"
 						:placeholder="
-							inlineTestChat
+							animatedPromptPlaceholder ??
+							(inlineTestChat
 								? locale.baseText('agents.builder.chatMode.buildPlaceholder')
-								: undefined
+								: undefined)
 						"
 						@message-sent="hasSentBuilderMessage = true"
+						@content-change="builderPromptHasContent = $event"
 						:key="agentId"
 						:subject="instanceAiEmbedSubject"
 						:launch="instanceAiEmbedLaunch"

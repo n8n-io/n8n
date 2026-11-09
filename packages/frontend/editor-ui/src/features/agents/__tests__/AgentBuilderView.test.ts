@@ -745,7 +745,14 @@ const commonStubs = {
 			'showOpenFullAssistant',
 			'placeholder',
 		],
-		emits: ['update:threadId', 'update:building', 'update:working', 'close', 'message-sent'],
+		emits: [
+			'update:threadId',
+			'update:building',
+			'update:working',
+			'close',
+			'message-sent',
+			'content-change',
+		],
 		// Stands in for the real `defineExpose`d `handoff`, `setPrefill` and `submitSuggestion` — the
 		// view calls these through a template ref, not a prop or emit.
 		methods: {
@@ -3980,6 +3987,34 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+	});
+
+	it.each([
+		{ chatWidth: 'current', testChat: 'dock' },
+		{ chatWidth: 'wide', testChat: 'dock' },
+		{ chatWidth: 'current', testChat: 'inline' },
+		{ chatWidth: 'wide', testChat: 'inline' },
+	])('previews template prompts in the $chatWidth/$testChat composer', async (builderLayout) => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		localStorage.removeItem('N8N_AGENT_BUILDER_CHAT_STARTED:p1:a1');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView({ props: { builderLayout } });
+		const panel = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		await vi.waitFor(() => expect(panel.props('placeholder')?.startsWith('B')).toBe(true));
+		const prompt = panel.props('placeholder');
+		panel.vm.$emit('content-change', true);
+		await nextTick();
+		expect(panel.props('placeholder')).not.toBe(prompt);
+		expect(submitSuggestionMock).not.toHaveBeenCalled();
+		panel.vm.$emit('content-change', false);
+		await nextTick();
+		await vi.waitFor(() => expect(panel.props('placeholder')?.startsWith('B')).toBe(true));
+		panel.vm.$emit('message-sent');
+		await nextTick();
+		expect(panel.props('placeholder')).toBe(
+			builderLayout.testChat === 'inline' ? 'agents.builder.chatMode.buildPlaceholder' : undefined,
+		);
 	});
 
 	it('shows the template intro for a blank pending agent and hides it for a saved one', async () => {

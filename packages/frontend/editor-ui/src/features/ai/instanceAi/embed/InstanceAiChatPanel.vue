@@ -15,7 +15,6 @@ import {
 	computed,
 	defineComponent,
 	h,
-	nextTick,
 	onBeforeUnmount,
 	onMounted,
 	onUnmounted,
@@ -99,6 +98,7 @@ const emit = defineEmits<{
 	'update:working': [working: boolean];
 	close: [];
 	'message-sent': [];
+	'content-change': [hasContent: boolean];
 }>();
 
 const slots = defineSlots<{
@@ -184,15 +184,6 @@ const conversationRef = ref<InstanceType<typeof InstanceAiConversation> | null>(
 const agentThreadRef = ref<InstanceType<typeof AssistantAgentPanelThread> | null>(null);
 /** The mounted chat on either runtime. Both expose the same calls. */
 const activeChat = computed(() => conversationRef.value ?? agentThreadRef.value);
-watch(
-	() => props.visible,
-	async (visible, wasVisible) => {
-		if (!visible || wasVisible !== false) return;
-		await nextTick();
-		activeChat.value?.focus();
-	},
-	{ flush: 'post' },
-);
 
 /**
  * A hand-off requested before the conversation for the target thread exists
@@ -607,8 +598,10 @@ const ThreadScope = defineComponent({
 					subject: props.subject,
 					beforeSend: props.beforeSend,
 					placeholder: props.placeholder,
+					autofocus: props.visible,
 					composerHeight: props.composerHeight,
 					onMessageSent: () => emit('message-sent'),
+					onContentChange: (hasContent: boolean) => emit('content-change', hasContent),
 					onThreadMissing: () => scopeEmit('thread-missing'),
 				},
 				{
@@ -714,12 +707,14 @@ function handleCloseShortcut(event: KeyboardEvent) {
 				:subject="props.subject"
 				:new-session="panelAgentThreads.get(activeThreadId) === true"
 				:placeholder="props.placeholder"
+				:visible="props.visible"
 				:composer-height="props.composerHeight"
 				:before-send="props.beforeSend"
 				:class="$style.conversation"
 				@update:building="onBuildingChange"
 				@update:working="emit('update:working', $event)"
 				@message-sent="emit('message-sent')"
+				@content-change="emit('content-change', $event)"
 				@session-created="onAgentSessionCreated"
 			>
 				<template v-if="slots.empty" #empty><slot name="empty" /></template>

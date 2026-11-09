@@ -11,6 +11,7 @@ import {
 	createThreadComponentRenderer,
 	defaultModuleSettings,
 	InstanceAiInputStub,
+	inputFocusSpy,
 	makeThread,
 } from '../../__tests__/createThreadComponentRenderer';
 import InstanceAiConversation from '../InstanceAiConversation.vue';
@@ -96,7 +97,7 @@ describe('InstanceAiConversation', () => {
 	// assertions mount a small host directly with `@vue/test-utils` and read the
 	// child wrapper's own `emitted()`.
 	function mountConversation(
-		props: { mentionsEnabled?: boolean } = {},
+		props: { mentionsEnabled?: boolean; autofocus?: boolean } = {},
 		showMentionedWorkflow = vi.fn(),
 	) {
 		const Host = defineComponent({
@@ -133,6 +134,39 @@ describe('InstanceAiConversation', () => {
 		);
 		return { restoreDraft };
 	}
+
+	it('focuses the embedded composer on load when another control has focus', async () => {
+		const button = document.createElement('button');
+		document.body.append(button);
+		button.focus();
+		const wrapper = mountConversation({ autofocus: true });
+		await nextTick();
+		await nextTick();
+		expect(inputFocusSpy).toHaveBeenCalled();
+		wrapper.unmount();
+		button.remove();
+	});
+
+	it('focuses the composer when its panel becomes visible', async () => {
+		const props = reactive({ autofocus: false });
+		const wrapper = mountConversation(props);
+		await nextTick();
+		expect(inputFocusSpy).not.toHaveBeenCalled();
+		props.autofocus = true;
+		await nextTick();
+		await nextTick();
+		expect(inputFocusSpy).toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('forwards draft content changes to the embedded host', () => {
+		const wrapper = mountConversation();
+		wrapper.findComponent(InstanceAiInputStub).vm.$emit('content-change', true);
+		expect(wrapper.findComponent(InstanceAiConversation).emitted('content-change')).toEqual([
+			[true],
+		]);
+		wrapper.unmount();
+	});
 
 	it('blocks the composer and keeps the out-of-credits notice when credits are gone', () => {
 		store.isOutOfCredits = true;

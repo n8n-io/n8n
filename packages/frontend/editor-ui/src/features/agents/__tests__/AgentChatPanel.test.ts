@@ -432,6 +432,7 @@ describe('AgentChatPanel', () => {
 	function mountPanel(
 		overrides: Partial<{
 			visible: boolean;
+			autofocus: boolean;
 			continueSessionId: string;
 			agentConfig: AgentJsonConfig | null;
 			attachmentCapabilities: ProviderAttachmentCapabilities;
@@ -478,6 +479,32 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it.each([true, false])(
+		'focuses only the visible Assistant composer (visible: %s)',
+		async (visible) => {
+			const wrapper = mountPanel({ autofocus: true, visible });
+			await flushPromises();
+			expect(focusInputMock).toHaveBeenCalledTimes(visible ? 1 : 0);
+			await wrapper.setProps({ visible: true });
+			await flushPromises();
+			expect(focusInputMock).toHaveBeenCalled();
+		},
+	);
+
+	it('reports draft changes without putting placeholder prompts in the draft', async () => {
+		const wrapper = mountPanel({ placeholder: 'Build a news agent' });
+		expect(wrapper.emitted('content-change')).toEqual([[false]]);
+		const input = wrapper.findComponent({ name: 'ChatInputBase' });
+		input.vm.$emit('update:modelValue', 'My draft');
+		await nextTick();
+		expect(wrapper.emitted('content-change')).toEqual([[false], [true]]);
+		await wrapper.setProps({ placeholder: 'Build another agent' });
+		expect(input.props('modelValue')).toBe('My draft');
+		input.vm.$emit('update:modelValue', '');
+		await nextTick();
+		expect(wrapper.emitted('content-change')).toEqual([[false], [true], [false]]);
+	});
 
 	it('submits a message when Web Crypto is unavailable', async () => {
 		const actual = await vi.importActual<typeof import('../composables/agentTelemetry.utils')>(
