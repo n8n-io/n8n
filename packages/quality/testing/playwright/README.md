@@ -275,6 +275,10 @@ responses travel back to the main over the stack's Redis. Under that stack
 every workflow the API helpers create gets `settings.engineType = 'v2'`, so a
 spec proves parity without changes.
 
+The `engine-v2:queue:e2e` project runs the same specs on a queue-mode stack:
+one main, one worker, the same engine container. The in-process engine refuses
+a queue-mode stack, since it queues work in memory.
+
 `@db:reset` clears the control plane only, so data plane execution rows live
 on inside a worker. The engine database is emptied once, when the worker takes
 its container.

@@ -245,18 +245,25 @@ export function getProjects(): Project[] {
 		// control plane database access. Opt-in by tag while the engine matures:
 		// any `@engine:*` tag selects the spec, and the parity fixture then runs,
 		// skips or expects failure by bucket. Drop the grep once the suite is
-		// triaged. The CI job e2e-engine blocks merges, so a spec this grep selects
-		// fails the PR when it misses the outcome its bucket asks for.
-		projects.push({
-			name: 'engine-v2:e2e',
-			testDir: './tests/e2e',
-			grep: new RegExp(ENGINE_TAG_PREFIX),
-			timeout: 180000,
-			// One worker, one stack. Every worker boots its own Postgres, main and
-			// engine, and the CI job asks for one worker anyway.
-			workers: 1,
-			use: { containerConfig: { postgres: true, engine: 'container' } },
-		});
+		// triaged. The CI jobs e2e-engine and e2e-engine-queue block merges, so a
+		// spec this grep selects fails the PR when it misses the outcome its
+		// bucket asks for.
+		const ENGINE_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
+			{ name: 'engine-v2', config: { postgres: true, engine: 'container' } },
+			{ name: 'engine-v2:queue', config: { postgres: true, engine: 'container', workers: 1 } },
+		];
+		for (const { name, config } of ENGINE_CONFIGS) {
+			projects.push({
+				name: `${name}:e2e`,
+				testDir: './tests/e2e',
+				grep: new RegExp(ENGINE_TAG_PREFIX),
+				timeout: 180000,
+				// One worker, one stack. Every worker boots its own Postgres, main and
+				// engine, and the CI job asks for one worker anyway.
+				workers: 1,
+				use: { containerConfig: config },
+			});
+		}
 
 		projects.push({
 			name: 'coverage',

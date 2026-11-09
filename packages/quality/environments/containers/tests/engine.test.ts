@@ -186,12 +186,20 @@ describe('applyEngineEnv', () => {
 		);
 	});
 
-	test('rejects queue mode', () => {
+	test('rejects queue mode for the in-process engine', () => {
 		const env = { ...postgresEnv };
 
 		expect(() =>
-			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: true, ...engineOptions }),
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: true, projectName }),
 		).toThrow(/queue mode/);
+	});
+
+	test('accepts queue mode for a container engine', () => {
+		const env = { ...postgresEnv };
+
+		applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: true, ...engineOptions });
+
+		expect(env).toMatchObject({ N8N_ENABLED_MODULES: 'engine-v2', N8N_ENGINE_MODE: 'remote' });
 	});
 
 	test('rejects a stack without a main, since the engine would be started as one', () => {
@@ -199,6 +207,14 @@ describe('applyEngineEnv', () => {
 
 		expect(() =>
 			applyEngineEnv(env, { engine: 'container', mains: 0, isQueueMode: false, ...engineOptions }),
+		).toThrow(/exactly one main/);
+	});
+
+	test('rejects more than one main', () => {
+		const env = { ...postgresEnv };
+
+		expect(() =>
+			applyEngineEnv(env, { engine: 'container', mains: 2, isQueueMode: true, ...engineOptions }),
 		).toThrow(/exactly one main/);
 	});
 });

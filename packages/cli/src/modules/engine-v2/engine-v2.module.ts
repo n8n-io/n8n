@@ -13,7 +13,7 @@ import { randomBytes } from 'node:crypto';
  * Not a default module: enable it with `N8N_ENABLED_MODULES=engine-v2`. When it
  * is off, nothing here loads and no data plane connection is opened.
  *
- * Main-only, and regular mode only. The in-process engine uses
+ * Main-only. In-process mode is regular mode only: the in-process engine uses
  * `InMemoryWorkQueue`, so its work does not survive the process and cannot be
  * shared with other mains or workers. In `remote` mode (`N8N_ENGINE_MODE`) a
  * separate `n8n engine` process hosts the data plane; this module then starts
@@ -27,11 +27,11 @@ export class EngineV2Module implements ModuleInterface {
 	private channelSubscriber?: { stop(): Promise<void> };
 
 	async init() {
-		if (Container.get(ExecutionsConfig).mode === 'queue') {
-			throw new UserError('The engine-v2 module does not support queue mode.');
-		}
-
 		const engineConfig = Container.get(EngineConfig);
+
+		if (engineConfig.mode === 'in-process' && Container.get(ExecutionsConfig).mode === 'queue') {
+			throw new UserError('The in-process engine does not support queue mode.');
+		}
 
 		if (engineConfig.mode === 'remote') {
 			assertRemoteConfig(engineConfig);

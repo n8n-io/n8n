@@ -94,8 +94,8 @@ export function assertEngineSupported({
 }: Omit<EngineEnvOptions, 'projectName'> & { usePostgres: boolean }): void {
 	if (!engine) return;
 
-	if (isQueueMode) {
-		throw new Error('Engine v2 does not support queue mode: use a single main and no workers');
+	if (engine === 'in-process' && isQueueMode) {
+		throw new Error('The in-process engine does not support queue mode: use `engine: "container"`');
 	}
 
 	// The engine reports to a main; without one it would be started as "main 1".

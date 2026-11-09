@@ -491,6 +491,25 @@ jobs:
       artifact-prefix: e2e-engine
     secrets: inherit
 
+  # The same specs on a queue-mode stack: one main and one worker.
+  e2e-engine-queue:
+    name: E2E on engine v2 (queue mode)
+    needs: [install-and-build, prepare-docker]
+    if: >-
+      needs.prepare-docker.result == 'success' &&
+      (needs.install-and-build.outputs.engine_e2e == 'true'
+        || contains(github.event.pull_request.labels.*.name, 'force-engine-e2e')) &&
+      github.event.pull_request.head.repo.fork != true &&
+      github.event_name != 'merge_group'
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+      test-mode: docker-artifact
+      test-command: pnpm --filter=n8n-playwright test:container:engine-v2:queue:e2e
+      workers: '1'
+      artifact-prefix: e2e-engine-queue
+    secrets: inherit
+
   # Boots the editor-ui against the Vite dev server and fails on any console
   # or page error during load. Catches regressions in dev-mode module
   # resolution (missing Vite alias, broken workspace package interop) that
@@ -605,6 +624,7 @@ jobs:
         e2e-matrix,
         e2e,
         e2e-engine,
+        e2e-engine-queue,
         dev-server-smoke,
         frontend-declarations,
         db-tests,
