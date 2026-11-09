@@ -15,6 +15,7 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 	InstanceAiWorkflowAttachment,
+	InstanceAiAppTarget,
 } from '@n8n/api-types';
 
 import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from './canvasPreview.utils';
@@ -590,6 +591,23 @@ function enrichWorkflowFromPendingAttachment(
 	);
 }
 
+function enrichAppsFromTargets(col: Collections, targets: readonly InstanceAiAppTarget[]): void {
+	for (const target of targets) {
+		const existing = col.produced.get(target.appId);
+		if (existing && existing.type !== 'app') continue;
+		recordProduced(
+			col,
+			{
+				type: 'app',
+				id: target.appId,
+				name: existing?.name ?? target.name ?? 'App',
+				projectId: target.projectId,
+			},
+			{ linkable: existing !== undefined },
+		);
+	}
+}
+
 function enrichWorkflowsFromTransientReferences(
 	col: Collections,
 	references: readonly TransientWorkflowArtifactReference[],
@@ -654,6 +672,7 @@ export interface ResourceRegistrySources {
 	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined;
 	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[];
 	agentBuilderTargets?: () => AgentBuilderTargetMetadata[];
+	appTargets?: () => readonly InstanceAiAppTarget[];
 }
 
 /**
@@ -688,6 +707,7 @@ export function useResourceRegistry(
 		pendingWorkflowAttachment,
 		transientWorkflowReferences,
 		agentBuilderTargets,
+		appTargets,
 	}: ResourceRegistrySources = {},
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
@@ -731,6 +751,7 @@ export function useResourceRegistry(
 			}
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
 			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
+			enrichAppsFromTargets(col, appTargets?.() ?? []);
 			col.intake = 'mentioned';
 			enrichWorkflowsFromTransientReferences(col, transientWorkflowReferences?.() ?? []);
 

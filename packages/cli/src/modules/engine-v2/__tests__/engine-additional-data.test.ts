@@ -2,7 +2,7 @@ import type { SsrfProtectionService } from '@n8n/backend-network';
 import type { EventService, UrlService } from '@n8n/backend-services';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { UnimplementedError } from '@n8n/engine';
-import type { ICredentialsHelper } from 'n8n-workflow';
+import type { DataTableProxyProvider, ICredentialsHelper } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineAdditionalDataBuilder } from '../engine-additional-data';
@@ -28,6 +28,7 @@ describe('EngineAdditionalDataBuilder', () => {
 	});
 	const eventService = mock<EventService>();
 	const credentialsHelper = mock<ICredentialsHelper>();
+	const dataTableProxyProvider = mock<DataTableProxyProvider>();
 	const ssrfProtectionService = mock<SsrfProtectionService>();
 
 	const context = {
@@ -45,7 +46,7 @@ describe('EngineAdditionalDataBuilder', () => {
 			eventService,
 			mock<SsrfProtectionConfig>({ enabled: ssrfEnabled }),
 			ssrfProtectionService,
-		).build(context, credentialsHelper);
+		).build(context, credentialsHelper, dataTableProxyProvider);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -78,6 +79,10 @@ describe('EngineAdditionalDataBuilder', () => {
 
 	it('uses the credentials helper it is given', () => {
 		expect(build().credentialsHelper).toBe(credentialsHelper);
+	});
+
+	it('exposes the data table provider under the key the node helpers read', () => {
+		expect(build()['data-table']).toEqual({ dataTableProxyProvider });
 	});
 
 	it('reports direct external secret access as unsupported', () => {

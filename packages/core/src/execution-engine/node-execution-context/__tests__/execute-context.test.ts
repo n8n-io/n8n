@@ -20,6 +20,7 @@ import {
 	ExpressionError,
 	NodeConnectionTypes,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
+	AI_EVENT_REDACTED_MESSAGE,
 	WAIT_INDEFINITELY,
 	WAIT_FOR_SUB_EXECUTION,
 	MAX_IN_PROCESS_WAIT_MS,
@@ -897,6 +898,31 @@ describe('ExecuteContext', () => {
 			const context = makeContext('manual', throwingRunData);
 
 			expect(context.isConsoleOutputRedacted()).toBe(true);
+		});
+
+		describe('AI event payloads', () => {
+			it('replaces the payload with the marker when the channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(true, false));
+				context.logAiEvent('ai-llm-generated-output', '{"messages":["secret prompt"]}');
+
+				expect(additionalData.logAiEvent).toHaveBeenCalledWith(
+					'ai-llm-generated-output',
+					expect.objectContaining({ nodeName: node.name, msg: AI_EVENT_REDACTED_MESSAGE }),
+				);
+				expect(JSON.stringify(vi.mocked(additionalData.logAiEvent).mock.calls)).not.toContain(
+					'secret prompt',
+				);
+			});
+
+			it('passes the payload through unchanged when no channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(false, false));
+				context.logAiEvent('ai-llm-generated-output', '{"messages":["hello"]}');
+
+				expect(additionalData.logAiEvent).toHaveBeenCalledWith(
+					'ai-llm-generated-output',
+					expect.objectContaining({ msg: '{"messages":["hello"]}' }),
+				);
+			});
 		});
 
 		describe('production stdout gating', () => {
