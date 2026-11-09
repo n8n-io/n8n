@@ -1,5 +1,5 @@
 import type { ListSkillsQueryDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import { Person, type User } from '@n8n/db';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -841,7 +841,12 @@ describe('SkillService', () => {
 				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const }]]),
 			);
 			users.findManyByIds.mockResolvedValue([
-				{ id: 'user-1', email: null, firstName: null, lastName: null } as unknown as User,
+				Object.assign(new Person(), {
+					id: 'user-1',
+					email: null,
+					firstName: null,
+					lastName: null,
+				}) as unknown as User,
 			]);
 
 			const { count, data } = await service.list(user, {} as ListSkillsQueryDto);

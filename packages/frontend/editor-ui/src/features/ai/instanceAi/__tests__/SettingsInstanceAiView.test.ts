@@ -48,13 +48,7 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const {
-	contextPreferencesEnabledMock,
-	contextSkillsEnabledMock,
-	confirmMock,
-	testSavedCredentialMock,
-} = vi.hoisted(() => ({
-	contextPreferencesEnabledMock: vi.fn(() => true),
+const { contextSkillsEnabledMock, confirmMock, testSavedCredentialMock } = vi.hoisted(() => ({
 	contextSkillsEnabledMock: vi.fn(() => true),
 	confirmMock: vi.fn(),
 	testSavedCredentialMock: vi.fn(),
@@ -75,7 +69,6 @@ vi.mock('@/app/composables/useMessage', () => ({
 }));
 
 vi.mock('@/features/settings/context/context.utils', () => ({
-	isContextPreferencesEnabled: () => contextPreferencesEnabledMock(),
 	isContextSkillsEnabled: () => contextSkillsEnabledMock(),
 }));
 
@@ -1069,15 +1062,6 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByTestId('n8n-agent-permission-group-folders').textContent).toContain(
 				'settings.n8nAgent.permissions.group.default',
 			);
-		});
-
-		it('hides the Preferences group while the 111_context_preferences flag is off', () => {
-			contextPreferencesEnabledMock.mockReturnValueOnce(false);
-
-			const { queryByTestId, getByTestId } = renderComponent();
-
-			expect(queryByTestId('n8n-agent-permission-group-preferences')).toBeNull();
-			expect(getByTestId('n8n-agent-permission-group-workflows')).toBeVisible();
 		});
 
 		it('shows the Skills group while context skills are enabled', () => {

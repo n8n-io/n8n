@@ -60,7 +60,7 @@ on:
         type: string
         default: ''
       model:
-        description: 'Model override (provider/model). Empty = anthropic/claude-opus-4-8. Vertex Claude: google-vertex-anthropic/<model>. OpenAI-compat experiments use custom/<model> + model-url + model-key. See evaluations/README.md.'
+        description: 'Model override (provider/model). Empty = anthropic/claude-opus-5-5. Vertex Claude: google-vertex-anthropic/<model>. OpenAI-compat experiments use custom/<model> + model-url + model-key. See evaluations/README.md.'
         required: false
         type: string
         default: ''
@@ -125,7 +125,7 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Vertex Claude: google-vertex-anthropic/<model>. OpenAI-compat experiments: custom/<model> + model-url + model-key.'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-5-5). Vertex Claude: google-vertex-anthropic/<model>. OpenAI-compat experiments: custom/<model> + model-url + model-key.'
         required: false
         default: ''
       model-url:

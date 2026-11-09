@@ -50,9 +50,9 @@ export interface ResumeLocation {
 }
 
 /**
- * How long `locate` holds a request for an execution that still runs but has
- * no step that accepts a request yet. The default covers the write of the
- * `waiting` row, not upstream work.
+ * How long `locateByToken` holds a request for an execution that still runs
+ * but has no step that accepts a request yet. The default covers the write of
+ * the `waiting` row, not upstream work.
  */
 export interface ResumeHold {
 	attempts: number;
@@ -94,7 +94,7 @@ const namesStep = (claims: ResumeTokenClaims, step: StepRecord) =>
  * know which node waits before that code runs, and the request must be
  * authorized before any node code runs.
  *
- * 1. `locate` or `locateByToken` verifies the token and names the waiting step.
+ * 1. `locateByToken` verifies the token and names the waiting step.
  * 2. `resolve` verifies the token against that step and ends its wait with the
  *    outputs that the resume method produced.
  */
@@ -108,26 +108,12 @@ export class ResumeRequestService {
 	) {}
 
 	/**
-	 * Verifies the token and returns the execution's execution-bound wait, or
-	 * `null` if it has none. The caller reads the execution's status to learn why.
+	 * Verifies the token and returns the wait it can end. The kind of the token
+	 * decides whether `id` names an execution or a step. The target is `null`
+	 * when no step accepts the request.
 	 *
 	 * A request can arrive before the step writes its wait. While the execution
 	 * is live, this retries for a short time.
-	 *
-	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, `ambiguous` or `step_bound_only`.
-	 */
-	async locate(executionId: string, token: string): Promise<ResumeTarget | null> {
-		const claims = verifyResumeToken(this.secret, token);
-		if (claims?.kind !== 'execution-bound' || claims.executionId !== executionId) {
-			throw new ResumeRejectedError('invalid_token');
-		}
-		return await this.locateExecutionBoundWait(executionId);
-	}
-
-	/**
-	 * Verifies the token and returns the wait it can end, for every kind of
-	 * token. The kind of the token decides whether `id` names an execution or a
-	 * step. An execution-bound token gets the answer of `locate`.
 	 *
 	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, `ambiguous` or `step_bound_only`.
 	 */
@@ -170,9 +156,9 @@ export class ResumeRequestService {
 
 	/**
 	 * The node sends its URL or button while its step runs, and the step waits
-	 * only after the node returns. A request can arrive in between: hold as
-	 * `locate` does. A settled step never waits again, because a loop runs its
-	 * next iteration as a new step.
+	 * only after the node returns. A request can arrive in between: hold as for
+	 * an execution-bound request. A settled step never waits again, because a
+	 * loop runs its next iteration as a new step.
 	 */
 	private async locateStepBoundWait(stepId: string): Promise<ResumeLocation> {
 		return await this.poll<ResumeLocation>(async () => {
@@ -205,7 +191,7 @@ export class ResumeRequestService {
 	/**
 	 * Ends the wait of `stepId` with `outputs`, and announces the step. The
 	 * worker that claims it emits the outputs. A second wait does not refuse
-	 * the request: `locate` chose the step while it was the only one. The
+	 * the request: `locateByToken` chose the step while it was the only one. The
 	 * binding of a step-bound token is not compared here: `locateByToken`
 	 * compared it with the request.
 	 *

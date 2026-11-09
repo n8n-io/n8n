@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 
+import type { AppActor, AppBuildOrigin } from '../app-events';
 import { AppBuildService } from '../build/app-build.service';
 import { createAppScaffold } from '../scaffold/app-scaffold';
 import type { AppVersion } from './app-version.entity';
@@ -24,6 +25,7 @@ export class AppChangeService {
 		files: AppFiles,
 		label: string | null = null,
 		bindings?: AppBinding[],
+		origin: AppBuildOrigin = {},
 	): Promise<AppBuildResponse> {
 		this.builds.assertNotStopping();
 		const version = await this.versions.saveSource(
@@ -35,7 +37,10 @@ export class AppChangeService {
 			bindings,
 		);
 		try {
-			return await this.builds.build(projectId, appId, version.id);
+			return await this.builds.build(projectId, appId, version.id, false, {
+				changeSource: expectedDraftVersionId === null ? 'initial' : 'chat',
+				...origin,
+			});
 		} catch (error) {
 			if (error instanceof ConflictError) {
 				const status = await this.builds.status(projectId, appId, version.id);
@@ -62,30 +67,43 @@ export class AppChangeService {
 		appId: string,
 		expectedDraftVersionId: string | null,
 		bindings: AppBinding[],
-	): Promise<AppVersion> {
+		actor?: AppActor,
+	): Promise<{ version: AppVersion; previousBindings: AppBinding[] }> {
 		this.builds.assertNotStopping();
+		const origin: AppBuildOrigin = { ...actor, changeSource: 'bindings' };
 		if (expectedDraftVersionId === null) {
-			return await this.saveAndStartBuild(
+			const version = await this.saveAndStartBuild(
 				projectId,
 				appId,
 				null,
 				createAppScaffold(),
 				null,
 				bindings,
+				origin,
 			);
+			return { version, previousBindings: [] };
 		}
 		const draft = await this.versions.getVersion(projectId, appId, expectedDraftVersionId);
+		const previousBindings = draft.bindings;
 		if (draft.buildStatus === 'succeeded' && draft.bundleArtifactId !== null) {
-			return await this.versions.copyDraft(projectId, appId, expectedDraftVersionId, bindings);
+			const version = await this.versions.copyDraft(
+				projectId,
+				appId,
+				expectedDraftVersionId,
+				bindings,
+			);
+			return { version, previousBindings };
 		}
-		return await this.saveAndStartBuild(
+		const version = await this.saveAndStartBuild(
 			projectId,
 			appId,
 			expectedDraftVersionId,
 			await this.versions.readSource(projectId, appId, expectedDraftVersionId),
 			draft.label,
 			bindings,
+			origin,
 		);
+		return { version, previousBindings };
 	}
 
 	/** Saves a version and starts its build without waiting for the build. */
@@ -96,6 +114,7 @@ export class AppChangeService {
 		files: AppFiles,
 		label: string | null,
 		bindings: AppBinding[],
+		origin: AppBuildOrigin,
 	): Promise<AppVersion> {
 		const version = await this.versions.saveSource(
 			projectId,
@@ -105,13 +124,18 @@ export class AppChangeService {
 			label,
 			bindings,
 		);
-		await this.startBuildInBackground(projectId, appId, version.id);
+		await this.startBuildInBackground(projectId, appId, version.id, origin);
 		return version;
 	}
 
-	private async startBuildInBackground(projectId: string, appId: string, versionId: string) {
+	private async startBuildInBackground(
+		projectId: string,
+		appId: string,
+		versionId: string,
+		origin: AppBuildOrigin = {},
+	) {
 		try {
-			await this.builds.startBuild(projectId, appId, versionId);
+			await this.builds.startBuild(projectId, appId, versionId, false, origin);
 		} catch (error) {
 			// The version is saved. The build status shows the problem, and the user can retry it.
 			this.logger.warn('Could not start the build of an app version.', {
@@ -139,6 +163,7 @@ export class AppChangeService {
 		appId: string,
 		versionId: string,
 		expectedDraftVersionId: string | null,
+		actor?: AppActor,
 	): Promise<AppVersion> {
 		this.builds.assertNotStopping();
 		const version = await this.versions.restoreSource(
@@ -147,7 +172,10 @@ export class AppChangeService {
 			versionId,
 			expectedDraftVersionId,
 		);
-		await this.startBuildInBackground(projectId, appId, version.id);
+		await this.startBuildInBackground(projectId, appId, version.id, {
+			...actor,
+			changeSource: 'restore',
+		});
 		return version;
 	}
 }
