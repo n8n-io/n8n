@@ -10,11 +10,13 @@ function ruleBody(selector: string) {
 }
 
 describe('Markdown consumer style contracts', () => {
-	it('inherits base text styles unless the consumer sets an override', () => {
+	it('uses default text styles unless the consumer sets an override', () => {
 		const root = ruleBody('.n8n-markdown');
-		expect(root).toContain('color: var(--n8n-markdown--color, inherit)');
-		expect(root).toContain('font-size: var(--n8n-markdown--font-size--base, inherit)');
-		expect(root).toContain('line-height: inherit');
+		expect(root).toContain(
+			'color: var(--n8n-markdown--color, color-mix(in oklch, var(--text-color), transparent 10%))',
+		);
+		expect(root).toContain('font-size: var(--n8n-markdown--font-size--base, var(--font-size--md))');
+		expect(root).toContain('line-height: var(--n8n-markdown--line-height, var(--line-height--xl))');
 	});
 
 	it('keeps the chat inline code background override', () => {

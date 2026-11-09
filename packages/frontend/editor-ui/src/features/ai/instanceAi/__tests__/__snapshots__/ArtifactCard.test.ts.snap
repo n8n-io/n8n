@@ -12,7 +12,7 @@ exports[`ArtifactCard > shows the agent identity icon instead of the normal arti
     >
       
       <div
-        class="tile"
+        class="n8n-agent-icon tile"
         data-test-id="agent-personalisation-icon-tile"
         style="--agent-personalisation-gradient-from: #FF1500; --agent-personalisation-gradient-to: #FF6900; --agent-personalisation-gradient-angle: 135deg; --agent-personalisation-gradient-from-stop: 0%; --agent-personalisation-gradient-to-stop: 100%; width: 24px; height: 24px;"
       >
