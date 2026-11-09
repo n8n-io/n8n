@@ -98,6 +98,15 @@ export function result(overrides: Partial<SelfHealingResultDetail> = {}): SelfHe
 		updatedAt: '2026-10-09T09:00:00.000Z',
 		reviewState: 'open',
 		suggestions: [suggestion()],
+		workflows: [
+			{
+				workflowId: resultSelection.workflowId,
+				name: 'Daily report',
+				change: 'modified',
+				suggestionId: 'suggestion-1',
+			},
+		],
+		calls: [],
 		execution: { status: 'available', id: 'execution-1' },
 		...overrides,
 	};

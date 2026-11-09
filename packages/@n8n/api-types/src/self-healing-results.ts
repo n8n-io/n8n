@@ -44,6 +44,19 @@ export type SelfHealingExecutionReference =
  */
 export type SelfHealingReviewState = 'open' | 'applied' | 'outdated' | 'dismissed' | 'closed';
 
+export type SelfHealingResultWorkflow = {
+	workflowId: string;
+	name: string;
+	change: 'modified' | 'unchanged';
+	/** `null` for an unchanged workflow. */
+	suggestionId: string | null;
+};
+
+export type SelfHealingResultWorkflowCall = {
+	callerWorkflowId: string;
+	calledWorkflowId: string;
+};
+
 export type SelfHealingResultDetail = SelfHealingResultContent & {
 	resultId: string;
 	workflowId: string;
@@ -55,6 +68,14 @@ export type SelfHealingResultDetail = SelfHealingResultContent & {
 	reviewState: SelfHealingReviewState;
 	/** One suggestion for each changed workflow. The triggering workflow comes first. */
 	suggestions: WorkflowSuggestionProposalDetail[];
+	/**
+	 * The triggering workflow, each changed workflow, and the unchanged workflows on the current
+	 * call paths between them. The triggering workflow comes first, then the nearest workflows.
+	 * A changed workflow without such a path has no caller in `calls`.
+	 */
+	workflows: SelfHealingResultWorkflow[];
+	/** Current static sub-workflow calls between the listed workflows. Can contain cycles. */
+	calls: SelfHealingResultWorkflowCall[];
 	execution: SelfHealingExecutionReference;
 };
 
