@@ -258,7 +258,7 @@ export function createAppsTool(context: InstanceAiContext) {
 		.description(
 			'Build n8n Apps: small static Vue apps that n8n builds and hosts. ' +
 				'Load `app-builder` via `load_skill` before calling this tool. ' +
-				'`create` shows an editable blueprint and creates the app only after approval. ' +
+				'`create` shows an editable blueprint, including its planned bindings, and creates the app only after approval. ' +
 				'After an approved `create`, call `open` with the returned `app.id` before editing files. ' +
 				'Use the approved blueprint, including additional instructions, while building. ' +
 				'If the user cancels, do not create the app. ' +

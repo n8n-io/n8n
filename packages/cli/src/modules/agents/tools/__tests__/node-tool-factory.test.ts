@@ -385,11 +385,13 @@ describe('resolveNodeTool → binary output', () => {
 	}
 
 	it('adopts binary output as agent files and lists them as metadata', async () => {
-		const { output, adoptFromItems, tool } = await runTool({ persistence: { threadId: 't1' } });
+		const { output, adoptFromItems, tool } = await runTool({
+			persistence: { threadId: 't1', resourceId: 'draft-chat:user-1' },
+		});
 
 		expect(adoptFromItems).toHaveBeenCalledWith(
 			[binaryItem],
-			{ agentId: 'agent-1', projectId: 'p1', threadId: 't1' },
+			{ agentId: 'agent-1', projectId: 'p1', threadId: 't1', resourceId: 'draft-chat:user-1' },
 			undefined,
 		);
 		expect(output).toEqual({
@@ -402,7 +404,10 @@ describe('resolveNodeTool → binary output', () => {
 
 	it('lists the files that are too large to store', async () => {
 		const skipped = { fileName: 'big.mp4', reason: 'larger than 50 MB' };
-		const { output } = await runTool({ persistence: { threadId: 't1' } }, [skipped]);
+		const { output } = await runTool(
+			{ persistence: { threadId: 't1', resourceId: 'draft-chat:user-1' } },
+			[skipped],
+		);
 
 		expect(output).toMatchObject({ files: [file], skippedFiles: [skipped] });
 	});
@@ -410,6 +415,14 @@ describe('resolveNodeTool → binary output', () => {
 	it('drops the binary when the run has no thread', async () => {
 		const { output, adoptFromItems } = await runTool({});
 
+		expect(adoptFromItems).not.toHaveBeenCalled();
+		expect(output).toEqual({ status: 'success', data: [{ json: { id: 'drive-1' } }] });
+	});
+
+	it('drops the binary when the run has no resource identity', async () => {
+		const { output, adoptFromItems } = await runTool({
+			persistence: { threadId: 't1', resourceId: undefined },
+		});
 		expect(adoptFromItems).not.toHaveBeenCalled();
 		expect(output).toEqual({ status: 'success', data: [{ json: { id: 'drive-1' } }] });
 	});
@@ -439,7 +452,7 @@ describe('resolveNodeTool → file input', () => {
 		);
 
 		await tool.handler!({ name: 'cat.png', files: { data: 'aid-1' } }, {
-			persistence: { threadId: 't1' },
+			persistence: { threadId: 't1', resourceId: 'draft-chat:user-1' },
 		} as never);
 
 		expect(toBinary).toHaveBeenCalledWith({ data: 'aid-1' }, { projectId: 'p1', threadId: 't1' });
@@ -467,12 +480,12 @@ describe('resolveNodeTool → file input', () => {
 		});
 
 		await tool.handler!({ files: { data: 'aid-1' } }, {
-			persistence: { threadId: 't1' },
+			persistence: { threadId: 't1', resourceId: 'draft-chat:user-1' },
 		} as never);
 
 		expect(adoptFromItems).toHaveBeenCalledWith(
 			[{ json: {}, binary }],
-			{ agentId: null, projectId: 'p1', threadId: 't1' },
+			{ agentId: null, projectId: 'p1', threadId: 't1', resourceId: 'draft-chat:user-1' },
 			stored,
 		);
 	});
@@ -497,7 +510,9 @@ describe('resolveNodeTool → $fromAI argument named files', () => {
 			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
 		);
 
-		await tool.handler!({ files: 'a.txt,b.txt' }, { persistence: { threadId: 't1' } } as never);
+		await tool.handler!({ files: 'a.txt,b.txt' }, {
+			persistence: { threadId: 't1', resourceId: 'draft-chat:user-1' },
+		} as never);
 
 		expect(toBinary).not.toHaveBeenCalled();
 		expect(executeInline).toHaveBeenCalledWith(

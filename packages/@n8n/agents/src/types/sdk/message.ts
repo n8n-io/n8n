@@ -140,6 +140,18 @@ export type ContentToolCall = ContentMetadata & {
 	resultProviderOptions?: ProviderOptions;
 
 	/**
+	 * Number of content blocks before a provider-executed result in the original
+	 * assistant message. Replay puts the result back at this position.
+	 */
+	resultPosition?: number;
+
+	/**
+	 * Order of a provider-executed result among the results in the original
+	 * assistant message. Breaks ties between results at the same position.
+	 */
+	resultOrder?: number;
+
+	/**
 	 * Skills this tool activated programmatically (via `ctx.loadSkill`), so the
 	 * skill body can re-anchor to this result on a later turn instead of falling
 	 * back to the system prompt. Metadata only — never sent to the model.
@@ -237,6 +249,10 @@ export interface AgentMessageBase {
  */
 export interface CustomAgentMessages {
 	___dummyCustomMessage: { dummy: string };
+	runtimeSkillCatalog: {
+		type: 'n8n:runtime-skill-catalog';
+		content: string;
+	};
 	runtimeSkillUpdate: {
 		type: 'n8n:runtime-skill-update';
 		skillUpdate: {

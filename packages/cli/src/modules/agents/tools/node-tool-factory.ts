@@ -209,11 +209,17 @@ export async function resolveNodeTool(
 			}
 			if (!result.data.some((item) => item.binary)) return result;
 			// Without a thread there is no scope for the files, so the binary is dropped.
-			const threadId = toolCtx.persistence?.threadId;
-			if (!threadId) return { ...result, data: result.data.map(({ json }) => ({ json })) };
+			const persistence = toolCtx.persistence;
+			if (!persistence?.threadId || !persistence.resourceId)
+				return { ...result, data: result.data.map(({ json }) => ({ json })) };
 			const adopted = await Container.get(AgentFileBridge).adoptFromItems(
 				result.data,
-				{ agentId: ctx.agentId ?? null, projectId: ctx.projectId, threadId },
+				{
+					agentId: ctx.agentId ?? null,
+					projectId: ctx.projectId,
+					threadId: persistence.threadId,
+					resourceId: persistence.resourceId,
+				},
 				inputFiles?.stored,
 			);
 			return {
