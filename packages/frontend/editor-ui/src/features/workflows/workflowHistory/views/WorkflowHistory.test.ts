@@ -283,10 +283,6 @@ describe('WorkflowHistory', () => {
 	});
 
 	describe('slow actions', () => {
-		beforeAll(() => {
-			Element.prototype.scrollTo = vi.fn(() => {});
-		});
-
 		const renderPreview = createComponentRenderer(WorkflowHistoryPage, {
 			global: {
 				stubs: {
@@ -328,43 +324,6 @@ describe('WorkflowHistory', () => {
 			} as unknown as IWorkflowDb);
 			vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(shownVersion);
 		};
-
-		it('disables history row actions until a clone completes', async () => {
-			prepareSlowAction();
-			const clone = Promise.withResolvers<IWorkflowDb>();
-			const cloneSpy = vi
-				.spyOn(workflowHistoryStore, 'cloneIntoNewWorkflow')
-				.mockReturnValueOnce(clone.promise);
-			const restoreSpy = vi.spyOn(workflowHistoryStore, 'restoreWorkflow');
-			const downloadSpy = vi.spyOn(workflowHistoryStore, 'downloadVersion');
-			const { findAllByTestId, getByTestId } = renderComponent({
-				pinia,
-				global: { stubs: { WorkflowHistoryContent: true, WorkflowHistoryList: false } },
-			});
-			const rows = await findAllByTestId('workflow-history-list-item');
-			await userEvent.click(within(rows[1]).getByRole('button'));
-			await userEvent.click(getByTestId('action-clone'));
-
-			for (const row of rows.slice(1, 3)) {
-				await userEvent.click(within(row).getByRole('button'));
-				for (const action of ['clone', 'restore', 'download']) {
-					const item = getByTestId(`action-${action}`);
-					expect(item).toHaveAttribute('aria-disabled', 'true');
-					await userEvent.click(item);
-				}
-				await userEvent.keyboard('{Escape}');
-			}
-			expect(cloneSpy).toHaveBeenCalledTimes(1);
-			expect(restoreSpy).not.toHaveBeenCalled();
-			expect(downloadSpy).not.toHaveBeenCalled();
-
-			clone.resolve({ id: 'cloned-workflow' } as IWorkflowDb);
-			await flushPromises();
-			await userEvent.click(within(rows[2]).getByRole('button'));
-			for (const action of ['clone', 'restore', 'download']) {
-				expect(getByTestId(`action-${action}`)).not.toHaveAttribute('aria-disabled', 'true');
-			}
-		});
 
 		it.each([
 			['Clone to new workflow', 'cloneIntoNewWorkflow'],
@@ -446,12 +405,15 @@ describe('WorkflowHistory', () => {
 					expect(getByTestId('action-toggle-button')).toHaveAttribute('aria-busy', 'true');
 				});
 
-				const pendingActions = await openListActions(getAllByTestId, 1);
-				for (const pendingAction of slowActions) {
-					const entry = pendingActions.getByTestId(`action-${pendingAction}`);
-					expect(entry).toHaveAttribute('data-disabled');
-					expect(entry).toHaveAttribute('aria-disabled', 'true');
-					await userEvent.click(entry);
+				for (const index of [1, 2]) {
+					const pendingActions = await openListActions(getAllByTestId, index);
+					for (const pendingAction of slowActions) {
+						const entry = pendingActions.getByTestId(`action-${pendingAction}`);
+						expect(entry).toHaveAttribute('data-disabled');
+						expect(entry).toHaveAttribute('aria-disabled', 'true');
+						await userEvent.click(entry);
+					}
+					await userEvent.keyboard('{Escape}');
 				}
 				expect(spy).toHaveBeenCalledTimes(1);
 				for (const [otherMethod, otherSpy] of Object.entries(spies)) {
@@ -459,19 +421,18 @@ describe('WorkflowHistory', () => {
 						expect(otherSpy).not.toHaveBeenCalled();
 					}
 				}
-				await userEvent.keyboard('{Escape}');
 
 				finish(method === 'downloadVersion' ? undefined : { id: 'done', versionId: 'next' });
 				await waitFor(() => expect(getByTestId('action-toggle-button')).not.toBeDisabled());
-				const idleActions = await openListActions(getAllByTestId, 1);
-				await waitFor(() => {
+				for (const index of [1, 2]) {
+					const idleActions = await openListActions(getAllByTestId, index);
 					for (const idleAction of slowActions) {
-						expect(idleActions.getByTestId(`action-${idleAction}`)).not.toHaveAttribute(
-							'data-disabled',
-						);
+						const entry = idleActions.getByTestId(`action-${idleAction}`);
+						expect(entry).not.toHaveAttribute('data-disabled');
+						expect(entry).not.toHaveAttribute('aria-disabled', 'true');
 					}
-				});
-				await userEvent.keyboard('{Escape}');
+					await userEvent.keyboard('{Escape}');
+				}
 			},
 		);
 
