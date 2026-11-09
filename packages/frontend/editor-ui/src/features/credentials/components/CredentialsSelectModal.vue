@@ -278,7 +278,7 @@ function openCredentialType() {
 				<ContactAdminModal
 					v-model:open="isContactAdminOpen"
 					:kind="contactAdmin.kind"
-					:node-type-name="contactAdmin.subject"
+					:type-name="contactAdmin.subject"
 					:audience="contactAdmin.audience"
 				/>
 			</div>

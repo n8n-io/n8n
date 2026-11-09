@@ -95,9 +95,9 @@ vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal
 	},
 	ContactAdminModal: {
 		name: 'ContactAdminModal',
-		props: ['open', 'nodeTypeName', 'kind', 'audience'],
+		props: ['open', 'typeName', 'kind', 'audience'],
 		emits: ['update:open'],
-		template: '<div v-if="open" data-test-id="contact-admin-modal">{{ nodeTypeName }}</div>',
+		template: '<div v-if="open" data-test-id="contact-admin-modal">{{ typeName }}</div>',
 	},
 }));
 
@@ -294,7 +294,7 @@ describe('CredentialsSelectModal — restricted credential types', () => {
 		expect(dialog.props()).toMatchObject({
 			open: true,
 			kind: 'node',
-			nodeTypeName: 'n8n-nodes-base.mailjet',
+			typeName: 'n8n-nodes-base.mailjet',
 			audience: 'instance',
 		});
 	});

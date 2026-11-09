@@ -2110,7 +2110,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		<ContactAdminModal
 			v-model:open="isContactAdminOpen"
 			kind="credential"
-			:node-type-name="contactAdmin.subject"
+			:type-name="contactAdmin.subject"
 			:audience="contactAdmin.audience"
 		/>
 	</div>
