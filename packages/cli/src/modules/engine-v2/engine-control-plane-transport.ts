@@ -5,6 +5,8 @@ import { Service } from '@n8n/di';
 import type { ActionScope } from '@n8n/engine';
 import { mintActionToken } from '@n8n/engine';
 
+import { EngineTlsMaterial } from './engine-tls-material';
+
 /**
  * Builds the HTTP clients that call the control plane server.
  *
@@ -17,10 +19,12 @@ export class EngineControlPlaneTransport {
 	constructor(
 		private readonly engineConfig: EngineConfig,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly tlsMaterial: EngineTlsMaterial,
 	) {}
 
 	/** Returns a client that sends a fresh action token with `scope` on every request. */
 	forScope(scope: ActionScope): HttpRequestClient {
+		const { tls } = this.tlsMaterial;
 		return this.outboundHttp.requests({
 			// Fixed, n8n-controlled host.
 			useDefaultSsrfPolicy: 'unsafe',
@@ -32,6 +36,7 @@ export class EngineControlPlaneTransport {
 			headers: () => ({
 				authorization: `Bearer ${mintActionToken(this.engineConfig.authSecret, scope)}`,
 			}),
+			...(tls && { connectionPool: { agentOptions: tls } }),
 		});
 	}
 }

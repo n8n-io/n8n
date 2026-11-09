@@ -1,16 +1,24 @@
 import type { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mintActionToken, mintIdentityToken, type LifecycleEvent } from '@n8n/engine';
 import type { Request, Response } from 'express';
+import { generateTlsCerts, type TlsCertFiles } from 'n8n-containers/helpers/tls-certs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
+import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsController } from '../engine-credentials.controller';
 import type { EngineDataTablesController } from '../engine-data-tables.controller';
 import type { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
 import type { EngineSubWorkflowController } from '../engine-sub-workflow.controller';
+import type { EngineTlsMaterial } from '../engine-tls-material';
 
 const authSecret = 'a'.repeat(32);
 
@@ -41,21 +49,25 @@ describe('EngineControlPlaneServer', () => {
 			...overrides,
 		});
 
-	beforeEach(async () => {
-		serverLogger = mock<Logger>();
-		pushRelay = mock<EngineLifecycleEventPushRelay>();
-		credentialsController = mock<EngineCredentialsController>();
-		dataTablesController = mock<EngineDataTablesController>();
-		const controller = new EngineLifecycleEventController(pushRelay);
+	const startServer = async (tls?: EngineTlsMaterial['tls']) => {
 		server = new EngineControlPlaneServer(
 			engineConfig(),
-			controller,
+			{ tls } as EngineTlsMaterial,
+			new EngineLifecycleEventController(pushRelay),
 			credentialsController,
 			dataTablesController,
 			mock<EngineSubWorkflowController>(),
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(serverLogger) }),
 		);
 		await server.start();
+	};
+
+	beforeEach(async () => {
+		serverLogger = mock<Logger>();
+		pushRelay = mock<EngineLifecycleEventPushRelay>();
+		credentialsController = mock<EngineCredentialsController>();
+		dataTablesController = mock<EngineDataTablesController>();
+		await startServer();
 
 		baseUrl = `http://127.0.0.1:${server.port}`;
 	});
@@ -231,6 +243,70 @@ describe('EngineControlPlaneServer', () => {
 
 			expect(response.status).toBe(401);
 			expect(dataTablesController.call).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('over mutual TLS', () => {
+		const loopback = ['DNS:localhost', 'IP:127.0.0.1'];
+		let dir: string;
+		let certs: TlsCertFiles;
+
+		beforeAll(() => {
+			dir = mkdtempSync(join(tmpdir(), 'engine-cp-tls-'));
+			certs = generateTlsCerts(dir, { cp: loopback, dp: loopback });
+		});
+
+		afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+		const leaf = (name: string) => ({
+			cert: readFileSync(certs.leaves[name].certFile),
+			key: readFileSync(certs.leaves[name].keyFile),
+		});
+
+		beforeEach(async () => {
+			await server.stop();
+			await startServer({ ...leaf('cp'), ca: readFileSync(certs.caFile) });
+			baseUrl = `https://127.0.0.1:${server.port}`;
+		});
+
+		const postAs = (client?: { cert: Buffer; key: Buffer }) => {
+			const req = request(baseUrl).post('/internal/status-callback').ca(readFileSync(certs.caFile));
+			if (client) req.cert(client.cert).key(client.key);
+			return req
+				.set('Authorization', `Bearer ${mintActionToken(authSecret, 'lifecycle-events:write')}`)
+				.send({ events });
+		};
+
+		it('accepts the control plane transport of a data plane with a certificate from the trusted CA', async () => {
+			const transport = new EngineControlPlaneTransport(
+				engineConfig({ controlPlaneBaseUrl: baseUrl }),
+				Container.get(OutboundHttp),
+				{ tls: { ...leaf('dp'), ca: readFileSync(certs.caFile) } } as EngineTlsMaterial,
+			);
+
+			const response = await transport.forScope('lifecycle-events:write').request({
+				url: '/internal/status-callback',
+				method: 'POST',
+				body: { events },
+				json: true,
+				returnFullResponse: true,
+			});
+
+			expect(response.statusCode).toBe(204);
+			expect(pushRelay.relay).toHaveBeenCalledExactlyOnceWith(events);
+		});
+
+		it('rejects a valid token without a client certificate', async () => {
+			const response = await postAs();
+
+			expect(response.status).toBe(401);
+			expect(pushRelay.relay).not.toHaveBeenCalled();
+		});
+
+		it('serves the healthcheck without a client certificate', async () => {
+			const response = await request(baseUrl).get('/healthz').ca(readFileSync(certs.caFile));
+
+			expect(response.status).toBe(200);
 		});
 	});
 

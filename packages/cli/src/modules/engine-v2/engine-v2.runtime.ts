@@ -6,6 +6,7 @@ import type { EngineRuntime, ExecutionResponseSender } from '@n8n/engine';
 import {
 	AllowAllAdmittance,
 	createDataSource,
+	createEngineHttpServer,
 	createEngineRuntime,
 	mintApprovalCallback,
 	mintResumeToken,
@@ -30,6 +31,7 @@ import { EngineControlPlaneClient } from './engine-control-plane-client';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
 import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
+import { EngineTlsMaterial } from './engine-tls-material';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
 
@@ -61,6 +63,7 @@ export class EngineV2Runtime {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
+		private readonly tlsMaterial: EngineTlsMaterial,
 		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
 		private readonly controlPlaneClient: EngineControlPlaneClient,
@@ -185,18 +188,19 @@ export class EngineV2Runtime {
 
 	private async initServer(): Promise<void> {
 		const { host, port } = this.engineConfig;
+		const { tls } = this.tlsMaterial;
 
 		this.server = await new Promise<Server>((resolve, reject) => {
 			assert(this.engine, 'Engine v2 cannot start without an engine runtime');
 
-			const listener = this.engine.app.listen(port, host);
+			const listener = createEngineHttpServer(this.engine.app, tls).listen(port, host);
 			listener.once('listening', () => resolve(listener));
 			listener.once('error', reject);
 		});
 
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
-		this.logger.info(`Engine v2 listening on http://${shownHost}:${port}`);
+		this.logger.info(`Engine v2 listening on ${tls ? 'https' : 'http'}://${shownHost}:${port}`);
 	}
 
 	/**

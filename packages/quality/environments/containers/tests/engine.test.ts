@@ -1,14 +1,17 @@
+import { X509Certificate } from 'node:crypto';
 import { describe, expect, test } from 'vitest';
 
 import {
 	applyEngineEnv,
 	assertEngineSupported,
+	createEngineTlsFiles,
 	ENGINE_DATABASE,
 	ENGINE_SHARED_STORAGE_PATH,
+	ENGINE_TLS_ENV,
 	engineContainerEnv,
 } from '../services/engine';
 import { redis } from '../services/redis';
-import type { StartContext } from '../services/types';
+import type { FileToMount, StartContext } from '../services/types';
 
 const postgresEnv: Record<string, string> = {
 	DB_TYPE: 'postgresdb',
@@ -110,8 +113,12 @@ describe('applyEngineEnv', () => {
 			});
 		});
 
-		test('points the main at the engine container', () => {
-			expect(containerEnv().N8N_ENGINE_BASE_URL).toBe('http://proj-n8n-engine:3000');
+		test('points the main at the engine container over https', () => {
+			expect(containerEnv().N8N_ENGINE_BASE_URL).toBe('https://proj-n8n-engine:3000');
+		});
+
+		test('gives the main its TLS files for mutual TLS with the engine', () => {
+			expect(containerEnv()).toMatchObject(ENGINE_TLS_ENV);
 		});
 
 		test('opens the control plane server to the engine container on the stack port', () => {
@@ -233,10 +240,14 @@ describe('engineContainerEnv', () => {
 		expect(env.N8N_ENGINE_DATABASE_URL).toBe('postgres://engine-postgres/db');
 	});
 
-	test('dials the control plane server on the main', () => {
+	test('dials the control plane server on the main over https', () => {
 		expect(
 			engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_ENGINE_CONTROL_PLANE_BASE_URL,
-		).toBe('http://proj-n8n:3001');
+		).toBe('https://proj-n8n:3001');
+	});
+
+	test('gives the engine its TLS files for mutual TLS with the main', () => {
+		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions)).toMatchObject(ENGINE_TLS_ENV);
 	});
 
 	test('shares the secret both planes verify against', () => {
@@ -320,5 +331,45 @@ describe('redis service', () => {
 
 	test('stays off for an in-process engine outside queue mode', () => {
 		expect(redis.shouldStart?.(context({ engine: 'in-process' }))).toBe(false);
+	});
+});
+
+describe('createEngineTlsFiles', () => {
+	const files = createEngineTlsFiles(projectName);
+	const contentOf = (set: FileToMount[], target: string) =>
+		set.find((file) => file.target === target)?.content ?? '';
+
+	test.each(['main', 'engine'] as const)(
+		'puts a CA, a certificate and a key where the %s env points',
+		(plane) => {
+			expect(files[plane].map((file) => file.target).sort()).toEqual(
+				Object.values(ENGINE_TLS_ENV).sort(),
+			);
+		},
+	);
+
+	test('gives both planes the same CA and their own certificate', () => {
+		const { N8N_ENGINE_TLS_CA_FILE: ca, N8N_ENGINE_TLS_CERT_FILE: cert } = ENGINE_TLS_ENV;
+
+		expect(contentOf(files.main, ca)).toContain('BEGIN CERTIFICATE');
+		expect(contentOf(files.main, ca)).toBe(contentOf(files.engine, ca));
+		expect(contentOf(files.main, cert)).not.toBe(contentOf(files.engine, cert));
+	});
+
+	test.each([
+		['main', 'DNS:proj-n8n'],
+		['engine', 'DNS:proj-n8n-engine'],
+	] as const)('names the %s by the host the other plane dials', (plane, subjectAltName) => {
+		const cert = new X509Certificate(
+			contentOf(files[plane], ENGINE_TLS_ENV.N8N_ENGINE_TLS_CERT_FILE),
+		);
+
+		expect(cert.subjectAltName).toBe(subjectAltName);
+		expect(
+			cert.verify(
+				new X509Certificate(contentOf(files[plane], ENGINE_TLS_ENV.N8N_ENGINE_TLS_CA_FILE))
+					.publicKey,
+			),
+		).toBe(true);
 	});
 });
