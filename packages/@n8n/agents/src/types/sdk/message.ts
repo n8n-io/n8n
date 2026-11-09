@@ -146,6 +146,12 @@ export type ContentToolCall = ContentMetadata & {
 	resultPosition?: number;
 
 	/**
+	 * Order of a provider-executed result among the results in the original
+	 * assistant message. Breaks ties between results at the same position.
+	 */
+	resultOrder?: number;
+
+	/**
 	 * Skills this tool activated programmatically (via `ctx.loadSkill`), so the
 	 * skill body can re-anchor to this result on a later turn instead of falling
 	 * back to the system prompt. Metadata only — never sent to the model.

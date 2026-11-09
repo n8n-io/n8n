@@ -472,16 +472,21 @@ function toReplayedToolCallPart(block: ContentToolCall, toolCallId: string): Too
 	};
 }
 
+interface PositionedResult {
+	part: ToolResultPart;
+	order?: number;
+}
+
 /**
  * Group provider-executed results with a recorded position by the block index
  * they go before. A result never goes before its own call. Results at or past
- * the end share the last slot, in block order.
+ * the end share the last slot. Within a slot, results keep their original order.
  */
 function groupPositionedResults(
 	content: MessageContent[],
 	messageIndex: number,
 ): Map<number, ToolResultPart[]> {
-	const groups = new Map<number, ToolResultPart[]>();
+	const groups = new Map<number, PositionedResult[]>();
 	for (const [blockIndex, block] of content.entries()) {
 		if (!isSettledToolCall(block) || !block.providerExecuted) continue;
 		if (block.resultPosition === undefined) continue;
@@ -489,10 +494,20 @@ function groupPositionedResults(
 		const slot = Math.min(Math.max(block.resultPosition, blockIndex + 1), content.length);
 		const toolCallId = replayableToolCallId(block.toolCallId, messageIndex, blockIndex);
 		const group = groups.get(slot) ?? [];
-		group.push(toolCallToResultPart(block, toolCallId));
+		group.push({ part: toolCallToResultPart(block, toolCallId), order: block.resultOrder });
 		groups.set(slot, group);
 	}
-	return groups;
+	const sorted = new Map<number, ToolResultPart[]>();
+	for (const [slot, group] of groups) sorted.set(slot, sortByResultOrder(group));
+	return sorted;
+}
+
+/** Results without a recorded order keep their block order (the sort is stable). */
+function sortByResultOrder(group: PositionedResult[]): ToolResultPart[] {
+	return group
+		.map((result, index) => ({ part: result.part, order: result.order ?? index }))
+		.sort((a, b) => a.order - b.order)
+		.map((result) => result.part);
 }
 
 /**
@@ -640,18 +655,27 @@ function recordResultPositions(
 	converted: Array<MessageContent | undefined>,
 	content: MessageContent[],
 ): void {
+	const callsById = new Map<string, ContentToolCall>();
+	for (const block of content) {
+		// Keep the first call for a repeated ID, like a front-to-back search.
+		if (block.type !== 'tool-call' || callsById.has(block.toolCallId)) continue;
+		callsById.set(block.toolCallId, block);
+	}
+
 	let keptBlocks = 0;
+	let resultCount = 0;
 	for (const [index, part] of parts.entries()) {
 		if (converted[index]) {
 			keptBlocks++;
 			continue;
 		}
 		if (part.type !== 'tool-result') continue;
-		const block = content.find(
-			(candidate): candidate is ContentToolCall =>
-				candidate.type === 'tool-call' && candidate.toolCallId === part.toolCallId,
-		);
-		if (block) block.resultPosition = keptBlocks;
+		const block = callsById.get(part.toolCallId);
+		if (block) {
+			block.resultPosition = keptBlocks;
+			block.resultOrder = resultCount;
+		}
+		resultCount++;
 	}
 }
 

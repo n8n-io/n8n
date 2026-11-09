@@ -1020,6 +1020,24 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		const serializedSequential = JSON.stringify(fromAiMessages(sequential));
 		const storedSequential = JSON.parse(serializedSequential) as Message[];
 		expect(order(toAiMessages(storedSequential, 'anthropic'))).toEqual(order(sequential));
+
+		// Results that arrive out of call order keep their original order.
+		const outOfOrder: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'plan', providerOptions: { anthropic: { signature: 's' } } },
+					search('srvtoolu_A'),
+					search('srvtoolu_B'),
+					result('srvtoolu_B'),
+					result('srvtoolu_A'),
+					{ type: 'text', text: 'found' },
+				],
+			},
+		];
+		const serializedOutOfOrder = JSON.stringify(fromAiMessages(outOfOrder));
+		const storedOutOfOrder = JSON.parse(serializedOutOfOrder) as Message[];
+		expect(order(toAiMessages(storedOutOfOrder, 'anthropic'))).toEqual(order(outOfOrder));
 	});
 
 	it('round-trip is structurally equivalent for a resolved tool-call', () => {
