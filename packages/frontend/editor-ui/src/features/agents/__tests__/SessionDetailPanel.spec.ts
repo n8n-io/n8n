@@ -16,6 +16,14 @@ beforeEach(() => {
 	fetchExecution.mockResolvedValue({ id: 'exec-1', data: {} });
 });
 
+vi.mock('../components/AgentTestReplyReview.vue', () => ({
+	default: {
+		name: 'AgentTestReplyReview',
+		props: ['projectId', 'agentId', 'threadId', 'executionId', 'liveIssues'],
+		template: '<div data-test-id="reply-review"></div>',
+	},
+}));
+
 vi.mock('../components/ToolIoView.vue', () => ({
 	default: {
 		name: 'ToolIoView',
@@ -46,7 +54,12 @@ function makeRouter(): Router {
 
 function mountIt(
 	item: TimelineItem | null,
-	extraProps: { projectId?: string; agentId?: string } = {},
+	extraProps: {
+		projectId?: string;
+		agentId?: string;
+		threadId?: string;
+		liveIssues?: Array<{ checkId: string; reason: string }>;
+	} = {},
 ) {
 	return mount(SessionDetailPanel, {
 		props: { item, ...extraProps },
@@ -119,6 +132,34 @@ describe('SessionDetailPanel — reasoning', () => {
 	it('shows no reasoning section for a message without traces', () => {
 		const w = mountIt({ kind: 'agent', executionId: 'e1', timestamp: 0, content: 'The answer.' });
 		expect(w.findComponent(AiThinkingBlock).exists()).toBe(false);
+	});
+});
+
+describe('SessionDetailPanel — reply review', () => {
+	const reply: TimelineItem = { kind: 'agent', executionId: 'e1', timestamp: 0, content: 'Hi.' };
+
+	it('offers the review under a reply, with the live checks that failed on its run', () => {
+		const liveIssues = [{ checkId: 'tool:tool_failed', reason: 'lookup_order failed.' }];
+		const w = mountIt(reply, { projectId: 'p1', agentId: 'a1', threadId: 't1', liveIssues });
+
+		const review = w.findComponent({ name: 'AgentTestReplyReview' });
+		expect(review.exists()).toBe(true);
+		expect(review.props()).toMatchObject({ threadId: 't1', executionId: 'e1', liveIssues });
+	});
+
+	it('offers no review without a session to save from', () => {
+		const w = mountIt(reply, { projectId: 'p1', agentId: 'a1' });
+
+		expect(w.find('[data-test-id="reply-review"]').exists()).toBe(false);
+	});
+
+	it('offers no review under a user message', () => {
+		const w = mountIt(
+			{ kind: 'user', executionId: 'e1', timestamp: 0, content: 'Hi' },
+			{ projectId: 'p1', agentId: 'a1', threadId: 't1' },
+		);
+
+		expect(w.find('[data-test-id="reply-review"]').exists()).toBe(false);
 	});
 });
 

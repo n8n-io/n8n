@@ -136,6 +136,21 @@ export type AgentTestIdea = {
 
 export type AgentReplyIssue = { checkId: string; reason: string };
 
+/** Failed sessions per code check on live runs, this published version beside the last one. */
+export interface AgentLiveCheckCount {
+	checkId: string;
+	question: string;
+	failed: number;
+	prevFailed: number | null;
+	moreOften: boolean;
+}
+
+export interface AgentLiveChecksReport {
+	current: { versionId: string; sessions: number; since: string } | null;
+	previous: { versionId: string; sessions: number } | null;
+	checks: AgentLiveCheckCount[];
+}
+
 /** Mirrors `SavedAgentTestCase` in `@n8n/api-types`. */
 export type AgentSavedTestCase = { datasetId: string; rowId: number; toolCalls: number };
 

@@ -50,7 +50,7 @@ import {
 	resolveWebSearchGatewayProxyConfig,
 	type AiGatewaySearchCredentialResolver,
 } from './web-search-credential';
-import { wrapToolForTestSandbox, type HeldResult } from './test-sandbox';
+import { wrapToolForTestSandbox, type HeldResult, type ToolReplayHook } from './test-sandbox';
 import { buildVectorStore } from './vector-store-factory';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
@@ -153,6 +153,11 @@ export interface BuildFromJsonOptions {
 	 * held result. Approval still applies first.
 	 */
 	heldTools?: ReadonlyMap<string, HeldResult>;
+	/**
+	 * Test replay only: a tool it claims answers from a saved test's data and is
+	 * never run. Approval still applies first.
+	 */
+	replayTool?: ToolReplayHook;
 }
 
 /**
@@ -455,6 +460,13 @@ function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
 }
 
 function holdForTest(tool: BuiltTool, options: BuildFromJsonOptions): BuiltTool {
+	const replay = options.replayTool;
+	if (replay?.replays(tool.name) && tool.handler) {
+		return {
+			...tool,
+			handler: async (input) => await Promise.resolve(replay.answer(tool.name, input)),
+		};
+	}
 	const held = options.heldTools?.get(tool.name);
 	return held && tool.handler ? wrapToolForTestSandbox(tool, held) : tool;
 }

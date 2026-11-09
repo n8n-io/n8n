@@ -21,6 +21,7 @@ import type {
 } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
+	AgentLiveChecksReport,
 	AgentReplyIssue,
 	AgentSavedTestCase,
 	AgentSavedTestCaseRecord,
@@ -312,6 +313,21 @@ export const acceptResult = async (
 	);
 };
 
+// "Accept new answer" on a re-run saved test: the server makes the run's reply and
+// tool data the test's saved answer and data, and marks the result as a pass.
+export const acceptNewAnswer = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	resultId: string,
+) => {
+	await makeRestApiRequest<void>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/results/${resultId}/accept-new-answer`,
+	);
+};
+
 // Asks the runner to stop; the cases already in flight settle on their own, so the
 // caller keeps polling the summary until nothing is pending. Gated on `agent:update`
 // server-side rather than `agent:execute` — cancelling stops work someone else may
@@ -353,6 +369,33 @@ export const suggestTestIdeas = async (
 		context,
 		'POST',
 		`${evalsPath(projectId, agentId)}/prompt-ideas`,
+	);
+};
+
+/** Code checks on live sessions: failed sessions per check, this version and the last one. */
+export const getLiveChecks = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+) => {
+	return await makeRestApiRequest<AgentLiveChecksReport>(
+		context,
+		'GET',
+		`${evalsPath(projectId, agentId)}/live-checks`,
+	);
+};
+
+/** The live code checks that failed on each run of one session. */
+export const getLiveCheckFailures = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+) => {
+	return await makeRestApiRequest<{ executions: Record<string, AgentReplyIssue[]> }>(
+		context,
+		'GET',
+		`${evalsPath(projectId, agentId)}/live-checks/threads/${encodeURIComponent(threadId)}`,
 	);
 };
 

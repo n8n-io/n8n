@@ -9,6 +9,7 @@ import { VIEWS } from '@/app/constants/navigation';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { TimelineItem } from '../session-timeline.types';
+import type { TimelineItemRole } from '../session-timeline-turns';
 import {
 	backgroundJobSignalSummary,
 	executionErrorLabel,
@@ -22,10 +23,17 @@ import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
 
-const props = defineProps<{
-	item: TimelineItem;
-	selected: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		item: TimelineItem;
+		selected: boolean;
+		/** Where the item sits in its turn. A step is the agent's own work. */
+		role?: TimelineItemRole;
+		/** A live check failed on this reply's run. */
+		hasIssue?: boolean;
+	}>(),
+	{ role: 'event', hasIssue: false },
+);
 
 const emit = defineEmits<{ select: [] }>();
 
@@ -124,7 +132,11 @@ const label = computed((): string => {
 </script>
 
 <template>
-	<div :class="[$style.row, selected && $style.selected]" role="gridcell" @click="emit('select')">
+	<div
+		:class="[$style.row, $style[role], selected && $style.selected]"
+		role="gridcell"
+		@click="emit('select')"
+	>
 		<N8nTooltip :content="label" placement="top">
 			<span v-if="nodeType" :class="$style.nodeIcon">
 				<NodeIcon :node-type="nodeType" :size="20" />
@@ -160,6 +172,11 @@ const label = computed((): string => {
 			>
 				{{ i18n.baseText(status.labelKey) }}
 			</N8nBadge>
+			<span v-if="hasIssue" :class="$style.issue">
+				<N8nTooltip :content="i18n.baseText('agentSessions.timeline.replyIssue')" placement="top">
+					<N8nIcon icon="triangle-alert" size="small" data-test-id="timeline-reply-issue" />
+				</N8nTooltip>
+			</span>
 			<N8nTooltip v-if="attachmentChip" :content="attachmentChip.tooltip" placement="top">
 				<span :class="$style.attachmentChip" data-testid="timeline-attachment-chip">
 					<N8nIcon icon="paperclip" size="xsmall" />
@@ -192,6 +209,37 @@ const label = computed((): string => {
 	background-color: var(--background--active);
 }
 
+/* What the person sent: the start of a turn. */
+.message .info {
+	font-weight: var(--font-weight--medium);
+}
+
+/* The agent's own work, under the steps row of its turn. */
+.step {
+	position: relative;
+	padding-left: calc(var(--spacing--sm) + var(--spacing--lg));
+	font-size: var(--font-size--xs);
+
+	.info {
+		color: var(--color--text--tint-1);
+	}
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: calc(var(--spacing--sm) + var(--spacing--2xs));
+		border-left: var(--border-width) var(--border-style) var(--border-color--subtle);
+	}
+}
+
+.issue {
+	display: inline-flex;
+	flex-shrink: 0;
+	color: var(--color--warning);
+}
+
 .nodeIcon {
 	display: inline-flex;
 	align-items: center;
@@ -213,7 +261,7 @@ const label = computed((): string => {
 
 	/* Apply ellipsis to text spans, not the flex container — the container's
 	   overflow:hidden combined with a tight line-box was clipping descenders. */
-	> span:not(.statusBadge) {
+	> span:not(.statusBadge, .issue) {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		line-height: var(--line-height--sm);

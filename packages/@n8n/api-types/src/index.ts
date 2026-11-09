@@ -843,6 +843,7 @@ export {
 
 export {
 	AGENT_EVALS_FLAG,
+	AGENT_TEST_CHAT_DATASET_NAME,
 	agentEvalColumnMappingSchema,
 	agentEvalRunStatusSchema,
 	agentEvalResultStatusSchema,

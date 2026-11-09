@@ -51,6 +51,8 @@ import {
 	type PromptIdeasResponse,
 	type ReplyChecksResponse,
 } from './online-checks/agent-online-checks.service';
+import { AgentLiveChecksService } from './online-checks/agent-live-checks.service';
+import type { LiveChecksReport } from './online-checks/agent-live-checks.service';
 import { AgentTestCaseService } from './online-checks/agent-test-cases.service';
 import type { SavedTestCaseRecord } from './online-checks/saved-test-case';
 
@@ -87,6 +89,7 @@ export class AgentEvalsController {
 		private readonly collaborationService: CollaborationService,
 		private readonly onlineChecksService: AgentOnlineChecksService,
 		private readonly testCaseService: AgentTestCaseService,
+		private readonly liveChecksService: AgentLiveChecksService,
 	) {}
 
 	// ---- datasets ----
@@ -479,6 +482,39 @@ export class AgentEvalsController {
 		const row = Number(rowId);
 		if (!Number.isInteger(row) || row < 1) throw new BadRequestError('Invalid row id');
 		await this.testCaseService.remove(req.user, projectId, agentId, datasetId, row);
+	}
+
+	/**
+	 * "Accept new answer" after a re-run of a saved test: the run's reply and
+	 * tool data replace what the test saved. Writes eval data, like saving one.
+	 */
+	@Post('/:agentId/evals/results/:resultId/accept-new-answer')
+	@ProjectScope('agent:update')
+	async acceptNewAnswer(req: AuthenticatedRequest<ResultParam>): Promise<void> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, resultId } = req.params;
+		await this.testCaseService.acceptNewAnswer(req.user, projectId, agentId, resultId);
+	}
+
+	/**
+	 * The code checks on live sessions of the published agent: failed sessions
+	 * per check for this version, beside the last version's count. No model call.
+	 */
+	@Get('/:agentId/evals/live-checks')
+	@ProjectScope('agent:read')
+	async getLiveChecks(req: AuthenticatedRequest<AgentParam>): Promise<LiveChecksReport> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.liveChecksService.report(projectId, agentId);
+	}
+
+	/** The live checks that failed on each run of one session, for the Sessions view. */
+	@Get('/:agentId/evals/live-checks/threads/:threadId')
+	@ProjectScope('agent:read')
+	async getLiveCheckFailures(req: AuthenticatedRequest<ThreadParam>) {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, threadId } = req.params;
+		return await this.liveChecksService.failuresForSession(req.user, projectId, agentId, threadId);
 	}
 
 	/** The test cases saved from one chat, so the chat shows them as saved after a reload. */

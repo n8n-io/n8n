@@ -12,7 +12,7 @@
 | skills | json |  | true |  |  | Frozen map of `skillId → AgentSkill` at publish time |
 | tools | json |  | true |  |  | Frozen map of `toolId → { code, descriptor }` at publish time |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| versionId | varchar(36) |  | false | [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_task_snapshot](public.agent_task_snapshot.md) [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) [public.agents](public.agents.md) |  |  |
+| versionId | varchar(36) |  | false | [public.agent_execution](public.agent_execution.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_live_check_failure](public.agent_live_check_failure.md) [public.agent_task_snapshot](public.agent_task_snapshot.md) [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) [public.agents](public.agents.md) |  |  |
 
 ## Constraints
 
@@ -41,7 +41,9 @@ erDiagram
 
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.agent_execution" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;agentVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.agent_execution_threads" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;taskVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.agent_live_check_failure" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;agentVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
 "public.agent_version_skill_dependency" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;agentVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
 "public.agents" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
@@ -92,6 +94,37 @@ erDiagram
   json settings
   timestamp_3__with_time_zone updatedAt
 }
+"public.agent_execution" {
+  boolean acceptsSteering
+  varchar_36_ agentVersionId FK
+  json attachments
+  json author
+  integer cacheReadTokens
+  integer cacheWriteTokens
+  integer completionTokens
+  double_precision cost
+  timestamp_3__with_time_zone createdAt
+  integer duration
+  text error
+  json failureSummary
+  varchar_32_ finishReason
+  varchar_64_ guardrailCode
+  varchar_16_ hitlStatus
+  varchar_36_ id
+  varchar_255_ model
+  varchar_36_ parentExecutionId FK
+  integer promptTokens
+  varchar_32_ source
+  timestamp_3__with_time_zone startedAt
+  varchar_16_ status
+  timestamp_3__with_time_zone stoppedAt
+  varchar_2_ storedAt
+  varchar_128_ threadId FK
+  json timeline
+  integer totalTokens
+  timestamp_3__with_time_zone updatedAt
+  text userMessage
+}
 "public.agent_execution_threads" {
   varchar_16_ accessScope
   varchar_36_ agentId FK
@@ -113,6 +146,14 @@ erDiagram
   integer totalDuration
   integer totalPromptTokens
   timestamp_3__with_time_zone updatedAt
+}
+"public.agent_live_check_failure" {
+  varchar_36_ agentId FK
+  varchar_36_ agentVersionId FK
+  varchar_32_ checkId
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ executionId FK
+  text reason
 }
 "public.agent_task_snapshot" {
   timestamp_3__with_time_zone createdAt

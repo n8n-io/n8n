@@ -30,6 +30,8 @@ import {
 } from '@n8n/design-system';
 import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
+import AgentLiveChecksSummary from '../components/AgentLiveChecksSummary.vue';
+import { useTestAgentPreviewFlag } from '../composables/useTestAgentPreviewFlag';
 
 type TraceTarget = { agentId: string; threadId: string };
 type OriginPresentation = { icon: IconName; label: string };
@@ -69,6 +71,7 @@ let managesStoreLifecycle = false;
 
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
+const { isFeatureEnabled: liveChecksEnabled } = useTestAgentPreviewFlag();
 const hasActiveFilters = computed(() => {
 	const { status, origin, startDate, endDate } = sessionsStore.filters;
 	return status !== 'all' || origin !== 'all' || Boolean(startDate) || Boolean(endDate);
@@ -296,6 +299,12 @@ async function onFiltersChange(value: AgentSessionFilters) {
 			/>
 			<AgentSessionsFilter :model-value="sessionsStore.filters" @filter-changed="onFiltersChange" />
 		</div>
+		<AgentLiveChecksSummary
+			v-if="liveChecksEnabled"
+			:class="$style.liveChecks"
+			:project-id="projectId"
+			:agent-id="agentId"
+		/>
 		<div :class="$style.tableContainer">
 			<N8nTableBase :class="$style.sessionsTable">
 				<tbody>
@@ -472,6 +481,10 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+}
+
+.liveChecks {
+	margin-block: var(--spacing--xs);
 }
 
 .titleCell {

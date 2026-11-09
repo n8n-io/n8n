@@ -43,6 +43,8 @@ import { useWorkflowOutputAccess } from '../composables/useWorkflowOutputAccess'
 import { backgroundJobResultLabel } from '../utils/background-job-labels';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
+import type { AgentReplyIssue } from '../agentEvals.types';
+import AgentTestReplyReview from './AgentTestReplyReview.vue';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -52,6 +54,13 @@ const props = defineProps<{
 	/** Scope for the attachment download URLs on user items. */
 	projectId?: string;
 	agentId?: string;
+	/**
+	 * Set where a reply can be judged and saved as a test (the Sessions view,
+	 * when agent tests are on). Without it, no review shows.
+	 */
+	threadId?: string;
+	/** The live checks that failed on the selected reply's run. */
+	liveIssues?: AgentReplyIssue[];
 }>();
 
 const userAttachments = computed((): ChatMessageAttachment[] => {
@@ -509,6 +518,16 @@ const workflowOutput = computed((): unknown => {
 							:attachments="userAttachments"
 							:project-id="projectId"
 							:agent-id="agentId"
+						/>
+						<AgentTestReplyReview
+							v-if="item.kind === 'agent' && projectId && agentId && threadId"
+							:key="item.executionId"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:thread-id="threadId"
+							:execution-id="item.executionId"
+							:live-issues="liveIssues ?? []"
+							data-test-id="session-reply-review"
 						/>
 					</template>
 					<AiThinkingBlock

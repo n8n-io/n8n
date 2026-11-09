@@ -3,8 +3,14 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
 import SessionTimelineRow from './SessionTimelineRow.vue';
+import SessionTimelineStepsRow from './SessionTimelineStepsRow.vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import { filteredTimelineItemIndexes, formatDuration } from '../session-timeline.utils';
+import {
+	groupTimelineEntries,
+	type TimelineItemRole,
+	type TimelineStepGroup,
+} from '../session-timeline-turns';
 import { backgroundJobTimelineLabelKey } from '../utils/background-job-labels';
 
 const ROW_HEIGHT = 40;
@@ -19,11 +25,18 @@ const props = defineProps<{
 	idleRanges?: IdleRange[];
 	/** Index of the item that gets the `notice` slot rendered directly below it. */
 	noticeIndex?: number | null;
+	/**
+	 * Ids of the step groups to show open. Without it every group is open, so
+	 * the table shows every item.
+	 */
+	openStepGroups?: ReadonlySet<string>;
+	/** Runs where a live check failed. Their reply rows show a warning. */
+	issueExecutionIds?: ReadonlySet<string>;
 }>();
 
 defineSlots<{ notice?: (props: { item: TimelineItem }) => unknown }>();
 
-const emit = defineEmits<{ select: [index: number] }>();
+const emit = defineEmits<{ select: [index: number]; toggleSteps: [groupId: string] }>();
 
 const i18n = useI18n();
 const tableRef = ref<HTMLElement | null>(null);
@@ -76,23 +89,49 @@ function labelForKey(key: string): string {
 }
 
 type Row =
-	| { id: string; kind: 'event'; item: TimelineItem; index: number; sortKey: number }
+	| {
+			id: string;
+			kind: 'event';
+			item: TimelineItem;
+			index: number;
+			role: TimelineItemRole;
+			sortKey: number;
+	  }
+	| { id: string; kind: 'steps'; group: TimelineStepGroup; open: boolean; sortKey: number }
 	| { id: string; kind: 'idle'; range: IdleRange; sortKey: number }
 	| { id: string; kind: 'notice'; item: TimelineItem; sortKey: number };
 
-const rows = computed<Row[]>(() => {
-	const events: Row[] = filteredTimelineItemIndexes(
-		props.items,
-		props.visibleKinds,
-		props.searchQuery ?? '',
-		labelForKey,
-	).map((index) => ({
+function eventRow(index: number, role: TimelineItemRole): Row {
+	return {
 		id: `event-${index}`,
 		kind: 'event',
 		item: props.items[index],
 		index,
+		role,
 		sortKey: props.items[index].timestamp,
-	}));
+	};
+}
+
+const rows = computed<Row[]>(() => {
+	const indexes = filteredTimelineItemIndexes(
+		props.items,
+		props.visibleKinds,
+		props.searchQuery ?? '',
+		labelForKey,
+	);
+	const events: Row[] = groupTimelineEntries(props.items, indexes).flatMap((entry): Row[] => {
+		if (entry.type === 'item') return [eventRow(entry.index, entry.role)];
+		const open = props.openStepGroups?.has(entry.group.id) ?? true;
+		const header: Row = {
+			id: `steps-${entry.group.id}`,
+			kind: 'steps',
+			group: entry.group,
+			open,
+			sortKey: entry.group.start,
+		};
+		if (!open) return [header];
+		return [header, ...entry.group.indexes.map((index) => eventRow(index, 'step'))];
+	});
 
 	const idles: Row[] = (props.idleRanges ?? []).map((range, index) => ({
 		id: `idle-${range.start}-${range.end}-${index}`,
@@ -128,6 +167,10 @@ const tabbableEventIndex = computed(() => {
 	const firstEventRow = rows.value.find((row) => row.kind === 'event');
 	return firstEventRow?.kind === 'event' ? firstEventRow.index : null;
 });
+
+function hasIssue(item: TimelineItem): boolean {
+	return props.issueExecutionIds?.has(item.executionId) ?? false;
+}
 
 function updateScrollMask() {
 	if (!scrollContainer) {
@@ -269,7 +312,8 @@ watch(
 					v-if="row.kind === 'event'"
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
-					:class="$style.rowWrapper"
+					:data-role="row.role"
+					:class="[$style.rowWrapper, row.role === 'message' && $style.turnStart]"
 					role="row"
 					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
 					:aria-selected="props.selectedIndex === row.index"
@@ -277,7 +321,26 @@ watch(
 					@keydown.enter.self.prevent="emit('select', row.index)"
 					@keydown.space.self.prevent="emit('select', row.index)"
 				>
-					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
+					<SessionTimelineRow
+						:item="row.item"
+						:selected="props.selectedIndex === row.index"
+						:role="row.role"
+						:has-issue="row.role === 'reply' && hasIssue(row.item)"
+					/>
+				</div>
+				<div
+					v-else-if="row.kind === 'steps'"
+					data-test-id="timeline-steps-row"
+					:data-timeline-row-id="row.id"
+					:class="$style.rowWrapper"
+					role="row"
+					tabindex="0"
+					:aria-expanded="row.open ? 'true' : 'false'"
+					@click="emit('toggleSteps', row.group.id)"
+					@keydown.enter.self.prevent="emit('toggleSteps', row.group.id)"
+					@keydown.space.self.prevent="emit('toggleSteps', row.group.id)"
+				>
+					<SessionTimelineStepsRow :group="row.group" :items="props.items" :open="row.open" />
 				</div>
 				<div
 					v-else-if="row.kind === 'notice'"
@@ -316,7 +379,8 @@ watch(
 					v-if="row.kind === 'event'"
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
-					:class="$style.rowWrapper"
+					:data-role="row.role"
+					:class="[$style.rowWrapper, row.role === 'message' && $style.turnStart]"
 					role="row"
 					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
 					:aria-selected="props.selectedIndex === row.index"
@@ -324,7 +388,26 @@ watch(
 					@keydown.enter.self.prevent="emit('select', row.index)"
 					@keydown.space.self.prevent="emit('select', row.index)"
 				>
-					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
+					<SessionTimelineRow
+						:item="row.item"
+						:selected="props.selectedIndex === row.index"
+						:role="row.role"
+						:has-issue="row.role === 'reply' && hasIssue(row.item)"
+					/>
+				</div>
+				<div
+					v-else-if="row.kind === 'steps'"
+					data-test-id="timeline-steps-row"
+					:data-timeline-row-id="row.id"
+					:class="$style.rowWrapper"
+					role="row"
+					tabindex="0"
+					:aria-expanded="row.open ? 'true' : 'false'"
+					@click="emit('toggleSteps', row.group.id)"
+					@keydown.enter.self.prevent="emit('toggleSteps', row.group.id)"
+					@keydown.space.self.prevent="emit('toggleSteps', row.group.id)"
+				>
+					<SessionTimelineStepsRow :group="row.group" :items="props.items" :open="row.open" />
 				</div>
 				<div
 					v-else-if="row.kind === 'notice'"
@@ -366,6 +449,11 @@ watch(
 
 .rowWrapper {
 	width: 100%;
+}
+
+/* A line above each message, so each turn reads as one block. */
+.turnStart:not(:first-child) {
+	box-shadow: inset 0 1px 0 var(--border-color--subtle);
 }
 
 .empty {

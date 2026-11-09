@@ -75,6 +75,17 @@ describe('AgentTestReplyReview', () => {
 		);
 	});
 
+	it('shows the live checks it is given, without computing checks for the reply', async () => {
+		const { getAllByTestId } = await render({
+			liveIssues: [{ checkId: 'tool:tool_failed', reason: 'lookup_order failed.' }],
+		});
+
+		expect(fetchReplyChecksMock).not.toHaveBeenCalled();
+		expect(getAllByTestId('agent-test-reply-issue').map((el) => el.textContent?.trim())).toEqual([
+			'lookup_order failed.',
+		]);
+	});
+
 	it('shows nothing from the checks when they all pass', async () => {
 		const { queryAllByTestId } = await render();
 

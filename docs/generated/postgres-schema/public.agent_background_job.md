@@ -126,6 +126,7 @@ erDiagram
 }
 "public.agent_execution" {
   boolean acceptsSteering
+  varchar_36_ agentVersionId FK
   json attachments
   json author
   integer cacheReadTokens

@@ -150,6 +150,10 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 32, nullable: true })
 	source: string | null;
 
+	/** Published agent version that ran this execution. Null for test-chat and draft runs. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	agentVersionId: string | null;
+
 	/** Where the timeline payload is stored: 'db' (inline column), 'fs', 's3', or 'az'. */
 	@Column({ type: 'varchar', length: 2, nullable: false, default: 'db' })
 	storedAt: ExecutionDataStorageLocation;

@@ -22,6 +22,11 @@ import {
 	isSubAgentTimelineItem,
 	itemStatusFilterKey,
 } from '@/features/agents/session-timeline.utils';
+import {
+	finalReplyIndexes,
+	groupTimelineEntries,
+	stepIndexesHiddenBy,
+} from '@/features/agents/session-timeline-turns';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
@@ -34,6 +39,10 @@ import type {
 	TimelineStatusFilterKey,
 } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { getLiveCheckFailures } from '@/features/agents/agentEvals.api';
+import type { AgentReplyIssue } from '@/features/agents/agentEvals.types';
+import { useTestAgentPreviewFlag } from '@/features/agents/composables/useTestAgentPreviewFlag';
 import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useActiveElement, useDocumentVisibility, useEventListener } from '@vueuse/core';
@@ -73,6 +82,9 @@ const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
 const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
+// The step groups the person opened. Every other group shows closed, so a
+// session reads as messages and replies first.
+const openStepGroupIds = ref<Set<string>>(new Set());
 const resolvedBudgetStopExecutionId = ref<string | null>(null);
 const budgetIncreasePending = ref(false);
 let threadDetailRequestId = 0;
@@ -234,8 +246,50 @@ const selectedItem = computed<TimelineItem | null>(() =>
 	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
 );
 
-const visibleItemIndexes = computed(() =>
+const filteredItemIndexes = computed(() =>
 	filteredTimelineItemIndexes(items.value, selectedFilters.value, searchQuery.value, labelForKey),
+);
+
+// A filter or a search shows every match, so it opens every group.
+const isNarrowed = computed(
+	() => selectedFilters.value.size > 0 || searchQuery.value.trim().length > 0,
+);
+
+const timelineEntries = computed(() =>
+	groupTimelineEntries(items.value, filteredItemIndexes.value),
+);
+
+const openStepGroups = computed(() => (isNarrowed.value ? undefined : openStepGroupIds.value));
+
+// The rows the arrow keys move through: the steps of a closed group are skipped.
+const visibleItemIndexes = computed(() => {
+	if (!openStepGroups.value) return filteredItemIndexes.value;
+	const hidden = stepIndexesHiddenBy(timelineEntries.value, openStepGroups.value);
+	return filteredItemIndexes.value.filter((index) => !hidden.has(index));
+});
+
+function toggleStepGroup(groupId: string) {
+	const next = new Set(openStepGroupIds.value);
+	if (!next.delete(groupId)) next.add(groupId);
+	openStepGroupIds.value = next;
+}
+
+// Picking a step on the chart opens its group, so the table can show the row.
+function openGroupOf(index: number) {
+	for (const entry of timelineEntries.value) {
+		if (entry.type !== 'steps' || !entry.group.indexes.includes(index)) continue;
+		if (openStepGroupIds.value.has(entry.group.id)) return;
+		openStepGroupIds.value = new Set([...openStepGroupIds.value, entry.group.id]);
+		return;
+	}
+}
+
+const replyIndexes = computed(() => finalReplyIndexes(items.value));
+
+// The reply review and the live check lines belong to the answer the person
+// read, so they show on the final reply of a run and not on its narration.
+const selectedIsFinalReply = computed(
+	() => selectedIndex.value !== null && replyIndexes.value.has(selectedIndex.value),
 );
 
 function moveSelectedIndex(direction: 1 | -1) {
@@ -260,6 +314,7 @@ function moveSelectedIndexToBoundary(direction: 1 | -1) {
 }
 
 function selectTimelineItem(index: number | null) {
+	if (index !== null) openGroupOf(index);
 	selectedIndex.value = index;
 	highlightedIndex.value = index;
 }
@@ -327,6 +382,7 @@ function loadThreadDetail() {
 	executions.value = [];
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
+	openStepGroupIds.value = new Set();
 	resolvedBudgetStopExecutionId.value = null;
 	selectTimelineItem(null);
 	loading.value = true;
@@ -414,7 +470,41 @@ watch(
 	},
 );
 
+// The live checks that failed on each run of this session, for the reply
+// lines in the detail panel. A session with none, or a failed read, shows none.
+const liveIssues = ref<Record<string, AgentReplyIssue[]>>({});
+const issueExecutionIds = computed(
+	() =>
+		new Set(
+			Object.entries(liveIssues.value)
+				.filter(([, issues]) => issues.length > 0)
+				.map(([executionId]) => executionId),
+		),
+);
+const { isFeatureEnabled: liveChecksEnabled } = useTestAgentPreviewFlag();
+const rootStore = useRootStore();
+
+async function loadLiveIssues() {
+	liveIssues.value = {};
+	if (!liveChecksEnabled.value) return;
+	const threadId = props.threadId;
+	try {
+		const { executions } = await getLiveCheckFailures(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			threadId,
+		);
+		if (threadId === props.threadId) liveIssues.value = executions;
+	} catch {
+		// The lines are a hint; the session reads the same without them.
+	}
+}
+
+watch(() => props.threadId, loadLiveIssues);
+
 onMounted(() => {
+	void loadLiveIssues();
 	pushStore.pushConnect();
 	removePushListener = pushStore.addEventListener(onPushMessage);
 });
@@ -478,7 +568,10 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 					:visible-kinds="selectedFilters"
 					:search-query="searchQuery"
 					:notice-index="budgetStop?.index ?? null"
+					:open-step-groups="openStepGroups"
+					:issue-execution-ids="issueExecutionIds"
 					@select="onTimelineItemSelect"
+					@toggle-steps="toggleStepGroup"
 				>
 					<template #notice>
 						<AgentBudgetNoticeCard
@@ -497,6 +590,8 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 						:item="selectedItem"
 						:project-id="props.projectId"
 						:agent-id="props.agentId"
+						:thread-id="liveChecksEnabled && selectedIsFinalReply ? props.threadId : undefined"
+						:live-issues="selectedIsFinalReply ? liveIssues[selectedItem.executionId] : undefined"
 						@close="selectTimelineItem(null)"
 					/>
 				</div>

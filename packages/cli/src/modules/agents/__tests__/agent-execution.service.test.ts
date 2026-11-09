@@ -168,6 +168,62 @@ describe('AgentExecutionService', () => {
 		return await service.finalizeExecution(executionId, params);
 	}
 
+	describe('finished-execution listeners', () => {
+		beforeEach(() => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread(),
+				created: true,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.saveInContext.mockResolvedValue({
+				id: 'execution-1',
+			} as AgentExecution);
+		});
+
+		it('tells each listener about a finished run, with its run type and timeline', async () => {
+			const listener = vi.fn().mockResolvedValue(undefined);
+			service.onExecutionFinished(listener);
+			const record = makeMessageRecord();
+
+			await recordExecution({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Where is my order?',
+				record,
+				telemetry: { runType: 'production', configuration: {} as never },
+			});
+
+			await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+			expect(listener).toHaveBeenCalledWith(
+				expect.objectContaining({
+					executionId: 'execution-1',
+					agentId: 'agent-1',
+					threadId: 'thread-1',
+					runType: 'production',
+					userMessage: 'Where is my order?',
+					timeline: record.timeline,
+				}),
+			);
+		});
+
+		it('keeps the run recorded when a listener fails', async () => {
+			service.onExecutionFinished(vi.fn().mockRejectedValue(new Error('check failed')));
+
+			await expect(
+				recordExecution({
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+					record: makeMessageRecord(),
+				}),
+			).resolves.toBe('execution-1');
+		});
+	});
+
 	describe('recentTimelines', () => {
 		const event = (name: string) =>
 			({

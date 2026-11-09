@@ -1272,6 +1272,25 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		}
 	};
 
+	// The saved test now holds this run's reply, so the cached result reads as the
+	// same answer. Written after the server accepted it: a refused accept changes
+	// nothing on screen.
+	const acceptNewAnswer = async (projectId: string, agentId: string, resultId: string) => {
+		await agentEvalsApi.acceptNewAnswer(rootStore.restApiContext, projectId, agentId, resultId);
+		const cached = findCachedResult(resultId);
+		if (!cached) return;
+		const output = cached.result.output ?? {};
+		const rerun = typeof output.rerun === 'object' && output.rerun !== null ? output.rerun : {};
+		replaceCachedResult(cached.runId, resultId, {
+			...cached.result,
+			output: {
+				...output,
+				rerun: { ...rerun, kind: 'answer', outcome: 'pass', failedRuns: 0, toolChanges: [] },
+			},
+			verdict: { status: 'completed', outcome: 'pass', reasoning: null },
+		});
+	};
+
 	// Persists the removal server-side, then drops it from the cached page.
 	// `deleteCase` alone only removes the Data Table row it came from — this
 	// result is a separate persisted snapshot that would otherwise survive and
@@ -1337,6 +1356,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		rerunResult,
 		applySuggestions,
 		acceptResult,
+		acceptNewAnswer,
 		cancelRun,
 		isCancellingRun,
 		getCases,

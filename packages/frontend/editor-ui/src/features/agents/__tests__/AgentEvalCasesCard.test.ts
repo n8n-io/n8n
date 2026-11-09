@@ -1,4 +1,5 @@
 import { configure, waitFor } from '@testing-library/vue';
+import { AGENT_TEST_CHAT_DATASET_NAME } from '@n8n/api-types';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -385,6 +386,19 @@ describe('AgentEvalCasesCard', () => {
 
 			await waitFor(() => expect(getByTestId('agent-evals-run-all')).toBeDisabled());
 		});
+	});
+
+	it('names saved tests as saved from chats, not as AI drafts, and offers no regenerate', async () => {
+		const { findByText, queryByText, queryByTestId } = renderComponent({
+			props: { dataset: { ...MAPPED, name: AGENT_TEST_CHAT_DATASET_NAME } },
+		});
+
+		expect(await findByText('mocked-agents.builder.agentEvals.cases.savedTag')).toBeInTheDocument();
+		expect(
+			queryByText('mocked-agents.builder.agentEvals.cases.savedDescription'),
+		).toBeInTheDocument();
+		expect(queryByText('mocked-agents.builder.agentEvals.cases.tag')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-evals-regenerate')).not.toBeInTheDocument();
 	});
 
 	describe('a dataset this view cannot write', () => {

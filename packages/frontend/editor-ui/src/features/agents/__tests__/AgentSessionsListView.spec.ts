@@ -39,6 +39,9 @@ const {
 let documentAddEventListenerSpy: ReturnType<typeof vi.spyOn>;
 let documentRemoveEventListenerSpy: ReturnType<typeof vi.spyOn>;
 
+vi.mock('@/features/agents/composables/useTestAgentPreviewFlag', () => ({
+	useTestAgentPreviewFlag: () => ({ isFeatureEnabled: { value: false } }),
+}));
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
 }));

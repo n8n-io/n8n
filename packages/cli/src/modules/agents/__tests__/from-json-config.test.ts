@@ -683,6 +683,58 @@ describe('buildFromJson()', () => {
 		});
 	});
 
+	describe('test replay', () => {
+		async function buildWithReplay(replays: boolean, requireApproval = false) {
+			const resolvedTool = {
+				name: 'run_workflow',
+				description: 'Run My Workflow',
+				handler: vi.fn().mockResolvedValue({ eventId: 'real' }),
+			};
+			const replayTool = {
+				replays: vi.fn().mockReturnValue(replays),
+				answer: vi.fn().mockReturnValue({ eventId: 'saved' }),
+			};
+			const agent = await buildFromJson(
+				makeConfig({
+					tools: [
+						{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow', requireApproval },
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					resolveTool: vi.fn().mockResolvedValue(resolvedTool),
+					replayTool,
+				},
+			);
+			const tool = agent.declaredTools.find((t) => t.name === 'run_workflow')!;
+			return { tool, resolvedTool, replayTool };
+		}
+
+		it('answers a replayed tool from the saved data and never runs it', async () => {
+			const { tool, resolvedTool, replayTool } = await buildWithReplay(true);
+
+			await expect(tool.handler!({ id: 7 }, {} as never)).resolves.toEqual({ eventId: 'saved' });
+			expect(replayTool.answer).toHaveBeenCalledWith('run_workflow', { id: 7 });
+			expect(resolvedTool.handler).not.toHaveBeenCalled();
+		});
+
+		it('keeps the approval step on a replayed tool', async () => {
+			const { tool } = await buildWithReplay(true, true);
+
+			expect(tool.approval?.required).toBe(true);
+		});
+
+		it('runs a tool the replay does not claim', async () => {
+			const { tool, resolvedTool } = await buildWithReplay(false);
+
+			await expect(tool.handler!({}, {} as never)).resolves.toEqual({ eventId: 'real' });
+			expect(resolvedTool.handler).toHaveBeenCalled();
+		});
+	});
+
 	it('does not wrap workflow tool with approval when requireApproval is not set', async () => {
 		const config = makeConfig({
 			tools: [{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow' }],

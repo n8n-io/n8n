@@ -719,6 +719,7 @@ export class AgentRuntimeReconstructionService {
 			webSearchFetch,
 			previewChat,
 			heldTools,
+			replayTool: instrumentation?.replayTool,
 		});
 		return { agent: reconstructed, resolvedTools, mcpServerAttributions };
 	}

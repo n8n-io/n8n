@@ -71,6 +71,7 @@ erDiagram
 }
 "agent_execution" {
   BOOLEAN acceptsSteering
+  varchar_36_ agentVersionId FK
   TEXT attachments
   TEXT author
   INTEGER cacheReadTokens

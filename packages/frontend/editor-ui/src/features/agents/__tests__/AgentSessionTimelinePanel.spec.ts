@@ -23,6 +23,12 @@ const pushStore = reactive({
 	}),
 });
 
+const previewFlag = vi.hoisted(() => ({ value: false }));
+const getLiveCheckFailures = vi.hoisted(() => vi.fn());
+vi.mock('@/features/agents/composables/useTestAgentPreviewFlag', () => ({
+	useTestAgentPreviewFlag: () => ({ isFeatureEnabled: previewFlag }),
+}));
+vi.mock('@/features/agents/agentEvals.api', () => ({ getLiveCheckFailures }));
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
 }));
@@ -63,8 +69,8 @@ const stubs = {
 	},
 	SessionTimelineTable: {
 		name: 'SessionTimelineTable',
-		props: ['selectedIndex', 'items'],
-		emits: ['select'],
+		props: ['selectedIndex', 'items', 'openStepGroups', 'issueExecutionIds'],
+		emits: ['select', 'toggleSteps'],
 		template:
 			'<div data-test-id="table-stub" :data-selected-index="selectedIndex ?? undefined" :data-item-count="items.length" />',
 	},
@@ -75,6 +81,7 @@ const stubs = {
 	},
 	SessionDetailPanel: {
 		name: 'SessionDetailPanel',
+		props: ['item', 'threadId', 'liveIssues'],
 		emits: ['close'],
 		template: '<div data-test-id="detail-stub" />',
 	},
@@ -135,6 +142,36 @@ const errorFilterExecution = {
 			startTime: 100,
 			endTime: 200,
 			success: false,
+		},
+	],
+} satisfies ThreadDetail['executions'][number];
+
+// A question, a line of narration, a failed tool call, and the reply.
+const stepsExecution = {
+	...keyboardExecution,
+	id: 'execution-3',
+	userMessage: 'Where is order 9999?',
+	timeline: [
+		{
+			type: 'text',
+			content: "I'll look it up.",
+			timestamp: Date.parse('2026-08-03T12:00:01.000Z'),
+		},
+		{
+			type: 'tool-call',
+			kind: 'tool',
+			name: 'lookup_order',
+			toolCallId: 'lookup-call',
+			input: {},
+			output: { error: 'Order not found' },
+			startTime: Date.parse('2026-08-03T12:00:02.000Z'),
+			endTime: Date.parse('2026-08-03T12:00:03.000Z'),
+			success: false,
+		},
+		{
+			type: 'text',
+			content: "I couldn't find it.",
+			timestamp: Date.parse('2026-08-03T12:00:04.000Z'),
 		},
 	],
 } satisfies ThreadDetail['executions'][number];
@@ -519,6 +556,90 @@ describe('AgentSessionTimelinePanel', () => {
 			item_type: 'agent',
 		});
 	});
+	describe('turns', () => {
+		beforeEach(() => {
+			previewFlag.value = false;
+			getThreadDetail.mockResolvedValue({ ...detail, executions: [stepsExecution] });
+		});
+
+		it('keeps the agent work of each turn closed until it is opened', async () => {
+			const wrapper = mountPanel();
+			await flushPromises();
+			const table = wrapper.getComponent({ name: 'SessionTimelineTable' });
+
+			expect(table.props('openStepGroups')).toEqual(new Set());
+			table.vm.$emit('toggleSteps', 'execution-3:1');
+			await flushPromises();
+			expect(table.props('openStepGroups')).toEqual(new Set(['execution-3:1']));
+			table.vm.$emit('toggleSteps', 'execution-3:1');
+			await flushPromises();
+			expect(table.props('openStepGroups')).toEqual(new Set());
+		});
+
+		it('opens the group of a step that was picked on the chart', async () => {
+			const wrapper = mountPanel();
+			await flushPromises();
+
+			wrapper.getComponent({ name: 'SessionTimelineChart' }).vm.$emit('select', 2);
+			await flushPromises();
+
+			expect(
+				wrapper.getComponent({ name: 'SessionTimelineTable' }).props('openStepGroups'),
+			).toEqual(new Set(['execution-3:1']));
+		});
+
+		it('moves past the steps of a closed group with the arrow keys', async () => {
+			const host = document.createElement('div');
+			document.body.append(host);
+			const wrapper = mountPanel({}, { attachTo: host, renderTimelineTable: true });
+			try {
+				await flushPromises();
+				const rows = wrapper.findAll('[data-test-id="timeline-row"]');
+				expect(rows.map((row) => row.attributes('data-role'))).toEqual(['message', 'reply']);
+
+				(rows[0].element as HTMLElement).focus();
+				dispatchKeyboardEvent('keydown', 'ArrowDown');
+				dispatchKeyboardEvent('keyup', 'ArrowDown');
+				dispatchKeyboardEvent('keydown', 'ArrowDown');
+				dispatchKeyboardEvent('keyup', 'ArrowDown');
+				await flushPromises();
+
+				expect(wrapper.getComponent({ name: 'SessionDetailPanel' }).props('item')).toMatchObject({
+					kind: 'agent',
+					content: "I couldn't find it.",
+				});
+			} finally {
+				wrapper.unmount();
+				host.remove();
+			}
+		});
+
+		it('offers the reply review and the live check lines on the final reply only', async () => {
+			previewFlag.value = true;
+			getLiveCheckFailures.mockResolvedValue({
+				executions: { 'execution-3': [{ checkId: 'tool:tool_failed', reason: 'It failed.' }] },
+			});
+			const wrapper = mountPanel();
+			await flushPromises();
+			const table = wrapper.getComponent({ name: 'SessionTimelineTable' });
+			expect(table.props('issueExecutionIds')).toEqual(new Set(['execution-3']));
+
+			table.vm.$emit('select', 1);
+			await flushPromises();
+			let detailPanel = wrapper.getComponent({ name: 'SessionDetailPanel' });
+			expect(detailPanel.props('threadId')).toBeUndefined();
+			expect(detailPanel.props('liveIssues')).toBeUndefined();
+
+			table.vm.$emit('select', 3);
+			await flushPromises();
+			detailPanel = wrapper.getComponent({ name: 'SessionDetailPanel' });
+			expect(detailPanel.props('threadId')).toBe('t1');
+			expect(detailPanel.props('liveIssues')).toEqual([
+				{ checkId: 'tool:tool_failed', reason: 'It failed.' },
+			]);
+		});
+	});
+
 	describe('budget notice', () => {
 		const budgetCard = '[data-testid="agent-budget-notice-card"]';
 

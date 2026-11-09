@@ -1,8 +1,16 @@
-import type { AgentJsonConfig, SaveAgentTestCasePayload } from '@n8n/api-types';
+import {
+	AGENT_TEST_CHAT_DATASET_NAME,
+	type AgentJsonConfig,
+	type SaveAgentTestCasePayload,
+} from '@n8n/api-types';
 import type { AgentEvalDataset, User } from '@n8n/db';
-import { AgentEvalDatasetRepository } from '@n8n/db';
+import {
+	AgentEvalDatasetRepository,
+	AgentEvalResultRepository,
+	AgentEvalRunRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentContextService } from '../../agents/agent-context.service';
 import type { AgentSessionTurn } from '../../agents/agent-context.contracts';
@@ -17,13 +25,13 @@ import {
 	savedCaseFromRow,
 	testCaseRow,
 } from './saved-test-case';
-import type { SavedTestCaseRecord, TestCaseVerdict } from './saved-test-case';
+import type { PinnedToolCall, SavedTestCaseRecord, TestCaseVerdict } from './saved-test-case';
 import { turnForExecution } from './session-turns';
 import { profileAgentTools } from './tool-profile';
 import type { ChatTurn } from './types';
 
 /** The one dataset per agent that the test chat saves into. */
-export const TEST_CHAT_DATASET_NAME = 'Saved from test chat';
+export const TEST_CHAT_DATASET_NAME = AGENT_TEST_CHAT_DATASET_NAME;
 
 const MAX_NAME_ATTEMPTS = 10;
 
@@ -50,6 +58,20 @@ function toChatTurn(turn: AgentSessionTurn): ChatTurn {
 		reply: replyText(turn),
 		timeline: turn.timeline ?? [],
 	};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** The tool calls an eval result recorded, without the ones that errored. */
+function runToolCalls(toolCalls: unknown): PinnedToolCall[] {
+	const calls = isRecord(toolCalls) && Array.isArray(toolCalls.calls) ? toolCalls.calls : [];
+	return calls.flatMap((call: unknown) =>
+		isRecord(call) && typeof call.tool === 'string' && call.error === undefined
+			? [{ tool: call.tool, input: call.input, output: call.output }]
+			: [],
+	);
 }
 
 /** The agent's own tools, by name. MCP tools are named by their server, so they are not here. */
@@ -80,6 +102,8 @@ export class AgentTestCaseService {
 		private readonly datasetRepository: AgentEvalDatasetRepository,
 		private readonly dataTableService: DataTableService,
 		private readonly agentExecutionService: AgentExecutionService,
+		private readonly resultRepository: AgentEvalResultRepository,
+		private readonly runRepository: AgentEvalRunRepository,
 	) {}
 
 	async save(
@@ -149,7 +173,8 @@ export class AgentTestCaseService {
 	/**
 	 * How many of the agent's other recent chats started with the same message
 	 * as this turn, ignoring case and spaces. The test chat uses it to offer
-	 * saving a message the person keeps asking.
+	 * saving a message the person keeps asking. A message that is already saved
+	 * as a test counts 0, so the offer does not come back.
 	 */
 	async askedBefore(
 		user: User,
@@ -160,13 +185,33 @@ export class AgentTestCaseService {
 	): Promise<number> {
 		const turn = await this.readTurn(user, projectId, agentId, threadId, executionId);
 		const message = normalize(turn?.userMessage ?? '');
-		if (!message) return 0;
+		if (!message || !turn?.userMessage) return 0;
+		if (await this.isSavedAsTest(agentId, projectId, turn.userMessage)) return 0;
 		const firstMessages = await this.agentExecutionService.firstMessagesOfRecentThreads(agentId);
 		let count = 0;
 		for (const [otherThreadId, first] of firstMessages) {
 			if (otherThreadId !== threadId && normalize(first) === message) count++;
 		}
 		return count;
+	}
+
+	/** True when a saved test has this exact message as its input. */
+	private async isSavedAsTest(agentId: string, projectId: string, message: string) {
+		const existing = await this.existingInProject(agentId, projectId);
+		if (!existing?.columns.includes(TEST_CASE_COLUMNS.input)) return false;
+		const { count } = await this.dataTableService.getManyRowsAndCount(
+			this.dataTableIdOf(existing.dataset),
+			projectId,
+			{
+				skip: 0,
+				take: 1,
+				filter: {
+					type: 'and',
+					filters: [{ columnName: TEST_CASE_COLUMNS.input, condition: 'eq', value: message }],
+				},
+			},
+		);
+		return count > 0;
 	}
 
 	async remove(user: User, projectId: string, agentId: string, datasetId: string, rowId: number) {
@@ -180,6 +225,55 @@ export class AgentTestCaseService {
 		}
 		await this.dataTableService.deleteRows(this.dataTableIdOf(dataset), projectId, {
 			filter: { type: 'and', filters: [{ columnName: 'id', condition: 'eq', value: rowId }] },
+		});
+	}
+
+	/**
+	 * "Accept new answer" after a re-run: the run's reply becomes the saved
+	 * answer, and the tool data that run used becomes the saved data. A note on
+	 * the test is cleared, so it is an answer test from now on. The result is
+	 * marked as a pass. Only a test saved from the test chat can be rewritten
+	 * this way: its row has the columns, and the server reads what it writes.
+	 */
+	async acceptNewAnswer(user: User, projectId: string, agentId: string, resultId: string) {
+		const artifact = await this.agentContextService.readArtifact(user, projectId, agentId);
+		if (!artifact) throw new NotFoundError('Agent not found');
+
+		const notFound = () => new NotFoundError('Test result not found');
+		const result = await this.resultRepository.findById(resultId);
+		if (!result) throw notFound();
+		const run = await this.runRepository.findByIdAndAgentId(result.runId, agentId);
+		if (!run) throw notFound();
+		const dataset = await this.datasetRepository.findByIdAndAgentId(run.datasetId, agentId);
+		if (dataset?.name !== TEST_CHAT_DATASET_NAME || dataset.datasetSource !== 'data_table') {
+			throw new BadRequestError('Only a test saved from the test chat can take a new answer.');
+		}
+		const columns = await this.tableColumns(dataset, projectId);
+		if (!columns) throw notFound();
+		const rowId = Number(result.sourceRowId);
+		if (!Number.isInteger(rowId)) throw notFound();
+
+		const reply =
+			typeof result.output?.finalText === 'string' ? result.output.finalText.trim() : '';
+		if (result.status !== 'success' || !reply) {
+			throw new BadRequestError('This test has no finished reply to keep.');
+		}
+
+		const ownTools = ownToolNames(artifact.config);
+		const toolData = runToolCalls(result.toolCalls).filter((call) => ownTools.has(call.tool));
+		await this.addMissingColumns(dataset, columns, projectId);
+		await this.dataTableService.updateRows(this.dataTableIdOf(dataset), projectId, {
+			filter: { type: 'and', filters: [{ columnName: 'id', condition: 'eq', value: rowId }] },
+			data: {
+				[TEST_CASE_COLUMNS.expectedOutput]: reply,
+				[TEST_CASE_COLUMNS.criteria]: '',
+				[TEST_CASE_COLUMNS.toolData]: JSON.stringify(toolData),
+			},
+		});
+		await this.resultRepository.updateVerdict(resultId, {
+			status: 'completed',
+			outcome: 'pass',
+			reasoning: null,
 		});
 	}
 

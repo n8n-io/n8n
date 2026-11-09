@@ -21,11 +21,12 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_rating](public.agent_eval_rating.md) | 8 |  | BASE TABLE |
 | [public.agent_eval_result](public.agent_eval_result.md) | 16 |  | BASE TABLE |
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
-| [public.agent_execution](public.agent_execution.md) | 28 |  | BASE TABLE |
+| [public.agent_execution](public.agent_execution.md) | 29 |  | BASE TABLE |
 | [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 20 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
+| [public.agent_live_check_failure](public.agent_live_check_failure.md) | 6 |  | BASE TABLE |
 | [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
 | [public.agent_plan](public.agent_plan.md) | 8 |  | BASE TABLE |
 | [public.agent_plan_history](public.agent_plan_history.md) | 6 |  | BASE TABLE |
@@ -223,6 +224,7 @@ erDiagram
 "public.agent_eval_run" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_eval_run" }o--|| "public.agent_eval_dataset" : "FOREIGN KEY (#quot;datasetId#quot;) REFERENCES agent_eval_dataset(id) ON DELETE CASCADE"
 "public.agent_execution" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;parentExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
+"public.agent_execution" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;agentVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_execution_message_links" }o--|| "public.agents_messages" : "FOREIGN KEY (#quot;messageId#quot;) REFERENCES agents_messages(id) ON DELETE CASCADE"
 "public.agent_execution_message_links" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
@@ -233,6 +235,9 @@ erDiagram
 "public.agent_files" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_live_check_failure" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_live_check_failure" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
+"public.agent_live_check_failure" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;agentVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
 "public.agent_message_queue" }o--|| "public.agents_messages" : "FOREIGN KEY (#quot;messageId#quot;) REFERENCES agents_messages(id) ON DELETE CASCADE"
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;steeringExecutionId#quot;) REFERENCES agent_execution(id)"
@@ -630,6 +635,7 @@ erDiagram
 }
 "public.agent_execution" {
   boolean acceptsSteering
+  varchar_36_ agentVersionId FK
   json attachments
   json author
   integer cacheReadTokens
@@ -709,6 +715,14 @@ erDiagram
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
+}
+"public.agent_live_check_failure" {
+  varchar_36_ agentId FK
+  varchar_36_ agentVersionId FK
+  varchar_32_ checkId
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ executionId FK
+  text reason
 }
 "public.agent_message_queue" {
   timestamp_3__with_time_zone createdAt

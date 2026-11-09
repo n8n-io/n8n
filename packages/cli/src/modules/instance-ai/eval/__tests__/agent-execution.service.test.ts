@@ -212,6 +212,41 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(generate).toHaveBeenCalledWith(caseInput, expect.anything());
 	});
 
+	it('replays a saved test without a generated scenario, passing the replay to the runtime', async () => {
+		const generate = vi.fn().mockResolvedValue(makeGenerateResult());
+		buildRuntime.mockResolvedValue({ generate, close: vi.fn() });
+		const replayTool = { replays: vi.fn(), answer: vi.fn() };
+
+		await buildService().executeWithLlmMock('agent-1', user, request, 'Where is order 1042?', {
+			replayTool,
+		});
+
+		expect(generateAgentScenarioSeed).not.toHaveBeenCalled();
+		expect(buildRuntime.mock.calls[0][0].replayTool).toBe(replayTool);
+		expect(generate).toHaveBeenCalledWith('Where is order 1042?', expect.anything());
+	});
+
+	it('records a call answered from saved data as mocked, since no real tool ran', async () => {
+		const generate = vi.fn().mockResolvedValue(makeGenerateResult());
+		buildRuntime.mockResolvedValue({ generate, close: vi.fn() });
+		const replayTool = {
+			replays: vi.fn((tool: string) => tool === 'Slack_Tool'),
+			answer: vi.fn(),
+		};
+
+		const result = await buildService().executeWithLlmMock(
+			'agent-1',
+			user,
+			request,
+			'Where is order 1042?',
+			{ replayTool },
+		);
+
+		expect(result.toolCalls).toEqual([
+			expect.objectContaining({ tool: 'Slack_Tool', mocked: true, interceptedRequests: [] }),
+		]);
+	});
+
 	it('runs the happy path: real-model turn, mocked tool HTTP, mapped result', async () => {
 		const innerCredentialsHelper = { getDecrypted: vi.fn() };
 		const close = vi.fn().mockResolvedValue(undefined);

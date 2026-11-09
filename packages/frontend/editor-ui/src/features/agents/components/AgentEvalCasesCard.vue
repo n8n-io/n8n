@@ -15,6 +15,7 @@ import {
 	N8nLoading,
 	N8nText,
 } from '@n8n/design-system';
+import { AGENT_TEST_CHAT_DATASET_NAME } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
@@ -55,6 +56,10 @@ const { openAgentConfirmationModal } = useAgentConfirmationModal();
 // view has no honest way to write them, so it renders read-only.
 const source = computed(() => toCaseSource(props.dataset));
 const isRequestOnly = computed(() => source.value?.columns.whatToCheck === null);
+
+// Replies a person saved from a chat, not cases drafted from the instructions,
+// so there is nothing to regenerate.
+const isSavedTests = computed(() => props.dataset.name === AGENT_TEST_CHAT_DATASET_NAME);
 
 /** True when the last read of this dataset's rows failed, so the list is unknown rather than empty. */
 const loadFailed = ref(false);
@@ -250,14 +255,20 @@ async function onRegenerate() {
 		<div :class="$style.header">
 			<div :class="$style.headerRow">
 				<N8nBadge variant="secondary" :class="$style.tag">
-					<N8nIcon icon="sparkles" size="xsmall" />
-					{{ i18n.baseText('agents.builder.agentEvals.cases.tag') }}
+					<N8nIcon :icon="isSavedTests ? 'message-square' : 'sparkles'" size="xsmall" />
+					{{
+						i18n.baseText(
+							isSavedTests
+								? 'agents.builder.agentEvals.cases.savedTag'
+								: 'agents.builder.agentEvals.cases.tag',
+						)
+					}}
 				</N8nBadge>
 
 				<div :class="$style.spacer" />
 
 				<N8nButton
-					v-if="!disabled"
+					v-if="!disabled && !isSavedTests"
 					variant="ghost"
 					size="small"
 					type="button"
@@ -274,7 +285,13 @@ async function onRegenerate() {
 				{{ i18n.baseText('agents.builder.agentEvals.cases.title') }}
 			</N8nText>
 			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('agents.builder.agentEvals.cases.description') }}
+				{{
+					i18n.baseText(
+						isSavedTests
+							? 'agents.builder.agentEvals.cases.savedDescription'
+							: 'agents.builder.agentEvals.cases.description',
+					)
+				}}
 			</N8nText>
 		</div>
 

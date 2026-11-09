@@ -386,6 +386,82 @@ describe('SessionTimelineTable', () => {
 
 		expect(w.emitted('select')).toBeUndefined();
 	});
+	describe('turns', () => {
+		// The question, a line of narration, a failed tool call, and the reply.
+		const turn: TimelineItem[] = [
+			{ kind: 'user', executionId: 'e1', timestamp: 0, content: 'Where is order 9999?' },
+			{ kind: 'agent', executionId: 'e1', timestamp: 1000, content: "I'll look it up." },
+			{
+				kind: 'tool',
+				executionId: 'e1',
+				timestamp: 2000,
+				endTimestamp: 3000,
+				toolName: 'lookup_order',
+				toolOutcome: 'error',
+			},
+			{ kind: 'agent', executionId: 'e1', timestamp: 4000, content: "I couldn't find it." },
+		];
+
+		it('shows the agent work between a message and its reply as one group of steps', () => {
+			const w = mountTable({
+				items: turn,
+				selectedIndex: null,
+				visibleKinds: new Set<string>(),
+				openStepGroups: new Set<string>(),
+			});
+
+			const rows = w.findAll('[data-test-id="timeline-row"]');
+			expect(rows.map((row) => row.attributes('data-role'))).toEqual(['message', 'reply']);
+			const steps = w.get('[data-test-id="timeline-steps-row"]');
+			expect(steps.text()).toContain('2 steps');
+			expect(steps.text()).toContain('Lookup order');
+			expect(steps.text()).toContain('Error');
+			expect(steps.attributes('aria-expanded')).toBe('false');
+		});
+
+		it('shows the steps under the group once it is open', () => {
+			const w = mountTable({
+				items: turn,
+				selectedIndex: null,
+				visibleKinds: new Set<string>(),
+				openStepGroups: new Set(['e1:1']),
+			});
+
+			expect(
+				w.findAll('[data-test-id="timeline-row"]').map((row) => row.attributes('data-role')),
+			).toEqual(['message', 'step', 'step', 'reply']);
+			expect(w.get('[data-test-id="timeline-steps-row"]').attributes('aria-expanded')).toBe('true');
+		});
+
+		it('asks to open or close a group when its row is clicked', async () => {
+			const w = mountTable({
+				items: turn,
+				selectedIndex: null,
+				visibleKinds: new Set<string>(),
+				openStepGroups: new Set<string>(),
+			});
+
+			await w.get('[data-test-id="timeline-steps-row"]').trigger('click');
+
+			expect(w.emitted('toggleSteps')).toEqual([['e1:1']]);
+			expect(w.emitted('select')).toBeUndefined();
+		});
+
+		it('marks a reply whose run failed a live check', () => {
+			const w = mountTable({
+				items: turn,
+				selectedIndex: null,
+				visibleKinds: new Set<string>(),
+				openStepGroups: new Set<string>(),
+				issueExecutionIds: new Set(['e1']),
+			});
+
+			const rows = w.findAll('[data-test-id="timeline-row"]');
+			expect(rows[0].find('[data-test-id="timeline-reply-issue"]').exists()).toBe(false);
+			expect(rows[1].find('[data-test-id="timeline-reply-issue"]').exists()).toBe(true);
+		});
+	});
+
 	describe('notice slot', () => {
 		function mountWithNotice(visibleKinds = new Set<string>()) {
 			return mount(SessionTimelineTable, {

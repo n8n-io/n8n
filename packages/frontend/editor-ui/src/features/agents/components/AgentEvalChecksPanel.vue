@@ -26,11 +26,17 @@ import {
 	readVerdictSuggestion,
 	toAvatarKind,
 } from '../utils/agent-eval-review';
+import {
+	readSavedTestRerun,
+	rerunAvatarKind,
+	type SavedTestRerun,
+} from '../utils/agent-eval-saved-test';
 import { toDisplayToolCalls } from '../utils/agent-eval-tool-calls';
 import { isDataTableDataset, toCaseSource } from '../utils/agentEvalCases.utils';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
 import AgentEvalAddCheckPanel from './AgentEvalAddCheckPanel.vue';
 import AgentEvalTryRow from './AgentEvalTryRow.vue';
+import AgentSavedTestRerun from './AgentSavedTestRerun.vue';
 
 const props = defineProps<{
 	projectId: string;
@@ -88,14 +94,17 @@ type CheckRow = {
 	whatToCheck: string | null;
 	/** The judge's proposed instruction for a failed check, if it made one. */
 	fixSuggestion: string | null;
+	/** Set for a test saved from the test chat, re-run on its saved data. */
+	rerun: SavedTestRerun | null;
 };
 
 const rows = computed<CheckRow[]>(() =>
 	shownReview.value.results.map((result) => {
+		const rerun = result.status === 'success' ? readSavedTestRerun(result.output) : null;
 		return {
 			id: result.id,
 			sourceRowId: result.sourceRowId,
-			status: toAvatarKind(result.status, result.verdict),
+			status: rerun ? rerunAvatarKind(rerun) : toAvatarKind(result.status, result.verdict),
 			input: readCaseRequest(result.input),
 			output: readAgentAnswer(result.output),
 			runAt: result.runAt,
@@ -106,9 +115,58 @@ const rows = computed<CheckRow[]>(() =>
 			toolCalls: toDisplayToolCalls(result.toolCalls),
 			whatToCheck: readCaseWhatToCheck(result.input),
 			fixSuggestion: readVerdictSuggestion(result.verdict),
+			rerun,
 		};
 	}),
 );
+
+const RERUN_STATUS_KEYS: Record<
+	SavedTestRerun['outcome'],
+	Record<SavedTestRerun['kind'], BaseTextKey>
+> = {
+	pass: {
+		answer: 'agents.builder.agentEvals.savedTest.status.same',
+		note: 'agents.builder.agentEvals.savedTest.status.noteMet',
+	},
+	fail: {
+		answer: 'agents.builder.agentEvals.savedTest.status.changed',
+		note: 'agents.builder.agentEvals.savedTest.status.noteNotMet',
+	},
+	flaky: {
+		answer: 'agents.builder.agentEvals.savedTest.status.flaky',
+		note: 'agents.builder.agentEvals.savedTest.status.flaky',
+	},
+	couldnt_check: {
+		answer: 'agents.builder.agentEvals.savedTest.status.couldntCheck',
+		note: 'agents.builder.agentEvals.savedTest.status.couldntCheck',
+	},
+};
+
+function rerunStatusLabel(rerun: SavedTestRerun | null): string | null {
+	return rerun ? i18n.baseText(RERUN_STATUS_KEYS[rerun.outcome][rerun.kind]) : null;
+}
+
+// "Keep saved answer" writes nothing: the saved answer already is the standard.
+// It only records the choice on screen until the next run.
+const keptResultIds = ref(new Set<string>());
+const acceptingResultIds = ref(new Set<string>());
+
+function onKeepSavedAnswer(resultId: string) {
+	keptResultIds.value = new Set([...keptResultIds.value, resultId]);
+}
+
+async function onAcceptNewAnswer(resultId: string) {
+	acceptingResultIds.value = new Set([...acceptingResultIds.value, resultId]);
+	try {
+		await store.acceptNewAnswer(props.projectId, props.agentId, resultId);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.savedTest.acceptError'));
+	} finally {
+		const next = new Set(acceptingResultIds.value);
+		next.delete(resultId);
+		acceptingResultIds.value = next;
+	}
+}
 
 const passedCount = computed(() => rows.value.filter((row) => row.status === 'pass').length);
 const needsWorkCount = computed(
@@ -523,13 +581,27 @@ onBeforeUnmount(store.stopPollingRun);
 				hide-revise
 				view="complete"
 				:focused="row.id === focusedResultId"
+				:status-label="rerunStatusLabel(row.rerun)"
+				:hide-actually-fine="row.rerun !== null"
+				:hide-rule-banner="row.rerun !== null"
 				:test-id="`agent-eval-check-${row.id}`"
 				@actually-fine="onActuallyFine(row.id)"
 				@rerun-check="onRerunCheck(row.id)"
 				@apply-suggestion="onApplySuggestion(row.id)"
 				@save-what-to-check="onSaveWhatToCheck(row.id, $event)"
 				@delete-check="onDeleteCheck(row)"
-			/>
+			>
+				<template v-if="row.rerun" #outcome>
+					<AgentSavedTestRerun
+						:rerun="row.rerun"
+						:disabled="disabled || showingPreviousRun || inFlight"
+						:accepting="acceptingResultIds.has(row.id)"
+						:kept="keptResultIds.has(row.id)"
+						@accept="onAcceptNewAnswer(row.id)"
+						@keep="onKeepSavedAnswer(row.id)"
+					/>
+				</template>
+			</AgentEvalTryRow>
 		</div>
 
 		<!-- Not tied to `addCheckSource`: a new run's review is empty until it loads, so the

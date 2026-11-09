@@ -1,4 +1,12 @@
-import type { AgentEvalDataset, AgentEvalDatasetRepository, User } from '@n8n/db';
+import type {
+	AgentEvalDataset,
+	AgentEvalDatasetRepository,
+	AgentEvalResult,
+	AgentEvalResultRepository,
+	AgentEvalRun,
+	AgentEvalRunRepository,
+	User,
+} from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -80,8 +88,17 @@ function setup() {
 	dataTables.getProjectIdForDataTable.mockResolvedValue(PROJECT_ID);
 	const executions = mock<AgentExecutionService>();
 	executions.firstMessagesOfRecentThreads.mockResolvedValue(new Map());
-	const service = new AgentTestCaseService(context, datasets, dataTables, executions);
-	return { service, context, datasets, dataTables, executions };
+	const results = mock<AgentEvalResultRepository>();
+	const runs = mock<AgentEvalRunRepository>();
+	const service = new AgentTestCaseService(
+		context,
+		datasets,
+		dataTables,
+		executions,
+		results,
+		runs,
+	);
+	return { service, context, datasets, dataTables, executions, results, runs };
 }
 
 describe('AgentTestCaseService.save', () => {
@@ -269,6 +286,90 @@ describe('AgentTestCaseService.remove', () => {
 	});
 });
 
+describe('AgentTestCaseService.acceptNewAnswer', () => {
+	const finished = {
+		id: 'result-1',
+		runId: 'run-1',
+		sourceRowId: '7',
+		status: 'success',
+		output: { finalText: 'It was delivered on Tuesday.' },
+		toolCalls: {
+			calls: [
+				{ tool: 'anthropic.tool_search', input: {}, output: {} },
+				{ tool: 'lookup_order', input: { orderId: '1042' }, output: { status: 'delivered' } },
+			],
+		},
+	} as unknown as AgentEvalResult;
+
+	function setupAccept(result: AgentEvalResult = finished) {
+		const ctx = setup();
+		ctx.results.findById.mockResolvedValue(result);
+		ctx.runs.findByIdAndAgentId.mockResolvedValue({
+			id: 'run-1',
+			datasetId: 'dataset-1',
+		} as unknown as AgentEvalRun);
+		ctx.datasets.findByIdAndAgentId.mockResolvedValue(existingDataset);
+		ctx.dataTables.getOne.mockResolvedValue({
+			id: 'table-1',
+			columns: Object.values(TEST_CASE_COLUMNS).map((name) => ({ name })),
+		} as never);
+		return ctx;
+	}
+
+	it('makes the latest reply the saved answer, with the tool data that run used', async () => {
+		const { service, dataTables, results } = setupAccept();
+
+		await service.acceptNewAnswer(user, PROJECT_ID, AGENT_ID, 'result-1');
+
+		expect(dataTables.updateRows).toHaveBeenCalledWith('table-1', PROJECT_ID, {
+			filter: { type: 'and', filters: [{ columnName: 'id', condition: 'eq', value: 7 }] },
+			data: {
+				[TEST_CASE_COLUMNS.expectedOutput]: 'It was delivered on Tuesday.',
+				[TEST_CASE_COLUMNS.criteria]: '',
+				[TEST_CASE_COLUMNS.toolData]: JSON.stringify([
+					{ tool: 'lookup_order', input: { orderId: '1042' }, output: { status: 'delivered' } },
+				]),
+			},
+		});
+		expect(results.updateVerdict).toHaveBeenCalledWith('result-1', {
+			status: 'completed',
+			outcome: 'pass',
+			reasoning: null,
+		});
+	});
+
+	it('404s for a result of another agent and writes nothing', async () => {
+		const { service, runs, dataTables } = setupAccept();
+		runs.findByIdAndAgentId.mockResolvedValue(null);
+
+		await expect(service.acceptNewAnswer(user, PROJECT_ID, AGENT_ID, 'result-1')).rejects.toThrow(
+			NotFoundError,
+		);
+		expect(dataTables.updateRows).not.toHaveBeenCalled();
+	});
+
+	it('refuses a result from a dataset that was not saved from the test chat', async () => {
+		const { service, datasets, dataTables } = setupAccept();
+		datasets.findByIdAndAgentId.mockResolvedValue({
+			...existingDataset,
+			name: 'Hand-written checks',
+		} as AgentEvalDataset);
+
+		await expect(service.acceptNewAnswer(user, PROJECT_ID, AGENT_ID, 'result-1')).rejects.toThrow();
+		expect(dataTables.updateRows).not.toHaveBeenCalled();
+	});
+
+	it('refuses a run with no reply to keep', async () => {
+		const { service, dataTables } = setupAccept({
+			...finished,
+			output: { finalText: '' },
+		} as unknown as AgentEvalResult);
+
+		await expect(service.acceptNewAnswer(user, PROJECT_ID, AGENT_ID, 'result-1')).rejects.toThrow();
+		expect(dataTables.updateRows).not.toHaveBeenCalled();
+	});
+});
+
 describe('AgentTestCaseService.savedForThread', () => {
 	it('returns the cases saved from this chat', async () => {
 		const { service, datasets, dataTables } = setup();
@@ -372,6 +473,33 @@ describe('AgentTestCaseService.askedBefore', () => {
 			service.askedBefore(user, PROJECT_ID, AGENT_ID, 'thread-1', 'exec-1'),
 		).resolves.toBe(2);
 		expect(executions.firstMessagesOfRecentThreads).toHaveBeenCalledWith(AGENT_ID);
+	});
+
+	it('is 0 when the message is already saved as a test, so the chat does not offer it again', async () => {
+		const { service, executions, datasets, dataTables } = setup();
+		executions.firstMessagesOfRecentThreads.mockResolvedValue(
+			new Map([['thread-2', 'Where is my order?']]),
+		);
+		datasets.findByAgentId.mockResolvedValue([existingDataset]);
+		dataTables.getOne.mockResolvedValue({
+			id: 'table-1',
+			columns: Object.values(TEST_CASE_COLUMNS).map((name) => ({ name })),
+		} as never);
+		dataTables.getManyRowsAndCount.mockResolvedValue({ count: 1, data: [{ id: 3 }] } as never);
+
+		await expect(
+			service.askedBefore(user, PROJECT_ID, AGENT_ID, 'thread-1', 'exec-1'),
+		).resolves.toBe(0);
+		expect(dataTables.getManyRowsAndCount).toHaveBeenCalledWith('table-1', PROJECT_ID, {
+			skip: 0,
+			take: 1,
+			filter: {
+				type: 'and',
+				filters: [
+					{ columnName: TEST_CASE_COLUMNS.input, condition: 'eq', value: 'Where is my order?' },
+				],
+			},
+		});
 	});
 
 	it('is 0 for an execution that is not in the session', async () => {

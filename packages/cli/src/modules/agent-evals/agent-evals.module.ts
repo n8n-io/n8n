@@ -19,5 +19,19 @@ export class AgentEvalsModule implements ModuleInterface {
 		// The runner can't resume runs interrupted by a restart — sweep any left
 		// over from a previous process so they don't poll as `running` forever.
 		await runner.cleanupInterruptedRuns();
+
+		// The code checks on live sessions run after each run of a published
+		// agent finishes. They call no model.
+		const { ModuleRegistry } = await import('@n8n/backend-common');
+		if (Container.get(ModuleRegistry).isActive('agents')) {
+			const { AgentExecutionService } = await import('../agents/agent-execution.service.js');
+			const { AgentLiveChecksService } = await import(
+				'./online-checks/agent-live-checks.service.js'
+			);
+			const liveChecks = Container.get(AgentLiveChecksService);
+			Container.get(AgentExecutionService).onExecutionFinished(
+				async (execution) => await liveChecks.checkFinishedExecution(execution),
+			);
+		}
 	}
 }

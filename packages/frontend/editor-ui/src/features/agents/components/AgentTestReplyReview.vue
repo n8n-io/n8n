@@ -7,6 +7,8 @@
  * Undo. Telemetry gets the verdict and the note length, never the note.
  * A saved reply shows as saved after a reload. A message the person asked in
  * earlier test chats gets one suggestion to save it, with "Not now".
+ * In the Sessions view, a live reply passes the checks that already ran on it
+ * (`liveIssues`), so nothing is computed again.
  */
 import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue';
 import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
@@ -23,6 +25,8 @@ const props = defineProps<{
 	agentId: string;
 	threadId: string;
 	executionId: string;
+	/** The live checks that failed on this reply, from the Sessions view. */
+	liveIssues?: AgentReplyIssue[];
 }>();
 
 const i18n = useI18n();
@@ -75,7 +79,8 @@ const canSaveNote = computed(() => draft.value.trim().length > 0);
 const noteForm = useTemplateRef<HTMLFormElement>('noteForm');
 
 onMounted(async () => {
-	await Promise.all([loadChecks(), loadSaved()]);
+	if (props.liveIssues) issues.value = props.liveIssues;
+	await Promise.all([props.liveIssues ? Promise.resolve() : loadChecks(), loadSaved()]);
 });
 
 async function loadChecks() {

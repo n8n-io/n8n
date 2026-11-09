@@ -2,6 +2,7 @@ import type { Agent, FetchFn, McpToolCallSettledEvent } from '@n8n/agents';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import type { AgentJsonConfig } from '@n8n/api-types';
 
+import type { ToolReplayHook } from '../json-config/test-sandbox';
 import type { ReferencedToolKind } from '../tool-registry';
 
 export interface AgentEvaluationSkippedFeature {
@@ -48,6 +49,11 @@ export interface AgentMcpToolCallSettledContext extends McpToolCallSettledEvent 
  * instrumented runtime can never be served to a normal run.
  */
 export interface AgentRuntimeInstrumentation {
+	/**
+	 * Answers the agent's own tools from a saved test's data in place of
+	 * running them. Tools it does not claim keep their usual (mocked) path.
+	 */
+	replayTool?: ToolReplayHook;
 	/** Replaces the default proxy-aware transport for the agent's model calls. */
 	modelFetch?: FetchFn;
 	/** Replaces the default SSRF-guarded transport for MCP server traffic. */

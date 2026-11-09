@@ -1,4 +1,8 @@
-import type { AgentEvalVerdict, AgentEvalRunSummary } from '@n8n/api-types';
+import type {
+	AgentEvalVerdict,
+	AgentEvalRunSummary,
+	InstanceAiEvalAgentExecutionResult,
+} from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AgentEvalDataset, AgentEvalResult, User } from '@n8n/db';
@@ -35,6 +39,17 @@ import { generateFixSuggestion } from './agent-eval-fix-suggestion';
 import { judgeAgentAnswer } from './agent-eval-judge';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { assertRequiredModulesActive } from './agent-evals-required-modules';
+import {
+	compareToolCalls,
+	decideOutcome,
+	needsAnotherRun,
+	type RerunAttempt,
+	type RerunDecision,
+	type SavedTestKind,
+} from './online-checks/rerun-outcome';
+import { TEST_CASE_COLUMNS, type PinnedToolCall } from './online-checks/saved-test-case';
+import { profileAgentTools } from './online-checks/tool-profile';
+import { ToolReplay, readPinnedToolCalls } from './online-checks/tool-replay';
 
 const ROW_PAGE_SIZE = 100;
 // Per-run in-flight cap layered on the shared evaluation queue: keeps one run
@@ -612,6 +627,9 @@ export class AgentEvalRunnerService {
 		try {
 			await this.resultRepository.markAsRunning(resultRow.id);
 
+			const savedCalls = readSnapshotToolData(resolvedCase.snapshot);
+			if (savedCalls) return await this.runSavedTest(resultRow, resolvedCase, savedCalls, ctx);
+
 			const execResult = await this.evalAgentExecutionService.executeWithLlmMock(
 				ctx.agentId,
 				ctx.user,
@@ -676,6 +694,88 @@ export class AgentEvalRunnerService {
 			}
 			return undefined;
 		}
+	}
+
+	/**
+	 * Runs a test saved with its tool data, on that data (see `ToolReplay`), and
+	 * decides it the way "Noise in re-runs" says: the tool calls are compared in
+	 * code first, the judge reads only the words, and a run that differs is run
+	 * again, up to 3 times, so "fail" means every run failed. A run that reads
+	 * data the test did not save stops the test as "couldn't check".
+	 */
+	private async runSavedTest(
+		resultRow: AgentEvalResult,
+		resolvedCase: ResolvedCase,
+		savedCalls: PinnedToolCall[],
+		ctx: { agentId: string; projectId: string; user: User; timeoutMs?: number },
+	): Promise<CaseUsage> {
+		const config = await this.agentConfigService.getConfig(ctx.agentId, ctx.projectId);
+		const profiles = profileAgentTools(config).filter((tool) => tool.source !== 'mcp');
+		const ownTools = new Set(profiles.map((tool) => tool.name));
+		const actingTools = new Set(profiles.filter((t) => t.action === 'acts').map((t) => t.name));
+		const kind: SavedTestKind = readSnapshotText(resolvedCase.snapshot, 'criteria')
+			? 'note'
+			: 'answer';
+
+		const usage: CaseUsage = { inputTokens: 0, outputTokens: 0 };
+		const attempts: RerunAttempt[] = [];
+		let last: { execResult: InstanceAiEvalAgentExecutionResult; replay: ToolReplay } | undefined;
+
+		while (needsAnotherRun(kind, attempts)) {
+			const replay = new ToolReplay(savedCalls, { ownTools, actingTools });
+			const execResult = await this.evalAgentExecutionService.executeWithLlmMock(
+				ctx.agentId,
+				ctx.user,
+				{ projectId: ctx.projectId, ...(ctx.timeoutMs ? { timeoutMs: ctx.timeoutMs } : {}) },
+				resolvedCase.input,
+				{ replayTool: replay },
+			);
+			const runUsage = normalizeUsage(execResult.usage);
+			usage.inputTokens += runUsage?.inputTokens ?? 0;
+			usage.outputTokens += runUsage?.outputTokens ?? 0;
+
+			if (!execResult.success) {
+				await this.resultRepository.markAsError(resultRow.id, 'execution_failed', {
+					errors: execResult.errors,
+					finalText: execResult.finalText,
+				});
+				return usage;
+			}
+
+			const toolChanges = compareToolCalls(
+				savedCalls,
+				execResult.toolCalls.map((call) => call.tool),
+				ownTools,
+			);
+			// The judge is a model call: skip it when the tools already decided the run.
+			const decidedByTools = replay.offScript || (kind === 'answer' && toolChanges.length > 0);
+			const judged = decidedByTools
+				? null
+				: await this.judgeCase(resolvedCase, execResult.finalText, ctx);
+			attempts.push({
+				offScriptTools: replay.offScriptTools,
+				toolChanges,
+				judge: judgeResult(judged),
+				reasoning: judged?.reasoning ?? null,
+			});
+			last = { execResult, replay };
+		}
+
+		const decision = decideOutcome(kind, attempts);
+		const { execResult, replay } = last!;
+		await this.resultRepository.markAsCompleted(resultRow.id, {
+			output: toJsonObject({
+				finalText: execResult.finalText,
+				model: execResult.model ?? null,
+				finishReason: execResult.finishReason ?? null,
+				skippedFeatures: execResult.skippedFeatures,
+				rerun: { kind, ...decision, replayed: replay.events },
+			}),
+			toolCalls: toJsonObject({ calls: execResult.toolCalls }),
+			metrics: { usage: { ...usage } },
+			verdict: toJsonObject(verdictForDecision(decision)),
+		});
+		return usage;
 	}
 
 	/**
@@ -772,6 +872,8 @@ export class AgentEvalRunnerService {
 			);
 		}
 
+		const hasToolData = columnNames.has(TEST_CASE_COLUMNS.toolData);
+
 		const rows: DataTableRow[] = [];
 		let skip = 0;
 		for (;;) {
@@ -798,6 +900,10 @@ export class AgentEvalRunnerService {
 				snapshot.expectedOutput = cellToJson(row[mapping.expectedOutput]);
 			}
 			if (mapping.criteria) snapshot.criteria = cellToJson(row[mapping.criteria]);
+
+			// A test saved from a chat carries the tool data its run used.
+			const savedCalls = hasToolData ? readPinnedToolCalls(row[TEST_CASE_COLUMNS.toolData]) : null;
+			if (savedCalls) snapshot.toolData = toJsonValue(savedCalls);
 
 			return {
 				sourceRowId: row.id === undefined || row.id === null ? null : String(row.id),
@@ -861,6 +967,35 @@ function cellToJson(value: DataTableColumnJsType | undefined): JsonValue {
 
 function toJsonObject(value: unknown): JsonObject {
 	return jsonParse<JsonObject>(jsonStringify(value), { fallbackValue: {} });
+}
+
+function toJsonValue(value: unknown): JsonValue {
+	return jsonParse<JsonValue>(jsonStringify(value), { fallbackValue: null });
+}
+
+/** The saved tool calls on a case snapshot, or null for a case without them. */
+function readSnapshotToolData(snapshot: JsonObject): PinnedToolCall[] | null {
+	const value = snapshot.toolData;
+	return Array.isArray(value) ? readPinnedToolCalls(jsonStringify(value)) : null;
+}
+
+function judgeResult(verdict: AgentEvalVerdict | null): RerunAttempt['judge'] {
+	if (!verdict) return 'skipped';
+	if (verdict.status === 'completed') return verdict.outcome === 'pass' ? 'pass' : 'fail';
+	return verdict.status;
+}
+
+/**
+ * The verdict a saved test's re-run leaves on its result. Only "pass" and
+ * "fail" are judgments; a flaky test and one that couldn't be checked are
+ * neither, and `output.rerun` says which.
+ */
+function verdictForDecision(decision: RerunDecision): AgentEvalVerdict {
+	if (decision.outcome === 'pass') return { status: 'completed', outcome: 'pass', reasoning: null };
+	if (decision.outcome === 'fail') {
+		return { status: 'completed', outcome: 'fail', reasoning: decision.reasoning ?? null };
+	}
+	return { status: 'skipped', outcome: null, reasoning: null };
 }
 
 /**

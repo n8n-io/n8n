@@ -18,6 +18,13 @@ import { Z } from '../zod-class';
 // available after `100_n8n_credits_credential_selection`).
 export const AGENT_EVALS_FLAG = '101_agent_evals';
 
+/**
+ * Name of the dataset that holds the replies saved as tests from test chat and
+ * from live sessions. The server creates it, and the editor names its cases as
+ * saved tests rather than AI drafts.
+ */
+export const AGENT_TEST_CHAT_DATASET_NAME = 'Saved from test chat';
+
 // ---------------------------------------------------------------------------
 // Shared value types — the FE/BE contract mirrored by the `@n8n/db` entities,
 // which import these from here (as they already do for `DatasetRef`) rather

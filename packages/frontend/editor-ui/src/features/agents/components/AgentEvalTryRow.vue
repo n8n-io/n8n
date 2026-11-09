@@ -64,6 +64,12 @@ const props = defineProps<{
 	fixSuggestion?: string | null;
 	/** True from "Apply suggestion" until the rewrite and rerun settle. */
 	applyingSuggestion?: boolean;
+	/** Replaces the status line, for a row whose outcome is not a plain pass or fail (a re-run saved test). */
+	statusLabel?: string | null;
+	/** Hides "Actually fine" where the row offers its own choice (a re-run saved test). */
+	hideActuallyFine?: boolean;
+	/** Hides the judge's rule banner where the row reports its own outcome (a re-run saved test). */
+	hideRuleBanner?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -130,7 +136,9 @@ const STATUS_TEXT: Record<AgentAvatarKind, StatusText> = {
 	fail: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', color: 'danger' },
 };
 
-const statusText = computed(() => i18n.baseText(STATUS_TEXT[props.status].labelKey));
+const statusText = computed(
+	() => props.statusLabel ?? i18n.baseText(STATUS_TEXT[props.status].labelKey),
+);
 const statusColor = computed(() => STATUS_TEXT[props.status].color);
 const statusIsWarning = computed(() => STATUS_TEXT[props.status].warning === true);
 
@@ -271,6 +279,7 @@ watch(
 			:class="$style.sample"
 			:data-test-id="testId && `${testId}-placeholder`"
 		>
+			<slot name="outcome" />
 			<div v-if="whatToCheck" :class="$style.whatToCheck">
 				<div :class="$style.whatToCheckBody">
 					<N8nText bold color="text-dark" size="medium">{{
@@ -333,6 +342,7 @@ watch(
 					:status="status"
 					:tool-calls="toolCalls"
 					:project-id="projectId"
+					:hide-banner="hideRuleBanner"
 					:joined-below="!practiceBannerDismissed"
 				/>
 				<div v-if="!practiceBannerDismissed" :class="$style.practiceBanner">
@@ -393,6 +403,7 @@ watch(
 							{{ i18n.baseText('instanceAi.testAgentPreview.saveCorrection') }}
 						</N8nButton>
 						<N8nButton
+							v-if="!hideActuallyFine"
 							variant="ghost"
 							size="small"
 							:disabled="disabled || savingCheck"

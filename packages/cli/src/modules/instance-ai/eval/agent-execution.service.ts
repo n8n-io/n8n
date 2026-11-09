@@ -28,6 +28,8 @@ import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { createAgentModelTurnRecorder } from './agent-model-turn-recorder';
 import { generateAgentScenarioSeed } from './agent-scenario-seed';
+import type { ToolReplayHook } from '@/modules/agents/json-config/test-sandbox';
+
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
 import { snapshotLedgerBody } from './ledger-snapshot';
 import {
@@ -188,6 +190,9 @@ export class EvalAgentExecutionService {
 		// per-tool hints keep the tool mocks coherent), but the message the agent
 		// receives is this input verbatim — how a fixed eval case is executed.
 		caseInput?: string,
+		// A saved test's replay: the agent's own tools answer from the saved run's
+		// data, so no scenario is generated for them.
+		{ replayTool }: { replayTool?: ToolReplayHook } = {},
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		// Workflow-tool sub-executions carry a configureAdditionalData closure
 		// that doesn't survive queue serialization — refuse upfront so tool
@@ -221,12 +226,14 @@ export class EvalAgentExecutionService {
 
 		let seed: InstanceAiEvalAgentScenarioSeed;
 		try {
-			seed = await generateAgentScenarioSeed({
-				agentName: config.name,
-				instructions: config.instructions,
-				tools: toolSummaries,
-				scenarioHints: scenarioSignal,
-			});
+			seed = replayTool
+				? { openingMessage: caseInput ?? '', globalContext: '', toolHints: {}, warnings: [] }
+				: await generateAgentScenarioSeed({
+						agentName: config.name,
+						instructions: config.instructions,
+						tools: toolSummaries,
+						scenarioHints: scenarioSignal,
+					});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return this.errorResult(
@@ -261,6 +268,7 @@ export class EvalAgentExecutionService {
 			mockHandler,
 			evidence,
 		);
+		if (replayTool) instrumentation.replayTool = replayTool;
 		return await this.executePreparedRuntime(
 			preparation,
 			instrumentation,
@@ -429,7 +437,7 @@ export class EvalAgentExecutionService {
 			if (budgetSignal.aborted) void this.closeRuntime(agent);
 			else await this.closeRuntime(agent);
 		}
-		return this.executionResult(output, preparation, seed, evidence);
+		return this.executionResult(output, preparation, seed, evidence, instrumentation.replayTool);
 	}
 
 	private async closeRuntime(agent: RuntimeAgent) {
@@ -498,6 +506,7 @@ export class EvalAgentExecutionService {
 		preparation: AgentEvaluationPreparation,
 		seed: InstanceAiEvalAgentScenarioSeed,
 		{ recorder, toolLedger, credentialHelpers }: AgentRunEvidence,
+		replayTool?: ToolReplayHook,
 	): InstanceAiEvalAgentExecutionResult {
 		const { tools: toolSummaries, skippedFeatures, config } = preparation;
 		const mcpServers = config.mcpServers ?? [];
@@ -529,7 +538,8 @@ export class EvalAgentExecutionService {
 				input: truncateRecordedValue(entry.input),
 				output: truncateRecordedValue(entry.output),
 				...(entry.canceled ? { error: 'canceled' } : {}),
-				mocked: interceptedRequests.length > 0,
+				// A replayed call is answered from a saved test's data: no real tool ran.
+				mocked: interceptedRequests.length > 0 || replayTool?.replays(entry.tool) === true,
 				interceptedRequests,
 				...(autoApprovedToolNames.has(entry.tool) ? { autoApproved: true } : {}),
 			};

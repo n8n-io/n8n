@@ -102,6 +102,21 @@ export interface RecordMessageParams {
 	};
 }
 
+/** A recorded run that has finished, for listeners outside this module (live checks). */
+export interface FinishedAgentExecution {
+	executionId: string;
+	agentId: string;
+	threadId: string;
+	status: AgentExecution['status'];
+	/** Absent when the caller recorded no telemetry. Only 'production' runs a published version. */
+	runType?: AgentRunTelemetryType;
+	hitlStatus?: AgentExecutionHitlStatus;
+	userMessage: string;
+	timeline: TimelineEvent[];
+}
+
+export type FinishedExecutionListener = (execution: FinishedAgentExecution) => Promise<void>;
+
 export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
 	resourceId: string;
 	messageOrigin?: Omit<AgentMessageOrigin, 'source' | 'hidden'>;
@@ -203,6 +218,42 @@ export class AgentExecutionService {
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly systemAgents: SystemAgentRegistry,
 	) {}
+
+	private readonly finishedListeners: FinishedExecutionListener[] = [];
+
+	/**
+	 * Called after each recorded run settles. A listener runs after the run is
+	 * saved and can never fail it: an error is logged and dropped.
+	 */
+	onExecutionFinished(listener: FinishedExecutionListener) {
+		this.finishedListeners.push(listener);
+	}
+
+	private notifyFinished(
+		params: RecordMessageParams,
+		executionId: string,
+		status: AgentExecution['status'],
+	) {
+		if (this.finishedListeners.length === 0) return;
+		const finished: FinishedAgentExecution = {
+			executionId,
+			agentId: params.agentId,
+			threadId: params.threadId,
+			status,
+			...(params.telemetry ? { runType: params.telemetry.runType } : {}),
+			...(params.hitlStatus ? { hitlStatus: params.hitlStatus } : {}),
+			userMessage: typeof params.userMessage === 'string' ? params.userMessage : '',
+			timeline: params.record.timeline,
+		};
+		for (const listener of this.finishedListeners) {
+			void listener(finished).catch((error: unknown) => {
+				this.logger.warn('Finished-execution listener failed', {
+					executionId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
+		}
+	}
 
 	async startExecutionRecording(
 		params: StartExecutionParams,
@@ -600,6 +651,7 @@ export class AgentExecutionService {
 		await this.updateThreadAfterExecution(params, executionId);
 
 		this.trackFinishedTurn(params, status);
+		this.notifyFinished(params, executionId, status);
 		this.logger.debug('Recorded agent execution', {
 			executionId,
 			threadId,

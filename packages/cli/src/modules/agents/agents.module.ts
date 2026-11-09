@@ -274,6 +274,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentPlan } = await import('./entities/agent-plan.entity.js');
 		const { AgentPlanHistory } = await import('./entities/agent-plan-history.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
+		const { AgentLiveCheckFailure } = await import('./entities/agent-live-check-failure.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
 		);
@@ -328,6 +329,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentPlan,
 			AgentPlanHistory,
 			AgentHistory,
+			AgentLiveCheckFailure,
 			AgentCredentialDependency,
 			AgentWorkflowDependency,
 			AgentTask,

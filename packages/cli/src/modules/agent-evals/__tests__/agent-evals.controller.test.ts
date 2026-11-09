@@ -18,6 +18,7 @@ import type { AgentEvalService } from '../agent-eval.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 import { AgentEvalsController } from '../agent-evals.controller';
 import type { AgentOnlineChecksService } from '../online-checks/agent-online-checks.service';
+import type { AgentLiveChecksService } from '../online-checks/agent-live-checks.service';
 import type { AgentTestCaseService } from '../online-checks/agent-test-cases.service';
 
 vi.mock('../agent-eval.service', () => ({ AgentEvalService: class AgentEvalService {} }));
@@ -51,6 +52,7 @@ describe('AgentEvalsController', () => {
 	let collaborationService: MockProxy<CollaborationService>;
 	let onlineChecksService: MockProxy<AgentOnlineChecksService>;
 	let testCaseService: MockProxy<AgentTestCaseService>;
+	let liveChecksService: MockProxy<AgentLiveChecksService>;
 	let controller: AgentEvalsController;
 
 	function makeReq<P extends Record<string, unknown>>(
@@ -85,6 +87,7 @@ describe('AgentEvalsController', () => {
 		collaborationService = mock<CollaborationService>();
 		onlineChecksService = mock<AgentOnlineChecksService>();
 		testCaseService = mock<AgentTestCaseService>();
+		liveChecksService = mock<AgentLiveChecksService>();
 		controller = new AgentEvalsController(
 			service,
 			ratingService,
@@ -92,6 +95,7 @@ describe('AgentEvalsController', () => {
 			collaborationService,
 			onlineChecksService,
 			testCaseService,
+			liveChecksService,
 		);
 	});
 
@@ -153,6 +157,11 @@ describe('AgentEvalsController', () => {
 			saveTestCase: 'agent:update',
 			removeTestCase: 'agent:update',
 			listSavedTestCases: 'agent:read',
+			// Rewrites a saved test's answer and data, like saving one.
+			acceptNewAnswer: 'agent:update',
+			// Read-only counts and lines from the code checks on live sessions.
+			getLiveChecks: 'agent:read',
+			getLiveCheckFailures: 'agent:read',
 		} as const;
 
 		it.each(Object.entries(expectedScopes))('%s uses %s', (handlerName, scope) => {
@@ -245,6 +254,9 @@ describe('AgentEvalsController', () => {
 			],
 			['removeTestCase', async () => await controller.removeTestCase(testCaseRowReq())],
 			['listSavedTestCases', async () => await controller.listSavedTestCases(threadReq())],
+			['acceptNewAnswer', async () => await controller.acceptNewAnswer(resultReq())],
+			['getLiveChecks', async () => await controller.getLiveChecks(agentReq())],
+			['getLiveCheckFailures', async () => await controller.getLiveCheckFailures(threadReq())],
 		];
 
 		it.each(calls)('%s 404s when the flag is off for the user', async (_name, call) => {
@@ -272,6 +284,34 @@ describe('AgentEvalsController', () => {
 			await controller.saveTestCase(agentReq(), undefined, body);
 
 			expect(testCaseService.save).toHaveBeenCalledWith(user, PROJECT_ID, AGENT_ID, body);
+		});
+
+		it('accepts a re-run reply as the new saved answer for the path agent', async () => {
+			await controller.acceptNewAnswer(resultReq());
+
+			expect(testCaseService.acceptNewAnswer).toHaveBeenCalledWith(
+				user,
+				PROJECT_ID,
+				AGENT_ID,
+				expect.any(String),
+			);
+		});
+
+		it('reports the live checks of the path agent', async () => {
+			await controller.getLiveChecks(agentReq());
+
+			expect(liveChecksService.report).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID);
+		});
+
+		it('reads the live check failures of one session for the requesting user', async () => {
+			await controller.getLiveCheckFailures(threadReq());
+
+			expect(liveChecksService.failuresForSession).toHaveBeenCalledWith(
+				user,
+				PROJECT_ID,
+				AGENT_ID,
+				expect.any(String),
+			);
 		});
 
 		it('removes a saved test case by row', async () => {

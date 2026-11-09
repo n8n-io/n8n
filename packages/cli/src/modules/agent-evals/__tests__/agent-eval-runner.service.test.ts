@@ -502,6 +502,130 @@ describe('AgentEvalRunnerService', () => {
 		});
 	});
 
+	describe('saved tests with tool data', () => {
+		const savedCalls = [
+			{ tool: 'lookup_order', input: { orderId: '1042' }, output: { status: 'in transit' } },
+		];
+		const savedRow = {
+			id: 'row-1',
+			question: 'Where is order 1042?',
+			answer: 'It is in transit.',
+			tool_data: JSON.stringify(savedCalls),
+		};
+		const execWithTools = (tools: string[]) => ({
+			...successExec(),
+			toolCalls: tools.map((tool) => ({ tool, kind: 'workflow', mocked: false })),
+		});
+
+		beforeEach(() => {
+			dataTableService.getColumns.mockResolvedValue([
+				{ name: 'question' },
+				{ name: 'answer' },
+				{ name: 'check' },
+				{ name: 'tool_data' },
+			] as never);
+			agentConfigService.getConfig.mockResolvedValue({
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'cred-1',
+				tools: [
+					{ type: 'workflow', workflow: 'Lookup', name: 'lookup_order' },
+					{ type: 'workflow', workflow: 'FAQ', name: 'search_faq' },
+				],
+			} as never);
+			seedFor([savedRow], { success: 1 });
+		});
+
+		const rerunOutput = () =>
+			(
+				resultRepository.markAsCompleted.mock.calls[0][1].output as {
+					rerun: Record<string, unknown>;
+				}
+			).rerun;
+
+		it('replays the saved tool data and passes on one clean run', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(
+				execWithTools(['lookup_order']) as never,
+			);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(1);
+			const replayTool = evalAgentExecutionService.executeWithLlmMock.mock.calls[0][4]?.replayTool;
+			expect(replayTool?.replays('lookup_order')).toBe(true);
+			expect(replayTool?.answer('lookup_order', { orderId: '1042' })).toEqual({
+				status: 'in transit',
+			});
+			expect(rerunOutput()).toMatchObject({ kind: 'answer', outcome: 'pass', runs: 1 });
+		});
+
+		it('runs a changed test 3 times and fails it only when every run failed', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(
+				execWithTools(['lookup_order']) as never,
+			);
+			correctnessRunMock.mockResolvedValue({ pass: false, reasoning: 'Says delivered.' });
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(3);
+			expect(rerunOutput()).toMatchObject({ outcome: 'fail', runs: 3, failedRuns: 3 });
+			expect(resultRepository.markAsCompleted.mock.calls[0][1].verdict).toMatchObject({
+				status: 'completed',
+				outcome: 'fail',
+			});
+		});
+
+		it('calls a test flaky when its runs disagree', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(
+				execWithTools(['lookup_order']) as never,
+			);
+			correctnessRunMock
+				.mockResolvedValueOnce({ pass: false, reasoning: 'Says delivered.' })
+				.mockResolvedValueOnce({ pass: true, reasoning: 'Same.' });
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(2);
+			expect(rerunOutput()).toMatchObject({ outcome: 'flaky', runs: 2, failedRuns: 1 });
+		});
+
+		it('fails on a changed tool count without asking the judge', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(
+				execWithTools(['lookup_order', 'lookup_order']) as never,
+			);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(correctnessRunMock).not.toHaveBeenCalled();
+			expect(rerunOutput()).toMatchObject({
+				outcome: 'fail',
+				toolChanges: [{ tool: 'lookup_order', saved: 1, now: 2 }],
+			});
+		});
+
+		it("stops with couldn't check when the run reads data the test did not save", async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockImplementation(
+				async (_agentId, _user, _options, _input, replay) => {
+					replay?.replayTool?.answer('search_faq', { q: 'returns' });
+					return execWithTools(['search_faq']) as never;
+				},
+			);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(1);
+			expect(correctnessRunMock).not.toHaveBeenCalled();
+			expect(rerunOutput()).toMatchObject({
+				outcome: 'couldnt_check',
+				offScriptTools: ['search_faq'],
+			});
+		});
+	});
+
 	describe('judging', () => {
 		it('judges a successful case and records a pass verdict', async () => {
 			seedFor([{ id: 'row-1', question: 'What is 2+2?', answer: '4', check: 'is 4' }], {

@@ -391,3 +391,22 @@ has text. After a verdict, show it in one line with a Change action.
 In an empty Preview, ask for prompt ideas only after a click, because ideas cost
 a model call. Show the ideas as outline chips. A chip sends its prompt through
 the normal send path.
+
+## Session timeline turns
+
+Show a session as turns. A turn starts with the person's message and ends with
+the agent's last message of the run, which is the reply. Show the message in
+medium weight and draw a subtle line above it. Put the agent's own work between
+the message and the reply in one steps row: a chevron, the step count, the
+tools it used, an Error badge when a step failed, and the time the steps took.
+The agent's narration between tool calls is a step. Keep approvals, user
+responses, background results, and failed runs at the turn level.
+
+Close every steps row by default. Open it on click, Enter, or Space. Open the
+group when the person picks one of its steps on the chart. A filter or a search
+opens every group, so every match shows. The arrow keys skip the steps of a
+closed group. Show the steps indented, in smaller muted text, beside a line.
+
+Show the reply review and the live check lines on the reply only, not on the
+narration of the same run. Mark a reply whose run failed a live check with the
+warning icon and a tooltip.

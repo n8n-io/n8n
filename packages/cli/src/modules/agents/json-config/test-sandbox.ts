@@ -70,6 +70,15 @@ export function lastRealOutputs(timelines: TimelineEvent[][]): Map<string, unkno
 	return outputs;
 }
 
+/**
+ * A test re-run's stand-in for the agent's own tools: each claimed tool answers
+ * from a saved test's data instead of running.
+ */
+export interface ToolReplayHook {
+	replays(toolName: string): boolean;
+	answer(toolName: string, input: unknown): unknown;
+}
+
 /** The same tool as the agent sees it, answering with `result` and never running. */
 export function wrapToolForTestSandbox(tool: BuiltTool, result: HeldResult): BuiltTool {
 	return {

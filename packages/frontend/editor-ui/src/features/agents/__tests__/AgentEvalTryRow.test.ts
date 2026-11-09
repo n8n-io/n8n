@@ -186,6 +186,20 @@ describe('AgentEvalTryRow', () => {
 			expect(getByTestId('row-actually-fine')).toBeInTheDocument();
 		});
 
+		// A saved test reports its own outcome above the conversation; the judge's
+		// rule banner would contradict it when the tool calls decided the result.
+		it('leaves out the rule banner when hideRuleBanner is set', async () => {
+			const user = userEvent.setup();
+			const shown = renderNeedsWork({ testId: 'row' });
+			await user.click(shown.getByTestId('row-toggle'));
+			expect(shown.getByText("Couldn't verify the rule.")).toBeInTheDocument();
+			shown.unmount();
+
+			const hidden = renderNeedsWork({ testId: 'row', hideRuleBanner: true });
+			await user.click(hidden.getByTestId('row-toggle'));
+			expect(hidden.queryByText("Couldn't verify the rule.")).not.toBeInTheDocument();
+		});
+
 		// No backend primitive exists yet to persist a correction on an
 		// already-committed run's case — the note/Save-check flow hides, but
 		// "Actually fine" (a local override, nothing to persist) still works.

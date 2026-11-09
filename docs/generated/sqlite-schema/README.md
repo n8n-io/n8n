@@ -21,11 +21,12 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 16 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
-| [agent_execution](agent_execution.md) | 28 |  | table |
+| [agent_execution](agent_execution.md) | 29 |  | table |
 | [agent_execution_message_links](agent_execution_message_links.md) | 5 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 20 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
+| [agent_live_check_failure](agent_live_check_failure.md) | 6 |  | table |
 | [agent_message_queue](agent_message_queue.md) | 10 |  | table |
 | [agent_plan](agent_plan.md) | 8 |  | table |
 | [agent_plan_history](agent_plan_history.md) | 6 |  | table |
@@ -205,6 +206,7 @@ erDiagram
 "agent_eval_run" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_eval_run" }o--|| "agent_eval_dataset" : "FOREIGN KEY (datasetId) REFERENCES agent_eval_dataset (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_execution" }o--o| "agent_history" : "FOREIGN KEY (agentVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_execution" }o--o| "agent_execution" : "FOREIGN KEY (parentExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_execution_message_links" |o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_message_links" |o--|| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -215,6 +217,9 @@ erDiagram
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_live_check_failure" }o--|| "agent_history" : "FOREIGN KEY (agentVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_live_check_failure" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_live_check_failure" |o--|| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agent_message_queue" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -616,6 +621,7 @@ erDiagram
 }
 "agent_execution" {
   BOOLEAN acceptsSteering
+  varchar_36_ agentVersionId FK
   TEXT attachments
   TEXT author
   INTEGER cacheReadTokens
@@ -695,6 +701,14 @@ erDiagram
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId PK
+}
+"agent_live_check_failure" {
+  varchar_36_ agentId FK
+  varchar_36_ agentVersionId FK
+  varchar_32_ checkId PK
+  datetime_3_ createdAt
+  varchar_36_ executionId PK
+  TEXT reason
 }
 "agent_message_queue" {
   datetime_3_ createdAt
