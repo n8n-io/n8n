@@ -11,3 +11,10 @@ export const HTML_NONCE_PLACEHOLDER = '{{CSP_NONCE}}';
  * in `@n8n/config` and the substitution in `packages/cli` cannot drift apart.
  */
 export const NONCE_PLACEHOLDER = '<nonce>';
+
+/**
+ * Name of the `window` property that holds the public frontend settings, which the
+ * backend embeds in the editor page. Shared so the backend and the editor cannot
+ * drift apart.
+ */
+export const EMBEDDED_SETTINGS_GLOBAL = '__n8nSettings';
