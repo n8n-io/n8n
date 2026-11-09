@@ -30,6 +30,8 @@ jobs:
 
       - uses: vale-cli/vale-action@518a9136acc6e6668ce7c00d367051e0941e87ff # v3.0.0
         with:
+          # A pinned version skips the "latest" lookup and keeps results stable.
+          version: 3.25.1
           files: docs/backend
           vale_flags: '--config=docs/backend/.vale.ini --minAlertLevel=warning'
           fail_on_error: true
