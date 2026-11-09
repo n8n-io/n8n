@@ -142,6 +142,15 @@ export {
 	nodeJson,
 	createFromAIExpression,
 } from './expression';
+export {
+	extractFieldReferences,
+	findMissingFieldReferences,
+	fieldPathResolves,
+	type FieldReference,
+	type FieldReferenceSource,
+	type FindMissingFieldReferencesInput,
+	type MissingFieldReference,
+} from './expression/field-references';
 
 // Code helpers
 export { runOnceForAllItems, runOnceForEachItem } from './utils/code-helpers';

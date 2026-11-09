@@ -5,9 +5,12 @@
  * that exist in predecessor node outputs.
  */
 
+import {
+	collectExpressionStrings,
+	extractFieldReferences,
+	fieldPathResolves,
+} from '../../../expression/field-references';
 import { isNodeChain, type GraphNode, type NodeInstance } from '../../../types/base';
-import { filterMethodsFromPath } from '../../string-utils';
-import { extractExpressions, parseExpression, hasPath } from '../../validation-helpers';
 import type { ValidatorPlugin, ValidationIssue, PluginContext } from '../types';
 
 /**
@@ -87,7 +90,7 @@ function validateJsonPath(
 	for (const pred of predecessors) {
 		const shape = outputShapes.get(pred);
 		if (shape) {
-			if (hasPath(shape, fieldPath)) {
+			if (fieldPathResolves(shape, fieldPath)) {
 				validIn.push(pred);
 			} else {
 				invalidIn.push(pred);
@@ -129,7 +132,7 @@ function validateNodePath(
 ): void {
 	const shape = outputShapes.get(referencedNode);
 
-	if (shape && !hasPath(shape, fieldPath)) {
+	if (shape && !fieldPathResolves(shape, fieldPath)) {
 		issues.push({
 			code: 'INVALID_EXPRESSION_PATH',
 			message: `'${nodeName}' parameter '${paramPath}' uses $('${referencedNode}').item.json.${fieldPath.join('.')} but '${referencedNode}' doesn't output this field.`,
@@ -219,20 +222,15 @@ export const expressionPathValidator: ValidatorPlugin = {
 			const params = graphNode.instance.config?.parameters;
 			if (!params) continue;
 
-			const expressions = extractExpressions(params);
 			const predecessors = findPredecessors(mapKey, ctx.nodes);
 
-			for (const { expression, path } of expressions) {
-				const parsed = parseExpression(expression);
-				// Filter out JS methods from field path (e.g., "output.includes" -> "output")
-				const filteredFieldPath = filterMethodsFromPath(parsed.fieldPath);
-
-				if (parsed.type === '$json' && filteredFieldPath.length > 0) {
-					validateJsonPath(mapKey, path, filteredFieldPath, predecessors, outputShapes, issues);
-				}
-
-				if (parsed.type === '$node' && parsed.nodeName && filteredFieldPath.length > 0) {
-					validateNodePath(mapKey, path, parsed.nodeName, filteredFieldPath, outputShapes, issues);
+			for (const { expression, parameterPath } of collectExpressionStrings(params)) {
+				for (const { source, path } of extractFieldReferences(expression)) {
+					if (source.kind === 'input') {
+						validateJsonPath(mapKey, parameterPath, path, predecessors, outputShapes, issues);
+					} else {
+						validateNodePath(mapKey, parameterPath, source.nodeName, path, outputShapes, issues);
+					}
 				}
 			}
 		}

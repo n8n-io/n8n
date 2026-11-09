@@ -9,9 +9,6 @@ import {
 	findMissingExpressionPrefixes,
 	findInvalidDateMethods,
 	hasLuxonToISOStringMisuse,
-	extractExpressions,
-	parseExpression,
-	hasPath,
 	TOOLS_WITHOUT_PARAMETERS,
 } from './validation-helpers';
 
@@ -235,73 +232,6 @@ describe('workflow-builder/validation-helpers', () => {
 
 		it('returns false for strings without .toISOString()', () => {
 			expect(hasLuxonToISOStringMisuse('$now.toISO()')).toBe(false);
-		});
-	});
-
-	describe('extractExpressions', () => {
-		it('extracts expressions starting with =', () => {
-			const expressions = extractExpressions({
-				field: '={{ $json.field }}',
-				plain: 'text',
-			});
-			expect(expressions).toHaveLength(1);
-			expect(expressions[0].expression).toBe('={{ $json.field }}');
-			expect(expressions[0].path).toBe('field');
-		});
-
-		it('handles nested objects', () => {
-			const expressions = extractExpressions({
-				nested: { field: '={{ $json.a }}' },
-			});
-			expect(expressions).toHaveLength(1);
-			expect(expressions[0].path).toBe('nested.field');
-		});
-
-		it('handles arrays', () => {
-			const expressions = extractExpressions({
-				items: ['plain', '={{ $json.b }}'],
-			});
-			expect(expressions).toHaveLength(1);
-			expect(expressions[0].path).toBe('items[1]');
-		});
-	});
-
-	describe('parseExpression', () => {
-		it('parses $json expressions', () => {
-			const result = parseExpression('={{ $json.field.nested }}');
-			expect(result.type).toBe('$json');
-			expect(result.fieldPath).toEqual(['field', 'nested']);
-		});
-
-		it('parses $node expressions', () => {
-			const result = parseExpression("={{ $('Node1').item.json.field }}");
-			expect(result.type).toBe('$node');
-			expect(result.nodeName).toBe('Node1');
-			expect(result.fieldPath).toEqual(['field']);
-		});
-
-		it('returns other for unknown patterns', () => {
-			const result = parseExpression('={{ $now }}');
-			expect(result.type).toBe('other');
-			expect(result.fieldPath).toEqual([]);
-		});
-	});
-
-	describe('hasPath', () => {
-		it('returns true for existing paths', () => {
-			expect(hasPath({ a: { b: 1 } }, ['a', 'b'])).toBe(true);
-		});
-
-		it('returns false for non-existing paths', () => {
-			expect(hasPath({ a: 1 }, ['b'])).toBe(false);
-		});
-
-		it('returns false for paths through primitives', () => {
-			expect(hasPath({ a: 1 }, ['a', 'b'])).toBe(false);
-		});
-
-		it('handles empty paths', () => {
-			expect(hasPath({ a: 1 }, [])).toBe(true);
 		});
 	});
 });

@@ -1,6 +1,4 @@
 import {
-	JS_METHODS,
-	filterMethodsFromPath,
 	parseVersion,
 	isPlaceholderValue,
 	containsPlaceholderMarker,
@@ -13,48 +11,6 @@ import {
 } from './string-utils';
 
 describe('workflow-builder/string-utils', () => {
-	describe('JS_METHODS', () => {
-		it('includes common array methods', () => {
-			expect(JS_METHODS.has('includes')).toBe(true);
-			expect(JS_METHODS.has('filter')).toBe(true);
-			expect(JS_METHODS.has('map')).toBe(true);
-			expect(JS_METHODS.has('reduce')).toBe(true);
-		});
-
-		it('includes common string methods', () => {
-			expect(JS_METHODS.has('toLowerCase')).toBe(true);
-			expect(JS_METHODS.has('toUpperCase')).toBe(true);
-			expect(JS_METHODS.has('split')).toBe(true);
-			expect(JS_METHODS.has('slice')).toBe(true);
-		});
-
-		it('includes length property', () => {
-			expect(JS_METHODS.has('length')).toBe(true);
-		});
-	});
-
-	describe('filterMethodsFromPath', () => {
-		it('removes trailing JS methods from path', () => {
-			expect(filterMethodsFromPath(['output', 'includes'])).toEqual(['output']);
-		});
-
-		it('removes multiple trailing methods', () => {
-			expect(filterMethodsFromPath(['output', 'toLowerCase', 'includes'])).toEqual(['output']);
-		});
-
-		it('preserves non-method path segments', () => {
-			expect(filterMethodsFromPath(['data', 'items', 'value'])).toEqual(['data', 'items', 'value']);
-		});
-
-		it('returns empty array if all are methods', () => {
-			expect(filterMethodsFromPath(['includes', 'map'])).toEqual([]);
-		});
-
-		it('handles empty array', () => {
-			expect(filterMethodsFromPath([])).toEqual([]);
-		});
-	});
-
 	describe('parseVersion', () => {
 		it('returns 1 for undefined version', () => {
 			expect(parseVersion(undefined)).toBe(1);

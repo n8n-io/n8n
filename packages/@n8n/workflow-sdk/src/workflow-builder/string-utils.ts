@@ -5,52 +5,6 @@
 import { createHash } from 'crypto';
 
 /**
- * Common JavaScript methods that may appear after field paths in expressions.
- * These should not be treated as part of the field path during validation.
- * E.g., $json.output.includes("test") - "includes" is a method, not a field.
- */
-export const JS_METHODS = new Set([
-	'includes',
-	'indexOf',
-	'slice',
-	'substring',
-	'toLowerCase',
-	'toUpperCase',
-	'trim',
-	'split',
-	'replace',
-	'match',
-	'startsWith',
-	'endsWith',
-	'filter',
-	'map',
-	'reduce',
-	'find',
-	'findIndex',
-	'some',
-	'every',
-	'forEach',
-	'join',
-	'sort',
-	'push',
-	'pop',
-	'length',
-	'toString',
-]);
-
-/**
- * Remove trailing JS methods from field path.
- * E.g., ["output", "includes"] -> ["output"]
- */
-export function filterMethodsFromPath(fieldPath: string[]): string[] {
-	const result = [...fieldPath];
-	while (result.length > 0 && JS_METHODS.has(result[result.length - 1])) {
-		result.pop();
-	}
-	return result;
-}
-
-/**
  * Parse version string to number
  */
 export function parseVersion(version: string | number | undefined): number {

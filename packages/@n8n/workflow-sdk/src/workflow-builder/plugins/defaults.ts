@@ -19,6 +19,7 @@ import {
 	executeWorkflowValidator,
 	filterNodeValidator,
 	fromAiValidator,
+	handWrittenPlaceholderValidator,
 	httpRequestValidator,
 	duplicateNodeIdValidator,
 	mockOutputEnvelopeValidator,
@@ -61,6 +62,7 @@ const coreValidators: ValidatorPlugin[] = [
 	fromAiValidator,
 	memorySessionKeyValidator,
 	unknownConfigKeysValidator,
+	handWrittenPlaceholderValidator, // Literal placeholder strings that setup never asks for
 
 	// Node-type validators (medium priority)
 	setNodeValidator,

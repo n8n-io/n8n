@@ -17,6 +17,10 @@ export { fromAiValidator } from './from-ai-validator';
 export { httpRequestValidator } from './http-request-validator';
 export { duplicateNodeIdValidator } from './duplicate-node-id-validator';
 export { mockOutputEnvelopeValidator } from './mock-output-envelope-validator';
+export {
+	handWrittenPlaceholderValidator,
+	isHandWrittenPlaceholder,
+} from './hand-written-placeholder-validator';
 export { maxNodesValidator } from './max-nodes-validator';
 export { memorySessionKeyValidator } from './memory-session-key-validator';
 export { mergeNodeValidator } from './merge-node-validator';

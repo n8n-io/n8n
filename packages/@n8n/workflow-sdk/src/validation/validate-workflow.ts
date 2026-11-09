@@ -55,7 +55,8 @@ export type ValidationErrorCode =
 	| 'UNKNOWN_CONFIG_KEY'
 	| 'UNKNOWN_NODE_VERSION'
 	| 'DEPRECATED_NODE_TYPE'
-	| 'MOCK_OUTPUT_JSON_ENVELOPE';
+	| 'MOCK_OUTPUT_JSON_ENVELOPE'
+	| 'HAND_WRITTEN_PLACEHOLDER';
 
 /**
  * Validation error class
