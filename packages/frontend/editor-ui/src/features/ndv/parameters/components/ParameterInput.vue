@@ -364,7 +364,7 @@ const hasRemoteMethod = computed<boolean>(() => {
 	return !!getTypeOption('loadOptionsMethod') || !!getTypeOption('loadOptions');
 });
 
-const parameterOptions = computed(() => {
+const parameterOptions = computed<INodePropertyOptions[]>(() => {
 	const connectionType = getTypeOption('connectedNodeOptions');
 	if (connectionType) {
 		if (!node.value) return [];
