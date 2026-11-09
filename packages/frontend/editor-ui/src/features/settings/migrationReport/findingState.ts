@@ -8,8 +8,8 @@ import { TIME } from '@/app/constants';
 export type FindingState = MigrationFindingListedStatus | 'migrated';
 
 /**
- * The workflows migrated this session. Filters and counts read only this, so a
- * save or a notification in flight does not recompute them.
+ * The workflows migrated this session. Filters and counts read only this, so the
+ * saving and notifying marks coming and going do not recompute them.
  */
 export interface MigrationContext {
 	migratedIds: ReadonlySet<string>;

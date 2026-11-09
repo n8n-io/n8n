@@ -245,7 +245,8 @@ const { notifyingWorkflowIds, onNotify, notifyMany } = useOwnerNotify({
 	isBusy: (workflow) => isBusy(workflow, rowContext.value),
 });
 
-// Filtering and the quick counts read only this, so a save or a notification does not recompute them.
+// Filtering and the quick counts read only this, so the saving and notifying marks coming and
+// going do not recompute them. The row changes of a save or a notification still do.
 const migrationContext = computed<MigrationContext>(() => ({
 	migratedIds: migratedWorkflowIds.value,
 }));
