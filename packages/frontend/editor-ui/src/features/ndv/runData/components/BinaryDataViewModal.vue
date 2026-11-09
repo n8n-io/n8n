@@ -224,15 +224,7 @@ function onDialogOpenUpdate(open: boolean) {
 </template>
 
 <style lang="scss">
-.binary-data-view-dialog,
-[data-state='open']:has(+ .binary-data-view-dialog) {
-	z-index: 10000000 !important;
-}
-
 .binary-data-view-dialog {
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
 	/* Previews size their children with percentages. A max-height alone leaves
 	   the dialog at its content height, so a PDF collapses. */
 	height: 90dvh;
