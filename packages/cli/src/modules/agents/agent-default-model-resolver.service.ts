@@ -10,6 +10,7 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
 import { LLM_PROVIDER_DEFAULTS, LLM_PROVIDER_PRIORITY } from './llm-provider-defaults';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
+import { filterSuggestibleCredentials } from './utils/suggestible-credentials';
 import { findVerifiedModelId } from './utils/provider-model-id';
 
 /**
@@ -38,11 +39,11 @@ export class AgentDefaultModelResolverService {
 	 * or the default is not live — the caller keeps the agent as a draft.
 	 */
 	async resolve(user: User, projectId: string): Promise<AgentModelCredentialConfig | null> {
-		const credentials = await createAgentCredentialProvider(
+		const credentials = await filterSuggestibleCredentials(
 			this.credentialsService,
 			projectId,
-			user,
-		).list();
+			await createAgentCredentialProvider(this.credentialsService, projectId, user).list(),
+		);
 		// A provider without a default model (Microsoft Foundry) is never a new agent's default.
 		const supportedCredentials = credentials.filter(
 			(credential) =>

@@ -25,6 +25,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ZodTypeAny } from 'zod';
 
 import type { CredentialTypes } from '@/credential-types';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, LockedError } from '@n8n/errors';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypes } from '@/node-types';
@@ -119,6 +120,7 @@ function makeService() {
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
 	const collaborationService = mock<CollaborationService>();
+	const credentialsService = mock<CredentialsService>();
 
 	const service = new AgentsBuilderToolsService(
 		agentsService as unknown as AgentsService,
@@ -144,11 +146,15 @@ function makeService() {
 		telemetry,
 		collaborationService,
 		createAgentSkillRefsService(),
+		credentialsService,
 	);
 
 	return {
 		service,
 		collaborationService,
+		credentialsService,
+		agentsToolsService,
+		builderModelLiveLookupService,
 		agentsService: purposeServices,
 		secureRuntime,
 		agentTaskService,
@@ -1876,6 +1882,59 @@ describe('AgentsBuilderToolsService', () => {
 						modifiedBy: 'builder',
 					}),
 				);
+			});
+		});
+	});
+
+	describe('credential suggestions', () => {
+		const ownCredential = { id: 'own', name: 'My Anthropic', type: 'anthropicApi' };
+		const colleagueCredential = { id: 'colleague', name: 'Their Anthropic', type: 'anthropicApi' };
+		const globalCredential = { id: 'global', name: 'Shared Slack', type: 'slackApi' };
+
+		function makeServiceWithCredentials() {
+			const setup = makeService();
+			credentialProvider.list.mockResolvedValue([
+				ownCredential,
+				colleagueCredential,
+				globalCredential,
+			]);
+			setup.credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+				ownCredential,
+			] as never);
+			setup.credentialsService.findAllGlobalCredentialIds.mockResolvedValue([
+				globalCredential,
+			] as never);
+			return setup;
+		}
+
+		it('resolves the main model only from credentials the project owns or was shared', async () => {
+			const { service, builderModelLiveLookupService } = makeServiceWithCredentials();
+			builderModelLiveLookupService.list.mockResolvedValue([
+				{ name: 'Claude Sonnet 5', value: 'claude-sonnet-5' },
+			]);
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
+				.json.find((candidate) => candidate.name === BUILDER_TOOLS.RESOLVE_LLM)!;
+
+			const result = await tool.handler!(
+				{ provider: 'anthropic', model: 'claude-sonnet-5' },
+				ctx as never,
+			);
+
+			expect(result).toEqual(
+				expect.objectContaining({ ok: true, credentialId: 'own', credentialName: 'My Anthropic' }),
+			);
+		});
+
+		it('lists only credentials the project owns or was shared, plus global ones', async () => {
+			const { service, agentsToolsService, credentialsService } = makeServiceWithCredentials();
+
+			service.getTools(agentId, projectId, credentialProvider, credentialService, user);
+			const sharedToolsProvider = agentsToolsService.getSharedTools.mock.calls[0][0];
+
+			await expect(sharedToolsProvider.list()).resolves.toEqual([ownCredential, globalCredential]);
+			expect(credentialsService.findAllCredentialIdsForProject).toHaveBeenCalledWith(projectId, {
+				excludeInstanceWideRoute: true,
 			});
 		});
 	});

@@ -291,7 +291,10 @@ onMounted(async () => {
 	try {
 		await Promise.all([
 			props.projectId
-				? credentialsStore.fetchUsableCredentials({ projectId: props.projectId })
+				? credentialsStore.fetchUsableCredentials({
+						projectId: props.projectId,
+						forAssistant: true,
+					})
 				: credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
 		]);
@@ -721,6 +724,7 @@ async function handleSetupAutomatically() {
 							:project-id="projectId"
 							:suggested-credential-name="currentRequest.suggestedName"
 							standalone
+							for-assistant
 							hide-issues
 							:instance-ai-credential-help="instanceAiCredentialHelp"
 							:skip-auto-select="

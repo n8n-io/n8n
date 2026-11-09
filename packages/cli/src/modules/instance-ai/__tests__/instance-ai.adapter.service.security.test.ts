@@ -389,6 +389,7 @@ describe('workflow list — caller-supplied projectId', () => {
 		// The bound project is what write-adjacent surfaces keep resolving to.
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId: 'bound-project',
+			excludeInstanceWideRoute: true,
 		});
 	});
 });
@@ -637,6 +638,7 @@ describe('credentialService.list — scoping', () => {
 
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			workflowId: 'wf-1',
+			excludeInstanceWideRoute: true,
 		});
 		expect(credentialsService.getMany).not.toHaveBeenCalled();
 		// type filter applied post-fetch
@@ -655,6 +657,7 @@ describe('credentialService.list — scoping', () => {
 
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId: 'proj-1',
+			excludeInstanceWideRoute: true,
 		});
 		expect(credentialsService.getMany).not.toHaveBeenCalled();
 	});
@@ -687,6 +690,7 @@ describe('credentialService.list — scoping', () => {
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledTimes(1);
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId: 'bound-project',
+			excludeInstanceWideRoute: true,
 		});
 		expect(credentialsService.getMany).not.toHaveBeenCalled();
 	});

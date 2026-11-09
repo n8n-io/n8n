@@ -808,7 +808,10 @@ describe('InstanceAiSetupCredential', () => {
 		expect(store.upsertCredential).not.toHaveBeenCalled();
 		test.resolve();
 		await flushPromises();
-		expect(store.fetchUsableCredentials).toHaveBeenCalledWith({ workflowId: 'wf' });
+		expect(store.fetchUsableCredentials).toHaveBeenCalledWith({
+			workflowId: 'wf',
+			forAssistant: true,
+		});
 		expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0]).toEqual([
 			item,
 			savedCredential.id,

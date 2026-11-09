@@ -112,13 +112,19 @@ export class CredentialsController {
 
 	@Get('/for-workflow')
 	async getProjectCredentials(req: CredentialRequest.ForWorkflow) {
-		const { forAgent, ...scope } = z
+		const { forAgent, forAssistant, ...scope } = z
 			.union([z.object({ workflowId: z.string() }), z.object({ projectId: z.string() })])
-			.and(z.object({ forAgent: z.enum(['true', 'false']).optional() }))
+			.and(
+				z.object({
+					forAgent: z.enum(['true', 'false']).optional(),
+					forAssistant: z.enum(['true', 'false']).optional(),
+				}),
+			)
 			.parse(req.query);
 		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, {
 			...scope,
 			excludePersonalRoute: forAgent === 'true',
+			excludeInstanceWideRoute: forAssistant === 'true',
 		});
 	}
 

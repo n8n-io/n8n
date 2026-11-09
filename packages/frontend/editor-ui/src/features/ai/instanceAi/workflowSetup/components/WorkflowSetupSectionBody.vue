@@ -236,6 +236,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			:project-id="ctx.projectId.value"
 			:workflow-id="ctx.workflowId.value"
 			standalone
+			for-assistant
 			hide-issues
 			:instance-ai-credential-help="instanceAiCredentialHelp"
 			:skip-auto-select="isTemplatedType || section.preferNewCredential === true"

@@ -629,14 +629,17 @@ export class CredentialsService {
 	 * for workflows that have not been saved yet.
 	 * @param options.excludePersonalRoute Skip the personal route, which lets a
 	 * user bring their own personal credentials into a team project they are a
-	 * member of. Agents set this because they do not support it yet. The
-	 * instance-wide shortcut for owners and admins in their personal project
-	 * stays in place.
+	 * member of. Agents set this because they do not support it yet.
+	 * @param options.excludeInstanceWideRoute Skip the instance-wide route, which
+	 * gives the personal project of an owner or admin every personal credential
+	 * on the instance. The n8n Assistant sets this so it never offers or picks
+	 * another user's personal credential.
 	 */
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
 		options: ({ workflowId: string } | { projectId: string }) & {
 			excludePersonalRoute?: boolean;
+			excludeInstanceWideRoute?: boolean;
 		},
 	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
@@ -648,10 +651,15 @@ export class CredentialsService {
 		]);
 
 		// get all credentials the workflow or project has access to
+		const routeOptions = { excludeInstanceWideRoute: options.excludeInstanceWideRoute };
 		const credentialIdsForWorkflow = new Set(
 			'workflowId' in options
-				? (await this.findAllCredentialIdsForWorkflow(options.workflowId)).map((c) => c.id)
-				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id),
+				? (await this.findAllCredentialIdsForWorkflow(options.workflowId, routeOptions)).map(
+						(c) => c.id,
+					)
+				: (await this.findAllCredentialIdsForProject(options.projectId, routeOptions)).map(
+						(c) => c.id,
+					),
 		);
 
 		const personalRouteCredentialIds = options.excludePersonalRoute
@@ -749,11 +757,16 @@ export class CredentialsService {
 		return globalCredentials;
 	}
 
-	async findAllCredentialIdsForWorkflow(workflowId: string): Promise<CredentialsEntity[]> {
+	async findAllCredentialIdsForWorkflow(
+		workflowId: string,
+		{ excludeInstanceWideRoute = false }: { excludeInstanceWideRoute?: boolean } = {},
+	): Promise<CredentialsEntity[]> {
 		// If the workflow is owned by a personal project and the owner of the project
 		// may use any credential on the instance, it can use all personal credentials.
 		// Keyed on the personal-project owner, not the requester.
-		const user = await this.userRepository.findPersonalOwnerForWorkflow(workflowId);
+		const user = excludeInstanceWideRoute
+			? null
+			: await this.userRepository.findPersonalOwnerForWorkflow(workflowId);
 		if (user && hasGlobalScope(user, 'credential:use')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
 		}
@@ -763,11 +776,16 @@ export class CredentialsService {
 		return await this.credentialsRepository.findAllCredentialsForWorkflow(workflowId);
 	}
 
-	async findAllCredentialIdsForProject(projectId: string): Promise<CredentialsEntity[]> {
+	async findAllCredentialIdsForProject(
+		projectId: string,
+		{ excludeInstanceWideRoute = false }: { excludeInstanceWideRoute?: boolean } = {},
+	): Promise<CredentialsEntity[]> {
 		// If this is a personal project and the owner of the project may use any
 		// credential on the instance, then all workflows in that project can use all
 		// credentials of all personal projects.
-		const user = await this.userRepository.findPersonalOwnerForProject(projectId);
+		const user = excludeInstanceWideRoute
+			? null
+			: await this.userRepository.findPersonalOwnerForProject(projectId);
 		if (user && hasGlobalScope(user, 'credential:use')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
 		}

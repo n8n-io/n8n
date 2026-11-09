@@ -451,6 +451,31 @@ describe('GET /credentials/for-workflow', () => {
 		});
 	});
 
+	describe('forAssistant', () => {
+		test.each(['projectId', 'workflowId'])(
+			'offers the owner only own and shared credentials in their personal project, if "%s" is used',
+			async (queryParam) => {
+				const ownerWorkflow = await createWorkflow({}, owner);
+				const ownCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+				const sharedWithOwner = await saveCredential(randomCredentialPayload(), { user: member });
+				await shareCredentialWithUsers(sharedWithOwner, [owner]);
+				const memberCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+				const response = await authOwnerAgent.get('/credentials/for-workflow').query({
+					[queryParam]: queryParam === 'projectId' ? ownerPersonalProject.id : ownerWorkflow.id,
+					forAgent: 'true',
+					forAssistant: 'true',
+				});
+
+				expect(response.statusCode).toBe(200);
+				const ids = response.body.data.map((c: { id: string }) => c.id);
+				expect(ids).toContain(ownCredential.id);
+				expect(ids).toContain(sharedWithOwner.id);
+				expect(ids).not.toContain(memberCredential.id);
+			},
+		);
+	});
+
 	describe('for personal projects', () => {
 		test.each(['projectId', 'workflowId'])(
 			'it returns only personal credentials for a members, if "%s" is used as the query parameter',

@@ -48,6 +48,7 @@ import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -105,6 +106,7 @@ import {
 } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
+import { withSuggestibleCredentials } from '../utils/suggestible-credentials';
 import {
 	SkillNameTakenError,
 	skillNameTakenToolMessage,
@@ -496,6 +498,7 @@ export class AgentsBuilderToolsService {
 		private readonly telemetry: Telemetry,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	/**
@@ -577,16 +580,24 @@ export class AgentsBuilderToolsService {
 		user: User,
 		options?: BuilderToolsOptions,
 	): BuilderTools {
+		// Tools that offer or pick credentials see only the suggestible ones.
+		// Validation and test runs keep the full provider.
+		const suggestionProvider = withSuggestibleCredentials(
+			credentialProvider,
+			this.credentialsService,
+			projectId,
+		);
 		return {
 			json: this.getJsonTools(
 				agentId,
 				projectId,
 				credentialProvider,
+				suggestionProvider,
 				credentialService,
 				user,
 				options,
 			),
-			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
+			shared: this.getSharedTools(agentId, projectId, suggestionProvider, user),
 		};
 	}
 
@@ -661,6 +672,7 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		suggestionProvider: CredentialProvider,
 		credentialService: BuilderCredentialService,
 		user: User,
 		options?: BuilderToolsOptions,
@@ -689,7 +701,7 @@ export class AgentsBuilderToolsService {
 			this.withConfigMutationMarker(publishAgentTool, agentId),
 			this.withConfigMutationMarker(unpublishAgentTool, agentId),
 			callAgentTool,
-			this.createLlmTool(credentialProvider, modelLookup, user, projectId),
+			this.createLlmTool(suggestionProvider, modelLookup, user, projectId),
 			this.createCredentialTool(credentialService, projectId, agentId, track),
 			this.createEmbeddingCredentialTool(credentialService, projectId, track),
 			buildAskQuestionsTool({ track }),
