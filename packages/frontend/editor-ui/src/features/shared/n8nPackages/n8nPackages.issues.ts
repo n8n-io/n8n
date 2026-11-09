@@ -1,6 +1,24 @@
 import type { ImportBlockingIssue } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 
+type CredentialUnresolvedIssue = Extract<ImportBlockingIssue, { type: 'credential-unresolved' }>;
+
+function formatCredentialUnresolved(issue: CredentialUnresolvedIssue): string {
+	const id = issue.sourceId;
+	if (issue.kind !== 'type_mismatch') {
+		return i18n.baseText('packages.import.issue.credentialUnresolved', { interpolate: { id } });
+	}
+	const { expectedType, actualType } = issue;
+	if (!expectedType || !actualType) {
+		return i18n.baseText('packages.import.issue.credentialTypeMismatchUnknown', {
+			interpolate: { id },
+		});
+	}
+	return i18n.baseText('packages.import.issue.credentialTypeMismatch', {
+		interpolate: { id, expectedType, actualType },
+	});
+}
+
 /** Returns a short text for a blocking issue. Issue types without a specific text get a generic text. */
 export function formatImportBlockingIssue(issue: ImportBlockingIssue): string {
 	switch (issue.type) {
@@ -26,9 +44,7 @@ export function formatImportBlockingIssue(issue: ImportBlockingIssue): string {
 				interpolate: { name: issue.name ?? issue.sourceId },
 			});
 		case 'credential-unresolved':
-			return i18n.baseText('packages.import.issue.credentialUnresolved', {
-				interpolate: { id: issue.sourceId },
-			});
+			return formatCredentialUnresolved(issue);
 		case 'credential-conflict':
 		case 'credential-update-forbidden':
 			return i18n.baseText('packages.import.issue.credentialConflict', {

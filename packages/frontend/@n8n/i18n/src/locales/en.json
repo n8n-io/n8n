@@ -6859,6 +6859,8 @@
 	"packages.import.issue.agentDependency": "Agent {id} uses {referenceId}, which can't be found or you don't have access to it.",
 	"packages.import.issue.policyViolation": "{name} doesn't meet a policy of this instance.",
 	"packages.import.issue.credentialUnresolved": "Credential {id} can't be found in this project.",
+	"packages.import.issue.credentialTypeMismatch": "Credential {id} has the type {actualType}, but the package needs {expectedType}.",
+	"packages.import.issue.credentialTypeMismatchUnknown": "Credential {id} doesn't have the type that the package needs.",
 	"packages.import.issue.credentialConflict": "Credential {name} already exists, and the import can't change it.",
 	"packages.import.issue.missingNodeType": "Node type {nodeType} isn't installed on this instance.",
 	"packages.import.issue.workflowConflict": "Workflow {name} conflicts with an existing workflow.",
