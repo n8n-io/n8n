@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Logger } from '@n8n/backend-common';
-import { WorkflowVersionedSettings } from '@n8n/backend-services';
+import { Publisher, WorkflowVersionedSettings } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowHistory, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
@@ -59,7 +59,6 @@ import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish'
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
-import { Publisher } from '@n8n/backend-services';
 import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
