@@ -15,7 +15,7 @@ import { CANVAS_NODE_CONTEXT_FLAG } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { getEmptyGroupAnchor, NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
-import { computed, type ComputedRef } from 'vue';
+import { computed, type ComputedRef, type Ref } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { usePinnedData } from '@/app/composables/usePinnedData';
@@ -86,6 +86,7 @@ export function useContextMenuItems(
 	targetNodeIds: ComputedRef<string[]>,
 	targetGroupId?: ComputedRef<string | undefined>,
 	targetReadOnly?: ComputedRef<boolean>,
+	clipboardHasPasteData?: Ref<boolean | undefined>,
 ): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -480,7 +481,8 @@ export function useContextMenuItems(
 					id: 'paste',
 					label: i18n.baseText('contextMenu.paste'),
 					shortcut: { metaKey: true, keys: ['V'] },
-					disabled: isReadOnly.value,
+					// Unknown clipboard content keeps paste enabled; the click explains a failure
+					disabled: isReadOnly.value || clipboardHasPasteData?.value === false,
 				},
 				...layoutActions,
 				...groupViewActions,

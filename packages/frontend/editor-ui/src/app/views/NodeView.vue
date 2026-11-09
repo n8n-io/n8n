@@ -111,7 +111,12 @@ import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { DEFAULT_NODE_SIZE, getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
+import {
+	DEFAULT_NODE_SIZE,
+	getBounds,
+	getNodeViewTab,
+	isPastableWorkflowText,
+} from '@/app/utils/nodeViewUtils';
 import { isChatNode } from '@/app/utils/aiUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
@@ -712,10 +717,7 @@ async function onPasteFromContextMenu() {
 		return;
 	}
 
-	if (
-		!VALID_WORKFLOW_IMPORT_URL_REGEX.test(plainTextData) &&
-		!jsonParse<WorkflowDataUpdate | null>(plainTextData, { fallbackValue: null })
-	) {
+	if (!isPastableWorkflowText(plainTextData)) {
 		toast.showMessage({
 			title: i18n.baseText('nodeView.showMessage.clipboardNoWorkflowData.title'),
 			message: i18n.baseText('nodeView.showMessage.clipboardNoWorkflowData.message'),

@@ -553,6 +553,54 @@ describe('useContextMenu', () => {
 			expect(paste?.disabled).toBe(false);
 		});
 
+		describe('with clipboard access', () => {
+			function mockClipboard(state: PermissionState, text: string) {
+				Object.defineProperty(window.navigator, 'permissions', {
+					value: { query: vi.fn().mockResolvedValue({ state }) },
+					configurable: true,
+				});
+				Object.defineProperty(window.navigator, 'clipboard', {
+					value: { readText: vi.fn().mockResolvedValue(text) },
+					configurable: true,
+				});
+			}
+
+			afterEach(() => {
+				Reflect.deleteProperty(window.navigator, 'permissions');
+				Reflect.deleteProperty(window.navigator, 'clipboard');
+			});
+
+			const pasteDisabled = (actions: ReturnType<typeof useContextMenu>['actions']) =>
+				actions.value.find((action) => action.id === 'paste')?.disabled;
+
+			it('disables paste when the clipboard has no workflow data', async () => {
+				mockClipboard('granted', 'just some text');
+				const { open, actions } = useContextMenu();
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+				await vi.waitFor(() => expect(pasteDisabled(actions)).toBe(true));
+			});
+
+			it('keeps paste enabled when the clipboard has workflow data', async () => {
+				mockClipboard('granted', JSON.stringify({ nodes: [], connections: {} }));
+				const { open, actions } = useContextMenu();
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				expect(pasteDisabled(actions)).toBe(false);
+			});
+
+			it('keeps paste enabled and does not read the clipboard without permission', async () => {
+				mockClipboard('prompt', 'just some text');
+				const { open, actions } = useContextMenu();
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				expect(pasteDisabled(actions)).toBe(false);
+				expect(navigator.clipboard.readText).not.toHaveBeenCalled();
+			});
+		});
+
 		it('leaves out add sticky when the sticky note type is not loaded', () => {
 			vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockImplementation(
 				(type) => type === STICKY_NODE_TYPE,

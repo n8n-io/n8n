@@ -6,6 +6,7 @@ import {
 	NODE_POSITION_CONFLICT_ALLOWLIST,
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
+	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 } from '@/app/constants';
 import type { INodeUi, XYPosition } from '@/Interface';
@@ -17,7 +18,7 @@ import type {
 	INodeTypeDescription,
 	NodeHint,
 } from 'n8n-workflow';
-import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { jsonParse, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type { ViewportBoundaries } from '@/features/workflows/canvas/canvas.types';
 import {
@@ -651,4 +652,27 @@ export function calculateNodeSize(
 	}
 
 	return { width: DEFAULT_NODE_SIZE[0] * widthScale, height };
+}
+
+/** True when the canvas paste handler can import the text: workflow JSON or a workflow URL. */
+export function isPastableWorkflowText(text: string): boolean {
+	return (
+		VALID_WORKFLOW_IMPORT_URL_REGEX.test(text) ||
+		!!jsonParse<unknown>(text, { fallbackValue: null })
+	);
+}
+
+/**
+ * Reads the clipboard only when the browser already granted access, so no prompt appears.
+ * Returns undefined when that is not possible (Firefox and Safari do not support this query).
+ */
+export async function readClipboardTextIfGranted(): Promise<string | undefined> {
+	try {
+		// 'clipboard-read' is a Chromium permission that the DOM types do not list
+		const status = await navigator.permissions.query({ name: 'clipboard-read' as PermissionName });
+		if (status.state !== 'granted') return undefined;
+		return await navigator.clipboard.readText();
+	} catch {
+		return undefined;
+	}
 }
