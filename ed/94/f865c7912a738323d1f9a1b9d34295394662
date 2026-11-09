@@ -1,0 +1,20 @@
+scripts/check-boundaries.mjs
+  s_ab3961db330c75::t_6224222f08e19b 79-88
+  s_ab3961db330c75::t_7c18b6ef27c034 98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed94f865c7912a738323d1f9a1b9d34295394662",
+  "prompts": {},
+  "sessions": {
+    "s_ab3961db330c75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c74b9e5f-af0d-4aae-a9a5-ca3d098fbeab",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
