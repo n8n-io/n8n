@@ -1,0 +1,25 @@
+packages/modules/promotions/frontend/README.md
+  s_f3039407b71bd6::t_74bc79d15fde61 10-20
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_f3039407b71bd6::t_bbf2b116648e61 11
+packages/modules/promotions/frontend/src/index.ts
+  s_f3039407b71bd6::t_2a6ab4e8767862 1,3
+packages/modules/promotions/frontend/package.json
+  s_f3039407b71bd6::t_379a5121fabc02 7-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94399177e98f1c614c752c5dd29eb52f65c6a7e7",
+  "prompts": {},
+  "sessions": {
+    "s_f3039407b71bd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d1d42e2-0ae1-44cd-9118-b0182793683b",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
