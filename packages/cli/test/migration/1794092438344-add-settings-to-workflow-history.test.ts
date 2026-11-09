@@ -13,12 +13,70 @@ import { randomUUID } from 'node:crypto';
 
 const MIGRATION_NAME = 'AddSettingsToWorkflowHistory1794092438344';
 
+const newWorkflowId = () => randomUUID().slice(0, 16);
+
 describe('AddSettingsToWorkflowHistory Migration', () => {
 	let dataSource: DataSource;
 	let context: TestMigrationContext;
 
-	const workflowId = randomUUID().slice(0, 16);
-	const versionId = randomUUID();
+	// A runs on v2. Its draft is newer than its published version.
+	const v2Workflow = {
+		id: newWorkflowId(),
+		oldVersion: randomUUID(),
+		published: randomUUID(),
+		draft: randomUUID(),
+	};
+	// B has no engine. One version is both draft and published.
+	const noEngineWorkflow = { id: newWorkflowId(), published: randomUUID() };
+	// C has settings that are not valid JSON. Only SQLite can store them.
+	const malformedWorkflow = { id: newWorkflowId(), published: randomUUID() };
+
+	const table = (name: string) => context.escape.tableName(name);
+	const column = (name: string) => context.escape.columnName(name);
+
+	async function insertWorkflow(id: string, settings: string, draftVersionId: string) {
+		await context.runQuery(
+			`INSERT INTO ${table('workflow_entity')} (id, name, nodes, connections, settings, active, ${column('versionId')}, ${column('createdAt')}, ${column('updatedAt')})
+			 VALUES (:id, :id, '[]', '{}', :settings, false, :draftVersionId, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+			{ id, settings, draftVersionId },
+		);
+	}
+
+	async function insertVersion(workflowId: string, versionId: string) {
+		await context.runQuery(
+			`INSERT INTO ${table('workflow_history')} (${column('versionId')}, ${column('workflowId')}, nodes, connections, authors, ${column('createdAt')}, ${column('updatedAt')})
+			 VALUES (:versionId, :workflowId, '[]', '{}', 'test', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+			{ versionId, workflowId },
+		);
+	}
+
+	async function publish(workflowId: string, versionId: string) {
+		await context.runQuery(
+			`UPDATE ${table('workflow_entity')} SET active = true, ${column('activeVersionId')} = :versionId WHERE id = :workflowId`,
+			{ workflowId, versionId },
+		);
+		await context.runQuery(
+			`INSERT INTO ${table('workflow_published_version')} (${column('workflowId')}, ${column('publishedVersionId')}, ${column('createdAt')}, ${column('updatedAt')})
+			 VALUES (:workflowId, :versionId, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+			{ workflowId, versionId },
+		);
+	}
+
+	async function settingsOf(versionId: string): Promise<unknown> {
+		const [row] = await context.runQuery<Array<{ settings: unknown }>>(
+			`SELECT settings FROM ${table('workflow_history')} WHERE ${column('versionId')} = :versionId`,
+			{ versionId },
+		);
+
+		return typeof row.settings === 'string' ? jsonParse<unknown>(row.settings) : row.settings;
+	}
+
+	async function publishedVersionCount(): Promise<number> {
+		const [row] = await context.runQuery<Array<{ count: number | string }>>(
+			`SELECT COUNT(*) AS count FROM ${table('workflow_published_version')}`,
+		);
+		return Number(row.count);
+	}
 
 	beforeAll(async () => {
 		await Container.get(DbConnection).init();
@@ -31,23 +89,27 @@ describe('AddSettingsToWorkflowHistory Migration', () => {
 		await initDbUpToMigration(MIGRATION_NAME);
 
 		context = createTestMigrationContext(dataSource);
-		await context.runQuery(
-			`INSERT INTO ${table('workflow_entity')} (id, name, nodes, connections, settings, active, ${column('versionId')}, ${column('createdAt')}, ${column('updatedAt')})
-			 VALUES (:workflowId, 'workflow', '[]', '{}', :settings, false, :versionId, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-			{ workflowId, versionId, settings: JSON.stringify({ engineType: 'v2' }) },
+
+		await insertWorkflow(v2Workflow.id, JSON.stringify({ engineType: 'v2' }), v2Workflow.draft);
+		await insertVersion(v2Workflow.id, v2Workflow.oldVersion);
+		await insertVersion(v2Workflow.id, v2Workflow.published);
+		await insertVersion(v2Workflow.id, v2Workflow.draft);
+		await publish(v2Workflow.id, v2Workflow.published);
+
+		await insertWorkflow(
+			noEngineWorkflow.id,
+			JSON.stringify({ timezone: 'Europe/Berlin' }),
+			noEngineWorkflow.published,
 		);
-		await context.runQuery(
-			`INSERT INTO ${table('workflow_history')} (${column('versionId')}, ${column('workflowId')}, nodes, connections, authors, ${column('createdAt')}, ${column('updatedAt')})
-			 VALUES (:versionId, :workflowId, '[]', '{}', 'test', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-			{ versionId, workflowId },
-		);
-		// References the version with a foreign key. On SQLite, a table recreate in
-		// `down` (the dropColumns DSL) fails on it, because foreign keys stay on there.
-		await context.runQuery(
-			`INSERT INTO ${table('workflow_published_version')} (${column('workflowId')}, ${column('publishedVersionId')}, ${column('createdAt')}, ${column('updatedAt')})
-			 VALUES (:workflowId, :versionId, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-			{ workflowId, versionId },
-		);
+		await insertVersion(noEngineWorkflow.id, noEngineWorkflow.published);
+		await publish(noEngineWorkflow.id, noEngineWorkflow.published);
+
+		if (context.isSqlite) {
+			await insertWorkflow(malformedWorkflow.id, '{not json', malformedWorkflow.published);
+			await insertVersion(malformedWorkflow.id, malformedWorkflow.published);
+			await publish(malformedWorkflow.id, malformedWorkflow.published);
+		}
+
 		// Release the connection: on SQLite the migration waits for its write lock.
 		await context.queryRunner.release();
 
@@ -66,28 +128,23 @@ describe('AddSettingsToWorkflowHistory Migration', () => {
 		await Container.get(DbConnection).close();
 	});
 
-	const table = (name: string) => context.escape.tableName(name);
-	const column = (name: string) => context.escape.columnName(name);
+	it('pins v2 on the published and draft versions of a v2 workflow', async () => {
+		expect(await settingsOf(v2Workflow.published)).toEqual({ engineType: 'v2' });
+		expect(await settingsOf(v2Workflow.draft)).toEqual({ engineType: 'v2' });
+	});
 
-	async function settingsOfVersion(): Promise<unknown> {
-		const [row] = await context.runQuery<Array<{ settings: unknown }>>(
-			`SELECT settings FROM ${table('workflow_history')} WHERE ${column('versionId')} = :versionId`,
-			{ versionId },
-		);
+	it('pins v1 on the published version of a workflow without an engine', async () => {
+		expect(await settingsOf(noEngineWorkflow.published)).toEqual({ engineType: 'v1' });
+	});
 
-		return typeof row.settings === 'string' ? jsonParse<unknown>(row.settings) : row.settings;
-	}
+	it('leaves versions that are not draft or published empty', async () => {
+		expect(await settingsOf(v2Workflow.oldVersion)).toEqual({});
+	});
 
-	async function publishedVersionId(): Promise<string | undefined> {
-		const [row] = await context.runQuery<Array<{ publishedVersionId: string }>>(
-			`SELECT ${column('publishedVersionId')} FROM ${table('workflow_published_version')} WHERE ${column('workflowId')} = :workflowId`,
-			{ workflowId },
-		);
-		return row?.publishedVersionId;
-	}
+	it('pins v1 when workflow settings are malformed', async () => {
+		if (!context.isSqlite) return;
 
-	it('gives existing versions empty settings', async () => {
-		expect(await settingsOfVersion()).toEqual({});
+		expect(await settingsOf(malformedWorkflow.published)).toEqual({ engineType: 'v1' });
 	});
 
 	it('drops only the column on down', async () => {
@@ -95,7 +152,7 @@ describe('AddSettingsToWorkflowHistory Migration', () => {
 		await undoLastSingleMigration();
 		context = createTestMigrationContext(dataSource);
 
-		await expect(settingsOfVersion()).rejects.toThrow();
-		expect(await publishedVersionId()).toBe(versionId);
+		await expect(settingsOf(v2Workflow.published)).rejects.toThrow();
+		expect(await publishedVersionCount()).toBe(context.isSqlite ? 3 : 2);
 	});
 });
