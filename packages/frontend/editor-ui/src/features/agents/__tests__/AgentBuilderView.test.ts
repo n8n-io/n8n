@@ -490,6 +490,14 @@ const baseTextFn = (
 		'agents.builder.preview.close.ariaLabel': 'Hide test',
 		'projects.menu.personal': 'Personal',
 		'agents.new.defaultName': 'New Agent',
+		'agents.builder.templates.morningNewsBrief.placeholder':
+			'Build me an agent for daily news briefs',
+		'agents.builder.templates.processIncomingEmails.placeholder':
+			'Build me an agent to manage incoming emails',
+		'agents.builder.templates.qualifyNewLeads.placeholder':
+			'Build me an agent to qualify new leads',
+		'agents.builder.templates.proposeMeetingTimes.placeholder':
+			'Build me an agent to suggest meeting times',
 		'agents.builder.templates.morningNewsBrief.label': 'Morning news brief',
 		'agents.builder.templates.processIncomingEmails.label': 'Process incoming emails',
 		'agents.builder.templates.qualifyNewLeads.label': 'Qualify new leads',
@@ -4001,7 +4009,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		mockConfig.value = withDefaultLlm(intendedConfig);
 		const wrapper = await renderView({ props: { builderLayout } });
 		const panel = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
-		await vi.waitFor(() => expect(panel.props('placeholder')?.startsWith('B')).toBe(true));
+		await vi.waitFor(() => expect(panel.props('placeholder')?.startsWith('Build me')).toBe(true));
 		const prompt = panel.props('placeholder');
 		panel.vm.$emit('content-change', true);
 		await nextTick();
@@ -4009,7 +4017,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(submitSuggestionMock).not.toHaveBeenCalled();
 		panel.vm.$emit('content-change', false);
 		await nextTick();
-		await vi.waitFor(() => expect(panel.props('placeholder')?.startsWith('B')).toBe(true));
+		await vi.waitFor(() => expect(panel.props('placeholder')?.startsWith('Build me')).toBe(true));
 		panel.vm.$emit('message-sent');
 		await nextTick();
 		expect(panel.props('placeholder')).toBe(

@@ -3482,7 +3482,7 @@ function onSwitchAgent(nextAgentId: string) {
 
 const builderPromptHasContent = ref(false);
 const templatePrompts = computed(() =>
-	AGENT_TEMPLATES.map((template) => templateStarterMessage(template).message),
+	AGENT_TEMPLATES.map((template) => locale.baseText(template.placeholderKey)),
 );
 const animatedPromptPlaceholder = useAgentPromptInspiration({
 	prompts: templatePrompts,
