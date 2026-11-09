@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useCssModule } from 'vue';
+import { computed, useCssModule } from 'vue';
 import type { SkillVersionSummary } from '@n8n/api-types';
 import { N8nActionDropdown, N8nIconButton, N8nSwitch, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
@@ -76,6 +76,11 @@ function actionsFor(index: number, version: number): Array<ActionDropdownItem<Ve
 			: []),
 	];
 }
+
+/** The menu items of each row, computed once per render and not per template use. */
+const actionsByVersion = computed(
+	() => new Map(props.versions.map((v, index) => [v.version, actionsFor(index, v.version)])),
+);
 
 function onAction(version: number, action: VersionAction) {
 	if (action === 'use') emit('use', version);
@@ -163,7 +168,7 @@ function dotClass(version: number, index: number) {
 					/>
 					<!-- A version with no actions keeps an empty slot, so the compare buttons stay in line. -->
 					<N8nIconButton
-						v-if="actionsFor(index, version.version).length === 0"
+						v-if="!actionsByVersion.get(version.version)?.length"
 						:class="$style.placeholder"
 						variant="ghost"
 						size="small"
@@ -175,7 +180,7 @@ function dotClass(version: number, index: number) {
 					/>
 					<N8nActionDropdown
 						v-else
-						:items="actionsFor(index, version.version)"
+						:items="actionsByVersion.get(version.version) ?? []"
 						activator-icon="ellipsis"
 						activator-size="small"
 						placement="bottom-end"

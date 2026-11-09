@@ -117,30 +117,30 @@ const isActivationBlocked = computed(
 const rowRef = ref<HTMLElement | null>(null);
 
 /**
- * Skill descriptions can be long, so a skill row cuts its description to a few lines. The full
+ * Skill descriptions can be long, so a skill row cuts its description to two lines. The full
  * text shows in a tooltip, but only when the text is cut.
  */
-const cutsDescription = computed(() => props.item.kind === 'skill');
+const clampsDescription = computed(() => props.item.kind === 'skill');
 const descriptionRef = ref<InstanceType<typeof N8nText> | null>(null);
-const descriptionCut = ref(false);
+const isDescriptionTruncated = ref(false);
 
 function measureDescription() {
 	const element: unknown = descriptionRef.value?.$el;
-	descriptionCut.value =
+	isDescriptionTruncated.value =
 		element instanceof HTMLElement && element.scrollHeight > element.clientHeight + 1;
 }
 
 onMounted(() => {
-	if (cutsDescription.value) measureDescription();
+	if (clampsDescription.value) measureDescription();
 });
 useResizeObserver(
-	computed(() => (cutsDescription.value ? descriptionRef.value?.$el : null)),
+	computed(() => (clampsDescription.value ? descriptionRef.value?.$el : null)),
 	measureDescription,
 );
 watch(
 	() => props.item.description,
 	async () => {
-		if (!cutsDescription.value) return;
+		if (!clampsDescription.value) return;
 		await nextTick();
 		measureDescription();
 	},
@@ -275,7 +275,7 @@ function handleConnect() {
 					</span>
 					<N8nTooltip
 						v-if="item.description"
-						:disabled="!descriptionCut"
+						:disabled="!isDescriptionTruncated"
 						as-child
 						placement="top-start"
 						:content-class="$style.descriptionTooltip"
@@ -283,11 +283,11 @@ function handleConnect() {
 						<template #content>{{ item.description }}</template>
 						<N8nText
 							ref="descriptionRef"
-							:class="[$style.description, cutsDescription && $style.descriptionCut]"
+							:class="[$style.description, clampsDescription && $style.descriptionClamped]"
 							tag="span"
 							size="small"
 							color="text-light"
-							:data-cut="descriptionCut || undefined"
+							:data-cut="isDescriptionTruncated || undefined"
 							data-test-id="tools-connection-row-description"
 						>
 							{{ item.description }}
@@ -557,7 +557,7 @@ function handleConnect() {
 	overflow-wrap: anywhere;
 }
 
-.descriptionCut {
+.descriptionClamped {
 	display: -webkit-box;
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 2;
