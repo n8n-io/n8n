@@ -35,6 +35,7 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
+import { OwnershipService } from '@/services/ownership.service';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
@@ -1808,6 +1809,49 @@ describe('DELETE /project/:projectId', () => {
 		expect(foldersInTargetProject.map((f) => f.name)).toEqual(
 			expect.arrayContaining(['folder1', 'folder1', 'folder2']),
 		);
+	});
+
+	test('refreshes cached workflow projects after deleting a team project with a transfer target', async () => {
+		const admin = await createAdmin();
+		const sourceProject = await createTeamProject('Source project');
+		const targetProject = await createTeamProject('Target project');
+		const workflows = [
+			await createWorkflow({}, sourceProject),
+			await createWorkflow({}, sourceProject),
+		];
+		const ownershipService = Container.get(OwnershipService);
+
+		try {
+			// LIGO-1416: Execution lookups can cache the source project before a transfer.
+			for (const workflow of workflows) {
+				await expect(ownershipService.getWorkflowProjectCached(workflow.id)).resolves.toMatchObject(
+					{ id: sourceProject.id },
+				);
+			}
+
+			await testServer
+				.authAgentFor(admin)
+				.delete(`/projects/${sourceProject.id}`)
+				.query({ transferId: targetProject.id })
+				.expect(200);
+
+			await expect(findProject(sourceProject.id)).rejects.toThrowError(EntityNotFoundError);
+			for (const workflow of workflows) {
+				await expect(
+					Container.get(SharedWorkflowRepository).findOneByOrFail({
+						workflowId: workflow.id,
+						role: 'workflow:owner',
+					}),
+				).resolves.toMatchObject({ projectId: targetProject.id });
+			}
+
+			const cachedProjects = await Promise.all(
+				workflows.map(async ({ id }) => await ownershipService.getWorkflowProjectCached(id)),
+			);
+			expect(cachedProjects.map(({ id }) => id)).toEqual(workflows.map(() => targetProject.id));
+		} finally {
+			await ownershipService.invalidateWorkflowProjectCacheByIds(workflows.map(({ id }) => id));
+		}
 	});
 
 	test('does not migrate end-user credentials to a personal project', async () => {
