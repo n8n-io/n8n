@@ -662,13 +662,7 @@ export class SystemAgentExecutionService {
 				input,
 				options: {
 					...runOptionsOf(handle),
-					persistence: {
-						threadId: thread.id,
-						resourceId,
-						hostMetadata: handle.hostMetadata,
-						// The queue claims a turn only when the thread has no open suspension.
-						persistSettledSuspensions: true,
-					},
+					persistence: { threadId: thread.id, resourceId, hostMetadata: handle.hostMetadata },
 					// The claim signal stops the turn only until the runtime admits it.
 					abortSignal: signal,
 				},

@@ -554,7 +554,6 @@ describe('SystemAgentExecutionService', () => {
 						threadId: 'thread-1',
 						resourceId: 'system-chat:user-1',
 						hostMetadata: { turnOptions: { runId: 'host-run-1' } },
-						persistSettledSuspensions: true,
 					},
 				},
 			});
