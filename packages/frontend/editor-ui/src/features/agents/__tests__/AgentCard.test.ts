@@ -224,7 +224,7 @@ describe('AgentCard', () => {
 		},
 		{
 			label: 'the current user’s personal space',
-			project: { id: 'personal-project', name: 'Test User', type: 'personal' },
+			project: { id: 'personal-project', name: 'Test User', type: 'personal', icon: null },
 			text: 'Personal',
 			icon: { type: 'icon', value: 'user' },
 		},
@@ -234,6 +234,7 @@ describe('AgentCard', () => {
 				id: 'other-personal-project',
 				name: 'Another User <user@example.com>',
 				type: 'personal',
+				icon: null,
 			},
 			text: 'Another User',
 			icon: { type: 'icon', value: 'user' },
@@ -257,7 +258,7 @@ describe('AgentCard', () => {
 
 	it('hides the ownership badge on a project card', async () => {
 		const wrapper = await renderComponent(
-			createAgent({ project: { id: 'project-1', name: 'Support Team', type: 'team' } }),
+			createAgent({ project: { id: 'project-1', name: 'Support Team', type: 'team', icon: null } }),
 		);
 
 		expect(wrapper.find('[data-test-id="card-badge"]').exists()).toBe(false);
