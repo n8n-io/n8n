@@ -75,7 +75,7 @@ erDiagram
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   varchar_255_ toolCallId
   datetime_3_ updatedAt
 }

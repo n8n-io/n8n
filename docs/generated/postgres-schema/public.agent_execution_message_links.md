@@ -71,7 +71,7 @@ erDiagram
   varchar_16_ status
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   json timeline
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
@@ -87,7 +87,7 @@ erDiagram
   json origin
   varchar_255_ resourceId
   varchar_36_ role
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_thread_grants" ("threadId" varchar(128) NOT NULL, "grantKey" varchar(512) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_10aad4b5b51d34aae8da90fd5cb" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE, PRIMARY KEY ("threadId", "grantKey"))
+CREATE TABLE "agent_thread_grants" ("threadId" varchar(1024) NOT NULL, "grantKey" varchar(512) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_10aad4b5b51d34aae8da90fd5cb" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE, PRIMARY KEY ("threadId", "grantKey"))
 ```
 
 </details>
@@ -17,7 +17,7 @@ CREATE TABLE "agent_thread_grants" ("threadId" varchar(128) NOT NULL, "grantKey"
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | grantKey | varchar(512) |  | false |  |  |  |
-| threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
+| threadId | varchar(1024) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -45,7 +45,7 @@ erDiagram
 "agent_thread_grants" {
   datetime_3_ createdAt
   varchar_512_ grantKey PK
-  varchar_128_ threadId PK
+  varchar_1024_ threadId PK
   datetime_3_ updatedAt
 }
 "agent_execution_threads" {
@@ -54,10 +54,10 @@ erDiagram
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
-  varchar_128_ id PK
+  varchar_1024_ id PK
   varchar ownerId FK
   varchar_36_ parentAgentId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   varchar_255_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId

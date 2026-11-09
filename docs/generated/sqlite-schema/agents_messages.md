@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(255) NOT NULL, "resourceId" varchar(255) NOT NULL, "role" varchar(36) NOT NULL, "type" varchar(36), "content" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "author" TEXT, "origin" TEXT, "modelContent" TEXT, "modelContextAt" DATETIME, CONSTRAINT "FK_0a8057a61afabd2999608ffd0d9" FOREIGN KEY ("threadId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE)
+CREATE TABLE "agents_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(1024) NOT NULL, "resourceId" varchar(255) NOT NULL, "role" varchar(36) NOT NULL, "type" varchar(36), "content" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "author" TEXT, "origin" TEXT, "modelContent" TEXT, "modelContextAt" DATETIME, CONSTRAINT "FK_0a8057a61afabd2999608ffd0d9" FOREIGN KEY ("threadId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -24,7 +24,7 @@ CREATE TABLE "agents_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | origin | TEXT |  | true |  |  |  |
 | resourceId | varchar(255) |  | false |  |  |  |
 | role | varchar(36) |  | false |  |  |  |
-| threadId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
+| threadId | varchar(1024) |  | false |  | [agents_threads](agents_threads.md) |  |
 | type | varchar(36) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -66,7 +66,7 @@ erDiagram
   TEXT origin
   varchar_255_ resourceId
   varchar_36_ role
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   varchar_36_ type
   datetime_3_ updatedAt
 }
@@ -86,7 +86,7 @@ erDiagram
   INTEGER position
   varchar_36_ steeringExecutionId FK
   INTEGER steeringOrder
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   datetime_3_ updatedAt
 }
 "agents_memory_entry_candidates" {
@@ -101,13 +101,13 @@ erDiagram
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   varchar_255_ toolCallId
   datetime_3_ updatedAt
 }
 "agents_threads" {
   datetime_3_ createdAt
-  varchar_128_ id PK
+  varchar_1024_ id PK
   TEXT metadata
   varchar_255_ resourceId
   varchar_255_ title

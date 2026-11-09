@@ -3,6 +3,8 @@ import { Entity, JoinColumn, ManyToOne, PrimaryColumn, type Relation } from '@n8
 
 import { AgentChatAttachment } from './agent-chat-attachment.entity';
 
+import { AGENT_THREAD_ID_MAX_LENGTH } from '../integrations/types';
+
 /**
  * Lets a thread read a file that it did not make. A parent thread grants a
  * file to its sub-agent thread, and that thread can grant it on to its own
@@ -17,6 +19,6 @@ export class AgentFileGrant extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 16 })
 	attachmentId: string;
 
-	@PrimaryColumn({ type: 'varchar', length: 128 })
+	@PrimaryColumn({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	threadId: string;
 }

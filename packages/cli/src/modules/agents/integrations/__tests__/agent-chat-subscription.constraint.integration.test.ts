@@ -1,3 +1,4 @@
+import { encodeThreadId as encodeTeamsThreadId } from '@chat-adapter/teams';
 import { AgentIntegrationSchema } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
@@ -60,5 +61,19 @@ describe('agent chat subscription integration types', () => {
 		const scope = { agentId, integrationType: 'not-a-channel', credentialId: 'cred-x' };
 
 		await expect(repository.subscribe(scope, 'thread-x', {})).rejects.toThrow();
+	});
+
+	it('stores a Teams DM thread id from a regional tenant', async () => {
+		const repository = Container.get(AgentChatSubscriptionRepository);
+		const scope = { agentId, integrationType: 'teams', credentialId: 'cred-teams-regional' };
+		const threadId = encodeTeamsThreadId({
+			conversationId: `a:1${'Xt9TpfmYq2Lr0kZbN4cVwHs8eUjG7dOaFyM3iRnK6lQxB5gS1vPzWuCo-_h2JmE4'.repeat(2)}`,
+			serviceUrl: 'https://smba.trafficmanager.net/au/72f988bf-86f1-41af-91ab-2d7cd011db47/',
+		});
+		expect(threadId.length).toBeGreaterThan(255);
+
+		await repository.subscribe(scope, threadId, {});
+
+		await expect(repository.isSubscribed(scope, threadId, {})).resolves.toBe(true);
 	});
 });

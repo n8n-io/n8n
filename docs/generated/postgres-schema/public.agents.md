@@ -113,7 +113,7 @@ erDiagram
 }
 "public.agent_background_job" {
   varchar_36_ childExecutionId
-  varchar_128_ childThreadId
+  varchar_1024_ childThreadId
   timestamp_3__with_time_zone createdAt
   text error
   json files
@@ -123,7 +123,7 @@ erDiagram
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   uuid pauseRequestId
   uuid planId FK
   uuid planTaskId
@@ -156,7 +156,7 @@ erDiagram
   text binaryDataId
   varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
-  varchar_128_ createdByThreadId
+  varchar_1024_ createdByThreadId
   varchar_255_ fileName
   integer fileSizeBytes
   varchar_16_ id
@@ -164,7 +164,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_255_ resourceId
   varchar_32_ source
-  varchar_128_ threadId
+  varchar_1024_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_chat_subscriptions" {
@@ -172,7 +172,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_255_ credentialId
   varchar_64_ integrationType
-  varchar_255_ threadId
+  varchar_1024_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_checkpoints" {
@@ -207,10 +207,10 @@ erDiagram
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
-  varchar_128_ id
+  varchar_1024_ id
   uuid ownerId FK
   varchar_36_ parentAgentId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   varchar_255_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
@@ -301,7 +301,7 @@ erDiagram
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   varchar_255_ toolCallId
   timestamp_3__with_time_zone updatedAt
 }
@@ -322,7 +322,7 @@ erDiagram
   varchar_36_ id
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_observation_cursors" {
@@ -330,7 +330,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
-  varchar_255_ observationScopeId FK
+  varchar_1024_ observationScopeId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_observation_locks" {
@@ -338,7 +338,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone heldUntil
   varchar_64_ holderId
-  varchar_255_ observationScopeId FK
+  varchar_1024_ observationScopeId FK
   varchar_20_ taskKind
   timestamp_3__with_time_zone updatedAt
 }
@@ -347,7 +347,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_16_ marker
-  varchar_255_ observationScopeId FK
+  varchar_1024_ observationScopeId FK
   varchar_36_ parentId FK
   varchar_16_ status
   varchar_36_ supersededBy FK

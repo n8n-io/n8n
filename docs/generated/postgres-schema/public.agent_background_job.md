@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | childExecutionId | varchar(36) |  | true |  |  | Workflow jobs only |
-| childThreadId | varchar(128) |  | true |  |  | Sub-agent jobs only; minted at dispatch, links to agent_execution_threads |
+| childThreadId | varchar(1024) |  | true |  |  | Sub-agent jobs only; minted at dispatch, links to agent_execution_threads |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | error | text |  | true |  |  |  |
 | files | json |  | true |  |  | Output files that the job stored for the parent thread |
@@ -15,7 +15,7 @@
 | parentAgentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
 | parentPrincipalHash | varchar(64) |  | false |  |  | Sandbox principal hash of the parent agent run |
 | parentResourceId | varchar(255) |  | false |  |  | Memory resource of the parent agent run |
-| parentThreadId | varchar(128) |  | false |  |  |  |
+| parentThreadId | varchar(1024) |  | false |  |  |  |
 | pauseRequestId | uuid |  | true |  |  | Groups jobs stopped by one user request |
 | planId | uuid |  | true |  | [public.agent_plan](public.agent_plan.md) | Plan that owns this work |
 | planTaskId | uuid |  | true |  |  | Task ID in the saved plan document |
@@ -76,7 +76,7 @@ erDiagram
 
 "public.agent_background_job" {
   varchar_36_ childExecutionId
-  varchar_128_ childThreadId
+  varchar_1024_ childThreadId
   timestamp_3__with_time_zone createdAt
   text error
   json files
@@ -86,7 +86,7 @@ erDiagram
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   uuid pauseRequestId
   uuid planId FK
   uuid planTaskId
@@ -126,7 +126,7 @@ erDiagram
   integer formatVersion
   uuid id
   integer revision
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution" {
@@ -153,7 +153,7 @@ erDiagram
   varchar_16_ status
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   json timeline
   integer totalTokens
   timestamp_3__with_time_zone updatedAt

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "agentName" varchar(255) NOT NULL, "projectId" varchar(255) NOT NULL, "sessionNumber" integer NOT NULL DEFAULT (0), "totalPromptTokens" integer NOT NULL DEFAULT (0), "totalCompletionTokens" integer NOT NULL DEFAULT (0), "totalCost" real NOT NULL DEFAULT (0), "totalDuration" integer NOT NULL DEFAULT (0), "title" varchar(255), "emoji" varchar(8), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "taskId" varchar(32), "taskVersionId" varchar(36), "parentThreadId" varchar(128), "parentAgentId" varchar(36), "ownerId" varchar, "accessScope" varchar(16) NOT NULL DEFAULT ('user'), "taskStop" TEXT, CONSTRAINT "CHK_agent_execution_threads_accessScope" CHECK ("accessScope" IN ('user', 'project')), CONSTRAINT "FK_f00b52d74fe11838e1fe086deea" FOREIGN KEY ("taskVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_0468a9dc35597314e641d4722aa" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_0e2f8bf92a7a9c88b89670f701c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_agent_execution_threads_owner" FOREIGN KEY ("ownerId") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "agent_execution_threads" ("id" varchar(1024) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "agentName" varchar(255) NOT NULL, "projectId" varchar(255) NOT NULL, "sessionNumber" integer NOT NULL DEFAULT (0), "totalPromptTokens" integer NOT NULL DEFAULT (0), "totalCompletionTokens" integer NOT NULL DEFAULT (0), "totalCost" real NOT NULL DEFAULT (0), "totalDuration" integer NOT NULL DEFAULT (0), "title" varchar(255), "emoji" varchar(8), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "taskId" varchar(32), "taskVersionId" varchar(36), "parentThreadId" varchar(1024), "parentAgentId" varchar(36), "ownerId" varchar, "accessScope" varchar(16) NOT NULL DEFAULT ('user'), "taskStop" TEXT, CONSTRAINT "CHK_agent_execution_threads_accessScope" CHECK ("accessScope" IN ('user', 'project')), CONSTRAINT "FK_f00b52d74fe11838e1fe086deea" FOREIGN KEY ("taskVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_0468a9dc35597314e641d4722aa" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_0e2f8bf92a7a9c88b89670f701c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_agent_execution_threads_owner" FOREIGN KEY ("ownerId") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -20,10 +20,10 @@ CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, 
 | agentName | varchar(255) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | emoji | varchar(8) |  | true |  |  |  |
-| id | varchar(128) |  | false | [agent_execution](agent_execution.md) [agent_message_queue](agent_message_queue.md) [agent_plan](agent_plan.md) [agent_thread_grants](agent_thread_grants.md) |  |  |
+| id | varchar(1024) |  | false | [agent_execution](agent_execution.md) [agent_message_queue](agent_message_queue.md) [agent_plan](agent_plan.md) [agent_thread_grants](agent_thread_grants.md) |  |  |
 | ownerId | varchar |  | true |  | [user](user.md) |  |
 | parentAgentId | varchar(36) |  | true |  |  |  |
-| parentThreadId | varchar(128) |  | true |  |  |  |
+| parentThreadId | varchar(1024) |  | true |  |  |  |
 | projectId | varchar(255) |  | false |  | [project](project.md) |  |
 | sessionNumber | INTEGER | 0 | false |  |  |  |
 | taskId | varchar(32) |  | true |  |  |  |
@@ -78,10 +78,10 @@ erDiagram
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
-  varchar_128_ id PK
+  varchar_1024_ id PK
   varchar ownerId FK
   varchar_36_ parentAgentId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   varchar_255_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId
@@ -136,7 +136,7 @@ erDiagram
   varchar_16_ status
   datetime_3_ stoppedAt
   varchar_2_ storedAt
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   TEXT timeline
   INTEGER totalTokens
   datetime_3_ updatedAt
@@ -151,7 +151,7 @@ erDiagram
   INTEGER position
   varchar_36_ steeringExecutionId FK
   INTEGER steeringOrder
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   datetime_3_ updatedAt
 }
 "agent_plan" {
@@ -161,13 +161,13 @@ erDiagram
   INTEGER formatVersion
   varchar id PK
   INTEGER revision
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   datetime_3_ updatedAt
 }
 "agent_thread_grants" {
   datetime_3_ createdAt
   varchar_512_ grantKey PK
-  varchar_128_ threadId PK
+  varchar_1024_ threadId PK
   datetime_3_ updatedAt
 }
 "user" {

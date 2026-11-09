@@ -8,7 +8,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | credentialId | varchar(255) |  | false |  |  | Credential connection that owns this subscription |
 | integrationType | varchar(64) |  | false |  |  | Chat integration platform for this subscription |
-| threadId | varchar(255) |  | false |  |  | Platform thread ID the agent is subscribed to |
+| threadId | varchar(1024) |  | false |  |  | Platform thread ID the agent is subscribed to |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -43,7 +43,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_255_ credentialId
   varchar_64_ integrationType
-  varchar_255_ threadId
+  varchar_1024_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents" {

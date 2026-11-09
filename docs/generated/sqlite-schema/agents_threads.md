@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, "resourceId" varchar(255) NOT NULL, "title" varchar(255), "metadata" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
+CREATE TABLE "agents_threads" ("id" varchar(1024) PRIMARY KEY NOT NULL, "resourceId" varchar(255) NOT NULL, "title" varchar(255), "metadata" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
 ```
 
 </details>
@@ -16,7 +16,7 @@ CREATE TABLE "agents_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, "resource
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(128) |  | false | [agents_memory_entry_candidates](agents_memory_entry_candidates.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_messages](agents_messages.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_observations](agents_observations.md) |  |  |
+| id | varchar(1024) |  | false | [agents_memory_entry_candidates](agents_memory_entry_candidates.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_messages](agents_messages.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_observations](agents_observations.md) |  |  |
 | metadata | TEXT |  | true |  |  |  |
 | resourceId | varchar(255) |  | false |  |  |  |
 | title | varchar(255) |  | true |  |  |  |
@@ -50,7 +50,7 @@ erDiagram
 
 "agents_threads" {
   datetime_3_ createdAt
-  varchar_128_ id PK
+  varchar_1024_ id PK
   TEXT metadata
   varchar_255_ resourceId
   varchar_255_ title
@@ -68,7 +68,7 @@ erDiagram
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   varchar_255_ toolCallId
   datetime_3_ updatedAt
 }
@@ -81,7 +81,7 @@ erDiagram
   varchar_36_ id PK
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   datetime_3_ updatedAt
 }
 "agents_messages" {
@@ -94,7 +94,7 @@ erDiagram
   TEXT origin
   varchar_255_ resourceId
   varchar_36_ role
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   varchar_36_ type
   datetime_3_ updatedAt
 }
@@ -103,7 +103,7 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
-  varchar_255_ observationScopeId PK
+  varchar_1024_ observationScopeId PK
   datetime_3_ updatedAt
 }
 "agents_observation_locks" {
@@ -111,7 +111,7 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ heldUntil
   varchar_64_ holderId
-  varchar_255_ observationScopeId PK
+  varchar_1024_ observationScopeId PK
   varchar_20_ taskKind PK
   datetime_3_ updatedAt
 }
@@ -120,7 +120,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_16_ marker
-  varchar_255_ observationScopeId FK
+  varchar_1024_ observationScopeId FK
   varchar_36_ parentId FK
   varchar_16_ status
   varchar_36_ supersededBy FK

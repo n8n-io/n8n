@@ -185,10 +185,10 @@ erDiagram
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
-  varchar_128_ id PK
+  varchar_1024_ id PK
   varchar ownerId FK
   varchar_36_ parentAgentId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   varchar_255_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId

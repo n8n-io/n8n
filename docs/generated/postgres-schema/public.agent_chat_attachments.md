@@ -8,7 +8,7 @@
 | binaryDataId | text |  | false |  |  | Opaque BinaryDataService reference (mode-prefixed, e.g. "filesystem-v2:\<uuid\>"); not an FK to binary_data, which only has rows in DB storage mode |
 | contentHash | varchar(64) |  | true |  |  | SHA-256 of the file bytes, hex; null for older rows |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| createdByThreadId | varchar(128) |  | false |  |  | Thread that made the file; threadId is the root thread that owns it |
+| createdByThreadId | varchar(1024) |  | false |  |  | Thread that made the file; threadId is the root thread that owns it |
 | fileName | varchar(255) |  | false |  |  |  |
 | fileSizeBytes | integer |  | false |  |  | Uploaded file size in bytes |
 | id | varchar(16) |  | false | [public.agent_file_grants](public.agent_file_grants.md) |  | Application-generated n8n nano ID |
@@ -16,7 +16,7 @@
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Project owning the conversation; authorization scope for downloads |
 | resourceId | varchar(255) |  | true |  |  | Per-user scope within the thread (platform user), when known |
 | source | varchar(32) |  | false |  |  | Surface the file arrived from, e.g. "chat", "slack", "telegram" |
-| threadId | varchar(128) |  | false |  |  | Conversation thread the file belongs to |
+| threadId | varchar(1024) |  | false |  |  | Conversation thread the file belongs to |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -60,7 +60,7 @@ erDiagram
   text binaryDataId
   varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
-  varchar_128_ createdByThreadId
+  varchar_1024_ createdByThreadId
   varchar_255_ fileName
   integer fileSizeBytes
   varchar_16_ id
@@ -68,7 +68,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_255_ resourceId
   varchar_32_ source
-  varchar_128_ threadId
+  varchar_1024_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents" {
@@ -92,7 +92,7 @@ erDiagram
 "public.agent_file_grants" {
   varchar_16_ attachmentId FK
   timestamp_3__with_time_zone createdAt
-  varchar_128_ threadId
+  varchar_1024_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.project" {

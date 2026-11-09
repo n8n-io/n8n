@@ -99,7 +99,7 @@ erDiagram
   varchar_36_ id
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_resources" {

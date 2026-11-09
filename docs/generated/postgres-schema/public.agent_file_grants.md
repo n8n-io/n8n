@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | attachmentId | varchar(16) |  | false |  | [public.agent_chat_attachments](public.agent_chat_attachments.md) | Granted file |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| threadId | varchar(128) |  | false |  |  | Thread that can read the file |
+| threadId | varchar(1024) |  | false |  |  | Thread that can read the file |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -36,7 +36,7 @@ erDiagram
 "public.agent_file_grants" {
   varchar_16_ attachmentId FK
   timestamp_3__with_time_zone createdAt
-  varchar_128_ threadId
+  varchar_1024_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_chat_attachments" {
@@ -44,7 +44,7 @@ erDiagram
   text binaryDataId
   varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
-  varchar_128_ createdByThreadId
+  varchar_1024_ createdByThreadId
   varchar_255_ fileName
   integer fileSizeBytes
   varchar_16_ id
@@ -52,7 +52,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_255_ resourceId
   varchar_32_ source
-  varchar_128_ threadId
+  varchar_1024_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 ```

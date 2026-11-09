@@ -79,7 +79,7 @@ erDiagram
   varchar_16_ status
   datetime_3_ stoppedAt
   varchar_2_ storedAt
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   TEXT timeline
   INTEGER totalTokens
   datetime_3_ updatedAt
@@ -95,7 +95,7 @@ erDiagram
   TEXT origin
   varchar_255_ resourceId
   varchar_36_ role
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   varchar_36_ type
   datetime_3_ updatedAt
 }

@@ -15,6 +15,8 @@ import { AgentExecution } from './agent-execution.entity';
 import { AgentMessageEntity } from './agent-message.entity';
 import type { AgentQueueDispatch } from '../types/agent-queued-message';
 
+import { AGENT_THREAD_ID_MAX_LENGTH } from '../integrations/types';
+
 @Entity({ name: 'agent_message_queue' })
 @Index(['threadId', 'position'])
 @Index(['threadId'], { unique: true, where: '"executionId" IS NOT NULL' })
@@ -38,7 +40,7 @@ export class AgentMessageQueue extends WithTimestamps {
 	@JoinColumn({ name: 'threadId' })
 	thread: Relation<AgentExecutionThread>;
 
-	@Column({ type: 'varchar', length: 128 })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	threadId: string;
 
 	@ManyToOne(() => AgentMessageEntity, { nullable: false, onDelete: 'CASCADE' })

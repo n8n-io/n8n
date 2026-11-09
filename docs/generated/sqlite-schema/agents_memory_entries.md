@@ -102,7 +102,7 @@ erDiagram
   varchar_36_ id PK
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   datetime_3_ updatedAt
 }
 "agents_resources" {

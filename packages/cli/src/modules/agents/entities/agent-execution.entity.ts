@@ -16,6 +16,8 @@ import type { TimelineEvent } from '../execution-recorder';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionFailureSummary } from '../utils/execution-failure-summary';
 
+import { AGENT_THREAD_ID_MAX_LENGTH } from '../integrations/types';
+
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 
 /**
@@ -39,7 +41,7 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	// Thread ids are scoped with prefixes/user ids on some surfaces (e.g.
 	// `test-<agentId>:<userId>`), so they exceed a bare uuid — widened to 128 in
 	// AddSubAgentLinkageToAgentExecutionThreads1784000000022.
-	@Column({ type: 'varchar', length: 128 })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	threadId: string;
 
 	@Column({ type: 'varchar', length: 16 })

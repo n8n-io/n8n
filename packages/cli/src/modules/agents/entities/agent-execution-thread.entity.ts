@@ -6,6 +6,8 @@ import { AgentHistory } from './agent-history.entity';
 import { Agent } from './agent.entity';
 import type { StoredAgentTaskStop } from '../types/agent-task-stop';
 
+import { AGENT_THREAD_ID_MAX_LENGTH } from '../integrations/types';
+
 /**
  * One conversation between a user and an agent. Aggregates per-session
  * counters (token usage, cost, duration) so the sessions list can render
@@ -64,7 +66,7 @@ export class AgentExecutionThread extends WithTimestampsAndStringId {
 	 * Parent session thread id that delegated this run, for navigating back to
 	 * it. Holds another thread's id, so it matches the id column width (128).
 	 */
-	@Column({ type: 'varchar', length: 128, nullable: true })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH, nullable: true })
 	parentThreadId: string | null;
 
 	/** Saved agent id of the parent that delegated this run. */

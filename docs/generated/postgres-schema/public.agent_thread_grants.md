@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | grantKey | varchar(512) |  | false |  |  | JSON tuple: [tool, toolName] or [integration_action, connectionId, action] |
-| threadId | varchar(128) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
+| threadId | varchar(1024) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -36,7 +36,7 @@ erDiagram
 "public.agent_thread_grants" {
   timestamp_3__with_time_zone createdAt
   varchar_512_ grantKey
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution_threads" {
@@ -45,10 +45,10 @@ erDiagram
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
-  varchar_128_ id
+  varchar_1024_ id
   uuid ownerId FK
   varchar_36_ parentAgentId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   varchar_255_ projectId FK
   integer sessionNumber
   varchar_32_ taskId

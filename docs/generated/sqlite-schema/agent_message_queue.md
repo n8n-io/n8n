@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "threadId" varchar(128) NOT NULL, "payload" text NOT NULL, "executionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "messageId" varchar(36) NOT NULL, "steeringExecutionId" varchar(36), "steeringOrder" integer, "position" integer NOT NULL DEFAULT (0), CONSTRAINT "CHK_agent_message_queue_steering_pair" CHECK (("steeringExecutionId" IS NULL) = ("steeringOrder" IS NULL)), CONSTRAINT "FK_eff54787927c2968dc24495c911" FOREIGN KEY ("steeringExecutionId") REFERENCES "agent_execution" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION, CONSTRAINT "FK_agent_message_queue_messageId" FOREIGN KEY ("messageId") REFERENCES "agents_messages" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_a74f9154a59430986112d70cb16" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_2349d84b4f2a660fc264f38fef3" FOREIGN KEY ("executionId") REFERENCES "agent_execution" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
+CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "threadId" varchar(1024) NOT NULL, "payload" text NOT NULL, "executionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "messageId" varchar(36) NOT NULL, "steeringExecutionId" varchar(36), "steeringOrder" integer, "position" integer NOT NULL DEFAULT (0), CONSTRAINT "CHK_agent_message_queue_steering_pair" CHECK (("steeringExecutionId" IS NULL) = ("steeringOrder" IS NULL)), CONSTRAINT "FK_eff54787927c2968dc24495c911" FOREIGN KEY ("steeringExecutionId") REFERENCES "agent_execution" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION, CONSTRAINT "FK_agent_message_queue_messageId" FOREIGN KEY ("messageId") REFERENCES "agents_messages" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_a74f9154a59430986112d70cb16" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_2349d84b4f2a660fc264f38fef3" FOREIGN KEY ("executionId") REFERENCES "agent_execution" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -23,7 +23,7 @@ CREATE TABLE "agent_message_queue" ("id" integer PRIMARY KEY AUTOINCREMENT NOT N
 | position | INTEGER | 0 | false |  |  |  |
 | steeringExecutionId | varchar(36) |  | true |  | [agent_execution](agent_execution.md) |  |
 | steeringOrder | INTEGER |  | true |  |  |  |
-| threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
+| threadId | varchar(1024) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -66,7 +66,7 @@ erDiagram
   INTEGER position
   varchar_36_ steeringExecutionId FK
   INTEGER steeringOrder
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   datetime_3_ updatedAt
 }
 "agent_execution" {
@@ -93,7 +93,7 @@ erDiagram
   varchar_16_ status
   datetime_3_ stoppedAt
   varchar_2_ storedAt
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   TEXT timeline
   INTEGER totalTokens
   datetime_3_ updatedAt
@@ -109,7 +109,7 @@ erDiagram
   TEXT origin
   varchar_255_ resourceId
   varchar_36_ role
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   varchar_36_ type
   datetime_3_ updatedAt
 }
@@ -119,10 +119,10 @@ erDiagram
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
-  varchar_128_ id PK
+  varchar_1024_ id PK
   varchar ownerId FK
   varchar_36_ parentAgentId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   varchar_255_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId

@@ -53,7 +53,7 @@ erDiagram
   integer formatVersion
   uuid id
   integer revision
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 ```

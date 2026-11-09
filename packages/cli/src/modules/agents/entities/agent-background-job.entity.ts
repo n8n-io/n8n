@@ -8,6 +8,8 @@ import type {
 import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
+import { AGENT_THREAD_ID_MAX_LENGTH } from '../integrations/types';
+
 export type AgentBackgroundJobKind = AgentBackgroundJobDto['kind'];
 export type AgentBackgroundJobStatus = AgentBackgroundJobDto['status'];
 
@@ -65,7 +67,7 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	// Thread ids are scoped with prefixes/user ids on some surfaces (e.g.
 	// `test-<agentId>:<userId>`), so they exceed a bare uuid — same width as
 	// agent_execution_threads.id.
-	@Column({ type: 'varchar', length: 128 })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	parentThreadId: string;
 
 	/** Memory resource of the parent run. */
@@ -85,7 +87,7 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	subAgentId: string | null;
 
 	/** Sub-agent jobs only; minted at dispatch, links to agent_execution_threads. */
-	@Column({ type: 'varchar', length: 128, nullable: true })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH, nullable: true })
 	childThreadId: string | null;
 
 	/** Workflow jobs only. */

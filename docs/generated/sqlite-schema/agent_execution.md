@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, "failureSummary" text, "author" text, "acceptsSteering" BOOLEAN NOT NULL DEFAULT FALSE, "finishReason" VARCHAR(32), "guardrailCode" VARCHAR(64), "cacheReadTokens" integer, "cacheWriteTokens" integer, "parentExecutionId" varchar(36) CONSTRAINT "FK_agent_execution_parentExecutionId" REFERENCES "agent_execution" ("id") ON DELETE SET NULL, CONSTRAINT "CHK_agent_execution_storedAt" CHECK ((("storedAt" IN ('db', 'fs', 's3', 'az')))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK (((((("hitlStatus" IN ('suspended', 'resumed'))))))), CONSTRAINT "CHK_agent_execution_status" CHECK (("status" IN ('running', 'success', 'error', 'cancelled', 'interrupted'))), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(1024) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, "failureSummary" text, "author" text, "acceptsSteering" BOOLEAN NOT NULL DEFAULT FALSE, "finishReason" VARCHAR(32), "guardrailCode" VARCHAR(64), "cacheReadTokens" integer, "cacheWriteTokens" integer, "parentExecutionId" varchar(36) CONSTRAINT "FK_agent_execution_parentExecutionId" REFERENCES "agent_execution" ("id") ON DELETE SET NULL, CONSTRAINT "CHK_agent_execution_storedAt" CHECK ((("storedAt" IN ('db', 'fs', 's3', 'az')))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK (((((("hitlStatus" IN ('suspended', 'resumed'))))))), CONSTRAINT "CHK_agent_execution_status" CHECK (("status" IN ('running', 'success', 'error', 'cancelled', 'interrupted'))), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -38,7 +38,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | status | varchar(16) |  | false |  |  |  |
 | stoppedAt | datetime(3) |  | true |  |  |  |
 | storedAt | varchar(2) | 'db' | false |  |  |  |
-| threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
+| threadId | varchar(1024) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
 | timeline | TEXT |  | true |  |  |  |
 | totalTokens | INTEGER |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -101,7 +101,7 @@ erDiagram
   varchar_16_ status
   datetime_3_ stoppedAt
   varchar_2_ storedAt
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   TEXT timeline
   INTEGER totalTokens
   datetime_3_ updatedAt
@@ -109,7 +109,7 @@ erDiagram
 }
 "agent_background_job" {
   varchar_36_ childExecutionId
-  varchar_128_ childThreadId
+  varchar_1024_ childThreadId
   datetime_3_ createdAt
   TEXT error
   TEXT files
@@ -119,7 +119,7 @@ erDiagram
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   varchar pauseRequestId
   varchar planId FK
   varchar planTaskId
@@ -150,7 +150,7 @@ erDiagram
   INTEGER position
   varchar_36_ steeringExecutionId FK
   INTEGER steeringOrder
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   datetime_3_ updatedAt
 }
 "agent_execution_threads" {
@@ -159,10 +159,10 @@ erDiagram
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
-  varchar_128_ id PK
+  varchar_1024_ id PK
   varchar ownerId FK
   varchar_36_ parentAgentId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   varchar_255_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId
