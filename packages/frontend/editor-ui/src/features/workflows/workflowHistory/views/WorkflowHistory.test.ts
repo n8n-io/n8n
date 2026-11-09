@@ -282,6 +282,123 @@ describe('WorkflowHistory', () => {
 		expect(within(getByRole('alert')).getByRole('link')).toBeInTheDocument();
 	});
 
+	describe('slow actions', () => {
+		const renderPreview = createComponentRenderer(WorkflowHistoryPage, {
+			global: {
+				stubs: {
+					Modal: defineComponent({
+						template: '<div><slot name="content" /></div>',
+					}),
+					WorkflowHistoryDiff: true,
+					WorkflowPublishTimelineContent: true,
+					WorkflowPreviewHost: true,
+					WorkflowHistoryList: defineComponent({
+						props: {
+							actions: {
+								type: Array as PropType<Array<{ value: string; disabled?: boolean }>>,
+								default: () => [],
+							},
+						},
+						template: `<div>
+							<span
+								v-for="name in ['clone', 'restore', 'download']"
+								:key="name"
+								:data-test-id="'stub-' + name + '-action'"
+								:data-disabled="String(Boolean(actions.find((action) => action.value === name)?.disabled))"
+							/>
+						</div>`,
+					}),
+				},
+			},
+		});
+
+		const shownVersion = { ...versionData, ...historyData[1] };
+
+		const prepareSlowAction = () => {
+			route.params.workflowId = workflowId;
+			route.params.versionId = shownVersion.versionId;
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
+				id: workflowId,
+				versionId: 'current-version',
+			} as IWorkflowDb);
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
+				id: workflowId,
+				scopes: ['workflow:read', 'workflow:create', 'workflow:update'],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(shownVersion);
+		};
+
+		it.each([
+			['Clone to new workflow', 'cloneIntoNewWorkflow'],
+			['Restore version', 'restoreWorkflow'],
+			['Download', 'downloadVersion'],
+		] as const)(
+			'shows a loading Actions button while %s runs, then returns to idle',
+			async (label, method) => {
+				prepareSlowAction();
+				let finish: (value?: unknown) => void = () => {};
+				const spy = vi.spyOn(workflowHistoryStore, method).mockImplementation(
+					() =>
+						new Promise((resolve) => {
+							finish = resolve;
+						}),
+				);
+
+				const { findByTestId, findByText, getByTestId } = renderPreview({ pinia });
+				await userEvent.click(await findByTestId('action-toggle-button'));
+				await userEvent.click(await findByText(label));
+
+				await waitFor(() => {
+					expect(spy).toHaveBeenCalledTimes(1);
+					const pendingButton = getByTestId('action-toggle-button');
+					expect(pendingButton).toHaveTextContent('Actions');
+					expect(pendingButton).toBeDisabled();
+					expect(pendingButton).toHaveAttribute('aria-busy', 'true');
+					expect(pendingButton.querySelector('[data-icon="loader"]')).toBeInTheDocument();
+					expect(getByTestId('stub-clone-action')).toHaveAttribute('data-disabled', 'true');
+					expect(getByTestId('stub-restore-action')).toHaveAttribute('data-disabled', 'true');
+					expect(getByTestId('stub-download-action')).toHaveAttribute('data-disabled', 'true');
+				});
+
+				await userEvent.click(getByTestId('action-toggle-button'));
+				expect(spy).toHaveBeenCalledTimes(1);
+
+				finish(method === 'downloadVersion' ? undefined : { id: 'done', versionId: 'next' });
+				await waitFor(() => {
+					const idleButton = getByTestId('action-toggle-button');
+					expect(idleButton).toHaveTextContent('Actions');
+					expect(idleButton).not.toBeDisabled();
+					expect(idleButton).not.toHaveAttribute('aria-busy', 'true');
+					expect(getByTestId('stub-clone-action')).toHaveAttribute('data-disabled', 'false');
+				});
+			},
+		);
+
+		it('clears the loading state after a clone error and allows another clone', async () => {
+			prepareSlowAction();
+			const cloneSpy = vi
+				.spyOn(workflowHistoryStore, 'cloneIntoNewWorkflow')
+				.mockRejectedValueOnce(new Error('Clone failed'))
+				.mockResolvedValueOnce({ id: 'cloned-after-error' } as IWorkflowDb);
+
+			const { findByTestId, findByText, getByTestId } = renderPreview({ pinia });
+			await userEvent.click(await findByTestId('action-toggle-button'));
+			await userEvent.click(await findByText('Clone to new workflow'));
+
+			expect(await findByText('Failed to clone to new workflow')).toBeInTheDocument();
+			await waitFor(() => {
+				expect(getByTestId('action-toggle-button')).not.toBeDisabled();
+				expect(getByTestId('stub-clone-action')).toHaveAttribute('data-disabled', 'false');
+			});
+
+			await userEvent.click(getByTestId('action-toggle-button'));
+			await userEvent.click(await findByText('Clone to new workflow'));
+			await waitFor(() => {
+				expect(cloneSpy).toHaveBeenCalledTimes(2);
+			});
+		});
+	});
+
 	it('should download workflow version', async () => {
 		route.params.workflowId = workflowId;
 

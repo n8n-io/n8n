@@ -124,10 +124,15 @@ const publishedWorkflowVersionId = computed(() => {
 	return publishedVersionId;
 });
 
+// One slow action at a time. The preview button can only show one wait.
+const pendingVersionId = ref<WorkflowVersionId | null>(null);
+
 const actions = computed<Array<UserAction<IUser>>>(() =>
 	availableActionTypes.value.map((value) => ({
 		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
 		disabled:
+			(pendingVersionId.value !== null &&
+				(value === 'clone' || value === 'restore' || value === 'download')) ||
 			(value === 'clone' && !workflowPermissions.value.create) ||
 			((value === 'restore' || value === 'name') && !workflowPermissions.value.update) ||
 			((value === 'publish' || value === 'unpublish') && !workflowPermissions.value.publish),
@@ -458,6 +463,37 @@ const nameWorkflowVersion = async (id: WorkflowVersionId, data: WorkflowHistoryA
 	});
 };
 
+const showActionError = (action: WorkflowHistoryAction['action'], error: unknown) => {
+	toast.showError(
+		error,
+		i18n.baseText('workflowHistory.action.error.title', {
+			interpolate: {
+				action: i18n.baseText(`workflowHistory.item.actions.${action}`).toLowerCase(),
+			},
+		}),
+	);
+};
+
+// The preview button loads until the action ends. Download has no success toast.
+const runSlowAction = async (
+	action: WorkflowHistoryAction['action'],
+	id: WorkflowVersionId,
+	run: () => Promise<void>,
+) => {
+	if (pendingVersionId.value) {
+		return;
+	}
+
+	pendingVersionId.value = id;
+	try {
+		await run();
+	} catch (error) {
+		showActionError(action, error);
+	} finally {
+		pendingVersionId.value = null;
+	}
+};
+
 const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 	try {
 		switch (action) {
@@ -466,16 +502,22 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 				sendTelemetry('User opened version in new tab');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
-				await workflowHistoryStore.downloadVersion(workflowId.value, id, data);
-				sendTelemetry('User downloaded version');
+				await runSlowAction('download', id, async () => {
+					await workflowHistoryStore.downloadVersion(workflowId.value, id, data);
+					sendTelemetry('User downloaded version');
+				});
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.CLONE:
-				await cloneWorkflowVersion(id, data);
-				sendTelemetry('User cloned version');
+				await runSlowAction('clone', id, async () => {
+					await cloneWorkflowVersion(id, data);
+					sendTelemetry('User cloned version');
+				});
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
-				await restoreWorkflowVersion(id);
-				sendTelemetry('User restored version');
+				await runSlowAction('restore', id, async () => {
+					await restoreWorkflowVersion(id);
+					sendTelemetry('User restored version');
+				});
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.PUBLISH:
 				publishWorkflowVersion(id, data);
@@ -488,14 +530,7 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 				break;
 		}
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('workflowHistory.action.error.title', {
-				interpolate: {
-					action: i18n.baseText(`workflowHistory.item.actions.${action}`).toLowerCase(),
-				},
-			}),
-		);
+		showActionError(action, error);
 	}
 };
 
@@ -682,6 +717,7 @@ watchEffect(async () => {
 				:actions="actions"
 				:is-list-loading="isListLoading"
 				:is-first-item-shown="isFirstItemShown"
+				:pending-version-id="pendingVersionId"
 				@action="onAction"
 			/>
 		</div>

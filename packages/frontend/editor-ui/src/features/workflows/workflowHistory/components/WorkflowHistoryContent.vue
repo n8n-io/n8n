@@ -31,6 +31,7 @@ const props = defineProps<{
 	isPublished?: boolean;
 	isListLoading?: boolean;
 	isFirstItemShown?: boolean;
+	pendingVersionId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -110,6 +111,11 @@ const actions = computed(() => {
 	return filteredActions;
 });
 
+const isLoading = computed(
+	() =>
+		props.pendingVersionId != null && props.pendingVersionId === props.workflowVersion?.versionId,
+);
+
 const onAction = (value: string) => {
 	if (!props.workflowVersion) {
 		return;
@@ -170,7 +176,13 @@ watch(
 					data-test-id="workflow-history-content-actions"
 					@action="onAction"
 				>
-					<N8nButton variant="outline" size="large" data-test-id="action-toggle-button">
+					<N8nButton
+						variant="outline"
+						size="large"
+						:loading="isLoading"
+						data-test-id="action-toggle-button"
+					>
+						<!-- Keep the label mounted so the button keeps its width while it loads. -->
 						{{ i18n.baseText('workflowHistory.content.actions') }}
 						<N8nIcon class="ml-3xs" icon="chevron-down" size="small" />
 					</N8nButton>
