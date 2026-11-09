@@ -11,8 +11,14 @@ import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import type { VectorStore } from './vector-store';
 import {
+	createContextReminderProvider,
+	type ContextReminderProviderOptions,
+	type ContextReminderSet,
+} from '../context-reminders';
+import {
 	AgentRuntime,
 	type AgentRuntimeConfig,
+	type ContextNoteProvider,
 	type VolatileInstructionsProvider,
 } from '../runtime/loop/agent-runtime';
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
@@ -241,6 +247,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private volatileInstructionsProviderValue?: VolatileInstructionsProvider;
 
+	private contextNoteProviders: ContextNoteProvider[] = [];
+
 	private defaultExecutionOptions?: ExecutionOptions;
 
 	private buildPromise: Promise<AgentRuntimeConfig> | undefined;
@@ -316,6 +324,23 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this {
 		this.volatileInstructionsProviderValue = provider;
 		return this;
+	}
+
+	/** Add a provider of notes that the runtime appends to the conversation before each model call. */
+	contextNotes(provider: ContextNoteProvider): this {
+		this.contextNoteProviders.push(provider);
+		return this;
+	}
+
+	/**
+	 * Add skill-scoped context reminders. Before each model call, the runtime
+	 * retrieves the reminders that match the current step and adds them as context notes.
+	 */
+	contextReminders(
+		sets: readonly ContextReminderSet[],
+		options: Omit<ContextReminderProviderOptions, 'sets'> = {},
+	): this {
+		return this.contextNotes(createContextReminderProvider({ ...options, sets }));
 	}
 
 	/** Add a tool to the agent's capabilities. Accepts a built tool or a Tool builder (which will be built automatically). Can also accept an array of tools. */
@@ -1210,6 +1235,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...(mcpConnectionFailures.length > 0 ? { mcpConnectionFailures } : {}),
 			...(this.volatileInstructionsProviderValue
 				? { volatileInstructionsProvider: this.volatileInstructionsProviderValue }
+				: {}),
+			...(this.contextNoteProviders.length > 0
+				? { contextNoteProviders: [...this.contextNoteProviders] }
 				: {}),
 		};
 	}

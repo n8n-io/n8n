@@ -4,6 +4,8 @@ import { join } from 'node:path';
 
 import { resolvePromptProfile } from '../../prompts/prompt-profiles';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
+import { POST_BUILD_FLOW_REMINDERS } from '../context-reminders/post-build-flow.reminders';
+import { WORKFLOW_BUILDER_REMINDERS } from '../context-reminders/workflow-builder.reminders';
 import {
 	INSTANCE_AI_SKILLS_DIR,
 	loadInstanceAiPromptSkills,
@@ -191,6 +193,7 @@ describe('Instance AI skills', () => {
 			'compositional-workflows',
 			'config-eval-playbook',
 			'config-evals',
+			'credential-choices',
 			'credential-recipe-research',
 			'credential-setup-with-browser-use',
 			'error-workflows',
@@ -200,6 +203,7 @@ describe('Instance AI skills', () => {
 			'publishing',
 			'service-selection',
 			'trigger-input-data-shapes',
+			'trigger-url-sharing',
 		]);
 
 		const loaded = skillLoadText(
@@ -461,7 +465,6 @@ describe('Instance AI skills', () => {
 		expect(skill?.description).toContain(
 			'For any other new workflow, load intent-recognition first when it is listed',
 		);
-		expect(skill?.description).toContain('The build validates the source');
 		expect(skill?.description).not.toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
 
@@ -473,7 +476,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain(
 			'Do not run a separate validation command before the build',
 		);
-		expect(loaded?.instructions).toContain('Do not run it by default');
+		expect(loaded?.instructions).not.toContain('cli/index.js validate');
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('`search_nodes` with `categories`');
 		expect(loaded?.instructions).toContain('`search_nodes` with `query`/`queries`');
@@ -485,7 +488,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain(
 			'Do not call\n    `workflow_builder_verify_built_workflow` directly',
 		);
-		expect(loaded?.instructions).toContain('get_workflow_as_code(workflowId)');
+		expect(loaded?.instructions).toContain('`get_workflow_as_code` with `workflowId`');
 		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');
 		expect(loaded?.instructions).toContain('the `error-workflows` reference');
 		expect(loaded?.instructions).toContain('settings.errorWorkflow');
@@ -497,34 +500,40 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('n8n-docs-assistant');
 		expect(loaded?.instructions).toContain('never load `templates/index.json`');
 		expect(loaded?.instructions).toContain('node-types/index.txt');
+		// Eval-driven rules arrive as retrieved context reminders, not in the skill body.
+		const builderReminderText = WORKFLOW_BUILDER_REMINDERS.reminders
+			.map(({ text }) => text)
+			.join('\n');
 		// The path is set while building; sharing the URL happens after the build.
-		expect(loaded?.instructions).toContain('explicit, readable `path`');
+		expect(builderReminderText).toContain('explicit, readable `path`');
 		expect(loaded?.instructions).not.toContain('## Trigger URL Sharing');
 		expect(loaded?.instructions).not.toContain('{formBaseUrl}/{path}');
 		expect(loaded?.instructions).not.toContain('**Open chat** button');
-		// URLs are shared after the build, so the rules live in post-build-flow.
+		// URLs are shared after the build, from a reference post-build-flow points to.
 		const postBuild = (await source.loadSkill('post-build-flow'))?.instructions ?? '';
-		expect(postBuild).toContain('## Trigger URL Sharing');
-		expect(postBuild).toContain('{formBaseUrl}/{path}');
-		expect(postBuild).toContain('**Open chat** button');
-		expect(loaded?.instructions).toContain('batch\n`get_node_types`');
-		expect(loaded?.instructions).toContain('together with the `load_skill` call');
+		expect(postBuild).toContain('`trigger-url-sharing`');
+		const urls = (await source.loadSkill('trigger-url-sharing'))?.instructions ?? '';
+		expect(urls).toContain('# Trigger URL Sharing');
+		expect(urls).toContain('{formBaseUrl}/{path}');
+		expect(urls).toContain('**Open chat** button');
+		expect(loaded?.instructions).toContain('in the same response as the `load_skill`');
+		expect(loaded?.instructions).toContain('the `credential-choices`');
 		expect(loaded?.instructions).toContain(
 			'never stop before the first\n`workflow_builder_build_workflow` call',
 		);
-		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
+		expect(builderReminderText).toContain('inspect it first via `debugging-executions`');
 		// The sandbox runs the published workflow-sdk, which does not yet warn about MOCK_OUTPUT_JSON_ENVELOPE.
-		expect(loaded?.instructions).toContain('mock `output` items are raw `$json` objects');
+		expect(builderReminderText).toContain('mock `output` items are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the n8n\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
-		expect(loaded?.instructions).toContain(
+		expect(builderReminderText).toContain(
 			'Do NOT wire branches as standalone statements after `export default`',
 		);
-		expect(loaded?.instructions).toContain('calls never reach the builder');
+		expect(builderReminderText).toContain('calls never reach the builder');
 	});
 
 	it('loads the bundled one-off-operations skill', async () => {
@@ -565,16 +574,19 @@ describe('Instance AI skills', () => {
 			'Do not offer publishing as an alternative or describe the workflow as ready to\nuse or publish',
 		);
 
-		expect(loaded?.instructions).toMatch(
+		// Credential questions during setup live in the credential-choices reference.
+		expect(loaded?.instructions).toContain('`credential-choices`');
+		const credentialChoices = (await source.loadSkill('credential-choices'))?.instructions ?? '';
+		expect(credentialChoices).toMatch(
 			/Do not ask whether to build now and set up\s+credentials later/,
 		);
-		expect(loaded?.instructions).toMatch(
+		expect(credentialChoices).toMatch(
 			/Let setup collect the choice when a service has multiple credentials of the\s+same type/,
 		);
-		expect(loaded?.instructions).toContain(
+		expect(credentialChoices).toContain(
 			'Ask which auth type to use when a service supports more than one** only for a\nstandalone credential request',
 		);
-		expect(loaded?.instructions).toMatch(
+		expect(credentialChoices).toMatch(
 			/In a\s+workflow build, never ask about the auth type, before or after the build/,
 		);
 		expect(loaded?.instructions).not.toContain('Credentials before build');
@@ -588,11 +600,13 @@ describe('Instance AI skills', () => {
 		expect(errorWorkflows).toContain(
 			'ask once whether the user wants to build an error workflow for that workflow',
 		);
-		expect(loaded?.instructions).toContain(
-			'Do not replace this explicit opt-in with a generic "add\n    anything else?", publish, or test question.',
-		);
-		expect(loaded?.instructions).toMatch(
-			/ask only whether the user wants the live test\. Do not\s+mention publishing or ask about the error workflow/,
+		// These step rules moved to post-build-flow context reminders.
+		const reminderText = POST_BUILD_FLOW_REMINDERS.reminders
+			.map((reminder) => reminder.text)
+			.join('\n');
+		expect(reminderText).toContain('Do not replace it with a generic "anything else?"');
+		expect(reminderText).toContain(
+			'After setup with mocked evidence, ask only about the live test.',
 		);
 		expect(errorWorkflows).toContain(
 			'The error workflow must be published before it can be assigned',

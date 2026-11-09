@@ -15,6 +15,7 @@ import {
 } from './mcp-tool-name-validation';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
+import { createInstanceAiContextReminderProvider } from '../skills/context-reminders';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
@@ -256,7 +257,20 @@ export async function createInstanceAgent(
 		agent.telemetry(telemetry);
 	}
 	if (orchestrationContext?.workspace) agent.workspace(orchestrationContext.workspace);
-	if (skills) agent.skills(skills);
+	if (skills) {
+		agent.skills(skills);
+		agent.contextNotes(
+			createInstanceAiContextReminderProvider({
+				embeddingModel: options.contextReminders?.embeddingModel,
+				onRetrieval: options.contextReminders?.onRetrieval,
+				onEmbeddingFailure: (error) =>
+					context.logger.warn(
+						'Context reminder embedding failed; ranking reminders with BM25 for this run',
+						{ error: error instanceof Error ? error.message : String(error) },
+					),
+			}),
+		);
+	}
 
 	if (options.memory) {
 		const mem = new Memory().storage(options.memory);

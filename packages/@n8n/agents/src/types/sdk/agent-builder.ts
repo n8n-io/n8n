@@ -4,9 +4,10 @@ import type { BuiltGuardrail } from './guardrail';
 import type { CheckpointStore } from './memory';
 import type { ReasoningLevel } from './reasoning';
 import type { BuiltProviderTool, BuiltTool } from './tool';
-import type { VolatileInstructionsProvider } from '../runtime/agent-runtime';
+import type { ContextNoteProvider, VolatileInstructionsProvider } from '../runtime/agent-runtime';
 import type { ScopedMemoryTaskEvent } from '../../runtime/memory/scoped-memory-task-runner';
 import type { RuntimeSkill, RuntimeSkillSource } from '../../skills';
+import type { ContextReminderProviderOptions, ContextReminderSet } from '../../context-reminders';
 
 /**
  * Interface describing the fluent builder methods used to configure an agent.
@@ -21,6 +22,11 @@ export interface AgentBuilder {
 	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this;
 	instructions(text: string): this;
 	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this;
+	contextNotes(provider: ContextNoteProvider): this;
+	contextReminders(
+		sets: readonly ContextReminderSet[],
+		options?: Omit<ContextReminderProviderOptions, 'sets'>,
+	): this;
 	tool(t: BuiltTool | BuiltTool[]): this;
 	nativeToolDeferral(config: NativeToolDeferralConfig): this;
 	deferredTool(t: BuiltTool | BuiltTool[], options?: { search?: { topK?: number } }): this;

@@ -214,6 +214,9 @@ export {
 	withPromptSizeBreakdown,
 } from './runtime/loop/prompt-size-usage';
 export type {
+	ContextNote,
+	ContextNoteProvider,
+	ContextNoteRequest,
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
 } from './runtime/loop/agent-runtime';
@@ -311,7 +314,27 @@ export {
 	filterLlmMessages,
 	getCreatedAt,
 	isLlmMessage,
+	isRuntimeContextNote,
 } from './sdk/message';
+export {
+	buildContextReminderQuery,
+	contextReminderNoteId,
+	createContextReminderProvider,
+	parseAblatedContextReminders,
+	DEFAULT_CONTEXT_REMINDER_BM25_THRESHOLD,
+	DEFAULT_CONTEXT_REMINDER_EMBEDDING_THRESHOLD,
+	DEFAULT_CONTEXT_REMINDER_TOP_K,
+} from './context-reminders';
+export type {
+	ContextReminder,
+	ContextReminderDelivery,
+	ContextReminderMatch,
+	ContextReminderProviderOptions,
+	ContextReminderRetrievalMethod,
+	ContextReminderRetrievalTrace,
+	ContextReminderSet,
+	ContextReminderStepQuery,
+} from './context-reminders';
 export { fetchProviderCatalog } from './sdk/catalog';
 export type {
 	ProviderCatalog,

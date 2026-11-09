@@ -51,6 +51,7 @@ import type {
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
+import { isRuntimeContextNote } from '../../sdk/message';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
@@ -83,6 +84,9 @@ import type {
 
 export type {
 	AgentRuntimeConfig,
+	ContextNote,
+	ContextNoteProvider,
+	ContextNoteRequest,
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
 } from '../../types/runtime/agent-runtime';
@@ -1084,6 +1088,7 @@ export class AgentRuntime {
 			list,
 		);
 		const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
+		await this.addContextNotes(ctx);
 		const prompt = this.context.buildModelPrompt({
 			list,
 			tools,
@@ -1289,6 +1294,55 @@ export class AgentRuntime {
 				state.iterationCount + 1,
 			);
 		}
+	}
+
+	/**
+	 * Ask the context note providers for notes and append the new ones as one
+	 * message. Notes already in the visible conversation are not sent again. After
+	 * compaction hides a note, a provider can send it again.
+	 */
+	private async addContextNotes(ctx: PreparedLoopContext): Promise<void> {
+		const providers = this.config.contextNoteProviders;
+		if (!providers?.length) return;
+		const { list, options, abortScope } = ctx;
+		const messages = list.llmVisibleMessages();
+		const sentNoteIds = new Set(
+			messages.filter(isRuntimeContextNote).flatMap((message) => message.data.noteIds),
+		);
+		const request = {
+			messages,
+			activeSkillIds: list.activeSkillIds ?? [],
+			sentNoteIds,
+			persistence: options?.persistence,
+			abortSignal: abortScope.signal,
+		};
+		const results = await Promise.all(
+			providers.map(async (provider) => {
+				try {
+					return await provider(request);
+				} catch (error) {
+					// Notes are optional guidance: a failed provider must not fail the run.
+					logger.warn('Failed to resolve context notes', { runId: this.runId, error });
+					return [];
+				}
+			}),
+		);
+		const notes = new Map<string, string>();
+		for (const note of results.flat()) {
+			if (sentNoteIds.has(note.id) || notes.has(note.id) || !note.content.trim()) continue;
+			notes.set(note.id, note.content.trim());
+		}
+		if (notes.size === 0) return;
+		list.addInput([
+			{
+				type: 'custom',
+				data: {
+					type: 'n8n:runtime-context-note',
+					noteIds: [...notes.keys()],
+					content: [...notes.values()].join('\n'),
+				},
+			},
+		]);
 	}
 
 	private async resolveVolatileInstructions(
