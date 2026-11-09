@@ -12,12 +12,11 @@ import {
 	N8nIconButton,
 	N8nInput,
 	N8nInputLabel,
+	N8nSettingsRow,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { ICustomTelemetryTag } from 'n8n-workflow';
-import { ElCol, ElRow } from 'element-plus';
 
 const OPEN_TELEMETRY_DOCS_URL = 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/';
 
@@ -196,54 +195,47 @@ const onModalOpenChange = (open: boolean) => {
 
 <template>
 	<div :class="$style.wrapper">
-		<ElRow
-			:class="$style.customTelemetryTags"
+		<N8nSettingsRow
+			:title="i18n.baseText('workflowSettings.customSpanAttributes.displayName')"
+			:description="i18n.baseText('workflowSettings.customSpanAttributes.description')"
+			:show-divider="false"
 			data-test-id="workflow-settings-custom-telemetry-tags"
 		>
-			<ElCol :span="10" :class="$style.settingName">
-				<label>
-					{{ i18n.baseText('workflowSettings.customSpanAttributes.displayName') }}
-					<N8nTooltip placement="top">
-						<template #content>
-							{{ i18n.baseText('workflowSettings.customSpanAttributes.description') }}
-						</template>
-						<N8nIcon icon="circle-help" />
-					</N8nTooltip>
-				</label>
-			</ElCol>
-			<ElCol :span="14" :class="$style.customTelemetryTagsControl">
-				<div :class="$style.customTelemetryTagsSummary">
-					<N8nButton
-						variant="outline"
-						size="large"
-						native-type="button"
-						:class="$style.customTelemetryTagsConfigure"
-						:aria-label="configureButtonAriaLabel"
-						data-test-id="workflow-settings-custom-telemetry-tags-configure"
-						@click="openModal"
+			<template #action>
+				<div :class="$style.customTelemetryTagsControl">
+					<div :class="$style.customTelemetryTagsSummary">
+						<N8nButton
+							variant="outline"
+							size="large"
+							native-type="button"
+							:class="$style.customTelemetryTagsConfigure"
+							:aria-label="configureButtonAriaLabel"
+							data-test-id="workflow-settings-custom-telemetry-tags-configure"
+							@click="openModal"
+						>
+							{{ i18n.baseText('workflowSettings.customSpanAttributes.configure') }}
+						</N8nButton>
+						<span
+							v-if="hasConfiguredTags"
+							:class="$style.customTelemetryTagsCount"
+							data-test-id="workflow-settings-custom-telemetry-tags-count"
+						>
+							{{ configuredTagsCountLabel }}
+						</span>
+					</div>
+					<N8nText
+						v-if="validationError"
+						size="small"
+						color="danger"
+						tag="p"
+						:class="$style.customTelemetryTagsError"
+						data-test-id="workflow-settings-custom-telemetry-tags-error"
 					>
-						{{ i18n.baseText('workflowSettings.customSpanAttributes.configure') }}
-					</N8nButton>
-					<span
-						v-if="hasConfiguredTags"
-						:class="$style.customTelemetryTagsCount"
-						data-test-id="workflow-settings-custom-telemetry-tags-count"
-					>
-						{{ configuredTagsCountLabel }}
-					</span>
+						{{ validationError }}
+					</N8nText>
 				</div>
-				<N8nText
-					v-if="validationError"
-					size="small"
-					color="danger"
-					tag="p"
-					:class="$style.customTelemetryTagsError"
-					data-test-id="workflow-settings-custom-telemetry-tags-error"
-				>
-					{{ validationError }}
-				</N8nText>
-			</ElCol>
-		</ElRow>
+			</template>
+		</N8nSettingsRow>
 		<N8nDialog :open="showModal" size="large" @update:open="onModalOpenChange">
 			<N8nDialogHeader>
 				<div :class="$style.customTelemetryTagsModalTitle">
@@ -400,37 +392,11 @@ const onModalOpenChange = (open: boolean) => {
 	display: contents;
 }
 
-.customTelemetryTags {
-	margin-top: var(--spacing--xs);
-	align-items: flex-start;
-}
-
-.settingName {
-	&,
-	& label {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing--4xs);
-	}
-
-	svg {
-		display: inline-flex;
-		opacity: 0;
-		transition: opacity 0.3s ease;
-	}
-
-	&:hover {
-		svg {
-			opacity: 1;
-		}
-	}
-}
-
 .customTelemetryTagsControl {
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	align-items: flex-start;
+	align-items: flex-end;
 }
 
 .customTelemetryTagsSummary {
