@@ -1,5 +1,10 @@
 import type { JsonValue, StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
-import { prepareUrlForSigning, UnrecognizedNodeTypeError } from 'n8n-core';
+import { mintApprovalCallback } from '@n8n/engine';
+import {
+	parseHitlCallbackReference,
+	prepareUrlForSigning,
+	UnrecognizedNodeTypeError,
+} from 'n8n-core';
 import type {
 	IConnections,
 	IDataObject,
@@ -962,5 +967,16 @@ describe('the v1 execution mode a node sees', () => {
 	// `isStreaming()` accepts only a few v1 modes, so a webhook run could not stream.
 	it.each(['webhook', 'trigger', 'manual'])('is the host mode %s', async (hostMode) => {
 		await expect(modeSeenBy(hostMode)).resolves.toBe(hostMode);
+	});
+});
+
+describe('approval callback layout', () => {
+	it('is parsed by core as the engine mints it', () => {
+		// The two packages cannot import each other, so each holds the layout.
+		const stepId = '01926a4e-7f5c-7000-8000-000000000001';
+
+		const parsed = parseHitlCallbackReference(mintApprovalCallback('secret', stepId, 'd'));
+
+		expect(parsed).toMatchObject({ kind: 'step', stepId, decision: 'd' });
 	});
 });

@@ -467,3 +467,10 @@ describe('telegramSendAndWaitWebhook', () => {
 		});
 	});
 });
+
+describe('deriveHitlSecretToken', () => {
+	it('derives the registered value from the bot token alone', () => {
+		// Pinned: the data plane registers this value and the control plane checks it.
+		expect(deriveHitlSecretToken('123:abc')).toBe('WPKjqiNTOuImrBtLZo-_icC3OUZkkWhYKHml3Meplfc');
+	});
+});
