@@ -2,6 +2,7 @@
 import { useDebounceFn } from '@vueuse/core';
 import { computed, inject, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
 
+import { useScrollMask } from '../../composables/useScrollMask';
 import {
 	DropdownMenuExternalNavigationKey,
 	type DropdownMenuExternalNavigationController,
@@ -68,6 +69,7 @@ const slots = defineSlots<
 >();
 
 const itemsContainerRef = ref<HTMLElement | null>(null);
+const { scrollMaskAttrs } = useScrollMask(itemsContainerRef);
 const searchRef = ref<{ focus: (options?: FocusOptions) => void } | null>(null);
 const searchTerm = ref('');
 const openSubMenuIndex = ref(-1);
@@ -399,7 +401,7 @@ defineExpose({ resetNavigation, highlightFirstItem });
 			</template>
 		</N8nDropdownMenuSearch>
 
-		<div ref="itemsContainerRef" :class="$style.items">
+		<div ref="itemsContainerRef" :class="$style.items" v-bind="scrollMaskAttrs">
 			<slot
 				:highlighted-index="highlightedIndex"
 				:open-sub-menu-index="openSubMenuIndex"
@@ -413,6 +415,8 @@ defineExpose({ resetNavigation, highlightFirstItem });
 </template>
 
 <style module lang="scss">
+@use '../../css/mixins/mixins' as scrollbar-mixins;
+
 .content {
 	display: flex;
 	flex-direction: column;
@@ -423,14 +427,8 @@ defineExpose({ resetNavigation, highlightFirstItem });
 .items {
 	min-height: 0;
 	overflow-y: auto;
-	scroll-padding-bottom: var(--spacing--sm);
 	scrollbar-width: none;
-	mask-image: linear-gradient(
-		to bottom,
-		black 0,
-		black calc(100% - var(--spacing--sm)),
-		transparent 100%
-	);
+	@include scrollbar-mixins.scroll-mask-when-bottom;
 
 	&::-webkit-scrollbar {
 		display: none;

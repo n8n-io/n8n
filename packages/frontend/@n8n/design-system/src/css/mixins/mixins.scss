@@ -92,6 +92,17 @@ $E: null;
 	}
 }
 
+// Bottom fade while [data-scroll-mask-bottom] is set.
+// useScrollMask sets that attribute while more content sits below the viewport,
+// so the last row stays solid when the user is at the end of the list.
+@mixin scroll-mask-when-bottom($size: var(--spacing--sm)) {
+	scroll-padding-bottom: $size;
+
+	&[data-scroll-mask-bottom] {
+		@include scroll-mask(bottom, $size);
+	}
+}
+
 /* Placeholder
  -------------------------- */
 @mixin placeholder {

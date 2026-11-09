@@ -1,9 +1,10 @@
 <script setup lang="ts" generic="T extends ContextMenuId = ContextMenuId">
-import { useCssModule } from 'vue';
+import { useCssModule, useTemplateRef } from 'vue';
 
 import type { ContextMenuId, ContextMenuNode, ContextMenuSlots } from './ContextMenu.types';
 import ContextMenuNodes from './ContextMenuNodes.vue';
 import { useI18n } from '../../composables/useI18n';
+import { useScrollMask } from '../../composables/useScrollMask';
 import N8nLoading from '../N8nLoading';
 
 defineOptions({ name: 'N8nContextMenuBody' });
@@ -24,10 +25,12 @@ const slots = defineSlots<Omit<ContextMenuSlots<T>, 'trigger'>>();
 
 const $style = useCssModule();
 const { t } = useI18n();
+const scrollRef = useTemplateRef<HTMLElement>('scrollRef');
+const { scrollMaskAttrs } = useScrollMask(scrollRef);
 </script>
 
 <template>
-	<div :class="$style.scroll">
+	<div ref="scrollRef" :class="$style.scroll" v-bind="scrollMaskAttrs">
 		<template v-if="loading">
 			<slot name="loading">
 				<div :class="$style.items">
@@ -80,6 +83,7 @@ const { t } = useI18n();
 	flex: 1 1 auto;
 	overflow-y: auto;
 	@include scrollbar-mixins.hoverable-scroll-bar;
+	@include scrollbar-mixins.scroll-mask-when-bottom;
 }
 
 .items {

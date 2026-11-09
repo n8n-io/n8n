@@ -15,6 +15,7 @@ import {
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nSpinner from '@n8n/design-system/components/N8nSpinner/Spinner.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
+import { useScrollMask } from '@n8n/design-system/composables/useScrollMask';
 
 import { N8nTagsInput2, TagsInputInput, type TagsInputValue } from '../TagsInput';
 import type {
@@ -100,6 +101,8 @@ const rootModelValue = computed(() => (isModelControlled ? props.modelValue : in
 const inputRef = useTemplateRef<
 	InstanceType<typeof ComboboxInput> | InstanceType<typeof TagsInputInput>
 >('input');
+const viewportRef = useTemplateRef('viewportRef');
+const { scrollMaskAttrs } = useScrollMask(viewportRef);
 
 function getInputElement(): HTMLInputElement | undefined {
 	const element: unknown = inputRef.value?.$el;
@@ -486,7 +489,11 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				:side="props.side"
 				:side-offset="props.sideOffset"
 			>
-				<ComboboxViewport :class="$style.comboboxViewport">
+				<ComboboxViewport
+					ref="viewportRef"
+					:class="$style.comboboxViewport"
+					v-bind="scrollMaskAttrs"
+				>
 					<ComboboxEmpty :class="$style.comboboxEmpty" role="status">
 						{{ emptyText }}
 					</ComboboxEmpty>
@@ -532,6 +539,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/focus';
 @use '@n8n/design-system/css/mixins/input' as input-mixin;
+@use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 @use '@n8n/design-system/css/mixins/popover' as popover;
 
 .comboboxAnchor {
@@ -770,6 +778,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	min-height: 0;
 	overflow-y: auto;
 	padding: var(--combobox-viewport--padding);
+	@include scrollbar-mixins.scroll-mask-when-bottom;
 }
 
 .comboboxEmpty {
