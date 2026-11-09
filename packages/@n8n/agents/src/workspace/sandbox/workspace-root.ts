@@ -16,15 +16,15 @@ export const PORTABLE_WORKSPACE_ROOT = N8N_SANDBOX_WORKSPACE_ROOT;
 /**
  * Makes the portable root exist in a Daytona sandbox and prints the root to use. Sandboxes from
  * older snapshots have their workspace at the Daytona root, so the portable root becomes a link
- * to it. The Daytona user needs sudo to create the parent directory. When that fails, the
- * command prints the Daytona root.
+ * to it. A link that another call made first also counts. The Daytona user needs sudo to create
+ * the parent directory. When that fails, the command prints the Daytona root.
  */
 const ENSURE_DAYTONA_PORTABLE_WORKSPACE_ROOT_COMMAND = [
 	`if [ -d '${PORTABLE_WORKSPACE_ROOT}' ]; then echo '${PORTABLE_WORKSPACE_ROOT}';`,
 	'elif SUDO=$([ "$(id -u)" = 0 ] || echo \'sudo -n\')',
 	`&& $SUDO mkdir -p '${N8N_SANDBOX_HOME}'`,
 	`&& $SUDO chown "$(id -u):$(id -g)" '${N8N_SANDBOX_HOME}'`,
-	`&& if [ -d '${DAYTONA_WORKSPACE_ROOT}' ]; then ln -s '${DAYTONA_WORKSPACE_ROOT}' '${PORTABLE_WORKSPACE_ROOT}'; else mkdir -p '${PORTABLE_WORKSPACE_ROOT}'; fi;`,
+	`&& if [ -d '${DAYTONA_WORKSPACE_ROOT}' ]; then ln -sn '${DAYTONA_WORKSPACE_ROOT}' '${PORTABLE_WORKSPACE_ROOT}' || [ -d '${PORTABLE_WORKSPACE_ROOT}' ]; else mkdir -p '${PORTABLE_WORKSPACE_ROOT}'; fi;`,
 	`then echo '${PORTABLE_WORKSPACE_ROOT}';`,
 	`else echo '${DAYTONA_WORKSPACE_ROOT}'; fi`,
 ].join(' ');

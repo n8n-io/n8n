@@ -116,7 +116,9 @@ describe('getWorkspaceRoot', () => {
 		const command = executeCommand.mock.calls[0][0] as string;
 		expect(command).toContain('sudo -n');
 		expect(command).toContain("$SUDO mkdir -p '/home/user'");
-		expect(command).toContain("ln -s '/home/daytona/workspace' '/home/user/workspace'");
+		expect(command).toContain(
+			"ln -sn '/home/daytona/workspace' '/home/user/workspace' || [ -d '/home/user/workspace' ]",
+		);
 	});
 
 	it('returns the Daytona root when the portable root cannot be made', async () => {
