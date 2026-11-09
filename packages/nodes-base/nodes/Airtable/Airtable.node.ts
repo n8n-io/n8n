@@ -12,7 +12,7 @@ export class Airtable extends VersionedNodeType {
 			icon: 'file:airtable.svg',
 			group: ['input'],
 			description: 'Read, update, write and delete data from Airtable',
-			defaultVersion: 2.2,
+			defaultVersion: 2.3,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -20,6 +20,7 @@ export class Airtable extends VersionedNodeType {
 			2: new AirtableV2(baseDescription),
 			2.1: new AirtableV2(baseDescription),
 			2.2: new AirtableV2(baseDescription),
+			2.3: new AirtableV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
