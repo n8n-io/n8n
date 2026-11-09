@@ -1,0 +1,29 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_0da4b348b3b902::t_61140233ff1fd9 627,630-631
+packages/cli/src/modules/promotions.ee/promotion-telemetry.ts
+  s_bfb3680951bbc8::t_951491ad425901 1,2-4,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ed550ca2efac28ba39a8a04e7692236588b7519d",
+  "prompts": {},
+  "sessions": {
+    "s_0da4b348b3b902": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39a28ab-fdbc-4a8e-8e76-7040acec36d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_bfb3680951bbc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b9e7e40-a75c-4a5a-a07a-3f53514351f8",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
