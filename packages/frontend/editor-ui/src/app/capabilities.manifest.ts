@@ -1,6 +1,6 @@
-import type { CreateEnvironmentVariable } from '@n8n/api-types';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import type {
+	CreateEnvironmentVariable,
 	CredentialEditorOptions,
 	ResourceEditorKind,
 	VariableEditorOptions,

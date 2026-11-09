@@ -1,5 +1,8 @@
-import type { CreateEnvironmentVariable, EnvironmentVariable } from '@n8n/api-types';
-import type { ResourceEditorDestination } from '@n8n/frontend-module-sdk';
+import type {
+	CreateEnvironmentVariable,
+	EnvironmentVariable,
+	ResourceEditorDestination,
+} from '@n8n/frontend-module-sdk';
 
 export type { CreateEnvironmentVariable, EnvironmentVariable };
 
