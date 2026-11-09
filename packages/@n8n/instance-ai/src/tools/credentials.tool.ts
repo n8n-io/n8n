@@ -32,6 +32,7 @@ import {
 	type CredentialToolContext,
 } from './credential-card';
 import { setupAgentCredentials } from './agent-credential-setup';
+import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import {
 	buildSetupOutcomeMessage,
 	isSelectionVerified,
@@ -431,7 +432,7 @@ const setupCredentialsSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'The workflow these credentials are for, when one exists (e.g. the id returned by workflow_builder_build_workflow). Lets the setup panel list them against that workflow.',
+			'Workflow target only. Omit it when target is "agent". The workflow these credentials are for, when one exists (e.g. the id returned by workflow_builder_build_workflow). Lets the setup panel list them against that workflow. Never pass an Agent ID here.',
 		),
 	requireUserSelection: z
 		.boolean()
@@ -454,12 +455,14 @@ const earlySetupCredentialsSchema = setupCredentialsSchema.extend({
 		.string()
 		.optional()
 		.describe(
-			'Before writing workflow source, announce known service credentials with its planned workspace filePath. This creates or reuses the workflow context and returns without waiting for setup. Pass the complete current requirement list, including an empty list when a plan drops all services. Omit for standalone credential setup.',
+			'Workflow target only. Before writing workflow source, announce known service credentials with its planned workspace filePath. This creates or reuses the workflow context and returns without waiting for setup. Pass the complete current requirement list, including an empty list when a plan drops all services. Omit for standalone credential setup.',
 		),
 	workflowName: z
 		.string()
 		.optional()
-		.describe('Name of the new workflow, required on its first early setup call.'),
+		.describe(
+			'Workflow target only. Name of the new workflow, required on its first early setup call.',
+		),
 });
 
 const earlySetupCredentialsSchemaWithFolder = earlySetupCredentialsSchema.extend({
@@ -467,7 +470,7 @@ const earlySetupCredentialsSchemaWithFolder = earlySetupCredentialsSchema.extend
 		.string()
 		.optional()
 		.describe(
-			'Folder for the new workflow. Pass the intended folder here before building; omit it on the later workflow_builder_build_workflow call.',
+			'Workflow target only. Folder for the new workflow. Pass the intended folder here before building; omit it on the later workflow_builder_build_workflow call.',
 		),
 });
 
@@ -489,11 +492,43 @@ type SetupInput = z.infer<typeof earlySetupCredentialsSchemaWithFolder>;
 type TestInput = z.infer<typeof testCredentialSchema>;
 type DeleteInput = z.infer<typeof deleteCredentialSchema>;
 
+const WORKFLOW_ONLY_SETUP_FIELDS = [
+	'workflowId',
+	'filePath',
+	'workflowName',
+	'folderPath',
+] as const;
+
+/**
+ * The Agent target always uses the Agent selected with agent_builder_select_agent,
+ * so workflow fields have no meaning there. Reject them so the model learns to
+ * omit them. The provider schema drops refinements, so this runs only when the
+ * handler parses the input.
+ */
+function rejectWorkflowFieldsForAgent(
+	input: { target?: 'workflow' | 'agent' } & Partial<
+		Record<(typeof WORKFLOW_ONLY_SETUP_FIELDS)[number], string>
+	>,
+	ctx: z.RefinementCtx,
+) {
+	if (input.target !== 'agent') return;
+	for (const field of WORKFLOW_ONLY_SETUP_FIELDS) {
+		if (input[field] === undefined) continue;
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: [field],
+			message: `\`${field}\` applies only to workflow setup. Omit it for target "agent": the Agent selected with agent_builder_select_agent is used.`,
+		});
+	}
+}
+
 function getSetupInputSchema(context: InstanceAiContext) {
-	if (!isSetupPanelEnabled(context)) return setupCredentialsSchema;
+	if (!isSetupPanelEnabled(context)) {
+		return setupCredentialsSchema.superRefine(rejectWorkflowFieldsForAgent);
+	}
 	return context.folderExplorationEnabled
-		? earlySetupCredentialsSchemaWithFolder
-		: earlySetupCredentialsSchema;
+		? earlySetupCredentialsSchemaWithFolder.superRefine(rejectWorkflowFieldsForAgent)
+		: earlySetupCredentialsSchema.superRefine(rejectWorkflowFieldsForAgent);
 }
 
 // ── Descriptions ───────────────────────────────────────────────────────────
@@ -840,6 +875,25 @@ async function validateSetupRequests(context: InstanceAiContext, requests: Setup
 	return undefined;
 }
 
+/**
+ * Zod cannot tell an Agent ID from a workflow ID, so compare `workflowId` with
+ * the selected Agent. A failed lookup must not block workflow setup.
+ */
+async function rejectAgentIdAsWorkflowId(context: InstanceAiContext, workflowId: string) {
+	let agentId: string | undefined;
+	try {
+		agentId = (await resolveAgentBuilderTarget(context))?.agentId;
+	} catch {
+		return undefined;
+	}
+	if (agentId !== workflowId) return undefined;
+	return {
+		error: 'agent_id_as_workflow_id',
+		message:
+			'`workflowId` is the ID of the selected Agent, not a workflow. To set up credentials for the Agent, pass target "agent" and omit `workflowId`.',
+	};
+}
+
 async function handleSetup(
 	context: InstanceAiContext,
 	input: SetupInput,
@@ -854,6 +908,11 @@ async function handleSetup(
 			message:
 				'The `credentials` array is required. Pass an array of { credentialType, reason?, suggestedName? } entries describing each credential to set up.',
 		};
+	}
+
+	if (!resumeData && input.target !== 'agent' && input.workflowId !== undefined) {
+		const agentIdError = await rejectAgentIdAsWorkflowId(context, input.workflowId);
+		if (agentIdError) return agentIdError;
 	}
 
 	if (input.target === 'agent') {

@@ -1290,6 +1290,64 @@ describe('credential tools', () => {
 			});
 		});
 
+		it.each([
+			{ field: 'workflowId', panel: false },
+			{ field: 'filePath', panel: true },
+			{ field: 'workflowName', panel: true },
+		])('should reject $field for target agent', async ({ field, panel }) => {
+			const context = createMockContext({
+				agentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' },
+				...(panel ? { setupItemsEmitter: {} as InstanceAiContext['setupItemsEmitter'] } : {}),
+			});
+			const tool = createSetupCredentialsTool(context);
+
+			await expect(
+				executeTool(
+					tool,
+					{
+						target: 'agent' as const,
+						credentials: [{ credentialType: 'notionApi' }],
+						[field]: 'agent-1',
+					},
+					suspendCtx(),
+				),
+			).rejects.toThrow(`\`${field}\` applies only to workflow setup`);
+			expect(context.credentialService.list).not.toHaveBeenCalled();
+		});
+
+		it("should reject the selected Agent's ID as workflowId for target workflow", async () => {
+			const context = createMockContext({
+				agentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' },
+			});
+			const suspendFn = vi.fn();
+			const tool = createSetupCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ credentials: [{ credentialType: 'notionApi' }], workflowId: 'agent-1' },
+				suspendCtx(suspendFn),
+			);
+
+			expect(result).toMatchObject({ error: 'agent_id_as_workflow_id' });
+			expect(suspendFn).not.toHaveBeenCalled();
+		});
+
+		it('should accept a workflowId that is not the selected Agent', async () => {
+			const context = createMockContext({
+				agentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' },
+			});
+			const suspendFn = vi.fn();
+			const tool = createSetupCredentialsTool(context);
+
+			await executeTool(
+				tool,
+				{ credentials: [{ credentialType: 'notionApi' }], workflowId: 'wf-1' },
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).toHaveBeenCalledTimes(1);
+		});
+
 		it('should suspend with credentialRequests on first call', async () => {
 			const existingCreds: CredentialSummary[] = [
 				{ id: 'c1', name: 'Existing Slack', type: 'slackApi' },
