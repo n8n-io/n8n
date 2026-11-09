@@ -240,12 +240,20 @@ vi.mock('../../components/InstanceAiAppPreview.vue', () => ({
 	}),
 }));
 
+// The tab that the `tab-bar-open-tab` button opens.
+const { tabBarTabToOpen } = vi.hoisted(() => ({
+	tabBarTabToOpen: { current: undefined as unknown },
+}));
 vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
 	default: defineComponent({
-		emits: ['togglePreview', 'toggleExpanded'],
+		emits: ['togglePreview', 'toggleExpanded', 'openTab'],
 		setup:
 			(_props, { emit }) =>
 			() => [
+				h('button', {
+					'data-test-id': 'tab-bar-open-tab',
+					onClick: () => emit('openTab', tabBarTabToOpen.current),
+				}),
 				h('button', {
 					'data-test-id': 'tab-bar-preview-toggle',
 					onClick: () => emit('togglePreview'),
@@ -1504,14 +1512,58 @@ describe('AssistantAgentThreadView', () => {
 			});
 			await flushPromises();
 
-			// The message is sent, and a reload still has the session of the last turn.
+			// The message is sent. The stored session is the one of the last turn until the turn ends.
 			composerAttachments.value = [];
 			const onStreaming = panelProps.current['onUpdate:streaming'] as (value: boolean) => void;
 			onStreaming(true);
+			await flushPromises();
+			expect(agentPreview.props).toMatchObject({ 'preview-session-id': 'session-2' });
+
+			// A load at the end of the turn that still has the earlier session does not replace it.
 			onStreaming(false);
 			await flushPromises();
-
 			expect(agentPreview.props).toMatchObject({ 'preview-session-id': 'session-2' });
+		});
+
+		it('keeps the stored session of another agent after a hand-off', async () => {
+			fetchTabs.mockResolvedValue({
+				state: {
+					...agentTabs,
+					tabs: [
+						...agentTabs.tabs,
+						{ type: 'agent', id: 'agent-2', name: 'Billing', projectId: 'project-1' },
+					],
+				},
+			});
+			fetchTargets.mockResolvedValue({
+				targets: { ...boundTargets, previewSession: { agentId: 'agent-2', threadId: 'session-9' } },
+			});
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			agentPreview.emit?.('assistant-handoff', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'session-2',
+			});
+			await flushPromises();
+			tabBarTabToOpen.current = {
+				type: 'agent',
+				id: 'agent-2',
+				name: 'Billing',
+				projectId: 'project-1',
+			};
+			await userEvent.click(getByTestId('tab-bar-open-tab'));
+			await flushPromises();
+
+			expect(agentPreview.props).toMatchObject({
+				'agent-id': 'agent-2',
+				'preview-session-id': 'session-9',
+			});
 		});
 
 		it('keeps an unsent draft and does not hand off', async () => {

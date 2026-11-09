@@ -401,8 +401,10 @@ const lastHandoffSession = ref<{ agentId: string; threadId: string }>();
 /** The test chat session that the preview shows: the last hand-off, else the stored one. */
 const activeAgentPreviewSessionId = computed(() => {
 	const agentId = preview.activeAgentId.value;
-	const session = lastHandoffSession.value ?? agentTargets.state.value?.previewSession;
-	return session?.agentId === agentId ? session.threadId : undefined;
+	// Check the agent of each session, so a hand-off for one agent keeps the stored session of another.
+	return [lastHandoffSession.value, agentTargets.state.value?.previewSession].find(
+		(session) => session?.agentId === agentId,
+	)?.threadId;
 });
 
 /** The user asks the Assistant about a test chat of the agent preview. */
