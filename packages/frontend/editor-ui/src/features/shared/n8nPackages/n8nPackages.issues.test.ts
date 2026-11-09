@@ -46,3 +46,22 @@ describe('formatImportBlockingIssue', () => {
 		});
 	});
 });
+
+describe('formatImportBlockingIssue for Agent conflicts', () => {
+	const conflict = {
+		type: 'agent-conflict' as const,
+		sourceAgentId: 'agent-1',
+		projectId: 'project-1',
+		targetIds: ['agent-1'],
+	};
+
+	it('says that an Agent ID already exists in another project', () => {
+		expect(formatImportBlockingIssue({ ...conflict, kind: 'id' })).toContain('another project');
+	});
+
+	it('names the task of a task ID conflict', () => {
+		expect(
+			formatImportBlockingIssue({ ...conflict, kind: 'task-id', sourceTaskId: 'task-1' }),
+		).toContain('task-1');
+	});
+});

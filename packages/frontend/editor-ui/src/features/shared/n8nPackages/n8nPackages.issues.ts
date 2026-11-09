@@ -2,6 +2,21 @@ import type { ImportBlockingIssue } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 
 type CredentialUnresolvedIssue = Extract<ImportBlockingIssue, { type: 'credential-unresolved' }>;
+type AgentConflictIssue = Extract<ImportBlockingIssue, { type: 'agent-conflict' }>;
+
+/** An import keeps Agent IDs, so each conflict kind needs its own next step. */
+function formatAgentConflict(issue: AgentConflictIssue): string {
+	const id = issue.sourceAgentId;
+	if (issue.kind === 'id') {
+		return i18n.baseText('packages.import.issue.agentIdConflict', { interpolate: { id } });
+	}
+	if (issue.kind === 'task-id') {
+		return i18n.baseText('packages.import.issue.agentTaskIdConflict', {
+			interpolate: { id, taskId: issue.sourceTaskId ?? '' },
+		});
+	}
+	return i18n.baseText('packages.import.issue.agentConflict', { interpolate: { id } });
+}
 
 function formatCredentialUnresolved(issue: CredentialUnresolvedIssue): string {
 	const id = issue.sourceId;
@@ -23,9 +38,7 @@ function formatCredentialUnresolved(issue: CredentialUnresolvedIssue): string {
 export function formatImportBlockingIssue(issue: ImportBlockingIssue): string {
 	switch (issue.type) {
 		case 'agent-conflict':
-			return i18n.baseText('packages.import.issue.agentConflict', {
-				interpolate: { id: issue.sourceAgentId },
-			});
+			return formatAgentConflict(issue);
 		case 'agent-invalid':
 			return i18n.baseText('packages.import.issue.agentInvalid', {
 				interpolate: { id: issue.sourceAgentId, message: issue.message },
