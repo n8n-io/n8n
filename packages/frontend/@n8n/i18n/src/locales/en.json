@@ -4008,6 +4008,7 @@
 	"settings.context.skills.connect.error.duplicateSource": "This source is already connected in this scope.",
 	"settings.context.skills.connect.error.discover": "Could not read the link",
 	"settings.context.skills.connect.error.connect": "Could not add the skills",
+	"settings.context.skills.connect.error.connectFailed": "n8n cannot add the skills. Try again. If the import fails again, ask your admin to check the n8n logs.",
 	"settings.context.skills.connect.duplicate.global": "{repo} is already connected in Global. Every project can use its skills.",
 	"settings.context.skills.connect.duplicate.scope": "{repo} is already connected in {scope}.",
 	"settings.context.skills.connect.duplicate.warning": "Also connected in {projects}. Each scope gets its own skills and reviews.",

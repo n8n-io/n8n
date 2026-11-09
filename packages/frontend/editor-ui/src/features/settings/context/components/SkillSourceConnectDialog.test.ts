@@ -388,12 +388,13 @@ describe('SkillSourceConnectDialog', () => {
 			{
 				where: 'global' as const,
 				scope: 'project:team-1',
-				message: 'acme/skills is already connected in Global. Every project can use its skills.',
+				message:
+					'acme/skills · main is already connected in Global. Every project can use its skills.',
 			},
 			{
 				where: 'scope' as const,
 				scope: 'project:team-1',
-				message: 'acme/skills is already connected in Marketing.',
+				message: 'acme/skills · main is already connected in Marketing.',
 			},
 		])(
 			'blocks a repository that is already connected in $where, under the repository field',
@@ -812,6 +813,24 @@ describe('SkillSourceConnectDialog', () => {
 				'Could not add the skills',
 			);
 			expect(view.emitted('update:open')).toBeUndefined();
+		});
+
+		it('shows translated text, not the server message, when the import fails without a reason', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery());
+			skillsStore.connectSource.mockRejectedValue(
+				new Error('duplicate key value violates unique constraint "PK_skill"'),
+			);
+			const view = render();
+			await review(view);
+
+			await userEvent.click(view.getByTestId('skill-source-import'));
+
+			expect(showErrorMock).toHaveBeenCalledWith(
+				new Error(
+					'n8n cannot add the skills. Try again. If the import fails again, ask your admin to check the n8n logs.',
+				),
+				'Could not add the skills',
+			);
 		});
 
 		it('goes back to the form with the repository kept', async () => {

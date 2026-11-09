@@ -415,6 +415,8 @@ function onCredentialSelect(value: string) {
 	createdCredential.value = null;
 }
 
+const sourceLine = computed(() => (discovery.value ? sourceLineOf(discovery.value.source) : ''));
+
 const duplicate = computed(() => discovery.value?.duplicate ?? { kind: 'none' as const });
 
 const isBlocked = computed(() => duplicate.value.kind === 'blocked');
@@ -423,7 +425,7 @@ const isBlocked = computed(() => duplicate.value.kind === 'blocked');
 const duplicateError = computed(() => {
 	const dup = duplicate.value;
 	if (dup.kind !== 'blocked') return '';
-	const repo = discovery.value?.source.label ?? '';
+	const repo = sourceLine.value;
 	return dup.where === 'global'
 		? i18n.baseText('settings.context.skills.connect.duplicate.global', {
 				interpolate: { repo },
@@ -503,8 +505,6 @@ function onBack() {
 	step.value = 'repository';
 }
 
-const sourceLine = computed(() => (discovery.value ? sourceLineOf(discovery.value.source) : ''));
-
 /** The scope of a source in the other projects that the user can see. It does not block. */
 const alsoConnected = computed(() => {
 	const dup = duplicate.value;
@@ -555,10 +555,11 @@ async function onImport() {
 		});
 		emit('update:open', false);
 	} catch (error) {
-		// A known reason gets its own text, as on discover. Other errors keep their message.
-		const hasReason = error instanceof ResponseError && error.meta?.reason !== undefined;
+		// A known reason gets its own text. The raw message of any other error stays out of the UI.
 		showError(
-			hasReason ? new Error(discoverErrorText(error)) : error,
+			new Error(
+				discoverErrorText(error, undefined, 'settings.context.skills.connect.error.connectFailed'),
+			),
 			i18n.baseText('settings.context.skills.connect.error.connect'),
 		);
 	} finally {
