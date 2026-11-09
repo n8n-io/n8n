@@ -4,9 +4,11 @@ import { resolve } from 'node:path';
 const markdownStyles = readFileSync(resolve(process.cwd(), 'src/css/markdown.scss'), 'utf8');
 
 function ruleBody(selector: string) {
-	const start = markdownStyles.indexOf(`${selector} {`);
+	const lines = markdownStyles.split('\n');
+	const start = lines.findIndex((line) => line.trim() === `${selector} {`);
 	expect(start).toBeGreaterThanOrEqual(0);
-	return markdownStyles.slice(start, markdownStyles.indexOf('}', start));
+	const rule = lines.slice(start).join('\n');
+	return rule.slice(0, rule.indexOf('}'));
 }
 
 describe('Markdown consumer style contracts', () => {
