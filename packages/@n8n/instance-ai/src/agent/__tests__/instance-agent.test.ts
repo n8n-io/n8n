@@ -7,6 +7,7 @@ const mockAgentInstances: Array<{
 	tool: Mock;
 	deferredTool: Mock;
 	skills: Mock;
+	contextCueProvider: Mock;
 	checkpoint: Mock;
 	memory: Mock;
 	telemetry: Mock;
@@ -35,7 +36,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.tool = vi.fn().mockReturnThis();
 		this.deferredTool = vi.fn().mockReturnThis();
 		this.skills = vi.fn().mockReturnThis();
-		this.contextNotes = vi.fn().mockReturnThis();
+		this.contextCueProvider = vi.fn().mockReturnThis();
 		this.checkpoint = vi.fn().mockReturnThis();
 		this.memory = vi.fn().mockReturnThis();
 		this.telemetry = vi.fn().mockReturnThis();
@@ -46,8 +47,8 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.functionId = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
-	createContextReminderProvider: vi.fn(() => ({ getNotes: vi.fn() })),
-	parseAblatedContextReminders: vi.fn(() => []),
+	createContextCueProvider: vi.fn(() => vi.fn()),
+	parseAblatedContextCues: vi.fn(() => []),
 	Memory: vi.fn().mockImplementation(function Memory() {
 		return mockMemoryBuilder;
 	}),

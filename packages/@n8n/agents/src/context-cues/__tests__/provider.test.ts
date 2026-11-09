@@ -1,33 +1,33 @@
 import type { EmbeddingModel } from 'ai';
 import { MockEmbeddingModelV3 } from 'ai/test';
 
-import type { ContextNoteRequest } from '../../types/runtime/agent-runtime';
+import type { ContextCueRequest } from '../../types/runtime/agent-runtime';
 import type { AgentMessage } from '../../types/sdk/message';
 import {
-	buildContextReminderQuery,
-	contextReminderNoteId,
-	createContextReminderProvider,
-	parseAblatedContextReminders,
+	buildContextCueQuery,
+	contextCueId,
+	createContextCueProvider,
+	parseAblatedContextCues,
 } from '../provider';
-import type { ContextReminderRetrievalTrace, ContextReminderSet } from '../types';
+import type { ContextCueRetrievalTrace, ContextCueSet } from '../types';
 
 const user = (text: string): AgentMessage => ({ role: 'user', content: [{ type: 'text', text }] });
 
-const toolCall = (toolName: string, input: unknown): AgentMessage => ({
+const toolCall = (toolName: string, input: Record<string, string>): AgentMessage => ({
 	role: 'assistant',
 	content: [
 		{ type: 'tool-call', toolCallId: toolName, toolName, input, state: 'resolved', output: {} },
 	],
 });
 
-describe('parseAblatedContextReminders', () => {
+describe('parseAblatedContextCues', () => {
 	it('parses a comma-separated id list', () => {
-		expect(parseAblatedContextReminders(' one, two ,,')).toEqual(new Set(['one', 'two']));
-		expect(parseAblatedContextReminders(undefined)).toEqual(new Set());
+		expect(parseAblatedContextCues(' one, two ,,')).toEqual(new Set(['one', 'two']));
+		expect(parseAblatedContextCues(undefined)).toEqual(new Set());
 	});
 });
 
-describe('buildContextReminderQuery', () => {
+describe('buildContextCueQuery', () => {
 	it('uses the latest user text as intent and later activity as the step', () => {
 		const messages: AgentMessage[] = [
 			user('old request'),
@@ -54,7 +54,7 @@ describe('buildContextReminderQuery', () => {
 				],
 			},
 		];
-		const query = buildContextReminderQuery(messages);
+		const query = buildContextCueQuery(messages);
 		expect(query.intent).toBe('Send a Slack message for each new row');
 		expect(query.step).toContain('Building it.');
 		expect(query.step).toContain('Called build with filePath');
@@ -64,7 +64,7 @@ describe('buildContextReminderQuery', () => {
 
 	it('strips host tags passed as injectedTags', () => {
 		const context = `<host-context>\n${'Earlier change. '.repeat(200)}\n</host-context>`;
-		const query = buildContextReminderQuery(
+		const query = buildContextCueQuery(
 			[user(`${context}\n\nReply to WhatsApp messages`)],
 			['host-context'],
 		);
@@ -72,7 +72,7 @@ describe('buildContextReminderQuery', () => {
 	});
 
 	it('keeps code, markup and tool results out of the query', () => {
-		const query = buildContextReminderQuery([
+		const query = buildContextCueQuery([
 			user('Build it'),
 			{
 				role: 'assistant',
@@ -90,18 +90,18 @@ describe('buildContextReminderQuery', () => {
 		]);
 		expect(query.step).toBe('Called search_nodes with query');
 
-		const withCode = buildContextReminderQuery([
+		const withCode = buildContextCueQuery([
 			user('Insert rows <script>x</script> using {{ $json.id }}\n```sql\nSELECT 1;\n```'),
 		]);
 		expect(withCode.intent).toBe('Insert rows x using');
 	});
 });
 
-describe('createContextReminderProvider', () => {
-	const sets: ContextReminderSet[] = [
+describe('createContextCueProvider', () => {
+	const sets: ContextCueSet[] = [
 		{
 			skillId: 'builder',
-			reminders: [
+			cues: [
 				{ id: 'a', text: 'Rule A', appliesWhen: 'alpha' },
 				{ id: 'b', text: 'Rule B', appliesWhen: 'beta' },
 			],
@@ -119,38 +119,38 @@ describe('createContextReminderProvider', () => {
 		}),
 	}) as unknown as EmbeddingModel;
 
-	const request = (overrides: Partial<ContextNoteRequest> = {}): ContextNoteRequest => ({
+	const request = (overrides: Partial<ContextCueRequest> = {}): ContextCueRequest => ({
 		messages: [user('about alpha')],
 		activeSkillIds: ['builder'],
-		sentNoteIds: new Set(),
+		sentCueIds: new Set(),
 		...overrides,
 	});
 
-	it('returns reminders above the threshold', async () => {
-		const provider = createContextReminderProvider({ sets, embeddingModel: model, threshold: 0.8 });
+	it('returns cues above the threshold', async () => {
+		const provider = createContextCueProvider({ sets, embeddingModel: model, threshold: 0.8 });
 		expect(await provider(request())).toEqual([
-			{ id: contextReminderNoteId('builder', 'a'), content: 'Rule A' },
+			{ id: contextCueId('builder', 'a'), content: 'Rule A' },
 		]);
 	});
 
 	it('returns nothing when the skill is not active', async () => {
-		const provider = createContextReminderProvider({ sets, embeddingModel: model });
+		const provider = createContextCueProvider({ sets, embeddingModel: model });
 		expect(await provider(request({ activeSkillIds: [] }))).toEqual([]);
 	});
 
-	it('skips sent and ablated reminders', async () => {
-		const provider = createContextReminderProvider({
+	it('skips sent and ablated cues', async () => {
+		const provider = createContextCueProvider({
 			sets,
 			embeddingModel: model,
 			threshold: 0,
 			ablate: new Set(['b']),
 		});
-		const sent = new Set([contextReminderNoteId('builder', 'a')]);
-		expect(await provider(request({ sentNoteIds: sent }))).toEqual([]);
+		const sent = new Set([contextCueId('builder', 'a')]);
+		expect(await provider(request({ sentCueIds: sent }))).toEqual([]);
 	});
 
-	it('leaves every reminder out with the * ablation', async () => {
-		const provider = createContextReminderProvider({
+	it('leaves every cue out with the * ablation', async () => {
+		const provider = createContextCueProvider({
 			sets,
 			embeddingModel: model,
 			threshold: 0,
@@ -159,16 +159,14 @@ describe('createContextReminderProvider', () => {
 		expect(await provider(request())).toEqual([]);
 	});
 
-	it('holds a gated reminder back until user text or a tool input mentions it', async () => {
-		const gated: ContextReminderSet[] = [
+	it('holds a gated cue back until user text or a tool input mentions it', async () => {
+		const gated: ContextCueSet[] = [
 			{
 				skillId: 'builder',
-				reminders: [
-					{ id: 'a', requiresAny: ['gmailTrigger'], text: 'Rule A', appliesWhen: 'alpha' },
-				],
+				cues: [{ id: 'a', requiresAny: ['gmailTrigger'], text: 'Rule A', appliesWhen: 'alpha' }],
 			},
 		];
-		const provider = createContextReminderProvider({
+		const provider = createContextCueProvider({
 			sets: gated,
 			embeddingModel: model,
 			threshold: 0.8,
@@ -188,19 +186,19 @@ describe('createContextReminderProvider', () => {
 				messages: [user('about alpha'), toolCall('get_node', { nodeType: 'gmailTrigger' })],
 			}),
 		);
-		expect(withNode.map((note) => note.id)).toEqual([contextReminderNoteId('builder', 'a')]);
+		expect(withNode.map((cue) => cue.id)).toEqual([contextCueId('builder', 'a')]);
 	});
 
-	it('holds a phase reminder back until detectPhases reports its phase', async () => {
-		const phased: ContextReminderSet[] = [
+	it('holds a phase cue back until detectPhases reports its phase', async () => {
+		const phased: ContextCueSet[] = [
 			{
 				skillId: 'builder',
-				reminders: [{ id: 'a', phase: 'after-build', text: 'Rule A', appliesWhen: 'alpha' }],
+				cues: [{ id: 'a', phase: 'after-build', text: 'Rule A', appliesWhen: 'alpha' }],
 			},
 		];
 		const detectPhases = (messages: readonly AgentMessage[]) =>
 			new Set(messages.some((m) => 'role' in m && m.role === 'assistant') ? ['after-build'] : []);
-		const provider = createContextReminderProvider({
+		const provider = createContextCueProvider({
 			sets: phased,
 			embeddingModel: model,
 			threshold: 0.8,
@@ -210,17 +208,17 @@ describe('createContextReminderProvider', () => {
 		const built = await provider(
 			request({ messages: [user('about alpha'), toolCall('build', {})] }),
 		);
-		expect(built.map((note) => note.id)).toEqual([contextReminderNoteId('builder', 'a')]);
+		expect(built.map((cue) => cue.id)).toEqual([contextCueId('builder', 'a')]);
 	});
 
-	it('never sends a phase reminder without detectPhases', async () => {
-		const phased: ContextReminderSet[] = [
+	it('never sends a phase cue without detectPhases', async () => {
+		const phased: ContextCueSet[] = [
 			{
 				skillId: 'builder',
-				reminders: [{ id: 'a', phase: 'after-build', text: 'Rule A', appliesWhen: 'alpha' }],
+				cues: [{ id: 'a', phase: 'after-build', text: 'Rule A', appliesWhen: 'alpha' }],
 			},
 		];
-		const provider = createContextReminderProvider({
+		const provider = createContextCueProvider({
 			sets: phased,
 			embeddingModel: model,
 			threshold: 0,
@@ -237,7 +235,7 @@ describe('createContextReminderProvider', () => {
 		const failing = new MockEmbeddingModelV3({ doEmbed }) as unknown as EmbeddingModel;
 		const onEmbeddingFailure = vi.fn();
 		const methods: string[] = [];
-		const provider = createContextReminderProvider({
+		const provider = createContextCueProvider({
 			sets,
 			embeddingModel: failing,
 			onEmbeddingFailure,
@@ -251,12 +249,12 @@ describe('createContextReminderProvider', () => {
 	});
 
 	it('ranks with BM25 without an embedding model', async () => {
-		const traces: ContextReminderRetrievalTrace[] = [];
-		const provider = createContextReminderProvider({
+		const traces: ContextCueRetrievalTrace[] = [];
+		const provider = createContextCueProvider({
 			sets: [
 				{
 					skillId: 'builder',
-					reminders: [
+					cues: [
 						{
 							id: 'if-branches',
 							text: 'Wire IF branches inside the builder chain.',
@@ -272,17 +270,17 @@ describe('createContextReminderProvider', () => {
 			],
 			onRetrieval: (trace) => traces.push(trace),
 		});
-		const notes = await provider(
+		const cues = await provider(
 			request({ messages: [user('Route urgent tickets: connect the IF true branches to Slack')] }),
 		);
 		expect(traces[0].method).toBe('bm25');
-		expect(notes.map((note) => note.id)).toEqual([contextReminderNoteId('builder', 'if-branches')]);
+		expect(cues.map((cue) => cue.id)).toEqual([contextCueId('builder', 'if-branches')]);
 		expect(await provider(request({ messages: [user('Hello, how are you today?')] }))).toEqual([]);
 	});
 
 	it('reports matches and near misses', async () => {
-		const traces: ContextReminderRetrievalTrace[] = [];
-		const provider = createContextReminderProvider({
+		const traces: ContextCueRetrievalTrace[] = [];
+		const provider = createContextCueProvider({
 			sets,
 			embeddingModel: model,
 			threshold: 0.8,
@@ -291,16 +289,14 @@ describe('createContextReminderProvider', () => {
 		await provider(request());
 		expect(traces).toEqual([
 			expect.objectContaining({
-				matches: [expect.objectContaining({ reminderId: 'a' })],
-				nearMisses: [expect.objectContaining({ reminderId: 'b' })],
+				matches: [expect.objectContaining({ cueId: 'a' })],
+				nearMisses: [expect.objectContaining({ cueId: 'b' })],
 			}),
 		]);
 	});
 
 	describe('on-load delivery', () => {
-		const onLoadSets: ContextReminderSet[] = [
-			{ ...sets[0], skillId: 'router', delivery: 'on-load' },
-		];
+		const onLoadSets: ContextCueSet[] = [{ ...sets[0], skillId: 'router', delivery: 'on-load' }];
 		const loadCall = (input: Record<string, string>) => toolCall('load_skill', input);
 		const laterStep: AgentMessage = {
 			role: 'assistant',
@@ -310,12 +306,12 @@ describe('createContextReminderProvider', () => {
 			request({ messages, activeSkillIds: ['router'] });
 
 		it('fires in the call right after the skill loads, by id or by name', async () => {
-			const provider = createContextReminderProvider({
+			const provider = createContextCueProvider({
 				sets: onLoadSets,
 				embeddingModel: model,
 				threshold: 0.8,
 			});
-			const expected = [{ id: contextReminderNoteId('router', 'a'), content: 'Rule A' }];
+			const expected = [{ id: contextCueId('router', 'a'), content: 'Rule A' }];
 			expect(
 				await provider(onLoadRequest([user('about alpha'), loadCall({ skillId: 'router' })])),
 			).toEqual(expected);
@@ -325,7 +321,7 @@ describe('createContextReminderProvider', () => {
 		});
 
 		it('stays silent on later steps and when another skill loads', async () => {
-			const provider = createContextReminderProvider({
+			const provider = createContextCueProvider({
 				sets: onLoadSets,
 				embeddingModel: model,
 				threshold: 0,

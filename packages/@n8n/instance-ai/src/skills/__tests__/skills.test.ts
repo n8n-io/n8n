@@ -4,8 +4,8 @@ import { join } from 'node:path';
 
 import { resolvePromptProfile } from '../../prompts/prompt-profiles';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
-import { POST_BUILD_FLOW_REMINDERS } from '../context-reminders/post-build-flow.reminders';
-import { WORKFLOW_BUILDER_REMINDERS } from '../context-reminders/workflow-builder.reminders';
+import { POST_BUILD_FLOW_CUES } from '../context-cues/post-build-flow.cues';
+import { WORKFLOW_BUILDER_CUES } from '../context-cues/workflow-builder.cues';
 import {
 	INSTANCE_AI_SKILLS_DIR,
 	loadInstanceAiPromptSkills,
@@ -500,12 +500,10 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('n8n-docs-assistant');
 		expect(loaded?.instructions).toContain('never load `templates/index.json`');
 		expect(loaded?.instructions).toContain('node-types/index.txt');
-		// Eval-driven rules arrive as retrieved context reminders, not in the skill body.
-		const builderReminderText = WORKFLOW_BUILDER_REMINDERS.reminders
-			.map(({ text }) => text)
-			.join('\n');
+		// Eval-driven rules arrive as retrieved context cues, not in the skill body.
+		const builderCueText = WORKFLOW_BUILDER_CUES.cues.map(({ text }) => text).join('\n');
 		// The path is set while building; sharing the URL happens after the build.
-		expect(builderReminderText).toContain('explicit, readable `path`');
+		expect(builderCueText).toContain('explicit, readable `path`');
 		expect(loaded?.instructions).not.toContain('## Trigger URL Sharing');
 		expect(loaded?.instructions).not.toContain('{formBaseUrl}/{path}');
 		expect(loaded?.instructions).not.toContain('**Open chat** button');
@@ -521,19 +519,19 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain(
 			'never stop before the first\n`workflow_builder_build_workflow` call',
 		);
-		expect(builderReminderText).toContain('inspect it first via `debugging-executions`');
+		expect(builderCueText).toContain('inspect it first via `debugging-executions`');
 		// The sandbox runs the published workflow-sdk, which does not yet warn about MOCK_OUTPUT_JSON_ENVELOPE.
-		expect(builderReminderText).toContain('mock `output` items are raw `$json` objects');
+		expect(builderCueText).toContain('mock `output` items are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the n8n\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
-		expect(builderReminderText).toContain(
+		expect(builderCueText).toContain(
 			'Do NOT wire branches as standalone statements after `export default`',
 		);
-		expect(builderReminderText).toContain('calls never reach the builder');
+		expect(builderCueText).toContain('calls never reach the builder');
 	});
 
 	it('loads the bundled one-off-operations skill', async () => {
@@ -600,14 +598,10 @@ describe('Instance AI skills', () => {
 		expect(errorWorkflows).toContain(
 			'ask once whether the user wants to build an error workflow for that workflow',
 		);
-		// These step rules moved to post-build-flow context reminders.
-		const reminderText = POST_BUILD_FLOW_REMINDERS.reminders
-			.map((reminder) => reminder.text)
-			.join('\n');
-		expect(reminderText).toContain('Do not replace it with a generic "anything else?"');
-		expect(reminderText).toContain(
-			'After setup with mocked evidence, ask only about the live test.',
-		);
+		// These step rules moved to post-build-flow context cues.
+		const cueText = POST_BUILD_FLOW_CUES.cues.map((cue) => cue.text).join('\n');
+		expect(cueText).toContain('Do not replace it with a generic "anything else?"');
+		expect(cueText).toContain('After setup with mocked evidence, ask only about the live test.');
 		expect(errorWorkflows).toContain(
 			'The error workflow must be published before it can be assigned',
 		);

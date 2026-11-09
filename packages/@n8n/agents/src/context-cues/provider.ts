@@ -1,29 +1,29 @@
 import type { EmbeddingModel } from 'ai';
-import { cosineSimilarity, embedMany } from 'ai';
 
 import { createBm25Index } from './bm25';
 import type {
-	ContextReminder,
-	ContextReminderDelivery,
-	ContextReminderMatch,
-	ContextReminderProviderOptions,
-	ContextReminderRetrievalMethod,
-	ContextReminderStepQuery,
+	ContextCue,
+	ContextCueDelivery,
+	ContextCueMatch,
+	ContextCueProviderOptions,
+	ContextCueRetrievalMethod,
+	ContextCueStepQuery,
 } from './types';
+import { loadAi } from '../runtime/model/lazy-ai';
 import { isLlmMessage } from '../sdk/message';
 import { SKILL_LOAD_TOOL_NAME } from '../skills/types';
 import type {
-	ContextNote,
-	ContextNoteProvider,
-	ContextNoteRequest,
+	ContextCueEntry,
+	ContextCueProvider,
+	ContextCueRequest,
 } from '../types/runtime/agent-runtime';
 import type { AgentMessage } from '../types/sdk/message';
 
-/** Not tuned for every domain. Calibrate with eval traces (scores of notes that helped vs. noise). */
-export const DEFAULT_CONTEXT_REMINDER_EMBEDDING_THRESHOLD = 0.4;
+/** Not tuned for every domain. Calibrate with eval traces (scores of cues that helped vs. noise). */
+export const DEFAULT_CONTEXT_CUE_EMBEDDING_THRESHOLD = 0.4;
 /** Threshold on the normalized BM25 score. */
-export const DEFAULT_CONTEXT_REMINDER_BM25_THRESHOLD = 0.2;
-export const DEFAULT_CONTEXT_REMINDER_TOP_K = 3;
+export const DEFAULT_CONTEXT_CUE_BM25_THRESHOLD = 0.2;
+export const DEFAULT_CONTEXT_CUE_TOP_K = 3;
 
 const MAX_INTENT_CHARS = 1_500;
 const MAX_STEP_CHARS = 2_500;
@@ -32,13 +32,13 @@ const MAX_TOOL_OUTPUT_CHARS = 300;
 /** Tags that the agents runtime adds to message text. */
 const RUNTIME_INJECTED_TAGS = ['system-reminder', 'context', 'skill'];
 
-/** Note id used in the conversation. Ids are unique across skills. */
-export function contextReminderNoteId(skillId: string, reminderId: string): string {
-	return `reminder:${skillId}:${reminderId}`;
+/** Cue id used in the conversation. Ids are unique across skills. */
+export function contextCueId(skillId: string, cueId: string): string {
+	return `cue:${skillId}:${cueId}`;
 }
 
-/** Parses a comma-separated list of reminder ids to ablate, such as an env var value. */
-export function parseAblatedContextReminders(value: string | undefined): ReadonlySet<string> {
+/** Parses a comma-separated list of cue ids to ablate, such as an env var value. */
+export function parseAblatedContextCues(value: string | undefined): ReadonlySet<string> {
 	return new Set(
 		(value ?? '')
 			.split(',')
@@ -60,7 +60,7 @@ function escapeRegExp(value: string): string {
 }
 
 /**
- * Removes injected blocks (skill bodies, reminders, host context) from message
+ * Removes injected blocks (skill bodies, cues, host context) from message
  * text. A host can put its context in the same text part as the user's
  * request, so a whole-part check would keep the context and cut the request off.
  */
@@ -121,7 +121,7 @@ export function detectJustLoadedSkills(messages: readonly AgentMessage[]): Set<s
 	return loaded;
 }
 
-/** User text and tool inputs, searched by a reminder's `requiresAny` gate. */
+/** User text and tool inputs, searched by a cue's `requiresAny` gate. */
 function threadEvidence(
 	messages: readonly AgentMessage[],
 	stripInjectedText: (text: string) => string,
@@ -144,10 +144,10 @@ function threadEvidence(
  * Builds the retrieval query for the next model call from the latest user
  * request and the agent's latest assistant and tool activity.
  */
-export function buildContextReminderQuery(
+export function buildContextCueQuery(
 	messages: readonly AgentMessage[],
 	injectedTags: readonly string[] = [],
-): ContextReminderStepQuery {
+): ContextCueStepQuery {
 	const stripInjectedText = createInjectedTextStripper(injectedTags);
 	const llmMessages = messages.filter(isLlmMessage);
 
@@ -196,37 +196,38 @@ export function buildContextReminderQuery(
 	};
 }
 
-// Reminder embeddings depend only on the model and the text, so runs share them.
-const reminderEmbeddingCache = new Map<string, Promise<number[]>>();
+// Cue embeddings depend only on the model and the text, so runs share them.
+const cueEmbeddingCache = new Map<string, Promise<number[]>>();
 
 function embeddingModelKey(model: EmbeddingModel): string {
 	return typeof model === 'string' ? model : `${model.provider}/${model.modelId}`;
 }
 
-async function embedReminderTexts(
+async function embedCueTexts(
 	model: EmbeddingModel,
 	texts: string[],
 	abortSignal?: AbortSignal,
 ): Promise<number[][]> {
 	const modelKey = embeddingModelKey(model);
 	const missing = [...new Set(texts)].filter(
-		(text) => !reminderEmbeddingCache.has(`${modelKey}\u0000${text}`),
+		(text) => !cueEmbeddingCache.has(`${modelKey}\u0000${text}`),
 	);
 	if (missing.length > 0) {
+		const { embedMany } = loadAi();
 		// Other runs share this batch, so one run's cancel must not abort it.
 		const batch = embedMany({ model, values: missing });
 		missing.forEach((text, i) => {
 			const key = `${modelKey}\u0000${text}`;
 			const entry = batch.then(({ embeddings }) => embeddings[i]);
 			// Let the next call retry instead of caching the failure.
-			entry.catch(() => reminderEmbeddingCache.delete(key));
-			reminderEmbeddingCache.set(key, entry);
+			entry.catch(() => cueEmbeddingCache.delete(key));
+			cueEmbeddingCache.set(key, entry);
 		});
 	}
 	const all = Promise.all(
 		texts.map(async (text) => {
-			const entry = reminderEmbeddingCache.get(`${modelKey}\u0000${text}`);
-			if (!entry) throw new Error(`Missing context reminder embedding for "${text}"`);
+			const entry = cueEmbeddingCache.get(`${modelKey}\u0000${text}`);
+			if (!entry) throw new Error(`Missing context cue embedding for "${text}"`);
 			return await entry;
 		}),
 	);
@@ -252,25 +253,23 @@ async function waitUnlessAborted<T>(promise: Promise<T>, abortSignal?: AbortSign
 
 interface Candidate {
 	skillId: string;
-	delivery: ContextReminderDelivery;
-	reminder: ContextReminder;
+	delivery: ContextCueDelivery;
+	cue: ContextCue;
 }
 
 /** Scores every candidate (by index) against the query parts. */
-type ReminderScorer = (queries: string[], abortSignal?: AbortSignal) => Promise<number[]>;
+type CueScorer = (queries: string[], abortSignal?: AbortSignal) => Promise<number[]>;
 
-function createEmbeddingScorer(
-	model: EmbeddingModel,
-	candidates: readonly Candidate[],
-): ReminderScorer {
+function createEmbeddingScorer(model: EmbeddingModel, candidates: readonly Candidate[]): CueScorer {
 	return async (queries, abortSignal) => {
-		const reminderEmbeddings = await embedReminderTexts(
+		const { cosineSimilarity, embedMany } = loadAi();
+		const cueEmbeddings = await embedCueTexts(
 			model,
-			candidates.map(({ reminder }) => reminder.appliesWhen),
+			candidates.map(({ cue }) => cue.appliesWhen),
 			abortSignal,
 		);
 		const { embeddings } = await embedMany({ model, values: queries, abortSignal });
-		return reminderEmbeddings.map((embedding) =>
+		return cueEmbeddings.map((embedding) =>
 			Math.max(...embeddings.map((query) => cosineSimilarity(query, embedding))),
 		);
 	};
@@ -279,12 +278,12 @@ function createEmbeddingScorer(
 function createBm25Scorer(
 	candidates: readonly Candidate[],
 	stopwords: readonly string[],
-): ReminderScorer {
-	// The reminder text adds the exact code terms that steps contain.
+): CueScorer {
+	// The cue text adds the exact code terms that steps contain.
 	const index = createBm25Index(
-		candidates.map(({ reminder }, i) => ({
+		candidates.map(({ cue }, i) => ({
 			key: i,
-			text: `${reminder.appliesWhen} ${reminder.text}`,
+			text: `${cue.appliesWhen} ${cue.text}`,
 		})),
 		stopwords,
 	);
@@ -295,39 +294,37 @@ function createBm25Scorer(
 }
 
 /**
- * Returns a context note provider that adds the reminders of active skills
+ * Returns a context cue provider that adds the cues of active skills
  * whose `appliesWhen` is close to the current step: by embedding similarity
  * when an embedding model is set, else by BM25.
  *
- * Reminder embeddings are cached across runs. Each distinct query is scored
+ * Cue embeddings are cached across runs. Each distinct query is scored
  * once; repeated model calls with no new activity reuse the last result.
  */
-export function createContextReminderProvider(
-	options: ContextReminderProviderOptions,
-): ContextNoteProvider {
+export function createContextCueProvider(options: ContextCueProviderOptions): ContextCueProvider {
 	let threshold =
 		options.threshold ??
 		(options.embeddingModel
-			? DEFAULT_CONTEXT_REMINDER_EMBEDDING_THRESHOLD
-			: DEFAULT_CONTEXT_REMINDER_BM25_THRESHOLD);
-	const topK = options.topK ?? DEFAULT_CONTEXT_REMINDER_TOP_K;
+			? DEFAULT_CONTEXT_CUE_EMBEDDING_THRESHOLD
+			: DEFAULT_CONTEXT_CUE_BM25_THRESHOLD);
+	const topK = options.topK ?? DEFAULT_CONTEXT_CUE_TOP_K;
 	const ablated = options.ablate ?? new Set<string>();
 	const injectedTags = options.injectedTags ?? [];
 	const stripInjectedText = createInjectedTextStripper(injectedTags);
 
 	const candidates: Candidate[] = options.sets.flatMap((set) =>
-		set.reminders
-			.filter((reminder) => !isAblated(reminder.id, ablated))
-			.map((reminder) => ({
+		set.cues
+			.filter((cue) => !isAblated(cue.id, ablated))
+			.map((cue) => ({
 				skillId: set.skillId,
 				delivery: set.delivery ?? 'every-step',
-				reminder,
+				cue,
 			})),
 	);
-	const byKey = new Map(candidates.map((item) => [`${item.skillId}:${item.reminder.id}`, item]));
+	const byKey = new Map(candidates.map((item) => [`${item.skillId}:${item.cue.id}`, item]));
 
-	let method: ContextReminderRetrievalMethod = options.embeddingModel ? 'embedding' : 'bm25';
-	let bm25Scorer: ReminderScorer | undefined;
+	let method: ContextCueRetrievalMethod = options.embeddingModel ? 'embedding' : 'bm25';
+	let bm25Scorer: CueScorer | undefined;
 	const getBm25Scorer = () =>
 		(bm25Scorer ??= createBm25Scorer(candidates, options.stopwords ?? []));
 	const embeddingScorer = options.embeddingModel
@@ -335,14 +332,14 @@ export function createContextReminderProvider(
 		: undefined;
 
 	// If embedding fails (blocked proxy, bad key), rank with BM25 for the rest of the run.
-	const scorer: ReminderScorer = async (queries, abortSignal) => {
+	const scorer: CueScorer = async (queries, abortSignal) => {
 		if (method === 'embedding' && embeddingScorer) {
 			try {
 				return await embeddingScorer(queries, abortSignal);
 			} catch (error) {
 				if (abortSignal?.aborted) throw error;
 				method = 'bm25';
-				threshold = options.threshold ?? DEFAULT_CONTEXT_REMINDER_BM25_THRESHOLD;
+				threshold = options.threshold ?? DEFAULT_CONTEXT_CUE_BM25_THRESHOLD;
 				options.onEmbeddingFailure?.(error);
 			}
 		}
@@ -350,9 +347,9 @@ export function createContextReminderProvider(
 	};
 
 	let lastQueryKey: string | undefined;
-	let lastScores: ContextReminderMatch[] = [];
+	let lastScores: ContextCueMatch[] = [];
 
-	return async (request: ContextNoteRequest): Promise<ContextNote[]> => {
+	return async (request: ContextCueRequest): Promise<ContextCueEntry[]> => {
 		// An `on-load` set counts only in the model call right after its skill loads.
 		const justLoaded = detectJustLoadedSkills(request.messages);
 		const active = new Set(
@@ -365,24 +362,24 @@ export function createContextReminderProvider(
 		);
 		if (active.size === 0) return [];
 
-		const query = buildContextReminderQuery(request.messages, injectedTags);
+		const query = buildContextCueQuery(request.messages, injectedTags);
 		const queries = [query.intent, query.step].filter((text) => text.trim());
 		if (queries.length === 0) return [];
 
 		const queryKey = queries.join('\u0000');
 		if (queryKey !== lastQueryKey) {
-			// Each reminder takes its best score against either query part, so a long
+			// Each cue takes its best score against either query part, so a long
 			// user request does not dilute a specific step (and vice versa).
 			const scores = await scorer(queries, request.abortSignal);
-			lastScores = candidates.map(({ skillId, reminder }, i) => ({
+			lastScores = candidates.map(({ skillId, cue }, i) => ({
 				skillId,
-				reminderId: reminder.id,
+				cueId: cue.id,
 				score: scores[i],
 			}));
 			lastQueryKey = queryKey;
 		}
 
-		// A reminder for a later phase stays unsent, so it can still fire once that phase starts.
+		// A cue for a later phase stays unsent, so it can still fire once that phase starts.
 		const phases = options.detectPhases?.(request.messages) ?? new Set<string>();
 		let evidence: string | undefined;
 		const requirementMet = (required: readonly string[] | undefined) => {
@@ -391,13 +388,13 @@ export function createContextReminderProvider(
 			return required.some((needle) => evidence?.includes(needle));
 		};
 		const ranked = lastScores
-			.filter(({ skillId, reminderId }) => {
+			.filter(({ skillId, cueId }) => {
 				if (!active.has(skillId)) return false;
-				if (request.sentNoteIds.has(contextReminderNoteId(skillId, reminderId))) return false;
-				const reminder = byKey.get(`${skillId}:${reminderId}`)?.reminder;
-				if (reminder?.phase !== undefined && !phases.has(reminder.phase)) return false;
-				// A gate that is not met yet keeps the reminder unsent, like a later phase.
-				return requirementMet(reminder?.requiresAny);
+				if (request.sentCueIds.has(contextCueId(skillId, cueId))) return false;
+				const cue = byKey.get(`${skillId}:${cueId}`)?.cue;
+				if (cue?.phase !== undefined && !phases.has(cue.phase)) return false;
+				// A gate that is not met yet keeps the cue unsent, like a later phase.
+				return requirementMet(cue?.requiresAny);
 			})
 			.sort((a, b) => b.score - a.score);
 		const matches = ranked.filter(({ score }) => score >= threshold).slice(0, topK);
@@ -408,11 +405,9 @@ export function createContextReminderProvider(
 			nearMisses: ranked.filter(({ score }) => score < threshold).slice(0, 3),
 		});
 
-		return matches.flatMap(({ skillId, reminderId }) => {
-			const item = byKey.get(`${skillId}:${reminderId}`);
-			return item
-				? [{ id: contextReminderNoteId(skillId, reminderId), content: item.reminder.text }]
-				: [];
+		return matches.flatMap(({ skillId, cueId }) => {
+			const item = byKey.get(`${skillId}:${cueId}`);
+			return item ? [{ id: contextCueId(skillId, cueId), content: item.cue.text }] : [];
 		});
 	};
 }

@@ -1,16 +1,16 @@
 /**
- * BM25 ranking of context reminders, for runs without an embedding model.
+ * BM25 ranking of context cues, for runs without an embedding model.
  * Scores are normalized to 0–1 against a bound that does not grow with
- * reminder length, so one threshold works for short and long reminders.
+ * cue length, so one threshold works for short and long cues.
  */
 
 const K1 = 1.2;
 const B = 0.75;
-/** A match needs this many distinct shared terms, so one rare word cannot fire a reminder. */
+/** A match needs this many distinct shared terms, so one rare word cannot fire a cue. */
 const MIN_MATCHED_TERMS = 2;
 /**
- * A step that shares this many of a reminder's strongest terms scores 1. Capping
- * the bound keeps long reminders from needing every one of their terms to match.
+ * A step that shares this many of a cue's strongest terms scores 1. Capping
+ * the bound keeps long cues from needing every one of their terms to match.
  */
 const FULL_MATCH_TERMS = 6;
 

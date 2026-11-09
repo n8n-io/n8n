@@ -15,7 +15,7 @@ import {
 } from './mcp-tool-name-validation';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
-import { createInstanceAiContextReminderProvider } from '../skills/context-reminders';
+import { createInstanceAiContextCueProvider } from '../skills/context-cues';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
@@ -259,15 +259,15 @@ export async function createInstanceAgent(
 	if (orchestrationContext?.workspace) agent.workspace(orchestrationContext.workspace);
 	if (skills) {
 		agent.skills(skills);
-		agent.contextNotes(
-			createInstanceAiContextReminderProvider({
-				embeddingModel: options.contextReminders?.embeddingModel,
-				onRetrieval: options.contextReminders?.onRetrieval,
+		// Without an embedding model, the provider ranks cues with BM25.
+		agent.contextCueProvider(
+			createInstanceAiContextCueProvider({
+				embeddingModel: options.contextCues?.embeddingModel,
+				onRetrieval: options.contextCues?.onRetrieval,
 				onEmbeddingFailure: (error) =>
-					context.logger.warn(
-						'Context reminder embedding failed; ranking reminders with BM25 for this run',
-						{ error: error instanceof Error ? error.message : String(error) },
-					),
+					context.logger.warn('Context cue embedding failed; ranking cues with BM25 for this run', {
+						error: error instanceof Error ? error.message : String(error),
+					}),
 			}),
 		);
 	}

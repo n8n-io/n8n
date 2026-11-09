@@ -1,15 +1,15 @@
-import type { ContextReminderSet } from '@n8n/agents';
+import type { ContextCueSet } from '@n8n/agents';
 
 /**
- * Context reminders for the `post-build-flow` skill. The build tool activates
+ * Context cues for the `post-build-flow` skill. The build tool activates
  * the skill after a direct build, and it stays active through verification,
  * setup, live tests, cleanup, publishing and the final summary. Each phase
- * looks different in the step text, so retrieval scores these reminders on
+ * looks different in the step text, so retrieval scores these cues on
  * every step and each one matches in its own phase.
  */
-export const POST_BUILD_FLOW_REMINDERS: ContextReminderSet = {
+export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 	skillId: 'post-build-flow',
-	reminders: [
+	cues: [
 		// Verification
 		{
 			id: 'verify-with-verify-tool',

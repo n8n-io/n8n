@@ -11,14 +11,14 @@ import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import type { VectorStore } from './vector-store';
 import {
-	createContextReminderProvider,
-	type ContextReminderProviderOptions,
-	type ContextReminderSet,
-} from '../context-reminders';
+	createContextCueProvider,
+	type ContextCueProviderOptions,
+	type ContextCueSet,
+} from '../context-cues';
 import {
 	AgentRuntime,
 	type AgentRuntimeConfig,
-	type ContextNoteProvider,
+	type ContextCueProvider,
 	type VolatileInstructionsProvider,
 } from '../runtime/loop/agent-runtime';
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
@@ -247,7 +247,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private volatileInstructionsProviderValue?: VolatileInstructionsProvider;
 
-	private contextNoteProviders: ContextNoteProvider[] = [];
+	private contextCueProviders: ContextCueProvider[] = [];
 
 	private defaultExecutionOptions?: ExecutionOptions;
 
@@ -326,21 +326,22 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
-	/** Add a provider of notes that the runtime appends to the conversation before each model call. */
-	contextNotes(provider: ContextNoteProvider): this {
-		this.contextNoteProviders.push(provider);
+	/** Add a provider of context cues that the runtime appends to the conversation before each model call. */
+	contextCueProvider(provider: ContextCueProvider): this {
+		this.contextCueProviders.push(provider);
 		return this;
 	}
 
 	/**
-	 * Add skill-scoped context reminders. Before each model call, the runtime
-	 * retrieves the reminders that match the current step and adds them as context notes.
+	 * Add skill-scoped context cues. Before each model call, the runtime
+	 * retrieves the cues that match the current step and adds them to the conversation.
+	 * Without an embedding model, retrieval uses BM25.
 	 */
-	contextReminders(
-		sets: readonly ContextReminderSet[],
-		options: Omit<ContextReminderProviderOptions, 'sets'> = {},
+	contextCues(
+		sets: readonly ContextCueSet[],
+		options: Omit<ContextCueProviderOptions, 'sets'> = {},
 	): this {
-		return this.contextNotes(createContextReminderProvider({ ...options, sets }));
+		return this.contextCueProvider(createContextCueProvider({ ...options, sets }));
 	}
 
 	/** Add a tool to the agent's capabilities. Accepts a built tool or a Tool builder (which will be built automatically). Can also accept an array of tools. */
@@ -1236,8 +1237,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...(this.volatileInstructionsProviderValue
 				? { volatileInstructionsProvider: this.volatileInstructionsProviderValue }
 				: {}),
-			...(this.contextNoteProviders.length > 0
-				? { contextNoteProviders: [...this.contextNoteProviders] }
+			...(this.contextCueProviders.length > 0
+				? { contextCueProviders: [...this.contextCueProviders] }
 				: {}),
 		};
 	}

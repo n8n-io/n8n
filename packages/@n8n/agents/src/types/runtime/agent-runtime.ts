@@ -36,33 +36,33 @@ export interface VolatileInstructionsContext {
 	persistence?: AgentPersistenceOptions;
 }
 
-/** A piece of guidance that a context note provider wants the model to see now. */
-export interface ContextNote {
+/** A context cue that a provider wants the model to see now. */
+export interface ContextCueEntry {
 	/**
-	 * Stable id. The runtime skips a note whose id is already in the visible
-	 * conversation. Observation masking can hide a sent note, so it can be sent again.
+	 * Stable id. The runtime skips a cue whose id is already in the visible
+	 * conversation. Observation masking can hide a sent cue, so it can be sent again.
 	 */
 	id: string;
 	content: string;
 }
 
-export interface ContextNoteRequest {
+export interface ContextCueRequest {
 	/** Messages the model sees, oldest first, before this model call. */
 	messages: readonly AgentMessage[];
 	/** Skills that are active for this run. */
 	activeSkillIds: readonly string[];
-	/** Ids of the notes that the conversation already contains. */
-	sentNoteIds: ReadonlySet<string>;
+	/** Ids of the cues that the conversation already contains. */
+	sentCueIds: ReadonlySet<string>;
 	persistence?: AgentPersistenceOptions;
 	abortSignal?: AbortSignal;
 }
 
 /**
- * Supplies notes before each model call. The runtime saves the notes in the
+ * Supplies context cues before each model call. The runtime saves the cues in the
  * conversation as a `<system-reminder>`, after the earlier messages, so the
- * prompt cache stays valid. A provider failure skips its notes for that call.
+ * prompt cache stays valid. A provider failure skips its cues for that call.
  */
-export type ContextNoteProvider = (request: ContextNoteRequest) => Promise<ContextNote[]>;
+export type ContextCueProvider = (request: ContextCueRequest) => Promise<ContextCueEntry[]>;
 
 export type VolatileInstructionsProvider = (
 	context: VolatileInstructionsContext,
@@ -135,6 +135,6 @@ export interface AgentRuntimeConfig {
 	mcpConnectionFailures?: McpConnectionFailedEvent[];
 	/** The runtime loads these host instructions before each model call but does not save them. */
 	volatileInstructionsProvider?: VolatileInstructionsProvider;
-	/** The runtime asks these providers for notes before each model call. */
-	contextNoteProviders?: ContextNoteProvider[];
+	/** The runtime asks these providers for context cues before each model call. */
+	contextCueProviders?: ContextCueProvider[];
 }

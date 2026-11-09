@@ -30,8 +30,8 @@ export function isRuntimeSkillUpdate(
 	);
 }
 
-export const RUNTIME_CONTEXT_NOTE_PREAMBLE =
-	'These notes come from the runtime because they match the current step. They are not from the user. Apply each note that fits the task; ignore the others.';
+export const RUNTIME_CONTEXT_CUE_PREAMBLE =
+	'These context cues come from the runtime because they match the current step. They are not from the user. Apply each cue that fits the task; ignore the others.';
 
 export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 	return messages.flatMap((message): Message[] => {
@@ -51,10 +51,10 @@ export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 				},
 			];
 		}
-		if (isRuntimeContextNote(message)) {
+		if (isRuntimeContextCue(message)) {
 			const text = [
 				'<system-reminder>',
-				RUNTIME_CONTEXT_NOTE_PREAMBLE,
+				RUNTIME_CONTEXT_CUE_PREAMBLE,
 				'',
 				message.data.content,
 				'</system-reminder>',
@@ -83,13 +83,13 @@ export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 	});
 }
 
-export function isRuntimeContextNote<T extends AgentMessage>(
+export function isRuntimeContextCue<T extends AgentMessage>(
 	message: T,
-): message is T & { type: 'custom'; data: CustomAgentMessages['runtimeContextNote'] } {
+): message is T & { type: 'custom'; data: CustomAgentMessages['runtimeContextCue'] } {
 	return (
 		message.type === 'custom' &&
 		'type' in message.data &&
-		message.data.type === 'n8n:runtime-context-note'
+		message.data.type === 'n8n:runtime-context-cue'
 	);
 }
 

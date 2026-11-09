@@ -4,7 +4,7 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
-	ContextReminderRetrievalTrace,
+	ContextCueRetrievalTrace,
 	ExecutionOptions,
 	FetchFn,
 	MemoryTaskUsageReport,
@@ -2326,11 +2326,11 @@ export interface CreateInstanceAgentOptions {
 	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */
 	requestLabels?: boolean;
 	/**
-	 * Retrieves the skill context reminders that match the current step.
+	 * Retrieves the skill context cues that match the current step.
 	 * Without an embedding model, retrieval uses BM25.
 	 */
-	contextReminders?: {
+	contextCues?: {
 		embeddingModel?: EmbeddingModel;
-		onRetrieval?: (trace: ContextReminderRetrievalTrace) => void;
+		onRetrieval?: (trace: ContextCueRetrievalTrace) => void;
 	};
 }

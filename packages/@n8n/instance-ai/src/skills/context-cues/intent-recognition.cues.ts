@@ -1,15 +1,15 @@
-import type { ContextReminderSet } from '@n8n/agents';
+import type { ContextCueSet } from '@n8n/agents';
 
 /**
- * Context reminders for the `intent-recognition` skill. The skill makes its
+ * Context cues for the `intent-recognition` skill. The skill makes its
  * routing decision in the model call right after it loads, so retrieval scores
- * these reminders only in that call (`on-load`). Later steps of the turn
+ * these cues only in that call (`on-load`). Later steps of the turn
  * (build, credential setup) get none of them.
  */
-export const INTENT_RECOGNITION_REMINDERS: ContextReminderSet = {
+export const INTENT_RECOGNITION_CUES: ContextCueSet = {
 	skillId: 'intent-recognition',
 	delivery: 'on-load',
-	reminders: [
+	cues: [
 		{
 			id: 'explicit-agent-no-ask-user',
 			text: 'An explicit Agent request decides the anchor. Load `agent-builder` next, with no `ask_user` call before it, and do not choose services, tools, topics or schedules for it: Agent Builder asks those questions.',

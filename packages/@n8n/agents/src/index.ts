@@ -214,9 +214,9 @@ export {
 	withPromptSizeBreakdown,
 } from './runtime/loop/prompt-size-usage';
 export type {
-	ContextNote,
-	ContextNoteProvider,
-	ContextNoteRequest,
+	ContextCueEntry,
+	ContextCueProvider,
+	ContextCueRequest,
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
 } from './runtime/loop/agent-runtime';
@@ -314,27 +314,27 @@ export {
 	filterLlmMessages,
 	getCreatedAt,
 	isLlmMessage,
-	isRuntimeContextNote,
+	isRuntimeContextCue,
 } from './sdk/message';
 export {
-	buildContextReminderQuery,
-	contextReminderNoteId,
-	createContextReminderProvider,
-	parseAblatedContextReminders,
-	DEFAULT_CONTEXT_REMINDER_BM25_THRESHOLD,
-	DEFAULT_CONTEXT_REMINDER_EMBEDDING_THRESHOLD,
-	DEFAULT_CONTEXT_REMINDER_TOP_K,
-} from './context-reminders';
+	buildContextCueQuery,
+	contextCueId,
+	createContextCueProvider,
+	parseAblatedContextCues,
+	DEFAULT_CONTEXT_CUE_BM25_THRESHOLD,
+	DEFAULT_CONTEXT_CUE_EMBEDDING_THRESHOLD,
+	DEFAULT_CONTEXT_CUE_TOP_K,
+} from './context-cues';
 export type {
-	ContextReminder,
-	ContextReminderDelivery,
-	ContextReminderMatch,
-	ContextReminderProviderOptions,
-	ContextReminderRetrievalMethod,
-	ContextReminderRetrievalTrace,
-	ContextReminderSet,
-	ContextReminderStepQuery,
-} from './context-reminders';
+	ContextCue,
+	ContextCueDelivery,
+	ContextCueMatch,
+	ContextCueProviderOptions,
+	ContextCueRetrievalMethod,
+	ContextCueRetrievalTrace,
+	ContextCueSet,
+	ContextCueStepQuery,
+} from './context-cues';
 export { fetchProviderCatalog } from './sdk/catalog';
 export type {
 	ProviderCatalog,

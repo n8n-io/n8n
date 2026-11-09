@@ -1,14 +1,14 @@
-import type { ContextReminderSet } from '@n8n/agents';
+import type { ContextCueSet } from '@n8n/agents';
 
 /**
- * Context reminders for the `workflow-builder` skill. They are not in
+ * Context cues for the `workflow-builder` skill. They are not in
  * `SKILL.md`: the runtime retrieves each one when the current step matches its
- * `appliesWhen`. Record the eval cases that fail without a reminder after an
- * ablation run, and delete reminders that no eval needs.
+ * `appliesWhen`. Record the eval cases that fail without a cue after an
+ * ablation run, and delete cues that no eval needs.
  */
-export const WORKFLOW_BUILDER_REMINDERS: ContextReminderSet = {
+export const WORKFLOW_BUILDER_CUES: ContextCueSet = {
 	skillId: 'workflow-builder',
-	reminders: [
+	cues: [
 		{
 			id: 'if-branches-on-builder',
 			text: 'Do NOT wire branches as standalone statements after `export default` (`ifNode.onTrue(...)` on its own line): those calls never reach the builder.',
