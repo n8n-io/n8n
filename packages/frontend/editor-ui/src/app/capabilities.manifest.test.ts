@@ -21,16 +21,23 @@ import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environm
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 
-const { openDocumentStores, offerToExposeAllWorkflows, createSelfHealingChatHandoff } = vi.hoisted(
-	() => ({
-		openDocumentStores: new Map<string, { mergeSettings: ReturnType<typeof vi.fn> }>(),
-		offerToExposeAllWorkflows: vi.fn(),
-		createSelfHealingChatHandoff: vi.fn(),
-	}),
-);
+const {
+	openDocumentStores,
+	offerToExposeAllWorkflows,
+	createSelfHealingChatHandoff,
+	createAppAssistantHandoff,
+} = vi.hoisted(() => ({
+	openDocumentStores: new Map<string, { mergeSettings: ReturnType<typeof vi.fn> }>(),
+	offerToExposeAllWorkflows: vi.fn(),
+	createSelfHealingChatHandoff: vi.fn(),
+	createAppAssistantHandoff: vi.fn(),
+}));
 
 vi.mock('@/features/ai/instanceAi/composables/useSelfHealingChatHandoff', () => ({
 	useSelfHealingChatHandoff: createSelfHealingChatHandoff,
+}));
+vi.mock('@/features/ai/instanceAi/composables/useAppAssistantHandoff', () => ({
+	useAppAssistantHandoff: createAppAssistantHandoff,
 }));
 
 vi.mock(
@@ -75,6 +82,10 @@ describe('registerShellCapabilities', () => {
 			createSelfHealingChatHandoff,
 		);
 		expect(createSelfHealingChatHandoff).not.toHaveBeenCalled();
+		expect(capabilityRegistry.use(capabilities.createAppAssistantHandoff)).toBe(
+			createAppAssistantHandoff,
+		);
+		expect(createAppAssistantHandoff).not.toHaveBeenCalled();
 	});
 
 	it('forwards openModal to the UI store', () => {

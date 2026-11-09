@@ -102,7 +102,12 @@ export class AppPreviewService {
 			});
 			return;
 		}
-		req.appContext = { app: admitted.app, versionId: admitted.versionId, preview: true };
+		req.appContext = {
+			app: admitted.app,
+			versionId: admitted.versionId,
+			preview: true,
+			previewUserId: admitted.user.id,
+		};
 		next();
 	}
 
