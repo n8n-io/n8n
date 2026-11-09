@@ -1310,10 +1310,10 @@ export class InstanceAiService {
 					...(suspended.modelId !== undefined ? { modelId: suspended.modelId } : {}),
 					promptVersion: suspended.orchestrationContext?.promptConfiguration?.version,
 				});
+				void this.settleCancelledSuspension(threadId, suspended.user.id);
 			} else {
 				void this.finalizeCancelledSuspendedRun(suspended, reason);
 			}
-			void this.settleCancelledSuspension(threadId, suspended.user.id);
 		}
 
 		void this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
@@ -4701,6 +4701,8 @@ export class InstanceAiService {
 		suspended: SuspendedRunState<User>,
 		reason = 'user_cancelled',
 	): Promise<void> {
+		// Covers the stop button and the confirmation timeout of the liveness service.
+		void this.settleCancelledSuspension(suspended.threadId, suspended.user.id);
 		const runTimeout =
 			reason === INSTANCE_AI_RUN_TIMEOUT_REASON
 				? this.liveness.consumeRunTimeout(suspended.runId)

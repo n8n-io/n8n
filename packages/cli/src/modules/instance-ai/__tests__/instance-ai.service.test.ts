@@ -5581,12 +5581,25 @@ describe('InstanceAiService — background task cancellation', () => {
 describe('InstanceAiService — suspended run cancellation', () => {
 	type SuspendedCancellationService = {
 		cancelRun: (threadId: string, reason?: string) => void;
-		finalizeCancelledSuspendedRun: Mock;
+		finalizeCancelledSuspendedRun: (
+			suspended: { threadId: string; runId: string; user: User },
+			reason?: string,
+		) => Promise<void>;
 		agentMemory: { getMessages: Mock; saveMessages: Mock };
 		logger: { warn: Mock };
-		backgroundTasks: { cancelThread: Mock };
+		emitTerminalRun: Mock;
+		publishRunFinish: Mock;
+		liveness: { consumeRunTimeout: Mock; publishRunTimeoutNotice: Mock; markRunTimedOut: Mock };
+		tracing: {
+			finalizeRunTracing: Mock;
+			maybeFinalizeRunTraceRoot: Mock;
+			buildMessageTraceMetadata: Mock;
+			finalizeBackgroundTaskTracing: Mock;
+		};
+		temporaryWorkflowService: { reapForRun: Mock };
+		backgroundTasks: { cancelThread: Mock; getRunningTasks: Mock };
 		runState: { getThreadUser: Mock; cancelThread: Mock };
-		suspendedThreads: { dropPendingConfirmationsForThread: Mock };
+		suspendedThreads: { dropPendingConfirmationsForThread: Mock; dropPendingConfirmation: Mock };
 	};
 
 	const pendingSetupMessage = {
@@ -5619,36 +5632,52 @@ describe('InstanceAiService — suspended run cancellation', () => {
 			},
 		],
 	};
+	const suspendedRun = {
+		threadId: 'thread-a',
+		runId: 'run-1',
+		user: fakeUser,
+		requestId: 'request-1',
+		abortController: new AbortController(),
+	};
 
 	function createSuspendedCancellationService() {
 		const service = Object.create(
 			InstanceAiService.prototype,
 		) as unknown as SuspendedCancellationService;
 		Object.assign(service, {
-			finalizeCancelledSuspendedRun: vi.fn(async () => {}),
 			agentMemory: {
 				getMessages: vi.fn(async () => [resolvedMessage, pendingSetupMessage]),
 				saveMessages: vi.fn(async () => {}),
 			},
 			logger: { warn: vi.fn() },
-			backgroundTasks: { cancelThread: vi.fn(() => []) },
+			emitTerminalRun: vi.fn(async () => {}),
+			publishRunFinish: vi.fn(),
+			liveness: {
+				consumeRunTimeout: vi.fn(() => undefined),
+				publishRunTimeoutNotice: vi.fn(),
+				markRunTimedOut: vi.fn(),
+			},
+			tracing: {
+				finalizeRunTracing: vi.fn(async () => {}),
+				maybeFinalizeRunTraceRoot: vi.fn(async () => {}),
+				buildMessageTraceMetadata: vi.fn(async () => ({})),
+				finalizeBackgroundTaskTracing: vi.fn(async () => {}),
+			},
+			temporaryWorkflowService: { reapForRun: vi.fn(async () => []) },
+			backgroundTasks: { cancelThread: vi.fn(() => []), getRunningTasks: vi.fn(() => []) },
 			runState: {
 				getThreadUser: vi.fn(() => fakeUser),
-				cancelThread: vi.fn(() => ({
-					suspended: { runId: 'run-1', user: fakeUser, abortController: new AbortController() },
-				})),
+				cancelThread: vi.fn(() => ({ suspended: suspendedRun })),
 			},
-			suspendedThreads: { dropPendingConfirmationsForThread: vi.fn(async () => {}) },
+			suspendedThreads: {
+				dropPendingConfirmationsForThread: vi.fn(async () => {}),
+				dropPendingConfirmation: vi.fn(async () => {}),
+			},
 		});
 		return service;
 	}
 
-	it('persists the settled tool call when a suspended run is stopped', async () => {
-		const service = createSuspendedCancellationService();
-
-		service.cancelRun('thread-a');
-
-		await vi.waitFor(() => expect(service.agentMemory.saveMessages).toHaveBeenCalled());
+	function expectSettledSetupCall(service: SuspendedCancellationService) {
 		expect(service.agentMemory.getMessages).toHaveBeenCalledWith('thread-a', {
 			resourceId: 'user-1',
 		});
@@ -5668,6 +5697,35 @@ describe('InstanceAiService — suspended run cancellation', () => {
 				}),
 			],
 		});
+	}
+
+	it('persists the settled tool call when a suspended run is stopped', async () => {
+		const service = createSuspendedCancellationService();
+
+		service.cancelRun('thread-a');
+
+		await vi.waitFor(() => expect(service.agentMemory.saveMessages).toHaveBeenCalled());
+		expectSettledSetupCall(service);
+	});
+
+	it('persists the settled tool call when a suspended run times out', async () => {
+		const service = createSuspendedCancellationService();
+
+		// The liveness service finalizes timed-out suspensions without `cancelRun`.
+		await service.finalizeCancelledSuspendedRun(suspendedRun, 'timeout');
+
+		await vi.waitFor(() => expect(service.agentMemory.saveMessages).toHaveBeenCalled());
+		expectSettledSetupCall(service);
+	});
+
+	it('persists the settled tool call when a suspended run is stopped for missing credits', async () => {
+		const service = createSuspendedCancellationService();
+
+		service.cancelRun('thread-a', 'quota_exhausted');
+
+		await vi.waitFor(() => expect(service.agentMemory.saveMessages).toHaveBeenCalled());
+		expect(service.emitTerminalRun).toHaveBeenCalled();
+		expectSettledSetupCall(service);
 	});
 
 	it('logs and continues when the settled tool call cannot be saved', async () => {
@@ -5682,7 +5740,6 @@ describe('InstanceAiService — suspended run cancellation', () => {
 				{ threadId: 'thread-a', error: 'db down' },
 			),
 		);
-		expect(service.finalizeCancelledSuspendedRun).toHaveBeenCalled();
 		expect(service.suspendedThreads.dropPendingConfirmationsForThread).toHaveBeenCalledWith(
 			'thread-a',
 		);
