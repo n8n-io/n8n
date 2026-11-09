@@ -23,6 +23,10 @@ jobs:
     name: Vale
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # The check reporter writes a check run. For a fork PR, reviewdog logs the results instead.
+    permissions:
+      contents: read
+      checks: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -35,7 +39,8 @@ jobs:
           files: docs/backend
           vale_flags: '--config=docs/backend/.vale.ini --minAlertLevel=warning'
           fail_on_error: true
-          reporter: github-pr-annotations
+          # The annotations reporter fails the job above 10 results. The check reporter has no limit.
+          reporter: github-pr-check
 
   links:
     name: Lychee
