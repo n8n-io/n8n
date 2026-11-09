@@ -240,6 +240,7 @@ function onKeydown(event: KeyboardEvent) {
 			>
 				<div
 					v-if="description || slots.description"
+					:class="$style.description"
 					role="region"
 					tabindex="0"
 					:aria-label="descriptionLabel ?? title"
@@ -404,6 +405,10 @@ function onKeydown(event: KeyboardEvent) {
 	padding: var(--spacing--sm);
 }
 
+.description {
+	overflow-wrap: anywhere;
+}
+
 .list {
 	display: flex;
 	flex-direction: column;
@@ -422,12 +427,11 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 .row {
-	flex: 1;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: auto;
-	height: var(--height--lg);
+	min-height: var(--height--lg);
 	padding: var(--spacing--2xs);
 	margin-inline: calc(var(--spacing--3xs) * -1);
 	border: none;
@@ -447,6 +451,7 @@ function onKeydown(event: KeyboardEvent) {
 /** Keep the highlight on the active action. */
 
 .trailingIcon {
+	flex-shrink: 0;
 	margin-inline-start: auto;
 }
 
@@ -476,5 +481,6 @@ function onKeydown(event: KeyboardEvent) {
 	min-width: 0;
 	align-items: baseline;
 	gap: var(--spacing--3xs);
+	overflow-wrap: anywhere;
 }
 </style>
