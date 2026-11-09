@@ -312,6 +312,9 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "https://user:pass@example.com/path".extractDomain() }}')).toEqual(
 				'example.com',
 			);
+			expect(evaluate('={{ "https://@example.com/path".extractDomain() }}')).toEqual(
+				'example.com',
+			);
 		});
 
 		test('.toDateTime should work on a variety of formats', () => {

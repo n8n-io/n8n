@@ -53,7 +53,7 @@ const CURRENCY_REGEXP =
   (?:#[^\s]*)?$/i;            							// Match optional hash fragment
 */
 const DOMAIN_EXTRACT_REGEXP =
-	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?(?:[^\s@\/?#]+@)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
+	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?(?:[^\s@\/?#]*@)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
 
 /*
 	Matches domain names without the protocol or optional subdomains
