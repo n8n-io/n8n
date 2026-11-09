@@ -421,7 +421,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	/**
 	 * Applies the public settings that the backend embeds in the page. Returns false when the
-	 * page has none. Writes nothing to the document, so it can run while `main.ts` evaluates.
+	 * page has none or they cannot be applied, so `initialize()` fetches them instead. Writes
+	 * nothing to the document, so it can run while `main.ts` evaluates.
 	 */
 	const applyEmbeddedSettings = () => {
 		const embeddedSettings = window[EMBEDDED_SETTINGS_GLOBAL];
@@ -429,7 +430,14 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			return false;
 		}
 
-		applySettings(embeddedSettings);
+		// This runs before the app mounts, so an error here must not stop the editor from starting.
+		try {
+			applySettings(embeddedSettings);
+		} catch (error) {
+			console.error('Failed to apply the embedded settings', error);
+			return false;
+		}
+
 		embeddedSettingsApplied = true;
 		return true;
 	};
