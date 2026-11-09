@@ -79,6 +79,8 @@ const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
 		ids: z.array(z.string().min(1)).min(1).max(50).optional(),
+		/** Tag ids: only agents carrying all of these tags are listed. */
+		tags: z.array(z.string().min(1)).min(1).max(50).optional(),
 		availableInMCP: z.boolean().optional(),
 		availableInChat: z.boolean().optional(),
 	})
@@ -205,6 +207,8 @@ const createAgentShape = {
 		)
 		.optional(),
 	skills: z.record(agentSkillSchema).optional(),
+	/** Tag ids assigned to the new agent, as the workflow create endpoint takes them. */
+	tags: z.array(z.string().min(1)).max(50).optional(),
 };
 
 const createAgentSchema = z
@@ -228,6 +232,8 @@ export class CreateAgentDto implements CreateAgent {
 
 	declare skills?: CreateAgent['skills'];
 
+	declare tags?: CreateAgent['tags'];
+
 	static schema = createAgentSchema;
 
 	constructor(data: CreateAgent) {
@@ -247,6 +253,11 @@ export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
 	/** Hash of the config the edit was made against (`null` when the agent had none). */
 	baseConfigHash: z.string().nullable(),
+	/**
+	 * Tag ids to replace the agent's tags with. Omitted means "leave the
+	 * tags alone"; an empty array clears them.
+	 */
+	tags: z.array(z.string().min(1)).max(50).optional(),
 }) {}
 
 export class CreateAgentTaskDto extends Z.class({

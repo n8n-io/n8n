@@ -22,11 +22,13 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import {
 	In,
 	isUniqueConstraintError,
 	ProjectRelationRepository,
 	TransactionRunner,
+	type TagEntity,
 	type User,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -40,7 +42,14 @@ import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
-import { ConflictError, UnexpectedError, UserError } from '@n8n/errors';
+import { TagService } from '@/services/tag.service';
+import {
+	BadRequestError,
+	ConflictError,
+	NotFoundError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 
 import { AgentDefinitionService } from './agent-definition.service';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
@@ -120,6 +129,8 @@ type DraftAgentCreateOptions = {
 	/** Opaque custom tool bodies keyed by id (passthrough from the duplicate path;
 	 *  validated when the source agent was authored). */
 	tools?: Record<string, unknown>;
+	/** Tag ids assigned at insert time (REST create). Validated before the agent is created. */
+	tagIds?: string[];
 	/** User for configuration validation and product save effects. With schema, duplicates safely. */
 	user?: User;
 };
@@ -151,6 +162,8 @@ export class AgentsService {
 		private readonly setupCompletion: AgentSetupCompletionService,
 		private readonly n8nChatFlag: N8nChatFlagService,
 		private readonly definitionService: AgentDefinitionService,
+		private readonly globalConfig: GlobalConfig,
+		private readonly tagService: TagService,
 	) {}
 
 	/**
@@ -191,6 +204,7 @@ export class AgentsService {
 			return await this.getCreationResult(agent, false);
 		}
 		this.assertCreateOptions(options);
+		const agentTags = await this.resolveCreateTags(options.tagIds);
 		const { schemaConfig, integrations } = await this.prepareInitialConfig(
 			projectId,
 			name,
@@ -223,6 +237,10 @@ export class AgentsService {
 			);
 			return await this.getCreationResult(existing, true);
 		}
+
+		// The mappings were written in the insert transaction; carry them on the
+		// entity so the create response reports the agent's tags.
+		agent.tags = agentTags;
 
 		const config = composeJsonConfig(agent, savedRefs);
 		const result = { agent, config, configHash: getAgentConfigHash(config), adopted: false };
@@ -291,6 +309,9 @@ export class AgentsService {
 		return await this.transactionRunner.run({}, async (ctx) => {
 			// Insert-only: a reused client id must not overwrite the winning draft.
 			await this.agentRepository.insertNew(agent, ctx);
+			if (options.tagIds !== undefined) {
+				await this.agentRepository.overwriteTagMappings(agent.id, options.tagIds, ctx);
+			}
 			if (options.config !== undefined) {
 				await this.agentSkillRefs.replaceDraftRefs(agent, skillRefs, ctx);
 				await this.definitionService.captureVersion(
@@ -495,6 +516,62 @@ export class AgentsService {
 
 	async findById(agentId: string, projectId: string): Promise<ProjectAgent | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+	}
+
+	/**
+	 * Replaces an agent's tags, returning them in request order. The caller
+	 * has checked project access; this verifies the agent sits in the given
+	 * project. Shared with the Public API controllers later.
+	 */
+	async updateAgentTags(
+		agentId: string,
+		projectId: string,
+		tagIds: string[],
+	): Promise<TagEntity[]> {
+		this.assertTagsEnabled();
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+		return await this.applyAgentTags(agentId, tagIds);
+	}
+
+	/** Overwrites the mappings after checking every requested tag exists. */
+	private async applyAgentTags(agentId: string, tagIds: string[]): Promise<TagEntity[]> {
+		const uniqueTagIds = [...new Set(tagIds)];
+		if (uniqueTagIds.length === 0) {
+			await this.agentRepository.overwriteTagMappings(agentId, []);
+			return [];
+		}
+		const tags = await this.tagService.getByIds(uniqueTagIds);
+		if (tags.length !== uniqueTagIds.length) {
+			throw new NotFoundError('Some tags not found');
+		}
+		await this.agentRepository.overwriteTagMappings(agentId, uniqueTagIds);
+		return this.tagService.sortByRequestOrder(tags, { requestOrder: uniqueTagIds });
+	}
+
+	/**
+	 * Validates requested tags before an agent is created, so a disabled-tags
+	 * instance or a missing tag id cannot leave a half-created agent behind.
+	 * Returns the tag entities for the create response.
+	 */
+	private async resolveCreateTags(tagIds: string[] | undefined): Promise<TagEntity[] | undefined> {
+		if (tagIds === undefined) return undefined;
+		this.assertTagsEnabled();
+		const uniqueTagIds = [...new Set(tagIds)];
+		if (uniqueTagIds.length === 0) return [];
+		const tags = await this.tagService.getByIds(uniqueTagIds);
+		if (tags.length !== uniqueTagIds.length) {
+			throw new NotFoundError('Some tags not found');
+		}
+		return this.tagService.sortByRequestOrder(tags, { requestOrder: uniqueTagIds });
+	}
+
+	private assertTagsEnabled(): void {
+		if (this.globalConfig.tags.disabled) {
+			throw new BadRequestError('Tags are disabled on this instance');
+		}
 	}
 
 	async findImportCandidates(

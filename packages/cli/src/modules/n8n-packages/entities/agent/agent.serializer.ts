@@ -20,6 +20,9 @@ type AgentPackageKeyHandling = {
 	integrations: 'transform';
 	tools: 'transform';
 	skills: 'exclude';
+	// Agent tags are not part of packages yet; they travel with the internal
+	// REST API only for now.
+	tags: 'exclude';
 	availableInMCP: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';

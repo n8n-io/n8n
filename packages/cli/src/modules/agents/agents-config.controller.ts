@@ -14,6 +14,7 @@ import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentValidationService } from './agent-validation.service';
 import { AgentSpendLedger } from './budget-guardrail';
 import { AgentRepository } from './repositories/agent.repository';
+import { AgentsService } from './agents.service';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -29,6 +30,7 @@ export class AgentsConfigController {
 		private readonly agentRepository: AgentRepository,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSpendLedger: AgentSpendLedger,
+		private readonly agentsService: AgentsService,
 	) {}
 
 	@Get('/:agentId/budget')
@@ -92,7 +94,7 @@ export class AgentsConfigController {
 		@Body payload: UpdateAgentConfigDto,
 	) {
 		const { projectId } = req.params;
-		const { config, baseConfigHash } = payload;
+		const { config, baseConfigHash, tags } = payload;
 		const clientId = req.headers?.['push-ref'];
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
@@ -101,11 +103,22 @@ export class AgentsConfigController {
 			agentId,
 			'update',
 		);
-		return await this.agentConfigService.updateConfig(agentId, projectId, config, req.user, {
-			baseConfigHash,
-			modifiedBy: 'user',
-			pushRef: req.headers?.['push-ref'],
-		});
+		const result = await this.agentConfigService.updateConfig(
+			agentId,
+			projectId,
+			config,
+			req.user,
+			{
+				baseConfigHash,
+				modifiedBy: 'user',
+				pushRef: req.headers?.['push-ref'],
+			},
+		);
+		// Omitted `tags` leaves the agent's tags alone; an explicit list replaces them.
+		if (tags !== undefined) {
+			await this.agentsService.updateAgentTags(agentId, projectId, tags);
+		}
+		return result;
 	}
 
 	@Delete('/:agentId/tools/:toolId')

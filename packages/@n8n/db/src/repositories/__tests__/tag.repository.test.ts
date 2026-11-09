@@ -45,6 +45,11 @@ describe('TagRepository', () => {
 				'wm',
 				expect.any(Function),
 			);
+			expect(queryBuilder.loadRelationCountAndMap).toHaveBeenCalledWith(
+				'tag.agentUsageCount',
+				'tag.agentMappings',
+				'am',
+			);
 
 			// The usage-count sub-query must exclude archived workflows — invoke the
 			// callback passed to loadRelationCountAndMap against a mock sub-query
@@ -65,6 +70,17 @@ describe('TagRepository', () => {
 
 			expect(queryBuilder.orderBy).not.toHaveBeenCalled();
 			expect(queryBuilder.limit).not.toHaveBeenCalled();
+		});
+
+		it('sums the workflow and agent counts into one usageCount', async () => {
+			queryBuilder.getMany.mockResolvedValue([
+				{ id: 'tag-1', name: 'one', usageCount: 2, agentUsageCount: 1 },
+			] as never);
+
+			const [tag] = await tagRepository.findAllWithUsageCount({});
+
+			expect(tag.usageCount).toBe(3);
+			expect(tag).not.toHaveProperty('agentUsageCount');
 		});
 
 		it('orders by name and limits when requested', async () => {
