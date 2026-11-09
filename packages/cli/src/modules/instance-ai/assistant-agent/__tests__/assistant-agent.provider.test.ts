@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type {
@@ -276,6 +276,22 @@ describe('AssistantAgentProvider', () => {
 				assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
 				buildMode: 'default',
 			});
+		});
+
+		it('keeps the element a user picked in an app preview, whatever the node gate says', async () => {
+			const { provider, turnInput } = setup();
+			const element = { type: 'element', appId: 'app-1', tagName: 'button', text: 'Save' };
+			const turn = startTurn({
+				options: { ...startTurn().options, request: { attachments: [element] } },
+			});
+
+			await provider.prepareTurn(turn);
+
+			expect(turnInput.buildInput).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ contextAttachments: [element] }),
+			);
 		});
 
 		it('gives the file tools the content of the turn files, and keeps the input as text', async () => {

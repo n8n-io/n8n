@@ -24,7 +24,9 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_VIEW,
 } from '../constants';
@@ -530,23 +532,32 @@ export async function provisionSubjectThread(
 	const threadId = uuidv4();
 	await store.syncThread(threadId, subject.projectId, launch);
 
-	const targetMetadata =
-		subject.type === 'agent'
-			? subject.pending
-				? {
-						[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: {
-							projectId: subject.projectId,
-							agentId: subject.id,
-						},
-					}
-				: {
-						[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
-							agentId: subject.id,
-							projectId: subject.projectId,
-							...(subject.name ? { name: subject.name } : {}),
-						},
-					}
-			: {}; // workflow: no target metadata yet — see instanceAiEmbed.types.ts.
+	let targetMetadata: Record<string, unknown> = {};
+	if (subject.type === 'agent') {
+		targetMetadata = subject.pending
+			? {
+					[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: {
+						projectId: subject.projectId,
+						agentId: subject.id,
+					},
+				}
+			: {
+					[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
+						agentId: subject.id,
+						projectId: subject.projectId,
+						...(subject.name ? { name: subject.name } : {}),
+					},
+				};
+	} else if (subject.type === 'app') {
+		const target = {
+			appId: subject.id,
+			projectId: subject.projectId,
+			...(subject.name ? { name: subject.name } : {}),
+		};
+		targetMetadata = subject.pending
+			? { [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: target }
+			: { [INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [target] };
+	}
 
 	try {
 		await store.updateThreadMetadata(threadId, { ...targetMetadata, ...extraMetadata });

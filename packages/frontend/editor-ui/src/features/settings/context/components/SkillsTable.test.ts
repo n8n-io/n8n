@@ -402,32 +402,22 @@ describe('SkillsTable', () => {
 		await waitFor(() =>
 			expect(document.querySelector('[data-test-id="action-timeline"]')).toBeInTheDocument(),
 		);
+		expect(document.querySelector('[data-test-id="action-timeline"]')).toHaveTextContent(
+			'Version history',
+		);
 		await userEvent.click(document.querySelector('[data-test-id="action-timeline"]')!);
 
 		expect(emitted('timeline')).toEqual([[row]]);
 	});
 
-	it('disables Compare versions for a skill with one version and emits it otherwise', async () => {
-		const single = skill({ id: 's1', latestVersion: 1 });
-		const { getByTestId, emitted, unmount } = render([single]);
+	it('shows no Compare versions action', async () => {
+		const { getByTestId } = render([skill({ latestVersion: 3 })]);
+
 		await openActions(getByTestId('skills-table'));
 		await waitFor(() =>
-			expect(document.querySelector('[data-test-id="action-compare"]')).toBeInTheDocument(),
+			expect(document.querySelector('[data-test-id="action-timeline"]')).toBeInTheDocument(),
 		);
-		expect(document.querySelector('[data-test-id="action-compare"]')).toHaveAttribute(
-			'data-disabled',
-		);
-		unmount();
 
-		const versioned = skill({ id: 's2', latestVersion: 3 });
-		const second = render([versioned]);
-		await openActions(second.getByTestId('skills-table'));
-		await waitFor(() =>
-			expect(document.querySelector('[data-test-id="action-compare"]')).toBeInTheDocument(),
-		);
-		await userEvent.click(document.querySelector('[data-test-id="action-compare"]')!);
-
-		expect(second.emitted('compare')).toEqual([[versioned]]);
-		expect(emitted('compare')).toBeUndefined();
+		expect(document.querySelector('[data-test-id="action-compare"]')).not.toBeInTheDocument();
 	});
 });

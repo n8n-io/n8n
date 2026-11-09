@@ -17,12 +17,8 @@ import {
 	ExecutionLifecycleHooks,
 	BinaryDataConfig,
 } from 'n8n-core';
-import {
-	createRunExecutionData,
-	ExpressionError,
-	UnexpectedError,
-	WorkflowOperationError,
-} from 'n8n-workflow';
+import { createRunExecutionData, ExpressionError, WorkflowOperationError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	IRunExecutionData,
 	ITaskData,

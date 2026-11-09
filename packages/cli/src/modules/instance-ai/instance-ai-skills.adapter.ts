@@ -2,7 +2,7 @@ import { CreateSkillDto, ListSkillsQueryDto, SaveSkillDto } from '@n8n/api-types
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { InstanceAiSkillService } from '@n8n/instance-ai';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { SkillService, toSkillToolRefusal } from '@/modules/skills';
 

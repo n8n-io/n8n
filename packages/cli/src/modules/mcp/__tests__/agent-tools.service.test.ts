@@ -11,7 +11,6 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -31,7 +30,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 }));
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, OperationalError } from '@n8n/errors';
 
 import { SkillNameTakenError } from '@/modules/skills';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
