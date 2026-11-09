@@ -17,7 +17,7 @@ import { Telemetry } from '@/telemetry';
 
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
-import { InstanceAiSandboxService } from '../sandbox';
+import { InstanceAiSandboxProviderHealth, InstanceAiSandboxService } from '../sandbox';
 
 /**
  * The Assistant sandbox of one turn. Getting the lease does not start the
@@ -55,6 +55,7 @@ export class AssistantSandboxWorkspaceSource
 		private readonly settingsService: InstanceAiSettingsService,
 		adapterService: InstanceAiAdapterService,
 		telemetry: Telemetry,
+		providerHealth: InstanceAiSandboxProviderHealth,
 	) {
 		this.sandboxService = new InstanceAiSandboxService({
 			config: globalConfig.instanceAi,
@@ -71,6 +72,7 @@ export class AssistantSandboxWorkspaceSource
 			// A v1 thread can have the same id, so the sandbox identity needs its own base name.
 			identityScheme: 'assistant',
 			telemetry,
+			providerHealth,
 		});
 	}
 

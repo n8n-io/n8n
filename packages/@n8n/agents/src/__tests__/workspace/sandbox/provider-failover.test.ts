@@ -172,4 +172,28 @@ describe('SandboxProviderHealth', () => {
 		advance(1);
 		expect(health.isAvailable('n8n-sandbox')).toBe(true);
 	});
+
+	it('keeps the cooldown when a failure is not from the test request', () => {
+		const { health, advance } = createHealth();
+		health.recordUnavailable('n8n-sandbox');
+		health.recordUnavailable('n8n-sandbox');
+
+		// Requests that started before the circuit opened fail later.
+		advance(500);
+		expect(health.recordUnavailable('n8n-sandbox')).toBe(false);
+		expect(health.recordUnavailable('n8n-sandbox')).toBe(false);
+
+		advance(499);
+		expect(health.isAvailable('n8n-sandbox')).toBe(false);
+		advance(1);
+		expect(health.isAvailable('n8n-sandbox')).toBe(true);
+
+		health.recordUnavailable('n8n-sandbox');
+		// A later failure that is not the test request does not double the cooldown again.
+		health.recordUnavailable('n8n-sandbox');
+		advance(1_999);
+		expect(health.isAvailable('n8n-sandbox')).toBe(false);
+		advance(1);
+		expect(health.isAvailable('n8n-sandbox')).toBe(true);
+	});
 });
