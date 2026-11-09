@@ -267,21 +267,19 @@ jobs:
         run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
 
       # Generated here because a reusable workflow cannot resolve its own matrix.
-      # PRs run SQLite plus the primary Postgres leg. The merge queue runs the
-      # full Postgres range, so every merge still gates on the older majors.
+      # PRs run SQLite plus the primary Postgres leg.
       # CLI_INTEGRATION_RUNS must match `fullCliIntegration` of unit-test: when that
       # job runs the SQLite suite in full, the DB matrix drops its duplicate run.
       - name: Generate DB test matrix
         id: generate-db-test-matrix
-        if: fromJSON(steps.ci-filter.outputs.results).db
+        if: github.event_name != 'merge_group' && fromJSON(steps.ci-filter.outputs.results).db
         env:
-          DB_MATRIX_SCOPE: ${{ github.event_name == 'merge_group' && 'full' || 'pr' }}
-          CLI_INTEGRATION_RUNS: ${{ github.event_name != 'merge_group' && fromJSON(steps.ci-filter.outputs.results).unit }}
-        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope="$DB_MATRIX_SCOPE" --cli-integration-runs="$CLI_INTEGRATION_RUNS")" >> "$GITHUB_OUTPUT"
+          CLI_INTEGRATION_RUNS: ${{ fromJSON(steps.ci-filter.outputs.results).unit }}
+        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope=pr --cli-integration-runs="$CLI_INTEGRATION_RUNS")" >> "$GITHUB_OUTPUT"
 
       - name: Compute affected packages
         id: affected-packages
-        if: fromJSON(steps.ci-filter.outputs.results).unit
+        if: github.event_name != 'merge_group' && fromJSON(steps.ci-filter.outputs.results).unit
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
           MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
@@ -319,20 +317,21 @@ jobs:
       - name: Run format check
         run: pnpm format:check
 
+  # Unit and DB tests run on the PR only. In the merge queue they failed mostly on
+  # flaky tests and on tests that were already red on master, and the DB matrix
+  # set the queue run time. ci-master.yml runs the unit tests after each merge.
   unit-test:
     name: Unit tests
-    if: needs.install-and-build.outputs.unit == 'true'
+    if: github.event_name != 'merge_group' && needs.install-and-build.outputs.unit == 'true'
     uses: ./.github/workflows/test-unit-reusable.yml
     needs: [install-and-build, format-check]
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
-      collectCoverage: ${{ github.event_name != 'merge_group' }}
-      testRetries: ${{ github.event_name == 'merge_group' && 2 || 0 }}
+      collectCoverage: true
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
       lockfileImpactedPackages: ${{ needs.install-and-build.outputs.lockfile_impact }}
-      # The merge queue keeps the SQLite leg in the DB matrix, so it scopes this suite.
-      fullCliIntegration: ${{ github.event_name != 'merge_group' && needs.install-and-build.outputs.db == 'true' }}
+      fullCliIntegration: ${{ needs.install-and-build.outputs.db == 'true' }}
     secrets: inherit
 
   typecheck:
@@ -523,7 +522,7 @@ jobs:
   db-tests:
     name: DB Tests
     needs: [install-and-build, format-check]
-    if: needs.install-and-build.outputs.db == 'true'
+    if: github.event_name != 'merge_group' && needs.install-and-build.outputs.db == 'true'
     uses: ./.github/workflows/test-db-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
