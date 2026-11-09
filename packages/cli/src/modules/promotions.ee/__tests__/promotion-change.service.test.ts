@@ -144,10 +144,13 @@ describe('PromotionChangeService preview permission', () => {
 	it.each(['promote', 'apply'] as const)(
 		'names the promotions:%s scope when the user lacks it',
 		async (direction) => {
-			const details = service.getDetails(reader, 'project1', direction, {
-				commitSha: null,
-				keys: [],
-			});
+			const details = service.getDetails(
+				reader,
+				'project1',
+				direction,
+				{ commitSha: null, keys: [] },
+				{ canSeeVariableValues: false },
+			);
 
 			await expect(details).rejects.toThrow(ForbiddenError);
 			await expect(details).rejects.toThrow(`requires the promotions:${direction} scope`);

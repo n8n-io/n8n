@@ -335,12 +335,14 @@ export class PromotionChangeService {
 	 * The file content of each requested resource on both sides, for the change cards.
 	 * The branch side is read at the commit of the summary. The instance side is read now,
 	 * so its blob SHA tells the caller whether the resource changed after the summary.
+	 * Variable values are left out unless `canSeeVariableValues` is set.
 	 */
 	async getDetails(
 		user: User,
 		projectId: string,
 		direction: PromotionDirection,
 		{ commitSha, keys }: PromotionResourceDetailsRequestDto,
+		{ canSeeVariableValues }: { canSeeVariableValues: boolean },
 	): Promise<PromotionResourceDetails> {
 		this.assertCanPreview(user, direction);
 		const requestedIds = new Set(keys.map((key) => key.slice(key.indexOf(':') + 1)));
@@ -395,7 +397,6 @@ export class PromotionChangeService {
 						}),
 					)
 				: new Map<string, LocalTag>();
-		const canSeeVariableValues = hasGlobalScope(user, 'variable:list');
 
 		const details = keys.flatMap((key): PromotionResourceDetail[] => {
 			const fromBranch = branchIndex.get(key);

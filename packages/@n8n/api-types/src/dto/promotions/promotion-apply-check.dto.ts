@@ -43,7 +43,9 @@ export type PromotionCredentialExpressionValue =
 	| { [key: string]: PromotionCredentialExpressionValue };
 
 const expressionValueComponentName = 'PromotionCredentialExpressionValue';
-const expressionValueRef = { $ref: `#/components/schemas/${expressionValueComponentName}` };
+export const promotionCredentialExpressionValueRef = {
+	$ref: `#/components/schemas/${expressionValueComponentName}`,
+};
 
 // Describe recursive branches explicitly because the OpenAPI generator cannot inspect z.lazy.
 const promotionCredentialExpressionValueSchema: z.ZodType<PromotionCredentialExpressionValue> = z
@@ -51,11 +53,11 @@ const promotionCredentialExpressionValueSchema: z.ZodType<PromotionCredentialExp
 		z.string(),
 		z.array(z.lazy(() => promotionCredentialExpressionValueSchema)).openapi({
 			type: 'array',
-			items: expressionValueRef,
+			items: promotionCredentialExpressionValueRef,
 		}),
 		z.record(z.lazy(() => promotionCredentialExpressionValueSchema)).openapi({
 			type: 'object',
-			additionalProperties: expressionValueRef,
+			additionalProperties: promotionCredentialExpressionValueRef,
 		}),
 	])
 	.openapi(expressionValueComponentName, {
@@ -257,23 +259,26 @@ export const promotionBindingWarningSchema = z.object({
  * This result does not certify a complete mirror or authorize later writes.
  * Callers must enforce the permissions for their endpoint.
  */
-export const promotionApplyCheckSchema = z.object({
-	missingProjects: z.array(promotionMissingProjectSchema).openapi({
-		description:
-			'Projects in the package that do not exist on this instance. ' +
-			'The check keeps their metadata without checking project creation rules. ' +
-			'The project creation API can reject invalid values.',
-	}),
-	missingBindings: z.array(
-		z.discriminatedUnion('kind', [
-			promotionMissingCredentialBindingSchema,
-			promotionMissingVariableBindingSchema,
-		]),
-	),
-	accessRequirements: z.array(promotionBindingAccessRequirementSchema),
-	conflicts: z.array(promotionBindingConflictSchema),
-	warnings: z.array(promotionBindingWarningSchema),
-});
+export const promotionApplyCheckSchema = z
+	.object({
+		missingProjects: z.array(promotionMissingProjectSchema).openapi({
+			description:
+				'Projects in the package that do not exist on this instance. ' +
+				'The check keeps their metadata without checking project creation rules. ' +
+				'The project creation API can reject invalid values.',
+		}),
+		missingBindings: z.array(
+			z.discriminatedUnion('kind', [
+				promotionMissingCredentialBindingSchema,
+				promotionMissingVariableBindingSchema,
+			]),
+		),
+		accessRequirements: z.array(promotionBindingAccessRequirementSchema),
+		conflicts: z.array(promotionBindingConflictSchema),
+		warnings: z.array(promotionBindingWarningSchema),
+	})
+	// One component for the Apply results and the Apply preview.
+	.openapi('PromotionApplyCheck');
 
 /** The Apply check of the preview, with the moves between projects as separate lists. */
 export const promotionPreviewCheckSchema = promotionApplyCheckSchema.extend({

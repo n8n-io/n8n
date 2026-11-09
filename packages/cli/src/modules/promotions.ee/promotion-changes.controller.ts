@@ -18,6 +18,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
@@ -61,6 +62,7 @@ export class PromotionChangesController {
 			projectId,
 			parseDirection(direction),
 			body,
+			{ canSeeVariableValues: hasGlobalScope(req.user, 'variable:list') },
 		);
 	}
 }
