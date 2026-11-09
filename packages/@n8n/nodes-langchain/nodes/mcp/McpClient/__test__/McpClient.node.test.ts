@@ -351,7 +351,7 @@ describe('McpClient', () => {
 		});
 
 		it('should return a successful tool result after connecting', async () => {
-			const content = [{ type: 'text', text: 'Weather in Berlin is sunny' }];
+			const content = [{ type: 'text' as const, text: 'Weather in Berlin is sunny' }];
 			client.callTool.mockResolvedValue({ isError: false, content });
 
 			await expect(new McpClient().execute.call(executeFunctions)).resolves.toEqual([
