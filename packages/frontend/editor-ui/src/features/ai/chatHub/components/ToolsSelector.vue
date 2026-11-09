@@ -15,7 +15,6 @@ const props = defineProps<{
 	checkedToolIds: string[];
 	customAgentId?: string;
 	disabledTooltip?: string;
-	/** Open the tools dialogs above a parent dialog. */
 	stacked?: boolean;
 }>();
 
