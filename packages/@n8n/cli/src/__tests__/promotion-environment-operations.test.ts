@@ -495,6 +495,7 @@ describe('promotion-environment apply-selection command', () => {
 			'proj-1',
 			{ workflowIds: ['wf-1', 'wf-2'] },
 			undefined,
+			undefined,
 		);
 	});
 
@@ -511,6 +512,7 @@ describe('promotion-environment apply-selection command', () => {
 			'proj-1',
 			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
+			undefined,
 		);
 	});
 
@@ -548,6 +550,7 @@ describe('promotion-environment apply-selection command', () => {
 		expect(applyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
 			{ workflowIds: ['wf-1', 'wf-2'], folderIds: ['f-1'] },
+			undefined,
 			undefined,
 		);
 		expect(logToStderr.mock.calls[0][0]).toContain(
@@ -587,6 +590,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
 			undefined,
+			undefined,
 		);
 		expect(exit).toHaveBeenCalledWith(3);
 	});
@@ -619,6 +623,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
 			true,
+			undefined,
 		);
 	});
 });

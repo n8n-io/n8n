@@ -1,12 +1,16 @@
 import { Args, Flags } from '@oclif/core';
 
 import { PromotionApplyCommand, selectionContinueCommand } from './apply-command';
-import { expectedSourceFlags, toExpectedSource } from './expected-source';
+import {
+	expectedPreviewRevisionFlag,
+	expectedSourceFlags,
+	toExpectedSource,
+} from './expected-source';
 import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentApplySelectionContinue extends PromotionApplyCommand {
 	static override description =
-		'Continue a selection Apply that was blocked on bindings, after they are set up. Resend the same --workflow and --folder flags, and pass the environment ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the source changed since then and 4 when bindings are still missing or a destructive data table change is not confirmed with --confirm-destructive-changes; nothing is imported in either case.';
+		'Continue a selection Apply that was blocked on bindings, after they are set up. Resend the same --workflow and --folder flags, and pass the environment ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the source or this instance changed since the review and 4 when bindings are still missing or a destructive data table change is not confirmed with --confirm-destructive-changes; nothing is imported in either case.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment apply-selection-continue proj-abc -w wf-1 --expected-environment-id=env-1 --expected-branch=main --expected-commit-sha=<full sha>',
@@ -26,6 +30,7 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 			multiple: true,
 		}),
 		...expectedSourceFlags({ required: true }),
+		...expectedPreviewRevisionFlag,
 		confirmDestructiveChanges: Flags.boolean({
 			description:
 				'Also apply data table changes that remove or retype columns. The values in those columns are removed.',
@@ -45,8 +50,13 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 				selection,
 				expectedSource,
 				flags.confirmDestructiveChanges,
+				flags.expectedPreviewRevision,
 			);
-			this.reportApplyResult(result, flags, selectionContinueCommand(args.projectId, selection));
+			this.reportApplyResult(
+				result,
+				flags,
+				selectionContinueCommand(args.projectId, selection, flags.expectedPreviewRevision),
+			);
 		});
 	}
 }
