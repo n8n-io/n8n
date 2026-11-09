@@ -7,7 +7,7 @@ import {
 	OAuthClientResponseDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AuthenticatedRequest } from '@n8n/db';
+import { accountSummary, AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Param, Query, RestController } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
@@ -102,7 +102,7 @@ export class OAuthClientsController {
 			clientId,
 			userId: req.user.id,
 			targetUserId,
-			userEmail: req.user.email,
+			userEmail: accountSummary(req.user).email ?? undefined,
 		});
 
 		try {
