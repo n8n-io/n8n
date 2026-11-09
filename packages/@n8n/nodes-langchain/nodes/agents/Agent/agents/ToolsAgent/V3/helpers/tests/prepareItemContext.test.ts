@@ -62,12 +62,13 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await prepareItemContext(mockContext, 0);
+		const result = await prepareItemContext(mockContext, 1);
 
 		expect(result).not.toBeNull();
-		expect(result?.itemIndex).toBe(0);
+		expect(result?.itemIndex).toBe(1);
 		expect(result?.input).toBe('test input');
 		expect(result?.tools).toEqual([mockTool]);
+		expect(commonHelpers.getTools).toHaveBeenCalledWith(mockContext, undefined, 1);
 		expect(result?.prompt).toBe(mockPrompt);
 		expect(result?.steps).toEqual([]);
 	});

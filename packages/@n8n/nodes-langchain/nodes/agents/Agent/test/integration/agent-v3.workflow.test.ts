@@ -1,5 +1,6 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import type { WorkflowTestData } from 'n8n-workflow';
+import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
+import nock from 'nock';
 import path from 'node:path';
 
 // CI has cold-start overhead on the first test (coverage instrumentation, module loading)
@@ -69,6 +70,143 @@ describe('Agent V3 Integration', () => {
 
 	const testHarness = new NodeTestHarness({
 		additionalPackagePaths: [path.dirname(require.resolve('n8n-nodes-base'))],
+	});
+
+	describe.each([3, 3.1])('Tool availability in Agent V%s model requests', (version) => {
+		afterEach(() => nock.cleanAll());
+		for (const available of [true, false]) {
+			describe(`Available = ${available}`, () => {
+				const workflowData = testHarness.readWorkflowJSON('workflows/agent-v3-with-tool.json');
+				const agent = workflowData.nodes.find(({ name }) => name === 'AI Agent')!;
+				agent.typeVersion = version;
+				agent.parameters.toolAvailability = {
+					rules: [{ sourceNodeId: 'calculator-id', available }],
+				};
+				workflowData.nodes.push({
+					id: 'think-id',
+					name: 'Think',
+					type: '@n8n/n8n-nodes-langchain.toolThink',
+					typeVersion: 1,
+					position: [500, 200],
+					parameters: {},
+				});
+				workflowData.connections.Think = {
+					ai_tool: [[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }]],
+				};
+				const requests: Array<{ tools?: Array<{ function: { name: string } }> }> = [];
+				beforeEach(() => {
+					requests.length = 0;
+				});
+				testHarness.setupTest(
+					{
+						description: 'sends only available tools in the model request',
+						input: { workflowData },
+						output: { nodeData: { 'AI Agent': [[{ json: { output: 'Done' } }]] } },
+						nock: {
+							baseUrl,
+							mocks: [
+								{
+									method: 'post',
+									path: '/v1/chat/completions',
+									statusCode: 200,
+									requestBody: (body: (typeof requests)[number]) => {
+										requests.push(body);
+										return true;
+									},
+									responseBody: chatCompletionResponse('Done'),
+								},
+							],
+						},
+					},
+					{
+						credentials,
+						customAssertions: () => {
+							expect(requests).toHaveLength(1);
+							expect(requests[0].tools?.map(({ function: fn }) => fn.name).sort()).toEqual(
+								available ? ['Calculator', 'thinking_tool'] : ['thinking_tool'],
+							);
+						},
+					},
+				);
+			});
+		}
+
+		describe('Per-item expression', () => {
+			const workflowData = testHarness.readWorkflowJSON('workflows/agent-v3-with-tool.json');
+			const agent = workflowData.nodes.find(({ name }) => name === 'AI Agent')!;
+			agent.typeVersion = version;
+			agent.parameters.text = '={{ "Availability " + $json.allowTool }}';
+			agent.parameters.toolAvailability = {
+				rules: [{ sourceNodeId: 'calculator-id', available: '={{ $json.allowTool }}' }],
+			};
+			workflowData.nodes.push({
+				id: 'split-id',
+				name: 'Split Out',
+				type: 'n8n-nodes-base.splitOut',
+				typeVersion: 1,
+				position: [100, 0],
+				parameters: { fieldToSplitOut: 'items', options: {} },
+			});
+			workflowData.connections["When clicking 'Execute workflow'"] = {
+				main: [[{ node: 'Split Out', type: NodeConnectionTypes.Main, index: 0 }]],
+			};
+			workflowData.connections['Split Out'] = {
+				main: [[{ node: 'AI Agent', type: NodeConnectionTypes.Main, index: 0 }]],
+			};
+			const requests: Array<{
+				messages: Array<{ role: string; content: string }>;
+				tools?: Array<{ function: { name: string } }>;
+			}> = [];
+			beforeEach(() => {
+				requests.length = 0;
+			});
+			testHarness.setupTest(
+				{
+					description:
+						'builds a separate model tool list for each input item and completes with no tools',
+					input: { workflowData },
+					trigger: {
+						mode: 'trigger',
+						input: { json: { items: [{ allowTool: true }, { allowTool: false }] } },
+					},
+					output: {
+						nodeData: {
+							'AI Agent': [[{ json: { output: 'Done' } }, { json: { output: 'Done' } }]],
+						},
+					},
+					nock: {
+						baseUrl,
+						mocks: [0, 1].map(() => ({
+							method: 'post',
+							path: '/v1/chat/completions',
+							statusCode: 200,
+							requestBody: (body: (typeof requests)[number]) => {
+								requests.push(body);
+								return true;
+							},
+							responseBody: chatCompletionResponse('Done'),
+						})),
+					},
+				},
+				{
+					credentials,
+					customAssertions: () => {
+						expect(requests).toHaveLength(2);
+						for (const available of [true, false]) {
+							const request = requests.find(({ messages }) =>
+								messages.some(
+									({ role, content }) => role === 'user' && content === `Availability ${available}`,
+								),
+							);
+							expect(request).toBeDefined();
+							expect(request?.tools?.map(({ function: fn }) => fn.name) ?? []).toEqual(
+								available ? ['Calculator'] : [],
+							);
+						}
+					},
+				},
+			);
+		});
 	});
 
 	describe('Basic Completion', () => {

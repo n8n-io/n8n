@@ -232,7 +232,7 @@ export const getConnectedTools = async (
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
-	options?: { inputData?: IDataObject },
+	options?: { inputData?: IDataObject; filterTools?: (tools: Tool[]) => Tool[] },
 ): Promise<Tool[]> => {
 	// `getRequestObject` narrows to IWebhookFunctions, the only context whose
 	// getInputConnectionData signature takes the input override.
@@ -253,7 +253,7 @@ export const getConnectedTools = async (
 					.filter((node) => !node.disabled)
 			: [];
 
-	const connectedTools = (toolkitConnections ?? [])
+	let connectedTools = (toolkitConnections ?? [])
 		.flatMap((toolOrToolkit, index) => {
 			if (toolOrToolkit instanceof StructuredToolkit) {
 				const tools = toolOrToolkit.tools;
@@ -276,6 +276,9 @@ export const getConnectedTools = async (
 			return toolOrToolkit;
 		})
 		.map(normalizeToolSchema);
+
+	// Filter after source metadata assignment, before duplicate-name validation.
+	if (options?.filterTools) connectedTools = options.filterTools(connectedTools);
 
 	if (!enforceUniqueNames) return connectedTools;
 

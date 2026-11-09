@@ -9,6 +9,7 @@ import { ChatPromptTemplate, type BaseMessagePromptTemplateLike } from '@langcha
 import { isChatInstance } from '@n8n/ai-utilities';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IBinaryData,
@@ -524,19 +525,112 @@ export async function getOptionalMemory(
 		| undefined;
 }
 
+const toolAvailabilityRulesSchema = z.array(z.object({ sourceNodeId: z.string() }));
+
+function getToolAvailabilityFilter(
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	itemIndex: number,
+): ((tools: Tool[]) => Tool[]) | undefined {
+	const rawRules = ctx.getNodeParameter('toolAvailability.rules', itemIndex, [], {
+		rawExpressions: true,
+	});
+	const { data: rules, success } = toolAvailabilityRulesSchema.safeParse(rawRules);
+	if (!success) {
+		throw new NodeOperationError(ctx.getNode(), 'Invalid tool availability rules', {
+			description: 'Select a connected tool for each rule in Tool Availability.',
+			itemIndex,
+		});
+	}
+	if (rules.length === 0) return undefined;
+
+	return (tools) => {
+		const unavailableSources = getUnavailableToolSources(ctx, rules, itemIndex);
+		return tools.filter((tool) => {
+			const sourceNodeId = tool.metadata?.sourceNodeId;
+			return typeof sourceNodeId !== 'string' || !unavailableSources.has(sourceNodeId);
+		});
+	};
+}
+
+function getUnavailableToolSources(
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	rules: Array<{ sourceNodeId: string }>,
+	itemIndex: number,
+): Set<string> {
+	// Disabled sources remain connected, but do not supply tools.
+	const sources = ctx.getParentNodes(ctx.getNode().name, {
+		connectionType: NodeConnectionTypes.AiTool,
+		depth: 1,
+	});
+	const seenSources = new Set<string>();
+	const unavailableSources = new Set<string>();
+	for (const [ruleIndex, { sourceNodeId }] of rules.entries()) {
+		if (seenSources.has(sourceNodeId)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Duplicate tool availability rules for source "${sourceNodeId}"`,
+				{ description: 'Keep only one rule for each tool source.', itemIndex },
+			);
+		}
+		seenSources.add(sourceNodeId);
+		const source = sources.find(({ id }) => id === sourceNodeId);
+		if (!source) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Tool availability source "${sourceNodeId}" is not directly connected to this Agent`,
+				{ description: 'Select a connected tool or remove the rule.', itemIndex },
+			);
+		}
+
+		let available: unknown;
+		try {
+			// Skip coercion so that strings and numbers do not become Boolean values.
+			available = ctx.getNodeParameter(
+				`toolAvailability.rules[${ruleIndex}].available`,
+				itemIndex,
+				true,
+				{ skipValidation: true },
+			);
+		} catch (error) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Could not evaluate tool availability for "${source.name}"`,
+				{ description: `Check the Available expression. ${getErrorMessage(error)}`, itemIndex },
+			);
+		}
+		if (typeof available !== 'boolean') {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Tool availability for "${source.name}" must resolve to a Boolean`,
+				{
+					description:
+						'Set Available to true or false, or use an expression that returns a Boolean.',
+					itemIndex,
+				},
+			);
+		}
+		if (!available) unavailableSources.add(sourceNodeId);
+	}
+
+	return unavailableSources;
+}
+
 /**
- * Retrieves the connected tools and (if an output parser is defined)
- * appends a structured output parser tool.
- *
- * @param ctx - The execution context
- * @param outputParser - The optional output parser
- * @returns The array of connected tools
+ * Get connected tools and append the internal output parser tool.
+ * Apply availability rules only when the caller supplies an item index.
  */
 export async function getTools(
 	ctx: IExecuteFunctions | ISupplyDataFunctions | IWebhookFunctions,
 	outputParser?: N8nOutputParser,
+	itemIndex?: number,
 ): Promise<Array<DynamicStructuredTool | Tool>> {
-	const tools = (await getConnectedTools(ctx, true, false)) as Array<DynamicStructuredTool | Tool>;
+	const filterTools =
+		itemIndex !== undefined && !('getRequestObject' in ctx)
+			? getToolAvailabilityFilter(ctx, itemIndex)
+			: undefined;
+	const tools: Array<DynamicStructuredTool | Tool> = filterTools
+		? await getConnectedTools(ctx, true, false, false, { filterTools })
+		: await getConnectedTools(ctx, true, false);
 
 	// If an output parser is available, create a dynamic tool to validate the final output.
 	if (outputParser) {
