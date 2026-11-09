@@ -65,7 +65,7 @@ const missingProject = {
 	description: 'Source description',
 	customTelemetryTags: [{ key: 'team', value: 'example' }],
 };
-const scopes: ReturnType<typeof effectScope>[] = [];
+const scopes: Array<ReturnType<typeof effectScope>> = [];
 let credentialOptions: CredentialEditorOptions;
 let variableOptions: VariableEditorOptions;
 

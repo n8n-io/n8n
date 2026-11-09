@@ -4,7 +4,7 @@ import type {
 	PromotionResourceDetail,
 } from '@n8n/api-types';
 import type { SlotWorkflowDiffSnapshot } from '@n8n/frontend-module-sdk';
-import type { IConnections, INode, IWorkflowSettings } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
 
 import { sideState, type DetailSide, type SideState } from './promotionPreview.content';
 import type { ResourceKey } from './promotionPreview.selection';
@@ -31,7 +31,7 @@ export function toPromotionDiffSide(
 			nodes: workflow.nodes as INode[],
 			connections: workflow.connections as IConnections,
 			nodeGroups: workflow.nodeGroups,
-			settings: workflow.settings as IWorkflowSettings | undefined,
+			settings: workflow.settings,
 			tags: (workflow.tagIds ?? []).map((id) => ({ id, name: tagName(id) })),
 			isArchived: workflow.isArchived,
 		},
