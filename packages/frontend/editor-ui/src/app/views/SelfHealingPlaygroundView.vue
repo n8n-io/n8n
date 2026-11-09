@@ -27,7 +27,7 @@ import { getWorkflow, getWorkflows, activateWorkflow } from '@/app/api/workflows
 import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionsListResponse } from '@/features/execution/executions/executions.types';
 import {
-	PREFIX,
+	ENTRY_TYPES,
 	createWorkflow,
 	getScenarios,
 	identifyWorkflow,
@@ -150,8 +150,9 @@ async function refresh() {
 	do {
 		const page = await getWorkflows(
 			root.restApiContext,
-			{ name: PREFIX, projectId: projectId.value },
+			{ projectId: projectId.value },
 			{ take: 100, skip, sortBy: 'createdAt:desc' },
+			['id', 'name', 'nodes'],
 		);
 		collected.push(...page.data);
 		skip += page.data.length;
@@ -160,7 +161,7 @@ async function refresh() {
 	} while (skip < count);
 	const loaded: IWorkflowDb[] = [];
 	for (const summary of collected) {
-		if (!summary.name.startsWith(PREFIX)) continue;
+		if (summary.nodes && !summary.nodes.some(({ type }) => ENTRY_TYPES.includes(type))) continue;
 		const workflow = await getWorkflow(root.restApiContext, summary.id);
 		if (!identifyWorkflow(workflow, scenarios)) continue;
 		loaded.push(workflow);
@@ -558,7 +559,7 @@ onMounted(async () => {
 					<div :class="$style.run">
 						<div :class="$style.row">
 							<h3>
-								{{ scenario.name }} <span :class="$style.meta">{{ runId }}</span>
+								{{ scenario.name }} <span :class="$style.meta">{{ runId.slice(0, 8) }}</span>
 							</h3>
 							<N8nBadge
 								:variant="outcome(scenario).variant"
@@ -579,9 +580,10 @@ onMounted(async () => {
 								data-test-id="playground-workflow"
 							>
 								<N8nIcon v-if="level" icon="corner-down-right" size="small" />
-								<strong v-if="levelLabel(scenario, level)">{{
+								<strong>{{ workflow.name }}</strong>
+								<span v-if="levelLabel(scenario, level)" :class="$style.meta">{{
 									levelLabel(scenario, level)
-								}}</strong>
+								}}</span>
 								<N8nBadge
 									:variant="published(workflow) && !workflow.isArchived ? 'subtle' : 'warning'"
 									>{{

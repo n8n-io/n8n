@@ -5,8 +5,9 @@ import {
 	type IDataObject,
 	type INode,
 } from 'n8n-workflow';
-import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
+import type { WorkflowDataCreate, WorkflowMetadata } from '@n8n/rest-api-client/api/workflows';
 import type { useI18n } from '@n8n/i18n';
+import { isRecord } from '@n8n/utils/is-record';
 import type { IWorkflowDb } from '@/Interface';
 
 const SCENARIO_IDS = [
@@ -30,6 +31,7 @@ export interface PlaygroundScenario {
 	input: IDataObject;
 	alternateInput: IDataObject;
 	chain: string[];
+	workflowNames: string[];
 }
 
 export interface PlaygroundIdentity {
@@ -39,29 +41,42 @@ export interface PlaygroundIdentity {
 	path?: string;
 }
 
-export const PREFIX = '[self-healing playground] ';
 export const WEBHOOK_PREFIX = 'self-healing-playground/';
+const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
+export const ENTRY_TYPES = [WEBHOOK_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE];
 
 const ORDER_ID = '={{ $json.body.orderId }}';
 const PASSED_ORDER_ID = '={{ $json.orderId }}';
 const EMAIL_TOTAL = '={{ $json.body.customer.email }}';
 const MISSING_TOTAL = "={{ $('Look up order').item.json.amount }}";
-const STEPS: Record<ScenarioId, Array<Record<string, string> | null>> = {
-	'wrong-field': [{ orderId: ORDER_ID, total: EMAIL_TOTAL }],
-	'wrong-shape': [{}],
-	'unavailable-service': [{}],
-	healthy: [{ orderId: ORDER_ID, total: '={{ $json.body.amount }}' }],
-	'sub-workflow': [null, { orderId: ORDER_ID, total: EMAIL_TOTAL }],
-	'both-workflows': [{ orderId: ORDER_ID }, { orderId: PASSED_ORDER_ID, total: MISSING_TOTAL }],
+const WORKFLOWS: Record<ScenarioId, Array<[string, Record<string, string> | null]>> = {
+	'wrong-field': [['Create order invoices', { orderId: ORDER_ID, total: EMAIL_TOTAL }]],
+	'wrong-shape': [['Export order line items', {}]],
+	'unavailable-service': [['Sync customer accounts', {}]],
+	healthy: [['Record order totals', { orderId: ORDER_ID, total: '={{ $json.body.amount }}' }]],
+	'sub-workflow': [
+		['Handle new orders', null],
+		['Build order invoice', { orderId: ORDER_ID, total: EMAIL_TOTAL }],
+	],
+	'both-workflows': [
+		['Import shop orders', { orderId: ORDER_ID }],
+		['Compute order total', { orderId: PASSED_ORDER_ID, total: MISSING_TOTAL }],
+	],
 	'grandchild-only': [
-		null,
-		null,
-		{ orderId: ORDER_ID, total: "={{ $('Look up order').item.json.body.amount }}" },
+		['Receive web orders', null],
+		['Route order to billing', null],
+		[
+			'Look up order amount',
+			{ orderId: ORDER_ID, total: "={{ $('Look up order').item.json.body.amount }}" },
+		],
 	],
 	'three-workflows': [
-		{ orderId: ORDER_ID },
-		{ orderId: PASSED_ORDER_ID, amount: "={{ $('Read order').item.json.amount }}" },
-		{ orderId: PASSED_ORDER_ID, total: MISSING_TOTAL },
+		['Process incoming orders', { orderId: ORDER_ID }],
+		[
+			'Prepare billing data',
+			{ orderId: PASSED_ORDER_ID, amount: "={{ $('Read order').item.json.amount }}" },
+		],
+		['Calculate invoice total', { orderId: PASSED_ORDER_ID, total: MISSING_TOTAL }],
 	],
 };
 const INPUTS: Record<ScenarioId, [IDataObject, IDataObject]> = {
@@ -114,7 +129,8 @@ export function getScenarios(i18n: ReturnType<typeof useI18n>): PlaygroundScenar
 		outcome: i18n.baseText(`selfHealingPlayground.${id}.outcome`),
 		input: INPUTS[id][0],
 		alternateInput: INPUTS[id][1],
-		chain: LEVELS.slice(0, STEPS[id].length - 1).map((key) => i18n.baseText(key)),
+		chain: LEVELS.slice(0, WORKFLOWS[id].length - 1).map((key) => i18n.baseText(key)),
+		workflowNames: WORKFLOWS[id].map(([name]) => name),
 	}));
 }
 
@@ -136,10 +152,12 @@ export function createWorkflow(
 		runId = crypto.randomUUID(),
 	}: { level?: number; calleeId?: string; runId?: string } = {},
 ): WorkflowDataCreate {
+	const entryName =
+		scenario.id === 'unavailable-service' ? 'Receive account request' : 'Receive order';
 	const entry = level
-		? node('Receive order', EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, 1.1, { inputSource: 'passthrough' })
+		? node(entryName, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, 1.1, { inputSource: 'passthrough' })
 		: {
-				...node('Receive order', 'n8n-nodes-base.webhook', 2.1, {
+				...node(entryName, WEBHOOK_NODE_TYPE, 2.1, {
 					httpMethod: 'POST',
 					path: `${WEBHOOK_PREFIX}${scenario.id}/${runId}`,
 					responseMode: 'lastNode',
@@ -149,7 +167,7 @@ export function createWorkflow(
 				webhookId: crypto.randomUUID(),
 			};
 	const nodes = [entry];
-	const fields = STEPS[scenario.id][level];
+	const [name, fields] = WORKFLOWS[scenario.id][level];
 	if (fields) {
 		const step = node(
 			'total' in fields ? 'Prepare invoice' : level ? 'Prepare amount' : 'Prepare order',
@@ -157,10 +175,10 @@ export function createWorkflow(
 			3.4,
 			{
 				assignments: {
-					assignments: Object.entries(fields).map(([name, value]) => ({
+					assignments: Object.entries(fields).map(([field, value]) => ({
 						id: crypto.randomUUID(),
-						name,
-						type: name === 'orderId' ? 'string' : 'number',
+						name: field,
+						type: field === 'orderId' ? 'string' : 'number',
 						value,
 					})),
 				},
@@ -182,11 +200,11 @@ export function createWorkflow(
 				}),
 			);
 		}
-		nodes.push({ ...step, notes: scenario.expectation, notesInFlow: true });
+		nodes.push(step);
 	}
 	if (level < scenario.chain.length) {
 		nodes.push(
-			node('Calculate invoice', EXECUTE_WORKFLOW_NODE_TYPE, 1.2, {
+			node(scenario.workflowNames[level + 1], EXECUTE_WORKFLOW_NODE_TYPE, 1.2, {
 				source: 'database',
 				workflowId: { __rl: true, mode: 'id', value: calleeId },
 				options: {},
@@ -224,9 +242,12 @@ export function createWorkflow(
 		connections[check.name] = { main: [[], [{ node: reject.name, type: 'main', index: 0 }]] };
 		nodes.push(reject);
 	}
-	const label = level ? [scenario.name, scenario.chain[level - 1]] : [scenario.name];
+	const meta: WorkflowMetadata & { selfHealingPlayground: IDataObject } = {
+		selfHealingPlayground: { scenario: scenario.id, runId, level },
+	};
 	return {
-		name: `${PREFIX}${[...label, runId.slice(0, 8)].join(' · ')}`,
+		name,
+		meta,
 		...(projectId ? { projectId } : {}),
 		nodes,
 		connections,
@@ -242,25 +263,26 @@ export function identifyWorkflow(
 	workflow: IWorkflowDb,
 	scenarios: PlaygroundScenario[],
 ): PlaygroundIdentity | null {
-	if (!workflow.name.startsWith(PREFIX)) return null;
-	const parts = workflow.name.slice(PREFIX.length).split(' · ');
-	const runId = parts[parts.length - 1];
-	const scenario = scenarios.find(({ name }) => name === parts[0]);
-	if (!scenario || parts.length < 2) return null;
-	if (parts.length === 2) {
-		const path = workflow.nodes
-			.filter(({ type }) => type === 'n8n-nodes-base.webhook')
-			.map(({ parameters }) => parameters.path)
-			.find(
-				(value): value is string =>
-					typeof value === 'string' && value.startsWith(`${WEBHOOK_PREFIX}${scenario.id}/`),
-			);
-		return path ? { scenario, level: 0, runId, path } : null;
+	const marker =
+		workflow.meta && 'selfHealingPlayground' in workflow.meta
+			? workflow.meta.selfHealingPlayground
+			: undefined;
+	if (!isRecord(marker) || typeof marker.runId !== 'string' || typeof marker.level !== 'number')
+		return null;
+	const scenario = scenarios.find(({ id }) => id === marker.scenario);
+	if (!scenario || marker.level > scenario.chain.length) return null;
+	const identity = { scenario, level: marker.level, runId: marker.runId };
+	if (marker.level) {
+		return workflow.nodes.some(({ type }) => type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)
+			? identity
+			: null;
 	}
-	const level = scenario.chain.indexOf(parts[1]) + 1;
-	return parts.length === 3 &&
-		level > 0 &&
-		workflow.nodes.some(({ type }) => type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)
-		? { scenario, level, runId }
-		: null;
+	const path = workflow.nodes
+		.filter(({ type }) => type === WEBHOOK_NODE_TYPE)
+		.map(({ parameters }) => parameters.path)
+		.find(
+			(value): value is string =>
+				typeof value === 'string' && value.startsWith(`${WEBHOOK_PREFIX}${scenario.id}/`),
+		);
+	return path ? { ...identity, path } : null;
 }

@@ -205,7 +205,7 @@ describe('SelfHealingPlaygroundView', () => {
 		expect(mocks.delete).not.toHaveBeenCalled();
 	});
 	it('archives and deletes only recognized playground workflows after confirmation', async () => {
-		const unrelated = { ...workflow, id: 'unrelated', nodes: [] };
+		const unrelated = { ...workflow, id: 'unrelated', meta: {} };
 		mocks.getWorkflows.mockResolvedValue({ data: [workflow, unrelated], count: 2 });
 		mocks.getWorkflow.mockImplementation(async (_context, id) =>
 			id === 'unrelated' ? unrelated : workflow,
@@ -253,7 +253,7 @@ describe('SelfHealingPlaygroundView', () => {
 		await waitFor(() => expect(reset).toBeEnabled());
 		await userEvent.click(reset);
 		const confirm = await screen.findByTestId('playground-reset-confirm');
-		mocks.getWorkflow.mockResolvedValue({ ...workflow, name: 'Other workflow' });
+		mocks.getWorkflow.mockResolvedValue({ ...workflow, meta: undefined });
 		await userEvent.click(confirm);
 		expect(await screen.findByText(/Couldn't delete 1/)).toBeVisible();
 		expect(mocks.archive).not.toHaveBeenCalled();
@@ -294,8 +294,9 @@ describe('SelfHealingPlaygroundView', () => {
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(mocks.getWorkflows).toHaveBeenCalledWith(
 			mocks.context,
-			expect.objectContaining({ projectId: 'project1' }),
+			{ projectId: 'project1' },
 			expect.any(Object),
+			['id', 'name', 'nodes'],
 		);
 	});
 	it('sends the alternate input to the production webhook', async () => {
@@ -356,12 +357,18 @@ describe('SelfHealingPlaygroundView', () => {
 		expect(chain[0].nodes[0].type).toBe('n8n-nodes-base.executeWorkflowTrigger');
 		expect(chain.at(-1)?.nodes[0].type).toBe('n8n-nodes-base.webhook');
 		chain.slice(1).forEach((caller, index) =>
-			expect(caller.nodes.find(({ name }) => name === 'Calculate invoice')).toMatchObject({
+			expect(caller.nodes.find(({ name }) => name === chain[index].name)).toMatchObject({
 				type: 'n8n-nodes-base.executeWorkflow',
 				parameters: { workflowId: { value: `workflow-${index + 1}` } },
 			}),
 		);
-		expect(new Set(chain.map(({ name }) => name.split(' · ').at(-1))).size).toBe(1);
+		const markers = chain.map(({ meta }) => meta as { selfHealingPlayground: { runId: string } });
+		expect(
+			new Set(markers.map(({ selfHealingPlayground }) => selfHealingPlayground.runId)).size,
+		).toBe(1);
+		const names = chain.map(({ name }) => name.slice(0, 20));
+		expect(new Set(names).size).toBe(length);
+		expect(names.join()).not.toMatch(/playground|·/i);
 		expect(await screen.findByTestId('playground-message')).toHaveTextContent(
 			'Workflows created and published',
 		);
@@ -370,23 +377,23 @@ describe('SelfHealingPlaygroundView', () => {
 		[
 			'both-workflows',
 			[
-				['Receive order', 'Prepare order', 'Calculate invoice', 'Check total', 'Reject total'],
+				['Receive order', 'Prepare order', 'Compute order total', 'Check total', 'Reject total'],
 				['Receive order', 'Prepare invoice'],
 			],
 		],
 		[
 			'grandchild-only',
 			[
-				['Receive order', 'Calculate invoice'],
-				['Receive order', 'Calculate invoice'],
+				['Receive order', 'Route order to billing'],
+				['Receive order', 'Look up order amount'],
 				['Receive order', 'Prepare invoice'],
 			],
 		],
 		[
 			'three-workflows',
 			[
-				['Receive order', 'Prepare order', 'Calculate invoice', 'Check total', 'Reject total'],
-				['Receive order', 'Prepare amount', 'Calculate invoice'],
+				['Receive order', 'Prepare order', 'Prepare billing data', 'Check total', 'Reject total'],
+				['Receive order', 'Prepare amount', 'Calculate invoice total'],
 				['Receive order', 'Prepare invoice'],
 			],
 		],
@@ -430,8 +437,13 @@ describe('SelfHealingPlaygroundView', () => {
 		expect(
 			screen
 				.getAllByTestId('playground-workflow')
-				.map((row) => row.textContent?.split('Published')[0].trim()),
-		).toEqual(['Parent', 'Child', 'Grandchild']);
+				.map((row) => row.textContent?.split('Published')[0].replace(/\s+/g, ' ').trim()),
+		).toEqual([
+			'Process incoming ordersParent',
+			'Prepare billing dataChild',
+			'Calculate invoice totalGrandchild',
+		]);
+		expect(screen.getByRole('heading', { name: 'Three-workflow mix-up run12345' })).toBeVisible();
 		expect(screen.getAllByRole('button', { name: 'Run original input' })).toHaveLength(1);
 		expect(screen.getByText(scenario.expectation)).toBeVisible();
 		await userEvent.click(screen.getByTestId('playground-reset'));

@@ -94,6 +94,22 @@ If the first webhook request returns HTTP 404 just after publication, wait a
 moment and try again. Check for a saved execution before treating it as a failure.
 Use Refresh to update execution status after actions in another tab.
 
-Test workflows stay in n8n. Their names start with `[self-healing playground]`.
+Test workflows stay in n8n. They have realistic names, such as **Process incoming
+orders**, without a playground label. The playground finds its workflows by the
+`selfHealingPlayground` key in the workflow `meta`. This key stores the scenario,
+the run ID, and the level in the chain. Workflows from older playground versions
+do not have this key and do not appear on the page. Delete them in n8n.
+
+| Scenario | Workflows, parent first |
+| --- | --- |
+| Invoice field mix-up | Create order invoices |
+| Order output shape | Export order line items |
+| Account API unavailable | Sync customer accounts |
+| Healthy invoice | Record order totals |
+| Sub-workflow invoice mix-up | Handle new orders → Build order invoice |
+| Parent and sub-workflow mix-up | Import shop orders → Compute order total |
+| Grandchild mix-up | Receive web orders → Route order to billing → Look up order amount |
+| Three-workflow mix-up | Process incoming orders → Prepare billing data → Calculate invoice total |
+
 Select **Reset playground** to delete them. Reset deletes parent workflows before
 their sub-workflows.
