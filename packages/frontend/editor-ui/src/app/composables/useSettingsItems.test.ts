@@ -1,7 +1,6 @@
 import { computed, ref } from 'vue';
 import type { SettingsSectionId } from '@n8n/frontend-module-sdk';
 
-import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
 import { useSettingsItems } from './useSettingsItems';
 import { VIEWS } from '../constants';
 import { hasPermission } from '../utils/rbac/permissions';
@@ -101,6 +100,7 @@ describe('useSettingsItems', () => {
 		{ id: 'settings-instance-ai', available: true, order: 20, section: 'ai' as const },
 		{ id: 'settings-agents', available: true, order: 30, section: 'ai' as const },
 		{ id: 'settings-opentelemetry', available: true, order: 50, section: 'operations' as const },
+		{ id: 'settings-promotions', available: true, order: 20, section: 'operations' as const },
 	];
 
 	const makeEverythingAvailable = () => {
@@ -378,12 +378,10 @@ describe('useSettingsItems', () => {
 		});
 	});
 
+	// The promotions module adds its own link. Its availability is tested with the module.
 	describe('Environments v2', () => {
-		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
-
 		beforeEach(() => {
 			activeModules.value = ['promotions'];
-			environmentsVersion.value = 'v2';
 		});
 
 		it('leaves the slot to Environments while the instance uses v1', () => {
@@ -394,23 +392,6 @@ describe('useSettingsItems', () => {
 			);
 
 			expect(operations?.items[0]?.id).toBe('settings-source-control');
-			expect(idsOf()).not.toContain('settings-promotions');
-		});
-
-		it('is hidden when the promotions module is inactive', () => {
-			activeModules.value = ['source-control'];
-
-			expect(useSettingsItems().settingsItems.value.map(({ id }) => id)).not.toContain(
-				'settings-promotions',
-			);
-		});
-
-		it('is hidden when route access is denied', () => {
-			canUserAccessRouteByName.mockImplementation((name) => name !== PROMOTIONS_SETTINGS_VIEW);
-
-			expect(useSettingsItems().settingsItems.value.map(({ id }) => id)).not.toContain(
-				'settings-promotions',
-			);
 		});
 	});
 
