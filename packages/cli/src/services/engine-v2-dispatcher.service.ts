@@ -10,6 +10,7 @@ import {
 import type {
 	INode,
 	INodeExecutionData,
+	IPinData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
@@ -233,6 +234,7 @@ export class EngineV2Dispatcher {
 			triggerName: trigger.name,
 			triggerOutputs: trigger.outputs,
 			allowNonTriggerRoot: plan !== undefined,
+			pinData: this.resolvePinData(data),
 		});
 		// One pass per node: a planned run seeds nothing inside a loop yet.
 		const seededSteps = await this.toSeededSteps(plan);
@@ -291,6 +293,12 @@ export class EngineV2Dispatcher {
 					? undefined
 					: { nodeName: trigger.name, outputs: trigger.outputs },
 		});
+	}
+
+	/** v1's `resolvePinData`: a production run ignores pinned data. */
+	private resolvePinData(data: IWorkflowExecutionDataProcess): IPinData | undefined {
+		if (!['manual', 'evaluation'].includes(data.executionMode)) return undefined;
+		return data.pinData ?? data.workflowData.pinData;
 	}
 
 	/** v1's `getExecutionStartNode`: the one case where it honours the editor's start nodes. */
