@@ -28,16 +28,6 @@ const preview = (count: number): PromotionPreview => ({
 		}),
 	),
 	dependencies: [],
-	changes: Array.from({ length: count }, (_, index) => ({
-		id: `workflow-${index}`,
-		name: `Workflow ${index}`,
-		type: 'workflow',
-		status: 'new',
-		version: null,
-		updatedAt: null,
-		updatedBy: null,
-		dependencyCount: 0,
-	})),
 });
 
 describe('usePromotionChangeCount blocker', () => {

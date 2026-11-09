@@ -2296,11 +2296,16 @@ describe('Promotions in Public API', () => {
 	});
 
 	describe('change preview', () => {
-		it('checks the scope of the requested direction and forwards the query', async () => {
-			const source = { environmentId: 'env1', branchName: 'main' };
-			const getChanges = vi
-				.spyOn(Container.get(PromotionChangeService), 'getChanges')
-				.mockResolvedValue({ commitSha: 'a'.repeat(40), source, changes: [] });
+		it('checks the scope of the requested direction', async () => {
+			const preview = {
+				commitSha: 'a'.repeat(40),
+				source: { environmentId: 'env1', branchName: 'main' },
+				resources: [],
+				dependencies: [],
+			};
+			const getPreview = vi
+				.spyOn(Container.get(PromotionChangeService), 'getPreview')
+				.mockResolvedValue(preview);
 			try {
 				const pushOnly = testServer.publicApiAgentFor(
 					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
@@ -2311,32 +2316,26 @@ describe('Promotions in Public API', () => {
 
 				const promote = await pushOnly.get('/promotions/projects/proj1/changes/promote');
 				expect(promote.status, JSON.stringify(promote.body)).toBe(200);
-				expect(promote.body).toEqual({ commitSha: 'a'.repeat(40), source, changes: [] });
-				expect(getChanges).toHaveBeenLastCalledWith(
+				expect(promote.body).toEqual(preview);
+				expect(getPreview).toHaveBeenLastCalledWith(
 					expect.objectContaining({ id: expect.any(String) }),
 					'proj1',
 					'promote',
-					expect.anything(),
 				);
 
 				expect((await pushOnly.get('/promotions/projects/proj1/changes/apply')).status).toBe(403);
 				expect((await pullOnly.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
 
-				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply?search=order');
+				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply');
 				expect(apply.status, JSON.stringify(apply.body)).toBe(200);
-				expect(getChanges).toHaveBeenLastCalledWith(
-					expect.anything(),
-					'proj1',
-					'apply',
-					expect.objectContaining({ search: 'order' }),
-				);
+				expect(getPreview).toHaveBeenLastCalledWith(expect.anything(), 'proj1', 'apply');
 
 				expect((await pullOnly.get('/promotions/projects/proj1/changes/sideways')).status).toBe(
 					404,
 				);
-				expect(getChanges).toHaveBeenCalledTimes(2);
+				expect(getPreview).toHaveBeenCalledTimes(2);
 			} finally {
-				getChanges.mockRestore();
+				getPreview.mockRestore();
 			}
 		});
 

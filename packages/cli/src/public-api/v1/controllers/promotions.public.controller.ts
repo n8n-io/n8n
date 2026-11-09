@@ -15,7 +15,6 @@ import {
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromoteSelectionRequestDto,
-	PromotionChangesQueryDto,
 	PromotionCheckoutPublicDto,
 	PromotionEnvironmentListPublicDto,
 	PromotionEnvironmentProjectListPublicDto,
@@ -646,15 +645,9 @@ export class PromotionsPublicController {
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Param('direction', promotionDirectionParamSchema) direction: string,
-		@Query query: PromotionChangesQueryDto,
 	): Promise<PromotionPreviewDto> {
 		const parsedDirection = this.parseDirectionWithKeyScope(req, direction);
-		return await (await this.changeService()).getPreview(
-			req.user,
-			projectId,
-			parsedDirection,
-			query,
-		);
+		return await (await this.changeService()).getPreview(req.user, projectId, parsedDirection);
 	}
 
 	@Post('/projects/:projectId/changes/:direction/details')

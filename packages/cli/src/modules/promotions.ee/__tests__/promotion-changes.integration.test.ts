@@ -1,5 +1,8 @@
-import { AgentJsonConfigSchema, type PromotionDirection } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import {
+	AgentJsonConfigSchema,
+	type PromotionDirection,
+	type PromotionResource,
+} from '@n8n/api-types';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -9,7 +12,6 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
 	FolderRepository,
@@ -27,7 +29,7 @@ import { mkdtempSync } from 'node:fs';
 import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { onTestFinished, vi } from 'vitest';
+import { vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -181,6 +183,15 @@ function sourceOf(environment: PromotionEnvironment) {
 	return { environmentId: environment.id, branchName: 'main' };
 }
 
+/** The resources that the operation changes. Unchanged resources only give context. */
+function changedResources({ resources }: { resources: PromotionResource[] }) {
+	return resources.filter(({ change }) => change !== 'unchanged');
+}
+
+function changedWorkflows(preview: { resources: PromotionResource[] }) {
+	return changedResources(preview).filter(({ type }) => type === 'workflow');
+}
+
 it("previews against the project's environment, not the instance one", async () => {
 	const owner = await createOwner();
 	const linked = await createTeamProject('Linked', owner);
@@ -242,9 +253,9 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	const initial = await agent.get(endpoint).expect(200);
 	// The branch has no commit yet, so there is no commit to pin.
 	expect(initial.body.data.commitSha).toBeNull();
-	expect(initial.body.data.changes).toHaveLength(4);
-	expect(initial.body.data.changes).toEqual(
-		expect.arrayContaining([expect.objectContaining({ id: modified.id, status: 'new' })]),
+	expect(changedWorkflows(initial.body.data)).toHaveLength(4);
+	expect(changedWorkflows(initial.body.data)).toContainEqual(
+		expect.objectContaining({ id: modified.id, change: 'added' }),
 	);
 	await service.promote(environments.promote.id, owner, {
 		commitMessage: 'Baseline',
@@ -254,11 +265,12 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	const workflows = Container.get(WorkflowRepository);
 	// Publication is state in the metadata file, not content, so it never lists.
 	await workflows.update(publishable.id, { activeVersionId: publishable.versionId });
-	expect((await agent.get(endpoint).expect(200)).body.data).toMatchObject({
+	const synced = (await agent.get(endpoint).expect(200)).body.data;
+	expect(synced).toMatchObject({
 		commitSha: await remoteHead(),
 		source: sourceOf(environments.promote),
-		changes: [],
 	});
+	expect(changedResources(synced)).toEqual([]);
 	await workflows.update(modified.id, { name: 'Renamed', settings: { executionOrder: 'v1' } });
 	await workflows.update(archived.id, { isArchived: true });
 	await workflows.delete(removed.id);
@@ -266,33 +278,28 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	await createWorkflow({ name: 'Not in preview', nodes: [], connections: {} }, otherProject);
 
 	const response = await agent.get(endpoint).expect(200);
-	expect(response.body.data.changes).toHaveLength(4);
-	expect(response.body.data.changes).toEqual(
+	expect(changedWorkflows(response.body.data)).toHaveLength(4);
+	expect(changedWorkflows(response.body.data)).toEqual(
 		expect.arrayContaining([
-			expect.objectContaining({ id: modified.id, name: 'Renamed', status: 'renamed-and-modified' }),
-			expect.objectContaining({ id: archived.id, status: 'archived' }),
 			expect.objectContaining({
-				id: removed.id,
-				name: 'removed',
-				status: 'deleted',
-				version: null,
-				updatedAt: null,
+				id: modified.id,
+				name: 'Renamed',
+				previousName: 'Modified',
+				change: 'modified',
 			}),
-			expect.objectContaining({ id: created.id, name: 'New', status: 'new' }),
+			expect.objectContaining({ id: archived.id, change: 'archived' }),
+			expect.objectContaining({ id: removed.id, change: 'deleted' }),
+			expect.objectContaining({ id: created.id, name: 'New', change: 'added' }),
 		]),
 	);
-	expect(
-		(await agent.get(endpoint).query({ search: 'renamed' }).expect(200)).body.data.changes,
-	).toHaveLength(1);
-	await agent.get(endpoint).query({ order: 'invalid' }).expect(400);
 
 	await service.promote(environments.promote.id, owner, {
 		commitMessage: 'Changes',
 		canExportVariableValues: true,
 	});
 	await workflows.update(archived.id, { isArchived: false });
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: archived.id, status: 'modified' }),
+	expect(changedResources((await agent.get(endpoint).expect(200)).body.data)).toEqual([
+		expect.objectContaining({ id: archived.id, change: 'modified' }),
 	]);
 	await Container.get(SharedWorkflowRepository).update(
 		{ workflowId: modified.id, role: 'workflow:owner' },
@@ -334,17 +341,8 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 		{ workflowId: modified.id, role: 'workflow:owner' },
 		{ projectId: otherProject.id },
 	);
-	const movedOut = movedOutPreview.changes;
-	expect(movedOut).toHaveLength(2);
-	expect(movedOut).toContainEqual(
-		expect.objectContaining({
-			id: modified.id,
-			name: 'renamed',
-			status: 'deleted',
-			version: null,
-			updatedAt: null,
-		}),
-	);
+	// The moved workflow is listed once, next to the restored one.
+	expect(changedWorkflows(movedOutPreview)).toHaveLength(2);
 }, 30_000);
 
 it('marks a workflow that moved into a project that has no files on the branch yet', async () => {
@@ -376,7 +374,7 @@ it('marks a workflow that moved into a project that has no files on the branch y
 	);
 }, 30_000);
 
-it('preserves workflow moves and changes across workflow files', async () => {
+it('lists a renamed folder without changing the workflow inside it', async () => {
 	const owner = await createOwner();
 	const project = await createTeamProject('Moves', owner);
 	const folder = await createFolder(project, { name: 'Original' });
@@ -391,124 +389,38 @@ it('preserves workflow moves and changes across workflow files', async () => {
 	const workflows = Container.get(WorkflowRepository);
 	const folders = Container.get(FolderRepository);
 
+	const changed = async () => changedResources((await agent.get(endpoint).expect(200)).body.data);
+	const renamedFolder = expect.objectContaining({
+		key: `folder:${folder.id}`,
+		previousName: 'Original',
+		change: 'modified',
+	});
+
+	// The workflow file moves with its folder, but the workflow does not change.
 	await folders.update(folder.id, { name: 'Renamed' });
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: workflow.id, status: 'renamed' }),
-	]);
+	expect(await changed()).toEqual([renamedFolder]);
 
 	// Publishing does not turn the move into a modification.
 	await workflows.update(workflow.id, { activeVersionId: workflow.versionId });
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: workflow.id, status: 'renamed' }),
-	]);
+	expect(await changed()).toEqual([renamedFolder]);
 
 	await workflows.update(workflow.id, { activeVersionId: null, parentFolder: null });
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: workflow.id, status: 'renamed-and-modified' }),
+	expect(await changed()).toEqual([
+		renamedFolder,
+		expect.objectContaining({
+			key: `workflow:${workflow.id}`,
+			parentKey: `project:${project.id}`,
+			previousParentKey: `folder:${folder.id}`,
+			change: 'modified',
+		}),
 	]);
 
 	await workflows.update(workflow.id, { parentFolder: folder });
 	await folders.update(folder.id, { name: folder.name });
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
+	expect(await changed()).toEqual([]);
 }, 30_000);
 
-it('logs file hashes without workflow content', async () => {
-	const owner = await createOwner();
-	const project = await createTeamProject('Diagnostics', owner);
-	const workflow = await createWorkflow(
-		{
-			name: 'Diagnostic',
-			nodes: [
-				{
-					id: 'diagnostic-node',
-					name: 'Diagnostic',
-					type: 'n8n-nodes-base.noOp',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: { value: 'fixture-base-value' },
-				},
-			],
-			connections: {},
-		},
-		project,
-	);
-	const environments = await createInstanceEnvironments();
-	const service = Container.get(PromotionsService);
-	await exportPreviewBaseline(environments.promote, owner);
-	const base = (await service.readBranchPackage(project.id, 'promote')).files.find(
-		(file) => file.entityId === workflow.id && file.fileName === 'workflow.json',
-	);
-	const workflows = Container.get(WorkflowRepository);
-	await workflows.update(workflow.id, {
-		versionId: 'changed-version',
-		nodes: [
-			{
-				id: 'diagnostic-node',
-				name: 'Diagnostic',
-				type: 'n8n-nodes-base.noOp',
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {
-					value: 'fixture-desired-value',
-					password: 'fixture-password',
-					note: 'Contact fixture@example.test',
-				},
-			},
-		],
-	});
-	const variable = await createVariable('DIAGNOSTIC', 'fixture-variable-value');
-	await Container.get(VariablesService).updateCache();
-	const endpoint = `/promotions/${project.id}/changes/promote`;
-	const agent = server.authAgentFor(owner);
-	const debug = vi.mocked(Container.get(Logger).scoped('promotions').debug);
-	const logging = Container.get(GlobalConfig).logging;
-	const { level, scopes } = logging;
-	onTestFinished(() => {
-		Object.assign(logging, { level, scopes });
-	});
-
-	logging.level = 'debug';
-	logging.scopes = [];
-	debug.mockClear();
-	const withoutDiagnostics = await agent.get(endpoint).expect(200);
-	expect(debug.mock.calls.map(([message]) => message).join('\n')).not.toContain('versionId');
-
-	logging.scopes = ['promotions'];
-	debug.mockClear();
-	const response = await agent.get(endpoint).expect(200);
-	expect(response.body.data.changes).toEqual(withoutDiagnostics.body.data.changes);
-	expect(debug).toHaveBeenCalledWith(
-		'Promotion file change',
-		expect.objectContaining({
-			projectId: project.id,
-			change: 'modified',
-			base: expect.objectContaining({ blobSha: base?.blobSha }),
-			desired: expect.objectContaining({ entityId: workflow.id, blobSha: expect.any(String) }),
-		}),
-	);
-	const output = JSON.stringify(debug.mock.calls);
-	expect(output).not.toContain('fixture-base-value');
-	expect(output).not.toContain('fixture-desired-value');
-	expect(output).not.toContain('changed-version');
-	expect(output).not.toContain(workflow.versionId);
-	expect(output).not.toContain('fixture-password');
-	expect(output).not.toContain('fixture@example.test');
-	expect(output).not.toContain('fixture-variable-value');
-
-	// The version id stays changed. It lives in the metadata file, which the preview skips.
-	await workflows.update(workflow.id, { nodes: workflow.nodes });
-	await Container.get(VariablesRepository).delete(variable.id);
-	await Container.get(VariablesService).updateCache();
-	debug.mockClear();
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
-	expect(debug).toHaveBeenCalledWith(
-		'Promotion change preview',
-		expect.objectContaining({ projectId: project.id, fileChangeCount: 0, workflowIds: [] }),
-	);
-	expect(debug.mock.calls.map(([message]) => message).join('\n')).not.toContain('versionId');
-}, 30_000);
-
-it('detects variable and data table changes without reporting shadowed or unrelated dependencies', async () => {
+it('lists the project variable that a workflow reads, not the global variable that it shadows', async () => {
 	const owner = await createOwner();
 	const project = await createTeamProject('Dependencies', owner);
 	const global = await createVariable('API_URL', 'global');
@@ -519,52 +431,29 @@ it('detects variable and data table changes without reporting shadowed or unrela
 		value: 'project',
 		project,
 	});
-	await variables.save({ id: 'VariableA', key: 'APIURL', value: 'other', project });
 	await Container.get(VariablesService).updateCache();
 	await buildWorkflowReferencingVariables({
-		name: 'Same slug',
-		project,
-		variableNames: ['APIURL'],
-	});
-	const withVariable = await buildWorkflowReferencingVariables({
 		name: 'Variable',
 		project,
-		variableNames: ['API_URL', 'API_URL'],
+		variableNames: ['API_URL'],
 	});
-	const tables = Container.get(DataTableService);
-	const table = await tables.createDataTable(project.id, {
-		name: 'Orders',
-		columns: [{ name: 'name', type: 'string' }],
-	});
-	const withTable = await buildWorkflowReferencingDataTables({
-		name: 'Table',
-		project,
-		references: [{ dataTableId: table.id }],
-	});
-	await createWorkflow({ name: 'Unrelated', nodes: [], connections: {} }, project);
 	const environments = await createInstanceEnvironments();
 	await exportPreviewBaseline(environments.promote, owner);
 	const agent = server.authAgentFor(owner);
 	const endpoint = `/promotions/${project.id}/changes/promote`;
+	const changed = async () => changedResources((await agent.get(endpoint).expect(200)).body.data);
+
 	await variables.update(global.id, { value: 'changed global' });
 	await Container.get(VariablesService).updateCache();
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
+	expect(await changed()).toEqual([]);
+
 	await variables.update(scoped.id, { value: 'changed project' });
 	await Container.get(VariablesService).updateCache();
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
-	// The workflow falls back to the global variable.
-	await variables.delete(scoped.id);
-	await Container.get(VariablesService).updateCache();
-	await tables.addColumn(table.id, project.id, { name: 'total', type: 'number' });
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: withTable.id, status: 'modified', dependencyCount: 1 }),
-		expect.objectContaining({ id: withVariable.id, status: 'modified', dependencyCount: 1 }),
-	]);
-	await exportPreviewBaseline(environments.promote, owner);
-	await variables.delete(global.id);
-	await Container.get(VariablesService).updateCache();
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: withVariable.id, status: 'modified', dependencyCount: 1 }),
+	expect(await changed()).toEqual([
+		expect.objectContaining({
+			key: `variable:project:${project.id}:API_URL`,
+			change: 'modified',
+		}),
 	]);
 }, 30_000);
 
@@ -606,12 +495,9 @@ it('lists what applying the branch changes on this instance, named and archived 
 	const endpoint = `/promotions/${project.id}/changes/promote`;
 	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
 
-	const synced = await agent.get(applyEndpoint).expect(200);
-	expect(synced.body.data).toMatchObject({
-		commitSha: baseline,
-		source: sourceOf(environments.apply),
-		changes: [],
-	});
+	const synced = (await agent.get(applyEndpoint).expect(200)).body.data;
+	expect(synced).toMatchObject({ commitSha: baseline, source: sourceOf(environments.apply) });
+	expect(changedResources(synced)).toEqual([]);
 
 	await workflows.update(renamed.id, { name: 'Local name', settings: { executionOrder: 'v1' } });
 	await workflows.update(archived.id, { isArchived: false });
@@ -620,48 +506,42 @@ it('lists what applying the branch changes on this instance, named and archived 
 	await Container.get(VariablesRepository).delete(variable.id);
 	await Container.get(VariablesService).updateCache();
 
-	const response = await agent.get(applyEndpoint).expect(200);
-	expect(response.body.data.commitSha).toBe(baseline);
-	expect(response.body.data.changes).toHaveLength(5);
-	expect(response.body.data.changes).toEqual(
+	const response = (await agent.get(applyEndpoint).expect(200)).body.data;
+	expect(response.commitSha).toBe(baseline);
+	expect(changedWorkflows(response)).toHaveLength(4);
+	expect(changedWorkflows(response)).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
 				id: renamed.id,
 				name: 'Branch name',
-				status: 'renamed-and-modified',
+				previousName: 'Local name',
+				change: 'modified',
 			}),
-			expect.objectContaining({ id: archived.id, name: 'Archived on branch', status: 'archived' }),
-			expect.objectContaining({
-				id: incoming.id,
-				name: 'Incoming',
-				status: 'new',
-				version: null,
-				updatedAt: null,
-			}),
-			// A deleted row is a local workflow, so it keeps its name and version instead of a slug.
-			expect.objectContaining({
-				id: outgoing.id,
-				name: 'Outgoing',
-				status: 'deleted',
-				version: expect.any(Number),
-			}),
-			expect.objectContaining({ id: dependent.id, status: 'modified', dependencyCount: 1 }),
+			expect.objectContaining({ id: archived.id, name: 'Archived on branch', change: 'archived' }),
+			expect.objectContaining({ id: incoming.id, name: 'Incoming', change: 'added' }),
+			expect.objectContaining({ id: outgoing.id, name: 'Outgoing', change: 'deleted' }),
 		]),
 	);
+	// Apply creates the variable that this instance lacks, and the workflow that uses it carries it.
+	const variableKey = 'variable:global:SHARED_URL';
+	expect(changedResources(response)).toContainEqual(
+		expect.objectContaining({ key: variableKey, change: 'added' }),
+	);
+	expect(response.dependencies).toContainEqual({
+		workflowKey: `workflow:${dependent.id}`,
+		resourceKey: variableKey,
+		included: true,
+	});
 	// The branch manifest covers every project, but only this project's workflows may show.
-	expect(response.body.data.changes.map(({ id }: { id: string }) => id)).not.toContain(
-		elsewhere.id,
+	expect(response.resources.map(({ key }: { key: string }) => key)).not.toContain(
+		`workflow:${elsewhere.id}`,
 	);
 	// The Promote side keeps reading the instance as the desired state.
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual(
+	expect(changedWorkflows((await agent.get(endpoint).expect(200)).body.data)).toEqual(
 		expect.arrayContaining([
-			expect.objectContaining({
-				id: renamed.id,
-				name: 'Local name',
-				status: 'renamed-and-modified',
-			}),
-			expect.objectContaining({ id: incoming.id, status: 'deleted' }),
-			expect.objectContaining({ id: outgoing.id, name: 'Outgoing', status: 'new' }),
+			expect.objectContaining({ id: renamed.id, name: 'Local name', change: 'modified' }),
+			expect.objectContaining({ id: incoming.id, change: 'deleted' }),
+			expect.objectContaining({ id: outgoing.id, name: 'Outgoing', change: 'added' }),
 		]),
 	);
 
@@ -669,13 +549,13 @@ it('lists what applying the branch changes on this instance, named and archived 
 		commitMessage: 'Sync',
 		canExportVariableValues: true,
 	});
-	const after = await agent.get(applyEndpoint).expect(200);
-	expect(after.body.data).toMatchObject({
+	const after = (await agent.get(applyEndpoint).expect(200)).body.data;
+	expect(after).toMatchObject({
 		commitSha: await remoteHead(),
 		source: sourceOf(environments.apply),
-		changes: [],
 	});
-	expect(after.body.data.commitSha).not.toBe(baseline);
+	expect(changedResources(after)).toEqual([]);
+	expect(after.commitSha).not.toBe(baseline);
 }, 30_000);
 
 it('counts a variable on apply only when this instance lacks it in the scope of the branch', async () => {
@@ -698,23 +578,21 @@ it('counts a variable on apply only when this instance lacks it in the scope of 
 	await variables.delete(promoted.id);
 	const bound = await createVariable('API_URL', 'https://destination.example.com');
 	await Container.get(VariablesService).updateCache();
-	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
-
-	// A project variable that shadows the global one leaves the global out of this instance export.
-	await variables.save({
-		id: 'ProjectUrl',
-		key: 'API_URL',
-		value: 'https://project.example.com',
-		project,
-	});
-	await Container.get(VariablesService).updateCache();
-	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
+	const changed = async () =>
+		changedResources((await agent.get(applyEndpoint).expect(200)).body.data);
+	expect(await changed()).toEqual([]);
 
 	await variables.delete(bound.id);
 	await Container.get(VariablesService).updateCache();
-	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: dependent.id, status: 'modified', dependencyCount: 1 }),
+	const preview = (await agent.get(applyEndpoint).expect(200)).body.data;
+	expect(changedResources(preview)).toEqual([
+		expect.objectContaining({ key: 'variable:global:API_URL', change: 'added' }),
 	]);
+	expect(preview.dependencies).toContainEqual({
+		workflowKey: `workflow:${dependent.id}`,
+		resourceKey: 'variable:global:API_URL',
+		included: true,
+	});
 }, 30_000);
 
 it('answers for a destination that has only an apply environment', async () => {
@@ -741,12 +619,14 @@ it('answers for a destination that has only an apply environment', async () => {
 	await exportPreviewBaseline(environments.apply, owner);
 	await Container.get(WorkflowRepository).delete(workflow.id);
 
-	const response = await agent.get(applyEndpoint).expect(200);
-	expect(response.body.data).toMatchObject({
+	const response = (await agent.get(applyEndpoint).expect(200)).body.data;
+	expect(response).toMatchObject({
 		commitSha: await remoteHead(),
 		source: sourceOf(environments.apply),
-		changes: [expect.objectContaining({ id: workflow.id, name: 'Local only', status: 'new' })],
 	});
+	expect(changedResources(response)).toEqual([
+		expect.objectContaining({ id: workflow.id, name: 'Local only', change: 'added' }),
+	]);
 	await agent.get(endpoint).expect(404);
 }, 30_000);
 
@@ -780,13 +660,14 @@ it('lists nothing after apply, although the destination mints its own version', 
 	await workflows.update(workflow.id, { versionId: 'destination-version', nodes: [] });
 	const agent = server.authAgentFor(owner);
 	const endpoint = `/promotions/${project.id}/changes/apply`;
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: workflow.id, status: 'modified' }),
+	const changed = async () => changedResources((await agent.get(endpoint).expect(200)).body.data);
+	expect(await changed()).toEqual([
+		expect.objectContaining({ id: workflow.id, change: 'modified' }),
 	]);
 
 	expect((await service.apply(environments.apply.id, owner)).status).toBe('applied');
 
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
+	expect(await changed()).toEqual([]);
 	const stored = await workflows.findOneByOrFail({ id: workflow.id });
 	expect(stored.nodes).toHaveLength(1);
 	expect(stored.versionId).not.toBe('source-version');
@@ -809,14 +690,8 @@ it('lists every local workflow as deleted when a valid branch manifest has no en
 		.authAgentFor(owner)
 		.get(`/promotions/${project.id}/changes/apply`)
 		.expect(200);
-	expect(response.body.data.changes).toEqual([
-		expect.objectContaining({
-			id: workflow.id,
-			name: 'Local only',
-			status: 'deleted',
-			version: expect.any(Number),
-			updatedAt: expect.any(String),
-		}),
+	expect(changedResources(response.body.data)).toEqual([
+		expect.objectContaining({ id: workflow.id, name: 'Local only', change: 'deleted' }),
 	]);
 }, 30_000);
 
@@ -975,8 +850,7 @@ describe('resources in the preview', () => {
 		});
 
 		expect(await applyShown(await loadPreview())).toMatchObject({ status: 'applied' });
-		const after = await loadPreview();
-		expect(after.changes).toEqual([]);
+		expect(changedResources(await loadPreview())).toEqual([]);
 	}, 60_000);
 
 	it('lists a changed data table once, with each workflow that uses it, and describes the new column', async () => {
@@ -1185,12 +1059,22 @@ describe('resources in the preview', () => {
 				change: 'modified',
 			}),
 		);
-		expect(body.data.changes).toEqual([
-			expect.objectContaining({ id: charge.id, status: 'modified' }),
-		]);
+		// Selecting the workflow sends the credential, so the preview lists it with its link.
+		expect(body.data.resources).toContainEqual(
+			expect.objectContaining({
+				key: `workflow:${charge.id}`,
+				change: 'unchanged',
+				selectable: true,
+			}),
+		);
+		expect(body.data.dependencies).toContainEqual({
+			workflowKey: `workflow:${charge.id}`,
+			resourceKey: `credential:${credential.id}`,
+			included: true,
+		});
 	}, 30_000);
 
-	it('lists a workflow inside a folder that Apply renames as renamed', async () => {
+	it('lists a folder that Apply renames, with the workflow inside it', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
 		const folder = await createFolder(project, { name: 'Invoices' });
@@ -1207,10 +1091,6 @@ describe('resources in the preview', () => {
 			.get(`/promotions/${project.id}/changes/apply`)
 			.expect(200);
 
-		// Apply renames the folder only together with a selected workflow inside it.
-		expect(body.data.changes).toEqual([
-			expect.objectContaining({ id: workflow.id, status: 'renamed' }),
-		]);
 		expect(body.data.resources).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({

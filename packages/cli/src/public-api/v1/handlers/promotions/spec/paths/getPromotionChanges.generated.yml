@@ -23,30 +23,6 @@ parameters:
     description: 'The direction of the promotion: apply or promote.'
     name: direction
     in: path
-  - schema:
-      type: string
-    required: false
-    name: search
-    in: query
-  - schema:
-      type: string
-      enum:
-        - name
-        - updatedAt
-        - status
-      default: name
-    required: false
-    name: sort
-    in: query
-  - schema:
-      type: string
-      enum:
-        - asc
-        - desc
-      default: asc
-    required: false
-    name: order
-    in: query
 responses:
   '200':
     description: Operation successful.
@@ -70,52 +46,6 @@ responses:
               required:
                 - environmentId
                 - branchName
-            changes:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    minLength: 1
-                    maxLength: 36
-                  name:
-                    type: string
-                  type:
-                    type: string
-                    enum:
-                      - workflow
-                  status:
-                    type: string
-                    enum:
-                      - new
-                      - modified
-                      - renamed
-                      - renamed-and-modified
-                      - archived
-                      - deleted
-                  version:
-                    type: integer
-                    nullable: true
-                    minimum: 0
-                  updatedAt:
-                    type: string
-                    nullable: true
-                  updatedBy:
-                    type: string
-                    nullable: true
-                  dependencyCount:
-                    type: integer
-                    minimum: 0
-                required:
-                  - id
-                  - name
-                  - type
-                  - status
-                  - version
-                  - updatedAt
-                  - updatedBy
-                  - dependencyCount
             resources:
               type: array
               items:
@@ -239,7 +169,6 @@ responses:
           required:
             - commitSha
             - source
-            - changes
             - resources
             - dependencies
   '400':

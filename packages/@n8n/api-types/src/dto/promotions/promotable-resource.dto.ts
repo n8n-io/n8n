@@ -6,50 +6,6 @@ import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import { promotionCommitMessageSchema, promotionSelectedIdsSchema } from './promotion-common.dto';
 
-export class PromotionChangesQueryDto extends Z.class({
-	search: z.string().trim().optional(),
-	sort: z.enum(['name', 'updatedAt', 'status']).default('name'),
-	order: z.enum(['asc', 'desc']).default('asc'),
-}) {}
-
-export const promotableResourceStatusSchema = z.enum([
-	'new',
-	'modified',
-	'renamed',
-	'renamed-and-modified',
-	'archived',
-	'deleted',
-]);
-
-export type PromotableResourceStatus = z.infer<typeof promotableResourceStatusSchema>;
-
-export const promotableResourceTypeSchema = z.enum(['workflow']);
-
-export type PromotableResourceType = z.infer<typeof promotableResourceTypeSchema>;
-
-export const promotableResourceSchema = z.object({
-	id: n8nIdSchema,
-	name: z.string(),
-	type: promotableResourceTypeSchema,
-	status: promotableResourceStatusSchema,
-	version: z.number().int().nonnegative().nullable(),
-	updatedAt: z.string().nullable(),
-	updatedBy: z.string().nullable(),
-	dependencyCount: z.number().int().nonnegative(),
-});
-
-export type PromotableResource = z.infer<typeof promotableResourceSchema>;
-
-export const promotionChangesSchema = z.object({
-	commitSha: z.string().nullable(),
-	source: z.object({ environmentId: n8nIdSchema, branchName: z.string() }),
-	changes: promotableResourceSchema.array(),
-});
-
-export type PromotionChanges = z.infer<typeof promotionChangesSchema>;
-
-export class PromotionChangesDto extends Z.class(promotionChangesSchema.shape) {}
-
 /**
  * A Promote always writes the project itself, so a request without workflows and folders
  * promotes only the project.

@@ -1,5 +1,4 @@
 import {
-	PromotionChangesQueryDto,
 	PromotionResourceDetailsRequestDto,
 	promotionDirectionSchema,
 	type PromotionDirection,
@@ -8,16 +7,7 @@ import {
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
-import {
-	Body,
-	Get,
-	GlobalScope,
-	Licensed,
-	Param,
-	Post,
-	Query,
-	RestController,
-} from '@n8n/decorators';
+import { Body, Get, GlobalScope, Licensed, Param, Post, RestController } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
@@ -37,14 +27,8 @@ export class PromotionChangesController {
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Param('direction') direction: string,
-		@Query query: PromotionChangesQueryDto,
 	): Promise<PromotionPreview> {
-		return await this.changeService.getPreview(
-			req.user,
-			projectId,
-			parseDirection(direction),
-			query,
-		);
+		return await this.changeService.getPreview(req.user, projectId, parseDirection(direction));
 	}
 
 	@Post('/:projectId/changes/:direction/details')

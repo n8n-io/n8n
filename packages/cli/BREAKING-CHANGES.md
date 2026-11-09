@@ -38,6 +38,19 @@ An import that unpublishes a workflow requires `workflow:deactivate`.
 An import that archives a published workflow requires only `workflow:delete`.
 If your pipeline imports packages that publish or unpublish workflows, add these scopes to its API key.
 
+## Promotions (preview)
+
+The change preview endpoint `GET /api/v1/promotions/projects/{projectId}/changes/{direction}` no longer returns `changes`.
+Read `resources` instead.
+Each resource has a `type`, `id`, `change` and `selectable` field.
+The `change` values are `added`, `modified`, `archived`, `deleted` and `unchanged`.
+They replace the old `status` values.
+The endpoint no longer accepts the `search`, `sort` and `order` query parameters.
+
+The CLI `promotion-environment list-changes` command shows the changed resources of all types.
+It no longer accepts `--search`, `--sort` and `--order`.
+It needs an n8n instance with this change.
+
 # 2.0.0
 
 ### What changed?

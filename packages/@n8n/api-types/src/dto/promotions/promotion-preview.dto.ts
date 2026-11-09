@@ -2,7 +2,6 @@ import '../../openapi-extend';
 
 import { z } from 'zod';
 
-import { promotionChangesSchema } from './promotable-resource.dto';
 import {
 	promotionBindingProjectSchema,
 	promotionCredentialExpressionValueRef,
@@ -10,6 +9,7 @@ import {
 	promotionInstanceProjectSchema,
 	promotionPreviewCheckSchema,
 } from './promotion-apply-check.dto';
+import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
 	serializedCredentialDataSchema,
@@ -115,7 +115,10 @@ export const promotionBlockerSchema = z.object({
 
 export type PromotionBlocker = z.infer<typeof promotionBlockerSchema>;
 
-export const promotionPreviewSchema = promotionChangesSchema.extend({
+export const promotionPreviewSchema = z.object({
+	/** The commit the preview was read from. `null` when the branch has no commit yet. */
+	commitSha: z.string().nullable(),
+	source: z.object({ environmentId: n8nIdSchema, branchName: z.string() }),
 	resources: z.array(promotionResourceSchema),
 	dependencies: z.array(promotionResourceDependencySchema),
 	blocker: promotionBlockerSchema.optional().openapi({
