@@ -65,7 +65,7 @@
     "@n8n/utils": "workspace:*",
     "csv-parse": "catalog:",
     "luxon": "catalog:",
-    "multer": "^2.4.0",
+    "multer": "^2.5.0",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:"
   },

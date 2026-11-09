@@ -72,7 +72,7 @@ message internal and is logged.
 ## The MCP write tools
 
 Three tools in `packages/cli/src/modules/mcp/tools/`, all behind the `aiPreference:write`
-OAuth scope and the `CONTEXT_PREFERENCES_FLAG`:
+OAuth scope:
 
 | Tool | Does |
 | --- | --- |
@@ -221,12 +221,7 @@ scopes.
 
 ## The feature flag
 
-`CONTEXT_PREFERENCES_FLAG` gates the surfaces that read preferences, not the writes. The
-settings area writes rows whatever the flag says, and a row that no surface reads is
-inert.
-
-The MCP consent screen is one of those surfaces. `McpProtectedResource.getGrantableScopes`
-offers `aiPreference:read` and `aiPreference:write` only to a user in the `variant` arm,
-through the same `arePreferenceToolsEnabled` predicate that registers the tools. A control
-user never sees the scopes, so the experiment does not expose the feature to the arm it
-keeps unaware of it, and no grant records a scope the server would refuse to honour.
+The feature shipped behind the PostHog flag `111_context_preferences`. The flag reached
+100% and the code no longer reads it. Every surface that reads preferences is on for every
+user, and `McpProtectedResource.getGrantableScopes` offers `aiPreference:read` and
+`aiPreference:write` to every user.

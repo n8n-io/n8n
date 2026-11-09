@@ -115,7 +115,23 @@ export interface V1StepExecutorDeps {
 	resumeToken?: (context: { executionId: string }) => string;
 	/** Absent in a host that runs no sub-workflows, where a call fails the node. */
 	resolveSubWorkflow?: SubWorkflowResolver;
+	/**
+	 * Mints the token of a resume URL that a node builds with
+	 * `getSignedResumeUrl`. `binding` is the path and query of the URL without
+	 * the token. Without it, `getSignedResumeUrl` throws.
+	 */
+	stepBoundResumeToken?: (context: { stepId: string; binding: string }) => string;
+	/**
+	 * Mints the reference that `getApprovalCallbackReference` returns for an
+	 * approval button. Without it, `getApprovalCallbackReference` throws.
+	 */
+	approvalCallback?: (context: { stepId: string; decision: 'a' | 'd' }) => string;
 }
+
+export type StepResumeMinters = Pick<
+	V1StepExecutorDeps,
+	'stepBoundResumeToken' | 'approvalCallback'
+>;
 
 export type ExecutableNodeType = INodeType & { execute: NonNullable<INodeType['execute']> };
 
@@ -132,6 +148,7 @@ export interface CreateExecuteContextParams {
 	resumeToken?: string;
 	subWorkflowCalls: SubWorkflowCalls;
 	subExecutionResume?: SubExecutionResumeCause;
+	resumeMinters?: StepResumeMinters;
 }
 
 export interface RunNodeParams {

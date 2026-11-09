@@ -1,8 +1,10 @@
 import { appSchema, appVersionSchema, type PublishAppDto } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { DbLock, DbLockService } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
+import type { AppActor } from '../app-events';
 import { AppRepository } from '../app.repository';
 import { AppHostService } from '../serving/app-host.service';
 import { appStorageLockSubKey } from '../storage/app-storage-lock';
@@ -16,6 +18,7 @@ export class AppPublicationService {
 		private readonly versions: AppVersionRepository,
 		private readonly hosts: AppHostService,
 		private readonly locks: DbLockService,
+		private readonly events: EventService,
 	) {}
 
 	async publish(
@@ -23,6 +26,7 @@ export class AppPublicationService {
 		appId: string,
 		versionId: string | null,
 		details: Partial<Omit<PublishAppDto, 'versionId'>> = {},
+		actor?: AppActor,
 	) {
 		if (
 			!appSchema.shape.id.safeParse(appId).success ||
@@ -30,7 +34,7 @@ export class AppPublicationService {
 		) {
 			throw new NotFoundError('App or version not found.');
 		}
-		await this.locks.withLockContext(
+		const before = await this.locks.withLockContext(
 			DbLock.APPS_STORAGE,
 			async (ctx) => {
 				const app = await this.apps.findInProject(projectId, appId, ctx);
@@ -49,8 +53,30 @@ export class AppPublicationService {
 					}
 				}
 				await this.apps.setPublishedVersion(projectId, appId, versionId, details.visibility, ctx);
+				return app;
 			},
 			{ subKey: appStorageLockSubKey(appId) },
 		);
+		const visibility = details.visibility ?? before.visibility;
+		if (visibility !== before.visibility) {
+			this.events.emit('app-visibility-changed', {
+				...actor,
+				appId,
+				from: before.visibility,
+				to: visibility,
+			});
+		}
+		if (before.publishedVersionId === versionId) return;
+		if (versionId === null) {
+			this.events.emit('app-unpublished', { ...actor, appId });
+		} else {
+			this.events.emit('app-published', {
+				...actor,
+				appId,
+				versionId,
+				visibility,
+				isFirstPublish: before.publishedVersionId === null,
+			});
+		}
 	}
 }
