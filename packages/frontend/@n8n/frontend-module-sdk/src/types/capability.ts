@@ -28,6 +28,8 @@ export interface ModalOpeners {
 export interface ProjectPermissions {
 	/** The user's global scopes plus their scopes in the project. Reads reactive state, so call it in a `computed`. */
 	scopesFor(projectId: string): Scope[];
+	/** The current project, or the personal project when no project is open. */
+	defaultProjectId?(): string | undefined;
 	/** Whether the instance blocks writes (source control read-only branch). Reads reactive state. */
 	isReadOnly(): boolean;
 }
@@ -59,4 +61,13 @@ export interface SelfHealingChatHandoff {
 	canStart(projectId: string): boolean;
 	/** Opens a chat in the project and sends the report through the normal Assistant handoff. */
 	start(projectId: string, input: SelfHealingChatInput): Promise<SelfHealingChatStartOutcome>;
+}
+
+export interface AppAssistantHandoff {
+	/** Whether the Assistant is ready to open an App thread. */
+	available: ComputedRef<boolean>;
+	/** Opens the newest Assistant thread linked to an App, or creates one. */
+	openApp(input: { appId: string; projectId: string; appName?: string }): Promise<boolean>;
+	/** Opens the Assistant empty state for a new App. */
+	createApp(input: { appId: string; projectId: string }): Promise<void>;
 }

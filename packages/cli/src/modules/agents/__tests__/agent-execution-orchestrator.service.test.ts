@@ -28,7 +28,7 @@ import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';

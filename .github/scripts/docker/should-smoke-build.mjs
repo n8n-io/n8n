@@ -18,11 +18,7 @@ const ROOT_MANIFEST = 'package.json';
 const NODES_BASE_MANIFEST = 'packages/nodes-base/package.json';
 const EDIT_IMAGE_NATIVE_PACKAGES = new Set([
 	'@napi-rs/canvas',
-	'@napi-rs/canvas-linux-arm64-musl',
-	'@napi-rs/canvas-linux-x64-musl',
 	'@napi-rs/image',
-	'@napi-rs/image-linux-arm64-musl',
-	'@napi-rs/image-linux-x64-musl',
 ]);
 
 const BUMP_ONLY = [/^pnpm-workspace\.yaml$/, /^pnpm-lock\.yaml$/, /(^|\/)package\.json$/];

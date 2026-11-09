@@ -1,6 +1,6 @@
 import { isCredentialAgentIntegration, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import { type Agent, isProjectAgent } from '@/modules/agents/entities/agent.entity';

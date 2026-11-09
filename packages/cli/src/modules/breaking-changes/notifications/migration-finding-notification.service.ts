@@ -98,7 +98,7 @@ export class MigrationFindingNotificationService {
 			'no_owner',
 		);
 
-		const reportUrl = `${this.urlService.getInstanceBaseUrl()}/settings/migration-report/${ruleId}`;
+		const reportUrl = `${this.urlService.getInstanceBaseUrl()}/settings/migration-report/${ruleId}?owner=me`;
 		const notifierName = displayName(notifier);
 		await Promise.all(
 			[...new Set(findingsByOwner.values())].map(async ({ owner, findings: ownerFindings }) => {

@@ -1,9 +1,8 @@
 import type { AgentIntegrationConfig, ImportedAgentChannel } from '@n8n/api-types';
 import { ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
 
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
