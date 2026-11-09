@@ -65,6 +65,7 @@ function onDialogOpenUpdate(open: boolean) {
 		size="cover"
 		stacked
 		:show-close-button="false"
+		:container-class="$style.dialog"
 		@update:open="onDialogOpenUpdate"
 	>
 		<N8nDialogBody>
@@ -81,7 +82,10 @@ function onDialogOpenUpdate(open: boolean) {
 </template>
 
 <style module lang="scss">
-.backButton {
-	border: none;
+.dialog {
+	overflow: hidden;
+	--n8n-dialog-body--padding-block-start: 0;
+	--n8n-dialog-body--padding-block-end: 0;
+	--n8n-dialog-body--padding-inline: 0;
 }
 </style>
