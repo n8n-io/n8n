@@ -23,7 +23,7 @@ scheme = ["https", "http"]
 exclude_all_private = true
 
 # npmjs.com shows GitHub runners a bot challenge, also in a browser. The registry API does not.
-remap = ['^https://www\.npmjs\.com/package/(.+)$ https://registry.npmjs.org/$1']
+remap = ['^https://(?:www\.)?npmjs\.com/package/(.+)$ https://registry.npmjs.org/$1']
 
 exclude_path = [
 	'\.(test|spec)\.',
