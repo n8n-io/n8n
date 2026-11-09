@@ -482,10 +482,10 @@ vi.mock('@/features/ai/instanceAi/instanceAi.memory.api', () => ({
 	persistPendingAgent: (...args: unknown[]) => persistPendingAgentMock(...args),
 }));
 
-const baseTextFn = (
+function baseTextFn(
 	key: string,
 	options?: { adjustToNumber?: number; interpolate?: Record<string, string | number> },
-) => {
+) {
 	const map: Record<string, string> = {
 		'agents.builder.preview.button': 'Test agent',
 		'agents.builder.preview.close.ariaLabel': 'Hide test',
@@ -531,7 +531,7 @@ ${String(options?.interpolate?.diagnostics ?? '')}
 		return `Build ${String(options?.interpolate?.name ?? '')} agent to ${String(options?.interpolate?.description ?? '')}`;
 	}
 	return map[key] ?? key;
-};
+}
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: baseTextFn }),
