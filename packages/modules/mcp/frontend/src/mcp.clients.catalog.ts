@@ -114,6 +114,15 @@ url = "${serverUrl}"`;
 	const vscodeDeepLink = `vscode:mcp/install?${encodeURIComponent(
 		`{"name":"n8n","type":"http","url":"${serverUrl}"}`,
 	)}`;
+	// Opens Claude's "Add custom connector" dialog with the name and this instance's URL
+	// prefilled. Claude's public directory listing (claude.ai/directory/connectors/n8n)
+	// cannot receive a server URL, so from there Claude would connect to whatever n8n URL
+	// the account already has configured instead of this instance.
+	const claudeAddUrl = `https://claude.ai/customize/connectors?${new URLSearchParams({
+		modal: 'add-custom-connector',
+		connectorName: 'n8n',
+		connectorUrl: serverUrl,
+	}).toString()}`;
 
 	return [
 		{
@@ -154,7 +163,7 @@ url = "${serverUrl}"`;
 					name: 'Claude.ai',
 					category: 'web',
 					icon: ClaudeIcon,
-					addUrl: 'https://claude.ai/directory/connectors/n8n',
+					addUrl: claudeAddUrl,
 				},
 				{
 					id: 'chatgpt',
