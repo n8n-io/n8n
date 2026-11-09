@@ -380,7 +380,9 @@ const handleClick = (event: MouseEvent) => {
 		}
 	}
 
+	// Only the loading button is positioned. An idle dropdown still anchors to the button.
 	&.loading {
+		position: relative;
 		pointer-events: none;
 	}
 
@@ -396,8 +398,10 @@ const handleClick = (event: MouseEvent) => {
 	}
 }
 
+// A dropdown trigger can set the button to inline-flex. Overlay the spinner so it stays centered.
 .loading-container {
-	height: auto;
+	position: absolute;
+	inset: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
