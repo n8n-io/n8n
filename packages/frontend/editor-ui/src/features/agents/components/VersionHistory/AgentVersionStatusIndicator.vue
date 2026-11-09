@@ -1,7 +1,7 @@
 <script setup lang="ts">
 withDefaults(
 	defineProps<{
-		status?: 'published' | 'default';
+		status?: 'published' | 'latest' | 'default';
 	}>(),
 	{
 		status: 'default',
@@ -24,6 +24,10 @@ withDefaults(
 
 .indicator-published {
 	background-color: var(--color--mint-600);
+}
+
+.indicator-latest {
+	background-color: var(--color--yellow-500);
 }
 
 .indicator-default {

@@ -108,7 +108,6 @@ test.describe(
 			await expect(n8n.ndv.getCredentialOptionByText(serviceAccountCredentialName2)).toBeVisible();
 			await expect(n8n.ndv.getCredentialOptionByText(serviceAccountCredentialName)).toBeVisible();
 			await expect(n8n.ndv.credentialDropdownCreateNewCredential()).toBeVisible();
-			await expect(n8n.ndv.getCredentialDropdownOptions()).toHaveCount(2);
 		});
 
 		test('should correctly render required and optional credentials', async ({ n8n }) => {

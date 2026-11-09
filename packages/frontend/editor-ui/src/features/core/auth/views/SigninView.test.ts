@@ -271,6 +271,19 @@ describe('SigninView', () => {
 			expect(router.push).toHaveBeenCalledWith(validLocalRedirectUrl);
 		});
 
+		it('should decode a percent-encoded local path before redirecting', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({
+				redirect: '%2Fhome%2Fcredentials',
+			});
+
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			await signInWithValidUser();
+
+			expect(hrefSpy).not.toHaveBeenCalled();
+			expect(router.push).toHaveBeenCalledWith('/home/credentials');
+		});
+
 		it('should redirect to homepage with router if redirect url is empty', async () => {
 			vi.spyOn(route, 'query', 'get').mockReturnValue({
 				redirect: '',
@@ -344,6 +357,22 @@ describe('SigninView', () => {
 			expect(ssoStore.getSsoLoginUrl).toHaveBeenCalledWith('/home/workflows');
 			expect(hrefSpy).toHaveBeenCalledWith('https://idp.example.com/saml');
 		});
+
+		it.each([
+			['%2Fhome%2Fcredentials', '/home/credentials'],
+			['%2Foauth%2Fconsent', '/oauth/consent'],
+		])(
+			'should request the SSO login URL with the decoded destination for %s',
+			async (redirect, destination) => {
+				vi.spyOn(route, 'query', 'get').mockReturnValue({ redirect });
+				ssoStore.getSsoLoginUrl.mockResolvedValue('https://idp.example.com/oidc');
+
+				const { getByRole } = renderComponent();
+				await userEvent.click(getByRole('button', { name: 'Continue with SSO' }));
+
+				expect(ssoStore.getSsoLoginUrl).toHaveBeenCalledWith(destination);
+			},
+		);
 
 		it('should show a toast when the SSO login URL cannot be resolved', async () => {
 			ssoStore.getSsoLoginUrl.mockRejectedValue(new Error('SAML is not configured'));

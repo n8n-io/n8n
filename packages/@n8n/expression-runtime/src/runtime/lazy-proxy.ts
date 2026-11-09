@@ -1,3 +1,7 @@
+import { isEscapedTransferValue, TRANSFER_VALUE_KEY } from './transfer';
+import { decodeHostValue } from './transfer-codec';
+import { isArrayIndexKey, isKeyOf } from './utils';
+
 // ============================================================================
 // Deep Lazy Proxy System
 // ============================================================================
@@ -65,6 +69,15 @@ export function throwIfErrorSentinel(value: unknown): void {
 		// eslint-disable-next-line @typescript-eslint/no-throw-literal -- sentinel is reconstructed on the host
 		throw value;
 	}
+}
+
+/**
+ * Throw the error sentinel of a host call, or give back the data of the call
+ * without its escape wrapper.
+ */
+export function readHostResult(value: unknown): unknown {
+	throwIfErrorSentinel(value);
+	return isEscapedTransferValue(value) ? value[TRANSFER_VALUE_KEY] : value;
 }
 
 /** Returns true if `obj` is a deep lazy proxy created by createDeepLazyProxy. */
@@ -165,7 +178,8 @@ export function createDeepLazyProxy(
 			const path = [...basePath, propOrIdx];
 			return createDeepLazyProxy(path, { kind: 'object', keys: value.__keys }, callbacks);
 		}
-		return value;
+		// Decoded data can hold the same keys as metadata or callback errors.
+		return decodeHostValue(value);
 	}
 
 	const target: object = isArray ? [] : {};
@@ -312,16 +326,25 @@ export function createDeepLazyProxy(
 				return arrayLength;
 			}
 
-			if (prop in targetObj) {
+			if (
+				isKeyOf(targetObj, prop) ||
+				(prop in targetObj && (isArray || !resolveObjectKeys().includes(prop)))
+			) {
 				return targetObj[prop];
 			}
 
 			if (isArray) {
 				const idx = isInArrayBounds(prop);
-				if (idx === undefined) return undefined;
-				return fetchAndCacheArrayElement(idx, prop);
+				if (idx !== undefined) {
+					return fetchAndCacheArrayElement(idx, prop);
+				}
+				if (isArrayIndexKey(prop)) {
+					return undefined;
+				}
 			}
 
+			// A host array can carry named keys, for example a key that a Set node
+			// writes on an item whose json is an array.
 			return fetchAndCacheObjectValue(prop);
 		},
 

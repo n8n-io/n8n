@@ -18,6 +18,15 @@ import type { SuspensionInfo } from '../utils/stream-helpers';
 
 type ConfirmationRequestEvent = Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 
+/** Event types that show the user the agent has started to respond. */
+const RESPONSE_CHUNK_TYPES: ReadonlyArray<InstanceAiEvent['type']> = [
+	'text-delta',
+	'reasoning-delta',
+	'tool-input-start',
+	// Some providers send a complete tool call without a `tool-input-start`.
+	'tool-call',
+];
+
 export interface ResumableStreamSource {
 	runId?: string;
 	fullStream: AsyncIterable<unknown>;
@@ -38,6 +47,8 @@ export interface ResumableStreamContext {
 	signal: AbortSignal;
 	logger: Logger;
 	onActivity?: () => void;
+	/** Called for each response chunk (text, reasoning, tool call), just before its event is published. */
+	onResponseChunk?: () => void;
 	/** Stop consuming after the current chunk has been mapped and published. */
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
 }
@@ -87,6 +98,10 @@ export interface ExecuteResumableStreamResult {
 	stopReason?: OrchestratorRunHandoffReason;
 	/** Terminal `finish` chunk's reason; `'max-iterations'` means the agent ran out of steps. */
 	finishReason?: FinishReason;
+	/** Parsed SDK output. The caller validates its domain schema. */
+	structuredOutput?: unknown;
+	/** Observed model turns. Absent when the provider emits no step events. */
+	stepCount?: number;
 }
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
@@ -185,11 +200,15 @@ export function normalizeStreamSource(result: unknown): ResumableStreamSource {
 
 	if (isNativeStreamResult(result)) {
 		const [eventStream, textStream] = result.stream.tee();
+		const text = collectNativeStreamText(textStream);
+
+		// Structured-output callers do not need to await the text branch.
+		void text.catch(() => undefined);
 
 		return {
 			runId: result.runId,
 			fullStream: readableStreamToAsyncIterable(eventStream),
-			text: collectNativeStreamText(textStream),
+			text,
 		};
 	}
 
@@ -201,11 +220,13 @@ function buildCancelledResult(
 	text: Promise<string> | undefined,
 	workSummaryAccumulator: WorkSummaryAccumulator,
 	usageAccumulator: UsageAccumulator,
+	nativeStepIndex: number,
 ): ExecuteResumableStreamResult {
 	return {
 		status: 'cancelled',
 		agentRunId,
 		text,
+		stepCount: nativeStepIndex || undefined,
 		workSummary: workSummaryAccumulator.toSummary(),
 		usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 	};
@@ -298,6 +319,7 @@ function publishEvents(
 interface StreamPassResult {
 	cancelled: boolean;
 	finishReason?: FinishReason;
+	structuredOutput?: unknown;
 	stopReason?: OrchestratorRunHandoffReason;
 	suspension?: SuspensionInfo;
 	hasError: boolean;
@@ -346,6 +368,7 @@ async function consumeStreamPass(args: {
 	let confirmationEvent: ConfirmationRequestEvent | undefined;
 	let confirmationEventPublished = false;
 	let finishReason: FinishReason | undefined;
+	let structuredOutput: unknown;
 	const drainedCorrectionsForResume: string[] = [];
 
 	for await (const chunk of activeStream) {
@@ -377,8 +400,9 @@ async function consumeStreamPass(args: {
 
 		options.context.onActivity?.();
 		usageAccumulator.observe(chunk);
-		if (isRecord(chunk) && chunk.type === 'finish' && isFinishReason(chunk.finishReason)) {
-			finishReason = chunk.finishReason;
+		if (isRecord(chunk) && chunk.type === 'finish') {
+			finishReason = isFinishReason(chunk.finishReason) ? chunk.finishReason : undefined;
+			structuredOutput = chunk.structuredOutput;
 		}
 
 		if (isRecord(chunk) && chunk.type === 'start-step') {
@@ -434,6 +458,11 @@ async function consumeStreamPass(args: {
 		if ((mappedEvent && !isDeltaChunk) || isFinishStep) syntheticSegmentId = undefined;
 
 		const events = mappedEvent ? [mappedEvent] : [];
+		// The first thing the user sees the agent do: answer text, visible reasoning
+		// or the start of a tool call.
+		if (mappedEvent && RESPONSE_CHUNK_TYPES.includes(mappedEvent.type)) {
+			options.context.onResponseChunk?.();
+		}
 
 		const published = publishEvents(events, {
 			suspension,
@@ -458,6 +487,7 @@ async function consumeStreamPass(args: {
 				cancelled: false,
 				stopReason: stopSignal.reason,
 				finishReason,
+				structuredOutput,
 				suspension,
 				hasError,
 				error,
@@ -471,8 +501,9 @@ async function consumeStreamPass(args: {
 	}
 
 	return {
-		cancelled: false,
+		cancelled: options.context.signal.aborted,
 		finishReason,
+		structuredOutput,
 		suspension,
 		hasError,
 		error,
@@ -510,14 +541,26 @@ export async function executeResumableStream(
 		nativeStepIndex = pass.nativeStepIndex;
 
 		if (pass.cancelled) {
-			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
+			return buildCancelledResult(
+				activeAgentRunId,
+				text,
+				workSummaryAccumulator,
+				usageAccumulator,
+				nativeStepIndex,
+			);
 		}
 
 		const { suspension, hasError, error, pendingConfirmation, confirmationEvent } = pass;
 		const { drainedCorrectionsForResume } = pass;
 
 		if (options.context.signal.aborted) {
-			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
+			return buildCancelledResult(
+				activeAgentRunId,
+				text,
+				workSummaryAccumulator,
+				usageAccumulator,
+				nativeStepIndex,
+			);
 		}
 
 		if (pass.stopReason) {
@@ -527,6 +570,8 @@ export async function executeResumableStream(
 				text,
 				...(error !== undefined ? { error } : {}),
 				finishReason: pass.finishReason,
+				structuredOutput: pass.structuredOutput,
+				stepCount: nativeStepIndex || undefined,
 				workSummary: workSummaryAccumulator.toSummary(),
 				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 				stopReason: pass.stopReason,
@@ -540,6 +585,8 @@ export async function executeResumableStream(
 				text,
 				...(error !== undefined ? { error } : {}),
 				finishReason: pass.finishReason,
+				structuredOutput: pass.structuredOutput,
+				stepCount: nativeStepIndex || undefined,
 				workSummary: workSummaryAccumulator.toSummary(),
 				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 			};
@@ -548,6 +595,9 @@ export async function executeResumableStream(
 		if (options.control.mode === 'manual') {
 			return {
 				status: 'suspended',
+				structuredOutput: pass.structuredOutput,
+				finishReason: pass.finishReason,
+				stepCount: nativeStepIndex || undefined,
 				agentRunId: activeAgentRunId,
 				text,
 				suspension,

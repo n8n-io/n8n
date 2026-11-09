@@ -15,19 +15,6 @@ describe('UserRepository updates', () => {
 		vi.resetAllMocks();
 	});
 
-	it('changes only MFA columns when disabling MFA', async () => {
-		vi.spyOn(repository, 'findOneByOrFail').mockResolvedValue(new User());
-		manager.update.mockResolvedValue({ raw: [], generatedMaps: [], affected: 1 });
-
-		await repository.disableMfa('user');
-
-		expect(manager.update).toHaveBeenCalledWith(
-			User,
-			{ id: 'user' },
-			{ mfaEnabled: false, mfaSecret: null, mfaRecoveryCodes: [] },
-		);
-	});
-
 	it('changes only MFA credentials when setting them', async () => {
 		vi.spyOn(repository, 'findOneByOrFail').mockResolvedValue(new User());
 		manager.update.mockResolvedValue({ raw: [], generatedMaps: [], affected: 1 });

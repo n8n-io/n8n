@@ -1,6 +1,7 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { SettingsRepository, UserRepository } from '@n8n/db';
+import type { PersonRepository, SettingsRepository } from '@n8n/db';
+import { NotFoundError } from '@n8n/errors';
 import type { Cipher } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -13,7 +14,7 @@ import type { TOTPService } from '../totp.service';
 
 describe('MfaService', () => {
 	let mfaService: MfaService;
-	let mockUserRepository: Mocked<UserRepository>;
+	let mockPersonRepository: Mocked<PersonRepository>;
 	let mockSettingsRepository: Mocked<SettingsRepository>;
 	let mockCacheService: Mocked<CacheService>;
 	let mockLicense: Mocked<LicenseState>;
@@ -23,7 +24,7 @@ describe('MfaService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
-		mockUserRepository = mock<UserRepository>();
+		mockPersonRepository = mock<PersonRepository>();
 		mockSettingsRepository = mock<SettingsRepository>();
 		mockCacheService = mock<CacheService>();
 		mockLicense = mock<LicenseState>();
@@ -31,7 +32,7 @@ describe('MfaService', () => {
 		mockCipher = mock<Cipher>();
 
 		mfaService = new MfaService(
-			mockUserRepository,
+			mockPersonRepository,
 			mockSettingsRepository,
 			mockCacheService,
 			mockLicense,
@@ -161,6 +162,20 @@ describe('MfaService', () => {
 			expect(result).toBe(false);
 			expect(mockSettingsRepository.findByKey).toHaveBeenCalledWith(MFA_ENFORCE_SETTING);
 			expect(mockCacheService.set).toHaveBeenCalledWith(MFA_CACHE_KEY, '');
+		});
+	});
+
+	describe('person lookups', () => {
+		it('should throw NotFoundError when no person has the id', async () => {
+			mockPersonRepository.findById.mockResolvedValue(null);
+			mockPersonRepository.findByIdWithRole.mockResolvedValue(null);
+
+			await expect(mfaService.getSecretAndRecoveryCodes('id-1')).rejects.toThrow(NotFoundError);
+			await expect(mfaService.validateMfa('id-1', '123456', undefined)).rejects.toThrow(
+				NotFoundError,
+			);
+			await expect(mfaService.enableMfa('id-1')).rejects.toThrow(NotFoundError);
+			expect(mockPersonRepository.save).not.toHaveBeenCalled();
 		});
 	});
 

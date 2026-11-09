@@ -1,6 +1,18 @@
+import { Container } from '@n8n/di';
+import type { Mock } from 'vitest';
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
+import {
+	EventService,
+	UrlService,
+	RoleService,
+	FolderFinderService,
+	InstanceWriteAccessService,
+	ExecutionRedactionServiceProxy,
+	WorkflowPublishedDataService,
+	AiPreferenceService,
+	CredentialsFinderService,
+} from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
@@ -20,6 +32,7 @@ import {
 	COMMUNITY_PACKAGE_TOOLS,
 	getAllowedToolNames,
 	INSTANCE_CONTEXT_TOOLS,
+	SKILL_TOOLS,
 	TOOLS_BY_SCOPE,
 } from '../mcp-scopes';
 import { McpConfig } from '../mcp.config';
@@ -30,9 +43,10 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+
 import { ExecutionService } from '@/executions/execution.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { SkillService, SkillsGate } from '@/modules/skills';
+import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
 	EMPTY_INSTANCE_CONTEXT_TEXT,
@@ -44,7 +58,6 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -56,7 +69,7 @@ import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
@@ -69,9 +82,7 @@ const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
-	// On by default so the drift guards below cover `get_user_preferences`. Its own
-	// registration tests set it explicitly either way.
-	aiPreferencesEnabled: true,
+	credentialDescriptionsEnabled: true,
 	...overrides,
 });
 
@@ -95,6 +106,13 @@ const getRegisteredToolNames = (server: unknown): Set<string> =>
 	new Set(Object.keys((server as { _registeredTools: Record<string, unknown> })._registeredTools));
 
 describe('getAllowedToolNames', () => {
+	it('keeps credential update and read grants separate', () => {
+		expect(getAllowedToolNames(['credential:update'])).toEqual(
+			new Set(['update_credential_description']),
+		);
+		expect(getAllowedToolNames(['credential:read'])).not.toContain('update_credential_description');
+	});
+
 	it('returns undefined for non-scope-bearing credentials (full access)', () => {
 		expect(getAllowedToolNames(undefined)).toBeUndefined();
 	});
@@ -134,6 +152,18 @@ describe('getAllowedToolNames', () => {
 		expect(allowed).toContain('unpublish_agent');
 	});
 
+	it('grants only the read skill tools with skill:read', () => {
+		expect(getAllowedToolNames(['skill:read'])).toEqual(
+			new Set(['search_n8n_skills', 'get_skill']),
+		);
+	});
+
+	it('grants the read skill tools with skill:write too', () => {
+		expect(getAllowedToolNames(['skill:write'])).toEqual(
+			new Set(['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill']),
+		);
+	});
+
 	it('grants only call_agent with agent:execute', () => {
 		expect(getAllowedToolNames(['agent:execute'])).toEqual(new Set(['call_agent']));
 	});
@@ -152,11 +182,13 @@ describe('McpService scope enforcement', () => {
 		builderEnabled = true,
 		foldersLicensed = true,
 		instanceAiActive = false,
+		agentsActive = false,
 		postHogClient = mockInstance(PostHogClient),
 	}: {
 		builderEnabled?: boolean;
 		foldersLicensed?: boolean;
 		instanceAiActive?: boolean;
+		agentsActive?: boolean;
 		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
@@ -167,6 +199,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(WorkflowService),
 			mockInstance(UrlService),
 			mockInstance(CredentialsService),
+			mockInstance(CredentialsFinderService),
 			mockInstance(ActiveExecutions),
 			mockInstance(GlobalConfig, {
 				endpoints: {
@@ -211,18 +244,109 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ModuleRegistry, {
 				isActive: vi
 					.fn()
-					.mockImplementation((name: string) => instanceAiActive && name === 'instance-ai'),
+					.mockImplementation(
+						(name: string) =>
+							(instanceAiActive && name === 'instance-ai') || (agentsActive && name === 'agents'),
+					),
+				settings: { get: () => undefined } as unknown as ModuleRegistry['settings'],
 			}),
 			mockInstance(EventService),
 			mockInstance(FolderService),
 			mockInstance(AiPreferenceService),
 			mockInstance(McpConfig),
 			mockInstance(ExecutionRedactionServiceProxy),
+			mockInstance(InstanceWriteAccessService),
 		);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockInstance(SkillsGate, { isEnabled: false });
 	});
+
+	it.each([false, true])(
+		'applies instance protection to registered tools: %s',
+		async (readOnly) => {
+			const service = buildService();
+			vi.mocked(Container.get(InstanceWriteAccessService).isReadOnly).mockReturnValue(readOnly);
+			const registeredTools = new Map<
+				string,
+				{ handler: Mock; invoke: (args: unknown, extra: unknown) => Promise<unknown> }
+			>();
+			const createRegistrar = service.createToolRegistrar.bind(service);
+			vi.spyOn(service, 'createToolRegistrar').mockImplementation((...args) => {
+				const register = createRegistrar(...args);
+				return (tool) => {
+					const handler = vi.fn().mockResolvedValue({ content: [] });
+					const registered = register({ ...tool, handler });
+					registeredTools.set(tool.name, {
+						handler,
+						invoke: registered.handler as (args: unknown, extra: unknown) => Promise<unknown>,
+					});
+					return registered;
+				};
+			});
+
+			await service.getServer(user, mcpFeatureFlags());
+
+			const blockedTools = new Set([
+				'update_credential_description',
+				'test_workflow',
+				'create_workflow_from_code',
+				'update_workflow',
+				'archive_workflow',
+				'restore_workflow_version',
+				'publish_workflow',
+				'unpublish_workflow',
+				'move_workflows_to_folder',
+				'create_folder',
+				'update_folder',
+				'create_data_table',
+				'rename_data_table',
+				'add_data_table_column',
+				'delete_data_table_column',
+				'rename_data_table_column',
+				'add_data_table_rows',
+				'save_user_preference',
+				'update_user_preference',
+				'undo_user_preference',
+			]);
+			for (const name of blockedTools) expect(registeredTools.has(name), name).toBe(true);
+			for (const name of ['execute_workflow', 'test_workflow', 'search_workflows']) {
+				expect(registeredTools.has(name), name).toBe(true);
+			}
+
+			for (const [name, { handler, invoke }] of registeredTools) {
+				const args = name === 'execute_workflow' ? { executionMode: 'production' } : {};
+				const result = await invoke(args, {});
+				if (readOnly && blockedTools.has(name)) {
+					expect(result, name).toMatchObject({ isError: true });
+					expect(handler, name).not.toHaveBeenCalled();
+				} else {
+					expect(result, name).toEqual({ content: [] });
+					expect(handler, name).toHaveBeenCalledOnce();
+				}
+			}
+		},
+	);
+
+	it.each([
+		{ enabled: true, scopes: ['credential:update'], expected: true },
+		{ enabled: true, scopes: ['credential:read'], expected: false },
+		{ enabled: true, scopes: ['credential:read', 'credential:update'], expected: true },
+		{ enabled: true, scopes: undefined, expected: true },
+		{ enabled: false, scopes: ['credential:update'], expected: false },
+	])(
+		'gates description updates for $scopes with flag $enabled',
+		async ({ enabled, scopes, expected }) => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ credentialDescriptionsEnabled: enabled }),
+				undefined,
+				{ grantedScopes: scopes },
+			);
+			expect(getRegisteredToolNames(server).has('update_credential_description')).toBe(expected);
+		},
+	);
 
 	it('every tool registered by getServer is covered by the scope map (drift guard)', async () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags());
@@ -236,8 +360,9 @@ describe('McpService scope enforcement', () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags());
 		const registered = getRegisteredToolNames(server);
 
-		// Agent tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts. Community-package
+		// Agent and skill tools require the agents module (inactive here). The agent
+		// tools' own drift guard lives in agent-tools.service.test.ts, and the skill
+		// tools are covered by the skill tools tests below. Community-package
 		// tools need that module, the verified catalog, and a scope-bearing
 		// caller; their registration guard lives in
 		// install-community-node.registration.test.ts. Instance-context tools
@@ -246,11 +371,55 @@ describe('McpService scope enforcement', () => {
 			(name) =>
 				!registered.has(name) &&
 				!AGENT_TOOLS.has(name) &&
+				!SKILL_TOOLS.has(name) &&
 				!COMMUNITY_PACKAGE_TOOLS.has(name) &&
 				!INSTANCE_CONTEXT_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});
+
+	it.each([true, false])(
+		'registers the skill tools only while the skills gate is on: %s',
+		async (skillsEnabled) => {
+			mockInstance(SkillService);
+			mockInstance(SkillsGate, { isEnabled: skillsEnabled });
+			const server = await buildService({
+				builderEnabled: false,
+				agentsActive: true,
+			}).getServer(user, mcpFeatureFlags());
+			const registered = getRegisteredToolNames(server);
+
+			expect(registered.has('mutate_agent')).toBe(false);
+			expect([...SKILL_TOOLS].filter((name) => registered.has(name))).toEqual(
+				skillsEnabled ? [...SKILL_TOOLS] : [],
+			);
+		},
+	);
+
+	it.each([
+		['skills on and an API key', true, true, undefined, true],
+		['skills on and skill:read', true, true, ['skill:read'], true],
+		['skills on and skill:write', true, true, ['skill:write'], true],
+		['skills on and no skill scope', true, true, ['workflow:read'], false],
+		['skills off', false, true, undefined, false],
+		['the feature flag off', true, false, undefined, false],
+	])(
+		'declares the skills extension with %s',
+		async (_, skillsEnabled, skillsExtensionEnabled, grantedScopes, declared) => {
+			mockInstance(SkillService);
+			mockInstance(SkillsGate, { isEnabled: skillsEnabled });
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags({ skillsExtensionEnabled }),
+				undefined,
+				{ grantedScopes },
+			);
+
+			expect(server.server.getCapabilities().extensions).toEqual(
+				declared ? { 'io.modelcontextprotocol/skills': {} } : undefined,
+			);
+		},
+	);
 
 	it.each([true, false])(
 		'sets all context tools and the resource from the shared flag override: %s',
@@ -449,22 +618,10 @@ describe('McpService scope enforcement', () => {
 	});
 
 	describe('get_user_preferences registration', () => {
-		it('registers the tool when the preferences flag is on', async () => {
-			const server = await buildService().getServer(
-				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: true }),
-			);
+		it('registers the tool', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags());
 
 			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
-		});
-
-		it('does not register the tool when the preferences flag is off', async () => {
-			const server = await buildService().getServer(
-				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: false }),
-			);
-
-			expect(getRegisteredToolNames(server)).not.toContain('get_user_preferences');
 		});
 
 		// Preferences cover Agents, data tables and folders too, none of which are
@@ -472,7 +629,7 @@ describe('McpService scope enforcement', () => {
 		it('registers the tool with the builder disabled', async () => {
 			const server = await buildService({ builderEnabled: false }).getServer(
 				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+				mcpFeatureFlags(),
 			);
 
 			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
@@ -494,28 +651,16 @@ describe('McpService scope enforcement', () => {
 	describe('preference write tools registration', () => {
 		const WRITE_TOOLS = ['save_user_preference', 'update_user_preference', 'undo_user_preference'];
 
-		it('registers the three write tools when the preferences flag is on', async () => {
-			const server = await buildService().getServer(
-				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: true }),
-			);
+		it('registers the three write tools', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags());
 
 			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);
-		});
-
-		it('registers none of them when the preferences flag is off', async () => {
-			const server = await buildService().getServer(
-				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: false }),
-			);
-
-			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).not.toContain(name);
 		});
 
 		it('registers them with the builder disabled, like the read tool', async () => {
 			const server = await buildService({ builderEnabled: false }).getServer(
 				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+				mcpFeatureFlags(),
 			);
 
 			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);

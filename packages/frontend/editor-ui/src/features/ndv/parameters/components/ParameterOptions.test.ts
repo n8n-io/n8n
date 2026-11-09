@@ -102,10 +102,9 @@ describe('ParameterOptions', () => {
 				parameter: DEFAULT_PARAMETER,
 				value: 'manual',
 				isReadOnly: false,
-				iconOrientation: 'horizontal',
 			},
 		});
-		expect(container.querySelector('[data-icon="ellipsis"]')).toBeInTheDocument();
+		expect(container.querySelector('[data-icon="ellipsis-12"]')).toBeInTheDocument();
 	});
 
 	it('should render custom actions', async () => {

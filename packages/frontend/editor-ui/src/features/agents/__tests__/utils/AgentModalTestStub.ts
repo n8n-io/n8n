@@ -11,7 +11,11 @@ export const AgentModalTestStub = defineComponent({
 		showBack: { type: Boolean, default: false },
 		showFooter: { type: Boolean, default: undefined },
 		showCancel: { type: Boolean, default: true },
+		cancelLabel: { type: String, default: undefined },
 		bodyFlush: { type: Boolean, default: false },
+		stableHeight: { type: Boolean, default: false },
+		fixedSize: { type: Boolean, default: false },
+		headerDividerTone: { type: String, default: 'default' },
 		busy: { type: Boolean, default: false },
 		size: { type: String, default: '2xlarge' },
 		trapFocus: { type: Boolean, default: true },
@@ -28,6 +32,8 @@ export const AgentModalTestStub = defineComponent({
 			:data-trap-focus="trapFocus"
 			:data-disable-outside-pointer-events="disableOutsidePointerEvents"
 			:data-body-flush="bodyFlush"
+			:data-fixed-size="fixedSize"
+			:data-header-divider-tone="headerDividerTone"
 		>
 			<header>
 				<button
@@ -36,6 +42,7 @@ export const AgentModalTestStub = defineComponent({
 					:disabled="busy"
 					@click="$emit('back')"
 				/>
+				<slot name="titlePrefix" />
 				<input
 					v-if="editableTitle"
 					:value="title"
@@ -45,6 +52,7 @@ export const AgentModalTestStub = defineComponent({
 				/>
 				<h2 v-else>{{ title }}</h2>
 				<span v-if="titleError" data-testid="agent-modal-title-error">{{ titleError }}</span>
+				<slot name="titleSuffix" />
 				<slot name="headerActions" />
 				<button
 					data-testid="dialog-close-button"
@@ -54,6 +62,7 @@ export const AgentModalTestStub = defineComponent({
 			</header>
 			<div v-if="!trapFocus" data-testid="nested-credential-focus-scope" />
 			<main><slot /></main>
+			<aside v-if="$slots.sidePanel" data-testid="agent-modal-side-panel"><slot name="sidePanel" /></aside>
 			<footer
 				v-if="
 					showFooter === true ||
@@ -73,7 +82,7 @@ export const AgentModalTestStub = defineComponent({
 							data-testid="agent-modal-cancel"
 							:disabled="busy"
 							@click="$emit('update:open', false)"
-						>Cancel</button>
+						>{{ cancelLabel ?? 'Cancel' }}</button>
 						<slot name="footerActions" />
 					</div>
 				</slot>
@@ -93,7 +102,9 @@ export const AgentModalMultiStepTestStub = defineComponent({
 		showBack: { type: Boolean, default: false },
 		showFooter: { type: Boolean, default: undefined },
 		showCancel: { type: Boolean, default: true },
+		cancelLabel: { type: String, default: undefined },
 		bodyFlush: { type: Boolean, default: false },
+		stableHeight: { type: Boolean, default: false },
 		busy: { type: Boolean, default: false },
 		size: { type: String, default: '2xlarge' },
 		trapFocus: { type: Boolean, default: true },
@@ -108,7 +119,10 @@ export const AgentModalMultiStepTestStub = defineComponent({
 			@update:title="$emit('update:title', $event)"
 			@back="$emit('back')"
 		>
+			<template #titlePrefix><slot name="titlePrefix" /></template>
+			<template #titleSuffix><slot name="titleSuffix" /></template>
 			<template #headerActions><slot name="headerActions" /></template>
+			<template v-if="$slots.sidePanel" #sidePanel><slot name="sidePanel" /></template>
 			<slot />
 			<template #footerLeft><slot name="footerLeft" /></template>
 			<template #footerBeforeCancel><slot name="footerBeforeCancel" /></template>

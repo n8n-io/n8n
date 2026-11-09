@@ -1,4 +1,7 @@
-import { isWorkflowPublishBlockedDetails } from '@n8n/api-types';
+import {
+	isWorkflowPublishBlockedDetails,
+	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
+} from '@n8n/api-types';
 
 import { RestErrorKind, type RestErrorDescriptor } from './rest-error-classifier';
 
@@ -41,6 +44,16 @@ export function serializePublicApiError(descriptor: RestErrorDescriptor): {
 				workflowReviewRequestId: descriptor.meta?.workflowReviewRequestId,
 				versionId: descriptor.meta?.versionId,
 			};
+			if (
+				descriptor.meta &&
+				descriptor.meta.code === PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE &&
+				Array.isArray(descriptor.meta.workflowIds)
+			) {
+				body.meta = {
+					code: PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
+					workflowIds: descriptor.meta.workflowIds,
+				};
+			}
 			return {
 				status: descriptor.status,
 				body: {
@@ -60,11 +73,6 @@ export function serializePublicApiError(descriptor: RestErrorDescriptor): {
 			return {
 				status: 500,
 				body: { message: GENERIC_PUBLIC_MESSAGE },
-			};
-		case RestErrorKind.httpError:
-			return {
-				status: descriptor.status,
-				body: { message: descriptor.message },
 			};
 	}
 }
@@ -96,11 +104,6 @@ export function serializeInternalRestError(descriptor: RestErrorDescriptor): {
 		case RestErrorKind.serverError:
 			return {
 				status: 500,
-				body: { code: 0, message: descriptor.message },
-			};
-		case RestErrorKind.httpError:
-			return {
-				status: descriptor.status,
 				body: { code: 0, message: descriptor.message },
 			};
 	}

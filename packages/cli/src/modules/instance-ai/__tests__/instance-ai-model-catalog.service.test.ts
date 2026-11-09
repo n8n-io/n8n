@@ -1,5 +1,6 @@
 import type { ProviderCatalog } from '@n8n/agents/catalog';
 import type { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
@@ -11,7 +12,7 @@ class TestInstanceAiModelCatalogService extends InstanceAiModelCatalogService {
 		logger: Logger,
 		private readonly fetcher: (signal: AbortSignal) => Promise<ProviderCatalog>,
 	) {
-		super(logger);
+		super(logger, mock<OutboundHttp>());
 	}
 
 	protected override async fetchCatalog(signal: AbortSignal): Promise<ProviderCatalog> {

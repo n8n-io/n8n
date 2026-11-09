@@ -114,7 +114,7 @@ const sharedFields: INodeProperties[] = [
 				default: '{}',
 				validateType: 'object',
 				description:
-					'Restrict results to rows matching this metadata condition, for example {"source": "handbook"}. Sent as filters_json.',
+					'Restrict results to rows matching this metadata condition, for example {"source": "handbook"}. Sent as filters_json. Works on STANDARD endpoints only.',
 			},
 		],
 	},
@@ -231,6 +231,7 @@ async function searchIndexes(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
+	const insertOnly = this.getCurrentNodeParameter('mode') === 'insert';
 	const credentials = await this.getCredentials<DatabricksOAuth2Credential>(
 		DATABRICKS_CREDENTIAL_TYPE,
 	);
@@ -252,12 +253,13 @@ async function searchIndexes(
 					{ endpoint_name: endpoint.name },
 					(page: ListPage) => page.vector_indexes,
 				);
-				// The type tells the user which indexes accept inserts
-				return indexes.map((index) => ({
-					name: index.name,
-					value: index.name,
-					description: `${index.index_type} - ${endpoint.name}`,
-				}));
+				return indexes
+					.filter((index) => !insertOnly || index.index_type === 'DIRECT_ACCESS')
+					.map((index) => ({
+						name: index.name,
+						value: index.name,
+						description: `${index.index_type} - ${endpoint.name}`,
+					}));
 			}),
 		)
 	)
@@ -307,7 +309,6 @@ export class VectorStoreDatabricks extends createVectorStoreNode<DatabricksVecto
 			},
 		],
 	},
-	hidden: true,
 	// The index decides between query_text and query_vector inside the class
 	searchByText: true,
 	methods: { listSearch: { searchIndexes }, loadOptions: { getIndexColumns } },

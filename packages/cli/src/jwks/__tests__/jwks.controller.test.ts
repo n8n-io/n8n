@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AuthlessRequest } from '@/requests';
 
 import { JwksController } from '../jwks.controller';
-import { JwksRegistry } from '../jwks.registry';
+import { JwksRegistry } from '@n8n/backend-services/auth';
 
 const encRsaJwk: JWK = {
 	kty: 'RSA',

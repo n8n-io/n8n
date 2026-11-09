@@ -4,6 +4,7 @@ import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
+	InstanceAiFileAttachment,
 } from '@n8n/api-types';
 import type { AgentTreeSnapshot } from '@n8n/instance-ai';
 import { z } from 'zod';
@@ -18,6 +19,14 @@ type RunSnapshots = AgentTreeSnapshot[];
 
 const textContentPartSchema = z.object({ type: z.literal('text'), text: z.string() });
 const reasoningContentPartSchema = z.object({ type: z.literal('reasoning'), text: z.string() });
+const fileContentPartSchema = z.object({
+	type: z.literal('file'),
+	data: z.string().min(1),
+	mediaType: z.string().min(1),
+});
+
+const ATTACHMENT_MANIFEST_START = '\n\n[ATTACHMENTS]\n';
+const ATTACHMENT_MANIFEST_END = '\n[/ATTACHMENTS]';
 
 // ---------------------------------------------------------------------------
 // Persisted message shapes
@@ -74,6 +83,50 @@ function extractReasoningFromParts(parts: unknown[]): string {
 		.join('');
 }
 
+function restoreFileAttachments(
+	parts: unknown,
+	text: string,
+): { content: string; attachments: InstanceAiFileAttachment[] } {
+	if (!Array.isArray(parts)) return { content: text, attachments: [] };
+
+	const manifestStart = text.lastIndexOf(ATTACHMENT_MANIFEST_START);
+	const hasManifest = manifestStart !== -1 && text.endsWith(ATTACHMENT_MANIFEST_END);
+	const lines = hasManifest
+		? text
+				.slice(manifestStart + ATTACHMENT_MANIFEST_START.length, -ATTACHMENT_MANIFEST_END.length)
+				.split('\n')
+		: [];
+	const entries = lines.map((line) => {
+		const match = line.match(/^- \[\d+\] `(.*)` \(([^)]+)\): /);
+		return { line, fileName: match?.[1], mimeType: match?.[2] };
+	});
+	const attachments: InstanceAiFileAttachment[] = [];
+
+	for (const part of parts) {
+		const parsed = fileContentPartSchema.safeParse(part);
+		if (!parsed.success) continue;
+
+		const { data, mediaType } = parsed.data;
+		// Older messages keep file names only in the generated manifest.
+		const entryIndex = entries.findIndex((entry) => entry.mimeType === mediaType);
+		const entry = entryIndex === -1 ? undefined : entries.splice(entryIndex, 1)[0];
+		attachments.push({
+			type: 'file',
+			data,
+			mimeType: mediaType,
+			fileName: entry?.fileName ?? 'attachment',
+		});
+	}
+
+	if (!hasManifest || attachments.length === 0) return { content: text, attachments };
+
+	const remainingManifest =
+		entries.length > 0
+			? `${ATTACHMENT_MANIFEST_START}${entries.map((entry) => entry.line).join('\n')}${ATTACHMENT_MANIFEST_END}`
+			: '';
+	return { content: text.slice(0, manifestStart) + remainingManifest, attachments };
+}
+
 /**
  * Whether a snapshot tree carries anything worth rendering. An empty terminal tree —
  * e.g. a `cancelled` run whose events were lost before the
@@ -86,7 +139,6 @@ function isRenderableTree(tree: InstanceAiAgentNode): boolean {
 		tree.timeline.length > 0 ||
 		tree.textContent.length > 0 ||
 		tree.reasoning.length > 0 ||
-		(tree.planItems?.length ?? 0) > 0 ||
 		!!tree.tasks ||
 		!!tree.setupItemsByWorkflowId ||
 		!!tree.statusMessage ||
@@ -220,13 +272,17 @@ export function parseStoredMessages(
 			lastUserMessageId = msg.id;
 
 			// Strip LLM-facing enrichment and hide internal auto-follow-up messages.
-			const content = cleanStoredUserMessage(text);
-			if (content === null) continue;
+			const userText = cleanStoredUserMessage(text);
+			if (userText === null) continue;
+			const { content, attachments: fileAttachments } = restoreFileAttachments(
+				msg.content,
+				userText,
+			);
 
 			// Rebuild resource attachments from the durable JSON line inside
 			// `<thread-artifacts>` (or a legacy `<editor-context>`) so the UI can
 			// re-surface them (chip + artifact) after a reload.
-			const attachments = extractEditorContextResourceAttachments(text);
+			const attachments = [...extractEditorContextResourceAttachments(text), ...fileAttachments];
 			const context = extractAgentPreviewHandoffContext(text);
 
 			messages.push({
@@ -288,9 +344,10 @@ export function parseStoredMessages(
 	// Propagate messageGroupId across assistant rows in the same conversational
 	// turn so the dedup pass below collapses them into a single rendered message.
 	//
-	// Planned-task follow-ups (build → checkpoint → synthesize) produce one
-	// real user message followed by several orchestrator sub-runs separated by
-	// internal `<planned-task-follow-up>` user messages (filtered out earlier).
+	// Internal follow-ups (for example workflow verification) produce one real
+	// user message followed by several orchestrator sub-runs separated by
+	// internal follow-up user messages (filtered out earlier). Older threads
+	// can also hold legacy `<planned-task-follow-up>` messages.
 	// `takeSnapshotForAssistant` only pairs the sub-runs whose snapshot
 	// timestamp lines up — the intra-turn text rows ("On it!", "The trigger
 	// is…") stay unpaired and their text is also embedded in the final paired

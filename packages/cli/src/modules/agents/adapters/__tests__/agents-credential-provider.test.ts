@@ -54,4 +54,31 @@ describe('AgentsCredentialProvider', () => {
 			expect(aiGatewayService.getSyntheticCredential).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('resolveAiGatewayMcpCredential', () => {
+		it('mints the Gateway credits credential of an MCP registry server for the agent', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			aiGatewayService.getSyntheticCredential.mockResolvedValue({ token: 'jwt' });
+			Container.set(AiGatewayService, aiGatewayService);
+
+			const provider = new AgentsCredentialProvider(
+				mock<CredentialsService>(),
+				'proj-1',
+				{ id: 'user-1' } as User,
+				'agent-1',
+			);
+			const result = await provider.resolveAiGatewayMcpCredential(
+				'n8nConnectFirecrawlMcpAiGatewayApi',
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+				credentialType: 'n8nConnectFirecrawlMcpAiGatewayApi',
+				userId: 'user-1',
+				projectId: 'proj-1',
+				agentId: 'agent-1',
+			});
+			// The minted data goes to the MCP client as it is, with no model `apiKey` added.
+			expect(result).toEqual({ token: 'jwt' });
+		});
+	});
 });

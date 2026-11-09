@@ -1,7 +1,11 @@
 import { Container } from '@n8n/di';
 
-import { OtelConfig } from '../otel.config';
-import { OTEL_ENV_VARS } from '../otel.constants';
+import { OtelConfig, OtelCustomAttributesConfig } from '../otel.config';
+import {
+	CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR,
+	DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES,
+	OTEL_ENV_VARS,
+} from '../otel.constants';
 
 const DEFAULT_ENDPOINT = 'http://localhost:4318';
 
@@ -71,4 +75,45 @@ describe('OtelConfig', () => {
 			expect(exporterProtocol).toBe('http/protobuf');
 		});
 	});
+});
+
+describe('OtelCustomAttributesConfig', () => {
+	beforeEach(() => {
+		Container.reset();
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		delete process.env[CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR];
+		vi.restoreAllMocks();
+	});
+
+	it('uses the default prefixes when unset', () => {
+		const { prefixes } = Container.get(OtelCustomAttributesConfig);
+
+		expect(prefixes).toEqual(DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES);
+	});
+
+	it('keeps the default prefix for each level that is left out', () => {
+		process.env[CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR] = '{"project":""}';
+
+		const { prefixes } = Container.get(OtelCustomAttributesConfig);
+
+		expect(prefixes).toEqual({
+			project: '',
+			workflow: 'n8n.workflow.custom.',
+			node: 'n8n.node.custom.',
+		});
+	});
+
+	it.each(['not json', '[]', '"str"', '{"nodes":""}', '{"node":1}', '{"node":null}'])(
+		'falls back to the default prefixes for %p',
+		(value) => {
+			process.env[CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR] = value;
+
+			const { prefixes } = Container.get(OtelCustomAttributesConfig);
+
+			expect(prefixes).toEqual(DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES);
+		},
+	);
 });

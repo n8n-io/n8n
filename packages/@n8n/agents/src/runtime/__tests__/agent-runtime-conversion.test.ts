@@ -15,10 +15,57 @@
 import type { ModelMessage } from 'ai';
 import { describe, it, expect } from 'vitest';
 
-import type { Message } from '../../types/sdk/message';
+import type { ContentToolCall, Message } from '../../types/sdk/message';
 import { toAiMessages, fromAiMessages } from '../model/messages';
 
 describe('toAiMessages + fromAiMessages — round-trip', () => {
+	it.each(['resolved', 'rejected'] as const)(
+		'preserves separate provider result options for a %s search',
+		(state) => {
+			const aiMessages: ModelMessage[] = [
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'ts_call_1',
+							toolName: 'openai.tool_search',
+							input: {},
+							providerExecuted: true,
+							providerOptions: { openai: { itemId: 'ts_call_1' } },
+						},
+						{
+							type: 'tool-result',
+							toolCallId: 'ts_call_1',
+							toolName: 'openai.tool_search',
+							output:
+								state === 'resolved'
+									? { type: 'json', value: { tools: [] } }
+									: { type: 'error-json', value: 'search_error' },
+							providerOptions: { openai: { itemId: 'ts_result_1' } },
+						},
+					],
+				},
+			];
+			const serialized = JSON.stringify(fromAiMessages(aiMessages));
+			const stored = JSON.parse(serialized) as Message[];
+			const call = stored[0].content[0] as ContentToolCall;
+			expect(call.providerOptions).toEqual({ openai: { itemId: 'ts_call_1' } });
+			expect(call.resultProviderOptions).toEqual({ openai: { itemId: 'ts_result_1' } });
+			const replay = toAiMessages(stored)[0];
+			if (replay.role !== 'assistant' || typeof replay.content === 'string')
+				throw new Error('Expected provider search history');
+			expect(replay.content[1]).toMatchObject({
+				type: 'tool-result',
+				providerOptions: { openai: { itemId: 'ts_result_1' } },
+			});
+			expect(replay.content[0]).toMatchObject({
+				type: 'tool-call',
+				providerOptions: { openai: { itemId: 'ts_call_1' } },
+			});
+		},
+	);
+
 	it('splits a resolved tool-call into assistant + tool ModelMessages', () => {
 		const input: Message[] = [
 			{
@@ -294,6 +341,43 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(reasoningPart.providerOptions).toEqual({
 			openai: { itemId: 'rs_123', reasoningEncryptedContent: 'encrypted' },
 		});
+	});
+
+	it('keeps metadata-less reasoning in history for providers that replay reasoning text', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'Chain of thought from an OpenAI-compatible vendor' },
+					{ type: 'text', text: 'The answer.' },
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input, 'custom');
+		const parts = (aiMessages[0] as { content: Array<{ type: string; text?: string }> }).content;
+
+		expect(parts).toEqual([
+			{ type: 'reasoning', text: 'Chain of thought from an OpenAI-compatible vendor' },
+			{ type: 'text', text: 'The answer.' },
+		]);
+	});
+
+	it('still drops metadata-less reasoning for providers without text replay', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'Thinking without replayable metadata' },
+					{ type: 'text', text: 'The answer.' },
+				],
+			},
+		];
+
+		for (const aiMessages of [toAiMessages(input, 'anthropic'), toAiMessages(input)]) {
+			const parts = (aiMessages[0] as { content: Array<{ type: string; text?: string }> }).content;
+			expect(parts).toEqual([{ type: 'text', text: 'The answer.' }]);
+		}
 	});
 
 	it('round-trips SDK 7 reasoning files with provider replay state', () => {
@@ -858,6 +942,102 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 			},
 			{ type: 'text', text: 'Here is what I found.' },
 		]);
+	});
+
+	it('replays parallel and sequential provider-executed results in their original block order', () => {
+		const search = (id: string) => ({
+			type: 'tool-call' as const,
+			toolCallId: id,
+			toolName: 'web_search',
+			input: { query: id },
+			providerExecuted: true,
+		});
+		const result = (id: string) => ({
+			type: 'tool-result' as const,
+			toolCallId: id,
+			toolName: 'web_search',
+			output: { type: 'json' as const, value: [{ url: `https://${id}` }] },
+		});
+		const aiMessages: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'plan', providerOptions: { anthropic: { signature: 's' } } },
+					search('srvtoolu_A'),
+					search('srvtoolu_B'),
+					result('srvtoolu_A'),
+					result('srvtoolu_B'),
+					{ type: 'text', text: 'found' },
+				],
+			},
+		];
+		const order = (messages: ModelMessage[]) =>
+			(messages[0].content as Array<{ type: string; toolCallId?: string }>).map((part) =>
+				[part.type, part.toolCallId].filter(Boolean).join(':'),
+			);
+
+		// Stored rows are JSON.
+		const serialized = JSON.stringify(fromAiMessages(aiMessages));
+		const stored = JSON.parse(serialized) as Message[];
+
+		expect(order(toAiMessages(stored, 'anthropic'))).toEqual([
+			'reasoning',
+			'tool-call:srvtoolu_A',
+			'tool-call:srvtoolu_B',
+			'tool-result:srvtoolu_A',
+			'tool-result:srvtoolu_B',
+			'text',
+		]);
+
+		// Stored blocks without a recorded position keep each result after its call.
+		const legacy = structuredClone(stored);
+		for (const block of legacy[0].content) {
+			if (block.type === 'tool-call') delete block.resultPosition;
+		}
+		expect(order(toAiMessages(legacy, 'anthropic'))).toEqual([
+			'reasoning',
+			'tool-call:srvtoolu_A',
+			'tool-result:srvtoolu_A',
+			'tool-call:srvtoolu_B',
+			'tool-result:srvtoolu_B',
+			'text',
+		]);
+
+		// Sequential calls keep their interleaved order.
+		const sequential: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'plan', providerOptions: { anthropic: { signature: 's' } } },
+					search('srvtoolu_A'),
+					result('srvtoolu_A'),
+					search('srvtoolu_B'),
+					result('srvtoolu_B'),
+					{ type: 'text', text: 'found' },
+				],
+			},
+		];
+		const serializedSequential = JSON.stringify(fromAiMessages(sequential));
+		const storedSequential = JSON.parse(serializedSequential) as Message[];
+		expect(order(toAiMessages(storedSequential, 'anthropic'))).toEqual(order(sequential));
+
+		// Results that arrive out of call order keep their original order.
+		const outOfOrder: ModelMessage[] = [
+			{
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'plan', providerOptions: { anthropic: { signature: 's' } } },
+					search('srvtoolu_A'),
+					search('srvtoolu_B'),
+					result('srvtoolu_B'),
+					result('srvtoolu_A'),
+					{ type: 'text', text: 'found' },
+				],
+			},
+		];
+		const serializedOutOfOrder = JSON.stringify(fromAiMessages(outOfOrder));
+		const storedOutOfOrder = JSON.parse(serializedOutOfOrder) as Message[];
+		expect(order(toAiMessages(storedOutOfOrder, 'anthropic'))).toEqual(order(outOfOrder));
 	});
 
 	it('round-trip is structurally equivalent for a resolved tool-call', () => {

@@ -4,9 +4,6 @@ tags:
 summary: Change a user's role in a project
 description: Change a user's role in a project.
 x-required-scope: project:manageMembers
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -47,3 +44,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

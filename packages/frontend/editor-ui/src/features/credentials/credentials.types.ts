@@ -1,10 +1,11 @@
 import type { CreateCredentialDto, Iso8601DateTimeString } from '@n8n/api-types';
-import type { ICredentialsDecrypted, ICredentialsEncrypted, ICredentialType } from 'n8n-workflow';
+import type { ICredentialsEncrypted, ICredentialType } from 'n8n-workflow';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { Scope } from '@n8n/permissions';
 import type { IUserResponse } from '@n8n/rest-api-client/api/users';
+import type { CredentialPayload } from '@n8n/frontend-module-sdk';
 
-export type CredentialPayload = ICredentialsDecrypted & Pick<CreateCredentialDto, 'description'>;
+export type { CredentialPayload };
 
 export interface ICredentialsResponse
 	extends ICredentialsEncrypted,
@@ -88,4 +89,6 @@ export interface IShareCredentialsPayload {
 }
 
 /** What the picker's credential list is narrowed to: an open workflow, else a project. */
-export type CredentialFetchScope = { workflowId: string } | { projectId: string };
+export type CredentialFetchScope = ({ workflowId: string } | { projectId: string }) & {
+	forAgent?: boolean;
+};

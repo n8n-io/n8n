@@ -29,7 +29,7 @@
 		{
 			"parameters": {
 				"operation": "write",
-				"fileName": "={{ $('Webhook').item.json.body.filePath }}/file-{{ Date.now() }}-{{ Math.random() }}.bin",
+				"fileName": "={{ $('Webhook').first().json.body.filePath }}/file-{{ Date.now() }}-{{ Math.random() }}.bin",
 				"dataPropertyName": "file",
 				"options": {}
 			},

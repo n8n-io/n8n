@@ -17,6 +17,11 @@ export interface JobAdvance {
 	lastFiredAt: Date | null;
 }
 
+/** The schedule state of one job and the time of its newest dispatch. */
+export type JobScheduleState = Pick<ScheduledJob, 'ownerId' | 'nextRunAt' | 'lastDispatchedAt'> & {
+	runnable: boolean;
+};
+
 /** A job row to insert; remaining bookkeeping columns take their schema defaults. */
 export type NewScheduledJob = Pick<
 	ScheduledJob,
@@ -35,6 +40,7 @@ export type NewScheduledJob = Pick<
 	| 'fireAt'
 	| 'nextRunAt'
 	| 'maxAttempts'
+	| 'timeoutSeconds'
 	| 'misfirePolicy'
 	| 'misfireGraceSeconds'
 	| 'concurrencyLimit'
@@ -52,6 +58,7 @@ export type ScheduledJobDefinitionUpdate = Pick<
 	| 'fireAt'
 	| 'nextRunAt'
 	| 'maxAttempts'
+	| 'timeoutSeconds'
 	| 'misfirePolicy'
 	| 'misfireGraceSeconds'
 	| 'concurrencyLimit'
@@ -160,17 +167,16 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 * The owner id and schedule state of every job owners of one kind hold.
 	 * A job is runnable when the scheduler will claim it: enabled and not quarantined.
 	 */
-	async findScheduleStatesByOwnerType(
-		ownerType: string,
-	): Promise<Array<Pick<ScheduledJob, 'ownerId' | 'nextRunAt'> & { runnable: boolean }>> {
+	async findScheduleStatesByOwnerType(ownerType: string): Promise<JobScheduleState[]> {
 		const rows = await this.find({
 			where: { ownerType },
-			select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt'],
+			select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt', 'lastDispatchedAt'],
 		});
-		return rows.map(({ ownerId, enabled, nextRunAt, orphanedAt }) => ({
+		return rows.map(({ ownerId, enabled, nextRunAt, orphanedAt, lastDispatchedAt }) => ({
 			ownerId,
 			nextRunAt,
 			runnable: enabled && orphanedAt === null,
+			lastDispatchedAt,
 		}));
 	}
 
@@ -290,7 +296,11 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		ids: number[],
 		update: Pick<
 			ScheduledJob,
-			'maxAttempts' | 'misfirePolicy' | 'misfireGraceSeconds' | 'concurrencyLimit'
+			| 'maxAttempts'
+			| 'timeoutSeconds'
+			| 'misfirePolicy'
+			| 'misfireGraceSeconds'
+			| 'concurrencyLimit'
 		>,
 	): Promise<void> {
 		if (ids.length === 0) return;

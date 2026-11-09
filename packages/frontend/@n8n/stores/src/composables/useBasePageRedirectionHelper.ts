@@ -12,7 +12,7 @@ import { useAssistantTopUpEligibility } from './useAssistantTopUpEligibility';
 /** Sources whose "upgrade" CTA is really a top-up for eligible cloud accounts. */
 const ASSISTANT_UPGRADE_SOURCES = new Set<string>(['ai-builder-sidebar', 'instance-ai']);
 
-/** Cloud dashboard path that carries the assistant top-up UI. */
+/** Cloud console path that carries the assistant top-up UI. */
 const ASSISTANT_TOP_UP_REDIRECT_PATH = '/manage/assistant';
 
 /**
@@ -85,7 +85,7 @@ export function useBasePageRedirectionHelper({ guard }: { guard?: UpgradeRedirec
 
 	/**
 	 * If the user is an instance owner in the cloud, it generates an auto-login link to the
-	 * cloud dashboard that redirects the user to the /manage page where they can upgrade to a new n8n version.
+	 * Cloud console that redirects the user to the /manage page where they can upgrade to a new n8n version.
 	 * Otherwise, it redirect them to our docs.
 	 */
 	const goToVersions = async () => {
@@ -103,7 +103,7 @@ export function useBasePageRedirectionHelper({ guard }: { guard?: UpgradeRedirec
 
 	/**
 	 * If the user is an instance owner in the cloud, it generates an auto-login link to the
-	 * cloud dashboard that redirects the user to the /account/change-plan page where they upgrade/downgrade the current plan.
+	 * Cloud console that redirects the user to the /account/change-plan page where they upgrade/downgrade the current plan.
 	 * Otherwise, it redirect them our website.
 	 */
 

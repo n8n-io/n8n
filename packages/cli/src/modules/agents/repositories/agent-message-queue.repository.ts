@@ -3,9 +3,11 @@ import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 import { isDraftIntegration } from '@n8n/api-types';
 
+import { readInboundUserMessage } from '../utils/inbound-attachments';
+import { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import { Agent } from '../entities/agent.entity';
-import type { AgentQueueDispatch } from '../types/agent-queued-message';
+import type { AgentQueueDispatch, QueuedUserChatMessage } from '../types/agent-queued-message';
 
 @Service()
 export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueue> {
@@ -34,12 +36,21 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		);
 	}
 
-	async listPending(threadId: string) {
-		return await this.find({
+	async listPending(threadId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).find(AgentMessageQueue, {
 			where: { threadId, executionId: IsNull() },
 			relations: { message: true },
 			order: { position: 'ASC', id: 'ASC' },
 		});
+	}
+
+	/**
+	 * Whether the thread has a queued or claimed message, hidden machine turns
+	 * included. A hidden follow-up turn waits here between two executions, so
+	 * the thread still has work when no execution runs.
+	 */
+	async hasItems(threadId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(AgentMessageQueue, { threadId });
 	}
 
 	async findItem(threadId: string, id: string, ctx: OperationContext) {
@@ -54,13 +65,17 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		id: string,
 		targetId: string,
 		expectedIds: string[],
+		kind: QueuedUserChatMessage['kind'],
 		ctx: OperationContext,
 	): Promise<boolean> {
 		const manager = this.managerFor(ctx);
-		const items = await manager.find(AgentMessageQueue, {
+		const pending = await manager.find(AgentMessageQueue, {
 			where: { threadId, executionId: IsNull(), steeringExecutionId: IsNull() },
+			relations: { message: true },
 			order: { position: 'ASC', id: 'ASC' },
 		});
+		// Clients do not see hidden machine turns, so they keep their positions.
+		const items = pending.filter((entry) => entry.message.origin?.hidden !== true);
 		if (
 			items.length !== expectedIds.length ||
 			items.some((item, index) => item.id !== expectedIds[index])
@@ -73,7 +88,7 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		if (!item || to < 0 || from === to) return false;
 		const start = Math.min(from, to);
 		const end = Math.max(from, to);
-		if (items.slice(start, end + 1).some((entry) => entry.payload.kind !== 'preview')) return false;
+		if (items.slice(start, end + 1).some((entry) => entry.payload.kind !== kind)) return false;
 
 		const reordered = [...items];
 		reordered.splice(from, 1);
@@ -94,6 +109,35 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 			steeringExecutionId: IsNull(),
 		});
 		return result.affected === 1;
+	}
+
+	async discardPending(threadId: string, ctx: OperationContext) {
+		const manager = this.managerFor(ctx);
+		const items = await this.listPending(threadId, ctx);
+
+		if (!items.length) return [];
+
+		const attachmentIds = items.flatMap((item) =>
+			readInboundUserMessage(item.message.content).attachments.map((attachment) => attachment.id),
+		);
+
+		await manager.delete(AgentMessageQueue, { id: In(items.map((item) => item.id)) });
+		await manager.update(
+			AgentMessageEntity,
+			{ id: In(items.map((item) => item.messageId)) },
+			{
+				content: { role: 'user', content: [] },
+				author: null,
+				modelContent: null,
+				modelContextAt: null,
+			},
+		);
+
+		return attachmentIds;
+	}
+
+	async discardPendingForSession(threadId: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).delete(AgentMessageQueue, { threadId, executionId: IsNull() });
 	}
 
 	async findHead(threadId: string, ctx: OperationContext) {
@@ -122,6 +166,18 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 			where: { threadId, executionId: IsNull(), steeringExecutionId: executionId },
 			relations: { message: true },
 			order: { steeringOrder: 'ASC' },
+		});
+	}
+
+	/**
+	 * Cheap, unlocked pre-check for `findSteering`: lets a steering consumer skip its
+	 * locking transaction on every input boundary that has nothing queued to merge.
+	 */
+	async hasSteeringFor(threadId: string, executionId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).existsBy(AgentMessageQueue, {
+			threadId,
+			executionId: IsNull(),
+			steeringExecutionId: executionId,
 		});
 	}
 
@@ -168,8 +224,9 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		});
 	}
 
-	async findThreadIds(): Promise<string[]> {
-		const rows = await this.createQueryBuilder('queue')
+	async findThreadIds(ctx: OperationContext = {}): Promise<string[]> {
+		const rows = await this.managerFor(ctx)
+			.createQueryBuilder(AgentMessageQueue, 'queue')
 			.select('queue.threadId', 'threadId')
 			.distinct(true)
 			.getRawMany<{ threadId: string }>();

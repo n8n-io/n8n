@@ -141,6 +141,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
+	const isAgentsEnabled = computed(
+		() => isModuleActive('agents') && moduleSettings.value.agents?.enabled !== false,
+	);
+	const isAppsEnabled = computed(() => isModuleActive('apps'));
+
 	/**
 	 * Checks whether an agents-module sub-feature token (listed in
 	 * `N8N_AGENTS_MODULES` on the backend) is enabled. Returns `false`
@@ -150,9 +155,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	 * Known tokens: see `AGENTS_MODULE_NAMES` in `agents.config.ts`.
 	 */
 	const isAgentModuleActive = (name: string): boolean => {
-		return (
-			isModuleActive('agents') && moduleSettings.value.agents?.modules?.includes(name) === true
-		);
+		return isAgentsEnabled.value && moduleSettings.value.agents?.modules?.includes(name) === true;
 	};
 
 	const isAiCreditsEnabled = computed(
@@ -216,7 +219,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	// Opt-in flag controlled by the backend's N8N_AGENTS_AI_SANDBOX_ENABLED setting.
 	const isAgentsKnowledgeBaseFeatureEnabled = computed(
-		() => isModuleActive('agents') && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
+		() => isAgentsEnabled.value && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
 	);
 
 	const isPublicChatTriggerDisabled = computed(
@@ -268,6 +271,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
 
+	const isEnterprisePlan = computed(() => planName.value.toLowerCase() === 'enterprise');
+
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
 	const endpointHealth = computed(() => settings.value.endpointHealth);
@@ -314,6 +319,21 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const setWorkflowReviewsPolicy = (policy: WorkflowReviewsPolicy) => {
 		settings.value.workflowReviews = policy;
+
+		const inbox = settings.value.inbox;
+		if (!inbox || !isModuleActive('inbox')) return;
+
+		// Update Inbox access from the saved policy.
+		inbox.availableTypes = inbox.availableTypes.filter((type) => type !== 'workflow_review');
+		inbox.failedTypes = inbox.failedTypes.filter((type) => type !== 'workflow_review');
+		if (
+			policy.enabled &&
+			isEnterpriseFeatureEnabled.value.workflowReviews &&
+			isModuleActive('workflow-reviews')
+		) {
+			inbox.availableTypes.push('workflow_review');
+		}
+		inbox.enabled = inbox.availableTypes.length > 0 || inbox.failedTypes.length > 0;
 	};
 
 	const setSaveDataErrorExecution = (newValue: WorkflowSettings.SaveDataExecution) => {
@@ -502,6 +522,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveManualExecutions,
 		saveDataProgressExecution,
 		isCommunityPlan,
+		isEnterprisePlan,
 		isAskAiEnabled,
 		isAiBuilderEnabled,
 		isAiAssistantOrBuilderEnabled,
@@ -528,6 +549,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
+		isAgentsEnabled,
+		isAppsEnabled,
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,

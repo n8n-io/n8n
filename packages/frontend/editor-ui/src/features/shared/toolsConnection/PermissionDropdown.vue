@@ -14,11 +14,13 @@ const props = withDefaults(
 		modelValue: McpToolPermission;
 		custom?: boolean;
 		disabled?: boolean;
+		excludePermissions?: McpToolPermission[];
 		dataTestId?: string;
 	}>(),
 	{
 		custom: false,
 		disabled: false,
+		excludePermissions: () => [],
 		dataTestId: undefined,
 	},
 );
@@ -44,11 +46,13 @@ const selectedLabel = computed(() =>
 );
 
 const items = computed<Array<DropdownMenuItemProps<McpToolPermission>>>(() =>
-	permissions.map((id) => ({
-		id,
-		label: labels.value[id],
-		checked: !props.custom && id === props.modelValue,
-	})),
+	permissions
+		.filter((permission) => !props.excludePermissions.includes(permission))
+		.map((id) => ({
+			id,
+			label: labels.value[id],
+			checked: !props.custom && id === props.modelValue,
+		})),
 );
 </script>
 

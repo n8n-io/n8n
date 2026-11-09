@@ -20,6 +20,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { isJsonKeyObject } from '@/app/utils/typesUtils';
 import {
 	getActiveCredentialTypes,
+	isMcpAiGatewayAuthentication,
 	isResourceLocatorValue,
 	type IDataObject,
 	type INode,
@@ -327,6 +328,13 @@ export const getNodeAuthOptions = (
 			);
 		}
 	});
+	// Gateway credits are a managed option, not a credential type that the user creates.
+	options = options.filter(
+		(option) =>
+			!isMcpAiGatewayAuthentication(
+				getNodeCredentialForSelectedAuthType(nodeType, option.value)?.name ?? '',
+			),
+	);
 	// recommended options first; stable, so descriptor-relative order is kept within each group
 	const recommended = options.filter((option) => option.name.includes(recommendedSuffix));
 	const notRecommended = options.filter((option) => !option.name.includes(recommendedSuffix));

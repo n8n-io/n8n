@@ -16,6 +16,8 @@ export const SCHEDULE_TRIGGER_NAME = 'Schedule Trigger';
 /** A credential type is policed by its bare name, unlike a package-qualified node type. */
 export const POSTGRES_CREDENTIAL = 'postgres';
 export const HEADER_AUTH_CREDENTIAL = 'httpHeaderAuth';
+export const SLACK_CREDENTIAL = { type: 'slackApi', displayName: 'Slack API' };
+export const HTTP_REQUEST_NAME = 'HTTP Request';
 
 export interface PolicyViolation {
 	kind: string;
@@ -135,6 +137,28 @@ export function webhookToPostgresWorkflow(credential: {
 	};
 }
 
+/** An HTTP Request node that authenticates with a predefined credential type. */
+export function httpRequestWorkflow(nodeCredentialType: string): Partial<IWorkflowBase> {
+	return {
+		name: `Credential type policy ${nanoid(8)}`,
+		nodes: [
+			{
+				id: nanoid(),
+				name: HTTP_REQUEST_NAME,
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters: {
+					url: 'https://example.com',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType,
+				},
+			},
+		],
+		connections: {},
+	};
+}
+
 export function postgresCredential(projectId: string): CreateCredentialDto {
 	return {
 		name: `Postgres ${nanoid(8)}`,
@@ -226,8 +250,34 @@ export async function publishOutcome(api: ApiHelpers, workflow: IWorkflowBase) {
 	return { status: response.status(), violations: await violationsOf(response) };
 }
 
+/**
+ * Retry settings for a run started right after a policy write. Another process, such as the
+ * worker, learns of the write from a debounced pubsub reload, so its first run can predate it.
+ */
+export const POLICY_PROPAGATION = { timeout: 20_000, intervals: [500, 1000, 2000] };
+
 export async function manualRunOutcome(api: ApiHelpers, workflow: IWorkflowBase) {
 	const { executionId } = await api.workflows.runManually(workflow.id, SCHEDULE_TRIGGER_NAME);
 	const execution = await api.workflows.waitForExecutionById(executionId);
+	return { status: execution.status, violations: executionErrorOf(execution).violations };
+}
+
+/** Triggers the webhook and reads the execution that this trigger started, not an earlier one. */
+export async function webhookRunOutcome(api: ApiHelpers, workflowId: string, path: string) {
+	const earlier = new Set((await api.workflows.getExecutions(workflowId, 50)).map(({ id }) => id));
+	await api.webhooks.trigger(path, { maxNotFoundRetries: 5 });
+
+	let executionId: string | undefined;
+	await expect
+		.poll(async () => {
+			const executions = await api.workflows.getExecutions(workflowId, 50);
+			executionId = executions.find(
+				({ id, status }) => !earlier.has(id) && (status === 'success' || status === 'error'),
+			)?.id;
+			return executionId;
+		})
+		.toBeDefined();
+
+	const execution = await api.workflows.getExecution(executionId!);
 	return { status: execution.status, violations: executionErrorOf(execution).violations };
 }
