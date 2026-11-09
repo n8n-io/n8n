@@ -1309,9 +1309,10 @@ export class AgentRuntime {
 		const sentCueIds = new Set(
 			messages.filter(isRuntimeContextCue).flatMap((message) => message.data.cueIds),
 		);
+		const activeSkillIds = new Set(list.activeSkillIds);
 		const request = {
 			messages,
-			activeSkillIds: list.activeSkillIds ?? [],
+			isSkillActive: (skillId: string) => activeSkillIds.has(skillId),
 			sentCueIds,
 			persistence: options?.persistence,
 			abortSignal: abortScope.signal,

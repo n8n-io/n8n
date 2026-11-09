@@ -1,12 +1,12 @@
 import type { EmbeddingModel } from 'ai';
 
+import type { ContextCueRequest } from '../types/runtime/agent-runtime';
 import type { AgentMessage } from '../types/sdk/message';
 
 /**
- * A one-line correction for a mistake seen in real runs or evals. It belongs to
- * a skill but is not part of the skill body. While the skill is active, the
- * runtime retrieves the cues whose `appliesWhen` matches the current step
- * and adds them to the conversation.
+ * A one-line correction for a mistake seen in real runs or evals. While its
+ * set is active, the runtime retrieves the cues whose `appliesWhen` matches
+ * the current step and adds them to the conversation.
  */
 export interface ContextCue {
 	/** Unique within its set. */
@@ -26,32 +26,24 @@ export interface ContextCue {
 	 * Omit to allow it in any thread.
 	 */
 	requiresAny?: readonly string[];
-	/** The failure the cue prevents, in one sentence. */
-	fixes?: string;
-	/** The PR or commit that added the cue. */
-	origin?: string;
-	/** Eval cases that fail without the cue. Empty means it was never ablated. */
-	evalCases?: readonly string[];
 }
 
-/**
- * When retrieval scores a set.
- * - `every-step`: before each model call while the skill is active.
- * - `on-load`: only for the model call right after the agent loads the skill.
- *   Use it for skills that make one decision in that call, such as routing.
- */
-export type ContextCueDelivery = 'every-step' | 'on-load';
+/** Decides before each model call whether a set's cues can apply. */
+export type ContextCueSetPredicate = (request: ContextCueRequest) => boolean;
 
 export interface ContextCueSet {
-	/** The skill that must be active for these cues to apply. */
-	skillId: string;
-	/** Default: `every-step`. */
-	delivery?: ContextCueDelivery;
+	/** Unique across sets. Part of each cue's conversation id. */
+	id: string;
+	/**
+	 * Retrieval scores the set only when this returns true. Omit to score it
+	 * before every model call. See `whileSkillActive` and `whenSkillLoads`.
+	 */
+	isActive?: ContextCueSetPredicate;
 	cues: readonly ContextCue[];
 }
 
 export interface ContextCueMatch {
-	skillId: string;
+	setId: string;
 	cueId: string;
 	score: number;
 }

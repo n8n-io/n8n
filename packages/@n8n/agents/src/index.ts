@@ -317,22 +317,19 @@ export {
 	isRuntimeContextCue,
 } from './sdk/message';
 export {
-	buildContextCueQuery,
-	contextCueId,
 	createContextCueProvider,
 	parseAblatedContextCues,
-	DEFAULT_CONTEXT_CUE_BM25_THRESHOLD,
-	DEFAULT_CONTEXT_CUE_EMBEDDING_THRESHOLD,
-	DEFAULT_CONTEXT_CUE_TOP_K,
+	whenSkillLoads,
+	whileSkillActive,
 } from './context-cues';
 export type {
 	ContextCue,
-	ContextCueDelivery,
 	ContextCueMatch,
 	ContextCueProviderOptions,
 	ContextCueRetrievalMethod,
 	ContextCueRetrievalTrace,
 	ContextCueSet,
+	ContextCueSetPredicate,
 	ContextCueStepQuery,
 } from './context-cues';
 export { fetchProviderCatalog } from './sdk/catalog';

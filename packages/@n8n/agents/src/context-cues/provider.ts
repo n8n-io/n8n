@@ -3,10 +3,10 @@ import type { EmbeddingModel } from 'ai';
 import { createBm25Index } from './bm25';
 import type {
 	ContextCue,
-	ContextCueDelivery,
 	ContextCueMatch,
 	ContextCueProviderOptions,
 	ContextCueRetrievalMethod,
+	ContextCueSetPredicate,
 	ContextCueStepQuery,
 } from './types';
 import { loadAi } from '../runtime/model/lazy-ai';
@@ -32,9 +32,9 @@ const MAX_TOOL_OUTPUT_CHARS = 300;
 /** Tags that the agents runtime adds to message text. */
 const RUNTIME_INJECTED_TAGS = ['system-reminder', 'context', 'skill'];
 
-/** Cue id used in the conversation. Ids are unique across skills. */
-export function contextCueId(skillId: string, cueId: string): string {
-	return `cue:${skillId}:${cueId}`;
+/** Cue id used in the conversation. Ids are unique across sets. */
+export function contextCueId(setId: string, cueId: string): string {
+	return `cue:${setId}:${cueId}`;
 }
 
 /** Parses a comma-separated list of cue ids to ablate, such as an env var value. */
@@ -119,6 +119,20 @@ export function detectJustLoadedSkills(messages: readonly AgentMessage[]): Set<s
 		break;
 	}
 	return loaded;
+}
+
+/** Scores a set before each model call while the skill is active. */
+export function whileSkillActive(skillId: string): ContextCueSetPredicate {
+	return (request) => request.isSkillActive(skillId);
+}
+
+/**
+ * Scores a set only in the model call right after the agent loads the skill.
+ * Use it for skills that make one decision in that call, such as routing.
+ */
+export function whenSkillLoads(skillId: string): ContextCueSetPredicate {
+	return (request) =>
+		request.isSkillActive(skillId) && detectJustLoadedSkills(request.messages).has(skillId);
 }
 
 /** User text and tool inputs, searched by a cue's `requiresAny` gate. */
@@ -252,8 +266,7 @@ async function waitUnlessAborted<T>(promise: Promise<T>, abortSignal?: AbortSign
 }
 
 interface Candidate {
-	skillId: string;
-	delivery: ContextCueDelivery;
+	setId: string;
 	cue: ContextCue;
 }
 
@@ -294,7 +307,7 @@ function createBm25Scorer(
 }
 
 /**
- * Returns a context cue provider that adds the cues of active skills
+ * Returns a context cue provider that adds the cues of active sets
  * whose `appliesWhen` is close to the current step: by embedding similarity
  * when an embedding model is set, else by BM25.
  *
@@ -313,15 +326,9 @@ export function createContextCueProvider(options: ContextCueProviderOptions): Co
 	const stripInjectedText = createInjectedTextStripper(injectedTags);
 
 	const candidates: Candidate[] = options.sets.flatMap((set) =>
-		set.cues
-			.filter((cue) => !isAblated(cue.id, ablated))
-			.map((cue) => ({
-				skillId: set.skillId,
-				delivery: set.delivery ?? 'every-step',
-				cue,
-			})),
+		set.cues.filter((cue) => !isAblated(cue.id, ablated)).map((cue) => ({ setId: set.id, cue })),
 	);
-	const byKey = new Map(candidates.map((item) => [`${item.skillId}:${item.cue.id}`, item]));
+	const byKey = new Map(candidates.map((item) => [`${item.setId}:${item.cue.id}`, item]));
 
 	let method: ContextCueRetrievalMethod = options.embeddingModel ? 'embedding' : 'bm25';
 	let bm25Scorer: CueScorer | undefined;
@@ -350,15 +357,8 @@ export function createContextCueProvider(options: ContextCueProviderOptions): Co
 	let lastScores: ContextCueMatch[] = [];
 
 	return async (request: ContextCueRequest): Promise<ContextCueEntry[]> => {
-		// An `on-load` set counts only in the model call right after its skill loads.
-		const justLoaded = detectJustLoadedSkills(request.messages);
 		const active = new Set(
-			request.activeSkillIds.filter((skillId) =>
-				candidates.some(
-					(item) =>
-						item.skillId === skillId && (item.delivery === 'every-step' || justLoaded.has(skillId)),
-				),
-			),
+			options.sets.filter((set) => set.isActive?.(request) ?? true).map((set) => set.id),
 		);
 		if (active.size === 0) return [];
 
@@ -371,8 +371,8 @@ export function createContextCueProvider(options: ContextCueProviderOptions): Co
 			// Each cue takes its best score against either query part, so a long
 			// user request does not dilute a specific step (and vice versa).
 			const scores = await scorer(queries, request.abortSignal);
-			lastScores = candidates.map(({ skillId, cue }, i) => ({
-				skillId,
+			lastScores = candidates.map(({ setId, cue }, i) => ({
+				setId,
 				cueId: cue.id,
 				score: scores[i],
 			}));
@@ -388,10 +388,10 @@ export function createContextCueProvider(options: ContextCueProviderOptions): Co
 			return required.some((needle) => evidence?.includes(needle));
 		};
 		const ranked = lastScores
-			.filter(({ skillId, cueId }) => {
-				if (!active.has(skillId)) return false;
-				if (request.sentCueIds.has(contextCueId(skillId, cueId))) return false;
-				const cue = byKey.get(`${skillId}:${cueId}`)?.cue;
+			.filter(({ setId, cueId }) => {
+				if (!active.has(setId)) return false;
+				if (request.sentCueIds.has(contextCueId(setId, cueId))) return false;
+				const cue = byKey.get(`${setId}:${cueId}`)?.cue;
 				if (cue?.phase !== undefined && !phases.has(cue.phase)) return false;
 				// A gate that is not met yet keeps the cue unsent, like a later phase.
 				return requirementMet(cue?.requiresAny);
@@ -405,9 +405,9 @@ export function createContextCueProvider(options: ContextCueProviderOptions): Co
 			nearMisses: ranked.filter(({ score }) => score < threshold).slice(0, 3),
 		});
 
-		return matches.flatMap(({ skillId, cueId }) => {
-			const item = byKey.get(`${skillId}:${cueId}`);
-			return item ? [{ id: contextCueId(skillId, cueId), content: item.cue.text }] : [];
+		return matches.flatMap(({ setId, cueId }) => {
+			const item = byKey.get(`${setId}:${cueId}`);
+			return item ? [{ id: contextCueId(setId, cueId), content: item.cue.text }] : [];
 		});
 	};
 }

@@ -1,11 +1,9 @@
 import {
 	type AgentMessage,
 	type ContextCueProvider,
-	type ContextCueRetrievalTrace,
 	createContextCueProvider,
 	parseAblatedContextCues,
 } from '@n8n/agents';
-import type { EmbeddingModel } from 'ai';
 
 import { INTENT_RECOGNITION_CUES } from './intent-recognition.cues';
 import { POST_BUILD_FLOW_CUES } from './post-build-flow.cues';
@@ -59,9 +57,7 @@ const INSTANCE_AI_STOPWORDS = [
 const INSTANCE_AI_INJECTED_TAGS = ['thread-context'];
 
 /** Phases the conversation has reached, from the tools that succeeded so far. */
-export function detectInstanceAiCuePhases(
-	messages: readonly AgentMessage[],
-): Set<InstanceAiCuePhase> {
+function detectInstanceAiCuePhases(messages: readonly AgentMessage[]): Set<InstanceAiCuePhase> {
 	const phases = new Set<InstanceAiCuePhase>();
 	// The first build of a new workflow is not an edit. A build in an earlier
 	// turn means this turn changes a saved workflow.
@@ -89,33 +85,21 @@ export function detectInstanceAiCuePhases(
 	return phases;
 }
 
-export interface InstanceAiContextCueOptions {
-	/** Without an embedding model, the provider ranks cues with BM25. */
-	embeddingModel?: EmbeddingModel;
-	onRetrieval?: (trace: ContextCueRetrievalTrace) => void;
-	onEmbeddingFailure?: (error: unknown) => void;
-}
-
 /**
  * Builds the provider that adds Instance AI context cues before each
- * model call. Evals can tune it without a code change:
+ * model call. It ranks cues with BM25.  Evals can tune it without a code change:
  * `N8N_INSTANCE_AI_CONTEXT_CUE_THRESHOLD` sets the score threshold, and
  * `N8N_INSTANCE_AI_CONTEXT_CUE_ABLATE=<id>[,<id>…]` (or `*`) leaves out
  * cues. If the pass rate does not drop without a cue, delete it.
  */
-export function createInstanceAiContextCueProvider(
-	options: InstanceAiContextCueOptions = {},
-): ContextCueProvider {
+export function createInstanceAiContextCueProvider(): ContextCueProvider {
 	const threshold = Number(process.env.N8N_INSTANCE_AI_CONTEXT_CUE_THRESHOLD);
 	return createContextCueProvider({
 		sets: INSTANCE_AI_CONTEXT_CUE_SETS,
-		embeddingModel: options.embeddingModel,
 		detectPhases: detectInstanceAiCuePhases,
 		threshold: Number.isFinite(threshold) && threshold > 0 ? threshold : undefined,
 		ablate: parseAblatedContextCues(process.env.N8N_INSTANCE_AI_CONTEXT_CUE_ABLATE),
 		stopwords: INSTANCE_AI_STOPWORDS,
 		injectedTags: INSTANCE_AI_INJECTED_TAGS,
-		onRetrieval: options.onRetrieval,
-		onEmbeddingFailure: options.onEmbeddingFailure,
 	});
 }

@@ -8,6 +8,8 @@ import {
 	contextCueId,
 	createContextCueProvider,
 	parseAblatedContextCues,
+	whenSkillLoads,
+	whileSkillActive,
 } from '../provider';
 import type { ContextCueRetrievalTrace, ContextCueSet } from '../types';
 
@@ -100,7 +102,8 @@ describe('buildContextCueQuery', () => {
 describe('createContextCueProvider', () => {
 	const sets: ContextCueSet[] = [
 		{
-			skillId: 'builder',
+			id: 'builder',
+			isActive: whileSkillActive('builder'),
 			cues: [
 				{ id: 'a', text: 'Rule A', appliesWhen: 'alpha' },
 				{ id: 'b', text: 'Rule B', appliesWhen: 'beta' },
@@ -119,9 +122,12 @@ describe('createContextCueProvider', () => {
 		}),
 	}) as unknown as EmbeddingModel;
 
-	const request = (overrides: Partial<ContextCueRequest> = {}): ContextCueRequest => ({
+	const request = (
+		overrides: Partial<ContextCueRequest> = {},
+		activeSkillIds: readonly string[] = ['builder'],
+	): ContextCueRequest => ({
 		messages: [user('about alpha')],
-		activeSkillIds: ['builder'],
+		isSkillActive: (skillId) => activeSkillIds.includes(skillId),
 		sentCueIds: new Set(),
 		...overrides,
 	});
@@ -135,7 +141,18 @@ describe('createContextCueProvider', () => {
 
 	it('returns nothing when the skill is not active', async () => {
 		const provider = createContextCueProvider({ sets, embeddingModel: model });
-		expect(await provider(request({ activeSkillIds: [] }))).toEqual([]);
+		expect(await provider(request({}, []))).toEqual([]);
+	});
+
+	it('scores a set without a predicate before every model call', async () => {
+		const provider = createContextCueProvider({
+			sets: [{ id: 'always', cues: sets[0].cues }],
+			embeddingModel: model,
+			threshold: 0.8,
+		});
+		expect((await provider(request({}, []))).map((cue) => cue.id)).toEqual([
+			contextCueId('always', 'a'),
+		]);
 	});
 
 	it('skips sent and ablated cues', async () => {
@@ -162,7 +179,7 @@ describe('createContextCueProvider', () => {
 	it('holds a gated cue back until user text or a tool input mentions it', async () => {
 		const gated: ContextCueSet[] = [
 			{
-				skillId: 'builder',
+				id: 'builder',
 				cues: [{ id: 'a', requiresAny: ['gmailTrigger'], text: 'Rule A', appliesWhen: 'alpha' }],
 			},
 		];
@@ -192,7 +209,7 @@ describe('createContextCueProvider', () => {
 	it('holds a phase cue back until detectPhases reports its phase', async () => {
 		const phased: ContextCueSet[] = [
 			{
-				skillId: 'builder',
+				id: 'builder',
 				cues: [{ id: 'a', phase: 'after-build', text: 'Rule A', appliesWhen: 'alpha' }],
 			},
 		];
@@ -214,7 +231,7 @@ describe('createContextCueProvider', () => {
 	it('never sends a phase cue without detectPhases', async () => {
 		const phased: ContextCueSet[] = [
 			{
-				skillId: 'builder',
+				id: 'builder',
 				cues: [{ id: 'a', phase: 'after-build', text: 'Rule A', appliesWhen: 'alpha' }],
 			},
 		];
@@ -253,7 +270,7 @@ describe('createContextCueProvider', () => {
 		const provider = createContextCueProvider({
 			sets: [
 				{
-					skillId: 'builder',
+					id: 'builder',
 					cues: [
 						{
 							id: 'if-branches',
@@ -295,15 +312,16 @@ describe('createContextCueProvider', () => {
 		]);
 	});
 
-	describe('on-load delivery', () => {
-		const onLoadSets: ContextCueSet[] = [{ ...sets[0], skillId: 'router', delivery: 'on-load' }];
+	describe('whenSkillLoads', () => {
+		const onLoadSets: ContextCueSet[] = [
+			{ ...sets[0], id: 'router', isActive: whenSkillLoads('router') },
+		];
 		const loadCall = (input: Record<string, string>) => toolCall('load_skill', input);
 		const laterStep: AgentMessage = {
 			role: 'assistant',
 			content: [{ type: 'text', text: 'Building it now.' }],
 		};
-		const onLoadRequest = (messages: AgentMessage[]) =>
-			request({ messages, activeSkillIds: ['router'] });
+		const onLoadRequest = (messages: AgentMessage[]) => request({ messages }, ['router']);
 
 		it('fires in the call right after the skill loads, by id or by name', async () => {
 			const provider = createContextCueProvider({

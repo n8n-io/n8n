@@ -259,17 +259,7 @@ export async function createInstanceAgent(
 	if (orchestrationContext?.workspace) agent.workspace(orchestrationContext.workspace);
 	if (skills) {
 		agent.skills(skills);
-		// Without an embedding model, the provider ranks cues with BM25.
-		agent.contextCueProvider(
-			createInstanceAiContextCueProvider({
-				embeddingModel: options.contextCues?.embeddingModel,
-				onRetrieval: options.contextCues?.onRetrieval,
-				onEmbeddingFailure: (error) =>
-					context.logger.warn('Context cue embedding failed; ranking cues with BM25 for this run', {
-						error: error instanceof Error ? error.message : String(error),
-					}),
-			}),
-		);
+		agent.contextCueProvider(createInstanceAiContextCueProvider());
 	}
 
 	if (options.memory) {

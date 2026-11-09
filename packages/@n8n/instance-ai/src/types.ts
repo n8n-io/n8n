@@ -4,7 +4,6 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
-	ContextCueRetrievalTrace,
 	ExecutionOptions,
 	FetchFn,
 	MemoryTaskUsageReport,
@@ -16,7 +15,6 @@ import type {
 	Workspace,
 } from '@n8n/agents';
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
-import type { EmbeddingModel } from 'ai';
 import type {
 	AgentConfigValidationIssueCode,
 	AgentJsonConfig,
@@ -2325,12 +2323,4 @@ export interface CreateInstanceAgentOptions {
 	modelFetch?: FetchFn;
 	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */
 	requestLabels?: boolean;
-	/**
-	 * Retrieves the skill context cues that match the current step.
-	 * Without an embedding model, retrieval uses BM25.
-	 */
-	contextCues?: {
-		embeddingModel?: EmbeddingModel;
-		onRetrieval?: (trace: ContextCueRetrievalTrace) => void;
-	};
 }
