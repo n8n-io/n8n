@@ -8,6 +8,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@n8n/errors';
 import type { ListQuery } from '@/requests';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { UpdateAllowedRedirectUrisDto } from '../dto/update-allowed-redirect-uris.dto';
@@ -85,6 +86,7 @@ describe('McpSettingsController', () => {
 	const workflowService = mock<WorkflowService>();
 	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>();
 	const eventService = mock<EventService>();
+	const publisher = mock<Publisher>();
 
 	let controller: McpSettingsController;
 
@@ -98,6 +100,7 @@ describe('McpSettingsController', () => {
 		Container.set(WorkflowService, workflowService);
 		Container.set(InstanceSettingsLoaderConfig, instanceSettingsLoaderConfig);
 		Container.set(EventService, eventService);
+		Container.set(Publisher, publisher);
 		controller = Container.get(McpSettingsController);
 	});
 
@@ -150,6 +153,41 @@ describe('McpSettingsController', () => {
 			// The response reflects the persisted state read back via the getters,
 			// surfacing the real stored auto-expose value on enable.
 			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: true });
+		});
+
+		test('tells the other mains to reload the MCP settings', async () => {
+			const req = createReq({ mcpAccessEnabled: true }, { user: createUser() });
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			await controller.updateSettings(req, createRes(), dto);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-settings' });
+		});
+
+		test('keeps the update when the other mains cannot be told', async () => {
+			const req = createReq({ mcpAccessEnabled: true }, { user: createUser() });
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+			publisher.publishCommand.mockRejectedValueOnce(new Error('Redis down'));
+
+			const result = await controller.updateSettings(req, createRes(), dto);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to notify other main processes of the MCP settings',
+				{ cause: 'Redis down' },
+			);
+			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: false });
+		});
+
+		test('refreshes the MCP module settings on a reload command from another main', async () => {
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			await controller.refreshMcpModuleSettings();
+
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
 		});
 
 		test('handles module registry refresh failure gracefully', async () => {

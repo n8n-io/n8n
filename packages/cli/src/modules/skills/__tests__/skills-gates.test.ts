@@ -1,4 +1,6 @@
 import { ASSISTANT_SKILLS_FLAG, SKILL_SYNC_FLAG } from '@n8n/api-types';
+import type { ModuleRegistry } from '@n8n/backend-common';
+import type { ModuleSettings } from '@n8n/decorators';
 import type { User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -12,9 +14,18 @@ import { SkillUsageProxy } from '../services/skill-usage-proxy.service';
 import { SkillsGate } from '../services/skills-gate';
 
 describe('skills gates', () => {
-	function createGates() {
+	function consumerSettings({ agents = false, assistant = false, mcp = false } = {}) {
+		return new Map<string, ModuleSettings>([
+			['agents', { enabled: agents }],
+			['instance-ai', { enabled: assistant }],
+			['mcp', { mcpAccessEnabled: mcp }],
+		]);
+	}
+
+	function createGates(settings = consumerSettings({ agents: true })) {
 		const proxy = new SkillUsageProxy();
-		const skillsGate = new SkillsGate(proxy);
+		const moduleRegistry = { settings } as unknown as ModuleRegistry;
+		const skillsGate = new SkillsGate(proxy, moduleRegistry);
 		const postHog = mock<PostHogClient>();
 		const assistantGate = new AssistantSkillsFlagGate(skillsGate, postHog);
 		const syncGate = new SkillSyncFlagGate(skillsGate, postHog);
@@ -30,6 +41,46 @@ describe('skills gates', () => {
 		expect(skillsGate.isEnabled).toBe(false);
 		expect(await assistantGate.isEnabled()).toBe(false);
 		expect(postHog.getFeatureFlagForInstance).not.toHaveBeenCalled();
+	});
+
+	it.each(['agents', 'assistant', 'mcp'] as const)(
+		'turns skills on while only %s is on',
+		(consumer) => {
+			const { proxy, skillsGate } = createGates(consumerSettings({ [consumer]: true }));
+			proxy.register(mock<SkillUsage>());
+
+			expect(skillsGate.isEnabled).toBe(true);
+		},
+	);
+
+	it('turns skills off while all consumers are off', () => {
+		const { proxy, skillsGate } = createGates(consumerSettings());
+		proxy.register(mock<SkillUsage>());
+
+		expect(skillsGate.isEnabled).toBe(false);
+	});
+
+	it('keeps skills off without the agents module, even with every consumer on', () => {
+		const { skillsGate } = createGates(
+			consumerSettings({ agents: true, assistant: true, mcp: true }),
+		);
+
+		expect(skillsGate.isEnabled).toBe(false);
+	});
+
+	it('treats a consumer module without settings as off', () => {
+		const { proxy, skillsGate } = createGates(new Map());
+		proxy.register(mock<SkillUsage>());
+
+		expect(skillsGate.isEnabled).toBe(false);
+	});
+
+	it('keeps Assistant skills off while all consumers are off, whatever the flag says', async () => {
+		const { proxy, postHog, assistantGate } = createGates(consumerSettings());
+		postHog.getFeatureFlagForInstance.mockResolvedValue(true);
+		proxy.register(mock<SkillUsage>());
+
+		expect(await assistantGate.isEnabled()).toBe(false);
 	});
 
 	it.each([

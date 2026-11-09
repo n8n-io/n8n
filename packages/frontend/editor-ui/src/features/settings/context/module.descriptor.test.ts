@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import type { FrontendSettings } from '@n8n/api-types';
+import type { FrontendModuleSettings, FrontendSettings } from '@n8n/api-types';
 import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
@@ -23,12 +23,20 @@ const createTestRouter = () =>
 		],
 	});
 
-const setup = (agentsActive = false) => {
+const setup = (agentsActive = false, moduleSettings: FrontendModuleSettings = {}) => {
 	createTestingPinia({ stubActions: false });
-	useSettingsStore().settings = {
+	const settingsStore = useSettingsStore();
+	settingsStore.settings = {
 		activeModules: agentsActive ? ['skills', 'agents'] : [],
 	} as unknown as FrontendSettings;
+	settingsStore.moduleSettings = moduleSettings;
 };
+
+const allConsumersOff = {
+	agents: { enabled: false },
+	'instance-ai': { enabled: false },
+	mcp: { mcpAccessEnabled: false },
+} as FrontendModuleSettings;
 
 describe('ContextModule routes', () => {
 	test.each([
@@ -44,23 +52,40 @@ describe('ContextModule routes', () => {
 	});
 
 	describe('skills', () => {
-		it('opens the skills page while the agents module is active', async () => {
-			setup(true);
-			const router = createTestRouter();
+		test.each([
+			{ agents: { enabled: true } },
+			{ 'instance-ai': { enabled: true } },
+			{ mcp: { mcpAccessEnabled: true } },
+		] as FrontendModuleSettings[])(
+			'opens the skills page while one consumer is on: %o',
+			async (consumerOn) => {
+				setup(true, { ...allConsumersOff, ...consumerOn });
+				const router = createTestRouter();
 
-			await router.push('/settings/context/skills');
+				await router.push('/settings/context/skills');
 
-			expect(router.currentRoute.value.name).toBe(VIEWS.SETTINGS_CONTEXT_SKILLS);
-		});
+				expect(router.currentRoute.value.name).toBe(VIEWS.SETTINGS_CONTEXT_SKILLS);
+			},
+		);
 
-		it('redirects to the homepage while the agents module is inactive', async () => {
-			setup(false);
-			const router = createTestRouter();
+		test.each([
+			{ agentsActive: true, moduleSettings: allConsumersOff },
+			{ agentsActive: true, moduleSettings: {} },
+			{
+				agentsActive: false,
+				moduleSettings: { ...allConsumersOff, agents: { enabled: true } },
+			},
+		])(
+			'redirects to the homepage (agents module active: $agentsActive, settings: $moduleSettings)',
+			async ({ agentsActive, moduleSettings }) => {
+				setup(agentsActive, moduleSettings);
+				const router = createTestRouter();
 
-			await router.push('/settings/context/skills');
+				await router.push('/settings/context/skills');
 
-			expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
-		});
+				expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+			},
+		);
 	});
 
 	it('lists no custom middleware, so the initializer does not gate it on a backend module', () => {

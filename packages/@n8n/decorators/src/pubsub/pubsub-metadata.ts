@@ -48,6 +48,7 @@ export type PubSubEventName =
 	| 'reload-instance-ai-settings'
 	| 'self-healing-failure'
 	| 'reload-agents-settings'
+	| 'reload-mcp-settings'
 	| 'cancel-test-run'
 	| 'cancel-collection'
 	| 'agent-chat-integration-changed'
