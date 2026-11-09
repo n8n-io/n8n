@@ -20,12 +20,17 @@ import { jsonParse } from 'n8n-workflow';
 import { ZodError, type ZodType, type ZodTypeDef } from 'zod';
 
 import { BadRequestError, UserError } from '@n8n/errors';
+import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
 import { toImportBlockedError } from './import-blocked.error';
 import { agentBodyIssues } from '../entities/agent/agent-body-issues';
+import {
+	keepConfirmedCredentialData,
+	resolveCredentialProperties,
+} from '../entities/credential/credential-display-controllers';
 import type { PreparedAgent } from '../entities/agent/agent-import.types';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
@@ -60,6 +65,7 @@ export class N8nPackageParser {
 		private readonly logger: Logger,
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowSerializer: WorkflowSerializer,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	async getManifest(reader: PackageReader): Promise<PackageManifest> {
@@ -498,7 +504,29 @@ export class N8nPackageParser {
 			);
 		}
 
-		return credential;
+		return this.dropUnconfirmedPlainValues(credential, path);
+	}
+
+	/**
+	 * A package carries a plain credential value only for a field that decides which other fields
+	 * show. A plain value of any other field is dropped and reported by field name, never by value.
+	 */
+	private dropUnconfirmedPlainValues(
+		credential: SerializedCredential,
+		path: string,
+	): SerializedCredential {
+		if (credential.data === undefined) return credential;
+
+		const properties = resolveCredentialProperties(this.credentialTypes, credential.type);
+		const { data, dropped } = keepConfirmedCredentialData(credential.data, properties);
+		if (dropped.length === 0) return credential;
+
+		this.logger.warn(
+			`Package credential file at ${path}: dropped values of ${dropped.join(', ')}. Only expressions and values that control which fields show can travel in a package.`,
+		);
+
+		const { data: _discarded, ...rest } = credential;
+		return { ...rest, ...(data !== undefined ? { data } : {}), dataIsComplete: false };
 	}
 
 	private async readJson<T = unknown>(
