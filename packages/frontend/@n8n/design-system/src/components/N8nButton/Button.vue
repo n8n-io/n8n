@@ -380,9 +380,10 @@ const handleClick = (event: MouseEvent) => {
 		}
 	}
 
-	// Keep the spinner anchored until its exit animation ends.
+	// Anchor and clip the spinner until its exit animation ends, so its slide adds no scrollbar.
 	&:has(> .loading-container) {
 		position: relative;
+		overflow: clip;
 	}
 
 	&.loading {
