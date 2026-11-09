@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  s_22d0a7cb733359::t_18ce1c2276a1ba 256-261,288-301
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_22d0a7cb733359::t_e558fafd182fb1 2745-2772,2775-2777,2779-2780,2782,2784-2805,2817
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_22d0a7cb733359::t_2b5e68cbc1b8a7 27,442,446-462
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/toolInputValidation.ts
+  s_22d0a7cb733359::t_2b5e68cbc1b8a7 3-5,23-45
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_22d0a7cb733359::t_18ce1c2276a1ba 386-389
+  s_22d0a7cb733359::t_8a7a0d1039e7de 317-345,347-357,359-370,372-385,390-397
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_22d0a7cb733359::t_f7dc7f967c3b42 46,58,60
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_22d0a7cb733359::t_2b5e68cbc1b8a7 58-61,963,1240,1526
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "62f67240ebabf44317dd7712501f358e5328008e",
+  "prompts": {},
+  "sessions": {
+    "s_22d0a7cb733359": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88471906-f377-41dd-9abb-5b578a84cfdb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
