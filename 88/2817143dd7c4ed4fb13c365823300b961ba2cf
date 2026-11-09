@@ -1,19 +1,27 @@
 packages/cli/src/modules/promotions.ee/__tests__/promotion-checkout-cleanup.service.test.ts
   s_0da4b348b3b902::t_22acee602a632a 294-324
+  s_0da4b348b3b902::t_876c2ccfa8783d 294-324
 packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
   s_0da4b348b3b902::t_47281fee7e0f53 406-454
+  s_0da4b348b3b902::t_c1271860be7c3d 406-454
 packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
   s_0da4b348b3b902::t_507e8a7ac258e8 494-512
+  s_0da4b348b3b902::t_fedc3cb4da195a 494-512
 packages/cli/src/modules/promotions.ee/promotion-checkout-cleanup.service.ts
   s_0da4b348b3b902::t_35049a3a038822 206-212,219,257-261,265,267-272,274-286
+  s_0da4b348b3b902::t_3dd21dcd33dfb9 206-212,219,257-261,265,267-272,274-286
 packages/cli/src/modules/promotions.ee/promotions-git.service.ts
   s_0da4b348b3b902::t_fe6fe6203fc68a 281,292-293,316,336,504,511,525
+  s_0da4b348b3b902::t_d8899e7759a28b 281,292-293,316,336,504,511,525
 packages/cli/src/modules/promotions.ee/promotions.service.ts
   s_0da4b348b3b902::t_57f45c0fe4886f 333-334,567-568
+  s_0da4b348b3b902::t_7aebb022f28342 333-334,567-568
 packages/cli/test/integration/public-api/promotions.test.ts
   s_0da4b348b3b902::t_2371965f07d5fe 2891-2918
+  s_0da4b348b3b902::t_498037f1a43c01 2891-2918
 packages/cli/src/modules/promotions.ee/__tests__/promotion-environment-lock.service.test.ts
   s_bfb3680951bbc8::t_54524106a74652 16-20,23,30-32,38-45
+  s_0da4b348b3b902::t_9c3a41d2ba9d26 16-20,23,30-32,38-45
 ---
 {
   "schema_version": "authorship/3.0.0",

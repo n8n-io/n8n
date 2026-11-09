@@ -1,13 +1,18 @@
 packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
   s_0da4b348b3b902::t_1c3ecc75108989 780-831
+  s_0da4b348b3b902::t_e23da1bdb0bf5b 780-831
 packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
   s_0da4b348b3b902::t_e9f9085f33d532 3664-3747
+  s_0da4b348b3b902::t_2e0ab702b86de6 3664-3747
 packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
   s_0da4b348b3b902::t_f2ef3dd27fd834 728-745,853-854
+  s_0da4b348b3b902::t_3bdaa1543a99c2 728-745,853-854
 packages/cli/src/modules/promotions.ee/promotions-git.service.ts
   s_0da4b348b3b902::t_d7c5ba85230e65 424-457
+  s_0da4b348b3b902::t_794446e1fa7442 424-457
 packages/cli/src/modules/promotions.ee/promotions.service.ts
   s_0da4b348b3b902::t_c83029d92ea681 1318-1320,1336-1341
+  s_0da4b348b3b902::t_5d742a901f741b 1318-1320,1336-1341
 ---
 {
   "schema_version": "authorship/3.0.0",

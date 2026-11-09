@@ -1,9 +1,12 @@
 packages/quality/testing/playwright/services/promotions-api-helper.ts
   s_0da4b348b3b902::t_0fdd6cef4dd53f 5-6,69-72
+  s_0da4b348b3b902::t_90f91b8301b5d1 5-6,69-72
 packages/quality/testing/playwright/tests/infrastructure/promotions/environment-lock-multi-main.spec.ts
   s_0da4b348b3b902::t_ae72b4ce6d8b15 1-160
+  s_0da4b348b3b902::t_a8f28838d5ebd1 1-160
 packages/cli/src/modules/promotions.ee/promotion-environment-lock.service.ts
   s_bfb3680951bbc8::t_7e690d55f9a188 34-42
+  s_0da4b348b3b902::t_b1f1ef345bb97b 34-42
 ---
 {
   "schema_version": "authorship/3.0.0",
