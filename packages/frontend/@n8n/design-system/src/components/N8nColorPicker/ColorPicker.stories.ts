@@ -61,7 +61,6 @@ Default.args = {
 	disabled: false,
 	size: 'small',
 	showAlpha: false,
-	colorFormat: '',
 	popperClass: '',
 	showInput: true,
 };
