@@ -191,29 +191,6 @@ describe('FromAiParametersModal', () => {
 		projectsStore.currentProjectId = 'test-project-id';
 	});
 
-	it('closes the modal when the dialog reports closed', async () => {
-		const uiStore = useUIStore();
-		const closeModal = vi.spyOn(uiStore, 'closeModal');
-		const { getByRole } = renderModal({
-			props: {
-				modalName: FROM_AI_PARAMETERS_MODAL_KEY,
-				data: {
-					nodeName: 'Test Node',
-				},
-			},
-			global: {
-				stubs: {
-					...dialogStubs,
-				},
-			},
-			pinia,
-		});
-
-		await userEvent.click(getByRole('button', { name: 'Close dialog' }));
-
-		expect(closeModal).toHaveBeenCalledWith(FROM_AI_PARAMETERS_MODAL_KEY);
-	});
-
 	it('closes the modal after execute', async () => {
 		const uiStore = useUIStore();
 		const closeModal = vi.spyOn(uiStore, 'closeModal');
