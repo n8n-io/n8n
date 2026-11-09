@@ -8,9 +8,10 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { SkillRepository } from '../../database/repositories/skill.repository';
@@ -209,7 +210,7 @@ describe('SkillsController', () => {
 		);
 		if (options.published) {
 			// Published and in sync: the draft is the published version.
-			const histories = Container.get(AgentHistoryRepository);
+			const histories = Container.get(DataSource).getRepository(AgentHistory);
 			await histories.save(histories.create({ versionId, agentId: agent.id, author: 'Test' }));
 			await agents.update({ id: agent.id }, { activeVersionId: versionId });
 		}

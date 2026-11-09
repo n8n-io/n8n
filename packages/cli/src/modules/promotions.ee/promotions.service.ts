@@ -13,12 +13,13 @@ import {
 	type PromotionBindingConflict,
 	type PromotionCheckoutPublicDto,
 	type PromotionDirection,
+	type PromotionMissingProjectListPublicDto,
 	type PromotionPreviewCheck,
 	type PromotionRunContents,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
+import { isPerson, ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
@@ -108,6 +109,14 @@ type PushedPromotion = {
 	counts: PromotePackageResultDto['counts'];
 	commitMessage: string;
 };
+
+type ApplyHead = {
+	operation: Omit<Parameters<PromotionsGitService['listBranchTree']>[0], 'pathspecs'>;
+	identity: { environmentId: string; git: { commitSha: string; branchName: string } };
+};
+
+const NO_APPLY_PACKAGE_MESSAGE =
+	'The remote branch has no exported package to import. Promote to it first.';
 
 /** Conflicts that `confirmDestructiveChanges` lets the apply continue past. */
 function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean {
@@ -988,6 +997,31 @@ export class PromotionsService {
 	}
 
 	/**
+	 * The package projects whose IDs do not exist on this instance. Users create them
+	 * before they apply changes to them from the project page.
+	 */
+	async listMissingProjects(environmentId: string): Promise<PromotionMissingProjectListPublicDto> {
+		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
+		// A new project has no environment link, so its project Apply reads the instance environment.
+		this.assertInstanceScope(input, 'Listing missing projects');
+		await this.assertCheckoutReady(input, 'reading its package');
+
+		const head = await this.fetchApplyHead(input);
+		const files = head && (await this.readApplyTree(head));
+		if (!head || !files?.size) return { environmentId, git: null, data: [] };
+
+		// Read projects the way Apply does, so the list matches what the project Apply finds.
+		const { projects } = await this.inventoryReader.read(new GitCommitPackageReader(files));
+		const existing = await this.projectRepository.findTypesByIds(projects.map(({ id }) => id));
+		const existingIds = new Set(existing.map(({ id }) => id));
+		const data = projects
+			.filter(({ id }) => !existingIds.has(id))
+			.map(({ path: _path, ...project }) => project)
+			.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+		return { environmentId, git: head.identity.git, data };
+	}
+
+	/**
 	 * Fetches the Apply branch and reads the package at its tip. The working copy stays as it is,
 	 * so Apply imports the commit that it compared, not the files on disk.
 	 */
@@ -996,12 +1030,32 @@ export class PromotionsService {
 		expectedSource: ApplyPackageDto['expectedSource'],
 	): Promise<
 		| Extract<ApplyPackageResultDto, { status: 'source-changed' }>
-		| {
-				status: 'current';
-				identity: { environmentId: string; git: { commitSha: string; branchName: string } };
-				files: Map<string, Buffer>;
-		  }
+		| { status: 'current'; identity: ApplyHead['identity']; files: Map<string, Buffer> }
 	> {
+		const head = await this.fetchApplyHead(input);
+		if (head === null) throw new BadRequestError(NO_APPLY_PACKAGE_MESSAGE);
+
+		const { identity } = head;
+		if (
+			expectedSource &&
+			(expectedSource.environmentId !== input.environmentId ||
+				expectedSource.branchName !== identity.git.branchName ||
+				expectedSource.commitSha !== identity.git.commitSha)
+		) {
+			this.logger.info('Apply stopped because the source changed', {
+				status: 'source-changed',
+				...identity,
+			});
+			return { status: 'source-changed', ...identity };
+		}
+
+		const files = await this.readApplyTree(head);
+		if (files.size === 0) throw new BadRequestError(NO_APPLY_PACKAGE_MESSAGE);
+		return { status: 'current', identity, files };
+	}
+
+	/** Fetches the Apply branch tip. `null` when the remote has no commits yet. */
+	private async fetchApplyHead(input: PromotionOperationInput): Promise<ApplyHead | null> {
 		const branchName = checkoutBranchName(input.config);
 		const operation = {
 			remoteUrl: repositoryUrl(input),
@@ -1014,38 +1068,20 @@ export class PromotionsService {
 			...operation,
 			pathspecs: [`${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`],
 		});
-		if (commitSha === null) {
-			throw new BadRequestError(
-				'The remote branch has no exported package to import. Promote to it first.',
-			);
-		}
+		if (commitSha === null) return null;
+		return {
+			operation,
+			identity: { environmentId: input.environmentId, git: { commitSha, branchName } },
+		};
+	}
 
-		const identity = { environmentId: input.environmentId, git: { commitSha, branchName } };
-		if (
-			expectedSource &&
-			(expectedSource.environmentId !== input.environmentId ||
-				expectedSource.branchName !== branchName ||
-				expectedSource.commitSha !== commitSha)
-		) {
-			this.logger.info('Apply stopped because the source changed', {
-				status: 'source-changed',
-				...identity,
-			});
-			return { status: 'source-changed', ...identity };
-		}
-
-		const files = await this.gitService.readTreeAtCommit({
+	private async readApplyTree({ operation, identity }: ApplyHead): Promise<Map<string, Buffer>> {
+		return await this.gitService.readTreeAtCommit({
 			...operation,
-			commitSha,
+			commitSha: identity.git.commitSha,
 			directory: PACKAGE_SUBFOLDER,
 			limits: this.packageImportConfig,
 		});
-		if (files.size === 0) {
-			throw new BadRequestError(
-				'The remote branch has no exported package to import. Promote to it first.',
-			);
-		}
-		return { status: 'current', identity, files };
 	}
 
 	private isBlocked(
@@ -1456,6 +1492,9 @@ export class PromotionsService {
 	}
 
 	private commitAuthor(user: User): { name: string; email: string } {
+		// A service account commits with the default author, as in source control.
+		if (!isPerson(user)) return { name: GIT_DEFAULT_COMMIT_NAME, email: GIT_DEFAULT_COMMIT_EMAIL };
+
 		const name =
 			[user.firstName, user.lastName].filter(Boolean).join(' ') || GIT_DEFAULT_COMMIT_NAME;
 		return { name, email: user.email ?? GIT_DEFAULT_COMMIT_EMAIL };

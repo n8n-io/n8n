@@ -4,7 +4,7 @@ import {
 	InstanceAiConfirmRequestDto,
 	type InstanceAiAgentAttachment,
 	type InstanceAiAttachment,
-	type InstanceAiFileAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
@@ -16,7 +16,10 @@ import { Service } from '@n8n/di';
 import {
 	MAX_STEPS,
 	modelConfigId,
+	patchThread,
+	snapshotAgent,
 	tokenUsageToBuilderUsageItems,
+	withAttachedAgentTarget,
 	type ModelConfig,
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
@@ -72,6 +75,10 @@ import {
 	type AssistantSandboxLease,
 } from './assistant-workspace-source';
 
+/** The model input of a message that has files but no text. */
+export const FILES_ONLY_MESSAGE =
+	'The user attached file(s) without a message. Inspect the first file and give a short summary. Use parse-file for a file that you cannot read directly.';
+
 type FormattedTurnError = NonNullable<
 	Awaited<ReturnType<NonNullable<SystemAgentTurnHandle['formatError']>>>
 >;
@@ -87,9 +94,11 @@ function contextAttachmentsOf(
 		): attachment is
 			| InstanceAiWorkflowAttachment
 			| InstanceAiAgentAttachment
-			| InstanceAiNodesAttachment =>
+			| InstanceAiNodesAttachment
+			| InstanceAiElementAttachment =>
 			attachment.type === 'workflow' ||
 			attachment.type === 'agent' ||
+			attachment.type === 'element' ||
 			(attachment.type === 'nodes' && nodeContextEnabled),
 	);
 }
@@ -164,7 +173,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		const { user } = turn;
 		const { request } = options;
 		const experimentGates = await this.adapterService.resolveExperimentGates(user);
-		const fileAttachments = turn.type === 'start' ? await this.readFileAttachments(turn) : [];
+		const turnFiles = turn.type === 'start' ? turn.attachments : [];
 		const contextAttachments = contextAttachmentsOf(
 			request.attachments,
 			experimentGates.nodeContextEnabled,
@@ -177,7 +186,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			...(proxyRunConfig.tracingProxyConfig
 				? { proxyConfig: proxyRunConfig.tracingProxyConfig }
 				: {}),
-			fileAttachments,
+			fileAttachments: turnFiles,
 			contextAttachments,
 			threadArtifacts: request.threadArtifacts,
 		});
@@ -185,7 +194,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			return await this.prepareTracedTurn(turn, options, {
 				trace,
 				experimentGates,
-				fileAttachments,
 				contextAttachments,
 				proxyRunConfig,
 			});
@@ -204,14 +212,13 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		setup: {
 			trace: AssistantTurnTrace | undefined;
 			experimentGates: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>;
-			fileAttachments: InstanceAiFileAttachment[];
 			contextAttachments: InstanceAiResourceAttachment[];
 			proxyRunConfig: AssistantProxyRunConfig;
 		},
 	): Promise<SystemAgentTurnHandle> {
 		const { user, thread } = turn;
 		const { runId, request } = options;
-		const { trace, experimentGates, fileAttachments, contextAttachments, proxyRunConfig } = setup;
+		const { trace, experimentGates, contextAttachments, proxyRunConfig } = setup;
 		const runtime = this.createTurnRuntime(turn, options, trace);
 		const environment = await this.turnEnvironment.create(
 			{
@@ -231,18 +238,25 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			runId,
 			message: turn.type === 'start' ? turn.message : '',
 			timeZone: request.timeZone,
-			fileAttachments,
+			// The runtime adds the files to the model input as stored references,
+			// and parse-file reads them by id through `storedFiles`.
+			fileAttachments: [],
 		});
+		environment.context.storedFiles = {
+			read: async (fileId) => await turn.readFile(fileId),
+		};
 
 		let turnInput: AssistantTurnInput | undefined;
 		if (turn.type === 'start') {
+			await this.bindAttachedAgent(turn, request.attachments);
 			const buildInput = async () =>
 				await this.turnInput.buildInput(environment, runtime, {
 					user,
 					threadId: thread.id,
 					runId,
-					message: turn.message,
-					fileAttachments,
+					message:
+						!turn.message.trim() && turn.attachments.length > 0 ? FILES_ONLY_MESSAGE : turn.message,
+					fileAttachments: [],
 					contextAttachments,
 					handoffContext: request.context,
 					timeZone: request.timeZone,
@@ -251,7 +265,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				});
 			turnInput = trace
 				? await trace.tracePromptBuild(
-						{ message: turn.message, attachmentCount: fileAttachments.length },
+						{ message: turn.message, attachmentCount: turn.attachments.length },
 						buildInput,
 						(built) => ({ fullMessage: built.fullMessage }),
 					)
@@ -266,13 +280,14 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			generateTitle: true,
 			...(trace ? { tracing: trace.context } : {}),
 		});
+		if (turn.type === 'start') await this.snapshotAttachedAgents(environment, contextAttachments);
 
 		let usage: { model: string; usage: TokenUsage } | undefined;
 		let inputAccepted: Promise<void> | undefined;
 		return {
 			agent,
 			// The runtime adds the files to the model input as stored references, so the
-			// input keeps only the text. The file content is for the file tools.
+			// input keeps only the text. parse-file reads the files by id when it needs them.
 			...(turnInput ? { input: turnInput.fullMessage } : {}),
 			hostMetadata: this.hostMetadataOf(options, environment.skillScope.profile.mode, trace),
 			runOptions: {
@@ -386,22 +401,49 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		};
 	}
 
-	/** The content of the turn's files, for the file tools of the turn. */
-	private async readFileAttachments(
+	/**
+	 * Binds the agent that the Agent Builder panel attached, like the editor binds
+	 * a thread on the current runtime before its first message. The builder tools
+	 * then edit that agent, and the panel lists the thread under it.
+	 */
+	private async bindAttachedAgent(
 		turn: SystemAgentStartTurn<AssistantSandboxLease>,
-	): Promise<InstanceAiFileAttachment[]> {
-		const files: InstanceAiFileAttachment[] = [];
-		for (const ref of turn.attachments) {
-			const content = await turn.readAttachment(ref);
-			if (!content) continue;
-			files.push({
-				type: 'file',
-				data: content.toString('base64'),
-				mimeType: ref.mimeType,
-				fileName: ref.fileName,
-			});
+		attachments: InstanceAiAttachment[] | undefined,
+	): Promise<void> {
+		const attached = attachments?.find(
+			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
+		);
+		if (!attached || attached.projectId !== turn.thread.projectId) return;
+		// A patch replaces the metadata, so binding a saved agent drops its pending marker.
+		// `saveThread` merges, and a leftover marker makes a later build adopt this agent.
+		const patched = await patchThread(turn.memory, {
+			threadId: turn.thread.id,
+			update: ({ metadata }) => {
+				const next = withAttachedAgentTarget(metadata ?? {}, attached);
+				return next ? { metadata: next } : null;
+			},
+		});
+		if (patched) return;
+		// The first turn saves its messages after this, so the thread row can be missing here.
+		const metadata = withAttachedAgentTarget({}, attached);
+		if (!metadata) return;
+		await turn.memory.saveThread({ id: turn.thread.id, resourceId: turn.resourceId, metadata });
+	}
+
+	/** Records each attached agent as the turn opens on it. The builder never sees a
+	 *  turn that only asks about the agent, so nothing else records this state. */
+	private async snapshotAttachedAgents(
+		environment: AssistantTurnEnvironment,
+		attachments: InstanceAiResourceAttachment[],
+	): Promise<void> {
+		const context = environment.orchestrationContext;
+		const delegate = context.domainContext?.builderDelegate;
+		if (!delegate) return;
+		for (const attachment of attachments) {
+			if (attachment.type !== 'agent') continue;
+			const target = { agentId: attachment.id, projectId: attachment.projectId };
+			await snapshotAgent(context, delegate, target, 'attached');
 		}
-		return files;
 	}
 
 	private hostMetadataOf(

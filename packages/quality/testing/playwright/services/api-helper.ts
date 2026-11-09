@@ -20,6 +20,7 @@ import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { AgentApiHelper } from './agent-api-helper';
 import { CommunityPackagesApiHelper } from './community-packages-api-helper';
+import { DataTableApiHelper } from './data-table-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
 import { InstanceAiApiHelper } from './instance-ai-api-helper';
@@ -90,6 +91,7 @@ export class ApiHelpers {
 	mcpOauth: McpOAuthApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
+	dataTables: DataTableApiHelper;
 	agents: AgentApiHelper;
 	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
@@ -121,6 +123,7 @@ export class ApiHelpers {
 		this.mcpOauth = new McpOAuthApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
+		this.dataTables = new DataTableApiHelper(this);
 		this.agents = new AgentApiHelper(this);
 		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
@@ -574,21 +577,21 @@ export class ApiHelpers {
 	}
 
 	async setInstanceAiPermissions(permissions: Partial<InstanceAiPermissions>): Promise<void> {
-		const response = await this.request.put('/rest/instance-ai/settings', {
+		const response = await this.request.put('/rest/assistant/settings', {
 			data: { permissions },
 		});
 		if (!response.ok()) {
 			throw new TestError(
-				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+				`PUT /rest/assistant/settings failed (${response.status()}): ${await response.text()}`,
 			);
 		}
 	}
 
 	async updateInstanceAiSettings(settings: InstanceAiAdminSettingsUpdateRequest): Promise<void> {
-		const response = await this.request.put('/rest/instance-ai/settings', { data: settings });
+		const response = await this.request.put('/rest/assistant/settings', { data: settings });
 		if (!response.ok()) {
 			throw new TestError(
-				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+				`PUT /rest/assistant/settings failed (${response.status()}): ${await response.text()}`,
 			);
 		}
 	}
@@ -841,7 +844,24 @@ export class ApiHelpers {
 			throw new TestError('Login did not return expected user data (missing user ID)');
 		}
 
+		await this.dismissMcpJsonNudge();
+
 		return loginData;
+	}
+
+	/**
+	 * The MCP JSON nudge modal opens on the first two exports, imports, copies and
+	 * pastes of workflow JSON while MCP access is off. It would block every test
+	 * that pastes a workflow, so each signed-in user starts with it dismissed.
+	 */
+	private async dismissMcpJsonNudge(): Promise<void> {
+		const response = await this.request.patch('/rest/me/settings', {
+			data: { dismissedCallouts: { MCP_JSON_NUDGE: true } },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Could not dismiss the MCP JSON nudge: ${await response.text()}`);
+		}
 	}
 
 	private getCredentials(role: UserRole, memberIndex: number = 0): UserCredentials {

@@ -12,7 +12,7 @@ import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { GLOBAL_OWNER_ROLE } from '../constants';
-import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { ApiKey, AuthIdentity, Project, ProjectRelation, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type EligibleAccountsQuery = {
@@ -72,6 +72,17 @@ export class UserRepository extends BaseRepository<User> {
 		super(User, dataSource.manager, transactionRunner);
 	}
 
+	async deleteAccount(
+		userId: string,
+		personalProjectId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
+		await manager.delete(AuthIdentity, { userId });
+		await manager.delete(Project, { id: personalProjectId });
+		await manager.delete(User, { id: userId });
+	}
+
 	async findManyByIds(
 		userIds: string[],
 		options?: {
@@ -110,7 +121,8 @@ export class UserRepository extends BaseRepository<User> {
 	 */
 	async findAllWithRoleAndAuthIdentities(): Promise<User[]> {
 		return await this.find({
-			relations: ['role', 'authIdentities'],
+			// `details` holds a service account's name, which eager loading would otherwise load.
+			relations: ['role', 'authIdentities', 'details'],
 			order: { id: 'ASC' },
 			loadEagerRelations: false,
 		});
@@ -146,8 +158,10 @@ export class UserRepository extends BaseRepository<User> {
 			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
 			.leftJoinAndSelect('user.role', 'role')
 			.leftJoinAndSelect('role.scopes', 'scopes')
+			// A query builder skips eager relations, and a service account's name is in `details`.
+			.leftJoinAndSelect('user.details', 'details')
 			.where('apiKey.apiKey = :apiKey', { apiKey })
-			.select(['user', 'role', 'scopes'])
+			.select(['user', 'role', 'scopes', 'details'])
 			.getOne();
 
 		return keyOwner;

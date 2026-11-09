@@ -1,6 +1,7 @@
 import type { PromotionApplyCheck } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
+import { Person } from '@n8n/db';
 import type { Project, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
@@ -89,7 +90,7 @@ describe('PromotionsService', () => {
 	const runRepository = mock<PromotionRunRepository>();
 	const reviewsService = mock<PromotionReviewsService>();
 	const eventService = mock<EventService>();
-	const actor = mock<User>({
+	const actor = Object.assign(new Person(), {
 		id: 'actor',
 		firstName: 'Ada',
 		lastName: 'Lovelace',
@@ -1043,7 +1044,12 @@ describe('PromotionsService', () => {
 		});
 
 		it('commits as n8n when the actor has no name or email', async () => {
-			const bareActor = mock<User>({ id: 'x', firstName: '', lastName: '', email: undefined });
+			const bareActor = Object.assign(new Person(), {
+				id: 'x',
+				firstName: '',
+				lastName: '',
+				email: undefined,
+			});
 
 			await service.promote(ENVIRONMENT_ID, bareActor, {
 				canExportVariableValues: true,
@@ -1061,7 +1067,11 @@ describe('PromotionsService', () => {
 			{ firstName: 'Ada', lastName: '', name: 'Ada' },
 			{ firstName: '', lastName: 'Lovelace', name: 'Lovelace' },
 		])('uses the available profile name: $name', async ({ firstName, lastName, name }) => {
-			const partialActor = mock<User>({ firstName, lastName, email: 'ada@example.com' });
+			const partialActor = Object.assign(new Person(), {
+				firstName,
+				lastName,
+				email: 'ada@example.com',
+			});
 
 			await service.promote(ENVIRONMENT_ID, partialActor, {
 				canExportVariableValues: true,
@@ -1099,7 +1109,7 @@ describe('PromotionsService', () => {
 	});
 
 	describe('promoteProjectSelection push mechanics', () => {
-		const actor = mock<User>({
+		const actor = Object.assign(new Person(), {
 			id: 'actor',
 			firstName: 'Ada',
 			lastName: 'Lovelace',
@@ -1750,7 +1760,7 @@ describe('PromotionsService', () => {
 	});
 
 	describe('promoteProjectSelection', () => {
-		const actor = mock<User>({ id: 'actor', email: 'ada@example.com' });
+		const actor = Object.assign(new Person(), { id: 'actor', email: 'ada@example.com' });
 
 		// The promote resolves the environment the same way the change preview does,
 		// so a selection pushes to the environment the user previewed.
@@ -1970,6 +1980,58 @@ describe('PromotionsService', () => {
 
 			await expect(service.readBranchPackage('p1', 'apply')).rejects.toThrow('not connected');
 			expect(gitService.listBranchTree).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('listMissingProjects', () => {
+		beforeEach(async () => {
+			const input = applyInput();
+			resolver.resolveForEnvironment.mockResolvedValue(input);
+			await markCloned(input, 'dev');
+		});
+
+		it('lists the package projects that do not exist on this instance, sorted by name', async () => {
+			const commitSha = 'a'.repeat(40);
+			gitService.listBranchTree.mockResolvedValue({ commitSha, lsTreeOutput: '' });
+			gitService.readTreeAtCommit.mockResolvedValue(
+				new Map([['projects/billing/project.json', Buffer.from('{}')]]),
+			);
+			inventoryReader.read.mockResolvedValue({
+				projects: [
+					{ id: 'p-support', name: 'Support', path: 'projects/support' },
+					{ id: 'p1', name: 'Exists here', path: 'projects/exists' },
+					{
+						id: 'p-billing',
+						name: 'Billing',
+						icon: { type: 'emoji', value: '💰' },
+						path: 'projects/billing',
+					},
+				],
+				workflows: [],
+				folders: [],
+				credentials: [],
+				variables: [],
+				dataTables: [],
+			});
+
+			await expect(service.listMissingProjects(ENVIRONMENT_ID)).resolves.toEqual({
+				environmentId: ENVIRONMENT_ID,
+				git: { commitSha, branchName: 'dev' },
+				data: [
+					{ id: 'p-billing', name: 'Billing', icon: { type: 'emoji', value: '💰' } },
+					{ id: 'p-support', name: 'Support' },
+				],
+			});
+		});
+
+		it('lists no projects when the branch has no package yet', async () => {
+			gitService.listBranchTree.mockResolvedValue({ commitSha: null, lsTreeOutput: '' });
+
+			await expect(service.listMissingProjects(ENVIRONMENT_ID)).resolves.toEqual({
+				environmentId: ENVIRONMENT_ID,
+				git: null,
+				data: [],
+			});
 		});
 	});
 

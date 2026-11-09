@@ -1,5 +1,6 @@
 import { isEscapedTransferValue, TRANSFER_VALUE_KEY } from './transfer';
-import { isKeyOf } from './utils';
+import { decodeHostValue } from './transfer-codec';
+import { isArrayIndexKey, isKeyOf } from './utils';
 
 // ============================================================================
 // Deep Lazy Proxy System
@@ -177,7 +178,8 @@ export function createDeepLazyProxy(
 			const path = [...basePath, propOrIdx];
 			return createDeepLazyProxy(path, { kind: 'object', keys: value.__keys }, callbacks);
 		}
-		return value;
+		// Decoded data can hold the same keys as metadata or callback errors.
+		return decodeHostValue(value);
 	}
 
 	const target: object = isArray ? [] : {};
@@ -333,10 +335,16 @@ export function createDeepLazyProxy(
 
 			if (isArray) {
 				const idx = isInArrayBounds(prop);
-				if (idx === undefined) return undefined;
-				return fetchAndCacheArrayElement(idx, prop);
+				if (idx !== undefined) {
+					return fetchAndCacheArrayElement(idx, prop);
+				}
+				if (isArrayIndexKey(prop)) {
+					return undefined;
+				}
 			}
 
+			// A host array can carry named keys, for example a key that a Set node
+			// writes on an item whose json is an array.
 			return fetchAndCacheObjectValue(prop);
 		},
 

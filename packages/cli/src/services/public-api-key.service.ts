@@ -6,7 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { ApiKey, OperationContext, User } from '@n8n/db';
-import { ApiKeyRepository, TransactionRunner } from '@n8n/db';
+import { accountSummary, ApiKeyRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from '@n8n/permissions';
@@ -167,16 +167,12 @@ export class PublicApiKeyService {
 
 	private toRedactedApiKey(apiKeyRecord: ApiKey) {
 		const { user, ...rest } = apiKeyRecord;
+		const { id, email, firstName, lastName } = accountSummary(user);
 		return {
 			...rest,
 			apiKey: this.redactApiKey(apiKeyRecord.apiKey),
 			expiresAt: this.getApiKeyExpiration(apiKeyRecord.apiKey),
-			owner: {
-				id: user.id,
-				firstName: user.firstName ?? null,
-				lastName: user.lastName ?? null,
-				email: user.email,
-			},
+			owner: { id, firstName, lastName, email: email ?? '' },
 		};
 	}
 

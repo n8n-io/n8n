@@ -77,8 +77,7 @@ const assistantMentionCounts = z
 		group: mentionCount,
 	})
 	.describe('Picker mentions attached to the message, by kind');
-// Shared by the send and the response events so a with/without-mentions cut reads
-// the same columns on both.
+// Shared by the send and response events so context cuts use the same columns.
 const mentionContextProperties = {
 	mention_counts: assistantMentionCounts,
 	attachment_count: z
@@ -86,8 +85,13 @@ const mentionContextProperties = {
 		.int()
 		.nonnegative()
 		.describe(
-			'All outbound attachments: files, workflow, agent and nodes attachments, including ones the host adds',
+			'All outbound attachments: files, workflows, agents, nodes, and selected app preview elements, including ones the host adds',
 		),
+	selected_element_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.describe('Selected app preview elements included in the outbound attachments'),
 };
 // Experiment cleanup: remove with openWorkflowInAssistant.
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
@@ -500,7 +504,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_RECEIVED_AI_ASSISTANT_RESPONSE: {
 		name: 'User received AI Assistant response',
 		description:
-			'The initial foreground AI Assistant reply was rendered after a user submitted a chat message. Starts before attachment processing and first-thread creation, then fires once when the initial run completes or pauses for user input. Automated follow-up runs do not create another sample. Repeats the mention and attachment counts of the message that started the run, so outcome cuts by context need no join back to "User sent builder message".',
+			'The initial foreground AI Assistant reply was rendered after a user submitted a chat message. Starts before attachment processing and first-thread creation, then fires once when the initial run completes or pauses for user input. Automated follow-up runs do not create another sample. Repeats the mention, attachment, and selected element counts of the message that started the run, so outcome cuts by context need no join back to "User sent builder message".',
 		properties: z.object({
 			instance_id: z.string(),
 			thread_id: z.string(),
@@ -567,7 +571,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_MODEL: {
 		name: 'User configured AI Assistant model',
 		description:
-			'An admin saved an n8n Assistant model connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
+			'An admin saved an n8n Assistant model connection (PUT /assistant/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
 		properties: z.object({
 			provider: z
 				.string()
@@ -585,7 +589,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_SANDBOX: {
 		name: 'User configured AI Assistant sandbox',
 		description:
-			'An admin saved an n8n Assistant sandbox connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
+			'An admin saved an n8n Assistant sandbox connection (PUT /assistant/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
 		properties: z.object({
 			sandbox_type: z.enum(['n8n-sandbox', 'daytona']),
 			previous_sandbox_type: z
@@ -599,7 +603,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_WEB_SEARCH: {
 		name: 'User configured AI Assistant web search',
 		description:
-			'An admin saved an n8n Assistant web search connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
+			'An admin saved an n8n Assistant web search connection (PUT /assistant/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
 		properties: z.object({
 			provider: z.enum(['brave', 'searxng']),
 			previous_provider: z
@@ -613,7 +617,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	AI_ASSISTANT_CONNECTION_FAILED: {
 		name: 'AI Assistant connection failed',
 		description:
-			'A setup verification call (POST /instance-ai/settings/verify/*) failed for a model, sandbox, or web search connection. One event covers all three components; the component property tells them apart. Fires once per failed verify attempt, including retries.',
+			'A setup verification call (POST /assistant/settings/verify/*) failed for a model, sandbox, or web search connection. One event covers all three components; the component property tells them apart. Fires once per failed verify attempt, including retries.',
 		properties: z.object({
 			component: z.enum(['model', 'sandbox', 'web_search']),
 			provider: z
@@ -757,7 +761,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.enum(['built', 'fetched', 'attached', 'mentioned'])
 				.nullable()
 				.describe(
-					"How the mentioned workflow first became a tab in the thread, or null when already_artifact is false. 'built' is the assistant creating or editing it, 'fetched' is the assistant reading it in a lookup that opens a tab (even if it edits it later), 'attached' is a message or the editor hand-off attaching it, 'mentioned' is an earlier pick in this picker. Known for the current session only: after a reload an earlier mention reads as 'attached', because both reach the thread as a workflow attachment. A node or group pick with 'mentioned' is the two-step journey",
+					"How the mentioned workflow first became a tab in the thread, or null when already_artifact is false. 'built' is the assistant creating or editing it, 'fetched' is the assistant reading it in a lookup that opens a tab (even if it edits it later), 'attached' is a message or the editor hand-off attaching it, 'mentioned' is a mention in an earlier sent message of this session (a mention opens its tab once its message is sent). Known for the current session only: after a reload an earlier mention reads as 'attached', because both reach the thread as a workflow attachment. A node or group pick with 'mentioned' is the two-step journey",
 				),
 		}),
 	},

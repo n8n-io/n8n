@@ -26,6 +26,10 @@ export class ProjectRepository extends BaseRepository<Project> {
 		super(Project, dataSource.manager, txRunner);
 	}
 
+	async removeProjectForDeletion(project: Project, ctx: OperationContext): Promise<Project> {
+		return await this.managerFor(ctx).remove(Project, project);
+	}
+
 	/** Returns null when the team project quota is full. */
 	async insertTeamProjectWithAdmin(
 		data: Pick<Project, 'name'> &

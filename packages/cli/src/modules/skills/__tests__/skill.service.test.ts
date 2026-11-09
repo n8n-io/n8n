@@ -1,5 +1,5 @@
 import type { ListSkillsQueryDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import { Person, type User } from '@n8n/db';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -30,6 +30,7 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 // transaction, and what it writes or refuses. The agents come from `FakeSkillUsage`.
 describe('SkillService', () => {
 	const {
+		logger,
 		skills,
 		usage,
 		skillUsage,
@@ -840,7 +841,12 @@ describe('SkillService', () => {
 				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const }]]),
 			);
 			users.findManyByIds.mockResolvedValue([
-				{ id: 'user-1', email: null, firstName: null, lastName: null } as unknown as User,
+				Object.assign(new Person(), {
+					id: 'user-1',
+					email: null,
+					firstName: null,
+					lastName: null,
+				}) as unknown as User,
 			]);
 
 			const { count, data } = await service.list(user, {} as ListSkillsQueryDto);
@@ -1033,6 +1039,64 @@ describe('SkillService', () => {
 
 		it('does not read a missing skill', async () => {
 			expect(await service.readForMcp(user, 'missing')).toBeNull();
+		});
+
+		describe('the origin of a synced skill', () => {
+			const syncedFrom = (credentialId: string | null) => ({
+				sourceId: 'source-1',
+				type: 'github' as const,
+				locator: {},
+				projectId: 'project-1',
+				credentialId,
+				remoteRef: {},
+			});
+
+			it('has no origin for a skill that Skill Sync did not import', async () => {
+				const result = await service.readForMcp(user, 'skill-2');
+
+				expect(links.findSyncedFrom).toHaveBeenCalledWith('skill-2');
+				expect(result).not.toHaveProperty('origin');
+			});
+
+			it('reports a source read without a credential as public', async () => {
+				links.findSyncedFrom.mockResolvedValue(syncedFrom(null));
+
+				expect(await service.readForMcp(user, 'skill-2')).toEqual({
+					id: 'skill-2',
+					projectId: 'project-1',
+					skill: toAgentSkill(projectSkill),
+					origin: { provider: 'github', access: 'public' },
+				});
+			});
+
+			it('reports a source read with a credential as credential', async () => {
+				links.findSyncedFrom.mockResolvedValue(syncedFrom('credential-1'));
+
+				expect(await service.readForMcp(user, 'skill-2')).toMatchObject({
+					origin: { provider: 'github', access: 'credential' },
+				});
+			});
+
+			it('still reads the skill when the source lookup fails', async () => {
+				links.findSyncedFrom.mockRejectedValue(new Error('connection lost'));
+
+				const result = await service.readForMcp(user, 'skill-2');
+
+				expect(result).toEqual({
+					id: 'skill-2',
+					projectId: 'project-1',
+					skill: toAgentSkill(projectSkill),
+				});
+				expect(logger.warn).toHaveBeenCalledWith('Could not find the source of a synced skill', {
+					skillId: 'skill-2',
+					error: 'connection lost',
+				});
+			});
+
+			it('does not look up the source of a skill it does not read', async () => {
+				expect(await service.readForMcp(user, 'skill-3')).toBeNull();
+				expect(links.findSyncedFrom).not.toHaveBeenCalled();
+			});
 		});
 	});
 

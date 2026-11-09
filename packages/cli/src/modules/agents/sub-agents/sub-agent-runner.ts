@@ -37,7 +37,8 @@ import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 
 import type { AgentRunTelemetryType } from '@/interfaces';
@@ -380,7 +381,9 @@ export class SubAgentRunner {
 			const forwardBudgetNotice = context.onBudgetNotice
 				? (notice: AgentBudgetNotice) =>
 						context.onBudgetNotice?.(
-							notice.code === 'budget.session'
+							// Session spend and the credits wallet are shared scopes: no
+							// child owns them, so the notice carries no owner.
+							notice.code === 'budget.session' || notice.code === 'budget.credits'
 								? { code: notice.code }
 								: // The innermost budget owner wins.
 									{ ...notice, agentId: notice.agentId ?? runtimeSource.source.sourceId },
@@ -415,6 +418,9 @@ export class SubAgentRunner {
 					sessionId: context.rootSessionId,
 					agentId: runtimeSource.source.sourceId,
 					rootSessionCapUsd: context.rootSessionCapUsd,
+					...(reconstructed.modelCredentialGatewayManaged
+						? { modelCredentialGatewayManaged: true }
+						: {}),
 					...(forwardBudgetNotice !== undefined ? { onNotice: forwardBudgetNotice } : {}),
 				},
 			);
@@ -511,7 +517,7 @@ export class SubAgentRunner {
 				// failure with the reason, and the preview chat gets the card.
 				status = 'failed';
 				const code = result.guardrail?.code;
-				if (code === 'budget.session' || code === 'budget.monthly') {
+				if (code === 'budget.session' || code === 'budget.monthly' || code === 'budget.credits') {
 					forwardBudgetNotice?.({ code });
 				}
 			}

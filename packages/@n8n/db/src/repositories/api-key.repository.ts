@@ -129,6 +129,8 @@ export class ApiKeyRepository {
 			.managerFor(ctx)
 			.createQueryBuilder(ApiKey, 'apiKey')
 			.leftJoinAndSelect('apiKey.user', 'user')
+			// Query builders skip the eager relation that holds a service account's name.
+			.leftJoinAndSelect('user.details', 'details')
 			.setFindOptions({ where: this.listWhere(filter) });
 		this.applyListSort(qb, sortBy);
 		qb.take(page.take);
@@ -173,29 +175,34 @@ export class ApiKeyRepository {
 			.managerFor(ctx)
 			.createQueryBuilder(ApiKey, 'apiKey')
 			.innerJoin('apiKey.user', 'user')
+			.leftJoin('user.details', 'details')
 			.where('apiKey.audience = :audience', { audience })
 			.select('user.id', 'id')
 			.addSelect('user.firstName', 'first_name')
 			.addSelect('user.lastName', 'last_name')
 			.addSelect('user.email', 'email')
+			.addSelect('details.name', 'service_account_name')
 			.addSelect('COUNT(apiKey.id)', 'key_count')
 			.groupBy('user.id')
 			.addGroupBy('user.firstName')
 			.addGroupBy('user.lastName')
 			.addGroupBy('user.email')
+			.addGroupBy('details.name')
 			.getRawMany<{
 				id: string;
 				first_name: string | null;
 				last_name: string | null;
 				email: string;
+				service_account_name: string | null;
 				key_count: string | number;
 			}>();
 
 		return rows.map((row) => ({
 			id: row.id,
-			firstName: row.first_name ?? null,
-			lastName: row.last_name ?? null,
-			email: row.email,
+			...(row.service_account_name === null
+				? { firstName: row.first_name ?? null, lastName: row.last_name ?? null, email: row.email }
+				: // Raw rows must match `accountSummary` for a service account.
+					{ firstName: row.service_account_name, lastName: null, email: '' }),
 			keyCount: Number(row.key_count),
 		}));
 	}

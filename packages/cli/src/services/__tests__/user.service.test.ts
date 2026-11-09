@@ -74,6 +74,7 @@ describe('UserService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const txRunner = mock<TransactionRunner>();
+	txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	const ctx: OperationContext = {};
 	const personRepository = mock<PersonRepository>();
 	const scimSwitchReader = mock<ScimSwitchReader>();
@@ -1039,13 +1040,22 @@ describe('UserService', () => {
 			).rejects.toThrow(violation);
 
 			expect(ownershipTransferService.transferAllResources).not.toHaveBeenCalled();
-			expect(manager.transaction).not.toHaveBeenCalled();
+			expect(txRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('skips the policy check when the user is deleted without a transferee', async () => {
 			await userService.deleteUser(actor, userToDelete.id);
 
 			expect(ownershipTransferService.enforceTransferPolicy).not.toHaveBeenCalled();
+		});
+
+		it('does not delete the account or emit events when module finalization fails', async () => {
+			const error = new Error('Marker cleanup failed');
+			ownershipTransferService.finalizeUserDeletion.mockRejectedValueOnce(error);
+			await expect(userService.deleteUser(actor, userToDelete.id)).rejects.toThrow(error);
+			expect(userRepository.deleteAccount).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(externalHooks.run).not.toHaveBeenCalled();
 		});
 
 		it.each([
@@ -1061,7 +1071,7 @@ describe('UserService', () => {
 				).toHaveBeenCalledExactlyOnceWith([userToDelete.id]);
 				expect(
 					ownershipTransferService.deleteUserOwnedModuleResources.mock.invocationCallOrder[0],
-				).toBeLessThan(manager.transaction.mock.invocationCallOrder[0]);
+				).toBeLessThan(txRunner.run.mock.invocationCallOrder[0]);
 			},
 		);
 
@@ -1130,7 +1140,7 @@ describe('UserService', () => {
 
 				await expect(result).rejects.toThrow(ForbiddenError);
 				await expect(result).rejects.toThrow('Instance owner cannot be deleted.');
-				expect(manager.transaction).not.toHaveBeenCalled();
+				expect(txRunner.run).not.toHaveBeenCalled();
 			});
 		});
 	});

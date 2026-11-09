@@ -28,9 +28,9 @@ const DEFAULT_ALLOWED_FILES = [
 	// CLI migration tooling owns the TypeORM migration executor.
 	'packages/cli/src/commands/db/revert.ts',
 	// These adapters use composition instead of a repository base class.
-	'packages/cli/src/modules/data-table/data-table-rows.repository.ts',
+	'packages/modules/data-table/backend/src/data-table-rows.repository.ts',
 	// This adapter manages dynamic user-table schemas.
-	'packages/cli/src/modules/data-table/persistence/data-table-ddl.ts',
+	'packages/modules/data-table/backend/src/persistence/data-table-ddl.ts',
 	'packages/cli/src/modules/instance-ai/repositories/instance-ai-conversation-history.repository.ts',
 	// Engine v2 keeps its persistence infrastructure and composition root in one package.
 	'packages/@n8n/engine/src/database/create-stores.ts',

@@ -17,6 +17,7 @@ import {
 	createAdmin,
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
+	createServiceAccountWithProject,
 	createUser,
 	createUserShell,
 } from './shared/db/users';
@@ -310,7 +311,8 @@ describe('Owner shell', () => {
 			id: ownerShell.id,
 			firstName: ownerShell.firstName ?? null,
 			lastName: ownerShell.lastName ?? null,
-			email: ownerShell.email,
+			// The owner shell has no email yet. The response type needs a string.
+			email: ownerShell.email ?? '',
 		};
 
 		expect(retrieveAllApiKeysResponse.body.data.counts.all).toBe(2);
@@ -812,6 +814,31 @@ describe('Cross-user behavior (admin scope)', () => {
 			expect.arrayContaining([
 				expect.objectContaining({ id: ownerWithKey.id, keyCount: 1 }),
 				expect.objectContaining({ id: memberWithKey.id, keyCount: 1 }),
+			]),
+		);
+	});
+
+	test('GET /api-keys names a service account owner in the owner list', async () => {
+		const ownerWithKey = await createOwnerWithApiKey();
+		const serviceAccount = await createServiceAccountWithProject(GLOBAL_MEMBER_ROLE, 'Deploy bot');
+		await addApiKey(serviceAccount);
+
+		const response = await testServer
+			.authAgentFor(ownerWithKey)
+			.get('/api-keys?ownership=all')
+			.expect(200);
+
+		expect(response.body.data.items).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					userId: serviceAccount.id,
+					owner: { id: serviceAccount.id, firstName: 'Deploy bot', lastName: null, email: '' },
+				}),
+			]),
+		);
+		expect(response.body.data.owners).toEqual(
+			expect.arrayContaining([
+				{ id: serviceAccount.id, firstName: 'Deploy bot', lastName: null, email: '', keyCount: 1 },
 			]),
 		);
 	});

@@ -22,7 +22,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
@@ -1085,6 +1085,36 @@ describe('SubAgentRunner', () => {
 			code: 'budget.monthly',
 			agentId: 'agent-1',
 		});
+	});
+
+	it('forwards a credits guardrail stop without a budget owner', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.credits' } },
+			]),
+		);
+		const onBudgetNotice = vi.fn();
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				onBudgetNotice,
+			}),
+		).resolves.toMatchObject({
+			status: 'failed',
+			result: {
+				runId: 'child-run-1',
+				finishReason: 'guardrail',
+				guardrail: { code: 'budget.credits' },
+			},
+		});
+		// The wallet is a shared scope: no child owns it, so the notice carries
+		// no agentId — the preview chat cards it without pointing at the child.
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.credits' });
 	});
 
 	it('does not emit a budget notice for a non-budget guardrail stop', async () => {

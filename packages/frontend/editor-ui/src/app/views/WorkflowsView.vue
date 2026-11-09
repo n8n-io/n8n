@@ -72,7 +72,7 @@ import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
+import { promotionEventBus } from '@n8n/frontend-module-promotions';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
@@ -649,12 +649,21 @@ watch([() => route.params?.projectId, () => route.name], async () => {
 	}
 });
 
+let isClearingSearchOnFolderChange = false;
+
 watch(
 	() => route.params?.folderId,
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
 		filters.value.search = '';
-		saveFiltersOnQueryString();
+		// A route-name change can run initialize() before the URL drops the old
+		// search term. Stop it from restoring that term from the stale URL.
+		isClearingSearchOnFolderChange = true;
+		try {
+			await saveFiltersOnQueryString();
+		} finally {
+			isClearingSearchOnFolderChange = false;
+		}
 		await Promise.all([
 			fetchWorkflows(),
 			foldersStore.fetchTotalWorkflowsAndFoldersCount(
@@ -985,7 +994,7 @@ const getParentFolderId = (routeId?: string) => {
 // Filter and sort methods
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
-	saveFiltersOnQueryString();
+	void saveFiltersOnQueryString();
 	if (!loading.value) {
 		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
 	}
@@ -993,7 +1002,7 @@ const onFiltersUpdated = async () => {
 
 const onSearchUpdated = async (search: string) => {
 	currentPage.value = 1;
-	saveFiltersOnQueryString();
+	void saveFiltersOnQueryString();
 	if (search) {
 		await callDebounced(fetchWorkflows, { debounceTime: SEARCH_DEBOUNCE_TIME, trailing: true });
 	} else {
@@ -1025,14 +1034,14 @@ const onClickTag = async (tagId: string) => {
 	if (!filters.value.tags.includes(tagId)) {
 		filters.value.tags.push(tagId);
 		currentPage.value = 1;
-		saveFiltersOnQueryString();
+		void saveFiltersOnQueryString();
 		await fetchWorkflows();
 	}
 };
 
 // Query string methods
 
-const saveFiltersOnQueryString = () => {
+const saveFiltersOnQueryString = async () => {
 	// Get current query parameters
 	const currentQuery = { ...route.query };
 
@@ -1067,7 +1076,7 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.homeProject;
 	}
 
-	void router.replace({
+	await router.replace({
 		query: Object.keys(currentQuery).length ? currentQuery : undefined,
 	});
 };
@@ -1095,7 +1104,7 @@ const setFiltersFromQueryString = async () => {
 	}
 
 	// Handle search
-	if (isValidString(search)) {
+	if (isValidString(search) && !isClearingSearchOnFolderChange) {
 		newQuery.search = search;
 		filters.value.search = search;
 	} else {
