@@ -66,13 +66,7 @@ export class AssistantAgentTargetsService {
 	): Promise<AssistantAgentTargetsState> {
 		const { projectId } = await this.threadMetadata.readThread(ASSISTANT_AGENT_ID, user, threadId);
 		assertThreadProject(projectId, target.projectId);
-		const metadata = await this.threadMetadata.patch(
-			ASSISTANT_AGENT_ID,
-			user,
-			threadId,
-			(current) => withBoundAgentTarget(current, pick(target)),
-		);
-		return toAgentTargetsState(metadata);
+		return await this.writeBinding(user, threadId, target);
 	}
 
 	/**
@@ -102,12 +96,27 @@ export class AssistantAgentTargetsService {
 		if (!agent) throw new ForbiddenError('This thread has no pending agent with that id');
 
 		// An adopted agent keeps its own name, so bind the saved name.
-		const targets = await this.bind(user, threadId, {
+		const targets = await this.writeBinding(user, threadId, {
 			agentId: agent.id,
 			projectId,
 			name: agent.name,
 		});
 		return { agent: await agent.getState(), targets };
+	}
+
+	/** Bind `target` and drop the pending marker. The caller checks the project first. */
+	private async writeBinding(
+		user: User,
+		threadId: string,
+		target: AssistantAgentTarget,
+	): Promise<AssistantAgentTargetsState> {
+		const metadata = await this.threadMetadata.patch(
+			ASSISTANT_AGENT_ID,
+			user,
+			threadId,
+			(current) => withBoundAgentTarget(current, pick(target)),
+		);
+		return toAgentTargetsState(metadata);
 	}
 }
 

@@ -141,6 +141,8 @@ describe('AssistantAgentTargetsService', () => {
 				name: 'New agent',
 			});
 			expect(result.targets.pending).toBeNull();
+			// The thread is read once, before the draft is saved.
+			expect(threadMetadata.readThread).toHaveBeenCalledTimes(1);
 		});
 
 		it('binds the name of an agent that a turn saved first', async () => {
