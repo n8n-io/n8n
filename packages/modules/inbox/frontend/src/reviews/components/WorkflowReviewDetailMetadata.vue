@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
-import { N8nAvatar, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import type {
+	WorkflowReviewEligibleReviewer,
+	WorkflowReviewInboxItem,
+	WorkflowReviewRequestDetail,
+} from '@n8n/api-types';
+import { N8nAvatar, N8nIcon, N8nIconButton, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { VIEWS } from '@n8n/frontend-constants/views';
+import InboxAvatarTooltip from '../../components/InboxAvatarTooltip.vue';
+import PrototypeStatusMenu from '../../prototype/PrototypeStatusMenu.vue';
+import { prototypeSession, prototypeState } from '../../prototype/prototype.session';
 import { formatUserDisplayName } from '../workflowReviews.utils';
 import { getWorkflowReviewStatusDisplay } from '../workflowReviewStatus.utils';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
@@ -15,6 +22,28 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
+// Prototype only. + adds the next of these who is not already a reviewer. Nothing is saved.
+const sampleReviewers: WorkflowReviewEligibleReviewer[] = [
+	{
+		id: 'prototype-user-maya',
+		email: 'maya.chen@example.com',
+		firstName: 'Maya',
+		lastName: 'Chen',
+	},
+	{
+		id: 'prototype-user-omar',
+		email: 'omar.haddad@example.com',
+		firstName: 'Omar',
+		lastName: 'Haddad',
+	},
+	{
+		id: 'prototype-user-priya',
+		email: 'priya.shah@example.com',
+		firstName: 'Priya',
+		lastName: 'Shah',
+	},
+];
+
 const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 	'workflows' in props.review ? props.review : null,
 );
@@ -24,106 +53,149 @@ const otherAuthors = computed(() =>
 	props.review.authors.filter((author) => author.id !== props.review.requester?.id),
 );
 
+const inboxState = computed(() => prototypeState(props.review.id, props.review.state));
 const statusSummary = computed(() =>
-	getWorkflowReviewStatusDisplay(i18n, props.review.state, props.review.decision),
+	getWorkflowReviewStatusDisplay(i18n, inboxState.value, props.review.decision),
 );
+
+const addedReviewers = ref<WorkflowReviewEligibleReviewer[]>([]);
+watch(
+	() => props.review.id,
+	() => {
+		addedReviewers.value = [];
+	},
+);
+
+const reviewers = computed(() => [...props.review.reviewers, ...addedReviewers.value]);
+const nextReviewer = computed(() =>
+	sampleReviewers.find((person) => !reviewers.value.some((reviewer) => reviewer.id === person.id)),
+);
+
+function addReviewer() {
+	const person = nextReviewer.value;
+	if (!person) return;
+	addedReviewers.value = [...addedReviewers.value, person];
+}
 </script>
 
 <template>
 	<aside :class="$style.metadata" data-test-id="workflow-review-detail-metadata">
-		<N8nCard :class="$style.card" data-test-id="workflow-review-detail-status-card">
-			<template #header>
-				<N8nText bold color="text-light" size="medium">
-					{{ i18n.baseText('workflowReviews.detail.metadata.status') }}
-				</N8nText>
-			</template>
+		<section :class="$style.section" data-test-id="workflow-review-detail-status-card">
+			<N8nText bold color="text-light" size="medium">
+				{{ i18n.baseText('workflowReviews.detail.metadata.status') }}
+			</N8nText>
 			<div :class="$style.status">
-				<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" decorative />
-				<N8nText size="medium">
-					{{ statusSummary.stateLabel }}
-					<span aria-hidden="true" :class="$style.statusSeparator">|</span>
-					{{ statusSummary.decisionLabel }}
-				</N8nText>
+				<PrototypeStatusMenu
+					v-if="prototypeSession.active"
+					:item-id="review.id"
+					:state="inboxState"
+					:open-label="i18n.baseText('workflowReviews.status.open')"
+				>
+					<WorkflowReviewStatusDot
+						:state="inboxState"
+						:decision="review.decision"
+						size="small"
+						decorative
+					/>
+				</PrototypeStatusMenu>
+				<template v-else>
+					<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" decorative />
+					<N8nText size="medium">
+						{{ statusSummary.stateLabel }}
+						<span aria-hidden="true" :class="$style.statusSeparator">|</span>
+						{{ statusSummary.decisionLabel }}
+					</N8nText>
+				</template>
 			</div>
-		</N8nCard>
+		</section>
 
-		<N8nCard
-			:class="[$style.card, $style.peopleCard]"
-			data-test-id="workflow-review-detail-people-card"
-		>
-			<div :class="$style.section">
-				<N8nText bold color="text-light" size="medium">
-					{{ i18n.baseText('workflowReviews.detail.metadata.requestedBy') }}
-				</N8nText>
-				<div v-if="review.requester" :class="$style.person">
+		<section :class="$style.section" data-test-id="workflow-review-detail-people-card">
+			<N8nText bold color="text-light" size="medium">
+				{{ i18n.baseText('workflowReviews.detail.metadata.requestedBy') }}
+			</N8nText>
+			<div v-if="review.requester" :class="$style.person">
+				<InboxAvatarTooltip :name="formatUserDisplayName(review.requester)">
 					<N8nAvatar
 						:first-name="review.requester.firstName"
 						:last-name="review.requester.lastName"
 						size="xsmall"
 					/>
-					<N8nText size="medium">{{ formatUserDisplayName(review.requester) }}</N8nText>
-				</div>
-				<N8nText
-					v-else
-					color="text-light"
-					size="medium"
-					data-test-id="workflow-review-detail-requester-deleted"
-				>
-					{{ i18n.baseText('workflowReviews.detail.metadata.requesterDeleted') }}
-				</N8nText>
+				</InboxAvatarTooltip>
+				<N8nText size="medium">{{ formatUserDisplayName(review.requester) }}</N8nText>
 			</div>
-
-			<div
-				v-if="otherAuthors.length > 0"
-				:class="$style.section"
-				data-test-id="workflow-review-detail-other-authors"
+			<N8nText
+				v-else
+				color="text-light"
+				size="medium"
+				data-test-id="workflow-review-detail-requester-deleted"
 			>
-				<N8nText bold color="text-light" size="medium">
-					{{ i18n.baseText('workflowReviews.detail.metadata.otherAuthors') }}
-				</N8nText>
-				<div v-for="author in otherAuthors" :key="author.id" :class="$style.person">
-					<N8nAvatar :first-name="author.firstName" :last-name="author.lastName" size="xsmall" />
-					<N8nText size="medium">{{ formatUserDisplayName(author) }}</N8nText>
-				</div>
-			</div>
+				{{ i18n.baseText('workflowReviews.detail.metadata.requesterDeleted') }}
+			</N8nText>
+		</section>
 
-			<div :class="$style.section">
+		<section
+			v-if="otherAuthors.length > 0"
+			:class="$style.section"
+			data-test-id="workflow-review-detail-other-authors"
+		>
+			<N8nText bold color="text-light" size="medium">
+				{{ i18n.baseText('workflowReviews.detail.metadata.otherAuthors') }}
+			</N8nText>
+			<div v-for="author in otherAuthors" :key="author.id" :class="$style.person">
+				<InboxAvatarTooltip :name="formatUserDisplayName(author)">
+					<N8nAvatar :first-name="author.firstName" :last-name="author.lastName" size="xsmall" />
+				</InboxAvatarTooltip>
+				<N8nText size="medium">{{ formatUserDisplayName(author) }}</N8nText>
+			</div>
+		</section>
+
+		<section :class="$style.section">
+			<div :class="$style.sectionHeader">
 				<N8nText bold color="text-light" size="medium">
 					{{ i18n.baseText('workflowReviews.detail.metadata.reviewers') }}
 				</N8nText>
-				<div v-for="reviewer in review.reviewers" :key="reviewer.id" :class="$style.person">
+				<N8nIconButton
+					v-if="nextReviewer"
+					icon="plus"
+					variant="ghost"
+					size="xsmall"
+					:aria-label="i18n.baseText('workflowReviews.detail.metadata.addReviewer')"
+					data-test-id="workflow-review-detail-add-reviewer"
+					@click="addReviewer"
+				/>
+			</div>
+			<div v-for="reviewer in reviewers" :key="reviewer.id" :class="$style.person">
+				<InboxAvatarTooltip :name="formatUserDisplayName(reviewer)">
 					<N8nAvatar
 						:first-name="reviewer.firstName"
 						:last-name="reviewer.lastName"
 						size="xsmall"
 					/>
-					<N8nText size="medium">{{ formatUserDisplayName(reviewer) }}</N8nText>
-				</div>
-				<N8nText
-					v-if="review.reviewers.length === 0"
-					color="text-light"
-					size="medium"
-					data-test-id="workflow-review-detail-no-reviewers"
-				>
-					{{ i18n.baseText('workflowReviews.detail.metadata.noReviewers') }}
-				</N8nText>
+				</InboxAvatarTooltip>
+				<N8nText size="medium">{{ formatUserDisplayName(reviewer) }}</N8nText>
 			</div>
-		</N8nCard>
+			<N8nText
+				v-if="reviewers.length === 0"
+				color="text-light"
+				size="medium"
+				data-test-id="workflow-review-detail-no-reviewers"
+			>
+				{{ i18n.baseText('workflowReviews.detail.metadata.noReviewers') }}
+			</N8nText>
+		</section>
 
-		<N8nCard
+		<section
 			v-if="detail?.workflows.length"
-			:class="$style.card"
+			:class="$style.section"
 			data-test-id="workflow-review-detail-changes-card"
 		>
-			<template #header>
-				<N8nText bold color="text-light" size="medium">
-					{{
-						i18n.baseText('workflowReviews.detail.metadata.workflow', {
-							adjustToNumber: detail.workflows.length,
-						})
-					}}
-				</N8nText>
-			</template>
+			<N8nText bold color="text-light" size="medium">
+				{{
+					i18n.baseText('workflowReviews.detail.metadata.workflow', {
+						adjustToNumber: detail.workflows.length,
+					})
+				}}
+			</N8nText>
 			<div :class="$style.workflows">
 				<N8nLink
 					v-for="workflow in detail.workflows"
@@ -138,7 +210,7 @@ const statusSummary = computed(() =>
 					<span :class="$style.workflowName">{{ workflow.workflowName }}</span>
 				</N8nLink>
 			</div>
-		</N8nCard>
+		</section>
 	</aside>
 </template>
 
@@ -150,22 +222,27 @@ const statusSummary = computed(() =>
 	display: flex;
 	flex: 0 0 min(18rem, 30%);
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--lg);
 	min-width: 14rem;
-	padding-top: var(--spacing--5xs);
+	margin-top: var(--spacing--5xs);
+	padding: var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius--2xs);
 }
 
-.card {
-	--card--padding: var(--spacing--xs);
-	--n8n--card-body--gap: var(--spacing--2xs);
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
 
-	align-items: stretch;
-	border-color: var(--border-color);
-	background-color: transparent;
-
-	> div {
-		gap: var(--spacing--4xs);
-	}
+.sectionHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	min-height: var(--spacing--md);
 }
 
 .status {
@@ -174,21 +251,16 @@ const statusSummary = computed(() =>
 	gap: var(--spacing--2xs);
 }
 
-.section,
-.workflows {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	min-width: 0;
-}
-
 .statusSeparator {
 	margin-inline: var(--spacing--3xs);
 	color: var(--text-color--subtler);
 }
 
-.peopleCard {
-	--n8n--card-body--gap: var(--spacing--sm);
+.workflows {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 
 .person {

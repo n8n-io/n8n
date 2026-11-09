@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import type { SelfHealingResultDetail, WorkflowSuggestionActivity } from '@n8n/api-types';
-import { N8nAssistantAvatar, N8nIcon, N8nText, N8nTimeAgo } from '@n8n/design-system';
+import { N8nAssistantAvatar, N8nAvatar, N8nIcon, N8nText, N8nTimeAgo } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
 
+import InboxAvatarTooltip from '../components/InboxAvatarTooltip.vue';
+import { prototypeComments } from '../prototype/prototype.session';
+
 const props = defineProps<{ detail: SelfHealingResultDetail }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
+const comments = computed(() => prototypeComments(props.detail.resultId));
 
 type Activity = Omit<WorkflowSuggestionActivity, 'action'> & {
 	action: WorkflowSuggestionActivity['action'] | 'completed' | 'dismissed' | 'closed';
@@ -53,6 +57,13 @@ const entries = computed<Activity[]>(() => {
 	return activity.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 });
 
+function commentName(firstName: string, lastName: string) {
+	return (
+		[firstName, lastName].filter(Boolean).join(' ') ||
+		i18n.baseText('inbox.selfHealing.activity.user')
+	);
+}
+
 function actorLabel(author: Activity['author']) {
 	if (author === 'assistant') return i18n.baseText('inbox.selfHealing.metadata.assistant');
 	if (author === 'system') return i18n.baseText('inbox.selfHealing.activity.system');
@@ -74,7 +85,12 @@ function actorLabel(author: Activity['author']) {
 				:data-action="entry.action"
 				data-test-id="self-healing-activity-entry"
 			>
-				<N8nAssistantAvatar v-if="entry.author === 'assistant'" size="mini" />
+				<InboxAvatarTooltip
+					v-if="entry.author === 'assistant'"
+					:name="i18n.baseText('inbox.selfHealing.metadata.assistant')"
+				>
+					<N8nAssistantAvatar size="mini" />
+				</InboxAvatarTooltip>
 				<N8nIcon
 					v-else
 					:icon="entry.author === 'human' ? 'user' : 'info'"
@@ -92,6 +108,31 @@ function actorLabel(author: Activity['author']) {
 						<time :datetime="entry.createdAt">
 							<N8nTimeAgo :date="entry.createdAt" :locale="rootStore.defaultLocale" />
 						</time>
+					</N8nText>
+				</div>
+			</li>
+			<li
+				v-for="comment in comments"
+				:key="comment.id"
+				:class="$style.entry"
+				data-test-id="self-healing-activity-comment"
+			>
+				<InboxAvatarTooltip :name="commentName(comment.firstName, comment.lastName)">
+					<N8nAvatar size="xxsmall" :first-name="comment.firstName" :last-name="comment.lastName" />
+				</InboxAvatarTooltip>
+				<div :class="$style.comment">
+					<div :class="$style.headline">
+						<N8nText size="medium" color="text-dark">
+							{{ commentName(comment.firstName, comment.lastName) }}
+						</N8nText>
+						<N8nText size="medium" color="text-light">
+							<time :datetime="comment.createdAt">
+								<N8nTimeAgo :date="comment.createdAt" :locale="rootStore.defaultLocale" />
+							</time>
+						</N8nText>
+					</div>
+					<N8nText size="medium" color="text-dark" :class="$style.commentBody">
+						{{ comment.body }}
 					</N8nText>
 				</div>
 			</li>
@@ -156,5 +197,17 @@ function actorLabel(author: Activity['author']) {
 .separator {
 	margin-inline: var(--spacing--3xs);
 	color: var(--text-color--subtler);
+}
+
+.comment {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.commentBody {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
 }
 </style>

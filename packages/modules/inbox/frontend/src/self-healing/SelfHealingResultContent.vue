@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { SelfHealingResultDetail } from '@n8n/api-types';
+import { WORKFLOW_REVIEW_TEXT_MAX_LENGTH } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nCallout,
+	N8nChatInput,
 	N8nDropdownMenu,
-	N8nHeading,
 	N8nIcon,
 	N8nMarkdown,
 	N8nTabs,
@@ -13,8 +14,17 @@ import {
 } from '@n8n/design-system';
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { computed, ref } from 'vue';
 
+import PrototypeEditableBody from '../prototype/PrototypeEditableBody.vue';
+import PrototypeEditableTitle from '../prototype/PrototypeEditableTitle.vue';
+import {
+	addPrototypeComment,
+	prototypeDescription,
+	prototypeState,
+	prototypeTitle,
+} from '../prototype/prototype.session';
 import SelfHealingResultActivity from './SelfHealingResultActivity.vue';
 import SelfHealingResultMetadata from './SelfHealingResultMetadata.vue';
 import type { SelfHealingPublishAccess, SelfHealingResultAction } from './selfHealingResults.api';
@@ -29,6 +39,8 @@ const props = defineProps<{
 	pendingAction: SelfHealingResultAction | null;
 	publishAccess: SelfHealingPublishAccess;
 	canChat: boolean;
+	/** Prototype only. Changes is a resource list and a scrolling diff, with no metadata rail. */
+	splitChanges?: boolean;
 }>();
 const emit = defineEmits<{
 	action: [action: SelfHealingResultAction];
@@ -36,6 +48,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const usersStore = useUsersStore();
+const commentDraft = ref('');
 const reportOptions = {
 	markdown: { html: false, linkify: true, breaks: true },
 	linkAttributes: { attrs: { target: '_blank', rel: 'noopener noreferrer' } },
@@ -43,7 +57,13 @@ const reportOptions = {
 	youtube: {},
 };
 const WorkflowDiffView = computed(() => componentRegistry.get('workflow-diff'));
-const isOpen = computed(() => props.detail.reviewState === 'open');
+const PromotionChanges = computed(() => componentRegistry.get('promotion-changes'));
+const inboxState = computed(() =>
+	prototypeState(props.detail.resultId, props.detail.reviewState === 'open' ? 'open' : 'closed'),
+);
+const displayTitle = computed(() => prototypeTitle(props.detail.resultId, props.detail.summary));
+const reportText = computed(() => prototypeDescription(props.detail.resultId, props.detail.report));
+const isOpen = computed(() => inboxState.value === 'open');
 const isFixReady = computed(() => props.detail.outcome === 'fix_ready');
 const hasSuggestion = computed(() => props.detail.suggestion !== null);
 const activeTab = computed(() =>
@@ -64,20 +84,18 @@ const outcomeLabel = computed(() => {
 });
 
 const statusLabel = computed(() => {
+	if (!isOpen.value && props.detail.reviewState === 'open') {
+		return i18n.baseText('inbox.tabs.closed');
+	}
 	const state = props.detail.reviewState;
 	if (state === 'open' || state === 'closed') return outcomeLabel.value;
 	return i18n.baseText(`inbox.selfHealing.state.${state}`);
 });
 
-const statusClass = computed(() => {
-	if (!isOpen.value) return 'closed';
-	return isFixReady.value ? 'fixReady' : 'needsAttention';
-});
-
 const tabOptions = computed(() => [
 	{ label: i18n.baseText('inbox.selfHealing.tabs.activity'), value: 'activity' },
 	...(hasSuggestion.value
-		? [{ label: i18n.baseText('inbox.selfHealing.tabs.changes'), value: 'changes' }]
+		? [{ label: i18n.baseText('inbox.selfHealing.tabs.changes'), value: 'changes', tag: '1' }]
 		: []),
 ]);
 
@@ -120,15 +138,36 @@ const menuNotes = computed(() => [
 function onTabChange(tab: string) {
 	if (tab === 'activity' || tab === 'changes') emit('update:tab', tab);
 }
+
+const commentSubmitDisabled = computed(
+	() =>
+		commentDraft.value.trim().length === 0 ||
+		commentDraft.value.length > WORKFLOW_REVIEW_TEXT_MAX_LENGTH,
+);
+
+function onCommentSubmit() {
+	const body = commentDraft.value.trim();
+	if (!body) return;
+	const user = usersStore.currentUser;
+	addPrototypeComment(props.detail.resultId, {
+		id: `prototype-comment-${Date.now()}`,
+		body,
+		createdAt: new Date().toISOString(),
+		firstName: user?.firstName ?? '',
+		lastName: user?.lastName ?? '',
+	});
+	commentDraft.value = '';
+}
 </script>
 
 <template>
 	<section :class="$style.detail" data-test-id="self-healing-result-content">
 		<div :class="$style.columnTitle">
-			<span :class="[$style.statusDot, $style[statusClass]]" role="img" :aria-label="statusLabel" />
-			<N8nHeading bold tag="h2" size="xlarge" data-test-id="self-healing-result-title">
-				{{ detail.summary }}
-			</N8nHeading>
+			<PrototypeEditableTitle
+				:item-id="detail.resultId"
+				:text="displayTitle"
+				test-id="self-healing-result-title"
+			/>
 		</div>
 		<slot name="notice" />
 		<div :class="$style.container">
@@ -183,55 +222,82 @@ function onTabChange(tab: string) {
 					</N8nDropdownMenu>
 				</div>
 			</div>
-			<div :class="$style.detailBody">
+			<div
+				:class="[
+					$style.detailBody,
+					{ [$style.splitBody]: splitChanges && activeTab === 'changes' },
+				]"
+			>
 				<div
 					v-if="activeTab === 'activity'"
 					:class="$style.activityPanel"
 					data-test-id="self-healing-activity-panel"
 				>
-					<div :class="$style.reportCard">
-						<N8nText tag="h3" bold color="text-light" size="medium">
-							{{ i18n.baseText('inbox.selfHealing.report') }}
-						</N8nText>
+					<div :class="$style.activityMain">
+						<div :class="$style.reportCard">
+							<N8nText tag="h3" bold color="text-light" size="medium">
+								{{ i18n.baseText('inbox.selfHealing.report') }}
+							</N8nText>
+							<N8nCallout
+								v-if="detail.outcome === 'could_not_fix'"
+								theme="danger"
+								data-test-id="self-healing-outcome-notice"
+							>
+								<strong :class="$style.noticeTitle">{{ outcomeLabel }}</strong>
+								{{ i18n.baseText('inbox.selfHealing.couldNotFix.body') }}
+							</N8nCallout>
+							<PrototypeEditableBody :item-id="detail.resultId" :text="reportText">
+								<N8nMarkdown
+									:content="reportText"
+									:options="reportOptions"
+									:class="$style.report"
+									data-test-id="self-healing-report"
+								/>
+							</PrototypeEditableBody>
+						</div>
+						<SelfHealingResultActivity :detail="detail" />
 						<N8nCallout
-							v-if="detail.outcome === 'could_not_fix'"
-							theme="danger"
+							v-if="detail.reviewState === 'outdated'"
+							theme="warning"
+							data-test-id="self-healing-outdated-notice"
+						>
+							<strong :class="$style.noticeTitle">
+								{{ i18n.baseText('inbox.selfHealing.state.outdated') }}
+							</strong>
+							{{ i18n.baseText('inbox.selfHealing.state.outdated.body') }}
+						</N8nCallout>
+						<N8nCallout
+							v-if="isOpen && detail.outcome === 'needs_you'"
+							theme="warning"
 							data-test-id="self-healing-outcome-notice"
 						>
-							<strong :class="$style.noticeTitle">{{ outcomeLabel }}</strong>
-							{{ i18n.baseText('inbox.selfHealing.couldNotFix.body') }}
+							<strong :class="$style.noticeTitle">
+								{{ i18n.baseText('inbox.selfHealing.needsAttention.title') }}
+							</strong>
+							{{ i18n.baseText('inbox.selfHealing.needsAttention.body') }}
 						</N8nCallout>
-						<N8nMarkdown
-							:content="detail.report"
-							:options="reportOptions"
-							:class="$style.report"
-							data-test-id="self-healing-report"
-						/>
 					</div>
-					<SelfHealingResultActivity :detail="detail" />
-					<N8nCallout
-						v-if="detail.reviewState === 'outdated'"
-						theme="warning"
-						data-test-id="self-healing-outdated-notice"
-					>
-						<strong :class="$style.noticeTitle">
-							{{ i18n.baseText('inbox.selfHealing.state.outdated') }}
-						</strong>
-						{{ i18n.baseText('inbox.selfHealing.state.outdated.body') }}
-					</N8nCallout>
-					<N8nCallout
-						v-if="isOpen && detail.outcome === 'needs_you'"
-						theme="warning"
-						data-test-id="self-healing-outcome-notice"
-					>
-						<strong :class="$style.noticeTitle">
-							{{ i18n.baseText('inbox.selfHealing.needsAttention.title') }}
-						</strong>
-						{{ i18n.baseText('inbox.selfHealing.needsAttention.body') }}
-					</N8nCallout>
+					<label v-if="isOpen" :class="$style.composer">
+						<span :class="$style.srOnly">
+							{{ i18n.baseText('workflowReviews.detail.activity.composer.label') }}
+						</span>
+						<N8nChatInput
+							v-model="commentDraft"
+							layout="adaptive"
+							:max-length="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
+							:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
+							refocus-after-send
+							:submit-disabled="commentSubmitDisabled"
+							data-test-id="self-healing-comment-composer"
+							@submit="onCommentSubmit"
+						/>
+					</label>
 				</div>
 				<div v-else :class="$style.changesPanel" data-test-id="self-healing-changes-panel">
-					<div v-if="WorkflowDiffView && detail.suggestion" :class="$style.diff">
+					<div v-if="splitChanges" :class="$style.splitHost">
+						<component :is="PromotionChanges" :review-id="detail.resultId" />
+					</div>
+					<div v-else-if="WorkflowDiffView && detail.suggestion" :class="$style.diff">
 						<component
 							:is="WorkflowDiffView"
 							:source-snapshot="detail.suggestion.payload.original"
@@ -248,6 +314,7 @@ function onTabChange(tab: string) {
 					</N8nCallout>
 				</div>
 				<SelfHealingResultMetadata
+					v-if="!(splitChanges && activeTab === 'changes')"
 					:detail="detail"
 					:workflow-name="workflowName"
 					:status-label="statusLabel"
@@ -281,36 +348,40 @@ function onTabChange(tab: string) {
 	overflow-wrap: anywhere;
 }
 
-.statusDot {
-	flex-shrink: 0;
-	width: var(--font-size--3xs);
-	height: var(--font-size--3xs);
-	border-radius: 50%;
-}
-
-.fixReady {
-	background-color: var(--color--blue-500);
-}
-
-.needsAttention {
-	background-color: var(--color--yellow-500);
-}
-
-.closed {
-	background-color: var(--color--neutral-500);
-}
-
 /* Match the tab row of workflow reviews. */
 .tabRow {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
-	padding-bottom: var(--review-tab-bar--indicator-overhang);
 	border-bottom: var(--border);
 
 	> :global(.n8n-tabs) {
-		transform: translateY(var(--spacing--sm));
+		align-self: flex-end;
+		/* The active-tab indicator covers the divider, as on Open and Closed. */
+		margin-bottom: calc(-1 * var(--border-width));
+
+		/* Same height for every tab, so a label without a badge lines up with one that has one.
+		   The active border stays on the divider. */
+		:global([role='tablist']) {
+			align-items: stretch;
+		}
+
+		:global([role='tablist']) > * {
+			display: flex;
+			align-items: stretch;
+		}
+
+		:global([role='tablist']) > * > * {
+			display: flex;
+			flex: 1;
+			align-items: stretch;
+		}
+
+		:global([role='tab']) {
+			flex: 1;
+			box-sizing: border-box;
+		}
 	}
 }
 
@@ -319,6 +390,8 @@ function onTabChange(tab: string) {
 	flex-shrink: 0;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	/* The tab label sits above the row center, clear of the underline. Match that. */
+	margin-bottom: calc(var(--spacing--xs) + 2px - var(--spacing--4xs));
 }
 
 .menuNotes {
@@ -332,7 +405,7 @@ function onTabChange(tab: string) {
 .detailBody {
 	display: flex;
 	flex: 1;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 	min-height: 0;
 	overflow: auto;
 	padding-top: var(--spacing--sm);
@@ -342,16 +415,48 @@ function onTabChange(tab: string) {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
-	gap: var(--spacing--sm);
 	min-width: 0;
 	max-width: var(--review-activity--max-width, 45rem);
 	margin-inline-end: auto;
+}
+
+.activityMain {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xl);
+}
+
+.composer {
+	position: sticky;
+	bottom: 0;
+	z-index: 1;
+	display: block;
+	flex-shrink: 0;
+	margin-top: var(--spacing--md);
+	padding-bottom: var(--spacing--sm);
+	/* The outline is drawn outside the input. The scroll area clips it without this inset. */
+	padding-inline: var(--focus--border-width);
+	background-color: var(--color--background--light-2);
+}
+
+.srOnly {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
 }
 
 .reportCard {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	/* The description card sits under the activity feed's top padding. Match that. */
+	margin-top: var(--spacing--5xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border: var(--border);
 	border-radius: var(--radius--2xs);
@@ -388,6 +493,24 @@ function onTabChange(tab: string) {
 	flex: 1;
 	min-width: 0;
 	min-height: 0;
+}
+
+.splitBody {
+	overflow: hidden;
+	gap: 0;
+	padding-top: 0;
+}
+
+.splitHost {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+
+	> * {
+		flex: 1;
+		min-height: 0;
+	}
 }
 
 .diff {

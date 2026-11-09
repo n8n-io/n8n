@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
 import { N8nCallout, N8nTabs, N8nText } from '@n8n/design-system';
+import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { computed, provide, ref, useTemplateRef, watch } from 'vue';
 
+import PrototypeEditableBody from '../../prototype/PrototypeEditableBody.vue';
+import { prototypeDescription, prototypeState } from '../../prototype/prototype.session';
 import { ReviewDetailScrollContainerKey, ReviewLinkedWorkflowsKey } from '../constants';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
@@ -18,6 +21,8 @@ const props = defineProps<{
 	review: WorkflowReviewInboxItem | WorkflowReviewRequestDetail;
 	tab: WorkflowReviewDetailTab;
 	deciding: boolean;
+	/** Prototype only. Changes is a resource list and a scrolling diff, with no metadata rail. */
+	splitChanges?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -31,6 +36,10 @@ provide(ReviewDetailScrollContainerKey, useTemplateRef<HTMLElement>('detailBody'
 
 const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 	'workflows' in props.review ? props.review : null,
+);
+
+const descriptionText = computed(() =>
+	prototypeDescription(props.review.id, detail.value?.description ?? ''),
 );
 
 // Held here, not in the list: the detail body remounts on every tab switch.
@@ -107,6 +116,8 @@ const showApprovedAndPublished = computed(() => {
 	);
 });
 
+const PromotionChanges = computed(() => componentRegistry.get('promotion-changes'));
+
 const tabOptions = computed(() => [
 	{
 		label: i18n.baseText('workflowReviews.detail.tabs.activity'),
@@ -115,6 +126,7 @@ const tabOptions = computed(() => [
 	{
 		label: i18n.baseText('workflowReviews.detail.tabs.changes'),
 		value: 'changes' as const,
+		tag: detail.value ? String(detail.value.workflows.length) : undefined,
 	},
 ]);
 </script>
@@ -132,7 +144,10 @@ const tabOptions = computed(() => [
 
 			<!-- Gated on `detail`, not `review`: eligibility only arrives with the
 				detail payload, so the list item alone can't say who may decide. -->
-			<div v-if="detail?.state === 'open'" :class="$style.decisionActions">
+			<div
+				v-if="prototypeState(review.id, detail?.state ?? 'closed') === 'open'"
+				:class="$style.decisionActions"
+			>
 				<WorkflowReviewDecisionPopover
 					:deciding="deciding"
 					:viewer-can-decide="viewerCanDecide"
@@ -145,7 +160,11 @@ const tabOptions = computed(() => [
 		</div>
 
 		<!-- Keyed so another review or tab starts at the top. -->
-		<div :key="`${review.id}:${tab}`" ref="detailBody" :class="$style.detailBody">
+		<div
+			:key="`${review.id}:${tab}`"
+			ref="detailBody"
+			:class="[$style.detailBody, { [$style.splitBody]: splitChanges && tab === 'changes' }]"
+		>
 			<div
 				v-if="tab === 'activity'"
 				:class="$style.activityPanel"
@@ -159,23 +178,25 @@ const tabOptions = computed(() => [
 							<N8nText tag="h3" bold color="text-light" size="medium">
 								{{ i18n.baseText('workflowReviews.detail.activity.description') }}
 							</N8nText>
-							<N8nText
-								v-if="detail?.description"
-								color="text-base"
-								size="medium"
-								:class="$style.description"
-								data-test-id="workflow-review-description"
-							>
-								{{ detail.description }}
-							</N8nText>
-							<N8nText
-								v-else
-								color="text-light"
-								size="medium"
-								data-test-id="workflow-review-no-description"
-							>
-								{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
-							</N8nText>
+							<PrototypeEditableBody :item-id="review.id" :text="descriptionText">
+								<N8nText
+									v-if="descriptionText"
+									color="text-base"
+									size="medium"
+									:class="$style.description"
+									data-test-id="workflow-review-description"
+								>
+									{{ descriptionText }}
+								</N8nText>
+								<N8nText
+									v-else
+									color="text-light"
+									size="medium"
+									data-test-id="workflow-review-no-description"
+								>
+									{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
+								</N8nText>
+							</PrototypeEditableBody>
 						</div>
 					</template>
 					<template v-if="showApprovedAndPublished" #footer>
@@ -201,34 +222,43 @@ const tabOptions = computed(() => [
 				</WorkflowReviewActivityFeed>
 			</div>
 
-			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
-				<N8nCallout
-					v-if="!detail"
-					theme="warning"
-					:class="$style.callout"
-					data-test-id="workflow-review-changes-unavailable"
-				>
-					{{ i18n.baseText('workflowReviews.changes.unavailable') }}
-				</N8nCallout>
-				<WorkflowReviewChangesList
-					v-else-if="detail.workflows.length > 0"
-					v-model:expanded="expandedWorkflowId"
-					:workflows="detail.workflows"
-					:state="detail.state"
-					:decision="detail.decision"
-				/>
-				<!-- No rows left: the workflow was deleted, or the requester lost access to it. -->
-				<N8nCallout
-					v-else
-					theme="warning"
-					:class="$style.callout"
-					data-test-id="workflow-review-changes-workflow-unavailable"
-				>
-					{{ i18n.baseText('workflowReviews.changes.workflowUnavailable') }}
-				</N8nCallout>
+			<div
+				v-else
+				:class="[$style.panel, { [$style.splitPanel]: splitChanges }]"
+				data-test-id="workflow-review-changes-panel"
+			>
+				<div v-if="splitChanges" :class="$style.splitHost">
+					<component :is="PromotionChanges" :review-id="review.id" />
+				</div>
+				<template v-else>
+					<N8nCallout
+						v-if="!detail"
+						theme="warning"
+						:class="$style.callout"
+						data-test-id="workflow-review-changes-unavailable"
+					>
+						{{ i18n.baseText('workflowReviews.changes.unavailable') }}
+					</N8nCallout>
+					<WorkflowReviewChangesList
+						v-else-if="detail.workflows.length > 0"
+						v-model:expanded="expandedWorkflowId"
+						:workflows="detail.workflows"
+						:state="detail.state"
+						:decision="detail.decision"
+					/>
+					<!-- No rows left: the workflow was deleted, or the requester lost access to it. -->
+					<N8nCallout
+						v-else
+						theme="warning"
+						:class="$style.callout"
+						data-test-id="workflow-review-changes-workflow-unavailable"
+					>
+						{{ i18n.baseText('workflowReviews.changes.workflowUnavailable') }}
+					</N8nCallout>
+				</template>
 			</div>
 
-			<WorkflowReviewDetailMetadata :review="review" />
+			<WorkflowReviewDetailMetadata v-if="!(splitChanges && tab === 'changes')" :review="review" />
 		</div>
 	</div>
 </template>
@@ -250,29 +280,72 @@ const tabOptions = computed(() => [
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
-	margin-right: var(--spacing--md);
-	/* Holds the active-tab indicator, so the border sits under it. */
-	padding-bottom: var(--review-tab-bar--indicator-overhang);
 	border-bottom: var(--border);
 
 	> :global(.n8n-tabs) {
-		transform: translateY(var(--spacing--sm));
+		align-self: flex-end;
+		/* The active-tab indicator covers the divider, as on Open and Closed. */
+		margin-bottom: calc(-1 * var(--border-width));
+
+		/* Same height for every tab, so a label without a badge lines up with one that has one.
+		   The active border stays on the divider. */
+		:global([role='tablist']) {
+			align-items: stretch;
+		}
+
+		:global([role='tablist']) > * {
+			display: flex;
+			align-items: stretch;
+		}
+
+		:global([role='tablist']) > * > * {
+			display: flex;
+			flex: 1;
+			align-items: stretch;
+		}
+
+		:global([role='tab']) {
+			flex: 1;
+			box-sizing: border-box;
+		}
 	}
 }
 
 .detailBody {
 	display: flex;
 	flex: 1;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 	min-height: 0;
 	overflow: auto;
-	/* Inside the scroll area, so the content keeps clear of the scrollbar. */
-	padding: var(--spacing--sm) var(--spacing--md) 0 0;
+	padding-top: var(--spacing--sm);
 }
 
 .panel {
 	flex: 1;
 	min-width: 0;
+}
+
+.splitBody {
+	overflow: hidden;
+	gap: 0;
+	padding: 0;
+}
+
+.splitPanel {
+	display: flex;
+	min-height: 0;
+}
+
+.splitHost {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+
+	> * {
+		flex: 1;
+		min-height: 0;
+	}
 }
 
 .activityPanel {
@@ -314,6 +387,8 @@ const tabOptions = computed(() => [
 
 .decisionActions {
 	flex-shrink: 0;
+	/* The tab label sits above the row center, clear of the underline. Match that. */
+	margin-bottom: calc(var(--spacing--xs) + 2px - var(--spacing--4xs));
 }
 
 @container review-detail (max-width: 44rem) {

@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { InboxPromotionReviewItem, PromotionReviewState } from '@n8n/api-types';
+import type {
+	InboxPromotionReviewItem,
+	PromotionReviewState,
+	WorkflowReviewRequestDetail,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nAvatar,
@@ -14,6 +18,7 @@ import {
 	N8nEmptyState,
 	N8nExternalLink,
 	N8nHeading,
+	N8nIcon,
 	N8nTabs,
 	N8nText,
 	type BadgeVariant,
@@ -21,21 +26,51 @@ import {
 import { componentRegistry, type PromotionChangesState } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref, useId, watch } from 'vue';
+import { computed, provide, ref, useId, useTemplateRef, watch } from 'vue';
 
+import InboxAvatarTooltip from '../components/InboxAvatarTooltip.vue';
 import type { InboxItemChange } from '../inbox.constants';
+import PrototypeEditableBody from '../prototype/PrototypeEditableBody.vue';
+import PrototypeEditableTitle from '../prototype/PrototypeEditableTitle.vue';
+import { prototypeDescription, prototypeTitle } from '../prototype/prototype.session';
+import WorkflowReviewActivityFeed from '../reviews/components/WorkflowReviewActivityFeed.vue';
+import WorkflowReviewCommentComposer from '../reviews/components/WorkflowReviewCommentComposer.vue';
+import WorkflowReviewDetailMetadata from '../reviews/components/WorkflowReviewDetailMetadata.vue';
+import { ReviewDetailScrollContainerKey, ReviewLinkedWorkflowsKey } from '../reviews/constants';
+import { useReviewActivityStore } from '../reviews/reviewActivity.store';
 import { formatUserDisplayName, toError } from '../reviews/workflowReviews.utils';
-import { approvePromotionReview } from './promotionReviews.api';
+import { approvePromotionReview, getPromotionReviewChanges } from './promotionReviews.api';
 
 const props = defineProps<{
 	item: InboxPromotionReviewItem;
 	onItemChange: (change: InboxItemChange) => void;
+	/**
+	 * Prototype only. The review data for an Activity tab with the workflow review layout.
+	 * Without it, the product shows Changes only.
+	 */
+	activityReview?: WorkflowReviewRequestDetail;
 }>();
 const i18n = useI18n();
 const { showError } = useToast();
 const rootStore = useRootStore();
 const disabledReasonId = useId();
 const newCommitsId = useId();
+
+const descriptionText = computed(() =>
+	prototypeDescription(
+		props.activityReview?.id ?? props.item.id,
+		props.activityReview?.description ?? '',
+	),
+);
+const displayTitle = computed(() =>
+	prototypeTitle(
+		props.item.id,
+		props.activityReview?.title ??
+			props.item.title ??
+			props.item.branchName ??
+			i18n.baseText('inbox.promotionReview.untitled'),
+	),
+);
 
 const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 	open: 'info',
@@ -46,9 +81,66 @@ const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 
 // The editor renders the changes.
 const PromotionChanges = computed(() => componentRegistry.get('promotion-changes'));
-// One tab for now. The bar matches workflow reviews, which also have an Activity tab.
+type DetailTab = 'activity' | 'changes';
+const detailTab = ref<DetailTab>('changes');
+const activityStore = useReviewActivityStore();
+provide(ReviewDetailScrollContainerKey, useTemplateRef<HTMLElement>('detailBody'));
+provide(
+	ReviewLinkedWorkflowsKey,
+	computed(
+		() =>
+			new Map(
+				(props.activityReview?.workflows ?? []).map((workflow) => [
+					workflow.workflowId,
+					{
+						workflowName: workflow.workflowName,
+						pinnedVersionId: workflow.workflowVersionId,
+						pinnedVersionName: workflow.pinnedVersion?.name ?? null,
+					},
+				]),
+			),
+	),
+);
+watch(
+	() => props.activityReview?.id,
+	(id) => {
+		detailTab.value = id ? 'activity' : 'changes';
+		if (id) void activityStore.fetchFeed(id);
+	},
+	{ immediate: true },
+);
+// Changed resources only. An unchanged project is a folder in the tree, not a change.
+const changeCount = ref<number | null>(null);
+watch(
+	() => props.item.id,
+	async (id) => {
+		changeCount.value = null;
+		try {
+			const result = await getPromotionReviewChanges(rootStore.restApiContext, id);
+			if (props.item.id !== id) return;
+			changeCount.value = result.resources.filter(
+				(resource) => resource.change !== 'unchanged',
+			).length;
+		} catch {
+			if (props.item.id === id) changeCount.value = null;
+		}
+	},
+	{ immediate: true },
+);
 const tabOptions = computed(() => [
-	{ label: i18n.baseText('inbox.promotionReview.detail.tabs.changes'), value: 'changes' as const },
+	...(props.activityReview
+		? [
+				{
+					label: i18n.baseText('inbox.promotionReview.detail.tabs.activity'),
+					value: 'activity' as const,
+				},
+			]
+		: []),
+	{
+		label: i18n.baseText('inbox.promotionReview.detail.tabs.changes'),
+		value: 'changes' as const,
+		tag: changeCount.value === null ? undefined : String(changeCount.value),
+	},
 ]);
 
 // Approve sends the head of the changes that the reviewer saw. A list refresh can report a newer
@@ -134,8 +226,16 @@ async function onApprove() {
 </script>
 
 <template>
-	<section :class="$style.detail" data-test-id="inbox-promotion-review-detail">
-		<header :class="[$style.header, $style.gutter]">
+	<section
+		:class="[$style.detail, { [$style.activityDetail]: activityReview }]"
+		data-test-id="inbox-promotion-review-detail"
+	>
+		<div v-if="activityReview" :class="$style.columnTitle">
+			<div :class="$style.reviewTitle">
+				<PrototypeEditableTitle :item-id="item.id" :text="displayTitle" />
+			</div>
+		</div>
+		<header v-else :class="$style.header">
 			<div :class="$style.titleRow">
 				<!-- Inline, so the state tag follows the last word of a title that wraps. -->
 				<div :class="$style.title">
@@ -170,71 +270,113 @@ async function onApprove() {
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('inbox.promotionReview.detail.reviewer') }}
 					</N8nText>
-					<N8nAvatar
-						:first-name="item.approver.firstName"
-						:last-name="item.approver.lastName"
-						size="xsmall"
-					/>
+					<InboxAvatarTooltip :name="formatUserDisplayName(item.approver)">
+						<N8nAvatar
+							:first-name="item.approver.firstName"
+							:last-name="item.approver.lastName"
+							size="xsmall"
+						/>
+					</InboxAvatarTooltip>
 					<N8nText size="small">{{ formatUserDisplayName(item.approver) }}</N8nText>
 				</span>
 				<span v-if="item.requester" :class="$style.metaItem">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('inbox.promotionReview.detail.requestedBy') }}
 					</N8nText>
-					<N8nAvatar
-						:first-name="item.requester.firstName"
-						:last-name="item.requester.lastName"
-						size="xsmall"
-					/>
+					<InboxAvatarTooltip :name="formatUserDisplayName(item.requester)">
+						<N8nAvatar
+							:first-name="item.requester.firstName"
+							:last-name="item.requester.lastName"
+							size="xsmall"
+						/>
+					</InboxAvatarTooltip>
 					<N8nText size="small">{{ formatUserDisplayName(item.requester) }}</N8nText>
 				</span>
 			</div>
 		</header>
 		<N8nCallout
 			v-if="item.remoteError && !withoutEnvironment"
-			:class="$style.gutter"
 			theme="warning"
 			data-test-id="inbox-promotion-review-remote-error"
 		>
 			{{ i18n.baseText(`inbox.promotionReview.detail.remoteError.${item.remoteError}`) }}
 		</N8nCallout>
-		<div :class="[$style.tabRow, $style.gutter]">
+		<div :class="$style.tabRow">
 			<N8nTabs
-				model-value="changes"
+				:model-value="detailTab"
 				:options="tabOptions"
 				variant="modern"
 				data-test-id="inbox-promotion-review-tab-bar"
+				@update:model-value="detailTab = $event === 'activity' ? 'activity' : 'changes'"
 			/>
-			<!-- In the tab row, like the Review button of workflow reviews. -->
-			<div v-if="item.state === 'open'" :class="$style.approve">
-				<!-- Visible text, not a tooltip: a disabled button cannot take keyboard focus. -->
-				<N8nText
-					v-if="disabledReason"
-					:id="disabledReasonId"
-					size="small"
-					color="text-light"
-					data-test-id="inbox-promotion-review-approve-reason"
-				>
-					{{ disabledReason }}
-				</N8nText>
+			<!-- Same slot as Discard and close on a self-healing result: the ghost action left of the main button. -->
+			<div :class="$style.tabActions">
 				<N8nButton
+					v-if="activityReview && item.webUrl"
+					variant="ghost"
 					size="small"
-					:disabled="approveDisabled"
-					:loading="approving"
-					:aria-describedby="approveDescribedBy"
-					data-test-id="inbox-promotion-review-approve"
-					@click="openApproval"
+					:href="item.webUrl"
+					target="_blank"
+					data-test-id="inbox-promotion-review-gitlab"
 				>
-					{{ i18n.baseText('inbox.promotionReview.approve.button') }}
+					{{ i18n.baseText('inbox.promotionReview.detail.viewInGitLab') }}
+					<N8nIcon icon="external-link" size="small" />
 				</N8nButton>
+				<div v-if="item.state === 'open'" :class="$style.approve">
+					<!-- Visible text, not a tooltip: a disabled button cannot take keyboard focus. -->
+					<N8nText
+						v-if="disabledReason"
+						:id="disabledReasonId"
+						size="small"
+						color="text-light"
+						data-test-id="inbox-promotion-review-approve-reason"
+					>
+						{{ disabledReason }}
+					</N8nText>
+					<N8nButton
+						size="small"
+						:disabled="approveDisabled"
+						:loading="approving"
+						:aria-describedby="approveDescribedBy"
+						data-test-id="inbox-promotion-review-approve"
+						@click="openApproval"
+					>
+						{{ i18n.baseText('inbox.promotionReview.approve.button') }}
+					</N8nButton>
+				</div>
 			</div>
 		</div>
-		<div :class="$style.changesArea">
+		<!-- The same activity layout as a workflow review: feed, description card, composer, and rail. -->
+		<div v-if="activityReview && detailTab === 'activity'" :class="$style.activityContainer">
+			<div ref="detailBody" :class="$style.detailBody">
+				<div :class="$style.activityPanel" data-test-id="inbox-promotion-review-activity-panel">
+					<WorkflowReviewActivityFeed :key="activityReview.id">
+						<template #header>
+							<div :class="$style.descriptionCard">
+								<N8nText tag="h3" bold color="text-light" size="medium">
+									{{ i18n.baseText('workflowReviews.detail.activity.description') }}
+								</N8nText>
+								<PrototypeEditableBody :item-id="activityReview.id" :text="descriptionText">
+									<N8nText color="text-base" size="medium" :class="$style.description">
+										{{ descriptionText }}
+									</N8nText>
+								</PrototypeEditableBody>
+							</div>
+						</template>
+						<template v-if="activityReview.state === 'open'" #composer>
+							<WorkflowReviewCommentComposer :can-comment="activityReview.viewerCanComment" />
+						</template>
+					</WorkflowReviewActivityFeed>
+				</div>
+				<WorkflowReviewDetailMetadata :review="activityReview" />
+			</div>
+		</div>
+		<div v-else :class="$style.changesArea">
 			<N8nCallout
 				v-if="hasNewCommits"
 				theme="warning"
 				slim
-				:class="[$style.newCommits, $style.gutter]"
+				:class="$style.newCommits"
 				data-test-id="inbox-promotion-review-new-commits"
 			>
 				<span :id="newCommitsId">{{
@@ -302,6 +444,8 @@ async function onApprove() {
 </template>
 
 <style module lang="scss">
+@use '../reviews/components/activity-card' as *;
+
 .detail {
 	display: flex;
 	flex: 1;
@@ -310,17 +454,57 @@ async function onApprove() {
 	min-height: 0;
 }
 
+.activityDetail {
+	gap: 0;
+}
+
+.columnTitle {
+	display: flex;
+	align-items: center;
+	min-height: var(--spacing--2xl);
+	padding-bottom: var(--spacing--sm);
+}
+
+.reviewTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
 .tabRow {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
-	/* Holds the active-tab indicator, so the border sits under it. */
-	padding-bottom: var(--review-tab-bar--indicator-overhang);
 	border-bottom: var(--border);
 
 	> :global(.n8n-tabs) {
-		transform: translateY(var(--spacing--sm));
+		align-self: flex-end;
+		/* The active-tab indicator covers the divider, as on Open and Closed. */
+		margin-bottom: calc(-1 * var(--border-width));
+
+		/* Same height for every tab, so a label without a badge lines up with one that has one.
+		   The active border stays on the divider. */
+		:global([role='tablist']) {
+			align-items: stretch;
+		}
+
+		:global([role='tablist']) > * {
+			display: flex;
+			align-items: stretch;
+		}
+
+		:global([role='tablist']) > * > * {
+			display: flex;
+			flex: 1;
+			align-items: stretch;
+		}
+
+		:global([role='tab']) {
+			flex: 1;
+			box-sizing: border-box;
+		}
 	}
 }
 
@@ -329,7 +513,10 @@ async function onApprove() {
 	flex: 1;
 	flex-direction: column;
 	min-height: 0;
-	/* The tab row border already separates the changes from the header. */
+}
+
+/* The old header leaves a gap above the changes. The tab row border already separates them. */
+.detail:not(.activityDetail) .changesArea {
 	margin-top: calc(-1 * var(--spacing--md));
 }
 
@@ -343,9 +530,51 @@ async function onApprove() {
 	min-height: 0;
 }
 
-/* The right gutter of workflow reviews, so Approve sits where their Review button does. */
-.gutter {
-	margin-right: var(--spacing--md);
+/* Copied from the tab body of a workflow review, so both Activity tabs share one layout. */
+.activityContainer {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.detailBody {
+	display: flex;
+	flex: 1;
+	gap: var(--spacing--md);
+	min-height: 0;
+	overflow: auto;
+	padding-top: var(--spacing--sm);
+}
+
+.activityPanel {
+	flex: 1;
+	min-width: 0;
+	max-width: var(--review-activity--max-width, 45rem);
+	margin-inline: auto;
+}
+
+.descriptionCard {
+	@include activity-card;
+
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.description {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+@container review-detail (max-width: 44rem) {
+	.detailBody {
+		flex-direction: column;
+	}
+
+	.activityPanel {
+		margin-inline: 0;
+	}
 }
 
 .header {
@@ -378,6 +607,15 @@ async function onApprove() {
 .stateBadge {
 	margin-left: var(--spacing--xs);
 	vertical-align: middle;
+}
+
+.tabActions {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	/* The tab label sits above the row center, clear of the underline. Match that. */
+	margin-bottom: calc(var(--spacing--xs) + 2px - var(--spacing--4xs));
 }
 
 .approve {

@@ -119,7 +119,7 @@ function onToggle(resource: PromotionResource) {
 		<ul :class="$style.list" role="list">
 			<template v-for="{ item, indent, resource, check, marker } in rows" :key="item.id">
 				<li v-if="item.kind === 'section'" :class="$style.heading">
-					<N8nText step="2xs" bold color="text-base">
+					<N8nText size="medium" bold color="text-light">
 						{{ item.label }}
 					</N8nText>
 				</li>
@@ -199,7 +199,7 @@ function onToggle(resource: PromotionResource) {
 	height: 100%;
 	min-height: 0;
 	overflow-y: auto;
-	padding: var(--spacing--xs) var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .list {

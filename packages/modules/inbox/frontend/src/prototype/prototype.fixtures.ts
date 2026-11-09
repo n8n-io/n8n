@@ -365,6 +365,92 @@ export const promotionReviewItem: InboxPromotionReviewItem = {
 	updatedAt: minutesAgo(6),
 };
 
+const NOTIFY_WORKFLOW_ID = 'prototype-workflow-notify';
+const notifyVersion: WorkflowReviewVersionSnapshot = {
+	versionId: 'prototype-version-notify',
+	name: null,
+	nodes: [],
+	connections: {},
+	nodeGroups: [],
+	createdAt: minutesAgo(55),
+};
+
+/**
+ * The promotion review in the shape of a workflow review detail, so its Activity tab can use
+ * the same feed and metadata rail as a workflow review.
+ */
+export const promotionActivityReview: WorkflowReviewRequestDetail = {
+	...reviewSummary,
+	id: PROMOTION_REVIEW_ID,
+	title: 'Promote payment changes to Production',
+	description:
+		'Promote the retry fix for Stripe charges and the new finance alert from Staging to Production.',
+	requester: maya,
+	authors: [maya],
+	reviewers: [omar],
+	createdAt: minutesAgo(50),
+	updatedAt: minutesAgo(6),
+	workflows: [
+		{
+			workflowId: PAYMENT_WORKFLOW_ID,
+			workflowName: 'Payment Handler',
+			workflowVersionId: pinnedVersion.versionId,
+			pinnedVersion,
+			publishedVersionId: publishedVersion.versionId,
+			baselineVersion: publishedVersion,
+		},
+		{
+			workflowId: NOTIFY_WORKFLOW_ID,
+			workflowName: 'Notify finance',
+			workflowVersionId: notifyVersion.versionId,
+			pinnedVersion: notifyVersion,
+			publishedVersionId: null,
+			baselineVersion: null,
+		},
+	],
+	viewerCanDecide: true,
+	viewerDecisionIneligibilityReason: null,
+	viewerCanComment: true,
+};
+
+export const promotionActivity: ListWorkflowReviewActivityResponse = {
+	data: [
+		{
+			id: '1',
+			typeVersion: 1,
+			type: 'review.opened',
+			createdBy: maya,
+			createdAt: minutesAgo(50),
+			data: {
+				workflowVersions: [
+					{ workflowId: PAYMENT_WORKFLOW_ID, workflowVersionId: pinnedVersion.versionId },
+					{ workflowId: NOTIFY_WORKFLOW_ID, workflowVersionId: notifyVersion.versionId },
+				],
+			},
+		},
+		{
+			id: '2',
+			typeVersion: 1,
+			type: 'comment.created',
+			createdBy: omar,
+			createdAt: minutesAgo(6),
+			data: null,
+			messages: [
+				{
+					id: 'prototype-message-promotion-1',
+					body: 'Checking the Stripe credential in Production before I merge.',
+					createdBy: omar,
+					createdAt: minutesAgo(6),
+					updatedAt: null,
+					deletedAt: null,
+				},
+			],
+		},
+	],
+	nextCursor: null,
+	hasMore: false,
+};
+
 const errorTrigger: INode = {
 	id: 'prototype-node-error-trigger',
 	name: 'Error Trigger',
@@ -451,6 +537,77 @@ function serializedWorkflow(
 ): SerializedWorkflow {
 	return { id, name, ...graph, parentFolderId: null, isArchived: false };
 }
+
+function oneWorkflowChanges(
+	projectName: string,
+	workflowId: string,
+	workflowName: string,
+	before: { nodes: INode[]; connections: IConnections },
+	after: { nodes: INode[]; connections: IConnections },
+): { changes: PromotionReviewChanges; details: PromotionResourceDetail[] } {
+	const projectKey = 'project:prototype-project';
+	const workflowKey = `workflow:${workflowId}`;
+	return {
+		changes: {
+			baselineCommitSha: COMMIT_SHA.baseline,
+			headCommitSha: COMMIT_SHA.head,
+			resources: [
+				{
+					key: projectKey,
+					type: 'project',
+					id: PROJECT_ID,
+					name: projectName,
+					parentKey: null,
+					change: 'unchanged',
+					selectable: false,
+					revision: { before: 'prototype-project-blob', after: 'prototype-project-blob' },
+				},
+				{
+					key: workflowKey,
+					type: 'workflow',
+					id: workflowId,
+					name: workflowName,
+					parentKey: projectKey,
+					change: 'modified',
+					selectable: true,
+					revision: { before: `${workflowId}-before`, after: `${workflowId}-after` },
+				},
+			],
+			dependencies: [],
+			warnings: [],
+			outcome: null,
+		},
+		details: [
+			{
+				key: workflowKey,
+				type: 'workflow',
+				before: serializedWorkflow(workflowId, workflowName, before),
+				after: serializedWorkflow(workflowId, workflowName, after),
+				revision: { before: `${workflowId}-before`, after: `${workflowId}-after` },
+			},
+		],
+	};
+}
+
+const workflowReviewPromotion = oneWorkflowChanges(
+	'Payments',
+	PAYMENT_WORKFLOW_ID,
+	'Payment Handler',
+	paymentBefore,
+	paymentAfter,
+);
+const selfHealingPromotion = oneWorkflowChanges(
+	'Billing',
+	INVOICE_WORKFLOW_ID,
+	'Invoice sync',
+	invoiceOriginal,
+	invoiceProposed,
+);
+
+export const workflowReviewPromotionChanges = workflowReviewPromotion.changes;
+export const workflowReviewPromotionDetails = workflowReviewPromotion.details;
+export const selfHealingPromotionChanges = selfHealingPromotion.changes;
+export const selfHealingPromotionDetails = selfHealingPromotion.details;
 
 export const promotionResourceDetails: PromotionResourceDetail[] = [
 	{

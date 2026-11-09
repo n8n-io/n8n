@@ -1,13 +1,18 @@
 import {
+	promotionActivity,
 	promotionResourceDetails,
 	promotionReviewChanges,
 	promotionReviewItem,
 	selfHealingDetail,
 	selfHealingItem,
+	selfHealingPromotionChanges,
+	selfHealingPromotionDetails,
 	selfHealingWorkflow,
 	workflowReviewActivity,
 	workflowReviewDetail,
 	workflowReviewItem,
+	workflowReviewPromotionChanges,
+	workflowReviewPromotionDetails,
 } from './prototype.fixtures';
 
 const selfHealingPath = `/projects/${selfHealingItem.projectId}/workflows/${selfHealingItem.workflowId}/self-healing-results/${selfHealingItem.id}`;
@@ -18,6 +23,17 @@ const responses: Record<string, unknown> = {
 	[`GET /workflow-review-requests/${workflowReviewItem.id}/activity`]: workflowReviewActivity,
 	[`GET ${selfHealingPath}`]: selfHealingDetail,
 	[`GET /workflows/${selfHealingItem.workflowId}`]: selfHealingWorkflow,
+	[`GET /promotions/reviews/${workflowReviewItem.id}/changes`]: workflowReviewPromotionChanges,
+	[`POST /promotions/reviews/${workflowReviewItem.id}/changes/details`]: {
+		details: workflowReviewPromotionDetails,
+		missingKeys: [],
+	},
+	[`GET /promotions/reviews/${selfHealingItem.id}/changes`]: selfHealingPromotionChanges,
+	[`POST /promotions/reviews/${selfHealingItem.id}/changes/details`]: {
+		details: selfHealingPromotionDetails,
+		missingKeys: [],
+	},
+	[`GET /workflow-review-requests/${promotionReviewItem.id}/activity`]: promotionActivity,
 	[`GET /promotions/reviews/${promotionReviewItem.id}/changes`]: promotionReviewChanges,
 	[`POST /promotions/reviews/${promotionReviewItem.id}/changes/details`]: {
 		details: promotionResourceDetails,

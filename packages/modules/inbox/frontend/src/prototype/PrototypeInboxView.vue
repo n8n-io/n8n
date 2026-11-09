@@ -1,5 +1,11 @@
 <script lang="ts" setup>
-import type { InboxItem, InboxState } from '@n8n/api-types';
+import type {
+	InboxItem,
+	InboxPromotionReviewItem,
+	InboxSelfHealingItem,
+	InboxState,
+	InboxWorkflowReviewItem,
+} from '@n8n/api-types';
 import { N8nResizeWrapper, useResizablePanel } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
@@ -10,7 +16,8 @@ import type { InboxSelection } from '../inbox.constants';
 import PromotionReviewDetail from '../promotions/PromotionReviewDetail.vue';
 import WorkflowReviewDetail from '../reviews/WorkflowReviewDetail.vue';
 import SelfHealingResultDetail from '../self-healing/SelfHealingResultDetail.vue';
-import { prototypeItems } from './prototype.fixtures';
+import { promotionActivityReview, prototypeItems } from './prototype.fixtures';
+import { prototypeSession } from './prototype.session';
 import { usePrototypeRequests } from './usePrototypeRequests';
 
 // The same frame as InboxView. That view reads the selection from the route and loads the
@@ -33,6 +40,8 @@ const sidebarResizer = useResizablePanel({
 const sidebarWidth = sidebarResizer.width;
 
 const activeTab = ref<InboxState>('open');
+// New is the Changes layout under construction. Old is the layout from the last commit.
+const changesLayout = ref<'new' | 'old'>('new');
 const selection = ref<InboxSelection | null>(null);
 const detailTab = ref<'activity' | 'changes'>('activity');
 
@@ -49,18 +58,46 @@ function section(key: InboxListSection['key'], items: InboxItem[]): InboxListSec
 	};
 }
 
-const openItems = prototypeItems.filter((item) => item.state === 'open');
-const closedItems = prototypeItems.filter((item) => item.state === 'closed');
+function applyPatch(item: InboxItem): InboxItem {
+	const patch = prototypeSession.patches[item.id];
+	if (!patch) return item;
+
+	if (item.type === 'workflow_review') {
+		const next: InboxWorkflowReviewItem = { ...item };
+		if (patch.title !== undefined) next.title = patch.title;
+		if (patch.state !== undefined) next.state = patch.state;
+		return next;
+	}
+
+	if (item.type === 'self_healing_result') {
+		const next: InboxSelfHealingItem = { ...item };
+		if (patch.title !== undefined) next.summary = patch.title;
+		if (patch.state !== undefined) next.state = patch.state;
+		return next;
+	}
+
+	const next: InboxPromotionReviewItem = { ...item };
+	if (patch.title !== undefined) next.title = patch.title;
+	if (patch.state !== undefined) {
+		next.state = patch.state;
+		next.reviewState = patch.state === 'closed' ? 'closed' : 'open';
+	}
+	return next;
+}
+
+const items = computed(() => prototypeItems.map(applyPatch));
+const openItems = computed(() => items.value.filter((item) => item.state === 'open'));
+const closedItems = computed(() => items.value.filter((item) => item.state === 'closed'));
 const sections = computed(() =>
 	activeTab.value === 'closed'
-		? [section('closed', closedItems)]
-		: [section('waiting', openItems), section('authored', [])],
+		? [section('closed', closedItems.value)]
+		: [section('waiting', openItems.value), section('authored', [])],
 );
 const selectedKey = computed(() =>
 	selection.value ? `${selection.value.type}:${selection.value.id}` : null,
 );
 const selectedItem = computed(() =>
-	prototypeItems.find((item) => `${item.type}:${item.id}` === selectedKey.value),
+	items.value.find((item) => `${item.type}:${item.id}` === selectedKey.value),
 );
 const selectedReviewItem = computed(() =>
 	selectedItem.value?.type === 'workflow_review' ? selectedItem.value : undefined,
@@ -90,11 +127,14 @@ function onSelect(item: InboxItem) {
 // The sample items do not change: the write requests go to the server and fail.
 function onItemChange() {}
 
+prototypeSession.active = true;
+
 onMounted(() => {
 	isMounted = true;
 });
 onBeforeUnmount(() => {
 	isMounted = false;
+	prototypeSession.active = false;
 });
 </script>
 
@@ -128,6 +168,7 @@ onBeforeUnmount(() => {
 					:on-item-change="onItemChange"
 					:is-active="isActive"
 					:is-selected="isSelected('workflow_review')"
+					:split-changes="changesLayout === 'new'"
 					@update:tab="detailTab = $event"
 				>
 					<InboxEmptyState />
@@ -136,6 +177,7 @@ onBeforeUnmount(() => {
 					v-else-if="selectedPromotionItem"
 					:item="selectedPromotionItem"
 					:on-item-change="onItemChange"
+					:activity-review="changesLayout === 'new' ? promotionActivityReview : undefined"
 				/>
 				<SelfHealingResultDetail
 					v-else-if="selection?.type === 'self_healing_result'"
@@ -143,6 +185,7 @@ onBeforeUnmount(() => {
 					:tab="detailTab"
 					:on-item-change="onItemChange"
 					:is-selected="isSelected('self_healing_result')"
+					:split-changes="changesLayout === 'new'"
 					@update:tab="detailTab = $event"
 				/>
 				<template v-else>
@@ -153,6 +196,24 @@ onBeforeUnmount(() => {
 				</template>
 			</div>
 		</main>
+		<div :class="$style.layoutSwitch" role="group" aria-label="Changes layout">
+			<button
+				type="button"
+				:aria-pressed="changesLayout === 'old'"
+				:class="{ [$style.active]: changesLayout === 'old' }"
+				@click="changesLayout = 'old'"
+			>
+				Old
+			</button>
+			<button
+				type="button"
+				:aria-pressed="changesLayout === 'new'"
+				:class="{ [$style.active]: changesLayout === 'new' }"
+				@click="changesLayout = 'new'"
+			>
+				New
+			</button>
+		</div>
 	</div>
 </template>
 
@@ -207,5 +268,34 @@ onBeforeUnmount(() => {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
+}
+
+.layoutSwitch {
+	position: fixed;
+	z-index: 20;
+	right: var(--spacing--lg);
+	bottom: var(--spacing--lg);
+	display: flex;
+	padding: var(--spacing--5xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--color--background--light-2);
+	box-shadow: var(--shadow--light);
+
+	button {
+		padding: var(--spacing--3xs) var(--spacing--sm);
+		border: 0;
+		border-radius: var(--radius--sm);
+		background: transparent;
+		color: var(--color--text--tint-1);
+		font-weight: var(--font-weight--regular);
+		cursor: pointer;
+	}
+
+	.active {
+		background: var(--color--orange-500);
+		color: #fff;
+		font-weight: var(--font-weight--bold);
+	}
 }
 </style>
