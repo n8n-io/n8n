@@ -12,7 +12,7 @@ import {
 	PrimaryGeneratedColumn,
 	TableInheritance,
 } from '@n8n/typeorm';
-import type { IUser, IUserSettings } from 'n8n-workflow';
+import { type IUser, type IUserSettings, UnexpectedError } from 'n8n-workflow';
 
 import { JsonColumn, WithTimestamps } from './abstract-entity';
 import type { ProjectRelation } from './project-relation';
@@ -109,8 +109,13 @@ export class User extends WithTimestamps implements AuthPrincipal {
 		);
 	}
 
-	/** The account as a workflow sees it. Only a `Person` has an email and a name, so it overrides this. */
+	/**
+	 * The account as a workflow sees it. Each kind overrides this. A plain `User`
+	 * comes from a query that did not select `kind`, which is a bug.
+	 */
 	toIUser(): IUser {
-		return { id: this.id, email: '', firstName: '', lastName: '' };
+		throw new UnexpectedError('toIUser needs a Person or a ServiceAccount', {
+			extra: { userId: this.id },
+		});
 	}
 }

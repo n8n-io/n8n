@@ -5,7 +5,7 @@ import type { EntityManager, FindOptionsWhere, Repository, SelectQueryBuilder } 
 import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
-import { ApiKey, AuthIdentity, type Person, Project, User } from '../entities';
+import { ApiKey, AuthIdentity, Project, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type EligibleAccountsQuery = {
@@ -281,7 +281,7 @@ export class UserRepository extends BaseRepository<User> {
 
 	private applyUserListSelect(
 		queryBuilder: SelectQueryBuilder<User>,
-		select: Array<keyof Person> | undefined,
+		select: UsersListFilterDto['select'],
 	): SelectQueryBuilder<User> {
 		if (select !== undefined) {
 			if (!select.includes('id')) {

@@ -1,7 +1,11 @@
+import { UnexpectedError } from 'n8n-workflow';
+
 import { AuthIdentity } from '../auth-identity';
 import { type Role } from '../role';
 import { Person } from '../person';
-import type { User } from '../user';
+import { ServiceAccount } from '../service-account';
+import { ServiceAccountDetails } from '../service-account-details';
+import { User } from '../user';
 
 describe('Person Entity', () => {
 	describe('computeIsPending', () => {
@@ -181,6 +185,50 @@ describe('Person Entity', () => {
 				);
 			});
 		});
+	});
+});
+
+describe('toIUser', () => {
+	it('returns the email and names of a person', () => {
+		const person = Object.assign(new Person(), {
+			id: 'person-1',
+			email: 'ada@example.com',
+			firstName: 'Ada',
+			lastName: 'Lovelace',
+		});
+
+		expect(person.toIUser()).toEqual({
+			id: 'person-1',
+			email: 'ada@example.com',
+			firstName: 'Ada',
+			lastName: 'Lovelace',
+		});
+	});
+
+	it('returns the name of a service account as its first name, with no email', () => {
+		const serviceAccount = Object.assign(new ServiceAccount(), {
+			id: 'service-1',
+			details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+		});
+
+		expect(serviceAccount.toIUser()).toEqual({
+			id: 'service-1',
+			email: '',
+			firstName: 'Deploy bot',
+			lastName: '',
+		});
+	});
+
+	it('throws when the details of a service account were not loaded', () => {
+		const serviceAccount = Object.assign(new ServiceAccount(), { id: 'service-1' });
+
+		expect(() => serviceAccount.toIUser()).toThrow(UnexpectedError);
+	});
+
+	it('throws for an account of unknown kind', () => {
+		const account = Object.assign(new User(), { id: 'user-1' });
+
+		expect(() => account.toIUser()).toThrow(UnexpectedError);
 	});
 });
 
