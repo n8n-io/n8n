@@ -7,6 +7,7 @@ import { defineComponent, type PropType } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import WorkflowHistoryPage from './WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
@@ -325,6 +326,27 @@ describe('WorkflowHistory', () => {
 			vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(shownVersion);
 		};
 
+		const mockPendingActions = () => {
+			const pending = Promise.withResolvers<IWorkflowDb>();
+			const spies = {
+				cloneIntoNewWorkflow: vi
+					.spyOn(workflowHistoryStore, 'cloneIntoNewWorkflow')
+					.mockReturnValue(pending.promise),
+				restoreWorkflow: vi
+					.spyOn(workflowHistoryStore, 'restoreWorkflow')
+					.mockReturnValue(pending.promise),
+				downloadVersion: vi
+					.spyOn(workflowHistoryStore, 'downloadVersion')
+					.mockImplementation(async () => {
+						await pending.promise;
+					}),
+			};
+			return {
+				spies,
+				finish: () => pending.resolve(createTestWorkflow({ id: 'done', versionId: 'next' })),
+			};
+		};
+
 		it.each([
 			['Clone to new workflow', 'cloneIntoNewWorkflow'],
 			['Restore version', 'restoreWorkflow'],
@@ -333,13 +355,8 @@ describe('WorkflowHistory', () => {
 			'shows a loading Actions button while %s runs, then returns to idle',
 			async (label, method) => {
 				prepareSlowAction();
-				let finish: (value?: unknown) => void = () => {};
-				const spy = vi.spyOn(workflowHistoryStore, method).mockImplementation(
-					() =>
-						new Promise((resolve) => {
-							finish = resolve;
-						}),
-				);
+				const { spies, finish } = mockPendingActions();
+				const spy = spies[method];
 
 				const { findByTestId, findByText, getByTestId, getAllByTestId } = renderPreview({ pinia });
 				await userEvent.click(await findByTestId('action-toggle-button'));
@@ -362,7 +379,7 @@ describe('WorkflowHistory', () => {
 				await userEvent.click(getByTestId('action-toggle-button'));
 				expect(spy).toHaveBeenCalledTimes(1);
 
-				finish(method === 'downloadVersion' ? undefined : { id: 'done', versionId: 'next' });
+				finish();
 				await waitFor(() => {
 					const idleButton = getByTestId('action-toggle-button');
 					expect(idleButton).toHaveTextContent('Actions');
@@ -383,18 +400,8 @@ describe('WorkflowHistory', () => {
 			'ignores %s from the history list while it is pending',
 			async (_label, method, action) => {
 				prepareSlowAction();
-				const spies = {
-					cloneIntoNewWorkflow: vi.spyOn(workflowHistoryStore, 'cloneIntoNewWorkflow'),
-					restoreWorkflow: vi.spyOn(workflowHistoryStore, 'restoreWorkflow'),
-					downloadVersion: vi.spyOn(workflowHistoryStore, 'downloadVersion'),
-				};
-				let finish: (value?: unknown) => void = () => {};
-				const spy = spies[method].mockImplementation(
-					() =>
-						new Promise((resolve) => {
-							finish = resolve;
-						}),
-				);
+				const { spies, finish } = mockPendingActions();
+				const spy = spies[method];
 				const { getAllByTestId, getByTestId, findAllByTestId } = renderPreview({ pinia });
 				await findAllByTestId('workflow-history-list-item');
 				const initialActions = await openListActions(getAllByTestId, 1);
@@ -422,7 +429,7 @@ describe('WorkflowHistory', () => {
 					}
 				}
 
-				finish(method === 'downloadVersion' ? undefined : { id: 'done', versionId: 'next' });
+				finish();
 				await waitFor(() => expect(getByTestId('action-toggle-button')).not.toBeDisabled());
 				for (const index of [1, 2]) {
 					const idleActions = await openListActions(getAllByTestId, index);

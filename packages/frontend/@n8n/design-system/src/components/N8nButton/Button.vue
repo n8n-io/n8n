@@ -401,7 +401,7 @@ const handleClick = (event: MouseEvent) => {
 	}
 }
 
-// A dropdown trigger can set the button to inline-flex. Overlay the spinner so it stays centered.
+// Cover the whole button so the spinner stays centered, also in an inline-flex dropdown trigger.
 .loading-container {
 	position: absolute;
 	inset: 0;

@@ -113,7 +113,7 @@ const actions = computed(() => {
 
 const isLoading = computed(
 	() =>
-		props.pendingVersionId != null && props.pendingVersionId === props.workflowVersion?.versionId,
+		Boolean(props.pendingVersionId) && props.pendingVersionId === props.workflowVersion?.versionId,
 );
 
 const onAction = (value: string) => {
@@ -182,7 +182,6 @@ watch(
 						:loading="isLoading"
 						data-test-id="action-toggle-button"
 					>
-						<!-- Keep the label mounted so the button keeps its width while it loads. -->
 						{{ i18n.baseText('workflowHistory.content.actions') }}
 						<N8nIcon class="ml-3xs" icon="chevron-down" size="small" />
 					</N8nButton>

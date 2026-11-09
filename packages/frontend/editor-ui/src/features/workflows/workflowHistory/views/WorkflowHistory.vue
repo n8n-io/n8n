@@ -124,7 +124,7 @@ const publishedWorkflowVersionId = computed(() => {
 	return publishedVersionId;
 });
 
-// One slow action at a time. The preview button can only show one wait.
+// One slow action at a time, so a repeated click cannot clone twice.
 const pendingVersionId = ref<WorkflowVersionId | null>(null);
 
 const actions = computed<Array<UserAction<IUser>>>(() =>
@@ -474,7 +474,6 @@ const showActionError = (action: WorkflowHistoryAction['action'], error: unknown
 	);
 };
 
-// The preview button loads until the action ends. Download has no success toast.
 const runSlowAction = async (
 	action: WorkflowHistoryAction['action'],
 	id: WorkflowVersionId,
