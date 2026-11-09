@@ -1,0 +1,30 @@
+packages/frontend/@n8n/design-system/src/components/N8nSlider/Slider.stories.ts
+  s_8ebc8560f42334::t_6b7295d1b5108c 42
+packages/frontend/@n8n/design-system/src/components/N8nSlider/component-slider.md
+  s_8ebc8560f42334::t_a3ab2c0cd923a0 20-36,50-53,88-96,135,145,153-159,169,177,185-192
+  s_8ebc8560f42334::t_fba554801445f0 59,106-107,109
+packages/frontend/@n8n/design-system/src/components/N8nSlider/Slider.vue
+  s_8ebc8560f42334::t_0807a12c95d9d5 286,290,294,298-310
+  s_8ebc8560f42334::t_da5844687b3353 311-312
+packages/frontend/@n8n/design-system/src/components/N8nSlider/Slider.test.ts
+  s_8ebc8560f42334::t_c0860cb7726a67 259-265
+  s_8ebc8560f42334::t_18d5287100a0ac 214,234-235,238,240-252
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/ConcurrencySlider/ConcurrencySlider.vue
+  s_8ebc8560f42334::t_684bc0e8656bc3 10,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d89d59678b2c58c30fc95397ca689105792c518",
+  "prompts": {},
+  "sessions": {
+    "s_8ebc8560f42334": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15a52-050d-75f0-b854-6799aca14ac7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

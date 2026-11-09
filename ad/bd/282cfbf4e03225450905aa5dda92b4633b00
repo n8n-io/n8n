@@ -1,0 +1,66 @@
+packages/@n8n/telemetry/src/events/agents.ts
+  s_ae841d0360228f::t_af666ace4d7fd8 350-366,785
+  s_ae841d0360228f::t_a872dcb9dbf20e 783-784,786-804
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_ae841d0360228f::t_2780ed8882e9e5 1390-1391,1395-1503,1675
+  s_ae841d0360228f::t_dc684ce8e08ba1 12,21-25,1376-1389,1392-1394,1504-1517,1655,1671-1674,1681,1683,1692-1693,1695-1701,1718,1727-1752
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_ae841d0360228f::t_0bf932c5e5dd60 6,10-14,34,165,305-337,358,372-386
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_ae841d0360228f::t_af666ace4d7fd8 37,481
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_ae841d0360228f::t_af666ace4d7fd8 4,39-42,84-141,151,154,204-211
+  s_ae841d0360228f::t_65473f4d405c65 212
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  s_ae841d0360228f::t_0bf932c5e5dd60 118-143
+packages/@n8n/telemetry/src/__tests__/registry-checks.test.ts
+  s_ae841d0360228f::t_9b0b9c6921604b 181,192,194-235
+  s_ae841d0360228f::t_50c31ac2e546f3 172-180,182-191,193
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_ae841d0360228f::t_af666ace4d7fd8 17-22,48,230,236
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_ae841d0360228f::t_2780ed8882e9e5 910-955,1007
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_ae841d0360228f::t_0bf932c5e5dd60 2189,2336-2359,2361-2362,2364-2381
+  s_ae841d0360228f::t_af9b3b44dc61f0 8,2190-2192,2194,2196,2201-2204,2210,2222-2225,2737-2746
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_ae841d0360228f::t_af666ace4d7fd8 179,205
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_ae841d0360228f::t_238012fd71747e 719
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_ae841d0360228f::t_48804d914de76f 224
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_ae841d0360228f::t_5f86ce081a5718 464-467,469,471-473
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_ae841d0360228f::t_b4efed969c6521 340,347,352,359
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentVersionHistory.test.ts
+  s_ae841d0360228f::t_93d8026f0cee7f 4,14-18,49-52,202,229-232,247
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_ae841d0360228f::t_2f4c0bc75ce711 117,231
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_ae841d0360228f::t_b719042feddc69 55,249
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_ae841d0360228f::t_9f7a26491f5c75 14,41,108
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_ae841d0360228f::t_7b511e0f90fb89 186-199,364-365
+packages/frontend/editor-ui/src/features/agents/composables/useAgentVersionHistory.ts
+  s_ae841d0360228f::t_9b65228f9601d8 9,27,109
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_ae841d0360228f::t_2cb97d748069fe 36,79,230,1169,1189-1192,1208-1211,1217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "adbd282cfbf4e03225450905aa5dda92b4633b00",
+  "prompts": {},
+  "sessions": {
+    "s_ae841d0360228f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1590f-b880-74e1-b9be-d0d8c9eab0b3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}

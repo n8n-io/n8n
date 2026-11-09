@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_5785bc20fb92a9::t_e3c254978a11c4 3436-3437,3441-3442,3449-3451
+  s_5785bc20fb92a9::t_9f9e72355a48c6 630,3432-3435,3438-3440,3443-3448,3452-3456
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishTimeline.test.ts
+  s_5785bc20fb92a9::t_9f9e72355a48c6 107,110-122,125-137
+  s_5785bc20fb92a9::t_e3c254978a11c4 108-109,123-124
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_5785bc20fb92a9::t_9f9e72355a48c6 20,136,169
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_5785bc20fb92a9::t_9f9e72355a48c6 1292,2521,3228
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentPublishTimeline.vue
+  s_5785bc20fb92a9::t_9f9e72355a48c6 31,57
+  s_5785bc20fb92a9::t_1b4e4eba102c68 186-188
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishButton.test.ts
+  s_5785bc20fb92a9::t_9b69458e79c370 197-199,201
+  s_5785bc20fb92a9::t_9f9e72355a48c6 115
+  s_5785bc20fb92a9::t_e3c254978a11c4 194-196,202-208
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_5785bc20fb92a9::t_9f9e72355a48c6 41,260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c4fefd3a6013d54fb697b06862121821b546edcb",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_a52facf53351c5::t_95289d58e2974d 661-662
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_a52facf53351c5::t_efa16f5ffa1c6b 281-282
+  s_a52facf53351c5::t_b0e1934984301c 252-280,283-292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "51a8403d8aaae0e737f71980710857e0cae60e05",
+  "prompts": {},
+  "sessions": {
+    "s_a52facf53351c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b491-bd1b-7860-8002-0194a946ab94",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

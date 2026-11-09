@@ -1,0 +1,35 @@
+packages/cli/src/controllers/public-api-rate-limit-settings.controller.ts
+  s_925dcfedebf0c9::t_7163b2da106235 1-27
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_925dcfedebf0c9::t_f8e2a9d717ad86 423-426
+packages/cli/test/integration/shared/types.ts
+  s_925dcfedebf0c9::t_f8e2a9d717ad86 59
+packages/cli/src/public-api/__tests__/public-api-rate-limit-settings.service.test.ts
+  s_925dcfedebf0c9::t_ea686aa2dda2d3 1-37,39-96,101,106-162
+  s_925dcfedebf0c9::t_17136076df4232 97-100,102-105
+  s_925dcfedebf0c9::t_7fbd8add546933 38
+packages/cli/src/public-api/public-api-rate-limit-settings.service.ts
+  s_925dcfedebf0c9::t_7fbd8add546933 66,86-88,90-95
+  s_925dcfedebf0c9::t_b37275e8d82192 1-65,67-85,89,96-140
+packages/cli/src/server.ts
+  s_925dcfedebf0c9::t_5890c39e92dce8 62
+packages/cli/test/integration/controllers/public-api-rate-limit-settings.controller.test.ts
+  s_925dcfedebf0c9::t_a24464caa8b095 1-52,55-82
+  s_925dcfedebf0c9::t_119e7d0e1bf714 53-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5f9420c39263e07bf4e11d34bb0e1a888b6bbffe",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

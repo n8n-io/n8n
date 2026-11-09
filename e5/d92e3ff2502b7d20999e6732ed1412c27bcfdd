@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  s_7f7a4dee511a6b::t_0362b84109937e 89
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_7f7a4dee511a6b::t_994184df2512a3 392,394
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOperation.ts
+  s_7f7a4dee511a6b::t_0ee5af34e33372 3,85
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_7f7a4dee511a6b::t_0ee5af34e33372 264-270
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowLinks.vue
+  s_7f7a4dee511a6b::t_0ee5af34e33372 19,21,31,35,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5d92e3ff2502b7d20999e6732ed1412c27bcfdd",
+  "prompts": {},
+  "sessions": {
+    "s_7f7a4dee511a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed162b42-c275-4534-848a-37f52720dc22",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/quality/testing/playwright/tests/e2e/workflows/executions/list.spec.ts
+  s_04cc7fb026ea40::t_22a2d87660b98b 212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bbd658e8ea006ca40945087dd80ce0561c72c89a",
+  "prompts": {},
+  "sessions": {
+    "s_04cc7fb026ea40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4937b44e-3fa2-4694-a35b-721885b09d58",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

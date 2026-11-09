@@ -49,3 +49,55 @@ packages/@n8n/instance-ai/src/agent/system-prompt.ts
     }
   }
 }
+
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_dff57e7b253b23::t_8eeb2dd5d6c053 1
+  s_dff57e7b253b23::t_cae580390a0dba 71,533-537,1405-1408,1433,1639-1643,1946
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_dff57e7b253b23::t_f99d2d14a95bd4 1749-1764
+packages/frontend/editor-ui/src/features/ai/instanceAi/threadArtifacts.ts
+  s_dff57e7b253b23::t_6192be885c0dcd 7-15,22-37,39-44,49,51,55,58-65,67
+  s_dff57e7b253b23::t_b7bdc8ac3cac2e 56
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_dff57e7b253b23::t_294059a29f4538 306
+  s_dff57e7b253b23::t_3c9859e37a10bc 5447,5449,6533,6538-6661
+  ai_agent 6534-6537
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/createThreadComponentRenderer.ts
+  s_dff57e7b253b23::t_f99d2d14a95bd4 39
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.preview-tabs.test.ts
+  s_dff57e7b253b23::t_a06c616d2c7fe5 1-6,10-14,18-19
+  ai_agent 7-9,15-17
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_dff57e7b253b23::t_047fc39d32e077 70,86
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_dff57e7b253b23::t_fa3d0c8b3d0cc2 1650-1653,1655
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/threadArtifacts.test.ts
+  s_dff57e7b253b23::t_d97996fad603aa 71-125
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_dff57e7b253b23::t_a759638ea8e0fc 14,664-687,743,745-763
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_dff57e7b253b23::t_e7dee6122d6f2e 224,4215-4218,4221-4226,4239-4244,5394-5395,5418,5477,5479,5501-5542
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_dff57e7b253b23::t_a06c616d2c7fe5 157-167,263
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_dff57e7b253b23::t_710d40586d8ec5 241-255,518-527
+  ai_agent 586-589
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_dff57e7b253b23::t_cae580390a0dba 233-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8142c9ce0aa0b3b3c9ed780b79595af3bc4b0863",
+  "prompts": {},
+  "sessions": {
+    "s_dff57e7b253b23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a1b4b03-5790-4a03-a686-790045e59397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

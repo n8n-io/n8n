@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agent-file-bridge.service.test.ts
+  s_7b906002d68666::t_4108bf66fdaa6b 54-59
+  s_7b906002d68666::t_0a4fb88a5f7a09 8-12,67
+  s_7b906002d68666::t_40586088100c49 1-7,13-53,60-66,68-71
+packages/cli/src/modules/agents/agent-file-bridge.service.ts
+  s_7b906002d68666::t_928b12868343cb 1-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b02422f8211ad5dda2a191abc20c0c905d4376ee",
+  "prompts": {},
+  "sessions": {
+    "s_7b906002d68666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f539de05-fec9-448e-9cf8-4eb7aaa7251f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

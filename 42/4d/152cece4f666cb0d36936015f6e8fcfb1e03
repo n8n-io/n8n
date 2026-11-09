@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_763f71132bcfbd::t_d927cea6b08802 9,91
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_763f71132bcfbd::t_1747789adf57df 165
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateTile.vue
+  s_763f71132bcfbd::t_62b3a9910f2ede 101
+  s_763f71132bcfbd::t_c73938c0868273 3,48-51,53-55,86,91-94
+  s_763f71132bcfbd::t_1d15458f37a9a5 100
+packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/NodeCreatorNode.vue
+  s_763f71132bcfbd::t_b8d1a1e6c4673c 9,74
+packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/NodeCreatorNode.test.ts
+  s_763f71132bcfbd::t_9d977020da9211 13-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "424d152cece4f666cb0d36936015f6e8fcfb1e03",
+  "prompts": {},
+  "sessions": {
+    "s_763f71132bcfbd": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15a35-57b7-74bc-a2ca-4d7dd2215fc6",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

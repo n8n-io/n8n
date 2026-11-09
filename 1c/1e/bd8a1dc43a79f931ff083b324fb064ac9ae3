@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_fed97bb708b207::t_46118e330a54ee 21,72-77,317-318,337-377
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_fed97bb708b207::t_f4631804618b2e 628,631,633-641,658,666,670-671,673-676
+  s_fed97bb708b207::t_c327bea3947f51 33,629-630,632,672,680
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_fed97bb708b207::t_d7544eab73846b 137-141
+  s_fed97bb708b207::t_ca519a8a6a7122 1,11,59-80,82-136,142-163
+  s_fed97bb708b207::t_38d984cf987cab 81
+  s_fed97bb708b207::t_74f822af69c253 2,5-9
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_fed97bb708b207::t_a0310d6ada2b0f 26,73-80,121,291-292,301,310,312-315,329-348,352-353
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_fed97bb708b207::t_e5be6e85040307 10,15,38-40,49,51-55,57,64
+  s_fed97bb708b207::t_929922daf4a0c9 73-76
+packages/cli/src/modules/agents/types/agent-turn-outcome.ts
+  s_fed97bb708b207::t_b44acaf5e13da6 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1c1ebd8a1dc43a79f931ff083b324fb064ac9ae3",
+  "prompts": {},
+  "sessions": {
+    "s_fed97bb708b207": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbcebc6a-186a-4e6c-b061-08c416ee2fd4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

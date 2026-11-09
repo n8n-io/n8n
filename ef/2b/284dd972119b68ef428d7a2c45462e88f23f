@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_13fdf695fc0ff1::t_5c20322058660a 54-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef2b284dd972119b68ef428d7a2c45462e88f23f",
+  "prompts": {},
+  "sessions": {
+    "s_13fdf695fc0ff1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d68ad11-e5a3-42cc-a4cf-9389fb57dfde",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

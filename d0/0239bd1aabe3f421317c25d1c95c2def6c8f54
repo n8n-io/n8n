@@ -1,0 +1,19 @@
+.github/WORKFLOWS.md
+  s_f405e70b472511::t_5f68e3b99850f7 518-520
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d00239bd1aabe3f421317c25d1c95c2def6c8f54",
+  "prompts": {},
+  "sessions": {
+    "s_f405e70b472511": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e9cef49c0ffevTLc50JVSA64X7",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

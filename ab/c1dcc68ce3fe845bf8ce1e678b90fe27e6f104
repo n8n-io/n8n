@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_36f0dc8c50265f::t_bfb514b11efb3f 4088-4167
+  s_36f0dc8c50265f::t_c30bd0fd101552 3801,3803,3817,3822,3824,3826,4086-4087,4168-4170
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_36f0dc8c50265f::t_fd5fcb08b6c326 38
+  s_36f0dc8c50265f::t_c510a7a1867e3e 36-37,39-45,118-122,124-125
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_36f0dc8c50265f::t_cd7d9b31b2cbc0 14-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "abc1dcc68ce3fe845bf8ce1e678b90fe27e6f104",
+  "prompts": {},
+  "sessions": {
+    "s_36f0dc8c50265f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a159c0-9915-73e2-a6c9-a25a9211d388",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/src/commands/__tests__/execute.test.ts
+  s_81e0650fc35973::t_b6d9269889c401 336-342,393-394,419-426
+  s_81e0650fc35973::t_136d323207b41b 344-391
+packages/cli/src/commands/base-command.ts
+  s_81e0650fc35973::t_b6d9269889c401 276,308,311-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c746d966c6171aa8080be5ae24105dcb292c37bc",
+  "prompts": {},
+  "sessions": {
+    "s_81e0650fc35973": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "190b6126-0128-4f6b-b605-b9c0b63b6e70",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

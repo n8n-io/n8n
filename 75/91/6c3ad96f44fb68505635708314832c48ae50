@@ -1,0 +1,30 @@
+packages/core/src/errors/__tests__/error-reporter.test.ts
+  s_3eb19609486bac::t_d9d8565daf6411 514-522
+packages/cli/src/commands/__tests__/execute.test.ts
+  s_3eb19609486bac::t_d9d8565daf6411 296
+packages/cli/src/commands/base-command.ts
+  s_3eb19609486bac::t_483ba729abe1fa 332
+packages/core/src/errors/error-reporter.ts
+  s_3eb19609486bac::t_483ba729abe1fa 92-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "75916c3ad96f44fb68505635708314832c48ae50",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3eb19609486bac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c34ec24e-56a9-4037-a83c-4da265c4d0c8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

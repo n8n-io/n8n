@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/evaluation/__tests__/agent-evaluation.service.test.ts
+  s_58620fba057bad::t_04ec6d11c6512e 191,193,202
+packages/cli/src/modules/agents/evaluation/agent-evaluation.service.ts
+  s_58620fba057bad::t_47b8cc343267b3 13,94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4d781b8e80d1f76647b465e2c2c6a19b42e565e",
+  "prompts": {},
+  "sessions": {
+    "s_58620fba057bad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13f8e-afeb-7511-82e8-d8246a12076c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}

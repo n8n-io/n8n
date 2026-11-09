@@ -1,14 +1,14 @@
-packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
-  s_71ad2034164515::t_73a4e375a7c777 539-542
-  s_71ad2034164515::t_13c97519d4471a 517,529
-packages/cli/src/modules/n8n-packages/entities/agent/agent-body-issues.ts
-  s_71ad2034164515::t_13c97519d4471a 1-2,8-16
-packages/cli/src/modules/agents/agent-config-preparation.service.ts
-  s_71ad2034164515::t_13c97519d4471a 27-31,82-86
 packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
-  s_71ad2034164515::t_13c97519d4471a 5,71,83-96
+  s_71ad2034164515::t_9a83f21d7bc698 5,71,83-96
+packages/cli/src/modules/n8n-packages/entities/agent/agent-body-issues.ts
+  s_71ad2034164515::t_f9ae754a4c968d 1-2,8-16
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_71ad2034164515::t_d7276bf3346509 30-31
+  s_71ad2034164515::t_21d6b8f009591f 27-29,82-86
 packages/cli/src/modules/agents/utils/agent-definition.ts
-  s_71ad2034164515::t_13c97519d4471a 44-60
+  s_71ad2034164515::t_1c4c66b079c3b6 44-60
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_96705a0ccaf40e 517,529,539-542
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -20,7 +20,7 @@ packages/cli/src/modules/agents/utils/agent-definition.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
-        "model": "gpt-6-astra"
+        "model": "gpt-6.1-sol"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }

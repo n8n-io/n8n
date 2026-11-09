@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_5a949641c961f4::t_1ae413e9dfd206 21
+packages/@n8n/instance-ai/src/tools/shared/ask-user.tool.ts
+  s_5a949641c961f4::t_e0658c743e9592 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "48c77d7162f34305822ddca917974e24bc2d23a5",
+  "prompts": {},
+  "sessions": {
+    "s_5a949641c961f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9bdb9f01-5719-41b1-b364-ef5fb73792e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

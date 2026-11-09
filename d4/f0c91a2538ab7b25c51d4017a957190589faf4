@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_852389bc7751db::t_35ec92805a1e3c 3-4,201-229
+  s_852389bc7751db::t_fc62a2e1336164 198-200,230-250
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_852389bc7751db::t_e6681babe4be00 297-304,320
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_852389bc7751db::t_e6681babe4be00 70,94
+  s_852389bc7751db::t_9fb7eed4addc7f 7
+packages/@n8n/agents/src/index.ts
+  s_852389bc7751db::t_e6681babe4be00 398
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_852389bc7751db::t_9fb7eed4addc7f 14
+  s_852389bc7751db::t_e6681babe4be00 71-72,404
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_852389bc7751db::t_35ec92805a1e3c 3
+  s_852389bc7751db::t_fc62a2e1336164 205-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4f0c91a2538ab7b25c51d4017a957190589faf4",
+  "prompts": {},
+  "sessions": {
+    "s_852389bc7751db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39fb8af-51ee-491e-ab8c-cc0c219fdfa6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

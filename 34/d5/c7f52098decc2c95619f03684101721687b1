@@ -1,38 +1,38 @@
 packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
   s_19fd6642294ae3::t_8ccfa9e3064e4c 105-106
-packages/@n8n/instance-ai/src/agent/system-prompt.ts
-  s_19fd6642294ae3::t_562e3984ad169f 3,10
-  s_19fd6642294ae3::t_e576d06b209983 215-221
-  s_19fd6642294ae3::t_ee49285d8e491a 222-236
-  s_19fd6642294ae3::t_b2f5b598139a98 246
-  s_19fd6642294ae3::t_7e3c9ad5fa9199 285,287-288
-packages/@n8n/instance-ai/src/agent/communication-style.prompt.ts
-  s_19fd6642294ae3::t_590ef6424a7a54 1-57
 packages/@n8n/config/src/configs/instance-ai.config.ts
   s_19fd6642294ae3::t_74685ac14b1ede 203-215
-packages/@n8n/instance-ai/docs/prompt-profiles.md
-  s_19fd6642294ae3::t_8ecad8ff4b9e80 12-17,20-29
-packages/@n8n/config/test/config.test.ts
-  s_19fd6642294ae3::t_f583df5a408349 381
-packages/@n8n/instance-ai/docs/configuration.md
-  s_19fd6642294ae3::t_63dda8bdcb6065 49
-packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.prompt-version.test.ts
-  s_19fd6642294ae3::t_6cf29cd53ef4c2 1-9,16-26
-  ai_agent 10-15
+packages/@n8n/instance-ai/src/prompts/__tests__/prompt-profiles.test.ts
+  s_19fd6642294ae3::t_2687ceb6e6b364 65-120
+  s_19fd6642294ae3::t_46da415d653220 129,136,140
 packages/@n8n/instance-ai/src/prompts/prompt-profiles.ts
   s_19fd6642294ae3::t_a407cfe39a0386 6-7
   s_19fd6642294ae3::t_6fb12e3bab89ce 19-20,22
   s_19fd6642294ae3::t_4198ee5c62a126 48-53
   s_19fd6642294ae3::t_d58633dfce1fe7 103
-packages/@n8n/instance-ai/src/prompts/__tests__/prompt-profiles.test.ts
-  s_19fd6642294ae3::t_2687ceb6e6b364 65-120
-  s_19fd6642294ae3::t_46da415d653220 129,136,140
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.prompt-version.test.ts
+  s_19fd6642294ae3::t_6cf29cd53ef4c2 1-9,16-26
+  ai_agent 10-15
+packages/@n8n/config/test/config.test.ts
+  s_19fd6642294ae3::t_f583df5a408349 381
 packages/cli/src/modules/instance-ai/instance-ai.service.ts
   s_19fd6642294ae3::t_d40d9649987c7b 53
   s_19fd6642294ae3::t_4293253f37e86e 657-673
   s_19fd6642294ae3::t_f7871fc4f57c5c 693-695
   s_19fd6642294ae3::t_641bc9b158fbd5 850
   s_19fd6642294ae3::t_31378bb43d263a 2541-2542,2544
+packages/@n8n/instance-ai/src/agent/communication-style.prompt.ts
+  s_19fd6642294ae3::t_590ef6424a7a54 1-57
+packages/@n8n/instance-ai/docs/prompt-profiles.md
+  s_19fd6642294ae3::t_8ecad8ff4b9e80 12-17,20-29
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_19fd6642294ae3::t_562e3984ad169f 3,10
+  s_19fd6642294ae3::t_e576d06b209983 215-221
+  s_19fd6642294ae3::t_ee49285d8e491a 222-236
+  s_19fd6642294ae3::t_b2f5b598139a98 246
+  s_19fd6642294ae3::t_7e3c9ad5fa9199 285,287-288
+packages/@n8n/instance-ai/docs/configuration.md
+  s_19fd6642294ae3::t_63dda8bdcb6065 49
 ---
 {
   "schema_version": "authorship/3.0.0",

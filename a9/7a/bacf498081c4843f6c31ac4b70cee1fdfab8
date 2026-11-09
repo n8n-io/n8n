@@ -1,0 +1,39 @@
+packages/workflow/test/native-evaluation-verify.test.ts
+  s_933070d0aea825::t_c50c94c9c0b92a 145-149,151-153,155-156,158-160
+packages/workflow/src/expressions/native-evaluation/verify.ts
+  s_933070d0aea825::t_95fb20b96dc9c6 96
+  h_32d8cd6a0d6aad 46,48,63-64,66
+  s_30b5d827e39c45::t_505382bf0332b3 57-58
+  s_933070d0aea825::t_c2f142f3d574b2 1-45,47,50-56,59-60,67-95,97-109,111-114
+packages/workflow/src/expression.ts
+  s_933070d0aea825::t_b9b3c6f1fd18cd 16-21,40,303,363-368,571,578,886-890,893-894,897-900,902-904,906-909
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a97abacf498081c4843f6c31ac4b70cee1fdfab8",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_30b5d827e39c45": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15a05-31aa-72f2-a9e2-492b5c130465",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_933070d0aea825": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ee3a819-a5dd-4ffe-994f-d18d7afd3f99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

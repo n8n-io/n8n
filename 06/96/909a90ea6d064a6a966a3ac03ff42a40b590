@@ -1,0 +1,23 @@
+packages/cli/src/public-api/__tests__/public-api-rate-limit.test.ts
+  s_925dcfedebf0c9::t_b2c4d66fbb6802 51,79
+packages/cli/src/public-api/public-api-rate-limit-store.factory.ts
+  s_925dcfedebf0c9::t_ae23a9b486598e 13-15,17-33,41-42,50,53,58,63,69-70,76,79,83-85,93,98,100-101,109,112-113,116
+packages/quality/testing/playwright/services/public-api-helper.ts
+  s_925dcfedebf0c9::t_b2c4d66fbb6802 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0696909a90ea6d064a6a966a3ac03ff42a40b590",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentPublishButton.vue
+  s_5785bc20fb92a9::t_97155a3386a9bc 147-152
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_5785bc20fb92a9::t_97155a3386a9bc 57,71,75,99
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_5785bc20fb92a9::t_97155a3386a9bc 1974,1979-1981,1985-1991,3443
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_5785bc20fb92a9::t_97155a3386a9bc 653,660
+packages/frontend/editor-ui/src/features/agents/composables/useAgentVersionHistory.ts
+  s_5785bc20fb92a9::t_97155a3386a9bc 32,43-44,128-129,148-154,170,182
+packages/frontend/editor-ui/src/features/agents/composables/useAgentVersionMetadataModal.ts
+  s_5785bc20fb92a9::t_97155a3386a9bc 1,8,15-20,22,24-42,45-46,52-53
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionHistoryPanel.vue
+  s_5785bc20fb92a9::t_97155a3386a9bc 28,145-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d7f5b90cff2f93aa197e02bcfce85adce3c4f72a",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

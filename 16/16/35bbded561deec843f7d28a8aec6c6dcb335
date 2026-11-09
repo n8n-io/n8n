@@ -1,7 +1,7 @@
 packages/cli/src/modules/agents/entities/agent-task.entity.ts
-  s_d3c0f6f6f7d41c::t_be30782a2477e5 17
+  s_d3c0f6f6f7d41c::t_120c1a1f159039 17
 packages/cli/src/modules/agents/entities/agent.entity.ts
-  s_d3c0f6f6f7d41c::t_be30782a2477e5 9
+  s_d3c0f6f6f7d41c::t_48fcc01bbef3e6 9
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -13,7 +13,7 @@ packages/cli/src/modules/agents/entities/agent.entity.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
-        "model": "gpt-6-astra"
+        "model": "gpt-6.1-sol"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }

@@ -1,0 +1,21 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_94ddaa3674df01::t_1da2e5c4effb11 4216-4217
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_94ddaa3674df01::t_1da2e5c4effb11 87-90,108-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e62c35e3bffaea220aa5ea68a92f61b4288e5a25",
+  "prompts": {},
+  "sessions": {
+    "s_94ddaa3674df01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "650497ad-a104-4143-8807-e78efbd4efee",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

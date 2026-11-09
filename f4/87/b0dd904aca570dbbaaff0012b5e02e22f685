@@ -1,0 +1,39 @@
+packages/cli/src/push/__tests__/websocket.push.test.ts
+  s_5fc825f360a4a0::t_2c8a17d3fb4137 160-169
+  s_5fc825f360a4a0::t_009c7cb5dad920 208-250
+  s_5fc825f360a4a0::t_3d4a9b3b013647 8
+packages/cli/src/push/sse.push.ts
+  s_5fc825f360a4a0::t_d64d17b02b9e80 30,33-34
+packages/cli/src/push/abstract.push.ts
+  s_5fc825f360a4a0::t_e2156b8e47b2e0 27-28
+  s_5fc825f360a4a0::t_f365b0a13cb8bd 128,137,141
+  s_5fc825f360a4a0::t_207bbdb41c4308 50-51,53,55,58
+  s_5fc825f360a4a0::t_aae437410e8d6d 68,74,79
+  s_5fc825f360a4a0::t_fb32ada8c3f9bb 47,54,61,67,71,77-78,80-82,86,91,96,98,102,114,117,126,129,132,136,140,146,150
+  s_5fc825f360a4a0::t_7641dbca81d606 16-18
+  s_5fc825f360a4a0::t_695b56ac0cc811 97,103,112-113,115-116
+  s_5fc825f360a4a0::t_ce3cef91278a50 151,155
+  s_5fc825f360a4a0::t_498c8b5a7b9ee8 6,14
+  s_5fc825f360a4a0::t_b020ed98a2a1f5 15
+packages/cli/src/push/websocket.push.ts
+  s_5fc825f360a4a0::t_65124cc1861097 58,63-64
+  s_5fc825f360a4a0::t_a4c91d3f6e4ac0 38
+packages/cli/src/push/__tests__/sse.push.test.ts
+  s_5fc825f360a4a0::t_e6f57bc4df17a2 152-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f487b0dd904aca570dbbaaff0012b5e02e22f685",
+  "prompts": {},
+  "sessions": {
+    "s_5fc825f360a4a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "304155e6-0c99-4729-b825-45e73125ba1b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

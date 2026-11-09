@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/E2eTest/E2eTestPollingTrigger.node.ts
+  s_4a29fa9590405e::t_01cb5b45a8b5c6 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97bf2c791873b856f46ddacaacf49aa5212b8676",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4a29fa9590405e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91806d41-a7a6-4ab9-a8b6-5ad3bd5fc9eb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

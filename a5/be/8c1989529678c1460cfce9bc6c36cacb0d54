@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/integrations/__tests__/linear-integration.test.ts
+  s_821bbbf1b4a4aa::t_03f0afb2442749 94-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5be8c1989529678c1460cfce9bc6c36cacb0d54",
+  "prompts": {},
+  "sessions": {
+    "s_821bbbf1b4a4aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e78805a-68dc-4168-91d1-b1ca8789e96b",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+packages/frontend/@n8n/design-system/src/components/PreviewBadge/PreviewBadge.test.ts
+  h_f8b427917eda26 9,12
+packages/frontend/@n8n/design-system/src/components/PreviewBadge/PreviewBadge.vue
+  h_f8b427917eda26 20,24-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca4e7e5d55abaa50021fc84189d1a41acefb1af8",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMessage.test.ts
+  s_e1732fec194a6d::t_56a3a4ec11f934 93-117,120
+  s_e1732fec194a6d::t_e6fc7704bf07ea 118-119
+packages/cli/src/modules/instance-ai/__tests__/message-parser.test.ts
+  s_e1732fec194a6d::t_4c256a947278c1 3,82-83,94,103
+  s_e1732fec194a6d::t_2c2936c4e21451 32-81,84-89,137-138
+  s_e1732fec194a6d::t_412851e4a2b9dc 90-93,95-102,104-136
+packages/cli/src/modules/instance-ai/message-parser.ts
+  s_e1732fec194a6d::t_2305d73f513fae 7,22-29,86-98,103-110,119-123,126-129,276-278
+  s_e1732fec194a6d::t_56a3a4ec11f934 99-102,111-118,124-125
+  s_e1732fec194a6d::t_9b71737e0d2899 279-281,286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "54fa23e1e6dbebb793a1ec2d72d408a0aaee69f6",
+  "prompts": {},
+  "sessions": {
+    "s_e1732fec194a6d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a154f4-6701-7402-bd21-8e02f23e405d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

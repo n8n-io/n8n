@@ -1,0 +1,43 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils-trigger.ts
+  s_0fd56c87c41410::t_4968c075bcdc2a 14
+  s_0fd56c87c41410::t_8e4623d098111a 221-222,225-226
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/forbiddenHints.ts
+  s_0fd56c87c41410::t_f8ab984d1c87d1 31-33
+  s_0fd56c87c41410::t_c910d0e281a8c2 44
+  s_0fd56c87c41410::t_65edbda41f553f 70
+  s_0fd56c87c41410::t_356e5c950af56b 74
+  s_0fd56c87c41410::t_bb29f97e6cc6d9 57
+  s_0fd56c87c41410::t_a10bbc8f25105e 75-76
+  s_0fd56c87c41410::t_b53e4f73aad9dc 86
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_0fd56c87c41410::t_57339683bf20d3 432,435-440,447-453
+  s_0fd56c87c41410::t_a7152e71fa2d34 8
+  s_0fd56c87c41410::t_5df9a9a6663394 544
+  s_0fd56c87c41410::t_5aded856b030bc 29
+  s_0fd56c87c41410::t_2546c4bef812ea 347-348
+  s_0fd56c87c41410::t_400b6c4a0262ac 492-504
+  s_0fd56c87c41410::t_4c39b06458a4d4 477-482,484,486-490
+  s_0fd56c87c41410::t_fd60637feded31 385,387
+  s_0fd56c87c41410::t_ed3a1234021328 550,552-554
+  s_0fd56c87c41410::t_9b71d9faedea78 406
+  s_0fd56c87c41410::t_8a4698f8abe90b 551
+  s_0fd56c87c41410::t_f0071bf97183fc 530-535,537-539,541-543,545-549,555-562
+  s_0fd56c87c41410::t_8b89317843946a 426
+  s_0fd56c87c41410::t_24cf709a99b6dd 454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26833663c00fb9c1831277fda6be737c1cfc8485",
+  "prompts": {},
+  "sessions": {
+    "s_0fd56c87c41410": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f2b8ccf-7f85-4dda-af2c-78de0a4425ac",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

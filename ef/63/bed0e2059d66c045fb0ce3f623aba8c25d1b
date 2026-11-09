@@ -1,0 +1,73 @@
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-match.service.ts
+  s_2397c9db9d923f::t_5cedb55a681091 65,80-84,102,104,108-109,111-113,117-118
+  s_2397c9db9d923f::t_2a22037e7e9406 66
+  s_d3c0f6f6f7d41c::t_de703a4dec4c21 103,105-107
+  s_d3c0f6f6f7d41c::t_aba282118950dd 54,59
+  s_d3c0f6f6f7d41c::t_b72237a959d2e4 54,59,65-66,80-84,102-109,111-113,117-118
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-identities.integration.test.ts
+  s_d3c0f6f6f7d41c::t_18714122df3a71 53,62-75,77-88
+  s_d3c0f6f6f7d41c::t_1fc8f2af4c0e1d 42-43,90-93,95-100,102,105,107,109-110,113-116,121-122,125,130,178-179,182-183,187,191,193-195
+  s_d3c0f6f6f7d41c::t_b72237a959d2e4 42-43,53,62-75,77-88,90-93,95-100,102,105,107,109-110,113-116,121-122,125,130,178-179,182-183,187,191,193-195
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_d3c0f6f6f7d41c::t_de703a4dec4c21 3
+  s_d3c0f6f6f7d41c::t_b72237a959d2e4 3
+docs/generated/postgres-schema/README.md
+  s_71ad2034164515::t_fa53744259dc35 33,39
+  s_d3c0f6f6f7d41c::t_bef4280fafe63d 33,39
+docs/generated/sqlite-schema/README.md
+  s_71ad2034164515::t_d439915523030a 33,39
+  s_d3c0f6f6f7d41c::t_3f1b4d2361de92 33,39
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_d3c0f6f6f7d41c::t_b27fe632d3b6a4 9
+  s_d3c0f6f6f7d41c::t_f02338c54da451 9
+docs/generated/sqlite-schema/agents.md
+  s_71ad2034164515::t_c60d686975f8ee 9
+  s_d3c0f6f6f7d41c::t_d6d2ef442b2246 9
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_d3c0f6f6f7d41c::t_230037dff95241 42
+  s_d3c0f6f6f7d41c::t_b72237a959d2e4 42
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_d3c0f6f6f7d41c::t_a464c9653d3003 4
+  s_d3c0f6f6f7d41c::t_b72237a959d2e4 4
+packages/cli/src/modules/agents/repositories/agent-task.repository.ts
+  s_71ad2034164515::t_d6c87f8e9b4dd1 4
+  s_d3c0f6f6f7d41c::t_b72237a959d2e4 4
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_71ad2034164515::t_b7bc1734d29ded 42,132-133
+  s_d3c0f6f6f7d41c::t_b72237a959d2e4 42,132-133
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_d3c0f6f6f7d41c::t_15571462695336 270-286
+  s_d3c0f6f6f7d41c::t_b72237a959d2e4 270-286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef63bed0e2059d66c045fb0ce3f623aba8c25d1b",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

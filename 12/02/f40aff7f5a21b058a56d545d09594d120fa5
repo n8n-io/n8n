@@ -1,0 +1,64 @@
+packages/cli/src/modules/skills/hub-assistant-skill-provider.service.ts
+  s_20d484677b459f::t_5ce97164c01fc4 12,17,24,34
+packages/cli/src/modules/mcp/tools/skills/skill-tools.service.ts
+  s_20d484677b459f::t_83e535ed7ae5b0 20,71,81,90,92,104,107-109,136,156,185,201-202
+packages/cli/src/modules/skills/__tests__/skills.module.test.ts
+  s_20d484677b459f::t_e98bc4cb172a6c 55-60
+  s_20d484677b459f::t_8e3baaa6f54e2c 8-9,16,24-30,32,35-37,68-69
+packages/cli/test/integration/skills/skills.controller.test.ts
+  s_20d484677b459f::t_e98bc4cb172a6c 61-63,99-101,103-104,107-108
+  s_20d484677b459f::t_651270d69173c5 2-8,19,34
+  s_20d484677b459f::t_868d84e0c6c574 98,102,105-106,109-112
+  s_20d484677b459f::t_2549a0ab702203 1
+packages/@n8n/api-types/src/agents/skills.schema.ts
+  s_20d484677b459f::t_5ce97164c01fc4 15
+packages/cli/src/posthog/index.ts
+  s_20d484677b459f::t_5ce97164c01fc4 3,198-201,206-207
+packages/cli/test/integration/skills/skill.repository.test.ts
+  s_20d484677b459f::t_651270d69173c5 5,23
+  s_20d484677b459f::t_e98bc4cb172a6c 70-72
+  s_20d484677b459f::t_2549a0ab702203 1,40,69
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_20d484677b459f::t_e98bc4cb172a6c 1-5,263-266,306-310,333-342,498,518,554,579-583,611-615,629,655-659,689,709
+  s_20d484677b459f::t_2549a0ab702203 236,245,248,256,267,275,320,343,357,362,376
+packages/cli/src/modules/skills/assistant-skills-rollout.ts
+  s_20d484677b459f::t_5ce97164c01fc4 1-21
+packages/frontend/editor-ui/src/experiments/assistantSkills/useAssistantSkillsExperiment.ts
+  s_20d484677b459f::t_5ce97164c01fc4 1-11
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_20d484677b459f::t_83e535ed7ae5b0 866
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_20d484677b459f::t_5ce97164c01fc4 28,59,302,469
+  s_20d484677b459f::t_f36b20b669b1dd 40
+packages/cli/src/modules/mcp/__tests__/skill-tools.service.test.ts
+  s_20d484677b459f::t_e98bc4cb172a6c 82-84,86-88
+  s_20d484677b459f::t_65537fe91fb0e8 75-81,85,89-90
+  s_20d484677b459f::t_dfa1f21d649b93 8,51-52,61,63,68
+packages/cli/src/modules/skills/skills-api.service.ts
+  s_20d484677b459f::t_5ce97164c01fc4 28,51
+  s_20d484677b459f::t_e98bc4cb172a6c 125-128
+packages/cli/src/modules/skills/__tests__/skills-api.service.test.ts
+  s_20d484677b459f::t_dfa1f21d649b93 20,86,102,547-548
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_20d484677b459f::t_dfa1f21d649b93 1,345,347,360
+packages/cli/src/modules/skills/__tests__/hub-assistant-skill-provider.service.test.ts
+  s_20d484677b459f::t_dfa1f21d649b93 14,19,35,60
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_20d484677b459f::t_5ce97164c01fc4 3,164,239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1202f40aff7f5a21b058a56d545d09594d120fa5",
+  "prompts": {},
+  "sessions": {
+    "s_20d484677b459f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1541d-6ef7-7ef0-a84b-83bd91fd72c5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

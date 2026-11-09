@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-origin.ts
+  s_e301d8294f60c4::t_099c41e28b48b0 1-20
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-origin.ts
+  s_e301d8294f60c4::t_099c41e28b48b0 1-19
+packages/cli/src/modules/agents/integrations/platforms/linear-integration.ts
+  s_e301d8294f60c4::t_5af9b33670989c 23
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_e301d8294f60c4::t_5af9b33670989c 46
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-origin.ts
+  s_e301d8294f60c4::t_099c41e28b48b0 1-9
+packages/cli/src/modules/agents/integrations/__tests__/integration-origin.test.ts
+  s_e301d8294f60c4::t_5af9b33670989c 7-8,11
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_e301d8294f60c4::t_5af9b33670989c 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7acc6beb300b61e131700e597d8e236d1df60586",
+  "prompts": {},
+  "sessions": {
+    "s_e301d8294f60c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "254d4248-4a92-4bc9-a4ba-d776e64b364c",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

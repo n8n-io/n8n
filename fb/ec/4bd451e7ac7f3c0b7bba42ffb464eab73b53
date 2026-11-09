@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_cbe883eed2e26f::t_459b1c3ef1e6fd 27,229
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_cbe883eed2e26f::t_71717e3d38f1e6 123
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelineHeader.vue
+  s_cbe883eed2e26f::t_5d25b39c4ecee6 8,17,25-33,43-47,122-129,133-139,156-157,194,248-280
+  s_cbe883eed2e26f::t_781fb96fbcefbc 48-51,130-132
+  s_cbe883eed2e26f::t_5bcdf6f2955073 117-120
+  s_cbe883eed2e26f::t_47b39cc37b2da0 281
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_cbe883eed2e26f::t_1442bfe7f2aa57 55
+  s_cbe883eed2e26f::t_e8e62950b525f7 2-3,6-8,15,74,84,102-134,151,171,181,188-189,197,213,224-235,238-240,242-284,287-294
+  s_cbe883eed2e26f::t_4308d0cf34e307 71-73
+  s_cbe883eed2e26f::t_ccfa76a774959e 75-77,81-83
+  s_cbe883eed2e26f::t_0cef8a9039013e 85-87,99-101
+  s_cbe883eed2e26f::t_442edb690fb14a 61-70,78-80,88-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fbec4bd451e7ac7f3c0b7bba42ffb464eab73b53",
+  "prompts": {},
+  "sessions": {
+    "s_cbe883eed2e26f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a158ba-6916-7060-b83f-4b29596c155b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

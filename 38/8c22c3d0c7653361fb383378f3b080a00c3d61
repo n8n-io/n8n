@@ -1,7 +1,7 @@
-packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
-  s_71ad2034164515::t_ad1e63d873134b 2541,2627,2651,2725
 packages/@n8n/cli/src/client.ts
-  s_71ad2034164515::t_53c1e50ebfe883 1
+  s_71ad2034164515::t_747556e01a5336 1
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_71ad2034164515::t_98542d63abb835 2541,2627,2651,2725
 ---
 {
   "schema_version": "authorship/3.0.0",

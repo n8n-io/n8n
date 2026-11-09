@@ -1,0 +1,41 @@
+packages/@n8n/db/src/migrations/common/1792568520444-BackfillWorkflowEngineType.ts
+  s_6d366e0a6a655d::t_d23a17888fa36b 15-16
+packages/@n8n/api-types/src/dto/workflows/workflow-public.openapi.ts
+  s_6d366e0a6a655d::t_d23a17888fa36b 55-57,261
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_6d366e0a6a655d::t_d23a17888fa36b 1712-1713
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_6d366e0a6a655d::t_73d3d6f6d90962 1195-1200,1221,1236,1246,1255,1263
+packages/@n8n/config/src/configs/engine.config.ts
+  s_6d366e0a6a655d::t_d23a17888fa36b 35-38
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  s_6d366e0a6a655d::t_9ca424e803d631 190,785
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  s_6d366e0a6a655d::t_98ffbb40b5ecf6 223
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  s_6d366e0a6a655d::t_7bbe0c087ec995 232
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  s_6d366e0a6a655d::t_58076aec937b73 259
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_6d366e0a6a655d::t_1c9d8dec87e59c 205,797
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublicDto.generated.yml
+  s_6d366e0a6a655d::t_d172540645a753 204
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublishPublicDto.generated.yml
+  s_6d366e0a6a655d::t_548873d6b511e2 204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "390d8dba94ac64379139720b84c0293dc3774ce9",
+  "prompts": {},
+  "sessions": {
+    "s_6d366e0a6a655d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1995b1b-59a7-47ce-a047-63123475d1f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

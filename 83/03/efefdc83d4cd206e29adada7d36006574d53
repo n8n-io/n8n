@@ -1,0 +1,26 @@
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_71ad2034164515::t_46f910f23092b5 402
+  s_71ad2034164515::t_473c6e76d4b4ea 402
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_71ad2034164515::t_189221d3771957 234,245,299,301,322,551,557,564
+  s_71ad2034164515::t_af493760fe9108 234,245,299,301,322,551,557,564
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_71ad2034164515::t_9d20d2974929bc 60
+  s_71ad2034164515::t_d41c909a154c6b 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8303efefdc83d4cd206e29adada7d36006574d53",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

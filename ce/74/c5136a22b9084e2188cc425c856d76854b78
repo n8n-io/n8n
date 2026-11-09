@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_71ad2034164515::t_42e3220b30275f 9,67-82,88-94,116,141,144-156,158-161,163-178,282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce74c5136a22b9084e2188cc425c856d76854b78",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

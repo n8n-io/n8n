@@ -1,11 +1,12 @@
 packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
-  s_d3c0f6f6f7d41c::t_ce59461aae74fb 72-73,263
+  s_d3c0f6f6f7d41c::t_ce59461aae74fb 263
+  s_71ad2034164515::t_f85dc5bc149199 72-73
 packages/@n8n/cli/docs/commands/package.md
-  s_d3c0f6f6f7d41c::t_ce59461aae74fb 85,205
+  s_71ad2034164515::t_dd64a8a44a457f 85,205
 packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
-  s_d3c0f6f6f7d41c::t_71b0496f9939f2 82
+  s_71ad2034164515::t_c1176bee184cc9 82
 packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
-  s_d3c0f6f6f7d41c::t_10501dde1e541c 50
+  s_71ad2034164515::t_eb777c06b4893a 50
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -13,6 +14,14 @@ packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSel
   "base_commit_sha": "13de5eba3ae856d903ff03da78af8d860c44e5f7",
   "prompts": {},
   "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
     "s_d3c0f6f6f7d41c": {
       "agent_id": {
         "tool": "codex",

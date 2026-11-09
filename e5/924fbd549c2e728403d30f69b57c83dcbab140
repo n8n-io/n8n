@@ -1,0 +1,59 @@
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_e4b4d59605d361::t_04beb858d7fff3 5
+  s_e4b4d59605d361::t_7875249c314e8b 46,203-208
+packages/cli/src/modules/agents/repositories/agent-message.repository.ts
+  s_e4b4d59605d361::t_7cc3ec638fd3cf 2,95-112
+  s_e4b4d59605d361::t_8f780f0e527aad 113-114
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-origin.ts
+  s_e4b4d59605d361::t_4b742f457786c0 1,10,23,27-36
+  s_e4b4d59605d361::t_8839e7fb735305 13-14,16
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_e4b4d59605d361::t_8839e7fb735305 3617
+  s_e4b4d59605d361::t_77c15ec7e573d9 3585,3600,3624,3630,3633-3642
+  s_e4b4d59605d361::t_a18727811f4444 11,3570-3575,3578-3584,3586-3599,3601-3614,3616,3618-3622,3625-3629,3631-3632,3643-3653
+packages/cli/src/modules/agents/integrations/platforms/linear/linear-integration.ts
+  s_e4b4d59605d361::t_04beb858d7fff3 2
+  s_e4b4d59605d361::t_7875249c314e8b 26,112-117
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-integration.ts
+  s_e4b4d59605d361::t_7875249c314e8b 46,220-225
+  s_e4b4d59605d361::t_04beb858d7fff3 1
+packages/cli/src/modules/agents/integrations/integration-origin-support.ts
+  s_e4b4d59605d361::t_accc5d46c1cf3e 7,23-28,34,41,45-46
+packages/cli/src/modules/agents/integrations/integration-origin.ts
+  s_e4b4d59605d361::t_7cc3ec638fd3cf 37-68
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_e4b4d59605d361::t_7875249c314e8b 34-39,428-436
+  s_e4b4d59605d361::t_e38b07f90fac1b 437
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-origin.ts
+  s_e4b4d59605d361::t_4b742f457786c0 1-2,9,20-27
+  s_e4b4d59605d361::t_7875249c314e8b 12
+  s_e4b4d59605d361::t_29f999ede251d3 28
+packages/cli/test/integration/database/repositories/agent-message.repository.test.ts
+  s_e4b4d59605d361::t_9178f09a8250a4 1-74
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_e4b4d59605d361::t_7cc3ec638fd3cf 39,68,930,992,998,1006-1017,1019-1020
+  s_e4b4d59605d361::t_ebac21a1d57ba2 14,69
+  s_e4b4d59605d361::t_7c36107a7a4e54 993-997
+  s_e4b4d59605d361::t_4f29a5b0f35c67 1018,1021-1022
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-origin.ts
+  s_e4b4d59605d361::t_4b742f457786c0 1,10,13-14,16,27-33
+  s_e4b4d59605d361::t_ae99de4e0389e8 34-35
+packages/cli/src/modules/agents/integrations/__tests__/integration-origin.test.ts
+  s_e4b4d59605d361::t_5bfce54dd6d9f7 1,7-13,24-25,55,70,133,165-167,169-171,173,175-180,182,285-431
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5924fbd549c2e728403d30f69b57c83dcbab140",
+  "prompts": {},
+  "sessions": {
+    "s_e4b4d59605d361": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3d22b93-1b6d-4d71-b1eb-adbe2d413cff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

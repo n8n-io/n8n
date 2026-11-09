@@ -1,0 +1,21 @@
+packages/cli/src/modules/external-secrets.ee/redaction.service.ee.ts
+  s_32942547bb62b6::t_955e313ee41575 69
+packages/cli/src/modules/external-secrets.ee/__tests__/redaction.service.ee.test.ts
+  s_32942547bb62b6::t_d539b1ac28eae5 209,217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad135ff325bf3f421ce6df74045c54447fe8eae8",
+  "prompts": {},
+  "sessions": {
+    "s_32942547bb62b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51c82916-db6b-416b-87f5-be0a2af7d486",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

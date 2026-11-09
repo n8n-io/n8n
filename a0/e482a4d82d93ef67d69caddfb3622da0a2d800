@@ -1,0 +1,32 @@
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_852389bc7751db::t_15dfd0cc0b1368 1526,1528-1531,1537
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_852389bc7751db::t_73ba83b8196da6 335,358
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_852389bc7751db::t_32202aac3e08ec 3718
+  s_852389bc7751db::t_d18d134701e115 7,3672-3677,3680-3717
+  s_852389bc7751db::t_88df7ce7b3af6d 8,3678-3679
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_852389bc7751db::t_d0a87552428664 441-469
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_852389bc7751db::t_d0a87552428664 694-702
+packages/cli/src/modules/agents/integrations/__tests__/channel-episodic-scope.test.ts
+  s_852389bc7751db::t_d0a87552428664 51-54
+  s_852389bc7751db::t_15dfd0cc0b1368 1-50,55-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a0e482a4d82d93ef67d69caddfb3622da0a2d800",
+  "prompts": {},
+  "sessions": {
+    "s_852389bc7751db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39fb8af-51ee-491e-ab8c-cc0c219fdfa6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

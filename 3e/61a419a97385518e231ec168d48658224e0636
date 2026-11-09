@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_5785bc20fb92a9::t_0a5623350b3dd3 3303-3305,3307-3308,3332-3335,3337-3339
+  s_5785bc20fb92a9::t_e5a51e92eb37cb 692,3297-3302,3306,3309-3331,3336,3340-3343
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_5785bc20fb92a9::t_44374a9a883a2b 1982-1989
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e61a419a97385518e231ec168d48658224e0636",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

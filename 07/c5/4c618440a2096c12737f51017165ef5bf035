@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.vue
+  s_20bc5da4e9fe52::t_fe352e83fafc53 507-514
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "07c54c618440a2096c12737f51017165ef5bf035",
+  "prompts": {},
+  "sessions": {
+    "s_20bc5da4e9fe52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed82ce47-8b0e-4087-9761-908513e3887f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

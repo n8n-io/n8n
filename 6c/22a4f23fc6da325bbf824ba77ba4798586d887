@@ -1,0 +1,19 @@
+packages/@n8n/backend-network/src/http/__tests__/binary-string.test.ts
+  s_acb7dd0e5c50b6::t_7a526a668ac838 2,7,9-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c22a4f23fc6da325bbf824ba77ba4798586d887",
+  "prompts": {},
+  "sessions": {
+    "s_acb7dd0e5c50b6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ea1fc0bd0ffe8WXs7znTkFdQLf",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

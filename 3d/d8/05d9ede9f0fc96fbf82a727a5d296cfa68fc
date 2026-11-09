@@ -1,0 +1,25 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3dd805d9ede9f0fc96fbf82a727a5d296cfa68fc",
+  "prompts": {},
+  "sessions": {
+    "s_3c534142b2065c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdc79e9e-95fa-4aec-bf3d-916979e7d2a4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

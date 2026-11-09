@@ -1,0 +1,39 @@
+packages/workflow/test/native-evaluation-verify.test.ts
+  s_933070d0aea825::t_7b7530f44e4e96 118,120-132
+  s_933070d0aea825::t_f183873f744e45 190-203
+  s_933070d0aea825::t_23f0220e62ee41 119
+packages/core/src/errors/__tests__/error-reporter.test.ts
+  s_933070d0aea825::t_af4984fa0a025f 458-468
+packages/cli/src/commands/__tests__/execute.test.ts
+  s_933070d0aea825::t_7a8bd83574eddb 265
+packages/cli/src/commands/base-command.ts
+  s_933070d0aea825::t_df0ea504a37adc 331
+packages/workflow/src/expression.ts
+  s_933070d0aea825::t_bc4bd97c048f24 36,48,50,860,942,959-960
+  s_933070d0aea825::t_f96ad788da2c5d 866,949
+packages/@n8n/config/src/configs/__tests__/expression-engine.config.test.ts
+  s_933070d0aea825::t_e197f32e45766a 118-137
+packages/core/src/errors/error-reporter.ts
+  s_933070d0aea825::t_69925383150279 410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0e654ff480c93e8af8d1ea92388821cacc9eeb30",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_933070d0aea825": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ee3a819-a5dd-4ffe-994f-d18d7afd3f99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

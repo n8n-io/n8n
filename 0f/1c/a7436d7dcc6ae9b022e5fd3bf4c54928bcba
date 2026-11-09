@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeWebhooks.test.ts
+  s_c59e21f9b5250b::t_59f1876a32c961 1-73
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeWebhooks.vue
+  s_c59e21f9b5250b::t_4a023b0c615ec4 230-232,236,262,267-268,270,290-291,330-333,337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f1ca7436d7dcc6ae9b022e5fd3bf4c54928bcba",
+  "prompts": {},
+  "sessions": {
+    "s_c59e21f9b5250b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a159d0-203b-73e2-a6c9-a261f76f0c06",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

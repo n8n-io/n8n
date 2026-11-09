@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_532005812acbce::t_439ca390d513d7 304-308,322,324-325,327-336,341-390
+packages/cli/test/integration/agents/system-agent-user-deletion.test.ts
+  s_532005812acbce::t_10d62c9c60cfe8 166-171,176-188
+  s_532005812acbce::t_945c27d22b8c01 172-175
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_532005812acbce::t_0271e7f20b1bb1 1433-1436,1530,1532-1557,1565-1567,1575-1591,1594-1596,1604-1622
+  s_532005812acbce::t_945c27d22b8c01 1465-1466,1558-1564,1568-1574,1592-1593,1597-1603,1627-1628
+  s_532005812acbce::t_b23bfc9ca96fc8 1431-1432,1439,1483,1503,1531
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "28e3f90ec7d865f23d3b4e6f21e08e266cd27533",
+  "prompts": {},
+  "sessions": {
+    "s_532005812acbce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1c44c29-6f0e-4fd4-8d75-274a12b3300f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

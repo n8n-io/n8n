@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nSlider/Slider.vue
+  s_2c725b8089cad5::t_a0050e76208622 338,368,386,392,404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2af15f3817e1c15e73d714635c811e8a8fa56376",
+  "prompts": {},
+  "sessions": {
+    "s_2c725b8089cad5": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15a58-60ec-75f0-b854-679e23f4e12d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

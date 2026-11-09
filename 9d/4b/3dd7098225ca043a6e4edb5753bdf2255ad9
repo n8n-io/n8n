@@ -1,0 +1,30 @@
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_13fdf695fc0ff1::t_a6bee609565ee6 151
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_13fdf695fc0ff1::t_a6bee609565ee6 162
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_13fdf695fc0ff1::t_a6bee609565ee6 385
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_13fdf695fc0ff1::t_a6bee609565ee6 418,460
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_13fdf695fc0ff1::t_a6bee609565ee6 67,121
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_13fdf695fc0ff1::t_a6bee609565ee6 110,302
+  s_13fdf695fc0ff1::t_28d951b62f34ee 109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d4b3dd7098225ca043a6e4edb5753bdf2255ad9",
+  "prompts": {},
+  "sessions": {
+    "s_13fdf695fc0ff1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d68ad11-e5a3-42cc-a4cf-9389fb57dfde",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

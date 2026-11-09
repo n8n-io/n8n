@@ -1,0 +1,47 @@
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  s_a8967635a0a747::t_c37915510e315d 62
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_a8967635a0a747::t_522e1cbf4df5ac 2,4,12,64,345-393
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_a8967635a0a747::t_5ced1d3a0e5577 30,71,364-367
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.ts
+  s_a8967635a0a747::t_80abcc32dd0238 2,20-21,30,42
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue
+  s_a8967635a0a747::t_d022ba5f92b69e 124-126
+  s_a8967635a0a747::t_093815f87649a0 110-113,117,121-123
+  s_a8967635a0a747::t_c37915510e315d 135-137,139-143,153,155,166
+  s_a8967635a0a747::t_7c3553326fd393 138,144-152,193-197
+  s_a8967635a0a747::t_7121ef437ac536 190-192,198
+  s_a8967635a0a747::t_06e89a7b3c845f 99-101,134
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.test.ts
+  s_a8967635a0a747::t_d022ba5f92b69e 53-57
+  s_a8967635a0a747::t_ad0e664988e94a 43-52,58-67
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  s_a8967635a0a747::t_d022ba5f92b69e 91
+  s_a8967635a0a747::t_80abcc32dd0238 1-6,24-25,56,123
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.test.ts
+  s_a8967635a0a747::t_19e861c216c2c0 20-26
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionReviewBlocker.vue
+  s_a8967635a0a747::t_093815f87649a0 29
+  s_a8967635a0a747::t_d022ba5f92b69e 33
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_a8967635a0a747::t_7121ef437ac536 96,111-113,122-123
+  s_a8967635a0a747::t_ad0e664988e94a 97-110,117-121,124-127
+  s_a8967635a0a747::t_7c3553326fd393 114-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f671583085456737468a002e10091239df86e314",
+  "prompts": {},
+  "sessions": {
+    "s_a8967635a0a747": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c351be2-e350-4182-9abe-9aa257c71186",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

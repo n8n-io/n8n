@@ -1,0 +1,210 @@
+packages/frontend/editor-ui/src/features/settings/communityNodes/communityNodes.utils.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 2-8,83-148
+packages/modules/inbox/frontend/src/views/InboxView.vue
+  s_4fa6fba46b04d1::t_d0736edaa5a6a5 195
+packages/@n8n/scheduler/src/core/provisioning/provisioner.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 2,13,48,91,125-127,129-131,133,138-157
+packages/cli/src/memory-guard/memory-guard.service.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-429
+packages/cli/src/workflow-execute-additional-data.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 254-255
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableCard.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 129-163
+packages/modules/inbox/frontend/src/inbox.routes.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 113-115
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 85
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 6,358,363-372
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ToolsManagerModal.vue
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 333,340
+packages/frontend/@n8n/rest-api-client/src/api/__tests__/communityNodes.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-41
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-review.repository.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 4,15-17,59-83
+  s_4fa6fba46b04d1::t_3e9ca29a3da823 84
+packages/@n8n/permissions/src/constants.ee.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 61
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 44-50,3704-3708,4103-4114
+packages/modules/inbox/frontend/src/promotions/PromotionReviewDetail.test.ts
+  s_4fa6fba46b04d1::t_5631ff12dca6b0 188
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 3,7-10,13-18,33-35,43-58,60-62,76,79,86,97-175
+packages/cli/src/modules/promotions.ee/database/entities/promotion-review.entity.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 65-69,73
+packages/cli/src/memory-guard/__tests__/production-hold.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-70
+packages/@n8n/api-types/src/dto/index.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 845
+packages/@n8n/permissions/src/scope-information.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 240-243
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review.repository.integration.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 257-304
+packages/frontend/editor-ui/src/features/settings/communityNodes/communityNodes.store.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-65
+packages/modules/insights/backend/src/__tests__/insights-by-period.repository.integration.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 720-775
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsPreferencesView.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 5,65,72,75,380-435
+  s_4fa6fba46b04d1::t_4c0667b7e18813 436
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-6,51,61,70
+packages/@n8n/scheduler/src/core/index.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 112
+packages/cli/src/memory-guard/memory-stopped-executions.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-78
+packages/cli/src/modules/promotions.ee/promotion-reviews.controller.ts
+  s_4fa6fba46b04d1::t_1126ed56e126b7 2,4,14,18-33
+packages/frontend/@n8n/rest-api-client/src/api/communityNodes.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1,6-10,23-24
+packages/cli/src/memory-guard/__tests__/memory-usage.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-64
+packages/@n8n/scheduler/src/core/errors.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 162-172
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 30,1590-1595
+packages/cli/src/task-runners/task-runner-process-js.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 38-42
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodes.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 768-851
+packages/workflow/src/errors/execution-cancelled.error.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 3,38-42
+  s_4fa6fba46b04d1::t_f987a16d646f77 43-44
+packages/frontend/editor-ui/src/features/settings/communityNodes/composables/useInstallNode.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-4,16-17,22,60-66,69,81-97,139,519-624,629
+packages/frontend/editor-ui/src/features/settings/communityNodes/communityNodes.utils.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-6,64-109
+packages/modules/inbox/frontend/src/components/InboxList.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 268-270
+packages/modules/insights/backend/src/insights-by-period-query.helper.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 85-87
+packages/cli/src/events/maps/relay.event-map.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 229-230
+packages/cli/test/integration/promotion-review-inbox.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 2,13-19,25-32,35-47,63-120,188-196,345-347,436-607
+  s_4fa6fba46b04d1::t_085965954bf6d8 608
+packages/@n8n/constants/src/scheduler.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 172-174
+packages/frontend/editor-ui/src/experiments/preferencesEmptyState/preferenceExamples.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-43
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 482,496
+packages/cli/src/memory-guard/memory-guard.constants.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-60
+packages/frontend/editor-ui/src/experiments/preferencesEmptyState/components/PreferencesEmptyStateExamples.vue
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 3,5-14,17-20,28-63,65,68-71,84-132
+packages/@n8n/api-types/src/dto/promotions/promotion-review.dto.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 131-135
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodes.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 577-579,583-585,587-591,595-600
+packages/@n8n/config/src/configs/memory-guard.config.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 6-8
+packages/cli/src/execution-lifecycle/save-execution-progress.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 14,31-37
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1500,1503,1511-1513,1515-1516
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 46,178,227-240,307,348-350,411-413,545,547,554,869,1054
+packages/@n8n/scheduler/src/core/provisioning/__tests__/provisioner.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-6,200-244
+packages/cli/src/task-runners/__tests__/task-runner-process.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 255,263
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 19-24,49,289,646-785,824-826,1520-1521,2117-2119
+packages/cli/src/memory-guard/__tests__/memory-stopped-executions.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-71
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 4,629,631-633,635-636,643-647,650-652
+packages/cli/src/__tests__/active-executions.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 33,283
+packages/cli/src/memory-guard/memory-usage.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-42
+packages/@n8n/api-types/src/inbox.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 53-57
+packages/@n8n/imap/src/reconnect.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 55-63,335-423,646-690
+  s_4fa6fba46b04d1::t_b5f189236dfeef 691
+packages/cli/src/commands/start.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 327-328
+packages/cli/src/memory-guard/__tests__/memory-guard.service.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-684
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.controller.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 22
+  s_4fa6fba46b04d1::t_77622d9bdde647 11-21
+packages/cli/src/memory-guard/production-hold.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-79
+docker/images/runners/n8n-task-runners.json
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 10
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 31,36,312-379
+  s_4fa6fba46b04d1::t_e39c08dd3705d2 380-381
+packages/cli/src/memory-guard/memory-guard.utils.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-82
+packages/@n8n/telemetry/src/events/context.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 67-73,99,110
+packages/frontend/editor-ui/src/features/settings/communityNodes/composables/useInstallNode.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-5,15-18,25-26,47-48,74-82,100-106,125-133,136,138
+packages/cli/src/memory-guard/memory-guard.types.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-11
+packages/cli/src/modules/promotions.ee/git-hosts/README.md
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 73-80
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ToolsManagerModal.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 20,80-84,693-752
+  s_4fa6fba46b04d1::t_7b078f81978ccb 753
+packages/modules/inbox/frontend/src/views/InboxView.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 460-462
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 176
+packages/@n8n/imap/src/imap-simple.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 27-29,149-156,293-294,311,349-356,360-361,364-366,372,375-379,382,385-387,429
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 90,134-164,275-280
+packages/cli/src/concurrency/concurrency-control.service.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 12,53,161-162,179-181,183-184,202-208
+packages/cli/src/modules/promotions.ee/promotion-review.utils.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 13-23
+packages/cli/src/commands/__tests__/start.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 90-95,99-101,424-426,433
+packages/workflow/src/errors/index.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 17
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsPreferencesView.vue
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 23,54,60-68,109-114,235-238,277,297
+packages/modules/inbox/frontend/src/promotions/promotionReviews.api.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-15
+packages/frontend/editor-ui/src/features/settings/communityNodes/communityNodes.store.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 2,61-69,71
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 147
+packages/modules/inbox/frontend/src/promotions/PromotionReviewDetail.vue
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 3,7,9-13,22-23,25-27,29-32,34-36,51-100,113,120,122-133,135-145,193-222,266-269,271-275
+  s_4fa6fba46b04d1::t_d9f9551fadcbfc 114-119,121
+  s_4fa6fba46b04d1::t_b8c8a9a77953cd 276-277
+packages/frontend/editor-ui/src/experiments/preferencesEmptyState/components/PreferencesEmptyStateExamples.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 1-48
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.vue
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 24,45,103,263,301,313-317
+packages/cli/src/concurrency/__tests__/concurrency-control.service.test.ts
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 15,91,126,154,183,211,246,273,316,344,381,412,441,473,504,533,565,596,625,658,700,729,762,792,823,851,881,909,947,983,1018,1039-1126
+  s_4fa6fba46b04d1::t_532f04b89c2d69 1127
+packages/cli/src/modules/promotions.ee/promotion-review-inbox.service.ts
+  s_4fa6fba46b04d1::t_f067a5c0eb1ee9 352
+  s_4fa6fba46b04d1::t_8683c84aa5a5d6 3,9,13-20,27-30,32,37,39,46-57,59-61,73-76,96-102,111-216,242-243,245,251,253,256-259,265-288,315-321,335,338-351,353-366
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_4fa6fba46b04d1::t_a3ebeeaae5bb2a 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e291edbbc323dfb9d235a728a7a570ce38f2ffca",
+  "prompts": {},
+  "sessions": {
+    "s_4fa6fba46b04d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3c498e9-c222-400c-9d15-39bad59e09a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

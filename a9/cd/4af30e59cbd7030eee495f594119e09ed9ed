@@ -1,9 +1,7 @@
-packages/cli/src/modules/agents/agent-channel-setup.service.ts
-  s_71ad2034164515::t_1a65d389ec48eb 29
-packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
-  s_71ad2034164515::t_2548e85a168b29 21
 packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
   s_71ad2034164515::t_189cf226681f3d 2,542
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_71ad2034164515::t_2548e85a168b29 21
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -15,7 +13,7 @@ packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
-        "model": "gpt-6.1-sol"
+        "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }

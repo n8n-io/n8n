@@ -1,0 +1,28 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_20bc5da4e9fe52::t_49bd6175d10d7c 4203
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_20bc5da4e9fe52::t_49bd6175d10d7c 224
+packages/frontend/@n8n/design-system/src/components/N8nFormInput/FormInput.test.ts
+  s_20bc5da4e9fe52::t_49bd6175d10d7c 1,84-94
+packages/frontend/@n8n/design-system/src/components/N8nFormInput/FormInput.vue
+  s_20bc5da4e9fe52::t_c336920e4aaa4c 138
+  s_20bc5da4e9fe52::t_49bd6175d10d7c 137
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.vue
+  s_20bc5da4e9fe52::t_49bd6175d10d7c 276,503-506
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae4bc16a78f52ebcea991644d7980f2bb2b497ce",
+  "prompts": {},
+  "sessions": {
+    "s_20bc5da4e9fe52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed82ce47-8b0e-4087-9761-908513e3887f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

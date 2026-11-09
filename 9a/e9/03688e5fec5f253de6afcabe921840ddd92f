@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.ts
+  s_6f5f2699e39bdc::t_3bf581df39910f 86,88-92,396
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.vue
+  s_6f5f2699e39bdc::t_3bf581df39910f 194-195
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_6f5f2699e39bdc::t_a6ab4d5ff05c5f 12
+  s_6f5f2699e39bdc::t_8a83379a209a9f 1643-1675
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.test.ts
+  s_6f5f2699e39bdc::t_31510bd6c75be7 795-821
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindingCreation.ts
+  s_6f5f2699e39bdc::t_3bf581df39910f 113,203
+packages/frontend/editor-ui/src/features/settings/environments.ee/environments.types.ts
+  s_6f5f2699e39bdc::t_3bf581df39910f 28
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindingCreation.test.ts
+  s_6f5f2699e39bdc::t_39858c2b13b1ff 23,114-118,222
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.test.ts
+  s_6f5f2699e39bdc::t_d9bc0923ed53ce 9-11,357-371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9ae903688e5fec5f253de6afcabe921840ddd92f",
+  "prompts": {},
+  "sessions": {
+    "s_6f5f2699e39bdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "897d8036-2f58-40e8-85de-79d06d0839c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

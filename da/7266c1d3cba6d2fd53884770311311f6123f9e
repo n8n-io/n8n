@@ -1,0 +1,121 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_fe1b5f36be2fdf::t_8ece52c4952a05 543-550
+  s_2cc11fea2f54fd::t_5bc6b8cccc32be 773
+  s_ff8b9aa92a9930::t_52ec582e66fe17 800
+  s_ff8b9aa92a9930::t_a27fac2190f35f 815
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_13fdf695fc0ff1::t_68112fbee60f7c 22
+  s_ff8b9aa92a9930::t_95f727fcd0b4ba 619
+  s_ff8b9aa92a9930::t_549728615da5fb 656-672,676,678-684,687-713,716-717,725-727,729-732
+  s_ff8b9aa92a9930::t_6eac5869824e7b 673-674
+  s_13fdf695fc0ff1::t_6b21df9523b7ed 675,677,728
+  s_13fdf695fc0ff1::t_61ea493c73a7c6 714
+  s_ff8b9aa92a9930::t_0db9f73107650f 715,718-720,723-724
+  s_ff8b9aa92a9930::t_8b8b23c3ca8af4 721-722
+  s_ff8b9aa92a9930::t_1aba07cb3518b8 781-791
+  s_40263e1c54798e::t_4108d289678601 993
+  s_2cc11fea2f54fd::t_d139a4844932d3 994,997-1005,1008,1010,1016-1018
+  s_2cc11fea2f54fd::t_eff59e119cfd0a 995-996,1006,1011-1015
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.integration.test.ts
+  s_ff8b9aa92a9930::t_cec918f2e17624 3,126-137,153-160,171-173,176-182,184-185,187,189
+  s_ff8b9aa92a9930::t_5c08fb1ca7fd6f 138-152,186,188
+  s_ff8b9aa92a9930::t_79998b2ef7bfb7 161-170
+  s_ff8b9aa92a9930::t_6eac5869824e7b 174-175
+  s_13fdf695fc0ff1::t_8fe7698b13ecda 183
+  s_ff8b9aa92a9930::t_d0554e22843dfd 190
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_ff8b9aa92a9930::t_fd6a6054618846 44-49,757-759
+  s_ff8b9aa92a9930::t_273c6e557d5299 50-52
+  s_2cc11fea2f54fd::t_5ed0c01c333bfc 524-527,529-530,532-553,555-557
+  s_ff8b9aa92a9930::t_b4cb523842caa6 588-599,602-605,607-612,622-642,644-646
+  s_ff8b9aa92a9930::t_74c835fc59d8bc 600-601,614-621
+  s_13fdf695fc0ff1::t_3a3d2b1b680e52 606,643
+  s_ff8b9aa92a9930::t_f77ceee93b00b2 613
+  s_ff8b9aa92a9930::t_34348883827cc5 724,734-756,760-785
+  s_ff8b9aa92a9930::t_6eac5869824e7b 725-733
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_2cc11fea2f54fd::t_60c3fd5c8f781a 8,54
+  s_13fdf695fc0ff1::t_70292c6f234aca 364,506,511
+  s_ff8b9aa92a9930::t_b516f7878d304f 382,510,512-519,1636-1650,1652,1659-1662,1666-1682,1684-1736,1740-1746,1748-1772
+  s_13fdf695fc0ff1::t_ddaf5fe64eaa8d 1441
+  s_13fdf695fc0ff1::t_1b2084cbc466dd 1478-1479,1483,1485-1512
+  s_13fdf695fc0ff1::t_ffd42f58c47416 1651,1655,1663-1665,1683,1737-1739,1747
+  s_ff8b9aa92a9930::t_c5a6c8b79fee5c 1653-1654,1656-1658
+  s_ff8b9aa92a9930::t_e3071aefcf61f3 1773-1774
+packages/cli/src/modules/promotions.ee/promotion-changes.controller.ts
+  s_ff8b9aa92a9930::t_a343cea2d022f9 2,6,28,32-35,55-65
+  s_2cc11fea2f54fd::t_3b7aa744730f1b 4,7-9,13-22,46,54,68-91
+  s_2cc11fea2f54fd::t_56bc9036162642 47-52
+  s_ff8b9aa92a9930::t_6e360101529d66 66-67
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_2cc11fea2f54fd::t_c8d06c8f4d5665 14,25,41,834,837-840,845,852,856,859,862-866,868-873,943,946-951,953,955,957-958,975-980,983-1001,1023-1024,1026,1037-1041,1098-1111,1113-1128
+  s_2cc11fea2f54fd::t_3593d01e803c96 17,918-920
+  s_ff8b9aa92a9930::t_8addefa9e8c921 21,54,770-781
+  s_2cc11fea2f54fd::t_175d814c1a885e 38,44,826-827,830-833,835-836,841-842,846-851,853-855,857-858,860-861,867,874-894,897-917,921-942,944-945,952,954,965-974,981-982,1002-1020,1025,1027-1036,1042-1043,1046-1048,1051-1052,1054-1078,1082-1090,1093,1129
+  s_2cc11fea2f54fd::t_bdc5855132f915 216,523,586,668
+  s_ff8b9aa92a9930::t_a57a4b24200961 755,757,760,765,769,782-792,794,796-808,810-824
+  s_13fdf695fc0ff1::t_6cc310bef95231 793,795,809
+  s_2cc11fea2f54fd::t_019a9ad4ee92bc 956,961-964
+  s_a0c92b179996b0::t_b4835d395cf11a 1044
+  s_2cc11fea2f54fd::t_8f42ef7456d2a6 1045,1053,1079-1080,1091-1092,1094-1097
+  s_2cc11fea2f54fd::t_20d581c610e955 1130
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_ff8b9aa92a9930::t_25bb13cb5ddfed 9
+  s_ff8b9aa92a9930::t_6da1757ba2e389 188-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "da7266c1d3cba6d2fd53884770311311f6123f9e",
+  "prompts": {},
+  "sessions": {
+    "s_13fdf695fc0ff1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d68ad11-e5a3-42cc-a4cf-9389fb57dfde",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_2cc11fea2f54fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2424be1e-cf29-4877-a74e-de56398714d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_40263e1c54798e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1483c-9b4b-75f0-8329-038d448609a3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_a0c92b179996b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b56759c2-2e98-4e80-abcb-5f332f8ff366",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_fe1b5f36be2fdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ecc479a7-de22-48fb-83ea-8221212b76b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_ff8b9aa92a9930": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f5ab687-045b-4fa4-82f0-836e06007165",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

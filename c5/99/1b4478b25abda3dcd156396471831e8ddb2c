@@ -1,0 +1,25 @@
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-observation.repository.integration.test.ts
+  s_335d839e4c47ec::t_7d5f37531ae43e 230
+  s_335d839e4c47ec::t_a4abcbd2b79dd1 141-156
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_335d839e4c47ec::t_7d5f37531ae43e 327,333-336,367
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_335d839e4c47ec::t_a4abcbd2b79dd1 108-123
+  s_335d839e4c47ec::t_7d5f37531ae43e 197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c5991b4478b25abda3dcd156396471831e8ddb2c",
+  "prompts": {},
+  "sessions": {
+    "s_335d839e4c47ec": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15d24-9392-7fa3-ac49-bf255f932428",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

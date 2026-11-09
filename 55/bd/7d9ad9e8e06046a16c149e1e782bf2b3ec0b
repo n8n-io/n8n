@@ -1,0 +1,78 @@
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/BreadCrumbs.test.ts
+  s_73fdac61b69aeb::t_e8ba6acb440969 205-217
+  s_3252e3d54e0130::t_fcadbb2a568526 139,145,221,224,230,233,237,409-428
+  s_3252e3d54e0130::t_7a859659e2f12e 136-138
+  s_3252e3d54e0130::t_bceefd5c8fce8f 140-144
+  s_3252e3d54e0130::t_1b838d888cc4c9 146-147
+  s_3252e3d54e0130::t_bbe05d3c732ecf 222-223
+  s_3252e3d54e0130::t_7ce19bf125b74a 225-229
+  s_3252e3d54e0130::t_11036b3a239d5e 231-232
+  s_3252e3d54e0130::t_8cf3a637909daa 234-236
+  s_3252e3d54e0130::t_434ac9cdeeb3c3 238-240
+  s_3252e3d54e0130::t_d5076c35200812 429-431
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_75f586a8dfc6f8::t_943c1531bc5c6e 76
+packages/frontend/@n8n/design-system/src/components/N8nLink/Link.vue
+  s_73fdac61b69aeb::t_37fd5a2d8d3c44 48,52,60,64
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/Breadcrumbs.stories.ts
+  s_3252e3d54e0130::t_5e02290243382b 32
+  s_3252e3d54e0130::t_975dd73f42a503 29-31
+  s_3252e3d54e0130::t_f293c82775efe1 33-35
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/Breadcrumbs.vue
+  s_73fdac61b69aeb::t_2f11e3b0dbf432 275,359,388-392,525
+  s_8d401c879ba651::t_465ea8792bc162 287-294
+  s_8d401c879ba651::t_ad4ffd9238252b 339-340,342,348-350,357-358,411,413,421,437-438,462,480-481,485,490-495,497-505,507-508,510-511,514-524,528
+  s_8d401c879ba651::t_82ce016bf0e2af 496
+  s_73fdac61b69aeb::t_f41342b9ceda33 272-274
+  s_73fdac61b69aeb::t_38ec7c2ffecaa6 276
+  s_73fdac61b69aeb::t_1b14767b30b83a 360
+  s_73fdac61b69aeb::t_3fb0445f494c48 393
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.test.ts
+  s_75f586a8dfc6f8::t_395cffd28a3600 176
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_75f586a8dfc6f8::t_b0ee31e6399b50 45
+packages/frontend/@n8n/design-system/src/components/N8nLink/__snapshots__/Link.test.ts.snap
+  s_3252e3d54e0130::t_0f863a6eb5182f 3,5,7,9,11
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.vue
+  s_3252e3d54e0130::t_36f61c55c44791 347,423,459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55bd7d9ad9e8e06046a16c149e1e782bf2b3ec0b",
+  "prompts": {},
+  "sessions": {
+    "s_3252e3d54e0130": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15e63-d244-7675-a801-8c0b0ce76a3a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_73fdac61b69aeb": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15e3e-181d-7675-a801-8c00ca0b31b2",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_75f586a8dfc6f8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15e70-6f9f-7675-a801-8c0cc1344a94",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_8d401c879ba651": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15e58-a050-7675-a801-8c090f0c295e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

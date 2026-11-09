@@ -1,0 +1,48 @@
+packages/cli/src/public-api/v1/openapi.yml
+  s_a1ffd067a33fea::t_b9cf814991388c 28,32,36,40,44,48,52,56,60,64,68,72,76,80,84,87-88,91-94,96,100,104,108,112,116,120,124,128,132
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_a1ffd067a33fea::t_eed9f9ba4bc80f 74,105,129,161,197
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_a1ffd067a33fea::t_b66f212fe285a0 64,97,118,145,172
+packages/cli/src/public-api/v1/__tests__/openapi-tags.test.ts
+  s_a1ffd067a33fea::t_37f0e0d40eaa68 44
+  s_a1ffd067a33fea::t_347575ef3f8f6d 85-88
+.agents/skills/public-api/SKILL.md
+  s_a1ffd067a33fea::t_8677533b11bcdf 182-185
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
+  s_a1ffd067a33fea::t_fe6073936644c7 3
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/deleteRoleMappingRule.generated.yml
+  s_a1ffd067a33fea::t_bb98112a6fb527 3
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
+  s_a1ffd067a33fea::t_c82b140d2f865a 3
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/moveRoleMappingRule.generated.yml
+  s_a1ffd067a33fea::t_f612adb6bed2e9 3
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/updateRoleMappingRule.generated.yml
+  s_a1ffd067a33fea::t_615080f204a038 3
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/createRole.generated.yml
+  s_a1ffd067a33fea::t_f3275dbc9b0627 3
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/deleteRole.generated.yml
+  s_a1ffd067a33fea::t_83ac97f94849f7 3
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/getAllRoles.generated.yml
+  s_a1ffd067a33fea::t_392ce819e573a4 3
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/getRole.generated.yml
+  s_a1ffd067a33fea::t_589fba8a148ab8 3
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/updateRole.generated.yml
+  s_a1ffd067a33fea::t_e940401019e5f7 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2bec7ce4169467ae873944d74ddf4a076be06341",
+  "prompts": {},
+  "sessions": {
+    "s_a1ffd067a33fea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57318cd2-38a2-4765-9b9f-5a07cf98cf54",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

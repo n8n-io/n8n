@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionOperation.ts
+  s_2d6d4ff891e541::t_fb5ab59e4f8baa 21-22,108,111
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteSelectionDialog.test.ts
+  s_2d6d4ff891e541::t_19038059c69b5a 1-66
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionCommitMessageField.vue
+  s_2d6d4ff891e541::t_5c8d70d9788e51 1-33
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteSelectionDialog.vue
+  s_2d6d4ff891e541::t_de658928960a0d 1-106
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2d6d4ff891e541::t_b73e246cd3f36f 9856-9857,10007-10011
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  s_2d6d4ff891e541::t_fb5ab59e4f8baa 115
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.test.ts
+  s_2d6d4ff891e541::t_3bddbde30679fb 53-54,57,59-63
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.vue
+  s_2d6d4ff891e541::t_9260a80e71a215 20,41,93,97,99,102-106,135-139,155
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_2d6d4ff891e541::t_fb5ab59e4f8baa 30,71,78-80,220-235,339,496-505
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_2d6d4ff891e541::t_1ee383a3c5ce2f 74-75,91-99,373,386-408,416,436
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8217d34f82c66246b138edfffaa9051f3a84e491",
+  "prompts": {},
+  "sessions": {
+    "s_2d6d4ff891e541": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d26f79fd-fc27-4c4b-b8dc-983e3baea892",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

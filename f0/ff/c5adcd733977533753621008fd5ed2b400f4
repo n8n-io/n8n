@@ -1,0 +1,29 @@
+packages/cli/test/integration/skills/skills.controller.test.ts
+  s_20d484677b459f::t_566663fb6285e1 78-83,129,132
+packages/cli/test/integration/skills/skill.repository.test.ts
+  s_20d484677b459f::t_d4ee28d38354c5 80
+packages/cli/src/modules/skills/__tests__/hub-assistant-skill-provider.service.test.ts
+  s_20d484677b459f::t_d4ee28d38354c5 97-100,130-142
+packages/cli/src/modules/mcp/__tests__/skill-tools.service.test.ts
+  s_20d484677b459f::t_d4ee28d38354c5 193,199
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_20d484677b459f::t_566663fb6285e1 349
+packages/@n8n/backend-services/src/services/assistant-skill-provider-proxy.service.ts
+  s_20d484677b459f::t_566663fb6285e1 28,32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f0ffc5adcd733977533753621008fd5ed2b400f4",
+  "prompts": {},
+  "sessions": {
+    "s_20d484677b459f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1541d-6ef7-7ef0-a84b-83bd91fd72c5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

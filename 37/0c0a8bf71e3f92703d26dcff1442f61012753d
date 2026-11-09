@@ -1,0 +1,26 @@
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_20bc5da4e9fe52::t_1d4bcb17b4d295 291,748
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.utils.ts
+  s_20bc5da4e9fe52::t_df60c53a71d161 9,28
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionEnvironmentCard.vue
+  s_20bc5da4e9fe52::t_d7d7a31ec6a5ef 119,124
+  s_20bc5da4e9fe52::t_afcb5570450673 9,11,53-57
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_20bc5da4e9fe52::t_d7d7a31ec6a5ef 7,139-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "370c0a8bf71e3f92703d26dcff1442f61012753d",
+  "prompts": {},
+  "sessions": {
+    "s_20bc5da4e9fe52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed82ce47-8b0e-4087-9761-908513e3887f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

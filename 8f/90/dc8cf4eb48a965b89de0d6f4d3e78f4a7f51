@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.test.ts
+  s_56b438087ed0e8::t_d38cbe4ddd801c 269-277,492-494
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f90dc8cf4eb48a965b89de0d6f4d3e78f4a7f51",
+  "prompts": {},
+  "sessions": {
+    "s_56b438087ed0e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf9f678a-835a-403a-ae2d-8f56d7b754f8",
+        "model": "unknown"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

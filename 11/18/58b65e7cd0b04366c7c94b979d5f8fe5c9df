@@ -1,0 +1,86 @@
+packages/cli/src/modules/agents/repositories/agent-task.repository.ts
+  s_71ad2034164515::t_d2efbb46020f7a 70,84-85,87,90
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_71ad2034164515::t_71c411acca0882 114,210
+packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/sub-workflow-node.reference.test.ts
+  s_71ad2034164515::t_ecb5b21e3340e4 2,5,139-140
+packages/cli/src/modules/agents/agents.service.ts
+  s_71ad2034164515::t_c60a3b250e1333 67-86,172-178,189,250-333,668-672
+packages/cli/src/modules/n8n-packages/entities/agent/agent-requirements.extractor.ts
+  s_71ad2034164515::t_d6d97e0f542a33 2
+packages/workflow/src/node-helpers.ts
+  s_71ad2034164515::t_2af0900781dd1e 2203-2225
+packages/cli/src/modules/agents/agent-setup-completion.service.ts
+  s_71ad2034164515::t_1e15546bc8880c 2-6,59,65-83
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_71ad2034164515::t_ecb8fb0d65ed20 23,738-742,757-760,769
+  s_71ad2034164515::t_24f806c824f039 770
+packages/cli/src/modules/agents/utils/agent-definition.ts
+  s_71ad2034164515::t_4a8b6c319ea2f6 24-43
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_71ad2034164515::t_8dfa7bdf8e2dd5 27-29,80-84
+  s_71ad2034164515::t_1786b48e22072b 104-105
+  s_71ad2034164515::t_0595652be5b9f7 10-12,14,17,21-25,46-79,85-103,106-201,207,209
+  s_71ad2034164515::t_d15be1227b8b93 44-45,202-206,208
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_71ad2034164515::t_5b632691dcc4ee 6,23,32-36
+  s_71ad2034164515::t_96981061aa0b26 37-40
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_71ad2034164515::t_d4c18fb63ce7ca 15
+  s_71ad2034164515::t_e85b7e6bd68e08 128,517-522,536
+packages/cli/src/modules/agents/agent-save-completion.service.ts
+  s_71ad2034164515::t_96b60abbc564bc 30-45
+  s_71ad2034164515::t_74349f9dc8de08 2-4,12,23-29,46-48
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_71ad2034164515::t_234d32578304e3 12-13,25,38,44-104,281,283,285,298-300
+  s_71ad2034164515::t_dd6bd1c5725b36 5,8,301-307
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_71ad2034164515::t_83ffb02b82c501 248,381
+packages/@n8n/telemetry/src/events/agents.ts
+  s_71ad2034164515::t_fa92a6279f00c4 329,347
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
+  s_71ad2034164515::t_991021380700de 3
+  s_71ad2034164515::t_7f0e32b4e0a6c1 82-93
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_71ad2034164515::t_b407c6863c570d 863,908
+packages/cli/src/modules/agents/__tests__/agent-setup-completion.service.test.ts
+  s_71ad2034164515::t_1b8a68fcc29c49 66-68,70-97
+  s_71ad2034164515::t_95b7a71d816664 69
+packages/cli/src/modules/agents/utils/agent-draft.utils.ts
+  s_71ad2034164515::t_4ab55d6094dc55 8,31,33
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_71ad2034164515::t_092068465cebd1 8-9,20-21,28-29,44-48,104-177,487
+packages/cli/src/modules/agents/agent-definition.service.ts
+  s_71ad2034164515::t_9b50374a7a0f23 18,62-64,71,81,83,89-94
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_71ad2034164515::t_85698e698f2d1b 225,243,295-296,306-311
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_def0a53a7fc23c 373-374
+  s_71ad2034164515::t_8eeec61ac29947 210-215,504
+  s_71ad2034164515::t_d0ae82bbd79339 150,357-358,380-382,384
+  s_71ad2034164515::t_e64bff7f3a0ea8 136-137,375-376,401-402
+  s_71ad2034164515::t_3bfd9ae583842d 383
+  s_71ad2034164515::t_b6a0f3a860fc6b 1-135,138-149,151-178,186-209,216-266,268-356,359-372,377-379,385-400,403-503,505-521
+  s_71ad2034164515::t_ea576ea8cff3e4 179-185
+  s_71ad2034164515::t_972e4c14f58c32 267
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_71ad2034164515::t_89a609fad3531a 92
+packages/cli/src/modules/n8n-packages/entities/workflow/references/sub-workflow-node.reference.ts
+  s_71ad2034164515::t_2a90ceb3c257ee 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "111858b65e7cd0b04366c7c94b979d5f8fe5c9df",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

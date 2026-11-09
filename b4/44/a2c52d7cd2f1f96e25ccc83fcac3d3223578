@@ -1,0 +1,19 @@
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_71ad2034164515::t_66f5b8fa560b72 12,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b444a2c52d7cd2f1f96e25ccc83fcac3d3223578",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

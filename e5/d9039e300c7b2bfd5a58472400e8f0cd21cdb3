@@ -1,0 +1,21 @@
+packages/cli/src/posthog/index.ts
+  s_20d484677b459f::t_565faeaaa0d31a 32,155-159,165,168,176,204,209-210
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_20d484677b459f::t_18ae4e078f0962 232-242,244-260,327,350,364,369,383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e5d9039e300c7b2bfd5a58472400e8f0cd21cdb3",
+  "prompts": {},
+  "sessions": {
+    "s_20d484677b459f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1541d-6ef7-7ef0-a84b-83bd91fd72c5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
