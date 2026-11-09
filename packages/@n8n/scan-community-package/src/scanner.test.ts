@@ -314,6 +314,35 @@ describe('checkSourcePackageLayout', () => {
 		});
 	});
 
+	it.each(['{ invalid JSON', 'null', '[]', {}, { name: '' }, { name: 123 }])(
+		'ignores a fixture manifest with contents %j',
+		(contents) => {
+			fixtureDir = makeFixturePackage({
+				'package/package.json': { name: 'n8n-nodes-foo', version: '1.0.0' },
+				'fixtures/package.json': contents,
+				'node_modules/dependency/package.json': { name: 'dependency' },
+			});
+
+			expect(checkSourcePackageLayout(fixtureDir, 'n8n-nodes-foo')).toEqual({
+				passed: true,
+				packageDir: path.join(fixtureDir, 'package'),
+				isNested: true,
+			});
+		},
+	);
+
+	it('rejects an unnamed workspace root', () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': { private: true, workspaces: ['packages/*'] },
+			'packages/foo/package.json': { name: 'n8n-nodes-foo', version: '1.0.0' },
+		});
+
+		expect(checkSourcePackageLayout(fixtureDir, 'n8n-nodes-foo')).toEqual({
+			passed: false,
+			message: expect.stringMatching(/single-package repository|monorepo/i),
+		});
+	});
+
 	it('rejects a root package when the repository contains another package', () => {
 		fixtureDir = makeFixturePackage({
 			'package.json': { name: 'n8n-nodes-foo', version: '1.0.0' },
@@ -396,7 +425,7 @@ describe('analyzePackage', () => {
 		expect(result.passed).toBe(true);
 	});
 
-	it('allows an existing package with nested repository metadata during the grace period', async () => {
+	it('can disable the metadata rule after source layout validation', async () => {
 		fixtureDir = makeFixturePackage({
 			'package.json': {
 				name: 'n8n-nodes-fixture',

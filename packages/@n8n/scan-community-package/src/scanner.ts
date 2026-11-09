@@ -304,7 +304,22 @@ export const checkSourcePackageLayout = (
 	// A dedicated repository can keep its only manifest below the root.
 	const hasOtherPackages = glob
 		.sync('**/package.json', { cwd: sourceDir, absolute: true, ignore: ['**/node_modules/**'] })
-		.some((manifest) => path.dirname(manifest) !== packageDir);
+		.some((manifest) => {
+			if (path.dirname(manifest) === packageDir) return false;
+			try {
+				const packageJson: unknown = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+				const name = field(packageJson, 'name');
+				const workspaces = field(packageJson, 'workspaces');
+				return (
+					(typeof name === 'string' && name.trim().length > 0) ||
+					Array.isArray(workspaces) ||
+					isRecord(workspaces)
+				);
+			} catch {
+				// Ignore fixture manifests, as findPackageRoot does.
+				return false;
+			}
+		});
 	if (hasOtherPackages && !allowExistingMonorepo) {
 		return {
 			passed: false,
