@@ -120,7 +120,7 @@ describe('Ldap/helpers', () => {
 			mockRunInTransaction = userRepository.runInTransaction;
 			mockRunInTransaction.mockReset();
 
-			userRepository.createUserWithProject.mockReset();
+			personRepository.createPersonWithProject.mockReset();
 		});
 
 		test('does not link an existing account by email when linking by email is disabled', async () => {
@@ -157,7 +157,7 @@ describe('Ldap/helpers', () => {
 			// ASSERT
 			//
 			expect(transactionManager.save).not.toHaveBeenCalled();
-			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
+			expect(personRepository.createPersonWithProject).not.toHaveBeenCalled();
 		});
 
 		test('does not update user when data has not changed', async () => {
@@ -287,7 +287,7 @@ describe('Ldap/helpers', () => {
 			//
 			// ASSERT
 			//
-			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
+			expect(personRepository.createPersonWithProject).not.toHaveBeenCalled();
 			expect(transactionManager.save).toHaveBeenCalledTimes(1);
 			const savedAuthIdentity = (transactionManager.save as Mock).mock.calls[0][0];
 			expect(savedAuthIdentity).toBeInstanceOf(AuthIdentity);
@@ -358,7 +358,7 @@ describe('Ldap/helpers', () => {
 			);
 
 			(transactionManager.findOne as Mock).mockResolvedValueOnce(null);
-			(userRepository.createUserWithProject as Mock).mockResolvedValueOnce({
+			(personRepository.createPersonWithProject as Mock).mockResolvedValueOnce({
 				user: createdUser,
 			});
 
@@ -370,7 +370,7 @@ describe('Ldap/helpers', () => {
 			//
 			// ASSERT
 			//
-			expect(userRepository.createUserWithProject).toHaveBeenCalledWith(
+			expect(personRepository.createPersonWithProject).toHaveBeenCalledWith(
 				ldapUser,
 				transactionManager,
 			);

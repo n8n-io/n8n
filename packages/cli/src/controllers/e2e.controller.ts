@@ -12,7 +12,7 @@ import {
 	PollerStateRepository,
 	ScheduledJobRepository,
 	SettingsRepository,
-	UserRepository,
+	PersonRepository,
 } from '@n8n/db';
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -203,7 +203,7 @@ export class E2EController {
 		private readonly cacheService: CacheService,
 		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly frontendService: FrontendService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly logStreamingDestinationsService: LogStreamingDestinationService,
@@ -606,7 +606,7 @@ export class E2EController {
 		chat: UserSetupPayload,
 	) {
 		const userCreatePromises = [
-			this.userRepository.createUserWithProject({
+			this.personRepository.createPersonWithProject({
 				id: uuid(),
 				...owner,
 				password: await this.passwordUtility.hash(owner.password),
@@ -617,7 +617,7 @@ export class E2EController {
 		];
 
 		userCreatePromises.push(
-			this.userRepository.createUserWithProject({
+			this.personRepository.createPersonWithProject({
 				id: uuid(),
 				...admin,
 				password: await this.passwordUtility.hash(admin.password),
@@ -629,7 +629,7 @@ export class E2EController {
 
 		for (const { password, ...payload } of members) {
 			userCreatePromises.push(
-				this.userRepository.createUserWithProject({
+				this.personRepository.createPersonWithProject({
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
@@ -641,7 +641,7 @@ export class E2EController {
 		}
 
 		userCreatePromises.push(
-			this.userRepository.createUserWithProject({
+			this.personRepository.createPersonWithProject({
 				id: uuid(),
 				...chat,
 				password: await this.passwordUtility.hash(chat.password),

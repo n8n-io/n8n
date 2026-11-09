@@ -198,7 +198,7 @@ export const processUsers = async (
 					return await transactionManager.save(authIdentity);
 				}
 
-				const { user: savedUser } = await userRepository.createUserWithProject(
+				const { user: savedUser } = await Container.get(PersonRepository).createPersonWithProject(
 					user,
 					transactionManager,
 				);
@@ -321,7 +321,7 @@ export const createLdapAuthIdentity = async (person: Person, ldapId: string) => 
 };
 
 export const createLdapUserOnLocalDb = async (data: Partial<Person>, ldapId: string) => {
-	const { user } = await Container.get(UserRepository).createUserWithProject({
+	const { user } = await Container.get(PersonRepository).createPersonWithProject({
 		password: randomString(8),
 		role: GLOBAL_MEMBER_ROLE,
 		...data,

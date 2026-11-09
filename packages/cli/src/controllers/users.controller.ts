@@ -194,10 +194,7 @@ export class UsersController {
 		@Body payload: SettingsUpdateRequestDto,
 		@Param('id') id: string,
 	) {
-		await this.userService.updateSettings(id, payload);
-
-		const person = await this.personRepository.findById(id);
-		return person?.settings ?? null;
+		return await this.userService.updateSettings(id, payload);
 	}
 
 	/**

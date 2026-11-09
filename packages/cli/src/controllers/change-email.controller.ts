@@ -6,7 +6,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { AuthenticatedRequest, isPerson, PersonRepository } from '@n8n/db';
+import { AuthenticatedRequest, PersonRepository } from '@n8n/db';
 import {
 	Body,
 	createUserKeyedRateLimiter,
@@ -18,11 +18,12 @@ import {
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { AuthlessRequest } from '@/requests';
 import { EmailChangeService } from '@/services/email-change.service';
 import { UserService } from '@/services/user.service';
+import { assertPerson } from '@/utils/assert-person';
 import { UserManagementMailer } from '@/user-management/email';
 
 @RestController()
@@ -51,9 +52,7 @@ export class ChangeEmailController {
 		res: Response,
 		@Body payload: ChangeEmailRequestDto,
 	): Promise<ChangeEmailResponse> {
-		if (!isPerson(req.user)) {
-			throw new ForbiddenError('Only a person can change their email');
-		}
+		assertPerson(req.user);
 		const person = req.user;
 		const currentEmail = person.email;
 		const newEmail = payload.email;

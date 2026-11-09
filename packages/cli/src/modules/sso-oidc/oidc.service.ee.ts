@@ -385,7 +385,7 @@ export class OidcService {
 		}
 
 		const user = await this.userRepository.manager.transaction(async (trx) => {
-			const { user: newUser } = await this.userRepository.createUserWithProject(
+			const { user: newUser } = await this.personRepository.createPersonWithProject(
 				{
 					firstName: typeof userInfo.given_name === 'string' ? userInfo.given_name : undefined,
 					lastName: typeof userInfo.family_name === 'string' ? userInfo.family_name : undefined,

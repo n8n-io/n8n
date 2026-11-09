@@ -11,6 +11,7 @@ import {
 	ProjectRelationRepository,
 	ProjectRepository,
 	UserRepository,
+	PersonRepository,
 	Role,
 	ServiceAccount,
 	ServiceAccountDetails,
@@ -35,6 +36,7 @@ export class OwnershipService {
 		private projectRepository: ProjectRepository,
 		private workflowProjectService: WorkflowProjectService,
 		private userRepository: UserRepository,
+		private personRepository: PersonRepository,
 		private settingsRepository: SettingsRepository,
 	) {}
 
@@ -232,7 +234,7 @@ export class OwnershipService {
 	}
 
 	async hasInstanceOwner() {
-		return await this.userRepository.hasClaimedInstanceOwner();
+		return await this.personRepository.hasClaimedInstanceOwner();
 	}
 
 	async setupOwner(

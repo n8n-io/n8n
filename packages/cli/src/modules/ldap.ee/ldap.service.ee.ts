@@ -3,7 +3,7 @@ import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@n8n/constants';
-import { chunkIds, isValidEmail, Person, SettingsRepository, UserRepository } from '@n8n/db';
+import { chunkIds, isValidEmail, Person, PersonRepository, SettingsRepository } from '@n8n/db';
 import type { AuthProviderSyncHistory, RunningMode, SyncStatus } from '@n8n/db';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
@@ -573,10 +573,10 @@ export class LdapService implements IPasswordAuthHandler<Person> {
 		if (usersToCreate.length === 0) return usersToCreate;
 
 		// Query in batches to stay below the driver's bind-parameter limit.
-		const userRepository = Container.get(UserRepository);
+		const personRepository = Container.get(PersonRepository);
 		const existingEmails = new Set<string>();
 		for (const emails of chunkIds(usersToCreate.map(([, user]) => user.email))) {
-			const existingUsers = await userRepository.findManyByEmail(emails);
+			const existingUsers = await personRepository.findManyByEmail(emails);
 			for (const user of existingUsers) existingEmails.add(user.email);
 		}
 

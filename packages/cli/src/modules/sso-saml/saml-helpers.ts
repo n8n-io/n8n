@@ -55,7 +55,7 @@ export async function createUserFromSamlAttributes(
 	const randomPassword = randomString(18);
 	const userRepository = Container.get(UserRepository);
 	return await userRepository.manager.transaction(async (trx) => {
-		const { user } = await userRepository.createUserWithProject(
+		const { user } = await Container.get(PersonRepository).createPersonWithProject(
 			{
 				email: attributes.email.toLowerCase(),
 				firstName: attributes.firstName,

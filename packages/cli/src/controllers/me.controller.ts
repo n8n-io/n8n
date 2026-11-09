@@ -7,7 +7,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { User, Person, PublicUser, AuthIdentity } from '@n8n/db';
+import type { User, PublicUser, AuthIdentity } from '@n8n/db';
 import { AuthenticatedRequest, isPerson, PersonRepository } from '@n8n/db';
 import { Body, createUserKeyedRateLimiter, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
@@ -22,6 +22,7 @@ import { MfaService } from '@/mfa/mfa.service';
 import { MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
+import { assertPerson } from '@/utils/assert-person';
 import { getCurrentAuthenticationMethod, isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
@@ -49,9 +50,7 @@ export class MeController {
 		_: Response,
 		@Body payload: UserUpdateRequestDto,
 	): Promise<PublicUser> {
-		if (!isPerson(req.user)) {
-			throw new ForbiddenError('Only a person can change their profile');
-		}
+		assertPerson(req.user);
 
 		const {
 			id: userId,
@@ -138,9 +137,7 @@ export class MeController {
 	) {
 		const { currentPassword, newPassword, mfaCode } = payload;
 
-		if (!isPerson(req.user)) {
-			throw new ForbiddenError('Only a person can change their password');
-		}
+		assertPerson(req.user);
 		const person = req.user;
 
 		if (this.isUserManagedByEnv(person)) {
@@ -210,9 +207,7 @@ export class MeController {
 	 */
 	@Post('/survey')
 	async storeSurveyAnswers(req: MeRequest.SurveyAnswers) {
-		if (!isPerson(req.user)) {
-			throw new ForbiddenError('Only a person can submit the survey');
-		}
+		assertPerson(req.user);
 
 		const { body: personalizationAnswers } = req;
 
@@ -256,12 +251,7 @@ export class MeController {
 		req: AuthenticatedRequest,
 		_: Response,
 		@Body payload: UserSelfSettingsUpdateRequestDto,
-	): Promise<Person['settings']> {
-		const { id } = req.user;
-
-		await this.userService.updateSettings(id, payload);
-
-		const person = await this.personRepository.findById(id);
-		return person?.settings ?? null;
+	): Promise<User['settings']> {
+		return await this.userService.updateSettings(req.user.id, payload);
 	}
 }

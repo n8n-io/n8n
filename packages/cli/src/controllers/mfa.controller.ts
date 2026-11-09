@@ -1,6 +1,6 @@
 import { EventService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { AuthenticatedRequest, isPerson, PersonRepository } from '@n8n/db';
+import { AuthenticatedRequest, PersonRepository } from '@n8n/db';
 import {
 	createUserKeyedRateLimiter,
 	Get,
@@ -15,6 +15,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';
 import { MFA } from '@/requests';
+import { assertPerson } from '@/utils/assert-person';
 import { toUserLike } from '@/utils/to-user-like';
 
 @RestController('/mfa')
@@ -68,9 +69,7 @@ export class MFAController {
 		allowSkipMFA: true,
 	})
 	async getQRCode(req: AuthenticatedRequest) {
-		if (!isPerson(req.user)) {
-			throw new ForbiddenError('Only a person can set up two-factor authentication');
-		}
+		assertPerson(req.user);
 
 		const { email, id, mfaEnabled } = req.user;
 
@@ -115,9 +114,7 @@ export class MFAController {
 		keyedRateLimit: createUserKeyedRateLimiter({}),
 	})
 	async activateMFA(req: MFA.Activate, res: Response) {
-		if (!isPerson(req.user)) {
-			throw new ForbiddenError('Only a person can set up two-factor authentication');
-		}
+		assertPerson(req.user);
 
 		const { mfaCode = null } = req.body;
 		const { id, mfaEnabled } = req.user;

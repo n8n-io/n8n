@@ -23,7 +23,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
-import { DbLock, DbLockService, isPerson, SettingsRepository } from '@n8n/db';
+import { DbLock, DbLockService, SettingsRepository } from '@n8n/db';
 import type { CredentialsEntity, ICredentialsDb, OperationContext, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
@@ -1730,8 +1730,7 @@ export class InstanceAiSettingsService {
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
-		// Only a person has settings.
-		return isPerson(user) ? (user.settings?.instanceAi ?? {}) : {};
+		return user.settings?.instanceAi ?? {};
 	}
 
 	private snapshotAdminSettings(): PersistedAdminSettings {

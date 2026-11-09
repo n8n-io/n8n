@@ -32,8 +32,9 @@ export class QuickConnectService {
 			throw new BadRequestError(`Quick connect handler not configured for: ${quickConnectType}`);
 		}
 		// The third party creates the account from the email, and only a person has one.
+		// Same check and message as `assertPerson` in the CLI.
 		if (!isPerson(user)) {
-			throw new ForbiddenError('Only a person can use quick connect');
+			throw new ForbiddenError('Only a person can do this action');
 		}
 
 		try {

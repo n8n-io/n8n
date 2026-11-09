@@ -4,7 +4,7 @@ import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
 import type { Settings, User } from '@n8n/db';
-import { AuthIdentityRepository, Person, SettingsRepository, UserRepository } from '@n8n/db';
+import { AuthIdentityRepository, Person, PersonRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { Client } from 'ldapts';
@@ -1871,8 +1871,8 @@ describe('LdapService', () => {
 			}));
 			const lastEmail = searchEntries[searchEntries.length - 1].mail;
 
-			const userRepository = mockInstance(UserRepository);
-			userRepository.findManyByEmail.mockImplementation(async (emails: string[]) =>
+			const personRepository = mockInstance(PersonRepository);
+			personRepository.findManyByEmail.mockImplementation(async (emails: string[]) =>
 				emails.filter((email) => email === lastEmail).map((email) => ({ email }) as Person),
 			);
 
@@ -1884,10 +1884,10 @@ describe('LdapService', () => {
 			await ldapService.init();
 			await ldapService.runSync('live');
 
-			const lookedUpEmails = userRepository.findManyByEmail.mock.calls.flatMap(
+			const lookedUpEmails = personRepository.findManyByEmail.mock.calls.flatMap(
 				([emails]) => emails,
 			);
-			expect(userRepository.findManyByEmail.mock.calls.length).toBeGreaterThan(1);
+			expect(personRepository.findManyByEmail.mock.calls.length).toBeGreaterThan(1);
 			expect(lookedUpEmails).toHaveLength(searchEntries.length);
 			expect(new Set(lookedUpEmails).size).toBe(searchEntries.length);
 

@@ -5,7 +5,7 @@ import {
 	ProjectRelation,
 	Role,
 	TransactionRunner,
-	UserRepository,
+	PersonRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, type DeepPartial, In } from '@n8n/typeorm';
@@ -33,7 +33,7 @@ export class TrustedSourceIdentityRepository {
 	constructor(
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
-		private readonly users: UserRepository,
+		private readonly people: PersonRepository,
 	) {
 		this.store = new TrustedSourceIdentityStore(dataSource, transactionRunner);
 	}
@@ -72,8 +72,10 @@ export class TrustedSourceIdentityRepository {
 		});
 	}
 
-	/** Reads inside the identity transaction must reuse its connection: the pool may hold one. */
-	/** Only a person has an email. */
+	/**
+	 * Only a person has an email. Reads inside the identity transaction must reuse its
+	 * connection: the pool may hold one.
+	 */
 	async findUserByEmail(email: string, ctx: OperationContext): Promise<Person | null> {
 		return await this.store
 			.managerFor(ctx)
@@ -129,7 +131,7 @@ export class TrustedSourceIdentityRepository {
 		projectRoles: { projectId: string; role: string }[] = [],
 	): Promise<Person> {
 		return await this.store.runInTransaction(ctx, async (tx) => {
-			const { user: createdUser } = await this.users.createUserWithProject(person, tx);
+			const { user: createdUser } = await this.people.createPersonWithProject(person, tx);
 
 			await tx.insert(TrustedSourceIdentityEntity, {
 				...binding,

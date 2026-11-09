@@ -4,7 +4,7 @@ import {
 	Person,
 	TransactionRunner,
 	User,
-	UserRepository,
+	PersonRepository,
 	type AuthProviderType,
 	type OperationContext,
 } from '@n8n/db';
@@ -25,7 +25,7 @@ export class ScimUserRepository extends BaseRepository<User> {
 	constructor(
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 	) {
 		super(User, dataSource.manager, transactionRunner);
 	}
@@ -72,7 +72,7 @@ export class ScimUserRepository extends BaseRepository<User> {
 		ctx: OperationContext,
 	): Promise<Person> {
 		return await this.runInTransaction(ctx, async (tx) => {
-			const { user: created } = await this.userRepository.createUserWithProject(person, tx);
+			const { user: created } = await this.personRepository.createPersonWithProject(person, tx);
 
 			if (identity) {
 				await tx.save(tx.create(AuthIdentity, { ...identity, userId: created.id }));

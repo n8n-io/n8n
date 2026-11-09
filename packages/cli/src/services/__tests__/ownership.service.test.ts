@@ -14,6 +14,7 @@ import {
 	ProjectRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	PersonRepository,
 	GLOBAL_OWNER_ROLE,
 	PROJECT_OWNER_ROLE,
 } from '@n8n/db';
@@ -31,6 +32,7 @@ import { CacheService } from '@n8n/backend-services';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
+	const personRepository = mockInstance(PersonRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const projectRelationRepository = mockInstance(ProjectRelationRepository);
 	const projectRepository = mockInstance(ProjectRepository);
@@ -50,6 +52,7 @@ describe('OwnershipService', () => {
 		projectRepository,
 		workflowProjectService,
 		userRepository,
+		personRepository,
 		settingsRepository,
 	);
 
@@ -374,7 +377,7 @@ describe('OwnershipService', () => {
 
 	describe('setupOwner()', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
-			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(true);
+			personRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(true);
 
 			const execution = ownershipService.setupOwner(mock());
 			await expect(execution).rejects.toThrow(BadRequestError);
@@ -388,7 +391,7 @@ describe('OwnershipService', () => {
 		});
 
 		it('should throw a BadRequestError if the shell user is not found', async () => {
-			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
+			personRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
 			userRepository.findOne.mockResolvedValueOnce(null);
 
 			const execution = ownershipService.setupOwner(mock());
@@ -412,7 +415,7 @@ describe('OwnershipService', () => {
 				lastName: 'Doe',
 			};
 
-			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
+			personRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
 			userRepository.findOne.mockResolvedValueOnce(person);
 			// `save` updates the entity in place, as TypeORM does.
 			userRepository.save.mockImplementationOnce(
@@ -442,7 +445,7 @@ describe('OwnershipService', () => {
 				lastName: 'Doe',
 			};
 
-			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
+			personRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
 			userRepository.findOne.mockResolvedValueOnce(person);
 			userRepository.save.mockResolvedValueOnce(person);
 
@@ -466,7 +469,7 @@ describe('OwnershipService', () => {
 				{ overwriteExisting: true },
 			);
 
-			expect(userRepository.hasClaimedInstanceOwner).not.toHaveBeenCalled();
+			expect(personRepository.hasClaimedInstanceOwner).not.toHaveBeenCalled();
 		});
 
 		it('should use pre-hashed password when preHashed is true', async () => {

@@ -222,7 +222,7 @@ export class IdentityResolutionService {
 		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
 
 		const user = await this.userRepository.manager.transaction(async (trx) => {
-			const { user: newUser } = await this.userRepository.createUserWithProject(
+			const { user: newUser } = await this.personRepository.createPersonWithProject(
 				{
 					email,
 					firstName: trimName(claims.given_name),

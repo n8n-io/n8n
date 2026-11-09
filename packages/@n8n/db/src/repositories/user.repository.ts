@@ -1,18 +1,11 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
-import type {
-	DeepPartial,
-	EntityManager,
-	FindOptionsWhere,
-	Repository,
-	SelectQueryBuilder,
-} from '@n8n/typeorm';
+import type { EntityManager, FindOptionsWhere, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
-import { GLOBAL_OWNER_ROLE } from '../constants';
-import { ApiKey, AuthIdentity, Person, Project, ProjectRelation, User } from '../entities';
+import { ApiKey, AuthIdentity, Project, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type EligibleAccountsQuery = {
@@ -63,8 +56,7 @@ const DEACTIVATED_USER_PARAMETERS = { userListDeactivated: true };
  * its `kind` names (`Person` or `ServiceAccount`). Use `PersonRepository` or
  * `ServiceAccountRepository` when only one kind can appear.
  *
- * The query methods below predate service accounts. They stay here until their
- * callers move to `PersonRepository`, so that a caller sees no change.
+ * Person-only queries live in `PersonRepository`.
  */
 @Service()
 export class UserRepository extends BaseRepository<User> {
@@ -135,14 +127,6 @@ export class UserRepository extends BaseRepository<User> {
 		});
 	}
 
-	/** Only a person has an email. */
-	async findByEmailWithRole(email: string): Promise<Person | null> {
-		return await this.manager.findOne(Person, {
-			where: { email },
-			relations: ['role'],
-		});
-	}
-
 	/** A member of the project, or null when the project has no members. */
 	async findOneByProjectId(projectId: string): Promise<User | null> {
 		return await this.findOneBy({
@@ -180,35 +164,12 @@ export class UserRepository extends BaseRepository<User> {
 		return await super.update(...args);
 	}
 
-	/**
-	 * True when a claimed instance owner exists. A claimed owner has logged in
-	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password
-	 * before the first login, so the password check is required. The unclaimed
-	 * "shell" owner that first boot creates matches neither condition.
-	 */
-	async hasClaimedInstanceOwner(): Promise<boolean> {
-		return await this.manager.exists(Person, {
-			where: [
-				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
-				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
-			],
-			relations: ['role'],
-		});
-	}
-
 	async deleteAllExcept(user: User) {
 		await this.delete({ id: Not(user.id) });
 	}
 
 	async getByIds(transaction: EntityManager, ids: string[]) {
 		return await transaction.find(User, { where: { id: In(ids) } });
-	}
-
-	async findManyByEmail(emails: string[]) {
-		return await this.manager.find(Person, {
-			where: { email: In(emails) },
-			select: ['email', 'password', 'id'],
-		});
 	}
 
 	async deleteMany(userIds: string[]) {
@@ -229,50 +190,6 @@ export class UserRepository extends BaseRepository<User> {
 			},
 			{} as Record<string, number>,
 		);
-	}
-
-	/** Creates a person and their personal project. */
-	async createUserWithProject(
-		person: DeepPartial<Person>,
-		transactionManager?: EntityManager,
-	): Promise<{ user: Person; project: Project }> {
-		const createInner = async (entityManager: EntityManager) => {
-			const newPerson = entityManager.create(Person, person);
-			const savedPerson = await entityManager.save<Person>(newPerson);
-			const personWithRole = await entityManager.findOne(Person, {
-				where: { id: savedPerson.id },
-				relations: ['role'],
-			});
-			if (!personWithRole) throw new Error('Failed to create user!');
-			const savedProject = await entityManager.save<Project>(
-				entityManager.create(Project, {
-					type: 'personal',
-					name: personWithRole.createPersonalProjectName(),
-					creatorId: savedPerson.id,
-				}),
-			);
-
-			await entityManager.save<ProjectRelation>(
-				entityManager.create(ProjectRelation, {
-					projectId: savedProject.id,
-					userId: savedPerson.id,
-					role: {
-						slug:
-							personWithRole.role.slug !== 'global:chatUser'
-								? PROJECT_OWNER_ROLE_SLUG
-								: PROJECT_VIEWER_ROLE_SLUG,
-					},
-				}),
-			);
-
-			return { user: personWithRole, project: savedProject };
-		};
-		if (transactionManager) {
-			return await createInner(transactionManager);
-		}
-		// TODO: use a transactions
-		// This is blocked by TypeORM having concurrency issues with transactions
-		return await createInner(this.manager);
 	}
 
 	/**

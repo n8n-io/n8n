@@ -93,7 +93,7 @@ describe('IdentityResolutionService', () => {
 				async (runInTransaction: (em: EntityManager) => Promise<unknown>) =>
 					await runInTransaction(trx),
 			);
-			userRepository.createUserWithProject.mockResolvedValue({
+			personRepository.createPersonWithProject.mockResolvedValue({
 				user: mock<Person>({ id: 'new-user-1' }),
 				project: mock(),
 			});
@@ -103,7 +103,7 @@ describe('IdentityResolutionService', () => {
 			const user = await service.resolve(makeClaims({ role: CUSTOM_ROLE }), undefined, ctx());
 
 			expect(user.id).toBe('new-user-1');
-			expect(userRepository.createUserWithProject).toHaveBeenCalledWith(
+			expect(personRepository.createPersonWithProject).toHaveBeenCalledWith(
 				expect.objectContaining({ role: { slug: CUSTOM_ROLE } }),
 				trx,
 			);
@@ -117,7 +117,7 @@ describe('IdentityResolutionService', () => {
 			await service.resolve(makeClaims({ role: 'global:member' }), undefined, ctx());
 
 			expect(roleService.isRoleLicensed).not.toHaveBeenCalled();
-			expect(userRepository.createUserWithProject).toHaveBeenCalledWith(
+			expect(personRepository.createPersonWithProject).toHaveBeenCalledWith(
 				expect.objectContaining({ role: { slug: 'global:member' } }),
 				trx,
 			);
@@ -126,7 +126,7 @@ describe('IdentityResolutionService', () => {
 		it('defaults to global:member when no role claim is present', async () => {
 			await service.resolve(makeClaims(), undefined, ctx());
 
-			expect(userRepository.createUserWithProject).toHaveBeenCalledWith(
+			expect(personRepository.createPersonWithProject).toHaveBeenCalledWith(
 				expect.objectContaining({ role: GLOBAL_MEMBER_ROLE }),
 				trx,
 			);
@@ -142,7 +142,7 @@ describe('IdentityResolutionService', () => {
 			await expect(
 				service.resolve(makeClaims({ role: 'global:nonexistent' }), undefined, ctx()),
 			).rejects.toThrow(TokenExchangeAuthError);
-			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
+			expect(personRepository.createPersonWithProject).not.toHaveBeenCalled();
 		});
 
 		it('throws when a custom role is unlicensed', async () => {
@@ -151,7 +151,7 @@ describe('IdentityResolutionService', () => {
 			await expect(
 				service.resolve(makeClaims({ role: CUSTOM_ROLE }), undefined, ctx()),
 			).rejects.toThrow(TokenExchangeAuthError);
-			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
+			expect(personRepository.createPersonWithProject).not.toHaveBeenCalled();
 		});
 
 		it('throws on a global:owner role claim', async () => {
@@ -169,7 +169,7 @@ describe('IdentityResolutionService', () => {
 		it('provisions when the role is in the key allowedRoles', async () => {
 			await service.resolve(makeClaims({ role: CUSTOM_ROLE }), [CUSTOM_ROLE], ctx());
 
-			expect(userRepository.createUserWithProject).toHaveBeenCalledWith(
+			expect(personRepository.createPersonWithProject).toHaveBeenCalledWith(
 				expect.objectContaining({ role: { slug: CUSTOM_ROLE } }),
 				trx,
 			);

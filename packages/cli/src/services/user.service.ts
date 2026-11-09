@@ -119,18 +119,15 @@ export class UserService {
 		}
 	}
 
-	/** Only a person has settings. */
+	/** Both kinds of account have settings. Returns the merged settings. */
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
-		const person = await this.personRepository.findById(userId);
-		if (!person) throw new NotFoundError('User not found');
+		const account = await this.userRepository.findOneBy({ id: userId });
+		if (!account) throw new NotFoundError('User not found');
 
-		if (person.settings) {
-			Object.assign(person.settings, newSettings);
-		} else {
-			person.settings = newSettings;
-		}
+		account.settings = { ...account.settings, ...newSettings };
+		await this.userRepository.save(account);
 
-		await this.personRepository.save(person);
+		return account.settings;
 	}
 
 	async findUserWithAuthIdentities(userId: string): Promise<Person> {
@@ -317,7 +314,7 @@ export class UserService {
 	async inviteUsers(owner: User, invitations: Invitation[]) {
 		const emails = invitations.map(({ email }) => email);
 
-		const existingUsers = await this.userRepository.findManyByEmail(emails);
+		const existingUsers = await this.personRepository.findManyByEmail(emails);
 
 		const existUsersEmails = existingUsers.map((user) => user.email);
 
@@ -344,7 +341,7 @@ export class UserService {
 				async (transactionManager) =>
 					await Promise.all(
 						toCreateUsers.map(async ({ email, role }) => {
-							const { user: savedUser } = await this.userRepository.createUserWithProject(
+							const { user: savedUser } = await this.personRepository.createPersonWithProject(
 								{
 									email,
 									role: {
@@ -530,7 +527,7 @@ export class UserService {
 	async getUser(withIdentifier: string): Promise<User | null> {
 		return uuidValidate(withIdentifier)
 			? await this.userRepository.findByIdWithRole(withIdentifier)
-			: await this.userRepository.findByEmailWithRole(withIdentifier);
+			: await this.personRepository.findByEmailWithRole(withIdentifier);
 	}
 
 	async getUsersAndCount(options: {
