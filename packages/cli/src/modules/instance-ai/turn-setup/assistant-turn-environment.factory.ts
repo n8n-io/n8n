@@ -29,10 +29,9 @@ import {
 import { redactTelemetryProperties } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
-import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { N8N_VERSION } from '@/constants';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UnexpectedError } from '@n8n/errors';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
@@ -89,7 +88,6 @@ export interface AssistantTurnEnvironment {
 	memoryModelId: ModelConfig | undefined;
 	orchestrationContext: OrchestrationContext;
 	conversationHistory: ScopedConversationHistory | undefined;
-	aiPreferencesEnabled: boolean;
 	instanceContextEnabled: boolean;
 	nodeUsageEnabled: boolean;
 	skillScope: InstanceAiSkillScope;
@@ -281,7 +279,6 @@ export class AssistantTurnEnvironmentFactory {
 			setupPanelVariant,
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
 			assistantSkillsEnabled,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
@@ -332,7 +329,6 @@ export class AssistantTurnEnvironmentFactory {
 			folderExplorationEnabled,
 			onboardingThread,
 			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
 			assistantSkillsEnabled,
 			modelId,
 			modelFetch: this.modelService.getModelFetch(),
@@ -554,7 +550,6 @@ export class AssistantTurnEnvironmentFactory {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			skills: skills.source,
-			skillAvailabilityNotice: skills.availabilityNotice,
 			mapSkillEventForDisplay: skills.mapSkillEventForDisplay,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			cancelBackgroundTask: runtime.cancelBackgroundTask,
@@ -577,7 +572,6 @@ export class AssistantTurnEnvironmentFactory {
 			memoryModelId,
 			orchestrationContext,
 			conversationHistory,
-			aiPreferencesEnabled,
 			// Reuse the gate results so a rollout change cannot split this turn.
 			instanceContextEnabled,
 			nodeUsageEnabled,

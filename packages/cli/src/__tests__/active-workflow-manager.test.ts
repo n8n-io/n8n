@@ -437,6 +437,137 @@ describe('ActiveWorkflowManager', () => {
 		});
 	});
 
+	describe('reactivation backoff', () => {
+		const dbWorkflow = mock<WorkflowEntity>({ id: 'wf-1', name: 'My workflow' });
+		const activated = { webhooks: false, triggersAndPollers: true };
+		let manager: {
+			addQueuedWorkflowActivation: (mode: WorkflowActivateMode, workflow: WorkflowEntity) => void;
+		};
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			manager = activeWorkflowManager as unknown as typeof manager;
+			vi.spyOn(activeWorkflowManager, 'add').mockResolvedValue(activated);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		/** Queues a reactivation and checks that the retry runs after `delayMs`, not before. */
+		const expectRetryAfter = async (delayMs: number) => {
+			const add = vi.mocked(activeWorkflowManager.add);
+			const callsBefore = add.mock.calls.length;
+			manager.addQueuedWorkflowActivation('activate', dbWorkflow);
+			await vi.advanceTimersByTimeAsync(delayMs - 1);
+			expect(add).toHaveBeenCalledTimes(callsBefore);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(add).toHaveBeenCalledTimes(callsBefore + 1);
+		};
+
+		test('starts at the initial delay for a first failure', async () => {
+			await expectRetryAfter(1000);
+		});
+
+		test('continues the backoff when the trigger fails again right after a successful reactivation', async () => {
+			await expectRetryAfter(1000);
+			await expectRetryAfter(2000);
+			await expectRetryAfter(4000);
+			await expectRetryAfter(8000);
+		});
+
+		test('starts the backoff over once the trigger stayed up for the stable period', async () => {
+			await expectRetryAfter(1000);
+			await expectRetryAfter(2000);
+
+			await vi.advanceTimersByTimeAsync(60_001);
+
+			await expectRetryAfter(1000);
+		});
+
+		test('needs the same stable period after a long wait as after a short one', async () => {
+			let delay = 1000;
+			while (delay <= 128_000) {
+				await expectRetryAfter(delay);
+				delay *= 2;
+			}
+
+			await vi.advanceTimersByTimeAsync(60_001);
+
+			await expectRetryAfter(1000);
+		});
+
+		test('continues the backoff when the trigger fails while the activation call still runs', async () => {
+			await expectRetryAfter(1000);
+
+			// The second attempt starts its triggers, then keeps running its final writes
+			const activation = createDeferredPromise<typeof activated>();
+			vi.mocked(activeWorkflowManager.add).mockReturnValueOnce(activation.promise);
+			await expectRetryAfter(2000);
+
+			// The trigger fails during those writes
+			await expectRetryAfter(4000);
+
+			activation.resolve(activated);
+			await expectRetryAfter(8000);
+		});
+
+		test('does not count the activation setup time as uptime', async () => {
+			await expectRetryAfter(1000);
+
+			// The second attempt spends 20 s in setup before its triggers run
+			const activation = createDeferredPromise<typeof activated>();
+			vi.mocked(activeWorkflowManager.add).mockReturnValueOnce(activation.promise);
+			await expectRetryAfter(2000);
+			await vi.advanceTimersByTimeAsync(20_000);
+			activation.resolve(activated);
+
+			// The trigger then runs for 45 s, short of the stable period
+			await vi.advanceTimersByTimeAsync(45_000);
+			await expectRetryAfter(4000);
+		});
+
+		test('forgets the backoff of a workflow removed while its activation call still runs', async () => {
+			await expectRetryAfter(1000);
+			const activation = createDeferredPromise<typeof activated>();
+			vi.mocked(activeWorkflowManager.add).mockReturnValueOnce(activation.promise);
+			await expectRetryAfter(2000);
+
+			await activeWorkflowManager.remove('wf-1');
+			activation.resolve(activated);
+			await vi.advanceTimersByTimeAsync(0);
+
+			await expectRetryAfter(1000);
+		});
+
+		test('starts the backoff over after the workflow is removed', async () => {
+			await expectRetryAfter(1000);
+			await expectRetryAfter(2000);
+
+			await activeWorkflowManager.remove('wf-1');
+
+			await expectRetryAfter(1000);
+		});
+
+		test('starts the backoff over after the leader handles a removal command', async () => {
+			await expectRetryAfter(1000);
+			await expectRetryAfter(2000);
+
+			await activeWorkflowManager.handleRemoveNonWebhookTriggers({ workflowId: 'wf-1' });
+
+			await expectRetryAfter(1000);
+		});
+
+		test('forgets every backoff on leader stepdown', async () => {
+			await expectRetryAfter(1000);
+			await expectRetryAfter(2000);
+
+			await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
+
+			await expectRetryAfter(1000);
+		});
+	});
+
 	describe('handleAddWebhooksAndNonWebhookTriggers', () => {
 		const push = mock<Push>();
 		const publisher = mock<Publisher>();

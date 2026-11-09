@@ -68,8 +68,24 @@ describe('scanner CLI exit status', () => {
 		expect(exitCode).toBe(0);
 	});
 
-	// CE-3548: automation must not receive a successful exit status when a rule cannot run.
-	it('exits with a non-zero status when a registered rule cannot start its helper', async () => {
+	it('exits with status 2 when a registered rule reports a violation', async () => {
+		fs.writeFileSync(path.join(fixtureDir, 'index.js'), 'console.log("fixture");\n');
+
+		const { analysisResult, exitCode } = await runCli();
+
+		expect(analysisResult).toEqual({
+			passed: false,
+			message: 'ESLint violations found',
+			details: expect.stringContaining('no-console'),
+		});
+		expect(log).toHaveBeenCalledWith(expect.stringContaining('has failed security checks'));
+		expect(log).toHaveBeenCalledWith('Reason: ESLint violations found');
+		expect(log).toHaveBeenCalledWith(expect.stringContaining('no-console'));
+		expect(log).not.toHaveBeenCalledWith(expect.stringContaining('Could not complete'));
+		expect(exitCode).toBe(2);
+	});
+
+	it('exits with status 1 when a registered rule cannot start its helper', async () => {
 		const { n8nCommunityNodesPlugin } = await import('@n8n/eslint-plugin-community-nodes');
 		const rule = n8nCommunityNodesPlugin.rules?.['no-emoji-in-options'];
 		if (!rule) {
@@ -89,7 +105,11 @@ describe('scanner CLI exit status', () => {
 			error: { code: 'ENOENT', path: missingHelper },
 			message: expect.stringContaining('no-emoji-in-options'),
 		});
-		expect(log).toHaveBeenCalledWith(expect.stringContaining('has failed security checks'));
-		expect(exitCode).not.toBe(0);
+		expect(log).toHaveBeenCalledWith(expect.stringContaining('Could not complete the scan'));
+		expect(log).toHaveBeenCalledWith(expect.stringContaining('no-emoji-in-options'));
+		expect(log).toHaveBeenCalledWith(expect.stringContaining('ENOENT'));
+		expect(log).not.toHaveBeenCalledWith(expect.stringContaining('has passed all security checks'));
+		expect(log).not.toHaveBeenCalledWith(expect.stringContaining('has failed security checks'));
+		expect(exitCode).toBe(1);
 	});
 });

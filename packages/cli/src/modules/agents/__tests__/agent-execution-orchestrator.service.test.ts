@@ -28,7 +28,7 @@ import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -3454,10 +3454,12 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(agentId, 'slack', 'credential-1');
 		// The third argument keeps a card the woken turn raises addressed to the
 		// person the conversation belongs to, on platforms that can target one.
+		// The fourth is the agent thread, where files queued for the reply are read.
 		expect(bridge.deliverWakeResponse).toHaveBeenCalledWith(
 			'slack:channel-1:1',
 			chunks,
 			'selected-user',
+			'thread-1',
 		);
 		expect(
 			readIntegrationMessageContext(runtime.agent.stream.mock.calls[0][1].persistence),

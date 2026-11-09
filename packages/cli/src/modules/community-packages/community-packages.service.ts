@@ -10,11 +10,10 @@ import {
 	checkNodesApiVersion,
 	jsonParse,
 	N8N_NODES_API_VERSION,
-	UnexpectedError,
-	UserError,
 	type NodesApiVersionPackageJson,
 	type PublicInstalledPackage,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'node:path';

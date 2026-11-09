@@ -13,6 +13,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AssistantMentionSelection } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import type { InstanceAiElementAttachment } from '@n8n/api-types';
 
 const telemetryTrack = vi.hoisted(() => vi.fn());
 
@@ -150,6 +151,33 @@ describe('attach-only composer', () => {
 		expect(showMessageMock).toHaveBeenCalledWith({
 			type: 'error',
 			title: 'report.pdf is not a supported file type',
+		});
+	});
+
+	it('restricts the file types and keeps the "+" menu with acceptedMimeTypes', async () => {
+		const { getByTestId, queryByTestId, getByRole, container } = renderComponent({
+			props: { acceptedMimeTypes: 'text/csv,.csv' },
+		});
+
+		expect(getByTestId('instance-ai-input-menu')).toBeInTheDocument();
+		// The "+" menu has the attach action, so the composer shows no second attach button.
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		expect(container.querySelector('input[type="file"]')).toHaveAttribute(
+			'accept',
+			'text/csv,.csv',
+		);
+
+		const file = new File(['zip'], 'archive.zip', { type: 'application/zip' });
+		const drop = new Event('drop', { bubbles: true, cancelable: true });
+		Object.defineProperty(drop, 'dataTransfer', {
+			value: { files: [file], types: ['Files'], items: [{ kind: 'file', type: file.type }] },
+		});
+		getByRole('textbox').dispatchEvent(drop);
+		await nextTick();
+
+		expect(showMessageMock).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'archive.zip is not a supported file type',
 		});
 	});
 
@@ -560,5 +588,78 @@ describe('InstanceAiInput — mention attachments', () => {
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
 			{ thread_id: 'thread-1', kind: 'workflow' },
 		);
+	});
+});
+
+describe('InstanceAiInput — staged element attachment', () => {
+	const element = (
+		overrides: Partial<InstanceAiElementAttachment> = {},
+	): InstanceAiElementAttachment => ({
+		type: 'element',
+		appId: 'app-1',
+		tagName: 'button',
+		text: 'Save',
+		...overrides,
+	});
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
+	it('shows the picked element as a removable chip and tells the store which app it is for', async () => {
+		const { findByTestId, queryByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+
+		store.stageElement(element());
+
+		expect(await findByTestId('attachment-preview-element')).toHaveTextContent('button: "Save"');
+		expect(store.hasComposerElementFor('app-1')).toBe(true);
+
+		await userEvent.click(await findByTestId('attachment-preview-remove-element'));
+
+		await waitFor(() =>
+			expect(queryByTestId('attachment-preview-element')).not.toBeInTheDocument(),
+		);
+		expect(store.hasComposerElementFor('app-1')).toBe(false);
+	});
+
+	it('shortens long element text in the chip', async () => {
+		const { findByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+
+		store.stageElement(element({ tagName: 'span', text: 'Programme is taking shape for the day' }));
+
+		expect(await findByTestId('attachment-preview-element')).toHaveTextContent(
+			'span: "Programme is taking shap..."',
+		);
+	});
+
+	it('replaces the earlier element when another one is picked', async () => {
+		const { findByTestId, queryAllByTestId } = renderComponent();
+		const store = useInstanceAiStore();
+		store.stageElement(element());
+		await findByTestId('attachment-preview-element');
+
+		store.stageElement(element({ tagName: 'h1', text: 'Title' }));
+
+		await waitFor(() =>
+			expect(queryAllByTestId('attachment-preview-element')[0]).toHaveTextContent('h1: "Title"'),
+		);
+		expect(queryAllByTestId('attachment-preview-element')).toHaveLength(1);
+	});
+
+	it('sends the element with the message', async () => {
+		const { emitted, findByTestId, getByRole } = renderComponent();
+		const store = useInstanceAiStore();
+		store.stageElement(element());
+		await findByTestId('attachment-preview-element');
+		await userEvent.type(getByRole('textbox'), 'remove this');
+
+		await userEvent.click(await findByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		const [message, attachments] = emitted().submit[0] as [string, unknown[]];
+		expect(message).toBe('remove this');
+		expect(attachments).toEqual([expect.objectContaining({ type: 'element', appId: 'app-1' })]);
 	});
 });

@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	ImportResultDto,
@@ -45,9 +46,12 @@ import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import {
+	DataTableColumnRepository,
+	DataTableRepository,
+	DataTableService,
+} from '@n8n/backend-module-data-table';
+
 import {
 	looseAgentsFixture,
 	projectAgentsFixture,
@@ -70,7 +74,11 @@ mockInstance(ActiveWorkflowManager);
 mockInstance(Telemetry);
 mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
 beforeAll(
-	async () => await testModules.loadModules(['skills', 'n8n-packages', 'agents', 'data-table']),
+	async () =>
+		await testModules.loadModules(
+			['skills', 'n8n-packages', 'agents', 'data-table'],
+			packagedModules,
+		),
 );
 const server = setupTestServer({
 	endpointGroups: ['publicApi'],
@@ -361,6 +369,7 @@ it.each(['loose', 'project'] as const)(
 			const history = await Container.get(AgentHistoryRepository).findByVersionAndAgentId(
 				saved!.versionId!,
 				localId,
+				{},
 			);
 			expect(history).not.toBeNull();
 			expect(await Container.get(AgentDefinitionService).readVersion(history!)).toMatchObject({
@@ -735,7 +744,7 @@ it('shares conflict, ID, and publication policies across mixed content', async (
 	]);
 	for (const { localId } of initial.agents) {
 		const saved = await agents.findById(localId);
-		const versions = await Container.get(AgentHistoryRepository).findByAgentId(localId, 10, 0);
+		const versions = await Container.get(AgentHistoryRepository).findByAgentId(localId, 10, 0, {});
 		expect(versions).toHaveLength(2);
 		expect(versions.map(({ versionId }) => versionId)).toContain(saved!.versionId);
 	}

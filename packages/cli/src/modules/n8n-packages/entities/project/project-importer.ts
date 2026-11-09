@@ -2,9 +2,8 @@ import { LicenseState } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import { UnexpectedError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UnexpectedError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { decideMatchedProject } from './project-conflict-policy';
