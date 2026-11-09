@@ -37,6 +37,7 @@ import { useNDVStore, disposeNDVStore } from '@/features/ndv/shared/ndv.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { hasNewWorkflowQuery, withoutNewWorkflowQuery } from '@/app/utils/workflowUtils';
 
 export function useWorkflowInitialization() {
 	const route = useRoute();
@@ -366,6 +367,15 @@ export function useWorkflowInitialization() {
 
 	async function initializeWorkspaceForExistingWorkflow(id: string) {
 		try {
+			// Before the load: the route change resets the project navigation that the load sets.
+			if (hasNewWorkflowQuery(route.query)) {
+				await router.replace({
+					name: route.name,
+					params: route.params,
+					query: withoutNewWorkflowQuery(route.query),
+				});
+			}
+
 			const workflowData = await workflowsListStore.fetchWorkflow(id);
 
 			await openWorkflow(workflowData);
@@ -469,14 +479,6 @@ export function useWorkflowInitialization() {
 				if (!exists && route.meta?.nodeView === true) {
 					await initializeWorkspaceForNewWorkflow();
 					return;
-				} else {
-					await router.replace({
-						...route,
-						query: {
-							...route.query,
-							new: undefined,
-						},
-					});
 				}
 			}
 

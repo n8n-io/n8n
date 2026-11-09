@@ -462,9 +462,10 @@ const handleAddResourceClick = async () => {
 		let resolvedUrl = redirectUrl;
 
 		if (resolvedUrl.includes('{{$projectId}}')) {
+			// The workflow runs against its home project, so create the resource there.
 			const projectId =
+				workflowDocumentStore.value.homeProject?.id ??
 				projectsStore.currentProjectId ??
-				workflowDocumentStore?.value?.homeProject?.id ??
 				projectsStore.personalProject?.id ??
 				'';
 			resolvedUrl = resolvedUrl.replace(/\{\{\$projectId\}\}/g, projectId);
