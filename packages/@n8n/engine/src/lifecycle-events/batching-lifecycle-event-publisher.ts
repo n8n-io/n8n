@@ -1,5 +1,9 @@
 import type { LifecycleEventPublisher } from './lifecycle-event-publisher';
-import { MAX_LIFECYCLE_EVENTS_PER_BATCH } from './lifecycle-event.schema';
+import {
+	MAX_LIFECYCLE_EVENTS_PER_BATCH,
+	MAX_LIFECYCLE_EVENT_BATCH_BYTES,
+	MAX_STEP_COMPLETED_OUTPUTS_BYTES,
+} from './lifecycle-event.schema';
 import type { LifecycleEventCallback, LifecycleEvent } from './lifecycle-event.types';
 
 /** Short enough to feel live, long enough to coalesce a burst. */
@@ -12,6 +16,18 @@ export const DEFAULT_LIFECYCLE_EVENT_SEND_TIMEOUT_MS = 10_000;
 export const DEFAULT_MAX_PENDING_EVENTS = 20 * MAX_LIFECYCLE_EVENTS_PER_BATCH;
 
 /**
+ * Wire size assumed for an event that carries only identifiers. Generous, so
+ * the batch cap holds without serializing on the flush path.
+ */
+const SMALL_EVENT_BYTES = 512;
+
+/** An event waiting to be sent, with its size measured once on arrival. */
+interface PendingEvent {
+	event: LifecycleEvent;
+	bytes: number;
+}
+
+/**
  * Buffers events and hands them to the host's callback in batches.
  *
  * One batch is on the wire at a time, in the order the events were produced. A
@@ -22,7 +38,7 @@ export const DEFAULT_MAX_PENDING_EVENTS = 20 * MAX_LIFECYCLE_EVENTS_PER_BATCH;
  */
 export class BatchingLifecycleEventPublisher implements LifecycleEventPublisher {
 	/** Events not yet sent. Batches are cut off the front. */
-	private readonly pending: LifecycleEvent[] = [];
+	private readonly pending: PendingEvent[] = [];
 
 	private flushTimer: NodeJS.Timeout | undefined;
 
@@ -43,6 +59,7 @@ export class BatchingLifecycleEventPublisher implements LifecycleEventPublisher 
 		private readonly batchSize: number = MAX_LIFECYCLE_EVENTS_PER_BATCH,
 		private readonly maxPending: number = DEFAULT_MAX_PENDING_EVENTS,
 		private readonly sendTimeoutMs: number = DEFAULT_LIFECYCLE_EVENT_SEND_TIMEOUT_MS,
+		private readonly maxBatchBytes: number = MAX_LIFECYCLE_EVENT_BATCH_BYTES,
 	) {}
 
 	publish(event: LifecycleEvent): void {
@@ -54,7 +71,7 @@ export class BatchingLifecycleEventPublisher implements LifecycleEventPublisher 
 			return;
 		}
 
-		this.pending.push(event);
+		this.pending.push(measure(event));
 
 		// A full batch does not wait out the interval.
 		if (this.pending.length >= this.batchSize) this.startDraining();
@@ -96,7 +113,7 @@ export class BatchingLifecycleEventPublisher implements LifecycleEventPublisher 
 		await Promise.resolve();
 
 		while (this.pending.length > 0 && !this.abandoned) {
-			const batch = this.pending.splice(0, this.batchSize);
+			const batch = this.takeBatch();
 			this.reportDropped();
 
 			try {
@@ -120,6 +137,23 @@ export class BatchingLifecycleEventPublisher implements LifecycleEventPublisher 
 			);
 			this.pending.length = 0;
 		}
+	}
+
+	/**
+	 * Cuts the next batch off the front, at the count cap or the byte cap,
+	 * whichever comes first. The first event always goes, so a batch is never
+	 * empty: `measure` keeps every event under the byte cap on its own.
+	 */
+	private takeBatch(): LifecycleEvent[] {
+		let count = 0;
+		let bytes = 0;
+		while (count < this.pending.length && count < this.batchSize) {
+			bytes += this.pending[count].bytes;
+			if (bytes > this.maxBatchBytes && count > 0) break;
+			count++;
+		}
+
+		return this.pending.splice(0, count).map(({ event }) => event);
 	}
 
 	/** One line per overflow, not one per dropped event. */
@@ -148,6 +182,29 @@ export class BatchingLifecycleEventPublisher implements LifecycleEventPublisher 
 		clearTimeout(this.flushTimer);
 		this.flushTimer = undefined;
 	}
+}
+
+/**
+ * Sizes an event for batch cutting. Only `step:completed` carries data, so only
+ * its outputs are serialized; every other event takes a fixed estimate. Outputs
+ * over `MAX_STEP_COMPLETED_OUTPUTS_BYTES` are dropped from the event: the host
+ * still learns the step completed and can read the outputs from the data plane.
+ */
+function measure(event: LifecycleEvent): PendingEvent {
+	if (event.type !== 'step:completed' || event.outputs === undefined) {
+		return { event, bytes: SMALL_EVENT_BYTES };
+	}
+
+	const outputBytes = Buffer.byteLength(JSON.stringify(event.outputs));
+	if (outputBytes <= MAX_STEP_COMPLETED_OUTPUTS_BYTES) {
+		return { event, bytes: SMALL_EVENT_BYTES + outputBytes };
+	}
+
+	console.warn(
+		`engine: lifecycle event outputs over the wire limit, sent step:completed without outputs (execution ${event.executionId}, step ${event.stepId}, ${outputBytes} bytes)`,
+	);
+	const { outputs: _dropped, ...withoutOutputs } = event;
+	return { event: withoutOutputs, bytes: SMALL_EVENT_BYTES };
 }
 
 /**

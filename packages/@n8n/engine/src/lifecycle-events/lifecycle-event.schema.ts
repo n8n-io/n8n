@@ -5,6 +5,19 @@ import type { JsonValue } from '../common';
 /** Cap on one batch, so a sender can never build a body the receiver rejects. */
 export const MAX_LIFECYCLE_EVENTS_PER_BATCH = 500;
 
+/**
+ * Cap on the bytes one batch puts on the wire. The count cap alone cannot
+ * bound a body, because a `step:completed` event carries the step's outputs.
+ */
+export const MAX_LIFECYCLE_EVENT_BATCH_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Cap on the serialized outputs one `step:completed` event may carry. Past it
+ * the event ships without `outputs`, so one large step cannot fill a batch on
+ * its own or exceed the batch cap by itself.
+ */
+export const MAX_STEP_COMPLETED_OUTPUTS_BYTES = 1024 * 1024;
+
 const executionFields = {
 	executionId: z.string().min(1),
 	/** Lets a consumer route the event without a round trip. */
@@ -47,8 +60,12 @@ export const lifecycleEventSchema = z.discriminatedUnion('type', [
 		 * where freshness matters most. A slot's contents are opaque and can be
 		 * large, so only the list is validated: walking every value cost the host
 		 * more CPU than running the step did.
+		 *
+		 * Absent when the outputs were over `MAX_STEP_COMPLETED_OUTPUTS_BYTES`. The
+		 * step still completed; a consumer that needs the outputs must read them
+		 * from the data plane.
 		 */
-		outputs: z.array(z.custom<JsonValue>()),
+		outputs: z.array(z.custom<JsonValue>()).optional(),
 	}),
 	z.object({ type: z.literal('step:failed'), ...stepFields }),
 ]);

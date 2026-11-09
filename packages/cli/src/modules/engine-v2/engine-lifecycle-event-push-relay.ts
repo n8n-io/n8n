@@ -15,6 +15,14 @@ import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connecti
 type StepUpdate = Extract<LifecycleEvent, { stepId: string }>;
 
 /**
+ * How a step settled. A completed step may have no outputs: the engine drops
+ * them from the event when they are over its wire limit.
+ */
+type StepOutcome =
+	| { status: 'success'; outputs: INodeExecutionData[][] | undefined }
+	| { status: 'error' };
+
+/**
  * Placeholder error: no failure detail is available yet, and without an
  * `error` the editor would show a failed step as successful.
  *
@@ -64,9 +72,14 @@ export class EngineLifecycleEventPushRelay {
 			case 'step:started':
 				return this.onStepStarted(update, session);
 			case 'step:completed':
-				return this.onStepSettled(update, session, fromStepInputs(update.outputs));
+				// Without outputs the editor shows the node as done but empty until
+				// CAP-69 lets it fetch the data on demand.
+				return this.onStepSettled(update, session, {
+					status: 'success',
+					outputs: update.outputs && fromStepInputs(update.outputs),
+				});
 			case 'step:failed':
-				return this.onStepSettled(update, session, undefined);
+				return this.onStepSettled(update, session, { status: 'error' });
 			case 'execution:completed':
 				return this.onExecutionFinished(update.executionId, update.workflowId, 'success', session);
 			case 'execution:failed':
@@ -95,8 +108,8 @@ export class EngineLifecycleEventPushRelay {
 		const run = new EngineV2StepRun(session.nextExecutionIndex++, Date.parse(at));
 
 		this.sendNodeExecuteBefore(executionId, trigger.nodeName, run, session);
-		this.sendNodeExecuteAfter(executionId, trigger.nodeName, run, session, {
-			executionTime: 0,
+		this.sendNodeExecuteAfter(executionId, trigger.nodeName, run, session, 0, {
+			status: 'success',
 			outputs: trigger.outputs,
 		});
 	}
@@ -110,13 +123,10 @@ export class EngineLifecycleEventPushRelay {
 		this.sendNodeExecuteBefore(update.executionId, update.nodeName, run, session);
 	}
 
-	/**
-	 * @param outputs The step's output slots, or `undefined` when it failed.
-	 */
 	private onStepSettled(
 		update: StepUpdate,
 		session: EngineV2PushSession,
-		outputs: INodeExecutionData[][] | undefined,
+		outcome: StepOutcome,
 	): void {
 		const started = session.steps.get(update.stepId);
 		if (started?.settled) return;
@@ -125,11 +135,15 @@ export class EngineLifecycleEventPushRelay {
 		const run = started ?? new EngineV2StepRun(session.nextExecutionIndex++, Date.parse(update.at));
 		session.steps.set(update.stepId, run);
 
-		this.sendNodeExecuteAfter(update.executionId, update.nodeName, run, session, {
+		this.sendNodeExecuteAfter(
+			update.executionId,
+			update.nodeName,
+			run,
+			session,
 			// Same clock, same process — the difference is safe to trust.
-			executionTime: Math.max(0, Date.parse(update.at) - run.startTime),
-			outputs,
-		});
+			Math.max(0, Date.parse(update.at) - run.startTime),
+			outcome,
+		);
 
 		run.settled = true;
 	}
@@ -175,9 +189,10 @@ export class EngineLifecycleEventPushRelay {
 		nodeName: string,
 		run: EngineV2StepRun,
 		session: EngineV2PushSession,
-		result: { executionTime: number; outputs: INodeExecutionData[][] | undefined },
+		executionTime: number,
+		outcome: StepOutcome,
 	): void {
-		const { executionTime, outputs } = result;
+		const outputs = outcome.status === 'success' ? outcome.outputs : undefined;
 		// Every output slot is `main`: no other connection type exists here.
 		const data = outputs ? { main: outputs } : undefined;
 
@@ -187,9 +202,9 @@ export class EngineLifecycleEventPushRelay {
 			// No input lineage to report, so `source` is empty. See CAT-4265.
 			source: [],
 			executionTime,
-			executionStatus: outputs ? 'success' : 'error',
+			executionStatus: outcome.status,
 			data,
-			...(outputs
+			...(outcome.status === 'success'
 				? {}
 				: {
 						error: new WorkflowOperationError(
@@ -217,7 +232,7 @@ export class EngineLifecycleEventPushRelay {
 			session.pushRef,
 		);
 
-		// A failed step has no data, so there's no second message to send.
+		// No data, no second message: the step failed or its outputs were withheld.
 		if (!data) return;
 
 		// TODO(CAT-2878 follow-up): redact this before sending; needs a resolved
