@@ -74,6 +74,8 @@ comma and a space: `fix(core, editor): ...`.
    - Type: What kind of change is this?
    - Scope: Which scope from the Scopes list fits? Omit the scope if none fits.
    - Summary: What does the change do? Start it with a capital letter.
+   - Preview flags: Does the PR introduce a PostHog flag or change a feature
+     behind an existing flag? Identify the labels as described below.
 
 5. **Push branch if needed**:
    ```bash
@@ -108,6 +110,47 @@ comma and a space: `fix(core, editor): ...`.
    EOF
    )"
    ```
+
+7. **Apply preview flag labels automatically**: Follow Feature Flags for
+   Previews below. Report the applied labels with the PR URL.
+
+## Feature Flags for Previews
+
+PR preview instances read PostHog overrides from `flag:*` labels. Add the
+labels when the PR introduces a flag or changes a feature behind an existing
+flag, even when the flag declaration or check is not in the diff.
+
+1. Inspect the diff and the surrounding feature code. Trace callers, routes,
+   stores, and flag constants as needed to find the flags that gate the changed
+   behavior. Resolve each constant to its exact PostHog key. Do not use the
+   constant name or guess a key from a feature name.
+2. Select the value that exposes the changed behavior:
+   - `flag:<key>` enables a boolean flag. Example: `flag:136_skill_sync`.
+   - `flag:<key>=false` disables a flag when the changed behavior needs it off.
+   - `flag:<key>=<variant>` selects an A/B variant. Use the exact variant from
+     the code or task context.
+   Add each required flag when the feature needs more than one. Skip flags
+   that the PR removes or that do not gate the changed behavior. If the key or
+   required variant is unclear, report the gap instead of guessing.
+3. Check whether each label exists in the target repository with
+   `gh label list --search "<label>" --json name`. Compare the full label names.
+   Create each missing label before applying it. For example:
+   ```bash
+   gh label create "flag:136_skill_sync" --color "1D76DB" --description "Enable 136_skill_sync in PR previews"
+   ```
+4. Apply the labels to the new PR without a separate confirmation:
+   ```bash
+   gh pr edit <pr-number> --add-label "flag:136_skill_sync"
+   gh pr view <pr-number> --json labels
+   ```
+   Repeat `--add-label` for multiple flags. Keep unrelated labels. If the PR
+   already has an explicit value for a key, preserve it unless the task requires
+   a different value. Keep only one value for each key.
+
+Add labels before clicking Deploy. Labels also work on a running preview;
+a label change restarts it once and takes about two minutes. Check the
+`n8n-assistant` preview comment for the URL, commit, and active flags. The
+preview login arrives in a Slack DM.
 
 ## PR Body Guidelines
 
@@ -158,6 +201,7 @@ Together, the alternatives must be shorter than the core Why section.
   module via `N8N_ENABLED_MODULES`, an enterprise license, a feature flag, or
   similar), note which env vars/license are needed so the tester can deploy a
   correctly configured instance
+- Include the applied `flag:*` labels and any required variant for a preview.
 
 ### Related Links Section
 - Link to Linear ticket: `https://linear.app/n8n/issue/[TICKET-ID]`
