@@ -191,7 +191,7 @@ export type RestrictedCalloutSurface = 'tool' | 'credential';
 
 const CALLOUT_COPY: Record<
 	RestrictedCalloutSurface,
-	{ keys: Record<RestrictionMessage, BaseTextKey>; interpolationKey: string }
+	{ keys: Record<RestrictionMessage, BaseTextKey>; interpolationKey: 'nodeType' | 'credentialType' }
 > = {
 	tool: {
 		keys: {

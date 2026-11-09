@@ -844,9 +844,11 @@ function onDescriptionEdit(text: string) {
 
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 
-const policyProjectId = computed(
-	() => currentCredential.value?.homeProject?.id ?? homeProject.value?.id,
-);
+const policyProjectId = computed(() => {
+	if (props.mode !== 'edit') return homeProject.value?.id;
+	if (!currentCredential.value) return undefined;
+	return currentCredential.value.homeProject?.id ?? homeProject.value?.id;
+});
 
 const projectBeforeEdit = typeAvailabilityPoliciesStore.requestedProjectId;
 

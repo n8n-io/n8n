@@ -3018,6 +3018,99 @@ describe('CredentialEdit - restricted credential types', () => {
 		expect(await findByTestId('restricted-credential-contact-admin')).toBeInTheDocument();
 	});
 
+	it('reads the policy of the credential project, not of the open project', async () => {
+		const { pinia, credentialsStore } = setup();
+		const fetchForProject = vi
+			.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+			.mockResolvedValue();
+		credentialsStore.getCredentialData.mockResolvedValue({
+			id: 'cred-1',
+			name: 'OpenAI account',
+			type: OPEN_AI_TYPE.name,
+			isManaged: false,
+			homeProject: {
+				id: 'team-project',
+				name: 'Acme',
+				type: 'team',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+			},
+			sharedWithProjects: [],
+			scopes: ['credential:read', 'credential:update'],
+			createdAt: '',
+			updatedAt: '',
+		});
+
+		renderComponent({
+			props: { activeId: 'cred-1', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			pinia,
+		});
+
+		await waitFor(() => expect(fetchForProject).toHaveBeenCalledWith('team-project'));
+		expect(fetchForProject).not.toHaveBeenCalledWith('personal-project');
+	});
+
+	it('falls back to the open project when the credential has no home project', async () => {
+		const { pinia, credentialsStore } = setup();
+		const fetchForProject = vi
+			.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+			.mockResolvedValue();
+		credentialsStore.getCredentialData.mockResolvedValue({
+			id: 'cred-1',
+			name: 'OpenAI account',
+			type: OPEN_AI_TYPE.name,
+			data: {},
+			isManaged: false,
+			sharedWithProjects: [],
+			scopes: ['credential:read', 'credential:update'],
+			createdAt: '',
+			updatedAt: '',
+		});
+
+		renderComponent({
+			props: { activeId: 'cred-1', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			pinia,
+		});
+
+		await waitFor(() => expect(fetchForProject).toHaveBeenCalledWith('personal-project'));
+	});
+
+	it('puts the policy back to the open project when the modal closes', async () => {
+		const { pinia, credentialsStore } = setup();
+		const policiesStore = useTypeAvailabilityPoliciesStore();
+		policiesStore.requestedProjectId = 'canvas-project';
+		const fetchForProject = vi.spyOn(policiesStore, 'fetchForProject').mockResolvedValue();
+		credentialsStore.getCredentialData.mockResolvedValue({
+			id: 'cred-1',
+			name: 'OpenAI account',
+			type: OPEN_AI_TYPE.name,
+			isManaged: false,
+			homeProject: {
+				id: 'team-project',
+				name: 'Acme',
+				type: 'team',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+			},
+			sharedWithProjects: [],
+			scopes: ['credential:read', 'credential:update'],
+			createdAt: '',
+			updatedAt: '',
+		});
+
+		const { unmount } = renderComponent({
+			props: { activeId: 'cred-1', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			pinia,
+		});
+
+		await waitFor(() => expect(fetchForProject).toHaveBeenCalledWith('team-project'));
+		unmount();
+
+		expect(fetchForProject).toHaveBeenLastCalledWith('canvas-project');
+	});
+
 	it('shows no callout for an unrestricted type', async () => {
 		const { pinia } = setup();
 		mockRestrictedCredentialTypes({});

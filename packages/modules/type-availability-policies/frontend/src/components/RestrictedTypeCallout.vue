@@ -43,7 +43,7 @@ const description = computed(() => describeTypeRestriction(surface, typeName, re
 		<ContactAdminModal
 			v-model:open="isContactAdminOpen"
 			:kind="surface === 'credential' ? 'credential' : 'node'"
-			:node-type-name="typeName"
+			:type-name="typeName"
 			:audience="contactCopy.audience"
 		/>
 	</div>
