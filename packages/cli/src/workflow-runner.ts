@@ -453,11 +453,15 @@ export class WorkflowRunner {
 
 		if (!establishContextError) {
 			try {
-				await this.credentialsPermissionChecker.check(
+				const { personalCredentialsCount } = await this.credentialsPermissionChecker.check(
 					data.workflowData.id,
 					data.workflowData.nodes,
 					data.userId,
 				);
+				// Reuses the check's result so telemetry costs no extra query.
+				if (personalCredentialsCount > 0) {
+					data.telemetryMetadata = { ...data.telemetryMetadata, personalCredentialsCount };
+				}
 			} catch (error) {
 				const executionId = await this.activeExecutions.add(data, existingExecution);
 				await this.failExecution(data, executionId, error, responsePromise, existingExecution);

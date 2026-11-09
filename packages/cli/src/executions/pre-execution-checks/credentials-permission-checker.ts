@@ -257,21 +257,26 @@ export class CredentialsPermissionChecker {
 	 * on a triggered one. Consulted only for credentials the project route already
 	 * rejected, so a workflow whose credentials are all shared with its project
 	 * never needs one.
+	 * @returns how many credentials the run may use only through the acting
+	 * user's own access (the personal route), for execution telemetry.
 	 */
-	async check(workflowId: string, nodes: INode[], actingUserId?: string) {
+	async check(
+		workflowId: string,
+		nodes: INode[],
+		actingUserId?: string,
+	): Promise<{ personalCredentialsCount: number }> {
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
-		if (workflowCredIds.length === 0) return;
+		if (workflowCredIds.length === 0) return { personalCredentialsCount: 0 };
 
-		const { homeProject, inaccessibleIds, unusableForActingUser } = await this.findInaccessible(
-			workflowId,
-			workflowCredIds,
-			actingUserId,
-		);
+		const { homeProject, inaccessibleIds, unusableForActingUser, personalRouteIds } =
+			await this.findInaccessible(workflowId, workflowCredIds, actingUserId);
 
-		if (inaccessibleIds.length === 0) return;
+		if (inaccessibleIds.length === 0) {
+			return { personalCredentialsCount: personalRouteIds.length };
+		}
 
 		const unusable = unusableForActingUser.find((c) => c.id === inaccessibleIds[0]);
 		const nodeToFlag = credIdsToNodes[inaccessibleIds[0]][0];
@@ -301,13 +306,20 @@ export class CredentialsPermissionChecker {
 		inaccessibleIds: string[];
 		/** Details for the ids the acting user personally cannot use, to name them in an error. */
 		unusableForActingUser: UnusableCredential[];
+		/** Ids the project route rejected but the acting user may use through their own access. */
+		personalRouteIds: string[];
 	}> {
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
 
 		const { instanceScopedIds, projectScopedIds } = await this.partitionByUsageScope(credentialIds);
 		if (instanceScopedIds.length > 0) {
 			// Never usable by a workflow, so they do not fall through to the user route.
-			return { homeProject, inaccessibleIds: instanceScopedIds, unusableForActingUser: [] };
+			return {
+				homeProject,
+				inaccessibleIds: instanceScopedIds,
+				unusableForActingUser: [],
+				personalRouteIds: [],
+			};
 		}
 
 		const homeProjectOwner = await this.ownershipService.getPersonalProjectOwnerCached(
@@ -328,7 +340,7 @@ export class CredentialsPermissionChecker {
 			// picker's personal-only restriction is cosmetic for Owner/Admin — a
 			// hand-edited or imported workflow in their personal space still runs a
 			// team credential.
-			return { homeProject, inaccessibleIds: [], unusableForActingUser: [] };
+			return { homeProject, inaccessibleIds: [], unusableForActingUser: [], personalRouteIds: [] };
 		}
 		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
 
@@ -344,7 +356,7 @@ export class CredentialsPermissionChecker {
 
 		const rejectedByProject = projectScopedIds.filter((id) => !accessibleSet.has(id));
 		if (rejectedByProject.length === 0) {
-			return { homeProject, inaccessibleIds: [], unusableForActingUser: [] };
+			return { homeProject, inaccessibleIds: [], unusableForActingUser: [], personalRouteIds: [] };
 		}
 
 		// Only for what the project route rejected. Without an acting user we
@@ -360,12 +372,22 @@ export class CredentialsPermissionChecker {
 				'Refusing a run with no identity to attribute it to; republish the workflow to restore attribution',
 				{ workflowId, credentialIds: rejectedByProject },
 			);
-			return { homeProject, inaccessibleIds: rejectedByProject, unusableForActingUser: [] };
+			return {
+				homeProject,
+				inaccessibleIds: rejectedByProject,
+				unusableForActingUser: [],
+				personalRouteIds: [],
+			};
 		}
 
 		const actingUser = await this.loadUserWithRole(actingUserId);
 		if (!actingUser) {
-			return { homeProject, inaccessibleIds: rejectedByProject, unusableForActingUser: [] };
+			return {
+				homeProject,
+				inaccessibleIds: rejectedByProject,
+				unusableForActingUser: [],
+				personalRouteIds: [],
+			};
 		}
 
 		// Asks the finder directly rather than going through `findUnusable`: the ids
@@ -383,12 +405,13 @@ export class CredentialsPermissionChecker {
 				{ ignoreGlobalUseScope: homeProject.type === 'team' },
 			);
 
+		const unusableIds = new Set(unusableForActingUser.map((c) => c.id));
+
 		return {
 			homeProject,
-			inaccessibleIds: rejectedByProject.filter((id) =>
-				unusableForActingUser.some((c) => c.id === id),
-			),
+			inaccessibleIds: rejectedByProject.filter((id) => unusableIds.has(id)),
 			unusableForActingUser,
+			personalRouteIds: rejectedByProject.filter((id) => !unusableIds.has(id)),
 		};
 	}
 

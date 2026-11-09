@@ -116,7 +116,9 @@ describe('CredentialsPermissionChecker', () => {
 	});
 
 	it('should not throw an error if the workflow has no credentials', async () => {
-		await expect(permissionChecker.check(workflowId, [])).resolves.not.toThrow();
+		await expect(permissionChecker.check(workflowId, [])).resolves.toEqual({
+			personalCredentialsCount: 0,
+		});
 
 		expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
 	});
@@ -149,6 +151,7 @@ describe('CredentialsPermissionChecker', () => {
 				homeProject: personalProject,
 				inaccessibleIds: ['a', 'c'],
 				unusableForActingUser: [],
+				personalRouteIds: [],
 			});
 			expect(credentialsRepository.findGlobalProjectCredentialIds).toHaveBeenCalledWith([
 				'a',
@@ -214,6 +217,7 @@ describe('CredentialsPermissionChecker', () => {
 				);
 
 				expect(result.inaccessibleIds).toEqual([]);
+				expect(result.personalRouteIds).toEqual([]);
 				// This is what keeps every workflow that runs today running.
 				expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
 			});
@@ -228,6 +232,7 @@ describe('CredentialsPermissionChecker', () => {
 				);
 
 				expect(result.inaccessibleIds).toEqual([]);
+				expect(result.personalRouteIds).toEqual([credentialId]);
 				expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
 					actingUser,
 					[credentialId],
@@ -309,9 +314,9 @@ describe('CredentialsPermissionChecker', () => {
 		it('throws nothing when the acting user may use the credential', async () => {
 			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([]);
 
-			await expect(
-				permissionChecker.check(workflowId, [node], actingUser.id),
-			).resolves.not.toThrow();
+			await expect(permissionChecker.check(workflowId, [node], actingUser.id)).resolves.toEqual({
+				personalCredentialsCount: 1,
+			});
 
 			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
 				actingUser,
