@@ -7,19 +7,19 @@ finding. Read the code before you record it.
 
 ```bash
 # Boolean flag clusters: two or more is/has/should flags on one object or store
-rg -n --type ts --type vue '\b(is|has|should)[A-Z]\w*\s*(=|:)\s*(ref\()?(true|false)' <scope>
+rg -n -g '*.{ts,vue}' '\b(is|has|should)[A-Z]\w*\s*(=|:)\s*(ref\()?(true|false)' <scope>
 
 # Loose status strings without a union type
-rg -n --type ts --type vue '\b(status|state|phase|stage|mode|step)\s*(=|:)\s*(ref\()?['"'"'"]' <scope>
+rg -n -g '*.{ts,vue}' '\b(status|state|phase|stage|mode|step)\s*(=|:)\s*(ref\()?['"'"'"]' <scope>
 
 # Direct writes to status from many places
-rg -n --type ts --type vue '\.(status|state|phase)\s*=\s*' <scope>
+rg -n -g '*.{ts,vue}' '\.(status|state|phase)\s*=\s*' <scope>
 
 # Optional fields that only make sense together (data/error/loading triads)
 rg -n --type ts '\b(error|result|data)\?:' <scope>
 
 # Guard chains that hint at implied states
-rg -n --type ts --type vue 'if \(!?\w+\.(is|has)\w+ && !?\w+\.(is|has)\w+' <scope>
+rg -n -g '*.{ts,vue}' 'if \(!?\w+\.(is|has)\w+ && !?\w+\.(is|has)\w+' <scope>
 
 # Timers, retries, and abort controllers (often hide lifecycle states)
 rg -n --type ts 'setTimeout|setInterval|AbortController|retryCount|attempts' <scope>
