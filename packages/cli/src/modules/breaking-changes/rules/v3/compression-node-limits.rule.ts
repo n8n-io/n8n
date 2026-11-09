@@ -17,7 +17,7 @@ export class CompressionNodeLimitsRule implements IBreakingChangeInstanceRule {
 			version: 'v3',
 			title: 'Compression node limits are lowered',
 			description:
-				'The default maximum decompressed size goes down from 2 GiB to 256 MiB, and the default maximum number of ZIP entries goes down from 5000 to 1000. Only the defaults change. You can set the limits to keep the current values.',
+				'The default maximum decompressed size goes down from 2 GiB to 256 MiB, and the default maximum number of ZIP entries goes down from 5000 to 1000. Only the defaults change. To keep the current limits, set N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES and N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES.',
 			category: BreakingChangeCategory.environment,
 			impact: 'executionsMightFail',
 		};

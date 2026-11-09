@@ -29,7 +29,7 @@ export class SlackTriggerSignatureSecretRule implements IBreakingChangeWorkflowR
 			version: 'v3',
 			title: 'Slack Trigger requires a signature secret on its credential',
 			description:
-				'The "Signature Secret" field of the Slack API credential is now required. A workflow with a Slack Trigger node whose credential has no signature secret can no longer be activated.',
+				'The "Signature Secret" field of the Slack API credential is now required. A workflow with a Slack Trigger node whose credential has no signature secret can no longer be activated. Add the signature secret of your Slack app to the Slack API credential, then activate the workflow again.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
 			documentationUrl: SLACK_DOCUMENTATION_URL,

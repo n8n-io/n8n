@@ -25,7 +25,7 @@ export class AgentRemovedModesRule implements IBreakingChangeWorkflowRule {
 			version: 'v3',
 			title: 'Deprecated AI Agent modes removed',
 			description:
-				'AI Agent versions below 2 are removed, and with them the Conversational, OpenAI Functions, Plan and Execute, ReAct and SQL Agent modes, which version 2 does not offer. After the update, nodes set to one of these modes will fail when executed.',
+				'AI Agent versions below 2 are removed, and with them the Conversational, OpenAI Functions, Plan and Execute, ReAct and SQL Agent modes, which version 2 does not offer. After the update, nodes set to one of these modes fail when executed. Replace each affected AI Agent node with an AI Agent on the latest version.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
 			assistant: 'fix',

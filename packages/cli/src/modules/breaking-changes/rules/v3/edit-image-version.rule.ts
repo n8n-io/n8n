@@ -38,7 +38,8 @@ export class EditImageVersionRule implements IBreakingChangeWorkflowRule {
 		return [
 			{
 				action: 'Upgrade Edit Image nodes to version 2',
-				description: 'Run the automatic migration, or migrate manually.',
+				description:
+					'Use the automatic migration, or replace each Edit Image node with a new Edit Image node and copy its settings. Then check the output of nodes that blur, set image quality, get image information, add text or resize, because version 2 can change it.',
 			},
 		];
 	}
