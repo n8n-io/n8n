@@ -196,6 +196,20 @@ describe('release SBOM validation in PR CI', () => {
 		);
 		assert.equal(gate['continue-on-error'] ?? false, false);
 	});
+
+	it('validates the full SHA before checking out the SBOM source without persisted credentials', () => {
+		const validator = workflowFile('sbom-validation-callable.yml');
+		const steps = validator.jobs['validate-sbom'].steps;
+		const validation = stepNamed(validator, 'validate-sbom', 'Validate SBOM source SHA');
+		const checkout = stepNamed(validator, 'validate-sbom', 'Checkout SBOM source');
+
+		assert.ok(steps.indexOf(validation) < steps.indexOf(checkout));
+		assert.match(validation.run, /\^\[0-9a-f\]\{40\}\$/);
+		assert.doesNotMatch(validation.run, /git (fetch|checkout)/);
+		assert.equal(checkout.uses, 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1');
+		assert.equal(checkout.with.ref, '${{ inputs.sha }}');
+		assert.equal(checkout.with['persist-credentials'], false);
+	});
 });
 
 describe('test-e2e-reusable.yml', () => {
