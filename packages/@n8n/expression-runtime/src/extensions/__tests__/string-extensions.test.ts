@@ -116,6 +116,7 @@ describe('extractDomain', () => {
 		['mailto:john.doe@example.com?subject=Hi', 'example.com'],
 		['mailto:a@example.com,b@example.org', 'example.com'],
 		['https://user:pass@example.com/path', 'example.com'],
+		['https://@example.com/path', 'example.com'],
 	])('should extract the domain of %s', (input, expected) => {
 		expect(extractDomain(input)).toBe(expected);
 	});
