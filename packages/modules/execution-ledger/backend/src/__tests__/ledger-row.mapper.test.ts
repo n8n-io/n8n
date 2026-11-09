@@ -1,8 +1,5 @@
-import {
-	EXECUTION_LEDGER_OUTCOMES,
-	type ExecutionLedgerEndedFacts,
-	type ExecutionLedgerStartedFacts,
-} from '@n8n/db';
+import type { ExecutionLedgerEndedFacts, ExecutionLedgerStartedFacts } from '@n8n/backend-services';
+import { EXECUTION_LEDGER_OUTCOMES } from '@n8n/db';
 
 import { toEndedRow, toStartedRow } from '../ledger-row.mapper';
 

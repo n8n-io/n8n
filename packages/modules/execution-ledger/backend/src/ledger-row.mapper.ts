@@ -1,8 +1,5 @@
-import {
-	EXECUTION_LEDGER_ENTITY_NAME_MAX_LENGTH,
-	type ExecutionLedgerEndedFacts,
-	type ExecutionLedgerStartedFacts,
-} from '@n8n/db';
+import type { ExecutionLedgerEndedFacts, ExecutionLedgerStartedFacts } from '@n8n/backend-services';
+import { EXECUTION_LEDGER_ENTITY_NAME_MAX_LENGTH } from '@n8n/db';
 
 import type { NewExecutionLedgerRow } from './database/repositories/execution-ledger.repository';
 

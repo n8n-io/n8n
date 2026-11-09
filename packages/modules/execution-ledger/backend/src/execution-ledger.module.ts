@@ -1,4 +1,4 @@
-import { ExecutionLedger } from '@n8n/db';
+import { ExecutionLedger } from '@n8n/backend-services';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';

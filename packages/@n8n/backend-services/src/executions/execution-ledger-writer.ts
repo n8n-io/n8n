@@ -1,7 +1,5 @@
+import type { ExecutionLedgerBlockedBy, ExecutionLedgerOutcome, OperationContext } from '@n8n/db';
 import type { WorkflowExecuteMode, WorkflowExecutionSource } from 'n8n-workflow';
-
-import type { ExecutionLedgerBlockedBy, ExecutionLedgerOutcome } from './execution-ledger-row';
-import type { OperationContext } from '../services/transaction';
 
 type RunFacts = {
 	executionId: string;

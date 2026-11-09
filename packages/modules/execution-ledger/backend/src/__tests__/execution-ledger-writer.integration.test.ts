@@ -6,13 +6,15 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import {
+	ExecutionLedger,
+	type ExecutionLedgerEndedFacts,
+	type ExecutionLedgerStartedFacts,
+} from '@n8n/backend-services';
+import {
 	EXECUTION_LEDGER_BLOCKED_BY,
 	EXECUTION_LEDGER_ENTITY_TYPES,
 	EXECUTION_LEDGER_ORIGINS,
 	EXECUTION_LEDGER_OUTCOMES,
-	ExecutionLedger,
-	type ExecutionLedgerEndedFacts,
-	type ExecutionLedgerStartedFacts,
 	type Project,
 	TransactionRunner,
 	type WorkflowEntity,

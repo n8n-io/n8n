@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ErrorReporter } from 'n8n-core';
@@ -10,7 +11,6 @@ import type {
 	ExecutionLedgerWriteResult,
 	ExecutionLedgerWriter,
 } from './execution-ledger-writer';
-import type { OperationContext } from '../services/transaction';
 
 /**
  * Records run events in the execution ledger. Does nothing until the `execution-ledger` module

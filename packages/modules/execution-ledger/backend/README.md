@@ -4,7 +4,7 @@ Owns the `execution_ledger` table: one row when a run starts and one when it end
 from other modules read the rows through the contract in `@n8n/db`. The module is opt-in: enable
 it with `N8N_ENABLED_MODULES=execution-ledger`.
 
-Core code records runs through the `ExecutionLedger` service in `@n8n/db`. At init, the module
+Core code records runs through the `ExecutionLedger` service in `@n8n/backend-services`. At init, the module
 binds `ExecutionLedgerRowWriter` to that service. When the module is off, the service does
 nothing.
 

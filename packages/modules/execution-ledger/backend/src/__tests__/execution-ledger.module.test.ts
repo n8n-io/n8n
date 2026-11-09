@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { ExecutionLedger } from '@n8n/db';
+import { ExecutionLedger } from '@n8n/backend-services';
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
