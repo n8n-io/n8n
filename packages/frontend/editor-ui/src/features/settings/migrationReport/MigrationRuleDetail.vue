@@ -13,6 +13,7 @@ import type {
 	MigrationNotifySkipReason,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	N8nBadge,
 	N8nButton,
@@ -27,7 +28,9 @@ import {
 	N8nSelectedItemsInfo,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
+	N8nStatusDot,
 	N8nText,
+	N8nTooltip,
 	N8nUserSelect,
 } from '@n8n/design-system';
 import type { IUser, TableHeader } from '@n8n/design-system';
@@ -42,14 +45,21 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useAsyncState, useDebounceFn } from '@vueuse/core';
 import orderBy from 'lodash/orderBy';
 import { computed, nextTick, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { I18nT } from 'vue-i18n';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import FindingStateSelect from './components/FindingStateSelect.vue';
+import HowToFixPanel from './components/HowToFixPanel.vue';
 import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
+import SplitButton from './components/SplitButton.vue';
+import ArchiveWorkflowsModal from './ArchiveWorkflowsModal.vue';
+import type { ArchiveWorkflowsModalMode } from './constants';
 import {
 	DEFAULT_WORKFLOW_FILTERS,
+	isUnresolvedState,
 	matchesWorkflowFilters,
+	PERSONAL_PROJECTS,
 	type WorkflowFilters,
 } from './workflowFilters';
 
@@ -60,12 +70,14 @@ const rbacStore = useRBACStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const toast = useToast();
+const workflowsStore = useWorkflowsStore();
 
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
+const route = useRoute();
 
 // The server lists only the workflows the user can edit, and editing a workflow
 // allows triaging and migrating it. So every row is editable. A notification
@@ -241,7 +253,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.state'),
 			key: 'status',
-			width: 140,
+			width: 150,
 		},
 	];
 
@@ -365,6 +377,7 @@ async function onFindingStatusChange(
 			workflow.id,
 			status,
 		);
+		if (status === 'wont_fix') promptToArchive(workflow);
 	} catch (error) {
 		restoreWorkflows([workflow]);
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
@@ -460,10 +473,12 @@ const skipReasonKeys: Record<
 	| 'settings.migrationReport.detail.notify.skipped.noOwner'
 	| 'settings.migrationReport.detail.notify.skipped.noFinding'
 	| 'settings.migrationReport.detail.notify.skipped.sendFailed'
+	| 'settings.migrationReport.detail.notify.skipped.recentlyNotified'
 > = {
 	no_owner: 'settings.migrationReport.detail.notify.skipped.noOwner',
 	no_finding: 'settings.migrationReport.detail.notify.skipped.noFinding',
 	send_failed: 'settings.migrationReport.detail.notify.skipped.sendFailed',
+	recently_notified: 'settings.migrationReport.detail.notify.skipped.recentlyNotified',
 };
 
 /**
@@ -485,8 +500,11 @@ async function notifyOwners(
 		const notifiedAt = new Date();
 		state.value = {
 			...state.value,
+			// The server marks only an open or notified finding, so a fix that is not published keeps its state.
 			affectedWorkflows: state.value.affectedWorkflows.map((row) =>
-				notified.has(row.id) ? { ...row, status: 'notified', notifiedAt } : row,
+				notified.has(row.id) && row.status !== 'fixed_unpublished'
+					? { ...row, status: 'notified', notifiedAt }
+					: row,
 			),
 		};
 		return result;
@@ -535,6 +553,20 @@ const bulkNotifyTargets = computed(() =>
 	selectedWorkflows.value.filter((workflow) => canNotifyRow(workflow) && !isBusy(workflow)),
 );
 
+// The backend sends one email per owner, listing all of their selected workflows.
+const bulkNotifyOwnerCount = computed(
+	() => new Set(bulkNotifyTargets.value.map((workflow) => workflow.owner?.id)).size,
+);
+
+const bulkNotifyLabel = computed(() =>
+	bulkNotifyOwnerCount.value > 0
+		? i18n.baseText('settings.migrationReport.detail.bulk.notifyOwnerCount', {
+				adjustToNumber: bulkNotifyOwnerCount.value,
+				interpolate: { count: String(bulkNotifyOwnerCount.value) },
+			})
+		: i18n.baseText('settings.migrationReport.detail.bulk.notifyOwners'),
+);
+
 const isBulkNotifying = computed(() =>
 	selectedWorkflows.value.some((workflow) => notifyingWorkflowIds.value.has(workflow.id)),
 );
@@ -580,6 +612,97 @@ function reviewUnusedWorkflows() {
 	searchInput.value = '';
 	searchQuery.value = '';
 	workflowFilters.value = { ...UNUSED_WORKFLOW_FILTERS };
+}
+
+// The open archive dialog, if any. The page does the work when the user confirms.
+const archiveDialog = ref<{ mode: ArchiveWorkflowsModalMode; workflows: AffectedWorkflow[] }>();
+
+function onArchiveDialogConfirm() {
+	if (!archiveDialog.value) return;
+	const { mode, workflows } = archiveDialog.value;
+	void (mode === 'prompt' ? archiveWorkflows(workflows) : markWontFixAndArchive(workflows));
+}
+
+/**
+ * On a rule whose executions will fail, a won't fix usually means the workflow is
+ * not needed. So a won't fix from the row asks to archive it too. On other rules
+ * the workflow often keeps running, so the row does not ask.
+ */
+function promptToArchive(workflow: AffectedWorkflow) {
+	if (state.value.ruleImpact !== 'executionsFail' || workflow.isArchived) return;
+	archiveDialog.value = { mode: 'prompt', workflows: [workflow] };
+}
+
+const bulkArchiveTargets = computed(() =>
+	selectedWorkflows.value.filter(
+		(workflow) => isSelectable(workflow) && !isBusy(workflow) && !workflow.isArchived,
+	),
+);
+
+const bulkWontFixActions = computed(() => [
+	{
+		label: i18n.baseText('settings.migrationReport.detail.bulk.wontFixAndArchive'),
+		value: 'wontFixAndArchive',
+		disabled: bulkArchiveTargets.value.length === 0,
+	},
+]);
+
+function onBulkWontFixAndArchive() {
+	const workflows = bulkArchiveTargets.value;
+	if (workflows.length === 0) return;
+	if (!workflows.some((workflow) => workflow.active)) {
+		void markWontFixAndArchive(workflows);
+		return;
+	}
+	archiveDialog.value = { mode: 'confirm', workflows };
+}
+
+async function markWontFixAndArchive(workflows: AffectedWorkflow[]) {
+	const toMark = workflows.filter((workflow) => findingState(workflow) !== 'wont_fix');
+	if (toMark.length > 0 && !(await changeFindingStatuses(toMark, 'wont_fix'))) return;
+	const done = new Set(workflows.map((workflow) => workflow.id));
+	selectedWorkflowIds.value = selectedWorkflowIds.value.filter((id) => !done.has(id));
+	await archiveWorkflows(workflows);
+}
+
+async function archiveWorkflows(workflows: AffectedWorkflow[]) {
+	const count = workflows.length;
+	// One request per workflow. A bulk archive endpoint would be faster for large selections.
+	const archivedIds = new Set<string>();
+	for (const workflow of workflows) {
+		try {
+			await workflowsStore.archiveWorkflow(workflow.id);
+			archivedIds.add(workflow.id);
+		} catch {
+			// Counted below. The user may triage a workflow without the right to archive it.
+		}
+	}
+
+	state.value = {
+		...state.value,
+		affectedWorkflows: state.value.affectedWorkflows.map((workflow) =>
+			// Archiving also unpublishes the workflow, as the server does.
+			archivedIds.has(workflow.id) ? { ...workflow, isArchived: true, active: false } : workflow,
+		),
+	};
+
+	if (archivedIds.size === count) {
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.migrationReport.detail.wontFix.archive.success.title', {
+				adjustToNumber: count,
+				interpolate: { count: String(count) },
+			}),
+		});
+	} else {
+		toast.showMessage({
+			type: 'warning',
+			title: i18n.baseText('settings.migrationReport.detail.wontFix.archive.partial.title', {
+				interpolate: { archived: String(archivedIds.size), total: String(count) },
+			}),
+			message: i18n.baseText('settings.migrationReport.detail.wontFix.archive.partial.message'),
+		});
+	}
 }
 
 async function markUnusedWorkflowsAsWontFix() {
@@ -652,7 +775,13 @@ function onSortChange(value: string) {
 // Filter state
 const searchInput = ref('');
 const searchQuery = ref(''); // Debounced value for filtering
-const workflowFilters = ref<WorkflowFilters>({ ...DEFAULT_WORKFLOW_FILTERS });
+// The notification email links here with `?owner=me` to show the recipient's workflows.
+const workflowFilters = ref<WorkflowFilters>({
+	...DEFAULT_WORKFLOW_FILTERS,
+	...(route.query.owner === 'me' && usersStore.currentUserId
+		? { owner: usersStore.currentUserId }
+		: {}),
+});
 
 // Debounced search to avoid excessive filtering
 const debouncedSearch = useDebounceFn((value: string) => {
@@ -669,10 +798,8 @@ function findingState(workflow: AffectedWorkflow): MigrationFindingListedStatus 
 	return migratedWorkflowIds.value.has(workflow.id) ? 'migrated' : workflow.status;
 }
 
-// A notified finding still needs a fix, so it counts as open.
 function isUnresolved(workflow: AffectedWorkflow): boolean {
-	const findingStatus = findingState(workflow);
-	return findingStatus === 'open' || findingStatus === 'notified';
+	return isUnresolvedState(findingState(workflow));
 }
 
 const wontFixCount = computed(
@@ -712,6 +839,33 @@ const ownerFilterOptions = computed(() => {
 	);
 });
 
+// Personal projects show as one "Personal" label, the Owner column names the person.
+function projectLabel(workflow: AffectedWorkflow): string {
+	if (workflow.homeProjectType === 'personal') {
+		return i18n.baseText('settings.migrationReport.detail.filters.project.personal');
+	}
+	return workflow.homeProjectName ?? '—';
+}
+
+// The projects of the listed workflows, for the project filter. Personal projects share one option.
+const projectFilterOptions = computed(() => {
+	const projects = new Map<string, string>();
+	let hasPersonal = false;
+	for (const workflow of state.value.affectedWorkflows) {
+		if (workflow.homeProjectType === 'personal') hasPersonal = true;
+		else if (workflow.homeProjectType === 'team' && workflow.homeProjectId) {
+			projects.set(workflow.homeProjectId, workflow.homeProjectName ?? workflow.homeProjectId);
+		}
+	}
+	const teamOptions = orderBy(
+		[...projects].map(([id, label]) => ({ id, label })),
+		[(project) => project.label.toLowerCase()],
+	);
+	if (!hasPersonal) return teamOptions;
+	const personalLabel = i18n.baseText('settings.migrationReport.detail.filters.project.personal');
+	return [{ id: PERSONAL_PROJECTS, label: personalLabel }, ...teamOptions];
+});
+
 const filteredWorkflows = computed(() => {
 	const query = searchQuery.value.toLowerCase();
 	const now = Date.now();
@@ -747,6 +901,29 @@ const sortedWorkflows = computed(() => {
 	const { id, desc } = sortBy.value[0];
 	return orderBy(filteredWorkflows.value, [sortValues[id] ?? id], [desc ? 'desc' : 'asc']);
 });
+
+const page = ref(0);
+const itemsPerPage = ref(25);
+
+const pagedWorkflows = computed(() =>
+	sortedWorkflows.value.slice(
+		page.value * itemsPerPage.value,
+		(page.value + 1) * itemsPerPage.value,
+	),
+);
+
+watch([searchQuery, workflowFilters, sortBy], () => {
+	page.value = 0;
+});
+
+// Resolving rows can empty the last page, so the page moves back to the last one with rows.
+watch(
+	() => sortedWorkflows.value.length,
+	(length) => {
+		const lastPage = Math.max(0, Math.ceil(length / itemsPerPage.value) - 1);
+		if (page.value > lastPage) page.value = lastPage;
+	},
+);
 </script>
 
 <template>
@@ -784,6 +961,14 @@ const sortedWorkflows = computed(() => {
 				</N8nBadge>
 			</template>
 		</N8nSettingsPageHeader>
+
+		<HowToFixPanel
+			v-if="!isLoading"
+			:class="$style.howToFix"
+			:recommendations="state.recommendations"
+			:documentation-url="state.ruleDocumentationUrl"
+			:migratable="state.migratable"
+		/>
 
 		<div
 			v-if="!isLoading && unusedOpenWorkflows.length > 0"
@@ -854,6 +1039,7 @@ const sortedWorkflows = computed(() => {
 			<WorkflowFiltersPopover
 				v-model="workflowFilters"
 				:owners="ownerFilterOptions"
+				:projects="projectFilterOptions"
 				:current-user-id="currentUserId"
 				:counts="quickFilterCounts"
 			/>
@@ -863,42 +1049,70 @@ const sortedWorkflows = computed(() => {
 			:key="String(state.migratable)"
 			v-model:sort-by="sortBy"
 			v-model:selection="selectedWorkflowIds"
+			v-model:page="page"
+			v-model:items-per-page="itemsPerPage"
 			show-select
 			:item-selectable="isSelectable"
-			:items-per-page="sortedWorkflows.length + 1"
-			:items="sortedWorkflows"
+			:items="pagedWorkflows"
 			:items-length="sortedWorkflows.length"
 			:headers="tableHeaders"
 			:loading="isLoading"
 		>
 			<template #[`item.name`]="{ item }">
 				<div :class="$style.cellStack">
-					<N8nLink
-						theme="text"
-						:to="workflowUrl(item)"
-						new-window
-						:title="item.name"
-						:class="[$style.truncate, $style.workflowName]"
-						data-test-id="migration-workflow-name-link"
-					>
-						{{ item.name }}
-					</N8nLink>
-					<N8nText size="small" color="text-light">
-						{{
-							item.active
-								? i18n.baseText('settings.migrationReport.detail.table.published')
-								: i18n.baseText('settings.migrationReport.detail.table.notPublished')
-						}}
-						·
-						<I18nT
-							keypath="settings.migrationReport.detail.table.updated"
-							tag="span"
-							scope="global"
+					<div :class="$style.nameRow">
+						<N8nTooltip
+							v-if="item.active"
+							:content="i18n.baseText('settings.migrationReport.detail.table.published')"
 						>
-							<template #time>
-								<TimeAgo :date="item.lastUpdatedAt.toString()" />
-							</template>
-						</I18nT>
+							<span
+								:class="$style.publishedDot"
+								role="img"
+								:aria-label="i18n.baseText('settings.migrationReport.detail.table.published')"
+								data-test-id="migration-workflow-published"
+							>
+								<N8nStatusDot variant="success" />
+							</span>
+						</N8nTooltip>
+						<N8nLink
+							theme="text"
+							:to="workflowUrl(item)"
+							new-window
+							:title="item.name"
+							:class="[$style.truncate, $style.workflowName]"
+							data-test-id="migration-workflow-name-link"
+						>
+							{{ item.name }}
+						</N8nLink>
+					</div>
+					<N8nText size="small" color="text-light" :class="$style.nameDetails">
+						<span
+							:class="$style.project"
+							:title="projectLabel(item)"
+							data-test-id="migration-workflow-project"
+						>
+							<ProjectIcon
+								:icon="{
+									type: 'icon',
+									value: item.homeProjectType === 'personal' ? 'user' : 'layers',
+								}"
+								border-less
+								size="mini"
+							/>
+							<span :class="$style.truncate">{{ projectLabel(item) }}</span>
+						</span>
+						<span :class="$style.updated">
+							·
+							<I18nT
+								keypath="settings.migrationReport.detail.table.updated"
+								tag="span"
+								scope="global"
+							>
+								<template #time>
+									<TimeAgo :date="item.lastUpdatedAt.toString()" />
+								</template>
+							</I18nT>
+						</span>
 					</N8nText>
 				</div>
 			</template>
@@ -1027,14 +1241,19 @@ const sortedWorkflows = computed(() => {
 						@click="openMigrateModal(selectedWorkflows)"
 					/>
 					<template v-if="canNotify">
-						<N8nButton
-							variant="outline"
-							:label="i18n.baseText('settings.migrationReport.detail.bulk.notifyOwners')"
-							:disabled="bulkNotifyTargets.length === 0"
-							:loading="isBulkNotifying"
-							data-test-id="migration-bulk-notify-button"
-							@click="onBulkNotify"
-						/>
+						<N8nTooltip
+							:content="i18n.baseText('settings.migrationReport.detail.bulk.notify.tooltip')"
+							:disabled="bulkNotifyOwnerCount === 0"
+						>
+							<N8nButton
+								variant="outline"
+								:label="bulkNotifyLabel"
+								:disabled="bulkNotifyTargets.length === 0"
+								:loading="isBulkNotifying"
+								data-test-id="migration-bulk-notify-button"
+								@click="onBulkNotify"
+							/>
+						</N8nTooltip>
 						<N8nText
 							v-if="selectedWithoutOwnerCount > 0"
 							size="small"
@@ -1048,12 +1267,14 @@ const sortedWorkflows = computed(() => {
 							}}
 						</N8nText>
 					</template>
-					<N8nButton
-						variant="outline"
+					<SplitButton
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.wontFix')"
 						:disabled="bulkTargets('wont_fix').length === 0"
+						:actions="bulkWontFixActions"
+						:toggle-label="i18n.baseText('settings.migrationReport.detail.bulk.wontFixMore')"
 						data-test-id="migration-bulk-wont-fix-button"
 						@click="onBulkStatusChange('wont_fix')"
+						@action="onBulkWontFixAndArchive"
 					/>
 					<N8nButton
 						variant="outline"
@@ -1065,6 +1286,13 @@ const sortedWorkflows = computed(() => {
 				</template>
 			</N8nSelectedItemsInfo>
 		</div>
+		<ArchiveWorkflowsModal
+			v-if="archiveDialog"
+			:mode="archiveDialog.mode"
+			:workflows="archiveDialog.workflows"
+			@confirm="onArchiveDialogConfirm"
+			@close="archiveDialog = undefined"
+		/>
 	</N8nSettingsLayout>
 </template>
 
@@ -1075,6 +1303,10 @@ const sortedWorkflows = computed(() => {
 	width: 100%;
 	max-width: var(--settings-content--max-width, 45rem);
 	margin-inline: auto;
+}
+
+.howToFix {
+	margin-bottom: var(--spacing--md);
 }
 
 .unusedCallout {
@@ -1111,6 +1343,37 @@ const sortedWorkflows = computed(() => {
 /* The ellipsis takes the anchor color, so match it to the link text. */
 .workflowName {
 	color: var(--color--text);
+}
+
+/* A dot before the name shows the published state, so the second line has room for the project. */
+.nameRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.publishedDot {
+	display: inline-flex;
+	flex-shrink: 0;
+}
+
+.nameDetails {
+	display: flex;
+	gap: var(--spacing--4xs);
+	white-space: nowrap;
+}
+
+/* A long project name truncates, so the updated time stays in view. */
+.project {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.updated {
+	flex-shrink: 0;
 }
 
 .nodeNames {

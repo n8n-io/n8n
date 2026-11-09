@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import {
 	CacheService,
+	EventService,
 	JwtService,
 	type OAuthDiscoveryClient,
 	UrlService,
@@ -61,6 +62,7 @@ beforeAll(async () => {
 		Container.get(TrustedSourceDbStore),
 		offline,
 		Container.get(LocalAuthorizationServer),
+		Container.get(EventService),
 	);
 	await discovery.refresh('n8n-internal');
 	await Container.get(CacheService).reset();

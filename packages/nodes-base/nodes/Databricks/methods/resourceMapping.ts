@@ -67,8 +67,14 @@ export async function getLakebaseMappingColumns(
 	return {
 		// The document marks every NOT NULL column required, including ones the
 		// database fills in, so asking for those would demand a value twice.
+		// PostgREST also omits nextval() defaults, so we treat an integer primary key
+		// as a sequence key. One with no default at all fails on insert instead.
 		fields: columns.map((column) => {
-			const required = column.isRequired && !column.hasDefault && !column.isReadOnly;
+			const required =
+				column.isRequired &&
+				!column.hasDefault &&
+				!column.isReadOnly &&
+				!(column.isPrimaryKey && column.type === 'integer');
 			return {
 				id: column.name,
 				displayName: labelOf(column, required),

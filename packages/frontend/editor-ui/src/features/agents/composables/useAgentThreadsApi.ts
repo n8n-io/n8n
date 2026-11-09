@@ -5,6 +5,8 @@ import type {
 	AgentSessionLangSmithExportResponse,
 	AgentSessionOrigin,
 	AgentSessionStatus,
+	AgentSessionStopResponse,
+	AgentThreadMemoryDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -119,6 +121,7 @@ export interface AgentExecution {
 export interface ThreadDetail {
 	thread: AgentExecutionThread;
 	executions: AgentExecution[];
+	memory?: AgentThreadMemoryDto;
 }
 
 export interface ThreadsPage {
@@ -193,6 +196,19 @@ export const resumeTaskApproval = async (
 		'POST',
 		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}/approval`,
 		body,
+	);
+};
+
+export const stopSession = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<AgentSessionStopResponse> => {
+	return await makeRestApiRequest<AgentSessionStopResponse>(
+		context,
+		'POST',
+		`${agentBasePath(projectId, agentId)}/threads/${encodeURIComponent(threadId)}/stop`,
 	);
 };
 

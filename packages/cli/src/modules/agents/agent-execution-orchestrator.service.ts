@@ -17,8 +17,8 @@ import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { OperationalError, UserError } from '@n8n/errors';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
-import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
@@ -128,6 +128,8 @@ interface ChatExecutionCallbacks {
 }
 
 export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionCallbacks {
+	pauseReport?: boolean;
+	hideUserMessageFromTranscript?: boolean;
 	/**
 	 * The calling n8n user — used to gate node/workflow tools by their access,
 	 * and for RBAC / credential resolution and telemetry attribution. Always
@@ -160,6 +162,8 @@ export interface ExecuteForChatPublishedConfig extends ChatExecutionInput {
 	author?: AgentMessageAuthor;
 	integrationType?: string;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
+	/** Set to false when the channel cannot receive background job wakes. Defaults to true. */
+	allowBackgroundTasks?: boolean;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
 	// run is triggered by an inbound platform event, not an interactive n8n
 	// session — there is no n8n `User` to attach. The admin who published the
@@ -173,6 +177,8 @@ export interface ExecuteForN8nChatPublishedConfig
 		ChatExecutionCallbacks {
 	user: User;
 	abortSignal?: AbortSignal;
+	pauseReport?: boolean;
+	hideUserMessageFromTranscript?: boolean;
 }
 
 export interface ResumeForChatConfig extends ChatExecutionCallbacks {
@@ -203,6 +209,8 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
 	integrationType?: string;
+	/** Set to false when the channel cannot receive background job wakes. Defaults to true. */
+	allowBackgroundTasks?: boolean;
 	/** The chat surface this resume runs under. Undefined for integrations. */
 	chatSurface?: AgentChatSurface;
 	/** Preview chat sends the approaching-budget card. The run continues. */
@@ -861,6 +869,7 @@ export class AgentExecutionOrchestratorService {
 						integrationType,
 						usePublishedVersion: true,
 						sandboxPrincipalHash,
+						allowBackgroundTasks: config.allowBackgroundTasks,
 					},
 					{
 						threadId: memory.threadId,
@@ -999,6 +1008,8 @@ export class AgentExecutionOrchestratorService {
 					sandboxPrincipalHash: setup.sandboxPrincipalHash,
 					sessionMode,
 					abortSignal,
+					pauseReport: config.pauseReport,
+					hideUserMessageFromTranscript: config.hideUserMessageFromTranscript,
 					onExecutionStarted: config.onExecutionStarted,
 					onExecutionRecorded: config.onExecutionRecorded,
 				});
@@ -1177,6 +1188,7 @@ export class AgentExecutionOrchestratorService {
 					abortSignal,
 					delivery,
 					messageContext?.interactingUserId,
+					memory.threadId,
 				),
 		);
 		for await (const _chunk of stream) {
@@ -1189,6 +1201,7 @@ export class AgentExecutionOrchestratorService {
 		abortSignal: AbortSignal,
 		delivery?: { bridge: AgentChatBridge; threadId: string },
 		cardRecipientId?: string,
+		agentThreadId?: string,
 	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const chunks: AgentExecutionStreamChunk[] = [];
 		let runError: unknown;
@@ -1206,7 +1219,12 @@ export class AgentExecutionOrchestratorService {
 		}
 		abortSignal.throwIfAborted();
 		if (delivery)
-			await delivery.bridge.deliverWakeResponse(delivery.threadId, chunks, cardRecipientId);
+			await delivery.bridge.deliverWakeResponse(
+				delivery.threadId,
+				chunks,
+				cardRecipientId,
+				agentThreadId,
+			);
 	}
 
 	private async getWakeDelivery(
@@ -1248,6 +1266,7 @@ export class AgentExecutionOrchestratorService {
 		if (!config.admittedExecution && !config.isWakeRun) {
 			await this.settingsService.assertEnabled();
 		}
+
 		yield* this.turnExecutionService.execute({
 			admittedExecution: config.admittedExecution,
 			onAdmitted: config.onAdmitted,
@@ -1262,6 +1281,7 @@ export class AgentExecutionOrchestratorService {
 			backgroundJobSignal: config.backgroundJobSignal,
 			onExecutionRecorded: config.onExecutionRecorded,
 			chatSurface: config.chatSurface,
+			acceptsSteering: !config.pauseReport,
 			onExecutionStarted: config.onExecutionStarted,
 			onSettled: config.isWakeRun
 				? undefined
@@ -1390,6 +1410,7 @@ export class AgentExecutionOrchestratorService {
 			onExecutionRecorded,
 			abortSignal,
 			chatSurface,
+			allowBackgroundTasks,
 		} = config;
 		const previewChat = chatSurface === 'preview';
 		const { memoryScope, sandboxPrincipalHash, scope } = checkpoint;
@@ -1399,6 +1420,7 @@ export class AgentExecutionOrchestratorService {
 				projectId,
 				usePublishedVersion,
 				integrationType,
+				allowBackgroundTasks,
 				user: scope.runtime.user,
 				attributionUserId: scope.runtime.attributionUserId,
 				...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
@@ -1741,7 +1763,10 @@ export class AgentExecutionOrchestratorService {
 			sessionMode,
 		} = config;
 		const messageContext = this.createN8nChatMessageContext(memory, user.id);
+
 		return this.streamChatResponse({
+			pauseReport: config.pauseReport,
+			hideUserMessageFromTranscript: config.hideUserMessageFromTranscript,
 			admittedExecution: config.admittedExecution,
 			onAdmitted: async () =>
 				await this.integrationMessageContextService.setLatest(
@@ -1963,6 +1988,7 @@ export class AgentExecutionOrchestratorService {
 		messageContext: IntegrationMessageContext | null,
 	) {
 		const { agentId, message, memory, identity, abortSignal } = config;
+
 		// A wake carries no `episodicScope`: the background job record does not store the
 		// originating turn's decision, so a wake on an integration thread runs without episodic memory.
 		return this.streamChatResponse({
@@ -1989,7 +2015,7 @@ export class AgentExecutionOrchestratorService {
 			isWakeRun: true,
 			pauseReport: config.pauseReport,
 			sessionMode: 'existing',
-			backgroundJobSignal: config.backgroundJobSignal,
+			backgroundJobSignal: config.pauseReport ? undefined : config.backgroundJobSignal,
 		});
 	}
 }

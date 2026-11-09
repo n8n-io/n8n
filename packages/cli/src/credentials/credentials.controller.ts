@@ -4,6 +4,8 @@ import {
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
 	TestCredentialRequestDto,
+	TransferPreviewQueryDto,
+	type CredentialTransferPreview,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, CredentialsFinderService } from '@n8n/backend-services';
@@ -119,6 +121,7 @@ export class CredentialsController {
 		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, {
 			...scope,
 			excludePersonalRoute: forAgent === 'true',
+			excludeResolvable: forAgent === 'true',
 		});
 	}
 
@@ -250,6 +253,10 @@ export class CredentialsController {
 			jweEnabled: payload.data.jweEnabled === true,
 			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(newCredential.type),
 			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(newCredential.type, payload.data),
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				newCredential.type,
+				payload.data,
+			),
 		});
 
 		if (newCredential.isResolvable) {
@@ -417,6 +424,10 @@ export class CredentialsController {
 			jweEnabled: updatedData.jweEnabled === true,
 			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(credential.type),
 			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(credential.type, updatedData),
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				credential.type,
+				updatedData,
+			),
 		});
 
 		const wasResolvable = Boolean(credential.isResolvable);
@@ -608,6 +619,21 @@ export class CredentialsController {
 			newShareeIds: projectsRelations.map((pr) => pr.userId),
 			credentialsName: credential.name,
 		});
+	}
+
+	@Get('/:credentialId/transfer-preview')
+	@ProjectScope('credential:move')
+	async transferPreview(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+		@Query query: TransferPreviewQueryDto,
+	): Promise<CredentialTransferPreview> {
+		return await this.enterpriseCredentialsService.previewTransfer(
+			req.user,
+			credentialId,
+			query.destinationProjectId,
+		);
 	}
 
 	@Put('/:credentialId/transfer')

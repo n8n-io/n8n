@@ -6,11 +6,13 @@ import { mock } from 'vitest-mock-extended';
 
 import { ScimAuthMiddleware } from '../scim-auth.middleware';
 import type { ScimSettingsService } from '../scim-settings.service';
+import type { ScimSsoService } from '../scim-sso.service';
 import type { ScimTokenService } from '../scim-token.service';
 
 describe('ScimAuthMiddleware', () => {
 	let scimTokenService: Mocked<ScimTokenService>;
 	let scimSettingsService: Mocked<ScimSettingsService>;
+	let scimSsoService: Mocked<ScimSsoService>;
 	let middleware: ScimAuthMiddleware;
 	let res: Mocked<Response>;
 	let next: NextFunction;
@@ -22,7 +24,14 @@ describe('ScimAuthMiddleware', () => {
 		scimTokenService = mock<ScimTokenService>();
 		scimSettingsService = mock<ScimSettingsService>();
 		scimSettingsService.isEnabled.mockResolvedValue(true);
-		middleware = new ScimAuthMiddleware(mock<Logger>(), scimTokenService, scimSettingsService);
+		scimSsoService = mock<ScimSsoService>();
+		scimSsoService.isSsoEnabled.mockReturnValue(true);
+		middleware = new ScimAuthMiddleware(
+			mock<Logger>(),
+			scimTokenService,
+			scimSettingsService,
+			scimSsoService,
+		);
 		res = mock<Response>();
 		res.status.mockReturnValue(res);
 		res.header.mockReturnValue(res);
@@ -36,6 +45,25 @@ describe('ScimAuthMiddleware', () => {
 		await middleware.authenticate(requestWithAuth('Bearer valid-token'), res, next);
 
 		expect(res.status).toHaveBeenCalledWith(403);
+		expect(scimTokenService.verifyApiKey).not.toHaveBeenCalled();
+		expect(next).not.toHaveBeenCalled();
+	});
+
+	// Single sign-on can turn off without the cascade, for example when the
+	// SSO license expires.
+	it('should reject all requests with a SCIM error while single sign-on is off', async () => {
+		scimSsoService.isSsoEnabled.mockReturnValue(false);
+		scimTokenService.verifyApiKey.mockResolvedValue(true);
+
+		await middleware.authenticate(requestWithAuth('Bearer valid-token'), res, next);
+
+		expect(res.status).toHaveBeenCalledWith(403);
+		expect(res.header).toHaveBeenCalledWith('Content-Type', 'application/scim+json');
+		expect(res.json).toHaveBeenCalledWith({
+			schemas: ['urn:ietf:params:scim:api:messages:2.0:Error'],
+			status: '403',
+			detail: 'SCIM provisioning requires SAML or OIDC single sign-on',
+		});
 		expect(scimTokenService.verifyApiKey).not.toHaveBeenCalled();
 		expect(next).not.toHaveBeenCalled();
 	});

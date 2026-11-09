@@ -63,11 +63,11 @@ const OPTIONS: ApprovalEntryOption[] = [
 function renderComponent({
 	modelValue,
 	options = OPTIONS,
-	hideDisabledOption = false,
+	selectionOnly = false,
 }: {
 	modelValue?: AgentApproval;
 	options?: ApprovalEntryOption[];
-	hideDisabledOption?: boolean;
+	selectionOnly?: boolean;
 } = {}) {
 	return mount(AgentApprovalSelector, {
 		props: {
@@ -77,7 +77,7 @@ function renderComponent({
 			hint: 'hint',
 			placeholder: 'placeholder',
 			testIdPrefix: 'approval',
-			hideDisabledOption,
+			selectionOnly,
 		},
 	});
 }
@@ -176,18 +176,47 @@ describe('AgentApprovalSelector', () => {
 		expect(wrapper.text()).toContain('Could not load');
 	});
 
-	it('hides the disabled option when the caller wraps it in a toggle', () => {
+	it('shows all saved global actions without changing the approval', async () => {
 		const wrapper = renderComponent({
 			modelValue: { mode: 'global' },
-			hideDisabledOption: true,
+			selectionOnly: true,
+			options: [],
 		});
 
-		const offered = wrapper
-			.find('[data-testid="approval-mode"]')
-			.findAll('[data-value]')
-			.map((option) => option.attributes('data-value'));
+		await wrapper.setProps({ options: OPTIONS });
 
-		expect(offered).not.toContain('disabled');
-		expect(offered).toEqual(['global', 'selected']);
+		expect(wrapper.find('[data-testid="approval-mode"]').exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'N8nSelect' }).props('modelValue')).toEqual([
+			'send_dm',
+			'send_channel_message',
+		]);
+		expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+	});
+
+	it('lets the entry picker narrow a saved global approval', async () => {
+		const wrapper = renderComponent({
+			modelValue: { mode: 'global' },
+			selectionOnly: true,
+		});
+
+		wrapper.findComponent({ name: 'N8nSelect' }).vm.$emit('update:modelValue', ['send_dm']);
+		await nextTick();
+
+		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
+			{ mode: 'selected', tools: ['send_dm'] },
+		]);
+	});
+
+	it('reports a cleared selection as invalid when there is no mode picker', async () => {
+		const wrapper = renderComponent({
+			modelValue: { mode: 'global' },
+			selectionOnly: true,
+		});
+
+		wrapper.findComponent({ name: 'N8nSelect' }).vm.$emit('update:modelValue', []);
+		await nextTick();
+
+		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{ mode: 'selected', tools: [] }]);
+		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([false]);
 	});
 });

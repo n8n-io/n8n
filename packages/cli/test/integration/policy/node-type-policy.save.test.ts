@@ -337,31 +337,42 @@ describe('POST /workflows', () => {
 	});
 });
 
-describe('PUT /workflows/:workflowId/transfer', () => {
-	test('judges the workflow against the target project, with no grandfathering', async () => {
-		const workflow = await createWorkflow(
+describe('moving a workflow to another project', () => {
+	const movingWorkflow = async () =>
+		await createWorkflow(
 			{ name: 'Moving workflow', nodes: [node(MANUAL_TRIGGER), node(SET)], connections: {} },
 			otherProject,
 		);
+
+	test('previews the workflow against the target project, with no grandfathering', async () => {
+		const workflow = await movingWorkflow();
 		await putProjectPolicy(project.id, { rules: [rule('deny-set', 'deny', SET)] });
 
 		const response = await adminAgent
-			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ destinationProjectId: project.id })
-			.expect(403);
+			.get(`/workflows/${workflow.id}/transfer-preview`)
+			.query({ destinationProjectId: project.id })
+			.expect(200);
 
-		expect(response.body).toMatchObject({
-			code: 403,
-			meta: { violations: [violationFor(SET, 'project', 'deny-set', { projectId: project.id })] },
-		});
+		expect(response.body.data.restricted).toEqual([
+			violationFor(SET, 'project', 'deny-set', { projectId: project.id }),
+		]);
 	});
 
-	test('allows the transfer when only the source project restricts the type', async () => {
-		const workflow = await createWorkflow(
-			{ name: 'Moving workflow', nodes: [node(MANUAL_TRIGGER), node(SET)], connections: {} },
-			otherProject,
-		);
+	test('previews nothing when only the source project restricts the type', async () => {
+		const workflow = await movingWorkflow();
 		await putProjectPolicy(otherProject.id, { rules: [rule('deny-set', 'deny', SET)] });
+
+		const response = await adminAgent
+			.get(`/workflows/${workflow.id}/transfer-preview`)
+			.query({ destinationProjectId: project.id })
+			.expect(200);
+
+		expect(response.body.data.restricted).toEqual([]);
+	});
+
+	test('moves the workflow although the target project restricts the type', async () => {
+		const workflow = await movingWorkflow();
+		await putProjectPolicy(project.id, { rules: [rule('deny-set', 'deny', SET)] });
 
 		await adminAgent
 			.put(`/workflows/${workflow.id}/transfer`)

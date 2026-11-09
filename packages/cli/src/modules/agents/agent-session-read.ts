@@ -1,6 +1,10 @@
 import type { AgentSessionDetail } from './agent-context.contracts';
 import type { ThreadDetail } from './agent-execution.service';
 
+export function toSessionTitle(title: string | null, sessionNumber: number): string {
+	return title?.trim() || `Session #${sessionNumber}`;
+}
+
 export function toAgentSessionDetail({ thread, executions }: ThreadDetail): AgentSessionDetail {
 	return {
 		thread: {

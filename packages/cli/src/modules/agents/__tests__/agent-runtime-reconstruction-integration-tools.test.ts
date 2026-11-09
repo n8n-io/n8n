@@ -1,3 +1,4 @@
+import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 import {
 	type CredentialsFinderService,
 	type EventService,
@@ -20,6 +21,8 @@ import type {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
+
+import type { N8nChatFlagService } from '../integrations/platforms/n8n-chat/n8n-chat-flag.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -39,7 +42,6 @@ import type { AgentChatAttachmentService } from '../agent-chat-attachment.servic
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentConfigService } from '../agent-config.service';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
-import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -57,6 +59,7 @@ import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentDefinitionService } from '../agent-definition.service';
@@ -154,6 +157,7 @@ function makeRuntimeReconstructionService(
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
+		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
 	);
 }
@@ -214,7 +218,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 	let telemetry: Mocked<Telemetry>;
 	let runtimeCacheService: AgentRuntimeCacheService;
 	let agentConfigService: AgentConfigService;
-	let agentCustomToolsService: AgentCustomToolsService;
 	let agentExecutionOrchestratorService: AgentExecutionOrchestratorService;
 	let agentIntegrationPersistenceService: AgentIntegrationPersistenceService;
 	let agentPublishService: AgentPublishService;
@@ -277,6 +280,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		agentRepository.hasRevision.mockResolvedValue(true);
 		const definitionService = new AgentDefinitionService(
 			agentTaskRepository,
+			agentHistoryRepository,
 			agentTaskSnapshotRepository,
 			agentRepository,
 			transactionRunner,
@@ -300,12 +304,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			saveCompletion,
 			skillRefs,
 			mock<ChatIntegrationRegistry>(),
-		);
-		agentCustomToolsService = new AgentCustomToolsService(
-			logger,
-			agentRepository,
-			saveCompletion,
-			skillRefs,
+			mock<AgentDefinitionService>(),
 		);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
 			logger,
@@ -318,6 +317,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				mock<AgentMessageQueueService>(),
 				mock<AgentMessageSteeringService>(),
 				mock<AgentToolApprovalService>(),
+				mock<AgentKnowledgeUsageTracker>(),
 			),
 			telemetry,
 			runtimeCacheService,
@@ -343,6 +343,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			mock<AgentSetupCompletionService>(),
 			skillRefs,
+			mock<N8nChatFlagService>(),
+			mock<AgentDefinitionService>(),
+			transactionRunner,
 		);
 		agentValidationService = new AgentValidationService(
 			agentRepository,
@@ -352,14 +355,13 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			chatIntegrationRegistry,
 			mock<AiGatewayService>(),
 			skillRefs,
+			// No enforcement implementation is registered, so every evaluation comes back clear.
+			new AgentPolicyService(new PolicyEnforcementService()),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,
 			agentRepository,
 			agentHistoryRepository,
-			agentTaskSnapshotRepository,
-			agentTaskRepository,
-			agentCustomToolsService,
 			runtimeCacheService,
 			agentValidationService,
 			credentialsService,
@@ -372,6 +374,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			definitionService,
 			new AgentPolicyService(new PolicyEnforcementService()),
 			skillRefs,
+			mock<AgentFileRepository>({
+				getKnowledgeTotals: async () => ({ fileCount: 0, totalBytes: 0 }),
+			}),
+			mock<AgentPublishHistoryRepository>(),
+			makeKnowledgeAvailabilityService(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(
@@ -395,6 +402,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentConfigPreparationService>(),
 			saveCompletion,
 			mock<AgentSetupCompletionService>(),
+			mock<N8nChatFlagService>(),
+			mock<AgentDefinitionService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(
@@ -486,12 +495,24 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			expect(runtimeAgent.nativeToolDeferral).toHaveBeenCalledWith({
 				eagerToolNames: [
 					'workspace_read_file',
+					'workspace_read_files',
 					'workspace_read_tool_result',
 					'workspace_write_file',
 					'workspace_str_replace_file',
+					'workspace_edit_files',
 					'workspace_execute_command',
 					'load_skill',
 					'mark_session_failed',
+					'delegate_subagent',
+					'write_todos',
+					'read_binary_data',
+					'get_environment',
+					'recall_memory',
+					'flag_memory',
+					'create_plan',
+					'read_plan',
+					'update_plan',
+					'close_plan',
 				],
 			});
 

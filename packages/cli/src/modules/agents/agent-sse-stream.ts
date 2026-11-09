@@ -1,9 +1,11 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
-import type {
-	AgentPersistedMessageContentPart,
-	AgentSseEvent,
-	AgentSseMessage,
-	ToolSuspendedPayload,
+import {
+	AGENT_CHAT_ERROR_CODES,
+	type AgentPersistedMessageContentPart,
+	type AgentSseEvent,
+	type AgentSseMessage,
+	type AgentTokenUsage,
+	type ToolSuspendedPayload,
 } from '@n8n/api-types';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { Response } from 'express';
@@ -76,8 +78,9 @@ export function initSseStream(res: FlushableResponse) {
 
 /** The stable client `errorCode` of a known error class, if it has one. */
 export function chatErrorCode(error: unknown): string | undefined {
-	if (error instanceof AgentTurnAlreadyRunningError) return 'turn_already_running';
-	if (error instanceof AgentN8nChatUnavailableError) return 'agent_unavailable';
+	if (error instanceof AgentTurnAlreadyRunningError)
+		return AGENT_CHAT_ERROR_CODES.turnAlreadyRunning;
+	if (error instanceof AgentN8nChatUnavailableError) return AGENT_CHAT_ERROR_CODES.agentUnavailable;
 	if (error instanceof AgentFormattedTurnError) return error.errorCode;
 	return undefined;
 }
@@ -249,6 +252,9 @@ export function emitChunkEvents(
 		case 'finish-step':
 			send({ type: 'finish-step' });
 			return;
+		case 'usage':
+			send({ type: 'usage', usage: toSseUsage(chunk.usage) });
+			return;
 		case 'text-start':
 		case 'text-delta':
 		case 'text-end':
@@ -285,6 +291,7 @@ export function emitChunkEvents(
 			send({
 				type: 'finish',
 				finishReason: chunk.finishReason,
+				...(chunk.usage && { usage: toSseUsage(chunk.usage) }),
 				...(chunk.guardrail !== undefined && { guardrail: { code: chunk.guardrail.code } }),
 			});
 			return;
@@ -306,6 +313,15 @@ export function emitChunkEvents(
 		default:
 			return;
 	}
+}
+
+function toSseUsage(usage: AgentTokenUsage): AgentTokenUsage {
+	return {
+		promptTokens: usage.promptTokens,
+		completionTokens: usage.completionTokens,
+		totalTokens: usage.totalTokens,
+		...(usage.cost !== undefined && { cost: usage.cost }),
+	};
 }
 
 /** Find an ai-sdk `responseBody` on the error or its `cause` chain (the API error can arrive wrapped). */

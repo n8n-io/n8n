@@ -11,7 +11,9 @@ import { NotFoundError } from '@n8n/errors';
 
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentMemoryTraceService } from './agent-memory-trace.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
+import { AgentSessionStopService } from './agent-session-stop.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { canContinueThreadInPreview } from './utils/agent-thread-access';
 import { parseThreadListLimit } from './utils/parse-thread-list-limit';
@@ -20,9 +22,11 @@ import { parseThreadListLimit } from './utils/parse-thread-list-limit';
 export class AgentThreadsController {
 	constructor(
 		private readonly agentExecutionService: AgentExecutionService,
+		private readonly memoryTraceService: AgentMemoryTraceService,
 		private readonly langsmithExportService: AgentSessionLangSmithExportService,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly systemAgents: SystemAgentRegistry,
+		private readonly sessionStopService: AgentSessionStopService,
 	) {}
 
 	@Get('/:agentId/threads')
@@ -50,14 +54,15 @@ export class AgentThreadsController {
 	async getThread(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
+		const { projectId, agentId, threadId } = req.params;
 		const result = await this.agentExecutionService.getThreadDetail(
-			req.params.threadId,
-			req.params.projectId,
-			req.params.agentId,
+			threadId,
+			projectId,
+			agentId,
 			req.user.id,
 		);
 		if (!result) {
-			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
+			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
 		const {
 			ownerId: _ownerId,
@@ -74,7 +79,14 @@ export class AgentThreadsController {
 				this.systemAgents.has(result.thread.agentId),
 			),
 		};
-		return { ...result, thread: { ...thread, ...access, source: source ?? null } };
+		const memory = await this.memoryTraceService.getThreadMemory({
+			agentId,
+			projectId,
+			userId: req.user.id,
+			threadId,
+			executions: result.executions,
+		});
+		return { ...result, thread: { ...thread, ...access, source: source ?? null }, memory };
 	}
 
 	@Post('/:agentId/threads/:threadId/approval')
@@ -110,6 +122,15 @@ export class AgentThreadsController {
 			threadId,
 			user: req.user,
 		});
+	}
+
+	@Post('/:agentId/threads/:threadId/stop')
+	@ProjectScope('agent:execute')
+	async stopSession(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		return await this.sessionStopService.stopSession(projectId, agentId, threadId, req.user.id);
 	}
 
 	@Delete('/:agentId/threads/:threadId')

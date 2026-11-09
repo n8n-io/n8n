@@ -1,12 +1,16 @@
 import { ROLE } from '@n8n/api-types';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
+import type { Project } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
+import { fireEvent } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import ContactAdminModal from './ContactAdminModal.vue';
+import { mockPolicyProject } from '../__tests__/mocks';
 
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/design-system')>();
@@ -34,28 +38,50 @@ const owner = {
 	isPendingUser: false,
 } as unknown as IUser;
 
-const member = { ...owner, id: 'member-1', fullName: 'Bob Builder', role: ROLE.Member } as IUser;
+const invitedAdmin = {
+	...owner,
+	id: 'admin-1',
+	fullName: 'Bob Builder',
+	email: 'bob@example.com',
+	role: ROLE.Admin,
+	isPendingUser: true,
+} as IUser;
+
+function mockCustomProjectRole(slug: string) {
+	mockedStore(useRolesStore).roles.project = [
+		{
+			slug,
+			displayName: slug,
+			description: null,
+			systemRole: false,
+			roleType: 'project',
+			licensed: true,
+			scopes: ['nodeTypePolicy:manage'],
+		},
+	];
+}
 
 const renderComponent = createComponentRenderer(ContactAdminModal, {
-	props: { open: true, nodeTypeName: 'Slack' },
+	props: { open: true, nodeTypeName: 'Slack', audience: 'instance' },
 });
 
-function setup(allUsers: IUser[], fetchUsers = vi.fn().mockResolvedValue(undefined)) {
+function setup(policyManagers: IUser[], fetchUsers = vi.fn().mockResolvedValue(policyManagers)) {
 	setActivePinia(createTestingPinia());
 	const usersStore = mockedStore(useUsersStore);
-	usersStore.allUsers = allUsers;
 	usersStore.fetchUsers = fetchUsers;
 	return usersStore;
 }
 
 describe('ContactAdminModal', () => {
-	it('lists the owners with a mailto link and builds the copy from the node type name', async () => {
-		const usersStore = setup([owner, member]);
+	it('lists the active users who can manage node type policies, with a mailto link', async () => {
+		const usersStore = setup([owner, invitedAdmin]);
 		const { findByTestId, getByText } = renderComponent();
 
 		const list = await findByTestId('contact-admin-list');
 
-		expect(usersStore.fetchUsers).toHaveBeenCalledWith({ filter: { isOwner: true } });
+		expect(usersStore.fetchUsers).toHaveBeenCalledWith({
+			filter: { scope: 'nodeTypePolicy:manage' },
+		});
 		expect(list).toHaveTextContent('Ada Lovelace');
 		expect(list).not.toHaveTextContent('Bob Builder');
 		expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
@@ -66,13 +92,21 @@ describe('ContactAdminModal', () => {
 	});
 
 	it('builds the credential type copy', async () => {
-		setup([owner]);
+		const usersStore = setup([owner]);
 		const { findByTestId, getByText } = renderComponent({
-			props: { open: true, nodeTypeName: 'Anthropic credentials', kind: 'credential' },
+			props: {
+				open: true,
+				nodeTypeName: 'Anthropic credentials',
+				kind: 'credential',
+				audience: 'instance',
+			},
 		});
 
 		await findByTestId('contact-admin-list');
 
+		expect(usersStore.fetchUsers).toHaveBeenCalledWith({
+			filter: { scope: 'credentialTypePolicy:manage' },
+		});
 		expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
 			'href',
 			'mailto:ada@example.com?subject=Access%20request%20for%20Anthropic%20credentials',
@@ -80,11 +114,80 @@ describe('ContactAdminModal', () => {
 		expect(getByText(/request access to Anthropic credentials/)).toBeInTheDocument();
 	});
 
+	describe('with several type names', () => {
+		it('uses the several copy, joins the names and looks up admins by the given kind', async () => {
+			const usersStore = setup([owner]);
+			const { findByTestId, getByText } = renderComponent({
+				props: {
+					open: true,
+					nodeTypeName: ['Slack', 'GitHub API'],
+					kind: 'credential',
+					audience: 'instance',
+				},
+			});
+
+			await findByTestId('contact-admin-list');
+
+			expect(usersStore.fetchUsers).toHaveBeenCalledWith({
+				filter: { scope: 'credentialTypePolicy:manage' },
+			});
+			expect(
+				getByText(
+					'Instance admins manage which nodes and credential types are available. Contact one of them to request access to Slack, GitHub API.',
+				),
+			).toBeInTheDocument();
+			expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
+				'href',
+				`mailto:ada@example.com?subject=${encodeURIComponent('Access request for Slack, GitHub API')}`,
+			);
+		});
+
+		it('uses the several copy for the project audience', async () => {
+			setup([owner]);
+			mockPolicyProject({
+				type: 'team',
+				relations: [
+					{
+						id: 'admin-1',
+						firstName: 'Grace',
+						lastName: 'Hopper',
+						email: 'grace@example.com',
+						role: 'project:admin',
+					},
+				],
+			});
+			const { findByTestId, getByText } = renderComponent({
+				props: { open: true, nodeTypeName: ['Slack', 'GitHub API'], audience: 'project' },
+			});
+
+			await findByTestId('contact-admin-list');
+
+			expect(getByText(/request access to Slack, GitHub API\./)).toBeInTheDocument();
+		});
+
+		it('keeps the single copy for an array of one name', async () => {
+			setup([owner]);
+			const { findByTestId, getByText } = renderComponent({
+				props: { open: true, nodeTypeName: ['Slack'], audience: 'instance' },
+			});
+
+			await findByTestId('contact-admin-list');
+
+			expect(getByText(/request access to 'Slack'/)).toBeInTheDocument();
+			expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
+				'href',
+				'mailto:ada@example.com?subject=Access%20request%20for%20the%20Slack%20node',
+			);
+		});
+	});
+
 	it('keeps loading until the latest owner lookup resolves after a reopen', async () => {
 		const lookups: Array<() => void> = [];
 		setup(
 			[owner],
-			vi.fn(async () => await new Promise<void>((resolve) => lookups.push(resolve))),
+			vi.fn(
+				async () => await new Promise<IUser[]>((resolve) => lookups.push(() => resolve([owner]))),
+			),
 		);
 		const { rerender, queryByTestId, findByTestId } = renderComponent();
 
@@ -105,5 +208,217 @@ describe('ContactAdminModal', () => {
 		const { findByTestId } = renderComponent();
 
 		expect(await findByTestId('contact-admin-empty')).toBeInTheDocument();
+	});
+
+	describe('Escape key', () => {
+		// The node creator listens in the capture phase, Element Plus modals in the bubble phase.
+		const hostCaptureListener = vi.fn();
+		const hostBubbleListener = vi.fn();
+
+		function listenAsHost() {
+			document.addEventListener('keydown', hostCaptureListener, { capture: true });
+			document.addEventListener('keydown', hostBubbleListener);
+		}
+
+		afterEach(() => {
+			document.removeEventListener('keydown', hostCaptureListener, { capture: true });
+			document.removeEventListener('keydown', hostBubbleListener);
+			hostCaptureListener.mockReset();
+			hostBubbleListener.mockReset();
+		});
+
+		it('closes only the dialog, not the surface it opens on', async () => {
+			setup([owner]);
+			listenAsHost();
+			const { findByTestId, emitted } = renderComponent();
+
+			await fireEvent.keyDown(await findByTestId('contact-admin-list'), { key: 'Escape' });
+
+			expect(emitted()['update:open']).toEqual([[false]]);
+			expect(hostCaptureListener).not.toHaveBeenCalled();
+			expect(hostBubbleListener).not.toHaveBeenCalled();
+		});
+
+		it('lets other keys reach the host', async () => {
+			setup([owner]);
+			listenAsHost();
+			const { findByTestId, emitted } = renderComponent();
+
+			await fireEvent.keyDown(await findByTestId('contact-admin-list'), { key: 'Enter' });
+
+			expect(emitted()['update:open']).toBeUndefined();
+			expect(hostCaptureListener).toHaveBeenCalledOnce();
+			expect(hostBubbleListener).toHaveBeenCalledOnce();
+		});
+
+		it('lets Escape reach the host while the dialog is closed', async () => {
+			setup([owner]);
+			listenAsHost();
+			const { emitted } = renderComponent({
+				props: { open: false, nodeTypeName: 'Slack', audience: 'instance' },
+			});
+
+			await fireEvent.keyDown(document.body, { key: 'Escape' });
+
+			expect(emitted()['update:open']).toBeUndefined();
+			expect(hostCaptureListener).toHaveBeenCalledOnce();
+			expect(hostBubbleListener).toHaveBeenCalledOnce();
+		});
+
+		it('lets Escape reach the host again after the dialog closes', async () => {
+			setup([owner]);
+			listenAsHost();
+			const { findByTestId, rerender } = renderComponent();
+
+			await fireEvent.keyDown(await findByTestId('contact-admin-list'), { key: 'Escape' });
+			await rerender({ open: false });
+			await fireEvent.keyDown(document.body, { key: 'Escape' });
+
+			expect(hostCaptureListener).toHaveBeenCalledOnce();
+			expect(hostBubbleListener).toHaveBeenCalledOnce();
+		});
+	});
+
+	describe('for a project restriction', () => {
+		const projectAdmin = {
+			id: 'admin-1',
+			firstName: 'Grace',
+			lastName: 'Hopper',
+			email: 'grace@example.com',
+			role: 'project:admin',
+		};
+		const projectEditor = {
+			id: 'editor-1',
+			firstName: 'Alan',
+			lastName: 'Turing',
+			email: 'alan@example.com',
+			role: 'project:editor',
+		};
+
+		it('lists only the project members whose role can manage node type policies', async () => {
+			const usersStore = setup([owner]);
+			mockCustomProjectRole('project:policyManager');
+			const policyManager = {
+				...projectEditor,
+				id: 'policy-manager-1',
+				firstName: 'Mary',
+				lastName: 'Jackson',
+				email: 'mary@example.com',
+				role: 'project:policyManager',
+			};
+			mockPolicyProject({
+				type: 'team',
+				relations: [projectAdmin, projectEditor, policyManager],
+			});
+			const { findByTestId, getByText } = renderComponent({
+				props: { open: true, nodeTypeName: 'Slack', audience: 'project' },
+			});
+
+			const list = await findByTestId('contact-admin-list');
+
+			expect(usersStore.fetchUsers).not.toHaveBeenCalled();
+			expect(getByText('Project admins')).toBeInTheDocument();
+			expect(list).toHaveTextContent('Grace Hopper');
+			expect(list).toHaveTextContent('Mary Jackson');
+			expect(list).not.toHaveTextContent('Alan Turing');
+			expect(list).not.toHaveTextContent('Ada Lovelace');
+			expect(getByText('grace@example.com').closest('a')).toHaveAttribute(
+				'href',
+				'mailto:grace@example.com?subject=Access%20request%20for%20the%20Slack%20node',
+			);
+		});
+
+		it('lists the instance owners and admins as instance admins when the project has no admin of its own', async () => {
+			setup([owner]);
+			mockPolicyProject({
+				type: 'team',
+				relations: [projectEditor],
+				implicitMembers: [
+					{
+						id: 'global-owner-1',
+						firstName: 'Katherine',
+						lastName: 'Johnson',
+						email: 'katherine@example.com',
+						globalRole: { slug: 'global:owner', displayName: 'Owner' },
+					},
+					{
+						id: 'global-admin-1',
+						firstName: 'Margaret',
+						lastName: 'Hamilton',
+						email: 'margaret@example.com',
+						globalRole: { slug: 'global:admin', displayName: 'Admin' },
+					},
+				],
+			});
+			const { findByTestId, getByText } = renderComponent({
+				props: { open: true, nodeTypeName: 'Slack', audience: 'project' },
+			});
+
+			const list = await findByTestId('contact-admin-list');
+
+			expect(getByText('Instance admins')).toBeInTheDocument();
+			expect(list).toHaveTextContent('Katherine Johnson');
+			expect(list).toHaveTextContent('Margaret Hamilton');
+			expect(list).not.toHaveTextContent('Alan Turing');
+		});
+
+		it('falls back to a project hint when the project has no admin to list', async () => {
+			setup([owner]);
+			mockPolicyProject({ type: 'team', relations: [projectEditor] });
+			const { findByTestId } = renderComponent({
+				props: { open: true, nodeTypeName: 'Slack', audience: 'project' },
+			});
+
+			expect(await findByTestId('contact-admin-empty')).toHaveTextContent(
+				'No project admin is listed here.',
+			);
+		});
+
+		describe('with an explicit project', () => {
+			const destinationAdmin = {
+				...projectAdmin,
+				id: 'destination-admin-1',
+				firstName: 'Dorothy',
+				lastName: 'Vaughan',
+				email: 'dorothy@example.com',
+			};
+			const destination: Project = {
+				id: 'project-dest',
+				name: 'Marketing',
+				type: 'team',
+				icon: null,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				relations: [destinationAdmin],
+				scopes: [],
+				rolesManaged: false,
+			};
+
+			it('lists the admins of the given project instead of the open one', async () => {
+				setup([owner]);
+				mockPolicyProject({ type: 'team', relations: [projectAdmin] });
+				const { findByTestId } = renderComponent({
+					props: { open: true, nodeTypeName: 'Slack', audience: 'project', project: destination },
+				});
+
+				const list = await findByTestId('contact-admin-list');
+
+				expect(list).toHaveTextContent('Dorothy Vaughan');
+				expect(list).not.toHaveTextContent('Grace Hopper');
+			});
+
+			it('lists no admin of the open project while the given project is null', async () => {
+				setup([owner]);
+				mockPolicyProject({ type: 'team', relations: [projectAdmin] });
+				const { findByTestId, queryByText } = renderComponent({
+					props: { open: true, nodeTypeName: 'Slack', audience: 'project', project: null },
+				});
+
+				expect(await findByTestId('contact-admin-empty')).toHaveTextContent(
+					'No project admin is listed here.',
+				);
+				expect(queryByText('Grace Hopper')).not.toBeInTheDocument();
+			});
+		});
 	});
 });

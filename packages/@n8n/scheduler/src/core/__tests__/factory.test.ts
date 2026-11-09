@@ -479,7 +479,7 @@ describe('createScheduler lifecycle', () => {
 		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(1);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
-			message: 'Scheduler pass failed; retrying on its next tick',
+			message: 'Scheduler pass "reaper" failed; retrying on its next tick: db down',
 			context: { pass: 'reaper', error: 'db down' },
 		});
 
@@ -1047,7 +1047,8 @@ describe('createScheduler pass timeout and overlap', () => {
 		await vi.advanceTimersByTimeAsync(2000);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
-			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			message:
+				'Scheduler pass "reaper" timed out after 2000ms and was abandoned; retrying on its next tick',
 			context: { pass: 'reaper', timeoutMs: 2000 },
 		});
 
@@ -1109,7 +1110,8 @@ describe('createScheduler pass timeout and overlap', () => {
 		await vi.advanceTimersByTimeAsync(2000);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
-			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			message:
+				'Scheduler pass "executor" timed out after 2000ms and was abandoned; retrying on its next tick',
 			context: { pass: 'executor', timeoutMs: 2000 },
 		});
 
@@ -1150,12 +1152,14 @@ describe('createScheduler pass timeout and overlap', () => {
 		await vi.advanceTimersByTimeAsync(5000 + 2000);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
-			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			message:
+				'Scheduler pass "materializer" timed out after 2000ms and was abandoned; retrying on its next tick',
 			context: { pass: 'materializer', timeoutMs: 2000 },
 		});
 		expect(onEvent).not.toHaveBeenCalledWith({
 			level: 'error',
-			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			message:
+				'Scheduler pass "reaper" timed out after 60000ms and was abandoned; retrying on its next tick',
 			context: { pass: 'reaper', timeoutMs: 60_000 },
 		});
 
@@ -1165,7 +1169,8 @@ describe('createScheduler pass timeout and overlap', () => {
 		await stopping;
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
-			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			message:
+				'Scheduler pass "reaper" timed out after 60000ms and was abandoned; retrying on its next tick',
 			context: { pass: 'reaper', timeoutMs: 60_000 },
 		});
 	});
@@ -1182,7 +1187,8 @@ describe('createScheduler pass timeout and overlap', () => {
 		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(1);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'warn',
-			message: 'Scheduler pass tick dropped; in-flight passes at the concurrency limit',
+			message:
+				'Scheduler pass "reaper" tick dropped; 1 of 1 passes in flight at the concurrency limit',
 			context: { pass: 'reaper', inFlight: 1, limit: 1 },
 		});
 
@@ -1208,7 +1214,8 @@ describe('createScheduler pass timeout and overlap', () => {
 		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(2);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'warn',
-			message: 'Scheduler pass tick dropped; in-flight passes at the concurrency limit',
+			message:
+				'Scheduler pass "reaper" tick dropped; 2 of 2 passes in flight at the concurrency limit',
 			context: { pass: 'reaper', inFlight: 2, limit: 2 },
 		});
 

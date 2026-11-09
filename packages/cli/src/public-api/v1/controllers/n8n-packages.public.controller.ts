@@ -21,9 +21,8 @@ import {
 	PublicApiController,
 	type BinaryResult,
 } from '@n8n/decorators';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import type { Response } from 'express';
-import { UserError } from 'n8n-workflow';
 
 import {
 	PackageEntityAccessDeniedError,
@@ -106,7 +105,7 @@ export class N8nPackagesPublicController {
 	) {}
 
 	@Post('/import')
-	@ApiKeyScope('workflow:import')
+	@ApiKeyScope({ anyOf: ['workflow:import', 'agent:import'] })
 	@ApiSummary(IMPORT_SUMMARY)
 	@ApiDescription(IMPORT_DESCRIPTION)
 	@ApiTags(PACKAGE_TAGS)

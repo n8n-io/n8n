@@ -1,5 +1,5 @@
 import { createTeamProject, createWorkflow, getPersonalProject } from '@n8n/backend-test-utils';
-import { WorkflowRepository, type ExecutionRepository } from '@n8n/db';
+import { ProjectRepository, WorkflowRepository, type ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { SpanStatusCode } from '@opentelemetry/api';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -25,8 +25,10 @@ import {
 	createFailingWorkflowFixture,
 	createWaitWorkflowFixture,
 } from './support/otel-workflow-fixtures';
+import { ExecutionLevelTracer } from '../execution-level-tracer';
 import { OtelSettingsService } from '../otel-settings.service';
-import { OtelConfig } from '../otel.config';
+import { OtelConfig, OtelCustomAttributesConfig } from '../otel.config';
+import { DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES } from '../otel.constants';
 
 let otel: OtelTestProvider;
 let workflowRunner: WorkflowRunner;
@@ -113,6 +115,7 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
 		expect(workflowSpan.status.code).toBe(SpanStatusCode.ERROR);
 		expect(workflowSpan.attributes['n8n.execution.status']).toBe('error');
+		expect(workflowSpan.attributes['n8n.execution.error_type']).toBe('UnexpectedError');
 	});
 
 	it('should keep the resumed segment in the trace of the parked segment', async () => {
@@ -152,8 +155,8 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const resumedContext = (await executionRepository.findOneBy({ id: executionId }))
 			?.tracingContext;
 
-		const [, parkedTraceId, parkedSpanId] = parkedContext!.traceparent.split('-');
-		const [, resumedTraceId, resumedSpanId] = resumedContext!.traceparent.split('-');
+		const [, parkedTraceId, parkedSpanId] = parkedContext!.traceparent!.split('-');
+		const [, resumedTraceId, resumedSpanId] = resumedContext!.traceparent!.split('-');
 		expect(resumedTraceId).toBe(parkedTraceId);
 		expect(resumedSpanId).not.toBe(parkedSpanId);
 	});
@@ -218,6 +221,65 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
 		expect(workflowSpan).toBeDefined();
 		expect(workflowSpan.spanContext().traceId).toBe(inboundTraceId);
+	});
+});
+
+describe('Caller baggage', () => {
+	const tracingContext = { baggage: 'tenant=acme' };
+
+	const sentHeaders: Array<Record<string, string>> = [];
+
+	beforeEach(() => {
+		sentHeaders.length = 0;
+		const tracer = Container.get(ExecutionLevelTracer);
+		const endNode = tracer.endNode.bind(tracer);
+		vi.spyOn(tracer, 'endNode').mockImplementation((params) => {
+			const headers: Record<string, string> = {};
+			tracer.injectTraceHeaders(params.executionId, params.node.name, headers);
+			sentHeaders.push(headers);
+			endNode(params);
+		});
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	const savedBaggage = async (executionId: string) =>
+		(await executionRepository.findOneBy({ id: executionId }))?.tracingContext?.baggage;
+
+	it('should keep the caller baggage and send it from each node on a worker', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
+
+		const executionId = await executeWorkflowOnWorker(workflow, project.id, { tracingContext });
+
+		expect(await savedBaggage(executionId)).toBe('tenant=acme');
+		expect(sentHeaders).toHaveLength(workflow.nodes.length);
+		for (const headers of sentHeaders) {
+			expect(headers).toMatchObject({ traceparent: expect.any(String), baggage: 'tenant=acme' });
+		}
+		for (const span of otel.getFinishedSpans()) {
+			expect(span.attributes).not.toHaveProperty('tenant');
+		}
+	});
+
+	it('should send the caller baggage from each node after a Wait node resumes', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createWaitWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id, {
+			tracingContext,
+		});
+		await waitForExecutionStatus(executionRepository, executionId, 'waiting');
+		sentHeaders.length = 0;
+
+		await Container.get(WaitTracker).startExecution(executionId);
+		await waitForExecutionStatus(executionRepository, executionId, 'success');
+
+		expect(sentHeaders.length).toBeGreaterThan(0);
+		for (const headers of sentHeaders) {
+			expect(headers.baggage).toBe('tenant=acme');
+		}
 	});
 });
 
@@ -438,5 +500,44 @@ describe('Custom Telemetry Tags', () => {
 		expect(workflowSpan.attributes['n8n.workflow.custom.isCritical']).toBe('true');
 		expect(nodeSpan.attributes['n8n.workflow.custom.environment']).toBeUndefined();
 		expect(nodeSpan.attributes['n8n.workflow.custom.workflowName']).toBeUndefined();
+	});
+
+	it('should send tags under their own keys when the prefixes are empty', async () => {
+		const customAttributesConfig = Container.get(OtelCustomAttributesConfig);
+		customAttributesConfig.prefixes = { project: '', workflow: '', node: '' };
+		onTestFinished(() => {
+			customAttributesConfig.prefixes = DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES;
+		});
+
+		const project = await createTeamProject();
+		await Container.get(ProjectRepository).update(project.id, {
+			customTelemetryTags: [
+				{ key: 'environment', value: 'project' },
+				{ key: 'gen_ai.system', value: 'openai' },
+				{ key: 'n8n.execution.id', value: 'forged' },
+			],
+		});
+		const workflow = await createWorkflow(
+			{
+				...createWorkflowWithCustomTagsFixture(),
+				settings: { customTelemetryTags: [{ key: 'environment', value: 'workflow' }] },
+			},
+			project,
+		);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const spans = otel.getFinishedSpans();
+		const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
+		const nodeSpan = spans.find(
+			(s) => s.name === 'node.execute' && s.attributes['n8n.node.name'] === 'DebugHelper',
+		)!;
+
+		expect(workflowSpan.attributes['gen_ai.system']).toBe('openai');
+		expect(workflowSpan.attributes.environment).toBe('workflow');
+		expect(workflowSpan.attributes['n8n.execution.id']).toBe(executionId);
+		expect(nodeSpan.attributes['gen_ai.system']).toBe('openai');
+		expect(nodeSpan.attributes.environment).toBe('production');
+		expect(nodeSpan.attributes['n8n.execution.id']).toBe(executionId);
 	});
 });

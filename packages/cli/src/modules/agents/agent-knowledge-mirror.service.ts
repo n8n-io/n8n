@@ -4,10 +4,10 @@ import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { runSerially } from '@n8n/utils/run-serially';
 import escapeRegExp from 'lodash/escapeRegExp';
-import { OperationalError, safeRegex } from 'n8n-workflow';
+import { safeRegex } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError, OperationalError } from '@n8n/errors';
 
 import {
 	buildMirrorFinalizeCommand,
@@ -49,6 +49,7 @@ import {
 	AgentSandboxRuntimeService,
 	sanitizeSandboxErrorDetail,
 } from './agent-sandbox-runtime.service';
+import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -128,6 +129,7 @@ export class AgentKnowledgeMirrorService {
 		private readonly agentFileRepository: AgentFileRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
 	) {}
 
 	async searchKnowledge(
@@ -213,10 +215,12 @@ export class AgentKnowledgeMirrorService {
 		}
 
 		const parsed = parseReadKnowledgeOutput(result.stdout, file, validatedRequest);
+
 		return {
 			file: file.file,
 			fileId: file.fileId,
 			displayName: file.displayName,
+			createdAt: file.createdAt,
 			ranges: parsed.ranges,
 			truncated: parsed.truncated,
 		};
@@ -229,9 +233,19 @@ export class AgentKnowledgeMirrorService {
 	 */
 	prewarmMirrorInBackground(projectId: string, agentId: string): void {
 		void (async () => {
-			const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
-			const runtime = await this.acquireKnowledgeRuntime(projectId, agentId);
-			await this.ensureMirrorSynced(runtime, references.files);
+			await this.projectDeletion.assertWritable(projectId);
+			try {
+				const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
+				const runtime = await this.acquireKnowledgeRuntime(projectId, agentId);
+				await this.ensureMirrorSynced(runtime, references.files);
+			} finally {
+				// Remote sync must not hold a database lock. Remove a mirror that finishes after deletion.
+				try {
+					await this.projectDeletion.assertWritable(projectId);
+				} catch {
+					await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
+				}
+			}
 		})().catch((error) => {
 			this.logger.warn('Agent knowledge mirror pre-warm failed', {
 				projectId,
@@ -372,7 +386,7 @@ export class AgentKnowledgeMirrorService {
 	private async loadKnowledgeFileReferences(
 		agentId: string,
 	): Promise<AgentKnowledgeFileReference[]> {
-		const files = await this.agentFileRepository.findByAgentId(agentId);
+		const files = await this.agentFileRepository.findByAgentId(agentId, {});
 		return files.map((file) => ({
 			file: storageFileNameForOriginalFileName(file.fileName),
 			fileId: file.id,

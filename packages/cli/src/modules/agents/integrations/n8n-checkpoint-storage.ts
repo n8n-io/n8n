@@ -8,7 +8,8 @@ import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { jsonParse, OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
 import {
 	decodeAgentSandboxHostMetadata,

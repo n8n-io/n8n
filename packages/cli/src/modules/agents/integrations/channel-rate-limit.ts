@@ -59,7 +59,10 @@ export function isRateLimitedToolOutput(output: unknown): boolean {
 }
 
 export function isHttp429(error: unknown): boolean {
-	return httpStatusFromError(error) === 429;
+	return (
+		httpStatusFromError(error) === 429 ||
+		(isRecord(error) && error.code === 'slack_webapi_rate_limited_error')
+	);
 }
 
 // Capitalize-first-letter can't produce WhatsApp's internal capital; every
