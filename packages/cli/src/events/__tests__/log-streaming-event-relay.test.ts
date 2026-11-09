@@ -425,6 +425,28 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `workflow-deactivated-by-system` event without a user', () => {
+			const event: RelayEventMap['workflow-deactivated-by-system'] = {
+				workflowId: 'wf789',
+				workflowName: 'Deactivated Workflow',
+				deactivatedVersionId: 'version-xyz-789',
+				reason: 'memory-guard',
+			};
+
+			eventService.emit('workflow-deactivated-by-system', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.deactivated',
+				payload: {
+					userId: null,
+					workflowId: 'wf789',
+					workflowName: 'Deactivated Workflow',
+					deactivatedVersionId: 'version-xyz-789',
+					reason: 'memory-guard',
+				},
+			});
+		});
+
 		it('should log on `workflow-version-updated` event', () => {
 			const event: RelayEventMap['workflow-version-updated'] = {
 				user: {

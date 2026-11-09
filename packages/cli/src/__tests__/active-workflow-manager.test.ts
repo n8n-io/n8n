@@ -51,6 +51,7 @@ import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-exe
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 describe('ActiveWorkflowManager', () => {
 	const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';
@@ -443,8 +444,10 @@ describe('ActiveWorkflowManager', () => {
 		const workflowSharingService = mock<WorkflowSharingService>();
 		const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
 		const sharedUserIds = ['user-1', 'user-2'];
+		const eventBus = mock<MessageEventBus>();
 
 		beforeEach(() => {
+			eventBus.sendAuditEvent.mockReset();
 			workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(sharedUserIds);
 			publisher.publishCommand.mockResolvedValue(undefined);
 			activeWorkflowManager = new ActiveWorkflowManager(
@@ -462,13 +465,52 @@ describe('ActiveWorkflowManager', () => {
 				publisher,
 				mock(),
 				mock<TriggerExecutionContextFactory>(),
-				mock(),
+				eventBus,
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
 				workflowPushNotifier,
 				policyEnforcementService,
 				ownershipService,
 			);
+		});
+
+		test('sends a deactivation audit event when a forwarded activation fails', async () => {
+			workflowRepository.findById.mockResolvedValue(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'My workflow', activeVersionId: 'v1' }),
+			);
+			vi.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
+
+			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+				activationMode: 'activate',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledExactlyOnceWith({
+				eventName: 'n8n.audit.workflow.deactivated',
+				payload: {
+					workflowId: 'wf-1',
+					workflowName: 'My workflow',
+					deactivatedVersionId: 'v1',
+					activationMode: 'activate',
+					reason: 'Error',
+				},
+			});
+		});
+
+		test('sends no deactivation audit event when the workflow is already unpublished', async () => {
+			workflowRepository.findById.mockResolvedValue(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'My workflow', activeVersionId: null }),
+			);
+			vi.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
+
+			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
+				workflowId: 'wf-1',
+				activeVersionId: 'v1',
+				activationMode: 'activate',
+			});
+
+			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
 		});
 
 		// The leader's generic failure path clears `activeVersionId`. A refusal must not

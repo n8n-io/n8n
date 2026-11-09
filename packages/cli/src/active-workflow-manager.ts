@@ -808,13 +808,14 @@ export class ActiveWorkflowManager {
 
 				await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
 
-				if (dbWorkflow && (activationMode === 'init' || activationMode === 'leadershipChange')) {
+				// A user may have unpublished it before this command arrived.
+				if (dbWorkflow?.activeVersionId) {
 					void this.eventBus.sendAuditEvent({
 						eventName: 'n8n.audit.workflow.deactivated',
 						payload: {
 							workflowId,
 							workflowName: dbWorkflow.name,
-							deactivatedVersionId: dbWorkflow.activeVersionId ?? null,
+							deactivatedVersionId: dbWorkflow.activeVersionId,
 							activationMode,
 							reason: error.name,
 						},

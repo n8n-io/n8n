@@ -3633,7 +3633,10 @@ describe('SourceControlImportService', () => {
 					await vi.advanceTimersByTimeAsync(5_000);
 					await deletion;
 
-					expect(workflowService.deactivateWorkflowAsSystem).toHaveBeenCalledWith('wf-1');
+					expect(workflowService.deactivateWorkflowAsSystem).toHaveBeenCalledWith(
+						'wf-1',
+						'source-control-pull',
+					);
 					expect(workflowPublishedVersionRepository.getPublishedVersionId).toHaveBeenCalledTimes(2);
 					// The folder row delete cascades to the workflow row, whose published-version
 					// mapping is RESTRICT: it has to be gone first.
@@ -4335,7 +4338,10 @@ describe('SourceControlImportService', () => {
 					where: { projectId: In(['project-1']), role: 'workflow:owner' },
 				});
 				expect(workflowService.deactivateWorkflowAsSystem).toHaveBeenCalledTimes(1);
-				expect(workflowService.deactivateWorkflowAsSystem).toHaveBeenCalledWith('wf-active');
+				expect(workflowService.deactivateWorkflowAsSystem).toHaveBeenCalledWith(
+					'wf-active',
+					'source-control-pull',
+				);
 				expect(executionPersistence.hardDeleteByWorkflowId).toHaveBeenCalledWith('wf-active');
 				expect(executionPersistence.hardDeleteByWorkflowId).toHaveBeenCalledWith('wf-inactive');
 				expect(projectRepository.delete).toHaveBeenCalledWith({ id: In(['project-1']) });
