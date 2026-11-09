@@ -345,7 +345,6 @@ describe('MemoryOrchestrator.loadInto with abandoned suspensions', () => {
 			persistence: { threadId: THREAD_ID, resourceId: RESOURCE_ID },
 		});
 
-		// A live card can still resolve this call in place, e.g. during plan review.
 		expect(await storedToolCallState(store)).toMatchObject({ state: 'pending' });
 		expect(list.messages().at(-1)).toMatchObject({
 			content: [expect.objectContaining({ state: 'rejected' })],
