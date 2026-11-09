@@ -4,7 +4,8 @@
   "type": "module",
   "main": "src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./promotions.module": "./src/promotions.module.ts"
   },
   "scripts": {
     "clean": "rimraf .turbo",

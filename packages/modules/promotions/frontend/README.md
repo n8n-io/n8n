@@ -7,6 +7,17 @@ Read the full guide at `packages/@n8n/module-cli/frontend-module-guide.md`. It g
 descriptor contract, the registration points and the known problems. This README gives a
 summary only.
 
+## Two entry points
+
+- `@n8n/frontend-module-promotions`: constants, the event bus and lazy component
+  loaders, for shell files.
+- `@n8n/frontend-module-promotions/promotions.module`: the descriptor, for
+  `modules.manifest.ts` only.
+
+The descriptor reads `RouterView` and other values when it loads. Keep it out of
+the main entry. Then a shell file that imports a constant does not load the
+routes, and shell tests that mock `vue-router` do not fail.
+
 ```bash
 pnpm turbo typecheck --filter=@n8n/frontend-module-promotions
 pnpm turbo lint --filter=@n8n/frontend-module-promotions

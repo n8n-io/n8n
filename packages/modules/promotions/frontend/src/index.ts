@@ -1,7 +1,6 @@
-// The module's only public entry. The shell imports it at boot through `router.ts` and
-// `modules.manifest.ts`, so keep it light: constants, the event bus, the descriptor and lazy
+// Shell files import this entry at boot, so keep it light: constants, the event bus and lazy
 // component loaders. A direct `.vue` export would put that component in the boot chunk.
-export { PromotionsModule } from './promotions.module';
+// The descriptor has its own subpath, so importing a constant does not load the routes.
 export { ENVIRONMENTS_UPGRADE_DOCS_URL, PROMOTIONS_SETTINGS_VIEW } from './promotions.constants';
 export { promotionEventBus } from './promotions.eventBus';
 
