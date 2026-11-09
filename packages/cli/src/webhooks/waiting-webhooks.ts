@@ -570,6 +570,9 @@ export class WaitingWebhooks implements IWebhookManager {
 	 * already", and an ended one answers "has finished already". As in v1, a
 	 * second click on a send-and-wait link renders the page that says no action
 	 * is required when the execution completed or waits at another node.
+	 *
+	 * @param suffix The path segment after the id: the node id for a send-and-wait
+	 * link, or the webhook suffix of a Wait node.
 	 */
 	protected answerEngineV2WithoutTarget(
 		executionId: string,
