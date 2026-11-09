@@ -30,6 +30,12 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+export const WithFileLink: Story = {
+	args: {
+		href: 'https://picsum.photos/seed/attachment/1200/1200',
+	},
+};
+
 export const NotRemovable: Story = {
 	args: { isRemovable: false },
 };

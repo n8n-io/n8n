@@ -23,7 +23,7 @@ describe('N8nAttachment', function describeComponent() {
 		const overlay = sprite.parentElement!;
 		expect(container.contains(overlay)).toBe(false);
 		await fireEvent.load(sprite);
-		await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+		await fireEvent.click(screen.getByTestId('attachment-remove'));
 
 		expect(root.style.display).not.toBe('none');
 		await vi.advanceTimersByTimeAsync(159);
@@ -35,7 +35,7 @@ describe('N8nAttachment', function describeComponent() {
 		expect(overlay).toHaveAttribute('aria-hidden', 'true');
 		expect(overlay).toHaveStyle({ left: '40px', top: '60px', width: '80px', height: '80px' });
 		expect(emitted('remove')).toBeUndefined();
-		expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+		expect(screen.queryByTestId('attachment-remove')).not.toBeInTheDocument();
 		expect(emitted('remove')).toBeUndefined();
 		await fireEvent.animationEnd(sprite);
 		await fireEvent.animationEnd(sprite);
@@ -49,8 +49,9 @@ describe('N8nAttachment', function describeComponent() {
 			props: { fileName: 'example.pdf', mimeType: 'application/pdf' },
 		});
 		const root = screen.getByRole('figure').parentElement!;
-		await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
-		expect(root).toHaveStyle({ display: 'none' });
+		await fireEvent.click(screen.getByTestId('attachment-remove'));
+		expect(root.style.display).not.toBe('none');
+		expect(root.firstElementChild).toHaveAttribute('aria-hidden', 'true');
 		const sprite = baseElement.querySelector('img')!;
 		await fireEvent.load(sprite);
 		expect(emitted('remove')).toBeUndefined();
@@ -71,7 +72,7 @@ describe('N8nAttachment', function describeComponent() {
 			const { emitted, unmount } = render(N8nAttachment, {
 				props: { fileName: 'example.pdf', mimeType: 'application/pdf' },
 			});
-			await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+			await fireEvent.click(screen.getByTestId('attachment-remove'));
 			expect(emitted('remove')).toHaveLength(1);
 			unmount();
 		} finally {
@@ -85,7 +86,7 @@ describe('N8nAttachment', function describeComponent() {
 			const { unmount, emitted } = render(N8nAttachment, {
 				props: { fileName: 'example.pdf', mimeType: 'application/pdf' },
 			});
-			await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+			await fireEvent.click(screen.getByTestId('attachment-remove'));
 			unmount();
 			vi.runAllTimers();
 			expect(emitted('remove')).toBeUndefined();
@@ -99,12 +100,12 @@ describe('N8nAttachment', function describeComponent() {
 			props: { fileName: 'example.pdf', mimeType: 'application/pdf', isRemovable: false },
 		});
 
-		expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+		expect(screen.queryByTestId('attachment-remove')).not.toBeInTheDocument();
 		expect(screen.queryByRole('button')).not.toBeInTheDocument();
 	});
 
 	it.each([
-		['photo.png', 'image/png', 'image'],
+		['photo.png', 'image/png', 'file'],
 		['clip.mp4', 'video/mp4', 'video'],
 		['document', 'application/pdf', 'pdf'],
 		['document.PDF', 'application/octet-stream', 'pdf'],
@@ -115,6 +116,8 @@ describe('N8nAttachment', function describeComponent() {
 		render(N8nAttachment, { props: { fileName, mimeType } });
 
 		expect(screen.getByRole('figure')).toHaveAttribute('data-type', type);
+		expect(screen.getByTitle(fileName).parentElement).toBe(screen.getByRole('figure'));
+		expect(screen.getByTitle(fileName).tagName).toBe('FIGCAPTION');
 		expect(screen.getByTitle(fileName)).toBeInTheDocument();
 	});
 
@@ -169,6 +172,100 @@ describe('N8nAttachment', function describeComponent() {
 		Object.defineProperty(transitionEnd, 'propertyName', { value: 'transform' });
 		await fireEvent(name, transitionEnd);
 		expect(viewport).toHaveTextContent('a-very-long-f…12.pdf');
+	});
+
+	it('renders the attachment as a link that opens in a new tab', function testFileLink() {
+		const { container } = render(N8nAttachment, {
+			props: {
+				fileName: 'example.pdf',
+				mimeType: 'application/pdf',
+				href: 'https://example.com/example.pdf',
+			},
+		});
+
+		const link = screen.getByRole('link');
+		expect(link).toHaveAttribute('href', 'https://example.com/example.pdf');
+		expect(link).toHaveClass('n8n-attachment');
+		expect(link.querySelector('a')).toBeNull();
+		expect(link.querySelector('figcaption')).toBeNull();
+		expect(screen.getByTitle('example.pdf').tagName).toBe('DIV');
+		expect(container.firstElementChild).not.toHaveAttribute('href');
+		expect(link).toHaveAttribute('target', '_blank');
+		expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+		expect(link).not.toContainElement(screen.getByTestId('attachment-remove'));
+	});
+
+	it('does not use the thumbnail URL as a file link', function testThumbnailOnly() {
+		render(N8nAttachment, {
+			props: { fileName: 'photo.png', mimeType: 'image/png', src: '/thumbnail.png' },
+		});
+
+		expect(screen.queryByRole('link')).not.toBeInTheDocument();
+	});
+
+	it('removes the file link when removal starts', async function testRemoveLinkedFile() {
+		const { baseElement, emitted } = render(N8nAttachment, {
+			props: {
+				fileName: 'example.pdf',
+				mimeType: 'application/pdf',
+				href: 'https://example.com/example.pdf',
+			},
+		});
+
+		const sprite = baseElement.querySelector('img')!;
+		await fireEvent.load(sprite);
+		await fireEvent.click(screen.getByTestId('attachment-remove'));
+		expect(screen.queryByRole('link')).not.toBeInTheDocument();
+		await fireEvent.animationEnd(sprite);
+		expect(emitted('remove')).toHaveLength(1);
+	});
+
+	it('names the remove button with the file name', function testRemoveLabel() {
+		render(N8nAttachment, {
+			props: { fileName: 'report.pdf', mimeType: 'application/pdf' },
+		});
+
+		expect(screen.getByRole('button', { name: 'Remove report.pdf' })).toBeVisible();
+	});
+
+	it('emits the preview load event', async function testPreviewLoad() {
+		const { emitted } = render(N8nAttachment, {
+			props: { fileName: 'photo.png', mimeType: 'image/png', src: '/photo.png' },
+		});
+
+		await fireEvent.load(screen.getByAltText('photo.png'));
+
+		expect(emitted('load')).toHaveLength(1);
+		expect(screen.getByRole('figure')).toHaveAttribute('data-type', 'image');
+	});
+
+	it('uses the file display when the preview URL is absent', function testMissingPreview() {
+		render(N8nAttachment, {
+			props: { fileName: 'photo.png', mimeType: 'image/png' },
+		});
+
+		expect(screen.queryByAltText('photo.png')).not.toBeInTheDocument();
+		expect(screen.getByRole('figure')).toHaveAttribute('data-type', 'file');
+		expect(screen.getByTitle('photo.png')).toBeVisible();
+	});
+
+	it('falls back after a preview error and retries a new URL', async function testPreviewError() {
+		const { emitted, rerender } = render(N8nAttachment, {
+			props: { fileName: 'photo.png', mimeType: 'image/png', src: '/photo.png' },
+		});
+
+		await fireEvent.error(screen.getByAltText('photo.png'));
+
+		expect(emitted('error')).toHaveLength(1);
+		expect(screen.queryByAltText('photo.png')).not.toBeInTheDocument();
+		expect(screen.getByRole('figure')).toHaveAttribute('data-type', 'file');
+		expect(screen.getByTitle('photo.png')).toBeVisible();
+		expect(screen.getByRole('button', { name: 'Remove photo.png' })).toBeVisible();
+
+		await rerender({ src: '/replacement.png' });
+
+		expect(screen.getByAltText('photo.png')).toHaveAttribute('src', '/replacement.png');
+		expect(screen.getByRole('figure')).toHaveAttribute('data-type', 'image');
 	});
 
 	it('renders the file name', function testContent() {

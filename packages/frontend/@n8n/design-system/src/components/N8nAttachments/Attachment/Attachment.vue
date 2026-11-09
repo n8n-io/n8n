@@ -10,7 +10,9 @@ import N8nTooltip from '../../N8nTooltip';
 import type { AttachmentEmits, AttachmentProps } from './Attachment.types';
 import poofSprite from './mono-poof-sprite.svg?url';
 
-const props = defineProps<AttachmentProps>();
+const props = withDefaults(defineProps<AttachmentProps>(), {
+	isRemovable: true,
+});
 const emit = defineEmits<AttachmentEmits>();
 
 const { t } = useI18n();
@@ -22,6 +24,19 @@ const POOF_DURATION_MS = 520;
 const POOF_COLLAPSE_DELAY_MS = 160;
 /** Keep attachment actions small and prevent form submission. */
 const actionButtonProps = { size: 'small', variant: 'solid', type: 'button' } as const;
+
+const hasPreviewError = ref(false);
+watch(
+	() => props.src,
+	() => {
+		hasPreviewError.value = false;
+	},
+);
+
+function onPreviewError() {
+	hasPreviewError.value = true;
+	emit('error');
+}
 
 const isHovered = ref(false);
 const isReturning = ref(false);
@@ -73,6 +88,24 @@ function removeAttachment() {
 	}
 }
 
+function onBackspace(event: KeyboardEvent) {
+	if (
+		!props.isRemovable ||
+		event.repeat ||
+		event.altKey ||
+		event.ctrlKey ||
+		event.metaKey ||
+		event.shiftKey ||
+		event.isComposing ||
+		event.target !== event.currentTarget
+	) {
+		return;
+	}
+
+	event.preventDefault();
+	removeAttachment();
+}
+
 function finishPoof(event: AnimationEvent) {
 	if (event.target === event.currentTarget) finishRemoval();
 }
@@ -80,6 +113,7 @@ function finishPoof(event: AnimationEvent) {
 watch(reducedMotion, (preference) => {
 	if (preference === 'reduce') finishRemoval();
 });
+
 onBeforeUnmount(() => {
 	clearTimeout(removalTimeout);
 	clearTimeout(collapseTimeout);
@@ -139,6 +173,10 @@ const fileType = computed(() => {
 
 	return 'file';
 });
+
+const hasImagePreview = computed(
+	() => fileType.value === 'image' && !!props.src && !hasPreviewError.value,
+);
 </script>
 
 <template>
@@ -149,22 +187,25 @@ const fileType = computed(() => {
 		@mouseenter="startMarquee"
 		@mouseleave="stopMarquee"
 	>
-		<div v-if="isRemovable !== false && !isRemoving" :class="$style.toolbar">
-			<N8nTooltip :content="t('generic.remove')">
-				<N8nIconButton v-bind="actionButtonProps" icon="trash-2" @click.stop="removeAttachment" />
-			</N8nTooltip>
-		</div>
-		<figure
+		<component
+			:is="props.href ? 'a' : 'figure'"
+			:href="!isRemoving ? href : undefined"
+			:target="href ? '_blank' : undefined"
+			:rel="href ? 'noopener noreferrer' : undefined"
+			:aria-label="href ? `${fileName}: ${t('commandBar.openInNewTab')}` : undefined"
 			:class="['n8n-attachment', $style.attachment]"
 			:aria-hidden="isRemoving || undefined"
-			:data-type="fileType"
+			:data-type="fileType === 'image' && !hasImagePreview ? 'file' : fileType"
+			@keydown.backspace="onBackspace"
 		>
 			<img
-				v-if="fileType === 'image'"
+				v-if="hasImagePreview"
 				:src="src"
 				:alt="fileName"
 				:class="$style.coverPreview"
 				loading="lazy"
+				@load="emit('load')"
+				@error="onPreviewError"
 			/>
 			<video
 				v-else-if="fileType === 'video'"
@@ -178,11 +219,17 @@ const fileType = computed(() => {
 					size="large"
 				/>
 			</div>
-			<figcaption :class="$style.caption" :title="fileName">
+			<component :is="href ? 'div' : 'figcaption'" :class="$style.caption" :title="fileName">
 				<span :class="$style.srOnly">{{ fileName }}</span>
 				<span
 					ref="captionViewport"
-					:class="$style.captionViewport"
+					:class="[
+						$style.captionViewport,
+						{
+							[$style.marqueeMask]:
+								reducedMotion !== 'reduce' && ((isHovered && marqueeDistance > 0) || isReturning),
+						},
+					]"
 					:style="{ '--marquee-distance': `-${marqueeDistance}px` }"
 					aria-hidden="true"
 				>
@@ -193,8 +240,19 @@ const fileType = computed(() => {
 						>{{ isHovered || isReturning ? fileName : displayFileName }}</N8nText
 					>
 				</span>
-			</figcaption>
-		</figure>
+			</component>
+		</component>
+		<div v-if="isRemovable && !isRemoving" :class="$style.toolbar">
+			<N8nTooltip :content="t('generic.remove')">
+				<N8nIconButton
+					v-bind="actionButtonProps"
+					:aria-label="t('attachment.remove', { fileName })"
+					data-test-id="attachment-remove"
+					icon="trash-2"
+					@click.stop="removeAttachment"
+				/>
+			</N8nTooltip>
+		</div>
 		<Teleport to="body">
 			<div
 				:class="[$style.poof, { [$style.playing]: isPlaying }]"
@@ -225,17 +283,14 @@ const fileType = computed(() => {
 @use '../../../css/mixins/utils';
 @use '../../../css/mixins/motion';
 @use '../../../css/mixins/mixins';
+@use '../../../css/mixins/_focus' as focus;
 
 .container {
 	position: relative;
 	isolation: isolate;
 	flex-shrink: 0;
 	width: fit-content;
-
-	&:hover,
-	&:focus-within {
-		z-index: 2;
-	}
+	border-radius: var(--radius--md);
 }
 
 .removing {
@@ -312,7 +367,7 @@ const fileType = computed(() => {
 	position: absolute;
 	inset-block-start: var(--spacing--4xs);
 	inset-inline-end: var(--spacing--4xs);
-	z-index: 1;
+	z-index: var.$index-normal;
 	display: flex;
 	gap: var(--spacing--4xs);
 	opacity: 0;
@@ -343,6 +398,7 @@ const fileType = computed(() => {
 	background-color: var(--n8n-attachment--background-color, var(--background--surface));
 	outline: 1px solid var(--color--black-alpha-100);
 	outline-offset: -1px;
+	border: 1px solid transparent;
 	transition: translate var(--duration--snappy) var(--easing--ease-out);
 
 	@include motion.reduced-motion;
@@ -370,10 +426,11 @@ const fileType = computed(() => {
 	}
 
 	&:focus-visible {
-		outline-color: var(--focus--border-color);
+		@include focus.focus-ring-with-border;
 		outline-offset: 0;
 	}
 }
+
 .srOnly {
 	@include utils.utils-sr-only;
 }
@@ -384,7 +441,11 @@ const fileType = computed(() => {
 	overflow: hidden;
 	padding-inline: var(--spacing--2xs);
 	margin-inline: calc(var(--spacing--5xs) * -1);
-	@include mixins.scroll-mask(x);
+	@include mixins.scroll-mask(right);
+
+	&.marqueeMask {
+		@include mixins.scroll-mask(x);
+	}
 }
 
 .fileName {

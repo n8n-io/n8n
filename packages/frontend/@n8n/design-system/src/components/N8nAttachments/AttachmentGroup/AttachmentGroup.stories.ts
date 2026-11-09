@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { ref } from 'vue';
+import { ref, useTemplateRef } from 'vue';
+
+import N8nChatInput from '../../N8nChatInput/ChatInput.vue';
 
 import type { AttachmentProps } from '../Attachment/Attachment.types';
 import N8nAttachment from '../Attachment/Attachment.vue';
@@ -27,6 +29,7 @@ const attachments: AttachmentProps[] = Array.from({ length: 8 }, (_, index) => (
 	fileName: `image-${index + 1}.jpg`,
 	mimeType: 'image/jpeg',
 	src: `https://picsum.photos/seed/attachment-${index + 1}/300/300`,
+	href: `https://picsum.photos/seed/attachment-${index + 1}/300/300`,
 }));
 
 attachments.splice(2, 0, {
@@ -37,6 +40,7 @@ attachments.splice(5, 0, {
 	fileName: 'video.mp4',
 	mimeType: 'video/mp4',
 	src: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+	href: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
 });
 attachments.splice(8, 0, {
 	fileName: 'quarterly-financial-report-final-version12.pdf',
@@ -75,6 +79,61 @@ export const Placeholders: Story = {
 						style="width: var(--height--4xl)"
 					/>
 				</N8nAttachmentGroup>
+			`,
+		};
+	},
+};
+
+export const WithChatInput: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Focus the text input. Press Option+Up (Alt+Up) to focus the first attachment. Press Escape to return to the text input.',
+			},
+		},
+	},
+	render: function renderChatInput() {
+		return {
+			components: { N8nAttachment, N8nAttachmentGroup, N8nChatInput },
+			setup() {
+				const message = ref('');
+				const attachmentGroup =
+					useTemplateRef<InstanceType<typeof N8nAttachmentGroup>>('attachmentGroup');
+
+				function onKeydown(event: KeyboardEvent) {
+					if (
+						!(event.target instanceof HTMLTextAreaElement) ||
+						event.key !== 'ArrowUp' ||
+						!event.altKey ||
+						event.ctrlKey ||
+						event.metaKey ||
+						event.shiftKey ||
+						event.isComposing
+					) {
+						return;
+					}
+
+					event.preventDefault();
+					event.stopPropagation();
+					attachmentGroup.value?.focus();
+				}
+
+				return { message, onKeydown, ...useAttachments(attachments.slice(0, 3)) };
+			},
+			template: `
+				<N8nChatInput v-model="message" @keydown="onKeydown">
+					<template #leading>
+						<N8nAttachmentGroup ref="attachmentGroup">
+							<N8nAttachment
+								v-for="attachment in attachments"
+								:key="attachment.fileName"
+								v-bind="attachment"
+								@remove="onRemove(attachment.fileName)"
+							/>
+						</N8nAttachmentGroup>
+					</template>
+				</N8nChatInput>
 			`,
 		};
 	},

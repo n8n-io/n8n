@@ -3,6 +3,7 @@ import type { N8nLocale } from '../../types';
 
 export default {
 	'generic.remove': 'Remove',
+	'attachment.remove': 'Remove {fileName}',
 	'approvalCard.awaitingApproval': 'Awaiting approval',
 	'approvalCard.alwaysAllow': 'Always allow',
 	'approvalCard.alwaysAllowSuffix': 'during this session',

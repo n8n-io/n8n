@@ -32,7 +32,7 @@ Reusable presentation for files and images. Feature components prepare data, man
 | `sizeBytes` | `number` | Optional file size in bytes. Omit the size label when absent. Zero is a valid size. |
 | `src` | `string` | Optional image preview URL. |
 | `isRemovable` | `boolean` | Shows a remove control when true. Default: `true`. |
-| `isPreviewable` | `boolean` | Allows the attachment to open in a preview dialog. Default: `true`. |
+| `href` | `string` | Optional file URL. Opens in a new tab when supplied. Without it, the attachment is not a link. |
 
 **Events**
 
@@ -53,15 +53,19 @@ Reusable presentation for files and images. Feature components prepare data, man
 - Keep the file name available when a preview fails. A failed preview must not remove the remove control.
 - Show the file size when supplied. Reuse a shared size formatter if one exists.
 - Long names must not push controls out of the attachment. Keep the full name available to assistive technology when the visible text is truncated.
-- Do not render a file link. A future lightbox will handle preview interaction when `isPreviewable` is true. The lightbox implementation is outside this initial contract.
+- When `href` is supplied, use a native link with `target="_blank"` and `rel="noopener noreferrer"`. Open the URL in a new tab. The browser decides whether to display or download the file.
+- Without `href`, display the attachment without a link. Do not infer a link from `src`. The thumbnail URL and file URL can differ.
+- The parent supplies a trusted URL. The component does not resolve file URLs or provide a preview dialog.
 - Do not fetch files, start downloads in code, or manage object URLs.
-- A remove action emits `remove` once. It must not trigger preview interaction.
+- A remove action emits `remove` once. It must not open the file link.
 - The parent changes the list after removal. The component does not remove itself.
 - Use Design System tokens for spacing, color, borders, and text. Support light and dark modes.
 
 ### Accessibility
 
-- Use a native button for removal. Keep future preview controls separate. Do not nest interactive controls.
+- Use a native button for removal. Keep it separate from the file link. Do not nest interactive controls.
+- Give the file link an accessible name that identifies the file and indicates that it opens in a new tab.
+- Keep the file link in the tab order. Support click, Enter, and Space activation. Space must not scroll the page or open more tabs when held.
 - Give the remove button a translated accessible name that identifies the file.
 - Use `fileName` as image alternative text. Avoid duplicate announcements when the file name is also visible.
 - Preserve visible keyboard focus on controls.
@@ -123,10 +127,10 @@ Add focused component tests and stories for these cases as implementation procee
 | --- | --- |
 | File display | File name, size omitted, zero size, long name, unknown MIME type |
 | Image display | Valid preview, missing preview, failed preview |
-| Removal | Visible by default; hidden when disabled; one event; no preview activation |
-| Preview | Enabled by default; disabled when `isPreviewable` is false |
+| Removal | Visible by default; hidden when disabled; one event; no file link activation |
+| File link | Opens `href` in a new tab with `noopener noreferrer`; no link when absent; does not use `src` as a fallback |
 | Image events | Successful load and failed load emit the corresponding event |
-| Accessibility | File-specific remove label, image alternative text, visible focus, no nested controls |
+| Accessibility | File-specific remove label, new-tab link name, image alternative text, visible focus, no nested controls |
 | Group | Empty, one item, multiple items, list fragments, item insertion and removal |
 | Layout | Narrow container, horizontal overflow, right-to-left layout, pointer and keyboard access |
 | Appearance | Light mode, dark mode, reduced motion |

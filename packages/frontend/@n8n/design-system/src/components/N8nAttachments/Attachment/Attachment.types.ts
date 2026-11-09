@@ -10,8 +10,8 @@ export interface AttachmentProps {
 	src?: string;
 	/** Whether the attachment has a remove control. Default true. */
 	isRemovable?: boolean;
-	/** Whether the attachment can open in a preview dialog. Default true. */
-	isPreviewable?: boolean;
+	/** Optional file URL to open in a new tab. */
+	href?: string;
 }
 
 /** Events for one attachment. The parent retains the original file. */
