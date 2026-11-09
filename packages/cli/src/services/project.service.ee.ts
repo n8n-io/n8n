@@ -214,10 +214,9 @@ export class ProjectService {
 		});
 
 		if (targetProject) {
-			await this.sharedWorkflowRepository.makeOwner(
-				ownedSharedWorkflows.map((sw) => sw.workflowId),
-				targetProject.id,
-			);
+			const workflowIds = ownedSharedWorkflows.map((sw) => sw.workflowId);
+			await this.sharedWorkflowRepository.makeOwner(workflowIds, targetProject.id);
+			await this.ownershipService.invalidateWorkflowProjectCacheByIds(workflowIds);
 		} else {
 			for (const sharedWorkflow of ownedSharedWorkflows) {
 				await workflowService.delete(user, sharedWorkflow.workflowId, true);
