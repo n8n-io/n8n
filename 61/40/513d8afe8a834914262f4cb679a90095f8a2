@@ -1,0 +1,33 @@
+packages/cli/test/integration/public-api/executions.test.ts
+  s_990afe2fd4f4a2::t_c4adbfc85cc25b 99,102,330,333,440,443,629,632,1256,1259,1317,1320,1443,1446,1619,1622
+packages/cli/test/integration/shared/public-api.ts
+  s_990afe2fd4f4a2::t_c4adbfc85cc25b 3-8
+packages/cli/test/integration/public-api/tags.test.ts
+  s_990afe2fd4f4a2::t_c4adbfc85cc25b 33,36,91,94,146,149,221,224,322,325
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_990afe2fd4f4a2::t_c4adbfc85cc25b 80,83,403,406,553,556,658,661,777,780,847,850,1127,1130,1249,1252,1412,1415,1571,1574,1794,1797,2419,2422,2521,2524,2636,2639,2737,2740
+packages/cli/test/integration/public-api/discover.test.ts
+  s_990afe2fd4f4a2::t_c4adbfc85cc25b 35,38
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_990afe2fd4f4a2::t_c4adbfc85cc25b 128,131
+packages/cli/test/integration/public-api/folders.test.ts
+  s_990afe2fd4f4a2::t_c4adbfc85cc25b 74,77-82,253,256,509-514,517-522,744-749,752-757,902-907,910-915
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_990afe2fd4f4a2::t_c4adbfc85cc25b 183,186,881,884,1155,1158,1348,1351,1440,1443,1593,1596,1786,1789,2035,2038,2093,2096,2167,2170,2929,2932,3867,3870,3925,3928,4183,4186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6140513d8afe8a834914262f4cb679a90095f8a2",
+  "prompts": {},
+  "sessions": {
+    "s_990afe2fd4f4a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2692701f-a129-459a-8875-e46d0d738cba",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

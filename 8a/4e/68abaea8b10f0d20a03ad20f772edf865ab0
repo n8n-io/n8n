@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-input.builder.ts
+  s_ec79774a9352ba::t_e98139d66af97d 349-350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8a4e68abaea8b10f0d20a03ad20f772edf865ab0",
+  "prompts": {},
+  "sessions": {
+    "s_ec79774a9352ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a52c7a06-2cc8-4e0f-94da-51d19a42e63c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

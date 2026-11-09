@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_a87ab30323b2bf::t_cf8475019988f9 171-179
+  s_a87ab30323b2bf::t_38d60744a4c85c 180-191
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_a87ab30323b2bf::t_38d60744a4c85c 330-334,340-343
+  s_a87ab30323b2bf::t_ffe7f655af25a1 339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab2768707a97d5f1395897124dff20d550bd2581",
+  "prompts": {},
+  "sessions": {
+    "s_a87ab30323b2bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9f44e6d-79e1-4a2e-976f-3b0df0cd5b7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_5785bc20fb92a9::t_d7c0a42f4c4f8e 4,1684,1686,1688-1690,1692,1695
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "44189ecd1630f7c783b468d9502e16999d415b6a",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

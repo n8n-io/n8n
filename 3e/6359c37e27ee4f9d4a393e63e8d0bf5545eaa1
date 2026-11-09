@@ -1,0 +1,39 @@
+packages/quality/testing/playwright/pages/AgentBuilderPage.ts
+  s_482f48320b007f::t_5e2bf217cae136 74
+  s_482f48320b007f::t_681d55adcf23dc 69-73,75-76
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_482f48320b007f::t_681d55adcf23dc 974,979-983,1003-1007
+  s_482f48320b007f::t_48cbf24b291779 1008-1009
+packages/quality/testing/playwright/tests/e2e/agents/agent-builder-chat-modes.spec.ts
+  s_482f48320b007f::t_21fa920cbf1e97 270-273,289-291,293-298
+  s_482f48320b007f::t_681d55adcf23dc 274-288,292,299-309
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_482f48320b007f::t_44508d096bbeca 85-86
+  s_482f48320b007f::t_681d55adcf23dc 80-84
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderChatMode.vue
+  s_482f48320b007f::t_952ee2e9cc71a9 2-3,5,12,37-41,56
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_482f48320b007f::t_952ee2e9cc71a9 6561,6564-6566
+  s_482f48320b007f::t_21fa920cbf1e97 6567-6572,6575-6597
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_482f48320b007f::t_6c26af9c47ea39 1093-1094,1098
+  s_482f48320b007f::t_952ee2e9cc71a9 1091,1096,1105,1108-1113,1115,1118,3557,3562,3763,3768
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_482f48320b007f::t_952ee2e9cc71a9 989
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3e6359c37e27ee4f9d4a393e63e8d0bf5545eaa1",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

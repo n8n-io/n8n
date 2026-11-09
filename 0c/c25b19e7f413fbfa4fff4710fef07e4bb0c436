@@ -1,0 +1,59 @@
+packages/@n8n/api-types/src/push/agents.ts
+  s_da21fc5a6ab2c0::t_429fb2ad3916d0 1,11
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_482f48320b007f::t_fbe622142d8581 171-192
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_482f48320b007f::t_98258217cc2b2e 123-145
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_da21fc5a6ab2c0::t_04551fe2e47779 9,386-400
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_da21fc5a6ab2c0::t_a5c036e849ff58 296-301
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewMoreMenu.test.ts
+  s_482f48320b007f::t_97db6cb2342d7c 2,31-40,468-520
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_da21fc5a6ab2c0::t_11dadb560bf205 217-298
+packages/frontend/editor-ui/src/features/agents/__tests__/agent-usage.test.ts
+  s_482f48320b007f::t_85dcc7fb8555c7 4-8,113-169
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_482f48320b007f::t_6fb8e8b198f048 287-294,302,312,316,323-324
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_da21fc5a6ab2c0::t_2e675bcbb33e2b 51-53
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewMoreMenu.vue
+  s_da21fc5a6ab2c0::t_17dde06fc76ae7 20-22,159-163,165-166,168-176
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_da21fc5a6ab2c0::t_82a09416becf36 609-611,1064-1066,1338,1370,1372-1380
+packages/frontend/editor-ui/src/features/agents/composables/useAgentExecutionUpdates.ts
+  s_482f48320b007f::t_eb06d9ad285b44 2,14-15,23,27-29,65
+packages/frontend/editor-ui/src/features/agents/composables/useAgentSessionUsage.ts
+  s_da21fc5a6ab2c0::t_153255c13856f4 1-69
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_da21fc5a6ab2c0::t_061df6a0b6a626 23-24
+packages/frontend/editor-ui/src/features/agents/utils/agent-usage.ts
+  s_482f48320b007f::t_0e0d2c5a6d923b 45-78
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_da21fc5a6ab2c0::t_fde5a0c106c308 14,206-212,224,310-324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0cc25b19e7f413fbfa4fff4710fef07e4bb0c436",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_da21fc5a6ab2c0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163dc-9f55-7881-9591-96315959ae08",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

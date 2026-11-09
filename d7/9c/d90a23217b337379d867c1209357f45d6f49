@@ -1,0 +1,103 @@
+packages/cli/src/observability/otel-sdk.ts
+  s_71fde24149b9db::t_0f347c08877105 1-3,5-21,23-38,40-46,48-62,64-68,75-76,78-80,82-85,90-94,97-123
+  s_71fde24149b9db::t_0a0008349112ad 4,22,39,47,63,69-74,77,81,86-89,95-96
+packages/@n8n/agents/src/__tests__/langsmith-telemetry.test.ts
+  s_71fde24149b9db::t_0f347c08877105 134-137
+packages/cli/src/modules/agents/agent-run-tracing.service.ts
+  s_71fde24149b9db::t_0f347c08877105 7
+packages/@n8n/agents/src/integrations/langsmith.ts
+  s_71fde24149b9db::t_b620814c942b06 1,324
+packages/cli/src/modules/otel/README.md
+  s_71fde24149b9db::t_0f347c08877105 4,20,23,26-29,35,38-43,45-51,55-64,71-75,143-145,147,175-177,182
+  s_71fde24149b9db::t_1ad2282134dc49 17-19,21-22,24-25,36-37,52-54,65-66
+  s_71fde24149b9db::t_feec7d25332ec0 30-34
+packages/cli/src/observability/__tests__/observability-boot.test.ts
+  s_71fde24149b9db::t_0f347c08877105 1-4,6-7,9-13,16-17,20-23,25-28,30-35
+  s_71fde24149b9db::t_9409db1d963dab 5,8,14-15,18-19,24,29
+packages/@n8n/agents/package.json
+  s_71fde24149b9db::t_3d2a45323968aa 131,140-142
+  s_71fde24149b9db::t_b620814c942b06 132,143-145
+pnpm-lock.yaml
+  ai_agent 2739,3757,4205,4821-4823,4850,5332-5337,5340,5343,5346,5349,11810,12543-12548,12561-12566,12579-12584,12597-12602,12615-12620,12633-12638,12651-12656,12671-12677,12692-12698,12713-12719,12734-12740,12755-12761,12776-12782,12797-12803,12818-12824,12837-12842,12860-12865,12878-12883,12896-12901,12915-12917,13885-13899,13956-13959,13964-13967,13972-13973,13980-13982,13984-13986,13988-13990,13994-13996,14006-14012,18857-18860,21491-21494,22865-22869,29295,29311,30207-30209,30216-30218,30225-30227,30234-30236,30243-30245,30252-30254,30261-30263,30270-30272,30279-30281,30288-30290,30297-30299,30306-30308,30315-30317,30324-30326,30333-30335,30342-30344,30358-30360,30367-30369,30376-30378,30387-30388,31141-31152,31199-31200,31205,31207,31209,31213,31223,31225-31226,31229-31231,31233,31236-31245,31247,31250-31251,31253,31255-31256
+packages/cli/src/expression-observability/expression-observability.provider.ts
+  s_71fde24149b9db::t_0a0008349112ad 17,25,167,194
+packages/@n8n/agents/src/sdk/telemetry.ts
+  s_71fde24149b9db::t_b620814c942b06 5,168
+packages/cli/src/modules/agents/__tests__/agent-run-tracing.service.otel.test.ts
+  s_71fde24149b9db::t_0f347c08877105 12,133
+packages/cli/src/modules/otel/otel.service.ts
+  s_71fde24149b9db::t_0f347c08877105 5-8,10,18,25,30,51,55,65,70,75,125,139-147,150-152,161-165,169-170,175
+  s_71fde24149b9db::t_f185d1a0443993 27,105-107
+  s_71fde24149b9db::t_d34342d4cd2f87 31-35,138
+  ai_agent 45,131-133
+  s_71fde24149b9db::t_13331435cc8425 128,130
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_71fde24149b9db::t_0f347c08877105 1392,1394,1398-1399
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_71fde24149b9db::t_0f347c08877105 1-3,5-6,8,13-15,20,23-27,35,42-44,58,73-75,78-79,82,92,94,96-98,102-110,116,125-129,132-133,135,137-143,145,147-148,150,152-154,156,158-160,162-178,180-183,185-193,195-197,199-206,208-209,211-215,217-222,224-253,260-262,264-267,269-271,273-276,278-280,282-284,286-287,289-291,293,295-296,298-301,303,305-306,308-309,311-332,334-339
+  s_71fde24149b9db::t_c8793824791740 7,29-32,38,93,155,157,333
+  ai_agent 76-77,254-257
+packages/cli/src/observability/__tests__/otel-sdk.test.ts
+  s_71fde24149b9db::t_0f347c08877105 1-18,20-34,36-81,83-86,88-104,106-246,248-250,264,310,321-322
+  s_71fde24149b9db::t_5dba698e145d40 19,35,82,87,105,247,251-263,265-269,277-286,293-309
+  s_71fde24149b9db::t_af68d91d8b1d0b 270-276,287-292
+  s_71fde24149b9db::t_1a5e1e74766700 311-320
+packages/cli/src/observability/tracer-names.ts
+  s_71fde24149b9db::t_0f347c08877105 1-4,7-11
+  s_71fde24149b9db::t_008ef6e7a53073 5-6
+packages/cli/src/observability/tracing-sources.config.ts
+  s_71fde24149b9db::t_0f347c08877105 1-20
+packages/cli/src/public-api/v1/controllers/otel.public.controller.ts
+  s_71fde24149b9db::t_0f347c08877105 87
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_71fde24149b9db::t_0f347c08877105 16,63
+packages/cli/src/observability/__tests__/tracing-sources.config.test.ts
+  s_71fde24149b9db::t_0f347c08877105 1-31
+packages/cli/bin/n8n
+  s_71fde24149b9db::t_cd2ae20275e550 65,67,71-74
+  s_71fde24149b9db::t_60b21a80b75787 66
+packages/cli/src/observability/observability-boot.ts
+  s_71fde24149b9db::t_0f347c08877105 1-6,8-15
+  s_71fde24149b9db::t_eabecd3573c5c8 7
+packages/cli/package.json
+  s_71fde24149b9db::t_0f347c08877105 201
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  s_71fde24149b9db::t_0f347c08877105 67
+packages/cli/src/modules/otel/__tests__/otel.service.grpc-deps.test.ts
+  s_71fde24149b9db::t_0f347c08877105 10-11,55
+packages/cli/src/observability/tracer-gate.ts
+  s_71fde24149b9db::t_0f347c08877105 1-20,23-46
+  s_71fde24149b9db::t_9f16bca8d33bb6 21-22
+packages/@n8n/agents/src/sdk/__tests__/context-manager.test.ts
+  s_71fde24149b9db::t_b620814c942b06 1-36
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_71fde24149b9db::t_0f347c08877105 3-4,8,17-18,179,192-194,199,204-205,208-229,233-235,255-274,282,300,449,468,476-477,483,486-487,490,495,501,514,523,528,530,548,553,555,557-558,561,563-566,568-569,574,592,604,788,792
+  s_71fde24149b9db::t_afb3574c40ad75 496-498
+  s_71fde24149b9db::t_d34342d4cd2f87 535,541,551
+packages/cli/src/modules/otel/otel-span-exporter.ts
+  s_71fde24149b9db::t_0f347c08877105 1-42
+packages/@n8n/agents/src/sdk/context-manager.ts
+  s_71fde24149b9db::t_42442f91f3d489 1-3,7-17
+  s_71fde24149b9db::t_b620814c942b06 4-6
+packages/cli/src/observability/swappable-pipeline.ts
+  s_71fde24149b9db::t_1a38420dc79330 1
+  s_71fde24149b9db::t_0f347c08877105 2-38,40,44,46-56,58-60,63,66-107
+  s_71fde24149b9db::t_d34342d4cd2f87 61
+  s_71fde24149b9db::t_3d2a45323968aa 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d79cd90a23217b337379d867c1209357f45d6f49",
+  "prompts": {},
+  "sessions": {
+    "s_71fde24149b9db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f71bd56d-a432-4323-a999-6a6b83977c41",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

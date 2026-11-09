@@ -1,0 +1,33 @@
+packages/@n8n/agents/src/__tests__/evaluate-summary.test.ts
+  s_cdb8e2d26dadad::t_10cf64b825fc91 1-44
+packages/@n8n/agents/src/types/sdk/eval.ts
+  s_cdb8e2d26dadad::t_96aff6626ead54 67-71
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalTryRow.vue
+  s_cdb8e2d26dadad::t_76b612ee2b933d 350
+  s_cdb8e2d26dadad::t_c81013f4d06b3d 349
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalTryRow.test.ts
+  s_cdb8e2d26dadad::t_7c052f34f3dbeb 268,276-277
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentPreviewPanel.vue
+  s_cdb8e2d26dadad::t_e120fa855c5468 107-110
+packages/@n8n/agents/src/sdk/evaluate.ts
+  s_cdb8e2d26dadad::t_be918178ec3959 118
+  s_cdb8e2d26dadad::t_8d10d16bc847f3 100-115,117,120-122,124-126,130
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentPreviewPanel.test.ts
+  s_cdb8e2d26dadad::t_4e1c0371a47a17 1644,1658
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a78432df6ddd0e4c243906409724ca0790ab544",
+  "prompts": {},
+  "sessions": {
+    "s_cdb8e2d26dadad": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1600a-d56d-71c5-97e1-b1e6fe7943fe",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,50 @@
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_acf0ff0cc09fee::t_2d6f6b09d19bd2 309-312
+  s_acf0ff0cc09fee::t_6fe5d21f06e787 479,482-488
+  s_acf0ff0cc09fee::t_06a18c897af7aa 562-580
+  s_acf0ff0cc09fee::t_bda601ffd73065 99-104
+  s_acf0ff0cc09fee::t_fd04853ad6005a 296
+  s_acf0ff0cc09fee::t_8c956da6cb25b0 423-426
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_acf0ff0cc09fee::t_53ce6d043d478f 3659-3673
+  s_acf0ff0cc09fee::t_b1dae2ae895a95 3806,3831,3847-3898,3900-3933,3935-3951,3955,3957-3997
+  s_acf0ff0cc09fee::t_23308c03a601a1 3899
+packages/cli/src/workflows/workflow.service.ts
+  s_acf0ff0cc09fee::t_1d9ae65e505c5b 664
+  s_acf0ff0cc09fee::t_87be2c76a9edfc 631-632
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_acf0ff0cc09fee::t_ea273cbb9fd097 405-408
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_acf0ff0cc09fee::t_fdae31ba3ed751 13
+  s_acf0ff0cc09fee::t_780d6635a6a2cc 880-975,979-1021
+  s_acf0ff0cc09fee::t_0522a8ce0635a9 1311-1327
+  s_acf0ff0cc09fee::t_be921c6567d724 976-978
+packages/cli/test/integration/shared/utils/index.ts
+  s_acf0ff0cc09fee::t_d7189152549e2d 92-95
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_e443906f1cde10::t_3a13f19f777c49 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dea83b24ee44c0de5344b88f02630e0281b79d9f",
+  "prompts": {},
+  "sessions": {
+    "s_acf0ff0cc09fee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3cc5a623-4869-4dd0-8a9d-7ea5111854c2",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_e443906f1cde10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a58c0ca42ce77d9f4",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

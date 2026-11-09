@@ -1,0 +1,26 @@
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-turn-trace.test.ts
+  s_1d8d00f9e46fea::t_65809a1a6147d8 43-47,102,271-278
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-turn-trace.ts
+  s_1d8d00f9e46fea::t_40adb3cb6b33d3 58-59,65-66,80,149,156,340,346
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_1d8d00f9e46fea::t_65809a1a6147d8 780-874
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_1d8d00f9e46fea::t_9ae053372a29bc 1-6
+  s_1d8d00f9e46fea::t_40adb3cb6b33d3 111-120,293,295-299,383-386,390-391,395-428
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8bc12cbb06af1a71c2327c8640712bc3839a4dd9",
+  "prompts": {},
+  "sessions": {
+    "s_1d8d00f9e46fea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c751726-482f-4fdc-908f-f781e0199418",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

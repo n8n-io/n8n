@@ -1,0 +1,41 @@
+packages/@n8n/task-runner/src/task-runner-sentry.ts
+  s_00792efc4a7302::t_a2dab1e53bf6e9 18,32
+packages/cli/src/commands/__tests__/start.test.ts
+  s_00792efc4a7302::t_e08c206c40a1dd 169,231,270,319
+packages/@n8n/config/test/config.test.ts
+  s_00792efc4a7302::t_e08c206c40a1dd 471
+packages/cli/src/error-reporting/error-reporting-boot.ts
+  s_00792efc4a7302::t_a2dab1e53bf6e9 17,40
+packages/@n8n/config/src/configs/sentry.config.ts
+  s_00792efc4a7302::t_a2dab1e53bf6e9 30-34,36-37
+packages/@n8n/task-runner/src/__tests__/task-runner-sentry.test.ts
+  s_00792efc4a7302::t_e08c206c40a1dd 12,291
+packages/core/src/errors/__tests__/error-reporter.test.ts
+  s_00792efc4a7302::t_e08c206c40a1dd 479,556-557,559,575
+packages/core/src/errors/error-reporter.ts
+  s_00792efc4a7302::t_a2dab1e53bf6e9 57-58,216,277,294,317-318
+packages/@n8n/task-runner/src/js-task-runner/__tests__/js-task-runner.test.ts
+  s_00792efc4a7302::t_e08c206c40a1dd 65
+packages/cli/src/error-reporting/__tests__/error-reporting-boot.test.ts
+  s_00792efc4a7302::t_e08c206c40a1dd 20,87
+packages/core/src/errors/__tests__/error-reporter.sentry-sdk.test.ts
+  s_00792efc4a7302::t_e08c206c40a1dd 23
+packages/@n8n/task-runner/src/config/sentry-config.ts
+  s_00792efc4a7302::t_a2dab1e53bf6e9 10-14,16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1daee0cea701f09dbe48b052dd48f89b38240743",
+  "prompts": {},
+  "sessions": {
+    "s_00792efc4a7302": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8701b7cf-3e9e-4646-a497-cdd9a4c5b5b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

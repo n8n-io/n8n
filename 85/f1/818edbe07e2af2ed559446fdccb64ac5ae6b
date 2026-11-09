@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-integration.ts
+  s_f5af8c164cba73::t_ce46d3b11f2835 110-112
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_f5af8c164cba73::t_fccc19784a557d 1,17,422-444,446-468,471
+  s_f5af8c164cba73::t_9e803b785a048f 3,445
+  s_f5af8c164cba73::t_7fdcc4d2b6081c 469-470
+  s_f5af8c164cba73::t_27c4b759fa7ee0 472
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/synthetic-integration.test.ts
+  s_f5af8c164cba73::t_7d451174214dab 256-273,275-278
+  s_f5af8c164cba73::t_ceda70c752281b 274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85f1818edbe07e2af2ed559446fdccb64ac5ae6b",
+  "prompts": {},
+  "sessions": {
+    "s_f5af8c164cba73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fde0483a-208b-4943-9c5a-fddb6937e64b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

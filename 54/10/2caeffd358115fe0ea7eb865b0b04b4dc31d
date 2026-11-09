@@ -1,0 +1,205 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_8056da22c66cb7::t_775c3572f0cd62 155,741,823
+  s_8056da22c66cb7::t_95a15d6f2930b7 782-783
+  s_8056da22c66cb7::t_6d28e1bb17e158 726,762-781
+  s_8056da22c66cb7::t_a9377703947a34 1553
+  s_8056da22c66cb7::t_f9fb24d64f445b 73
+  s_8056da22c66cb7::t_9dac3182e70d2a 75
+  s_8056da22c66cb7::t_5e41c78236bc87 889-890
+  s_8056da22c66cb7::t_1a900d66b93ca1 661-664,672-676,788-796,801-803,805-810,812-818,821,830-835,847,858,881-883,885-886,888,891-893,895-896,902-905,907-920,922-946,949,952-955,957-961,963,981,989,994,1027,1035
+  s_8056da22c66cb7::t_5d9442eabc25e9 13,839,845,884,887,894,897-901,1539-1545,1551-1552
+  s_8056da22c66cb7::t_5b365862439b89 1004
+  s_8056da22c66cb7::t_1efcb3546a570e 15,74,977-980,982-983,988,991-993,995,999,1002-1003,1015-1016,1018-1024,1026,1028-1034
+  s_8056da22c66cb7::t_22eb147f6725ae 66,1546-1550
+  s_8056da22c66cb7::t_793799f55884e1 29
+  s_8056da22c66cb7::t_64264a947e1b88 843-844,846
+  s_8056da22c66cb7::t_b22e687d643e2d 72
+  s_8056da22c66cb7::t_8a006e7b617c04 921
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_8056da22c66cb7::t_7abdb0c6ed2019 101-105,108,112-132,136-137,141
+  s_7c16e26086f170::t_e74f66fd1d8d79 134-135
+  s_7c16e26086f170::t_772c104f5f3757 133
+  s_8056da22c66cb7::t_09a2e1aa4fd4b0 21,39,100,150,160
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_8056da22c66cb7::t_3099afb17cefdd 8,228
+  s_8056da22c66cb7::t_1a900d66b93ca1 157-166,179,188,210-211
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_8056da22c66cb7::t_e458b5d4e403ac 32,50-51,63-66,74-87
+  s_8056da22c66cb7::t_c86f4a6170eab4 193-205
+  s_8056da22c66cb7::t_7411a0b722cc56 31,140,235-236,312-319
+  s_8056da22c66cb7::t_b3962f37805529 516-518,520
+  s_8056da22c66cb7::t_69627149d7de9c 35,606-607
+  s_8056da22c66cb7::t_c20b78234a8002 1-13,15-30,33,37-49,52-62,88-97,102-109,113-139,141-150,152-192,206,214,216-218,224-234,237-239,241-242,254-255,271-310,320-322,327-330,336-382,387-390,394-415,419-455,460-462,469-472,475-483,486-491,493-510,515,519,521-535,538-574,579-599,601-605,608,613-616
+  s_8056da22c66cb7::t_676c9b000cfd22 98-101,251-253,311,323-326,331-335,383-386,391-393,511-514,536-537,575-578,600,609-612
+  s_8056da22c66cb7::t_df8ac243b44769 14,416-418,456-459,463-468,473-474,484-485,492
+  s_8056da22c66cb7::t_09aef44e816e25 240,243-250,256-270
+  s_8056da22c66cb7::t_df40daa6e6f265 34,36
+  s_7c16e26086f170::t_926bd1f677a415 110-112
+  s_7c16e26086f170::t_3b6ab908ced2e0 67-73
+  s_8056da22c66cb7::t_8bc15bf9d7dbcf 151
+  s_8056da22c66cb7::t_1a900d66b93ca1 207-213
+  s_8056da22c66cb7::t_152d41e91ca5aa 215
+  s_8056da22c66cb7::t_b6694272f5865d 219-223
+packages/cli/src/modules/promotions.ee/local-package-entities.service.ts
+  s_8056da22c66cb7::t_676c9b000cfd22 39-41
+  s_8056da22c66cb7::t_d0580c18cbd5ff 1,3-16,18-27,29,37-38,42-64
+  s_8056da22c66cb7::t_08d92156c10588 2,17,28,30,32-36
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_8056da22c66cb7::t_d0580c18cbd5ff 35,87,154-156,160,162-163,165-166,172-174,185-186
+  s_8056da22c66cb7::t_6d28e1bb17e158 142
+  s_8056da22c66cb7::t_7411a0b722cc56 6,19,21,24,33,66-68,85-86,112-113,117,132,197,212,215-239,246,248,252-253,259-263,284
+  s_8056da22c66cb7::t_b8f61ac3e56aeb 1-5,7-18,20,22-23,25-32,34,36-65,69-84,88-111,114-116,118,130,134,136-141,143,148-150,152-153,187-188,189,193,194-195,198,200-202,205-211,240-245,247,249-251,254-258,285-286
+  s_8056da22c66cb7::t_b944a8fef914bd 179-184
+  s_8056da22c66cb7::t_5e32dbee149074 213-214
+  s_8056da22c66cb7::t_158c1cdc6dba1a 119-129,131,133,135,264-276,278,279-283
+  s_8056da22c66cb7::t_676c9b000cfd22 144-147
+  s_8056da22c66cb7::t_08d92156c10588 151,157-159,161,164,167-171,175-178
+  s_7c16e26086f170::t_f18347ee84fdaf 277
+  s_8056da22c66cb7::t_5b365862439b89 190-191,196
+  s_8056da22c66cb7::t_6d7c031af80bdf 203-204
+  s_8056da22c66cb7::t_1a900d66b93ca1 192,199
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_8056da22c66cb7::t_db63c8b42f51dc 28,36,48,381,426,441,447,451,459
+  s_8056da22c66cb7::t_676c9b000cfd22 344-346
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8056da22c66cb7::t_69627149d7de9c 10175
+  s_8056da22c66cb7::t_7abdb0c6ed2019 10166-10169,10171-10174
+  s_7c16e26086f170::t_f18347ee84fdaf 10170,10176
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_8056da22c66cb7::t_3099afb17cefdd 5,99-105
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_8056da22c66cb7::t_4c631166f1c948 959-961,978-981,983-987,990-994,1001,1004,1010-1013
+  s_8056da22c66cb7::t_3bc842bad47627 36,71-76
+  s_8056da22c66cb7::t_42fa06fb5e0678 982,1005-1009
+  s_8056da22c66cb7::t_b18fcc55d8f814 80
+  s_8056da22c66cb7::t_db0ee7ebf5027d 958,963-977,988-989,996-1000,1003
+  s_8056da22c66cb7::t_5e32dbee149074 962,995,1002
+  s_7c16e26086f170::t_5e376738a7ac5b 1180,1215-1216
+  s_7c16e26086f170::t_6ee4dd1ed3fa0f 1176,1195-1196,1219-1221
+  s_7c16e26086f170::t_7f9a6576885805 1281-1291
+  s_7c16e26086f170::t_fa35f25d3b470a 1226-1280,1292-1293
+  s_8056da22c66cb7::t_2594b6b4f9b836 1014-1048
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_8056da22c66cb7::t_7abdb0c6ed2019 173-175,177-183,189-192,198,200-203,305,307
+  s_7c16e26086f170::t_e74f66fd1d8d79 186-188
+  s_7c16e26086f170::t_772c104f5f3757 184-185
+  s_8056da22c66cb7::t_09a2e1aa4fd4b0 17,42,176,193-197,199,306
+packages/cli/src/modules/promotions.ee/git-commit-package-reader.ts
+  s_8056da22c66cb7::t_509bcb20e56dd4 1-35
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_8056da22c66cb7::t_655d9d2716d0d7 205
+  s_8056da22c66cb7::t_6330475e17c2a7 90,484,2650
+  s_8056da22c66cb7::t_813d3341b0b6bb 8
+  s_8056da22c66cb7::t_d0580c18cbd5ff 91,487
+  s_8056da22c66cb7::t_ffc76f25adfe90 2136-2141,2145-2148,2150-2151,2574-2592
+  s_8056da22c66cb7::t_d275aefa9eda1b 2087,2102-2115
+  s_8056da22c66cb7::t_4c910144f3470a 2457-2459
+  s_8056da22c66cb7::t_a6d63ee953066c 52
+  s_8056da22c66cb7::t_2fdd18fbbab072 2426,2460-2473
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_8056da22c66cb7::t_676c9b000cfd22 286-289
+  s_8056da22c66cb7::t_3f7268a3d30923 21,237,243,278,285,291-297,412-416
+  s_7c16e26086f170::t_79d4ea6d5efb18 280
+  s_7c16e26086f170::t_5e376738a7ac5b 458,461
+  s_7c16e26086f170::t_95402383186e26 275-277,279,281-284
+  s_7c16e26086f170::t_09fbffbec049f6 453-454,459-460
+  s_7c16e26086f170::t_3b6ab908ced2e0 455
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_8056da22c66cb7::t_8b509ea42fb0ad 1,15-16
+  s_8056da22c66cb7::t_26fb296b1884fa 50,53
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_8056da22c66cb7::t_f43581f8ea6caa 358
+  s_8056da22c66cb7::t_47a6cb8a6c5503 443
+  s_8056da22c66cb7::t_a9d765d1a0cdf9 643-644
+  s_8056da22c66cb7::t_df40daa6e6f265 38,56
+  s_8056da22c66cb7::t_75f1893d9855b0 66
+  s_8056da22c66cb7::t_d0580c18cbd5ff 67-70,116,380,390
+  s_8056da22c66cb7::t_c2765192c1656b 23
+  s_8056da22c66cb7::t_69627149d7de9c 125-126,464,487,505
+  s_8056da22c66cb7::t_fbe57349ccc0fe 183,188-191
+  s_8056da22c66cb7::t_676c9b000cfd22 61
+  s_8056da22c66cb7::t_e4d76f0c7fd9cf 134-138,151-154,177,185,187,192-194,205-245,260,267-275,278-282,284-290,434-438,440,444,642,706
+  s_8056da22c66cb7::t_4aa8163bc56f3a 291
+  s_8056da22c66cb7::t_ba6fc2e55a845e 155-175
+  s_8056da22c66cb7::t_0df679704e02a6 64-65,113,629,632-639
+  s_7c16e26086f170::t_1b3d58473e9e19 251-254
+  s_7c16e26086f170::t_e9182edd8f1899 255-256
+  s_7c16e26086f170::t_45731ea4c2991a 246-250,257-259,261-266,276-277,283,630-631,640-641
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_8056da22c66cb7::t_1c60d9ade4b819 279,282-288
+  s_8056da22c66cb7::t_69627149d7de9c 205,234
+  s_8056da22c66cb7::t_3099afb17cefdd 206-233,235-236,238-240,280-281,289-290,304
+  s_7c16e26086f170::t_f18347ee84fdaf 237
+  s_8056da22c66cb7::t_993c81e0e17b95 145-158,241-245
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_8056da22c66cb7::t_f43581f8ea6caa 1-22,25-56,58
+  s_8056da22c66cb7::t_676c9b000cfd22 23-24
+  s_8056da22c66cb7::t_7076dae83de200 57
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  s_8056da22c66cb7::t_cc639a77ff1462 1326-1503,1505-1521
+  s_7c16e26086f170::t_4b468e8fa43014 1504
+  s_8056da22c66cb7::t_17d6ea50cd708f 1522-1567,1669-1692
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_8056da22c66cb7::t_655d9d2716d0d7 38
+  s_8056da22c66cb7::t_5f3e3381dbe0fc 14,16
+  s_8056da22c66cb7::t_606ac862d77b72 2167
+  s_8056da22c66cb7::t_09e5576354a9f1 2475,2544-2545
+  s_8056da22c66cb7::t_22eb147f6725ae 2012,2029-2033,2291-2292,2294-2298,2301-2302,2305-2306,2314-2318
+  s_8056da22c66cb7::t_5e1ec0f3c97d86 5
+  s_8056da22c66cb7::t_0f2144e04057cd 1932,2535
+  s_8056da22c66cb7::t_e6468afda3f888 91,147-156,1910,1939-1942,1986-1988,1990-1991,1996-2005,2023,2157,2181,2195,2201,2207,2220,2225,2254,2385,2398-2412,2414,2417-2418,2423-2437,2439,2444,2451,2490,2502,2513,2519,2546
+  s_8056da22c66cb7::t_8326772b98465e 39,172,1909,1911-1924,1946-1952,2048,2069,2071-2072,2074-2075,2158-2165,2189,2206,2208-2215,2221,2226-2233,2252-2253,2255,2261,2271,2275,2282-2283,2332,2342,2347-2352,2360,2362-2364,2366,2382,2473,2511-2512,2520-2527,2534,2536,2542
+  s_8056da22c66cb7::t_410f4bb6c22c6d 9,1925-1926,1929-1931,1933-1938,1954-1957,1965-1981,1983-1985,2006,2009-2011,2017-2022,2024,2028,2188,2287-2290,2510
+  s_8056da22c66cb7::t_3e4687a868f227 2503,2505-2509
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_7c16e26086f170::t_ef321559bfde1e 66-73,81,99,140
+  s_7c16e26086f170::t_a13b699f90b22b 126,142
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_7c16e26086f170::t_ef321559bfde1e 121
+  s_7c16e26086f170::t_d43cbda4a8c9c3 120
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_7c16e26086f170::t_ef321559bfde1e 105
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  s_7c16e26086f170::t_ef321559bfde1e 62,102
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_8056da22c66cb7::t_2035cfd4ad740e 527,556,675
+  s_8056da22c66cb7::t_f9de163639bc41 651
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generated-spec-drift.test.ts
+  s_8056da22c66cb7::t_58563dfff1232a 63,68
+packages/cli/src/modules/promotions.ee/__tests__/cross-project-moves.test.ts
+  s_8056da22c66cb7::t_dabee03b068121 82,91-92
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreviewLabels.ts
+  s_8056da22c66cb7::t_09a2e1aa4fd4b0 1,10-20,105-119
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_8056da22c66cb7::t_7a45978d87a92a 5
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_8056da22c66cb7::t_4b45a69c6aab21 5,47-50
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_8056da22c66cb7::t_998879ed870e8d 5
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_8056da22c66cb7::t_432ef4d2f44d1a 5,47-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "54102caeffd358115fe0ea7eb865b0b04b4dc31d",
+  "prompts": {},
+  "sessions": {
+    "s_7c16e26086f170": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a273770a-1293-4914-86bd-77cc57f68f4c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_8056da22c66cb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b1ea0a0-5534-410d-8325-1a2b74c81085",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

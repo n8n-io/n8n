@@ -1,0 +1,40 @@
+docs/generated/sqlite-schema/agent_execution.md
+  ai_agent 9,18,29-30,51-55,81,92-93
+packages/cli/test/migration/1792679908817-add-agent-execution-usage-and-links.test.ts
+  s_74af500df7394b::t_5b8ff0365f4d00 13
+docs/generated/sqlite-schema/agent_execution_message_links.md
+  ai_agent 59,70-71
+packages/@n8n/db/src/migrations/sqlite/1792679908817-AddAgentExecutionUsageAndLinks.ts
+  s_74af500df7394b::t_5b8ff0365f4d00 1,3-4
+packages/@n8n/db/src/migrations/common/1792679908817-AddAgentExecutionUsageAndLinks.ts
+  s_74af500df7394b::t_5b8ff0365f4d00 3-17,20-31
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 130,141-142
+docs/generated/sqlite-schema/agent_execution_threads.md
+  ai_agent 115,126-127
+docs/generated/sqlite-schema/agent_message_queue.md
+  ai_agent 73,84-85
+docs/generated/sqlite-schema/README.md
+  ai_agent 205,606,617-618
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "10b9dd69e49ecf3dce5003f71f0843ad65b76465",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_74af500df7394b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "046d81ae-50af-4dd1-a1d2-7b769f612a6c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

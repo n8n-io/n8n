@@ -1,0 +1,65 @@
+packages/cli/src/modules/agents/__tests__/agent-run-tracing.service.test.ts
+  s_71fde24149b9db::t_e8fe27f5b1b23a 2,10,23-28,33,38,43,48-49,54,64,97,152,162,186
+  s_71fde24149b9db::t_8be894302da9cc 3,9,12
+packages/cli/src/modules/agents/agent-run-tracing.service.ts
+  s_71fde24149b9db::t_070a9cb24f87b6 5,58,88
+  s_71fde24149b9db::t_e11b4c53f731b8 52-54
+packages/cli/src/observability/__tests__/otel-sdk.test.ts
+  s_71fde24149b9db::t_b0d4c466975c77 2
+packages/@n8n/config/src/configs/tracing-sources.config.ts
+  s_71fde24149b9db::t_b0d4c466975c77 1-20
+packages/@n8n/config/src/index.ts
+  s_71fde24149b9db::t_b0d4c466975c77 115
+packages/cli/src/modules/otel/README.md
+  s_71fde24149b9db::t_87a1bc0064b65c 4,17-43,45-47,50-66,71-75
+  s_71fde24149b9db::t_d9ff96fa216bea 143-145,147,175-177,187,190
+packages/cli/src/modules/agents/__tests__/agent-run-tracing.service.otel.test.ts
+  s_71fde24149b9db::t_e8fe27f5b1b23a 29,73,123,140
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_71fde24149b9db::t_194875d2ef3934 19
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/__tests__/microsoft-utils.test.ts
+  s_71fde24149b9db::t_a92e8104f935cb 362
+  s_71fde24149b9db::t_14e4bdcdcb9c92 428-429,447
+packages/cli/src/modules/otel/__tests__/support/otel-test-provider.ts
+  s_71fde24149b9db::t_0a89c4e631c222 57
+packages/cli/src/expression-observability/expression-observability.provider.ts
+  s_71fde24149b9db::t_070a9cb24f87b6 13,17,24,165,192
+packages/@n8n/agents/src/__tests__/langsmith-telemetry.context.test.ts
+  s_71fde24149b9db::t_e908c9e08ffbd6 1-49
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_71fde24149b9db::t_0a89c4e631c222 37,1433-1440
+  s_71fde24149b9db::t_352f773022f367 1275
+packages/cli/src/expression-observability/__tests__/expression-observability.provider.test.ts
+  s_71fde24149b9db::t_dce7959bfc8a9c 7,41
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_71fde24149b9db::t_87a1bc0064b65c 1,8-9,16,24-25,27,29-32,35,38,42-44,58,73-75,78-79,82,92-94,96-98,102-110,116,125-129,132-133,135,137-143,145,147-148,150,152-160,162-178,180-183,185-193,195-197,199-206,208-209,211-213,215,217-219,221-222,242-245
+  s_71fde24149b9db::t_274f1b7844d49f 214,220
+OWNERS
+  s_71fde24149b9db::t_b28fcec823886d 337
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_71fde24149b9db::t_87a1bc0064b65c 3,16-17,178,191-192,198,203,208,211-228,232-234,254-255,263-273,281,299,448,467,475-476,482,485-486,489,494,500,513,522,527,529,534,540,547,550,552,554,557,563,581
+  s_71fde24149b9db::t_274f1b7844d49f 207,209-210,556
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_71fde24149b9db::t_070a9cb24f87b6 61
+packages/cli/src/modules/otel/otel.service.ts
+  s_71fde24149b9db::t_87a1bc0064b65c 5-6,8,23,25,28-33,49,53,63,69,99-101,119,124,132-140,146,155-159,163-164,169
+  s_71fde24149b9db::t_274f1b7844d49f 144
+packages/cli/src/observability/otel-sdk.ts
+  s_71fde24149b9db::t_b0d4c466975c77 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a41932145b47332260d80e9a0e410be761ec4282",
+  "prompts": {},
+  "sessions": {
+    "s_71fde24149b9db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f71bd56d-a432-4323-a999-6a6b83977c41",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

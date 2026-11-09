@@ -1,0 +1,25 @@
+packages/cli/src/modules/n8n-packages/engine/credential-save-policy.ts
+  s_8056da22c66cb7::t_a208ab70ec6567 36,96
+packages/cli/src/modules/n8n-packages/engine/__tests__/content-import-policy.test.ts
+  s_8056da22c66cb7::t_595f06ec6ecdfb 71-73,88,98-104,118,152,172,185
+packages/cli/src/modules/n8n-packages/engine/content-import-policy.ts
+  s_8056da22c66cb7::t_a208ab70ec6567 41
+packages/cli/src/modules/n8n-packages/engine/__tests__/credential-save-policy.test.ts
+  s_8056da22c66cb7::t_595f06ec6ecdfb 75,91,124,145,164,179,199,235,248,289,297-299,322,341,377,392,404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e3a1de2120544e485f92b0610c012e215fda49f",
+  "prompts": {},
+  "sessions": {
+    "s_8056da22c66cb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b1ea0a0-5534-410d-8325-1a2b74c81085",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

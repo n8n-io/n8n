@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_c9c7becb358970::t_44caf95856071e 353-360,509-512,550,554,572-573
+  s_c9c7becb358970::t_a1c48de1132a91 513-549,551-552
+  s_c9c7becb358970::t_674c853107efc8 553
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_c9c7becb358970::t_475e0dfb75074f 181-184,186
+  s_c9c7becb358970::t_363ad4c05d32eb 187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37f7e112c4ad4cbaf72dcb521adc80d9d18ec6d9",
+  "prompts": {},
+  "sessions": {
+    "s_c9c7becb358970": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15943-d3e2-7250-ac6e-a68af2619890",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

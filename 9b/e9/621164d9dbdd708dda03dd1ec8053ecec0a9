@@ -1,0 +1,56 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_d00cf175ed42d2::t_4a46fff91954c9 2252,2269,2279-2303
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.utils.test.ts
+  s_d00cf175ed42d2::t_922b657d70894e 12-20,24-29,33-35,37-45,47
+  s_d00cf175ed42d2::t_769b9439cb0237 21-23,30-32,51-53
+  s_d00cf175ed42d2::t_e9696f7ece44f2 7,11,36,46,48-50,54-56
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_d00cf175ed42d2::t_e9696f7ece44f2 322,325,331-335,456
+  s_d00cf175ed42d2::t_1b9223aa127567 406-407,803-836
+  s_d00cf175ed42d2::t_8512af7b02f675 4,326-330,405,408-434,463
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_d00cf175ed42d2::t_4ecf7e4099c040 527-528,532-541,544-554,558-565,733,736,746,749,752,770,773,783,786,794
+  s_d00cf175ed42d2::t_b26dabce95a627 12
+  s_d00cf175ed42d2::t_922b657d70894e 510-514,529-531,543,555-557
+  s_d00cf175ed42d2::t_dbdbb3577c5976 509,518-521,526,566-574,725-732,734-735,737-745,750-751,753-757
+  s_d00cf175ed42d2::t_74c31298fc7283 747-748,758,784-785
+packages/cli/src/modules/promotions.ee/promotions-push-rejected.error.ts
+  s_d00cf175ed42d2::t_933fb47d231bc8 1-7
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_d00cf175ed42d2::t_10275c14e84781 544-556
+  s_d00cf175ed42d2::t_b66a1346441b44 187-199
+  s_d00cf175ed42d2::t_933fb47d231bc8 265,1106,1115-1116
+  s_d00cf175ed42d2::t_1c32a420e72a13 122-127
+  s_d00cf175ed42d2::t_1e7a7c586752c1 20
+  s_d00cf175ed42d2::t_dbdbb3577c5976 1099
+  s_d00cf175ed42d2::t_4b60c791ea6c5e 1107,1113-1114,1117-1122
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_d00cf175ed42d2::t_892a8c57ad75c1 352,360,365,368,379-386,389-390
+  s_d00cf175ed42d2::t_b202827f226f78 50-54
+  s_d00cf175ed42d2::t_c7f6e236c5b53f 304-316
+  s_d00cf175ed42d2::t_933fb47d231bc8 24-30,353-359,361-364,366-367
+packages/cli/src/modules/promotions.ee/promotions-git.utils.ts
+  s_d00cf175ed42d2::t_933fb47d231bc8 28-29,31-32
+  s_d00cf175ed42d2::t_922b657d70894e 24,27,30
+  s_d00cf175ed42d2::t_769b9439cb0237 25-26
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.integration.test.ts
+  s_d00cf175ed42d2::t_41ff99eed16e2a 3,13,192-202,208-257,260-301
+  s_d00cf175ed42d2::t_769b9439cb0237 258-259
+  s_d00cf175ed42d2::t_dcac59e101dc3a 203-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9be9621164d9dbdd708dda03dd1ec8053ecec0a9",
+  "prompts": {},
+  "sessions": {
+    "s_d00cf175ed42d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b248cf81-ccac-49c4-853d-d4acffb5451a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

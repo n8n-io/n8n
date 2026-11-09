@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataDisplayModeSelect.test.ts
+  s_4367c29be9a1f1::t_d4e91489a41d61 133-140
+  s_4367c29be9a1f1::t_0b11a7b69495f0 174-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24ab6e5e2145b1e676d38f3590dc11fb166c45d7",
+  "prompts": {},
+  "sessions": {
+    "s_4367c29be9a1f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8991c965-9f30-4180-a501-051ae3861442",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jani Jez <jani.jez@n8n.io>"
+    }
+  }
+}

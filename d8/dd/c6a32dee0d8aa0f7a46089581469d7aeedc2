@@ -1,0 +1,21 @@
+packages/@n8n/agents/src/evals/__tests__/parse-judge-response.test.ts
+  s_a26381a4168256::t_3665ffd920b402 42-43,68,77-81
+packages/@n8n/agents/src/evals/parse-judge-response.ts
+  s_a26381a4168256::t_6fc86400b9e470 47-48,52-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d8ddc6a32dee0d8aa0f7a46089581469d7aeedc2",
+  "prompts": {},
+  "sessions": {
+    "s_a26381a4168256": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de9744d5-d4a6-4ca6-9d6e-70d7c82d2184",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

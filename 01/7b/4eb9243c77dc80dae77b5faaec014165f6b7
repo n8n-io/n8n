@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_482f48320b007f::t_fb46d4accb45bc 6571
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_482f48320b007f::t_fb46d4accb45bc 54-58
+  s_482f48320b007f::t_16852da9c3938b 60-62
+  s_482f48320b007f::t_131873f1065ffa 59
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderLayout.test.ts
+  s_482f48320b007f::t_bcdddbfa86e596 2,8,12-35,50,55,61-62,64,69,72,75,80,86-116
+packages/quality/testing/playwright/tests/e2e/agents/agent-builder-chat-modes.spec.ts
+  s_482f48320b007f::t_bcdddbfa86e596 44-50,52-53,94-99,103-107,151-153
+  s_482f48320b007f::t_9979fb6a4d681d 51
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_482f48320b007f::t_fb46d4accb45bc 3472
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderLayout.ts
+  s_482f48320b007f::t_fb46d4accb45bc 15,23,29,32-35,43-47,50-57
+packages/quality/testing/playwright/pages/AgentBuilderPage.ts
+  s_482f48320b007f::t_bcdddbfa86e596 35-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "017b4eb9243c77dc80dae77b5faaec014165f6b7",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

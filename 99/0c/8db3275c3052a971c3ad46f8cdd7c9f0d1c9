@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationTransport.ts
+  s_f974bcaa5a85b7::t_942ec9e6469197 2,4,57-59,62
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/confirmationTransport.test.ts
+  s_f974bcaa5a85b7::t_942ec9e6469197 93
+  s_f974bcaa5a85b7::t_77cfc8485438b5 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "990c8db3275c3052a971c3ad46f8cdd7c9f0d1c9",
+  "prompts": {},
+  "sessions": {
+    "s_f974bcaa5a85b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44a25fca-7dea-46bf-8f21-afbbbf3dfb5e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

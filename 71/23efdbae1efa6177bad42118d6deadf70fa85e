@@ -1,0 +1,19 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_aaa3f8c0014b3c::t_1cff2a40ccdadc 10042
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7123efdbae1efa6177bad42118d6deadf70fa85e",
+  "prompts": {},
+  "sessions": {
+    "s_aaa3f8c0014b3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a168c0-40e6-7a93-8ad9-13970e561dbb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_82789c69de1855::t_f70682e6918dde 85-88,93,104,106,122,155-159,161-164,591
+  s_82789c69de1855::t_d6d62a221d8ac3 160
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_82789c69de1855::t_bdb33832e20e3f 763,766,768-769,771
+  s_82789c69de1855::t_54d66b9cbc7730 1885,2115-2116
+  s_82789c69de1855::t_d6b616fdf44d36 1886-1897,1899-1913,1915-1916,1923
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_82789c69de1855::t_f70682e6918dde 10,56,74,87,92-93,156,171,173-176,178-179,184-186,363
+  s_82789c69de1855::t_d6d62a221d8ac3 177
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_82789c69de1855::t_bdb33832e20e3f 2203-2211,2222,2231,2233,2235,2238,2245,2248,2252,2255,2264,2266,2272,2275,2277
+  s_82789c69de1855::t_228fb425de8566 2225-2230,2257-2262
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_82789c69de1855::t_54d66b9cbc7730 537,539-540
+  s_82789c69de1855::t_bdb33832e20e3f 538
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "69a94f3a56658a18f2496ca1a1422e20f5fc3113",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}

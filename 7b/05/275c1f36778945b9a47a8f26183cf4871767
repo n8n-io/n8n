@@ -1,0 +1,9 @@
+packages/@n8n/telemetry/src/events/promotions.ts
+  ai_agent 97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7b05275c1f36778945b9a47a8f26183cf4871767",
+  "prompts": {}
+}

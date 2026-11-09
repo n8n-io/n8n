@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_6766773bb82a48::t_07b3d927186610 285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6050b6f3abaa2e8487c58b1db43a345dd9aa7a14",
+  "prompts": {},
+  "sessions": {
+    "s_6766773bb82a48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "823bd4ec-cb35-4791-a5bb-53cae1cb7ca3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

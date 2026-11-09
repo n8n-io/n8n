@@ -1,0 +1,13 @@
+packages/cli/test/integration/agents/agent-skills-hub.test.ts
+  ai_agent 34
+packages/cli/test/migration/1793036689320-backfill-agent-draft-versions.test.ts
+  ai_agent 1-289
+packages/@n8n/db/src/migrations/common/1793036689320-BackfillAgentDraftVersions.ts
+  ai_agent 1-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "487f91b63173f95eb8f4639a8e1e586bc6b68f84",
+  "prompts": {}
+}

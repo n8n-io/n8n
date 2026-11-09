@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_fd2212291acb0e::t_5127cfdfb31bd4 362,364
+  s_fd2212291acb0e::t_453a654ac8db5a 359
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2b4fee0ec0f0f34245664c23869153089362236",
+  "prompts": {},
+  "sessions": {
+    "s_10764d60e8c92b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa9b-43e8-738d-a0b9-ae897a87386e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_35af7ca4af73ea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aaa6-37ef-738d-a0b9-ae8b38dffa97",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fd2212291acb0e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa95-19dc-738d-a0b9-ae86bf82e54d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

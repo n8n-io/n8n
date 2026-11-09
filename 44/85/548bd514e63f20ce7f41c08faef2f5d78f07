@@ -1,0 +1,54 @@
+packages/frontend/@n8n/design-system/scripts/generate-manifest.mjs
+  s_826a7734c488c0::t_9d60480c29fd83 71
+  s_2291a6eeaa12fd::t_d8e4ffee737a0d 3-40,53,62,89,129,135
+  s_2291a6eeaa12fd::t_8519ece3f201fe 1-2
+  s_2291a6eeaa12fd::t_3d31d67fede3e6 41-43,50-52
+  s_2291a6eeaa12fd::t_f68ad643aa25b6 54-56,59-61
+  s_2291a6eeaa12fd::t_14390321b76181 90-92,126-128
+  s_2291a6eeaa12fd::t_a4ac9dca20779e 130-134
+  s_2291a6eeaa12fd::t_e06a927e924dec 136-138
+  s_2291a6eeaa12fd::t_ed2d31fd40aec4 44-49,57-58,63-70,72-88,93-125,139
+packages/frontend/@n8n/design-system/scripts/manifest.test.ts
+  s_2291a6eeaa12fd::t_3a6105c2f1e1e2 19-21
+  s_2291a6eeaa12fd::t_dfe143601359ad 9-18,22-26,30,35,40-42,46,54,56
+  s_2291a6eeaa12fd::t_eb994b26227a89 6-8
+  s_2291a6eeaa12fd::t_23343424e8b00a 27-29
+  s_2291a6eeaa12fd::t_a97ff50f03cea7 31-34
+  s_2291a6eeaa12fd::t_3c356cdc0d2ede 36-39
+  s_2291a6eeaa12fd::t_ab84a94d52ae77 43-45
+  s_2291a6eeaa12fd::t_f9819e4b9c257d 47-49,51-53
+  s_2291a6eeaa12fd::t_1c05233c9d60ef 55
+  s_2291a6eeaa12fd::t_be5cca743302aa 57
+  s_2291a6eeaa12fd::t_ccfb34e2d20a11 1-5,50
+packages/frontend/@n8n/design-system/scripts/README.md
+  s_2291a6eeaa12fd::t_cd1f754f70adff 13-14
+  s_2291a6eeaa12fd::t_e3499a01283206 10-12
+  s_2291a6eeaa12fd::t_7390c2a640bff3 15-17
+  s_2291a6eeaa12fd::t_69e73f4866768b 1-9,18-23
+packages/frontend/@n8n/design-system/component-manifest.json
+  s_2291a6eeaa12fd::t_fac4022221ebdf 1-11059
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4485548bd514e63f20ce7f41c08faef2f5d78f07",
+  "prompts": {},
+  "sessions": {
+    "s_2291a6eeaa12fd": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a179b2-70c5-7345-840c-b74cd7013d63",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_826a7734c488c0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a17989-c83b-77c1-b86b-9c45b24b3698",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_b1746e2b74aa6e::t_2039ac085e6c96 701
+packages/@n8n/config/src/configs/__tests__/tracing-sources.config.test.ts
+  s_b1746e2b74aa6e::t_d6eb65b9dce860 1-34
+packages/@n8n/config/src/configs/tracing-sources.config.ts
+  s_b1746e2b74aa6e::t_d6eb65b9dce860 1-2,5-6,24-27,30-32,40-45
+  s_b1746e2b74aa6e::t_2039ac085e6c96 28-29,37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5954268e553967966b7aa90418eb476767bfce34",
+  "prompts": {},
+  "sessions": {
+    "s_b1746e2b74aa6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f32c4d65-165e-483d-a5d0-a1355ad8b4c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/agents/utils/workflowToolInputFields.ts
+  s_c49d2243721097::t_b1ec4df685aeac 37-40
+packages/cli/src/modules/agents/tools/__tests__/infer-input-schema.test.ts
+  s_c49d2243721097::t_78d41899f6a8da 126-132,134-141
+  s_c49d2243721097::t_a07555650c58cc 133,142-143,149
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolInputs.vue
+  s_c49d2243721097::t_2d2fd176572260 243
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_c49d2243721097::t_b1ec4df685aeac 285,288-290
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/workflowToolInputFields.test.ts
+  s_c49d2243721097::t_a07555650c58cc 11,23,60,64-70
+  s_c49d2243721097::t_6f5acad173b071 54-59,61-63
+  s_c49d2243721097::t_c49bb72a48f116 71-72
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_c49d2243721097::t_a07555650c58cc 407-431
+  s_c49d2243721097::t_ae1715af11da92 87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a80418225e3b97f79a2252b422957020bdc38232",
+  "prompts": {},
+  "sessions": {
+    "s_c49d2243721097": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159cf-a2f6-7c20-bcad-19526558a26d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

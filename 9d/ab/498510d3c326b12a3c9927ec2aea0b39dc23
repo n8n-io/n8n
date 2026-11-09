@@ -1,0 +1,23 @@
+packages/@n8n/telemetry/src/events/agents.ts
+  s_790b68d1b23b99::t_fd9536cf779998 82-86
+packages/frontend/editor-ui/src/features/agents/composables/agentTelemetry.utils.ts
+  s_790b68d1b23b99::t_2b0a0a19390247 21
+packages/frontend/editor-ui/src/features/agents/__tests__/agentTelemetry.utils.test.ts
+  s_790b68d1b23b99::t_11db0be5a9fe05 46,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9dab498510d3c326b12a3c9927ec2aea0b39dc23",
+  "prompts": {},
+  "sessions": {
+    "s_790b68d1b23b99": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e82b59b-825c-4b17-b59a-cf369bea8488",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

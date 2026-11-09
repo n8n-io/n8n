@@ -1,0 +1,28 @@
+packages/quality/testing/playwright/tests/e2e/agents/agent-builder-chat-modes.spec.ts
+  s_482f48320b007f::t_ed0ba9dfa6131e 72-82
+  s_482f48320b007f::t_5528ce6d09a5c1 3,18-71,83-97
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_482f48320b007f::t_acede80b07d997 4,19,512,519,541,6544-6594
+  s_482f48320b007f::t_2194fcc4ec22c7 6543
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_482f48320b007f::t_acede80b07d997 65,431-443
+  s_482f48320b007f::t_b2578c03c4a460 2-11
+packages/quality/testing/playwright/pages/AgentBuilderPage.ts
+  s_482f48320b007f::t_5528ce6d09a5c1 69-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45d43ef6c2045d2d3dcb968a67b1cd306b02cb7c",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

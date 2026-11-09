@@ -1,0 +1,75 @@
+packages/cli/src/modules/agents/integrations/integration-error-codes.ts
+  s_b82caf968b8c36::t_9659313156580e 12
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_b82caf968b8c36::t_9659313156580e 66,68-69,118,137,146
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-message-files.ts
+  s_b82caf968b8c36::t_d126fa0a22c0ad 15
+packages/cli/src/modules/agents/integrations/integration-context-query-executor.ts
+  s_b82caf968b8c36::t_d35e40e45894d9 6,78
+  s_b82caf968b8c36::t_9659313156580e 1,3,23-24,32-47,49,53-60,62,64-68,70,79-85,87-94
+  s_b82caf968b8c36::t_1b4d950192a28c 50
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_b82caf968b8c36::t_d126fa0a22c0ad 94-96
+  s_b82caf968b8c36::t_1b4d950192a28c 93
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-operations.ts
+  s_b82caf968b8c36::t_d126fa0a22c0ad 3,63,83-84,138-140,144,152-155,163,172,183-188,192-193
+  s_b82caf968b8c36::t_7315a9c8b3e61a 22-31,145-151,176-181,189
+  s_b82caf968b8c36::t_0761a0f763f155 66,76,91,118-122,126,141-143,199,205-206,220,225-227
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_b82caf968b8c36::t_2d9708d4754c9f 66
+  s_b82caf968b8c36::t_ce68864ba4d1ee 56-65,67-74
+packages/cli/src/modules/agents/integrations/channel-rate-limit.ts
+  s_b82caf968b8c36::t_9659313156580e 62-65
+packages/cli/src/modules/agents/integrations/integration-tool-definitions.ts
+  s_b82caf968b8c36::t_d126fa0a22c0ad 255,261
+packages/cli/src/modules/agents/integrations/integration-tool-factory.ts
+  s_b82caf968b8c36::t_7315a9c8b3e61a 147
+  s_b82caf968b8c36::t_9659313156580e 161
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-operations.test.ts
+  s_b82caf968b8c36::t_ac6ea6c749f5e9 183-203
+  s_b82caf968b8c36::t_d3a23dce435426 70
+  s_b82caf968b8c36::t_7315a9c8b3e61a 59-64,69,71-74,76-78
+  s_b82caf968b8c36::t_990abf75471657 57-58,65-68,75,79-87
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_b82caf968b8c36::t_9659313156580e 199,244-248
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_b82caf968b8c36::t_9659313156580e 175
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-search-pagination.ts
+  s_b82caf968b8c36::t_8767d4c9f49390 1-52
+packages/cli/src/modules/agents/integrations/__tests__/integration-context-query-executor.test.ts
+  s_b82caf968b8c36::t_1b4d950192a28c 149
+  s_b82caf968b8c36::t_7315a9c8b3e61a 935-944,954-957,967-971,974-977,1000-1009
+  s_b82caf968b8c36::t_990abf75471657 82,790,794,830,925-934,945-953,958-966,972-973,978-999,1010
+  s_b82caf968b8c36::t_039b1b6089ee84 1011
+packages/cli/src/modules/agents/integrations/__tests__/slack-integration.test.ts
+  s_b82caf968b8c36::t_1b4d950192a28c 75-79,97-101
+packages/cli/src/modules/agents/integrations/__tests__/slack-operations.test.ts
+  s_b82caf968b8c36::t_990abf75471657 1,3-17,22-34,38-45,50-55,64-66,70-75,80-89,99-101,110-121,125-133,137-143,147-151,155-160,168-173,187-189
+  s_b82caf968b8c36::t_d35e40e45894d9 2
+  s_b82caf968b8c36::t_7315a9c8b3e61a 35-37,46-49,56-63,67-69,76-79,90-98,102-109,122-124,134-136,144-146,152-154,161-167,174-186
+  s_b82caf968b8c36::t_fc39d2de386d70 18-21
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-integration.ts
+  s_b82caf968b8c36::t_d126fa0a22c0ad 308
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b82caf968b8c36::t_d8e1f893ee53e3 9773-9774
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-operations.ts
+  s_b82caf968b8c36::t_2d9708d4754c9f 166-172
+  s_b82caf968b8c36::t_7315a9c8b3e61a 4-8,138-142,146-150,210-211,269
+  s_b82caf968b8c36::t_8767d4c9f49390 9,20-21,80,121,123,156-160,163-165,173-176,179-180,183-191,193-194,197,199-209,212-213,215-223,225-228,234,238-249,251-256,258-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0846ea177c611fea19fdad5fc058e91bf4bc501",
+  "prompts": {},
+  "sessions": {
+    "s_b82caf968b8c36": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1630e-8c2e-7cb1-ab55-c37ffdbc2763",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

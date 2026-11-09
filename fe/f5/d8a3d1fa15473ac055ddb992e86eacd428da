@@ -1,5 +1,6 @@
 packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
   s_71ad2034164515::t_a3011e72f60e77 258
+  s_71ad2034164515::t_29c232a7c4d082 258
 packages/@n8n/cli/src/commands/package/export.ts
   s_71ad2034164515::t_373592189e8ae4 188
 packages/@n8n/cli/src/__tests__/package-export.test.ts

@@ -1,0 +1,37 @@
+packages/@n8n/api-types/src/agents/__tests__/agent-version-metadata.dto.test.ts
+  s_5785bc20fb92a9::t_6f11fb8f3c6ae9 1-18
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_5785bc20fb92a9::t_1b6a69783e6de2 1
+  s_5785bc20fb92a9::t_6f11fb8f3c6ae9 2,1325,1472-1574
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_5785bc20fb92a9::t_7421ba33788a0b 489-514
+  s_5785bc20fb92a9::t_866ec6f3e28f25 557
+packages/cli/test/integration/agents/agent-version-history.test.ts
+  s_5785bc20fb92a9::t_621baf1ad02957 95-101,155-157
+  s_5785bc20fb92a9::t_1b6a69783e6de2 2-93,103-153,158-159
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_5785bc20fb92a9::t_7421ba33788a0b 60
+  s_5785bc20fb92a9::t_6f11fb8f3c6ae9 59,61,70,88,187-205
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_5785bc20fb92a9::t_7421ba33788a0b 170-184
+packages/cli/src/modules/agents/repositories/agent-history.repository.ts
+  s_5785bc20fb92a9::t_7421ba33788a0b 22-31,74-94,117,125-126,130-131
+packages/cli/src/modules/agents/__tests__/agent-runnable-state.service.test.ts
+  s_5785bc20fb92a9::t_6f11fb8f3c6ae9 25,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "17b94281a33a94b3046053605626f7781b4202eb",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

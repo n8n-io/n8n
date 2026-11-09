@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/integrations/__tests__/slack-methods.service.test.ts
+  s_952e2dc69e6ab3::t_ca228d71608d74 99-123
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackSetupView.vue
+  s_952e2dc69e6ab3::t_7612599c1863dd 110
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_952e2dc69e6ab3::t_7612599c1863dd 15-19,43,60,82-87
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_952e2dc69e6ab3::t_44083adc9eaf3d 1-7,234,334-340
+  s_952e2dc69e6ab3::t_314873f68aa3b9 341
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelSlackSetup.test.ts
+  s_952e2dc69e6ab3::t_f5ab68a1cdf01c 48-59
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.test.ts
+  s_952e2dc69e6ab3::t_9068d830ec8346 5-8,15-17,50-74
+  s_952e2dc69e6ab3::t_836e72c6f3b94c 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e9d6416642d190b0c922cd7cc013d03a19b40e89",
+  "prompts": {},
+  "sessions": {
+    "s_952e2dc69e6ab3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1a0aea3-1f8c-4dd8-8134-765698a7bfc4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

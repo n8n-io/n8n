@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_5785bc20fb92a9::t_e1ed2b875796d2 156,484,520,562,591-592
+packages/cli/src/modules/agents/repositories/agent-publish-history.repository.ts
+  s_5785bc20fb92a9::t_e1ed2b875796d2 8,12-20,29,38-43,53,56-58,75-83
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_5785bc20fb92a9::t_e1ed2b875796d2 1612
+packages/cli/test/integration/agents/agent-version-history.test.ts
+  s_5785bc20fb92a9::t_645e1a1ee2aac9 81-102
+  s_5785bc20fb92a9::t_e1ed2b875796d2 123,268
+packages/cli/test/integration/agents/agent-skill.repository.test.ts
+  s_5785bc20fb92a9::t_e1ed2b875796d2 4,7,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e08eed5853b553dd32d9201f30f13824df9328dc",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

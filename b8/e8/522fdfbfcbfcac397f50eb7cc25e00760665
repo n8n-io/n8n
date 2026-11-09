@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.test.ts
+  s_fec562a31d908b::t_9ac788b19b8d8a 873-902
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_fec562a31d908b::t_b0921565943685 5055-5058
+  s_fec562a31d908b::t_87d14ff22fa354 42,45,50
+  s_fec562a31d908b::t_e5a78ba759d7f1 5268-5351,5354-5393,5395-5438
+  s_fec562a31d908b::t_92095127e7e904 5352-5353
+  s_fec562a31d908b::t_7c69f7c22eadf4 5394
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  s_fec562a31d908b::t_79fb1ac50cb525 21,275-281
+  s_fec562a31d908b::t_77124675d47fe4 249-274,282-283
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_fec562a31d908b::t_91a1b81f0e3404 782-786,788-805
+  s_fec562a31d908b::t_e515a5b2909717 787
+packages/quality/testing/playwright/pages/WorkflowSettingsModal.ts
+  s_fec562a31d908b::t_8faf5a2213da5f 54-62
+packages/quality/testing/playwright/tests/e2e/workflows/editor/execution/engine-type-setting.spec.ts
+  s_fec562a31d908b::t_55ef20d518b810 1-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8e8522fdfbfcbfcac397f50eb7cc25e00760665",
+  "prompts": {},
+  "sessions": {
+    "s_fec562a31d908b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58b6454a-ce80-4c76-bafb-85d77f86c47e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/app/utils/publicationHistoryUtils.ts
+  s_5785bc20fb92a9::t_83663d453c940a 1-14
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowPublishTimelineContent.vue
+  s_5785bc20fb92a9::t_83663d453c940a 8,156
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentPublishTimeline.vue
+  s_5785bc20fb92a9::t_83663d453c940a 1-20,22-64,68-71,75-259
+  s_5785bc20fb92a9::t_9f05026e57c14f 65-67,72-74
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_5785bc20fb92a9::t_83663d453c940a 36,647-659
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPublishTimeline.test.ts
+  s_5785bc20fb92a9::t_83663d453c940a 1-132
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionHistoryPanel.vue
+  s_5785bc20fb92a9::t_83663d453c940a 2,4,12,38-43,154-157,164,179,191-196
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5785bc20fb92a9::t_83663d453c940a 8744-8750
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionHistoryPanel.test.ts
+  s_5785bc20fb92a9::t_83663d453c940a 56-66,285-300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f8db26df1d3161dcb9d7c229c9aa01f95ba26c3",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

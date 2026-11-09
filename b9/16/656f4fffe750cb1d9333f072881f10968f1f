@@ -1,0 +1,90 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryModelSetting.vue
+  s_15ee6b89414a1e::t_9ba8fb2e08efe0 96
+  s_15ee6b89414a1e::t_ff2d014046dfd2 81,86-87,121,138-139,143
+  s_15ee6b89414a1e::t_68f217aa591524 17,93-94
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_15ee6b89414a1e::t_9096e80bf469bb 615-616
+  s_15ee6b89414a1e::t_d4ab1ce3063447 42,150
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_15ee6b89414a1e::t_637d8322caba65 824-862
+  s_15ee6b89414a1e::t_819f1a424db9ef 792-799,801-804,808-811
+  s_15ee6b89414a1e::t_9ba8fb2e08efe0 800,805-806
+  s_15ee6b89414a1e::t_1a7c450ca31b21 9,49,149,231,863
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_15ee6b89414a1e::t_637d8322caba65 14-27,33-39
+  s_15ee6b89414a1e::t_5e9a3ec7b18ffc 28-30,32
+  s_15ee6b89414a1e::t_af67a07fe0ff30 31
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_15ee6b89414a1e::t_637d8322caba65 97-107,571-594
+  s_15ee6b89414a1e::t_75a2ecc6fdcf21 595-596
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_15ee6b89414a1e::t_b95869d67cc8de 151-152
+  s_15ee6b89414a1e::t_9ba8fb2e08efe0 134
+  s_15ee6b89414a1e::t_3dc11a779cbf1c 39,129-132,236-243,246-248,263,265-274,279,286,288
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_15ee6b89414a1e::t_637d8322caba65 801-805,818-822,848,850-852
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_15ee6b89414a1e::t_9ba8fb2e08efe0 183
+  s_15ee6b89414a1e::t_0f3b3077ed922f 9,30,180-181,234,276-277
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_15ee6b89414a1e::t_637d8322caba65 362-363,365-367,370-371,558-581
+  s_15ee6b89414a1e::t_c657adb7a5f1c8 360-361,364,368-369,372,387-393,439
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryModelSetting.test.ts
+  s_15ee6b89414a1e::t_637d8322caba65 40-50,119-129,133,139-142
+  s_15ee6b89414a1e::t_819f1a424db9ef 134-137
+  s_15ee6b89414a1e::t_230b92aa661878 12,130-132,138,143-144
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/azure.test.ts
+  s_15ee6b89414a1e::t_258aa12bd61ca6 91-96,113-119
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_15ee6b89414a1e::t_031940e4c1dcc1 70
+packages/@n8n/ai-utilities/src/model-discovery/providers/azure.ts
+  s_15ee6b89414a1e::t_7ceb2a44860699 77,81-85,106,146-149
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_15ee6b89414a1e::t_9fb4b45f6f4816 67
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_15ee6b89414a1e::t_179dc6f11ba6b4 516-522,529,534-539,554-567
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_15ee6b89414a1e::t_af8badcd0adbd0 1314-1315,1338-1339,1373,1375-1377
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_15ee6b89414a1e::t_51e0641fc1405a 132-136,140-149
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_15ee6b89414a1e::t_c0d2411052f195 1282
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_4b944fb435afa5::t_d87abc31b30268 8,54-60,290-291,318,335-339,346-363
+packages/cli/src/modules/agents/builder/model-lookup.types.ts
+  s_15ee6b89414a1e::t_ce35d7c8bee1b0 4
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_15ee6b89414a1e::t_a32ed60ecd8530 658
+packages/frontend/editor-ui/src/features/agents/composables/useModelCatalog.ts
+  s_15ee6b89414a1e::t_81188383853dce 51
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  s_15ee6b89414a1e::t_86c2dc2ee49596 12
+packages/frontend/editor-ui/src/features/agents/utils/model-string.ts
+  s_15ee6b89414a1e::t_b1410003205a34 8,49-65
+packages/frontend/editor-ui/src/features/agents/__tests__/useModelCatalog.test.ts
+  s_15ee6b89414a1e::t_a47ac919e43f17 138-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b916656f4fffe750cb1d9333f072881f10968f1f",
+  "prompts": {},
+  "sessions": {
+    "s_15ee6b89414a1e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1632e-922e-7781-a5b3-55f280e6078f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_4b944fb435afa5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "787a2d14-0c1c-4be0-9ca0-fe07214cc5a3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

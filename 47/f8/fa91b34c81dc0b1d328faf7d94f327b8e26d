@@ -1,0 +1,23 @@
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_45741ff70f27eb::t_dd93b8476da2a4 5519,5523
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_45741ff70f27eb::t_dd93b8476da2a4 2808
+packages/@n8n/telemetry/src/events/promotions.ts
+  s_45741ff70f27eb::t_dd93b8476da2a4 139-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "47f8fa91b34c81dc0b1d328faf7d94f327b8e26d",
+  "prompts": {},
+  "sessions": {
+    "s_45741ff70f27eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7b03-c4ec-4087-b014-6e5f8a392673",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

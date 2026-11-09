@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_4d7f501095fc5f::t_cdbf599421b2c7 1-2,47,153,3377-3410,3412
+  s_4d7f501095fc5f::t_e4fa71d22c9c9c 25,3411
+  s_4d7f501095fc5f::t_34539eb6de046f 3413
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_4d7f501095fc5f::t_5e2097ca5a7b84 14-17,30-32,416-428,430-431,433-441
+packages/@n8n/instance-ai/evaluations/discovery/agent-builder-tools.json
+  s_4d7f501095fc5f::t_5e2097ca5a7b84 14,18,36,50,56,60,107,162,190,216,227,238,254,278,292,313,327,355,363,393,409,459,466,474,529,554,569,619,627,683,723,737,757,795,804
+  s_4d7f501095fc5f::t_cdbf599421b2c7 1-13,15-17,19-35,37-49,51-55,57-59,61-106,108-161,163-189,191-215,217-226,228-237,239-253,255-277,279-291,293-312,314-326,328-354,356-362,364-392,394-408,410-458,460-465,467-473,475-528,530-553,555-568,570-618,620-626,628-682,684-722,724-736,738-756,758-794,796-803,805-827
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a895294e2a7bae4d9628dcb0622881a075fcd76",
+  "prompts": {},
+  "sessions": {
+    "s_4d7f501095fc5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d703c91c-a325-400f-ae25-49dc34889db7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

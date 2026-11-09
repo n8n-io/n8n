@@ -1,0 +1,36 @@
+packages/frontend/@n8n/rest-api-client/src/utils.test.ts
+  s_f1a804119197eb::t_54eb6201d613dc 7
+  s_f1a804119197eb::t_0e13a619a75c96 88-109
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.ts
+  s_f1a804119197eb::t_56e378115cdb0c 25,38-43,51-56,77,83,90,93,116-118,127-131,137,144,150,158-162,170-175,182-187,195-200,208-213,221-226
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_f1a804119197eb::t_c809f3d448e201 224
+  s_f1a804119197eb::t_d6923a6e7ae1a2 6
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.api.ts
+  s_f1a804119197eb::t_429cee9042ad9e 61-66
+  s_f1a804119197eb::t_9958513ad1aa1e 12
+packages/frontend/@n8n/rest-api-client/src/utils.ts
+  s_f1a804119197eb::t_6519fb7f1f79a6 262-276
+  s_f1a804119197eb::t_fddf8cc7bd7d02 14
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.test.ts
+  s_f1a804119197eb::t_42419ab52d66c1 1,14,21,23-28,35,39-44,50,54-59,65,72-77,83,90-95,101-103
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.api.ts
+  s_f1a804119197eb::t_c804cea70f3c8e 118
+  s_f1a804119197eb::t_f13fae83be3ccc 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3f7c2f6ab584e766e75f91a214bdb4b4f943ecc4",
+  "prompts": {},
+  "sessions": {
+    "s_f1a804119197eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df616428-5500-4fc2-8350-ef5e605e2487",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

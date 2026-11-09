@@ -1,0 +1,20 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-changes.integration.test.ts
+  s_ba2ae60894487d::t_c519edcdeaef2b 16
+  s_ba2ae60894487d::t_59bd93ff43958c 56-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "832f4f8598c47a9a78bc3f5812c406b4caca9ae0",
+  "prompts": {},
+  "sessions": {
+    "s_ba2ae60894487d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04a467cb-e333-46a5-b84f-448b11db34b5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/createSubscription.error.test.ts
+  s_195c75d7f98b4a::t_aeb0576185a44a 86-94
+  s_195c75d7f98b4a::t_0312dc210bf123 11
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils-trigger.ts
+  s_195c75d7f98b4a::t_045823503a760c 273-274
+  s_195c75d7f98b4a::t_24cac605043071 65-66,71-73,78-79
+  s_195c75d7f98b4a::t_bdfacf4fdf09f3 312-313
+  s_195c75d7f98b4a::t_d0cbf24b5bd454 416-418,420
+packages/nodes-base/nodes/Microsoft/Teams/MicrosoftTeamsTrigger.node.ts
+  s_195c75d7f98b4a::t_d44b6706d9570b 368-377
+  s_195c75d7f98b4a::t_450b8a1e0de905 407-409
+  s_195c75d7f98b4a::t_c1ee0264b3fe2a 392,400-401
+  s_195c75d7f98b4a::t_d5c3b8c3942f26 15
+  s_195c75d7f98b4a::t_799c95ed8477ef 423
+  s_195c75d7f98b4a::t_4bdbf3aeb4ac98 481-482
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/forbiddenHints.ts
+  s_195c75d7f98b4a::t_1b7069896c6585 29-30
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/helpers.ts
+  s_195c75d7f98b4a::t_d5a5c06a1a0013 26-32
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/activityNotification/send.error.test.ts
+  s_195c75d7f98b4a::t_33af59b06385f6 11
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/utiles-trigger.test.ts
+  s_195c75d7f98b4a::t_956c2cc1cb53a8 798-803
+  s_195c75d7f98b4a::t_b79147262c4631 1405-1408
+  s_195c75d7f98b4a::t_ddc5e57b232c33 1-2
+  s_195c75d7f98b4a::t_10556ec241fdb1 650-651
+  s_195c75d7f98b4a::t_5eb429a681c285 719-722,724-726
+  s_195c75d7f98b4a::t_88777716824254 894
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/MicrosoftTeamTrigger.test.ts
+  s_195c75d7f98b4a::t_a1d435aad96456 584-585
+  s_195c75d7f98b4a::t_4df0676c27adeb 1-8,13,16-17
+  s_195c75d7f98b4a::t_5228c0e8f464c6 76-77
+  s_195c75d7f98b4a::t_ca16581fbe697a 43-44,46-48,50-53,57
+  s_195c75d7f98b4a::t_e0d29a3bdf6c0a 227-234,499,621
+  s_195c75d7f98b4a::t_15c347ad5dc233 498,594,619
+  s_195c75d7f98b4a::t_caf3ed702311e6 18,78-80,91,101,235-237,250,260,264-265,269,292,296,316-317,484,489,500-501,528,586-588,593,608,620,622,628
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2e0623bc319bfa9f5f3af708e283863cb07b0af",
+  "prompts": {},
+  "sessions": {
+    "s_195c75d7f98b4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3885c74-afc1-4635-9654-ff109015348d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

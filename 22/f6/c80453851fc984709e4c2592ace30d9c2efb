@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/module.descriptor.test.ts
+  s_6f3bf766fd9fe0::t_501fc484c02063 78
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiView.test.ts
+  s_6f3bf766fd9fe0::t_501fc484c02063 151,183,210
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_6f3bf766fd9fe0::t_501fc484c02063 301
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/createThreadComponentRenderer.ts
+  s_6f3bf766fd9fe0::t_501fc484c02063 99
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.test.ts
+  s_6f3bf766fd9fe0::t_501fc484c02063 143
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_6f3bf766fd9fe0::t_501fc484c02063 414
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiAvailability.test.ts
+  s_6f3bf766fd9fe0::t_501fc484c02063 37
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_6f3bf766fd9fe0::t_501fc484c02063 789
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiSettings.store.test.ts
+  s_6f3bf766fd9fe0::t_af3705dc3c9fb8 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "22f6c80453851fc984709e4c2592ace30d9c2efb",
+  "prompts": {},
+  "sessions": {
+    "s_6f3bf766fd9fe0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54b552f3-ed95-47f8-bae0-29b5254ca51c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

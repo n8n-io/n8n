@@ -1,0 +1,40 @@
+packages/cli/test/integration/commands/publish/workflow.test.ts
+  s_f6f692d977695c::t_1fb07fb76114f1 339-371
+  s_f6f692d977695c::t_3f13e20271349c 20-21
+packages/cli/test/integration/commands/update/workflow.test.ts
+  s_f6f692d977695c::t_d7fca3abcf626c 11
+  s_f6f692d977695c::t_e5031a4ba33dfd 8
+  s_f6f692d977695c::t_6ed9cbdc450041 197-207
+packages/cli/src/commands/publish/workflow.ts
+  s_f6f692d977695c::t_4aa42f80c9a53a 6
+  s_f6f692d977695c::t_5f06483f13a604 60-62
+packages/cli/src/commands/cli-workflow-publisher.ts
+  s_f6f692d977695c::t_677e43fd2a2527 15-21
+  s_f6f692d977695c::t_441cf972d00fab 4
+packages/cli/test/integration/commands/unpublish/workflow.test.ts
+  s_f6f692d977695c::t_25dd3f8f540fcb 7
+  s_f6f692d977695c::t_7a55c16b2e121a 18
+  s_f6f692d977695c::t_6ed9cbdc450041 268-278
+packages/cli/src/commands/unpublish/workflow.ts
+  s_f6f692d977695c::t_8d705507ac6e34 6
+  s_f6f692d977695c::t_08d5c0cf04607d 58-60
+packages/cli/src/commands/update/workflow.ts
+  s_f6f692d977695c::t_4e05d5272f2475 105-107
+  s_f6f692d977695c::t_a5f7fd95b920cb 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b1e621e59c070792e1d934f288477113b35cbcd",
+  "prompts": {},
+  "sessions": {
+    "s_f6f692d977695c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bb18a7f-6c77-4b3f-87e7-00b366dba725",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

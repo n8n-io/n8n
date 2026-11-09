@@ -1,0 +1,20 @@
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_a87ab30323b2bf::t_5f6a9ed1999e08 84,86-91,94-97,99,103-104,106,108,142,190,270,274-275,277,303,316,326,427,430,434,439,633,635,653,885
+  s_a87ab30323b2bf::t_35c73d5b4e1493 146,159,172,175,195,200,264,266-269,271,276,279,283-284,286,288,308,313,317,329,415,417-422,425-426,428,435,437,477,490,503,516,519,534,539,544,549,613,615-620,623-626,628,632,637,658,663,666-667,676,679,698,701-702,711,714,733,736-737,749,835,837-842,845-848,850,854-855,857,859,882,898,930,946-947,1010,1012-1017,1020-1023,1025,1029-1030,1032,1034
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "44e42e69e332b308a16bd5211f48036b088ab876",
+  "prompts": {},
+  "sessions": {
+    "s_a87ab30323b2bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9f44e6d-79e1-4a2e-976f-3b0df0cd5b7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

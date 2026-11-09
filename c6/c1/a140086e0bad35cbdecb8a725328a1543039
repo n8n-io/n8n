@@ -1,0 +1,14 @@
+.gitignore
+  h_8fb27e0cdf6d1e 100-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c6c1a140086e0bad35cbdecb8a725328a1543039",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

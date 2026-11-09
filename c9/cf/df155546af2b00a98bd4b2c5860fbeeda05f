@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.test.ts
+  s_1ede372a91cd32::t_3b68ab144d5b3e 1509-1576
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.ts
+  s_1ede372a91cd32::t_53c9d54878ae50 171-173
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.test.ts
+  s_1ede372a91cd32::t_d9d7b652331b14 112-247
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.ts
+  s_1ede372a91cd32::t_a8938684073af0 1-11,14,22-24,26-29,33-114,116-120,124,130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9cfdf155546af2b00a98bd4b2c5860fbeeda05f",
+  "prompts": {},
+  "sessions": {
+    "s_1ede372a91cd32": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64ee88fa-e1b7-4038-905f-29825aab9995",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

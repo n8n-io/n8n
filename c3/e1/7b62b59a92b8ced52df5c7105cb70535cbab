@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionResourceDetails.ts
+  s_ffcee02881150d::t_401774706e2905 18-19,26,37-39,44-45
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCards.vue
+  s_ffcee02881150d::t_401774706e2905 2,8,19,22-23,42-43,51-68,84-85
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.workflow.test.ts
+  s_ffcee02881150d::t_401774706e2905 1-81
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_ffcee02881150d::t_401774706e2905 45-50,96-97,118-136,138-139,437,445
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowDiff.test.ts
+  s_ffcee02881150d::t_401774706e2905 1-151
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/workflowDiff.utils.ts
+  s_ffcee02881150d::t_401774706e2905 1-50
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_ffcee02881150d::t_a5e6dd081db21f 207-209
+  s_ffcee02881150d::t_401774706e2905 118-125,152,158,164-199
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionResourceDetails.test.ts
+  s_ffcee02881150d::t_401774706e2905 19,24-27,81,90,99-100,103
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.ts
+  s_ffcee02881150d::t_401774706e2905 123
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffSlot.vue
+  s_ffcee02881150d::t_401774706e2905 4,9,15-23
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  s_ffcee02881150d::t_401774706e2905 13,32,43,61,116-118,238-244
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.workflow.ts
+  s_ffcee02881150d::t_401774706e2905 1-58
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowDiff.vue
+  s_ffcee02881150d::t_401774706e2905 1-133
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ffcee02881150d::t_401774706e2905 9985
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3e17b62b59a92b8ced52df5c7105cb70535cbab",
+  "prompts": {},
+  "sessions": {
+    "s_ffcee02881150d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72bd9a74-7de7-486b-aad9-6ff981ea1973",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_cc68fdb58b7281::t_0186c7d49d5bd2 37-38
+  s_cc68fdb58b7281::t_3ab948503bc127 36
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_cc68fdb58b7281::t_1584b38f923f32 736-747,751-776
+  s_cc68fdb58b7281::t_d8ee1ef8a0a9b2 748-750
+  s_cc68fdb58b7281::t_3ab948503bc127 6
+  s_cc68fdb58b7281::t_e4926649bd739e 735
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37573c252c710301f08e41ae5c3cf9f3206483e9",
+  "prompts": {},
+  "sessions": {
+    "s_cc68fdb58b7281": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16404-f1e4-70d2-98b7-697672668117",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

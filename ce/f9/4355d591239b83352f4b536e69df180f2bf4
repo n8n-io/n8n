@@ -1,0 +1,31 @@
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_a073fa9d8a702c::t_072103cb6aafe8 284-290
+  s_a073fa9d8a702c::t_317e1045313a6b 260-283,291-314
+packages/cli/src/modules/inbound-auth-core/trusted-source-discovery.service.ts
+  s_a073fa9d8a702c::t_9799fef383ab28 63-65,72
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source-discovery.service.test.ts
+  s_a073fa9d8a702c::t_27f1e61de3e6f1 432-443
+  s_a073fa9d8a702c::t_f1541e5e667db8 404,444-457
+  s_a073fa9d8a702c::t_217cf99476fa85 405-431
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cef94355d591239b83352f4b536e69df180f2bf4",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a073fa9d8a702c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "809324ae-b7ec-4c6e-a695-c965041caa84",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

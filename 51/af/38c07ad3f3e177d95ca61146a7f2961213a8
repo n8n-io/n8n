@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_cb799745023198::t_822cccc380f56e 667-685,6439
+  s_cb799745023198::t_884f7262597a29 877
+  s_cb799745023198::t_ee7c124c874509 879,916,955,994
+packages/frontend/editor-ui/src/app/composables/useWorkflowExtraction.ts
+  s_cb799745023198::t_15cfafded790ef 429
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_cb799745023198::t_f263a42d698660 1607,1617-1619
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.test.ts
+  s_cb799745023198::t_ee7c124c874509 302
+  s_cb799745023198::t_822cccc380f56e 14,262-268,284-286
+  s_cb799745023198::t_72fe71d8c875b1 287-289
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_cb799745023198::t_578e4bf375aa3f 164,168-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51af38c07ad3f3e177d95ca61146a7f2961213a8",
+  "prompts": {},
+  "sessions": {
+    "s_cb799745023198": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55e54be6-2bdf-4517-9014-4d8fc7d935b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

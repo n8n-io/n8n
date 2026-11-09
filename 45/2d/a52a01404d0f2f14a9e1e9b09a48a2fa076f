@@ -1,0 +1,21 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.test.ts
+  s_94ddaa3674df01::t_8048bd5cd5c1a7 246
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_94ddaa3674df01::t_8048bd5cd5c1a7 217-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "452da52a01404d0f2f14a9e1e9b09a48a2fa076f",
+  "prompts": {},
+  "sessions": {
+    "s_94ddaa3674df01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "650497ad-a104-4143-8807-e78efbd4efee",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

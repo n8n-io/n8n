@@ -1,0 +1,23 @@
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-environment.factory.ts
+  s_663cce90209ef7::t_1e5efcdc040e61 435-438
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-environment.factory.test.ts
+  s_663cce90209ef7::t_1e5efcdc040e61 9,176-196
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-runtime.ts
+  s_663cce90209ef7::t_1e5efcdc040e61 71-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bdb0bd994dd686b8a3638b3eb9cee757fa378177",
+  "prompts": {},
+  "sessions": {
+    "s_663cce90209ef7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d5f8e88-c832-424b-9c24-0861a678b34f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

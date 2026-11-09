@@ -1,0 +1,14 @@
+.github/workflows/sec-sync-bundle-branches.yml
+  h_52a137d26d774c 107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eeec25c1d64b36505085a4fc289f2d9d357ce5ae",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

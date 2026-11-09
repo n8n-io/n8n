@@ -1,0 +1,23 @@
+packages/workflow/src/errors/workflow-activation.error.ts
+  s_04f54b60c7726a::t_6214f365f32937 8-11
+packages/workflow/test/errors/workflow-activation.error.test.ts
+  s_04f54b60c7726a::t_88839fe573d843 96-105
+  s_04f54b60c7726a::t_502a5cde946eb8 106-108
+  s_04f54b60c7726a::t_60b1432e39fdd5 109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e56bb945bb37044c22523ad4096abdd1aa7c5b8",
+  "prompts": {},
+  "sessions": {
+    "s_04f54b60c7726a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "001c64e2-1c3d-45bc-b8bc-352f5f9c0daf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_38d78cd106326f::t_dba274b3e25264 93-108
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryEntriesPanel.test.ts
+  s_38d78cd106326f::t_dba274b3e25264 180-202
+packages/cli/src/modules/agents/agent-memory-entries.service.ts
+  s_38d78cd106326f::t_ba3f2307b72118 53-55
+  s_38d78cd106326f::t_dba274b3e25264 130-135
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryEntriesPanel.vue
+  s_38d78cd106326f::t_ba3f2307b72118 62-64,67-68,75,81,86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9bc7b6983d1c6f113b741d896928524ea7a4c076",
+  "prompts": {},
+  "sessions": {
+    "s_38d78cd106326f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72f82e0e-bc8a-42f7-9266-687432dab6a9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

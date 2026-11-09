@@ -1,0 +1,24 @@
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_00879dcd44c418::t_621fbab8dc0288 2436,2438,2499,2625
+  s_00879dcd44c418::t_ef50cc89d00f41 2326
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_00879dcd44c418::t_621fbab8dc0288 778
+packages/cli/src/modules/promotions.ee/promotion-changes.controller.ts
+  s_00879dcd44c418::t_2720a9611db35e 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78ad506a25e51ea23a598d553e4548b559fac030",
+  "prompts": {},
+  "sessions": {
+    "s_00879dcd44c418": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67031d02-b9f5-4a9d-8e2d-a427b88dac74",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

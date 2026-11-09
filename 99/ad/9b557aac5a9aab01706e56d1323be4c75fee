@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/__tests__/agent-skill-refs.service.test.ts
+  s_5785bc20fb92a9::t_fc4b005e1ee080 563,569-573,684,687-691
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_5785bc20fb92a9::t_fc4b005e1ee080 698-701
+packages/cli/src/modules/agents/agents.module.ts
+  s_5785bc20fb92a9::t_fc4b005e1ee080 20-24
+packages/cli/src/modules/agents/agent-definition.service.ts
+  s_5785bc20fb92a9::t_fc4b005e1ee080 47
+packages/cli/test/integration/agents/skills-hub-startup-copy.test.ts
+  s_5785bc20fb92a9::t_fc4b005e1ee080 16,1086-1110
+  s_5785bc20fb92a9::t_7e3a94003768a2 13-15,105-145
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_5785bc20fb92a9::t_7e3a94003768a2 762-777
+packages/cli/src/modules/agents/agent-skill-refs.service.ts
+  s_5785bc20fb92a9::t_fc4b005e1ee080 10,30-31,384-386
+packages/cli/src/modules/agents/skills/skills-hub-startup-copy.ts
+  s_5785bc20fb92a9::t_fc4b005e1ee080 114-115,117-121,123-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99ad9b557aac5a9aab01706e56d1323be4c75fee",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

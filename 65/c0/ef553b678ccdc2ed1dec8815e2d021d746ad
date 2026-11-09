@@ -1,0 +1,19 @@
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_ffebe36e160cdc::t_06cfaee7d7c15f 1007,1021
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65c0ef553b678ccdc2ed1dec8815e2d021d746ad",
+  "prompts": {},
+  "sessions": {
+    "s_ffebe36e160cdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6eb4f6aa-9705-4b31-9672-84ed38ac60da",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

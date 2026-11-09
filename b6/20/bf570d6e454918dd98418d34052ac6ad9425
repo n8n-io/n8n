@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_71ad2034164515::t_06e3fe6e6abe4c 512,600,750
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_71ad2034164515::t_9a9a7d00120382 43
+  s_71ad2034164515::t_35040af211e9cb 5
+  s_71ad2034164515::t_f246a94cd18473 88
+  s_71ad2034164515::t_36fb5e4b14ffb0 44
+  s_71ad2034164515::t_c3df3b103f3228 27,209-211
+  s_71ad2034164515::t_3b8ccd7cf2bd8f 308-318,399-401,403-406,548
+  s_71ad2034164515::t_05889d2b8504b4 203-204,212,549-563,568,572
+  s_71ad2034164515::t_a91cc8d805f9e7 205,217-222,564-567,569-571,573-574,599
+packages/cli/src/modules/agents/__tests__/agent-setup-completion.service.test.ts
+  s_71ad2034164515::t_06e3fe6e6abe4c 83,93
+packages/cli/src/modules/agents/agents.service.ts
+  s_71ad2034164515::t_49abb23e56236f 251-253,257-268
+  s_71ad2034164515::t_ea2cff2ae3369d 250
+  s_71ad2034164515::t_6ef92a1ed2b162 254-256
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_71ad2034164515::t_f3563eee52d0d5 175
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_71ad2034164515::t_521beec2e36e74 102-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b620bf570d6e454918dd98418d34052ac6ad9425",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

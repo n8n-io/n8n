@@ -1,0 +1,39 @@
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-true.json
+  s_c64c85da20601f::t_fc1ea8034a71e3 42-43,63-64,84-85,179-180,200-201,221-222,330-331,351-352,372-373,501-502,522-523,543-544
+  s_c64c85da20601f::t_3d2e10cfa7b4d7 297-299,448-450
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/allows-only-the-session-owner-to-cancel-a-suspended-run.json
+  s_c64c85da20601f::t_9421718a8b3a6e 6
+packages/@n8n/agents/src/__tests__/integration/cassettes/vercel-ai-gateway/generates-a-response-through-the-native-gateway.json
+  s_c64c85da20601f::t_19d3372b995e36 26
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/suspends-a-tool-call-and-resumes-it-only-for-the-session-owner.json
+  s_c64c85da20601f::t_9421718a8b3a6e 6,16
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/sends-an-image-to-the-model-and-reloads-the-stored-attachment.json
+  s_c64c85da20601f::t_9421718a8b3a6e 6
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-true.json
+  s_c64c85da20601f::t_3d2e10cfa7b4d7 301-303,454-456
+  s_c64c85da20601f::t_ff96231b5c1e5f 42-43,63-64,84-85,181-182,202-203,223-224,334-335,355-356,376-377,507-508,528-529,549-550
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-false.json
+  s_c64c85da20601f::t_fc1ea8034a71e3 43-44,64-65,85-86,216-217,237-238,258-259,403-404,424-425,445-446,643-644,664-665,685-686
+  s_c64c85da20601f::t_9956c15b553bb7 370,557
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/streams-the-published-instructions-and-records-a-private-production-session.json
+  s_c64c85da20601f::t_bfb2dc033a4b4e 6,26
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-false.json
+  s_c64c85da20601f::t_fc1ea8034a71e3 43-44,64-65,85-86,214-215,235-236,256-257,399-400,420-421,441-442,637-638,658-659,679-680
+  s_c64c85da20601f::t_9956c15b553bb7 366,551
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3682ec2d967298721be8c00cc532fe6f8d93066e",
+  "prompts": {},
+  "sessions": {
+    "s_c64c85da20601f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "290c3711-05ac-4b65-84e2-7a103b69823b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

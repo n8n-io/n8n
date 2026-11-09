@@ -1,0 +1,89 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_5785bc20fb92a9::t_c09ff04118738c 9,19,36,41-44,87-98,152-169,171-176,289-292
+packages/nodes-base/nodes/Postgres/v2/helpers/interfaces.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 63-65
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 82
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 119
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 15-21
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 666
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 2-7,18-21,46-51
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryGuidanceModal.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 1-75
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 328-335,351
+packages/@n8n/agents/src/types/index.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 91
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-episodic.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 105,117,127
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_5785bc20fb92a9::t_c09ff04118738c 265-267
+packages/nodes-base/nodes/Postgres/test/transport/configurePostgres.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 1-2,4-6,9,11-14,128-325
+packages/nodes-base/credentials/Postgres.credentials.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 81-121
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 40,7876-7918
+packages/cli/src/modules/agents/__tests__/agent-json-config.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 248-274
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 50,212-228
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 367
+packages/cli/src/modules/n8n-packages/__tests__/export-project-to-directory.integration.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 60
+packages/cli/src/modules/promotions.ee/__tests__/import-manifest-bridge.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 32,103-124
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryPanel.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 32-37,62-70,263-319
+packages/@n8n/agents/src/index.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 54
+packages/frontend/editor-ui/src/features/agents/components/AgentChipRow.vue
+  s_5785bc20fb92a9::t_c09ff04118738c 65-67
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 55-66,77
+packages/@n8n/agents/src/sdk/memory.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 80
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 1415,1434
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 23,106-157,163,165-166,171-172
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 1863
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 24-25,81-82,207,216-224,419,428-434
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_5785bc20fb92a9::t_c09ff04118738c 264-266
+packages/nodes-base/nodes/Postgres/transport/index.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 88-108,212-222
+packages/cli/src/modules/agents/builder/skills/memory.skill.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 51
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryGuidanceModal.vue
+  s_5785bc20fb92a9::t_c09ff04118738c 1-121
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5785bc20fb92a9::t_c09ff04118738c 9139-9144
+packages/nodes-base/nodes/Postgres/test/v2/credentialTest.test.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 1-92
+packages/nodes-base/nodes/Postgres/v2/methods/credentialTest.ts
+  s_5785bc20fb92a9::t_c09ff04118738c 37-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c573b9fd212647f0d6d2ff4471fca65cc110fe3e",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

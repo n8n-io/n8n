@@ -1,0 +1,78 @@
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_e96b2a058a8d23::t_ee8a8c708afda8 168
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_e96b2a058a8d23::t_25cd6a922d942d 597,600
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_e96b2a058a8d23::t_ee8a8c708afda8 203-216,220-221,227-231
+  s_e96b2a058a8d23::t_c7a391fa660625 217-219,222-226
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_e96b2a058a8d23::t_c7a391fa660625 86-88,90-108,111-115,117-131,133-135
+  s_e96b2a058a8d23::t_25cd6a922d942d 4,83-85,89,109-110,116,132,136-149
+  s_e96b2a058a8d23::t_e74b04c08d978a 150-151
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_e96b2a058a8d23::t_c7a391fa660625 140-143,151-153,157-161
+  s_e96b2a058a8d23::t_25cd6a922d942d 122,132-139,144-150,154-156,162-164,203
+  s_e96b2a058a8d23::t_3044570080ecbc 204
+packages/cli/src/modules/agents/__tests__/agent-queued-preview-stream.service.test.ts
+  s_e96b2a058a8d23::t_c7a391fa660625 57-59
+  s_e96b2a058a8d23::t_25cd6a922d942d 54-56,60-73
+packages/cli/src/modules/agents/agent-queued-preview-stream.service.ts
+  s_e96b2a058a8d23::t_354dac051836bf 74
+  s_e96b2a058a8d23::t_ee8a8c708afda8 75-78
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_e96b2a058a8d23::t_262787c0d6abcb 1700-1702,1705-1713,1723-1727,1732-1738
+  s_e96b2a058a8d23::t_8bea2ec7071cbb 1715-1716,1718
+  s_e96b2a058a8d23::t_2461fb98d93cf2 1694-1699,1703-1704,1714,1719-1722,1728-1731,1739-1743
+  s_e96b2a058a8d23::t_cfc1a6699c5cff 1717
+packages/cli/src/modules/agents/agent-session-stop.service.ts
+  s_e96b2a058a8d23::t_c442a79a73be29 75-76
+  s_e96b2a058a8d23::t_c7a391fa660625 46-47
+  s_e96b2a058a8d23::t_354dac051836bf 12-14,21,26-27,48,50-51,59-63,69,73-74,77
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_e96b2a058a8d23::t_354dac051836bf 789-792,798,812-825,827
+  s_e96b2a058a8d23::t_b134eed1c43b00 826
+  s_e96b2a058a8d23::t_11824d0b2b6f86 828
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_e96b2a058a8d23::t_c7a391fa660625 295,319-323,332-334,336-352
+  s_e96b2a058a8d23::t_c442a79a73be29 296-297
+  s_e96b2a058a8d23::t_354dac051836bf 294,303-304,315,324-331,335,353
+  s_e96b2a058a8d23::t_584fa9af4bce3c 298-302,354
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_e96b2a058a8d23::t_25cd6a922d942d 70-72
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_e96b2a058a8d23::t_ee8a8c708afda8 112-115
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_e96b2a058a8d23::t_c442a79a73be29 387-391
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_e96b2a058a8d23::t_25cd6a922d942d 237,240,243
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_e96b2a058a8d23::t_ee8a8c708afda8 72,77-83,110,660
+  s_e96b2a058a8d23::t_c7a391fa660625 11-18,73-76
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_e96b2a058a8d23::t_25cd6a922d942d 653-665,671-672
+  s_e96b2a058a8d23::t_c7a391fa660625 666-670
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_e96b2a058a8d23::t_2461fb98d93cf2 4240-4244,4250-4263,4269-4276,4281-4285
+  s_e96b2a058a8d23::t_262787c0d6abcb 4245-4249,4264-4268,4277-4280
+packages/cli/src/modules/agents/__tests__/agent-session-stop.service.test.ts
+  s_e96b2a058a8d23::t_c7a391fa660625 27,32-33,43-45,47-52,66-70,73-74,78-82,110-114,133,143,146,161
+  s_e96b2a058a8d23::t_571c7801a3ece9 9-11,18,23-24,42,46,53,59-60,63-64,72,76-77,83-84,87,89-93,98-99,102-104,109,115-118,120-125,127-130,135-137,140-142,148-152,155,158,163-171
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_e96b2a058a8d23::t_354dac051836bf 350,353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a2f0d9c131ad2dfc173e5d7577bf214ad7ff58a",
+  "prompts": {},
+  "sessions": {
+    "s_e96b2a058a8d23": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17996-09b4-7210-950e-5df432b2f229",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

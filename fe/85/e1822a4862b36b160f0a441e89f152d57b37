@@ -1,0 +1,217 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_ea8398b491aecc::t_445d2da07d5a71 66-70
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionBlockers.vue
+  s_ea8398b491aecc::t_a5f2d79e8f5669 26
+  s_ea8398b491aecc::t_123ebb2b47311c 154-157,168-171
+  s_ea8398b491aecc::t_27eb389b2925b3 122,160-164,167,172
+packages/cli/src/modules/n8n-packages/entities/folder/folder-importer.ts
+  s_ea8398b491aecc::t_445d2da07d5a71 126
+  s_ea8398b491aecc::t_dd7ac5e00cd0a5 61-70,72,75
+  s_ea8398b491aecc::t_35f5f1ecbb9c7c 2,13,60,71,73-74,76-78,122-125
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/bindings.fixtures.ts
+  s_ea8398b491aecc::t_68c098617a604e 90,95
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_ea8398b491aecc::t_6cf54cf290f6f9 5,7,42-47,70,76,81,90,106,135,190-211
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ea8398b491aecc::t_a5f2d79e8f5669 4211,9878,9942-9944,10034-10035,10038-10040
+  s_ea8398b491aecc::t_123ebb2b47311c 10073-10074
+packages/cli/src/errors/__tests__/rest-error-response.test.ts
+  s_ea8398b491aecc::t_51b70ed79d38e9 40
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  s_ea8398b491aecc::t_123ebb2b47311c 63
+packages/cli/src/modules/n8n-packages/entities/planned-placements.ts
+  s_ea8398b491aecc::t_445d2da07d5a71 1-20
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-importer.test.ts
+  s_ea8398b491aecc::t_cd29fa94eace22 37-40
+  s_ea8398b491aecc::t_59e3a9492a341f 42
+  s_ea8398b491aecc::t_eb20b4f2759ffb 59-62
+  s_ea8398b491aecc::t_62dbcefe2bbae9 11-20,81-118
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_ea8398b491aecc::t_9cefa58edd0bb9 73,196
+  s_ea8398b491aecc::t_5a361fcbb15061 478
+  s_ea8398b491aecc::t_30ff5ff81e887e 1554-1580
+  s_ea8398b491aecc::t_c5f3d15cbff521 1483,1492-1524
+  s_ea8398b491aecc::t_51b70ed79d38e9 2850
+  s_ea8398b491aecc::t_9145887f2f38d8 1460,1475,1479-1480,1484-1487,1489,1527,1537,1539,1541-1542,1545-1549,1551,2043,2048-2058,2061,2063-2066,2071-2072,2075,2823,2834,2836-2837,2843-2849,2853,2856
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  ai_agent 5
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_ea8398b491aecc::t_2148da291cbf9b 69
+  s_ea8398b491aecc::t_50c028a53e674c 101-102
+  s_ea8398b491aecc::t_b093509c3d0b71 529,651
+  s_ea8398b491aecc::t_0f6b2816f1bb80 130,637
+  s_ea8398b491aecc::t_35f5f1ecbb9c7c 53
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.vue
+  s_ea8398b491aecc::t_6bbe1fc8c0ea61 13,18,66-67,74,130-132,134-138
+  s_ea8398b491aecc::t_45358d6465ab29 68-73
+packages/cli/src/modules/n8n-packages/entities/folder/folder-remover.ts
+  s_ea8398b491aecc::t_d8dc3d6d82d916 6,8
+  s_ea8398b491aecc::t_477b7e0f9a7cd0 34-39,43-45,151-161
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_ea8398b491aecc::t_51b70ed79d38e9 383-426
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_ea8398b491aecc::t_dd7ac5e00cd0a5 396,442-462
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  ai_agent 5
+packages/cli/src/modules/promotions.ee/promotions-selective-push.error.ts
+  s_ea8398b491aecc::t_28f4383f7f5894 10-11,13-14,17
+  s_ea8398b491aecc::t_ef815f8e288275 12,15
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_ea8398b491aecc::t_0db37f60d9cf2c 320-348
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  ai_agent 5
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_ea8398b491aecc::t_445d2da07d5a71 130,301-303
+  s_ea8398b491aecc::t_154fe6304073e3 69-72,129,131-132
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-remover.test.ts
+  s_ea8398b491aecc::t_ffffdb252b3bca 153-229
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOperation.ts
+  s_ea8398b491aecc::t_195350855a0186 93-97
+  s_ea8398b491aecc::t_27eb389b2925b3 89
+  s_ea8398b491aecc::t_123ebb2b47311c 29-31,156-158,168
+  s_ea8398b491aecc::t_a5f2d79e8f5669 88,155,162-167
+  s_ea8398b491aecc::t_e4cf28b29a7f8a 33
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.test.ts
+  s_ea8398b491aecc::t_e4cf28b29a7f8a 60
+  s_ea8398b491aecc::t_c620a49ba38737 44
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_ea8398b491aecc::t_445d2da07d5a71 50-51,54-58,65-66,71
+packages/cli/src/modules/n8n-packages/entities/folder/folder-import.types.ts
+  s_ea8398b491aecc::t_dd7ac5e00cd0a5 17-18
+  s_ea8398b491aecc::t_35f5f1ecbb9c7c 1-6,16,21
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  ai_agent 5
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_ea8398b491aecc::t_50c028a53e674c 68-75,80-83
+  s_ea8398b491aecc::t_40f247527a527b 206-214,217-223
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionResult.ts
+  s_ea8398b491aecc::t_6bbe1fc8c0ea61 2,5-6,66-90
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_ea8398b491aecc::t_eb20b4f2759ffb 1-6,18,194-228
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  s_ea8398b491aecc::t_123ebb2b47311c 195-200,247-251,420
+  s_ea8398b491aecc::t_a5f2d79e8f5669 41,84
+  s_ea8398b491aecc::t_27eb389b2925b3 187-189,191-192
+packages/@n8n/cli/src/commands/promotion-environment/promote-selection.ts
+  s_ea8398b491aecc::t_50c028a53e674c 7
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.vue
+  s_ea8398b491aecc::t_619a4ea4ae8cd2 309-314
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  ai_agent 54-57,64,78-81,116
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_ea8398b491aecc::t_16482ff609440f 84-103,107-111
+  s_ea8398b491aecc::t_6bbe1fc8c0ea61 104-106
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionOutcome.ts
+  s_ea8398b491aecc::t_6bbe1fc8c0ea61 8,47,54
+  s_ea8398b491aecc::t_45358d6465ab29 46,48-53
+packages/@n8n/cli/docs/commands/promotions.md
+  s_ea8398b491aecc::t_ffda195b0b309e 251-254
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_ea8398b491aecc::t_993282c63394cd 105
+  s_ea8398b491aecc::t_6c8f3396af5593 522-523
+  s_ea8398b491aecc::t_ae0f1af5b085ab 374-387,389-391,395-402
+  s_ea8398b491aecc::t_9f077a445b1418 388
+  s_ea8398b491aecc::t_195350855a0186 392-394
+  s_ea8398b491aecc::t_68c098617a604e 525-528,531-532
+  s_ea8398b491aecc::t_2d2150c435ba5c 521,524,529-530,539
+  s_ea8398b491aecc::t_6cadb9bde7fbeb 543,558,562-566
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreviewLabels.ts
+  s_ea8398b491aecc::t_123ebb2b47311c 43,51-55,67-69
+  s_ea8398b491aecc::t_a5f2d79e8f5669 56-59
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_ea8398b491aecc::t_3d5c093b07415d 501,527
+  s_ea8398b491aecc::t_a47ff346caabfa 585
+  s_ea8398b491aecc::t_50c028a53e674c 623,651
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_ea8398b491aecc::t_d8dc3d6d82d916 8,64-67,70,89,201-209
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  ai_agent 5
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionOperation.test.ts
+  s_ea8398b491aecc::t_993282c63394cd 34
+  s_ea8398b491aecc::t_c620a49ba38737 72
+  s_ea8398b491aecc::t_68c098617a604e 64-71
+  s_ea8398b491aecc::t_ae0f1af5b085ab 88-102,107-109,111-114,124-127
+  s_ea8398b491aecc::t_195350855a0186 103-106
+  s_ea8398b491aecc::t_a5f2d79e8f5669 8,110,115-123,128-131
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_ea8398b491aecc::t_38098609bed604 1868-1869,1871-1874
+  s_ea8398b491aecc::t_522c27dedec0d8 1963,1965
+  s_ea8398b491aecc::t_e299b960c26866 1512-1545,1548-1552,1556,1558-1576,1578-1581,1585-1612
+  s_ea8398b491aecc::t_cd29fa94eace22 2124
+  s_ea8398b491aecc::t_195350855a0186 281-282,284
+  s_ea8398b491aecc::t_5f74094e15ab2f 24,74,147,1876,1973-1974,1998-1999,2002-2004,2006,2008-2013,2017
+  s_ea8398b491aecc::t_2761a03c7976af 240-248,271,288-292,294-304,317-329,361-362,376-377,1640
+  s_ea8398b491aecc::t_5abf8bb5f43dff 1471-1476,1480,1656,1661
+  s_ea8398b491aecc::t_fb3dbf5f75f941 130-132,279-280,287,315,330-334,338-346,348-351,357-360,1498,1553-1555,1557,1582-1584,1727,1750,1757-1758,1768,1774,1780,1791,1804,1830
+  s_ea8398b491aecc::t_51b70ed79d38e9 272-278,283,285-286,293,305-314,316,335-337,347,352-356,363-375,1995,2000-2001,2007,2015,2019-2039
+  s_ea8398b491aecc::t_75421fed2671e3 1546-1547,1577
+  s_ea8398b491aecc::t_bafea3f0acf693 1958,1964,1971-1972,1975-1994,1996-1997,2005,2014,2016
+  s_ea8398b491aecc::t_235744137cfde3 1321-1322,1324-1342,1348
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_ea8398b491aecc::t_dd7ac5e00cd0a5 113-117,345
+  s_ea8398b491aecc::t_154fe6304073e3 333,341-344,346
+  s_ea8398b491aecc::t_356bc2b144607d 361-362
+  s_ea8398b491aecc::t_477b7e0f9a7cd0 368
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_ea8398b491aecc::t_79f03922bb2238 272-280,292
+  s_ea8398b491aecc::t_c5f3d15cbff521 281-291
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_ea8398b491aecc::t_831824b11c5759 7,27,142,205-207,211-215,220,222-223,225,258,263
+  s_ea8398b491aecc::t_e5610061c23d01 238-240
+  s_ea8398b491aecc::t_0db37f60d9cf2c 208-210,216-219,221,224,226-237,241-257,259-262,264-265,271-274,285-292
+  s_ea8398b491aecc::t_af743064f7a913 266-270,275-284
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_ea8398b491aecc::t_2148da291cbf9b 17-19
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.service.test.ts
+  s_ea8398b491aecc::t_522c27dedec0d8 126,264
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_ea8398b491aecc::t_03f8869d157e6a 2539,2544,2726,2731
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_ea8398b491aecc::t_e5610061c23d01 1434-1436
+  s_ea8398b491aecc::t_e5302932a3d461 133,680,682,718,728
+  s_ea8398b491aecc::t_ef815f8e288275 515-516,567,569-571
+  s_ea8398b491aecc::t_b4a45d8cdc7079 23,192,1174,1178-1182,1208-1209,1212,1214,1217,1413-1415,1418,1433,1444-1445,1447,1449,1452
+  s_ea8398b491aecc::t_53436d2332e7ae 973
+  s_ea8398b491aecc::t_f5765a0ae0384d 1005,1170-1172,1177,1215-1216,1218,1220-1221,1225-1228,1230-1231
+  s_ea8398b491aecc::t_2ab5c663b192d7 1173,1175-1176,1183-1207,1210-1211,1213,1219,1222-1224,1229,1416-1417,1419-1432,1437-1443,1446,1448,1450-1451
+  s_ea8398b491aecc::t_69d4985f90ab15 57
+  s_ea8398b491aecc::t_3cd5a179c5494a 1340,1345
+  s_ea8398b491aecc::t_6d15d463ff2f09 633,638-639,645,656-658,677-679,725,773-774,778,844,848,850-851
+  s_ea8398b491aecc::t_0eb8e4f5d3e27b 20
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_ea8398b491aecc::t_195350855a0186 536-539
+  s_ea8398b491aecc::t_eb20b4f2759ffb 526-535,540-563
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-remover.test.ts
+  s_ea8398b491aecc::t_74e769e62fd6f4 7,65,95,131-184,188-191
+  s_ea8398b491aecc::t_195350855a0186 38-42,50-54,79-83,104-108,118-122,185-187,197-201
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ea8398b491aecc::t_b093509c3d0b71 353-363
+  s_ea8398b491aecc::t_50c028a53e674c 314-315
+  s_ea8398b491aecc::t_445d2da07d5a71 545-546,554-555
+  s_ea8398b491aecc::t_0f6b2816f1bb80 326,370-381
+packages/cli/src/modules/n8n-packages/io/__tests__/package-directory-inventory-reader.test.ts
+  s_ea8398b491aecc::t_240a6e5f9e51f5 81-87,161
+  s_ea8398b491aecc::t_9cefa58edd0bb9 50
+  s_ea8398b491aecc::t_522c27dedec0d8 119-128
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_ea8398b491aecc::t_28f4383f7f5894 66-70
+  s_ea8398b491aecc::t_40f247527a527b 4-7,61-65
+packages/@n8n/cli/src/client.ts
+  s_ea8398b491aecc::t_50c028a53e674c 78,83-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe85e1822a4862b36b160f0a441e89f152d57b37",
+  "prompts": {},
+  "sessions": {
+    "s_ea8398b491aecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79fa3697-e88c-41ac-8b49-e4829ac9b740",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

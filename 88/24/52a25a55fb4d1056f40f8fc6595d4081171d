@@ -1,0 +1,25 @@
+packages/@n8n/backend-services/src/services/ai-preference.service.ts
+  s_adf881e663899b::t_ba5a8aba7b45a3 706
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-event-log.repository.test.ts
+  s_adf881e663899b::t_dbb8f62415668a 274-311
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_adf881e663899b::t_7ffbf0f6ece732 421-426
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_adf881e663899b::t_96bcd8ddcd0fc2 1252-1255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "882452a25a55fb4d1056f40f8fc6595d4081171d",
+  "prompts": {},
+  "sessions": {
+    "s_adf881e663899b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d10d7005-b041-436a-8a99-8a30ac41b3a1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

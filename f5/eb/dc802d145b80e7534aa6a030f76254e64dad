@@ -1,0 +1,42 @@
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_8056da22c66cb7::t_1a900d66b93ca1 183-189,195-207
+  s_8056da22c66cb7::t_c20b78234a8002 140,190,208
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_8056da22c66cb7::t_b8f61ac3e56aeb 181,185
+  s_8056da22c66cb7::t_1a900d66b93ca1 184,191
+  s_8056da22c66cb7::t_6d7c031af80bdf 182-183,188-189,195-196
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_8056da22c66cb7::t_1a900d66b93ca1 138-147,160,169,191-192
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_8056da22c66cb7::t_f9fb24d64f445b 66
+  s_8056da22c66cb7::t_1efcb3546a570e 14,36,67-68,136,937-940,942-943,948,951-953,955,959,962-963,975-976,978-984,986,988-994
+  s_8056da22c66cb7::t_b22e687d643e2d 65
+  s_8056da22c66cb7::t_1a900d66b93ca1 599-602,610-614,752-760,765-767,769-774,776-782,785,798-805,816,839-841,843-906,909,912-915,917-921,923,941,949,954,987,995
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_8056da22c66cb7::t_5801ef0b7e06db 1289-1296,1462,1482-1484,1487,1491,1505-1506,1509,1968
+  s_8056da22c66cb7::t_4c910144f3470a 197,1990-1994
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_8056da22c66cb7::t_5f3e3381dbe0fc 12,14,35
+  s_8056da22c66cb7::t_8326772b98465e 36,78,148,1346-1358,1361-1369,1373-1379,1386,1406,1408-1409,1411-1412,1493-1501,1517,1524-1525,1531,1537,1542-1551,1556-1557,1563-1564,1566,1570-1578,1597-1600,1606,1616,1620,1627-1628,1658,1668,1673-1678,1684,1686-1688,1690,1706,1717,1739,1741,1756,1768-1771,1773,1780-1788,1796,1802,1804,1810,1812-1813
+  s_8056da22c66cb7::t_606ac862d77b72 1503
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_8056da22c66cb7::t_93420ebc7c2670 651,675
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_8056da22c66cb7::t_2594b6b4f9b836 937-972
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f5ebdc802d145b80e7534aa6a030f76254e64dad",
+  "prompts": {},
+  "sessions": {
+    "s_8056da22c66cb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b1ea0a0-5534-410d-8325-1a2b74c81085",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

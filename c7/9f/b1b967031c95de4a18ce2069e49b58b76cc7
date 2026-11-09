@@ -1,0 +1,19 @@
+packages/cli/src/modules/ldap.ee/helpers.ee.ts
+  s_ff82293704dd4d::t_ac8119c02ba2d0 248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c79fb1b967031c95de4a18ce2069e49b58b76cc7",
+  "prompts": {},
+  "sessions": {
+    "s_ff82293704dd4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e7ef41a81ffe7QD6jKoTM0JjlR",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

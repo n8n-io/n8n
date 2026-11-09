@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_71ad2034164515::t_974e9edabed236 600-602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c2cf22ecb2fcbe36858b017de49a72d1136085c",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

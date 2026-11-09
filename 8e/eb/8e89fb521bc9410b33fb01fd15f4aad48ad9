@@ -1,0 +1,28 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_ff9334633918b4::t_35371e03347f1d 1046-1051
+  s_ff9334633918b4::t_d6a1d55231ff41 1004,1440-1488
+  s_ff9334633918b4::t_f20891ff8d8123 1489,4057,4071
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_ff9334633918b4::t_4d1392b1d78fe9 262,460,861-862,923,1029,1188-1189,1241-1242,1266-1267
+  s_ff9334633918b4::t_d5b65e3499ae65 1498,1500-1537
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_ff9334633918b4::t_ea9474ae7248fb 1944-1946,1948-1950,1958,1979-1981,1983-1984,1992,2252
+  s_ff9334633918b4::t_762a76fddb5854 914,917-966,972-973,975-979,982,994-1007,1252-1253,1255,1258-1268,1942,1959-1965,1968,1993-1999,2251,2254-2261,2707,2710-2718
+  s_ff9334633918b4::t_2208b03c55d3f3 3337-3467
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8eeb8e89fb521bc9410b33fb01fd15f4aad48ad9",
+  "prompts": {},
+  "sessions": {
+    "s_ff9334633918b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "547070a0-523b-4dad-92af-96b0774d1e0f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.vue
+  s_7697af894b7e28::t_a22f93e70a4669 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f8a73a3c9ce18c78404f7f3b0f150f83588794f",
+  "prompts": {},
+  "sessions": {
+    "s_7697af894b7e28": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18278-bbae-7797-835a-71590a3e3e5c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

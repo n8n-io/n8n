@@ -1,0 +1,31 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_d740321ee1c7f2::t_200392397b4f85 1252-1254,1256-1259
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_d740321ee1c7f2::t_2496678d6868df 197-202,204,206-208,211
+packages/@n8n/backend-services/src/services/ai-preference.service.ts
+  s_d740321ee1c7f2::t_200392397b4f85 706-707
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_d740321ee1c7f2::t_9e3ca791c33b41 423,732
+packages/cli/src/modules/instance-ai/__tests__/ai-preferences-telemetry.test.ts
+  s_d740321ee1c7f2::t_e8a93817d027a5 57
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_d740321ee1c7f2::t_2496678d6868df 504
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_d740321ee1c7f2::t_b3f8cd0ea7b9d7 7487
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "67235b71eb58ccc57bb3cdfed3ea5938b7e081eb",
+  "prompts": {},
+  "sessions": {
+    "s_d740321ee1c7f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd0bc4a5-d678-410d-b6c9-7a9cc5d6c9ef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

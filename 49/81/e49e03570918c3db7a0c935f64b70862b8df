@@ -1,0 +1,19 @@
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_1846b2775c62ad::t_60f80eb87633a1 993
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4981e49e03570918c3db7a0c935f64b70862b8df",
+  "prompts": {},
+  "sessions": {
+    "s_1846b2775c62ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ba7efea-ee8f-4ee1-b780-73cd9b83ced1",
+        "model": "unknown"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

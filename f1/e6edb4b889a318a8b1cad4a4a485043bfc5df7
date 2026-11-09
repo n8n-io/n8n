@@ -1,0 +1,27 @@
+packages/@n8n/cli/package.json
+  s_71ad2034164515::t_fd76171857adc0 20-21,94
+packages/@n8n/cli/src/client.ts
+  s_71ad2034164515::t_528157881e21af 1,5-6
+packages/@n8n/cli/src/commands/package/import.ts
+  s_71ad2034164515::t_aae28a6ed2271f 40
+packages/@n8n/cli/tsdown.config.ts
+  s_71ad2034164515::t_292b59f17b86a5 1-10
+pnpm-lock.yaml
+  s_71ad2034164515::t_a2322c081217df 2158-2160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1e6edb4b889a318a8b1cad4a4a485043bfc5df7",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

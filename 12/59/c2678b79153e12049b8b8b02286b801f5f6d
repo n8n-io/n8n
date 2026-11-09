@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/register-user-deletion-handler.ts
+  s_abe416d94b4232::t_5c591f551f5f1a 5,19
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_dfe3f914c8bb46::t_feb6ea07eddb85 2003-2081
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_abe416d94b4232::t_d8a609c1867103 349-427
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1259c2678b79153e12049b8b8b02286b801f5f6d",
+  "prompts": {},
+  "sessions": {
+    "s_abe416d94b4232": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19c1e-ab9b-7db2-b5b6-6f22b848d545",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

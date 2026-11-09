@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_bf4d593c048d91::t_1a01bbadf2509e 175-176
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_bf4d593c048d91::t_0dafa704c223f7 39-40,93,128
+  s_bf4d593c048d91::t_dc13aeff0de7e0 564-567
+packages/frontend/editor-ui/src/features/agents/__tests__/agentSessions.store.spec.ts
+  s_bf4d593c048d91::t_2cd9e82ec967dc 13,16,21-27,74-107
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_bf4d593c048d91::t_1dabdd5f21cfcf 20-22,54,59-77,134,282-284,296
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.test.ts
+  s_bf4d593c048d91::t_91be7c2eb1339f 52,54
+  s_bf4d593c048d91::t_f2bc3116d5a630 42,45,50,53,56
+  s_bf4d593c048d91::t_299dbbb1fcebe7 41,43-44,46-49,51,55,57-59
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderMainTabs.ts
+  s_bf4d593c048d91::t_4555f8e4f9ba96 92,95
+  s_bf4d593c048d91::t_ec9f8a37434138 48,52,91,93-94
+  s_bf4d593c048d91::t_cca0cee9df33e2 88-90,96
+  s_bf4d593c048d91::t_70eaa678aca0da 1,11-13,38,69,82
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_bf4d593c048d91::t_7d687a357abe1c 927
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8becbd2e0a6c4c39c26f3b2c5340080707bfb4aa",
+  "prompts": {},
+  "sessions": {
+    "s_bf4d593c048d91": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a15ef2-9213-70a9-b3fb-ea1f32b39a4a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

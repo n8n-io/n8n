@@ -1,0 +1,19 @@
+packages/workflow/test/native-evaluation-parity.test.ts
+  s_2a512efce24140::t_6cdd97247e6c29 877-893,895-913
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "64aa8215375b92328701877099d1c30b66c7ef70",
+  "prompts": {},
+  "sessions": {
+    "s_2a512efce24140": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f86a88b-090a-4f94-8295-7f4643828485",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

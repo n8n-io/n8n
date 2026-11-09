@@ -1,0 +1,48 @@
+packages/@n8n/n8n-node-codegen/src/build.ts
+  s_924b6168ef550d::t_5e3a4fb6cf84e4 8
+packages/@n8n/n8n-node-codegen/src/paths.ts
+  s_924b6168ef550d::t_6d3c7ead41c36c 6
+  s_924b6168ef550d::t_cd24b6c3f02bfe 1-5,7-10
+packages/@n8n/n8n-node-codegen/src/contract.ts
+  s_924b6168ef550d::t_5e3a4fb6cf84e4 3
+packages/nodes-base/nodes/N8n/test/v2.methods.test.ts
+  s_924b6168ef550d::t_bd664427cea884 1-8,11-14,16-25,27-39,47-51
+  s_924b6168ef550d::t_d5a21f9c138e7b 9-10,15,26,40-41,46
+  s_924b6168ef550d::t_f3bc5af110d518 42-45
+pnpm-lock.yaml
+  ai_agent 3638-3640
+packages/nodes-base/nodes/N8n/v2/README.md
+  s_924b6168ef550d::t_ec1b1a0cbadfec 109-110,114,122,126-129,134,148,189-191,202-204,218-220,254-259,261-265
+packages/nodes-base/nodes/N8n/v2/generated/description.generated.ts
+  ai_agent 30-31,71-72,79-80,148-149,157-158,174-175,209-210,222-223,235-236,239,276-277,285,293-294,357-358,366,381-382,461,482-483,490,497-499,506,514-515,522-523,530,538-539,546,554-555,558,565-566,572,579-580,587,624-625,653-654,727-728,792,869,877,894,896,904-905,907,914-915,918,981-982,1085-1086,1107-1108,1111,1118-1119,1126-1127,1134-1135,1142-1143,1240-1241,1263-1264,1272-1273,1340,1392,1458,1564,1630,1671-1672,1719,1773,1852-1853,1893-1894,1916-1917
+packages/@n8n/n8n-node-codegen/package.json
+  s_924b6168ef550d::t_e09b8cb868ebe6 22
+packages/nodes-base/nodes/N8n/v2/generated/contract.generated.json
+  ai_agent 79
+packages/@n8n/n8n-node-codegen/src/index.ts
+  s_924b6168ef550d::t_5e3a4fb6cf84e4 51-55
+  s_924b6168ef550d::t_ee4ff85b06ac33 6,8,10-11,13-14,16,26-29,37-45,50,56-57,59-60,62,66-79,82-91,93-101,111-122,125-129,132-157,159-160
+  s_924b6168ef550d::t_6d3c7ead41c36c 15,92
+  s_924b6168ef550d::t_e09b8cb868ebe6 4,102-110
+  s_924b6168ef550d::t_2a772ecec2bac8 30
+packages/nodes-base/nodes/N8n/test/node/v2.workflow.json
+  s_924b6168ef550d::t_bdf307e1430998 1-71
+packages/nodes-base/nodes/N8n/test/node/N8n.test.ts
+  s_924b6168ef550d::t_fc4e56e7862a58 22-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0eef8fe4a3db6226feb8be17314b9ecb4300cd9b",
+  "prompts": {},
+  "sessions": {
+    "s_924b6168ef550d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8778ca4-b098-466b-8c72-09adbd7179d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

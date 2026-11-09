@@ -1,0 +1,368 @@
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 524
+  s_7a118b07ee147d::t_793857c48f6b5a 475-480
+  s_7a118b07ee147d::t_8f9c2195de99f4 481
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_7a118b07ee147d::t_78eb04a6b9dfb6 26
+  s_7a118b07ee147d::t_7f0b56279583e4 13,38,75
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 162-163
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_7a118b07ee147d::t_c2122a4204867d 288-311,334-335
+  s_7a118b07ee147d::t_4ff32abeb8d27e 145-146,149,153-155,157,159-160,169,172,191,197
+  s_7a118b07ee147d::t_1ebcbdd27f2754 118,126,128,136,141,148,170,178-180,193-196,203-204,205,210-212,213,214-224,226-228,230-235,241,243-246,252-253,319,543-547,563-567,569,587,699,702-713,792-817,820-821,826,835,837,841-842,895,1251,1307
+  s_7a118b07ee147d::t_b94666363a74e4 163-164,166-168,175-176,181-185,188-190
+  s_7a118b07ee147d::t_06069aa0e617fb 147,150,151-152,158,161-162,200,312-318,320-323,325-333
+  s_7a118b07ee147d::t_805835555f37e1 33-34,65,67-68
+  s_7a118b07ee147d::t_6943518ed6067c 734,736-741,743-744
+  s_7a118b07ee147d::t_68f9e309b93faf 605,663,925,1013
+  s_7a118b07ee147d::t_563388b1298112 5,98,733,735,742,874,879,890-891,1312,1314-1344,1345-1349,1350-1360,1362-1370,1372,1374-1414,1416-1423,1425-1435,1437-1470,1472-1482,1483,1484-1593
+  s_7a118b07ee147d::t_bdb8b2beeb1e5f 1001
+  s_7a118b07ee147d::t_786ccffbb7f7f2 1042-1044,1073,1078,1083,1094
+  s_7a118b07ee147d::t_d16513041c83a3 66,119-124,171,206
+  s_7a118b07ee147d::t_0a2cdb3f6de74c 125,127,132,165,173-174,177,207-209,229,236,247-251,324,407,513-518,568,933,1041,1095-1099,1102,1105-1106,1140,1256-1259,1262
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_7a118b07ee147d::t_14425dbc91b451 85-86,120-121
+  s_7a118b07ee147d::t_4ff32abeb8d27e 212-213
+  s_7a118b07ee147d::t_48a4ed7dcdd0d2 111-119,133
+  s_7a118b07ee147d::t_41ca5a9fc0ee3f 132,266-271,273-285,292-296,298-301,304-310,313,316,322-337,339,344-345,347-349,354-358,373,398
+  s_7a118b07ee147d::t_798d35356bff61 155-156,208,272
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_7a118b07ee147d::t_32c7c86767635d 733
+  s_7a118b07ee147d::t_addedc787b0417 159-161
+  s_7a118b07ee147d::t_ba48f900495e70 934
+  s_7a118b07ee147d::t_7423a569499c56 22,173-176,740,745-747,750-753,754,755-756,758-759,764-766,772-774,808-820,822,863-872
+  s_7a118b07ee147d::t_2e8958e971297d 744,748-749,757,760-763,767-771,775-779,786-807
+packages/cli/src/modules/agents/agent-memory-entries.service.ts
+  s_7a118b07ee147d::t_e53bc07fe6ed53 117-123
+packages/frontend/editor-ui/src/features/agents/components/SessionMemoryDetail.vue
+  s_7a118b07ee147d::t_ae1d2a0a48f6d9 1-39,43-47,50,56-106,126,167-178,180-182,191,193-210
+  s_7a118b07ee147d::t_a3665fea75ebee 49,121
+  s_7a118b07ee147d::t_9a951ea2bafbdc 40-42,187-190
+  s_7a118b07ee147d::t_6ce9f6560bd2e1 135,137
+  s_7a118b07ee147d::t_4acbd0696539c0 48,51-55,107-120,122-125,127-134,136,138-166,179,183-185
+  s_7a118b07ee147d::t_781f845f5fc805 192
+  s_7a118b07ee147d::t_e0f6358b355a3c 186
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_7a118b07ee147d::t_c56416df45b087 12
+  s_7a118b07ee147d::t_1f781d73574d4f 16,32-35,173-181,537,539-549,824,827,830-831
+  s_7a118b07ee147d::t_5fb776ae91520f 536,538
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_7a118b07ee147d::t_e53bc07fe6ed53 9,20,51,53-55,59,76-83
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_7a118b07ee147d::t_096889b09d726f 36-37,39
+  s_7a118b07ee147d::t_6b4f6cf7deafc6 9,22,68
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_7a118b07ee147d::t_1f781d73574d4f 55-56
+  s_7a118b07ee147d::t_1d531225d93b18 4,25-26,301-302,352-353
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionMemoryItem.vue
+  s_7a118b07ee147d::t_66e48af0269a66 1-2,6,9,11,13-21,27-29,57
+  s_7a118b07ee147d::t_30a45e6f440cfe 3,32-44,63,65-81,89
+  s_7a118b07ee147d::t_4592d879bd7709 4-5,7-8,10,12,22-26,30-31,45-56,58-62,64,82-88,90-92
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7a118b07ee147d::t_6ce9f6560bd2e1 1830
+  s_7a118b07ee147d::t_9a951ea2bafbdc 1828
+  s_7a118b07ee147d::t_5c1ee1533419f5 1826-1827,1829,1831-1837
+packages/@n8n/agents/src/runtime/memory/memory-lifecycle.ts
+  s_7a118b07ee147d::t_86789bcddbafa8 1
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_7a118b07ee147d::t_d6445d00950e63 225-254
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 185-186
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_7a118b07ee147d::t_32c7c86767635d 17,262-265,273,275-277,279-302,304
+  s_7a118b07ee147d::t_ff00ade9a1a9a1 170,307,311,321
+  s_7a118b07ee147d::t_65a2ef6ed5bc4b 169,172,178,180,257,259-260,266,268-269,271,274,305-306,312-320,323-325
+  s_7a118b07ee147d::t_5900b8cad48f1f 114,116-119
+  s_7a118b07ee147d::t_14425dbc91b451 71-72,161,165,171,258,261,267,270,272,278,303,308-309
+  s_7a118b07ee147d::t_b253ab021f08a7 310,322
+  s_7a118b07ee147d::t_22314d7be9c801 326
+  s_7a118b07ee147d::t_d8f77830650d34 115
+  s_7a118b07ee147d::t_a0422018df7ee7 3,6-10,64-70,187-256,327-391,396,417
+  s_7a118b07ee147d::t_c3d7b798287523 11
+  s_7a118b07ee147d::t_7ecf0cafe9dff1 88-98,110-113
+  s_7a118b07ee147d::t_cbe32fb5b993df 99-109
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_7a118b07ee147d::t_1f781d73574d4f 9,20-21,48-49
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_7a118b07ee147d::t_e0c13bd06451aa 848,1029-1037,1039-1046,1049-1051,1053-1054,1056-1061,1068,1082,1084-1085,1087,1090-1091,1102-1107,1109-1117,1119-1122,1124-1128
+  s_7a118b07ee147d::t_14425dbc91b451 1028,1047-1048,1052,1055,1062,1083,1086,1089,1108,1118,1123
+  s_7a118b07ee147d::t_d65f71946ea9cc 1038
+  s_7a118b07ee147d::t_ee8d9add50bce2 1092-1101
+  s_7a118b07ee147d::t_1ebcbdd27f2754 424,494
+  s_7a118b07ee147d::t_c65d370a24eb5d 1063-1067,1069-1074,1077-1081,1088
+  s_7a118b07ee147d::t_970fe8e86f7eb9 1075-1076
+  s_7a118b07ee147d::t_543c2d31730214 284,730,1038
+  s_7a118b07ee147d::t_354f6a6f3b69b9 849-872,873,874-875,876,877-878,879,880-955,956,957-1027
+  s_7a118b07ee147d::t_da49ab718ea638 461,658
+  s_7a118b07ee147d::t_5cae1476bfc173 296,440,659-660
+  s_7a118b07ee147d::t_02460b57aac8c3 438-439,441-445,451-454,456-460,462-465
+  s_7a118b07ee147d::t_22f0a5aa46343d 446-450,455
+  s_7a118b07ee147d::t_baae5162ab5541 661-664,683,698,710,746,786-790,809-813,832
+packages/frontend/editor-ui/src/features/agents/session-timeline.styles.ts
+  s_7a118b07ee147d::t_1f781d73574d4f 28
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 426
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineRow.test.ts
+  s_7a118b07ee147d::t_c965bcd096a75b 96-97,105-110
+  s_7a118b07ee147d::t_defbc8910bdb33 77
+  s_7a118b07ee147d::t_4d08e00b4c4680 78-95,98-103,111-113
+  s_7a118b07ee147d::t_90d1755610f7e6 104
+packages/@n8n/agents/src/types/runtime/tool-execution.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 43-44,72-73
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 314
+packages/cli/src/modules/agents/repositories/agent-memory-entry-source.repository.ts
+  s_7a118b07ee147d::t_a3665fea75ebee 13-16
+  s_7a118b07ee147d::t_5900b8cad48f1f 2,11-12,17-23,25-29,34
+  s_7a118b07ee147d::t_985f9fb743f856 24,30-33
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelinePill.vue
+  s_7a118b07ee147d::t_1f781d73574d4f 31-32
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_7a118b07ee147d::t_bd34fda1779ceb 191
+  s_7a118b07ee147d::t_43ce80215d08a8 7,52-54,57,81-88,107,151
+packages/@n8n/agents/src/sdk/tool.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 242-243,368-376,473
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_7a118b07ee147d::t_b8951daf932f65 39-56
+packages/cli/src/modules/agents/agent-memory.controller.ts
+  s_7a118b07ee147d::t_e53bc07fe6ed53 47-59
+packages/cli/test/migration/1793182079956-add-deleted-status-to-agent-memory.test.ts
+  s_7a118b07ee147d::t_4e6a393f32910c 1-157
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_7a118b07ee147d::t_c56416df45b087 143-144
+  s_7a118b07ee147d::t_5e623c4ed27d68 19
+  s_7a118b07ee147d::t_1f781d73574d4f 110-111
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_7a118b07ee147d::t_79f59d0cc73b7e 442,453,457
+  s_7a118b07ee147d::t_5fb776ae91520f 443-451
+  s_7a118b07ee147d::t_085d1683ac0741 452,454-456
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_7a118b07ee147d::t_6b8f028070658f 2-7,75,309,341,478-479
+  s_7a118b07ee147d::t_1f781d73574d4f 203-204
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_7a118b07ee147d::t_672aacab8f25f5 254-255,497,741-744,748-749,762,795
+packages/cli/src/modules/agents/__tests__/agent-memory.controller.test.ts
+  s_7a118b07ee147d::t_d6445d00950e63 21,58-63
+  s_7a118b07ee147d::t_947fa4a5b3ccf4 64
+packages/@n8n/api-types/src/agents/types.ts
+  s_7a118b07ee147d::t_5df671edbf48ba 327-330,337-366
+  s_7a118b07ee147d::t_a3665fea75ebee 331-336
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_7a118b07ee147d::t_0c52d76e11886a 454-466
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_7a118b07ee147d::t_aeed9a1cf3e897 25
+  s_7a118b07ee147d::t_2f9a51df30a054 11,65
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_7a118b07ee147d::t_cf346cce46ab49 95,103
+  s_7a118b07ee147d::t_d52f66c538e6f0 12,136-139,198-202
+  s_7a118b07ee147d::t_ee44ff9fdd6bee 131-135,140-197,203-212
+  s_7a118b07ee147d::t_4d8fffbd5aa5da 259
+packages/cli/src/modules/agents/agent-memory-trace.service.ts
+  s_7a118b07ee147d::t_60790fc2f8d12d 1-75,97-123,125-174,176-178,180-198,200-208
+  s_7a118b07ee147d::t_d8f77830650d34 124,175,199
+  s_7a118b07ee147d::t_985f9fb743f856 77-96,179
+  s_7a118b07ee147d::t_af1dd3496777c1 76
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_7a118b07ee147d::t_58fc34bb1859ba 9,37-41
+  s_7a118b07ee147d::t_b252ad8987e16b 9,24,74
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_7a118b07ee147d::t_c50c4170c5fbf4 206-207
+  s_7a118b07ee147d::t_622782d7c6c301 199,203-205
+  s_7a118b07ee147d::t_4ff32abeb8d27e 35-36,38,181
+  s_7a118b07ee147d::t_0470e1a91dfc87 228-229,239,241
+  s_7a118b07ee147d::t_3df45dba3f6abd 34,208-212,217-218,230,238,243-248
+  s_7a118b07ee147d::t_6a543962bd1f91 31-33
+  s_7a118b07ee147d::t_13e8a186393277 221,227,231-237,240,242
+  s_7a118b07ee147d::t_900955488b3670 37,45-46,72,114
+  s_7a118b07ee147d::t_798d35356bff61 222-226,317
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_7a118b07ee147d::t_3d4a1a3d253de4 460-461
+  s_7a118b07ee147d::t_5900b8cad48f1f 13,458-459
+  s_7a118b07ee147d::t_d8f77830650d34 457
+docs/generated/sqlite-schema/README.md
+  s_7a118b07ee147d::t_4bde78e3e8ade3 245-246,248-250
+  s_7a118b07ee147d::t_77a9ed4c13a4d8 846
+  s_7a118b07ee147d::t_4775ec6ac87b32 829
+packages/cli/src/modules/agents/repositories/agent-memory-entry-candidate.repository.ts
+  s_7a118b07ee147d::t_5900b8cad48f1f 61-70
+  s_7a118b07ee147d::t_f672cb31d3267e 1,17
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_7a118b07ee147d::t_1d531225d93b18 2,12,27-28,37,74-81
+  s_7a118b07ee147d::t_8db29ed6eecbff 82-84
+packages/frontend/editor-ui/src/features/agents/utils/sessionMemoryCards.ts
+  s_7a118b07ee147d::t_5c631d4003bc32 1-16,18-42,44-113
+  s_7a118b07ee147d::t_4acbd0696539c0 17,43
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionMemoryDetail.test.ts
+  s_7a118b07ee147d::t_defbc8910bdb33 91-92,97-99
+  s_7a118b07ee147d::t_a3665fea75ebee 63-68,175
+  s_7a118b07ee147d::t_873c5845805294 1-62,69-90,94-96,131,156-174,176-207
+  s_7a118b07ee147d::t_45089faf42c172 93,100-130,132-155
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_7a118b07ee147d::t_c2122a4204867d 10862-10898,10953-10954
+  s_7a118b07ee147d::t_a3a1b61fd77747 10899-10908
+  s_7a118b07ee147d::t_793857c48f6b5a 10911-10952
+  s_7a118b07ee147d::t_07098017e48d6c 10909-10910
+  s_7a118b07ee147d::t_374deb742b2191 8538
+  s_7a118b07ee147d::t_94bc4ca422f1d9 8497
+  s_7a118b07ee147d::t_c97ba9f05f433d 8551,8565,8613
+packages/frontend/editor-ui/src/features/agents/__tests__/sessionMemoryCards.test.ts
+  s_7a118b07ee147d::t_defbc8910bdb33 68
+  s_7a118b07ee147d::t_a3665fea75ebee 114-119
+  s_7a118b07ee147d::t_bb8413fb33ee6c 1-67,69-113,120-144
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_7a118b07ee147d::t_0c52d76e11886a 9,118
+packages/@n8n/db/src/migrations/common/1793182079956-AddDeletedStatusToAgentMemory.ts
+  s_7a118b07ee147d::t_41d3b2af5e3903 1-49
+packages/@n8n/db/src/migrations/sqlite/1793182079956-AddDeletedStatusToAgentMemory.ts
+  s_7a118b07ee147d::t_d7f83cdf2498b7 1-9
+packages/@n8n/telemetry/src/events/agents.ts
+  s_7a118b07ee147d::t_6ea308f7fbfb17 981
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.styles.spec.ts
+  s_7a118b07ee147d::t_6538b3e4755dec 15
+packages/cli/src/modules/agents/__tests__/agent-memory-trace.service.test.ts
+  s_7a118b07ee147d::t_6ed5709c2d9705 1-248
+packages/cli/test/integration/database/repositories/agent-memory-entry-candidate.repository.test.ts
+  s_7a118b07ee147d::t_d52f66c538e6f0 126-128
+  s_7a118b07ee147d::t_40acf3cce6cccc 111-116,119-125,129-130
+  s_7a118b07ee147d::t_4990e2319314a1 117-118
+  s_7a118b07ee147d::t_4321151a7dda2a 71
+packages/cli/test/migration/1793204018114-store-agent-memory-embeddings-as-binary.test.ts
+  s_7a118b07ee147d::t_9d6b021081ac6d 1-12,14,16-20,23-57,76-82,85-90,103,111-122,124-127,135-138,142-144
+  s_7a118b07ee147d::t_752b733358a03e 1-19,22-53,65-72,82-138
+  s_7a118b07ee147d::t_645ce89ab225f5 20-21,54-64,73-81
+  s_7a118b07ee147d::t_6e604e5ad361d0 139-144
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_7a118b07ee147d::t_1ebcbdd27f2754 172,358
+  s_7a118b07ee147d::t_ea3fba4d1a027b 643
+  s_7a118b07ee147d::t_2cc58cfa1d2a46 647
+  s_7a118b07ee147d::t_73d884084cfc37 471
+  s_7a118b07ee147d::t_cffda432162034 13,25-28,30,32-33,48-51,168,195,213,215,233,238-240,255,257-258,269,275-277,279-290,292-293,438-440,450-455,458,460-461,468,472-494,496-514,516-554,557-569,572-579,581-599,601-604,607-631,634-642,644,648-664,666-677,679-683,686-689,691-701,704-713,716-732
+  s_7a118b07ee147d::t_798d35356bff61 278,291,400,408,428,645-647,690
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_7a118b07ee147d::t_1ebcbdd27f2754 60,133,186,390,550
+  s_7a118b07ee147d::t_f6f75be05efc8a 132,233,237,255,441
+  s_7a118b07ee147d::t_89a6f1f5b320ca 71,75,78,81,84,86,90-91,93,95,129,146,197,200-201,204,207,209-210,212,216-217,219,221,242,245-246,258,277,280-281,290,293,312,315-316,328,401,405,408,411,414,416,420-421,423,425,446,449-450,462,494,510,561,565,568,571,574,576,580-581,583,585
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_7a118b07ee147d::t_1ebcbdd27f2754 60,133,186,320,446,724,888
+  s_7a118b07ee147d::t_f6f75be05efc8a 200,209,460,469,508
+  s_7a118b07ee147d::t_89a6f1f5b320ca 71,75,78,81,84,86,90-91,93,95,129,146,197,201,204,207,210,212,216-217,219,221,242,245-246,258,331,335,338,341,344,346,350-351,353,355,389,392-393,406,457,461,464,467,470,472,476-477,479,481,494,499,504,507,517,520,538,543-546,549-564,566-567,571,576,583,592,599,602-603,606,609,611-612,614,618-619,621,623,629-665,735,738-739,742,744-745,747-748,750,754-755,757,759,780,783-784,796,828,832,848-849,899,902-903,906,909,911-912,914,918-919,921,923
+packages/cli/src/modules/knowledge/vector-stores/__tests__/embedding-credential.test.ts
+  s_7a118b07ee147d::t_2f6c4256b1d251 2,5-8,63-104
+packages/@n8n/agents/src/runtime/model/__tests__/native-tool-deferral.test.ts
+  s_7a118b07ee147d::t_1ebcbdd27f2754 409,424,427-428
+  s_7a118b07ee147d::t_d7fe6d4b0a1c69 430-443
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_7a118b07ee147d::t_27c9be20c22b75 43,287,568-573,583,585-586,640-643,648-653
+  s_7a118b07ee147d::t_05e9a00b98357c 645-646,662
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_7a118b07ee147d::t_ce016ad469cd73 139-141,704
+  s_7a118b07ee147d::t_851f80940074f7 21,153-156,707-709,711-738,790,802-828
+  s_7a118b07ee147d::t_798d35356bff61 621,710,886,893
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_7a118b07ee147d::t_1ebcbdd27f2754 11-16,60,65,70,72-74
+  s_7a118b07ee147d::t_7ba383ea486549 313,315-317
+  s_7a118b07ee147d::t_09fbea05c94eab 61-64,66-69,71,187-191,198,292-300,318
+packages/cli/src/modules/knowledge/vector-stores/embedding-credential.ts
+  s_7a118b07ee147d::t_fbef7c82d46010 3,47-73
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_7a118b07ee147d::t_4accaa82a8a6be 1444-1473
+  s_7a118b07ee147d::t_ced8937f6b852e 140,1441,1517-1518,1551
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_7a118b07ee147d::t_1ebcbdd27f2754 60,133,186,357,517
+  s_7a118b07ee147d::t_f6f75be05efc8a 531,540
+  s_7a118b07ee147d::t_89a6f1f5b320ca 71,75,78,81,84,86,90-91,93,95,129,146,197,201,204,207,210,212,216-217,219,221,244,247-248,260,279,282-283,295,368,372,375,378,381,383,387-388,390,392,413,416-417,429,461,477,528,532,535,538,541,543,547-548,550,552
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_7a118b07ee147d::t_1ebcbdd27f2754 60,133,145,220,358,372,381,434-435,446-447,522,570-571,735,835,997
+  s_7a118b07ee147d::t_f6f75be05efc8a 128,130-137,138,150,234,243,1011,1020
+  s_7a118b07ee147d::t_89a6f1f5b320ca 71,75,78,81,84,86,90-91,93,95,129,141,153,156-157,170,172,175,177,180,231,235,238,241,244,246,250-251,253,255,270,275,280,283-284,293,296,369,373,376,379,382,384,388-389,391,393,427,431,443,455,458-459,472,477,482,533,536-537,540,543,545-546,548,552-553,555,557,572,577,582,585-586,595,598-703,722,725-726,738,757,760-761,773,846,850,853,856,859,861,865-866,868,870,893,896-897,909,941,957-958,1008,1012,1015,1018,1021,1023,1027-1028,1030,1032
+docs/generated/postgres-schema/README.md
+  s_7a118b07ee147d::t_6f5a1d6b74f9b1 860
+  s_7a118b07ee147d::t_1a5f66a5e87c12 843
+docs/generated/postgres-schema/public.agents.md
+  s_7a118b07ee147d::t_f355e7d45bd2e4 297
+  s_7a118b07ee147d::t_1612143ecbd015 280
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_7a118b07ee147d::t_f1018816237839 98
+  s_7a118b07ee147d::t_29bc2fd6ca0728 112
+docs/generated/postgres-schema/public.agents_messages.md
+  s_7a118b07ee147d::t_39c87dc9b500c2 94
+docs/generated/postgres-schema/public.agents_resources.md
+  s_7a118b07ee147d::t_6c8e9860ff39df 64
+  s_7a118b07ee147d::t_520c954b9d843b 47
+docs/generated/postgres-schema/public.agents_threads.md
+  s_7a118b07ee147d::t_436b939316de05 58
+docs/generated/sqlite-schema/agents.md
+  s_7a118b07ee147d::t_2c3cbeb5b516a8 298
+  s_7a118b07ee147d::t_3888a9da1db552 281
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_7a118b07ee147d::t_6b66936ec5f8b1 102
+  s_7a118b07ee147d::t_43a7961061d072 116
+docs/generated/sqlite-schema/agents_messages.md
+  s_7a118b07ee147d::t_cf0398faac9170 99
+docs/generated/sqlite-schema/agents_resources.md
+  s_7a118b07ee147d::t_3fec779c95e9e0 73
+  s_7a118b07ee147d::t_3d00b9ed1da9a1 56
+docs/generated/sqlite-schema/agents_threads.md
+  s_7a118b07ee147d::t_303193bf4671b9 66
+packages/@n8n/agents/src/index.ts
+  s_7a118b07ee147d::t_ddfbf2c3798453 55
+  s_7a118b07ee147d::t_7fe695034a5e66 63-69,430,433-434,436
+packages/@n8n/agents/src/types/index.ts
+  s_7a118b07ee147d::t_df02ca654100e8 92
+  s_7a118b07ee147d::t_02864e62321698 100-106
+packages/cli/src/modules/agents/entities/agent-memory-entry-candidate.entity.ts
+  s_7a118b07ee147d::t_4e5a103b4e0bd3 1,36-37
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory-source-message.integration.test.ts
+  s_7a118b07ee147d::t_e0e49e29b27caa 58
+  s_7a118b07ee147d::t_5cae1476bfc173 61
+  s_7a118b07ee147d::t_6c54e4fd9ca0e6 62-66
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_7a118b07ee147d::t_7b7d7504e4e84c 1364,1485
+  s_7a118b07ee147d::t_d2ce3e0adf24e7 1616-1620,1622,1624-1625,1627-1635,1638-1639,1642-1646,1649-1653
+  s_7a118b07ee147d::t_535f6d82efbf7d 652,1252,1269,1279,1289,1329-1333,1377
+  s_7a118b07ee147d::t_c8eb8768a2b1a7 1386,1388-1393,1401-1405,1411-1412,1420-1424,1431-1433
+  s_7a118b07ee147d::t_44ade1d176f8f6 1381,1438-1441,1500-1501,1510-1514
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory-defaults.test.ts
+  s_7a118b07ee147d::t_e12751a7007586 4-7,44-65,71-85,88,90-92,102,105,111-119,121,129-130,134
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  s_7a118b07ee147d::t_8fd524744629ce 4-8,26-27,29-31,33,35,37-38,40-48,53-54,57-59,62,66,68-70,74-76,80,88-103,105-106
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_7a118b07ee147d::t_350df2702c0a07 841,843-844
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-episodic.test.ts
+  s_7a118b07ee147d::t_dc8cbfb5171e00 83,96-97,99,112,129
+packages/@n8n/agents/src/sdk/memory.ts
+  s_7a118b07ee147d::t_b92434f0c3cb4c 6,73-76
+packages/cli/src/modules/agents/episodic-memory.ts
+  s_7a118b07ee147d::t_b43a6ea112bc27 1
+packages/@n8n/db/src/migrations/common/1793204018114-StoreAgentMemoryEmbeddingsAsBinary.ts
+  s_7a118b07ee147d::t_195045f5f99aa5 1-38
+packages/cli/src/modules/agents/entities/agent-memory-entry.entity.ts
+  s_7a118b07ee147d::t_984324cd5f4c98 2,5-6,34
+  s_7a118b07ee147d::t_4c9d66011e0c14 35
+packages/cli/src/modules/agents/utils/float32-vector.ts
+  s_7a118b07ee147d::t_495b19e56291c5 6-8,11,13,15,18
+  s_7a118b07ee147d::t_81d9bf38c5fd89 1-2,4-5,9-10,12,14,16,19-20
+  s_7a118b07ee147d::t_5d095fb6d0ef11 3,17
+packages/@n8n/db/src/index.ts
+  s_7a118b07ee147d::t_a624e26a5da2fa 11
+packages/cli/src/modules/agents/utils/__tests__/float32-vector.test.ts
+  s_7a118b07ee147d::t_b89b6a4a2f6bb4 5,8,12-14,16
+  s_7a118b07ee147d::t_c9197031c5c0cd 1-4,6-7,9-11,15,17-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc64ee0771ae0bd3b3ceee1b7c9e99eeba8399a4",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

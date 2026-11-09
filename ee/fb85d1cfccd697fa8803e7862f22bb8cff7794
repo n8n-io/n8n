@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffContent.test.ts
+  s_356f82909b181c::t_0bf781c60f0540 8,153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eefb85d1cfccd697fa8803e7862f22bb8cff7794",
+  "prompts": {},
+  "sessions": {
+    "s_356f82909b181c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1586f-1e01-73b2-bf79-e76c23cde950",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

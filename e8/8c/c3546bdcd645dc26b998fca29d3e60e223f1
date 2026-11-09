@@ -1,0 +1,71 @@
+scripts/backend-module/my-feature.service.template
+  s_b41faabff09591::t_c1c6055b9895dc 41
+packages/@n8n/db/src/repositories/base-repository.ts
+  s_b41faabff09591::t_c1c6055b9895dc 9-11,13-19,34-37,39
+packages/cli/test/integration/environments/source-control.api.test.ts
+  s_b41faabff09591::t_c1c6055b9895dc 120-143
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_b41faabff09591::t_c1c6055b9895dc 217-218
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts
+  s_b41faabff09591::t_c1c6055b9895dc 78,82,86,97,118,129,141,145,154,178
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.test.ts
+  s_b41faabff09591::t_c1c6055b9895dc 2,7-12,29,71,101-142
+packages/@n8n/module-cli/src/templates/backend/README.md.template
+  s_b41faabff09591::t_c1c6055b9895dc 25-27
+packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.test.ts
+  s_b41faabff09591::t_c1c6055b9895dc 246
+scripts/backend-module/my-feature.repository.template
+  s_b41faabff09591::t_c1c6055b9895dc 1,3,7-14,16-20,23-26
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b41faabff09591::t_c1c6055b9895dc 3585,4255-4258
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_b41faabff09591::t_c1c6055b9895dc 26,76-87,104-105,159-161,163,165-166,168-169,175,177-178,180,183-184,501-502,510-519
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source-identity.repository.ts
+  s_b41faabff09591::t_c1c6055b9895dc 45,53,63,76,82,87,100,108
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_b41faabff09591::t_c1c6055b9895dc 188-199,201-202,204-272
+packages/cli/src/modules/inbound-auth-core/trusted-source.gate.ts
+  s_b41faabff09591::t_c1c6055b9895dc 40
+packages/@n8n/db/src/repositories/deployment-key.repository.ts
+  s_b41faabff09591::t_c1c6055b9895dc 122,253,265
+packages/cli/src/modules/oauth-server/__tests__/oauth-flow.service.api.test.ts
+  s_b41faabff09591::t_c1c6055b9895dc 238-247
+AGENTS.md
+  s_b41faabff09591::t_c1c6055b9895dc 256-273,280-285
+scripts/backend-module/backend-module-guide.md
+  s_b41faabff09591::t_c1c6055b9895dc 263-264,266-278,280-284,287-288,293,295-300,370
+  s_b41faabff09591::t_c5cac8250e7c09 371
+packages/@n8n/db/AGENTS.md
+  s_b41faabff09591::t_c1c6055b9895dc 19-25
+packages/cli/AGENTS.md
+  s_b41faabff09591::t_c1c6055b9895dc 10-16,29-48
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source.gate.test.ts
+  s_b41faabff09591::t_c1c6055b9895dc 79
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  s_b41faabff09591::t_c1c6055b9895dc 84,92,112-119,131,145-154,163-177,222,233,237-252,254,264,270-279,283,292,328
+packages/cli/test/integration/inbound-auth-core/trusted-source-identity.service.integration.test.ts
+  s_b41faabff09591::t_c1c6055b9895dc 480,482
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_b41faabff09591::t_c1c6055b9895dc 15,29,53,59,83-93,96,99-115,247-261
+  s_b41faabff09591::t_d4282c68e900a9 262
+packages/cli/test/integration/inbound-auth-core/system-trusted-source.seeder.integration.test.ts
+  s_b41faabff09591::t_c1c6055b9895dc 37-44
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  s_b41faabff09591::t_c1c6055b9895dc 623-624
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e88cc3546bdcd645dc26b998fca29d3e60e223f1",
+  "prompts": {},
+  "sessions": {
+    "s_b41faabff09591": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d4d98c4b-cc46-466c-8806-a987c72f1c73",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

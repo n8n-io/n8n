@@ -1,0 +1,63 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_7a118b07ee147d::t_bb8413fb33ee6c 416-427
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_7a118b07ee147d::t_0c52d76e11886a 8,117
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_7a118b07ee147d::t_c9b6eaac680508 9,19-20,44-45
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7a118b07ee147d::t_5c1ee1533419f5 1761-1774
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionMemoryDetail.test.ts
+  s_7a118b07ee147d::t_873c5845805294 1-62,69-118,120-151
+  s_7a118b07ee147d::t_a3665fea75ebee 63-68,119
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_7a118b07ee147d::t_c9b6eaac680508 33-36,177,413,559-572,839,842,845-846
+  s_7a118b07ee147d::t_1dc815adfb91ce 16
+  s_7a118b07ee147d::t_8f9f601973861c 170-176
+  s_7a118b07ee147d::t_9d869f22e05c7d 178
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_7a118b07ee147d::t_8f9f601973861c 120-121,151-152
+  s_7a118b07ee147d::t_38f8183882b159 12
+packages/frontend/editor-ui/src/features/agents/__tests__/sessionMemoryCards.test.ts
+  s_7a118b07ee147d::t_a3665fea75ebee 114-119
+  s_7a118b07ee147d::t_bb8413fb33ee6c 1-113,120-144
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelinePill.vue
+  s_7a118b07ee147d::t_8f9f601973861c 30-31
+packages/frontend/editor-ui/src/features/agents/components/SessionMemoryDetail.vue
+  s_7a118b07ee147d::t_ae1d2a0a48f6d9 1-44,47-107,114-196
+  s_7a118b07ee147d::t_a3665fea75ebee 45-46,108-113
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_7a118b07ee147d::t_0c52d76e11886a 443-455
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_7a118b07ee147d::t_8f9f601973861c 154-155
+  s_7a118b07ee147d::t_3dcb7c85bf6797 2
+  s_7a118b07ee147d::t_5aa34bc6d375c5 331
+  s_7a118b07ee147d::t_19f024a0bf307d 71,364,505-506,508
+packages/frontend/editor-ui/src/features/agents/session-timeline.styles.ts
+  s_7a118b07ee147d::t_8f9f601973861c 16-17
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_7a118b07ee147d::t_8f9f601973861c 45-46
+packages/frontend/editor-ui/src/features/agents/utils/sessionMemoryCards.ts
+  s_7a118b07ee147d::t_5c631d4003bc32 1-113
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_7a118b07ee147d::t_8f9f601973861c 68-69,111-112
+  s_7a118b07ee147d::t_38f8183882b159 15
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_7a118b07ee147d::t_19f024a0bf307d 19,29,41,58-60,94,216,239,470-478
+  s_7a118b07ee147d::t_98bf2b8633ce73 479
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a21ffd0b9a3133dd68b6d8ba63ccd7e27cc97310",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

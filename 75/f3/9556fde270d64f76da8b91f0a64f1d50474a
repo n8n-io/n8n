@@ -1,0 +1,39 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.ts
+  s_db23049c32d561::t_b5d7ff85e306ab 2,24
+packages/cli/src/modules/agents/__tests__/azure-foundry-deployments.service.test.ts
+  s_db23049c32d561::t_b348c2d5ed8b47 19-23,47,92,94,106,108-109,111
+packages/@n8n/agents/src/index.ts
+  s_db23049c32d561::t_79b6d48794c448 330
+packages/cli/src/modules/agents/azure-foundry-deployments.service.ts
+  s_db23049c32d561::t_b18ce013aa8f27 2-5,8,51,64-69,76,78,81
+  s_db23049c32d561::t_94570b703312bf 70-72
+  s_db23049c32d561::t_3403f2497db975 1
+packages/@n8n/ai-utilities/src/model-discovery/index.ts
+  s_db23049c32d561::t_b5d7ff85e306ab 67,69
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_db23049c32d561::t_79b6d48794c448 4-9,119-129,152-153,160-173
+  s_db23049c32d561::t_c0541ae260223c 174-175
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_db23049c32d561::t_fd0f7f410f5361 6,997-1020
+  s_db23049c32d561::t_f1295e68e58e14 1021-1022
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/types.ts
+  s_db23049c32d561::t_b5d7ff85e306ab 78-79
+packages/@n8n/ai-utilities/src/model-discovery/providers/azure.ts
+  s_db23049c32d561::t_b5d7ff85e306ab 33-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "75f39556fde270d64f76da8b91f0a64f1d50474a",
+  "prompts": {},
+  "sessions": {
+    "s_db23049c32d561": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9a3ce8b-c177-449e-974c-d77f50f50c5b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

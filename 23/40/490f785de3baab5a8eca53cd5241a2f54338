@@ -1,0 +1,29 @@
+packages/@n8n/agents/src/runtime/model/model-token-counter.ts
+  s_4a1820556b083c::t_86d0f59216d7a1 16
+  s_4a1820556b083c::t_4f199c0ab79e5d 40,43-45,47-66,73-77
+  s_4a1820556b083c::t_28fc5c2e34c65b 41
+  s_4a1820556b083c::t_64272b928fcc62 20-23,27,32-35
+  s_4a1820556b083c::t_42a4766612642a 42
+  s_4a1820556b083c::t_4256d57492bad3 78
+packages/@n8n/agents/src/runtime/__tests__/model-token-counter.test.ts
+  s_4a1820556b083c::t_9d98ca99c07b29 20
+  s_4a1820556b083c::t_0a5d482bebd277 21-28
+  s_4a1820556b083c::t_936155b9e7889b 33
+  s_4a1820556b083c::t_3ecfeac7190a9e 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2340490f785de3baab5a8eca53cd5241a2f54338",
+  "prompts": {},
+  "sessions": {
+    "s_4a1820556b083c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5fc4f33-dbd5-42bc-b8cd-3b19bc5cb197",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/@n8n/utils/src/promise/latest-wins.test.ts
+  s_6f92bccd0f2ba2::t_02965a2d340c89 5-14
+  s_1ebe64e3280524::t_6da3038b1bb9e2 15,33
+  s_1ebe64e3280524::t_69ee3e81b2e4bf 20,22,38
+  s_6f92bccd0f2ba2::t_c452a8aae78c44 1-4,16-19,21,23-32,34-37,39-58
+packages/cli/src/modules/otel/otel.service.ts
+  s_6f92bccd0f2ba2::t_3d146da9df5148 6,32-36,40-54,60-64,78-79,81-82,142-143
+packages/cli/src/modules/type-availability-policies/type-availability-policy-snapshot.ts
+  s_6f92bccd0f2ba2::t_3d146da9df5148 114
+  s_6f92bccd0f2ba2::t_8ff712daec6f55 5
+packages/@n8n/utils/src/promise/latest-wins.ts
+  s_6f92bccd0f2ba2::t_c452a8aae78c44 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "05f39a847b7023656ef616bf97f5f7da05356f9a",
+  "prompts": {},
+  "sessions": {
+    "s_1ebe64e3280524": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "560d6525-3eaa-4330-941a-89579b103b7a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    },
+    "s_6f92bccd0f2ba2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c393f7e9-f81d-4f76-8bc6-154a73a9a38a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

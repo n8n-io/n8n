@@ -1,13 +1,11 @@
 packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
-  s_71ad2034164515::t_45c8e2bb34793d 105-111,203
-  s_71ad2034164515::t_aa2389e0df0dc7 300,314-317,325,356,499-501
-packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
-  s_71ad2034164515::t_aa2389e0df0dc7 14-18,706-709
-  s_71ad2034164515::t_45c8e2bb34793d 62-70,292,314,371,417,670-671,705,739-740
+  s_71ad2034164515::t_c5e97d62acf406 105-111,203,300,314-317,325,356,499-501
 packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
-  s_71ad2034164515::t_55bdb4e4528fea 159
+  s_71ad2034164515::t_83344976030cb8 159
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_71ad2034164515::t_2180ba2a921189 14-18,62-70,292,314,371,417,670-671,705-709,739-740
 packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
-  s_71ad2034164515::t_0a289ad37c98b0 2-125
+  s_71ad2034164515::t_d968f8f1a0b497 2-125
 ---
 {
   "schema_version": "authorship/3.0.0",

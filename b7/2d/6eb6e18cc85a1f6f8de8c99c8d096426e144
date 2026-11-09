@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_be7f812aa784b6::t_cb68d5c6cf2c1f 428,487-488,430-431,468-469
+  s_be7f812aa784b6::t_80dfcf2c39dd0c 258,276,301,373,470,474,477,479
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_be7f812aa784b6::t_0c6ff9a208e965 1969-1978,2104-2106,2133-2140,2144-2147,2154-2156,2159,2165-2167,2170,2177-2179,2189-2191,1979-1981,1983,1986-1988,2068-2073,2075-2077,2109-2112,2116-2121,2128-2130,2168,2171-2172,2176,2185,1991-1996,1998-2001,2003-2004,2006-2008,2011,2016-2019,2021,2023-2024,2026-2030,2035-2039,2042,2046-2049,2051,2053-2054,2056-2059,2061,2063-2065
+  s_be7f812aa784b6::t_4c61021f64a964 1468,1568,1619,1644,213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b72d6eb6e18cc85a1f6f8de8c99c8d096426e144",
+  "prompts": {},
+  "sessions": {
+    "s_be7f812aa784b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a523437-47b6-4d93-bbf3-78999ede724e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/__snapshots__/BreadCrumbs.test.ts.snap
+  h_f8b427917eda26 9,11,13,27,29,31,45,47,49,64,66,68,83,85,87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2283e8a965e32ac2beab4bd518339ac4d536bc04",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/openapi.yml
+  s_0636228609e6f6::t_b51f2641d4e728 27,30,33,36,39,42,45,48,51,54,57,60,63,66,69,72,75,78,81,84,87,90,93,96,99,102,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a00bf409855f57eb74b42245affbe70d6595f844",
+  "prompts": {},
+  "sessions": {
+    "s_0636228609e6f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86d6be62-09bc-43af-a121-ac7a4e0dc159",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

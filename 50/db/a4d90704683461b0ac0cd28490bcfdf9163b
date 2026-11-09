@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/agent/communication-style.prompt.ts
+  s_4d7f501095fc5f::t_f2758c98c4cd8b 20-21,82-83
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_4d7f501095fc5f::t_f2758c98c4cd8b 191,247
+packages/@n8n/instance-ai/src/agent/credential-guardrails.prompt.ts
+  s_4d7f501095fc5f::t_f2758c98c4cd8b 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50dba4d90704683461b0ac0cd28490bcfdf9163b",
+  "prompts": {},
+  "sessions": {
+    "s_4d7f501095fc5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d703c91c-a325-400f-ae25-49dc34889db7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/evals/parse-judge-response.ts
+  s_65c4c5f8ca1455::t_06fcc8fb91d725 7-8,21-23,25-26,37-38
+  s_65c4c5f8ca1455::t_0cc476fed417d8 14,30
+packages/@n8n/agents/src/evals/__tests__/parse-judge-response.test.ts
+  s_65c4c5f8ca1455::t_06fcc8fb91d725 22,24-25,27-30,43
+  s_65c4c5f8ca1455::t_0cc476fed417d8 64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9ef38107a71c60190f318ad390401ab23854398",
+  "prompts": {},
+  "sessions": {
+    "s_65c4c5f8ca1455": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2810a254-410f-4bd8-b1c6-ae4c2ba999cd",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thiago Pacheco <thiago.pacheco@n8n.io>"
+    }
+  }
+}

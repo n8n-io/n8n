@@ -1,0 +1,97 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionResourceDetails.test.ts
+  ai_agent 5-11,15-17,26,40,44,58-65,69,83
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue
+  ai_agent 9-10,30,34,44-45,286-290,296-297,299-302,305-313,315-326
+packages/frontend/editor-ui/src/app/components/MainSidebarSourceControl.test.ts
+  ai_agent 8-9,69-86
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionResourceTree.vue
+  ai_agent 20-34,119,228-231
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionResourceDetails.ts
+  ai_agent 1-2,6,22-24,28,48-52,54-59,81,85
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.test.ts
+  ai_agent 14-18,78-92
+packages/frontend/editor-ui/src/app/router.ts
+  ai_agent 30-31,974-975
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/module.descriptor.test.ts
+  ai_agent 38,48
+packages/frontend/editor-ui/src/features/shared/promotions/useEnvironmentsVersionSwitch.test.ts
+  ai_agent 3-6,8,10-12,14-16,18-21,23-26,28-29,31-35,38-51,53-59,61-63,65-66,68,70-72,74-75,77,79-81
+packages/frontend/editor-ui/src/features/shared/promotions/usePromotionsEnabled.ts
+  ai_agent 4,7-9,13,16,19-21,23
+packages/frontend/editor-ui/src/app/router.test.ts
+  ai_agent 7-8,396-419
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  ai_agent 31,80,299-302
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/module.descriptor.test.ts
+  ai_agent 8,31-38,45,47,53,68-72,77
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionFieldChanges.vue
+  ai_agent 5,9
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowPreview.test.ts
+  ai_agent 22
+packages/frontend/editor-ui/src/app/composables/useWorkflowDiffRouting.test.ts
+  ai_agent 40-45,51-71
+packages/frontend/editor-ui/src/features/agents/components/AgentPersonalisationIcon.vue
+  ai_agent 3,35
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowPreview.vue
+  ai_agent 17,47,51-56,63-64
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/module.descriptor.ts
+  ai_agent 20,22
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.types.ts
+  ai_agent 12
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.test.ts
+  ai_agent 2
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCard.vue
+  ai_agent 36-46,102,110-113,178,257,279,281
+packages/frontend/editor-ui/src/app/composables/useWorkflowDiffRouting.ts
+  ai_agent 11,22,114-116,118-119,122-124,127-129,138-143
+packages/frontend/editor-ui/src/features/shared/promotions/useEnvironmentsVersionSwitch.ts
+  ai_agent 1-64
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowDiff.test.ts
+  ai_agent 78,93-94,101-102,109-110,117-118
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionChangeCards.vue
+  ai_agent 10-19,63
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.vue
+  ai_agent 107
+packages/frontend/@n8n/design-system/src/components/N8nIcon/Icon.vue
+  ai_agent 83-88,108,117-120,122-124,141,158
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  ai_agent 15,61
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentIdentityHeader.spec.ts
+  ai_agent 21
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowDiff.vue
+  ai_agent 5,11,20,53-56,72-76,79
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 4178,4260,4298-4303,4736,4887-4894,10018,10201
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  ai_agent 133
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.vue
+  ai_agent 98-99,453
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.test.ts
+  ai_agent 47-51,112-146
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  ai_agent 187,191-196
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowSideLabel.vue
+  ai_agent 2,5,8,10-14,16-22,26-29,36-46
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionWorkflowShell.vue
+  ai_agent 2,14-15,25,28
+packages/frontend/editor-ui/src/app/components/MainSidebarSourceControl.vue
+  ai_agent 8,18,46
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiSettings.store.test.ts
+  ai_agent 410
+packages/frontend/@n8n/frontend-module-sdk/src/types/component.ts
+  ai_agent 16
+packages/frontend/editor-ui/src/features/shared/promotions/usePromotionsEnabled.test.ts
+  ai_agent 6,14-22,30,35-36,38,42-45,47-58,62-63,65
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.test.ts
+  ai_agent 19,71-77,93,106,219-220,224,227-230,232-233
+packages/frontend/editor-ui/src/features/agents/components/AgentIdentityHeader.vue
+  ai_agent 3,12-17,33-41
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  ai_agent 29,54,242-262,297-304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0d3c7d7a1812a5e7f2441d039268a9694e5843bf",
+  "prompts": {}
+}

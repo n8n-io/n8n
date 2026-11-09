@@ -1,0 +1,19 @@
+packages/cli/docs/adr/ADR-20261029-trace-assistant-agent-turns-in-the-current-assistant-trace-shape.md
+  s_689aa937cfed26::t_dab54e98d58d03 27-29,56-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aea9244d604540d77a31fdb47658bd74b2782f45",
+  "prompts": {},
+  "sessions": {
+    "s_689aa937cfed26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "532e1da7-fada-43a1-b581-d153e5dc6d93",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,69 @@
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_482f48320b007f::t_d380648f515097 82-83
+  s_482f48320b007f::t_4e47462eefa49f 60-61
+  s_482f48320b007f::t_24b95d1ffd8787 48-50,56-57
+packages/frontend/@n8n/stores/src/constants.ts
+  s_482f48320b007f::t_de8faf03c0d486 65
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_482f48320b007f::t_1816c95d8dd39f 35-38,41-44,6551-6556
+  s_482f48320b007f::t_1745eee744afc2 39-40,45
+packages/quality/testing/playwright/tests/e2e/agents/agent-builder-chat-modes.spec.ts
+  s_482f48320b007f::t_882b56be7e6cbf 84
+  s_482f48320b007f::t_78050f831e9122 17-20
+  s_482f48320b007f::t_444181881b24d9 90-95
+  s_482f48320b007f::t_fbaaa836799831 47-54,59-63,70-75,80-82,85-89,96-97,99-100
+  s_482f48320b007f::t_233809bc8af48b 76,83,98
+  s_482f48320b007f::t_1816c95d8dd39f 55-58,64-69,77-79
+  s_482f48320b007f::t_858639ed678c9a 15-16,21-25
+packages/frontend/editor-ui/src/experiments/agentBuilder/stores/agentBuilder.store.ts
+  s_482f48320b007f::t_de8faf03c0d486 1-29,38-43,47-48,51-56
+  s_482f48320b007f::t_6ea74f5813381f 30-37,44-46,49-50
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_482f48320b007f::t_de8faf03c0d486 222,224-225
+  s_482f48320b007f::t_6ea74f5813381f 199-221
+packages/frontend/editor-ui/src/experiments/agentBuilder/README.md
+  s_482f48320b007f::t_d7d6983df74c36 1-69
+packages/frontend/editor-ui/src/experiments/agentBuilder/stores/agentBuilder.store.test.ts
+  s_482f48320b007f::t_6ea74f5813381f 1-92
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_482f48320b007f::t_1816c95d8dd39f 90-92,101-103,484-486,576-578
+  s_482f48320b007f::t_de8faf03c0d486 2,88-89,496,637-639,1031,1206
+  s_482f48320b007f::t_1745eee744afc2 482-483,488
+  s_482f48320b007f::t_66020483442f03 487,489
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  s_482f48320b007f::t_6ea74f5813381f 14-16,181-193
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_482f48320b007f::t_de8faf03c0d486 2,376-377,379,384,1157-1163
+  s_482f48320b007f::t_1816c95d8dd39f 387-390
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_482f48320b007f::t_1816c95d8dd39f 453-456,1013-1024
+  s_482f48320b007f::t_1745eee744afc2 1
+  s_482f48320b007f::t_ddd897478f547b 1008-1012,1025
+packages/frontend/editor-ui/src/app/stores/posthog.store.test.ts
+  s_482f48320b007f::t_1816c95d8dd39f 14-18,591-595,597-600,603-606,608-611,614-616
+  s_482f48320b007f::t_78050f831e9122 586-590,596,601-602,607,612-613,617-618
+  s_482f48320b007f::t_056c6f1c904418 619
+packages/quality/testing/playwright/pages/AgentBuilderPage.ts
+  s_482f48320b007f::t_444181881b24d9 23,25
+  s_482f48320b007f::t_233809bc8af48b 34-36,43,47
+  s_482f48320b007f::t_9d449d7d1df2ea 40
+  s_482f48320b007f::t_fbaaa836799831 19,32-33,37,39,41-42,44-46,48-49
+  s_482f48320b007f::t_1816c95d8dd39f 20-22,24,26-31
+  s_482f48320b007f::t_62e7e74dd9c622 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a99f93f2b87d1a84914ffa6e5a3e0402a3e9c0e",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/__tests__/apply-preview.test.ts
+  s_8056da22c66cb7::t_7726e37eeb643a 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "540e2805714b4717a7f638d002dc3ab6e25ae817",
+  "prompts": {},
+  "sessions": {
+    "s_8056da22c66cb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b1ea0a0-5534-410d-8325-1a2b74c81085",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

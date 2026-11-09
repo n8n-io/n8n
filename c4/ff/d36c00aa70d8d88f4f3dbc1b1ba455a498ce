@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_d9d88a00917b32::t_cd7a89e7675fc9 583-599
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_d9d88a00917b32::t_cd7a89e7675fc9 271-280
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_d9d88a00917b32::t_cd7a89e7675fc9 2148,2153,2155
+packages/cli/test/integration/agents/agent-thread-repository-queries.test.ts
+  s_d9d88a00917b32::t_cd7a89e7675fc9 346-354
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_d9d88a00917b32::t_cd7a89e7675fc9 727-728
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4ffd36c00aa70d8d88f4f3dbc1b1ba455a498ce",
+  "prompts": {},
+  "sessions": {
+    "s_d9d88a00917b32": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68edb8e9-845c-4339-81f0-08bac8202ed7",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

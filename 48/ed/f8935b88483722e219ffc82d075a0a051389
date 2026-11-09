@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_fb1f33abb4be1b::t_14c7a11d587536 312-328,334-340
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  s_fb1f33abb4be1b::t_dc17606a7314d5 287-319
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "48edf8935b88483722e219ffc82d075a0a051389",
+  "prompts": {},
+  "sessions": {
+    "s_fb1f33abb4be1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c6a8313-02b5-4856-8fb0-b5ad3f9ece78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

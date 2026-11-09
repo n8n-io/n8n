@@ -1,0 +1,124 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_71ad2034164515::t_b31630c45ae3ba 1
+  s_71ad2034164515::t_85cb1d5dacf274 569
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_71ad2034164515::t_cf8fc808d38726 4,55-60,63,66-70,191,205-206,208,215
+packages/cli/src/modules/n8n-packages/entities/import-conflict-policy.ts
+  s_71ad2034164515::t_363929e12c70f2 1,9,17
+  s_71ad2034164515::t_692cec3f2d97ee 2-8,10-16,18-21
+packages/cli/src/modules/n8n-packages/entities/workflow/missing-node-type-mode.ts
+  s_71ad2034164515::t_87bffb4b169ce7 1,16,18-19,23
+  s_71ad2034164515::t_a8710d0914d58b 24
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-matcher.test.ts
+  s_d3c0f6f6f7d41c::t_fd7aaa951fa5cd 86-103
+  s_d3c0f6f6f7d41c::t_4624bd52c110d9 104-105
+  s_d3c0f6f6f7d41c::t_40d6614fcac0fa 106
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.agent.test.ts
+  s_d3c0f6f6f7d41c::t_58a0da54b4e590 276-286
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_71ad2034164515::t_441eda77578e66 41,97,240,252,259-261,295,509
+  s_71ad2034164515::t_fb64ef2a14a486 477-479
+  s_71ad2034164515::t_5ce427cc290f31 575-576
+  s_71ad2034164515::t_1b73221f5ad2d8 461,553
+  s_71ad2034164515::t_cc257f1c324aef 105-111,301,315-318,326,499-501
+  s_71ad2034164515::t_27021d8839fba3 1-40,42-96,98-104,112-220,222-232,234-239,241-251,253-258,262-294,296-300,302-314,319-325,327-460,462-476,480-498,502-508,510-552,554-574,577-599
+  s_71ad2034164515::t_d71ad52b6438c4 221,233
+packages/cli/src/modules/n8n-packages/entities/workflow/references/sub-workflow-node.reference.ts
+  s_71ad2034164515::t_97512da4f26938 1
+  s_71ad2034164515::t_f6b37e38442da8 45-48
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-published-state.ts
+  s_d3c0f6f6f7d41c::t_9999e8cdfd0c80 6-9
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_71ad2034164515::t_546abaebe6db7b 400-428
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_d3c0f6f6f7d41c::t_4f0d4c3a6cad2a 15
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  s_d3c0f6f6f7d41c::t_72352c4be26c71 39-40,51-55,80,150
+  s_d3c0f6f6f7d41c::t_f0c4a2d5952f45 159-167
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_71ad2034164515::t_9457a135d17586 17,89-90,225-235,248,280,302,326,335-338
+  s_71ad2034164515::t_43817c7e477781 16,339,343,359,405
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import-bindings.ts
+  s_71ad2034164515::t_4139c3d29e4eef 1-68,93-166,168-343
+  s_71ad2034164515::t_6c091ab2a2ecaa 69,81-92
+  s_71ad2034164515::t_96631f1820ab28 167
+  s_71ad2034164515::t_991021380700de 70-80
+packages/cli/src/modules/n8n-packages/entities/credential/id-based-credential-matcher.ts
+  s_d3c0f6f6f7d41c::t_c01e26addf4a22 15-16
+packages/cli/src/modules/agents/agent-policy.service.ts
+  s_d3c0f6f6f7d41c::t_5f0193a8b96bcc 33-45
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_71ad2034164515::t_7d3016827ed121 171-172,177,181-182
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_71ad2034164515::t_23f874a26cd9e2 12-13,222-225
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode.ts
+  s_71ad2034164515::t_e2199fef8d165b 7-8
+  s_71ad2034164515::t_c61a7d28643bc0 9
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_71ad2034164515::t_ae8df49512a791 80,88,108,110-114,125-129,158-159,164-165
+  s_71ad2034164515::t_c89e7ff4db3d33 84,166-168,253,256-257
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_d3c0f6f6f7d41c::t_1d012d3cce854f 191,194
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_d3c0f6f6f7d41c::t_82411992538c0f 47-50
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_d3c0f6f6f7d41c::t_b798118ba27e6e 37-44,65
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_71ad2034164515::t_2753c81e31b2c8 150,152-153,317-320,331-335,350
+  s_71ad2034164515::t_0b493791899203 139,359,384-385,395-399
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.ts
+  s_d3c0f6f6f7d41c::t_7fd008fce1fe11 11,13,47-55
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_d3c0f6f6f7d41c::t_4668cac070461b 162,164,676-688,721
+packages/cli/src/modules/agents/utils/visit-agent-credential-references.ts
+  s_d3c0f6f6f7d41c::t_d69d218c790bd2 10,55,59-60,68-69,74,82
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_71ad2034164515::t_a3bff26950d4d8 2,11-15,87,97,99,105-106,143,154,219-224,292-320,322-331,343-349,390-398,435,635-636,642-643,650-651,653
+  s_71ad2034164515::t_1b78febfb68847 321
+  s_71ad2034164515::t_0b41f11a2711b6 637-641,644-649,652,654-668
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_71ad2034164515::t_fff06c666b66be 94
+  s_71ad2034164515::t_234d32578304e3 5,8,35,230,238
+  s_71ad2034164515::t_4e4d2e5f69efab 1-4,6-7,9-23,25-34,36-43,45-55,57-89,91-93,95-119,121-229,239,242-243,245
+  s_71ad2034164515::t_79d010af92c214 24,44,56,90,120
+  s_71ad2034164515::t_e83f825f761bff 231-237,240-241,244
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_71ad2034164515::t_0bf211ab3d659d 81
+packages/cli/src/modules/n8n-packages/entities/agent/agent-body-issues.ts
+  s_71ad2034164515::t_f52fd2ce3ab924 1-5,15
+  s_71ad2034164515::t_57e3ab72590e01 6-14
+  s_71ad2034164515::t_507875e1ec8e84 16-24
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_71ad2034164515::t_6ec7785a11e07f 457-461
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_71ad2034164515::t_9952a24c33a146 1-4,9-59,124-129
+  s_71ad2034164515::t_c8ab695b7871c3 130-134
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_71ad2034164515::t_593c8de843f788 376,402,404
+packages/cli/src/modules/n8n-packages/__tests__/blocking-issue-schema-contract.test.ts
+  s_d3c0f6f6f7d41c::t_5bcd6f34159532 89-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa955857c1c8fcf0cc6171a703d86b9090268290",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d3c0f6f6f7d41c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

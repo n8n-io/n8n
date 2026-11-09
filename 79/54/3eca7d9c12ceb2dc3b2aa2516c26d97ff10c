@@ -1,0 +1,28 @@
+packages/cli/test/integration/workflows/workflow-dependency.controller.test.ts
+  s_4773ad3a8db83a::t_150a7a7999694a 684-686
+  s_4773ad3a8db83a::t_c04c115ac2e2ad 693
+packages/@n8n/db/src/repositories/workflow-dependency.repository.ts
+  s_4773ad3a8db83a::t_c5eca17c449d14 82-87
+  s_4773ad3a8db83a::t_150a7a7999694a 6,71-81,88-97
+  s_4773ad3a8db83a::t_60a24d70eaa48c 98-99
+packages/cli/src/modules/workflow-index/__tests__/workflow-dependency-query.service.test.ts
+  s_4773ad3a8db83a::t_150a7a7999694a 54,103,126
+packages/cli/src/modules/workflow-index/workflow-dependency-query.service.ts
+  s_4773ad3a8db83a::t_150a7a7999694a 14,34-37,333-337,355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79543eca7d9c12ceb2dc3b2aa2516c26d97ff10c",
+  "prompts": {},
+  "sessions": {
+    "s_4773ad3a8db83a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177a1-cf01-7990-9b55-9e6cefed2ccd",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

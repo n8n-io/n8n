@@ -1,0 +1,31 @@
+knip.ts
+  s_6c432932548d7f::t_b4605b55c03b8d 117
+packages/nodes-base/package.json
+  s_02d1a799861547::t_9d7243c6abee6b 905,940
+packages/nodes-base/oxlint.config.mts
+  s_02d1a799861547::t_9d7243c6abee6b 25-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21f9571ec70677e991b9cbe67f6dcdde5dcb8090",
+  "prompts": {},
+  "sessions": {
+    "s_02d1a799861547": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e77e7674bffe19OyXVBxpM2G38",
+        "model": "openai/gpt-6.1-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    },
+    "s_6c432932548d7f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e77e2c360ffe7d7wsLMlEXgzLa",
+        "model": "openai/gpt-6.1-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

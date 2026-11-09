@@ -1,0 +1,30 @@
+packages/modules/apps/backend/src/preview/__tests__/app-preview.service.test.ts
+  s_b6d332c56aa1c5::t_c2d4c0df3d0d81 258,263
+packages/modules/apps/backend/src/serving/app-host.service.ts
+  s_b6d332c56aa1c5::t_15d554b2418f8e 56
+packages/modules/apps/backend/src/serving/__tests__/app-host.service.test.ts
+  s_b6d332c56aa1c5::t_15d554b2418f8e 213-218
+packages/modules/apps/backend/src/preview/app-preview.service.ts
+  s_b6d332c56aa1c5::t_c2d4c0df3d0d81 112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7cfcd801b91035449c87bf7811076ea60c0917e2",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

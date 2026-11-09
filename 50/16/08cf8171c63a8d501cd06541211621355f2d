@@ -1,0 +1,100 @@
+packages/cli/src/modules/agents/agent-definition.service.ts
+  s_5785bc20fb92a9::t_3356b6bbf52336 1,11,39,89-90
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 63-66
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 1-2,77-78,282-287
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-cleanup.service.test.ts
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 1-2,35-41,203-208
+  s_5785bc20fb92a9::t_ffebfb20af373b 81
+packages/cli/src/modules/agents/repositories/agent-skill.repository.ts
+  s_5785bc20fb92a9::t_ffebfb20af373b 9
+  s_5785bc20fb92a9::t_d4f17e4f1ad017 209-213,356-360,382-386
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_5785bc20fb92a9::t_3356b6bbf52336 57,224
+  s_5785bc20fb92a9::t_ffebfb20af373b 13
+  s_5785bc20fb92a9::t_d5b38102f13a3b 119-125,131-135
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_5785bc20fb92a9::t_3356b6bbf52336 1,35-36,166-170
+  s_5785bc20fb92a9::t_ffebfb20af373b 17
+packages/cli/src/modules/agents/agents.module.ts
+  s_5785bc20fb92a9::t_ffebfb20af373b 21-22
+packages/cli/src/modules/agents/AGENTS.md
+  s_5785bc20fb92a9::t_b39d94313c47c6 24,31,33
+packages/cli/test/integration/agents/agent-skills-hub.test.ts
+  s_5785bc20fb92a9::t_c9998e0e910c63 1,75,153-164,166-171
+packages/cli/src/modules/agents/__tests__/agent-skill-usage.service.test.ts
+  s_5785bc20fb92a9::t_d4f17e4f1ad017 2,25-29,87,92
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 1,125
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_5785bc20fb92a9::t_d4f17e4f1ad017 493
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 657-673
+  s_5785bc20fb92a9::t_ffebfb20af373b 491
+  s_5785bc20fb92a9::t_3356b6bbf52336 107-108,655
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_5785bc20fb92a9::t_ffebfb20af373b 21
+  s_5785bc20fb92a9::t_3356b6bbf52336 1,103-104,274-275,285-291
+  s_5785bc20fb92a9::t_d4f17e4f1ad017 278-282
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 276-277,283-284
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 1,268-269,289
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_5785bc20fb92a9::t_c9998e0e910c63 249,251,359
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 216,307,471
+  s_5785bc20fb92a9::t_d5b38102f13a3b 320-326,335-341,347-357
+packages/cli/src/modules/agents/agent-skill-usage.service.ts
+  s_5785bc20fb92a9::t_07c1090797c250 227
+  s_5785bc20fb92a9::t_d4f17e4f1ad017 216-220
+  s_5785bc20fb92a9::t_ffebfb20af373b 2,29,223-226,228-232
+packages/cli/src/modules/skills/skill-agents-proxy.service.ts
+  s_5785bc20fb92a9::t_ffebfb20af373b 42,111,113
+  s_5785bc20fb92a9::t_d4f17e4f1ad017 45-49
+packages/cli/src/modules/skills/skill.service.ts
+  s_5785bc20fb92a9::t_ffebfb20af373b 273
+packages/cli/test/integration/agents/agent-skill.repository.test.ts
+  s_5785bc20fb92a9::t_d4f17e4f1ad017 1,94-99,109-120
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_5785bc20fb92a9::t_3356b6bbf52336 67,185,414,449
+  s_5785bc20fb92a9::t_ffebfb20af373b 35
+packages/cli/src/modules/agents/agents.service.ts
+  s_5785bc20fb92a9::t_ffebfb20af373b 45
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 261-266,276-281
+  s_5785bc20fb92a9::t_3356b6bbf52336 132,269,282
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_5785bc20fb92a9::t_ffebfb20af373b 931
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 1,175
+packages/cli/src/modules/agents/sub-agents/sub-agent-cleanup.service.ts
+  s_5785bc20fb92a9::t_3356b6bbf52336 2,5,17-18,57-63
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_5785bc20fb92a9::t_3356b6bbf52336 354,419
+  s_5785bc20fb92a9::t_ffebfb20af373b 22
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 304,311-312,349-350,401
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 1,159
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_5785bc20fb92a9::t_3356b6bbf52336 86,184,238,264,269
+  s_5785bc20fb92a9::t_ffebfb20af373b 20
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_5785bc20fb92a9::t_d5b38102f13a3b 1340-1346
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 1,145
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_5785bc20fb92a9::t_ec7eff0b962d8a 1-2,114-115,215,855-860
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "501608cf8171c63a8d501cd06541211621355f2d",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

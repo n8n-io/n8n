@@ -1,0 +1,84 @@
+packages/frontend/editor-ui/src/features/ai/chatHub/module.descriptor.ts
+  s_2c27aa693c6dc0::t_2c3cc24b57dfe1 18,20,22,109,123
+  s_2c27aa693c6dc0::t_16bc3b56e584eb 19,21,137,151
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiMessage.nodesAttachment.test.ts
+  s_2c27aa693c6dc0::t_2442c1138a043d 7
+packages/frontend/editor-ui/src/features/ai/chatHub/SettingsChatHubView.test.ts
+  s_2c27aa693c6dc0::t_d8ab99f667e88a 79-80
+packages/frontend/editor-ui/src/features/ai/chatHub/SettingsChatHubView.vue
+  s_2c27aa693c6dc0::t_c53602751016bc 27,29,168,176
+packages/frontend/editor-ui/src/app/layouts/ChatLayout.vue
+  s_2c27aa693c6dc0::t_66e69fef3b5639 3,9
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CanvasChatHubPanel.vue
+  s_2c27aa693c6dc0::t_4960a82a7a3dcf 23-26,292,367,371,399
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMessage.test.ts
+  s_2c27aa693c6dc0::t_7f7c9b1463e016 31
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubGreetings.test.ts
+  s_2c27aa693c6dc0::t_569405c2da0c00 10
+  s_2c27aa693c6dc0::t_d6df55597258b7 3,7,33
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ModelSelector.vue
+  s_2c27aa693c6dc0::t_1125b4cfd982ba 23,33,202,210
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubArtifactViewer.test.ts
+  s_2c27aa693c6dc0::t_44eb3152b99fb0 22
+  s_2c27aa693c6dc0::t_abd32497b25cce 7,15,27
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubSidebar.test.ts
+  s_2c27aa693c6dc0::t_b756d386387bcc 47
+  s_2c27aa693c6dc0::t_6408bd6cc3faf7 4,34,36
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatHubView.test.ts
+  s_2c27aa693c6dc0::t_700cb2c0fddae1 514
+  s_2c27aa693c6dc0::t_679a13a080eb26 19,132,134
+packages/frontend/editor-ui/src/features/ai/chatHub/components/CanvasChatFloatingWindow.vue
+  s_2c27aa693c6dc0::t_8dbadcc6ff24db 10,123
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatHubPersonalAgentsView.vue
+  s_2c27aa693c6dc0::t_a4dffe40e98ae6 10-11,19,121,137-140,158,167
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatHubView.vue
+  s_2c27aa693c6dc0::t_6a134ee2ee48b3 14-17,42,47,55,57,668,708,737,746,787,811,832,842
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatHubWorkflowAgentsView.vue
+  s_2c27aa693c6dc0::t_a008ee309472e1 6-7,16,60,73-76,93,101
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubAgentCard.vue
+  s_2c27aa693c6dc0::t_23c261c65ebccc 4,49
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubArtifactViewer.vue
+  s_2c27aa693c6dc0::t_b94739bf90e1fe 7,88,161
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubButtons.test.ts
+  s_2c27aa693c6dc0::t_075638670602f4 3,6,25,37,52,67,80,96,112,129,145,166,184,220
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubGreetings.vue
+  s_2c27aa693c6dc0::t_38815c0498723d 8-9,36,57,70
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubMarkdownChunk.test.ts
+  s_2c27aa693c6dc0::t_772d470a8f9372 3,5,7,11,29,34,38
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubMarkdownChunk.vue
+  s_2c27aa693c6dc0::t_4ccb0b4ed0de46 4,30
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubMessage.test.ts
+  s_2c27aa693c6dc0::t_19dbca5c7eae12 4,10,12
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubMessage.vue
+  s_2c27aa693c6dc0::t_2ac559569d5d0e 2-3,14,26,305,386,395-396,419
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubPrompt.test.ts
+  s_2c27aa693c6dc0::t_5f9f84bbc62b9b 6,64,77
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubPrompt.vue
+  s_2c27aa693c6dc0::t_3fd6747a6b8e38 14-16,45,231,250,265-266,290,304
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubProviderAvatar.vue
+  s_2c27aa693c6dc0::t_42bb4f91640252 4,26
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubSessionMenuItem.vue
+  s_2c27aa693c6dc0::t_594b63126c89f1 4-5,104,123,125
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubSidebar.vue
+  s_2c27aa693c6dc0::t_acbe2a4e2ee99d 17,98
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubSidebarContent.vue
+  s_2c27aa693c6dc0::t_529aa3ac700e83 16,198
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatHubSuggestedPrompts.test.ts
+  s_2c27aa693c6dc0::t_33988059c35514 2,5,7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d74071e6760858eaee316877869948d59204fe4",
+  "prompts": {},
+  "sessions": {
+    "s_2c27aa693c6dc0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a182cb-3610-7340-b12d-ad3bc272f6bc",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/@n8n/agents/src/sdk/agent.ts
+  s_a87ab30323b2bf::t_4698dd8695170e 1110-1113
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory-defaults.test.ts
+  s_a87ab30323b2bf::t_2bfdd9d499a3e6 5-10,80-83,88-98
+  s_a87ab30323b2bf::t_c63666a27cabb2 84-87
+  s_a87ab30323b2bf::t_8ac0c16ec6d20c 99-100
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_a87ab30323b2bf::t_4698dd8695170e 16,149-150,174,310-311,344
+packages/@n8n/agents/src/sdk/__tests__/memory-worker-model-fetch.test.ts
+  s_a87ab30323b2bf::t_1b4f555a8d25d9 1-11,14-16,19-46
+  s_a87ab30323b2bf::t_c63666a27cabb2 12-13,17-18
+packages/@n8n/agents/src/sdk/memory.ts
+  s_a87ab30323b2bf::t_4698dd8695170e 19,33-34,57-62,84
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  s_a87ab30323b2bf::t_4698dd8695170e 13,55-56,75
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_a87ab30323b2bf::t_c302e4ede27f9a 539-540,597-600,610,622
+  s_a87ab30323b2bf::t_7de0ce369f5426 559,568
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_a87ab30323b2bf::t_75a8b5af79b95c 1343,1352,1364-1382,1557-1564
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c798ab94a75b52a8e6376f74eedb20669d35cced",
+  "prompts": {},
+  "sessions": {
+    "s_a87ab30323b2bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9f44e6d-79e1-4a2e-976f-3b0df0cd5b7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

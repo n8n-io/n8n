@@ -1,0 +1,47 @@
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_45741ff70f27eb::t_9c5c7bcde6631b 16,62,67-70,88-97
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_45741ff70f27eb::t_7d3b3516cfaaa5 5263-5458
+packages/@n8n/telemetry/src/events/promotions.ts
+  s_45741ff70f27eb::t_f132c8457c7bbb 1-129
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_45741ff70f27eb::t_78b0b6b429ca6c 3,35,81-87,157,179,199-231,238,364-389,410-417,1243-1250,1498-1506,1589-1592,1666-1669,1684-1686
+packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
+  s_45741ff70f27eb::t_9c5c7bcde6631b 19-20,52,55-58,74-78
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_45741ff70f27eb::t_7d3b3516cfaaa5 91-95
+packages/cli/src/modules/promotions.ee/__tests__/promotion-telemetry.test.ts
+  s_45741ff70f27eb::t_7d3b3516cfaaa5 1-39,41-60
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_45741ff70f27eb::t_9c5c7bcde6631b 8,49,116-120
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
+  s_45741ff70f27eb::t_c15f8b93c9d449 2
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_45741ff70f27eb::t_c15f8b93c9d449 1041
+  s_45741ff70f27eb::t_ee024b46cad4fd 18,71,138,145,147-161,198-210
+  s_45741ff70f27eb::t_6cae48535c14c4 65,225,554,557-610,824-847,964-977,1331-1348
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_45741ff70f27eb::t_6cae48535c14c4 99,103,273,277,390,395
+packages/cli/src/events/maps/relay.event-map.ts
+  s_45741ff70f27eb::t_660fe3dcc330cb 6-10,28,1302-1370
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_45741ff70f27eb::t_660fe3dcc330cb 354-359,2655-2770
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_45741ff70f27eb::t_c15f8b93c9d449 189,203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "658763f4f19fd08fbe4818084de311afd3231605",
+  "prompts": {},
+  "sessions": {
+    "s_45741ff70f27eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7b03-c4ec-4087-b014-6e5f8a392673",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

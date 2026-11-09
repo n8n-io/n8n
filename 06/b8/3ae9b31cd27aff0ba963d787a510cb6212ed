@@ -1,5 +1,5 @@
 packages/cli/src/modules/n8n-packages/__tests__/agent-import-identities.integration.test.ts
-  s_71ad2034164515::t_ae8a5d62d54dff 247-266
+  s_d3c0f6f6f7d41c::t_e64465a0ec7ea0 247-266
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -7,11 +7,11 @@ packages/cli/src/modules/n8n-packages/__tests__/agent-import-identities.integrat
   "base_commit_sha": "06b83ae9b31cd27aff0ba963d787a510cb6212ed",
   "prompts": {},
   "sessions": {
-    "s_71ad2034164515": {
+    "s_d3c0f6f6f7d41c": {
       "agent_id": {
         "tool": "codex",
-        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
-        "model": "gpt-6-astra"
+        "id": "01a152e5-4005-7111-8ca3-6a9ab5e71d29",
+        "model": "gpt-6.1-sol"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }

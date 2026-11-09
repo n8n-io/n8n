@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionCapabilityItem.vue
+  s_a9406db86844b8::t_6c01cf5eb55361 234-242,299-300
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionCapabilityItem.test.ts
+  s_a9406db86844b8::t_6c01cf5eb55361 135,141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3f375ace0ae8b81546f7a553bc37e971f87408ab",
+  "prompts": {},
+  "sessions": {
+    "s_a9406db86844b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2315531e-83c9-4c88-9ccc-a293d57e6ef3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

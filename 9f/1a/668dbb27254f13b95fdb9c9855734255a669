@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/shared/promotions/useEnvironmentsVersionSwitch.ts
+  s_ba2ae60894487d::t_cd62605cea0920 42-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9f1a668dbb27254f13b95fdb9c9855734255a669",
+  "prompts": {},
+  "sessions": {
+    "s_ba2ae60894487d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04a467cb-e333-46a5-b84f-448b11db34b5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

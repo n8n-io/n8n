@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  h_f8b427917eda26 587,704
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b005cd9f56e9e2dc70fb6ce108beb06e78f0b23",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

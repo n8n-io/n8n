@@ -1,0 +1,33 @@
+packages/cli/test/integration/shared/public-api.ts
+  s_de5b74cc7479bb::t_2a9ddd94d999d1 1-2,5,10,12
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_de5b74cc7479bb::t_27a151bcd9cab4 13,79-80,82-89,408-415,417-418,564-568,570-574,675-682,684-685,800-812,814-815,881-893,895-896,1172-1184,1186-1187,1305-1322,1324-1325,1484-1490,1492-1504,1659-1668,1670-1679,1898-1904,1906-1918,2539-2545,2547-2559,2657-2674,2676-2677,2788-2794,2796-2808,2905-2911,2913-2925
+packages/cli/test/integration/public-api/discover.test.ts
+  s_de5b74cc7479bb::t_daf2ecae5aefcc 6,34-35,37-44
+packages/cli/test/integration/public-api/executions.test.ts
+  s_de5b74cc7479bb::t_83795014c4fa1b 35,98-99,101-108,335-336,338-345,451-452,454-466,651-652,654-661,1284-1285,1287-1294,1351-1352,1354-1361,1483-1484,1486-1498,1670-1671,1673-1680
+packages/cli/test/integration/public-api/folders.test.ts
+  s_de5b74cc7479bb::t_1e7209babc626d 14,73-79,81-85,90-93,263-280,282-283,535-536,541-544,546-547,552-555,776-777,782,784-788,793-796,940-941,946,948-952,957-960
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_de5b74cc7479bb::t_58237bca817d9d 20,127-128,130-142
+packages/cli/test/integration/public-api/tags.test.ts
+  s_de5b74cc7479bb::t_94c5ec0c00471f 8,32-33,35-42,96-108,110-111,162-171,173-182,253-257,259-263,360-361,363-375
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_de5b74cc7479bb::t_64d6e6ad76a6a6 51,182-183,185-192,886-887,889-896,1166-1172,1174-1186,1375-1387,1389-1390,1478-1479,1481-1488,1637-1643,1645-1657,1846-1852,1854-1866,2111-2112,2114-2126,2180-2186,2188-2200,2270-2277,2279-2280,3038-3039,3041-3048,3982-3989,3991-3992,4046-4053,4055-4056,4310-4322,4324-4325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a714fd959d2fbe507101514e614f4e996635f1e6",
+  "prompts": {},
+  "sessions": {
+    "s_de5b74cc7479bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31d534d1-5e3d-442f-b8f0-2ceb9e0a5afc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalTryRow.vue
+  s_cdb8e2d26dadad::t_daf60fdfb6f3e0 121-125
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalTryRow.test.ts
+  s_cdb8e2d26dadad::t_e4cc1033d36034 248-258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "884247e4af332f3c95f6838931f13e5ab1b6aea3",
+  "prompts": {},
+  "sessions": {
+    "s_cdb8e2d26dadad": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1600a-d56d-71c5-97e1-b1e6fe7943fe",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

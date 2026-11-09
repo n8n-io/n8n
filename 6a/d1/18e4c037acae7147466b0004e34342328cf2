@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.ts
+  s_d740321ee1c7f2::t_cbbf9799393c6d 1-91
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantAgentThreads.test.ts
+  s_d740321ee1c7f2::t_ccee9cf72db34d 1-89
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_d740321ee1c7f2::t_6b0ce0491aa42e 1-54,56-82
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_d740321ee1c7f2::t_e3d25662c83ab9 1-75
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadRouteView.test.ts
+  s_d740321ee1c7f2::t_69e769710f372c 1-21,23-32,34-130
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadRouteView.vue
+  s_d740321ee1c7f2::t_e984f0ccb3b392 1-53,55-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6ad118e4c037acae7147466b0004e34342328cf2",
+  "prompts": {},
+  "sessions": {
+    "s_d740321ee1c7f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd0bc4a5-d678-410d-b6c9-7a9cc5d6c9ef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

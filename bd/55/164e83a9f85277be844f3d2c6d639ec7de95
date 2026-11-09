@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/agent-memory-entries.service.ts
+  s_a87ab30323b2bf::t_2c1803e4f28680 27-31,135-137
+  s_a87ab30323b2bf::t_a60bcadc609bb3 14-18,71-72
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_a87ab30323b2bf::t_a60bcadc609bb3 42,605-610
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_a87ab30323b2bf::t_a60bcadc609bb3 407
+packages/cli/src/modules/agents/agent-memory-query-embedder.ts
+  s_a87ab30323b2bf::t_a60bcadc609bb3 5,12,41-48,59
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_a87ab30323b2bf::t_2c1803e4f28680 176,189-193
+  s_a87ab30323b2bf::t_fcf9a7f32ddab9 194
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_a87ab30323b2bf::t_a60bcadc609bb3 75-91,723,740,769,982
+packages/cli/src/modules/agents/json-config/embedding-credential.ts
+  s_a87ab30323b2bf::t_a60bcadc609bb3 3,47-65
+  s_a87ab30323b2bf::t_72518d83b782e5 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd55164e83a9f85277be844f3d2c6d639ec7de95",
+  "prompts": {},
+  "sessions": {
+    "s_a87ab30323b2bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9f44e6d-79e1-4a2e-976f-3b0df0cd5b7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

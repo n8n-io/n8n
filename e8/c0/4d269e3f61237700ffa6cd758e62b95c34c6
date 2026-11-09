@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/OpenWeatherMap/test/workflow-v1.1.json
+  s_55c39027ebcd2f::t_3036ed6cf743d0 1-173
+packages/nodes-base/nodes/OpenWeatherMap/test/OpenWeatherMap.node.test.ts
+  s_55c39027ebcd2f::t_3036ed6cf743d0 1-82
+packages/nodes-base/credentials/OpenWeatherMapApi.credentials.ts
+  s_55c39027ebcd2f::t_3036ed6cf743d0 23-28,42-43
+packages/nodes-base/nodes/OpenWeatherMap/test/OpenWeatherMap.test.ts
+  s_55c39027ebcd2f::t_3036ed6cf743d0 7,18-43
+packages/nodes-base/nodes/OpenWeatherMap/OpenWeatherMap.node.ts
+  s_55c39027ebcd2f::t_3036ed6cf743d0 4,18-19,201-205,269-279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e8c04d269e3f61237700ffa6cd758e62b95c34c6",
+  "prompts": {},
+  "sessions": {
+    "s_55c39027ebcd2f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17d71-a970-7082-a7e6-59caf2bd4104",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

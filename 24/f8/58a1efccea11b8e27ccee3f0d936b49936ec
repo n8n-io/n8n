@@ -1,0 +1,32 @@
+packages/modules/apps/backend/src/auth/app-auth.service.ts
+  s_55fab4d6e7841e::t_2cbf2380c135bc 105,108
+  s_55fab4d6e7841e::t_1fe87259692b15 169-172
+  s_55fab4d6e7841e::t_68e56f649ff586 92,94
+packages/modules/apps/backend/src/auth/__tests__/app-auth.service.test.ts
+  s_55fab4d6e7841e::t_362e05768b22e8 143
+  s_55fab4d6e7841e::t_29dd5cd477bcdf 203
+  s_55fab4d6e7841e::t_0ed19b1058c558 16-17
+  s_55fab4d6e7841e::t_c26c4b3236ae9f 195-196
+  s_55fab4d6e7841e::t_2b0b5189a0f3c6 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24f858a1efccea11b8e27ccee3f0d936b49936ec",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_55fab4d6e7841e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75b5cb9b-ed1e-4b91-9cb8-d26a0fbb9ba9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

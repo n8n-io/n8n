@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/shared/promotions/useEnvironmentsVersionSwitch.ts
+  s_ba2ae60894487d::t_5d2a23831990be 38-39
+  s_ba2ae60894487d::t_605ce37a5f884d 33-34,37
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue
+  s_ba2ae60894487d::t_5e9ab665b533b9 303-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fea472971704cca36106b18874082f1f95c38644",
+  "prompts": {},
+  "sessions": {
+    "s_ba2ae60894487d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04a467cb-e333-46a5-b84f-448b11db34b5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

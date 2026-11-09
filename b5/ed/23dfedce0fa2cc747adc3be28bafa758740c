@@ -1,0 +1,19 @@
+packages/cli/src/modules/otel/README.md
+  s_00792efc4a7302::t_91505130f58145 17-18,20,22,28-29,31-36,38,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b5ed23dfedce0fa2cc747adc3be28bafa758740c",
+  "prompts": {},
+  "sessions": {
+    "s_00792efc4a7302": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8701b7cf-3e9e-4646-a497-cdd9a4c5b5b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

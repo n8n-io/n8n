@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_5785bc20fb92a9::t_8d13348b52c569 147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6deb17377cc8d47fae8966996f90b62c3b87fdb7",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

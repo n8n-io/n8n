@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_2c573839e2200b::t_0b3989e0c387d0 315-316
+packages/@n8n/instance-ai/src/tools/shared/ask-user.tool.ts
+  s_2c573839e2200b::t_ded2c14b40d6de 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "104ff3e4617a11996c0362e99cc8a33bc9b39e85",
+  "prompts": {},
+  "sessions": {
+    "s_2c573839e2200b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26cfe557-3584-4ba5-95fe-b4de47de22be",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

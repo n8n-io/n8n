@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/vite/dev-ports.mts
+  s_96273ca926aa94::t_415d01d9d3ef22 57-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88ac43dcb6c24e4d25131c43f3c89b743ab53c62",
+  "prompts": {},
+  "sessions": {
+    "s_96273ca926aa94": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a179d1-da56-7018-b64e-4335d16e551d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

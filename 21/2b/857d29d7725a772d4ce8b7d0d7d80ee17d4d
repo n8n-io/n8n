@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  s_c97efeda28ccfa::t_07fb9dc89acbef 1155
+  s_c97efeda28ccfa::t_ce6d9e1306d3d2 1154
+  s_c97efeda28ccfa::t_d1623fade132a1 2193-2198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "212b857d29d7725a772d4ce8b7d0d7d80ee17d4d",
+  "prompts": {},
+  "sessions": {
+    "s_c97efeda28ccfa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa0e9b6a-b842-489e-9ca3-1cc378f3b203",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.ts
+  s_f1a804119197eb::t_4ddd940f5cd6dc 139-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d572c5646751c8a1f2addd1300aafe179c0976f2",
+  "prompts": {},
+  "sessions": {
+    "s_f1a804119197eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df616428-5500-4fc2-8350-ef5e605e2487",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

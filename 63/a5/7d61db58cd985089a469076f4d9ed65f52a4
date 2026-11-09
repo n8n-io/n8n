@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectCreateResource.vue
+  s_44a5643d49e957::t_877df35d705e4d 68-72
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue
+  s_44a5643d49e957::t_68884c590bad7b 215,280,282-284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "63a57d61db58cd985089a469076f4d9ed65f52a4",
+  "prompts": {},
+  "sessions": {
+    "s_44a5643d49e957": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1786c-01a0-7422-8c5f-36b63d0963bc",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_5785bc20fb92a9::t_0d8da2ce123d2d 658,1291,1293-1294,2535,2638,3253,3458
+  s_5785bc20fb92a9::t_9f9e72355a48c6 1292,2537,3244
+  s_5785bc20fb92a9::t_8d8c077d448365 2732,3461
+  s_5785bc20fb92a9::t_44374a9a883a2b 1984,1986,1988-1992,1994
+  h_7555c3ee6524cf 1980,1982,1985,1987,1993,2004,2006,2009,2011,2013,2021,2027,2030,2069
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "16c29c9c2f5d29f0b2817075d99f237c6596f90b",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}

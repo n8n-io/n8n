@@ -1,0 +1,23 @@
+packages/cli/src/node-execution/__tests__/ephemeral-node-executor.test.ts
+  s_3095e7d5d2ac6b::t_3c60a9917429d4 242-251
+  s_3095e7d5d2ac6b::t_a136bfb759ecdd 252-254,256-258
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_3095e7d5d2ac6b::t_008101ec967e3d 32,106-107,279
+  s_3095e7d5d2ac6b::t_3c60a9917429d4 278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b22389cd7906f0e058bbf2cb3ca6449c2f577173",
+  "prompts": {},
+  "sessions": {
+    "s_3095e7d5d2ac6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa4f0125-7528-45ec-86b2-aaa0d06aadff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

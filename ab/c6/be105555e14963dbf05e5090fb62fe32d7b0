@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_cc68fdb58b7281::t_26d96fec28d342 687
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "abc6be105555e14963dbf05e5090fb62fe32d7b0",
+  "prompts": {},
+  "sessions": {
+    "s_cc68fdb58b7281": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16404-f1e4-70d2-98b7-697672668117",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

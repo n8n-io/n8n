@@ -1,0 +1,35 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_fde90cba4b22c0::t_ffb6ecd9fe1e93 221-222
+packages/nodes-base/nodes/N8n/test/N8n.structure.test.ts
+  s_fde90cba4b22c0::t_e3019469998dea 4,20
+packages/nodes-base/nodes/N8n/UserDescription.ts
+  s_fde90cba4b22c0::t_34eae807e1dcd1 1-74,76-99
+  s_fde90cba4b22c0::t_92c7f7509ee020 75
+packages/nodes-base/nodes/N8n/test/User.operation.test.ts
+  s_fde90cba4b22c0::t_f31900892ca113 3,7,17-21,28
+  s_fde90cba4b22c0::t_864a0fe283b96f 1-2,4-6,8-16,22-27,29-50
+packages/nodes-base/nodes/N8n/test/node/N8n.test.ts
+  s_fde90cba4b22c0::t_8b353cb8fdf6bd 22-31
+packages/nodes-base/nodes/N8n/N8n.node.ts
+  s_fde90cba4b22c0::t_ffb6ecd9fe1e93 7,67-70,91-92
+packages/nodes-base/nodes/N8n/test/node/user.get.workflow.json
+  s_fde90cba4b22c0::t_6ec3f5a15cdf92 58-64
+  ai_agent 10,22,41
+  s_fde90cba4b22c0::t_8b353cb8fdf6bd 1-9,11-21,23-40,42-57,65-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8ec32bce7dac59b32c026ac3235ffb7fcf375dce",
+  "prompts": {},
+  "sessions": {
+    "s_fde90cba4b22c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1244077-25f5-400d-ba71-9d8f990035ea",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

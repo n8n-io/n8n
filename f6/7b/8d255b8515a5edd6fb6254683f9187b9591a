@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionPreviewView.test.ts
+  s_aaa3f8c0014b3c::t_ee5053d89af7cf 528-529
+  s_aaa3f8c0014b3c::t_f3a70340a01c24 194-198,200-201,203-204,206-208,387-393,399,406-421,423-429
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_aaa3f8c0014b3c::t_98e6a56a2a2a7f 69-72
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_aaa3f8c0014b3c::t_cfc5154904217b 81,83,89-90,99,101,104-105,115,117,133,135,210,229-231,274
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteInstanceDialog.test.ts
+  s_aaa3f8c0014b3c::t_98e6a56a2a2a7f 69-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f67b8d255b8515a5edd6fb6254683f9187b9591a",
+  "prompts": {},
+  "sessions": {
+    "s_aaa3f8c0014b3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a168c0-40e6-7a93-8ad9-13970e561dbb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

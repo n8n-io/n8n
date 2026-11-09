@@ -1,0 +1,19 @@
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_5785bc20fb92a9::t_56aea171235934 248-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b44ad3ad497e2dd821f221c8225a540b17aa3d05",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

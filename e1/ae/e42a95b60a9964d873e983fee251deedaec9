@@ -1,0 +1,26 @@
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_71ad2034164515::t_ab3da77dcbcc50 258
+packages/@n8n/cli/docs/commands/package.md
+  s_71ad2034164515::t_d0d20c70117cbf 107-108
+  s_71ad2034164515::t_1ac5e31d2ef2c7 81
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_71ad2034164515::t_ca5f6c7e42f308 100-104,107,111
+packages/@n8n/cli/src/commands/package/export.ts
+  s_71ad2034164515::t_6ba4055d305570 188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1aee42a95b60a9964d873e983fee251deedaec9",
+  "prompts": {},
+  "sessions": {
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
