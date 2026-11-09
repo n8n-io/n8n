@@ -156,6 +156,7 @@ function createMockRoute(threadId = 'thread-1') {
 function setup(options?: {
 	threadOverrides?: Partial<MockThread>;
 	initialAgentId?: () => string | undefined;
+	initialAppId?: () => string | undefined;
 	tabsStorage?: ThreadTabsStorage;
 }) {
 	const thread = createMockThread();
@@ -167,6 +168,7 @@ function setup(options?: {
 		thread: thread as any,
 		threadId: () => route.params.threadId,
 		initialAgentId: options?.initialAgentId,
+		initialAppId: options?.initialAppId,
 		tabsStorage: options?.tabsStorage,
 	});
 
@@ -359,6 +361,93 @@ describe('useCanvasPreview', () => {
 
 			ctx.openWorkflowPreview('wf-1');
 			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+	});
+
+	describe('showMentionedWorkflow', () => {
+		function buildMessage(toolCallId: string, workflowId: string) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({
+							toolCallId,
+							toolName: 'workflow_builder_build_workflow',
+							result: { success: true, workflowId },
+						}),
+					],
+				}),
+			});
+		}
+
+		test('shows the tab, opens the preview, and records the open in the recent workflows', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'Orders', 'proj-1');
+			registerWorkflow(ctx.thread, 'wf-2', 'Leads', 'proj-1');
+			ctx.selectTab('wf-1');
+			vi.mocked(useRecentWorkflowsStore().registerWorkflowOpen).mockClear();
+
+			expect(ctx.showMentionedWorkflow('wf-2')).toBe(true);
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+				'wf-2',
+				'proj-1',
+			);
+		});
+
+		test('does not pin the tab, so the artifact the agent builds next takes over', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			// The send is in flight when the mention shows, so the agent counts as working.
+			ctx.thread.isStreaming = true;
+			ctx.showMentionedWorkflow('wf-2');
+			expect(ctx.activeTabId.value).toBe('wf-2');
+
+			ctx.thread.messages = [buildMessage('tc-1', 'wf-1')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+		});
+
+		test('leaves a tab the user picked while the agent works', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.thread.isStreaming = true;
+			ctx.thread.messages = [buildMessage('tc-1', 'wf-1')];
+			await nextTick();
+			ctx.selectTab('wf-2');
+
+			expect(ctx.showMentionedWorkflow('wf-1')).toBe(true);
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+		});
+
+		test('opens a tab the user closed earlier in the thread again', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.selectTab('wf-2');
+			ctx.closeTab('wf-1');
+			expect(ctx.openTabs.value.map(({ id }) => id)).toEqual(['wf-2']);
+
+			ctx.showMentionedWorkflow('wf-1');
+
+			expect(ctx.openTabs.value.map(({ id }) => id)).toEqual(['wf-2', 'wf-1']);
+			expect(ctx.activeTabId.value).toBe('wf-1');
+		});
+
+		test('does nothing for a workflow that has no tab', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			expect(ctx.showMentionedWorkflow('wf-missing')).toBe(false);
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1192,6 +1281,15 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.activeApp.value).toBeNull();
 			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('opens an app linked to the thread', async () => {
+			const ctx = setup({ initialAppId: () => app.id });
+			registerApp(ctx.thread);
+			await nextTick();
+
+			expect(ctx.activeApp.value).toEqual({ id: 'app-1', projectId: 'project-1' });
+			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 	});
 

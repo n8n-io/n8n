@@ -22,11 +22,7 @@ import {
 	INSTANCE_CONTEXT_TOOLS,
 	TOOLS_BY_SCOPE,
 } from './mcp-scopes';
-import {
-	areAgentToolsAvailable,
-	arePreferenceToolsEnabled,
-	isCommunityNodeInstallAvailable,
-} from './mcp-tool-availability';
+import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
 
@@ -37,7 +33,6 @@ import { McpSettingsService } from './mcp.settings.service';
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
 const SKILL_SCOPES = new Set<string>(MCP_SKILL_SCOPES);
-const PREFERENCE_SCOPES = new Set<string>(['aiPreference:read', 'aiPreference:write']);
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
@@ -180,10 +175,6 @@ export class McpProtectedResource implements ProtectedResource {
 	 * nothing. Delegates to the same predicate registration uses rather than
 	 * re-checking one of its conditions: the screen pre-checks every offered
 	 * scope on first consent, so a scope offered here is a scope granted.
-	 *
-	 * `aiPreference:*` is dropped for a user outside the preferences experiment
-	 * arm for the same reason, and one more: showing the scopes to the control
-	 * arm exposes the feature to the users the experiment keeps unaware of it.
 	 */
 	async getGrantableScopes(user: ResourceUser): Promise<string[]> {
 		const { CommunityPackagesConfig } = await import(
@@ -196,22 +187,8 @@ export class McpProtectedResource implements ProtectedResource {
 			this.mcpConfig,
 			user,
 		);
-		const preferencesEnabled = await this.arePreferencesEnabledFor(user);
 
-		return this.scopes.filter(
-			(scope) =>
-				(installAvailable || scope !== 'communityPackage:install') &&
-				(preferencesEnabled || !PREFERENCE_SCOPES.has(scope)),
-		);
-	}
-
-	private async arePreferencesEnabledFor(user: ResourceUser): Promise<boolean> {
-		try {
-			return arePreferenceToolsEnabled(await this.postHogClient.getFeatureFlags(user));
-		} catch {
-			// Registration treats an unreadable flag as off; consent must agree.
-			return false;
-		}
+		return this.scopes.filter((scope) => installAvailable || scope !== 'communityPackage:install');
 	}
 
 	async isAvailable(): Promise<boolean> {

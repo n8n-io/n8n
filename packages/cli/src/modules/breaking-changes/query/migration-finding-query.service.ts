@@ -107,7 +107,7 @@ export class MigrationFindingQueryService {
 			this.findingRepository.countWontFixByRule(targetVersion, filter, {}),
 			this.findingRepository.countDistinctUnresolvedWorkflows(targetVersion, filter, {}),
 			this.syncRepository.getForVersion(targetVersion, {}),
-			scope.kind === 'instance' ? this.workflowRepository.count() : scope.workflowIds.length,
+			this.workflowRepository.countUnarchived(filter),
 			// Instance rules read config and environment, not workflows, so they stay live.
 			// They describe the instance, so only the instance scope sees them.
 			scope.kind === 'instance'
@@ -189,6 +189,7 @@ export class MigrationFindingQueryService {
 				id: finding.workflowId,
 				name: finding.workflow.name,
 				active: !!finding.workflow.activeVersionId,
+				isArchived: finding.workflow.isArchived,
 				lastUpdatedAt: finding.workflow.updatedAt,
 				...summarizeExecutionStatistics(statisticsByWorkflow.get(finding.workflowId) ?? []),
 				// A workflow the rule no longer flags stays listed, without issues, until the next sync.

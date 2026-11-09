@@ -240,11 +240,14 @@ export class AgentBackgroundJobService {
 	 * A storage error must not block the settle, so it logs and returns no files.
 	 */
 	async storeOutputFiles(
-		job: Pick<AgentBackgroundJob, 'id' | 'parentAgentId' | 'parentThreadId' | 'pauseRequestId'>,
+		job: Pick<
+			AgentBackgroundJob,
+			'id' | 'parentAgentId' | 'parentThreadId' | 'parentResourceId' | 'pauseRequestId'
+		>,
 		runData: IRunData,
 	): Promise<JobOutputFiles> {
 		const items = Object.values(collectResultItems(runData, Boolean(job.pauseRequestId))).flat();
-		if (!items.some((item) => item.binary)) return NO_OUTPUT_FILES;
+		if (!items.some((item) => item.binary) || !job.parentResourceId) return NO_OUTPUT_FILES;
 		try {
 			const projectId = await this.threadRepository.findProjectId(job.parentThreadId);
 			if (!projectId) return NO_OUTPUT_FILES;
@@ -252,6 +255,7 @@ export class AgentBackgroundJobService {
 				agentId: job.parentAgentId,
 				projectId,
 				threadId: job.parentThreadId,
+				resourceId: job.parentResourceId,
 			});
 			return {
 				files: files.length > 0 ? files : null,

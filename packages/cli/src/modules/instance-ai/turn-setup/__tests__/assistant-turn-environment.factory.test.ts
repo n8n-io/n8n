@@ -47,7 +47,6 @@ function createSetupFactory() {
 				setupPanelVariant: 'control',
 				folderExplorationEnabled: false,
 				credentialDescriptionsEnabled: false,
-				aiPreferencesEnabled: false,
 				instanceContextEnabled: false,
 				nodeUsageEnabled: false,
 			})),
@@ -197,6 +196,26 @@ describe('AssistantTurnEnvironmentFactory', () => {
 				);
 				expect(context.appService !== undefined).toBe(expected);
 				expect(context.workspace !== undefined).toBe(expected);
+			},
+		);
+
+		it.each(['n8n-sandbox', 'daytona'])(
+			'gives the prompt the same workspace root for the %s provider',
+			async (provider) => {
+				const { factory, fields } = createSetupFactory();
+				fields.settingsService.getSandboxStatus.mockReturnValue({
+					workflowBuilderAvailable: true,
+				});
+				const runtime = createRuntime();
+				runtime.sandbox.resolveConfig = vi.fn(
+					async () => ({ enabled: true, provider }) as unknown as SandboxConfig,
+				);
+
+				const { context, orchestrationContext } = await factory.create(params, runtime);
+
+				expect(context.workspaceRoot).toBe('/home/user/workspace');
+				expect(context.fallbackWorkspaceRoot).toBe('/home/daytona/workspace');
+				expect(orchestrationContext.workspaceRoot).toBe('/home/user/workspace');
 			},
 		);
 

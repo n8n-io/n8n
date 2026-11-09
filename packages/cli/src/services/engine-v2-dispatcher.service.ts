@@ -61,7 +61,7 @@ const withoutNullSlots = (main: Array<INodeExecutionData[] | null>): INodeExecut
 	main.map((slot) => slot ?? []);
 
 function toResumeRefusal(executionId: string, status: number, reason: string): Error {
-	// `locateResumeTarget` already verified this token, so a 401 means the step is gone.
+	// `locateResume` already verified this token, so a 401 means the step is gone.
 	if (status === 401) return new NotFoundError(`The execution "${executionId}" does not exist.`);
 	if (status === 409) return new ConflictError(`The execution "${executionId}" is not waiting.`);
 	return new UserError(`Engine v2 refused to resume the execution "${executionId}": ${reason}`);
@@ -263,6 +263,8 @@ export class EngineV2Dispatcher {
 					projectId: data.projectId,
 				},
 				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
+				// Only a run with a push ref has an editor session to relay events to.
+				lifecycleEventSubscription: data.pushRef ? { kind: 'all' } : undefined,
 			},
 		};
 	}

@@ -28,6 +28,7 @@ import {
 } from './errors';
 import { isV1NodeStepConfig } from './guards';
 import { fromStepInputs, toStepOutputs } from './io';
+import { SubWorkflowCalls } from './sub-workflow-calls';
 import { attachResponseHooks } from './v1-response-hooks';
 import type {
 	ExecutableNodeType,
@@ -47,7 +48,7 @@ import {
 } from './v1-adapters';
 
 /**
- * Turns what the node recorded in `putExecutionToWait` into a wait declaration.
+ * Turns what the node recorded into a wait declaration.
  * v1 resumes a timed wait by marking the node disabled before it re-enters it,
  * and a disabled node does not run: it passes its first input through. So the
  * step emits that input at the deadline, not what the node returned before it
@@ -57,11 +58,20 @@ function toStepResult(
 	context: DurableWaitExecuteContext,
 	nodeResult: INodeExecutionData[][],
 ): StepExecutionResult {
+	// The node declared a sub-execution. Awaited, the node ran to the end on an empty
+	// result and runs again once the sub-execution ends. Detached, its outputs stand.
+	const { declaration } = context.subWorkflowCalls;
+	if (declaration) {
+		return declaration.awaited
+			? { subExecution: declaration }
+			: { subExecution: { ...declaration, outputs: toStepOutputs(nodeResult) } };
+	}
+
 	const { waitTill } = context.runExecutionData;
 	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
 		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
-		return { wait: { resumeBinding: 'execution' } };
+		return { wait: { resumeBinding: context.resumeBinding } };
 	}
 	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
 		throw new UnsupportedWaitError(context.getNode().name, 'a sub-execution');
@@ -75,7 +85,7 @@ function toStepResult(
 		wait: {
 			resumeAt: waitTill.toISOString(),
 			outputsAtDeadline: toStepOutputs([context.getInputData()]),
-			...(context.acceptsResumeRequest ? { resumeBinding: 'execution' as const } : {}),
+			...(context.acceptsResumeRequest ? { resumeBinding: context.resumeBinding } : {}),
 		},
 	};
 }
@@ -97,9 +107,8 @@ export class V1StepExecutor implements IStepExecutor {
 		const stepData = await this.deps.loadStepData(request.context);
 
 		const node = toV1Node(request.node, stepConfig);
-		// Send-and-wait needs a step-bound resume request, which engine v2 does not
-		// have yet. Fail before the node sends the message. The Chat node waits in
-		// every version and operation.
+		// Engine v2 cannot route a reply to these steps yet. Fail before the node
+		// sends the message. The Chat node waits in every version and operation.
 		if (node.parameters.operation === SEND_AND_WAIT_OPERATION || node.type === CHAT_NODE_TYPE) {
 			throw new UnsupportedWaitError(node.name, 'an approval');
 		}
@@ -126,6 +135,12 @@ export class V1StepExecutor implements IStepExecutor {
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),
 			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
+			subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),
+			subExecutionResume: request.resume,
+			resumeMinters: {
+				stepBoundResumeToken: this.deps.stepBoundResumeToken,
+				approvalCallback: this.deps.approvalCallback,
+			},
 		});
 
 		return await workflow.expression.withIsolate(async () => {
@@ -208,6 +223,9 @@ export class V1StepExecutor implements IStepExecutor {
 				// The node's own error is the one to report. The response channel
 				// already tells the caller when it cannot carry the error chunk.
 			}
+			// The node failed, so do not start a sub-execution it may have declared
+			// before failing. This holds for continueOnFail too.
+			context.subWorkflowCalls.declaration = undefined;
 			if (!context.continueOnFail()) throw result.error;
 			return [context.getInputData()];
 		}

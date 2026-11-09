@@ -779,6 +779,57 @@ describe('SystemAgentExecutionService', () => {
 
 				await expect(turn.readAttachment(ref)).rejects.toBe(error);
 			});
+
+			it('reads any stored file of the thread by id, not only the files of the turn', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-earlier',
+					threadId: 'thread-1',
+					fileName: 'earlier.csv',
+					mimeType: 'text/csv',
+					fileSizeBytes: 3,
+				} as never);
+				attachmentService.getStream.mockResolvedValue(Readable.from([Buffer.from('a,b')]));
+
+				const file = await turn.readFile('att-earlier');
+
+				expect(file).toMatchObject({ fileName: 'earlier.csv', mimeType: 'text/csv', sizeBytes: 3 });
+				// The bytes load only on request, so a caller can check the size first.
+				expect(attachmentService.getStream).not.toHaveBeenCalled();
+				await expect(file?.readContent()).resolves.toEqual(Buffer.from('a,b'));
+				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('att-earlier', {
+					agentId: AGENT_ID,
+					resourceId: 'system-chat:user-1',
+					source: 'system_chat',
+				});
+			});
+
+			it('does not read a stored file of another thread by id', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-1',
+					threadId: 'thread-2',
+				} as never);
+
+				await expect(turn.readFile('att-1')).resolves.toBeUndefined();
+				expect(attachmentService.getStream).not.toHaveBeenCalled();
+			});
+
+			it('gives no content for a stored file whose bytes are gone', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-1',
+					threadId: 'thread-1',
+					fileName: 'gone.csv',
+					mimeType: 'text/csv',
+					fileSizeBytes: 3,
+				} as never);
+				attachmentService.getStream.mockRejectedValue(new FileNotFoundError('file-1'));
+
+				const file = await turn.readFile('att-1');
+
+				await expect(file?.readContent()).resolves.toBeUndefined();
+			});
 		});
 
 		it('attaches the attachment store to a turn without attachments', async () => {
@@ -1162,6 +1213,8 @@ describe('SystemAgentExecutionService', () => {
 					resumeData: { approved: true },
 					memory: agentMemory,
 					checkpointStore: agentCheckpointStore,
+					// A resumed turn can still read the stored files of the thread.
+					readFile: expect.any(Function),
 				}),
 			);
 			expect(prepared[0]).toMatchObject({
@@ -1999,227 +2052,241 @@ describe('SystemAgentExecutionService', () => {
 		});
 	});
 
-	describe('deleteThreadsOfUser', () => {
-		const sessions = [
-			{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
-			{ id: 'thread-2', agentId: 'unregistered-agent', projectId: 'project-2' },
-		];
+	describe('stopThreadsOfUser', () => {
+		it.each(['thread-1', 'child-1'])(
+			'stops the root when %s runs and keeps every session',
+			async (runningId) => {
+				const {
+					service,
+					threadRepository,
+					executionRepository,
+					messageQueue,
+					chatExecutionService,
+					executionService,
+				} = setup();
+				threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([
+					{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+				]);
+				threadRepository.findByParentThreadId.mockImplementation(async (parentId) =>
+					parentId === 'thread-1'
+						? [
+								mock<AgentExecutionThread>({
+									id: 'child-1',
+									agentId: 'child-agent',
+									projectId: 'project-1',
+								}),
+							]
+						: [],
+				);
+				messageQueue.prepareSessionStop.mockImplementation(async (id) => ({
+					executionIds: id === runningId ? ['exec-1'] : [],
+					queueIds: [],
+					attachmentIds: [],
+				}));
+				executionRepository.findLatestByThreadId.mockImplementation(async (id) =>
+					id === 'thread-1' ? mock({ id: 'exec-1' }) : mock({ id: 'child-exec-9' }),
+				);
 
-		afterEach(() => {
-			vi.useRealTimers();
-		});
+				await service.stopThreadsOfUser('user-1');
 
-		const setupDeletion = (...args: Parameters<typeof setup>) => {
-			const result = setup(...args);
-			result.threadRepository.findByParentThreadId.mockResolvedValue([]);
-			return result;
-		};
+				expect(chatExecutionService.requestCancel).toHaveBeenCalledExactlyOnceWith({
+					projectId: 'project-1',
+					agentId: AGENT_ID,
+					threadId: 'thread-1',
+					executionId: 'exec-1',
+					userId: 'user-1',
+					surface: 'system',
+				});
+				expect(executionService.deleteThread).not.toHaveBeenCalled();
+			},
+		);
 
-		it('deletes every session with its workspace, also without a provider', async () => {
-			const { source } = workspaceSource();
-			const { service, executionService, executionRepository, threadRepository } = setupDeletion(
-				[],
-				undefined,
-				source,
-			);
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue(sessions);
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
-			executionService.deleteThread.mockResolvedValue(true);
-
-			await service.deleteThreadsOfUser('user-1');
-
-			expect(threadRepository.findOwnedSystemAgentSessions).toHaveBeenCalledWith('user-1');
-			// It does not load the thread through the ownership and provider checks.
-			expect(threadRepository.findOwnedById).not.toHaveBeenCalled();
-			expect(executionService.deleteThread.mock.calls).toEqual([
-				['project-1', AGENT_ID, 'thread-1', 'user-1'],
-				['project-2', 'unregistered-agent', 'thread-2', 'user-1'],
+		it('still cancels the root when a descendant disappears during cleanup', async () => {
+			const { service, threadRepository, messageQueue, executionRepository, chatExecutionService } =
+				setup();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
 			]);
-			expect(source.destroy).toHaveBeenCalledExactlyOnceWith({
-				agentId: AGENT_ID,
-				threadId: 'thread-1',
-				userId: 'user-1',
+			threadRepository.findByParentThreadId.mockImplementation(async (id) =>
+				id === 'thread-1'
+					? [
+							mock<AgentExecutionThread>({
+								id: 'child-1',
+								agentId: 'child-agent',
+								projectId: 'project-1',
+							}),
+						]
+					: [],
+			);
+			messageQueue.prepareSessionStop
+				.mockResolvedValueOnce({ executionIds: ['exec-1'], queueIds: [], attachmentIds: [] })
+				.mockRejectedValueOnce(new NotFoundError('Session not found'));
+			executionRepository.findLatestByThreadId.mockResolvedValue(mock({ id: 'exec-1' }));
+
+			await service.stopThreadsOfUser('user-1');
+
+			expect(messageQueue.prepareSessionStop).toHaveBeenCalledWith('child-1', {
+				preserveInput: true,
 			});
-		});
-
-		it('logs a session that fails and deletes the others', async () => {
-			const { service, executionService, executionRepository, threadRepository, logger } =
-				setupDeletion();
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue(sessions);
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
-			executionService.deleteThread
-				.mockRejectedValueOnce(new Error('db down'))
-				.mockResolvedValueOnce(true);
-
-			await expect(service.deleteThreadsOfUser('user-1')).resolves.toBeUndefined();
-
-			expect(executionService.deleteThread).toHaveBeenCalledTimes(2);
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Failed to delete a system agent session of a deleted user',
-				expect.objectContaining({ userId: 'user-1', threadId: 'thread-1', error: 'db down' }),
+			expect(chatExecutionService.requestCancel).toHaveBeenCalledWith(
+				expect.objectContaining({ threadId: 'thread-1', executionId: 'exec-1' }),
 			);
 		});
 
-		it('logs a failed lookup and does not throw', async () => {
-			const { service, executionService, threadRepository, logger } = setupDeletion();
-			threadRepository.findOwnedSystemAgentSessions.mockRejectedValue(new Error('db down'));
+		it('keeps idle sessions without requesting cancellation', async () => {
+			const { service, threadRepository, messageQueue, chatExecutionService, executionService } =
+				setup();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+			]);
+			threadRepository.findByParentThreadId.mockResolvedValue([]);
+			messageQueue.prepareSessionStop.mockResolvedValue({
+				executionIds: [],
+				queueIds: ['pending-1'],
+				attachmentIds: [],
+			});
 
-			await expect(service.deleteThreadsOfUser('user-1')).resolves.toBeUndefined();
+			await service.stopThreadsOfUser('user-1');
 
+			expect(messageQueue.prepareSessionStop).toHaveBeenCalledWith('thread-1', {
+				preserveInput: true,
+			});
+			expect(chatExecutionService.requestCancel).not.toHaveBeenCalled();
 			expect(executionService.deleteThread).not.toHaveBeenCalled();
+		});
+
+		it('logs a lookup failure without preventing memory cleanup', async () => {
+			const { service, threadRepository, logger } = setup();
+			threadRepository.findOwnedSystemAgentSessions.mockRejectedValue(
+				new Error('database unavailable'),
+			);
+
+			await expect(service.stopThreadsOfUser('user-1')).resolves.toBeUndefined();
+
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to find the system agent sessions of a deleted user',
 				expect.objectContaining({ userId: 'user-1' }),
 			);
 		});
-
-		it('stops a running turn and deletes the session when the turn has ended', async () => {
-			vi.useFakeTimers();
+		it('continues to the next session when stopping the first session fails', async () => {
 			const {
 				service,
-				executionService,
-				executionRepository,
 				threadRepository,
+				messageQueue,
+				executionRepository,
 				chatExecutionService,
-			} = setupDeletion();
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([sessions[0]]);
-			executionRepository.existsRunningByThread.mockResolvedValue(true);
-			executionRepository.findLatestByThreadId.mockResolvedValue(mock({ id: 'exec-1' }));
-			chatExecutionService.requestCancel.mockResolvedValue(true);
-			executionService.deleteThread
-				.mockRejectedValueOnce(new ConflictError('busy'))
-				.mockResolvedValueOnce(true);
-
-			const done = service.deleteThreadsOfUser('user-1');
-			await vi.runAllTimersAsync();
-			await done;
-
-			expect(chatExecutionService.requestCancel).toHaveBeenCalledWith({
-				projectId: 'project-1',
-				agentId: AGENT_ID,
-				threadId: 'thread-1',
-				executionId: 'exec-1',
-				userId: 'user-1',
-				surface: 'system',
-			});
-			expect(chatExecutionService.requestCancel.mock.invocationCallOrder[0]).toBeLessThan(
-				executionService.deleteThread.mock.invocationCallOrder[0],
-			);
-			expect(executionService.deleteThread).toHaveBeenCalledTimes(2);
-		});
-
-		it('deletes the child sessions of delegated runs before their parent', async () => {
-			const { service, executionService, executionRepository, threadRepository } = setupDeletion();
-			const root = sessions[0];
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([root]);
-			threadRepository.findByParentThreadId.mockImplementation(async (parentThreadId) => {
-				const children: Record<string, string[]> = {
-					'thread-1': ['child-1', 'child-2'],
-					'child-1': ['grandchild-1'],
-				};
-				return (children[parentThreadId] ?? []).map((id) =>
-					mock<AgentExecutionThread>({ id, agentId: 'sub-agent', projectId: root.projectId }),
-				);
-			});
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
-			executionService.deleteThread.mockResolvedValue(true);
-
-			await service.deleteThreadsOfUser('user-1');
-
-			expect(threadRepository.findByParentThreadId).toHaveBeenCalledWith('thread-1', 'project-1');
-			expect(executionService.deleteThread.mock.calls.map(([, , threadId]) => threadId)).toEqual([
-				'grandchild-1',
-				'child-2',
-				'child-1',
-				'thread-1',
+				logger,
+			} = setup();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+				{ id: 'thread-2', agentId: AGENT_ID, projectId: 'project-2' },
 			]);
-		});
+			threadRepository.findByParentThreadId.mockResolvedValue([]);
+			messageQueue.prepareSessionStop
+				.mockRejectedValueOnce(new Error('database unavailable'))
+				.mockResolvedValueOnce({ executionIds: ['exec-2'], queueIds: [], attachmentIds: [] });
+			executionRepository.findLatestByThreadId.mockResolvedValue(mock({ id: 'exec-2' }));
 
-		it('stops the root turn when only a child session runs', async () => {
-			const {
-				service,
-				executionService,
-				executionRepository,
-				threadRepository,
-				chatExecutionService,
-			} = setupDeletion();
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([sessions[0]]);
-			threadRepository.findByParentThreadId.mockImplementation(async (parentThreadId) =>
-				parentThreadId === 'thread-1'
-					? [
-							mock<AgentExecutionThread>({
-								id: 'child-1',
-								agentId: 'sub-agent',
-								projectId: 'project-1',
-							}),
-						]
-					: [],
+			await service.stopThreadsOfUser('user-1');
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to stop a system agent session on account deletion',
+				expect.objectContaining({ threadId: 'thread-1', userId: 'user-1' }),
 			);
-			executionRepository.existsRunningByThread.mockImplementation(
-				async (threadId) => threadId === 'child-1',
+			expect(chatExecutionService.requestCancel).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'thread-2',
+					executionId: 'exec-2',
+					projectId: 'project-2',
+				}),
 			);
-			executionRepository.findLatestByThreadId.mockResolvedValue(mock({ id: 'exec-1' }));
+		});
+	});
+
+	describe('deleteThreadsOfUser', () => {
+		it('removes all private system chats without requiring a registered provider', async () => {
+			const destroy = vi.fn(async () => {});
+			const { service, threadRepository, executionService } = setup([], undefined, {
+				acquire: async () => undefined,
+				destroy,
+			});
+			threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+				{ id: 'child-1', agentId: 'unregistered-agent', projectId: 'project-1' },
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+			]);
 			executionService.deleteThread.mockResolvedValue(true);
-
 			await service.deleteThreadsOfUser('user-1');
-
-			expect(chatExecutionService.requestCancel).toHaveBeenCalledExactlyOnceWith(
-				expect.objectContaining({ threadId: 'thread-1', executionId: 'exec-1' }),
-			);
-			expect(executionService.deleteThread).toHaveBeenCalledTimes(2);
-		});
-
-		it('deletes the parent when a child session fails', async () => {
-			const { service, executionService, executionRepository, threadRepository, logger } =
-				setupDeletion();
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([sessions[0]]);
-			threadRepository.findByParentThreadId.mockImplementation(async (parentThreadId) =>
-				parentThreadId === 'thread-1'
-					? [
-							mock<AgentExecutionThread>({
-								id: 'child-1',
-								agentId: 'sub-agent',
-								projectId: 'project-1',
-							}),
-						]
-					: [],
-			);
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
-			executionService.deleteThread
-				.mockRejectedValueOnce(new Error('db down'))
-				.mockResolvedValueOnce(true);
-
-			await service.deleteThreadsOfUser('user-1');
-
-			expect(executionService.deleteThread).toHaveBeenLastCalledWith(
-				'project-1',
-				AGENT_ID,
-				'thread-1',
+			expect(threadRepository.findPrivateSystemAgentSessionsForDeletion).toHaveBeenCalledWith(
 				'user-1',
 			);
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Failed to delete a system agent session of a deleted user',
-				expect.objectContaining({ threadId: 'child-1', error: 'db down' }),
-			);
+			expect(executionService.deleteThread.mock.calls).toEqual([
+				['project-1', 'unregistered-agent', 'child-1', 'user-1'],
+				['project-1', AGENT_ID, 'thread-1', 'user-1'],
+			]);
+			expect(destroy).toHaveBeenCalledExactlyOnceWith({
+				agentId: AGENT_ID,
+				threadId: 'thread-1',
+				userId: 'user-1',
+			});
 		});
 
-		it('gives up on a session that stays busy and logs it', async () => {
+		it('cleans the workspace when another request has already removed the session', async () => {
+			const destroy = vi.fn(async () => {});
+			const { service, threadRepository, executionService } = setup([], undefined, {
+				acquire: async () => undefined,
+				destroy,
+			});
+			threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+			]);
+			executionService.deleteThread.mockResolvedValue(false);
+			executionService.findThreadById.mockResolvedValue(null);
+			await service.deleteThreadsOfUser('user-1');
+			expect(destroy).toHaveBeenCalledExactlyOnceWith({
+				agentId: AGENT_ID,
+				threadId: 'thread-1',
+				userId: 'user-1',
+			});
+		});
+
+		it('waits for a stopped turn to finish before deleting its session', async () => {
 			vi.useFakeTimers();
-			const { service, executionService, executionRepository, threadRepository, logger } =
-				setupDeletion();
-			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([sessions[0]]);
-			executionRepository.existsRunningByThread.mockResolvedValue(false);
-			executionService.deleteThread.mockRejectedValue(new ConflictError('busy'));
+			try {
+				const { service, threadRepository, executionService } = setup();
+				threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+					{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+				]);
+				executionService.deleteThread
+					.mockRejectedValueOnce(new ConflictError('Session has active work'))
+					.mockResolvedValueOnce(true);
+				const deletion = service.deleteThreadsOfUser('user-1');
+				await vi.runAllTimersAsync();
+				await deletion;
+				expect(executionService.deleteThread).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 
-			const done = service.deleteThreadsOfUser('user-1');
-			await vi.runAllTimersAsync();
-			await done;
-
-			expect(executionService.deleteThread).toHaveBeenCalledTimes(5);
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Failed to delete a system agent session of a deleted user',
-				expect.objectContaining({ threadId: 'thread-1', error: 'busy' }),
-			);
+		it('fails account cleanup if a session still has active work after all retries', async () => {
+			vi.useFakeTimers();
+			try {
+				const { service, threadRepository, executionService } = setup();
+				threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+					{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+				]);
+				executionService.deleteThread.mockRejectedValue(
+					new ConflictError('Session has active work'),
+				);
+				const deletion = expect(service.deleteThreadsOfUser('user-1')).rejects.toThrow(
+					ConflictError,
+				);
+				await vi.runAllTimersAsync();
+				await deletion;
+				expect(executionService.deleteThread).toHaveBeenCalledTimes(5);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 

@@ -1,5 +1,5 @@
 import type { WorkflowSharingService } from '@n8n/backend-services';
-import type { User, UserRepository, WorkflowRepository } from '@n8n/db';
+import { Person, type User, type UserRepository, type WorkflowRepository } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -10,12 +10,13 @@ import type { MigrationOwnerSuggestionService } from '../migration-owner-suggest
 
 const WORKFLOW_ID = 'wf-1';
 const admin = { id: 'admin-1' } as User;
-const alice = {
+const alice = Object.assign(new Person(), {
 	id: 'alice',
 	firstName: 'Alice',
 	lastName: 'A',
 	email: 'alice@example.com',
-} as User;
+});
+const aliceWith = (attributes: Partial<Person>) => Object.assign(new Person(), alice, attributes);
 
 describe('MigrationOwnerAssignmentService', () => {
 	let workflowRepository: MockProxy<WorkflowRepository>;
@@ -72,11 +73,15 @@ describe('MigrationOwnerAssignmentService', () => {
 			expect(ownerRepository.assign).not.toHaveBeenCalled();
 		});
 
-		it('rejects a user who cannot access the workflow before writing', async () => {
+		it('rejects a user who cannot edit the workflow before writing', async () => {
 			workflowSharingService.getUserIdsWithAccessToWorkflow.mockResolvedValue(['someone-else']);
 
 			await expect(service.assign(WORKFLOW_ID, alice.id, admin)).rejects.toBeInstanceOf(
 				BadRequestError,
+			);
+			expect(workflowSharingService.getUserIdsWithAccessToWorkflow).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				'workflow:update',
 			);
 			expect(ownerRepository.assign).not.toHaveBeenCalled();
 		});
@@ -85,7 +90,7 @@ describe('MigrationOwnerAssignmentService', () => {
 			['pending', { isPending: true }],
 			['disabled', { disabled: true }],
 		])('rejects a %s user before writing', async (_, flags) => {
-			userRepository.findManyByIds.mockResolvedValue([{ ...alice, ...flags } as User]);
+			userRepository.findManyByIds.mockResolvedValue([aliceWith(flags)]);
 
 			await expect(service.assign(WORKFLOW_ID, alice.id, admin)).rejects.toBeInstanceOf(
 				BadRequestError,
@@ -104,8 +109,13 @@ describe('MigrationOwnerAssignmentService', () => {
 	});
 
 	describe('candidates', () => {
-		it('returns the users who can open the workflow, without a source', async () => {
+		it('returns the users who can edit the workflow, without a source', async () => {
 			const candidates = await service.candidates(WORKFLOW_ID);
+
+			expect(workflowSharingService.getUserIdsWithAccessToWorkflow).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				'workflow:update',
+			);
 
 			// `isPending` is only right with the role and the auth identities loaded.
 			expect(userRepository.findManyByIds).toHaveBeenCalledWith([alice.id], {
@@ -120,8 +130,8 @@ describe('MigrationOwnerAssignmentService', () => {
 		it('leaves out the users who cannot sign in', async () => {
 			userRepository.findManyByIds.mockResolvedValue([
 				alice,
-				{ ...alice, id: 'pending', isPending: true } as User,
-				{ ...alice, id: 'disabled', disabled: true } as User,
+				aliceWith({ id: 'pending', isPending: true }),
+				aliceWith({ id: 'disabled', disabled: true }),
 			]);
 
 			const candidates = await service.candidates(WORKFLOW_ID);
