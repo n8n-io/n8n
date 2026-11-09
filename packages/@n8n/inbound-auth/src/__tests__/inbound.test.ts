@@ -1,5 +1,5 @@
 import type { ProtectedResource } from '../contracts';
-import { extractBearer, inboundFrom } from '../inbound';
+import { extractBearer, inboundFrom, inboundRequestOf, isUrlIssuer } from '../inbound';
 import type { Inbound, Verified } from '../pipeline';
 
 const resourceUrl = 'https://n8n.example/mcp-server/http';
@@ -56,6 +56,41 @@ describe('inboundFrom', () => {
 		expect(inbound.surface).toBe('trigger');
 		expect(inbound.acceptedSourceIds).toEqual(['source-a']);
 	});
+
+	it('leaves grant unset when the resource issues no grant', () => {
+		expect(inboundFrom(resource, request)).not.toHaveProperty('grant');
+	});
+
+	it('takes grant from the resource when it issues one', () => {
+		const granting: ProtectedResource = {
+			...resource,
+			surface: 'trigger',
+			getGrant: () => ({ audiences: [resourceUrl], executeAccessWorkflowId: 'wf-1' }),
+		};
+
+		const inbound = inboundFrom(granting, request);
+
+		expect(inbound.grant).toEqual({ audiences: [resourceUrl], executeAccessWorkflowId: 'wf-1' });
+	});
+});
+
+describe('inboundRequestOf', () => {
+	it('takes method, original URL, headers and ip from an Express-shaped request', () => {
+		const headers = { authorization: 'Bearer t', 'x-forwarded-for': '198.51.100.1' };
+
+		expect(
+			inboundRequestOf({
+				method: 'GET',
+				originalUrl: '/api/v1/workflows?limit=1',
+				headers,
+				ip: '203.0.113.7',
+			}),
+		).toEqual({ method: 'GET', url: '/api/v1/workflows?limit=1', headers, ip: '203.0.113.7' });
+	});
+
+	it('stamps an empty ip when the request has none', () => {
+		expect(inboundRequestOf({ method: 'GET', originalUrl: '/', headers: {} }).ip).toBe('');
+	});
 });
 
 describe('extractBearer', () => {
@@ -97,6 +132,22 @@ describe('extractBearer', () => {
 			ok: false,
 			reason: 'malformed-credential',
 		});
+	});
+});
+
+describe('isUrlIssuer', () => {
+	it.each(['https://idp.example', 'http://localhost:5678'])('routes %s as a URL issuer', (iss) => {
+		expect(isUrlIssuer(iss)).toBe(true);
+	});
+
+	it.each([
+		['the API-key issuer', 'n8n'],
+		['the token-exchange issuer', 'n8n-token-exchange'],
+		['a non-http URL', 'ftp://idp.example'],
+		['a number', 42],
+		['no issuer', undefined],
+	])('does not route %s as a URL issuer', (_label, iss) => {
+		expect(isUrlIssuer(iss)).toBe(false);
 	});
 });
 

@@ -156,6 +156,7 @@ function preferenceRow(overrides: Partial<Preference> = {}): Preference {
 		projectId: null,
 		project: null,
 		source: 'aia',
+		createdBy: null,
 		scopes: [],
 		createdAt: '2026-09-24T00:00:00.000Z',
 		updatedAt: '2026-09-24T00:00:00.000Z',
@@ -395,7 +396,7 @@ describe('PreferenceCard', () => {
 		});
 
 		it('renders nothing for another tool that answers in the saved shape', () => {
-			renderActive({ toolName: 'workflows' });
+			renderActive({ toolName: 'workflow_builder_workflows' });
 
 			expect(screen.queryByTestId('instance-ai-preference-card')).toBeNull();
 		});

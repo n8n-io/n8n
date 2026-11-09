@@ -43,8 +43,11 @@ export class AgentDefaultModelResolverService {
 			projectId,
 			user,
 		).list();
-		const supportedCredentials = credentials.filter((credential) =>
-			Object.hasOwn(LLM_PROVIDER_DEFAULTS, credential.type),
+		// A provider without a default model (Microsoft Foundry) is never a new agent's default.
+		const supportedCredentials = credentials.filter(
+			(credential) =>
+				Object.hasOwn(LLM_PROVIDER_DEFAULTS, credential.type) &&
+				LLM_PROVIDER_DEFAULTS[credential.type].defaultModel !== undefined,
 		);
 
 		if (supportedCredentials.length === 0) {
@@ -80,16 +83,16 @@ export class AgentDefaultModelResolverService {
 		credentialId: string,
 		verifiedModelIds: readonly string[],
 	): AgentModelCredentialConfig | null {
-		const defaults = this.findProviderDefault(provider);
-		if (!defaults) return null;
+		const defaultModel = this.findProviderDefault(provider)?.defaultModel;
+		if (!defaultModel) return null;
 
-		const match = findVerifiedModelId(provider, defaults.defaultModel, verifiedModelIds);
+		const match = findVerifiedModelId(provider, defaultModel, verifiedModelIds);
 		return match ? { model: `${provider}/${match}`, credential: credentialId } : null;
 	}
 
 	private findProviderDefault(
 		provider: string,
-	): { provider: string; defaultModel: string; credentialType: string } | undefined {
+	): { provider: string; defaultModel?: string; credentialType: string } | undefined {
 		const entry = Object.entries(LLM_PROVIDER_DEFAULTS).find(
 			([, defaults]) => defaults.provider === provider,
 		);
@@ -132,7 +135,7 @@ export class AgentDefaultModelResolverService {
 		if (!credential) return null;
 
 		const defaults = LLM_PROVIDER_DEFAULTS[credential.type];
-		if (!defaults) return null;
+		if (!defaults?.defaultModel) return null;
 
 		if (!isModelDiscoveryProvider(defaults.provider)) {
 			return { model: `${defaults.provider}/${defaults.defaultModel}`, credential: credential.id };

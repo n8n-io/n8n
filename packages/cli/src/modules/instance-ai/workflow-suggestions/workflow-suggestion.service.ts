@@ -156,6 +156,34 @@ export class WorkflowSuggestionService {
 		};
 	}
 
+	async requireCurrentBaseline(baseline: WorkflowSuggestionBaseline, ctx: OperationContext = {}) {
+		const { user, workflow } = await this.getEditorContext(
+			baseline.backgroundUserId,
+			baseline.workflowId,
+			ctx,
+		);
+
+		const target = {
+			workflow,
+			projectId: workflow.shared.find(({ role }) => role === 'workflow:owner')?.projectId,
+			latestPublishHistoryEventId:
+				await this.workflowPublishHistoryRepository.getLatestPublishHistoryEventId(
+					baseline.workflowId,
+					ctx,
+				),
+		};
+
+		if (
+			(await calculateWorkflowChecksum(baseline.original)) !== baseline.expectedBaseline.checksum ||
+			!(await this.matchesBaseline(baseline, target)) ||
+			!(await this.isPublished(workflow, ctx))
+		) {
+			throw new ConflictError('The workflow no longer matches the published baseline.');
+		}
+
+		return user;
+	}
+
 	private async readWorkflowTarget(
 		workflowId: string,
 		ctx: OperationContext,

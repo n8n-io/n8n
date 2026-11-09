@@ -1,6 +1,6 @@
+import type { SerializedWorkflow } from '@n8n/api-types';
 import { WorkflowEntity } from '@n8n/db';
 
-import type { SerializedWorkflow } from '../../../spec/serialized/workflow.schema';
 import { WorkflowSerializer } from '../workflow.serializer';
 
 const wire = (overrides: Partial<SerializedWorkflow> = {}): SerializedWorkflow => ({

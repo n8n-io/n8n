@@ -4,9 +4,11 @@ import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
-import { unwrapLuxonValues } from '../runtime/luxon-transfer';
+import { unwrapTransferredValue } from '../runtime/transfer-codec';
+import { HostDataResolver } from './host-data-resolver';
 import {
 	dispatchHostCall,
+	escapeHostResult,
 	getArrayElement,
 	getValueAtPath,
 	isErrorSentinel,
@@ -303,13 +305,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * for navigation and guard semantics); errors are caught and returned
 	 * as sentinels instead of crossing the isolate boundary.
 	 *
-	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createGetValueAtPathRef(data: WorkflowData): ivm.Callback {
+	private createGetValueAtPathRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((pathArr: string[]) => {
 			try {
-				return getValueAtPath(data, pathArr);
+				return getValueAtPath(resolver, pathArr);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -323,13 +324,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * for navigation and guard semantics); errors are caught and returned
 	 * as sentinels instead of crossing the isolate boundary.
 	 *
-	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
-	private createGetArrayElementRef(data: WorkflowData): ivm.Callback {
+	private createGetArrayElementRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((pathArr: string[], index: number) => {
 			try {
-				return getArrayElement(data, pathArr, index);
+				return getArrayElement(resolver, pathArr, index);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -350,13 +350,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * not isolated-vm objects (`Reference`/`ExternalCopy`) or other
 	 * non-cloneable values.
 	 *
-	 * @param data - Current workflow data
 	 * @private
 	 */
-	private createCallHostRef(data: WorkflowData): ivm.Callback {
+	private createCallHostRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
-				return dispatchHostCall(rawMsg, data);
+				return escapeHostResult(dispatchHostCall(rawMsg, resolver.getData()));
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -407,13 +406,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Host callbacks are ivm.Callback instances: inside the isolate they
 		// arrive as plain functions with structured-clone marshaling, so the
-		// runtime invokes them directly. Callbacks are GC-managed; there is no
-		// release() to call in `finally`.
-		const getValueAtPath = this.createGetValueAtPathRef(data);
-		const getArrayElement = this.createGetArrayElementRef(data);
-		const callHost = this.createCallHostRef(data);
+		// runtime invokes them directly. isolated-vm frees a callback only at the
+		// next isolated-vm call in the process, even after the isolate is disposed.
+		// So the callbacks read the data from a resolver that `finally` disposes.
+		const resolver = new HostDataResolver(data);
 
 		try {
+			const getValueAtPath = this.createGetValueAtPathRef(resolver);
+			const getArrayElement = this.createGetArrayElementRef(resolver);
+			const callHost = this.createCallHostRef(resolver);
 			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
 
 			// Wrap transformed code so 'this' === the closure-scoped context.
@@ -467,8 +468,8 @@ try {
 			this.logger.debug('[IsolatedVmBridge] Expression executed successfully');
 
 			// The structured clone above drops the prototype of a class instance, so
-			// rebuild the luxon instances from the markers the isolate sent.
-			return unwrapLuxonValues(result);
+			// rebuild the luxon and Error instances from the markers the isolate sent.
+			return unwrapTransferredValue(result);
 		} catch (error) {
 			// Re-throw reconstructed errors as-is.
 			// Note: TypeError is intentionally NOT included here — the isolate's
@@ -492,6 +493,8 @@ try {
 				);
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
+		} finally {
+			resolver.dispose();
 		}
 	}
 

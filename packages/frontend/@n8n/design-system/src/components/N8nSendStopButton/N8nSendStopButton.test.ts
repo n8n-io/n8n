@@ -178,9 +178,9 @@ describe('N8nSendStopButton', () => {
 			});
 
 			const button = container.querySelector('button');
-			expect(button).toHaveAttribute('data-variant', 'solid');
+			expect(button).toHaveAttribute('data-variant', 'brand');
 			expect(button).toHaveAttribute('data-size', 'medium');
-			expect(button).toHaveAttribute('data-icon-size', 'large');
+			expect(button).toHaveAttribute('data-icon-size', 'medium');
 			expect(button).toHaveAttribute('data-icon-only', 'true');
 			expect(button).toHaveAttribute('data-icon', 'arrow-up');
 			expect(button).not.toHaveAttribute('disabled');
@@ -209,7 +209,7 @@ describe('N8nSendStopButton', () => {
 			});
 
 			const button = container.querySelector('button');
-			expect(button).toHaveAttribute('data-variant', 'solid');
+			expect(button).toHaveAttribute('data-variant', 'brand');
 			expect(button).toHaveAttribute('data-size', 'small');
 			expect(button).toHaveAttribute('data-icon-only', '');
 		});

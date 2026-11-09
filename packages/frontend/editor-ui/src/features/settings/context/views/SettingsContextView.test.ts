@@ -5,8 +5,14 @@ import userEvent from '@testing-library/user-event';
 
 import SettingsContextView from './SettingsContextView.vue';
 import { useContextStore } from '../context.store';
+import { useSkillsStore } from '../skills.store';
 
 const push = vi.fn();
+const flags = vi.hoisted(() => ({ skills: false }));
+
+vi.mock('../context.utils', () => ({
+	isContextSkillsEnabled: () => flags.skills,
+}));
 const showErrorMock = vi.fn();
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -24,6 +30,7 @@ const renderView = createComponentRenderer(SettingsContextView);
 describe('SettingsContextView', () => {
 	beforeEach(() => {
 		createTestingPinia();
+		flags.skills = false;
 		push.mockClear();
 		showErrorMock.mockClear();
 	});
@@ -52,7 +59,7 @@ describe('SettingsContextView', () => {
 		expect(getByTestId('settings-context-sources-row')).toBeInTheDocument();
 	});
 
-	it('marks Skills and Sources as unavailable', () => {
+	it('marks Skills and Sources as unavailable while the agents module is off', () => {
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('settings-context-skills-row')).toHaveTextContent('Coming soon');
@@ -78,5 +85,34 @@ describe('SettingsContextView', () => {
 		await userEvent.click(getByTestId('settings-context-preferences-row'));
 
 		expect(push).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+	});
+
+	describe('with the skills module on', () => {
+		beforeEach(() => {
+			flags.skills = true;
+		});
+
+		it('shows the skill count and opens the skills list', async () => {
+			const skillsStore = mockedStore(useSkillsStore);
+			skillsStore.count = 7;
+
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			expect(skillsStore.fetchSkillCount).toHaveBeenCalled();
+			expect(getByTestId('settings-context-skills-row')).toHaveTextContent('7 skills');
+
+			await userEvent.click(getByTestId('settings-context-skills-row'));
+			expect(push).toHaveBeenCalledWith({ name: 'SettingsContextSkills' });
+		});
+
+		it('reports a failed skill count', async () => {
+			mockedStore(useSkillsStore).fetchSkillCount.mockRejectedValueOnce(new Error('offline'));
+
+			renderView();
+			await new Promise(process.nextTick);
+
+			expect(showErrorMock).toHaveBeenCalled();
+		});
 	});
 });

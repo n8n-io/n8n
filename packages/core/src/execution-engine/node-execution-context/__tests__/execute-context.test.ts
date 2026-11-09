@@ -20,13 +20,20 @@ import {
 	ExpressionError,
 	NodeConnectionTypes,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
+	AI_EVENT_REDACTED_MESSAGE,
 	WAIT_INDEFINITELY,
 	WAIT_FOR_SUB_EXECUTION,
 	MAX_IN_PROCESS_WAIT_MS,
 } from 'n8n-workflow';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
+import { InstanceSettings } from '@/instance-settings';
+import {
+	parseHitlCallbackReference,
+	verifyHitlCallbackReference,
+} from '@/utils/hitl-callback-reference';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
@@ -254,6 +261,46 @@ describe('ExecuteContext', () => {
 	});
 
 	describe('logNodeOutput', () => {
+		// NODE-5746: Forward valid Code node logs to the editor without server warnings.
+		it.each([
+			{ logCall: 'console.log("x", 42)', args: ['x', 42], messages: ['x', 42] },
+			{ logCall: 'console.log(null)', args: [null], messages: ['null'] },
+			{ logCall: 'console.log(undefined)', args: [undefined], messages: ['undefined'] },
+			{ logCall: 'console.log("x", null)', args: ['x', null], messages: ['x', 'null'] },
+		])(
+			'should forward $logCall to the editor in manual mode without warnings',
+			({ args, messages }) => {
+				const sendDataToUI = vi.fn();
+				const codeNode = mock<INode>({
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+				});
+				const context = new ExecuteContext(
+					mock<Workflow>({ settings: { redactionPolicy: 'none' } }),
+					codeNode,
+					mock<IWorkflowExecuteAdditionalData>({ sendDataToUI }),
+					'manual',
+					mock<IRunExecutionData>(),
+					runIndex,
+					connectionInputData,
+					inputData,
+					executeData,
+					[],
+				);
+				const warnSpy = vi.spyOn(context.logger, 'warn').mockImplementation(() => {});
+
+				context.logNodeOutput(...args);
+
+				expect.soft(warnSpy).not.toHaveBeenCalled();
+				expect(sendDataToUI).toHaveBeenCalledTimes(1);
+				expect(sendDataToUI).toHaveBeenCalledWith('sendConsoleMessage', {
+					source: '[Node: "Code"]',
+					messages,
+				});
+			},
+		);
+
 		it('when in manual mode, should parse JSON', () => {
 			const json = '{"key": "value", "nested": {"foo": "bar"}}';
 			const expectedParsedObject = { key: 'value', nested: { foo: 'bar' } };
@@ -835,6 +882,19 @@ describe('ExecuteContext', () => {
 			});
 		});
 
+		it('redacts console messages when a sub-workflow reported the channel', () => {
+			const context = makeContext('manual', {
+				executionData: {
+					runtimeData: {
+						redaction: { version: 2, production: false, manual: false },
+						subWorkflowRedaction: { production: true, manual: true },
+					},
+				},
+			} as unknown as IRunExecutionData);
+
+			expect(context.isConsoleOutputRedacted()).toBe(true);
+		});
+
 		it('fails closed when resolving the policy throws', () => {
 			const throwingRunData = {
 				get executionData(): never {
@@ -844,6 +904,31 @@ describe('ExecuteContext', () => {
 			const context = makeContext('manual', throwingRunData);
 
 			expect(context.isConsoleOutputRedacted()).toBe(true);
+		});
+
+		describe('AI event payloads', () => {
+			it('replaces the payload with the marker when the channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(true, false));
+				context.logAiEvent('ai-llm-generated-output', '{"messages":["secret prompt"]}');
+
+				expect(additionalData.logAiEvent).toHaveBeenCalledWith(
+					'ai-llm-generated-output',
+					expect.objectContaining({ nodeName: node.name, msg: AI_EVENT_REDACTED_MESSAGE }),
+				);
+				expect(JSON.stringify(vi.mocked(additionalData.logAiEvent).mock.calls)).not.toContain(
+					'secret prompt',
+				);
+			});
+
+			it('passes the payload through unchanged when no channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(false, false));
+				context.logAiEvent('ai-llm-generated-output', '{"messages":["hello"]}');
+
+				expect(additionalData.logAiEvent).toHaveBeenCalledWith(
+					'ai-llm-generated-output',
+					expect.objectContaining({ msg: '{"messages":["hello"]}' }),
+				);
+			});
 		});
 
 		describe('production stdout gating', () => {
@@ -1008,6 +1093,53 @@ describe('ExecuteContext', () => {
 
 			expect(vi.getTimerCount()).toBe(0);
 			expect(waitRunExecutionData.waitTill).toBeUndefined();
+		});
+	});
+
+	describe('getApprovalCallbackReference', () => {
+		const instanceSettings = Container.get(InstanceSettings);
+
+		const approvalContext = () =>
+			new ExecuteContext(
+				workflow,
+				node,
+				mock<IWorkflowExecuteAdditionalData>({ executionId: '123' }),
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[],
+			);
+
+		it.each([
+			['approve', 'a'],
+			['decline', 'd'],
+		] as const)(
+			'names the execution and the decision to %s, signed with the instance secret',
+			(decision, encoded) => {
+				const parsed = parseHitlCallbackReference(
+					approvalContext().getApprovalCallbackReference(decision),
+				);
+
+				expect(parsed).toMatchObject({ executionId: '123', decision: encoded });
+				expect(verifyHitlCallbackReference(parsed!, instanceSettings.hmacSignatureSecret)).toBe(
+					true,
+				);
+			},
+		);
+
+		it('rejects approval callbacks in the engine process', () => {
+			const previousInstanceType = instanceSettings.instanceType;
+			Object.assign(instanceSettings, { instanceType: 'engine' });
+			try {
+				expect(() => approvalContext().getApprovalCallbackReference('approve')).toThrow(
+					'Engine v2 does not support approval callbacks yet',
+				);
+			} finally {
+				Object.assign(instanceSettings, { instanceType: previousInstanceType });
+			}
 		});
 	});
 });

@@ -5,6 +5,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	MessageEventBusDestinationTypeNames,
+	type MessageEventBusDestinationSyslogOptions,
 	type MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 
@@ -168,9 +169,34 @@ describe('Log streaming in Public API', () => {
 			expect(response.body.data[0].id).toBe(created.id);
 			expect(response.body.data[0].type).toBe('webhook');
 		});
+
+		it('lists a stored destination that the request checks reject', async () => {
+			const options: MessageEventBusDestinationSyslogOptions = {
+				__type: MessageEventBusDestinationTypeNames.syslog,
+				label: 'Stored before the host checks',
+				host: '127.1',
+			};
+			const stored = await service().addDestination(
+				createMessageEventBusDestination(
+					Container.get(MessageEventBus),
+					Container.get(OutboundHttp),
+					options,
+				),
+				false,
+			);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/settings/log-streaming/destinations');
+
+			expect(response.status).toBe(200);
+			expect(response.body.data).toContainEqual(
+				expect.objectContaining({ id: stored.getId(), host: '127.1' }),
+			);
+		});
 	});
 
-	describe('GET /settings/log-streaming/destinations/{id}', () => {
+	describe('GET /settings/log-streaming/destinations/{destinationId}', () => {
 		it('omits credentials and backend-only fields of a destination stored outside the Public API', async () => {
 			const options: MessageEventBusDestinationWebhookOptions = {
 				__type: MessageEventBusDestinationTypeNames.webhook,
@@ -394,7 +420,7 @@ describe('Log streaming in Public API', () => {
 		});
 	});
 
-	describe('PUT /settings/log-streaming/destinations/{id}', () => {
+	describe('PUT /settings/log-streaming/destinations/{destinationId}', () => {
 		it('updates an existing destination', async () => {
 			const created = await createDestination();
 
@@ -452,7 +478,7 @@ describe('Log streaming in Public API', () => {
 		});
 	});
 
-	describe('POST /settings/log-streaming/destinations/{id}/test', () => {
+	describe('POST /settings/log-streaming/destinations/{destinationId}/test', () => {
 		it('sends a test message to a destination', async () => {
 			const created = await createDestination();
 			const testSpy = vi.spyOn(service(), 'testDestination').mockResolvedValue(true);
@@ -487,7 +513,7 @@ describe('Log streaming in Public API', () => {
 		});
 	});
 
-	describe('DELETE /settings/log-streaming/destinations/{id}', () => {
+	describe('DELETE /settings/log-streaming/destinations/{destinationId}', () => {
 		it('removes the destination', async () => {
 			const created = await createDestination();
 

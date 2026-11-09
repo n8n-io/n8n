@@ -104,7 +104,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
@@ -219,7 +219,6 @@ const environmentsStore = useEnvironmentsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
 const projectsStore = useProjectsStore();
-const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 
@@ -751,7 +750,10 @@ function onRenameNode(name: string) {
 }
 
 async function onOpenRenameNodeModal(id: string) {
-	const currentName = workflowDocumentStore?.value?.getNodeById(id)?.name ?? '';
+	const node = workflowDocumentStore?.value?.getNodeById(id);
+	if (node && nodeTypesStore.isNodeDeprecated(node)) return;
+
+	const currentName = node?.name ?? '';
 
 	const activeElement = document.activeElement;
 
@@ -1181,8 +1183,20 @@ function closeNodeCreator() {
 	}
 }
 
-function onCreateSticky() {
-	void onAddNodesAndConnections({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
+function onCursorPosition(position: VueFlowXYPosition) {
+	lastClickPosition.value = [position.x, position.y];
+}
+
+function onCreateSticky(position?: VueFlowXYPosition) {
+	const stickyPosition: XYPosition | undefined = position ? [position.x, position.y] : undefined;
+	if (stickyPosition) {
+		lastClickPosition.value = stickyPosition;
+	}
+	void onAddNodesAndConnections(
+		{ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] },
+		false,
+		stickyPosition,
+	);
 }
 
 function onClickConnectionAdd(connection: Connection) {
@@ -1899,15 +1913,7 @@ const workflowProjectId = computed(
 		projectsStore.personalProject?.id,
 );
 
-watch(
-	workflowProjectId,
-	(projectId) => {
-		if (!projectId) return;
-
-		void typeAvailabilityPoliciesStore.fetchForProject(projectId);
-	},
-	{ immediate: true },
-);
+useTypeAvailability(workflowProjectId);
 
 watch(
 	() => {
@@ -2211,6 +2217,7 @@ onBeforeUnmount(() => {
 			@delete:connection="onDeleteConnection"
 			@click:connection:add="onClickConnectionAdd"
 			@click:pane="onClickPane"
+			@cursor:position="onCursorPosition"
 			@create:node="onOpenNodeCreatorFromCanvas"
 			@create:sticky="onCreateSticky"
 			@delete:nodes="onDeleteNodes"
@@ -2272,7 +2279,7 @@ onBeforeUnmount(() => {
 					<template v-if="containsChatTriggerNodes">
 						<CanvasChatButton
 							v-if="isChatHubAvailable ? isChatHubPanelOpen : isLogsPanelOpen"
-							variant="subtle"
+							variant="outline"
 							:label="i18n.baseText('chat.hide')"
 							:class="$style.chatButton"
 							@click="onToggleChat"
@@ -2283,7 +2290,7 @@ onBeforeUnmount(() => {
 							:shortcut="{ keys: ['c'] }"
 						>
 							<CanvasChatButton
-								:variant="isRunWorkflowButtonVisible ? 'subtle' : 'solid'"
+								:variant="isRunWorkflowButtonVisible ? 'outline' : 'solid'"
 								:label="i18n.baseText('chat.open')"
 								:class="$style.chatButton"
 								@click="onOpenChat"

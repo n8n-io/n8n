@@ -51,23 +51,27 @@ export class WorkflowSharingService {
 				? await this.roleService.rolesWithScope('workflow', options.scopes)
 				: options.workflowRoles;
 
-		return await this.sharedWorkflowRepository.findWorkflowIdsAccessibleToUser(
-			user.id,
-			workflowRoles,
-			projectRoles,
-		);
+		return await this.sharedWorkflowRepository.findWorkflowIdsAccessibleToUser({
+			userId: user.id,
+			workflowRoleSlugs: workflowRoles,
+			projectRoleSlugs: projectRoles,
+			projectId,
+		});
 	}
 
 	/**
-	 * IDs of users who can read the workflow: those holding a global role that
-	 * grants `workflow:read`, plus those holding a project role granting it in
-	 * a project the workflow is shared into with a sharing role granting it.
+	 * IDs of users who have `scope` on the workflow: those holding a global role
+	 * that grants it, plus those holding a project role granting it in a project
+	 * the workflow is shared into with a sharing role granting it.
 	 */
-	async getUserIdsWithAccessToWorkflow(workflowId: string): Promise<string[]> {
+	async getUserIdsWithAccessToWorkflow(
+		workflowId: string,
+		scope: Scope = 'workflow:read',
+	): Promise<string[]> {
 		const [workflowRoles, globalRoles, projectRoles] = await Promise.all([
-			this.roleService.rolesWithScope('workflow', ['workflow:read']),
-			this.roleService.rolesWithScope('global', ['workflow:read']),
-			this.roleService.rolesWithScope('project', ['workflow:read']),
+			this.roleService.rolesWithScope('workflow', [scope]),
+			this.roleService.rolesWithScope('global', [scope]),
+			this.roleService.rolesWithScope('project', [scope]),
 		]);
 
 		const projectIds = await this.sharedWorkflowRepository.findProjectIdsByRole(

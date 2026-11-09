@@ -4,7 +4,7 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
-import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
+import { AiPreferenceScopeFullError, type AiPreferenceService } from '@n8n/backend-services';
 import {
 	BadRequestError,
 	ConflictError,
@@ -16,7 +16,6 @@ import {
 	toAiPreferenceWriteRejection,
 	writeAssistantPreference,
 } from '@/services/ai-preference-write';
-import type { AiPreferenceService } from '@/services/ai-preference.service';
 import type { Telemetry } from '@/telemetry';
 
 const user = mock<User>({ id: 'user-1' });

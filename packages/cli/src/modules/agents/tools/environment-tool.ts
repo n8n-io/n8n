@@ -10,9 +10,11 @@ const DESCRIPTION =
 	'current ISO date/time, instance timezone (IANA), and day of week. ' +
 	'Call when reasoning about "today", deadlines, or scheduling. Tool always requires an empty object as input.';
 
+export const GET_ENVIRONMENT_TOOL_NAME = 'get_environment';
+
 export function createGetEnvironmentTool() {
 	return (
-		new Tool('get_environment')
+		new Tool(GET_ENVIRONMENT_TOOL_NAME)
 			.description(DESCRIPTION)
 			.input(z.object({}))
 			// eslint-disable-next-line @typescript-eslint/require-await -- Tool.handler() expects an async callback

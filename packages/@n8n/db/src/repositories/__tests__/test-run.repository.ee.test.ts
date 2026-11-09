@@ -1,12 +1,15 @@
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 
 import { TestRun } from '../../entities';
+import { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { TestRunRepository } from '../test-run.repository.ee';
 
 describe('TestRunRepository', () => {
 	const entityManager = mockEntityManager(TestRun);
+	Container.set(TransactionRunner, mock<TransactionRunner>());
 	const testRunRepository = Container.get(TestRunRepository);
 
 	beforeEach(() => {

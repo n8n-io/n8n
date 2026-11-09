@@ -37,6 +37,12 @@ import type { ExecutionDataStorageLocation } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
+import {
+	IdempotencyKey,
+	idempotencyKeyStatuses,
+	IDEMPOTENCY_KEY_TTL_MS,
+	type IdempotencyKeyStatus,
+} from './idempotency-key';
 import { InstanceCredentialAssignment } from './instance-credential-assignment';
 import { InvalidAuthToken } from './invalid-auth-token';
 import { PollerState } from './poller-state';
@@ -72,7 +78,10 @@ import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
 import { TestCaseExecution } from './test-case-execution.ee';
 import { TestRun } from './test-run.ee';
-import { User } from './user';
+import { Person } from './person';
+import { ServiceAccount } from './service-account';
+import { ServiceAccountDetails } from './service-account-details';
+import { User, type UserKind } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
 import {
@@ -111,6 +120,10 @@ import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
+	Person,
+	ServiceAccount,
+	ServiceAccountDetails,
+	type UserKind,
 	ActivityEvent,
 	activityEventCategories,
 	activityResourceTypes,
@@ -124,6 +137,10 @@ export {
 	type AgentEvalResultStatus,
 	AgentEvalRating,
 	type AgentEvalVote,
+	IdempotencyKey,
+	idempotencyKeyStatuses,
+	IDEMPOTENCY_KEY_TTL_MS,
+	type IdempotencyKeyStatus,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
@@ -219,6 +236,7 @@ export const entities = {
 	AgentEvalRun,
 	AgentEvalResult,
 	AgentEvalRating,
+	IdempotencyKey,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
@@ -245,6 +263,9 @@ export const entities = {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	Person,
+	ServiceAccount,
+	ServiceAccountDetails,
 	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,

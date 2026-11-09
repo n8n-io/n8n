@@ -9,6 +9,7 @@ import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
+import { ProductionHold } from '@/memory-guard/production-hold';
 import { Telemetry } from '@/telemetry';
 
 import { ConcurrencyQueue } from './concurrency-queue';
@@ -49,6 +50,7 @@ export class ConcurrencyControlService {
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
+		private readonly productionHold: ProductionHold,
 	) {
 		this.logger = this.logger.scoped('concurrency');
 
@@ -156,6 +158,8 @@ export class ConcurrencyControlService {
 	 * Check whether an execution is in any of the queues.
 	 */
 	has(executionId: string) {
+		if (this.productionHold.has(executionId)) return true;
+
 		if (!this.isEnabled) return false;
 
 		for (const queue of this.queues.values()) {
@@ -172,9 +176,12 @@ export class ConcurrencyControlService {
 	 */
 	async throttle({ mode, executionId }: CapacityTarget) {
 		if (mode === 'evaluation') this.ensureEvalQueueResolved();
-		if (!this.isEnabled || this.isUnlimited(mode)) return;
+		if (this.isEnabled && !this.isUnlimited(mode)) {
+			await this.getQueue(mode)?.enqueue(executionId);
+		}
 
-		await this.getQueue(mode)?.enqueue(executionId);
+		// After the queue, so that executions the queue lets through during a hold also wait.
+		if (this.productionHold.shouldHold(mode)) await this.productionHold.wait(executionId);
 	}
 
 	/**
@@ -192,6 +199,13 @@ export class ConcurrencyControlService {
 	 */
 	remove({ mode, executionId }: CapacityTarget) {
 		if (mode === 'evaluation') this.ensureEvalQueueResolved();
+
+		if (this.productionHold.remove(executionId)) {
+			// A held execution already took a place in the concurrency queue.
+			if (this.isEnabled && !this.isUnlimited(mode)) this.getQueue(mode)?.dequeue();
+			return;
+		}
+
 		if (!this.isEnabled || this.isUnlimited(mode)) return;
 
 		this.getQueue(mode)?.remove(executionId);

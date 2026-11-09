@@ -586,6 +586,166 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			);
 		},
 	);
+
+	describe('query parameters with commas in evaluated values', () => {
+		const query = 'SELECT * FROM users WHERE name = $1 AND id = $2';
+
+		it.each([
+			{
+				description: 'keep a value that contains a comma as one bind value',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.name }}, {{ $json.id }}',
+				evaluated: { '{{ $json.name }}': 'Doe, John', '{{ $json.id }}': 'abc' },
+				expectedValues: ['Doe, John', 'abc'],
+			},
+			{
+				description: 'pass a numeric value as one bind value',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.name }}, {{ $json.id }}',
+				evaluated: { '{{ $json.name }}': 'Doe, John', '{{ $json.id }}': 42 },
+				expectedValues: ['Doe, John', '42'],
+			},
+			{
+				description: 'pass a JSON string as one bind value',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.payload }}',
+				evaluated: { '{{ $json.payload }}': '{"id": "7", "name": "x"}' },
+				expectedValues: ['{"id": "7", "name": "x"}'],
+			},
+			{
+				description: 'pass an object as one JSON bind value',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.payload }}, {{ $json.id }}',
+				evaluated: {
+					'{{ $json.payload }}': { id: '7', tags: ['a', 'b'] },
+					'{{ $json.id }}': 'abc',
+				},
+				expectedValues: ['{"id":"7","tags":["a","b"]}', 'abc'],
+			},
+			{
+				description: 'keep an empty value as one bind value',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.name }}, {{ $json.id }}',
+				evaluated: { '{{ $json.name }}': '', '{{ $json.id }}': 'abc' },
+				expectedValues: ['', 'abc'],
+			},
+			{
+				description: 'pass null as SQL NULL',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.name }}, {{ $json.note }}',
+				evaluated: { '{{ $json.name }}': 'Doe, John', '{{ $json.note }}': null },
+				expectedValues: ['Doe, John', null],
+			},
+			{
+				description: 'pass a missing field as SQL NULL',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.name }}, {{ $json.note }}',
+				evaluated: { '{{ $json.name }}': 'Doe, John' },
+				expectedValues: ['Doe, John', null],
+			},
+			{
+				description: 'spread an array across bind values',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ $json.list }}, {{ $json.id }}',
+				evaluated: { '{{ $json.list }}': ['x', 'y'], '{{ $json.id }}': 'abc' },
+				expectedValues: ['x', 'y', 'abc'],
+			},
+			{
+				description: 'pass a missing array element as SQL NULL',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ [$json.a, $json.b] }}, {{ $json.c }}',
+				evaluated: { '{{ [$json.a, $json.b] }}': [undefined, 'x'], '{{ $json.c }}': 'abc' },
+				expectedValues: [null, 'x', 'abc'],
+			},
+			{
+				description: 'skip a missing array element before v2.8',
+				nodeVersion: 2.7,
+				queryReplacement: '={{ [$json.a, $json.b] }}, {{ $json.c }}',
+				evaluated: { '{{ [$json.a, $json.b] }}': [undefined, 'x'], '{{ $json.c }}': 'abc' },
+				expectedValues: ['x', 'abc'],
+			},
+			{
+				description: 'split a literal comma-separated list without expressions',
+				nodeVersion: 2.8,
+				queryReplacement: 'a, b, c',
+				evaluated: {},
+				expectedValues: ['a', 'b', 'c'],
+			},
+			{
+				description: 'split a value that contains a comma before v2.8',
+				nodeVersion: 2.7,
+				queryReplacement: '={{ $json.name }}, {{ $json.id }}',
+				evaluated: { '{{ $json.name }}': 'Doe, John', '{{ $json.id }}': 'abc' },
+				expectedValues: ['Doe', 'John', 'abc'],
+			},
+		])(
+			'should $description',
+			async ({ nodeVersion, queryReplacement, evaluated, expectedValues }) => {
+				const nodeParameters: IDataObject = {
+					operation: 'executeQuery',
+					query,
+					options: { queryReplacement, nodeVersion },
+				};
+				const nodeOptions = nodeParameters.options as IDataObject;
+				const evaluatedByExpression = new Map<string, unknown>(Object.entries(evaluated));
+
+				const mockExecute = {
+					...createMockExecuteFunction(nodeParameters),
+					evaluateExpression: (str: string) => evaluatedByExpression.get(str.trim()),
+				} as unknown as IExecuteFunctions;
+
+				await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
+
+				expect(runQueries).toHaveBeenCalledWith(
+					[{ query, values: expectedValues, options: { partial: true } }],
+					nodeOptions,
+				);
+			},
+		);
+
+		describe('when the field is only one expression', () => {
+			const singleQuery = 'SELECT $1::int AS age';
+
+			// In a real run, getNodeParameter resolves a single-expression field to its value
+			const runWithResolvedValue = async (nodeVersion: number, resolvedValue: unknown) => {
+				const nodeParameters: IDataObject = {
+					operation: 'executeQuery',
+					query: singleQuery,
+					options: { queryReplacement: '={{ $json.age }}', nodeVersion },
+				};
+				const nodeOptions = nodeParameters.options as IDataObject;
+				const mockExecute = {
+					...createMockExecuteFunction(nodeParameters),
+					getNodeParameter: (parameterName: string, _itemIndex: number, fallbackValue?: unknown) =>
+						parameterName === 'options.queryReplacement'
+							? resolvedValue
+							: get(nodeParameters, parameterName, fallbackValue),
+				} as unknown as IExecuteFunctions;
+
+				await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
+
+				return nodeOptions;
+			};
+
+			it.each([
+				{ description: 'null', resolvedValue: null },
+				{ description: 'a missing field', resolvedValue: undefined },
+			])('should pass $description as SQL NULL from v2.8', async ({ resolvedValue }) => {
+				const nodeOptions = await runWithResolvedValue(2.8, resolvedValue);
+
+				expect(runQueries).toHaveBeenCalledWith(
+					[{ query: singleQuery, values: [null], options: { partial: true } }],
+					nodeOptions,
+				);
+			});
+
+			it('should still reject null before v2.8', async () => {
+				await expect(runWithResolvedValue(2.7, null)).rejects.toThrow(
+					'Query Parameters must be a string of comma-separated values or an array of values',
+				);
+			});
+		});
+	});
 });
 
 describe('Test PostgresV2, insert operation', () => {

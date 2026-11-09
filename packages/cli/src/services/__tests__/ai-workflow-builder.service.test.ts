@@ -1,6 +1,7 @@
 import type { Mock, MockedClass } from 'vitest';
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
+import { WorkflowBuilderSessionRepository } from '@n8n/backend-module-workflow-builder';
 import type { HttpTransport, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
@@ -14,7 +15,6 @@ import { join } from 'node:path';
 
 import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -138,6 +138,14 @@ describe('WorkflowBuilderService', () => {
 	});
 
 	describe('constructor', () => {
+		it('uses the public repository constructor for dependency injection', () => {
+			const dependencies: unknown[] = Reflect.getMetadata(
+				'design:paramtypes',
+				WorkflowBuilderService,
+			);
+			expect(dependencies).toContain(WorkflowBuilderSessionRepository);
+		});
+
 		it('should initialize without creating the service immediately', () => {
 			expect(MockedAiWorkflowBuilderService).not.toHaveBeenCalled();
 		});

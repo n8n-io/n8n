@@ -1,9 +1,4 @@
-import {
-	CONTEXT_PREFERENCES_CONTROL_VARIANT,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
-} from '@n8n/api-types';
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import type { PostHogClient } from '@/posthog';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
@@ -25,6 +20,7 @@ import type { UrlService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { SkillsGate } from '@/modules/skills';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -60,9 +56,7 @@ describe('McpProtectedResource', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
-		postHogClient.getFeatureFlags.mockResolvedValue({
-			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
-		});
+		postHogClient.getFeatureFlags.mockResolvedValue({});
 		mcpConfig.baseUrl = '';
 		moduleRegistry.isActive.mockReturnValue(true);
 		vi.mocked(moduleRegistry.settings.get).mockReturnValue(undefined);
@@ -71,15 +65,42 @@ describe('McpProtectedResource', () => {
 			CommunityPackagesConfig,
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
+		Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: true }));
 	});
 
 	describe('getScopeTools', () => {
+		it.each([true, false])('lists description updates only when enabled: %s', async (enabled) => {
+			postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+				flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : true,
+			);
+			expect((await resource.getScopeTools())['credential:update']).toEqual(
+				enabled ? ['update_credential_description'] : [],
+			);
+		});
+
 		it('withholds Agent scopes and tools when Agents is disabled', async () => {
 			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
 			const scopeTools = await resource.getScopeTools();
 			expect(resource.scopes).not.toContain('agent:read');
 			expect(resource.scopes).not.toContain('agent:write');
 			expect(scopeTools['agent:read']).toBeUndefined();
+		});
+
+		it('withholds skill scopes and tools while the skills gate is off', async () => {
+			Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: false }));
+
+			expect(resource.scopes).toContain('agent:read');
+			expect(resource.scopes).not.toContain('skill:read');
+			expect(resource.scopes).not.toContain('skill:write');
+			expect(await resource.getScopeTools()).not.toHaveProperty('skill:read');
+		});
+
+		it('keeps skill scopes when Agents is disabled', () => {
+			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+
+			expect(resource.scopes).not.toContain('agent:read');
+			expect(resource.scopes).toContain('skill:read');
+			expect(resource.scopes).toContain('skill:write');
 		});
 
 		it('should expose the full tool mapping when all features are enabled', async () => {
@@ -90,6 +111,8 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 			expect(scopeTools['workflow:read']).toContain('search_nodes');
 			expect(scopeTools['agent:read']).toContain('search_agents');
+			expect(scopeTools['skill:read']).toContain('search_n8n_skills');
+			expect(scopeTools['skill:write']).toContain('create_skill');
 			expect(scopeTools['tag:read']).toContain('list_workflow_tags');
 		});
 
@@ -138,12 +161,16 @@ describe('McpProtectedResource', () => {
 			}
 		});
 
-		it('checks the activity flag without a user argument', async () => {
+		it('checks each instance flag once without a user argument', async () => {
 			await resource.getScopeTools();
 
-			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledExactlyOnceWith(
-				INSTANCE_ACTIVITY_CONTEXT_FLAG,
-			);
+			for (const flag of [INSTANCE_ACTIVITY_CONTEXT_FLAG, CREDENTIAL_DESCRIPTIONS_FLAG]) {
+				expect(
+					postHogClient.getFeatureFlagForInstance.mock.calls.filter(
+						([requested]) => requested === flag,
+					),
+				).toEqual([[flag]]);
+			}
 		});
 
 		it('should drop tools this instance does not expose', async () => {
@@ -414,66 +441,23 @@ describe('McpProtectedResource', () => {
 				hasGlobalScope.mockReturnValue(true);
 			});
 
-			it('offers both preference scopes to a user in the experiment arm', async () => {
+			it('offers both preference scopes without a flag read', async () => {
 				const scopes = await resource.getGrantableScopes(user);
 
 				expect(scopes).toContain('aiPreference:read');
 				expect(scopes).toContain('aiPreference:write');
-				expect(postHogClient.getFeatureFlags).toHaveBeenCalledWith(user);
+				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
 			});
 
-			it('withholds both preference scopes from a user in the control arm', async () => {
-				// The control arm must not learn the feature exists from the consent
-				// screen, and the tools never register for them, so a tick here would
-				// only record a dead grant.
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
-				});
-
-				const scopes = await resource.getGrantableScopes(user);
-
-				expect(scopes).not.toContain('aiPreference:read');
-				expect(scopes).not.toContain('aiPreference:write');
-				expect(scopes).toEqual(resource.scopes.filter((s) => !s.startsWith('aiPreference:')));
-			});
-
-			it('withholds the preference scopes when the flag is not the variant string', async () => {
-				postHogClient.getFeatureFlags.mockResolvedValue({ [CONTEXT_PREFERENCES_FLAG]: true });
-
-				const scopes = await resource.getGrantableScopes(user);
-
-				expect(scopes).not.toContain('aiPreference:read');
-				expect(scopes).not.toContain('aiPreference:write');
-			});
-
-			it('withholds the preference scopes when the flags cannot be read', async () => {
-				// Registration treats an unreadable flag as off; consent must not
-				// offer a scope the server will then refuse to honour.
-				postHogClient.getFeatureFlags.mockRejectedValue(new Error('Flags unavailable'));
-
-				const scopes = await resource.getGrantableScopes(user);
-
-				expect(scopes).not.toContain('aiPreference:read');
-				expect(scopes).not.toContain('aiPreference:write');
-				expect(scopes).toContain('workflow:read');
-			});
-
-			it('narrows the preference and install scopes independently', async () => {
+			it('keeps the preference scopes when the install scope is narrowed', async () => {
 				hasGlobalScope.mockReturnValue(false);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
-				});
 
 				const scopes = await resource.getGrantableScopes(user);
 
-				expect(scopes).toEqual(
-					resource.scopes.filter(
-						(s) => s !== 'communityPackage:install' && !s.startsWith('aiPreference:'),
-					),
-				);
+				expect(scopes).toEqual(resource.scopes.filter((s) => s !== 'communityPackage:install'));
 			});
 
-			it('still advertises the preference scopes in discovery, which is unauthenticated', () => {
+			it('advertises the preference scopes in discovery, which is unauthenticated', () => {
 				expect(resource.scopes).toContain('aiPreference:read');
 				expect(resource.scopes).toContain('aiPreference:write');
 			});

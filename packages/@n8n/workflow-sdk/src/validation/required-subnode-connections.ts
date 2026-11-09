@@ -167,7 +167,9 @@ export function connectRequiredSubnodeInputs(
 			const parameters = node.parameters ?? {};
 
 			for (const [connectionType, inputConfig] of Object.entries(builderHintInputs)) {
-				if (!connectionType.startsWith('ai_')) continue;
+				// A tool borrowed from the parent stays attached to it directly, so wiring it
+				// into a node that gates tools (an approval tool) would not gate it.
+				if (!connectionType.startsWith('ai_') || connectionType === 'ai_tool') continue;
 				if (!inputConfig?.required) continue;
 				if (cleared.has(`${node.name}\u0000${connectionType}`)) continue;
 

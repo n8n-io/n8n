@@ -156,6 +156,14 @@ export async function createTestScopes(): Promise<{
 	return { readScope, writeScope, deleteScope, adminScope };
 }
 
+/** Leaves every role without scopes, like a database that `n8n start` never synced. */
+export async function removeAllRoleScopes(): Promise<void> {
+	const roleRepository = Container.get(RoleRepository);
+	const roles = await roleRepository.find();
+	for (const role of roles) role.scopes = [];
+	await roleRepository.save(roles);
+}
+
 /**
  * Cleans up test roles and scopes
  */

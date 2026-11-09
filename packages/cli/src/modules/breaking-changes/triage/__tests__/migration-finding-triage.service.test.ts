@@ -77,4 +77,40 @@ describe('MigrationFindingTriageService', () => {
 			expect.anything(),
 		);
 	});
+
+	describe('setStatuses', () => {
+		it("sets the status on the given workflows for the rule's version", async () => {
+			registerRule('removed-nodes-v3', 'v3', 'workflow');
+
+			await expect(
+				service.setStatuses('removed-nodes-v3', ['wf-1', 'wf-2'], 'wont_fix'),
+			).resolves.toBeUndefined();
+
+			expect(findingRepository.setTriageStatusForWorkflows).toHaveBeenCalledWith(
+				'v3',
+				'removed-nodes-v3',
+				['wf-1', 'wf-2'],
+				'wont_fix',
+				expect.anything(),
+			);
+		});
+
+		it('rejects an unknown rule with not-found before writing', async () => {
+			ruleRegistry.getRule.mockReturnValue(undefined);
+
+			await expect(service.setStatuses('unknown', ['wf-1'], 'open')).rejects.toBeInstanceOf(
+				NotFoundError,
+			);
+			expect(findingRepository.setTriageStatusForWorkflows).not.toHaveBeenCalled();
+		});
+
+		it('rejects an instance rule with not-found before writing', async () => {
+			registerRule('docker-only-deployment-v3', 'v3', 'instance');
+
+			await expect(
+				service.setStatuses('docker-only-deployment-v3', ['wf-1'], 'open'),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(findingRepository.setTriageStatusForWorkflows).not.toHaveBeenCalled();
+		});
+	});
 });

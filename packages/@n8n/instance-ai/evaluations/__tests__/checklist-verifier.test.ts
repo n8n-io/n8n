@@ -9,6 +9,7 @@ vi.mock('../../src/utils/eval-agents', () => ({
 		providerModelId: 'test-model',
 		apiKey: 'test-key',
 	})),
+	resolveJudgeModel: vi.fn(() => 'anthropic/test-model'),
 	EPHEMERAL_CACHE: {},
 }));
 
@@ -39,6 +40,8 @@ const GOOD_OUTPUT = {
 		{ id: 1, pass: true, reasoning: 'looks right', failureCategory: null, rootCause: null },
 	],
 };
+
+const CHECKLIST_ITEM_KEYS = ['id', 'reasoning', 'pass', 'failureCategory', 'rootCause'];
 
 type StreamFn = Mock<
 	(
@@ -128,6 +131,31 @@ describe('verifyChecklist (agents stream path)', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('asks for the reasoning before the verdict', async () => {
+		const stream: StreamFn = vi.fn().mockResolvedValue({
+			stream: chunkStream([
+				{
+					type: 'finish',
+					finishReason: 'stop',
+					usage: { totalTokens: 10 },
+					structuredOutput: GOOD_OUTPUT,
+				},
+			]),
+		});
+		mockVerifierAgent(stream);
+
+		await runWithTimers(verifyChecklist(CHECKLIST, ARTIFACT));
+
+		// Structured output writes keys in schema order, so `pass` must come after `reasoning`.
+		const agent = mockCreateEvalAgent.mock.results[0].value as unknown as {
+			structuredOutput: Mock;
+		};
+		const schema = agent.structuredOutput.mock.calls[0][0] as {
+			shape: { results: { element: { shape: Record<string, unknown> } } };
+		};
+		expect(Object.keys(schema.shape.results.element.shape)).toEqual(CHECKLIST_ITEM_KEYS);
 	});
 
 	it('parses structured output from the finish chunk', async () => {
@@ -395,5 +423,45 @@ describe('verifyChecklist (native OpenAI path)', () => {
 			expect.stringContaining('verifier timed out after 240000ms'),
 		]);
 		expect(fetchMock).toHaveBeenCalledTimes(3);
+	});
+
+	it('asks for the reasoning before the verdict in the request schema', async () => {
+		const fetchMock = vi.fn(
+			async (_url: unknown, _init: { body: string }) =>
+				await Promise.resolve({
+					ok: true,
+					json: async () =>
+						await Promise.resolve({
+							status: 'completed',
+							output: [
+								{
+									type: 'message',
+									content: [{ type: 'output_text', text: JSON.stringify(GOOD_OUTPUT) }],
+								},
+							],
+						}),
+				}),
+		);
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { results } = (await runWithTimers(verifyChecklist(CHECKLIST, ARTIFACT))) as Awaited<
+			ReturnType<typeof verifyChecklist>
+		>;
+
+		expect(results).toHaveLength(1);
+		const body = JSON.parse(fetchMock.mock.calls[0][1].body) as {
+			text: {
+				format: {
+					schema: {
+						properties: {
+							results: { items: { properties: Record<string, unknown>; required: string[] } };
+						};
+					};
+				};
+			};
+		};
+		const item = body.text.format.schema.properties.results.items;
+		expect(Object.keys(item.properties)).toEqual(CHECKLIST_ITEM_KEYS);
+		expect(item.required).toEqual(CHECKLIST_ITEM_KEYS);
 	});
 });

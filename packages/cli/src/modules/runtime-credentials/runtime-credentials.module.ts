@@ -3,7 +3,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { RuntimeCredentialProxyService } from '@/services/runtime-credential-proxy.service';
+import { RuntimeCredentialProxyService } from '@n8n/backend-services';
 
 @BackendModule({ name: 'runtime-credentials' })
 export class RuntimeCredentialsModule implements ModuleInterface {

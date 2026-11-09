@@ -18,6 +18,7 @@ import { useDebounce } from '@n8n/composables/useDebounce';
 import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
+import { getProtectedInstanceTooltip } from '@/features/integrations/sourceControl.ee/sourceControl.utils';
 import {
 	N8nButton,
 	N8nInput,
@@ -46,7 +47,11 @@ const dataTableStore = useDataTableStore();
 const sourceControlStore = useSourceControlStore();
 const { fetchDependencyCounts, hasDependencies } = useDependencies();
 
+// On a protected instance only the table structure is locked. Rows stay editable.
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+const readOnlyEnvTooltip = computed(() =>
+	readOnlyEnv.value ? getProtectedInstanceTooltip() : undefined,
+);
 
 const dataTableHasDependents = computed(() => hasDependencies(props.id, 'dataTable'));
 
@@ -175,7 +180,7 @@ onBeforeUnmount(() => {
 			<div :class="$style.header">
 				<DataTableBreadcrumbs
 					:data-table="dataTable"
-					:read-only="readOnlyEnv"
+					:schema-read-only="readOnlyEnv"
 					@imported="onCsvImported"
 				/>
 				<div v-if="saving" :class="$style.saving">
@@ -213,7 +218,6 @@ onBeforeUnmount(() => {
 					</N8nInput>
 					<N8nButton
 						data-test-id="data-table-header-add-row-button"
-						:disabled="readOnlyEnv"
 						@click="dataTableTableRef?.addRow"
 						>{{ i18n.baseText('dataTable.addRow.label') }}</N8nButton
 					>
@@ -222,6 +226,7 @@ onBeforeUnmount(() => {
 						:popover-id="'ds-details-add-column-popover'"
 						:params="{ onAddColumn }"
 						:disabled="readOnlyEnv"
+						:disabled-tooltip="readOnlyEnvTooltip"
 					/>
 				</div>
 			</div>
@@ -230,7 +235,8 @@ onBeforeUnmount(() => {
 					ref="dataTableTableRef"
 					:data-table="dataTable"
 					:search="searchQuery"
-					:read-only="readOnlyEnv"
+					:schema-read-only="readOnlyEnv"
+					:schema-read-only-tooltip="readOnlyEnvTooltip"
 					@toggle-save="onToggleSave"
 				/>
 			</div>

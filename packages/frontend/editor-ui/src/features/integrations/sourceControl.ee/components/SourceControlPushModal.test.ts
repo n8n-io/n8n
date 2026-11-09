@@ -184,6 +184,35 @@ describe('SourceControlPushModal', () => {
 		});
 	});
 
+	it.each(['created', 'modified'] as const)('shows the correct badge for %s', async (status) => {
+		const files: SourceControlledFile[] = [
+			{
+				id: 'workflow-status',
+				name: 'Status workflow',
+				type: 'workflow',
+				status,
+				location: 'local',
+				conflict: false,
+				file: '/workflow-status.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+		];
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(files);
+
+		const { getByText } = renderModal({
+			pinia,
+			props: { data: { eventBus, status: files } },
+		});
+
+		await waitFor(() => {
+			const fileRow = getByText('Status workflow').closest('[data-workflow-id]');
+			const badge = fileRow?.querySelector('.n8n-badge');
+			expect(badge).toBeInTheDocument();
+			expect(badge).toHaveTextContent(status === 'created' ? 'New' : 'Modified');
+			expect(badge?.className).toContain(status === 'created' ? 'success' : 'warning');
+		});
+	});
+
 	it('should toggle checkboxes', async () => {
 		const status: SourceControlledFile[] = [
 			{

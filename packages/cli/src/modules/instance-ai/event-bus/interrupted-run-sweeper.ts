@@ -109,7 +109,7 @@ export class InterruptedRunSweeper {
 		}
 	}
 
-	private async sweepRun(threadId: string, runId: string): Promise<void> {
+	async sweepRun(threadId: string, runId: string): Promise<void> {
 		this.metrics.recordSweepRunExamined();
 
 		const inFlightToolCalls = await this.resolveZombieRun(threadId, runId, {

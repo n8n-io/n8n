@@ -5,6 +5,19 @@
 export const BUILTIN_NODES_PACKAGES = ['n8n-nodes-base', '@n8n/n8n-nodes-langchain'] as const;
 
 /**
+ * Longest accepted workflow node id, and the width of every column that stores one.
+ * n8n generates UUIDs (36 characters). The rest leaves room for readable ids that
+ * API and source control clients supply.
+ */
+export const NODE_ID_MAX_LENGTH = 64;
+
+/**
+ * Whether `nodeId` is too long to store in the columns keyed on node ids.
+ * Counts unicode code points to match PostgreSQL's `varchar(n)` behavior on UTF-8.
+ */
+export const isNodeIdTooLong = (nodeId: string): boolean => [...nodeId].length > NODE_ID_MAX_LENGTH;
+
+/**
  * Built-in node types that need a backend module to run, keyed to that module.
  * The node panel and the AI builder offer them only while the module is enabled.
  * Workflows that already use them still load, and the node fails with a clear error.

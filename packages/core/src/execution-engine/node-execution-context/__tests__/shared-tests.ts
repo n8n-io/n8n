@@ -597,5 +597,69 @@ export const describeCommonTests = (
 				expect(additionalData.dynamicCredentialsResolvedUserId).toBeUndefined();
 			});
 		});
+
+		describe('sub-workflow redaction reporting', () => {
+			let executionContext: IExecutionContext;
+			const originalExecutionData = runExecutionData.executionData;
+
+			beforeEach(() => {
+				executionContext = { version: 1, establishedAt: 123, source: 'manual' };
+				runExecutionData.executionData = mock<NonNullable<IRunExecutionData['executionData']>>({
+					runtimeData: executionContext,
+				});
+			});
+
+			afterEach(() => {
+				runExecutionData.executionData = originalExecutionData;
+			});
+
+			it('escalates the execution context with the channels the sub-workflow reports', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					subWorkflowRedaction: { production: true, manual: false },
+				});
+
+				await context.executeWorkflow(workflowInfo);
+
+				expect(executionContext.subWorkflowRedaction).toEqual({ production: true, manual: false });
+				// The start snapshot keeps its meaning.
+				expect(executionContext.redaction).toBeUndefined();
+			});
+
+			it('combines the report with earlier reports and leaves the earlier object unchanged', async () => {
+				const earlier = { production: true, manual: false };
+				executionContext.subWorkflowRedaction = earlier;
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					subWorkflowRedaction: { production: false, manual: true },
+				});
+
+				await context.executeWorkflow(workflowInfo);
+
+				expect(executionContext.subWorkflowRedaction).toEqual({ production: true, manual: true });
+				expect(earlier).toEqual({ production: true, manual: false });
+			});
+
+			it('does not escalate when the sub-workflow reports nothing', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({ ...executeWorkflowData });
+
+				await context.executeWorkflow(workflowInfo);
+
+				expect(executionContext).not.toHaveProperty('subWorkflowRedaction');
+			});
+
+			it('escalates from the channels attached to a failed sub-workflow error and rethrows', async () => {
+				const error = Object.assign(new Error('sub-workflow failed'), {
+					subWorkflowRedaction: { production: true, manual: true },
+				});
+				additionalData.executeWorkflow.mockRejectedValue(error);
+
+				await expect(context.executeWorkflow(workflowInfo)).rejects.toThrow('sub-workflow failed');
+
+				expect(executionContext.subWorkflowRedaction).toEqual({ production: true, manual: true });
+				// The marker is transport-only and must not persist into the node's taskData.error.
+				expect('subWorkflowRedaction' in error).toBe(false);
+			});
+		});
 	});
 };

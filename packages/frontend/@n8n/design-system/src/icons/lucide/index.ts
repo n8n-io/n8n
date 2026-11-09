@@ -4,10 +4,7 @@ import bucketLoaders from 'virtual:lucide-icons';
 import { getBucketIndex } from './bucket';
 import type { IconBodyLoader } from '../../composables/useIconBodyLoader';
 
-// The key and a loader are only ever used as a pair — `app.provide(IconBodyLoaderKey,
-// loadLucideIconBody)` is the whole contract, at every call site. Re-exported here so
-// wiring icons is one import, and so a consumer that must avoid the component barrel
-// (`.storybook/preview.ts`, a TurboSnap global) has a published path to the key.
+// Export the injection key with the loader so consumers can import both from this subpath.
 export { IconBodyLoaderKey } from '../../composables/useIconBodyLoader';
 export type { IconBodyLoader } from '../../composables/useIconBodyLoader';
 

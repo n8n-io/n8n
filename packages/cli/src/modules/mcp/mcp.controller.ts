@@ -165,6 +165,14 @@ export class McpController {
 				// otherwise count as connected.
 				const unservableDiscover = isDiscoverHandshake && !telemetryPayload.protocol_version;
 				const failed = res.statusCode >= 400 || unservableDiscover;
+				// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+				if (!failed && !transportError)
+					this.mcpService.recordDiscoveryConnection(
+						req.user.id,
+						clientInfo?.name,
+						(req as McpAuthenticatedRequest).mcpCaller,
+					);
+				// EOF Experiment cleanup
 				this.trackConnectionEvent({
 					...telemetryPayload,
 					mcp_connection_status: failed ? 'error' : 'success',

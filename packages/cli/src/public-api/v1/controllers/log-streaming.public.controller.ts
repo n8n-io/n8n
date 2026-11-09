@@ -83,7 +83,7 @@ export class LogStreamingPublicController {
 		return { data: destinations.map(toLogStreamingDestinationPublic) };
 	}
 
-	@Get('/destinations/:id')
+	@Get('/destinations/:destinationId')
 	@ApiKeyScope('eventBusDestination:read')
 	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
 	@ApiSummary('Retrieve a log streaming destination')
@@ -96,9 +96,9 @@ export class LogStreamingPublicController {
 	async getLogStreamingDestination(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', logStreamingDestinationIdParamSchema) id: string,
+		@Param('destinationId', logStreamingDestinationIdParamSchema) destinationId: string,
 	): Promise<LogStreamingDestinationPublicDto> {
-		const destination = await this.findDestinationOrFail(id);
+		const destination = await this.findDestinationOrFail(destinationId);
 
 		return toLogStreamingDestinationPublic(destination);
 	}
@@ -123,7 +123,7 @@ export class LogStreamingPublicController {
 		return await this.saveDestination(req.user, toInternalDestinationOptions(body));
 	}
 
-	@Put('/destinations/:id')
+	@Put('/destinations/:destinationId')
 	@ApiKeyScope('eventBusDestination:update')
 	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
 	@ApiSummary('Update a log streaming destination')
@@ -137,17 +137,20 @@ export class LogStreamingPublicController {
 	async updateLogStreamingDestination(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', logStreamingDestinationIdParamSchema) id: string,
+		@Param('destinationId', logStreamingDestinationIdParamSchema) destinationId: string,
 		@Body body: UpdateLogStreamingDestinationPublicDto,
 	): Promise<LogStreamingDestinationPublicDto> {
 		this.assertNotManagedByEnv();
-		await this.findDestinationOrFail(id);
+		await this.findDestinationOrFail(destinationId);
 
 		// `addDestination` replaces the stored destination that has this id.
-		return await this.saveDestination(req.user, { ...toInternalDestinationOptions(body), id });
+		return await this.saveDestination(req.user, {
+			...toInternalDestinationOptions(body),
+			id: destinationId,
+		});
 	}
 
-	@Post('/destinations/:id/test')
+	@Post('/destinations/:destinationId/test')
 	@ApiKeyScope('eventBusDestination:test')
 	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
 	@ApiSummary('Send a test message to a log streaming destination')
@@ -160,9 +163,9 @@ export class LogStreamingPublicController {
 	async testLogStreamingDestination(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', logStreamingDestinationIdParamSchema) id: string,
+		@Param('destinationId', logStreamingDestinationIdParamSchema) destinationId: string,
 	): Promise<LogStreamingTestResultPublicDto> {
-		const destination = await this.findDestinationOrFail(id);
+		const destination = await this.findDestinationOrFail(destinationId);
 		await assertUserCanUseDestinationCredentials(
 			this.credentialsFinderService,
 			req.user,
@@ -171,7 +174,7 @@ export class LogStreamingPublicController {
 
 		// A delivery failure is a failed test, not a server error.
 		try {
-			const result = await this.destinationService.testDestination(id);
+			const result = await this.destinationService.testDestination(destinationId);
 
 			return { success: result };
 		} catch {
@@ -179,7 +182,7 @@ export class LogStreamingPublicController {
 		}
 	}
 
-	@Delete('/destinations/:id')
+	@Delete('/destinations/:destinationId')
 	@ApiKeyScope('eventBusDestination:delete')
 	@Licensed(LICENSE_FEATURES.LOG_STREAMING)
 	@ApiSummary('Delete a log streaming destination')
@@ -193,11 +196,11 @@ export class LogStreamingPublicController {
 	async deleteLogStreamingDestination(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', logStreamingDestinationIdParamSchema) id: string,
+		@Param('destinationId', logStreamingDestinationIdParamSchema) destinationId: string,
 	): Promise<LogStreamingDestinationPublicDto> {
 		this.assertNotManagedByEnv();
-		const destination = await this.findDestinationOrFail(id);
-		await this.destinationService.removeDestination(id);
+		const destination = await this.findDestinationOrFail(destinationId);
+		await this.destinationService.removeDestination(destinationId);
 
 		return toLogStreamingDestinationPublic(destination);
 	}

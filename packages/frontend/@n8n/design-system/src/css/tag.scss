@@ -118,7 +118,8 @@
 
 @include mixins.b(tag) {
 	@include genTheme();
-	display: inline-block;
+	display: inline-flex;
+	align-items: center;
 	padding: var.$tag-padding;
 	font-size: var.$tag-font-size;
 	color: var.$tag-primary-color;

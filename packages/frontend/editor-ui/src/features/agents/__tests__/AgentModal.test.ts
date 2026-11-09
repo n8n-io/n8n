@@ -14,8 +14,13 @@ vi.mock('@n8n/design-system', async () => {
 			props: {
 				open: Boolean,
 				size: String,
+				containerClass: String,
 				trapFocus: Boolean,
 				disableOutsidePointerEvents: Boolean,
+				showCloseButton: {
+					type: Boolean,
+					default: true,
+				},
 			},
 			emits: ['update:open', 'escapeKeyDown', 'interactOutside', 'openAutoFocus'],
 			setup(_, { emit }) {
@@ -42,18 +47,25 @@ vi.mock('@n8n/design-system', async () => {
 					ref="dialog"
 					v-if="open"
 					role="dialog"
+					:class="containerClass"
 					:data-size="size"
 					:data-trap-focus="trapFocus"
 					:data-disable-outside-pointer-events="disableOutsidePointerEvents"
 					:data-escape-prevented="escapePrevented"
 				>
 					<slot />
+					<button
+						v-if="showCloseButton"
+						data-testid="dialog-close-button"
+						@click="$emit('update:open', false)"
+					/>
 					<button data-test-id="dialog-escape" @click="pressEscape" />
 					<button data-test-id="dialog-dismiss" @click="$emit('update:open', false)" />
 				</section>
 			`,
 		}),
 		N8nDialogHeader: defineComponent({ template: '<header><slot /></header>' }),
+		N8nDialogBody: defineComponent({ template: '<div><slot /></div>' }),
 		N8nDialogFooter: defineComponent({ template: '<footer><slot /></footer>' }),
 		N8nDialogTitle: defineComponent({ template: '<div><slot /></div>' }),
 		N8nButton: defineComponent({
@@ -119,6 +131,80 @@ describe('AgentModal', () => {
 		expect(hiddenFooter.find('footer').exists()).toBe(false);
 	});
 
+	it('renders a title suffix and a custom Cancel label', () => {
+		const wrapper = mountModal(
+			{ cancelLabel: 'Close' },
+			{
+				titleSuffix: '<button data-test-id="title-menu">More</button>',
+				footerActions: '<button>Save</button>',
+			},
+		);
+
+		expect(wrapper.find('[data-test-id="title-menu"]').exists()).toBe(true);
+		expect(wrapper.findAll('footer button').map((button) => button.text())).toContain('Close');
+		wrapper.unmount();
+	});
+
+	it('renders a side panel beside the body only when one is given', () => {
+		const withPanel = mountModal(
+			{},
+			{ default: '<p>Form</p>', sidePanel: '<p data-test-id="versions">Versions</p>' },
+		);
+		expect(
+			withPanel.find('[data-testid="agent-modal-side-panel"] [data-test-id="versions"]').exists(),
+		).toBe(true);
+		withPanel.unmount();
+
+		const withoutPanel = mountModal({}, { default: '<p>Form</p>' });
+		expect(withoutPanel.find('[data-testid="agent-modal-side-panel"]').exists()).toBe(false);
+		withoutPanel.unmount();
+	});
+
+	it('gives the dialog a fixed size when asked', () => {
+		const fixed = mountModal({ fixedSize: true });
+		expect(
+			fixed
+				.get('[role="dialog"]')
+				.classes()
+				.some((name) => /dialogFixed/.test(name)),
+		).toBe(true);
+		fixed.unmount();
+
+		const sized = mountModal();
+		expect(
+			sized
+				.get('[role="dialog"]')
+				.classes()
+				.some((name) => /dialogFixed/.test(name)),
+		).toBe(false);
+		sized.unmount();
+	});
+
+	it('draws the divider over each column of a fixed dialog, in warning color when asked', () => {
+		const wrapper = mountModal(
+			{ fixedSize: true, headerDivider: true, headerDividerTone: 'warning' },
+			{ default: '<p>Form</p>', sidePanel: '<p>Versions</p>' },
+		);
+		const split = wrapper.find('[class*="splitDivided"]');
+
+		expect(split.exists()).toBe(true);
+		expect(split.classes().some((name) => /dividerWarning/.test(name))).toBe(true);
+		expect(
+			wrapper
+				.get('header')
+				.classes()
+				.some((name) => /headerDivider/.test(name)),
+		).toBe(false);
+		wrapper.unmount();
+	});
+
+	it('names the cancel button Cancel by default', () => {
+		const wrapper = mountModal({}, { footerActions: '<button>Save</button>' });
+
+		expect(wrapper.findAll('footer button').map((button) => button.text())).toContain('Cancel');
+		wrapper.unmount();
+	});
+
 	it('preserves inferred footer visibility through the multi-step shell', () => {
 		const wrapper = mount(AgentModalMultiStep, {
 			props: {
@@ -158,6 +244,26 @@ describe('AgentModal', () => {
 		expect(wrapper.getComponent(AgentModal).props('bodyScrollable')).toBe(true);
 	});
 
+	it('keeps the body height content-driven unless stable height is requested', () => {
+		const body = (wrapper: ReturnType<typeof mountModal>) =>
+			wrapper.get('[data-testid="agent-modal-body"]').classes().join(' ');
+
+		const compact = mountModal();
+		expect(body(compact)).not.toContain('bodyStableHeight');
+		compact.unmount();
+
+		const stable = mountModal({ stableHeight: true });
+		expect(body(stable)).toContain('bodyStableHeight');
+	});
+
+	it('forwards stable height through the multi-step shell', () => {
+		const wrapper = mount(AgentModalMultiStep, {
+			props: { open: true, step: 'configure', title: 'Configure asset', stableHeight: true },
+		});
+
+		expect(wrapper.getComponent(AgentModal).props('stableHeight')).toBe(true);
+	});
+
 	it('edits the title and focuses the first body field', async () => {
 		const wrapper = mountModal({ editableTitle: true });
 		await flushPromises();
@@ -169,11 +275,30 @@ describe('AgentModal', () => {
 		expect(document.activeElement).toBe(wrapper.get('[data-test-id="first-body-field"]').element);
 	});
 
+	it('focuses a marked container instead of the field inside it', async () => {
+		const wrapper = mountModal(
+			{},
+			{
+				default:
+					'<div data-test-id="marked" tabindex="-1" data-agent-modal-autofocus><input /></div>',
+			},
+		);
+		await flushPromises();
+
+		expect(document.activeElement).toBe(wrapper.get('[data-test-id="marked"]').element);
+	});
+
 	it('uses the dialog fallback focus when the body has no interactive control', async () => {
-		const wrapper = mountModal({}, { default: '<span>Delete this agent?</span>' });
+		const wrapper = mountModal(
+			{ editableTitle: true },
+			{ default: '<span>Delete this agent?</span>' },
+		);
 		await flushPromises();
 
 		expect(document.activeElement).toBe(wrapper.get('[data-testid="dialog-close-button"]').element);
+		expect(document.activeElement).not.toBe(
+			wrapper.get('[data-test-id="agent-modal-title-input"]').element,
+		);
 	});
 
 	it('blocks parent dismissal while a nested credential dialog is open', async () => {
@@ -184,7 +309,7 @@ describe('AgentModal', () => {
 
 		expect(wrapper.get('[role="dialog"]').attributes('data-escape-prevented')).toBe('true');
 		expect(wrapper.get('[data-testid="agent-modal-back"]').attributes('disabled')).toBeDefined();
-		expect(wrapper.get('[data-testid="dialog-close-button"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="dialog-close-button"]').exists()).toBe(false);
 		expect(wrapper.emitted('update:open')).toBeUndefined();
 	});
 
@@ -252,11 +377,11 @@ describe('AgentModal', () => {
 		expect(wrapper.emitted('update:open')).toEqual([[false]]);
 	});
 
-	it('keeps Back, Close, and dismiss disabled while busy', async () => {
+	it('keeps Back disabled and hides Close while busy', async () => {
 		const wrapper = mountModal({ showBack: true, busy: true });
 
 		expect(wrapper.get('[data-testid="agent-modal-back"]').attributes('disabled')).toBeDefined();
-		expect(wrapper.get('[data-testid="dialog-close-button"]').attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="dialog-close-button"]').exists()).toBe(false);
 		await wrapper.get('[data-test-id="dialog-dismiss"]').trigger('click');
 
 		expect(wrapper.emitted('back')).toBeUndefined();

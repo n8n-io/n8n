@@ -1,14 +1,20 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { SystemTask } from '@n8n/decorators';
-import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
+import type {
+	ClaimedTask,
+	DispatchDecision,
+	DispatchReporter,
+	TaskHandler,
+	TaskRun,
+} from '@n8n/scheduler';
 import type { Tracing } from 'n8n-core';
 
 import { observeSystemTaskRun } from './system-task-run-observer';
 
 /**
- * Runs one durable occurrence of a system task. The signal aborts on shutdown.
- * Lease loss or expiry also aborts it.
+ * Runs one durable occurrence of a system task. The signal aborts on shutdown,
+ * and when the run reaches its timeout. Lease loss or expiry also aborts it.
  *
  * Errors propagate: the executor is what retries the occurrence or gives up on
  * it, following the attempt limit carried by the occurrence's job row.
@@ -26,7 +32,7 @@ export class SystemTaskHandler implements TaskHandler {
 	async execute(
 		task: ClaimedTask,
 		report: DispatchReporter,
-		leaseSignal: AbortSignal,
+		{ signal: leaseSignal }: TaskRun,
 	): Promise<DispatchDecision> {
 		const outcome = await observeSystemTaskRun(
 			this.eventService,
@@ -45,7 +51,7 @@ export class SystemTaskHandler implements TaskHandler {
 			throw outcome.error;
 		}
 
-		// A clean stop after lease loss must reject so the executor counts the failed attempt.
+		// A clean stop after lease loss or a timeout must reject so the executor decides the occurrence's fate.
 		// A clean stop on shutdown still completes.
 		leaseSignal.throwIfAborted();
 

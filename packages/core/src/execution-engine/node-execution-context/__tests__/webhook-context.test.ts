@@ -334,7 +334,7 @@ describe('WebhookContext', () => {
 	});
 
 	describe('getInputConnectionData', () => {
-		const inputPassedToSubNodes = () => vi.mocked(getInputConnectionData).mock.calls[0][3];
+		const inputPassedToSubNodes = () => vi.mocked(getInputConnectionData).mock.calls[0][4];
 
 		it('should expose the request body to sub-nodes', async () => {
 			await webhookContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);

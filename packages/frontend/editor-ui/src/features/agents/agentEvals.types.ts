@@ -5,9 +5,14 @@ import type { AgentEvalDatasetRecord, DataTableDatasetRef } from '@n8n/api-types
 
 export type {
 	AgentEvalColumnMapping,
+	ApplyAgentEvalSuggestionsOptions,
+	ApplyPreviewSuggestionOptions,
+	ApplyPreviewSuggestionResult,
+	ApplyAgentEvalSuggestionsResult,
 	AgentEvalCorrection,
 	AgentEvalDatasetRecord,
 	AgentEvalDraftCase,
+	AgentEvalVerdict,
 	AgentEvalPage,
 	AgentEvalRatingRecord,
 	AgentEvalResultRecord,
@@ -19,8 +24,13 @@ export type {
 	AgentEvalRunSummary,
 	AgentEvalVote,
 	CreateAgentEvalRatingPayload,
+	CreateDraftDatasetOptions,
+	CreateDraftDatasetResult,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
+	PreviewRunOptions,
+	PreviewRunResult,
+	RerunResultOptions,
 	// A result's `toolCalls` blob holds records of this shape under `calls`; the
 	// review view narrows to it rather than re-describing the runner's output.
 	InstanceAiEvalAgentToolCallRecord,
@@ -33,6 +43,8 @@ export {
 	AGENT_EVAL_MAX_COMMENT_CHARS,
 	AGENT_EVAL_MAX_CORRECTION_TEXT_CHARS,
 	AGENT_EVAL_RESULTS_DEFAULT_TAKE,
+	// One apply request takes at most this many results.
+	MAX_APPLY_SUGGESTIONS,
 	// The server clamps `take` to this rather than rejecting it, so a re-read asking
 	// for more silently returns fewer rows than the caller had.
 	MAX_ITEMS_PER_PAGE,
