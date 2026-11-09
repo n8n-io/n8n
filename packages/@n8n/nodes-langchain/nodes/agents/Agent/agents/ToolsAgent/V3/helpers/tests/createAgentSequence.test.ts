@@ -150,6 +150,43 @@ describe('createAgentSequence', () => {
 		);
 	});
 
+	it.each([
+		{ primaryHasTools: false, fallbackHasTools: false },
+		{ primaryHasTools: true, fallbackHasTools: false },
+		{ primaryHasTools: false, fallbackHasTools: true },
+	])(
+		'forces calls only for models with tools: primary=$primaryHasTools, fallback=$fallbackHasTools',
+		({ primaryHasTools, fallbackHasTools }) => {
+			const model = mock<BaseChatModel>({
+				metadata: { tools: primaryHasTools ? [mockTool] : [] },
+			});
+			const fallbackModel = mock<BaseChatModel>({
+				metadata: { tools: fallbackHasTools ? [mockTool] : [] },
+			});
+			const mockAgent = { withFallbacks: vi.fn() };
+			vi.mocked(createToolCallingAgent).mockReturnValue(
+				mock<ReturnType<typeof createToolCallingAgent>>(mockAgent),
+			);
+			vi.mocked(RunnableSequence.from).mockReturnValue(mock<RunnableSequence>());
+
+			createAgentSequence(model, [], mockPrompt, {}, undefined, undefined, fallbackModel, true);
+
+			for (const [chatModel, hasTools] of [
+				[model, primaryHasTools],
+				[fallbackModel, fallbackHasTools],
+			] as const) {
+				if (hasTools) {
+					expect(chatModel.bindTools).toHaveBeenCalledWith([mockTool], { tool_choice: 'any' });
+				} else {
+					expect(chatModel.bindTools).not.toHaveBeenCalled();
+					expect(createToolCallingAgent).toHaveBeenCalledWith(
+						expect.objectContaining({ llm: chatModel, tools: [] }),
+					);
+				}
+			}
+		},
+	);
+
 	it('should pass output parser to getAgentStepsParser', () => {
 		const mockAgent = mock<any>();
 		const mockRunnableSequence = mock<any>();

@@ -35,7 +35,9 @@ export function createAgentSequence(
 	const allTools = getAllTools(model, tools);
 	const agent = createToolCallingAgent({
 		llm:
-			forceToolCall && model.bindTools ? model.bindTools(allTools, { tool_choice: 'any' }) : model,
+			forceToolCall && allTools.length > 0 && model.bindTools
+				? model.bindTools(allTools, { tool_choice: 'any' })
+				: model,
 		tools: allTools,
 		prompt,
 		streamRunnable: false,
@@ -46,7 +48,7 @@ export function createAgentSequence(
 		const fallbackTools = getAllTools(fallbackModel, tools);
 		fallbackAgent = createToolCallingAgent({
 			llm:
-				forceToolCall && fallbackModel.bindTools
+				forceToolCall && fallbackTools.length > 0 && fallbackModel.bindTools
 					? fallbackModel.bindTools(fallbackTools, { tool_choice: 'any' })
 					: fallbackModel,
 			tools: fallbackTools,
