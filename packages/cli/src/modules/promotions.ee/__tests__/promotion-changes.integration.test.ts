@@ -464,6 +464,12 @@ it('lists what applying the branch changes on this instance, named and archived 
 	const bound = await createVariable('SHARED_URL', 'https://destination.example.com');
 	await Container.get(VariablesService).updateCache();
 	expect(changedResources((await agent.get(applyEndpoint).expect(200)).body)).toEqual([]);
+	// A project variable that the workflow reads instead leaves the global one out of the export.
+	// Apply still finds the global one here, so nothing changes.
+	await variables.save({ id: 'ProjectUrl', key: 'SHARED_URL', value: 'project', project });
+	await Container.get(VariablesService).updateCache();
+	expect(changedResources((await agent.get(applyEndpoint).expect(200)).body)).toEqual([]);
+	await variables.delete('ProjectUrl');
 
 	await workflows.update(renamed.id, { name: 'Local name', settings: { executionOrder: 'v1' } });
 	await workflows.update(archived.id, { isArchived: false });
