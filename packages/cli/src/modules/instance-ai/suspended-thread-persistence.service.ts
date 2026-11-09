@@ -73,8 +73,10 @@ export class SuspendedThreadPersistenceService {
 	/**
 	 * Persist the index for a HITL confirmation so a fresh process can find it
 	 * after the in-memory `pendingConfirmations` / `suspendedRuns` maps are gone.
-	 * Fire-and-forget: a DB write failure must not block the agent flow, which
-	 * still operates correctly via the in-memory state on this main.
+	 * Never throws: a DB write failure must not block the agent flow, which
+	 * still operates correctly via the in-memory state on this main. Callers
+	 * await it before they publish the card, so no client can read the card
+	 * from the log while its row is still missing.
 	 */
 	async persistPendingConfirmation(params: {
 		requestId: string;
@@ -85,7 +87,6 @@ export class SuspendedThreadPersistenceService {
 		kind: 'inline' | 'suspended';
 		toolCallId?: string;
 		checkpointKey?: string;
-		checkpointTaskId?: string;
 	}): Promise<void> {
 		try {
 			await this.pendingConfirmationRepo.save(
@@ -98,7 +99,6 @@ export class SuspendedThreadPersistenceService {
 					messageGroupId: params.messageGroupId ?? null,
 					toolCallId: params.toolCallId ?? null,
 					checkpointKey: params.checkpointKey ?? null,
-					checkpointTaskId: params.checkpointTaskId ?? null,
 					expiresAt: this.computePendingConfirmationExpiresAt(),
 				}),
 			);

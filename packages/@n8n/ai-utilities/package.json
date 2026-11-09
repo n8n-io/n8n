@@ -1,12 +1,15 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.32.0",
+  "version": "0.40.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
   "main": "dist/cjs/index.js",
   "typesVersions": {
     "*": {
+      "credential-description": [
+        "dist/esm/utils/credential-description.d.ts"
+      ],
       "text-editor": [
         "dist/esm/utils/workflow-text-editor.d.ts"
       ],
@@ -25,6 +28,9 @@
       "http-proxy-agent": [
         "dist/esm/utils/http-proxy-agent.d.ts"
       ],
+      "refreshing-auth-fetch": [
+        "dist/esm/utils/refreshing-auth-fetch.d.ts"
+      ],
       "tokenizer": [
         "dist/esm/utils/tokenizer/tiktoken.d.ts"
       ],
@@ -33,6 +39,9 @@
       ],
       "llm-output": [
         "dist/esm/llm-output/index.d.ts"
+      ],
+      "gen-ai": [
+        "dist/esm/gen-ai/index.d.ts"
       ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
@@ -43,6 +52,11 @@
     }
   },
   "exports": {
+    "./credential-description": {
+      "types": "./dist/esm/utils/credential-description.d.ts",
+      "import": "./dist/esm/utils/credential-description.js",
+      "require": "./dist/cjs/utils/credential-description.js"
+    },
     ".": {
       "types": "./dist/esm/index.d.ts",
       "import": "./dist/esm/index.js",
@@ -78,6 +92,11 @@
       "import": "./dist/esm/utils/http-proxy-agent.js",
       "require": "./dist/cjs/utils/http-proxy-agent.js"
     },
+    "./refreshing-auth-fetch": {
+      "types": "./dist/esm/utils/refreshing-auth-fetch.d.ts",
+      "import": "./dist/esm/utils/refreshing-auth-fetch.js",
+      "require": "./dist/cjs/utils/refreshing-auth-fetch.js"
+    },
     "./tokenizer": {
       "types": "./dist/esm/utils/tokenizer/tiktoken.d.ts",
       "import": "./dist/esm/utils/tokenizer/tiktoken.js",
@@ -92,6 +111,11 @@
       "types": "./dist/esm/llm-output/index.d.ts",
       "import": "./dist/esm/llm-output/index.js",
       "require": "./dist/cjs/llm-output/index.js"
+    },
+    "./gen-ai": {
+      "types": "./dist/esm/gen-ai/index.d.ts",
+      "import": "./dist/esm/gen-ai/index.js",
+      "require": "./dist/cjs/gen-ai/index.js"
     },
     "./web-search": {
       "types": "./dist/esm/web-search/index.d.ts",
@@ -114,8 +138,8 @@
     "build:unchecked": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --noCheck && tsc-alias -p tsconfig.build.esm.json && tsc-alias -p tsconfig.build.cjs.json && pnpm copy-tokenizer-json dist/cjs && pnpm copy-tokenizer-json dist/esm",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
@@ -125,21 +149,22 @@
     "dist"
   ],
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@types/json-schema": "catalog:",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
-    "@types/mime-types": "catalog:",
     "@types/lodash": "catalog:",
-    "@types/proxy-from-env": "catalog:",
     "fast-check": "catalog:",
     "fast-glob": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
     "axios": "catalog:",
-    "nock": "catalog:"
+    "nock": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:"
   },
   "dependencies": {
     "zod": "catalog:",
@@ -153,11 +178,10 @@
     "lodash": "catalog:",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-network": "workspace:*",
-    "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/utils": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "tmp-promise": "3.0.3",
+    "tmp-promise": "catalog:",
     "js-tiktoken": "catalog:",
     "@thednp/dommatrix": "^3.1.1",
     "pdf-parse": "catalog:",

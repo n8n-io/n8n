@@ -14,12 +14,7 @@ import {
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
-import type { IConnections, ICredentialsDisplayOptions, INode } from 'n8n-workflow';
-import {
-	getCredentialActivationParameters as getCredentialActivationParametersByDisplayOptions,
-	getParentNodes,
-	mapConnectionsByDestination,
-} from 'n8n-workflow';
+import { getCredentialActivationParameters as getCredentialActivationParametersByDisplayOptions } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { computeUnavailableLocatorIssues } from './chat-model-validation';
@@ -36,6 +31,7 @@ import {
 	type SetupNodeCredential,
 } from './credential-utils';
 import { coerceWrongKindListModeParams } from './detect-wrong-kind-locator';
+import { describeSavedPublishState, type SavedWorkflowState } from './saved-workflow-state';
 import type { SetupRequest } from './setup-workflow.schema';
 import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { InstanceAiContext } from '../../types';
@@ -97,7 +93,7 @@ export async function getValidCredentialTypes(
 				node.type,
 				typeVersion,
 				parameters,
-				node.credentials as Record<string, unknown> | undefined,
+				node.credentials,
 			);
 			for (const t of dynamic) types.add(t);
 		} catch (error) {
@@ -121,12 +117,7 @@ export async function getValidCredentialTypes(
 				types.add(c.name);
 				continue;
 			}
-			if (
-				matchesDisplayOptions(
-					{ parameters, nodeVersion: typeVersion },
-					c.displayOptions as DisplayOptions,
-				)
-			) {
+			if (matchesDisplayOptions({ parameters, nodeVersion: typeVersion }, c.displayOptions)) {
 				types.add(c.name);
 			}
 		}
@@ -155,9 +146,7 @@ export async function getValidCredentialTypes(
 export function getCredentialActivationParameters(
 	displayOptions: Record<string, unknown> | undefined,
 ): IDataObject {
-	return getCredentialActivationParametersByDisplayOptions(
-		displayOptions as ICredentialsDisplayOptions | undefined,
-	);
+	return getCredentialActivationParametersByDisplayOptions(displayOptions);
 }
 
 export type CredentialActivationState = 'active' | 'activatable' | 'unreachable';
@@ -304,11 +293,7 @@ function buildEditableParameters(
 			...(prop.default !== undefined ? { default: prop.default } : {}),
 			...(prop.options
 				? {
-						options: prop.options as SetupRequest['editableParameters'] extends Array<infer T>
-							? T extends { options?: infer O }
-								? O
-								: never
-							: never,
+						options: prop.options,
 					}
 				: {}),
 		});
@@ -350,10 +335,7 @@ async function resolveCredentialTypes(
 		credentialTypes = nodeDesc.credentials
 			.filter((c: { name?: string; displayOptions?: unknown }) => {
 				if (!c.displayOptions) return true;
-				return matchesDisplayOptions(
-					{ parameters, nodeVersion: typeVersion },
-					c.displayOptions as DisplayOptions,
-				);
+				return matchesDisplayOptions({ parameters, nodeVersion: typeVersion }, c.displayOptions);
 			})
 			.map((c: { name?: string }) => c.name)
 			.filter((n): n is string => n !== undefined);
@@ -587,13 +569,11 @@ function buildRequestCredentials(
 
 	if (nodeCredentials && Object.keys(nodeCredentials).length > 0) {
 		return {
-			credentials: (autoCredential
-				? { ...nodeCredentials, ...autoCredential }
-				: nodeCredentials) as RequestNodeCredentials,
+			credentials: autoCredential ? { ...nodeCredentials, ...autoCredential } : nodeCredentials,
 		};
 	}
 
-	return autoCredential ? { credentials: autoCredential as RequestNodeCredentials } : {};
+	return autoCredential ? { credentials: autoCredential } : {};
 }
 
 /**
@@ -1038,9 +1018,11 @@ export function sortByExecutionOrder(
 // ── Workflow mutation ───────────────────────────────────────────────────────
 
 /** Result of applying credentials or parameters to workflow nodes. */
-export interface ApplyResult {
+export interface ApplyResult extends SavedWorkflowState {
 	applied: string[];
 	failed: Array<{ nodeName: string; error: string }>;
+	/** Set when the single save failed: nothing was persisted. */
+	saveError?: string;
 }
 
 function addUnknownNodeFailures(
@@ -1063,103 +1045,6 @@ function addUnknownNodeFailures(
 			});
 		}
 	}
-}
-
-/** Apply per-node credentials from resume data to a workflow. */
-export async function applyNodeCredentials(
-	context: InstanceAiContext,
-	workflowId: string,
-	nodeCredentials: Record<string, Record<string, string>>,
-): Promise<ApplyResult> {
-	const result: ApplyResult = { applied: [], failed: [] };
-	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
-	addUnknownNodeFailures(result, workflowJson, nodeCredentials);
-
-	for (const node of workflowJson.nodes) {
-		if (!node.name) continue;
-		const credsMap = nodeCredentials[node.name];
-		if (!credsMap) continue;
-
-		let nodeSucceeded = true;
-		for (const [credType, credId] of Object.entries(credsMap)) {
-			const resolved = await resolveCredentialForApply(credType, credId, context);
-			if (resolved.resolved) {
-				assignCredentialToNode(node, credType, resolved.credential);
-			} else {
-				nodeSucceeded = false;
-				result.failed.push({
-					nodeName: node.name,
-					error: resolved.error,
-				});
-			}
-		}
-		if (nodeSucceeded) {
-			result.applied.push(node.name);
-		}
-	}
-
-	try {
-		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
-		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
-			versionId: saved.versionId,
-			checksum: saved.checksum,
-		});
-	} catch (error) {
-		// If the final save fails, mark all previously-applied nodes as failed
-		const saveError = `Failed to save workflow after credential apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
-		for (const nodeName of result.applied) {
-			result.failed.push({ nodeName, error: saveError });
-		}
-		result.applied = [];
-	}
-
-	return result;
-}
-
-/** Apply per-node parameter values from resume data to a workflow. */
-export async function applyNodeParameters(
-	context: InstanceAiContext,
-	workflowId: string,
-	nodeParameters: Record<string, Record<string, unknown>>,
-): Promise<ApplyResult> {
-	const result: ApplyResult = { applied: [], failed: [] };
-	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
-	addUnknownNodeFailures(result, workflowJson, undefined, nodeParameters);
-
-	for (const node of workflowJson.nodes) {
-		if (!node.name) continue;
-		const params = nodeParameters[node.name];
-		if (!params) continue;
-
-		try {
-			node.parameters = {
-				...(node.parameters ?? {}),
-				...params,
-			} as IDataObject;
-			result.applied.push(node.name);
-		} catch (error) {
-			result.failed.push({
-				nodeName: node.name,
-				error: `Failed to merge parameters: ${error instanceof Error ? error.message : 'Unknown error'}`,
-			});
-		}
-	}
-
-	try {
-		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
-		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
-			versionId: saved.versionId,
-			checksum: saved.checksum,
-		});
-	} catch (error) {
-		const saveError = `Failed to save workflow after parameter apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
-		for (const nodeName of result.applied) {
-			result.failed.push({ nodeName, error: saveError });
-		}
-		result.applied = [];
-	}
-
-	return result;
 }
 
 /**
@@ -1324,12 +1209,14 @@ export async function applyNodeChanges(
 			checksum: saved.checksum,
 		});
 		result.applied = [...appliedNodes];
+		return { ...result, ...describeSavedPublishState(saved) };
 	} catch (error) {
 		const saveError = `Failed to save workflow: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of appliedNodes) {
 			result.failed.push({ nodeName, error: saveError });
 		}
 		result.applied = [];
+		result.saveError = saveError;
 	}
 
 	return result;
@@ -1387,77 +1274,6 @@ export function buildCompletedReport(
 		}
 	}
 	return result;
-}
-
-// ── Sub-node grouping ───────────────────────────────────────────────────────
-type SubnodeRootNode = Pick<INode, 'name' | 'type' | 'typeVersion' | 'id'>;
-
-export function buildSubnodeToRootNodeMap(
-	nodes: NodeJSON[],
-	connections: IConnections,
-	executionOrder: string[],
-): Map<string, SubnodeRootNode> {
-	const connectionsByDestination = mapConnectionsByDestination(connections);
-
-	const directSubnodesByNodeName = new Map<string, string[]>();
-	for (const node of nodes) {
-		if (!node.name) continue;
-		// Non-main upstream nodes are direct sub-nodes of this node.
-		const subs = getParentNodes(connectionsByDestination, node.name, 'ALL_NON_MAIN', 1);
-		if (subs.length > 0) directSubnodesByNodeName.set(node.name, subs);
-	}
-	if (directSubnodesByNodeName.size === 0) return new Map();
-
-	const allSubnodeNames = new Set<string>();
-	for (const subs of directSubnodesByNodeName.values()) {
-		for (const name of subs) allSubnodeNames.add(name);
-	}
-	const rootNodeNames = [...directSubnodesByNodeName.keys()].filter((n) => !allSubnodeNames.has(n));
-	if (rootNodeNames.length === 0) return new Map();
-
-	const nodeByName = new Map<string, NodeJSON>();
-	for (const node of nodes) {
-		if (node.name) nodeByName.set(node.name, node);
-	}
-
-	// Sort root nodes by execution order so the first to claim a sub-node
-	// is the deterministic "owner" when multi-root ambiguity exists.
-	const orderIndex = new Map<string, number>();
-	for (let i = 0; i < executionOrder.length; i++) {
-		orderIndex.set(executionOrder[i], i);
-	}
-	const sortedRootNodes = [...rootNodeNames].sort(
-		(a, b) =>
-			(orderIndex.get(a) ?? Number.MAX_SAFE_INTEGER) -
-			(orderIndex.get(b) ?? Number.MAX_SAFE_INTEGER),
-	);
-
-	const subnodeToRootNode = new Map<string, SubnodeRootNode>();
-
-	for (const rootNodeName of sortedRootNodes) {
-		const rootNode = nodeByName.get(rootNodeName);
-		if (!rootNode) continue;
-
-		const subnodeRootNode: SubnodeRootNode = {
-			name: rootNodeName,
-			type: rootNode.type,
-			typeVersion: rootNode.typeVersion ?? 1,
-			id: rootNode.id ?? '',
-		};
-
-		const transitiveSubs = getParentNodes(
-			connectionsByDestination,
-			rootNodeName,
-			'ALL_NON_MAIN',
-			-1,
-		);
-		for (const subName of transitiveSubs) {
-			if (subnodeToRootNode.has(subName)) continue;
-			subnodeToRootNode.set(subName, subnodeRootNode);
-		}
-	}
-
-	return subnodeToRootNode;
 }
 
 // ── Full workflow analysis ──────────────────────────────────────────────────
@@ -1527,28 +1343,7 @@ export async function analyzeWorkflow(
 		// already-complete credential card as if it were pending work.
 		.filter((req) => options?.includeSettled === true || !!req.needsAction);
 
-	sortByExecutionOrder(
-		setupRequests,
-		workflowJson.connections as unknown as Record<string, unknown>,
-	);
-
-	// Stamp `subnodeRootNode` on every sub-node setup request so the frontend can
-	// render the group header even when the root node has no setup request of
-	// its own. Sub-node membership is derived from the full workflow graph,
-	// not just the (filtered) setup requests.
-	const subnodeToRootNode = buildSubnodeToRootNodeMap(
-		workflowJson.nodes,
-		workflowJson.connections as unknown as IConnections,
-		setupRequests.map((req) => req.node.name),
-	);
-	if (subnodeToRootNode.size > 0) {
-		for (const req of setupRequests) {
-			const subnodeRootNode = subnodeToRootNode.get(req.node.name);
-			if (subnodeRootNode) {
-				req.subnodeRootNode = subnodeRootNode;
-			}
-		}
-	}
+	sortByExecutionOrder(setupRequests, workflowJson.connections);
 
 	return setupRequests;
 }

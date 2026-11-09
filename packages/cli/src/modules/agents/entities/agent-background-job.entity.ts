@@ -1,8 +1,15 @@
-import { DateTimeColumn, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, Index } from '@n8n/typeorm';
+import type { AgentPlan } from './agent-plan.entity';
+import type { AgentExecution } from './agent-execution.entity';
+import type {
+	AgentBackgroundJobDto,
+	AgentToolOutputFile,
+	AgentToolSkippedFile,
+} from '@n8n/api-types';
+import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
+import { Column, Entity, Index, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
-export type AgentBackgroundJobKind = 'subagent' | 'workflow';
-export type AgentBackgroundJobStatus = 'running' | 'completed' | 'failed' | 'cancelled';
+export type AgentBackgroundJobKind = AgentBackgroundJobDto['kind'];
+export type AgentBackgroundJobStatus = AgentBackgroundJobDto['status'];
 
 /**
  * Durable registry of background jobs dispatched by top-level agents: detached
@@ -14,16 +21,43 @@ export type AgentBackgroundJobStatus = 'running' | 'completed' | 'failed' | 'can
 @Entity({ name: 'agent_background_job' })
 @Index(['parentThreadId', 'status'])
 @Index(['parentAgentId'])
+@Index(['sourceExecutionId'])
+@Index(['planId', 'planTaskId'])
 @Index(['settledAt'])
 @Index(['childExecutionId'], { unique: true, where: '"childExecutionId" IS NOT NULL' })
-@Index(['timeoutAt'], { where: '"status" = \'running\'' })
-@Index(['parentThreadId'], { where: '"settledAt" IS NOT NULL AND "notifiedAt" IS NULL' })
+@Index(['timeoutAt'], { where: "\"status\" IN ('running', 'suspended')" })
+@Index(['parentThreadId'], { where: '"status" <> \'running\' AND "notifiedAt" IS NULL' })
 export class AgentBackgroundJob extends WithTimestampsAndStringId {
+	@Column({
+		type: 'varchar',
+		length: 36,
+		nullable: true,
+		comment: 'Execution that dispatched this job',
+	})
+	sourceExecutionId: string | null;
+
+	@ManyToOne('AgentExecution', { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'sourceExecutionId' })
+	sourceExecution: Relation<AgentExecution> | null;
+
+	@Column({ type: 'uuid', nullable: true, comment: 'Plan that owns this work' })
+	planId: string | null;
+
+	@Column({ type: 'uuid', nullable: true, comment: 'Task ID in the saved plan document' })
+	planTaskId: string | null;
+
+	@ManyToOne('AgentPlan', { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'planId' })
+	plan: Relation<AgentPlan> | null;
+
 	@Column({ type: 'varchar', length: 16 })
 	kind: AgentBackgroundJobKind;
 
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentBackgroundJobStatus;
+
+	@Column({ type: 'uuid', nullable: true, comment: 'Groups jobs stopped by one user request' })
+	pauseRequestId: string | null;
 
 	@Column({ type: 'varchar', length: 36 })
 	parentAgentId: string;
@@ -73,10 +107,18 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@Column({ type: 'text', nullable: true })
 	error: string | null;
 
+	/** Output files of a settled job. The root thread of the parent owns them. */
+	@JsonColumn({ nullable: true })
+	files: AgentToolOutputFile[] | null;
+
+	/** Output files that were too large to store, with the reason. */
+	@JsonColumn({ nullable: true })
+	skippedFiles: AgentToolSkippedFile[] | null;
+
 	@DateTimeColumn({ precision: 3, nullable: true })
 	settledAt: Date | null;
 
-	/** When the parent agent consumed this settled job. */
+	/** When the parent received the latest result or approval request. */
 	@DateTimeColumn({ precision: 3, nullable: true })
 	notifiedAt: Date | null;
 }

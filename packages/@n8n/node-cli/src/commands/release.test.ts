@@ -11,8 +11,7 @@ describe('release command', () => {
 		'exec',
 		'--',
 		'release-it',
-		'-n',
-		'--git.requireBranch main',
+		'--git.requireBranch=main',
 		'--git.requireCleanWorkingDir',
 		'--git.requireUpstream',
 		'--git.requireCommits',
@@ -147,6 +146,10 @@ describe('release command', () => {
 			expect(content).toContain('pnpm install');
 			expect(content).toContain('pnpm run release');
 			expect(content).not.toContain('{{packageManager');
+			// Handlebars delimiters collide with GitHub Actions expression syntax, so an
+			// unescaped expression in the template renders away to a lone dollar sign.
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string -- literal GitHub Actions expression, not a JS template
+			expect(content).toContain('NPM_TOKEN: ${{ secrets.NPM_TOKEN }}');
 			expect(result.getLogMessages('success')).toEqual(
 				expect.arrayContaining([expect.stringContaining('publish.yml')]),
 			);

@@ -56,7 +56,7 @@ function mainEdges(json: WorkflowJSON): Edge[] {
 function buildAdjacency(edges: Edge[], skip?: Edge): Map<string, string[]> {
 	const adjacency = new Map<string, string[]>();
 	for (const edge of edges) {
-		if (skip && edge.source === skip.source && edge.target === skip.target) continue;
+		if (edge.source === skip?.source && edge.target === skip?.target) continue;
 		const targets = adjacency.get(edge.source);
 		if (targets) targets.push(edge.target);
 		else adjacency.set(edge.source, [edge.target]);

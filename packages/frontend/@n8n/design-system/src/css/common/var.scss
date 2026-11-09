@@ -105,7 +105,7 @@ $font-color-disabled-base: var(--color--text--tint-1);
 $index-normal: 1;
 $index-top: 1000;
 $index-popper: 2000;
-$index-tooltip: 2001;
+$index-tooltip: 2200;
 
 /* Disable base
 -------------------------- */
@@ -254,7 +254,7 @@ $select-close-hover-color: var(--color--text--tint-1);
 $select-input-color: var(--color--text--tint-2);
 $select-multiple-input-color: var(--color--text);
 /// color||Color|0
-$select-input-focus-border-color: var(--color--secondary);
+$select-input-focus-border-color: var(--focus--border-color);
 /// fontSize||Font|1
 $select-input-font-size: 14px;
 

@@ -19,16 +19,13 @@ import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
-	OperationalError,
 	type INode,
 	type INodeCredentials,
 	type IBinaryData,
-	UnexpectedError,
 } from 'n8n-workflow';
 
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError, OperationalError, UnexpectedError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -241,7 +238,7 @@ export class ChatHubService {
 		const enabledTools = await this.chatHubToolService.getEnabledTools(user.id, trx);
 		const toolIds = enabledTools.map((t) => t.id);
 		if (toolIds.length > 0) {
-			await this.chatHubToolService.setSessionTools(sessionId, toolIds, trx);
+			await this.chatHubToolService.setSessionTools(sessionId, user.id, toolIds, trx);
 		}
 
 		return session;
@@ -379,11 +376,14 @@ export class ChatHubService {
 		if (updates.title !== undefined) sessionUpdates.title = updates.title;
 		if (updates.credentialId !== undefined) sessionUpdates.credentialId = updates.credentialId;
 
-		await this.sessionRepository.updateChatSession(sessionId, sessionUpdates);
-
-		if (updates.toolIds !== undefined) {
-			await this.chatHubToolService.setSessionTools(sessionId, updates.toolIds);
-		}
+		// One transaction: a rejected tool or a failed field update leaves the session unchanged
+		const { toolIds } = updates;
+		await this.sessionRepository.runInTransaction({}, async (trx) => {
+			if (toolIds !== undefined) {
+				await this.chatHubToolService.setSessionTools(sessionId, user.id, toolIds, trx);
+			}
+			await this.sessionRepository.updateChatSession(sessionId, sessionUpdates, trx);
+		});
 	}
 
 	/**

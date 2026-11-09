@@ -61,15 +61,15 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 			);
 
 			try {
-				// Embed the input query
-				const embeddedPrompt = await embeddings.embedQuery(queryString);
-
 				// Search for similar documents
-				let documents = await vectorStore.similaritySearchVectorWithScore(
-					embeddedPrompt,
-					topK,
-					filter,
-				);
+				let documents =
+					args.searchByText === true
+						? await vectorStore.similaritySearchWithScore(queryString, topK, filter)
+						: await vectorStore.similaritySearchVectorWithScore(
+								await embeddings.embedQuery(queryString),
+								topK,
+								filter,
+							);
 
 				// If reranker is used, rerank the documents
 				if (useReranker && documents.length > 0) {

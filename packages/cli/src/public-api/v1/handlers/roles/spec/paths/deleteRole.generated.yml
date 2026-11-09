@@ -4,15 +4,12 @@ tags:
 summary: Delete a custom role
 description: Deletes a custom role. System roles cannot be deleted. A role with users assigned cannot be deleted unless `reassignRoleSlug` is set to move those users to another role first.
 x-required-scope: role:manage,role:manageProject
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
     required: true
     description: The slug of the role.
-    name: slug
+    name: roleSlug
     in: path
   - schema:
       anyOf:
@@ -41,3 +38,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

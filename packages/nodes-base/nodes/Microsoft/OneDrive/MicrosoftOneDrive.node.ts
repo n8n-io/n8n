@@ -9,6 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
+
 import { stampItemIndexOnError } from '../GenericFunctions';
 import { targetDescription } from './descriptions/TargetDescription';
 import { fileFields, fileOperations } from './FileDescription';
@@ -367,7 +369,7 @@ export class MicrosoftOneDrive implements INodeType {
 								},
 							);
 						}
-						const query = this.getNodeParameter('query', i) as string;
+						const query = encodeURIComponent(escapeODataValue(this.getNodeParameter('query', i)));
 						responseData = await microsoftApiRequestAllItems.call(
 							this,
 							'value',
@@ -543,7 +545,7 @@ export class MicrosoftOneDrive implements INodeType {
 								},
 							);
 						}
-						const query = this.getNodeParameter('query', i) as string;
+						const query = encodeURIComponent(escapeODataValue(this.getNodeParameter('query', i)));
 						responseData = await microsoftApiRequestAllItems.call(
 							this,
 							'value',

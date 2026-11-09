@@ -1,5 +1,7 @@
 import { computed } from 'vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { RouteLocationNormalized } from 'vue-router';
+import { useAgentListStore } from '@/features/agents/agentList.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
@@ -11,6 +13,8 @@ import { useRoute } from 'vue-router';
  * Determines if the instance is truly empty and should show the simplified layout
  */
 export function useEmptyStateDetection() {
+	const agentListStore = useAgentListStore();
+	const settingsStore = useSettingsStore();
 	const foldersStore = useFoldersStore();
 	const credentialsStore = useCredentialsStore();
 	const environmentsStore = useEnvironmentsStore();
@@ -28,7 +32,8 @@ export function useEmptyStateDetection() {
 			foldersStore.totalWorkflowCount > 0 ||
 			credentialsStore.allCredentials.length > 0 ||
 			environmentsStore.variables.length > 0 ||
-			dataTableStore.totalCount > 0,
+			dataTableStore.totalCount > 0 ||
+			(settingsStore.isAgentsEnabled && (agentListStore.totalCount ?? 0) > 0),
 	);
 
 	/**
@@ -37,6 +42,7 @@ export function useEmptyStateDetection() {
 	 * - No credentials exist in the instance
 	 * - No variables exist in the instance
 	 * - No data tables exist in the instance
+	 * - No agents exist, or agents are disabled
 	 * - User is on the main workflows view (not in a specific folder)
 	 * - User is on overview page or personal project workflows
 	 * - No search filters are applied
@@ -48,6 +54,7 @@ export function useEmptyStateDetection() {
 		const hasNoCredentials = credentialsStore.allCredentials.length === 0;
 		const hasNoVariables = environmentsStore.variables.length === 0;
 		const hasNoDataTables = dataTableStore.totalCount === 0;
+		const hasNoAgents = !settingsStore.isAgentsEnabled || agentListStore.totalCount === 0;
 		const isNotInSpecificFolder = !currentRoute.params?.folderId;
 		const isMainWorkflowsPage = projectPages.isOverviewSubPage;
 
@@ -65,6 +72,7 @@ export function useEmptyStateDetection() {
 			hasNoCredentials &&
 			hasNoVariables &&
 			hasNoDataTables &&
+			hasNoAgents &&
 			isNotInSpecificFolder &&
 			isMainWorkflowsPage &&
 			!hasSearchQuery &&

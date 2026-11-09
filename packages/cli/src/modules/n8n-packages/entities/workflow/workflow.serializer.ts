@@ -1,15 +1,14 @@
+import {
+	type SerializedWorkflow,
+	type SerializedWorkflowMetadata,
+	serializedWorkflowMetadataSchema,
+	serializedWorkflowSchema,
+} from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IConnections, INode } from 'n8n-workflow';
 
-import {
-	serializedWorkflowLifecycleSchema,
-	type SerializedWorkflowLifecycle,
-} from '../../spec/serialized/workflow-lifecycle.schema';
-import {
-	serializedWorkflowSchema,
-	type SerializedWorkflow,
-} from '../../spec/serialized/workflow.schema';
+import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 import { compareTagsByName } from '../tag/tag.types';
 
@@ -20,7 +19,7 @@ type WorkflowPackageKeyHandling = {
 	name: 'copy';
 	description: 'exclude';
 	active: 'exclude';
-	isArchived: 'transform';
+	isArchived: 'copy';
 	nodes: 'copy';
 	connections: 'copy';
 	settings: 'copy';
@@ -31,7 +30,7 @@ type WorkflowPackageKeyHandling = {
 	tagMappings: 'exclude';
 	shared: 'exclude';
 	pinData: 'exclude';
-	versionId: 'copy';
+	versionId: 'exclude';
 	activeVersionId: 'transform';
 	activeVersion: 'exclude';
 	versionCounter: 'exclude';
@@ -41,9 +40,9 @@ type WorkflowPackageKeyHandling = {
 	sourceWorkflowId: 'exclude';
 };
 
-type WorkflowPackageContent = Pick<
+export type WorkflowPackageContent = Pick<
 	WorkflowEntity,
-	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'settings'
+	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings'
 >;
 
 const serializePayload = definePackageSerializationPayload<
@@ -52,19 +51,19 @@ const serializePayload = definePackageSerializationPayload<
 	WorkflowPackageKeyHandling
 >();
 
-/** The same decisions from the lifecycle file's side. */
-type WorkflowLifecycleKeyHandling = Record<
-	Exclude<keyof WorkflowPackageKeyHandling, 'isArchived' | 'activeVersionId'>,
+/** The same decisions from the metadata file's side. */
+type WorkflowMetadataKeyHandling = Record<
+	Exclude<keyof WorkflowPackageKeyHandling, 'versionId' | 'activeVersionId'>,
 	'exclude'
 > & {
-	isArchived: 'copy';
+	versionId: 'copy';
 	activeVersionId: 'transform';
 };
 
-const serializeLifecyclePayload = definePackageSerializationPayload<
+const serializeMetadataPayload = definePackageSerializationPayload<
 	WorkflowEntity,
-	SerializedWorkflowLifecycle,
-	WorkflowLifecycleKeyHandling
+	SerializedWorkflowMetadata,
+	WorkflowMetadataKeyHandling
 >();
 
 @Service()
@@ -80,30 +79,47 @@ export class WorkflowSerializer {
 			serializePayload({
 				id: workflow.id,
 				name: workflow.name,
-				nodes: workflow.nodes,
+				nodes: this.stripCredentialNames(workflow.nodes),
 				connections: workflow.connections,
 				settings: workflow.settings ? { ...workflow.settings } : undefined,
-				versionId: workflow.versionId,
 				parentFolderId: workflow.parentFolder?.id ?? null,
+				isArchived: workflow.isArchived,
 				...(workflow.nodeGroups?.length ? { nodeGroups: workflow.nodeGroups } : {}),
 				...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
 			}),
 		);
 	}
 
-	serializeLifecycle(workflow: WorkflowEntity): SerializedWorkflowLifecycle {
-		return serializedWorkflowLifecycleSchema.parse(
-			serializeLifecyclePayload({
+	/**
+	 * Drops the display name from each credential reference, inline sub-workflows
+	 * included. A node resolves its credential by id and the target backfills the
+	 * name on import, so an exported name is only a copy that goes stale.
+	 */
+	private stripCredentialNames(nodes: INode[]): SerializedWorkflow['nodes'] {
+		// Clone so the live entity keeps its names for requirement extraction.
+		const copy = structuredClone(nodes);
+		visitWorkflowCredentials(copy, (_type, details) => {
+			if (details.name === undefined) return false;
+			const mutable: { name?: string } = details;
+			delete mutable.name;
+			return true;
+		});
+		return copy;
+	}
+
+	serializeMetadata(workflow: WorkflowEntity): SerializedWorkflowMetadata {
+		return serializedWorkflowMetadataSchema.parse(
+			serializeMetadataPayload({
+				versionId: workflow.versionId,
 				publishedVersionId: workflow.activeVersionId,
-				isArchived: workflow.isArchived,
 			}),
 		);
 	}
 
 	/**
 	 * Turns a workflow from a package back into something we can save on the
-	 * target instance. We drop anything the target owns — its id, versionId,
-	 * where it lives, timestamps — so the caller can set those fresh.
+	 * target instance. We drop anything the target owns — its id, where it
+	 * lives, timestamps — so the caller can set those fresh.
 	 */
 	deserialize(wire: SerializedWorkflow): WorkflowPackageContent {
 		const parsed = serializedWorkflowSchema.parse(wire);
@@ -113,6 +129,7 @@ export class WorkflowSerializer {
 			nodes: parsed.nodes as INode[],
 			connections: parsed.connections as IConnections,
 			nodeGroups: parsed.nodeGroups ?? [],
+			isArchived: parsed.isArchived,
 			...(parsed.settings !== undefined ? { settings: parsed.settings } : {}),
 		};
 	}

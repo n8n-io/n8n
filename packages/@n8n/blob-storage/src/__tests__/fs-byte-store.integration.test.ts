@@ -125,6 +125,18 @@ describe('delete', () => {
 	it('does not throw on deleting a missing key', async () => {
 		await expect(store.delete(['a/missing.json'])).resolves.toBeUndefined();
 	});
+
+	it('passes a retry budget to each file removal', async () => {
+		await store.write('a/one.json', body);
+		const rmSpy = vi.spyOn(fs, 'rm');
+
+		await store.delete(['a/one.json']);
+
+		expect(rmSpy).toHaveBeenCalledWith(join(storagePath, 'a/one.json'), {
+			force: true,
+			maxRetries: 3,
+		});
+	});
 });
 
 describe('write (stream)', () => {
@@ -218,6 +230,19 @@ describe('deletePrefix', () => {
 	it('rejects a prefix that escapes the storage root', async () => {
 		await expect(store.deletePrefix('../escape')).rejects.toThrow(UnexpectedError);
 		await expect(store.deletePrefix('.')).rejects.toThrow(UnexpectedError);
+	});
+
+	it('passes a retry budget to the recursive removal', async () => {
+		await store.write('wf/exec/binary_data/one.bin', body);
+		const rmSpy = vi.spyOn(fs, 'rm');
+
+		await store.deletePrefix('wf/exec/binary_data');
+
+		expect(rmSpy).toHaveBeenCalledWith(join(storagePath, 'wf/exec/binary_data'), {
+			recursive: true,
+			force: true,
+			maxRetries: 3,
+		});
 	});
 });
 

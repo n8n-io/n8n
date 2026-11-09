@@ -1,4 +1,4 @@
-import { Time } from '@n8n/constants';
+import { MISSING_SCOPE_ERROR_MESSAGE, Time } from '@n8n/constants';
 import { readFileSync, statSync } from 'fs';
 import type { n8n } from 'n8n-core';
 import type { ITaskDataConnections } from 'n8n-workflow';
@@ -68,7 +68,7 @@ export const RESPONSE_ERROR_MESSAGES = {
 	USERS_QUOTA_REACHED: 'Maximum number of users reached',
 	OAUTH2_CREDENTIAL_TEST_SUCCEEDED: 'Connection Successful!',
 	OAUTH2_CREDENTIAL_TEST_FAILED: 'This OAuth2 credential was not connected to an account.',
-	MISSING_SCOPE: 'User is missing a scope required to perform this action',
+	MISSING_SCOPE: MISSING_SCOPE_ERROR_MESSAGE,
 } as const;
 
 export const AUTH_COOKIE_NAME = 'n8n-auth';
@@ -129,6 +129,9 @@ export const UM_FIX_INSTRUCTION =
 export const TEST_WEBHOOK_TIMEOUT = 2 * Time.minutes.toMilliseconds;
 
 export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * Time.seconds.toMilliseconds;
+
+/** Longest window a caller can request with `timeoutMs`. Also bounds the multi-main registrations hash TTL. */
+export const TEST_WEBHOOK_MAX_TIMEOUT = 10 * Time.minutes.toMilliseconds;
 
 export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'oAuth2Api',

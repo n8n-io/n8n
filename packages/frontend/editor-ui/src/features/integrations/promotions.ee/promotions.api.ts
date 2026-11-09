@@ -1,67 +1,67 @@
-import type { PromotableResource, PromoteRequest } from '@n8n/api-types';
-import type { IRestApiContext } from '@n8n/rest-api-client';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import type {
+	PromotePackageResultDto,
+	PromoteSelectionRequestDto,
+	PromotionDirection,
+	PromotionPreview,
+	PromotionResourceDetails,
+	PromotionResourceDetailsRequestDto,
+	PromotionReviewChanges,
+	PromotionReviewDetailsRequestDto,
+} from '@n8n/api-types';
+import type { IRestApiContext, PublicApiContext } from '@n8n/rest-api-client';
+import { makePublicApiRequest, makeRestApiRequest } from '@n8n/rest-api-client';
 
-const MOCK_DATA: PromotableResource[] = [
-	{
-		id: 'wf-001',
-		name: 'Email summary',
-		type: 'workflow',
-		status: 'modified',
-		version: 14,
-		updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-		updatedBy: 'user-001',
-		dependencyCount: 7,
-	},
-	{
-		id: 'wf-002',
-		name: 'Payment handler',
-		type: 'workflow',
-		status: 'archived',
-		version: 3,
-		updatedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-		updatedBy: 'user-002',
-		dependencyCount: 1,
-	},
-	{
-		id: 'wf-003',
-		name: 'Legacy invoice sync',
-		type: 'workflow',
-		status: 'deleted',
-		version: null,
-		updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-		updatedBy: null,
-		dependencyCount: 0,
-	},
-];
-
-const USE_MOCK = true;
-
-export async function getPromotableChanges(
+export async function getPromotionPreview(
 	context: IRestApiContext,
 	projectId: string,
-	options?: { search?: string; sort?: string; order?: string },
-): Promise<PromotableResource[]> {
-	if (USE_MOCK) {
-		let results = [...MOCK_DATA];
-		if (options?.search) {
-			const term = options.search.toLowerCase();
-			results = results.filter((r) => r.name.toLowerCase().includes(term));
-		}
-		return results;
-	}
-
-	return await makeRestApiRequest(context, 'GET', `/promotions/${projectId}/changes`, options);
+	direction: PromotionDirection,
+): Promise<PromotionPreview> {
+	return await makeRestApiRequest(context, 'GET', `/promotions/${projectId}/changes/${direction}`);
 }
 
-export async function promoteChanges(
+export async function getPromotionResourceDetails(
 	context: IRestApiContext,
 	projectId: string,
-	request: PromoteRequest,
-): Promise<unknown> {
-	if (USE_MOCK) {
-		return { branchName: `promote/${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}` };
-	}
+	direction: PromotionDirection,
+	payload: PromotionResourceDetailsRequestDto,
+): Promise<PromotionResourceDetails> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/promotions/${projectId}/changes/${direction}/details`,
+		payload,
+	);
+}
 
-	return await makeRestApiRequest(context, 'POST', `/promotions/${projectId}/promote`, request);
+export async function getPromotionReviewChanges(
+	context: IRestApiContext,
+	reviewId: string,
+): Promise<PromotionReviewChanges> {
+	return await makeRestApiRequest(context, 'GET', `/promotions/reviews/${reviewId}/changes`);
+}
+
+export async function getPromotionReviewDetails(
+	context: IRestApiContext,
+	reviewId: string,
+	payload: PromotionReviewDetailsRequestDto,
+): Promise<PromotionResourceDetails> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/promotions/reviews/${reviewId}/changes/details`,
+		payload,
+	);
+}
+
+export async function promoteProjectSelection(
+	context: PublicApiContext,
+	projectId: string,
+	payload: PromoteSelectionRequestDto,
+): Promise<PromotePackageResultDto> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		`/promotions/projects/${projectId}/promote`,
+		payload,
+	);
 }

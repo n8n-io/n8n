@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -201,7 +202,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 				client_id: credentials.clientId,
 				...(credentials.grantType === 'authorizationCode' &&
 					credentials.clientCredentialType !== 'certificate' && {
-						client_secret: credentials.clientSecret as string,
+						client_secret: credentials.clientSecret,
 					}),
 			};
 			tokenRefreshOptions.body = body;
@@ -244,6 +245,11 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		// previous token data to ensure it's not lost on refresh.
 		if (!newOAuthTokenData.resource && token.data.resource) {
 			newOAuthTokenData.resource = token.data.resource;
+		}
+
+		// Salesforce requires the instance URL even when the refresh response returns an empty value.
+		if (!newOAuthTokenData.instance_url && token.data.instance_url) {
+			newOAuthTokenData.instance_url = token.data.instance_url;
 		}
 
 		const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
@@ -311,7 +317,14 @@ function resolveTokenExpiredStatusCode(
 	oAuth2Options?: IOAuth2Options,
 	credentials?: OAuth2CredentialData,
 ): number | number[] {
-	return credentials?.tokenExpiredStatusCode ?? oAuth2Options?.tokenExpiredStatusCode ?? 401;
+	const credentialStatusCode = credentials?.tokenExpiredStatusCode;
+	if (credentialStatusCode === undefined) {
+		return oAuth2Options?.tokenExpiredStatusCode ?? 401;
+	}
+
+	return Array.isArray(credentialStatusCode)
+		? credentialStatusCode.map((statusCode) => Number(statusCode))
+		: Number(credentialStatusCode);
 }
 
 // Some gateways signal an expired token with different codes on different endpoints
@@ -333,9 +346,9 @@ const TOKEN_EXPIRY_BUFFER_MS = 60_000;
  * Whether the stored token still has time left on it. An absent or unparsable expiry counts as
  * expired, so callers fall back to refreshing when the expiry is unknown.
  */
-function isStoredTokenUnexpired(credentials: OAuth2CredentialData): boolean {
-	const expiresAt = Number(credentials.oauthTokenData?.n8n_expires_at);
-	return Number.isFinite(expiresAt) && Date.now() + TOKEN_EXPIRY_BUFFER_MS < expiresAt;
+export function isTokenExpiryInFuture(expiresAt: unknown): boolean {
+	const timestamp = Number(expiresAt);
+	return Number.isFinite(timestamp) && Date.now() + TOKEN_EXPIRY_BUFFER_MS < timestamp;
 }
 
 function isSingleUseValue(value: unknown): boolean {
@@ -496,7 +509,7 @@ export async function requestOAuth2(
 		if (shouldSkipTokenRefresh) return false;
 		if (!isTokenExpiredStatusCode(status, tokenExpiredStatusCode)) return false;
 		if (status === 401 || oAuth2Options?.skipRefreshWhileTokenIsFresh !== true) return true;
-		return !isStoredTokenUnexpired(credentials);
+		return !isTokenExpiryInFuture(credentials.oauthTokenData?.n8n_expires_at);
 	};
 
 	const refreshCtx: RefreshOAuth2TokenContext = {
@@ -565,7 +578,7 @@ export async function requestOAuth2(
 		.catch(async (error: IResponseError) => {
 			if (shouldRefreshToken(error.statusCode)) {
 				return await retryWithNewToken(
-					async (opts) => await this.helpers.request(opts as IRequestOptions),
+					async (opts) => await this.helpers.request(opts),
 					() => {
 						// Under simple:false the "error" is the full 401 response thrown above;
 						// hand it back resolved, matching what the caller gets without a retry

@@ -1,4 +1,5 @@
 import {
+	buildPromotionBranchName,
 	buildHttpsGitConfig,
 	buildSshCommand,
 	checkoutBranchName,
@@ -6,6 +7,14 @@ import {
 } from '../promotions-git.utils';
 
 describe('promotions-git.utils', () => {
+	describe('buildPromotionBranchName', () => {
+		it('uses an ISO timestamp that is valid in a Git ref', () => {
+			const branchName = buildPromotionBranchName(new Date('2026-09-01T10:15:30.123Z'));
+
+			expect(branchName).toBe('n8n-promotion/2026-09-01T10-15-30-123Z');
+		});
+	});
+
 	describe('buildHttpsGitConfig', () => {
 		const originalEnv = process.env;
 
@@ -20,6 +29,8 @@ describe('promotions-git.utils', () => {
 				'no_proxy',
 				'ALL_PROXY',
 				'all_proxy',
+				'GIT_SSL_CAINFO',
+				'GIT_SSL_CAPATH',
 			]) {
 				delete process.env[key];
 			}
@@ -52,6 +63,16 @@ describe('promotions-git.utils', () => {
 			const config = buildHttpsGitConfig({ repositoryUrl: 'https://github.com/user/repo.git' });
 
 			expect(config.some((entry) => entry.includes('proxy='))).toBe(false);
+		});
+
+		it('carries the CA settings from the environment over as config', () => {
+			process.env.GIT_SSL_CAINFO = '/certs/bundle.crt';
+			process.env.GIT_SSL_CAPATH = '/certs';
+
+			const config = buildHttpsGitConfig({ repositoryUrl: 'https://github.com/user/repo.git' });
+
+			expect(config).toContain('http.sslCAInfo=/certs/bundle.crt');
+			expect(config).toContain('http.sslCAPath=/certs');
 		});
 	});
 

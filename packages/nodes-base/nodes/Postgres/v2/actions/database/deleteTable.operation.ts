@@ -28,17 +28,20 @@ const properties: INodeProperties[] = [
 				name: 'Truncate',
 				value: 'truncate',
 				description: "Only removes the table's data and preserves the table's structure",
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description:
 					"Delete the rows that match the 'Select Rows' conditions below. If no selection is made, all rows in the table are deleted.",
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 			{
 				name: 'Drop',
 				value: 'drop',
 				description: "Deletes the table's data and also the table's structure permanently",
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 		],
 	},

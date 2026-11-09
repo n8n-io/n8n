@@ -1,6 +1,13 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { BuiltTool, CredentialProvider, McpClient, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema } from '@n8n/api-types';
+import { classifyMcpTool } from '@n8n/ai-utilities/agent-config';
+import {
+	type AgentJsonConfig,
+	McpAuthenticationSchemaTypes,
+	McpOAuth2CredentialTypeSchema,
+	getLegacyBuilderToolNames,
+} from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { z } from 'zod';
 
@@ -12,6 +19,10 @@ import {
 	buildMcpClientForServer,
 } from '../json-config/mcp-client-factory';
 
+export type McpCredentialApplyResult =
+	| { applied: false }
+	| { applied: true; config: AgentJsonConfig; configHash: string };
+
 export interface VerifyMcpServerDeps {
 	agentId?: string;
 	credentialProvider: CredentialProvider;
@@ -20,11 +31,11 @@ export interface VerifyMcpServerDeps {
 	proxyFetch: CustomFetch;
 	resolveRegistryConnection?: BuildMcpClientDeps['resolveRegistryConnection'];
 	/** When verification succeeds with a credential, writes it into the matching
-	 *  mcpServers entry so the builder can skip read_config → patch_config. */
+	 *  mcpServers entry so the builder can skip agent-context → agent_builder_patch_config. */
 	applyCredentialToMcpServer?: (
 		serverName: string,
 		credentialId: string,
-	) => Promise<{ applied: boolean }>;
+	) => Promise<McpCredentialApplyResult>;
 }
 
 /** Default deadline for the whole verify operation (connect + listTools) when the
@@ -73,9 +84,9 @@ async function listToolsWithinDeadline(
  * builder can have in hand before writing the config. The credential field is
  * optional here so the tool can also be used to test unauthenticated servers.
  *
- * `toolFilter` and `approval` are intentionally excluded — they have no bearing
- * on whether the underlying transport connects, and simplifying the input keeps
- * the LLM context small.
+ * Tool permissions are intentionally excluded. They have no bearing on whether
+ * the underlying transport connects, and simplifying the input keeps the LLM
+ * context small.
  */
 const verifyMcpServerInputSchema = z.object({
 	name: z
@@ -83,21 +94,17 @@ const verifyMcpServerInputSchema = z.object({
 		.min(1)
 		.max(64)
 		.refine((name) => name.trim().length > 0, 'MCP server name cannot be blank')
-		.describe('The user-facing server name; it is normalized for model-facing tool names'),
-	url: z.string().min(1).describe('The MCP server endpoint URL'),
-	transport: z
-		.enum(['sse', 'streamableHttp'])
-		.default('streamableHttp')
-		.describe('Transport type. Defaults to streamableHttp'),
+		.describe('User-facing server name'),
+	url: z.string().min(1).describe('Endpoint URL'),
+	transport: z.enum(['sse', 'streamableHttp']).default('streamableHttp'),
 	authentication: z
 		.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
-		.default('none')
-		.describe('Authentication scheme'),
+		.default('none'),
 	credential: z
 		.string()
 		.optional()
 		.describe(
-			'Credential id returned by ask_credential. Required when authentication is not "none"',
+			'credentialId from setup_credentials(target: "agent"); required unless authentication is "none"',
 		),
 	metadata: z.object({ nodeTypeName: z.string().optional() }).optional(),
 	connectionTimeoutMs: z
@@ -106,26 +113,33 @@ const verifyMcpServerInputSchema = z.object({
 		.min(1)
 		.max(120_000)
 		.optional()
-		.describe(
-			'Timeout in milliseconds for the whole verification (connect + list tools). Defaults to 10000ms',
-		),
+		.describe('Timeout for connect and list tools. Defaults to 10000'),
 });
 
 type VerifyMcpServerInput = z.infer<typeof verifyMcpServerInputSchema>;
 
+/** What the model must do with a verification result. The tool description stays short. */
+function withNextStep(result: unknown): unknown {
+	if (!isRecord(result) || result.credentialApplied !== true) return result;
+	return {
+		...result,
+		nextStep:
+			'The credential is saved in the mcpServers entry. Do not patch it. Treat `config` as ' +
+			'the current state and use its configHash as baseConfigHash.',
+	};
+}
+
 export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.VERIFY_MCP_SERVER)
+		.legacyNames(...getLegacyBuilderToolNames(BUILDER_TOOLS.VERIFY_MCP_SERVER))
 		.description(
-			'Test connectivity to an MCP server before adding it to the agent config. ' +
-				'Establishes a temporary connection, lists the available tools, then closes the connection. ' +
-				'Returns { ok: true, tools: [{ name, description }] } on success, or ' +
-				'{ ok: false, error: string } on failure. ' +
-				'Tool names are the original MCP names without the model-facing server prefix. ' +
-				'When a credential is provided and a matching mcpServers entry already exists, ' +
-				'a successful verify also writes the credential into that entry ' +
-				'({ credentialApplied: true, configMutated: true, agentId }) — no read_config/patch_config follow-up. ' +
-				'Call this after ask_credential when authentication is not "none".',
+			'Connect to an MCP server, list its tools, and close the connection. Call it before you ' +
+				'add the server to the config, after setup_credentials(target: "agent") when authentication ' +
+				'is not "none". Result tool names have no server prefix. With a credential, a ' +
+				'successful call also writes it into a matching mcpServers entry. Results that need ' +
+				'an action carry `nextStep`: follow it.',
 		)
+		.toModelOutput(withNextStep)
 		.input(verifyMcpServerInputSchema)
 		.handler(async (input: VerifyMcpServerInput, ctx: ToolContext) => {
 			const timeoutMs = input.connectionTimeoutMs ?? DEFAULT_MCP_VERIFICATION_TIMEOUT_MS;
@@ -139,26 +153,46 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 						authentication: input.authentication,
 						credential: input.credential,
 						metadata: input.metadata,
+						toolPermissions: {
+							categories: { read: 'always_allow', write: 'always_allow' },
+						},
 						connectionTimeoutMs: timeoutMs,
 					},
 					deps,
 				);
 				const tools = await listToolsWithinDeadline(client, timeoutMs, ctx.abortSignal);
+				const failures = client.getConnectionFailures();
+				if (failures.length > 0) {
+					return {
+						ok: false,
+						error: failures
+							.map(
+								(failure) => `MCP server "${failure.server}" connection failed: ${failure.error}`,
+							)
+							.join('; '),
+					};
+				}
 				const mappedTools = tools.map((t) => ({
 					name: t.mcpToolName ?? t.name,
 					description: t.description ?? '',
+					category: classifyMcpTool({
+						name: t.mcpToolName ?? t.name,
+						annotations: t.mcpAnnotations,
+					}),
 				}));
 
 				if (input.credential && deps.applyCredentialToMcpServer) {
 					try {
-						const { applied } = await deps.applyCredentialToMcpServer(input.name, input.credential);
-						if (applied && deps.agentId) {
+						const applyResult = await deps.applyCredentialToMcpServer(input.name, input.credential);
+						if (applyResult.applied && deps.agentId) {
 							return {
 								ok: true,
 								tools: mappedTools,
 								credentialApplied: true,
 								configMutated: true,
 								agentId: deps.agentId,
+								config: applyResult.config,
+								configHash: applyResult.configHash,
 							};
 						}
 					} catch {

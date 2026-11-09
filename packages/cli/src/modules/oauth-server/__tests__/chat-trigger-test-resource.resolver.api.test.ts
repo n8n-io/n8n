@@ -16,14 +16,16 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { CacheService, UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
+	endpointGroups: ['mcp'],
+});
 
 let owner: User;
 let member: User;
@@ -74,7 +76,7 @@ const chatTriggerNode = ({
 	},
 });
 
-/** Mirrors what `TestWebhooks.needsWebhook` registers when the user tests a chat trigger. */
+/** Mirrors what `TestWebhooks.registerWebhooks` registers when the user tests a chat trigger. */
 const registerTestWebhook = async (
 	path: string,
 	node: INode,

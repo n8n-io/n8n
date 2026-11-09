@@ -8,27 +8,25 @@
 import {
 	analyzeVerificationResult,
 	buildSimulationNote,
+	injectedTriggerSimulations,
 	WORKFLOW_PIN_SIMULATION_REASON,
 	type ChatModelRecoveryOptions,
 	type VerificationAnalysis,
 } from './analyze-result';
 import type { PreparedVerificationRun } from './prepare-run';
+import type { ParameterCheckRun } from './resolved-parameter-warnings';
 import type { ExecutionRunResult } from './types';
-import type { OrchestrationContext } from '../../../types';
+import type { InstanceAiExecutionService } from '../../../types';
 import type {
 	WaitGateScript,
 	WorkflowBuildOutcome,
 	WorkflowLoopState,
 } from '../../../workflow-loop/workflow-loop-state';
 
-type VerificationExecutionService = NonNullable<
-	OrchestrationContext['domainContext']
->['executionService'];
-
 export interface ScriptedGateRunArgs {
 	script: WaitGateScript;
 	prepared: PreparedVerificationRun;
-	executionService: VerificationExecutionService;
+	executionService: Pick<InstanceAiExecutionService, 'run'>;
 	workflowId: string;
 	inputData?: Record<string, unknown>;
 	triggerNodeName?: string;
@@ -39,6 +37,7 @@ export interface ScriptedGateRunArgs {
 	runId: string;
 	chatModelRelatedNodeNames?: ReadonlySet<string>;
 	chatModelRecovery?: ChatModelRecoveryOptions;
+	verificationScope?: ReadonlySet<string>;
 }
 
 interface DecisionPass {
@@ -47,9 +46,11 @@ interface DecisionPass {
 	analysis: VerificationAnalysis;
 }
 
-export async function runScriptedGateVerification(
-	args: ScriptedGateRunArgs,
-): Promise<{ result: ExecutionRunResult; analysis: VerificationAnalysis }> {
+export async function runScriptedGateVerification(args: ScriptedGateRunArgs): Promise<{
+	result: ExecutionRunResult;
+	analysis: VerificationAnalysis;
+	parameterCheckRuns: ParameterCheckRun[];
+}> {
 	const {
 		script,
 		prepared,
@@ -65,6 +66,8 @@ export async function runScriptedGateVerification(
 
 	const passes: DecisionPass[] = [];
 	for (const decision of script.decisions) {
+		args.abortSignal?.throwIfAborted();
+
 		const result = await executionService.run(workflowId, args.inputData, {
 			timeout: args.timeout,
 			triggerNodeName: args.triggerNodeName,
@@ -82,11 +85,19 @@ export async function runScriptedGateVerification(
 			runId,
 			chatModelRelatedNodeNames,
 			chatModelRecovery,
+			verificationScope: args.verificationScope,
 		});
 		passes.push({ label: decision.label, result, analysis });
 	}
 
-	return { result: mergeResults(passes), analysis: mergeAnalyses(script, prepared, passes) };
+	return {
+		result: mergeResults(passes),
+		analysis: mergeAnalyses(script, prepared, passes),
+		parameterCheckRuns: passes.map(({ result, analysis }) => ({
+			executionId: result.executionId,
+			nodeNames: analysis.reachedSimulatedNodes.map((node) => node.nodeName),
+		})),
+	};
 }
 
 function mergeResults(passes: DecisionPass[]): ExecutionRunResult {
@@ -94,9 +105,11 @@ function mergeResults(passes: DecisionPass[]): ExecutionRunResult {
 	const failing = passes.find((pass) => !pass.analysis.success);
 	const data: Record<string, unknown> = {};
 	const executedNodeNames = new Set<string>();
+	const binaryOutputNodeNames = new Set<string>();
 	for (const pass of passes) {
 		Object.assign(data, pass.result.data ?? {});
 		for (const name of pass.analysis.reachedNames) executedNodeNames.add(name);
+		for (const name of pass.result.binaryOutputNodeNames ?? []) binaryOutputNodeNames.add(name);
 	}
 
 	// A pass can fail on node errors while its engine status is still
@@ -112,6 +125,7 @@ function mergeResults(passes: DecisionPass[]): ExecutionRunResult {
 		status: failingStatus ?? last.result.status,
 		data: Object.keys(data).length > 0 ? data : undefined,
 		executedNodeNames: [...executedNodeNames],
+		binaryOutputNodeNames: binaryOutputNodeNames.size > 0 ? [...binaryOutputNodeNames] : undefined,
 		error: failing?.result.error ?? failing?.analysis.errorMessage,
 	};
 }
@@ -170,6 +184,11 @@ function mergeAnalyses(
 			nodeName: name,
 			reason: WORKFLOW_PIN_SIMULATION_REASON,
 		})),
+		...injectedTriggerSimulations(
+			passes.find((pass) => pass.result.injectedTriggerNodeName)?.result.injectedTriggerNodeName,
+			reachedNames,
+			new Set([...plannedSimulatedNames, ...workflowPinnedNodeNames]),
+		),
 	];
 
 	return {
@@ -182,6 +201,8 @@ function mergeAnalyses(
 		nodesExecuted: [...reachedNames],
 		simulationNote: buildSimulationNote(reachedSimulatedNodes, false),
 		coverageNote,
+		// Every pass runs the same workflow for the same user, so one note covers them.
+		redactionNote: passes.find((pass) => pass.analysis.redactionNote)?.analysis.redactionNote,
 		errorMessage: failing?.analysis.errorMessage,
 		nodeErrors,
 	};

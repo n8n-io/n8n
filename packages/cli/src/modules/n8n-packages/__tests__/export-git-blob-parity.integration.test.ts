@@ -1,3 +1,5 @@
+import { packagedModules } from '@/modules/modules.manifest';
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -8,9 +10,8 @@ import { join } from 'node:path';
 import { simpleGit } from 'simple-git';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { EventService } from '@/events/event.service';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
@@ -43,7 +44,7 @@ let owner: User;
 let repoDir: string;
 
 beforeAll(async () => {
-	await testModules.loadModules(['n8n-packages', 'data-table']);
+	await testModules.loadModules(['n8n-packages', 'data-table'], packagedModules);
 	await testDb.init();
 	service = Container.get(N8nPackagesService);
 });
@@ -140,6 +141,7 @@ describe('exported files vs git blob hashes', () => {
 		);
 
 		expect(result.counts).toEqual({
+			agents: 0,
 			workflows: 1,
 			folders: 1,
 			credentials: 1,
@@ -157,7 +159,7 @@ describe('exported files vs git blob hashes', () => {
 		expect(files).toHaveLength(gitFiles.length);
 		expect(files).toEqual(expect.arrayContaining(gitFiles));
 		expect(files).toContainEqual({
-			path: `${result.manifest.workflows![0].target}/workflow-lifecycle.json`,
+			path: `${result.manifest.workflows![0].target}/workflow-metadata.json`,
 			blobSha: expect.any(String),
 		});
 		expect(emit).not.toHaveBeenCalledWith('n8n-package-exported', expect.anything());

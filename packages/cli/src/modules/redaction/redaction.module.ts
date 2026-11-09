@@ -2,7 +2,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 
 /**
  * Context is established by whichever instance runs the workflow — main, queue worker or
@@ -14,6 +14,10 @@ export class RedactionModule implements ModuleInterface {
 	async init() {
 		// Import side-effect registers RedactionContextHook.
 		await import('./redaction-context-hook.js');
+
+		// Import side-effect registers DynamicCredentialsContextHook, which stamps
+		// the private-credential flag at execution start (unconditional of license).
+		await import('./dynamic-credentials-context-hook.js');
 
 		// Importing the service here registers its @OnPubSubEvent handler with the
 		// pubsub metadata before PubSubRegistry.init() wires up the listeners.

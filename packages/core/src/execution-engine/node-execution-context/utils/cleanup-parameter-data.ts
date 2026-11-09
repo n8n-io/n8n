@@ -11,7 +11,7 @@ export function cleanupParameterData(inputData: NodeParameterValueType): void {
 	}
 
 	if (Array.isArray(inputData)) {
-		inputData.forEach((value) => cleanupParameterData(value as NodeParameterValueType));
+		inputData.forEach((value) => cleanupParameterData(value));
 		return;
 	}
 

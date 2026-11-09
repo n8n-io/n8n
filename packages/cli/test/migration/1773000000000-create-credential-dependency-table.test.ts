@@ -65,7 +65,7 @@ describe('CreateCredentialDependencyTable Migration', () => {
 			{
 				providerKey: data.providerKey,
 				type: data.type ?? data.providerKey,
-				encryptedSettings: cipher.encrypt(JSON.stringify({ region: 'us-east-1' })),
+				encryptedSettings: cipher.encryptWithInstanceKey(JSON.stringify({ region: 'us-east-1' })),
 				isEnabled: true,
 				createdAt: now,
 				updatedAt: now,
@@ -135,7 +135,7 @@ describe('CreateCredentialDependencyTable Migration', () => {
 
 				await insertCredential(context, {
 					id: credentialWithSecretsId,
-					encryptedData: cipher.encrypt(
+					encryptedData: cipher.encryptWithInstanceKey(
 						JSON.stringify({
 							apiKey: '={{ $secrets.vault.primaryKey }}',
 							nested: {
@@ -148,12 +148,14 @@ describe('CreateCredentialDependencyTable Migration', () => {
 
 				await insertCredential(context, {
 					id: credentialWithoutSecretsId,
-					encryptedData: cipher.encrypt(JSON.stringify({ apiKey: 'plain-value' })),
+					encryptedData: cipher.encryptWithInstanceKey(JSON.stringify({ apiKey: 'plain-value' })),
 				});
 
 				await insertCredential(context, {
 					id: credentialUnknownProviderId,
-					encryptedData: cipher.encrypt(JSON.stringify({ apiKey: '={{ $secrets.unknown.key }}' })),
+					encryptedData: cipher.encryptWithInstanceKey(
+						JSON.stringify({ apiKey: '={{ $secrets.unknown.key }}' }),
+					),
 				});
 
 				return { vaultProviderId, awsProviderId };

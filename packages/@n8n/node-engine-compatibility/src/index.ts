@@ -9,4 +9,13 @@ export {
 	UnknownTriggerError,
 	UnsupportedWorkflowError,
 } from './errors';
-export type { StepData, StepDataLoader, V1StepExecutorDeps } from './types';
+export type {
+	AdditionalDataContext,
+	StepData,
+	StepDataLoader,
+	SubWorkflowResolveRequest,
+	SubWorkflowResolveResult,
+	SubWorkflowResolver,
+	V1StepExecutorDeps,
+} from './types';
+export { attachResponseHooks } from './v1-response-hooks';

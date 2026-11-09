@@ -2,6 +2,7 @@ import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { ParsedHitlCallbackReference } from 'n8n-core';
 import { verifyHitlCallbackReference } from 'n8n-core';
+import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import { WaitingWebhooks } from './waiting-webhooks';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
@@ -27,6 +28,11 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 	protected reject(res: express.Response, status: number): IWebhookResponseCallbackData {
 		res.status(status).send('');
 		return { noWebhookResponse: true };
+	}
+
+	/** The platform posts to one fixed URL, so the route has no execution to read the method from. */
+	async getWebhookMethods(): Promise<IHttpRequestMethods[]> {
+		return ['POST'];
 	}
 
 	/** Parses the raw HTTP body into a typed callback reference, or null if malformed. */
@@ -58,7 +64,14 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		const execution = await this.getExecution(parsed.executionId);
 		if (!execution) return { ok: false, status: 404 };
 
-		if (execution.status === 'running' || execution.finished || execution.data?.resultData?.error) {
+		if (
+			execution.status === 'running' ||
+			// oxlint-disable-next-line typescript/no-deprecated
+			execution.finished ||
+			execution.data?.resultData?.error ||
+			// A run parked at a node boundary is not waiting for this interaction.
+			execution.data?.waitReason === 'suspended'
+		) {
 			// Replayed or late interaction: nothing left to resume.
 			return { ok: false, status: 409 };
 		}
@@ -69,6 +82,10 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		if (!node) return { ok: false, status: 404 };
 
 		if (node.type !== this.platformNodeType) return { ok: false, status: 404 };
+
+		// The resume routes on the node id as the webhook suffix. Execution snapshots are frozen
+		// copies that can predate id enforcement, and an id-less node resolves to an empty suffix.
+		if (!node.id) return { ok: false, status: 404 };
 
 		return {
 			ok: true,

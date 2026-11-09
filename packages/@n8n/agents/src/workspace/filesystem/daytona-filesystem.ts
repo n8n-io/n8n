@@ -81,6 +81,24 @@ export class DaytonaFilesystem extends BaseFilesystem {
 		}, options?.abortSignal);
 	}
 
+	/** Upload many files in one request. Daytona creates missing parent directories. */
+	async writeFiles(
+		files: Array<{ path: string; content: FileContent }>,
+		options?: AbortableOptions,
+	): Promise<void> {
+		await this.withFs(
+			async (fs) =>
+				await fs.uploadFiles(
+					files.map(({ path, content }) => ({
+						source:
+							typeof content === 'string' ? Buffer.from(content, 'utf-8') : Buffer.from(content),
+						destination: path,
+					})),
+				),
+			options?.abortSignal,
+		);
+	}
+
 	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {
 		await this.withFs(async (fs) => {
 			let existing: Buffer;

@@ -330,9 +330,7 @@ async function onUpgradeClick() {
 							{{ i18n.baseText('experiments.trialIntroModal.step2.annual') }}
 						</N8nText>
 						<N8nBadge
-							theme="primary"
-							:bold="true"
-							:show-border="false"
+							variant="primary"
 							:class="$style.savingsBadge"
 							data-test-id="trial-intro-save-badge"
 						>
@@ -385,7 +383,7 @@ async function onUpgradeClick() {
 		<template #footer>
 			<div v-if="step === 1" :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					data-test-id="trial-intro-start-building-button"
 					@click="onStartBuilding"
 				>
@@ -459,7 +457,7 @@ async function onUpgradeClick() {
 	background: var(--color--orange-alpha-100);
 	color: var(--color--primary);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-variant-numeric: tabular-nums;
 }
 
@@ -518,7 +516,7 @@ async function onUpgradeClick() {
 
 .calloutTitle {
 	display: block;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .calloutBody {
@@ -564,7 +562,7 @@ async function onUpgradeClick() {
 }
 
 .rowNewValue {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-variant-numeric: tabular-nums;
 }
 

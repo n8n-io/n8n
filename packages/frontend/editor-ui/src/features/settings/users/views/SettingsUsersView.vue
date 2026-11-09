@@ -92,7 +92,9 @@ onMounted(async () => {
 		void rolesStore.fetchRoles();
 	}
 
-	await userRoleProvisioningStore.getProvisioningConfig();
+	if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Provisioning]) {
+		await userRoleProvisioningStore.getProvisioningConfig();
+	}
 });
 
 const usersListActions = computed((): Array<UserAction<IUser>> => {

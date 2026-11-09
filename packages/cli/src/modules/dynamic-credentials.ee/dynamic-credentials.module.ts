@@ -57,6 +57,13 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		Container.get(CredentialConnectionStatusProxy).setProvider(
 			Container.get(CredentialConnectionStatusService),
 		);
+
+		// Register the executing-user identifier so the redaction layer can attribute
+		// a run to its user from the established identity carrier — the same source
+		// credential resolution uses.
+		const { ExecutingUserIdentifierProxy } = await import('@n8n/backend-services');
+		const { N8NIdentifier } = await import('./credential-resolvers/identifiers/n8n-identifier.js');
+		Container.get(ExecutingUserIdentifierProxy).setProvider(Container.get(N8NIdentifier));
 	}
 
 	async entities() {

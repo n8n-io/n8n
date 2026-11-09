@@ -1,16 +1,18 @@
-import type { UserRepository, User } from '@n8n/db';
+import type { Person, PersonRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
+import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import type { ChatIntegrationService } from '../chat-integration.service';
 import { createIntegrationActionTool } from '../integration-tools';
 import type {
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
 } from '../integration-tools';
-import { N8nChatIntegration } from '../platforms/n8n-chat-integration';
+import { N8nChatIntegration } from '../platforms/n8n-chat/n8n-chat-integration';
+import type { AgentOutboundFiles } from '../agent-outbound-files.service';
 
 const makeContext = (): IntegrationMessageContext => ({
 	integrationConnectionId: 'n8n_chat',
@@ -21,8 +23,8 @@ const makeContext = (): IntegrationMessageContext => ({
 });
 
 describe('N8nChatIntegration', () => {
-	const userRepository = mock<UserRepository>();
-	const integration = new N8nChatIntegration(userRepository);
+	const personRepository = mock<PersonRepository>();
+	const integration = new N8nChatIntegration(personRepository);
 
 	it('is internal and runs without a chat instance', () => {
 		expect(integration.internal).toBe(true);
@@ -137,12 +139,12 @@ describe('N8nChatIntegration', () => {
 	});
 
 	it('get_user resolves the n8n user', async () => {
-		userRepository.findOneBy.mockResolvedValue({
+		personRepository.findById.mockResolvedValue({
 			id: 'user-1',
 			firstName: 'Ada',
 			lastName: 'Lovelace',
 			email: 'ada@example.com',
-		} as User);
+		} as Person);
 		const result = await integration.executeContextQuery({
 			chat: undefined,
 			descriptor: mock(),
@@ -155,8 +157,27 @@ describe('N8nChatIntegration', () => {
 		});
 	});
 
-	it('get_user for an unknown user fails cleanly', async () => {
-		userRepository.findOneBy.mockResolvedValue(null);
+	it('get_user falls back to the email when the person has no name', async () => {
+		personRepository.findById.mockResolvedValue({
+			id: 'user-1',
+			firstName: null,
+			lastName: null,
+			email: 'ada@example.com',
+		} as unknown as Person);
+		const result = await integration.executeContextQuery({
+			chat: undefined,
+			descriptor: mock(),
+			query: 'get_user',
+			input: { userId: 'user-1' },
+		});
+		expect(result).toEqual({
+			ok: true,
+			user: { id: 'user-1', name: 'ada@example.com', email: 'ada@example.com' },
+		});
+	});
+
+	it('get_user fails cleanly for an unknown user or a service account', async () => {
+		personRepository.findById.mockResolvedValue(null);
 		const result = await integration.executeContextQuery({
 			chat: undefined,
 			descriptor: mock(),
@@ -174,7 +195,7 @@ describe('N8nChatIntegration', () => {
 describe('ChatIntegrationRegistry.listPublic', () => {
 	it('excludes internal integrations', () => {
 		const registry = new ChatIntegrationRegistry();
-		registry.register(new N8nChatIntegration(mock<UserRepository>()));
+		registry.register(new N8nChatIntegration(mock<PersonRepository>()));
 		expect(registry.list().map((i) => i.type)).toContain('n8n_chat');
 		expect(registry.listPublic().map((i) => i.type)).not.toContain('n8n_chat');
 	});
@@ -183,8 +204,8 @@ describe('ChatIntegrationRegistry.listPublic', () => {
 describe('internal integration dispatch', () => {
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const registry = new ChatIntegrationRegistry();
-	const userRepository = mock<UserRepository>();
-	const n8nChat = new N8nChatIntegration(userRepository);
+	const personRepository = mock<PersonRepository>();
+	const n8nChat = new N8nChatIntegration(personRepository);
 	registry.register(n8nChat);
 
 	const descriptor: IntegrationToolConnectionDescriptor = {
@@ -209,8 +230,13 @@ describe('internal integration dispatch', () => {
 		expect(tool.description).toContain('NEVER call respond with only message.text');
 	});
 
-	it('action executor skips getChatInstance and routes respond to the integration', async () => {
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+	it('action executor routes respond to the integration without a chat instance', async () => {
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const result = await executor.execute({
 			descriptor,
 			action: 'respond',
@@ -219,11 +245,16 @@ describe('internal integration dispatch', () => {
 			currentMessageContext: makeContext(),
 		});
 		expect(result).toMatchObject({ ok: true });
-		expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
 	});
 
 	it('action executor returns UNSUPPORTED_ACTION for send_dm on n8n_chat', async () => {
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const result = await executor.execute({
 			descriptor,
 			action: 'send_dm',
@@ -231,23 +262,27 @@ describe('internal integration dispatch', () => {
 			awaitResponse: false,
 		});
 		expect(result).toMatchObject({ ok: false, error: { code: 'UNSUPPORTED_ACTION' } });
-		expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
 	});
 
-	it('context executor skips getChatInstance for internal integrations', async () => {
-		userRepository.findOneBy.mockResolvedValue({
+	it('context executor queries internal integrations without a chat instance', async () => {
+		personRepository.findById.mockResolvedValue({
 			id: 'user-1',
 			firstName: 'Ada',
 			lastName: 'Lovelace',
 			email: 'ada@example.com',
-		} as User);
-		const executor = new ChatIntegrationContextQueryExecutor(chatIntegrationService, registry);
+		} as Person);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const result = await executor.execute({
 			descriptor,
 			query: 'get_user',
 			input: { userId: 'user-1' },
 		});
 		expect(result).toMatchObject({ ok: true });
-		expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
 	});
 });

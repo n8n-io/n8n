@@ -1,19 +1,38 @@
+import type { AgentCreationResource } from '@/features/agents/types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
+	AgentJsonConfig,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
+	InstanceAiThreadHistoryQuery,
+	InstanceAiThreadHistoryResponse,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
+	AssistantThreadTabsResponse,
+	AssistantThreadTabsState,
 } from '@n8n/api-types';
-import type { AgentResource } from '@/features/agents/types';
 
 export async function fetchThreads(
 	context: IRestApiContext,
 ): Promise<InstanceAiThreadListResponse> {
 	return await makeRestApiRequest(context, 'GET', '/instance-ai/threads');
+}
+
+export async function fetchThreadHistory(
+	context: IRestApiContext,
+	query: InstanceAiThreadHistoryQuery,
+): Promise<InstanceAiThreadHistoryResponse> {
+	return await makeRestApiRequest(context, 'GET', '/instance-ai/threads/history', query);
+}
+
+export async function fetchThread(
+	context: IRestApiContext,
+	threadId: string,
+): Promise<{ thread: InstanceAiThreadInfo }> {
+	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}`);
 }
 
 export async function deleteThread(context: IRestApiContext, threadId: string): Promise<void> {
@@ -40,6 +59,21 @@ export async function updateThreadMetadata(
 	});
 }
 
+export async function fetchThreadTabs(
+	context: IRestApiContext,
+	threadId: string,
+): Promise<AssistantThreadTabsResponse> {
+	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}/tabs`);
+}
+
+export async function saveThreadTabs(
+	context: IRestApiContext,
+	threadId: string,
+	state: AssistantThreadTabsState,
+): Promise<AssistantThreadTabsResponse> {
+	return await makeRestApiRequest(context, 'PUT', `/instance-ai/threads/${threadId}/tabs`, state);
+}
+
 /**
  * Persist the thread's pending new-agent artifact under the client-minted id and
  * bind it to the thread in one request. Converges with a concurrent chat build on
@@ -49,8 +83,8 @@ export async function updateThreadMetadata(
 export async function persistPendingAgent(
 	context: IRestApiContext,
 	threadId: string,
-	payload: { projectId: string; agentId: string; name: string },
-): Promise<{ agent: AgentResource; thread: InstanceAiThreadInfo }> {
+	payload: { projectId: string; agentId: string; name: string; config?: AgentJsonConfig },
+): Promise<{ agent: AgentCreationResource; thread: InstanceAiThreadInfo }> {
 	return await makeRestApiRequest(
 		context,
 		'POST',

@@ -173,6 +173,9 @@ function serializeNode(
 	if (config.extendsCredential) {
 		n8nNode.extendsCredential = config.extendsCredential;
 	}
+	if (config.customTelemetryTags?.tag?.length) {
+		n8nNode.customTelemetryTags = deepCopy(config.customTelemetryTags);
+	}
 
 	return normalizeNodeShape(n8nNode);
 }
@@ -241,11 +244,11 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 
 		// Calculate positions for nodes without explicit positions
 		const nodePositions = ctx.tidyUp
-			? calculateNodePositionsDagre(ctx.nodes)
+			? calculateNodePositionsDagre(ctx.nodes, ctx.nodeGroups, ctx.nodePorts)
 			: calculateNodePositions(ctx.nodes);
 
 		// Sticky notes are placed last: their box depends on where their anchors landed
-		const stickyGeometry = resolveStickyGeometry(ctx.nodes, nodePositions);
+		const stickyGeometry = resolveStickyGeometry(ctx.nodes, nodePositions, ctx.nodePorts);
 
 		// Convert nodes and connections
 		for (const [mapKey, graphNode] of ctx.nodes) {

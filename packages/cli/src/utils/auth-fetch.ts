@@ -1,6 +1,7 @@
 import { createRefreshingAuthFetch } from '@n8n/ai-utilities';
 import type { CustomFetch } from '@n8n/backend-network';
-import { assertUrlAllowed, UserError } from 'n8n-workflow';
+import { assertUrlAllowed } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { DomainRestrictionMode, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 export type AuthFetchDomainPolicy = { mode: 'domains'; domains: string } | { mode: 'none' };
@@ -25,9 +26,9 @@ interface CreateAuthFetchOptions {
 	baseFetch: CustomFetch;
 	initialHeaders: Record<string, string>;
 	/**
-	 * Called on a 401 response. Should return a fresh set of auth headers, or
-	 * `null` if the refresh failed. The returned headers replace the cached
-	 * set used by subsequent requests.
+	 * Called on a 401 response. Should return fresh auth headers, or `null` if
+	 * the refresh failed. They are layered over the cached non-auth headers
+	 * for subsequent requests.
 	 */
 	onUnauthorized?: (
 		currentHeaders: Record<string, string>,

@@ -68,9 +68,15 @@ export async function nodeExecuteAfter(
 	// Agent progress is only tracked for the execution on screen, and a sub-workflow
 	// may reuse a parent node name, so clearing it stays scoped to the parent.
 	if (isSubExecution) {
-		workflowExecutionStateStore.subExecutingNode.removeExecutingNode(pushData.nodeName);
+		workflowExecutionStateStore.subExecutingNode.removeExecutingNode(
+			pushData.nodeName,
+			pushData.data.executionIndex,
+		);
 	} else {
-		workflowExecutionStateStore.executingNode.removeExecutingNode(pushData.nodeName);
+		workflowExecutionStateStore.executingNode.removeExecutingNode(
+			pushData.nodeName,
+			pushData.data.executionIndex,
+		);
 		workflowExecutionStateStore.clearAgentNodeProgress(pushData.nodeName);
 	}
 

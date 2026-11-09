@@ -1,14 +1,18 @@
 import type { EmbeddingModel } from 'ai';
 
-import type { AgentExecutionCounter, ModelConfig, SerializableAgentState } from './agent';
+import type {
+	AgentExecutionCounter,
+	ModelConfig,
+	SerializableAgentState,
+	TokenUsage,
+} from './agent';
 import type { AgentDbMessage } from './message';
 import type {
 	BuiltObservationLogStore,
-	ObservationLogEntry,
 	ObservationLogObserveFn,
 	ObservationLogReflectFn,
-	ObservationLogScope,
 } from './observation-log';
+import type { RuntimeSkillStateStore } from '../../skills/types';
 import type { JSONObject } from '../utils/json';
 
 /**
@@ -34,6 +38,8 @@ export interface Thread {
 }
 
 export interface BuiltMemory {
+	/** Retains active skills across separate runs, including compacted conversations. */
+	skillState?: RuntimeSkillStateStore;
 	// --- Thread management ---
 	getThread(threadId: string): Promise<Thread | null>;
 	saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread>;
@@ -63,6 +69,8 @@ export interface BuiltMemory {
 		threadId: string;
 		resourceId: string;
 		messages: AgentDbMessage[];
+		/** Host context for linking persisted messages to the current run. */
+		hostMetadata?: JSONObject;
 	}): Promise<void>;
 	deleteMessages(messageIds: string[]): Promise<void>;
 	// --- Episodic memory (optional — runtime handles extraction and embeddings) ---
@@ -74,11 +82,68 @@ export interface BuiltMemory {
 	describe(): MemoryDescriptor;
 }
 
-export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
+/** `deleted` marks entries a user deleted; `dropped` marks entries the agent dropped. */
+export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped' | 'deleted';
 
+/**
+ * The host's decision on who owns a turn's episodic memories. Memories are
+ * written to `writeScopeId` and recalled from `readScopeIds`.
+ */
+export interface ResolvedEpisodicScope {
+	writeScopeId: string;
+	readScopeIds: string[];
+}
+
+/** A turn's scope, or the host's decision to turn episodic memory off for it. */
+export type EpisodicScopeDecision = ResolvedEpisodicScope | { disabled: true };
+
+/**
+ * Who asked and where. When `episodic` is set, the store uses it as given.
+ * Without it, the resource is the scope. The host sets `episodic` for shared
+ * conversations, where an unresolved scope means episodic memory stays off.
+ */
 export interface EpisodicMemoryScope {
 	resourceId: string;
+	threadId: string;
+	episodic?: ResolvedEpisodicScope;
 }
+
+export type EpisodicMemoryCaptureKind =
+	| 'explicit_remember'
+	| 'preference'
+	| 'decision'
+	| 'fact'
+	| 'correction'
+	| 'resolution'
+	| 'request';
+
+/** `deleted` marks candidates a user deleted, before or after they were stored. */
+export type EpisodicMemoryCaptureStatus = 'pending' | 'completed' | 'failed' | 'deleted';
+
+export interface EpisodicMemoryCaptureCandidate {
+	id: string;
+	resourceId: string;
+	threadId: string;
+	sourceMessageId: string | null;
+	runId: string;
+	toolCallId: string;
+	content: string;
+	evidenceText: string;
+	/** New flags store `fact`; older rows keep their original kind. */
+	kind: EpisodicMemoryCaptureKind;
+	status: EpisodicMemoryCaptureStatus;
+	attemptCount: number;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+export type NewEpisodicMemoryCaptureCandidate = Omit<
+	EpisodicMemoryCaptureCandidate,
+	'id' | 'status' | 'attemptCount' | 'createdAt' | 'updatedAt'
+> & {
+	/** The turn's resolved scope. The store uses it to pick the storage scope. */
+	episodic?: ResolvedEpisodicScope;
+};
 
 export interface EpisodicMemoryEntry {
 	id: string;
@@ -87,7 +152,8 @@ export interface EpisodicMemoryEntry {
 	contentHash: string;
 	status: EpisodicMemoryStatus;
 	supersededBy: string | null;
-	embedding?: number[];
+	/** float32 values, so a store can keep them as bytes without converting them. */
+	embedding?: Float32Array;
 	embeddingModel?: string;
 	metadata?: JSONObject | null;
 	createdAt: Date;
@@ -102,47 +168,49 @@ export type NewEpisodicMemoryEntry = Omit<
 	contentHash?: string;
 	createdAt?: Date;
 	lastSeenAt?: Date;
+	/** The turn's resolved scope. The store uses it to pick the storage scope. */
+	episodic?: ResolvedEpisodicScope;
 };
 
-export interface EpisodicMemoryEntrySource {
+interface EpisodicMemoryEntrySourceBase {
 	id: string;
 	memoryEntryId: string;
-	observationId: string;
 	threadId: string;
 	evidenceText: string;
 	createdAt: Date;
 }
 
-export type NewEpisodicMemoryEntrySource = Omit<EpisodicMemoryEntrySource, 'id' | 'createdAt'> & {
+export type EpisodicMemoryEntrySource = EpisodicMemoryEntrySourceBase &
+	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
+
+type NewEpisodicMemoryEntrySourceBase = Omit<EpisodicMemoryEntrySourceBase, 'id' | 'createdAt'> & {
 	createdAt?: Date;
 };
 
-export type NewEpisodicMemoryEntrySourceForEntry = Omit<
-	NewEpisodicMemoryEntrySource,
+export type NewEpisodicMemoryEntrySource = NewEpisodicMemoryEntrySourceBase &
+	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
+
+type NewEpisodicMemoryEntrySourceForEntryBase = Omit<
+	NewEpisodicMemoryEntrySourceBase,
 	'memoryEntryId'
 >;
 
-export interface EpisodicMemoryCursor extends ObservationLogScope {
-	lastIndexedObservationId: string;
-	lastIndexedObservationCreatedAt: Date;
-	updatedAt: Date;
-}
-
-export type NewEpisodicMemoryCursor = Omit<EpisodicMemoryCursor, 'updatedAt'> & {
-	updatedAt?: Date;
-};
+export type NewEpisodicMemoryEntrySourceForEntry = NewEpisodicMemoryEntrySourceForEntryBase &
+	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
 
 export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
-	lexicalScore: number;
 	vectorScore: number;
-	rrfScore: number;
 	finalScore: number;
 }
 
 export interface EpisodicMemorySearchOptions {
 	topK?: number;
-	queryEmbedding?: number[];
+	queryEmbedding?: ArrayLike<number>;
 	includeStatuses?: EpisodicMemoryStatus[];
+	/** Search only entries a write from this scope would supersede or merge. Shared backends must not widen this search. */
+	writeScopeOnly?: boolean;
+	/** Lowest cosine similarity to the query an entry needs. Without it, topK alone bounds the result. */
+	minSimilarity?: number;
 }
 
 export interface EpisodicMemoryTaskLockHandle {
@@ -153,7 +221,7 @@ export interface EpisodicMemoryTaskLockHandle {
 
 export interface EpisodicMemoryTaskLockMethods {
 	acquire(
-		resourceId: string,
+		scope: EpisodicMemoryScope,
 		opts: { ttlMs: number; holderId: string },
 	): Promise<EpisodicMemoryTaskLockHandle | null>;
 	release(handle: EpisodicMemoryTaskLockHandle): Promise<void>;
@@ -174,8 +242,6 @@ export interface EpisodicMemoryMethods {
 		scope: EpisodicMemoryScope,
 		reflection: EpisodicMemoryReflectionApply,
 	): Promise<EpisodicMemoryReflectionResult>;
-	getCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null>;
-	setCursor(cursor: NewEpisodicMemoryCursor): Promise<void>;
 	taskLock?: EpisodicMemoryTaskLockMethods;
 }
 
@@ -183,58 +249,115 @@ export interface BuiltEpisodicMemoryStore {
 	episodic: EpisodicMemoryMethods;
 }
 
-export interface EpisodicMemoryExtractionCandidate {
+export interface EpisodicMemoryCaptureMethods {
+	getEntriesByContentHashes(
+		scope: EpisodicMemoryScope,
+		contentHashes: string[],
+	): Promise<EpisodicMemoryEntry[]>;
+	enqueueCaptureCandidate(
+		candidate: NewEpisodicMemoryCaptureCandidate,
+	): Promise<EpisodicMemoryCaptureCandidate>;
+	getPendingCaptureCandidates(
+		scope: EpisodicMemoryScope,
+		opts?: { limit?: number },
+	): Promise<EpisodicMemoryCaptureCandidate[]>;
+	completeCaptureCandidates(ids: string[]): Promise<void>;
+	recordCaptureCandidateFailure(ids: string[], maxAttempts: number): Promise<void>;
+	/**
+	 * Returns, for each embedding in order, the closest active entries of the
+	 * write scope. Load the scope once for all embeddings.
+	 */
+	findSimilarEntries(
+		scope: EpisodicMemoryScope,
+		embeddings: Array<ArrayLike<number>>,
+		opts: Pick<EpisodicMemorySearchOptions, 'topK' | 'minSimilarity'>,
+	): Promise<RetrievedEpisodicMemoryEntry[][]>;
+	/**
+	 * Adds sources to an active entry and sets its `lastSeenAt`. Claims the
+	 * capture candidates of the sources in the same write, like
+	 * `saveEntryWithSources`. Returns null when a user deleted a candidate or
+	 * the entry is not active.
+	 */
+	addEntrySources(
+		entryId: string,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+		lastSeenAt: Date,
+	): Promise<EpisodicMemoryEntry | null>;
+}
+
+export interface BuiltEpisodicMemoryCaptureStore {
+	episodic: EpisodicMemoryMethods & EpisodicMemoryCaptureMethods;
+}
+
+export type EpisodicMemoryFactRelation = 'duplicate' | 'update' | 'different';
+
+/** A stored entry that is similar to a new fact. */
+export interface EpisodicMemoryConsolidationNeighbour {
+	id: string;
 	content: string;
-	sources: Array<{
-		observationId: string;
-		evidence: string;
+	createdAt: Date;
+	lastSeenAt: Date;
+	/** Evidence of the newest source of the entry, when it has one. */
+	evidenceText?: string;
+}
+
+/** A new fact from a capture candidate, with the stored entries most similar to it. */
+export interface EpisodicMemoryConsolidationFact {
+	candidateId: string;
+	content: string;
+	evidenceText: string;
+	createdAt: Date;
+	neighbours: EpisodicMemoryConsolidationNeighbour[];
+}
+
+export interface EpisodicMemoryConsolidatorInput {
+	scope: EpisodicMemoryScope;
+	now: Date;
+	facts: EpisodicMemoryConsolidationFact[];
+	executionCounter?: AgentExecutionCounter;
+	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
+	modelFetch?: typeof globalThis.fetch;
+	/** The agent's caller identity (`AgentRuntimeConfig.functionId`), for the task's request header. */
+	functionId?: string;
+}
+
+export interface EpisodicMemoryConsolidation {
+	facts: Array<{
+		candidateId: string;
+		relations: Array<{
+			entryId: string;
+			relation: EpisodicMemoryFactRelation;
+			reason?: string;
+		}>;
+		/** The updated entry content. Required when a relation is `update`. */
+		mergedContent?: string | null;
 	}>;
 }
 
-export interface EpisodicMemoryExtractorInput {
-	scope: EpisodicMemoryScope;
-	observationScope: ObservationLogScope;
-	now: Date;
-	observations: ObservationLogEntry[];
-	renderedObservations: string;
-	existingEntries: RetrievedEpisodicMemoryEntry[];
-	executionCounter?: AgentExecutionCounter;
+export interface EpisodicMemoryConsolidateResult {
+	consolidation: EpisodicMemoryConsolidation;
+	/** Normalized token usage from the consolidation model call, when the provider reports it. */
+	usage?: TokenUsage;
+	/** Stable model id string of the model that produced the consolidation. */
+	model: string;
 }
 
-export interface EpisodicMemoryExtraction {
-	entries: EpisodicMemoryExtractionCandidate[];
-}
-
-export type EpisodicMemoryExtractFn = (
-	input: EpisodicMemoryExtractorInput,
-) => Promise<EpisodicMemoryExtraction>;
-
-export interface EpisodicMemoryReflectionMerge {
-	supersedes: string[];
-	content: string;
-}
-
-export interface EpisodicMemoryReflection {
-	drop: string[];
-	merge: EpisodicMemoryReflectionMerge[];
-}
-
-export interface EpisodicMemoryReflectorInput {
-	scope: EpisodicMemoryScope;
-	now: Date;
-	seedEntryIds: string[];
-	entries: RetrievedEpisodicMemoryEntry[];
-	sources: EpisodicMemoryEntrySource[];
-	executionCounter?: AgentExecutionCounter;
-}
-
-export type EpisodicMemoryReflectFn = (
-	input: EpisodicMemoryReflectorInput,
-) => Promise<EpisodicMemoryReflection>;
+/**
+ * Compares new facts with similar stored entries. For each pair, returns
+ * whether the new fact is a duplicate, an update, or a different fact.
+ */
+export type EpisodicMemoryConsolidateFn = (
+	input: EpisodicMemoryConsolidatorInput,
+) => Promise<EpisodicMemoryConsolidateResult>;
 
 export interface EpisodicMemoryReflectionApplyMerge {
 	supersedes: string[];
 	entry: NewEpisodicMemoryEntry;
+	/**
+	 * Sources to add to the replacement. The store claims their capture
+	 * candidates in the same write and skips the merge when a user deleted one.
+	 */
+	sources?: NewEpisodicMemoryEntrySourceForEntry[];
 }
 
 export interface EpisodicMemoryReflectionApply {
@@ -249,9 +372,16 @@ export interface EpisodicMemoryReflectionResult {
 }
 
 export interface EpisodicMemoryPrompts {
-	extraction?: string;
-	reflection?: string;
+	consolidation?: string;
 	recallToolInstruction?: string;
+}
+
+/** Builder-set topics that steer what the agent flags. Model instructions, not a filter. */
+export interface EpisodicMemoryCaptureGuidance {
+	/** Topics to prioritize. The agent still flags other useful details. */
+	include?: string[];
+	/** Topics the agent is told not to flag. */
+	exclude?: string[];
 }
 
 export interface EpisodicMemoryEmbeddingProviderOptions {
@@ -267,9 +397,9 @@ export interface EpisodicMemoryConfig {
 	embedder?: EmbeddingModel;
 	embeddingModel?: string;
 	embeddingProviderOptions?: string | EpisodicMemoryEmbeddingProviderOptions;
-	extract?: EpisodicMemoryExtractFn;
-	reflect?: EpisodicMemoryReflectFn;
+	consolidate?: EpisodicMemoryConsolidateFn;
 	prompts?: EpisodicMemoryPrompts;
+	guidance?: EpisodicMemoryCaptureGuidance;
 }
 
 export interface TitleGenerationConfig {
@@ -291,6 +421,11 @@ export interface ObservationLogMemoryConfig {
 export interface ObservationalMemoryConfig {
 	/** Estimated visible-window tokens at which the Observer is scheduled mid-run and post-turn. */
 	observerThresholdTokens?: number;
+	/**
+	 * Run the Observer at tool-loop boundaries inside a turn. Default `true`.
+	 * When `false`, the Observer runs only after the turn completes.
+	 */
+	midRunObservation?: boolean;
 	/** Estimated active observation-log tokens required before the Reflector runs. */
 	reflectorThresholdTokens?: number;
 	/** Maximum estimated tokens to render into the system prompt. */
@@ -352,6 +487,6 @@ export interface CheckpointStore {
 	 * false when another process has already claimed or changed the snapshot.
 	 */
 	claimForResume?(key: string, state: SerializableAgentState): Promise<boolean>;
-	/** Delete a snapshot by key. */
-	delete(key: string): Promise<void>;
+	/** Delete a snapshot. Hosts can use the finishing state to check ownership. */
+	delete(key: string, state?: SerializableAgentState): Promise<void>;
 }

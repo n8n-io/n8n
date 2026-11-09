@@ -1,9 +1,20 @@
+import type { AuthenticatedRequest, User } from '@n8n/db';
+import { NotFoundError } from '@n8n/errors';
+import { mock } from 'vitest-mock-extended';
+
+import type { AgentSessionStopService } from '../agent-session-stop.service';
+import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentMemoryTraceService } from '../agent-memory-trace.service';
+import type { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
 import { AgentThreadsController } from '../agent-threads.controller';
+import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { AgentExecution } from '../entities/agent-execution.entity';
 import {
 	getControllerMetadata,
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 
 describe('AgentThreadsController route access scopes', () => {
 	expectProjectScopedAgentRoutes(AgentThreadsController);
@@ -20,6 +31,7 @@ describe('AgentThreadsController route access scopes', () => {
 		['listThreads', 'get', '/:agentId/threads'],
 		['getThread', 'get', '/:agentId/threads/:threadId'],
 		['exportThreadToLangSmith', 'post', '/:agentId/threads/:threadId/langsmith-export'],
+		['stopSession', 'post', '/:agentId/threads/:threadId/stop'],
 		['deleteThread', 'delete', '/:agentId/threads/:threadId'],
 	])('%s uses %s %s', (handlerName, method, path) => {
 		expect(routes.get(handlerName)).toMatchObject({ method, path });
@@ -29,8 +41,172 @@ describe('AgentThreadsController route access scopes', () => {
 		['listThreads', 'agent:read'],
 		['getThread', 'agent:read'],
 		['exportThreadToLangSmith', 'agent:read'],
+		['stopSession', 'agent:execute'],
 		['deleteThread', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+	});
+
+	it('omits internal ownership fields from a thread response', async () => {
+		const agentExecutionService = mock<AgentExecutionService>();
+		const memoryTraceService = mock<AgentMemoryTraceService>();
+		const memory = { recalls: {}, flags: {} };
+		memoryTraceService.getThreadMemory.mockResolvedValue(memory);
+		const controller = new AgentThreadsController(
+			agentExecutionService,
+			memoryTraceService,
+			mock<AgentSessionLangSmithExportService>(),
+			new SystemAgentRegistry(),
+			mock<AgentSessionStopService>(),
+		);
+		agentExecutionService.getThreadDetail.mockResolvedValue({
+			thread: mock<AgentExecutionThread>({
+				id: 'thread-1',
+				ownerId: 'user-1',
+				accessScope: 'user',
+				owner: null,
+			}),
+			executions: [],
+		});
+
+		const result = await controller.getThread({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: { id: 'user-1' },
+		} as never);
+
+		expect(result.thread).toMatchObject({ id: 'thread-1' });
+		expect(result.thread).not.toHaveProperty('ownerId');
+		expect(result.thread).not.toHaveProperty('accessScope');
+		expect(result.thread).not.toHaveProperty('owner');
+		expect(result.memory).toBe(memory);
+		expect(memoryTraceService.getThreadMemory).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			userId: 'user-1',
+			threadId: 'thread-1',
+			executions: [],
+		});
+	});
+});
+
+describe('AgentThreadsController session details', () => {
+	it.each([
+		['private root', 'user', null, 'chat', true],
+		['MCP root', 'user', null, 'mcp', false],
+		['Instance AI root', 'user', null, 'instance-ai', false],
+		['shared root', 'project', null, 'mcp', false],
+		['child', 'user', 'parent', 'mcp', false],
+		['legacy sub-agent', 'user', null, 'subagent', false],
+		['source-less private root', 'user', null, null, true],
+	] as const)(
+		'returns origin and Preview eligibility for a %s session',
+		async (_name, accessScope, parentThreadId, source, expected) => {
+			const service = mock<AgentExecutionService>();
+			const controller = new AgentThreadsController(
+				service,
+				mock<AgentMemoryTraceService>(),
+				mock<AgentSessionLangSmithExportService>(),
+				new SystemAgentRegistry(),
+				mock<AgentSessionStopService>(),
+			);
+			service.getThreadDetail.mockResolvedValue({
+				thread: mock<AgentExecutionThread>({
+					id: 'thread-1',
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					ownerId: 'user-1',
+					accessScope,
+					parentThreadId,
+					taskId: null,
+				}),
+				executions: [mock<AgentExecution>({ source: null }), mock<AgentExecution>({ source })],
+			});
+			const result = await controller.getThread(
+				mock<AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>>({
+					params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+					user: mock<User>({ id: 'user-1' }),
+				}),
+			);
+
+			expect(result.thread.canContinueInPreview).toBe(expected);
+			expect(result.thread.source).toBe(source);
+			expect(result.thread).not.toHaveProperty('ownerId');
+			expect(result.thread).not.toHaveProperty('accessScope');
+		},
+	);
+});
+
+describe('AgentThreadsController deleteThread', () => {
+	function setup() {
+		const service = mock<AgentExecutionService>();
+		const registry = new SystemAgentRegistry();
+		registry.register({
+			agentId: 'system-agent',
+			name: 'System Agent',
+			authorize: async () => true,
+			prepareTurn: vi.fn(),
+		});
+		const controller = new AgentThreadsController(
+			service,
+			mock<AgentMemoryTraceService>(),
+			mock<AgentSessionLangSmithExportService>(),
+			registry,
+			mock<AgentSessionStopService>(),
+		);
+		return { service, controller };
+	}
+
+	function deleteRequest(agentId: string) {
+		return mock<AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>>({
+			params: { projectId: 'project-1', agentId, threadId: 'thread-1' },
+			user: mock<User>({ id: 'user-1' }),
+		});
+	}
+
+	it('deletes a project agent thread', async () => {
+		const { service, controller } = setup();
+		service.deleteThread.mockResolvedValue(true);
+
+		await expect(controller.deleteThread(deleteRequest('agent-1'))).resolves.toEqual({
+			success: true,
+		});
+		expect(service.deleteThread).toHaveBeenCalledWith('project-1', 'agent-1', 'thread-1', 'user-1');
+	});
+
+	it('refuses a system agent thread', async () => {
+		const { service, controller } = setup();
+
+		await expect(controller.deleteThread(deleteRequest('system-agent'))).rejects.toThrow(
+			NotFoundError,
+		);
+		expect(service.deleteThread).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentThreadsController stopSession', () => {
+	it('passes the project, Agent, session, and user to the stop service', async () => {
+		const stopService = mock<AgentSessionStopService>();
+		const controller = new AgentThreadsController(
+			mock<AgentExecutionService>(),
+			mock<AgentMemoryTraceService>(),
+			mock<AgentSessionLangSmithExportService>(),
+			new SystemAgentRegistry(),
+			stopService,
+		);
+		stopService.stopSession.mockResolvedValue({ cancelRequested: true });
+		const request = mock<
+			AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>
+		>({
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+			user: mock<User>({ id: 'user-1' }),
+		});
+
+		await expect(controller.stopSession(request)).resolves.toEqual({ cancelRequested: true });
+		expect(stopService.stopSession).toHaveBeenCalledExactlyOnceWith(
+			'project-1',
+			'agent-1',
+			'thread-1',
+			'user-1',
+		);
 	});
 });

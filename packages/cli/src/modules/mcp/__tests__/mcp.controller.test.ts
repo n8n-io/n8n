@@ -29,11 +29,15 @@ mcpServerMiddlewareService.getEnabledMiddleware.mockReturnValue(mockEnabledMiddl
 Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
 import { McpConfig } from '../mcp.config';
-import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
+import {
+	MCP_CLIENT_INFO_META_KEY,
+	MCP_DISCOVER_METHOD,
+	MCP_PROTOCOL_VERSION_META_KEY,
+} from '../mcp.constants';
 import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
-import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
+import type { McpCallerAuth } from '@n8n/backend-services/auth';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
 
@@ -95,6 +99,9 @@ describe('McpController', () => {
 	const mcpService = {
 		getServer: vi.fn(),
 		resolveFeatureFlags: vi.fn(),
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		recordDiscoveryConnection: vi.fn().mockResolvedValue(undefined),
+		// EOF Experiment cleanup
 	} as unknown as McpService;
 	const mcpSettingsService = { getEnabled: vi.fn() } as unknown as McpSettingsService;
 	const mcpProtectedResource = {
@@ -114,7 +121,6 @@ describe('McpController', () => {
 		// when a flag matters.
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: false, variant: 'unassigned' },
-			canvasGroupsEnabled: false,
 		});
 
 		Container.set(Logger, logger);
@@ -167,7 +173,6 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: true, variant: 'variant' },
-			canvasGroupsEnabled: true,
 		});
 		const res = createRes();
 
@@ -183,6 +188,12 @@ describe('McpController', () => {
 			res,
 		);
 
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		expect(mcpService.recordDiscoveryConnection).toHaveBeenCalledWith('user-1', 'Claude', {
+			authType: 'oauth',
+			clientId: 'client-abc',
+		});
+		// EOF Experiment cleanup
 		expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 			user_id: 'user-1',
 			client_name: 'Claude',
@@ -191,7 +202,6 @@ describe('McpController', () => {
 			mcp_connection_status: 'success',
 			mcp_apps_enabled: true,
 			mcp_apps_variant: 'variant',
-			mcp_canvas_groups_enabled: true,
 		});
 	});
 
@@ -203,7 +213,6 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: false, variant: 'unassigned' },
-			canvasGroupsEnabled: false,
 		});
 		const res = createRes();
 
@@ -236,7 +245,6 @@ describe('McpController', () => {
 			mcp_connection_status: 'success',
 			mcp_apps_enabled: false,
 			mcp_apps_variant: 'unassigned',
-			mcp_canvas_groups_enabled: false,
 		});
 	});
 
@@ -353,7 +361,6 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: true, variant: 'env_override' },
-			canvasGroupsEnabled: false,
 		});
 		const res = createRes();
 
@@ -385,7 +392,6 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: true, variant: 'variant' },
-			canvasGroupsEnabled: false,
 		});
 		const res = createRes();
 
@@ -403,7 +409,47 @@ describe('McpController', () => {
 		expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
-			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
+			{ mcpApps: { enabled: true, variant: 'variant' } },
+			{ name: 'Claude', version: '1.0.0' },
+			{ caller: undefined, grantedScopes: undefined },
+		);
+	});
+
+	// The 2026-07-28 revision drops `initialize`, so a modern client opens with
+	// `server/discover`. It is the other branch of `isConnectionHandshake`, which still
+	// labels the connection telemetry.
+	test('forwards server/discover to getServer as the connection handshake', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: false, variant: 'unassigned' },
+			aiPreferencesEnabled: true,
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				body: {
+					jsonrpc: '2.0',
+					id: 1,
+					method: MCP_DISCOVER_METHOD,
+					params: {
+						_meta: {
+							[MCP_PROTOCOL_VERSION_META_KEY]: '2026-07-28',
+							[MCP_CLIENT_INFO_META_KEY]: { name: 'Claude', version: '1.0.0' },
+						},
+					},
+				},
+			}),
+			res,
+		);
+
+		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			expect.objectContaining({ aiPreferencesEnabled: true }),
 			{ name: 'Claude', version: '1.0.0' },
 			{ caller: undefined, grantedScopes: undefined },
 		);
@@ -417,7 +463,6 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: false, variant: 'control' },
-			canvasGroupsEnabled: false,
 		});
 		const res = createRes();
 
@@ -436,7 +481,7 @@ describe('McpController', () => {
 		expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
-			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
+			{ mcpApps: { enabled: false, variant: 'control' } },
 			undefined,
 			{ caller: undefined, grantedScopes: undefined },
 		);

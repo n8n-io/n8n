@@ -1,4 +1,4 @@
-import { watch, computed, ref, type ComputedRef } from 'vue';
+import { watch, computed, ref, shallowRef, type ComputedRef } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import {
 	Workflow,
@@ -14,7 +14,6 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
-	copyExecutionData,
 	copyRunData,
 	createLogTree,
 	findSubExecutionLocator,
@@ -48,7 +47,9 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const currentExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 	const toast = useToast();
 
-	const state = ref<
+	// Shallow: `response` is the store's execution object. The store never
+	// mutates it, so it is a stable snapshot of the run.
+	const state = shallowRef<
 		| { response: IExecutionResponse; startData: { [nodeName: string]: ITaskStartedData[] } }
 		| undefined
 	>();
@@ -283,7 +284,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 					currentExecution.value === null
 						? undefined
 						: {
-								response: copyExecutionData(currentExecution.value),
+								response: currentExecution.value,
 								startData: workflowExecutionStateStore.value.activeExecutionStartedData?.[1] ?? {},
 							};
 

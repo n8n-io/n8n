@@ -53,8 +53,11 @@ describe('AgentEvalRunRepository', () => {
 
 			const callArgs = entityManager.update.mock.calls[0];
 			expect(callArgs?.[1]).toBe('run-1');
-			expect(callArgs?.[2]).toMatchObject({ status: 'running', runningInstanceId: 'main-2' });
-			expect((callArgs?.[2] as { runAt: Date }).runAt).toBeInstanceOf(Date);
+			expect(callArgs?.[2]).toMatchObject({
+				status: 'running',
+				runningInstanceId: 'main-2',
+				runAt: expect.any(Date),
+			});
 		});
 
 		it('nulls the running instance when none is given', async () => {
@@ -63,7 +66,7 @@ describe('AgentEvalRunRepository', () => {
 			await repo.markAsRunning('run-1');
 
 			const callArgs = entityManager.update.mock.calls[0];
-			expect((callArgs?.[2] as { runningInstanceId: string | null }).runningInstanceId).toBeNull();
+			expect(callArgs?.[2]).toMatchObject({ runningInstanceId: null });
 		});
 	});
 

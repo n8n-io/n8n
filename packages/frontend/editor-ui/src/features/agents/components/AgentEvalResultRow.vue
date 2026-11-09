@@ -85,7 +85,7 @@ const statusLabel = computed(() => {
 	}
 });
 
-const statusTheme = computed(() => (props.result.status === 'error' ? 'danger' : 'default'));
+const statusTheme = computed(() => (props.result.status === 'error' ? 'danger' : 'outline'));
 
 const toolCalls = computed(() => toDisplayToolCalls(props.result.toolCalls));
 
@@ -104,13 +104,13 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 				{{ request }}
 			</N8nText>
 			<div :class="$style.headerActions">
-				<N8nBadge v-if="statusLabel" :theme="statusTheme" data-testid="agent-eval-status-chip">
+				<N8nBadge v-if="statusLabel" :variant="statusTheme" data-testid="agent-eval-status-chip">
 					{{ statusLabel }}
 				</N8nBadge>
-				<N8nBadge v-if="isEditing" theme="warning" data-testid="agent-eval-unsaved-pill">
+				<N8nBadge v-if="isEditing" variant="warning" data-testid="agent-eval-unsaved-pill">
 					{{ i18n.baseText('agents.builder.agentEvals.review.row.unsavedPill') }}
 				</N8nBadge>
-				<N8nBadge v-else-if="isSettled" theme="success" data-testid="agent-eval-saved-pill">
+				<N8nBadge v-else-if="isSettled" variant="success" data-testid="agent-eval-saved-pill">
 					<span :class="$style.savedPill">
 						<N8nIcon icon="circle-check" size="small" />
 						{{ i18n.baseText('agents.builder.agentEvals.review.row.savedPill') }}
@@ -166,7 +166,7 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 						{{ i18n.baseText('agents.builder.agentEvals.review.row.keptWithFeedback') }}
 					</N8nText>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="small"
 						icon="pencil"
 						:disabled="disabled"
@@ -230,7 +230,7 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 						{{ i18n.baseText('agents.builder.agentEvals.review.reason.save') }}
 					</N8nButton>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="small"
 						data-testid="agent-eval-reason-cancel"
 						@click="emit('cancel')"
@@ -240,7 +240,7 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 				</div>
 				<N8nButton
 					v-if="!view.showAnswerEditor"
-					variant="subtle"
+					variant="outline"
 					size="small"
 					icon="pencil"
 					:disabled="disabled"
@@ -262,7 +262,7 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 				{{ settledComment }}
 			</N8nText>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				size="small"
 				:disabled="disabled"
 				data-testid="agent-eval-edit-note"
@@ -280,7 +280,7 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 			/>
 			<N8nButton
 				v-if="showFooterEdit"
-				variant="subtle"
+				variant="outline"
 				size="small"
 				icon="pencil"
 				:disabled="disabled"

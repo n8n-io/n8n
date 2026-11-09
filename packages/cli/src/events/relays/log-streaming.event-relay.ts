@@ -1,10 +1,17 @@
+import { EventService } from '@n8n/backend-services';
+import { UserRepository } from '@n8n/db';
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { IWorkflowBase, JsonValue } from 'n8n-workflow';
+import type { JsonValue } from 'n8n-workflow';
+import {
+	ERROR_MESSAGE_REDACTED_MESSAGE,
+	isExecutionOutputRedacted,
+	redactExecutionError,
+} from 'n8n-workflow';
 
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
 import type {
@@ -67,6 +74,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		readonly eventService: EventService,
 		private readonly eventBus: MessageEventBus,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly userRepository: UserRepository,
 	) {
 		super(eventService);
 	}
@@ -99,6 +107,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-signed-up': (event) => this.userSignedUp(event),
 			'user-logged-in': (event) => this.userLoggedIn(event),
 			'user-login-failed': (event) => this.userLoginFailed(event),
+			'user-login-email-conflict': (event) => this.userLoginEmailConflict(event),
 			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
@@ -123,6 +132,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'node-type-policy-document-deleted': (event) => this.nodeTypePolicyDocumentDeleted(event),
 			'node-type-policy-attachments-updated': (event) =>
 				this.nodeTypePolicyAttachmentsUpdated(event),
+			'policy-decision-blocked': (event) => this.policyDecisionBlocked(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
@@ -184,9 +194,14 @@ export class LogStreamingEventRelay extends EventRelay {
 			'role-mapping-rule-updated': (event) => this.roleMappingRuleUpdated(event),
 			'role-mapping-rule-deleted': (event) => this.roleMappingRuleDeleted(event),
 			'role-mapping-rules-bulk-deleted': (event) => this.roleMappingRulesBulkDeleted(event),
+			'trusted-source-created': (event) => this.trustedSourceCreated(event),
+			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
+			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
 			'mcp-oauth-completed': (event) => this.mcpOauthCompleted(event),
 			'mcp-tool-called': (event) => this.mcpToolCalled(event),
 			'mcp-access-updated': (event) => this.mcpAccessUpdated(event),
+			'instance-report-delivered': () => this.instanceReportDelivered(),
+			'instance-report-failed': () => this.instanceReportFailed(),
 		});
 	}
 
@@ -220,6 +235,16 @@ export class LogStreamingEventRelay extends EventRelay {
 			eventName: 'n8n.audit.n8n-package.export.failed',
 			payload: { ...user, operation: 'export', ...rest },
 		});
+	}
+
+	private instanceReportDelivered() {
+		void this.eventBus.send(
+			new EventMessageGeneric({ eventName: 'n8n.instanceReporting.success' }),
+		);
+	}
+
+	private instanceReportFailed() {
+		void this.eventBus.send(new EventMessageGeneric({ eventName: 'n8n.instanceReporting.failed' }));
 	}
 
 	@Redactable()
@@ -335,32 +360,21 @@ export class LogStreamingEventRelay extends EventRelay {
 	private workflowPreExecute({
 		data,
 		executionId,
+		userId,
 		mode,
 		projectId,
 		projectName,
 	}: RelayEventMap['workflow-pre-execute']) {
-		const payload =
-			'executionData' in data
-				? {
-						executionId,
-						userId: data.userId,
-						workflowId: data.workflowData.id,
-						isManual: data.executionMode === 'manual',
-						mode,
-						workflowName: data.workflowData.name,
-						projectId: data.projectId ?? projectId,
-						projectName: data.projectName ?? projectName,
-					}
-				: {
-						executionId,
-						userId: undefined,
-						workflowId: (data as IWorkflowBase).id,
-						isManual: false,
-						mode,
-						workflowName: (data as IWorkflowBase).name,
-						projectId,
-						projectName,
-					};
+		const payload = {
+			executionId,
+			userId,
+			workflowId: data.id,
+			isManual: mode === 'manual',
+			mode,
+			workflowName: data.name,
+			projectId,
+			projectName,
+		};
 
 		void this.eventBus.sendWorkflowEvent({
 			eventName: 'n8n.workflow.started',
@@ -375,6 +389,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		const payload = {
 			...rest,
 			executionId,
+			// oxlint-disable-next-line typescript/no-deprecated
 			success: !!runData?.finished, // despite the `success` name, this reports `finished` state
 			isManual: runData?.mode === 'manual',
 			mode: runData?.mode,
@@ -405,16 +420,29 @@ export class LogStreamingEventRelay extends EventRelay {
 			return;
 		}
 
+		const error = runData?.data.resultData.error;
+		// The error message can carry node output. Under an active redaction policy
+		// the destination gets the error type and HTTP status code instead, as the
+		// execution view does.
+		const redactedError =
+			runData && error && isExecutionOutputRedacted(runData.data, workflow.settings, runData.mode)
+				? redactExecutionError(error)
+				: undefined;
+		const errorFields = redactedError
+			? {
+					errorMessage: ERROR_MESSAGE_REDACTED_MESSAGE,
+					errorType: redactedError.type,
+					...(redactedError.httpCode ? { errorHttpCode: redactedError.httpCode } : {}),
+				}
+			: { errorMessage: error?.message.toString() };
+
 		void this.eventBus.sendWorkflowEvent({
 			eventName: 'n8n.workflow.failed',
 			payload: {
 				...payload,
 				lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
-				errorNodeType:
-					runData?.data.resultData.error && 'node' in runData?.data.resultData.error
-						? runData?.data.resultData.error.node?.type
-						: undefined,
-				errorMessage: runData?.data.resultData.error?.message.toString(),
+				errorNodeType: error && 'node' in error ? error.node?.type : undefined,
+				...errorFields,
 			},
 		});
 
@@ -533,10 +561,12 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region User
 
 	@Redactable()
-	private userDeleted({ user }: RelayEventMap['user-deleted']) {
+	private userDeleted({ user, source, targetUserId }: RelayEventMap['user-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.deleted',
-			payload: user,
+			// A system deletion has no acting user, so name the system and the
+			// deleted user.
+			payload: user ?? { userId: null, source, targetUserId },
 		});
 	}
 
@@ -606,6 +636,18 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.failed',
 			payload: event,
+		});
+	}
+
+	@Redactable()
+	private userLoginEmailConflict({
+		user,
+		authenticationMethod,
+		assertedEmail,
+	}: RelayEventMap['user-login-email-conflict']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.login.emailConflict',
+			payload: { ...user, authenticationMethod, _assertedEmail: assertedEmail },
 		});
 	}
 
@@ -890,6 +932,50 @@ export class LogStreamingEventRelay extends EventRelay {
 				scopeId: event.scopeId,
 				before: attachmentsContentToJson(event.before),
 				after: attachmentsContentToJson(event.after),
+			},
+		});
+	}
+
+	// #endregion
+
+	// #region Policy enforcement
+
+	/** Hosts that know only the user id pass `{ id }`, so read the rest to keep the fields uniform. */
+	private policyDecisionBlocked(event: RelayEventMap['policy-decision-blocked']) {
+		// The event would go to the destination whose credential was blocked, and block again.
+		if (event.actorType === 'system' && event.systemReason === 'log-streaming') return;
+
+		if (event.actorType === 'system' || event.user.email !== undefined) {
+			this.sendPolicyDecisionBlocked(event);
+			return;
+		}
+
+		void this.findAuditedUser(event.user).then((user) =>
+			this.sendPolicyDecisionBlocked({ ...event, user }),
+		);
+	}
+
+	/** Falls back to the id alone, so a failed lookup never drops the event. */
+	private async findAuditedUser(user: UserLike): Promise<UserLike> {
+		try {
+			return (await this.userRepository.findByIdWithRole(user.id)) ?? user;
+		} catch {
+			return user;
+		}
+	}
+
+	@Redactable()
+	private sendPolicyDecisionBlocked({
+		user,
+		policyVersions,
+		...rest
+	}: RelayEventMap['policy-decision-blocked']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.policy.decision.blocked',
+			payload: {
+				...(user ?? { userId: null }),
+				...rest,
+				policyVersions: policyVersions?.map((version) => ({ ...version })) ?? [],
 			},
 		});
 	}
@@ -1305,6 +1391,14 @@ export class LogStreamingEventRelay extends EventRelay {
 					payload: user,
 				});
 				break;
+			case 'public_api_rate_limit':
+				void this.eventBus.sendAuditEvent({
+					eventName: value
+						? 'n8n.audit.public-api-rate-limit.enabled'
+						: 'n8n.audit.public-api-rate-limit.disabled',
+					payload: user,
+				});
+				break;
 			default:
 				assertNever(settingName);
 		}
@@ -1534,6 +1628,46 @@ export class LogStreamingEventRelay extends EventRelay {
 					reason: event.reason,
 				},
 			},
+		});
+	}
+
+	// #endregion
+
+	// #region Trusted sources
+
+	@Redactable()
+	private trustedSourceCreated({
+		user,
+		sourceId,
+		issuer,
+	}: RelayEventMap['trusted-source-created']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.trusted-source.created',
+			payload: { ...user, sourceId, issuer },
+		});
+	}
+
+	@Redactable()
+	private trustedSourceUpdated({
+		user,
+		sourceId,
+		issuer,
+	}: RelayEventMap['trusted-source-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.trusted-source.updated',
+			payload: { ...user, sourceId, issuer },
+		});
+	}
+
+	@Redactable()
+	private trustedSourceDeleted({
+		user,
+		sourceId,
+		issuer,
+	}: RelayEventMap['trusted-source-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.trusted-source.deleted',
+			payload: { ...user, sourceId, issuer },
 		});
 	}
 

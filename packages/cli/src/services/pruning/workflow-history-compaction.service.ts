@@ -1,21 +1,17 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
+import { DateTime } from 'luxon';
 import { DiffMetaData, DiffRule, RULES, SKIP_RULES } from 'n8n-workflow';
-import { strict } from 'node:assert';
 
-import { EventService } from '@/events/event.service';
 import { RelayEventMap } from '@/events/maps/relay.event-map';
 
-export function getCompactionWindowDeltas(minimumAge: number, timeWindow: number, unitMs: number) {
-	return { startDelta: (minimumAge + timeWindow) * unitMs, endDelta: minimumAge * unitMs };
-}
+import { getCompactionWindowDeltas } from './workflow-history-compaction.utils';
 
 /**
  * Responsible for compacting auto saved workflow history entries in the database.
@@ -52,67 +48,14 @@ export class WorkflowHistoryCompactionService {
 	private isOptimizingHistories = false;
 	private isTrimmingHistories = false;
 
-	/** Aborts the detached startup passes, which no system task run owns. */
-	private startupAbort = new AbortController();
-
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly instanceSettings: InstanceSettings,
-		private readonly dbConnection: DbConnection,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-history-compaction');
-	}
-
-	init() {
-		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
-
-		if (this.instanceSettings.isLeader) this.runStartupCompaction();
-	}
-
-	get isEnabled() {
-		return this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader;
-	}
-
-	/** Whether trimming may run at all: a prune horizon shorter than the trim window makes trimming pointless. */
-	get isTrimmingEnabled() {
-		return (
-			this.globalConfig.workflowHistory.pruneTime === -1 ||
-			this.globalConfig.workflowHistory.pruneTime * Time.hours.toMilliseconds >=
-				this.config.trimmingMinimumAgeDays * Time.days.toMilliseconds
-		);
-	}
-
-	// One-shot catch-up pass on startup and on leader change, so a gap between
-	// leaders is compacted without waiting a full task interval. Not `runOnTakeover`
-	// on the tasks: `trimOnStartUp` forces a trim only here, and a task run cannot
-	// tell a takeover from a scheduled tick.
-	@OnLeaderTakeover()
-	runStartupCompaction() {
-		const { connectionState } = this.dbConnection;
-		if (!this.isEnabled || !connectionState.migrated) return;
-		if (this.config.skipOnStartUp) return;
-
-		this.startupAbort = new AbortController();
-		const { signal } = this.startupAbort;
-
-		void this.optimizeHistories(signal);
-
-		if (!this.isTrimmingEnabled) return;
-		if (this.config.trimOnStartUp || new Date().getHours() === 3) {
-			void this.trimLongRunningHistories(signal);
-		}
-	}
-
-	// A startup pass runs detached, so losing leadership has to reach it here.
-	// The task-driven passes get their signal from the system task runner.
-	@OnLeaderStepdown()
-	@OnShutdown()
-	stopStartupCompaction(): void {
-		this.startupAbort.abort();
 	}
 
 	/**
@@ -134,6 +77,7 @@ export class WorkflowHistoryCompactionService {
 
 		try {
 			await this.compactHistories(
+				this.startOfToday(),
 				startDelta,
 				endDelta,
 				[
@@ -175,6 +119,7 @@ export class WorkflowHistoryCompactionService {
 
 		try {
 			await this.compactHistories(
+				new Date(),
 				startDelta,
 				endDelta,
 				[RULES.mergeAdditiveChanges],
@@ -186,7 +131,14 @@ export class WorkflowHistoryCompactionService {
 		}
 	}
 
+	/** Every trim pass of one day reads the same window, so a repeated pass finds nothing new. */
+	private startOfToday(): Date {
+		return DateTime.now().setZone(this.globalConfig.generic.timezone).startOf('day').toJSDate();
+	}
+
+	/** The window ends `endDeltaMs` before `anchor` and starts `startDeltaMs` before it. */
 	private async compactHistories(
+		anchor: Date,
 		startDeltaMs: number,
 		endDeltaMs: number,
 		rules: DiffRule[],
@@ -196,8 +148,8 @@ export class WorkflowHistoryCompactionService {
 	): Promise<void> {
 		const compactionStartTime = Date.now();
 
-		const startDate = new Date(compactionStartTime - startDeltaMs);
-		const endDate = new Date(compactionStartTime - endDeltaMs);
+		const startDate = new Date(anchor.getTime() - startDeltaMs);
+		const endDate = new Date(anchor.getTime() - endDeltaMs);
 
 		const startIso = startDate.toISOString();
 		const endIso = endDate.toISOString();

@@ -5,9 +5,11 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import {
 	WorkflowHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -52,6 +54,7 @@ let activeWorkflowManager: ActiveWorkflowManager;
 let activeWorkflowTriggers: ActiveWorkflowTriggers;
 let outboxRepository: WorkflowPublicationOutboxRepository;
 let publishedVersionRepository: WorkflowPublishedVersionRepository;
+let triggerStatusRepository: WorkflowPublicationTriggerStatusRepository;
 let originalUseWorkflowPublicationService: boolean;
 
 const scheduleNode = (suffix: string): INode => ({
@@ -81,6 +84,7 @@ beforeAll(async () => {
 	activeWorkflowTriggers = Container.get(ActiveWorkflowTriggers);
 	outboxRepository = Container.get(WorkflowPublicationOutboxRepository);
 	publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+	triggerStatusRepository = Container.get(WorkflowPublicationTriggerStatusRepository);
 });
 
 afterEach(async () => {
@@ -243,6 +247,94 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		);
 		expect(published?.publishedVersionId).toBe(newVersionId);
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('completes the publication of a trigger whose node id has the maximum length', async () => {
+		const owner = await createOwner();
+
+		// The public API and source control accept ids other than generated UUIDs.
+		const trigger = { ...scheduleNode('long-id'), id: 'n'.repeat(NODE_ID_MAX_LENGTH) };
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		const record = await outboxRepository.claimNextPendingRecord();
+
+		await consumer.processRecord(record!, abortSignal);
+
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
+		const row = await outboxRepository.findOneBy({ id: record!.id });
+		expect(row?.status).toBe('completed');
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toEqual([
+			expect.objectContaining({ nodeId: trigger.id, status: 'activated' }),
+		]);
+	});
+
+	test('completes the publication of a version whose only long node id is on a disabled trigger', async () => {
+		const owner = await createOwner();
+
+		const enabled = scheduleNode('enabled');
+		const disabled = {
+			...scheduleNode('disabled'),
+			id: 'n'.repeat(NODE_ID_MAX_LENGTH + 1),
+			disabled: true,
+		};
+		const workflow = await createWorkflowWithHistory(
+			{ active: true, nodes: [enabled, disabled] },
+			owner,
+		);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		const record = await outboxRepository.claimNextPendingRecord();
+
+		await consumer.processRecord(record!, abortSignal);
+
+		const row = await outboxRepository.findOneBy({ id: record!.id });
+		expect(row?.status).toBe('completed');
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(enabled.id)).toBe(true);
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toEqual([
+			expect.objectContaining({ nodeId: enabled.id, status: 'activated' }),
+		]);
+	});
+
+	test('fails a stored version with a trigger node id that is too long, and keeps the old triggers', async () => {
+		const owner = await createOwner();
+
+		const running = scheduleNode('running');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [running] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await activeWorkflowManager.add(workflow.id, 'activate');
+
+		// Write the version directly, as an older release or an external client could.
+		const tooLong = { ...scheduleNode('too-long'), id: 'n'.repeat(NODE_ID_MAX_LENGTH + 1) };
+		const fitting = scheduleNode('fitting');
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, {
+			versionId: newVersionId,
+			nodes: [tooLong, fitting],
+			connections: {},
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+
+		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
+		const record = await outboxRepository.claimNextPendingRecord();
+
+		await consumer.processRecord(record!, abortSignal);
+
+		const row = await outboxRepository.findOneBy({ id: record!.id });
+		expect(row?.status).toBe('failed');
+		expect(row?.errorMessage).toContain(`longer than ${NODE_ID_MAX_LENGTH} characters`);
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(running.id)).toBe(true);
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(fitting.id)).toBe(false);
+		const published = await publishedVersionRepository.getPublishedVersionWithRelations(
+			workflow.id,
+		);
+		expect(published?.publishedVersionId).toBe(workflow.versionId);
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toEqual([
+			expect.objectContaining({ nodeId: fitting.id, status: 'failed' }),
+		]);
 	});
 
 	test('publishes a healed version for duplicate trigger node ids, then activates it', async () => {

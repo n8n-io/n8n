@@ -1,4 +1,4 @@
-import { resolveProxyUrl } from '../proxy-resolution';
+import { isProxyRequired, resolveProxyUrl } from '../proxy-resolution';
 
 const PROXY_URL = 'http://127.0.0.1:8888';
 
@@ -48,5 +48,31 @@ describe('resolveProxyUrl', () => {
 		expect(
 			resolveProxyUrl('http://api.example.com:8080/test', 'http://other.example.com'),
 		).toBeUndefined();
+	});
+});
+
+describe('isProxyRequired', () => {
+	beforeEach(() => {
+		delete process.env.HTTP_PROXY;
+		delete process.env.HTTPS_PROXY;
+		delete process.env.NO_PROXY;
+		delete process.env.ALL_PROXY;
+	});
+
+	test('returns true when a proxy applies to the target', () => {
+		process.env.HTTP_PROXY = PROXY_URL;
+
+		expect(isProxyRequired('http://api.example.com:8080/test')).toBe(true);
+	});
+
+	test('returns false when no proxy is configured', () => {
+		expect(isProxyRequired('http://api.example.com:8080/test')).toBe(false);
+	});
+
+	test('returns false when the target is excluded by NO_PROXY', () => {
+		process.env.HTTP_PROXY = PROXY_URL;
+		process.env.NO_PROXY = 'api.example.com';
+
+		expect(isProxyRequired('http://api.example.com:8080/test')).toBe(false);
 	});
 });

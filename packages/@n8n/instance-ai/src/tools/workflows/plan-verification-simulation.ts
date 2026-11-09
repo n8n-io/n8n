@@ -33,6 +33,8 @@ import {
 	nodeCanReachItself,
 } from './workflow-json-utils';
 import type { Logger } from '../../logger';
+import type { FetchFn } from '@n8n/agents';
+
 import type { ModelConfig } from '../../types';
 import { itemsForNode } from '../../utils/node-keyed-items';
 import type {
@@ -55,6 +57,8 @@ export interface PlanVerificationSimulationInput {
 	outputSchemaLookup?: OutputSchemaLookup;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
 	logger?: Logger;
 }
 
@@ -65,7 +69,8 @@ export interface VerificationSimulationPlan {
 	simulationFixtures?: SimulationFixtures;
 }
 
-const DECLARED_OUTPUT_SIMULATION_REASON = 'Source declares verification output for this node';
+export const DECLARED_OUTPUT_SIMULATION_REASON =
+	'Source declares verification output for this node';
 
 const TRIGGER_SIMULATION_REASON = 'Trigger event is simulated during verification';
 
@@ -177,7 +182,7 @@ export function findCredentiallessAiRoots(
  * credentials get their `execute` verdict overridden to `simulate`: the real
  * run would die at the root with a credential error ("Node does not have any
  * credentials set"), leaving every downstream simulated node unreached. The
- * classifier marks AI roots safe by type and never visits `ai_*` sub-nodes,
+ * classifier marks AI roots and Agent Tool containers safe by type,
  * so — like the trigger pass above — this is the single injection point.
  * Roots already `simulate` (declared fixtures, mocked credentials) keep
  * their verdict and reason.
@@ -344,6 +349,7 @@ export async function planVerificationSimulation({
 	workflowId,
 	outputSchemaLookup,
 	fallbackModelConfig,
+	modelFetch,
 	logger,
 }: PlanVerificationSimulationInput): Promise<VerificationSimulationPlan> {
 	let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
@@ -355,6 +361,8 @@ export async function planVerificationSimulation({
 			workflow,
 			mockedNodeNames,
 			fallbackModelConfig,
+			modelFetch,
+			logger,
 		});
 		nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan, declaredFixtures);
 		nodeSimulationPlan = withSimulatedTriggerVerdicts(nodeSimulationPlan, workflow);
@@ -380,6 +388,7 @@ export async function planVerificationSimulation({
 							plan: planNeedingGeneratedFixtures,
 							outputSchemaLookup,
 							fallbackModelConfig,
+							modelFetch,
 							logger,
 						})
 					: {};

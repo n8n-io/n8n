@@ -8,6 +8,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { getAgentKnowledgePaths } from '../agent-knowledge-storage';
@@ -108,12 +109,14 @@ function makeService({
 	agentFileRepository = mock<AgentFileRepository>(),
 	agentRepository = mock<AgentRepository>(),
 	agentKnowledgeFileStore = makeKnowledgeFileStore(),
+	projectDeletion = mock<AgentProjectDeletionRepository>(),
 }: {
 	runtimeService: AgentSandboxRuntimeService;
 	logger?: Logger;
 	agentFileRepository?: AgentFileRepository;
 	agentRepository?: AgentRepository;
 	agentKnowledgeFileStore?: AgentKnowledgeFileStore;
+	projectDeletion?: AgentProjectDeletionRepository;
 }): AgentKnowledgeMirrorService {
 	return new AgentKnowledgeMirrorService(
 		{ sandboxTimeout: 300_000 } as AgentsConfig,
@@ -122,7 +125,12 @@ function makeService({
 		agentFileRepository,
 		agentRepository,
 		agentKnowledgeFileStore,
+		projectDeletion,
 	);
+}
+
+function isMirrorSyncCommand(command: string): boolean {
+	return command.includes(`mkdir -p ${knowledgePaths.filesDir}`);
 }
 
 describe('AgentKnowledgeMirrorService', () => {
@@ -135,6 +143,45 @@ describe('AgentKnowledgeMirrorService', () => {
 		sandbox = makeSandbox();
 		filesystem = mock<WorkspaceFilesystem>();
 		runtimeService = makeRuntimeService(makeRuntime(sandbox, filesystem));
+	});
+
+	it('does not start a mirror sync after project deletion starts', async () => {
+		const projectDeletion = mock<AgentProjectDeletionRepository>();
+		projectDeletion.assertWritable.mockRejectedValue(new Error('project is being deleted'));
+		const logger = mock<Logger>();
+		const service = makeService({ runtimeService, projectDeletion, logger });
+		service.prewarmMirrorInBackground(projectId, agentId);
+		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalled());
+		expect(runtimeService.acquireKnowledgeSandbox).not.toHaveBeenCalled();
+	});
+
+	it('removes a mirror that finishes after project deletion starts', async () => {
+		const projectDeletion = mock<AgentProjectDeletionRepository>();
+		projectDeletion.assertWritable
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error('project is being deleted'));
+		const agentFileRepository = mock<AgentFileRepository>();
+		agentFileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.existsBy.mockResolvedValue(true);
+		const service = makeService({
+			runtimeService,
+			projectDeletion,
+			agentRepository,
+			agentFileRepository,
+		});
+		service.prewarmMirrorInBackground(projectId, agentId);
+		await vi.waitFor(() =>
+			expect(runtimeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId),
+		);
+		expect(projectDeletion.assertWritable).toHaveBeenCalledTimes(2);
+		const syncIndex = sandbox.executeCommand.mock.calls.findIndex(([command]) =>
+			isMirrorSyncCommand(command),
+		);
+		expect(syncIndex).toBeGreaterThanOrEqual(0);
+		expect(sandbox.executeCommand.mock.invocationCallOrder[syncIndex]).toBeLessThan(
+			runtimeService.destroyKnowledgeSandbox.mock.invocationCallOrder[0],
+		);
 	});
 
 	describe('globKnowledgeFiles', () => {
@@ -252,10 +299,6 @@ describe('AgentKnowledgeMirrorService', () => {
 			return command.startsWith('cat ') && command.includes('/manifest');
 		}
 
-		function isMirrorSyncCommand(command: string): boolean {
-			return command.includes(`mkdir -p ${knowledgePaths.filesDir}`);
-		}
-
 		function makeMirrorFile(id: string, fileName: string): AgentFile {
 			return makeAgentFile({ id, fileName });
 		}
@@ -353,6 +396,7 @@ describe('AgentKnowledgeMirrorService', () => {
 			const result = await service.readKnowledge(projectId, agentId, { file: 'file.txt' });
 
 			expect(result.ranges[0].text).toBe('1|hello');
+			expect(result.createdAt).toBe('2024-01-01T00:00:00.000Z');
 		});
 
 		it('runs a queued mirror sync with a newer file snapshot after an in-flight sync', async () => {

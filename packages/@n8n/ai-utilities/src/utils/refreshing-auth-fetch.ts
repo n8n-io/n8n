@@ -102,7 +102,11 @@ function createAuthState(
 			inFlight ??= (async () => {
 				const refreshed = await refreshHeaders?.(new Headers(headers));
 				if (!refreshed) return false;
-				headers = new Headers(refreshed);
+				// Layer the refreshed auth over the current set so non-auth headers
+				// (e.g. a partner User-Agent) survive the refresh
+				const next = new Headers(headers);
+				new Headers(refreshed).forEach((value, name) => next.set(name, value));
+				headers = next;
 				version += 1;
 				return true;
 			})();

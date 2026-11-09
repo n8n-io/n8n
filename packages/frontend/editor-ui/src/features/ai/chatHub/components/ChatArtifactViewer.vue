@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import type { ChatArtifact } from '@n8n/api-types';
-import { N8nIconButton, N8nSelect2 } from '@n8n/design-system';
+import { N8nIconButton, N8nSelect2, N8nTooltip } from '@n8n/design-system';
+import type { SelectValue } from '@n8n/design-system/v2/components/Select/Select.types';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import ChatMarkdownChunk from './ChatMarkdownChunk.vue';
+
+const i18n = useI18n();
 
 const props = defineProps<{
 	artifacts: ChatArtifact[];
@@ -16,6 +20,11 @@ const emit = defineEmits<{
 }>();
 
 const selectedArtifact = computed(() => props.artifacts[props.selectedIndex] ?? props.artifacts[0]);
+const downloadTooltip = computed(() =>
+	i18n.baseText('chatHub.artifact.download', {
+		interpolate: { fileType: selectedArtifact.value?.type.toUpperCase() ?? '' },
+	}),
+);
 
 const options = computed(() =>
 	props.artifacts.map((artifact, index) => ({
@@ -23,6 +32,12 @@ const options = computed(() =>
 		label: artifact.title,
 	})),
 );
+
+function onSelectArtifact(value: SelectValue | undefined) {
+	if (typeof value === 'number') {
+		emit('selectArtifact', value);
+	}
+}
 
 const isHtml = computed(() => selectedArtifact.value?.type === 'html');
 const isMarkdown = computed(() => selectedArtifact.value?.type === 'md');
@@ -45,10 +60,18 @@ const markdownContent = computed(() => ({
 					variant="ghost"
 					:items="options"
 					:class="$style.title"
-					@update:model-value="emit('selectArtifact', $event)"
+					@update:model-value="onSelectArtifact"
 				/>
 				<div :class="$style.headerActions">
-					<N8nIconButton variant="ghost" text icon="download" @click="emit('download')" />
+					<N8nTooltip :content="downloadTooltip" placement="bottom">
+						<N8nIconButton
+							variant="ghost"
+							text
+							icon="arrow-circle-down"
+							:aria-label="downloadTooltip"
+							@click="emit('download')"
+						/>
+					</N8nTooltip>
 					<N8nIconButton variant="ghost" text icon="x" @click="emit('close')" />
 				</div>
 			</div>

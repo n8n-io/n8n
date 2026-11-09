@@ -2,11 +2,12 @@
  * Pure utility functions used by AgentRuntime that require no class context.
  * These are extracted here to keep agent-runtime.ts focused on orchestration logic.
  */
-import type { ModelTurnError } from './run-output-sink';
+import type { ModelTurnError } from '../../types/runtime/agent-loop';
 import { stripInvisibleUnicode, wrapUntrustedData } from '../../sdk/untrusted-content';
 import type { StreamChunk, TokenUsage, McpConnectionFailedEvent } from '../../types';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { RawProviderError } from '../model/raw-error';
+import { mergePromptSizeUsage, mergeTokenCounts } from './prompt-size-usage';
 
 /**
  * Normalize caller input to `AgentMessage[]` for the runtime. String input becomes a
@@ -55,13 +56,13 @@ const EMPTY_RESPONSE_ERROR_FINISH_REASONS = new Set([
 	'length',
 	'other',
 	'unknown',
+	'interrupted',
 	'content-filter',
 ]);
 
 /**
  * Whether a turn carries output the user can see or the loop can act on.
- * Reasoning is neither: a thinking block the model never turned into an answer
- * or a tool call leaves the run with nothing to show and nothing to do next.
+ * Reasoning is neither: it is not visible output or an action for the loop.
  */
 function hasActionableContent(messages: AgentMessage[]): boolean {
 	return messages.some(
@@ -88,6 +89,17 @@ function hasReasoningContent(messages: AgentMessage[]): boolean {
 	);
 }
 
+export function isReasoningOnlyStop(turn: {
+	aiFinishReason: string;
+	newMessages: AgentMessage[];
+}): boolean {
+	return (
+		turn.aiFinishReason === 'stop' &&
+		hasReasoningContent(turn.newMessages) &&
+		!hasActionableContent(turn.newMessages)
+	);
+}
+
 /**
  * Classify a turn that produced no output as a recognized failure, or return
  * `undefined` when it doesn't look like a provider rejection. Some providers
@@ -102,12 +114,6 @@ export function classifyModelTurnError(turn: {
 	providerError?: RawProviderError;
 }): ModelTurnError | undefined {
 	if (hasActionableContent(turn.newMessages)) return undefined;
-	if (turn.aiFinishReason === 'stop' && hasReasoningContent(turn.newMessages)) {
-		return {
-			type: 'no_output',
-			message: 'The model finished without returning an answer. Try again or use another model.',
-		};
-	}
 	if (!EMPTY_RESPONSE_ERROR_FINISH_REASONS.has(turn.aiFinishReason)) return undefined;
 
 	const guidance =
@@ -136,11 +142,10 @@ export function classifyModelTurnError(turn: {
  * call, no file. Providers emit such a turn mid-task in more than one shape: a
  * bare `stop` (observed with Kimi via Together), or a stream that dies before
  * its terminal chunk, leaving the SDK to synthesize a finish from its defaults
- * (`other`, no usage) around a reasoning-only message. Either way the run would
- * end silently with work half-done, so callers retry a bounded number of times
- * before accepting it. Reasoning-only turns count as empty: they carry no
- * user-visible output and no action. `tool-calls` is the one finish reason that
- * cannot be empty — the calls are the turn's output.
+ * (`other`, no usage) around a reasoning-only message. Callers retry these
+ * broken or bare turns a bounded number of times. A normal reasoning-only
+ * `stop` is a successful silent completion. `tool-calls` cannot be empty
+ * because the calls are the turn's output.
  */
 export function isEmptyModelTurn(turn: {
 	aiFinishReason: string;
@@ -150,8 +155,8 @@ export function isEmptyModelTurn(turn: {
 }): boolean {
 	if (turn.aiFinishReason === 'tool-calls') return false;
 	if (turn.structuredOutput !== undefined) return false;
-	// A reasoning-only stop or a truncated turn cannot recover under the same
-	// conditions. Retrying only consumes more tokens.
+	if (isReasoningOnlyStop(turn)) return false;
+	// An output-limit error cannot recover under the same conditions.
 	if (turn.errorReason && (turn.aiFinishReason === 'stop' || turn.aiFinishReason === 'length')) {
 		return false;
 	}
@@ -183,38 +188,18 @@ export function makeErrorStream(error: unknown): ReadableStream<StreamChunk> {
 	return readable;
 }
 
-/** Accumulate token usage across two values, returning undefined if both are absent. */
+/**
+ * Accumulate token usage across two values, returning undefined if both are absent.
+ * Keeps the prompt-size split only when both values carry one.
+ */
 export function mergeUsage(
 	current: TokenUsage | undefined,
 	next: TokenUsage | undefined,
 ): TokenUsage | undefined {
 	if (!next) return current;
 	if (!current) return next;
-	const merged: TokenUsage = {
-		promptTokens: current.promptTokens + next.promptTokens,
-		completionTokens: current.completionTokens + next.completionTokens,
-		totalTokens: current.totalTokens + next.totalTokens,
-	};
-
-	const noCache =
-		(current.inputTokenDetails?.noCache ?? 0) + (next.inputTokenDetails?.noCache ?? 0);
-	const cacheRead =
-		(current.inputTokenDetails?.cacheRead ?? 0) + (next.inputTokenDetails?.cacheRead ?? 0);
-	const cacheWrite =
-		(current.inputTokenDetails?.cacheWrite ?? 0) + (next.inputTokenDetails?.cacheWrite ?? 0);
-	if (noCache > 0 || cacheRead > 0 || cacheWrite > 0) {
-		merged.inputTokenDetails = {
-			...(noCache > 0 && { noCache }),
-			...(cacheRead > 0 && { cacheRead }),
-			...(cacheWrite > 0 && { cacheWrite }),
-		};
-	}
-
-	const reasoning =
-		(current.outputTokenDetails?.reasoning ?? 0) + (next.outputTokenDetails?.reasoning ?? 0);
-	if (reasoning > 0) {
-		merged.outputTokenDetails = { reasoning };
-	}
-
+	const merged: TokenUsage = mergeTokenCounts(current, next);
+	const byPromptSize = mergePromptSizeUsage(current.byPromptSize, next.byPromptSize);
+	if (byPromptSize) merged.byPromptSize = byPromptSize;
 	return merged;
 }

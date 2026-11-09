@@ -13,10 +13,11 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useAssistantTopUpEligibility } from '@n8n/stores/composables/useAssistantTopUpEligibility';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
+import AnsweredQuestions from './AnsweredQuestions.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
@@ -26,7 +27,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
-const settingsStore = useSettingsStore();
 const thread = useThread();
 const showDebugInfo = ref(false);
 
@@ -51,17 +51,14 @@ const hasProviderError = computed(() => !!errorDetails.value?.provider);
 /** The run failed because the user ran out of AI credits — show a tailored state. */
 const isQuotaExhausted = computed(() => errorDetails.value?.code === 'quota_exhausted');
 
-/**
- * The activation-capped trial cohort is never shown a credit balance, so telling them they've
- * "run out of AI credits" would be the first they'd hear of any credits at all.
- */
-const outOfCreditsTitleKey = computed(() =>
-	settingsStore.moduleSettings?.['instance-ai']?.activationCapped
-		? 'instanceAi.error.outOfCredits.trialTitle'
-		: 'instanceAi.error.outOfCredits.title',
-);
-
 const { goToUpgrade } = usePageRedirectionHelper();
+const { isEligible: isTopUpEligible } = useAssistantTopUpEligibility();
+
+const outOfCreditsCtaKey = computed(() =>
+	isTopUpEligible.value
+		? 'aiAssistant.builder.settings.getMoreCredits'
+		: 'instanceAi.error.outOfCredits.upgrade',
+);
 
 /** A run the user (or a timeout/shutdown) stopped before it completed. */
 const runCancelled = computed(() => props.message.agentTree?.status === 'cancelled');
@@ -102,6 +99,29 @@ const attachments = computed(() =>
 		return name && name !== attachment.name ? { ...attachment, name } : attachment;
 	}),
 );
+
+/**
+ * Answered questions that end the timeline, like the onboarding card that the host answers with
+ * no model turn. They render below the actions, so copy and read aloud stay under the assistant
+ * text and not under the user's answer.
+ */
+const trailingAnswer = computed(() => {
+	const tree = props.message.agentTree;
+	// A live run appends after the answer. Only a settled message ends on it.
+	if (!tree || tree.status === 'active') return undefined;
+	const last = tree.timeline.at(-1);
+	if (last?.type !== 'tool-call') return undefined;
+	const toolCall = tree.toolCalls.find((tc) => tc.toolCallId === last.toolCallId);
+	return toolCall?.confirmation?.inputType === 'questions' && !toolCall.isLoading
+		? toolCall
+		: undefined;
+});
+
+const activityTree = computed(() => {
+	const tree = props.message.agentTree;
+	if (!tree || !trailingAnswer.value) return tree;
+	return { ...tree, timeline: tree.timeline.slice(0, -1) };
+});
 
 /** Transient status message from the backend (e.g. "Recalling conversation..."). */
 const statusMessage = computed(() => {
@@ -157,7 +177,8 @@ function formatJson(value: unknown): string {
 		:data-test-id="isUser ? 'instance-ai-user-message' : 'instance-ai-assistant-message'"
 	>
 		<!-- User message -->
-		<div v-if="isUser">
+		<div v-if="isUser" :class="$style.userMessage">
+			<N8nText v-if="props.message.content" size="large">{{ props.message.content }}</N8nText>
 			<div v-if="attachments.length > 0" :class="$style.userAttachments">
 				<AttachmentPreview
 					v-for="(attachment, index) in attachments"
@@ -166,17 +187,21 @@ function formatJson(value: unknown): string {
 					:is-removable="false"
 				/>
 			</div>
-			<N8nText size="large">{{ props.message.content }}</N8nText>
 		</div>
 
 		<!-- Assistant message -->
 		<template v-else>
 			<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
-			<AgentActivityTree v-if="props.message.agentTree" :agent-node="props.message.agentTree" />
+			<AgentActivityTree
+				v-if="activityTree"
+				:agent-node="activityTree"
+				:message-id="props.message.id"
+				:run-id="props.message.runId"
+			/>
 
 			<!-- Out-of-credits (quota exhausted): tailored state, hides raw provider/status noise -->
 			<N8nCallout v-if="isQuotaExhausted" theme="warning" data-test-id="instance-ai-out-of-credits">
-				{{ i18n.baseText(outOfCreditsTitleKey) }}
+				{{ i18n.baseText('instanceAi.error.outOfCredits.title') }}
 				<template #trailingContent>
 					<N8nButton
 						variant="outline"
@@ -184,7 +209,7 @@ function formatJson(value: unknown): string {
 						data-test-id="instance-ai-out-of-credits-upgrade"
 						@click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 					>
-						{{ i18n.baseText('instanceAi.error.outOfCredits.upgrade') }}
+						{{ i18n.baseText(outOfCreditsCtaKey) }}
 					</N8nButton>
 				</template>
 			</N8nCallout>
@@ -261,17 +286,26 @@ function formatJson(value: unknown): string {
 				</N8nTooltip>
 			</N8nChatActions>
 		</template>
+
+		<template v-if="trailingAnswer" #after-actions>
+			<AnsweredQuestions :tool-call="trailingAnswer" />
+		</template>
 	</N8nChatMessage>
 </template>
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
 
+.userMessage {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
 .userAttachments {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--2xs);
 }
 
 .statusIndicator {

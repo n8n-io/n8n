@@ -30,40 +30,6 @@ export const remediationMetadataSchema = z.object({
 export type RemediationCategory = z.infer<typeof remediationCategorySchema>;
 export type RemediationMetadata = z.infer<typeof remediationMetadataSchema>;
 
-// ── WorkflowBuildOwner ──────────────────────────────────────────────────────
-
-export const workflowBuildOwnerSchema = z.discriminatedUnion('type', [
-	z.object({ type: z.literal('direct') }),
-	z.object({ type: z.literal('planned'), taskId: z.string() }),
-]);
-
-export type WorkflowBuildOwner = z.infer<typeof workflowBuildOwnerSchema>;
-
-type WorkflowBuildOwnerSource = {
-	owner?: WorkflowBuildOwner;
-	plannedTaskId?: string;
-};
-
-export function resolveWorkflowBuildOwner(
-	...sources: Array<WorkflowBuildOwnerSource | undefined>
-): WorkflowBuildOwner {
-	for (const source of sources) {
-		if (source?.owner) return source.owner;
-		if (source?.plannedTaskId) return { type: 'planned', taskId: source.plannedTaskId };
-	}
-	return { type: 'direct' };
-}
-
-export function plannedTaskIdFromWorkflowBuildOwner(
-	owner: WorkflowBuildOwner | undefined,
-): string | undefined {
-	return owner?.type === 'planned' ? owner.taskId : undefined;
-}
-
-export function isPlannedWorkflowBuildOwner(owner: WorkflowBuildOwner | undefined): boolean {
-	return owner?.type === 'planned';
-}
-
 // ── WorkflowLoopState ───────────────────────────────────────────────────────
 
 export const workflowLoopStateSchema = z.object({
@@ -75,10 +41,6 @@ export const workflowLoopStateSchema = z.object({
 	phase: workflowLoopPhaseSchema,
 	status: workflowLoopStatusSchema,
 	source: workflowLoopSourceSchema,
-	/** Canonical owner of this workflow build. Defaults to direct for legacy records. */
-	owner: workflowBuildOwnerSchema.optional(),
-	/** Planned task that owns this workflow build, when the build came from an approved plan. */
-	plannedTaskId: z.string().optional(),
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
@@ -164,7 +126,17 @@ export const verificationClaimLevelSchema = z.enum(['verified', 'partial', 'unpr
 export type VerificationClaimLevel = z.infer<typeof verificationClaimLevelSchema>;
 
 /**
- * The deterministic verdict for one verification run. Backend-only: it shapes
+ * Where a verified change actually runs. Verification always executes the
+ * draft, so a fix to a published workflow stays out of production until the
+ * workflow is published again. `live-stale` is the state that must never be
+ * reported as a working live workflow — see INS-1311.
+ */
+export const verificationLiveStateSchema = z.enum(['unpublished', 'live-current', 'live-stale']);
+
+export type VerificationLiveState = z.infer<typeof verificationLiveStateSchema>;
+
+/**
+ * The deterministic verdict from verification evidence. Backend-only: it shapes
  * the tool result the model reads and gates the publish offer. It is
  * deliberately not sent to the client — see INS-1308.
  */
@@ -184,15 +156,27 @@ export const verificationClaimSchema = z.object({
 	 * claim `verified` even when it ended without an error.
 	 */
 	unprovenTargets: z.array(z.string()),
+	/** Triggers with missing or incomplete scoped verification evidence. */
+	pendingTriggers: z.array(z.string()).optional(),
 	publishReady: z.boolean(),
 	liveTestRecommended: z.boolean(),
+	/**
+	 * Publish state when the run happened. Optional: absent when the lookup
+	 * failed and on claims stored before INS-1311. Unknown never means stale.
+	 */
+	liveState: verificationLiveStateSchema.optional(),
+	/**
+	 * Draft version the run executed. Names the version a retest applies to,
+	 * and the version a publish would make live.
+	 */
+	verifiedVersionId: z.string().optional(),
 });
 
 export type VerificationClaim = z.infer<typeof verificationClaimSchema>;
 
 /**
  * Structured verification evidence the builder captures when it runs
- * `verify-built-workflow`. Downstream checkpoint runs read this and skip
+ * `workflow_builder_verify_built_workflow`. Downstream checkpoint runs read this and skip
  * running verify again when `success === true`.
  */
 export const workflowVerificationEvidenceSchema = z.object({
@@ -205,6 +189,8 @@ export const workflowVerificationEvidenceSchema = z.object({
 	evidence: z
 		.object({
 			nodesExecuted: z.array(z.string()).optional(),
+			/** Trigger whose main-flow scope was used for this evidence. */
+			triggerNodeName: z.string().optional(),
 			/**
 			 * Plan nodes the execution never reached (e.g. a lookup returned zero
 			 * items and stopped the chain). Non-empty means partial coverage —
@@ -221,6 +207,15 @@ export const workflowVerificationEvidenceSchema = z.object({
 });
 
 export type WorkflowVerificationEvidence = z.infer<typeof workflowVerificationEvidenceSchema>;
+
+export const workflowVerificationProgressSchema = z.record(
+	z.string(),
+	z.array(workflowVerificationEvidenceSchema.required({ claim: true })),
+);
+
+export type WorkflowTriggerVerificationProgress = z.infer<
+	typeof workflowVerificationProgressSchema
+>[string];
 
 export const workflowVerificationReadinessSchema = z.discriminatedUnion('status', [
 	z.object({ status: z.literal('ready') }),
@@ -277,8 +272,6 @@ export const triggerNodeDescriptorSchema = z.object({
 	nodeType: z.string(),
 });
 
-export type TriggerNodeDescriptor = z.infer<typeof triggerNodeDescriptorSchema>;
-
 /**
  * Per-node execute-vs-simulate verdict for verification runs. Nodes with
  * verdict `simulate` are mocked via per-execution pin data so verification
@@ -321,22 +314,33 @@ export const waitGateScriptSchema = z.object({
 
 export type WaitGateScript = z.infer<typeof waitGateScriptSchema>;
 
+/**
+ * What the build did about node groups, on the saved (post-drop) shape. A NEW
+ * OPTIONAL FIELD for the same rollback reason as `executionIntent`.
+ */
+export const groupingOutcomeSchema = z.object({
+	topLevelItemCount: z.number().int().min(0),
+	ceiling: z.number().int().min(1),
+	groupCount: z.number().int().min(0),
+	droppedGroupCount: z.number().int().min(0),
+	decision: z.enum(['grouped', 'not_warranted', 'under_ceiling', 'missing']),
+	reason: z.string().optional(),
+});
+
+export type GroupingOutcome = z.infer<typeof groupingOutcomeSchema>;
+
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	runId: z.string().optional(),
 	taskId: z.string(),
-	/** Canonical owner of this workflow build. Defaults to direct for legacy outcomes. */
-	owner: workflowBuildOwnerSchema.optional(),
-	/** Planned task that owns this build outcome, when the build came from an approved plan. */
-	plannedTaskId: z.string().optional(),
 	workflowId: z.string().optional(),
 	sourceFilePath: z.string().optional(),
 	submitted: z.boolean(),
 	triggerType: triggerTypeSchema,
 	/**
-	 * Trigger nodes in the submitted workflow. Populated on successful submits;
+	 * Enabled trigger nodes in the submitted workflow. Populated on successful submits;
 	 * absent on failed or pre-submit outcomes. The orchestrator reads `nodeType`
-	 * to pick a `verify-built-workflow` `inputData` shape for direct builds.
+	 * to pick a `workflow_builder_verify_built_workflow` `inputData` shape for direct builds.
 	 */
 	triggerNodes: z.array(triggerNodeDescriptorSchema).optional(),
 	needsUserInput: z.boolean(),
@@ -358,7 +362,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * @deprecated Legacy `{_mockedCredential}` marker channel. No longer
 	 * written — `nodeSimulationPlan` + `simulationFixtures` replaced it. Kept
 	 * in the schema so build outcomes stored before the change still parse and
-	 * verify (verify-built-workflow merges it under the new pin data).
+	 * verify (workflow_builder_verify_built_workflow merges it under the new pin data).
 	 */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
 	/** @deprecated See `verificationPinData`. No longer written. */
@@ -382,11 +386,12 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
 	/**
-	 * Nodes this build added or modified relative to the previously saved
-	 * workflow. Setup routing and `workflows(action="setup")` requests are
-	 * scoped to these nodes so editing one node never routes pre-existing,
-	 * unrelated nodes into setup. Absent when the build created the workflow
-	 * or the prior state was unreadable — every node is then in scope.
+	 * Nodes that this build and earlier builds of the same work item or run added
+	 * or modified, each relative to the workflow saved before it. Setup routing and
+	 * `setup_workflow` requests are scoped to these nodes so
+	 * editing one node never routes pre-existing, unrelated nodes into setup. Absent
+	 * when one of those builds created the workflow or the prior state was
+	 * unreadable — every node is then in scope.
 	 */
 	changedNodeNames: z.array(z.string()).optional(),
 	/**
@@ -409,10 +414,14 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Deterministic setup handoff verdict for post-verification workflow setup. */
 	setupRequirement: workflowSetupRequirementSchema.optional(),
 	remediation: remediationMetadataSchema.optional(),
-	/** Count of verify-built-workflow runs for this build; capped by MAX_VERIFY_ATTEMPTS. */
+	/** Node-group result of this build; absent on outcomes stored before the field existed. */
+	grouping: groupingOutcomeSchema.optional(),
+	/** Count of workflow_builder_verify_built_workflow runs for this build; capped by MAX_VERIFY_ATTEMPTS. */
 	verifyAttempts: z.number().int().min(0).optional(),
+	/** Successful verification runs by trigger. A failed rerun removes that trigger's entry. */
+	verificationProgress: workflowVerificationProgressSchema.optional(),
 	/**
-	 * Structured verification record from the most recent `verify-built-workflow`
+	 * Structured verification record from the most recent `workflow_builder_verify_built_workflow`
 	 * tool call. This is tool evidence, not builder prose, so downstream checks may
 	 * reuse a successful record instead of re-running verification.
 	 */
@@ -441,17 +450,12 @@ export const workflowVerificationObligationPolicySchema = z.enum([
 	'manual',
 ]);
 
-export const workflowVerificationObligationSourceSchema = z.enum(['direct', 'planned']);
-
 export const workflowVerificationObligationSchema = z.object({
 	workItemId: z.string(),
 	threadId: z.string(),
 	runId: z.string().optional(),
 	taskId: z.string().optional(),
-	owner: workflowBuildOwnerSchema.optional(),
-	plannedTaskId: z.string().optional(),
 	workflowId: z.string().optional(),
-	source: workflowVerificationObligationSourceSchema,
 	policy: workflowVerificationObligationPolicySchema,
 	status: workflowVerificationObligationStatusSchema,
 	readiness: workflowVerificationReadinessSchema.optional(),
@@ -469,9 +473,6 @@ export type WorkflowVerificationObligationStatus = z.infer<
 >;
 export type WorkflowVerificationObligationPolicy = z.infer<
 	typeof workflowVerificationObligationPolicySchema
->;
-export type WorkflowVerificationObligationSource = z.infer<
-	typeof workflowVerificationObligationSourceSchema
 >;
 export type WorkflowVerificationObligation = z.infer<typeof workflowVerificationObligationSchema>;
 

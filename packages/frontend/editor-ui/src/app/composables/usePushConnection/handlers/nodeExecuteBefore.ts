@@ -25,7 +25,7 @@ export async function nodeExecuteBefore(
 	const queue = isSubExecution
 		? workflowExecutionStateStore.subExecutingNode
 		: workflowExecutionStateStore.executingNode;
-	queue.addExecutingNode(data.nodeName, data.sequenceNumber);
+	queue.addExecutingNode(data.nodeName, data.sequenceNumber, data.data.executionIndex);
 
 	useExecutionDataStore(createExecutionDataId(data.executionId)).addNodeExecutionStartedData(data);
 }

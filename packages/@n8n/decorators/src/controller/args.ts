@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import type { ZodTypeAny } from 'zod';
 
 import { ControllerRegistryMetadata } from './controller-registry-metadata';
-import type { Arg, Controller } from './types';
+import type { Arg, Controller, RequestBodyMedia } from './types';
 
 const ArgDecorator =
 	(arg: Arg): ParameterDecorator =>
@@ -14,8 +14,47 @@ const ArgDecorator =
 		routeMetadata.args[parameterIndex] = arg;
 	};
 
+export type BodyOptions = { required?: boolean } & (RequestBodyMedia | { mediaType?: undefined });
+
+function stripExtraPropertiesFromRequestBodyMedia(options: RequestBodyMedia): RequestBodyMedia {
+	switch (options.mediaType) {
+		case 'application/json':
+			return { mediaType: 'application/json' };
+		case 'multipart/form-data':
+			return { mediaType: 'multipart/form-data', uploadLimits: options.uploadLimits };
+	}
+}
+
 /** Injects the request body into the handler */
-export const Body = ArgDecorator({ type: 'body' });
+export function Body(
+	target: object,
+	propertyKey: string | symbol | undefined,
+	parameterIndex: number,
+): void;
+export function Body(options?: BodyOptions): ParameterDecorator;
+export function Body(
+	targetOrOptions?: object | BodyOptions,
+	propertyKey?: string | symbol,
+	parameterIndex?: number,
+): ParameterDecorator | void {
+	// Bare form e.g. `@Body body: MyDto`
+	if (parameterIndex !== undefined) {
+		return ArgDecorator({ type: 'body' })(targetOrOptions as object, propertyKey, parameterIndex);
+	}
+
+	// Factory form e.g. `@Body() body: MyDto` or `@Body({ required: true })`
+	const options = targetOrOptions as BodyOptions | undefined;
+	const arg: Arg = { type: 'body' };
+
+	if (options?.required !== undefined) {
+		arg.required = options.required;
+	}
+	if (options?.mediaType !== undefined) {
+		arg.media = stripExtraPropertiesFromRequestBodyMedia(options);
+	}
+
+	return ArgDecorator(arg);
+}
 
 /** Injects the request query into the handler */
 export const Query = ArgDecorator({ type: 'query' });

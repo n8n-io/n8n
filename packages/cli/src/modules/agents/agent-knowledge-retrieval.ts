@@ -1,7 +1,7 @@
 import type { ExecutionDataStorageLocation } from '@n8n/db';
 import { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import { hasControlCharacter } from './agent-knowledge-storage';
 
@@ -196,24 +196,17 @@ export interface AgentKnowledgeFileReference {
 	createdAt: string;
 }
 
-export interface AgentKnowledgeCitation {
-	file: string;
-	fileId: string;
-	displayName: string;
+type AgentKnowledgeFileIdentity = Pick<
+	AgentKnowledgeFileReference,
+	'file' | 'fileId' | 'displayName'
+>;
+
+export interface AgentKnowledgeCitation extends AgentKnowledgeFileIdentity {
 	startLine: number;
 	endLine: number;
 }
 
-export interface AgentKnowledgeLine {
-	lineNumber: number;
-	text: string;
-	truncated: boolean;
-}
-
-export interface SearchKnowledgeMatch {
-	file: string;
-	fileId: string;
-	displayName: string;
+export interface SearchKnowledgeMatch extends AgentKnowledgeFileIdentity {
 	lineNumber: number;
 	text: string;
 	textTruncated: boolean;
@@ -226,10 +219,7 @@ export interface SearchKnowledgeContextLine {
 	matched: boolean;
 }
 
-export interface SearchKnowledgeCount {
-	file: string;
-	fileId: string;
-	displayName: string;
+export interface SearchKnowledgeCount extends AgentKnowledgeFileIdentity {
 	count: number;
 }
 
@@ -276,10 +266,8 @@ export interface ReadKnowledgeRangeResult {
 	citation: AgentKnowledgeCitation;
 }
 
-export interface ReadKnowledgeResult {
-	file: string;
-	fileId: string;
-	displayName: string;
+export interface ReadKnowledgeResult extends AgentKnowledgeFileIdentity {
+	createdAt: string;
 	ranges: ReadKnowledgeRangeResult[];
 	truncated: boolean;
 }

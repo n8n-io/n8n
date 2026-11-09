@@ -153,6 +153,7 @@ describe('Telegram recorded integration replay', () => {
 			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: 'hey',
+					author: { id: '123456789', name: 'sofiadev' },
 					integrationType: 'telegram',
 				}),
 			);

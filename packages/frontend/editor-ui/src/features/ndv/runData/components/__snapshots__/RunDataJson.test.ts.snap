@@ -12,7 +12,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
       <button
         aria-live="polite"
         circle="false"
-        class="button button subtle medium iconOnly"
+        class="button button outline medium iconOnly"
         data-icon-only="true"
         title="Copy to Clipboard"
         type="button"
@@ -33,26 +33,17 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
             aria-hidden="true"
             class="n8n-icon"
             data-icon="files"
+            fill="currentColor"
             focusable="false"
             height="14px"
             role="img"
-            viewBox="0 0 24 24"
+            viewBox="0 0 16 16"
             width="14px"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            <g
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-            >
-              <path
-                d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"
-              />
-              <path
-                d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706zM5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1"
-              />
-            </g>
+            <path
+              d="M14.75 11.75h-4v3.75h-9.5V4.25h4V.5h9.5zm-12-6V14h6.5v-2.25h-4v-6zm4 4.5h6.5V2h-6.5z"
+            />
           </svg>
           
           

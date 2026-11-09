@@ -438,6 +438,7 @@ export class RabbitMQ implements INodeType {
 					);
 				}
 
+				// eslint-disable-next-line @typescript-eslint/await-thenable -- sendToQueue/publish return a boolean, so nothing here is thenable
 				const promisesResponses = await Promise.allSettled(queuePromises);
 
 				// @ts-ignore
@@ -512,6 +513,7 @@ export class RabbitMQ implements INodeType {
 					);
 				}
 
+				// eslint-disable-next-line @typescript-eslint/await-thenable -- sendToQueue/publish return a boolean, so nothing here is thenable
 				const promisesResponses = await Promise.allSettled(exchangePromises);
 
 				// @ts-ignore

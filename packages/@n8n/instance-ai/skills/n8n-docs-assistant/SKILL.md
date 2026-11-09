@@ -4,11 +4,13 @@ description: >-
   Answers n8n product, setup, credential, node, hosting, API, and usage
   questions from current n8n docs. Use when the user asks how to configure,
   set up, troubleshoot, or understand n8n behavior, especially credential setup
-  questions opened from the credential modal.
+  questions — including which OAuth scopes or permissions a provider app needs.
 recommended_tools:
   - n8n-docs
-  - credentials
-  - nodes
+  - list_credentials
+  - search_credential_types
+  - search_nodes
+  - get_node_types
 ---
 
 # n8n Docs Assistant
@@ -39,8 +41,8 @@ understand n8n behavior and the answer should come from current n8n docs.
 - If the answer involves secret values, tell the user where to paste them in the
   credential modal, but never ask them to paste secrets into chat.
 - For external provider console steps, summarize the n8n docs instructions. Do
-  not navigate browser pages unless `credential-setup-with-computer-use` is
-  explicitly needed and Computer Use browser tools are available.
+  not navigate browser pages unless `credential-setup-with-browser-use` is
+  explicitly needed and Browser Use tools are available.
 
 ## Missing Docs
 

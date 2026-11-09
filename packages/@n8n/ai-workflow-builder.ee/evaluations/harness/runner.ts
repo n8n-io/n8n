@@ -36,7 +36,6 @@ import {
 } from './score-calculator';
 import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
 import type { SimpleWorkflow } from '../../src/types/workflow';
-import type { ChatPayload } from '../../src/workflow-builder-agent';
 import { extractMessageContent } from '../langsmith/types';
 
 const DEFAULT_PASS_THRESHOLD = 0.7;
@@ -1011,7 +1010,7 @@ function extractPrompt(inputs: LangsmithDatasetInput): string {
  */
 function enrichExamplesWithHistory(examples: Example[]): Example[] {
 	return examples.map((example) => {
-		const outputMessages = (example.outputs as Record<string, unknown> | undefined)?.messages;
+		const outputMessages: unknown = example.outputs?.messages;
 		if (!Array.isArray(outputMessages) || outputMessages.length <= 1) {
 			return example; // No history to extract
 		}
@@ -1091,7 +1090,7 @@ function extractDatasetInputContext(
 	const context: DatasetInputContext = {};
 
 	if (isUnknownRecord(inputs.workflowContext)) {
-		context.workflowContext = inputs.workflowContext as ChatPayload['workflowContext'];
+		context.workflowContext = inputs.workflowContext;
 	}
 
 	if (isSimpleWorkflow(inputs.workflowJSON)) {

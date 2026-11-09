@@ -325,7 +325,7 @@ export class AgentIsolatePool {
 
 		this.warming++;
 		let promise: Promise<void>;
-		// eslint-disable-next-line prefer-const
+		// The callback refers to promise after it is assigned.
 		promise = Promise.resolve()
 			.then(() => {
 				const slot = this.createSlot();
@@ -359,7 +359,7 @@ export class AgentIsolatePool {
 					});
 					// Track the retry timer in replenishPromises so dispose() awaits it.
 					let retryPromise: Promise<void>;
-					// eslint-disable-next-line prefer-const
+					// The callback refers to retryPromise after it is assigned.
 					retryPromise = new Promise<void>((resolve) => {
 						setTimeout(resolve, delay).unref();
 					}).then(() => {

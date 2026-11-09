@@ -70,7 +70,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				expect(savedSetting?.value).toBeTruthy();
 
 				// Step 3: Decrypt and verify the saved data
-				const decryptedData = cipher.decrypt(savedSetting!.value);
+				const decryptedData = cipher.decryptWithInstanceKey(savedSetting!.value);
 				const parsedData = JSON.parse(decryptedData);
 				expect(parsedData).toEqual(testOverwriteData);
 
@@ -89,7 +89,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				// Verify first operation
 				let savedSetting = await settingsRepository.findByKey('credentialsOverwrite');
 				expect(savedSetting).toBeTruthy();
-				let decryptedData = cipher.decrypt(savedSetting!.value);
+				let decryptedData = cipher.decryptWithInstanceKey(savedSetting!.value);
 				expect(JSON.parse(decryptedData)).toEqual(data1);
 
 				await credentialsOverwrites.setData(data2, true, false);
@@ -97,7 +97,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				// Verify second operation overwrote the first
 				savedSetting = await settingsRepository.findByKey('credentialsOverwrite');
 				expect(savedSetting).toBeTruthy();
-				decryptedData = cipher.decrypt(savedSetting!.value);
+				decryptedData = cipher.decryptWithInstanceKey(savedSetting!.value);
 				expect(JSON.parse(decryptedData)).toEqual(data2);
 
 				// The final state should be the last write
@@ -113,7 +113,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				};
 
 				// Step 1: Save data to database first
-				const encryptedData = cipher.encrypt(JSON.stringify(testData));
+				const encryptedData = cipher.encryptWithInstanceKey(JSON.stringify(testData));
 				const setting = settingsRepository.create({
 					key: 'credentialsOverwrite',
 					value: encryptedData,
@@ -131,7 +131,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 
 			it('should prevent race conditions between PubSub reload calls', async () => {
 				const testData: ICredentialsOverwrite = { race: { condition: 'test' } };
-				const encryptedData = cipher.encrypt(JSON.stringify(testData));
+				const encryptedData = cipher.encryptWithInstanceKey(JSON.stringify(testData));
 
 				// Save test data to database
 				const setting = settingsRepository.create({
@@ -163,7 +163,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				(globalConfig as any).credentials.overwrite.data = JSON.stringify(staticData);
 
 				// Save database data
-				const encryptedDbData = cipher.encrypt(JSON.stringify(dbData));
+				const encryptedDbData = cipher.encryptWithInstanceKey(JSON.stringify(dbData));
 				const dbSetting = settingsRepository.create({
 					key: 'credentialsOverwrite',
 					value: encryptedDbData,
@@ -205,7 +205,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				// Verify updated data was saved to database
 				const savedSetting = await settingsRepository.findByKey('credentialsOverwrite');
 				expect(savedSetting).toBeTruthy();
-				const decryptedData = cipher.decrypt(savedSetting!.value);
+				const decryptedData = cipher.decryptWithInstanceKey(savedSetting!.value);
 				expect(JSON.parse(decryptedData)).toEqual(updatedData);
 			});
 		});
@@ -228,7 +228,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 
 			it('should coordinate multiple instances receiving same PubSub event', async () => {
 				const testData: ICredentialsOverwrite = { coordination: { test: 'value' } };
-				const encryptedData = cipher.encrypt(JSON.stringify(testData));
+				const encryptedData = cipher.encryptWithInstanceKey(JSON.stringify(testData));
 
 				// Save data to database
 				const setting = settingsRepository.create({
@@ -345,7 +345,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				// Step 2: Verify database persistence
 				const savedSetting = await settingsRepository.findByKey('credentialsOverwrite');
 				expect(savedSetting).toBeTruthy();
-				const decryptedData = cipher.decrypt(savedSetting!.value);
+				const decryptedData = cipher.decryptWithInstanceKey(savedSetting!.value);
 				expect(JSON.parse(decryptedData)).toEqual(e2eData);
 
 				// Step 3: Test PubSub reload

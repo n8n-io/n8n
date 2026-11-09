@@ -27,7 +27,9 @@ import type {
 	AccessorFn,
 	Cell,
 	CellContext,
+	Column,
 	ColumnDef,
+	ColumnPinningState,
 	CoreColumn,
 	CoreOptions,
 	DeepKeys,
@@ -39,15 +41,17 @@ import type {
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { useThrottleFn } from '@vueuse/core';
-import { ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
+import { ElSkeletonItem } from 'element-plus';
+
 // `.js` on purpose, unlike the extensionless form used elsewhere in the repo:
 // `lodash` is CJS with no `exports` map, so Node cannot resolve the extensionless
 // subpath once a consumer loads our `dist` as native ESM. Bundlers accept both.
 import get from 'lodash/get.js';
-import { computed, h, shallowRef, useSlots, watch } from 'vue';
+import { computed, h, shallowRef, useSlots, useTemplateRef, watch } from 'vue';
 
+import { useHorizontalScrollEdges } from '../../composables/useHorizontalScrollEdges';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
-import N8nPagination from '../N8nPagination';
+import N8nPagination, { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 
 type VueClass = string | string[] | Record<string, boolean> | undefined;
 
@@ -69,13 +73,33 @@ const props = withDefaults(
 
 		itemSelectable?: boolean | DeepKeys<T> | ((row: T) => boolean);
 		pageSizes?: number[];
+		/**
+		 * Render the pager. Set this to false when the screen loads more rows itself.
+		 * @default true
+		 */
+		pagination?: boolean;
+		/**
+		 * Show an All option in the page size selector.
+		 * Selecting it sets items per page to `PAGINATION_ALL_ITEMS_PER_PAGE`.
+		 * @default false
+		 */
+		showAll?: boolean;
 		rowProps?: { class?: VueClass } | ((row: T, index: number) => { class?: VueClass });
+		/**
+		 * How many leading columns stay in place while the table scrolls horizontally.
+		 * The selection column is pinned in front of these when it is shown.
+		 * @default 0
+		 */
+		pinColumns?: number;
 	}>(),
 	{
 		itemSelectable: undefined,
 		itemValue: 'id',
 		pageSizes: () => [10, 25, 50, 100],
+		pagination: true,
+		showAll: false,
 		rowProps: undefined,
+		pinColumns: 0,
 	},
 );
 
@@ -221,26 +245,65 @@ const columnsDefinition = computed(() => {
 	return [...(props.showSelect ? [selectColumn] : []), ...mapHeaders(props.headers)];
 });
 
+const columnPinning = computed<ColumnPinningState>(() => {
+	if (props.pinColumns <= 0) return { left: [], right: [] };
+
+	const pinnedCount = props.pinColumns + (props.showSelect ? 1 : 0);
+	const left = columnsDefinition.value
+		.slice(0, pinnedCount)
+		.map((column) => column.id)
+		.filter((id): id is string => id !== undefined);
+
+	return { left, right: [] };
+});
+
+function getPinnedCellBindings(column: Column<T, unknown>) {
+	if (column.getIsPinned() !== 'left') return undefined;
+
+	return {
+		class: column.getIsLastColumn('left') ? 'is-pinned is-pinned-edge' : 'is-pinned',
+		style: { left: `${column.getStart('left')}px` },
+	};
+}
+
+const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
+const tableElement = useTemplateRef<HTMLTableElement>('tableElement');
+const { canScrollLeft, canScrollRight } = useHorizontalScrollEdges(scrollContainer, tableElement);
+
 const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
 
 const itemsPerPage = defineModel<number>('items-per-page', { default: 10 });
-watch(itemsPerPage, () => table.setPageSize(itemsPerPage.value));
 
-const pagination = computed<PaginationState>({
-	get() {
-		return {
-			pageIndex: page.value,
-			pageSize: itemsPerPage.value,
-		};
-	},
-	set(newValue) {
-		page.value = newValue.pageIndex;
-		itemsPerPage.value = newValue.pageSize;
-	},
+const ALL_PAGE_SKELETON_ROWS = 10;
+
+const skeletonRowCount = computed(() =>
+	itemsPerPage.value === PAGINATION_ALL_ITEMS_PER_PAGE
+		? ALL_PAGE_SKELETON_ROWS
+		: itemsPerPage.value,
+);
+
+watch(itemsPerPage, (value) => {
+	if (value === PAGINATION_ALL_ITEMS_PER_PAGE) {
+		void emitUpdateOptions({
+			page: page.value,
+			itemsPerPage: value,
+			sortBy: sortBy.value,
+		});
+		return;
+	}
+
+	table.setPageSize(value);
 });
 
-const showPagination = computed(() => props.itemsLength > Math.min(...props.pageSizes));
+const paginationState = computed<PaginationState>(() => ({
+	pageIndex: page.value,
+	pageSize: itemsPerPage.value,
+}));
+
+const showPagination = computed(
+	() => props.pagination && props.itemsLength > Math.min(...props.pageSizes),
+);
 
 const sortBy = defineModel<SortingState>('sort-by', { default: [], required: false });
 
@@ -262,7 +325,8 @@ const SELECT_COLUMN_ID = 'data-table-select';
 const selectColumn: ColumnDef<T> = {
 	id: SELECT_COLUMN_ID,
 	enableResizing: false,
-	size: 38,
+	// 16px leading inset, 16px checkbox, 8px trailing padding.
+	size: 40,
 	enablePinning: true,
 	header: ({ table }) => {
 		return h(N8nCheckbox, {
@@ -326,15 +390,6 @@ const emitUpdateOptions = useThrottleFn(
 	100,
 );
 
-function handlePageSizeChange(newPageSize: number) {
-	// Calculate the maximum available page (0-indexed)
-	const maxPage = Math.max(0, Math.ceil(props.itemsLength / newPageSize) - 1);
-	const newPage = Math.min(page.value, maxPage);
-
-	page.value = newPage;
-	itemsPerPage.value = newPageSize;
-}
-
 const columnHelper = createColumnHelper<T>();
 const table = useVueTable({
 	data,
@@ -351,17 +406,20 @@ const table = useVueTable({
 			return sortBy.value;
 		},
 		get pagination() {
-			return pagination.value;
+			return paginationState.value;
 		},
 		get rowSelection() {
 			return rowSelection.value;
+		},
+		get columnPinning() {
+			return columnPinning.value;
 		},
 	},
 	getCoreRowModel: getCoreRowModel(),
 	onSortingChange: handleSortingChange,
 	onPaginationChange(updaterOrValue) {
 		const newValue =
-			typeof updaterOrValue === 'function' ? updaterOrValue(pagination.value) : updaterOrValue;
+			typeof updaterOrValue === 'function' ? updaterOrValue(paginationState.value) : updaterOrValue;
 
 		// prevent duplicate events from being fired
 		void emitUpdateOptions({
@@ -396,13 +454,17 @@ const table = useVueTable({
 
 <template>
 	<div>
-		<div class="n8n-data-table-server-wrapper">
-			<div class="table-scroll">
+		<div
+			class="n8n-data-table-server-wrapper"
+			:class="{ 'is-scrolled-left': canScrollLeft, 'can-scroll-right': canScrollRight }"
+		>
+			<div ref="scrollContainer" class="table-scroll">
 				<table
+					ref="tableElement"
 					class="n8n-data-table-server"
 					:class="{ 'table--loading': loading }"
 					:style="{
-						width: `${table.getCenterTotalSize()}px`,
+						width: `${table.getTotalSize()}px`,
 						borderSpacing: 0,
 						minWidth: '100%',
 						tableLayout: 'fixed',
@@ -412,24 +474,28 @@ const table = useVueTable({
 						<tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
 							<template v-for="header in headerGroup.headers" :key="header.id">
 								<th
+									v-bind="getPinnedCellBindings(header.column)"
 									:style="{
 										cursor: header.column.getCanSort() ? 'pointer' : undefined,
 										width: `${header.getSize()}px`,
+										maxWidth: `${header.getSize()}px`,
 									}"
 									:class="{
+										'cell-select': header.column.id === SELECT_COLUMN_ID,
 										[`cell-align--${getColumnMeta(header.column).cellProps.align}`]: true,
 									}"
 									@mousedown="header.column.getToggleSortingHandler()?.($event)"
 								>
-									<FlexRender
-										v-if="!header.isPlaceholder"
-										:render="header.column.columnDef.header"
-										:props="header.getContext()"
-									/>
-
-									<template v-if="header.column.getCanSort()">
-										{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
-									</template>
+									<div class="cell-content">
+										<FlexRender
+											v-if="!header.isPlaceholder"
+											:render="header.column.columnDef.header"
+											:props="header.getContext()"
+										/>
+										<template v-if="header.column.getCanSort()">
+											{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
+										</template>
+									</div>
 
 									<div
 										v-if="header.column.getCanResize()"
@@ -458,10 +524,11 @@ const table = useVueTable({
 							</tr>
 						</template>
 						<template v-if="loading && !table.getRowModel().rows.length">
-							<tr v-for="item in itemsPerPage" :key="item">
+							<tr v-for="item in skeletonRowCount" :key="item">
 								<td
 									v-for="coll in table.getVisibleFlatColumns()"
 									:key="coll.id"
+									v-bind="getPinnedCellBindings(coll)"
 									class="el-skeleton is-animated"
 								>
 									<ElSkeletonItem />
@@ -477,16 +544,24 @@ const table = useVueTable({
 									>
 										<template v-for="cell in row.getVisibleCells()" :key="cell.id">
 											<td
+												v-bind="getPinnedCellBindings(cell.column)"
+												:style="{
+													width: `${cell.column.getSize()}px`,
+													maxWidth: `${cell.column.getSize()}px`,
+												}"
 												:class="{
+													'cell-select': cell.column.id === SELECT_COLUMN_ID,
 													[`cell-align--${getColumnMeta(cell.column).cellProps.align}`]: Boolean(
 														getColumnMeta(cell.column).cellProps.align,
 													),
 												}"
 											>
-												<FlexRender
-													:render="cell.column.columnDef.cell"
-													:props="cell.getContext()"
-												/>
+												<div class="cell-content">
+													<FlexRender
+														:render="cell.column.columnDef.cell"
+														:props="cell.getContext()"
+													/>
+												</div>
 											</td>
 										</template>
 									</tr>
@@ -502,27 +577,19 @@ const table = useVueTable({
 				:page="page + 1"
 				:items-per-page="itemsPerPage"
 				:total="itemsLength"
+				:page-sizes="pageSizes"
+				:show-all="showAll"
 				:show-total="false"
-				:show-sizes="false"
 				@update:page="page = $event - 1"
+				@update:items-per-page="itemsPerPage = $event"
 			/>
-			<div class="table-pagination__sizes">
-				<div class="table-pagination__sizes__label">Page size</div>
-				<ElSelect
-					v-model.number="itemsPerPage"
-					class="table-pagination__sizes__select"
-					size="small"
-					:teleported="false"
-					@update:model-value="handlePageSizeChange"
-				>
-					<ElOption v-for="item in pageSizes" :key="item" :label="item" :value="item" />
-				</ElSelect>
-			</div>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" scoped>
+@use '../../css/mixins/motion';
+
 .n8n-data-table-server {
 	height: 100%;
 	font-size: var(--font-size--sm);
@@ -542,8 +609,9 @@ const table = useVueTable({
 
 	th {
 		position: relative;
+		isolation: isolate;
 		color: var(--color--text);
-		font-weight: 600;
+		font-weight: var(--font-weight--medium);
 		font-size: 12px;
 		padding: 0 8px;
 		height: 36px;
@@ -561,6 +629,20 @@ const table = useVueTable({
 	thead {
 		background-color: var(--color--background--light-1);
 		border-bottom: 1px solid var(--color--foreground);
+	}
+
+	th.is-pinned,
+	td.is-pinned {
+		position: sticky;
+		z-index: 1;
+	}
+
+	th.is-pinned {
+		background-color: var(--color--background--light-1);
+	}
+
+	td.is-pinned {
+		background-color: inherit;
 	}
 
 	tbody > tr {
@@ -585,6 +667,7 @@ const table = useVueTable({
 		color: var(--color--text--shade-1);
 		padding: 0 8px;
 		height: 48px;
+		overflow: hidden;
 
 		&:first-child {
 			padding-left: 16px;
@@ -601,16 +684,61 @@ const table = useVueTable({
 			overflow: visible;
 		}
 	}
+
+	th.cell-select,
+	td.cell-select {
+		overflow: visible;
+
+		.cell-content {
+			overflow: visible;
+		}
+	}
 }
 
 .n8n-data-table-server-wrapper {
+	position: relative;
 	border-radius: 8px;
 	border: 1px solid var(--color--foreground);
 	overflow: hidden;
+
+	// border-right on a sticky cell scrolls away. This line stays with the cell, under the scrollbar.
+	&.is-scrolled-left .is-pinned-edge::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: 1px;
+		background-color: var(--color--foreground);
+		pointer-events: none;
+	}
+
+	// A shadow fades in over the right edge while columns are still hidden past it.
+	&::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: var(--spacing--xl);
+		z-index: 3;
+		pointer-events: none;
+		opacity: 0;
+		background: linear-gradient(to left, var(--shadow-color), transparent);
+		transition: opacity var(--duration--snappy) var(--easing--ease-out);
+
+		@include motion.reduced-motion;
+	}
+
+	&.can-scroll-right::after {
+		opacity: 1;
+	}
 }
 
 .table-scroll {
 	max-height: 100%;
+	// No reserved scrollbar gutter: the header and the row dividers run the full width, and a
+	// scrollbar shows only while the rows overflow.
 	overflow: auto;
 	position: relative;
 }
@@ -658,33 +786,10 @@ th.loading-row {
 }
 
 .table-pagination {
-	margin-top: 10px;
+	margin-top: var(--spacing--xs);
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
-
-	&__sizes {
-		display: flex;
-
-		&__label {
-			color: var(--color--text);
-			background-color: var(--color--background--light-2);
-			border: 1px solid var(--color--foreground);
-			border-right: 0;
-			font-size: 12px;
-			display: flex;
-			align-items: center;
-			padding: 0 8px;
-			border-top-left-radius: var(--radius);
-			border-bottom-left-radius: var(--radius);
-		}
-
-		&__select {
-			--input--radius--top-left: 0;
-			--input--radius--bottom-left: 0;
-			width: 70px;
-		}
-	}
 }
 
 .resizer {
@@ -696,7 +801,7 @@ th.loading-row {
 	cursor: col-resize;
 	user-select: none;
 	touch-action: none;
-	right: -2px;
+	right: 0;
 	display: none;
 	z-index: 1;
 	&:hover {
@@ -710,6 +815,13 @@ th.loading-row {
 
 th:hover:not(:last-child) > .resizer {
 	display: block;
+}
+
+.cell-content {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 .cell-align {
