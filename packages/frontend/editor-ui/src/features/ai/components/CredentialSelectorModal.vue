@@ -7,7 +7,7 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
-	N8nText,
+	N8nDialogDescription,
 } from '@n8n/design-system';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
@@ -125,10 +125,10 @@ function onCancel() {
 			<CredentialIcon :credential-type-name="data.credentialType" :size="24" :class="$style.icon" />
 			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 		</N8nDialogHeader>
-		<N8nDialogBody :class="$style.content">
-			<N8nText size="small" color="text-base">
+		<N8nDialogBody>
+			<N8nDialogDescription size="small" color="text-base">
 				{{ description }}
-			</N8nText>
+			</N8nDialogDescription>
 			<div :class="$style.credentialContainer">
 				<CredentialPicker
 					:class="$style.credentialPicker"
@@ -159,10 +159,6 @@ function onCancel() {
 </template>
 
 <style lang="scss" module>
-.content {
-	gap: var(--spacing--sm);
-}
-
 .icon {
 	flex-shrink: 0;
 	flex-grow: 0;
@@ -172,7 +168,6 @@ function onCancel() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	width: 100%;
 }
 
 .credentialPicker {
