@@ -52,6 +52,23 @@ describe('SkillVersionTimeline', () => {
 		expect(menu.querySelector('[data-testid="version-menu-restore"]')).not.toBeNull();
 	});
 
+	it.each([
+		{ context: 'Settings, latest version', props: {}, row: 3 },
+		{
+			context: 'the agent builder, the latest version that the draft runs',
+			props: { agent: { name: 'Support', draft: 3, published: null, pinned: false } },
+			row: 3,
+		},
+		{ context: 'a user who cannot restore', props: { canRestore: false }, row: 2 },
+	])('hides the menu of a version that has no items: $context', ({ props, row }) => {
+		const { getByTestId } = render(props);
+
+		const menu = getByTestId(`skill-version-actions-${row}`);
+		expect(menu.querySelector('[data-testid^="version-menu-"]')).toBeNull();
+		expect(menu).toBeDisabled();
+		expect(menu).toHaveAttribute('aria-hidden', 'true');
+	});
+
 	it('opens a version on a click of its row', async () => {
 		const { getByTestId, emitted } = render();
 

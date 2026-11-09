@@ -161,7 +161,20 @@ function dotClass(version: number, index: number) {
 						:data-testid="`skill-version-compare-${version.version}`"
 						@click="emit('compare', version.version)"
 					/>
+					<!-- A version with no actions keeps an empty slot, so the compare buttons stay in line. -->
+					<N8nIconButton
+						v-if="actionsFor(index, version.version).length === 0"
+						:class="$style.placeholder"
+						variant="ghost"
+						size="small"
+						icon="ellipsis"
+						disabled
+						aria-hidden="true"
+						tabindex="-1"
+						:data-testid="`skill-version-actions-${version.version}`"
+					/>
 					<N8nActionDropdown
+						v-else
 						:items="actionsFor(index, version.version)"
 						activator-icon="ellipsis"
 						activator-size="small"
