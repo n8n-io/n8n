@@ -135,6 +135,15 @@ export class AiPreferenceService {
 
 	/** Preferences that apply to the user inside the given projects. */
 	async getApplicable(
+		user: User,
+		projects: Array<Required<AiPreferenceProjectRef>>,
+	): Promise<ApplicableAiPreferences> {
+		const readable = await this.projectAccess(user).allowed('read');
+		const applicable = projects.filter((project) => readable === 'all' || readable.has(project.id));
+		return await this.findApplicableIn(user.id, applicable);
+	}
+
+	private async findApplicableIn(
 		userId: string,
 		projects: AiPreferenceProjectRef[],
 	): Promise<ApplicableAiPreferences> {
@@ -155,7 +164,7 @@ export class AiPreferenceService {
 		if (!project || foreignPersonal) {
 			throw new NotFoundError(`Project with id ${projectId} not found`);
 		}
-		return await this.getApplicable(user.id, [project]);
+		return await this.findApplicableIn(user.id, [project]);
 	}
 
 	/**
@@ -179,7 +188,7 @@ export class AiPreferenceService {
 		const sorted = [...projects.values()].sort(
 			(a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
 		);
-		return await this.getApplicable(user.id, sorted);
+		return await this.findApplicableIn(user.id, sorted);
 	}
 
 	/** The instance rows, the caller's rows, the rows of readable projects and, for admins, every user's rows. */
