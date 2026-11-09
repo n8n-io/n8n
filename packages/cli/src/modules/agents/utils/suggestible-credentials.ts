@@ -6,8 +6,8 @@ import type { CredentialsService } from '@/credentials/credentials.service';
  * Keeps the credentials that the project owns or that are shared with it, and
  * global credentials. In the personal project of an owner or admin, the usable
  * set also holds every other user's personal credentials. An owner or admin
- * may use those, but they must not be suggested or picked for them, because
- * the agent would then act with a colleague's identity.
+ * may use those, but suggestions stick to the credentials the user owns or
+ * that are shared with them.
  */
 export async function filterSuggestibleCredentials<T extends { id: string }>(
 	credentialsService: CredentialsService,
