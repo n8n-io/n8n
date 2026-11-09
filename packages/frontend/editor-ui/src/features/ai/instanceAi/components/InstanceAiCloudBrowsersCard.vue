@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 /**
  * The Browsers card in the sidebar: one row per running cloud browser task, with a small
- * read-only live view and a stop button. A finished task stays, with no browser, until its
- * result reaches the assistant.
+ * read-only live view that opens the browser tab, and a stop button. A finished task stays, with
+ * no browser, until its result reaches the assistant.
  */
 import { N8nHeading, N8nIcon, N8nIconButton, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -22,6 +22,10 @@ const tasks = inject(
 	computed(() => []),
 );
 const liveViews = inject(CloudBrowserLiveViewsKey, undefined);
+const openCloudBrowserTab = inject<((taskId: string) => void) | undefined>(
+	'openCloudBrowserTab',
+	undefined,
+);
 
 // The same icons as the Tasks section of the panel.
 const stateIcons: Record<
@@ -49,6 +53,7 @@ const rows = computed(() =>
 					task.state === 'running' && view?.status === 'live'
 						? embeddedLiveViewUrl(view.liveViewUrl)
 						: undefined,
+				windowId: view?.status === 'live' ? view.windowId : undefined,
 			};
 		}),
 );
@@ -73,7 +78,7 @@ function subtitleOf(task: CloudBrowserTask): string {
 			</div>
 
 			<div
-				v-for="{ task, stateIcon, subtitle, liveViewUrl } in rows"
+				v-for="{ task, stateIcon, subtitle, liveViewUrl, windowId } in rows"
 				:key="task.taskId"
 				:class="$style.row"
 				data-test-id="instance-ai-cloud-browser-row"
@@ -114,10 +119,23 @@ function subtitleOf(task: CloudBrowserTask): string {
 						v-if="liveViewUrl"
 						:src="liveViewUrl"
 						:class="$style.thumbnailFrame"
+						:data-cloud-browser-task-id="task.taskId"
+						:data-cloud-browser-window-id="windowId"
 						tabindex="-1"
 						aria-hidden="true"
 						sandbox="allow-same-origin allow-scripts"
 					/>
+					<!-- Next to the frame, not around it: a button cannot hold an iframe. -->
+					<button
+						type="button"
+						:class="$style.thumbnailOverlay"
+						data-test-id="instance-ai-cloud-browser-open"
+						@click="openCloudBrowserTab?.(task.taskId)"
+					>
+						<span :class="$style.openButton">
+							{{ i18n.baseText('instanceAi.cloudBrowser.openBrowser') }}
+						</span>
+					</button>
 				</div>
 			</div>
 		</div>
@@ -226,5 +244,34 @@ function subtitleOf(task: CloudBrowserTask): string {
 	transform: scale(0.25);
 	transform-origin: 0 0;
 	pointer-events: none;
+}
+
+.thumbnailOverlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: 0;
+	background: var(--color--black-alpha-300);
+	font: inherit;
+	opacity: 0;
+	cursor: pointer;
+	transition: opacity 0.15s ease;
+
+	&:hover,
+	&:focus-visible {
+		opacity: 1;
+	}
+}
+
+.openButton {
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border-radius: var(--radius);
+	background: var(--color--primary);
+	color: var(--color--background--light-3);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
 }
 </style>
