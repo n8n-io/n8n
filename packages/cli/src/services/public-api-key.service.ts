@@ -9,11 +9,10 @@ import { LIST_API_KEYS_SORT_OPTIONS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
-	accountFirstName,
+	accountSummary,
 	ApiKey,
 	ApiKeyRepository,
 	escapeLike,
-	isPerson,
 	LIKE_ESCAPE_CLAUSE,
 	withTransaction,
 } from '@n8n/db';
@@ -178,7 +177,7 @@ export class PublicApiKeyService {
 			id: row.id,
 			...(row.service_account_name === null
 				? { firstName: row.first_name ?? null, lastName: row.last_name ?? null, email: row.email }
-				: // A service account has no email and no last name. It shows its name as the first name.
+				: // Raw rows, so this mirrors `accountSummary` for a service account.
 					{ firstName: row.service_account_name, lastName: null, email: '' }),
 			keyCount: Number(row.key_count),
 		}));
@@ -320,15 +319,12 @@ export class PublicApiKeyService {
 
 	private toRedactedApiKey(apiKeyRecord: ApiKey) {
 		const { user, ...rest } = apiKeyRecord;
-		const { id } = user;
+		const { id, email, firstName, lastName } = accountSummary(user);
 		return {
 			...rest,
 			apiKey: this.redactApiKey(apiKeyRecord.apiKey),
 			expiresAt: this.getApiKeyExpiration(apiKeyRecord.apiKey),
-			owner: isPerson(user)
-				? { id, firstName: user.firstName, lastName: user.lastName, email: user.email }
-				: // A service account has no email and no last name. It shows its name as the first name.
-					{ id, firstName: accountFirstName(user), lastName: null, email: '' },
+			owner: { id, firstName, lastName, email: email ?? '' },
 		};
 	}
 

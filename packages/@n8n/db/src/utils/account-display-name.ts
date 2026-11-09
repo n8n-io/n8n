@@ -13,24 +13,25 @@ function serviceAccountName(serviceAccount: ServiceAccount): string {
 	return serviceAccount.details.name;
 }
 
-function unknownKind(account: User) {
-	return new UnexpectedError('Account is neither a person nor a service account', {
-		extra: { userId: account.id },
-	});
-}
+/*
+ * These helpers are the only place that decides how an account looks.
+ * An account that is neither a `Person` nor a `ServiceAccount` comes from a query
+ * that did not select `kind`. It gets no email and no name, so a missing column
+ * never fails a request.
+ */
 
 /** The full name of a person, or the name of a service account. */
 export function accountFullName(account: User): string {
 	if (isServiceAccount(account)) return serviceAccountName(account);
 	if (isPerson(account)) return `${account.firstName} ${account.lastName}`;
-	throw unknownKind(account);
+	return '';
 }
 
 /** The first name of a person, or the name of a service account. */
 export function accountFirstName(account: User): string {
 	if (isServiceAccount(account)) return serviceAccountName(account);
 	if (isPerson(account)) return account.firstName;
-	throw unknownKind(account);
+	return '';
 }
 
 /** The id, email and name that a list or a mail shows for an account. */
@@ -46,12 +47,14 @@ export type AccountSummary = {
  * so it shows its name as the first name.
  */
 export function accountSummary(account: User): AccountSummary {
+	const { id } = account;
 	if (isServiceAccount(account)) {
-		return { id: account.id, email: null, firstName: serviceAccountName(account), lastName: null };
+		return { id, email: null, firstName: serviceAccountName(account), lastName: null };
 	}
 	if (isPerson(account)) {
-		const { id, email, firstName, lastName } = account;
-		return { id, email, firstName, lastName };
+		// A partial select can leave the columns undefined.
+		const { email, firstName, lastName } = account;
+		return { id, email: email ?? null, firstName: firstName ?? null, lastName: lastName ?? null };
 	}
-	throw unknownKind(account);
+	return { id, email: null, firstName: null, lastName: null };
 }

@@ -1,6 +1,6 @@
 import { UnexpectedError } from 'n8n-workflow';
 
-import { Person, ServiceAccount, ServiceAccountDetails } from '../../entities';
+import { Person, ServiceAccount, ServiceAccountDetails, User } from '../../entities';
 import { accountFirstName, accountFullName, accountSummary } from '../account-display-name';
 
 describe('account display name', () => {
@@ -25,6 +25,13 @@ describe('account display name', () => {
 
 		expect(() => accountFullName(serviceAccount)).toThrow(UnexpectedError);
 		expect(() => accountFirstName(serviceAccount)).toThrow(UnexpectedError);
+	});
+
+	it('gives an account of unknown kind no name', () => {
+		const account = Object.assign(new User(), { id: 'user-1' });
+
+		expect(accountFullName(account)).toBe('');
+		expect(accountFirstName(account)).toBe('');
 	});
 
 	describe('accountSummary', () => {
@@ -54,6 +61,17 @@ describe('account display name', () => {
 				id: 'service-1',
 				email: null,
 				firstName: 'Deploy bot',
+				lastName: null,
+			});
+		});
+
+		it('returns no email and no name for an account of unknown kind', () => {
+			const account = Object.assign(new User(), { id: 'user-1' });
+
+			expect(accountSummary(account)).toEqual({
+				id: 'user-1',
+				email: null,
+				firstName: null,
 				lastName: null,
 			});
 		});

@@ -6,7 +6,7 @@ import {
 	ChangeUserRoleInProject,
 	ListProjectsQueryDto,
 } from '@n8n/api-types';
-import { accountFirstName, AuthenticatedRequest, isPerson, type User } from '@n8n/db';
+import { accountSummary, AuthenticatedRequest, type User } from '@n8n/db';
 import {
 	Get,
 	Post,
@@ -34,13 +34,9 @@ import {
 
 /** A member as the project lists it. */
 function memberFields(user: User) {
-	const { id } = user;
-	if (isPerson(user)) {
-		const { email, firstName, lastName } = user;
-		return { id, email, firstName, lastName };
-	}
-	// A service account has no email and no last name. It shows its name as the first name.
-	return { id, email: '', firstName: accountFirstName(user), lastName: '' };
+	// The response type needs strings.
+	const { id, email, firstName, lastName } = accountSummary(user);
+	return { id, email: email ?? '', firstName: firstName ?? '', lastName: lastName ?? '' };
 }
 
 @RestController('/projects')

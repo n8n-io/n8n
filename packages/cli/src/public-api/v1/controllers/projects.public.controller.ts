@@ -16,7 +16,7 @@ import {
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest, Project, ProjectRelation, User } from '@n8n/db';
-import { accountFirstName, isPerson } from '@n8n/db';
+import { accountSummary } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -61,13 +61,9 @@ const toProjectPublicDto = (project: Project): ProjectPublicDto => ({
 });
 
 function memberFields(user: User) {
-	const { id } = user;
-	if (isPerson(user)) {
-		const { email, firstName, lastName } = user;
-		return { id, email, firstName, lastName };
-	}
-	// A service account has no email and no last name. It shows its name as the first name.
-	return { id, email: '', firstName: accountFirstName(user), lastName: null };
+	// The public schema needs a string email.
+	const { id, email, firstName, lastName } = accountSummary(user);
+	return { id, email: email ?? '', firstName, lastName };
 }
 
 const toProjectMemberPublicDto = (relation: ProjectRelation): ProjectMemberPublicDto => ({

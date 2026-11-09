@@ -20,7 +20,7 @@ import { EventService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-services/auth';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
-import { accountFirstName, isPerson, type User } from '@n8n/db';
+import { accountSummary, isPerson, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
@@ -123,13 +123,8 @@ function matchesTypeFilter(name: string, type: McpClientTypeFilter): boolean {
 /** Sort owners by display name so the "Connected by" dropdown reads naturally. */
 /** The owner of a consent. */
 function ownerSummary(user: User): ConnectedOAuthClientOwner {
-	const { id } = user;
-	if (isPerson(user)) {
-		const { firstName, lastName, email } = user;
-		return { id, firstName: firstName ?? null, lastName: lastName ?? null, email };
-	}
-	// A service account has no email and no last name. It shows its name as the first name.
-	return { id, firstName: accountFirstName(user), lastName: null, email: '' };
+	const { id, email, firstName, lastName } = accountSummary(user);
+	return { id, firstName, lastName, email: email ?? '' };
 }
 
 function sortOwners(owners: ConnectedOAuthClientOwner[]): ConnectedOAuthClientOwner[] {
