@@ -51,7 +51,7 @@ export function remapToolAvailabilitySources(
 ): void {
 	for (const node of nodes) {
 		if (node.type !== AGENT_NODE_TYPE) continue;
-		const availability = node.parameters.toolAvailability;
+		const availability: unknown = node.parameters.toolAvailability;
 		if (
 			!isNodeParameters(availability) ||
 			!Array.isArray(availability.rules) ||
