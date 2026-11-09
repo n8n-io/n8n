@@ -46,53 +46,44 @@ Open **Self-healing playground** in the sidebar, or navigate to
 6. Send both inputs again. Inspect the saved executions and output.
 
 The invoice scenario should return numeric totals of `42.5` and `19` for the two
-inputs. The sub-workflow scenario should return the same totals. The output-shape scenario should return an object with an `items` array
+inputs. The output-shape scenario should return an object with an `items` array
 that preserves the supplied items. The unavailable-API scenario uses a reserved
 `.invalid` domain and tests reports that need outside help. The healthy control
 should succeed without starting an investigation.
 
-## Test a fix across workflows
+## Test sub-workflow chains
 
-The sub-workflow scenario creates two workflows. It creates and publishes the
-sub-workflow first. Then it creates and publishes a parent webhook workflow. The
-parent calls the sub-workflow with an Execute Sub-workflow node. The defect is in
-the sub-workflow: it reads the customer email as the total.
+The chain scenarios create a parent webhook workflow and one or two sub-workflows.
+Each workflow calls the next one with an Execute Sub-workflow node. The playground
+creates and publishes the deepest workflow first. The page shows each chain as one
+card, with the parent, the child, and the grandchild in call order.
 
-1. Create the **Sub-workflow invoice mix-up** scenario. Both workflows appear in the list.
-2. In self-healing settings, select the parent workflow. You can also select the
-   sub-workflow. Assign yourself as a reviewer.
-3. The settings form has no sub-workflow option yet. On the parent workflow card,
-   select **Include sub-workflows**. This sets `includeSubWorkflows` on the
-   configuration that covers the parent.
-4. Send the original input to the parent. The parent execution fails in the
-   sub-workflow call.
-5. In Inbox, expect a repair that changes the sub-workflow.
-   Apply and publish the repair. Then send both inputs again.
+1. Create a chain scenario.
+2. In self-healing settings, select the parent workflow. Turn on
+   **Include sub-workflows**. Assign yourself as a reviewer.
+3. Send the original input to the parent. The parent execution fails.
+4. In Inbox, review the repair. Apply and publish it. Then send both inputs again.
 
 Only parent executions start investigations. Sub-workflow failures alone do not.
+After a correct repair, every chain returns a total of `42.5` for the original
+input and `19` for the alternate input.
 
-## Test a fix that changes both workflows
+| Scenario | Defects | Correct repair |
+| --- | --- | --- |
+| Sub-workflow invoice mix-up | The child reads the customer email as the total. | The child only. |
+| Parent and sub-workflow mix-up | The parent sets only `orderId`. The child reads a missing node. | The parent and the child. |
+| Grandchild mix-up | The grandchild reads a missing node. | The grandchild only. |
+| Three-workflow mix-up | The parent sets only `orderId`. The child and the grandchild each read a missing node. | All three workflows. |
 
-The **Parent and sub-workflow mix-up** scenario uses the same steps. It has one
-defect in each workflow:
+A missing-node reference fails for all input data. A change in another workflow
+cannot make it pass. When the parent sets only `orderId`, no sub-workflow receives
+the amount. In the parent and sub-workflow mix-up and the three-workflow mix-up,
+the parent compares the returned total with the `amount` of the webhook input.
+A mismatch stops the execution with an error. Thus a repair that skips one
+defective workflow fails.
 
-- The parent sets only `orderId` before it calls the sub-workflow. The amount is lost.
-- The sub-workflow reads the total from a node that does not exist.
-
-After the call, the parent compares the total with the `amount` of the webhook
-input. A mismatch stops the execution with an error. A repair must keep the amount
-in the parent and read it in the sub-workflow.
-
-A repair of only one workflow fails:
-
-- A parent-only repair fails because the sub-workflow still reads a missing node.
-  The data from the parent cannot change this.
-- A sub-workflow-only repair fails because the sub-workflow does not receive the
-  amount. The parent check rejects every other total.
-
-After a correct repair, the parent returns `{ "orderId": "ORDER-301", "total": 42.5 }`
-for the original input and `{ "orderId": "ORDER-302", "total": 19 }` for the
-alternate input.
+A repair can still remove the sub-workflow call and calculate the total in the
+parent. The playground cannot prevent this. Check that the repair keeps the call.
 
 Assistant model and sandbox setup must work. The playground does not create
 self-healing configurations or fabricate results. An open result blocks another

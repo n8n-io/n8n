@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { IWorkflowDb } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { createSubWorkflow, createWorkflow, getScenarios } from './selfHealingPlayground';
+import { createWorkflow, getScenarios } from './selfHealingPlayground';
 import SelfHealingPlaygroundView from './SelfHealingPlaygroundView.vue';
 
 const mocks = vi.hoisted(() => ({
@@ -332,116 +332,111 @@ describe('SelfHealingPlaygroundView', () => {
 		const screen = render();
 		expect(await screen.findByText(guidance, { exact: false })).toBeVisible();
 	});
-	it.each(['sub-workflow', 'both-workflows'])(
-		'creates and publishes the %s sub-workflow before the parent that calls it',
-		async (id) => {
-			mocks.create.mockImplementation(async (data: IWorkflowDb) => ({
-				...data,
-				id: data.nodes.some(({ type }) => type === 'n8n-nodes-base.webhook') ? 'parent' : 'child',
-				versionId: 'v1',
-			}));
-			const screen = render();
-			const create = screen.getByTestId(`create-${id}`);
-			await waitFor(() => expect(create).toBeEnabled());
-			await userEvent.click(create);
-			await waitFor(() => expect(mocks.activate).toHaveBeenCalledTimes(2));
-			expect(mocks.activate.mock.calls.map(([, id]) => id)).toEqual(['child', 'parent']);
-			const [[child], [parent]] = mocks.create.mock.calls as Array<[IWorkflowDb]>;
-			expect(child.nodes.map(({ type }) => type)).toEqual([
-				'n8n-nodes-base.executeWorkflowTrigger',
-				'n8n-nodes-base.set',
-			]);
-			expect(parent.nodes.find(({ name }) => name === 'Calculate invoice')).toMatchObject({
-				type: 'n8n-nodes-base.executeWorkflow',
-				parameters: { workflowId: { value: 'child' } },
-			});
-			expect(await screen.findByTestId('playground-message')).toHaveTextContent(
-				'Parent workflow and sub-workflow created and published',
-			);
-		},
-	);
-	it('needs a change in both workflows for the parent and sub-workflow scenario', () => {
-		const scenario = getScenarios(useI18n()).find(({ id }) => id === 'both-workflows')!;
-		const child = createSubWorkflow(scenario, 'project1');
-		const parent = createWorkflow(scenario, 'project1', 'child');
-		expect(child.nodes[1].parameters.assignments).toMatchObject({
-			assignments: [
-				{ name: 'orderId', value: '={{ $json.orderId }}' },
-				{ name: 'total', value: "={{ $('Look up order').item.json.amount }}" },
-			],
-		});
-		expect(parent.nodes.map(({ name }) => name)).toEqual([
-			'Receive order',
-			'Prepare order',
-			'Calculate invoice',
-			'Check total',
-			'Reject total',
-		]);
-		expect(parent.nodes[1].parameters.assignments).toMatchObject({
-			assignments: [{ name: 'orderId' }],
-		});
-		expect(parent.connections).toMatchObject({
-			'Receive order': { main: [[{ node: 'Prepare order' }]] },
-			'Prepare order': { main: [[{ node: 'Calculate invoice' }]] },
-			'Calculate invoice': { main: [[{ node: 'Check total' }]] },
-			'Check total': { main: [[], [{ node: 'Reject total' }]] },
-		});
-	});
-	it('lists both workflows, includes sub-workflows, and deletes the parent first', async () => {
-		const scenario = getScenarios(useI18n()).find(({ id }) => id === 'sub-workflow')!;
-		const child = {
-			...createSubWorkflow(scenario, 'project1'),
-			id: 'child',
+	it.each([
+		['sub-workflow', 2],
+		['both-workflows', 2],
+		['grandchild-only', 3],
+		['three-workflows', 3],
+	])('creates and publishes the %s chain from the deepest workflow up', async (id, length) => {
+		let created = 0;
+		mocks.create.mockImplementation(async (data: IWorkflowDb) => ({
+			...data,
+			id: `workflow-${++created}`,
 			versionId: 'v1',
-			activeVersionId: 'v1',
-			isArchived: false,
-		} as IWorkflowDb;
-		const parent = {
-			...createWorkflow(scenario, 'project1', 'child'),
-			id: 'parent',
-			versionId: 'v1',
-			activeVersionId: 'v1',
-			isArchived: false,
-		} as IWorkflowDb;
-		const configuration = {
-			id: 1,
-			enabled: true,
-			scope: 'selected',
-			workflowIds: ['parent', 'child'],
-			reviewerIds: ['user1'],
-			includeAllProjectMembers: false,
-			includeSubWorkflows: false,
-		};
-		mocks.configurations.mockResolvedValue([configuration]);
-		mocks.getWorkflows.mockResolvedValue({ data: [child, parent], count: 2 });
-		mocks.getWorkflow.mockImplementation(async (_context, id) => (id === 'child' ? child : parent));
+		}));
 		const screen = render();
-		await waitFor(() => expect(screen.getAllByTestId('playground-workflow')).toHaveLength(2));
+		const create = screen.getByTestId(`create-${id}`);
+		await waitFor(() => expect(create).toBeEnabled());
+		await userEvent.click(create);
+		await waitFor(() => expect(mocks.activate).toHaveBeenCalledTimes(length));
+		const chain = mocks.create.mock.calls.map(([data]: [IWorkflowDb]) => data);
+		expect(mocks.activate.mock.calls.map(([, workflowId]) => workflowId)).toEqual(
+			chain.map((_, index) => `workflow-${index + 1}`),
+		);
+		expect(chain[0].nodes[0].type).toBe('n8n-nodes-base.executeWorkflowTrigger');
+		expect(chain.at(-1)?.nodes[0].type).toBe('n8n-nodes-base.webhook');
+		chain.slice(1).forEach((caller, index) =>
+			expect(caller.nodes.find(({ name }) => name === 'Calculate invoice')).toMatchObject({
+				type: 'n8n-nodes-base.executeWorkflow',
+				parameters: { workflowId: { value: `workflow-${index + 1}` } },
+			}),
+		);
+		expect(new Set(chain.map(({ name }) => name.split(' · ').at(-1))).size).toBe(1);
+		expect(await screen.findByTestId('playground-message')).toHaveTextContent(
+			'Workflows created and published',
+		);
+	});
+	it.each([
+		[
+			'both-workflows',
+			[
+				['Receive order', 'Prepare order', 'Calculate invoice', 'Check total', 'Reject total'],
+				['Receive order', 'Prepare invoice'],
+			],
+		],
+		[
+			'grandchild-only',
+			[
+				['Receive order', 'Calculate invoice'],
+				['Receive order', 'Calculate invoice'],
+				['Receive order', 'Prepare invoice'],
+			],
+		],
+		[
+			'three-workflows',
+			[
+				['Receive order', 'Prepare order', 'Calculate invoice', 'Check total', 'Reject total'],
+				['Receive order', 'Prepare amount', 'Calculate invoice'],
+				['Receive order', 'Prepare invoice'],
+			],
+		],
+	])('builds the %s chain with a defect in the expected workflows', (id, names) => {
+		const scenario = getScenarios(useI18n()).find((candidate) => candidate.id === id)!;
+		const levels = names.map((_, level) =>
+			createWorkflow(scenario, 'project1', { level, calleeId: `workflow-${level + 1}` }),
+		);
+		expect(levels.map(({ nodes }) => nodes.map(({ name }) => name))).toEqual(names);
+		const expressions = JSON.stringify(levels.map(({ nodes }) => nodes));
+		expect(expressions.includes("$('Look up order')")).toBe(true);
+		expect(expressions.includes("$('Read order')")).toBe(id === 'three-workflows');
+		if (names[0].includes('Prepare order')) {
+			expect(levels[0].nodes[1].parameters.assignments).toMatchObject({
+				assignments: [{ name: 'orderId' }],
+			});
+			expect(levels[0].connections['Check total']).toMatchObject({
+				main: [[], [{ node: 'Reject total' }]],
+			});
+		}
+	});
+	it('groups a chain, runs only the parent, and deletes it from the parent down', async () => {
+		const scenario = getScenarios(useI18n()).find(({ id }) => id === 'three-workflows')!;
+		const chain = ['parent', 'child', 'grandchild'].map(
+			(id, level) =>
+				({
+					...createWorkflow(scenario, 'project1', { level, runId: 'run12345-chain' }),
+					id,
+					versionId: 'v1',
+					activeVersionId: 'v1',
+					isArchived: false,
+				}) as IWorkflowDb,
+		);
+		mocks.getWorkflows.mockResolvedValue({ data: [chain[2], chain[0], chain[1]], count: 3 });
+		mocks.getWorkflow.mockImplementation(async (_context, id) =>
+			chain.find((workflow) => workflow.id === id),
+		);
+		const screen = render();
+		await waitFor(() => expect(screen.getAllByTestId('playground-workflow')).toHaveLength(3));
+		expect(screen.getAllByTestId('playground-run')).toHaveLength(1);
+		expect(
+			screen
+				.getAllByTestId('playground-workflow')
+				.map((row) => row.textContent?.split('Published')[0].trim()),
+		).toEqual(['Parent', 'Child', 'Grandchild']);
 		expect(screen.getAllByRole('button', { name: 'Run original input' })).toHaveLength(1);
-		expect(screen.getByText(/The parent workflow calls this sub-workflow/)).toBeVisible();
-		const include = await screen.findByRole('button', { name: 'Include sub-workflows' });
-		mocks.configurations.mockResolvedValue([{ ...configuration, includeSubWorkflows: true }]);
-		await userEvent.click(include);
-		await waitFor(() =>
-			expect(mocks.request).toHaveBeenCalledWith(
-				mocks.context,
-				'PATCH',
-				'/projects/project1/self-healing-configurations/1',
-				{
-					scope: 'selected',
-					workflowIds: ['parent', 'child'],
-					reviewerIds: ['user1'],
-					includeAllProjectMembers: false,
-					includeSubWorkflows: true,
-				},
-			),
-		);
-		await waitFor(() =>
-			expect(screen.queryByTestId('playground-sub-workflows-required')).not.toBeInTheDocument(),
-		);
+		expect(screen.getByText(scenario.expectation)).toBeVisible();
 		await userEvent.click(screen.getByTestId('playground-reset'));
 		await userEvent.click(await screen.findByTestId('playground-reset-confirm'));
-		await waitFor(() => expect(mocks.delete).toHaveBeenCalledTimes(2));
-		expect(mocks.delete.mock.calls.map(([id]) => id)).toEqual(['parent', 'child']);
+		await waitFor(() => expect(mocks.delete).toHaveBeenCalledTimes(3));
+		expect(mocks.delete.mock.calls.map(([id]) => id)).toEqual(['parent', 'child', 'grandchild']);
 	});
 });

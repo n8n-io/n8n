@@ -9,241 +9,224 @@ import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import type { useI18n } from '@n8n/i18n';
 import type { IWorkflowDb } from '@/Interface';
 
+const SCENARIO_IDS = [
+	'wrong-field',
+	'wrong-shape',
+	'unavailable-service',
+	'healthy',
+	'sub-workflow',
+	'both-workflows',
+	'grandchild-only',
+	'three-workflows',
+] as const;
+type ScenarioId = (typeof SCENARIO_IDS)[number];
+
 export interface PlaygroundScenario {
-	id: string;
+	id: ScenarioId;
 	name: string;
 	description: string;
 	expectation: string;
 	outcome: string;
 	input: IDataObject;
 	alternateInput: IDataObject;
-	subWorkflowName?: string;
+	chain: string[];
+}
+
+export interface PlaygroundIdentity {
+	scenario: PlaygroundScenario;
+	level: number;
+	runId: string;
+	path?: string;
 }
 
 export const PREFIX = '[self-healing playground] ';
 export const WEBHOOK_PREFIX = 'self-healing-playground/';
 
-const TOTALS: Record<string, string | undefined> = {
-	'wrong-field': '={{ $json.body.customer.email }}',
-	'sub-workflow': '={{ $json.body.customer.email }}',
-	'both-workflows': "={{ $('Look up order').item.json.amount }}",
+const ORDER_ID = '={{ $json.body.orderId }}';
+const PASSED_ORDER_ID = '={{ $json.orderId }}';
+const EMAIL_TOTAL = '={{ $json.body.customer.email }}';
+const MISSING_TOTAL = "={{ $('Look up order').item.json.amount }}";
+const STEPS: Record<ScenarioId, Array<Record<string, string> | null>> = {
+	'wrong-field': [{ orderId: ORDER_ID, total: EMAIL_TOTAL }],
+	'wrong-shape': [{}],
+	'unavailable-service': [{}],
+	healthy: [{ orderId: ORDER_ID, total: '={{ $json.body.amount }}' }],
+	'sub-workflow': [null, { orderId: ORDER_ID, total: EMAIL_TOTAL }],
+	'both-workflows': [{ orderId: ORDER_ID }, { orderId: PASSED_ORDER_ID, total: MISSING_TOTAL }],
+	'grandchild-only': [
+		null,
+		null,
+		{ orderId: ORDER_ID, total: "={{ $('Look up order').item.json.body.amount }}" },
+	],
+	'three-workflows': [
+		{ orderId: ORDER_ID },
+		{ orderId: PASSED_ORDER_ID, amount: "={{ $('Read order').item.json.amount }}" },
+		{ orderId: PASSED_ORDER_ID, total: MISSING_TOTAL },
+	],
 };
+const INPUTS: Record<ScenarioId, [IDataObject, IDataObject]> = {
+	'wrong-field': [
+		{ orderId: 'ORDER-101', customer: { email: 'buyer@example.com' }, amount: 42.5 },
+		{ orderId: 'ORDER-102', customer: { email: 'other@example.com' }, amount: 19 },
+	],
+	'wrong-shape': [
+		{
+			items: [
+				{ sku: 'BOOK', quantity: 2 },
+				{ sku: 'PEN', quantity: 3 },
+			],
+		},
+		{ items: [{ sku: 'PAD', quantity: 5 }] },
+	],
+	'unavailable-service': [{ accountId: 'ACCOUNT-101' }, { accountId: 'ACCOUNT-102' }],
+	healthy: [
+		{ orderId: 'ORDER-101', amount: 42.5 },
+		{ orderId: 'ORDER-102', amount: 19 },
+	],
+	'sub-workflow': [
+		{ orderId: 'ORDER-201', customer: { email: 'buyer@example.com' }, amount: 42.5 },
+		{ orderId: 'ORDER-202', customer: { email: 'other@example.com' }, amount: 19 },
+	],
+	'both-workflows': [
+		{ orderId: 'ORDER-301', amount: 42.5 },
+		{ orderId: 'ORDER-302', amount: 19 },
+	],
+	'grandchild-only': [
+		{ orderId: 'ORDER-401', amount: 42.5 },
+		{ orderId: 'ORDER-402', amount: 19 },
+	],
+	'three-workflows': [
+		{ orderId: 'ORDER-501', amount: 42.5 },
+		{ orderId: 'ORDER-502', amount: 19 },
+	],
+};
+const LEVELS = [
+	'selfHealingPlayground.level.child',
+	'selfHealingPlayground.level.grandchild',
+] as const;
 
 export function getScenarios(i18n: ReturnType<typeof useI18n>): PlaygroundScenario[] {
-	return [
-		{
-			id: 'wrong-field',
-			name: i18n.baseText('selfHealingPlayground.wrong-field.name'),
-			description: i18n.baseText('selfHealingPlayground.wrong-field.description'),
-			expectation: i18n.baseText('selfHealingPlayground.wrong-field.expectation'),
-			outcome: i18n.baseText('selfHealingPlayground.wrong-field.outcome'),
-			input: { orderId: 'ORDER-101', customer: { email: 'buyer@example.com' }, amount: 42.5 },
-			alternateInput: {
-				orderId: 'ORDER-102',
-				customer: { email: 'other@example.com' },
-				amount: 19,
-			},
-		},
-		{
-			id: 'wrong-shape',
-			name: i18n.baseText('selfHealingPlayground.wrong-shape.name'),
-			description: i18n.baseText('selfHealingPlayground.wrong-shape.description'),
-			expectation: i18n.baseText('selfHealingPlayground.wrong-shape.expectation'),
-			outcome: i18n.baseText('selfHealingPlayground.wrong-shape.outcome'),
-			input: {
-				items: [
-					{ sku: 'BOOK', quantity: 2 },
-					{ sku: 'PEN', quantity: 3 },
-				],
-			},
-			alternateInput: { items: [{ sku: 'PAD', quantity: 5 }] },
-		},
-		{
-			id: 'unavailable-service',
-			name: i18n.baseText('selfHealingPlayground.unavailable-service.name'),
-			description: i18n.baseText('selfHealingPlayground.unavailable-service.description'),
-			expectation: i18n.baseText('selfHealingPlayground.unavailable-service.expectation'),
-			outcome: i18n.baseText('selfHealingPlayground.unavailable-service.outcome'),
-			input: { accountId: 'ACCOUNT-101' },
-			alternateInput: { accountId: 'ACCOUNT-102' },
-		},
-		{
-			id: 'sub-workflow',
-			name: i18n.baseText('selfHealingPlayground.sub-workflow.name'),
-			description: i18n.baseText('selfHealingPlayground.sub-workflow.description'),
-			expectation: i18n.baseText('selfHealingPlayground.sub-workflow.expectation'),
-			outcome: i18n.baseText('selfHealingPlayground.sub-workflow.outcome'),
-			subWorkflowName: i18n.baseText('selfHealingPlayground.sub-workflow.subWorkflowName'),
-			input: { orderId: 'ORDER-201', customer: { email: 'buyer@example.com' }, amount: 42.5 },
-			alternateInput: {
-				orderId: 'ORDER-202',
-				customer: { email: 'other@example.com' },
-				amount: 19,
-			},
-		},
-		{
-			id: 'both-workflows',
-			name: i18n.baseText('selfHealingPlayground.both-workflows.name'),
-			description: i18n.baseText('selfHealingPlayground.both-workflows.description'),
-			expectation: i18n.baseText('selfHealingPlayground.both-workflows.expectation'),
-			outcome: i18n.baseText('selfHealingPlayground.both-workflows.outcome'),
-			subWorkflowName: i18n.baseText('selfHealingPlayground.both-workflows.subWorkflowName'),
-			input: { orderId: 'ORDER-301', amount: 42.5 },
-			alternateInput: { orderId: 'ORDER-302', amount: 19 },
-		},
-		{
-			id: 'healthy',
-			name: i18n.baseText('selfHealingPlayground.healthy.name'),
-			description: i18n.baseText('selfHealingPlayground.healthy.description'),
-			expectation: i18n.baseText('selfHealingPlayground.healthy.expectation'),
-			outcome: i18n.baseText('selfHealingPlayground.healthy.outcome'),
-			input: { orderId: 'ORDER-101', amount: 42.5 },
-			alternateInput: { orderId: 'ORDER-102', amount: 19 },
-		},
-	];
+	return SCENARIO_IDS.map((id) => ({
+		id,
+		name: i18n.baseText(`selfHealingPlayground.${id}.name`),
+		description: i18n.baseText(`selfHealingPlayground.${id}.description`),
+		expectation: i18n.baseText(`selfHealingPlayground.${id}.expectation`),
+		outcome: i18n.baseText(`selfHealingPlayground.${id}.outcome`),
+		input: INPUTS[id][0],
+		alternateInput: INPUTS[id][1],
+		chain: LEVELS.slice(0, STEPS[id].length - 1).map((key) => i18n.baseText(key)),
+	}));
+}
+
+function node(
+	name: string,
+	type: string,
+	typeVersion: number,
+	parameters: INode['parameters'],
+): INode {
+	return { id: crypto.randomUUID(), name, type, typeVersion, position: [0, 0], parameters };
 }
 
 export function createWorkflow(
 	scenario: PlaygroundScenario,
 	projectId: string,
-	subWorkflowId?: string,
+	{
+		level = 0,
+		calleeId = '',
+		runId = crypto.randomUUID(),
+	}: { level?: number; calleeId?: string; runId?: string } = {},
 ): WorkflowDataCreate {
-	const runId = crypto.randomUUID();
-	const webhook: INode = {
-		id: crypto.randomUUID(),
-		name: 'Receive order',
-		type: 'n8n-nodes-base.webhook',
-		typeVersion: 2.1,
-		position: [0, 0],
-		webhookId: crypto.randomUUID(),
-		parameters: {
-			httpMethod: 'POST',
-			path: `${WEBHOOK_PREFIX}${scenario.id}/${runId}`,
-			responseMode: 'lastNode',
-			responseData: 'firstEntryJson',
-			options: {},
-		},
-	};
-	const transform: INode = {
-		id: crypto.randomUUID(),
-		name: scenario.id === 'wrong-shape' ? 'Prepare order output' : 'Prepare invoice',
-		type: 'n8n-nodes-base.set',
-		typeVersion: 3.4,
-		position: [280, 0],
-		notes: scenario.expectation,
-		notesInFlow: true,
-		parameters: {
-			assignments: {
-				assignments: [
-					{
-						id: crypto.randomUUID(),
-						name: 'orderId',
-						type: 'string',
-						value:
-							scenario.id === 'both-workflows'
-								? '={{ $json.orderId }}'
-								: '={{ $json.body.orderId }}',
-					},
-					{
-						id: crypto.randomUUID(),
-						name: 'total',
-						type: 'number',
-						value: TOTALS[scenario.id] ?? '={{ $json.body.amount }}',
-					},
-				],
-			},
-			options: {},
-		},
-	};
-	if (scenario.id === 'wrong-shape') {
-		transform.parameters = { mode: 'raw', jsonOutput: '={{ $json.body.items }}', options: {} };
-	}
-	if (scenario.id === 'unavailable-service') {
-		transform.name = 'Read account';
-		transform.type = 'n8n-nodes-base.httpRequest';
-		transform.typeVersion = 4.2;
-		transform.parameters = {
-			url: 'https://api.example.invalid/account',
-			options: { timeout: 5000 },
-		};
-	}
-	if (subWorkflowId) {
-		transform.name = 'Calculate invoice';
-		transform.type = EXECUTE_WORKFLOW_NODE_TYPE;
-		transform.typeVersion = 1.2;
-		transform.parameters = {
-			source: 'database',
-			workflowId: { __rl: true, mode: 'id', value: subWorkflowId },
-			options: {},
-		};
-	}
-	const nodes = [webhook, transform];
-	const check: INode = {
-		id: crypto.randomUUID(),
-		name: 'Check total',
-		type: 'n8n-nodes-base.if',
-		typeVersion: 2.2,
-		position: [0, 0],
-		parameters: {
-			conditions: {
-				options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
-				conditions: [
-					{
-						id: crypto.randomUUID(),
-						leftValue: '={{ $json.total }}',
-						rightValue: "={{ $('Receive order').first().json.body.amount }}",
-						operator: { type: 'number', operation: 'equals' },
-					},
-				],
-				combinator: 'and',
-			},
-			options: {},
-		},
-	};
-	const guarded = Boolean(subWorkflowId) && scenario.id === 'both-workflows';
-	if (guarded) {
-		nodes.splice(1, 0, {
-			id: crypto.randomUUID(),
-			name: 'Prepare order',
-			type: 'n8n-nodes-base.set',
-			typeVersion: 3.4,
-			position: [0, 0],
-			parameters: {
+	const entry = level
+		? node('Receive order', EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, 1.1, { inputSource: 'passthrough' })
+		: {
+				...node('Receive order', 'n8n-nodes-base.webhook', 2.1, {
+					httpMethod: 'POST',
+					path: `${WEBHOOK_PREFIX}${scenario.id}/${runId}`,
+					responseMode: 'lastNode',
+					responseData: 'firstEntryJson',
+					options: {},
+				}),
+				webhookId: crypto.randomUUID(),
+			};
+	const nodes = [entry];
+	const fields = STEPS[scenario.id][level];
+	if (fields) {
+		const step = node(
+			'total' in fields ? 'Prepare invoice' : level ? 'Prepare amount' : 'Prepare order',
+			'n8n-nodes-base.set',
+			3.4,
+			{
 				assignments: {
-					assignments: [
-						{
-							id: crypto.randomUUID(),
-							name: 'orderId',
-							type: 'string',
-							value: '={{ $json.body.orderId }}',
-						},
-					],
+					assignments: Object.entries(fields).map(([name, value]) => ({
+						id: crypto.randomUUID(),
+						name,
+						type: name === 'orderId' ? 'string' : 'number',
+						value,
+					})),
 				},
 				options: {},
 			},
-		});
-		nodes.push(check);
+		);
+		if (scenario.id === 'wrong-shape') {
+			Object.assign(step, {
+				name: 'Prepare order output',
+				parameters: { mode: 'raw', jsonOutput: '={{ $json.body.items }}', options: {} },
+			});
+		}
+		if (scenario.id === 'unavailable-service') {
+			Object.assign(
+				step,
+				node('Read account', 'n8n-nodes-base.httpRequest', 4.2, {
+					url: 'https://api.example.invalid/account',
+					options: { timeout: 5000 },
+				}),
+			);
+		}
+		nodes.push({ ...step, notes: scenario.expectation, notesInFlow: true });
 	}
+	if (level < scenario.chain.length) {
+		nodes.push(
+			node('Calculate invoice', EXECUTE_WORKFLOW_NODE_TYPE, 1.2, {
+				source: 'database',
+				workflowId: { __rl: true, mode: 'id', value: calleeId },
+				options: {},
+			}),
+		);
+	}
+	const check = node('Check total', 'n8n-nodes-base.if', 2.2, {
+		conditions: {
+			options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+			conditions: [
+				{
+					id: crypto.randomUUID(),
+					leftValue: '={{ $json.total }}',
+					rightValue: "={{ $('Receive order').first().json.body.amount }}",
+					operator: { type: 'number', operation: 'equals' },
+				},
+			],
+			combinator: 'and',
+		},
+		options: {},
+	});
+	const guarded = !level && Boolean(fields) && scenario.chain.length > 0;
+	if (guarded) nodes.push(check);
 	const connections: IConnections = {};
-	nodes.forEach((node, index) => {
-		node.position = [index * 280, 0];
+	nodes.forEach((current, index) => {
+		current.position = [index * 280, 0];
 		const next = nodes[index + 1];
-		if (next) connections[node.name] = { main: [[{ node: next.name, type: 'main', index: 0 }]] };
+		if (next) connections[current.name] = { main: [[{ node: next.name, type: 'main', index: 0 }]] };
 	});
 	if (guarded) {
-		const reject: INode = {
-			id: crypto.randomUUID(),
-			name: 'Reject total',
-			type: 'n8n-nodes-base.stopAndError',
-			typeVersion: 1,
-			position: [nodes.length * 280, 160],
-			parameters: { errorMessage: 'The invoice total does not match the order amount.' },
-		};
+		const reject = node('Reject total', 'n8n-nodes-base.stopAndError', 1, {
+			errorMessage: 'The invoice total does not match the order amount.',
+		});
+		reject.position = [nodes.length * 280, 160];
 		connections[check.name] = { main: [[], [{ node: reject.name, type: 'main', index: 0 }]] };
 		nodes.push(reject);
 	}
+	const label = level ? [scenario.name, scenario.chain[level - 1]] : [scenario.name];
 	return {
-		name: `${PREFIX}${scenario.name} · ${runId.slice(0, 8)}`,
+		name: `${PREFIX}${[...label, runId.slice(0, 8)].join(' · ')}`,
 		...(projectId ? { projectId } : {}),
 		nodes,
 		connections,
@@ -255,47 +238,29 @@ export function createWorkflow(
 	};
 }
 
-export function createSubWorkflow(
-	scenario: PlaygroundScenario,
-	projectId: string,
-): WorkflowDataCreate {
-	const workflow = createWorkflow(scenario, projectId);
-	const trigger: INode = {
-		id: crypto.randomUUID(),
-		name: 'Receive order',
-		type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-		typeVersion: 1.1,
-		position: [0, 0],
-		parameters: { inputSource: 'passthrough' },
-	};
-	return {
-		...workflow,
-		name: `${PREFIX}${scenario.subWorkflowName} · ${crypto.randomUUID().slice(0, 8)}`,
-		nodes: [trigger, workflow.nodes[1]],
-	};
-}
-
 export function identifyWorkflow(
 	workflow: IWorkflowDb,
 	scenarios: PlaygroundScenario[],
-): { scenario: PlaygroundScenario; path?: string } | null {
+): PlaygroundIdentity | null {
 	if (!workflow.name.startsWith(PREFIX)) return null;
-	for (const node of workflow.nodes) {
-		const path = node.parameters.path;
-		if (
-			node.type !== 'n8n-nodes-base.webhook' ||
-			typeof path !== 'string' ||
-			!path.startsWith(WEBHOOK_PREFIX)
-		)
-			continue;
-		const scenario = scenarios.find(({ id }) => id === path.split('/')[1]);
-		if (scenario) return { scenario, path };
+	const parts = workflow.name.slice(PREFIX.length).split(' · ');
+	const runId = parts[parts.length - 1];
+	const scenario = scenarios.find(({ name }) => name === parts[0]);
+	if (!scenario || parts.length < 2) return null;
+	if (parts.length === 2) {
+		const path = workflow.nodes
+			.filter(({ type }) => type === 'n8n-nodes-base.webhook')
+			.map(({ parameters }) => parameters.path)
+			.find(
+				(value): value is string =>
+					typeof value === 'string' && value.startsWith(`${WEBHOOK_PREFIX}${scenario.id}/`),
+			);
+		return path ? { scenario, level: 0, runId, path } : null;
 	}
-	const scenario = scenarios.find(
-		({ subWorkflowName }) =>
-			subWorkflowName && workflow.name.startsWith(`${PREFIX}${subWorkflowName} · `),
-	);
-	return scenario && workflow.nodes.some(({ type }) => type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)
-		? { scenario }
+	const level = scenario.chain.indexOf(parts[1]) + 1;
+	return parts.length === 3 &&
+		level > 0 &&
+		workflow.nodes.some(({ type }) => type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)
+		? { scenario, level, runId }
 		: null;
 }

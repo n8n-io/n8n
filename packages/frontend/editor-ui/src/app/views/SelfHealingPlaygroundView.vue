@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
+	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nCard,
@@ -10,15 +11,14 @@ import {
 	N8nIcon,
 	N8nOption,
 	N8nSelect,
+	N8nStatusDot,
 } from '@n8n/design-system';
+import type { BadgeVariant, IconName, StatusDotVariant } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import type {
-	SelfHealingConfigurationDto,
-	UpdateSelfHealingConfigurationDto,
-} from '@n8n/api-types';
+import type { SelfHealingConfigurationDto } from '@n8n/api-types';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -28,7 +28,6 @@ import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionsListResponse } from '@/features/execution/executions/executions.types';
 import {
 	PREFIX,
-	createSubWorkflow,
 	createWorkflow,
 	getScenarios,
 	identifyWorkflow,
@@ -42,6 +41,11 @@ const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const scenarios = getScenarios(i18n);
+const scenarioGroups = [
+	{ title: 'selfHealingPlayground.scenarios.single', chains: false },
+	{ title: 'selfHealingPlayground.scenarios.chains', chains: true },
+] as const;
+const steps = ['configure', 'trigger', 'review'] as const;
 const projectId = ref('');
 const busy = ref(true);
 const resetOpen = ref(false);
@@ -55,13 +59,39 @@ const error = ref('');
 const workflows = ref<IWorkflowDb[]>([]);
 const executions = ref<Record<string, IExecutionsListResponse['results']>>({});
 const responses = ref<Record<string, string>>({});
-const workflowCards = computed(() =>
-	workflows.value.map((workflow) => ({
-		workflow,
-		...identifyWorkflow(workflow, scenarios),
-		latest: executions.value[workflow.id]?.[0],
-	})),
-);
+const runs = computed(() => {
+	const groups = new Map<
+		string,
+		{
+			key: string;
+			scenario: PlaygroundScenario;
+			runId: string;
+			items: Array<{
+				workflow: IWorkflowDb;
+				level: number;
+				path?: string;
+				latest?: IExecutionsListResponse['results'][number];
+			}>;
+		}
+	>();
+	for (const workflow of workflows.value) {
+		const identity = identifyWorkflow(workflow, scenarios);
+		if (!identity) continue;
+		const key = `${identity.scenario.id}/${identity.runId}`;
+		const group = groups.get(key) ?? {
+			key,
+			scenario: identity.scenario,
+			runId: identity.runId,
+			items: [],
+		};
+		group.items.push({ workflow, ...identity, latest: executions.value[workflow.id]?.[0] });
+		groups.set(key, group);
+	}
+	return [...groups.values()].map((group) => {
+		const items = [...group.items].sort((a, b) => a.level - b.level);
+		return { ...group, items, parent: items.find(({ path }) => path) };
+	});
+});
 const enabled = computed(() => settings.moduleSettings['instance-ai']?.workflowSuggestionsEnabled);
 const configurationMessage = computed(() =>
 	i18n.baseText(
@@ -75,6 +105,22 @@ const settingsPath = computed(() => {
 	const project = availableProjects.value.find((project) => project.id === projectId.value);
 	return `/projects/${projectId.value}/${project?.type === 'personal' ? 'self-healing' : 'settings'}`;
 });
+
+function outcome(scenario: PlaygroundScenario): { variant: BadgeVariant; icon: IconName } {
+	if (scenario.id === 'healthy') return { variant: 'success', icon: 'circle-check' };
+	if (scenario.id === 'unavailable-service') return { variant: 'warning', icon: 'circle-help' };
+	return { variant: 'info', icon: 'sparkles' };
+}
+
+function levelLabel(scenario: PlaygroundScenario, level: number) {
+	if (level) return scenario.chain[level - 1];
+	return scenario.chain.length ? i18n.baseText('selfHealingPlayground.level.parent') : '';
+}
+
+function executionStatus(status: string): StatusDotVariant {
+	if (status === 'success') return 'success';
+	return status === 'error' || status === 'crashed' ? 'danger' : 'neutral';
+}
 
 function published(workflow: IWorkflowDb) {
 	return Boolean(workflow.activeVersionId && workflow.activeVersionId === workflow.versionId);
@@ -90,43 +136,6 @@ function canRun(workflowId: string) {
 					(configuration.scope === 'all' || configuration.workflowIds.includes(workflowId)),
 			),
 	);
-}
-
-function coveringConfiguration(workflowId: string) {
-	return (
-		configurations.value.find(
-			({ scope, workflowIds }) => scope === 'selected' && workflowIds.includes(workflowId),
-		) ?? configurations.value.find(({ scope }) => scope === 'all')
-	);
-}
-
-function needsSubWorkflows(workflowId: string, scenario?: PlaygroundScenario) {
-	return Boolean(
-		scenario?.subWorkflowName &&
-			canRun(workflowId) &&
-			!coveringConfiguration(workflowId)?.includeSubWorkflows,
-	);
-}
-
-async function includeSubWorkflows(workflowId: string) {
-	const configuration = coveringConfiguration(workflowId);
-	if (!configuration) return;
-	const { id, scope, workflowIds, reviewerIds, includeAllProjectMembers } = configuration;
-	const update: UpdateSelfHealingConfigurationDto = {
-		scope,
-		workflowIds,
-		reviewerIds,
-		includeAllProjectMembers,
-		includeSubWorkflows: true,
-	};
-	await makeRestApiRequest(
-		root.restApiContext,
-		'PATCH',
-		`/projects/${projectId.value}/self-healing-configurations/${id}`,
-		update,
-	);
-	message.value = i18n.baseText('selfHealingPlayground.subWorkflows.included');
-	await checkConfiguration();
 }
 
 async function refresh() {
@@ -149,7 +158,6 @@ async function refresh() {
 		count = page.count;
 		if (page.data.length === 0) break;
 	} while (skip < count);
-	// List responses omit node parameters. Load only the playground workflows.
 	const loaded: IWorkflowDb[] = [];
 	for (const summary of collected) {
 		if (!summary.name.startsWith(PREFIX)) continue;
@@ -216,10 +224,8 @@ async function prepareReset() {
 }
 
 async function resetPlayground() {
-	const targets = [...workflows.value].sort(
-		(a, b) =>
-			Number(!identifyWorkflow(a, scenarios)?.path) - Number(!identifyWorkflow(b, scenarios)?.path),
-	);
+	const level = (workflow: IWorkflowDb) => identifyWorkflow(workflow, scenarios)?.level ?? 0;
+	const targets = [...workflows.value].sort((a, b) => level(a) - level(b));
 	resetOpen.value = false;
 	let deleted = 0;
 	let failed = 0;
@@ -261,13 +267,15 @@ async function createAndPublish(data: WorkflowDataCreate) {
 
 async function create(scenario: PlaygroundScenario) {
 	try {
-		const subWorkflow = scenario.subWorkflowName
-			? await createAndPublish(createSubWorkflow(scenario, projectId.value))
-			: undefined;
-		await createAndPublish(createWorkflow(scenario, projectId.value, subWorkflow?.id));
+		const runId = crypto.randomUUID();
+		let calleeId: string | undefined;
+		for (let level = scenario.chain.length; level >= 0; level--) {
+			const data = createWorkflow(scenario, projectId.value, { level, calleeId, runId });
+			calleeId = (await createAndPublish(data)).id;
+		}
 		message.value = i18n.baseText(
-			subWorkflow
-				? 'selfHealingPlayground.createdWithSubWorkflow'
+			scenario.chain.length
+				? 'selfHealingPlayground.createdChain'
 				: 'selfHealingPlayground.created',
 		);
 	} finally {
@@ -334,6 +342,7 @@ onMounted(async () => {
 					<div>
 						<p :class="$style.eyebrow">{{ i18n.baseText('selfHealingPlayground.eyebrow') }}</p>
 						<h1>{{ i18n.baseText('selfHealingPlayground.title') }}</h1>
+						<p :class="$style.subtle">{{ i18n.baseText('selfHealingPlayground.intro') }}</p>
 					</div>
 				</div>
 				<RouterLink to="/inbox" :class="$style.inboxLink">
@@ -341,19 +350,6 @@ onMounted(async () => {
 					<N8nIcon icon="arrow-right" />
 				</RouterLink>
 			</header>
-			<p :class="$style.intro">{{ i18n.baseText('selfHealingPlayground.intro') }}</p>
-
-			<ol :class="$style.guide" :aria-label="i18n.baseText('selfHealingPlayground.guide')">
-				<li v-for="step in ['configure', 'trigger', 'review'] as const" :key="step">
-					<span :class="$style.stepNumber" aria-hidden="true">{{
-						{ configure: 1, trigger: 2, review: 3 }[step]
-					}}</span>
-					<div>
-						<strong>{{ i18n.baseText(`selfHealingPlayground.guide.${step}.title`) }}</strong>
-						<p>{{ i18n.baseText(`selfHealingPlayground.guide.${step}.description`) }}</p>
-					</div>
-				</li>
-			</ol>
 
 			<N8nCallout v-if="!enabled" theme="warning">{{
 				i18n.baseText('selfHealingPlayground.disabled')
@@ -369,32 +365,8 @@ onMounted(async () => {
 				}}</N8nCallout>
 			</div>
 
-			<N8nCard :class="$style.setup">
-				<div :class="$style.setupContent">
-					<div :class="$style.setupCopy">
-						<h2>{{ i18n.baseText('selfHealingPlayground.setup.title') }}</h2>
-						<p>{{ i18n.baseText('selfHealingPlayground.projectTypes') }}</p>
-						<p>{{ i18n.baseText('selfHealingPlayground.setup.description') }}</p>
-						<div :class="$style.links">
-							<RouterLink v-if="projectId" :to="settingsPath">
-								<N8nIcon icon="settings" size="small" />{{
-									i18n.baseText('selfHealingPlayground.settings')
-								}}
-							</RouterLink>
-							<RouterLink to="/settings/assistant">{{
-								i18n.baseText('selfHealingPlayground.assistantSettings')
-							}}</RouterLink>
-							<N8nButton
-								v-if="projectId && enabled"
-								variant="outline"
-								size="small"
-								:disabled="busy"
-								@click="perform(checkConfiguration)"
-							>
-								{{ i18n.baseText('selfHealingPlayground.checkSetup') }}
-							</N8nButton>
-						</div>
-					</div>
+			<N8nCard :class="$style.card">
+				<div :class="$style.setup">
 					<div :class="$style.project">
 						<label for="playground-project">{{
 							i18n.baseText('selfHealingPlayground.project')
@@ -413,11 +385,41 @@ onMounted(async () => {
 								:label="project.name ?? project.id"
 							/>
 						</N8nSelect>
+					</div>
+					<div :class="$style.links">
+						<RouterLink v-if="projectId" :to="settingsPath">
+							<N8nIcon icon="settings" size="small" />{{
+								i18n.baseText('selfHealingPlayground.settings')
+							}}
+						</RouterLink>
 						<RouterLink v-if="projectId" :to="`/projects/${projectId}`">{{
 							i18n.baseText('selfHealingPlayground.openProject')
 						}}</RouterLink>
+						<RouterLink to="/settings/assistant">{{
+							i18n.baseText('selfHealingPlayground.assistantSettings')
+						}}</RouterLink>
+						<N8nButton
+							v-if="projectId && enabled"
+							variant="outline"
+							size="small"
+							:disabled="busy"
+							@click="perform(checkConfiguration)"
+						>
+							{{ i18n.baseText('selfHealingPlayground.checkSetup') }}
+						</N8nButton>
 					</div>
 				</div>
+				<ol :class="$style.guide" :aria-label="i18n.baseText('selfHealingPlayground.guide')">
+					<li v-for="(step, index) in steps" :key="step">
+						<span :class="$style.stepNumber" aria-hidden="true">{{ index + 1 }}</span>
+						<div>
+							<strong>{{ i18n.baseText(`selfHealingPlayground.guide.${step}.title`) }}</strong>
+							<p :class="$style.subtle">
+								{{ i18n.baseText(`selfHealingPlayground.guide.${step}.description`) }}
+							</p>
+						</div>
+					</li>
+				</ol>
 			</N8nCard>
 			<N8nCallout v-if="!busy && !availableProjects.length" theme="warning">
 				{{ i18n.baseText('selfHealingPlayground.noProjects') }}
@@ -427,12 +429,10 @@ onMounted(async () => {
 				theme="warning"
 				data-test-id="playground-configuration-required"
 			>
-				<p>{{ configurationMessage }}</p>
-				<div :class="$style.links">
-					<RouterLink :to="settingsPath">{{
-						i18n.baseText('selfHealingPlayground.settings')
-					}}</RouterLink>
-				</div>
+				{{ configurationMessage }}
+				<RouterLink :to="settingsPath">{{
+					i18n.baseText('selfHealingPlayground.settings')
+				}}</RouterLink>
 			</N8nCallout>
 
 			<section :class="$style.section" aria-labelledby="playground-scenarios">
@@ -440,47 +440,49 @@ onMounted(async () => {
 					<h2 id="playground-scenarios">
 						{{ i18n.baseText('selfHealingPlayground.scenarios.title') }}
 					</h2>
-					<p :class="$style.sectionDescription">
+					<p :class="$style.subtle">
 						{{ i18n.baseText('selfHealingPlayground.scenarios.description') }}
 					</p>
 				</div>
-				<div :class="$style.scenarios">
-					<N8nCard
-						v-for="scenario in scenarios"
-						:key="scenario.id"
-						:class="[$style.scenario, { [$style.recommended]: scenario.id === 'wrong-field' }]"
-					>
-						<div :class="$style.scenarioBody">
-							<div :class="$style.row">
-								<span
-									:class="[
-										$style.outcome,
-										scenario.id === 'healthy'
-											? $style.success
-											: scenario.id === 'unavailable-service'
-												? $style.warning
-												: $style.info,
-									]"
-								>
-									<N8nIcon
-										:icon="
-											scenario.id === 'healthy'
-												? 'circle-check'
-												: scenario.id === 'unavailable-service'
-													? 'circle-help'
-													: 'sparkles'
-										"
-										size="small"
-									/>{{ scenario.outcome }}
-								</span>
-								<span v-if="scenario.id === 'wrong-field'" :class="$style.recommendedLabel">{{
-									i18n.baseText('selfHealingPlayground.recommended')
-								}}</span>
-							</div>
-							<h3>{{ scenario.name }}</h3>
-							<p>{{ scenario.description }}</p>
-							<div :class="$style.scenarioFooter">
+				<div v-for="group in scenarioGroups" :key="group.title" :class="$style.group">
+					<div>
+						<h3>{{ i18n.baseText(group.title) }}</h3>
+						<p v-if="group.chains" :class="$style.subtle">
+							{{ i18n.baseText('selfHealingPlayground.scenarios.chains.description') }}
+						</p>
+					</div>
+					<div :class="$style.grid">
+						<N8nCard
+							v-for="scenario in scenarios.filter(({ chain }) => !!chain.length === group.chains)"
+							:key="scenario.id"
+							:class="[$style.card, { [$style.recommended]: scenario.id === 'wrong-field' }]"
+						>
+							<div :class="$style.scenario">
+								<div :class="$style.row">
+									<N8nBadge
+										:variant="outcome(scenario).variant"
+										:leading-icon="outcome(scenario).icon"
+										>{{ scenario.outcome }}</N8nBadge
+									>
+									<span v-if="scenario.id === 'wrong-field'" :class="$style.meta">{{
+										i18n.baseText('selfHealingPlayground.recommended')
+									}}</span>
+								</div>
+								<h4>{{ scenario.name }}</h4>
+								<p :class="$style.subtle">{{ scenario.description }}</p>
+								<ol v-if="scenario.chain.length" :class="$style.chainPreview">
+									<li
+										v-for="label in [
+											i18n.baseText('selfHealingPlayground.level.parent'),
+											...scenario.chain,
+										]"
+										:key="label"
+									>
+										{{ label }}
+									</li>
+								</ol>
 								<N8nButton
+									:class="$style.createButton"
 									:variant="scenario.id === 'wrong-field' ? 'solid' : 'outline'"
 									size="small"
 									:disabled="busy || !projectId"
@@ -491,10 +493,9 @@ onMounted(async () => {
 									<template #icon><N8nIcon icon="plus" size="small" /></template>
 									{{ i18n.baseText('selfHealingPlayground.create') }}
 								</N8nButton>
-								<span>{{ i18n.baseText('selfHealingPlayground.autoPublish') }}</span>
 							</div>
-						</div>
-					</N8nCard>
+						</N8nCard>
+					</div>
 				</div>
 			</section>
 
@@ -511,7 +512,7 @@ onMounted(async () => {
 							{{ i18n.baseText('selfHealingPlayground.workflows') }}
 							<span :class="$style.count">{{ workflows.length }}</span>
 						</h2>
-						<p :class="$style.sectionDescription">
+						<p :class="$style.subtle">
 							{{ i18n.baseText('selfHealingPlayground.workflows.description') }}
 						</p>
 					</div>
@@ -549,147 +550,158 @@ onMounted(async () => {
 					<p v-if="!busy">{{ i18n.baseText('selfHealingPlayground.empty') }}</p>
 				</div>
 				<N8nCard
-					v-for="{ workflow, scenario, path, latest } in workflowCards"
-					:key="workflow.id"
-					:class="$style.workflow"
-					data-test-id="playground-workflow"
+					v-for="{ key, scenario, runId, items, parent } in runs"
+					:key="key"
+					:class="$style.card"
+					data-test-id="playground-run"
 				>
-					<div :class="$style.workflowBody">
+					<div :class="$style.run">
 						<div :class="$style.row">
-							<div>
-								<h3>{{ workflow.name.slice(PREFIX.length) }}</h3>
-								<span :class="$style.meta">{{
-									i18n.baseText(
-										workflow.isArchived
-											? 'selfHealingPlayground.state.archived'
-											: published(workflow)
-												? 'selfHealingPlayground.state.published'
-												: 'selfHealingPlayground.state.draft',
-									)
-								}}</span>
-							</div>
-							<div :class="$style.links">
-								<RouterLink :to="`/workflow/${workflow.id}`"
-									>{{ i18n.baseText('selfHealingPlayground.openWorkflow')
-									}}<N8nIcon icon="arrow-up-right" size="small"
-								/></RouterLink>
-							</div>
+							<h3>
+								{{ scenario.name }} <span :class="$style.meta">{{ runId }}</span>
+							</h3>
+							<N8nBadge
+								:variant="outcome(scenario).variant"
+								:leading-icon="outcome(scenario).icon"
+								>{{ scenario.outcome }}</N8nBadge
+							>
 						</div>
 						<p :class="$style.expectation">
+							<N8nIcon icon="crosshair" size="small" />
 							<strong>{{ i18n.baseText('selfHealingPlayground.expectation') }}</strong>
-							{{ scenario?.expectation }}
+							{{ scenario.expectation }}
 						</p>
-						<p v-if="!path" :class="$style.meta">
-							{{ i18n.baseText('selfHealingPlayground.subWorkflow.description') }}
-						</p>
-						<N8nCallout v-if="!published(workflow) && !workflow.isArchived" theme="info">{{
-							i18n.baseText('selfHealingPlayground.needsPublish')
-						}}</N8nCallout>
-						<N8nCallout
-							v-if="path && !busy && !canRun(workflow.id) && !workflow.isArchived"
-							theme="warning"
-							>{{
-								i18n.baseText('selfHealingPlayground.workflowConfigurationRequired')
-							}}</N8nCallout
-						>
-						<N8nCallout
-							v-if="path && !busy && needsSubWorkflows(workflow.id, scenario)"
-							theme="warning"
-							data-test-id="playground-sub-workflows-required"
-						>
-							<p>{{ i18n.baseText('selfHealingPlayground.subWorkflows.required') }}</p>
-							<N8nButton
-								variant="outline"
-								size="small"
-								:disabled="busy"
-								@click="perform(() => includeSubWorkflows(workflow.id))"
-								>{{ i18n.baseText('selfHealingPlayground.subWorkflows.include') }}</N8nButton
+						<ol :class="$style.chain">
+							<li
+								v-for="{ workflow, level, latest } in items"
+								:key="workflow.id"
+								:class="$style[`level${level}`]"
+								data-test-id="playground-workflow"
 							>
-						</N8nCallout>
-						<div :class="$style.actions">
-							<template v-if="path">
+								<N8nIcon v-if="level" icon="corner-down-right" size="small" />
+								<strong v-if="levelLabel(scenario, level)">{{
+									levelLabel(scenario, level)
+								}}</strong>
+								<N8nBadge
+									:variant="published(workflow) && !workflow.isArchived ? 'subtle' : 'warning'"
+									>{{
+										i18n.baseText(
+											workflow.isArchived
+												? 'selfHealingPlayground.state.archived'
+												: published(workflow)
+													? 'selfHealingPlayground.state.published'
+													: 'selfHealingPlayground.state.draft',
+										)
+									}}</N8nBadge
+								>
+								<RouterLink
+									v-if="latest"
+									:class="$style.status"
+									:to="`/workflow/${workflow.id}/executions/${latest.id}`"
+								>
+									<N8nStatusDot :variant="executionStatus(latest.status)" />{{
+										i18n.baseText(
+											`executionsList.${latest.status === 'crashed' ? 'error' : latest.status}`,
+										)
+									}}
+									· {{ i18n.baseText('selfHealingPlayground.execution') }} #{{ latest.id }}
+								</RouterLink>
+								<span v-else :class="$style.meta">{{
+									i18n.baseText('selfHealingPlayground.noExecutions')
+								}}</span>
+								<span :class="$style.rowEnd">
+									<N8nButton
+										v-if="!published(workflow) && !workflow.isArchived"
+										size="small"
+										variant="outline"
+										:disabled="busy"
+										@click="perform(() => publish(workflow))"
+										>{{ i18n.baseText('selfHealingPlayground.publish') }}</N8nButton
+									>
+									<RouterLink :to="`/workflow/${workflow.id}`"
+										>{{ i18n.baseText('selfHealingPlayground.openWorkflow')
+										}}<N8nIcon icon="arrow-up-right" size="small"
+									/></RouterLink>
+								</span>
+							</li>
+						</ol>
+						<template v-if="parent">
+							<N8nCallout
+								v-if="!busy && !canRun(parent.workflow.id) && !parent.workflow.isArchived"
+								theme="warning"
+								>{{
+									i18n.baseText('selfHealingPlayground.workflowConfigurationRequired')
+								}}</N8nCallout
+							>
+							<div :class="$style.actions">
 								<N8nButton
+									size="small"
 									:disabled="
-										busy || !published(workflow) || workflow.isArchived || !canRun(workflow.id)
+										busy ||
+										!published(parent.workflow) ||
+										parent.workflow.isArchived ||
+										!canRun(parent.workflow.id)
 									"
-									:loading="activeAction === `run-${workflow.id}`"
-									@click="perform(() => sendInput(workflow.id, false), `run-${workflow.id}`)"
+									:loading="activeAction === `run-${parent.workflow.id}`"
+									@click="
+										perform(() => sendInput(parent.workflow.id, false), `run-${parent.workflow.id}`)
+									"
 								>
 									<template #icon><N8nIcon icon="play" size="small" /></template
 									>{{ i18n.baseText('selfHealingPlayground.original') }}
 								</N8nButton>
 								<N8nButton
+									size="small"
 									variant="outline"
 									:disabled="
-										busy || !published(workflow) || workflow.isArchived || !canRun(workflow.id)
+										busy ||
+										!published(parent.workflow) ||
+										parent.workflow.isArchived ||
+										!canRun(parent.workflow.id)
 									"
-									:loading="activeAction === `alternate-${workflow.id}`"
-									@click="perform(() => sendInput(workflow.id, true), `alternate-${workflow.id}`)"
+									:loading="activeAction === `alternate-${parent.workflow.id}`"
+									@click="
+										perform(
+											() => sendInput(parent.workflow.id, true),
+											`alternate-${parent.workflow.id}`,
+										)
+									"
 									>{{ i18n.baseText('selfHealingPlayground.alternate') }}</N8nButton
 								>
-							</template>
-							<N8nButton
-								v-if="!published(workflow) && !workflow.isArchived"
-								:disabled="busy"
-								@click="perform(() => publish(workflow))"
-								>{{ i18n.baseText('selfHealingPlayground.publish') }}</N8nButton
-							>
-						</div>
-						<div v-if="latest" :class="$style.latest">
-							<div :class="$style.links">
 								<span
-									:class="[
-										$style.outcome,
-										{
-											[$style.success]: latest.status === 'success',
-											[$style.warning]: latest.status === 'error' || latest.status === 'crashed',
-										},
-									]"
-									>{{ i18n.baseText('selfHealingPlayground.latest') }} ·
-									{{
-										i18n.baseText(
-											`executionsList.${latest.status === 'crashed' ? 'error' : latest.status}`,
-										)
-									}}</span
+									v-if="parent.latest?.status === 'error' || parent.latest?.status === 'crashed'"
+									:class="$style.meta"
 								>
-								<RouterLink :to="`/workflow/${workflow.id}/executions/${latest.id}`"
-									>{{ i18n.baseText('selfHealingPlayground.execution') }} #{{ latest.id
-									}}<N8nIcon icon="arrow-up-right" size="small"
-								/></RouterLink>
+									{{ i18n.baseText('selfHealingPlayground.afterFailure') }}
+									<RouterLink to="/inbox">{{
+										i18n.baseText('selfHealingPlayground.inbox')
+									}}</RouterLink>
+								</span>
+								<span v-else-if="parent.latest?.status === 'success'" :class="$style.meta">
+									{{ i18n.baseText('selfHealingPlayground.afterSuccess') }}
+								</span>
 							</div>
-							<p v-if="path && (latest.status === 'error' || latest.status === 'crashed')">
-								{{ i18n.baseText('selfHealingPlayground.afterFailure') }}
-								<RouterLink to="/inbox"
-									>{{ i18n.baseText('selfHealingPlayground.inbox') }} →</RouterLink
-								>
-							</p>
-							<p v-else-if="path && latest.status === 'success'">
-								{{ i18n.baseText('selfHealingPlayground.afterSuccess') }}
-							</p>
-						</div>
-						<p v-else-if="path" :class="$style.meta">
-							{{ i18n.baseText('selfHealingPlayground.noExecutions') }}
-						</p>
-						<details v-if="path" :class="$style.details">
-							<summary>{{ i18n.baseText('selfHealingPlayground.inputs') }}</summary>
-							<div :class="$style.inputGrid">
-								<div>
-									<h4>{{ i18n.baseText('selfHealingPlayground.originalInput') }}</h4>
-									<pre>{{ JSON.stringify(scenario?.input, null, 2) }}</pre>
+							<details :class="$style.details">
+								<summary>{{ i18n.baseText('selfHealingPlayground.inputs') }}</summary>
+								<div :class="$style.inputGrid">
+									<div>
+										<h4>{{ i18n.baseText('selfHealingPlayground.originalInput') }}</h4>
+										<pre>{{ JSON.stringify(scenario.input, null, 2) }}</pre>
+									</div>
+									<div>
+										<h4>{{ i18n.baseText('selfHealingPlayground.alternateInput') }}</h4>
+										<pre>{{ JSON.stringify(scenario.alternateInput, null, 2) }}</pre>
+									</div>
 								</div>
-								<div>
-									<h4>{{ i18n.baseText('selfHealingPlayground.alternateInput') }}</h4>
-									<pre>{{ JSON.stringify(scenario?.alternateInput, null, 2) }}</pre>
-								</div>
-							</div>
-							<h4>{{ i18n.baseText('selfHealingPlayground.response') }}</h4>
-							<pre>{{
-								responses[workflow.id] ?? i18n.baseText('selfHealingPlayground.noResponse')
-							}}</pre>
-							<RouterLink :to="`/workflow/${workflow.id}/executions`">{{
-								i18n.baseText('selfHealingPlayground.executions')
-							}}</RouterLink>
-						</details>
+								<h4>{{ i18n.baseText('selfHealingPlayground.response') }}</h4>
+								<pre>{{
+									responses[parent.workflow.id] ?? i18n.baseText('selfHealingPlayground.noResponse')
+								}}</pre>
+								<RouterLink :to="`/workflow/${parent.workflow.id}/executions`">{{
+									i18n.baseText('selfHealingPlayground.executions')
+								}}</RouterLink>
+							</details>
+						</template>
 					</div>
 				</N8nCard>
 			</section>
@@ -754,7 +766,7 @@ onMounted(async () => {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 }
-.content :is(h1, h2, h3, h4, p) {
+.content :is(h1, h2, h3, h4, p, ol) {
 	margin: 0;
 }
 .content h1 {
@@ -766,12 +778,8 @@ onMounted(async () => {
 	font-size: var(--font-size--lg);
 	font-weight: var(--font-weight--bold);
 }
-.content h3 {
+.content :is(h3, h4) {
 	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--bold);
-}
-.content h4 {
-	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
 }
 .content a {
@@ -790,18 +798,24 @@ onMounted(async () => {
 .links,
 .titleGroup,
 .inboxLink,
-.scenarioFooter {
+.status,
+.rowEnd {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--sm);
 	flex-wrap: wrap;
 }
 .header,
-.row {
+.row,
+.setup {
 	justify-content: space-between;
+}
+.header {
+	align-items: flex-start;
 }
 .titleGroup {
 	flex-wrap: nowrap;
+	align-items: flex-start;
 }
 .heroIcon {
 	display: grid;
@@ -811,11 +825,17 @@ onMounted(async () => {
 	border: var(--border);
 	border-radius: var(--radius--sm);
 }
-.eyebrow {
+.eyebrow,
+.meta {
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+}
+.eyebrow {
 	font-weight: var(--font-weight--bold);
-	margin-bottom: var(--spacing--4xs) !important;
+}
+.subtle {
+	color: var(--text-color--subtle);
 }
 .inboxLink {
 	gap: var(--spacing--2xs);
@@ -825,19 +845,44 @@ onMounted(async () => {
 	border-radius: var(--radius--xs);
 	font-weight: var(--font-weight--medium);
 }
-.intro {
-	color: var(--text-color--subtle);
+.card {
+	--card--padding: var(--spacing--lg);
+	box-shadow: none;
+	border-radius: var(--radius--sm);
+}
+.setup {
+	display: flex;
+	align-items: flex-end;
+	gap: var(--spacing--lg);
+	flex-wrap: wrap;
+	padding-bottom: var(--spacing--md);
+	border-bottom: var(--border);
+}
+.project {
+	flex: 0 1 40%;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+.project label {
+	font-weight: var(--font-weight--bold);
+}
+.links {
+	font-size: var(--font-size--xs);
+}
+.links a,
+.rowEnd a {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 .guide {
 	list-style: none;
-	margin: 0;
-	padding: var(--spacing--lg);
+	padding: var(--spacing--md) 0 0;
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--spacing--lg);
-	border: var(--border);
-	border-radius: var(--radius--sm);
-	background: var(--background--surface);
 }
 .guide li {
 	display: flex;
@@ -846,123 +891,65 @@ onMounted(async () => {
 }
 .guide p {
 	font-size: var(--font-size--xs);
-	color: var(--text-color--subtle);
-	margin-top: var(--spacing--4xs);
 }
 .stepNumber {
 	border: var(--border);
 	border-radius: var(--radius--full);
-	width: var(--spacing--xl);
-	height: var(--spacing--xl);
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
 	display: grid;
 	place-items: center;
 	flex-shrink: 0;
+	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	background: var(--background--subtle);
 }
-.setup,
-.scenario,
-.workflow {
-	--card--padding: var(--spacing--lg);
-	box-shadow: none;
-	border-radius: var(--radius--sm);
-}
-.setupContent {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--xl);
-}
-.setupCopy {
-	flex: 1;
-}
-.setupCopy p {
-	color: var(--text-color--subtle);
-	margin: var(--spacing--2xs) 0 var(--spacing--sm);
-}
-.project {
-	flex: 0 0 30%;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-.project label {
-	font-weight: var(--font-weight--bold);
-}
-.project a,
-.links {
-	font-size: var(--font-size--xs);
-}
-.links a {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-.section {
+.section,
+.group {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	scroll-margin-top: var(--spacing--lg);
 }
-.sectionDescription {
-	color: var(--text-color--subtle);
-	margin-top: var(--spacing--4xs) !important;
+.section {
+	gap: var(--spacing--md);
 }
-.scenarios,
+.grid,
 .inputGrid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: var(--spacing--sm);
 }
-.scenario {
-	align-items: stretch;
-}
-.scenarioBody,
-.workflowBody {
+.scenario,
+.run {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--xs);
 	height: 100%;
 }
-.scenarioBody > p {
-	color: var(--text-color--subtle);
+.scenario > p {
 	flex: 1;
+}
+.createButton {
+	align-self: flex-start;
+	margin-top: var(--spacing--2xs);
 }
 .recommended {
 	border-color: var(--border-color--strong);
 }
-.recommendedLabel {
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--2xs);
-}
-.outcome {
-	display: inline-flex;
+.chainPreview {
+	list-style: none;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--3xs);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--medium);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--radius--2xs);
-	background: var(--background--subtle);
-}
-.info {
-	background: var(--background--info);
-	color: var(--text-color--info);
-}
-.success {
-	background: var(--background--success);
-	color: var(--text-color--success);
-}
-.warning {
-	background: var(--background--warning);
-	color: var(--text-color--warning);
-}
-.scenarioFooter {
-	gap: var(--spacing--xs);
-}
-.scenarioFooter > span {
 	color: var(--text-color--subtle);
-	font-size: var(--font-size--2xs);
+}
+.chainPreview li:not(:last-child)::after {
+	content: '→';
+	margin-left: var(--spacing--3xs);
 }
 .count {
 	color: var(--text-color--subtle);
@@ -982,31 +969,48 @@ onMounted(async () => {
 	gap: var(--spacing--2xs);
 	color: var(--text-color--subtle);
 }
-.meta {
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--xs);
-}
 .expectation {
-	color: var(--text-color--subtle);
-}
-.expectation strong {
-	color: var(--text-color);
-}
-.latest {
-	padding: var(--spacing--sm);
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
 	background: var(--background--subtle);
 	border-radius: var(--radius--xs);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
 }
-.latest p {
+.chain {
+	list-style: none;
+	padding: 0;
+	border: var(--border);
+	border-radius: var(--radius--xs);
+}
+.chain li {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--2xs) var(--spacing--sm);
 	font-size: var(--font-size--xs);
+}
+.chain li + li {
+	border-top: var(--border);
+}
+.chain .level1 {
+	padding-left: var(--spacing--lg);
+}
+.chain .level2 {
+	padding-left: var(--spacing--2xl);
+}
+.content .status {
+	gap: var(--spacing--3xs);
 	color: var(--text-color--subtle);
+}
+.rowEnd {
+	margin-left: auto;
 }
 .details {
 	border-top: var(--border);
-	padding-top: var(--spacing--sm);
+	padding-top: var(--spacing--xs);
 	font-size: var(--font-size--xs);
 }
 .details summary {
@@ -1040,19 +1044,13 @@ onMounted(async () => {
 }
 // Collapse by available content width, including when the sidebar is open.
 @container (max-width: 700px) {
-	.guide {
-		grid-template-columns: 1fr;
-	}
-	.scenarios,
+	.guide,
+	.grid,
 	.inputGrid {
 		grid-template-columns: 1fr;
 	}
-	.setupContent {
-		flex-direction: column;
-		align-items: stretch;
-	}
 	.project {
-		flex-basis: auto;
+		flex-basis: 100%;
 	}
 }
 </style>
