@@ -305,6 +305,7 @@ describe('RabbitMQ GenericFunctions', () => {
 				mockChannel,
 				messageTracker,
 				'immediately',
+				true,
 				options,
 			);
 
@@ -329,6 +330,7 @@ describe('RabbitMQ GenericFunctions', () => {
 				mockChannel,
 				messageTracker,
 				'executionFinishesSuccessfully',
+				true,
 				options,
 			);
 
@@ -352,7 +354,7 @@ describe('RabbitMQ GenericFunctions', () => {
 			expect(messageTracker.answered).toHaveBeenCalledWith(message);
 		});
 
-		it('should nack a message with "acknowledgeMode" set to "executionFinishesSuccessfully" when there is an error', async () => {
+		it('should nack a message with "acknowledgeMode" set to "executionFinishesSuccessfully" when there is an error and no requeue', async () => {
 			let resolvePromise: (data: IRun) => void = () => {};
 			const deferredPromise = {
 				promise: new Promise<IRun>((resolve) => {
@@ -369,6 +371,7 @@ describe('RabbitMQ GenericFunctions', () => {
 				mockChannel,
 				messageTracker,
 				'executionFinishesSuccessfully',
+				false,
 				options,
 			);
 
@@ -388,7 +391,7 @@ describe('RabbitMQ GenericFunctions', () => {
 			} as IRun);
 			await handleMessagePromise;
 
-			expect(mockChannel.nack).toHaveBeenCalledWith(message);
+			expect(mockChannel.nack).toHaveBeenCalledWith(message, false, false);
 			expect(messageTracker.answered).toHaveBeenCalledWith(message);
 		});
 
@@ -409,6 +412,7 @@ describe('RabbitMQ GenericFunctions', () => {
 				mockChannel,
 				messageTracker,
 				'executionFinishes',
+				true,
 				options,
 			);
 
@@ -476,6 +480,7 @@ describe('RabbitMQ GenericFunctions', () => {
 					mockChannel,
 					messageTracker,
 					'laterMessageNode',
+					true,
 					options,
 				);
 
@@ -497,7 +502,7 @@ describe('RabbitMQ GenericFunctions', () => {
 				expect(messageTracker.answered).toHaveBeenCalledWith(message);
 			});
 
-			it('should nack the message when the execution errors before the Delete-from-Queue node runs', async () => {
+			it('should nack the message when the execution errors before the Delete-from-Queue node runs with requeue', async () => {
 				// Real engine behavior on crash: resolveExecutionResponsePromise
 				// resolves the hook with {} first, then finalizeExecution
 				// resolves the IRun with the error. The hook payload shape is
@@ -515,6 +520,7 @@ describe('RabbitMQ GenericFunctions', () => {
 					mockChannel,
 					messageTracker,
 					'laterMessageNode',
+					true,
 					options,
 				);
 
@@ -527,7 +533,7 @@ describe('RabbitMQ GenericFunctions', () => {
 				await handleMessagePromise;
 
 				expect(mockChannel.ack).not.toHaveBeenCalled();
-				expect(mockChannel.nack).toHaveBeenCalledWith(message);
+				expect(mockChannel.nack).toHaveBeenCalledWith(message, false, true);
 				expect(messageTracker.answered).toHaveBeenCalledWith(message);
 			});
 
@@ -548,6 +554,7 @@ describe('RabbitMQ GenericFunctions', () => {
 					mockChannel,
 					messageTracker,
 					'laterMessageNode',
+					true,
 					options,
 				);
 
@@ -579,6 +586,7 @@ describe('RabbitMQ GenericFunctions', () => {
 					mockChannel,
 					messageTracker,
 					'laterMessageNode',
+					true,
 					options,
 				);
 
@@ -613,6 +621,7 @@ describe('RabbitMQ GenericFunctions', () => {
 				mockChannel,
 				messageTracker,
 				'immediately',
+				true,
 				options,
 			);
 
@@ -642,6 +651,7 @@ describe('RabbitMQ GenericFunctions', () => {
 				mockChannel,
 				messageTracker,
 				'executionFinishesSuccessfully',
+				true,
 				options,
 			);
 
