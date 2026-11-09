@@ -257,8 +257,12 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	}
 
 	/** Make results of a wake attempt that did not reach the agent eligible again. */
-	async releaseWakeClaim(wakeAttemptId: string): Promise<void> {
-		await this.update({ wakeAttemptId, notifiedAt: IsNull() }, { wakeAttemptId: null });
+	async releaseWakeClaim(parentThreadId: string, wakeAttemptId: string): Promise<void> {
+		// The thread filter uses the parentThreadId indexes.
+		await this.update(
+			{ parentThreadId, wakeAttemptId, notifiedAt: IsNull() },
+			{ wakeAttemptId: null },
+		);
 	}
 
 	async markApprovalDelivered(id: string, runId: string, state: string): Promise<void> {

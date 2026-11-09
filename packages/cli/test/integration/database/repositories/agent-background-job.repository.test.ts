@@ -893,14 +893,14 @@ describe('AgentBackgroundJobRepository', () => {
 		await expect(
 			repository.claimForWake(parentThreadId, [first, late], rejected),
 		).rejects.toThrow();
-		await repository.releaseWakeClaim(rejected);
+		await repository.releaseWakeClaim(parentThreadId, rejected);
 		expect(await claims()).toEqual({ [first]: attempt, [second]: attempt, [late]: null });
 
 		await repository.markMailConsumed(parentThreadId, [first], true);
 		expect(await repository.findById(first)).toMatchObject({ wakeAttemptId: null });
 		expect((await repository.findById(first))?.notifiedAt).toBeInstanceOf(Date);
 
-		await repository.releaseWakeClaim(attempt);
+		await repository.releaseWakeClaim(parentThreadId, attempt);
 		expect(await claims()).toEqual({ [second]: null, [late]: null });
 	});
 

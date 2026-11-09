@@ -1064,8 +1064,36 @@ describe('AgentWakeService', () => {
 			await service.attemptWake('thread-1');
 
 			expect(jobRepository.releaseWakeClaim).toHaveBeenCalledWith(
+				'thread-1',
 				jobRepository.claimForWake.mock.calls[0][2],
 			);
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			[false, 'releases the claim when the lease is lost before the agent starts'],
+			[true, 'keeps the claim when the lease is lost after the agent started'],
+		])('%#: %s', async (runtimeStarted) => {
+			const { service, lockService, orchestrator, jobRepository } = setup();
+			const controller = new AbortController();
+			lockService.withLease.mockImplementation(async (_namespace, _key, callback) => {
+				return await callback(controller.signal);
+			});
+			orchestrator.executeForWake.mockImplementation(async (config) => {
+				await config.onAdmitted?.();
+				if (runtimeStarted) config.onRuntimeStarted?.();
+				controller.abort();
+				throw new Error('aborted');
+			});
+
+			await service.attemptWake('thread-1');
+
+			if (runtimeStarted) expect(jobRepository.releaseWakeClaim).not.toHaveBeenCalled();
+			else
+				expect(jobRepository.releaseWakeClaim).toHaveBeenCalledWith(
+					'thread-1',
+					jobRepository.claimForWake.mock.calls[0][2],
+				);
 			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		});
 	});

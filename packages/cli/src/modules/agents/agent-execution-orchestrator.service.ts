@@ -235,6 +235,8 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 	abortSignal: AbortSignal;
 	/** Runs after the execution record exists and before the agent starts. */
 	onAdmitted?: () => Promise<void>;
+	/** Runs when the agent runtime starts. */
+	onRuntimeStarted?: () => void;
 	identity:
 		| { type: 'draft'; user: User; principalHash: AgentSandboxPrincipalHash }
 		| {
@@ -246,6 +248,7 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 
 export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecutionCallbacks {
 	onAdmitted?: () => Promise<void>;
+	onRuntimeStarted?: () => void;
 	access: AgentThreadAccess;
 	messageContext?: IntegrationMessageContext | null;
 	/** The channel's episodic scope decision. Absent on an integration resource means off. */
@@ -1147,6 +1150,7 @@ export class AgentExecutionOrchestratorService {
 		yield* this.turnExecutionService.execute({
 			admittedExecution: config.admittedExecution,
 			onAdmitted: config.onAdmitted,
+			onRuntimeStarted: config.onRuntimeStarted,
 			agentInstance: config.agentInstance,
 			toolRegistry: config.toolRegistry,
 			mcpServerAttributions: config.mcpServerAttributions,
@@ -1895,6 +1899,7 @@ export class AgentExecutionOrchestratorService {
 			sessionMode: 'existing',
 			backgroundJobSignal: config.pauseReport ? undefined : config.backgroundJobSignal,
 			onAdmitted: config.onAdmitted,
+			onRuntimeStarted: config.onRuntimeStarted,
 		});
 	}
 }

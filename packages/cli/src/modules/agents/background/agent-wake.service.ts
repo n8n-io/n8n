@@ -240,6 +240,7 @@ export class AgentWakeService {
 		// that the agent received these results, also after a restart.
 		const wakeAttemptId = randomUUID();
 		let ran = false;
+		let started = false;
 		try {
 			const { agent, identity } = await this.resolveWakeTarget(first);
 			const { running, suspendedCheckpoint } = await this.conversationState.inspect(
@@ -249,6 +250,9 @@ export class AgentWakeService {
 			if (running || suspendedCheckpoint !== null) return;
 			await this.runWake(agent, identity, jobs, threadId, first.parentResourceId, signal, {
 				onAdmitted: async () => await this.jobRepository.claimForWake(threadId, ids, wakeAttemptId),
+				onRuntimeStarted: () => {
+					started = true;
+				},
 			});
 			ran = true;
 
@@ -263,25 +267,33 @@ export class AgentWakeService {
 			// Check for results that arrived during this reply; an empty queue stops further checks.
 			this.scheduleLocal(threadId);
 		} catch (error) {
-			if (signal.aborted) return;
+			if (signal.aborted) {
+				// The agent did not run. Release the claim so a later wake delivers these results.
+				if (!started) await this.releaseClaim(threadId, wakeAttemptId);
+				return;
+			}
 			if (ran || isStartedRecordingFailure(error)) {
 				// The agent ran. Another run would repeat its tool actions.
 				await this.consumeReceived(threadId, jobs);
 				return;
 			}
 			// Ordinary failures retry. Release the claim so the next wake can select these results.
-			try {
-				await this.jobRepository.releaseWakeClaim(wakeAttemptId);
-			} catch (releaseError) {
-				// Recovery then treats the results as received. No replay is safer than a lost retry.
-				this.logger.warn('Failed to release background job results after a failed wake', {
-					threadId,
-					error: releaseError,
-				});
-			}
+			await this.releaseClaim(threadId, wakeAttemptId);
 			// Keep provider and tool error details in the execution record.
 			// Log only that the wake failed.
 			this.recordFailure(threadId, generation);
+		}
+	}
+
+	private async releaseClaim(threadId: string, wakeAttemptId: string): Promise<void> {
+		try {
+			await this.jobRepository.releaseWakeClaim(threadId, wakeAttemptId);
+		} catch (error) {
+			// Recovery then treats the results as received. No replay is safer than a lost retry.
+			this.logger.warn('Failed to release background job results after a failed wake', {
+				threadId,
+				error,
+			});
 		}
 	}
 
@@ -429,7 +441,7 @@ export class AgentWakeService {
 		threadId: string,
 		resourceId: string,
 		signal: AbortSignal,
-		{ onAdmitted }: Pick<ExecuteForWakeConfig, 'onAdmitted'>,
+		{ onAdmitted, onRuntimeStarted }: Pick<ExecuteForWakeConfig, 'onAdmitted' | 'onRuntimeStarted'>,
 	): Promise<void> {
 		this.activeWakes.add(threadId);
 
@@ -465,6 +477,7 @@ export class AgentWakeService {
 				identity,
 				abortSignal: signal,
 				onAdmitted,
+				onRuntimeStarted,
 			});
 		} finally {
 			this.activeWakes.delete(threadId);
