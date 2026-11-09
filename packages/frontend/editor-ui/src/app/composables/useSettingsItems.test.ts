@@ -19,15 +19,11 @@ const settingsSidebarItems = ref<
 const activeModules = ref<string[]>([]);
 const environmentsVersion = ref<'v1' | 'v2'>();
 const canUserAccessRouteByName = vi.hoisted(() => vi.fn<(name: string) => boolean>(() => true));
-const contextEnabled = vi.hoisted(() => ({ value: true }));
 const openTopUpMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({ useRouter: vi.fn(() => ({})) }));
 vi.mock('./useUserHelpers', () => ({
 	useUserHelpers: vi.fn(() => ({ canUserAccessRouteByName })),
-}));
-vi.mock('@/features/settings/context/context.utils', () => ({
-	isContextEnabled: () => contextEnabled.value,
 }));
 vi.mock('./useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({ balance: computed(() => balance.value) })),
@@ -89,7 +85,6 @@ describe('useSettingsItems', () => {
 		activeModules.value = [];
 		environmentsVersion.value = undefined;
 		canUserAccessRouteByName.mockReturnValue(true);
-		contextEnabled.value = true;
 	});
 
 	// Module items in registration order, with the orders and sections the real modules set.
@@ -361,12 +356,6 @@ describe('useSettingsItems', () => {
 			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-ai') - 1);
 			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-ai') + 1);
 			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-community-nodes') - 1);
-		});
-
-		it('is hidden when the flag is off, because the route guard does not run here', () => {
-			contextEnabled.value = false;
-
-			expect(idsOf()).not.toContain('settings-context');
 		});
 
 		it('carries the preview label', () => {
