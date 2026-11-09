@@ -636,15 +636,8 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.guidance).toContain(
 			'then mocked/no-mock live-test when latest verification used mocks or simulations',
 		);
-		expect(result.postBuildFlow?.guidance).toContain(
-			'never offer publishing as an alternative to the live test',
-		);
-		expect(result.postBuildFlow?.guidance).toContain(
-			'A user-run execution counts only after `list_executions`',
-		);
-		expect(result.postBuildFlow?.guidance).toContain(
-			'Do not replace the error-workflow opt-in with a generic add-anything',
-		);
+		// Phase rules arrive as post-build-flow gotchas, not in every build result.
+		expect(result.postBuildFlow?.guidance).not.toContain('list_executions');
 		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Daily Weather to Slack' }),

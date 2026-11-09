@@ -31,8 +31,8 @@ set that flag to skip the disclosure. The user also sees the same facts in the
 publish approval prompt, so a summary that contradicts them is visible to them.
 
 Execution evidence can come from a run you started or a run the user started.
-If the user says they ran the workflow manually, call
-`list_executions( workflowId)`, identify the relevant run, and inspect
+If the user says they ran the workflow manually, run `list_executions`
+through `call_tool` with `workflowId`, identify the relevant run, and inspect
 it by running `get_execution` through `call_tool` with `executionId`. The user's statement alone is
 not execution evidence. A user-run execution satisfies the publishing gate only
 when the inspected result confirms success and that every required node on the

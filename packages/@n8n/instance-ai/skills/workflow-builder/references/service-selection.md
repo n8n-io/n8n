@@ -53,9 +53,19 @@ Respect the constraints it reports:
 yet, prefer Gateway credits over stored credentials if the credential type is
 supported — it works with no API key required and avoids spending the user's
 API quota. The synthetic entry in `list_credentials(type=...)` (see
-Credential Rules) is your signal that a type is covered. Do not change
+below) is your signal that a type is covered. Do not change
 credentials on nodes that already have one assigned (editing an existing
 workflow, or after the user has made a credential choice).
+
+**Writing Gateway credits on a node:** `list_credentials(type=...)` can include
+`{ id: "__AI_GATEWAY_MANAGED__", name: "Gateway credits", type, __aiGatewayManaged: true }`
+when the type is covered. Use its `id` like any stored credential id:
+`newCredential('Gateway credits', '__AI_GATEWAY_MANAGED__')`. The build keeps
+it and attaches Gateway credits, even when the user has their own credential
+of that type. Write it whenever the user asks for Gateway credits, or when
+the Preference rule above applies to a new node; otherwise the normal reuse
+rules apply. When the user has no stored credential of a
+covered type, the build attaches Gateway credits even without this entry.
 
 If `credentialResolutionNote` on the build result says Gateway credits are
 depleted, follow that note: tell the user they must top up Gateway credits

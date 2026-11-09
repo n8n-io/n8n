@@ -20,7 +20,7 @@ const openScope: InstanceAiSkillScope = {
 	appBuildingEnabled: true,
 };
 
-const gatedSkills: Array<[string, InstanceAiSkillScope, SkillId[]]> = [
+const gatedSkills: Array<[string, InstanceAiSkillScope, Array<SkillId | 'intent-examples'>]> = [
 	[
 		'configEvalsEnabled',
 		{ ...openScope, flags: { ...openScope.flags, configEvalsEnabled: false } },
@@ -34,7 +34,8 @@ const gatedSkills: Array<[string, InstanceAiSkillScope, SkillId[]]> = [
 	[
 		'agentBuildingEnabled',
 		{ ...openScope, agentBuildingEnabled: false },
-		[SKILLS.agentBuilder, SKILLS.intentRecognition],
+		// `intent-examples` is a reference of intent-recognition, so it goes with it.
+		[SKILLS.agentBuilder, SKILLS.intentRecognition, 'intent-examples'],
 	],
 	['appBuildingEnabled', { ...openScope, appBuildingEnabled: false }, [SKILLS.appBuilder]],
 ];
@@ -81,7 +82,7 @@ describe('InstanceAiSkillsService', () => {
 			'returns null for the skills that %s turns off',
 			async (_, scope, skillIds) => {
 				for (const skillId of skillIds) {
-					await expect(service.retrieveSkill(skillId, scope)).resolves.toBeNull();
+					await expect(service.retrieveSkill(skillId as SkillId, scope)).resolves.toBeNull();
 				}
 			},
 		);

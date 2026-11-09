@@ -15,6 +15,9 @@ import type {
 	Workspace,
 } from '@n8n/agents';
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
+import type { EmbeddingModel } from 'ai';
+
+import type { GotchaRetrievalTrace } from './skills/gotcha-notes';
 import type {
 	AgentConfigValidationIssueCode,
 	AgentJsonConfig,
@@ -2323,4 +2326,12 @@ export interface CreateInstanceAgentOptions {
 	modelFetch?: FetchFn;
 	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */
 	requestLabels?: boolean;
+	/**
+	 * Retrieves skill gotchas that match the current step. Without an
+	 * embedding model, retrieval uses BM25.
+	 */
+	gotchaRetrieval?: {
+		embeddingModel?: EmbeddingModel;
+		onRetrieval?: (trace: GotchaRetrievalTrace) => void;
+	};
 }

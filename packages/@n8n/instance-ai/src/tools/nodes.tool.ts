@@ -49,7 +49,7 @@ const unsupportedEphemeralNodeOperationMessage = (operation: string): string =>
 
 const NODE_TYPE_ID_DESCRIPTION = 'Node type ID, e.g. "n8n-nodes-base.httpRequest"';
 const METHOD_NAME_DESCRIPTION =
-	"Exact method name from the node's @searchListMethod/@loadOptionsMethod annotation — read it by running `get_node_types` through `call_tool` first, never guess.";
+	"Exact method name from the node's @searchListMethod/@loadOptionsMethod annotation — read it with `get_node_types` first, never guess.";
 const METHOD_TYPE_DESCRIPTION =
 	'"listSearch" for @searchListMethod (supports filter/pagination); "loadOptions" for @loadOptionsMethod. Match the annotation.';
 const CURRENT_NODE_PARAMETERS_DESCRIPTION =
@@ -566,7 +566,7 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 				'Use `categories` for curated workflow category recommendations, `query` or `queries` for service-specific discovery ' +
 				'(short service names like "Gmail" or "Slack", not full task phrases), `scope="agent_tool"` when finding executable *Tool ' +
 				'nodes for an n8n Agent, and `gatewayCreditsOnly=true` to list services covered by Gateway credits (no API key needed). ' +
-				'After finding a node, run `get_node_types` through `call_tool` to read its parameter schema.',
+				'After finding a node, call `get_node_types` to read its parameter schema.',
 		)
 		.input(searchNodesInputSchema)
 		.handler(async (input) => {
@@ -827,7 +827,7 @@ export function createExecuteNodeTool(context: InstanceAiContext) {
 		.description(
 			'Execute a single n8n node standalone with real credentials and return its real output items. ' +
 				'Use it to perform a one-off operation or to learn the exact output shape of a node before wiring ' +
-				'downstream expressions. Always read the node by running `get_node_types` through `call_tool` first and build the parameters ' +
+				'downstream expressions. Always read the node with `get_node_types` first and build the parameters ' +
 				'from it — never guess parameter names, resource/operation values, or the version. The node really ' +
 				'runs (requires user approval, real side effects). Expressions referencing other nodes cannot resolve; ' +
 				'binary output is returned as metadata only.',
