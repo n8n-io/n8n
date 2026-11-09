@@ -6,7 +6,7 @@ import type {
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import { UnexpectedError } from '@n8n/errors';
 
-import type { InMemoryExecutionChannel } from './in-memory-execution-response-channel';
+import type { InMemoryExecutionChannel } from './in-memory-execution-channel';
 
 /** Sends messages on the topic of its codec. */
 export class ExecutionChannelSender<T> {

@@ -58,16 +58,17 @@ function toStepResult(
 	context: DurableWaitExecuteContext,
 	nodeResult: INodeExecutionData[][],
 ): StepExecutionResult {
-	// The node ran to the end on an empty result; the sub-execution it asked for is
-	// what the step owes, and the node runs again once the sub-execution ends.
+	// The node declared a sub-execution. Awaited, the node ran to the end on an empty
+	// result and runs again once the sub-execution ends. Detached, its outputs stand.
 	const { declaration } = context.subWorkflowCalls;
-	if (declaration?.awaited) return { subExecution: declaration };
+	if (declaration) {
+		return declaration.awaited
+			? { subExecution: declaration }
+			: { subExecution: { ...declaration, outputs: toStepOutputs(nodeResult) } };
+	}
 
 	const { waitTill } = context.runExecutionData;
-	if (waitTill === undefined) {
-		const outputs = toStepOutputs(nodeResult);
-		return declaration ? { subExecution: { ...declaration, outputs } } : { outputs };
-	}
+	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
 		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
 		return { wait: { resumeBinding: context.resumeBinding } };

@@ -855,8 +855,7 @@ async function prepareWebhookAdditionalData({
 
 	additionalData.getUserById = async (id: string) => {
 		const user = await Container.get(UserRepository).findByIdWithRole(id);
-		if (!user) return undefined;
-		return toWebhookUser(user);
+		return user?.toIUser();
 	};
 
 	const oauth2FlowProxy = Container.get(OAuth2FlowProxy);

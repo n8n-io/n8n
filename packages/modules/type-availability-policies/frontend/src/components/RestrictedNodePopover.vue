@@ -221,7 +221,7 @@ function onContentKeydown(event: KeyboardEvent) {
 		<ContactAdminModal
 			v-if="!parentHandlesContactAdmin"
 			v-model:open="isContactAdminOpen"
-			:node-type-name="nodeTypeName"
+			:type-name="nodeTypeName"
 			:kind="kind"
 			:audience="contactCopy.audience"
 		/>
