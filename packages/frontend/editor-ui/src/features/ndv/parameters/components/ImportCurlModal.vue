@@ -117,11 +117,11 @@ async function onImport() {
 <template>
 	<N8nDialog
 		:open="modalOpen"
-		size="2xlarge"
+		size="large"
 		:header="i18n.baseText('importCurlModal.title')"
 		@update:open="onDialogOpenUpdate"
 	>
-		<N8nDialogBody :class="$style.container">
+		<N8nDialogBody>
 			<N8nInputLabel :label="i18n.baseText('importCurlModal.input.label')" color="text-dark">
 				<N8nInput
 					ref="inputRef"
@@ -135,7 +135,7 @@ async function onImport() {
 				/>
 			</N8nInputLabel>
 		</N8nDialogBody>
-		<N8nDialogFooter>
+		<N8nDialogFooter :class="$style.footer">
 			<N8nNotice
 				:class="$style.notice"
 				:content="i18n.baseText('ImportCurlModal.notice.content')"
@@ -151,15 +151,11 @@ async function onImport() {
 </template>
 
 <style module lang="scss">
-.notice {
-	margin: 0;
-	margin-inline-end: auto;
+.footer {
+	justify-content: space-between;
 }
 
-.container > * {
-	margin-bottom: var(--spacing--sm);
-	&:last-child {
-		margin-bottom: 0;
-	}
+.notice {
+	margin: 0;
 }
 </style>
