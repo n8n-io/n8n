@@ -50,7 +50,6 @@ const {
 	warnMissingCredentials?: boolean;
 	agents: ChatModelsResponse;
 	isLoading: boolean;
-	/** Open the credential and model dialogs above a parent dialog. */
 	stacked?: boolean;
 }>();
 
