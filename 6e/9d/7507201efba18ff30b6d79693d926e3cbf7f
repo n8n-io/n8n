@@ -1,0 +1,169 @@
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_3c6ff538aee6b1::t_6bcde9741fe022 2426-2430
+  s_3c6ff538aee6b1::t_2e012529138522 2404,2409,2519,2538,2541
+  s_3c6ff538aee6b1::t_ecee52d12a4f6d 2438,2472-2473
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_3c6ff538aee6b1::t_25630dbb388259 2415-2427
+  s_3c6ff538aee6b1::t_5642de472d7cb5 3353,3361-3362,3376-3377,3379,3387,3393-3396
+  s_3c6ff538aee6b1::t_2a7cbf6cf65921 3383,3391
+  s_3c6ff538aee6b1::t_35c33f66fc03db 2154,2162,2170-2173,2182,2185-2201
+  s_3c6ff538aee6b1::t_d09fad18413af8 2174-2175
+  s_3c6ff538aee6b1::t_e0deff9cd4f0db 2378-2414,2428-2429
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_3c6ff538aee6b1::t_998ce972353e13 55-58,62-63,130-131,252-254,269-271
+  s_3c6ff538aee6b1::t_9490a26a3cffdd 26
+packages/@n8n/cli/src/commands/promotion-environment/promote-selection.ts
+  s_3c6ff538aee6b1::t_94ea09b44e1db1 7,11-12,25-28,41
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_3c6ff538aee6b1::t_aad588bc0033bd 11,21,111,114,124-126,135,153
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCard.vue
+  s_3c6ff538aee6b1::t_85da556792e88e 148
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_3c6ff538aee6b1::t_983b30c0ec76d3 61-64
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCards.vue
+  s_3c6ff538aee6b1::t_c2aebd303d0382 47-57,59,61
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_3c6ff538aee6b1::t_d43a5f8f3c58c7 290,383-386,388-393,419
+  s_3c6ff538aee6b1::t_59e376e166c3c7 387
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_3c6ff538aee6b1::t_79317da6404805 37-38
+  s_3c6ff538aee6b1::t_820313e658da3b 89-94
+  s_3c6ff538aee6b1::t_b919a2421b4a72 106,109,116-119
+packages/cli/src/modules/n8n-packages/entities/folder/folder-importer.ts
+  s_3c6ff538aee6b1::t_cac77b2aa7414b 82,84
+packages/@n8n/telemetry/src/events/promotions.ts
+  s_3c6ff538aee6b1::t_a20fcf5fab28ae 139-142,175-182
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_3c6ff538aee6b1::t_998a8fb1085a97 423-425
+  s_3c6ff538aee6b1::t_6b9d1a4c71f02b 258,285-288
+  s_3c6ff538aee6b1::t_fc0035396a2491 289-290
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3c6ff538aee6b1::t_846dab3ed46efa 645,647,673,675,699,703
+packages/@n8n/api-types/src/dto/promotions/promotion-common.dto.ts
+  s_3c6ff538aee6b1::t_b798f6dbb290c2 3-4,27-33
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_3c6ff538aee6b1::t_61dd4eb12170d1 491
+  s_3c6ff538aee6b1::t_e5497347fdc687 56
+  s_3c6ff538aee6b1::t_059b358e0a767e 711
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_3c6ff538aee6b1::t_6d207b4838184e 138
+  s_3c6ff538aee6b1::t_94ea09b44e1db1 125-137,141,146-147
+  s_3c6ff538aee6b1::t_4bfac4ada6cd43 5
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_3c6ff538aee6b1::t_87bb0d265932b0 92
+  s_3c6ff538aee6b1::t_3a6fe482cc58df 158-159
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_3c6ff538aee6b1::t_5e75914bd1ee1c 191-192,194-196
+  s_3c6ff538aee6b1::t_c2aebd303d0382 49
+  s_3c6ff538aee6b1::t_202d24f132b48e 80-81,83
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_3c6ff538aee6b1::t_61dd4eb12170d1 34-35,161
+packages/modules/promotions/frontend/src/composables/usePromotionOutcome.ts
+  s_3c6ff538aee6b1::t_85da556792e88e 33,42-51,55-58
+  s_3c6ff538aee6b1::t_94b0653e5b26b9 7
+packages/modules/promotions/frontend/src/promotionResult.ts
+  s_3c6ff538aee6b1::t_94b0653e5b26b9 68-70,72,83-89
+packages/modules/promotions/frontend/src/composables/usePromotionPreviewLabels.ts
+  s_3c6ff538aee6b1::t_85da556792e88e 98-102,104
+packages/modules/promotions/frontend/src/promotionPreview.selection.test.ts
+  s_3c6ff538aee6b1::t_18c79b8a48893c 91,108-110
+  s_3c6ff538aee6b1::t_e3d942cf38fec6 113-135,137,139-141,143,145-172
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_3c6ff538aee6b1::t_f470c827662701 7
+  s_3c6ff538aee6b1::t_88012ecd8812e8 1-2,59-62
+  s_3c6ff538aee6b1::t_e41f9ae6036e6f 53-56,58
+packages/@n8n/cli/src/client.ts
+  s_3c6ff538aee6b1::t_cc75f2d91e12a6 511-515,517,525,529,537,542
+  s_3c6ff538aee6b1::t_c8a30122d16cbc 122-132
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_3c6ff538aee6b1::t_a20fcf5fab28ae 1649-1654,1661,1667-1668
+  s_3c6ff538aee6b1::t_97413531c3c427 595-599,606-607,616-620,622-626,644-648,658,694,699,701-711,735
+  s_3c6ff538aee6b1::t_005b3c4c8f15e0 496
+  s_3c6ff538aee6b1::t_0e226e72d40d3c 1478,1485
+  s_3c6ff538aee6b1::t_33f00d8a3c47b1 767,778,789,792-803,833-838,866,877-883,894,906,939,943-946,952-953,957,1017,1634-1642
+  s_3c6ff538aee6b1::t_97a6d85c2998ca 1643-1644
+packages/modules/promotions/frontend/src/composables/usePromotionChangeCount.test.ts
+  s_3c6ff538aee6b1::t_18c79b8a48893c 83,93-95
+packages/cli/src/modules/promotions.ee/promotion-commit-message.ts
+  s_3c6ff538aee6b1::t_0e226e72d40d3c 37,43,45-53,58,60
+  s_3c6ff538aee6b1::t_bc76042bbd27dd 3-4,10-12
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_3c6ff538aee6b1::t_998a8fb1085a97 126-127,133-134
+  s_3c6ff538aee6b1::t_3217814def58a7 141-145,153-158
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_3c6ff538aee6b1::t_d5e26e4ac4a11b 11
+  s_3c6ff538aee6b1::t_56f5183e48f214 166-177,181,190
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_3c6ff538aee6b1::t_94ea09b44e1db1 3,9,23-30,45-46,50,54
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_3c6ff538aee6b1::t_8332df6f3bec36 417-421,451,494-498,510-514,578,610
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_3c6ff538aee6b1::t_61dd4eb12170d1 274-275
+  s_3c6ff538aee6b1::t_cac77b2aa7414b 311-312,322-323
+  s_3c6ff538aee6b1::t_059b358e0a767e 350-354
+packages/cli/src/events/maps/relay.event-map.ts
+  s_3c6ff538aee6b1::t_a20fcf5fab28ae 1467-1468,1485-1488
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_3c6ff538aee6b1::t_a20fcf5fab28ae 3065,3083,3098-3099,3111-3112
+packages/@n8n/cli/docs/commands/promotions.md
+  s_3c6ff538aee6b1::t_f0492058a554a5 330-334,465-467
+  s_3c6ff538aee6b1::t_d480ae1ecc9e4c 338-340,345-346,351-352,355-361,464,473,478-480,485-489,499,516
+packages/modules/promotions/frontend/src/promotionPreview.selection.ts
+  s_3c6ff538aee6b1::t_0d6b6d2296bf75 28-29,130-140,155,205-210,214-215,223,234-236,247,250-258,261-264,276-277,285
+packages/modules/promotions/frontend/src/components/ApplyInstanceDialog.vue
+  s_3c6ff538aee6b1::t_94b0653e5b26b9 20,72
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_3c6ff538aee6b1::t_cac77b2aa7414b 350,363-368,491-495,498,503-504,507-508,511,514
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3c6ff538aee6b1::t_bb26e7fad25939 10715-10716,10830
+  s_3c6ff538aee6b1::t_60f61bece4a085 10719-10720,10725-10726,10745,10765-10766
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_3c6ff538aee6b1::t_94ea09b44e1db1 3,9,13,25-32,39-40,44,47
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_3c6ff538aee6b1::t_e1f6d04a103639 336,596,632,646,752-753,786-787,802-803
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_3c6ff538aee6b1::t_5dc660a1b4f09e 23,92-94,103-105,110-114
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_3c6ff538aee6b1::t_0b5780145e7b35 22,364
+packages/cli/src/modules/promotions.ee/__tests__/promotion-commit-message.test.ts
+  s_3c6ff538aee6b1::t_ca2b4bb894029b 23,30,34,38,43-46
+  s_3c6ff538aee6b1::t_cd106c14b406bc 47-48
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_3c6ff538aee6b1::t_6b02bd3aa4d0c4 103-105
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_3c6ff538aee6b1::t_aad588bc0033bd 15-22,26,28-29,33-34,36-44
+  s_3c6ff538aee6b1::t_202d24f132b48e 108,118,177
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_3c6ff538aee6b1::t_f3078dad40595e 842,854,863-868
+  s_3c6ff538aee6b1::t_2e012529138522 875
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_3c6ff538aee6b1::t_e3d942cf38fec6 36-38,40-46
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_3c6ff538aee6b1::t_83e35b85cd3a36 2530
+  s_3c6ff538aee6b1::t_9cf9f5223fc04e 1838,1860,1884
+  s_3c6ff538aee6b1::t_f72f013e7bff24 2270-2271
+  s_3c6ff538aee6b1::t_be60f83e2e4b56 2723,2756
+  s_3c6ff538aee6b1::t_998a8fb1085a97 1804-1809
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_3c6ff538aee6b1::t_585d5ff1ac3cd8 4-5,27-36
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_3c6ff538aee6b1::t_de073dc964fa86 5,28-37
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_3c6ff538aee6b1::t_477aaa9cf73a7d 4-5,27-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e9d7507201efba18ff30b6d79693d926e3cbf7f",
+  "prompts": {},
+  "sessions": {
+    "s_3c6ff538aee6b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c32701e-9c02-42e0-8a31-00aab8a85b96",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

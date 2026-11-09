@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_d24297dc76dbe7::t_b749b3b071e801 542
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a100f99b7ac83e56bd85a377db313afc80c41383",
+  "prompts": {},
+  "sessions": {
+    "s_d24297dc76dbe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "932164b5-2ab5-4a99-b9ff-1d636c56156b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
