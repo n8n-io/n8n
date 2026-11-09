@@ -257,6 +257,21 @@ describe('components/N8nTooltip', () => {
 			await waitFor(() => expect(wrapper.emitted('hide')).toHaveLength(1));
 			expect(wrapper.emitted('before-show')).toHaveLength(1);
 		});
+
+		it('should emit before-show once when mounted with visible true', async () => {
+			const wrapper = render(Tooltip, {
+				props: {
+					content: 'Test tooltip',
+					visible: true,
+				},
+				slots: {
+					default: '<button>Click me</button>',
+				},
+			});
+
+			await waitFor(() => expect(wrapper.emitted('before-show')).toHaveLength(1));
+			expect(wrapper.emitted('hide')).toBeUndefined();
+		});
 	});
 
 	describe('default class', () => {
