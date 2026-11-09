@@ -384,7 +384,7 @@ describe('TrustedSourceStore (integration)', () => {
 			await store.getById(row.id);
 			await store.listBySurface('public-api');
 
-			await store.delete(row.id);
+			expect(await store.delete(row.id)).toEqual({ id: row.id, issuer: row.issuer });
 
 			expect(await rows.findOneBy({ id: row.id })).toBeNull();
 			expect(await store.getById(row.id)).toBeUndefined();

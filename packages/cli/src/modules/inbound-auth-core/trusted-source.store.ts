@@ -254,10 +254,15 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		await this.invalidateCache(row, changes.issuer);
 	}
 
-	async delete(id: string): Promise<void> {
+	/**
+	 * Reads only the raw row, never the config, so a source whose config cannot be read can still
+	 * be deleted. Returns the id and issuer of the deleted row.
+	 */
+	async delete(id: string): Promise<Pick<TrustedSource, 'id' | 'issuer'>> {
 		const row = await this.loadAdminRow(id, 'delete');
 		await this.trustedSourceRepository.deleteById(id, {}); // identities go with it via FK cascade
 		await this.invalidateCache(row);
+		return { id: row.id, issuer: row.issuer };
 	}
 
 	/**
