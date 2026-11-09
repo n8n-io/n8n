@@ -134,6 +134,12 @@ export const wrappedComponentBans = [
 		replacement: 'N8nTree2',
 	},
 	{
+		library: 'reka-ui',
+		prefixes: ['VisuallyHidden'],
+		allowedFolders: ['components/N8nVisuallyHidden'],
+		replacement: 'N8nVisuallyHidden',
+	},
+	{
 		library: 'element-plus',
 		names: ['ElMenu', 'ElSubMenu', 'ElMenuItem'],
 		componentPaths: ['menu', 'menu-item', 'sub-menu'],
