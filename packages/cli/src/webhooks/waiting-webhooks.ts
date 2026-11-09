@@ -78,16 +78,13 @@ const isLiveSnapshot = ({ status }: ExecutionSnapshot): boolean =>
 	status === 'queued' || status === 'running' || status === 'waiting';
 
 /**
- * Whether a send-and-wait link has nothing left to do, as v1 decides it: the
- * execution completed, or it waits only at other nodes.
+ * Whether a repeated click on a send-and-wait link gets the no-action page. The
+ * link names a settled step, so it cannot resume anything any more. As in v1,
+ * the page shows after the execution completed or while it waits; a running,
+ * failed or cancelled execution answers 409.
  */
-function isSendAndWaitOver(snapshot: ExecutionSnapshot, nodeId: string | undefined): boolean {
-	if (snapshot.status === 'completed') return true;
-	if (snapshot.status !== 'waiting') return false;
-
-	const waiting = (snapshot.steps ?? []).filter((step) => step.status === 'waiting');
-	return waiting.length > 0 && waiting.every((step) => step.nodeId !== nodeId);
-}
+const showsNoActionPage = ({ status }: ExecutionSnapshot): boolean =>
+	status === 'completed' || status === 'waiting';
 
 /**
  * Puts the waiting node where the v1 resume path expects it. The data plane
@@ -569,7 +566,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	 * No step accepts the request. A live execution answers "is running
 	 * already", and an ended one answers "has finished already". As in v1, a
 	 * second click on a send-and-wait link renders the page that says no action
-	 * is required when the execution completed or waits at another node.
+	 * is required when the execution completed or waits.
 	 *
 	 * @param suffix The path segment after the id: the node id for a send-and-wait
 	 * link, or the webhook suffix of a Wait node.
@@ -581,7 +578,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		res: express.Response,
 	): IWebhookResponseCallbackData {
 		const nodes = asWorkflowSnapshot(snapshot.workflow)?.nodes ?? [];
-		if (this.isSendAndWaitRequest(nodes, suffix) && isSendAndWaitOver(snapshot, suffix)) {
+		if (this.isSendAndWaitRequest(nodes, suffix) && showsNoActionPage(snapshot)) {
 			applyFormSandboxCSP(res);
 			res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 			return { noWebhookResponse: true };

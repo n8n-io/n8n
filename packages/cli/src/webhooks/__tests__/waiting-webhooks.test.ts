@@ -2248,9 +2248,26 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 			},
 		);
 
+		// v1 links name the execution, so v1 resumes the new wait. An engine v2 link
+		// names a settled step and cannot resume it.
+		it('renders the no-action page for a spent link while its node waits again', async () => {
+			dataPlane.locateResume.mockResolvedValue({
+				ok: true,
+				value: { execution: settled('waiting', ['slack-id']), target: null },
+			});
+			const res = response();
+
+			await expect(waitingWebhooks.executeWebhook(toNode('slack-id'), res)).resolves.toEqual({
+				noWebhookResponse: true,
+			});
+
+			expect(res.render).toHaveBeenCalledWith('send-and-wait-no-action-required', {
+				isTestWebhook: false,
+			});
+		});
+
 		it.each([
 			['runs', settled('running'), 'is running already'],
-			['waits at the same node again', settled('waiting', ['slack-id']), 'is running already'],
 			['failed', settled('failed'), 'has finished already'],
 			['was cancelled', settled('cancelled'), 'has finished already'],
 		])(
