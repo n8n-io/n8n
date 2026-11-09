@@ -48,7 +48,7 @@ import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service'
 import { TagService } from '@/services/tag.service';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
-import { createOwner } from '@test-integration/db/users';
+import { createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
 import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
@@ -380,7 +380,8 @@ it('marks a workflow that moved into a project that has no files on the branch y
 }, 30_000);
 
 it('lists the project variable that a workflow reads, not the global variable that it shadows', async () => {
-	const owner = await createOwner();
+	// The key of a pipeline that may promote, but not read variable values.
+	const owner = await createOwnerWithApiKey({ scopes: ['promotions:promote'] });
 	const project = await createTeamProject('Dependencies', owner);
 	const global = await createVariable('API_URL', 'global');
 	const variables = Container.get(VariablesRepository);
@@ -408,10 +409,24 @@ it('lists the project variable that a workflow reads, not the global variable th
 
 	await variables.update(scoped.id, { value: 'changed project' });
 	await Container.get(VariablesService).updateCache();
+	const variableKey = `variable:project:${project.id}:API_URL`;
 	expect(await changed()).toEqual([
+		expect.objectContaining({ key: variableKey, change: 'modified' }),
+	]);
+
+	// The details name the variable, but the key cannot read its value.
+	const { commitSha } = (await agent.get(endpoint).expect(200)).body;
+	const { body } = await server
+		.publicApiAgentFor(owner)
+		.post(`${endpoint}/details`)
+		.send({ commitSha, keys: [variableKey] })
+		.expect(200);
+	expect(body.details).toEqual([
 		expect.objectContaining({
-			key: `variable:project:${project.id}:API_URL`,
-			change: 'modified',
+			key: variableKey,
+			valueHidden: true,
+			before: { name: 'API_URL', type: expect.any(String) },
+			after: { name: 'API_URL', type: expect.any(String) },
 		}),
 	]);
 }, 30_000);

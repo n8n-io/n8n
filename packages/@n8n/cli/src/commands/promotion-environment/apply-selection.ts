@@ -46,11 +46,7 @@ export default class PromotionEnvironmentApplySelection extends PromotionApplyCo
 				toExpectedSource(flags),
 				flags.expectedPreviewRevision,
 			);
-			this.reportApplyResult(
-				result,
-				flags,
-				selectionContinueCommand(args.projectId, selection, flags.expectedPreviewRevision),
-			);
+			this.reportApplyResult(result, flags, selectionContinueCommand(args.projectId, selection));
 		});
 	}
 }

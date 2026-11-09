@@ -341,7 +341,8 @@ variable, or tag. To send one, select a workflow from its `USEDBY` column. With
 flag for its type.
 
 When an open review holds the changes of the project, the command names the
-review and lists nothing.
+review and lists nothing. You can promote again when the review is merged or
+closed.
 
 Use `--json` to get the full preview:
 
@@ -543,8 +544,10 @@ n8n-cli promotion-environment apply-selection-continue proj-abc -w wf-1 -w wf-2 
 Resend the same `-w` and `--folder` flags. The three `--expected-environment-id`,
 `--expected-branch`, and `--expected-commit-sha` flags are required: use the
 `environmentId`, `git.branchName`, and `git.commitSha` that the blocked Apply
-reported. If you passed `--expected-preview-revision` to `apply-selection`, pass
-it again. The command that the blocked Apply printed includes it. The command runs the Apply check again. The results and exit codes are
+reported. Setting up bindings changes the preview, so an earlier
+`--expected-preview-revision` no longer matches. To apply only a preview that you
+reviewed, run `list-changes proj-abc apply --json` again and pass its new
+`revision`. The command runs the Apply check again. The results and exit codes are
 the same as for `apply-selection`. The server keeps no session, so run the
 command again when it exits `4`.
 

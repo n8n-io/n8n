@@ -38,7 +38,7 @@ export default class PromotionEnvironmentListChanges extends BaseCommand {
 			}
 			if (preview.blocker && !flags.quiet) {
 				this.logToStderr(
-					`An open review holds the changes of this project, so none are listed. Review: ${preview.blocker.reviewId}`,
+					`The changes of this project are in an open review (${preview.blocker.reviewId}), so none are listed. You can promote again when the review is merged or closed.`,
 				);
 			}
 			this.output(changedRows(preview), flags, {

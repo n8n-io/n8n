@@ -56,7 +56,7 @@ function stopMessage(result: ApplyPackageResult, continueCommand: ContinueComman
 	if (result.status === 'preview-changed') {
 		return [
 			'This instance changed since the reviewed preview. Nothing was imported.',
-			'Run list-changes again, review the changes, then apply with the new revision.',
+			'Run list-changes again. Review the changes. Then apply with the new revision.',
 		].join('\n');
 	}
 	return sourceChangedMessage(result);
@@ -129,18 +129,19 @@ export function environmentContinueCommand(environmentId: string): ContinueComma
 		expectedSourceArgs(result);
 }
 
-/** The command that resumes a blocked selection Apply. It resends the same selection and revision. */
+/**
+ * The command that resumes a blocked selection Apply. It resends the same selection. It leaves
+ * out the preview revision: setting up a binding changes the preview, so the old one never matches.
+ */
 export function selectionContinueCommand(
 	projectId: string,
 	{ workflowIds = [], folderIds = [] }: PromotionSelection,
-	expectedPreviewRevision?: string,
 ): ContinueCommand {
 	return (result) =>
 		`n8n-cli promotion-environment apply-selection-continue ${shellQuote(projectId)}` +
 		workflowIds.map((id) => ` -w ${shellQuote(id)}`).join('') +
 		folderIds.map((id) => ` --folder ${shellQuote(id)}`).join('') +
-		expectedSourceArgs(result) +
-		(expectedPreviewRevision ? ` --expected-preview-revision=${expectedPreviewRevision}` : '');
+		expectedSourceArgs(result);
 }
 
 /** Branch names can contain shell metacharacters such as `;` and `$(`, so the shell must not interpret them. */

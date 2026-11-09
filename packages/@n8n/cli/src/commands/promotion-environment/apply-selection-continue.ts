@@ -52,11 +52,7 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 				flags.confirmDestructiveChanges,
 				flags.expectedPreviewRevision,
 			);
-			this.reportApplyResult(
-				result,
-				flags,
-				selectionContinueCommand(args.projectId, selection, flags.expectedPreviewRevision),
-			);
+			this.reportApplyResult(result, flags, selectionContinueCommand(args.projectId, selection));
 		});
 	}
 }
