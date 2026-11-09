@@ -1,9 +1,36 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { Context } from '@opentelemetry/api';
+import {
+	defaultTextMapGetter,
+	defaultTextMapSetter,
+	propagation,
+	ROOT_CONTEXT,
+} from '@opentelemetry/api';
 import type { ExecutionTracingContext } from 'n8n-workflow';
 
+import { DEFAULT_OUTBOUND_PROPAGATOR as rowPropagator } from '@/observability/outbound-propagator';
+
 export type TracingContext = ExecutionTracingContext;
+
+export function toTracingContext(ctx: Context): TracingContext {
+	const carrier: TracingContext = {};
+	rowPropagator.inject(ctx, carrier, defaultTextMapSetter);
+	return carrier;
+}
+
+export function fromTracingContext(tracingContext?: TracingContext): Context {
+	if (!tracingContext) return ROOT_CONTEXT;
+	return rowPropagator.extract(ROOT_CONTEXT, tracingContext, defaultTextMapGetter);
+}
+
+export function extractTracingContext(
+	headers: Record<string, string | string[] | undefined>,
+): TracingContext | undefined {
+	const tracingContext = toTracingContext(propagation.extract(ROOT_CONTEXT, headers));
+	return Object.keys(tracingContext).length > 0 ? tracingContext : undefined;
+}
 
 @Service()
 export class TraceContextService {
@@ -27,14 +54,12 @@ export class TraceContextService {
 		}
 	}
 
-	/**
-	 * Get tracing context for an execution from the DB.
-	 */
 	async get(executionId: string): Promise<TracingContext | undefined> {
 		try {
 			const execution = await this.executionRepository.findOne({
 				where: { id: executionId },
 				select: ['tracingContext'],
+				withDeleted: true,
 			});
 			return execution?.tracingContext ?? undefined;
 		} catch (error) {

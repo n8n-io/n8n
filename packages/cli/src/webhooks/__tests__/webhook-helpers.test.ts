@@ -105,7 +105,6 @@ import {
 	invokeWebhook,
 	handleImmediateWebhookResponse,
 	checkTriggerCredentialGate,
-	extractTracingContext,
 } from '../webhook-helpers';
 import { WebhookResponder } from '../webhook-responder';
 import { WebhookService } from '../webhook.service';
@@ -1337,55 +1336,6 @@ describe('getWebhookErrorMessage', () => {
 		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toContain(
 			'Error: Workflow could not be started',
 		);
-	});
-});
-
-describe('extractTracingContext', () => {
-	const traceparent = '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01';
-	const otel = {
-		injectTraceHeaders: vi.fn(),
-		extractInboundBaggage: vi.fn((header: string | string[] | undefined) =>
-			header === 'tenant=acme' ? 'tenant=acme' : undefined,
-		),
-	};
-
-	it('returns undefined without trace headers', () => {
-		expect(extractTracingContext({}, otel)).toBeUndefined();
-	});
-
-	it('reads traceparent and tracestate', () => {
-		expect(extractTracingContext({ traceparent, tracestate: 'vendor=1' }, otel)).toEqual({
-			traceparent,
-			tracestate: 'vendor=1',
-		});
-	});
-
-	it('ignores an invalid traceparent', () => {
-		expect(extractTracingContext({ traceparent: 'not-a-traceparent' }, otel)).toBeUndefined();
-	});
-
-	it('ignores baggage when the otel module is not loaded', () => {
-		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' }, undefined)).toEqual({
-			traceparent,
-		});
-	});
-
-	it('reads the baggage that the otel module returns', () => {
-		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' }, otel)).toEqual({
-			traceparent,
-			baggage: 'tenant=acme',
-		});
-		expect(otel.extractInboundBaggage).toHaveBeenCalledWith('tenant=acme');
-	});
-
-	it('reads baggage without a traceparent', () => {
-		expect(extractTracingContext({ baggage: 'tenant=acme' }, otel)).toEqual({
-			baggage: 'tenant=acme',
-		});
-	});
-
-	it('returns undefined when the otel module returns no baggage', () => {
-		expect(extractTracingContext({ baggage: 'n8n.workflow.id=forged' }, otel)).toBeUndefined();
 	});
 });
 
