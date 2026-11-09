@@ -27,7 +27,7 @@ import {
 	isWebhookHtmlSandboxingDisabled,
 } from 'n8n-core';
 
-import type { ExecutionResponseReceiver } from '@/modules/engine-v2/response-channel/execution-response-receiver';
+import type { ExecutionResponseReceiver } from '@/modules/engine-v2/execution-channel/execution-response-receiver';
 
 vi.mock('n8n-core', async () => ({
 	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),

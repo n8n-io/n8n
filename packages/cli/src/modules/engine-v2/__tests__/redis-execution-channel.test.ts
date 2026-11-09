@@ -6,11 +6,11 @@ import {
 	RedisExecutionChannelPublisher,
 	SHUTDOWN_DRAIN_TIMEOUT_MS,
 	type RedisChannelPublisher,
-} from '../response-channel/redis-execution-response-sender';
+} from '../execution-channel/redis-execution-channel-publisher';
 import {
 	RedisExecutionChannelSubscriber,
 	type RedisChannelSubscriber,
-} from '../response-channel/redis-execution-response-receiver';
+} from '../execution-channel/redis-execution-channel-subscriber';
 
 const getChannelName = (topic: ExecutionChannelTopic, executionId: string) =>
 	`n8n:engine-v2-${topic}:${executionId}`;
