@@ -1,7 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { ExecutionChannelTopic } from '@n8n/engine';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import type { ExecutionChannelTopic } from '../response-channel/execution-channel';
 import {
 	RedisExecutionChannelPublisher,
 	SHUTDOWN_DRAIN_TIMEOUT_MS,

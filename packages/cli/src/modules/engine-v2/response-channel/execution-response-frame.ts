@@ -1,13 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
 import {
 	executionResponseSchema,
+	type ExecutionChannelCodec,
 	type ExecutionResponse,
+	type FrameResult,
 	type UndeliverableMessage,
 } from '@n8n/engine';
 import { createResultError, createResultOk, toResult, type Result } from '@n8n/utils/result';
 import { UnexpectedError } from '@n8n/errors';
-
-import type { ExecutionChannelCodec, FrameResult } from './execution-channel';
 
 /** An execution channel must be able to carry every frame this module produces. */
 const MAX_FRAME_BYTES = 5 * 1024 * 1024;

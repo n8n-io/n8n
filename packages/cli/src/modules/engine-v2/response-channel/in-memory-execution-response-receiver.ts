@@ -1,12 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
-
 import type {
 	ExecutionChannelCodec,
 	ExecutionChannelFrameHandler,
 	ExecutionChannelSubscriber,
 	ExecutionChannelTopic,
 	UnsubscribeFromExecutionChannel,
-} from './execution-channel';
+} from '@n8n/engine';
+
 import type { InMemoryExecutionChannel } from './in-memory-execution-response-channel';
 
 /** Receives messages on the topic of its codec. */

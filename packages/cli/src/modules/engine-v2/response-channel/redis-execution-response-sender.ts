@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
+import type { ExecutionChannelPublisher, ExecutionChannelTopic } from '@n8n/engine';
 
-import type { ExecutionChannelPublisher, ExecutionChannelTopic } from './execution-channel';
 import type { RedisExecutionChannelNameGenerator } from './redis-execution-response-channel';
 
 /**

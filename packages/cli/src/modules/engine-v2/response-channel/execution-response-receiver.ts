@@ -1,6 +1,4 @@
-import type { ExecutionResponse } from '@n8n/engine';
-
-import type { UnsubscribeFromExecutionChannel } from './execution-channel';
+import type { ExecutionResponse, UnsubscribeFromExecutionChannel } from '@n8n/engine';
 
 export type UnsubscribeExecutionResponse = UnsubscribeFromExecutionChannel;
 

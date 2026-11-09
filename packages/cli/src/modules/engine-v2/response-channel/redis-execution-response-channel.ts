@@ -1,8 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-
-import type { ExecutionChannelTopic } from './execution-channel';
+import type { ExecutionChannelTopic } from '@n8n/engine';
 
 export type RedisExecutionChannelNameGenerator = (
 	topic: ExecutionChannelTopic,

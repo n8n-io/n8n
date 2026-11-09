@@ -2,13 +2,13 @@ import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { ExecutionChannelPublisher } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
-import type { ExecutionChannelPublisher } from '@/modules/engine-v2/response-channel/execution-channel';
 
 import { BaseCommand } from './base-command';
 

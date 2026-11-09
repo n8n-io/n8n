@@ -1,10 +1,10 @@
-import { EventEmitter } from 'node:events';
-
 import type {
 	ExecutionChannelFrameHandler,
 	ExecutionChannelTopic,
 	UnsubscribeFromExecutionChannel,
-} from './execution-channel';
+} from '@n8n/engine';
+import { EventEmitter } from 'node:events';
+
 import { InMemoryExecutionChannelSubscriber } from './in-memory-execution-response-receiver';
 import { InMemoryExecutionChannelPublisher } from './in-memory-execution-response-sender';
 

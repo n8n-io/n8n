@@ -1,12 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
-import { UnexpectedError } from '@n8n/errors';
-
 import type {
 	ExecutionChannelFrameHandler,
 	ExecutionChannelSubscriber,
 	ExecutionChannelTopic,
 	UnsubscribeFromExecutionChannel,
-} from './execution-channel';
+} from '@n8n/engine';
+import { UnexpectedError } from '@n8n/errors';
+
 import type { RedisExecutionChannelNameGenerator } from './redis-execution-response-channel';
 
 type RedisMessageHandler = (channel: string, message: string) => void;

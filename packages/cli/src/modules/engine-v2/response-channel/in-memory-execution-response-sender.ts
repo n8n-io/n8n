@@ -1,11 +1,11 @@
-import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
-import { UnexpectedError } from '@n8n/errors';
-
 import type {
 	ExecutionChannelCodec,
 	ExecutionChannelPublisher,
 	ExecutionChannelTopic,
-} from './execution-channel';
+} from '@n8n/engine';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
+import { UnexpectedError } from '@n8n/errors';
+
 import type { InMemoryExecutionChannel } from './in-memory-execution-response-channel';
 
 /** Sends messages on the topic of its codec. */
