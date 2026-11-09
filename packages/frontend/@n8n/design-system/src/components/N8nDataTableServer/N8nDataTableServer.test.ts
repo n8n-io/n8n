@@ -91,6 +91,23 @@ describe('N8nDataTableServer', () => {
 		expect(() => getByRole('button', { name: 'Page 10' })).toThrow();
 	});
 
+	it('shows one page in All mode with a server page count', () => {
+		const { getByRole, getByTestId } = renderComponent({
+			props: {
+				items,
+				headers,
+				itemsLength: 100,
+				itemsPerPage: PAGINATION_ALL_ITEMS_PER_PAGE,
+				pageCount: 1,
+				showAll: true,
+			},
+		});
+
+		expect(getByRole('button', { name: 'Page 1' })).toBeInTheDocument();
+		expect(getByTestId('pagination-prev')).toBeDisabled();
+		expect(getByTestId('pagination-next')).toBeDisabled();
+	});
+
 	it('shows a group row before the first row of each group, with one cell per column', () => {
 		const grouped: Item[] = [
 			{ id: '1', firstName: 'a', lastName: 'x' },

@@ -96,7 +96,7 @@ export type SkillListResponse = {
 	data: SkillListItem[];
 	/** Folded and empty sources on this page. Only with `groupBy: 'source'`. */
 	collapsedSources?: SkillListCollapsedSource[];
-	/** The selected page and page count when source groups have different sizes. */
+	/** The selected page and page count. Only with `groupBy: 'source'`. */
 	page?: number;
 	pageCount?: number;
 };

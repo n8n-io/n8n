@@ -684,7 +684,9 @@ const table = useVueTable({
 			<N8nPagination
 				:page="page + 1"
 				:items-per-page="itemsPerPage"
-				:total="pageCount === undefined ? itemsLength : pageCount * itemsPerPage"
+				:total="
+					pageCount !== undefined && itemsPerPage > 0 ? pageCount * itemsPerPage : itemsLength
+				"
 				:page-sizes="pageSizes"
 				:show-all="showAll"
 				:show-total="false"

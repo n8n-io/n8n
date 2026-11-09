@@ -47,11 +47,9 @@ const props = defineProps<{
 	showMcpAvailability?: boolean;
 	/** Enables source rows. Skills must arrive grouped by source. */
 	sources?: SkillSourceListItem[];
-	/** The sources that the user folded. */
 	collapsedSourceIds?: string[];
 	/** Where each folded or empty source sits on the page. */
 	collapsedSources?: SkillListCollapsedSource[];
-	/** The sources with a check that runs, so their rows show progress. */
 	checkingSourceIds?: string[];
 }>();
 

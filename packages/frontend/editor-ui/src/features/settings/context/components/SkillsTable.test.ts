@@ -430,6 +430,20 @@ describe('SkillsTable', () => {
 			expect(queryByText('a')).toBeNull();
 		});
 
+		it('places a folded source before the server-selected row when its skills are absent', () => {
+			const { container, getByTestId } = renderGrouped({
+				skills: [skill({ id: 'local', name: 'local' })],
+				collapsedSourceIds: ['src-1'],
+				collapsedSources: [{ sourceId: 'src-1', index: 0, skillCount: 2 }],
+			});
+
+			const rows = container.querySelectorAll<HTMLTableRowElement>('tbody tr');
+			expect(rows).toHaveLength(2);
+			expect(within(rows[0]).getByTestId('skill-group-title')).toHaveTextContent('acme/skills');
+			expect(within(rows[1]).getByText('local')).toBeInTheDocument();
+			expect(getByTestId('skill-group-toggle')).toHaveAttribute('aria-expanded', 'false');
+		});
+
 		it('keeps a row for a source with no synced skills, with nothing to fold', () => {
 			const empty = source({ id: 'src-2', label: 'acme/empty', skillCount: 0 });
 			const { getByTestId, queryByTestId } = renderGrouped({
