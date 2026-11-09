@@ -573,8 +573,6 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 					...(captureResponder
 						? {
 								action_id: option.approved ? HITL_APPROVE_ACTION_ID : HITL_DECLINE_ACTION_ID,
-								// The context mints the reference where the secret lives. The node
-								// reads no secret itself. Same as Telegram.
 								value: context.getApprovalCallbackReference(
 									option.approved ? 'approve' : 'decline',
 								),

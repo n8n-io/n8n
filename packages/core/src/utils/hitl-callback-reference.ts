@@ -1,10 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { UnexpectedError } from 'n8n-workflow';
 
-/**
- * Versioned prefix for every HITL callback reference. Platform webhook handlers
- * (e.g. the Telegram Trigger) key their forwarding decision off this prefix.
- */
+/** Prefix of an engine v1 callback reference. The Telegram Trigger keys its forwarding on it. */
 export const HITL_CALLBACK_PREFIX = 'nhitl1|';
 
 /**
@@ -63,9 +60,8 @@ export function isTelegramInteractionRequest(req: object): boolean {
 }
 
 /**
- * Prefix of an engine v2 approval callback. It names the step, not the
- * execution, and the data plane that minted it verifies it. The layout lives
- * with the engine's resume token; this module only reads the step id out of it.
+ * Prefix of an engine v2 approval callback. It names a step. Duplicates
+ * `APPROVAL_CALLBACK_PREFIX` in `@n8n/engine`: neither package depends on the other.
  */
 export const HITL_CALLBACK_PREFIX_V2 = 'nhitl2|';
 
@@ -158,8 +154,7 @@ export function parseHitlCallbackReference(data: string): ParsedHitlCallbackRefe
  * Verifies a parsed reference's HMAC against the instance secret, using a
  * timing-safe comparison. This is the only check needed to prove the reference
  * was minted by this instance; it says nothing about the caller's identity.
- * A step-bound reference never passes: the data plane that minted it holds
- * its secret.
+ * A step-bound reference never passes; the resume secret signs it.
  */
 export function verifyHitlCallbackReference(
 	parsed: ParsedHitlCallbackReference,

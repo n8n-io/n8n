@@ -159,7 +159,6 @@ describe('prepareChatApproval', () => {
 	});
 
 	it('registers the fixed endpoint when the signed URL names a step instead of the execution', async () => {
-		// Engine v2 puts the step id where engine v1 puts the execution id.
 		const context = makeContext();
 		context.getNodeParameter.mockImplementation((name: unknown) =>
 			name === 'responseType' ? 'approval' : true,

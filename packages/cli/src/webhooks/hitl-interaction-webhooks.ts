@@ -96,7 +96,7 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		const stepId = this.dataPlane.readApprovalCallback(reference);
 		if (stepId) return await this.resumeEngineV2Callback(req, res, stepId, reference);
 
-		// A step-bound reference the data plane did not read is malformed.
+		// The instance secret cannot verify a step-bound reference.
 		const parsed = parseHitlCallbackReference(reference);
 		if (parsed?.kind !== 'execution') return this.handleUnrecognizedCallback(res);
 

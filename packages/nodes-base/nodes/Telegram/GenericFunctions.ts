@@ -301,8 +301,6 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApp
 			inline_keyboard: [
 				config.options.map((option) => {
 					if (chatApproval) {
-						// The context mints the reference where the secret lives. The node
-						// reads no secret itself.
 						return {
 							text: option.label,
 							callback_data: context.getApprovalCallbackReference(

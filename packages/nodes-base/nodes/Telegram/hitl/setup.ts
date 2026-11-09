@@ -37,8 +37,7 @@ function isLikelyTriggerWebhook(url: string, origin: string, reverseProxyPrefix:
  * trailing `/<id>/<nodeId>`) from the signed resume URL, so the fixed HITL
  * endpoint URL always matches whatever public base n8n itself uses for
  * webhooks, regardless of reverse-proxy path prefixes. Engine v1 puts the
- * execution id in that first segment, engine v2 the step id, so the base is
- * the path minus its last two segments.
+ * execution id in that first segment, engine v2 the step id.
  */
 function getWaitingWebhookBase(context: IExecuteFunctions): { origin: string; path: string } {
 	const signedUrl = new URL(context.getSignedResumeUrl());

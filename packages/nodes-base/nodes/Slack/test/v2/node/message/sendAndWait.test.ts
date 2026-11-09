@@ -132,7 +132,6 @@ describe('Test SlackV2, message => sendAndWait', () => {
 
 		expect(approveButton.url).toBeUndefined();
 		expect(approveButton.action_id).toBe(HITL_APPROVE_ACTION_ID);
-		// The approve button carries the context's decision-'a' reference.
 		expect(approveButton.value).toBe('reference-approve');
 	});
 

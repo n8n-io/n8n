@@ -6,11 +6,10 @@ import { UserError } from 'n8n-workflow';
  * callbacks, and verified against the `X-Telegram-Bot-Api-Secret-Token`
  * header on every incoming callback.
  *
- * Keyed by the bot's access token alone, and by no instance secret: the
- * value is registered where the node runs and checked where the callback
- * arrives, and on engine v2 those are two processes with different
- * instance secrets. Anyone who holds the bot token already controls the
- * bot, so a value derived from it alone gives nothing away.
+ * Keyed by the bot token and no instance secret: on engine v2 the node that
+ * registers the value and the webhook that checks it can run in different
+ * processes. The bot token already controls the bot, so the derived value
+ * reveals nothing.
  *
  * Scoped by the full access token, not by credential record or node: every
  * holder of this bot's token derives the same value, so re-registration is
@@ -22,7 +21,7 @@ import { UserError } from 'n8n-workflow';
  * stays untouched.
  */
 export function deriveHitlSecretToken(accessToken: string): string {
-	// An empty key would make the value computable by anyone. Fail closed.
+	// An empty key would make the value computable by anyone.
 	if (!accessToken) throw new UserError('The Telegram credential has no access token');
 	const botId = accessToken.split(':')[0];
 

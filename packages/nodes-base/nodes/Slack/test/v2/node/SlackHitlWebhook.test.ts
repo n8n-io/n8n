@@ -20,12 +20,10 @@ const slackApiRequest = vi.mocked(GenericFunctions.slackApiRequest);
 const verifySignature = vi.mocked(SlackTriggerHelpers.verifySignature);
 const sendAndWaitWebhook = vi.mocked(sendAndWaitUtils.sendAndWaitWebhook);
 
-// The button `value` carries the shared HITL callback reference. The node only parses it for
-// the decision (parseHitlCallbackReference does no HMAC check — the HMAC is verified before node
-// code runs), so any secret produces a well-formed reference here.
+// The node reads only the decision; the HMAC is verified before node code runs (v1:
+// `HitlInteractionWebhooks.validate`, v2: `locateResume`). Any secret works here.
 const APPROVE_VALUE = buildHitlCallbackReference('e1', 'a', 'ref-secret');
 const DECLINE_VALUE = buildHitlCallbackReference('e1', 'd', 'ref-secret');
-// An engine v2 reference names a step instead of an execution.
 const STEP_BOUND_APPROVE_VALUE = `${HITL_CALLBACK_PREFIX_V2}AZJqTn9ccACAAAAAAAAAAQ|a|mac`;
 
 interface ContextOptions {
