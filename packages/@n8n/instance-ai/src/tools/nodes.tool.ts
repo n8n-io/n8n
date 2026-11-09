@@ -558,56 +558,107 @@ const searchNodesInputSchema = z.object({
 export function createSearchNodesTool(context: InstanceAiContext) {
 	const searchEngineCache: SearchEngineCache = {};
 
-	return new Tool(DOMAIN_TOOL_IDS.SEARCH_NODES)
-		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.SEARCH_NODES))
-		// The self-healing agent registers this tool directly and has no call_tool, so keep it mode-neutral.
-		.description(
-			'Search n8n node types by service name, category, AI connection type, or Gateway credits coverage. ' +
-				'Use `categories` for curated workflow category recommendations, `query` or `queries` for service-specific discovery ' +
-				'(short service names like "Gmail" or "Slack", not full task phrases), `scope="agent_tool"` when finding executable *Tool ' +
-				'nodes for an n8n Agent, and `gatewayCreditsOnly=true` to list services covered by Gateway credits (no API key needed). ' +
-				'After finding a node, read its parameter schema with `get_node_types`.',
-		)
-		.input(searchNodesInputSchema)
-		.handler(async (input) => {
-			const queryList = [
-				...new Set([...(input.queries ?? []), ...(input.query ? [input.query] : [])]),
-			];
+	return (
+		new Tool(DOMAIN_TOOL_IDS.SEARCH_NODES)
+			.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.SEARCH_NODES))
+			// The self-healing agent registers this tool directly and has no call_tool, so keep it mode-neutral.
+			.description(
+				'Search n8n node types by service name, category, AI connection type, or Gateway credits coverage. ' +
+					'Use `categories` for curated workflow category recommendations, `query` or `queries` for service-specific discovery ' +
+					'(short service names like "Gmail" or "Slack", not full task phrases), `scope="agent_tool"` when finding executable *Tool ' +
+					'nodes for an n8n Agent, and `gatewayCreditsOnly=true` to list services covered by Gateway credits (no API key needed). ' +
+					'After finding a node, read its parameter schema with `get_node_types`.',
+			)
+			.input(searchNodesInputSchema)
+			.handler(async (input) => {
+				const queryList = [
+					...new Set([...(input.queries ?? []), ...(input.query ? [input.query] : [])]),
+				];
 
-			const hasCategoryLookup = Boolean(input.categories && input.categories.length > 0);
-			const hasSearchLookup =
-				queryList.length > 0 || Boolean(input.connectionType) || Boolean(input.gatewayCreditsOnly);
+				const hasCategoryLookup = Boolean(input.categories && input.categories.length > 0);
+				const hasSearchLookup =
+					queryList.length > 0 ||
+					Boolean(input.connectionType) ||
+					Boolean(input.gatewayCreditsOnly);
 
-			const toCategoryNodeName =
-				input.scope === 'agent_tool' && hasCategoryLookup
-					? await buildAgentToolNameResolver(context)
+				const toCategoryNodeName =
+					input.scope === 'agent_tool' && hasCategoryLookup
+						? await buildAgentToolNameResolver(context)
+						: undefined;
+				const categories = input.categories ?? [];
+
+				if (hasCategoryLookup && !hasSearchLookup) {
+					return await handleSuggested(context, categories, toCategoryNodeName);
+				}
+
+				const categorySummary = hasCategoryLookup
+					? await handleSuggested(context, categories, toCategoryNodeName)
 					: undefined;
-			const categories = input.categories ?? [];
 
-			if (hasCategoryLookup && !hasSearchLookup) {
-				return await handleSuggested(context, categories, toCategoryNodeName);
-			}
+				if (input.gatewayCreditsOnly && !input.connectionType) {
+					const queriesOrUndefined = queryList.length > 0 ? queryList : [undefined];
+					const batches = await Promise.all(
+						queriesOrUndefined.map(
+							async (query) =>
+								await context.nodeService.listAvailable({ query, gatewayCreditsOnly: true }),
+						),
+					);
+					const nodesByName = new Map(batches.flat().map((n) => [n.name, n]));
+					const nodes = [...nodesByName.values()];
+					const filtered =
+						input.scope === 'agent_tool' ? nodes.filter((n) => isAgentToolNodeType(n.name)) : nodes;
+					return {
+						nodes: filtered,
+						results: filtered,
+						totalResults: filtered.length,
+						...(categorySummary
+							? {
+									categoryResults: categorySummary.results,
+									unknownCategories: categorySummary.unknownCategories,
+								}
+							: {}),
+					};
+				}
 
-			const categorySummary = hasCategoryLookup
-				? await handleSuggested(context, categories, toCategoryNodeName)
-				: undefined;
+				const nodeTypes = await context.nodeService.listSearchable();
+				const engine = getOrBuildSearchEngine(nodeTypes, searchEngineCache);
+				const nodeFilter = input.scope === 'agent_tool' ? isAgentToolNodeType : undefined;
 
-			if (input.gatewayCreditsOnly && !input.connectionType) {
-				const queriesOrUndefined = queryList.length > 0 ? queryList : [undefined];
-				const batches = await Promise.all(
-					queriesOrUndefined.map(
-						async (query) =>
-							await context.nodeService.listAvailable({ query, gatewayCreditsOnly: true }),
-					),
-				);
-				const nodesByName = new Map(batches.flat().map((n) => [n.name, n]));
-				const nodes = [...nodesByName.values()];
-				const filtered =
-					input.scope === 'agent_tool' ? nodes.filter((n) => isAgentToolNodeType(n.name)) : nodes;
+				const matchedByName = new Map<
+					string,
+					ReturnType<NodeSearchEngine['searchByName']>[number]
+				>();
+
+				if (input.connectionType) {
+					const queriesOrUndefined = queryList.length > 0 ? queryList : [undefined];
+					for (const q of queriesOrUndefined) {
+						const filterResults = Boolean(nodeFilter) || Boolean(input.gatewayCreditsOnly);
+						const candidates = engine
+							.searchByConnectionType(
+								input.connectionType,
+								filterResults ? nodeTypes.length : input.limit,
+								q,
+							)
+							.filter((item) => !nodeFilter || nodeFilter(item.name))
+							.filter((item) => !input.gatewayCreditsOnly || item.aiGateway)
+							.slice(0, input.limit);
+						for (const item of candidates) {
+							if (!matchedByName.has(item.name)) matchedByName.set(item.name, item);
+						}
+					}
+				} else if (queryList.length > 0) {
+					for (const q of queryList) {
+						for (const item of engine.searchByName(q, input.limit, nodeFilter)) {
+							if (!matchedByName.has(item.name)) matchedByName.set(item.name, item);
+						}
+					}
+				} else {
+					return { results: [], totalResults: 0 };
+				}
+
+				const enriched = await enrichSearchResults(context, [...matchedByName.values()]);
 				return {
-					nodes: filtered,
-					results: filtered,
-					totalResults: filtered.length,
+					...enriched,
 					...(categorySummary
 						? {
 								categoryResults: categorySummary.results,
@@ -615,53 +666,9 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 							}
 						: {}),
 				};
-			}
-
-			const nodeTypes = await context.nodeService.listSearchable();
-			const engine = getOrBuildSearchEngine(nodeTypes, searchEngineCache);
-			const nodeFilter = input.scope === 'agent_tool' ? isAgentToolNodeType : undefined;
-
-			const matchedByName = new Map<string, ReturnType<NodeSearchEngine['searchByName']>[number]>();
-
-			if (input.connectionType) {
-				const queriesOrUndefined = queryList.length > 0 ? queryList : [undefined];
-				for (const q of queriesOrUndefined) {
-					const filterResults = Boolean(nodeFilter) || Boolean(input.gatewayCreditsOnly);
-					const candidates = engine
-						.searchByConnectionType(
-							input.connectionType,
-							filterResults ? nodeTypes.length : input.limit,
-							q,
-						)
-						.filter((item) => !nodeFilter || nodeFilter(item.name))
-						.filter((item) => !input.gatewayCreditsOnly || item.aiGateway)
-						.slice(0, input.limit);
-					for (const item of candidates) {
-						if (!matchedByName.has(item.name)) matchedByName.set(item.name, item);
-					}
-				}
-			} else if (queryList.length > 0) {
-				for (const q of queryList) {
-					for (const item of engine.searchByName(q, input.limit, nodeFilter)) {
-						if (!matchedByName.has(item.name)) matchedByName.set(item.name, item);
-					}
-				}
-			} else {
-				return { results: [], totalResults: 0 };
-			}
-
-			const enriched = await enrichSearchResults(context, [...matchedByName.values()]);
-			return {
-				...enriched,
-				...(categorySummary
-					? {
-							categoryResults: categorySummary.results,
-							unknownCategories: categorySummary.unknownCategories,
-						}
-					: {}),
-			};
-		})
-		.build();
+			})
+			.build()
+	);
 }
 
 const getNodeTypesInputSchema = z.object({
