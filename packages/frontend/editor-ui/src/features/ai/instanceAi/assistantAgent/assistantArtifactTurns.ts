@@ -91,26 +91,40 @@ function findAnnouncedWorkflowId(message: DeepReadonly<ChatMessage>): string | u
 }
 
 /**
- * Builds the artifact turns from Agents chat messages. While the chat streams,
- * the latest assistant message is the live one.
+ * Builds the artifact turns from Agents chat messages. The chat adds a message
+ * for each model step, so the assistant messages after a user message make one
+ * turn, as on the current runtime. A lock that one step starts, such as an
+ * agent selection, then lasts until the run ends. While the chat streams, the
+ * latest assistant turn is the live one.
  */
 export function toAssistantArtifactTurns(
 	messages: ReadonlyChatMessages,
 	isStreaming: boolean,
 ): ArtifactTurn[] {
-	const liveIndex = isStreaming ? messages.findLastIndex((m) => m.role === 'assistant') : -1;
-
-	return messages.map((message, index): ArtifactTurn => {
+	const turns: ArtifactTurn[] = [];
+	for (const message of messages) {
 		if (message.role === 'user') {
-			return { id: message.id, role: 'user', isLive: false, toolCalls: [] };
+			turns.push({ id: message.id, role: 'user', isLive: false, toolCalls: [] });
+			continue;
 		}
+		const toolCalls = (message.toolCalls ?? []).map(toArtifactToolCall);
 		const announcedWorkflowId = findAnnouncedWorkflowId(message);
-		return {
+		const current = turns.at(-1);
+		if (current?.role === 'assistant') {
+			current.toolCalls.push(...toolCalls);
+			if (announcedWorkflowId) current.announcedWorkflowId = announcedWorkflowId;
+			continue;
+		}
+		turns.push({
 			id: message.id,
 			role: 'assistant',
-			isLive: index === liveIndex,
-			toolCalls: (message.toolCalls ?? []).map(toArtifactToolCall),
+			isLive: false,
+			toolCalls,
 			...(announcedWorkflowId ? { announcedWorkflowId } : {}),
-		};
-	});
+		});
+	}
+
+	const live = isStreaming ? turns.at(-1) : undefined;
+	if (live?.role === 'assistant') live.isLive = true;
+	return turns;
 }

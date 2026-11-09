@@ -1,9 +1,9 @@
-import { WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import { AGENT_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import { readonly } from 'vue';
 
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 
-import { isAgentEditingWorkflow } from '../../canvasPreview.utils';
+import { isAgentEditingAgent, isAgentEditingWorkflow } from '../../canvasPreview.utils';
 import {
 	findArchivedAssistantWorkflowIds,
 	findLatestAssistantTasks,
@@ -90,6 +90,59 @@ describe('toAssistantArtifactTurns', () => {
 		const mapped = mapMessages(messages, true);
 
 		expect(mapped.map((turn) => turn.isLive)).toEqual([false, false, false, true]);
+	});
+
+	describe('the steps of one run', () => {
+		const selectAgent = toolCall({
+			tool: AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+			toolCallId: 'tc-select',
+			input: {},
+			output: { ok: true, agentId: 'agent-1' },
+		});
+		// The chat adds a message for each model step of the run.
+		const steps: ChatMessage[] = [
+			{ id: 'u1', role: 'user', content: 'Rename it' },
+			{ id: 's1', role: 'assistant', content: '', toolCalls: [selectAgent] },
+			{ id: 's2', role: 'assistant', content: 'Thinking it over' },
+		];
+
+		it('makes one turn with the tool calls of every step', () => {
+			const turns = mapMessages(steps, true);
+
+			expect(turns).toEqual([
+				{ id: 'u1', role: 'user', isLive: false, toolCalls: [] },
+				{
+					id: 's1',
+					role: 'assistant',
+					isLive: true,
+					toolCalls: [expect.objectContaining({ toolCallId: 'tc-select' })],
+				},
+			]);
+		});
+
+		it('keeps the agent that an earlier step selected locked until the run ends', () => {
+			expect(isAgentEditingAgent(mapMessages(steps, true), 'agent-1')).toBe(true);
+			expect(isAgentEditingAgent(mapMessages(steps, false), 'agent-1')).toBe(false);
+		});
+
+		it('takes the setup announcement of the latest step', () => {
+			const [, turn] = mapMessages(
+				[
+					...steps,
+					{
+						id: 's3',
+						role: 'assistant',
+						content: '',
+						hostEvents: [
+							{ id: 'e1', name: 'setup-items', payload: { workflowId: 'wf-3', items: [] } },
+						],
+					},
+				],
+				false,
+			);
+
+			expect(turn.announcedWorkflowId).toBe('wf-3');
+		});
 	});
 
 	it('takes the setup announcement from the latest setup-items host event', () => {
