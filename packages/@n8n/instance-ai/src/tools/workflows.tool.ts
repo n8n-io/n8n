@@ -759,7 +759,7 @@ const SOURCE_FILE_NOTES: Record<MaterializedSourceStatus, string> = {
 	written:
 		'Source written to filePath and bound to this workflow. Locate nodes with the `nodes` index (line numbers) and read only those lines — for a large file use a ranged shell read such as `sed -n START,ENDp filePath` via workspace_execute_command, since workspace_read_file returns the whole file. Apply edits with workspace_str_replace_file, then run workflow_builder_build_workflow through call_tool with this filePath. Do not rewrite the whole file.',
 	refreshed:
-		'The saved workflow changed since the file was written, so the file was regenerated from the saved workflow. Re-apply any edit you still need with workspace_str_replace_file, then workflow_builder_build_workflow.',
+		'The saved workflow changed since the file was written, so the file was regenerated from the saved workflow. Re-apply any edit you still need with workspace_str_replace_file, then run workflow_builder_build_workflow through call_tool with this filePath.',
 	current:
 		'The file already matches the saved workflow; nothing was written. Edit it with workspace_str_replace_file and run workflow_builder_build_workflow through call_tool with this filePath.',
 	conflict:

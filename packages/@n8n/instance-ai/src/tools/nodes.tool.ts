@@ -560,12 +560,13 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 
 	return new Tool(DOMAIN_TOOL_IDS.SEARCH_NODES)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.SEARCH_NODES))
+		// The self-healing agent registers this tool directly and has no call_tool, so keep it mode-neutral.
 		.description(
 			'Search n8n node types by service name, category, AI connection type, or Gateway credits coverage. ' +
 				'Use `categories` for curated workflow category recommendations, `query` or `queries` for service-specific discovery ' +
 				'(short service names like "Gmail" or "Slack", not full task phrases), `scope="agent_tool"` when finding executable *Tool ' +
 				'nodes for an n8n Agent, and `gatewayCreditsOnly=true` to list services covered by Gateway credits (no API key needed). ' +
-				'After finding a node, run `get_node_types` through `call_tool` to read its parameter schema.',
+				'After finding a node, read its parameter schema with `get_node_types`.',
 		)
 		.input(searchNodesInputSchema)
 		.handler(async (input) => {

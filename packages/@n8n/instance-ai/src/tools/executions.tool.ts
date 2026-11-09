@@ -98,8 +98,8 @@ const runStepAction = z.object({
 				"This is a REAL run with the user's real credentials against their real " +
 				'systems. Use it on reads and transforms. Do not use it to debug a node ' +
 				'that writes (create/update/delete/send/append, non-GET HTTP) — that ' +
-				'performs the effect again. Read the failed execution by running debug_execution through call_tool ' +
-				'and get_resolved_node_parameters instead. When unsure, treat the ' +
+				'performs the effect again. Read the failed execution by running debug_execution and ' +
+				'get_resolved_node_parameters through call_tool instead. When unsure, treat the ' +
 				'node as a write. A tool runs through the node that owns it (the Agent), so ' +
 				"mockInput and reuseExecutionId feed that node and the tool's own " +
 				'arguments come from toolArguments. No other sub-node kind can run.',

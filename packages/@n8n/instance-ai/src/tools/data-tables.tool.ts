@@ -569,7 +569,7 @@ async function handleCreate(
 		if (isNameConflictError(error)) {
 			return {
 				denied: true,
-				reason: `Table "${input.name}" already exists. Run list_data_tables through call_tool to find it and get_data_table_schema to check its columns.`,
+				reason: `Table "${input.name}" already exists. Run list_data_tables through call_tool to find it, then run get_data_table_schema through call_tool to check its columns.`,
 			};
 		}
 		throw error;

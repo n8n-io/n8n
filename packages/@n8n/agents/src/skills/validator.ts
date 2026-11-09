@@ -19,6 +19,9 @@ const RUNTIME_SKILL_FRONTMATTER_FIELDS = [
 	'name',
 	'description',
 	'recommended_tool_groups',
+	// Deprecated: replaced by recommended_tool_groups. Still accepted, but ignored, so that
+	// skills written before the rename continue to load.
+	'recommended_tools',
 	'allowed_tools',
 	'interface',
 	'policy',
