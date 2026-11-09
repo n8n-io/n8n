@@ -1,5 +1,7 @@
 import { Service } from '@n8n/di';
 
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+
 import {
 	AgentFileRepository,
 	type AgentKnowledgeTotals,
@@ -25,6 +27,7 @@ export class AgentKnowledgeSnapshotService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly agentFileRepository: AgentFileRepository,
+		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
 
 	/** Stops reading pages once `signal` aborts. The counts are then incomplete. */
@@ -33,10 +36,7 @@ export class AgentKnowledgeSnapshotService {
 
 		for await (const page of this.publishedAgentPages(signal)) {
 			const agentIds = page.map((agent) => agent.agentId);
-			const totalsByAgentId = await this.agentFileRepository.getKnowledgeTotalsByAgentIds(
-				agentIds,
-				{},
-			);
+			const totalsByAgentId = await this.readFileTotals(agentIds);
 
 			for (const agent of page) {
 				const fileTotals = totalsByAgentId.get(agent.agentId);
@@ -45,6 +45,15 @@ export class AgentKnowledgeSnapshotService {
 		}
 
 		return snapshot;
+	}
+
+	/** With the knowledge module off no file is reachable, so the snapshot counts none. */
+	private async readFileTotals(agentIds: string[]): Promise<Map<string, AgentKnowledgeTotals>> {
+		if (!this.knowledgeAvailabilityService.isModuleActive()) {
+			return new Map();
+		}
+
+		return await this.agentFileRepository.getKnowledgeTotalsByAgentIds(agentIds, {});
 	}
 
 	/** A page with fewer than PAGE_SIZE agents is the last one. */

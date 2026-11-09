@@ -1,4 +1,25 @@
-import type { RuntimeSkillRegistry } from './types';
+import type { RuntimeSkillRegistry, RuntimeSkillSource } from './types';
+
+export function renderDynamicSkillCatalog(source: RuntimeSkillSource | undefined): string {
+	const dynamicIds = new Set(source?.dynamicCatalog?.skillIds);
+	const catalog = source
+		? renderSkillCatalogPrompt({
+				...source.registry,
+				skills: source.registry.skills.filter(
+					(skill) =>
+						dynamicIds.has(skill.id) || skill.parents?.some((parentId) => dynamicIds.has(parentId)),
+				),
+			})
+		: '';
+	return [
+		'This is the current dynamic skill catalogue from the runtime. It is not a new user request.',
+		'This snapshot replaces earlier dynamic skill catalogues, including those in memory. Only the dynamic skills listed here are available. Do not use earlier copies of removed skills. Skills listed in the system instructions remain available.',
+		source?.dynamicCatalog?.notice,
+		catalog ? `Available dynamic skills:\n${catalog}` : 'No dynamic skills are available.',
+	]
+		.filter(Boolean)
+		.join('\n\n');
+}
 
 export interface RenderSkillCatalogOptions {
 	includeProtocol?: boolean;

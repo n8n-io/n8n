@@ -84,13 +84,13 @@ const agentConfigFingerprint = z.object({
 		.optional()
 		.meta({ deprecated: true })
 		.describe('Deprecated: carried the raw agent instructions. No longer emitted.'),
-	tools: z.array(z.string()),
+	tools: z.array(z.string()).optional().meta({ deprecated: true }),
 	skills: z.array(z.string()),
 	tasks: z.array(z.string()),
 	triggers: z.array(z.string()),
-	vector_stores: z.array(z.string()),
+	vector_stores: z.array(z.string()).optional().meta({ deprecated: true }),
 	memory: z.object({ enabled: z.boolean(), storage: z.literal('n8n') }).nullable(),
-	model: z.string().nullable(),
+	model: z.string().nullable().optional().meta({ deprecated: true }),
 	config_version: z.string(),
 });
 
@@ -98,7 +98,7 @@ const agentConfigFingerprint = z.object({
 // workflow, custom tools carry custom_id, MCP servers carry server_name.
 const toolIdentity = {
 	node_type: z.string().optional(),
-	workflow: z.string().optional(),
+	workflow: z.string().optional().meta({ deprecated: true }),
 	custom_id: z.string().optional(),
 	server_name: z.string().optional(),
 };

@@ -27,6 +27,8 @@ export const FILES_INPUT_SCHEMA = z
 	);
 
 export interface AgentFileScope {
+	/** Keep the memory scope when the session is removed during a tool call. */
+	resourceId: string;
 	/** Null for inline agents, which have no `agents` row. */
 	agentId: string | null;
 	projectId: string;

@@ -102,6 +102,7 @@ export type SlotProjectHeaderMainButton =
 	| 'dataTable'
 	| 'variable'
 	| 'agent'
+	| 'app'
 	| 'selfHealing';
 
 export type SlotProjectHeaderProps = {

@@ -1,5 +1,6 @@
 import {
 	appSchema,
+	appVersionSchema,
 	type AppBinding,
 	type AppBindingWarning,
 	type AppBindingsResponse,
@@ -7,6 +8,7 @@ import {
 	type AppRuntimeBinding,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
@@ -15,6 +17,7 @@ import { AppAgentPort, AppDataTablePort, AppWorkflowPort } from './app-binding-p
 import { renderBindingTypes } from './app-binding-types';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
+import type { AppVersion } from '../versions/app-version.entity';
 import { AppVersionRepository } from '../versions/app-version.repository';
 import { AppChangeService } from '../versions/app-change.service';
 
@@ -41,6 +44,7 @@ export class AppBindingsService {
 		private readonly workflows: AppWorkflowPort,
 		private readonly agents: AppAgentPort,
 		private readonly logger: Logger,
+		private readonly events: EventService,
 	) {}
 
 	async getBindings(projectId: string, appId: string): Promise<AppBindingsResponse> {
@@ -70,7 +74,30 @@ export class AppBindingsService {
 		for (const binding of bindings) {
 			await this.assertCanBind(user, projectId, binding);
 		}
-		const version = await this.changes.saveBindings(projectId, appId, baseVersionId, bindings);
+		const { version, previousBindings } = await this.changes.saveBindings(
+			projectId,
+			appId,
+			baseVersionId,
+			bindings,
+			{
+				userId: user.id,
+			},
+		);
+		// Counts compare binding keys: a key that points to another resource is neither added nor removed.
+		const previousKeys = new Set(previousBindings.map(({ key }) => key));
+		const nextKeys = new Set(bindings.map(({ key }) => key));
+		const count = (kind: AppBinding['kind']) => bindings.filter((b) => b.kind === kind).length;
+		this.events.emit('app-bindings-changed', {
+			appId,
+			projectId,
+			versionId: version.id,
+			userId: user.id,
+			workflowCount: count('workflow'),
+			dataTableCount: count('dataTable'),
+			agentCount: count('agent'),
+			addedCount: [...nextKeys].filter((key) => !previousKeys.has(key)).length,
+			removedCount: [...previousKeys].filter((key) => !nextKeys.has(key)).length,
+		});
 		this.logger.debug('Saved app bindings as a new version.', {
 			projectId,
 			appId,
@@ -79,6 +106,40 @@ export class AppBindingsService {
 			count: bindings.length,
 		});
 		return await this.describe(app, version.id, version.bindings);
+	}
+
+	/**
+	 * Restores a version as a new version on top of `baseVersionId`. The restored
+	 * bindings follow the same check as `setBindings`.
+	 */
+	async restoreVersion(
+		user: User,
+		projectId: string,
+		appId: string,
+		versionId: string,
+		baseVersionId: string | null,
+	): Promise<AppVersion> {
+		const app = await this.requireApp(projectId, appId);
+		if (versionId.toLowerCase() === app.draftVersionId?.toLowerCase()) {
+			throw new ConflictError('The current app draft cannot be restored.');
+		}
+		const source = appVersionSchema.shape.id.safeParse(versionId).success
+			? await this.versions.findVersionById(versionId)
+			: null;
+		if (source?.appId !== appId) throw new NotFoundError('App version not found');
+		for (const binding of source.bindings) {
+			await this.assertCanBind(user, projectId, binding);
+		}
+		const version = await this.changes.startRestore(projectId, appId, versionId, baseVersionId, {
+			userId: user.id,
+		});
+		this.logger.debug('Restored an app version as a new version.', {
+			projectId,
+			appId,
+			sourceVersionId: versionId,
+			versionId: version.id,
+		});
+		return version;
 	}
 
 	async getTypes(projectId: string, appId: string): Promise<string> {
