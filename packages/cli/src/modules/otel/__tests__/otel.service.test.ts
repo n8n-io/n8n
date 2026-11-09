@@ -3,6 +3,11 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { OTLPTraceExporter as OTLPGrpcTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import type http from 'node:http';
+import type https from 'node:https';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -21,8 +26,10 @@ import type { Publisher } from '@n8n/backend-services';
 // The connectivity-check fetch, obtained via outboundHttp.transport().asCustomFetch().
 // checkEndpointReachability ignores the response and only catches network errors.
 const fetchMock = vi.fn();
+const getNodeAgentMock = vi.fn();
+type AgentFactory = (protocol: string) => Promise<unknown>;
 const outboundHttp = {
-	transport: () => ({ asCustomFetch: () => fetchMock }),
+	transport: () => ({ asCustomFetch: () => fetchMock, getNodeAgent: getNodeAgentMock }),
 } as unknown as OutboundHttp;
 
 const {
@@ -907,7 +914,50 @@ describe('OtelService', () => {
 				url: 'https://collector.example.com/v1/traces',
 				headers: { auth: 'token' },
 				timeoutMillis: 3_000,
+				httpAgentOptions: expect.any(Function),
 			});
+		});
+
+		it('exports through the outbound transport agents, so the proxy environment variables apply', async () => {
+			const agents = { httpAgent: mock<http.Agent>(), httpsAgent: mock<https.Agent>() };
+			getNodeAgentMock.mockReturnValue(agents);
+
+			await service.sendTestTrace(connection);
+
+			const agentFor = vi.mocked(OTLPTraceExporter).mock.calls[0][0]
+				?.httpAgentOptions as AgentFactory;
+			expect(await agentFor('http:')).toBe(agents.httpAgent);
+			expect(await agentFor('https:')).toBe(agents.httpsAgent);
+		});
+
+		it('gives the export agents the certificate files of the OTEL_EXPORTER_OTLP variables', async () => {
+			const dir = await mkdtemp(join(tmpdir(), 'otel-tls-'));
+			const file = async (name: string) => {
+				await writeFile(join(dir, name), name);
+				return join(dir, name);
+			};
+			vi.stubEnv('OTEL_EXPORTER_OTLP_CERTIFICATE', '/does/not/exist');
+			vi.stubEnv('OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE', await file('ca'));
+			vi.stubEnv('OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE', await file('cert'));
+			vi.stubEnv('OTEL_EXPORTER_OTLP_CLIENT_KEY', await file('key'));
+			getNodeAgentMock.mockReturnValue({ httpAgent: mock(), httpsAgent: mock() });
+
+			try {
+				await service.sendTestTrace(connection);
+				const agentFor = vi.mocked(OTLPTraceExporter).mock.calls[0][0]
+					?.httpAgentOptions as AgentFactory;
+				await agentFor('https:');
+
+				expect(getNodeAgentMock).toHaveBeenCalledWith({
+					keepAlive: true,
+					ca: Buffer.from('ca'),
+					cert: Buffer.from('cert'),
+					key: Buffer.from('key'),
+				});
+			} finally {
+				vi.unstubAllEnvs();
+				await rm(dir, { recursive: true });
+			}
 		});
 
 		it('emits a single n8n.test_trace span flagged as a test', async () => {

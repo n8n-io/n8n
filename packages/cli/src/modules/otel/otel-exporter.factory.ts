@@ -5,12 +5,19 @@ import { Service } from '@n8n/di';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import type { SpanExporter } from '@opentelemetry/sdk-trace-base';
 import { OperationalError } from '@n8n/errors';
+import { readFile } from 'node:fs/promises';
 
 import { parseOtlpHeaders, type OtelConnectionParams } from './otel-settings.service';
 
 export type ExportField = Exclude<keyof OtelConnectionParams, 'startupConnectivityTimeoutMs'>;
 
 export type ExportSettings = Pick<OtelConnectionParams, ExportField>;
+
+async function readOtlpTracesFile(name: string) {
+	const path =
+		process.env[`OTEL_EXPORTER_OTLP_TRACES_${name}`] ?? process.env[`OTEL_EXPORTER_OTLP_${name}`];
+	return path ? await readFile(path) : undefined;
+}
 
 @Service()
 export class OtelExporterFactory {
@@ -37,7 +44,31 @@ export class OtelExporterFactory {
 		const headers = this.parseHeaders(connection.exporterHeaders);
 		const url = this.resolveExporterUrl(connection);
 
-		return new OTLPTraceExporter({ url, headers, timeoutMillis });
+		return new OTLPTraceExporter({
+			url,
+			headers,
+			timeoutMillis,
+			httpAgentOptions: async (protocol) => await this.createExportAgent(protocol),
+		});
+	}
+
+	private async createExportAgent(protocol: string) {
+		const [ca, cert, key] = await Promise.all(
+			['CERTIFICATE', 'CLIENT_CERTIFICATE', 'CLIENT_KEY'].map(readOtlpTracesFile),
+		);
+		const { httpAgent, httpsAgent } = this.exportTransport().getNodeAgent({
+			keepAlive: true,
+			ca,
+			cert,
+			key,
+		});
+		return protocol === 'http:' ? httpAgent : httpsAgent;
+	}
+
+	private exportTransport() {
+		// SSRF is disabled: the OTLP endpoint is admin-configured observability
+		// infrastructure and is commonly an internal/localhost collector.
+		return this.outboundHttp.transport({ useDefaultSsrfPolicy: 'unsafe' });
 	}
 
 	private async createGrpcTraceExporter(
@@ -116,9 +147,7 @@ export class OtelExporterFactory {
 	}
 
 	private async probeHttpEndpoint(url: string, timeoutMs: number): Promise<void> {
-		// SSRF is disabled: the OTLP endpoint is admin-configured observability
-		// infrastructure and is commonly an internal/localhost collector.
-		await this.outboundHttp.transport({ useDefaultSsrfPolicy: 'unsafe' }).asCustomFetch()(url, {
+		await this.exportTransport().asCustomFetch()(url, {
 			method: 'HEAD',
 			signal: AbortSignal.timeout(timeoutMs),
 		});
