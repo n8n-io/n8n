@@ -235,18 +235,7 @@ try {
 		}
 	};
 
-	for (let attempt = 1; attempt <= 2; attempt++) {
-		try {
-			await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n ${deployFlags} deploy --no-optional ./compiled`;
-			break;
-		} catch (error) {
-			if (attempt === 2) throw error;
-
-			echo(chalk.yellow('WARN: Production deployment failed. Retrying once...'));
-			await fs.remove(config.compiledAppDir);
-			await new Promise((resolve) => setTimeout(resolve, 2000));
-		}
-	}
+	await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n ${deployFlags} deploy --no-optional ./compiled`;
 	await verifyNoPnpmIntermediateLinks(config.compiledAppDir);
 	await removePnpmDeployFiles(config.compiledAppDir);
 
