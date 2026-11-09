@@ -179,14 +179,14 @@ describe('RunDebugBuffer', () => {
 				toolCalls: [
 					{
 						toolCallId: 'tc-1',
-						toolName: 'build-workflow',
+						toolName: 'workflow_builder_build_workflow',
 						input: { code: 'full workflow code payload' },
 					},
 				],
 				toolResults: [
 					{
 						toolCallId: 'tc-1',
-						toolName: 'build-workflow',
+						toolName: 'workflow_builder_build_workflow',
 						output: { success: true, workflowId: 'wf-1' },
 					},
 				],
@@ -205,14 +205,14 @@ describe('RunDebugBuffer', () => {
 		expect(sanitized.toolCalls).toEqual([
 			{
 				toolCallId: 'tc-1',
-				toolName: 'build-workflow',
+				toolName: 'workflow_builder_build_workflow',
 				input: { code: 'full workflow code payload' },
 			},
 		]);
 		expect(sanitized.toolResults).toEqual([
 			{
 				toolCallId: 'tc-1',
-				toolName: 'build-workflow',
+				toolName: 'workflow_builder_build_workflow',
 				output: { success: true, workflowId: 'wf-1' },
 			},
 		]);
@@ -277,6 +277,8 @@ describe('buildRunDebugLabel', () => {
 
 	it('maps resume reasons to action labels', () => {
 		expect(buildRunDebugLabel({ resumeReason: 'approval' })).toBe('Resume · approval');
-		expect(buildRunDebugLabel({ resumeReason: 'replan' })).toBe('Follow-up · replan');
+		expect(buildRunDebugLabel({ resumeReason: 'workflow_setup' })).toBe(
+			'Follow-up · workflow setup',
+		);
 	});
 });

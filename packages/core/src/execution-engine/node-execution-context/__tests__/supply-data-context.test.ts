@@ -710,6 +710,7 @@ describe('SupplyDataContext', () => {
 			testAdditionalData.currentNodeUsedDynamicCredentials = false;
 			testAdditionalData.currentNodeAttemptedDynamicCredentials = false;
 			testAdditionalData.dynamicCredentialsResolvedUserId = undefined;
+			testAdditionalData.currentNodeUsedCredentialIds = undefined;
 
 			const testRunExecutionData = createRunExecutionData({
 				resultData: {
@@ -834,6 +835,45 @@ describe('SupplyDataContext', () => {
 			expect(taskData.usedDynamicCredentials).toBeUndefined();
 			expect(taskData.attemptedDynamicCredentials).toBeUndefined();
 			expect(testRunExecutionData.executionData?.runtimeData?.executedByUserId).toBeUndefined();
+		});
+
+		it('stamps the credential ids a sub-workflow reported during this run', async () => {
+			const { testAdditionalData, testRunExecutionData, testContext } = buildStampingContext();
+			testAdditionalData.currentNodeUsedCredentialIds = ['sibling-cred'];
+
+			const { index } = testContext.addInputData(NodeConnectionTypes.AiTool, [
+				[{ json: { query: 'test' } }],
+			]);
+			testAdditionalData.currentNodeUsedCredentialIds = ['sibling-cred', 'child-cred'];
+			await testContext.addExecutionDataFunctions(
+				'output',
+				[[{ json: { result: 'success' } }]],
+				NodeConnectionTypes.AiTool,
+				node.name,
+				index,
+			);
+
+			const taskData = testRunExecutionData.resultData.runData[node.name][index];
+			expect(taskData.usedCredentialIds).toEqual(['child-cred']);
+		});
+
+		it('does not stamp credential ids that were already reported before this run started', async () => {
+			const { testAdditionalData, testRunExecutionData, testContext } = buildStampingContext();
+			testAdditionalData.currentNodeUsedCredentialIds = ['sibling-cred'];
+
+			const { index } = testContext.addInputData(NodeConnectionTypes.AiTool, [
+				[{ json: { query: 'test' } }],
+			]);
+			await testContext.addExecutionDataFunctions(
+				'output',
+				[[{ json: { result: 'success' } }]],
+				NodeConnectionTypes.AiTool,
+				node.name,
+				index,
+			);
+
+			const taskData = testRunExecutionData.resultData.runData[node.name][index];
+			expect(taskData.usedCredentialIds).toBeUndefined();
 		});
 	});
 

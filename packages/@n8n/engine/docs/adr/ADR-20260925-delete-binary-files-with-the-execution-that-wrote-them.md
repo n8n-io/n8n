@@ -14,10 +14,12 @@ and `FileLocation.ofExecution()` in `n8n-core` builds it. In the `filesystem` mo
 default) every file produced during a run is stored under one directory named after that pair.
 
 In engine v1, the execution row in the CP database is the reference for deletion. The pruning
-service soft-deletes old rows. Later, `ExecutionPersistence.hardDelete()` deletes the rows and calls
-`BinaryDataService.deleteMany()` with the execution locations. The blob manager deletes the
-directory of each location by prefix. Only the filesystem byte store implements prefix deletion. For
-`s3` and `azure` the call deletes nothing, and bucket lifecycle rules are the only deletion path.
+service soft-deletes old rows. Later, `ExecutionPersistence.hardDelete()` calls
+`BinaryDataService.deleteMany()` with the execution locations, then deletes the payload
+and the rows. The blob manager deletes the directory of each location by prefix. Only the
+filesystem byte store implements prefix deletion. In `azure` mode the call still deletes the
+filesystem directory of the execution. In `s3` mode it does not. Neither mode deletes objects
+in the bucket. Bucket lifecycle rules delete those objects.
 
 In engine v2, the DP stores the execution and its steps in its own database and they are not tracked
 in the CP database. The node-engine-compatibility layer runs a v1 node with the v2 execution id &
@@ -44,8 +46,9 @@ The four binary data modes differ.
    out of scope here.
 2.  `filesystem` needs the writer and the deleter to see the same disk. CAT-4721 already states this
    for the reader.
-3.  `s3` and `azure` need the same bucket and credentials on both sides to read a file. Deletion is
-   not affected today, because the call deletes nothing in these modes.
+3.  `s3` and `azure` need the same bucket and credentials on both sides to read a file. The call
+   deletes no objects in the bucket. In `azure` mode it deletes the filesystem directory of the
+   execution. A missing directory is not an error. In `s3` mode it leaves that directory in place.
 4.  `database` stores the bytes in the CP database, so a deleter outside the CP process needs CP
    database access.
 
@@ -80,11 +83,12 @@ The four binary data modes differ.
    callback has returned for it. When the callback throws, the job logs the error, keeps the rows,
    and retries that execution on its next run. A repeat call is safe: prefix deletion in the
    filesystem byte store removes the directory with `force`, so a missing directory is not an error.
-   This is stricter than v1, which logs a failed hard delete and does not retry the files, because
-   v2 has no CP row to retry from.
+   A failed delete keeps the execution row, and the next prune retries that execution. v1 does the
+   same: `hardDelete()` deletes the row only after the binary delete succeeds.
 6.  **Per mode.** `filesystem` runs the same call as v1 and deletes the directory of the run. `s3`
-   and `azure` run the same call, but it deletes nothing today, so those modes depend on bucket
-   lifecycle rules as in v1. `database` deletes the rows of the run through the database manager.
+   and `azure` delete no objects in the bucket, so those objects depend on bucket lifecycle rules.
+   `azure` also deletes the filesystem directory of the run. `s3` does not. `database` deletes the
+   rows of the run through the database manager.
    The `database` mode is supported in integrated mode only. An out-of-process DP in `database` mode
    waits for the decision on binary data access from an out-of-process DP.
 7.  **Files written before this is implemented** stay in the store until an operator deletes them.

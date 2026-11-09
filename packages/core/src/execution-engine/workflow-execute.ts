@@ -61,6 +61,9 @@ import {
 	ManualExecutionCancelledError,
 	createRunExecutionData,
 	applyDynamicCredentialsUsage,
+	hasExecutionRunNodes,
+	isExecutionOutputRedacted,
+	redactErrorReport,
 } from 'n8n-workflow';
 import PCancelable, { type OnCancelFunction } from 'p-cancelable';
 
@@ -120,6 +123,30 @@ export class WorkflowExecute {
 
 	private readonly abortController = new AbortController();
 	timedOut: boolean = false;
+
+	private suspensionRequested = false;
+
+	/**
+	 * Ask the engine to stop at the next node boundary and park the execution as
+	 * 'waiting', so another process can resume it from the persisted state. The
+	 * node currently executing runs to completion. Safe to call at any time;
+	 * no-ops if the run finishes, waits, or is canceled first.
+	 */
+	suspend(): void {
+		if (this.status !== 'running') return;
+		this.suspensionRequested = true;
+	}
+
+	/**
+	 * A cancel or error can land after a suspension already stamped the run
+	 * data; clear the markers so the persisted state is not treated as
+	 * resumable. A genuine Wait-node waitTill is never cleared here.
+	 */
+	private clearSuspensionMarkers(): void {
+		if (!this.suspensionRequested) return;
+		this.runExecutionData.waitTill = undefined;
+		this.runExecutionData.waitReason = undefined;
+	}
 
 	constructor(
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
@@ -1121,7 +1148,10 @@ export class WorkflowExecute {
 		let closingError: Error | undefined;
 
 		try {
-			if (customOperation) {
+			const evalMockOutput = await additionalData.evalNodeMockHandler?.(context);
+			if (evalMockOutput) {
+				data = evalMockOutput;
+			} else if (customOperation) {
 				data = await customOperation.call(context);
 			} else if (nodeType.execute) {
 				data = isNodeClassInstance(nodeType)
@@ -1508,6 +1538,13 @@ export class WorkflowExecute {
 				this.mode,
 			);
 
+			if (this.runExecutionData.waitReason === 'suspended') {
+				// The engine was suspended at a node boundary, so the stack head has
+				// not executed yet: run it normally instead of passing it through.
+				this.runExecutionData.waitReason = undefined;
+				return;
+			}
+
 			const executionStackEntry = this.runExecutionData.executionData.nodeExecutionStack[0];
 			// Error reporting itself does not depend on this: `runNode` checks
 			// `metadata.resumeError` before `node.disabled`, so the entry carrying the
@@ -1547,8 +1584,17 @@ export class WorkflowExecute {
 			pinDataNodeNames,
 		});
 		if (workflowIssues !== null) {
+			this.markFailedBeforeStart();
 			throw new WorkflowHasIssuesError(workflowIssues, workflow.nodes);
 		}
+	}
+
+	private markFailedBeforeStart(): boolean {
+		const { resultData } = this.runExecutionData;
+		const isResume = this.additionalData.restartExecutionId !== undefined;
+		if (hasExecutionRunNodes(resultData.runData, isResume)) return false;
+		resultData.failedBeforeStart = true;
+		return true;
 	}
 
 	private setupExecution(): {
@@ -1630,6 +1676,7 @@ export class WorkflowExecute {
 		onCancel.shouldReject = false;
 		onCancel(() => {
 			this.status = 'canceled';
+			this.clearSuspensionMarkers();
 			this.updateTaskStatusesToCancelled();
 			this.abortController.abort();
 			const fullRunData = this.getFullRunData(startedAt);
@@ -1646,6 +1693,9 @@ export class WorkflowExecute {
 		workflow: Workflow,
 		hooks: ExecutionLifecycleHooks,
 	): Promise<void> {
+		// A retry copies the original's data, flag included; this run decides it afresh.
+		delete this.runExecutionData.resultData.failedBeforeStart;
+
 		try {
 			await workflow.expression.acquireIsolate();
 
@@ -1664,6 +1714,9 @@ export class WorkflowExecute {
 			}
 		} catch (error) {
 			const e = error as unknown as ExecutionBaseError;
+
+			// Read before the start-node task below fills `runData`.
+			const failedBeforeStart = this.markFailedBeforeStart();
 
 			// Set the error that it can be saved correctly
 			const executionError: ExecutionBaseError = {
@@ -1695,6 +1748,7 @@ export class WorkflowExecute {
 					},
 					lastNodeExecuted: startItem.node.name,
 					error: executionError,
+					...(failedBeforeStart && { failedBeforeStart: true }),
 				};
 			} else {
 				this.runExecutionData.resultData.error = executionError;
@@ -1712,10 +1766,13 @@ export class WorkflowExecute {
 	 * so `executeWorkflow` never reports again). Restore it so the new task and
 	 * `runtimeData.executedByUserId` still inherit the flags. The stash is
 	 * transport-only, so consume it to keep it out of the persisted task metadata.
+	 * It also resets and restores the plain credential ids sub-workflows report
+	 * (`currentNodeUsedCredentialIds`), which credential usability redaction reads.
 	 */
 	private resetDynamicCredentialsUsage(executionData: IExecuteData): void {
 		this.additionalData.currentNodeUsedDynamicCredentials = false;
 		this.additionalData.currentNodeAttemptedDynamicCredentials = false;
+		this.additionalData.currentNodeUsedCredentialIds = undefined;
 
 		const reportedUsage = executionData.metadata?.dynamicCredentialsUsage;
 		if (reportedUsage) {
@@ -1815,6 +1872,19 @@ export class WorkflowExecute {
 		];
 	}
 
+	/**
+	 * Wait before the next retry of a node, unless cancelled.
+	 * Returns whether the retry may run, so the caller stops retrying after a cancel.
+	 */
+	private async waitForRetry(waitBetweenTries: number): Promise<boolean> {
+		if (this.isCancelled) return false;
+
+		// TODO(legacy): Improve that in the future and check if other nodes can be executed in the meantime
+		await sleep(waitBetweenTries, this.abortController.signal).catch(() => {});
+
+		return !this.isCancelled;
+	}
+
 	/** The pinned output of a node, or undefined if the node has none. */
 	private getPinnedOutput(node: INode): INodeExecutionData[][] | undefined {
 		const { pinData } = this.runExecutionData.resultData;
@@ -1877,6 +1947,10 @@ export class WorkflowExecute {
 		}
 
 		if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
+			// Pair output items before the split. After the split there are two output
+			// arrays and `assignPairedItems` can no longer match items by count, so
+			// items the node did not pair itself would lose their lineage.
+			this.assignPairedItems(nodeSuccessData, executionData);
 			this.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, runIndex);
 		}
 
@@ -1890,17 +1964,28 @@ export class WorkflowExecute {
 	 * The error to send to the error reporter, or undefined if this error must not be
 	 * reported. Errors of our own classes report their cause. Other errors report only
 	 * their class and call frames, because their message can hold user data.
+	 *
+	 * When the run's redaction policy covers the channel it executes on, every report
+	 * goes through `redactErrorReport`: it keeps only the class and call frames, and an
+	 * error Sentry's `beforeSend` would drop is dropped here. A wrapped cause runs
+	 * through the same checks, so a cause that would be skipped raw is skipped redacted.
 	 */
-	private buildErrorReport(error: unknown): Error | undefined {
+	private buildErrorReport(error: unknown, workflow: Workflow): Error | undefined {
+		const redacted = isExecutionOutputRedacted(this.runExecutionData, workflow.settings, this.mode);
+		return this.selectErrorReport(error, redacted);
+	}
+
+	private selectErrorReport(error: unknown, redacted: boolean): Error | undefined {
 		if (error instanceof ApplicationError) {
 			// Report any unhandled errors that were wrapped in by one of our error classes
-			return error.cause instanceof Error ? error.cause : undefined;
+			if (!(error.cause instanceof Error)) return undefined;
+			return redacted ? this.selectErrorReport(error.cause, true) : error.cause;
 		}
 
 		if (error instanceof BaseError) {
 			// BaseError subclasses specify shouldReport and level
 			// so always report and let beforeSend decide
-			return error;
+			return redacted ? redactErrorReport(error) : error;
 		}
 
 		if (!(error instanceof Error) || isAxiosError(error)) {
@@ -1911,14 +1996,7 @@ export class WorkflowExecute {
 
 		// Non-BaseError errors only report their class and call frames
 		// The full error is still stored in the execution resultData
-		// Stack frames are in the format `<name>: <message>\n<call frames>`
-		// they can span multiple lines, so we drop everything except call frame lines
-		const errorClass = error.name || 'Error';
-		const sanitized = new Error(errorClass);
-		sanitized.name = errorClass;
-		const frames = (error.stack ?? '').split('\n').filter((line) => /^\s+at\s/.test(line));
-		sanitized.stack = [errorClass, ...frames].join('\n');
-		return sanitized;
+		return redactErrorReport(error);
 	}
 
 	/**
@@ -1932,7 +2010,7 @@ export class WorkflowExecute {
 	): ExecutionBaseError {
 		this.runExecutionData.resultData.lastNodeExecuted = executionNode.name;
 
-		const toReport = this.buildErrorReport(error);
+		const toReport = this.buildErrorReport(error, workflow);
 		if (toReport) {
 			const { executionId, instanceBaseUrl } = this.additionalData;
 			Container.get(ErrorReporter).error(toReport, {
@@ -1999,6 +2077,9 @@ export class WorkflowExecute {
 			usedDynamicCredentials: this.additionalData.currentNodeUsedDynamicCredentials || undefined,
 			attemptedDynamicCredentials:
 				this.additionalData.currentNodeAttemptedDynamicCredentials || undefined,
+			...(this.additionalData.currentNodeUsedCredentialIds?.length && {
+				usedCredentialIds: [...this.additionalData.currentNodeUsedCredentialIds],
+			}),
 		};
 	}
 
@@ -2226,7 +2307,12 @@ export class WorkflowExecute {
 	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
 		Logger.debug('Workflow execution started', { workflowId: workflow.id });
 		const { startedAt, hooks } = this.setupExecution();
-		this.checkForWorkflowIssues(workflow);
+		assertExecutionDataExists(
+			this.runExecutionData.executionData,
+			workflow,
+			this.additionalData,
+			this.mode,
+		);
 		this.handleWaitingState(workflow);
 
 		// Variables which hold temporary data for each node-execution
@@ -2245,9 +2331,20 @@ export class WorkflowExecute {
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				await this.initializeExecution(workflow, hooks);
+				this.checkForWorkflowIssues(workflow);
 
 				executionLoop: while (this.isExecutionStackNotEmpty()) {
 					if (this.shouldStopExecuting()) {
+						return;
+					}
+
+					// Suspension exits before popping, so the stack head is the next
+					// not-yet-executed node and the persisted state resumes by running it.
+					// The cancel check above must win over suspension.
+					if (this.suspensionRequested) {
+						this.runExecutionData.waitTill = new Date();
+						this.runExecutionData.waitReason = 'suspended';
+						this.additionalData.setExecutionStatus?.('waiting');
 						return;
 					}
 
@@ -2304,18 +2401,11 @@ export class WorkflowExecute {
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 						try {
 							if (tryIndex !== 0) {
+								// Keep the error of the previous try if the execution was cancelled
+								if (!(await this.waitForRetry(waitBetweenTries))) break;
+
 								// Reset executionError from previous error try
 								executionError = undefined;
-								if (waitBetweenTries !== 0) {
-									// TODO: Improve that in the future and check if other nodes can
-									//       be executed in the meantime
-
-									await new Promise((resolve) => {
-										setTimeout(() => {
-											resolve(undefined);
-										}, waitBetweenTries);
-									});
-								}
 							}
 
 							const pinnedOutput = this.getPinnedOutput(executionNode);
@@ -2344,7 +2434,7 @@ export class WorkflowExecute {
 								let nodeFailed = checkFailure(runNodeData);
 
 								while (nodeFailed && tryIndex !== maxTries - 1) {
-									await sleep(waitBetweenTries);
+									if (!(await this.waitForRetry(waitBetweenTries))) break;
 
 									runNodeData = await this.runNode(
 										workflow,
@@ -2888,6 +2978,7 @@ export class WorkflowExecute {
 	): Promise<IRun> {
 		// Set status before creating fullRunData
 		if (executionError !== undefined) {
+			this.clearSuspensionMarkers();
 			Logger.debug('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
@@ -3044,19 +3135,27 @@ export class WorkflowExecute {
 
 						const sourceData = executionData.source[NodeConnectionTypes.Main][pairedItemInputIndex];
 
-						const constPairedItem = dataProxy.$getPairedItem(
-							sourceData!.previousNode,
-							sourceData,
-							pairedItemData,
-						);
+						let pairedInputItem: INodeExecutionData | null = null;
+						try {
+							pairedInputItem = dataProxy.$getPairedItem(
+								sourceData!.previousNode,
+								sourceData,
+								pairedItemData,
+							);
+						} catch (error) {
+							Logger.debug('Could not resolve the input item of an error item', {
+								node: executionData.node.name,
+								error: error instanceof Error ? error.message : String(error),
+							});
+						}
 
-						if (constPairedItem === null) {
+						if (!pairedInputItem) {
 							errorItems.push(item);
 						} else {
 							errorItems.push({
 								...item,
 								json: {
-									...constPairedItem.json,
+									...pairedInputItem.json,
 									...item.json,
 								},
 							});
@@ -3097,6 +3196,10 @@ export class WorkflowExecute {
 		executionData: IExecuteData,
 	) {
 		if (nodeSuccessData?.length) {
+			// Some nodes (e.g. Execute Sub-workflow < v1.3 with "Continue" on error)
+			// return sparse output arrays. Fill the empty slots so later steps can iterate them.
+			nodeSuccessData = Array.from(nodeSuccessData, (output) => output ?? []);
+
 			// Check if the output data contains pairedItem data and if not try
 			// to automatically fix it
 
@@ -3116,9 +3219,6 @@ export class WorkflowExecute {
 				(executionData.data.main[0]?.length ?? 0) > 1;
 
 			checkOutputData: for (const outputData of nodeSuccessData) {
-				if (outputData === null) {
-					continue;
-				}
 				for (const [index, item] of outputData.entries()) {
 					if (item.pairedItem === undefined) {
 						// The pairedItem data is missing, so check if it can get automatically fixed

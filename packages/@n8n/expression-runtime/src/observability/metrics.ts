@@ -72,6 +72,12 @@ export const EXPRESSION_METRICS = {
 		labels: [],
 		help: 'Expression pool scaled to zero after inactivity.',
 	},
+	nativeEvaluations: {
+		name: 'expression.native.evaluations',
+		kind: 'counter',
+		labels: ['result', 'reason'],
+		help: 'Expressions tried by native evaluation, by result (handled, declined, fallback) and fallback reason.',
+	},
 } as const satisfies Record<string, MetricDef>;
 
 export type ExpressionMetricKey = keyof typeof EXPRESSION_METRICS;

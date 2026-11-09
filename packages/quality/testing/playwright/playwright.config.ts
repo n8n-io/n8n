@@ -1,13 +1,10 @@
 /* eslint-disable import-x/no-default-export */
-import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
-import { currentsReporter } from '@currents/playwright';
-import { defineConfig } from '@playwright/test';
 import type { PlaywrightTestConfig } from '@playwright/test';
 import os from 'os';
 import path from 'path';
 
-import currentsConfig from './currents.config';
 import { getProjects } from './playwright-projects';
+import { defineQualityConfig, qualityReporters } from './quality-config';
 import { getBackendUrl, getFrontendUrl, getPortFromUrl, getReadinessUrl } from './utils/url-helper';
 
 const IS_CI = !!process.env.CI;
@@ -85,6 +82,8 @@ if (BACKEND_URL && !SKIP_WEB_SERVER) {
 		env: {
 			DB_SQLITE_POOL_SIZE: '40',
 			E2E_TESTS: 'true',
+			// E2E mode reports the Enterprise plan, where the n8n Assistant is off by default.
+			N8N_INSTANCE_AI_ENABLED: 'true',
 			N8N_PORT: getPortFromUrl(BACKEND_URL),
 			N8N_USER_FOLDER: USER_FOLDER,
 			N8N_LOG_LEVEL: 'debug',
@@ -115,7 +114,7 @@ if (IS_DEV && FRONTEND_URL) {
 	});
 }
 
-export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
+export default defineQualityConfig({
 	globalSetup: './global-setup.ts',
 	globalTeardown: IS_DEV ? './global-teardown.ts' : undefined,
 	forbidOnly: IS_CI,
@@ -143,28 +142,9 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 		currentsFixturesEnabled: !!process.env.CI,
 	},
 
-	reporter: IS_CI
-		? [
-				['list'],
-				['junit', { outputFile: process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? 'results.xml' }],
-				['html', { open: 'never' }],
-				['json', { outputFile: 'test-results.json' }],
-				...(process.env.CURRENTS_RECORD_KEY ? [currentsReporter(currentsConfig)] : []),
-				['./reporters/metrics-reporter.ts'],
-				['./reporters/benchmark-summary-reporter.ts'],
-				...(process.env.PLAYWRIGHT_A11Y_REPORT
-					? ([['./reporters/a11y-reporter.ts']] as const)
-					: []),
-				...(process.env.LANGSMITH_API_KEY ? ([['./reporters/langsmith-eval.ts']] as const) : []),
-			]
-		: [
-				['html'],
-				['./reporters/metrics-reporter.ts'],
-				['./reporters/benchmark-summary-reporter.ts'],
-				...(process.env.PLAYWRIGHT_A11Y_REPORT
-					? ([['./reporters/a11y-reporter.ts']] as const)
-					: []),
-				['list'],
-				...(process.env.LANGSMITH_API_KEY ? ([['./reporters/langsmith-eval.ts']] as const) : []),
-			],
+	reporter: [
+		...qualityReporters(),
+		...(process.env.PLAYWRIGHT_A11Y_REPORT ? ([['./reporters/a11y-reporter.ts']] as const) : []),
+		...(process.env.LANGSMITH_API_KEY ? ([['./reporters/langsmith-eval.ts']] as const) : []),
+	],
 });

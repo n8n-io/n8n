@@ -6,10 +6,10 @@ import {
 	ITEM_SIMPLIFY_EXPAND,
 	ITEM_SIMPLIFY_SELECT,
 	simplifyItem,
-} from '../../helpers/utils';
+} from '../../../helpers/utils';
 import { itemRLC, untilListSelected } from '../../item';
-import { listRLC, untilSiteSelected } from '../../list';
-import { resolveSiteId, siteRLC } from '../../site';
+import { listRLC, untilSiteSelected } from '../../../list';
+import { resolveSiteId, siteRLC } from '../../../site';
 import { microsoftApiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [

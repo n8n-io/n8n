@@ -1,8 +1,24 @@
 import { mount } from '@vue/test-utils';
 import { WAIT_TOOL_NAME } from '@n8n/api-types';
-import { describe, expect, it } from 'vitest';
+import { computed, defineComponent, h } from 'vue';
+import { describe, expect, it, vi } from 'vitest';
 
+import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
+import { AGENTS_CHAT_INTERACTION_EXTENSIONS } from '@/features/ai/shared/agentsChat/interactionRegistry';
+import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
+import {
+	TEST_EXTENSION_KEY,
+	testInteractionExtensions,
+} from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 import InteractiveCard from '../components/interactive/InteractiveCard.vue';
+
+const extensionPayload: InteractivePayload = {
+	toolName: INTERACTION_EXTENSION_TOOL_NAME,
+	extensionKey: TEST_EXTENSION_KEY,
+	toolCallId: 'tc-ext',
+	runId: 'run-ext',
+	input: { question: 'Continue?', tool: 'ask_host' },
+};
 
 describe('InteractiveCard', () => {
 	// A workflow tool parked on a Wait node reuses the chat card renderer, and its
@@ -37,6 +53,85 @@ describe('InteractiveCard', () => {
 
 		await buttons[1].trigger('click');
 
-		expect(wrapper.emitted('submit')).toEqual([[{ type: 'button', value: 'cancel' }]]);
+		expect(wrapper.emitted('submit')).toEqual([[{ type: 'button', value: 'cancel' }, undefined]]);
+	});
+
+	it('renders a host extension card and emits its resume data', async () => {
+		const wrapper = mount(InteractiveCard, {
+			props: { payload: extensionPayload },
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => testInteractionExtensions),
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-testid="test-card"]').text()).toContain('Continue?');
+
+		await wrapper.find('[data-testid="test-card-answer"]').trigger('click');
+
+		expect(wrapper.emitted('submit')).toEqual([[{ answer: 'yes' }, undefined]]);
+	});
+
+	it('passes the callback for an accepted answer from the card to the chat', async () => {
+		const onAccepted = vi.fn();
+		const AcceptingCard = defineComponent({
+			emits: ['submit'],
+			setup(_props, { emit }) {
+				return () =>
+					h('button', {
+						'data-testid': 'accepting-card',
+						onClick: () => emit('submit', { answer: 'yes' }, onAccepted),
+					});
+			},
+		});
+		const wrapper = mount(InteractiveCard, {
+			props: { payload: extensionPayload },
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => [
+						{ key: TEST_EXTENSION_KEY, parse: () => undefined, component: AcceptingCard },
+					]),
+				},
+			},
+		});
+
+		await wrapper.find('[data-testid="accepting-card"]').trigger('click');
+
+		expect(wrapper.emitted('submit')).toEqual([[{ answer: 'yes' }, onAccepted]]);
+	});
+
+	it('disables a host extension card that has no run to resume', () => {
+		const wrapper = mount(InteractiveCard, {
+			props: { payload: { ...extensionPayload, runId: undefined } },
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => testInteractionExtensions),
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-testid="test-card-answer"]').attributes('disabled')).toBeDefined();
+	});
+
+	it('renders nothing for an extension without a card component', () => {
+		const wrapper = mount(InteractiveCard, {
+			props: { payload: extensionPayload },
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => [{ key: TEST_EXTENSION_KEY }]),
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-testid="test-card"]').exists()).toBe(false);
+		expect(wrapper.text()).toBe('');
+	});
+
+	it('renders nothing for an extension card that the chat does not provide', () => {
+		const wrapper = mount(InteractiveCard, { props: { payload: extensionPayload } });
+
+		expect(wrapper.find('[data-testid="test-card"]').exists()).toBe(false);
+		expect(wrapper.text()).toBe('');
 	});
 });

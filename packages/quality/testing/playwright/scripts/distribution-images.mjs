@@ -11,6 +11,7 @@ const CAPABILITY_SERVICES = {
 	oidc: ['keycloak'],
 	proxy: ['proxy'],
 	'source-control': ['gitea'],
+	'trusted-sources': ['keycloak'],
 };
 
 const SERVICE_IMAGES = {
@@ -34,6 +35,7 @@ const SERVICE_IMAGES = {
 	sandbox: ['sandboxApi', 'sandboxRunner', 'sandboxSandbox'],
 	taskRunner: ['taskRunner'],
 	tracing: ['jaeger', 'n8nTracer'],
+	vault: ['vault'],
 	vector: ['vector'],
 	victoriaLogs: ['victoriaLogs'],
 	victoriaMetrics: ['victoriaMetrics'],

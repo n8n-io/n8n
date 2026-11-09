@@ -1,3 +1,4 @@
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import {
 	WEBHOOK_NODE_TYPE,
@@ -5,6 +6,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	NodeHelpers,
+	type ICredentialDataDecryptedObject,
 	type INode,
 	type INodeType,
 	type INodeTypes,
@@ -28,8 +30,9 @@ export type WebhookEndpoints = {
 type WebhookCredentialRequirement =
 	| { type: 'none' }
 	| { type: 'basic' }
-	| { type: 'header'; headerName: string }
-	| { type: 'jwt'; variant: 'secret' | 'pem-key' };
+	// headerName and variant are unset when the credential cannot be read.
+	| { type: 'header'; headerName?: string }
+	| { type: 'jwt'; variant?: 'secret' | 'pem-key' };
 
 type WebhookNodeDetails = {
 	nodeName: string;
@@ -73,6 +76,7 @@ export const getTriggerDetails = async (
 	unsupportedTriggers: INode[],
 	baseUrl: string,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
 	workflowId: string,
@@ -111,6 +115,7 @@ export const getTriggerDetails = async (
 			triggersByType[WEBHOOK_NODE_TYPE],
 			baseUrl,
 			credentialsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -190,6 +195,7 @@ export const getWebhookDetails = async (
 	webhookNodes: INode[],
 	baseUrl: string,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
 	workflowId: string,
@@ -203,6 +209,7 @@ export const getWebhookDetails = async (
 					node,
 					baseUrl,
 					credentialsService,
+					credentialsFinderService,
 					nodeTypes,
 					endpoints,
 					workflowId,
@@ -219,6 +226,7 @@ const collectWebhookNodeDetails = async (
 	node: INode,
 	baseUrl: string,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
 	workflowId: string,
@@ -250,7 +258,12 @@ const collectWebhookNodeDetails = async (
 		),
 		httpMethod,
 		responseModeDescription: getResponseModeDescription(node),
-		credentials: await resolveCredentialRequirement(user, node, credentialsService),
+		credentials: await resolveCredentialRequirement(
+			user,
+			node,
+			credentialsService,
+			credentialsFinderService,
+		),
 	};
 };
 
@@ -278,8 +291,14 @@ const formatCredentialRequirement = (requirement: WebhookCredentialRequirement):
 		case 'basic':
 			return '\t - Credentials: \n\t - This webhook requires basic authentication with a username and password that should be provided by the user.';
 		case 'header':
+			if (!requirement.headerName) {
+				return '\t - Credentials: \n\t - This webhook requires header authentication. The header name and value should be provided by the user.';
+			}
 			return `\t - Credentials: \n\t - This webhook requires a header with name "${requirement.headerName}" and a value that should be provided by the user.`;
 		case 'jwt':
+			if (!requirement.variant) {
+				return '\t - Credentials: \n\t - This webhook requires JWT authentication. The JWT credentials should be provided by the user.';
+			}
 			if (requirement.variant === 'secret') {
 				return '\t - Credentials: \n\t - This webhook requires a JWT secret that should be provided by the user.';
 			}
@@ -293,6 +312,7 @@ const resolveCredentialRequirement = async (
 	user: User,
 	node: INode,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 ): Promise<WebhookCredentialRequirement> => {
 	const authType =
 		typeof node.parameters?.authentication === 'string'
@@ -302,57 +322,80 @@ const resolveCredentialRequirement = async (
 	switch (authType) {
 		case 'basicAuth':
 			return { type: 'basic' };
+		// Keep the auth requirement when the credential cannot be read, so the
+		// webhook is not reported as open.
 		case 'headerAuth': {
-			const headerName = await getHeaderAuthName(user, node, credentialsService);
-			if (headerName) {
-				return { type: 'header', headerName };
-			}
-			break;
+			const headerName = await getHeaderAuthName(
+				user,
+				node,
+				credentialsService,
+				credentialsFinderService,
+			);
+			return headerName ? { type: 'header', headerName } : { type: 'header' };
 		}
 		case 'jwtAuth': {
-			const variant = await getJWTAuthVariant(user, node, credentialsService);
-			if (variant) {
-				return { type: 'jwt', variant };
-			}
-			break;
+			const variant = await getJWTAuthVariant(
+				user,
+				node,
+				credentialsService,
+				credentialsFinderService,
+			);
+			return variant ? { type: 'jwt', variant } : { type: 'jwt' };
 		}
 	}
 
 	return { type: 'none' };
 };
 
+const readCredentialDataForEditor = async (
+	user: User,
+	credentialId: string | null | undefined,
+	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
+): Promise<{ data: ICredentialDataDecryptedObject } | null> => {
+	if (!credentialId) return null;
+
+	try {
+		const credential = await credentialsFinderService.findCredentialForUser(credentialId, user, [
+			'credential:read',
+			'credential:update',
+		]);
+		if (!credential) return null;
+		return { data: await credentialsService.decrypt(credential) };
+	} catch {
+		return null;
+	}
+};
+
 const getHeaderAuthName = async (
 	user: User,
 	node: INode,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 ): Promise<string | null> => {
-	const id = node.credentials?.httpHeaderAuth?.id;
-	if (!id) return null;
-
-	const creds = await credentialsService.getOne(user, id, true);
-	if (hasHttpHeaderAuthDecryptedData(creds)) {
-		return creds.data.name;
-	}
-	return null;
+	const credential = await readCredentialDataForEditor(
+		user,
+		node.credentials?.httpHeaderAuth?.id,
+		credentialsService,
+		credentialsFinderService,
+	);
+	return hasHttpHeaderAuthDecryptedData(credential) ? credential.data.name : null;
 };
 
 const getJWTAuthVariant = async (
 	user: User,
 	node: INode,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 ): Promise<'secret' | 'pem-key' | null> => {
-	const id = node.credentials?.jwtAuth?.id;
-	if (!id) return null;
-	try {
-		const creds = await credentialsService.getOne(user, id, true);
-		if (hasJwtSecretDecryptedData(creds)) {
-			return 'secret';
-		} else if (hasJwtPemKeyDecryptedData(creds)) {
-			return 'pem-key';
-		}
-	} catch {
-		return null;
-	}
+	const credential = await readCredentialDataForEditor(
+		user,
+		node.credentials?.jwtAuth?.id,
+		credentialsService,
+		credentialsFinderService,
+	);
+	if (hasJwtSecretDecryptedData(credential)) return 'secret';
+	if (hasJwtPemKeyDecryptedData(credential)) return 'pem-key';
 	return null;
 };
 

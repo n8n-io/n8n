@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import TidyUpIcon from '@/app/components/TidyUpIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
-import { N8nButton, N8nButtonList, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nButtonList, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = withDefaults(
@@ -59,7 +58,7 @@ function handleClickCollapseAll() {
 </script>
 <template>
 	<Controls :show-zoom="false" :show-fit-view="false">
-		<N8nButtonList variant="toolbar">
+		<N8nButtonList variant="toolbar" :class="$style.container">
 			<KeyboardShortcutTooltip
 				:label="i18n.baseText('nodeView.zoomToFit')"
 				:shortcut="{ keys: ['1'] }"
@@ -67,7 +66,7 @@ function handleClickCollapseAll() {
 				<N8nIconButton
 					variant="ghost"
 					size="large"
-					icon="maximize"
+					icon="corners"
 					:aria-label="i18n.baseText('nodeView.zoomToFit')"
 					data-test-id="zoom-to-fit"
 					@click="onZoomToFit"
@@ -127,17 +126,16 @@ function handleClickCollapseAll() {
 				:label="i18n.baseText('nodeView.tidyUp')"
 				:shortcut="{ shiftKey: true, altKey: true, keys: ['T'] }"
 			>
-				<N8nButton
+				<N8nIconButton
 					variant="ghost"
 					iconOnly
 					size="large"
+					:class="$style.iconButton"
+					icon="broom"
 					:aria-label="i18n.baseText('nodeView.tidyUp')"
 					data-test-id="tidy-up-button"
-					:class="$style.iconButton"
 					@click="onTidyUp"
-				>
-					<TidyUpIcon />
-				</N8nButton>
+				/>
 			</KeyboardShortcutTooltip>
 			<N8nTooltip
 				v-if="isExperimentalNdvActive"
@@ -178,5 +176,13 @@ function handleClickCollapseAll() {
 		width: 16px;
 		height: 16px;
 	}
+}
+.container {
+	background: var(--background--surface);
+	border: var(--border);
+	box-shadow: var(--shadow--xs);
+	border-radius: var(--radius--full);
+	padding: var(--spacing--5xs);
+	gap: var(--spacing--5xs);
 }
 </style>

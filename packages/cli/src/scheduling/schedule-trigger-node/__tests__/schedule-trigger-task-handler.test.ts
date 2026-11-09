@@ -7,7 +7,8 @@ import type { ExecutionEntity, ExecutionRepository, Project } from '@n8n/db';
 import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
 import type { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { CRON_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
+import { CRON_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -85,6 +86,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		status: 'running',
 		attempts: 0,
 		maxAttempts: 1,
+		timeoutSeconds: 300,
 		leaseEpoch: 1,
 		...overrides,
 	});

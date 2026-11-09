@@ -195,9 +195,10 @@ jobs:
         with:
           name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}
           path: |
-            packages/quality/testing/playwright/test-results/
-            packages/quality/testing/playwright/test-results.json
-            packages/quality/testing/playwright/playwright-report/
+            packages/quality/*/test-results*
+            packages/quality/*/playwright-report/
+            packages/quality/*/*/test-results*
+            packages/quality/*/*/playwright-report/
             packages/quality/testing/playwright/coverage/lcov.info
             packages/quality/testing/playwright/coverage/by-spec/
             packages/quality/testing/playwright/coverage/index.html

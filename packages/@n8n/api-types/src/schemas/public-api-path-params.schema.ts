@@ -2,7 +2,7 @@ import '../openapi-extend';
 import validator from 'validator';
 import { z } from 'zod';
 
-import { promotionDirectionSchema } from '../dto/promotions/promotion-config.dto';
+import { promotionDirectionSchema } from '../dto/promotions/promotion-environment.dto';
 
 /**
  * Runtime: the id stays a string, because the services these routes call expect a string.
@@ -39,9 +39,10 @@ export const userUuidParamSchema = z
 	.openapi({ param: { description: 'The ID of the user.' } });
 export const roleSlugParamSchema = stringIdParamSchema('The slug of the role.');
 export const roleMappingRuleIdParamSchema = stringIdParamSchema('The ID of the role mapping rule.');
-export const promotionConnectionIdParamSchema = stringIdParamSchema(
-	'The ID of the promotion connection.',
-);
+export const promotionEnvironmentIdParamSchema = z
+	.string()
+	.refine((value) => validator.isUUID(value), { message: 'must be a valid ID' })
+	.openapi({ format: 'uuid', param: { description: 'The ID of the promotion environment.' } });
 export const promotionProviderIdParamSchema = stringIdParamSchema(
 	'The ID of the promotion provider.',
 );
@@ -67,6 +68,9 @@ export const columnIdParamSchema = z
 	.regex(NANOID_REGEX, 'must match format "nanoid"')
 	.openapi({ format: 'nanoid', param: { description: 'The ID of the column' } });
 export const variableIdParamSchema = stringIdParamSchema('The ID of the variable.');
+export const logStreamingDestinationIdParamSchema = stringIdParamSchema(
+	'The id of the log streaming destination.',
+);
 export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
 	'The ID of the node type policy document.',
 );

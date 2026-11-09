@@ -6,7 +6,7 @@ import {
 	type InterruptibleToolContext,
 } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import {
@@ -25,6 +25,7 @@ import {
 	executeContextToolOperation,
 	INTEGRATION_ACTION_RESUME_SCHEMA,
 	integrationActionApprovalKey,
+	isSilentActionOutput,
 } from './integration-tool-execution';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import {
@@ -143,6 +144,7 @@ export function createIntegrationContextTool(params: {
 								descriptor,
 								queryExecutor,
 								persistence: ctx.persistence,
+								abortSignal: ctx.abortSignal,
 							}),
 						};
 					}),
@@ -156,6 +158,7 @@ export function createIntegrationContextTool(params: {
 				descriptor,
 				queryExecutor,
 				persistence: ctx.persistence,
+				abortSignal: ctx.abortSignal,
 			});
 		});
 }
@@ -164,14 +167,17 @@ export function createIntegrationActionTool(params: {
 	descriptor: IntegrationToolConnectionDescriptor;
 	messageContextStore: IntegrationMessageContextStore;
 	actionExecutor: IntegrationActionExecutor;
+	projectId?: string;
 }) {
-	const { descriptor, messageContextStore, actionExecutor } = params;
+	const { descriptor, messageContextStore, actionExecutor, projectId } = params;
 
+	// The model is told to stop after staying silent, but may call it again.
 	return new Tool(descriptor.actionToolName)
 		.description(buildActionToolDescription(descriptor))
 		.input(buildActionInputSchema(descriptor.actionToolDefinitions))
 		.suspend(actionSuspendSchema)
 		.resume(INTEGRATION_ACTION_RESUME_SCHEMA)
+		.endsTurnWhen(isSilentActionOutput)
 		.handler(async (input, ctx) => {
 			const interruptCtx = ctx as InterruptibleToolContext;
 			const approvalDecision = readApprovalDecision(interruptCtx);
@@ -212,6 +218,7 @@ export function createIntegrationActionTool(params: {
 					messageContextStore,
 					actionExecutor,
 					ctx,
+					projectId,
 				});
 			}
 
@@ -222,6 +229,7 @@ export function createIntegrationActionTool(params: {
 				actionExecutor,
 				ctx,
 				interruptCtx,
+				projectId,
 				allowSuspend: true,
 				...(approvalDecision ? { approvedAction: approvalDecision.action } : {}),
 			});

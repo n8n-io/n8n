@@ -20,6 +20,13 @@ export interface ProviderQuirks {
 	reasoningReplayKeys?: string[];
 	/** Provider merges adjacent assistant messages into one; replayable reasoning may only survive on the last of them. */
 	mergesAdjacentAssistantMessages?: boolean;
+	/**
+	 * Provider replays reasoning from the part's text itself, with no
+	 * providerMetadata involved — keep reasoning blocks that carry no replayable
+	 * metadata on the current tool chain (after the last user message). Older
+	 * turns still drop them.
+	 */
+	replayReasoningText?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
@@ -31,17 +38,25 @@ export interface ProviderQuirks {
 	) => Record<string, Record<string, unknown>>;
 }
 
-/** Shared Anthropic Messages thinking mapping (also used by Vertex Anthropic). */
+/**
+ * Shared Anthropic Messages thinking mapping (also used by Vertex Anthropic).
+ * `blockBinding` applies to the adaptive shape only: the budget shape does not accept it.
+ */
 function anthropicThinkingToProviderOptions(
 	thinking: ThinkingConfig,
 	modelId: string,
+	blockBinding?: { prefixMismatchBehavior: 'drop_block' },
 ): Record<string, Record<string, unknown>> {
 	const cfg = thinking as AnthropicThinkingConfig;
 	const adaptive = cfg.mode === 'adaptive' ? cfg : undefined;
 	if (anthropicUsesAdaptiveThinking(modelId)) {
 		return {
 			anthropic: {
-				thinking: { type: 'adaptive', display: adaptive?.display ?? 'summarized' },
+				thinking: {
+					type: 'adaptive',
+					display: adaptive?.display ?? 'summarized',
+					...(blockBinding !== undefined ? { blockBinding } : {}),
+				},
 				effort: adaptive?.effort ?? 'medium',
 			},
 		};
@@ -115,7 +130,14 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// QUIRK(anthropic): the two thinking APIs are mutually exclusive — an
 		// adaptive model rejects `type: 'enabled'` and vice versa — so the model
 		// decides the shape and the config only fills in its details.
-		thinkingToProviderOptions: anthropicThinkingToProviderOptions,
+		// QUIRK(anthropic): Anthropic binds signed thinking to the content before
+		// it. The runtime rewrites that content on purpose (mid-run observation,
+		// deferred tool and skill instructions), so ask Anthropic to drop stale
+		// thinking blocks instead of rejecting the request.
+		thinkingToProviderOptions: (thinking, modelId) =>
+			anthropicThinkingToProviderOptions(thinking, modelId, {
+				prefixMismatchBehavior: 'drop_block',
+			}),
 	},
 	// Vertex Claude uses AnthropicLanguageModel under the hood — providerOptions
 	// stay under the `anthropic` namespace even though the model id prefix differs.
@@ -174,7 +196,16 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		},
 	},
 	// custom/*: only forward an explicit effort — no provider-level default.
-	custom: reasoningEffortQuirk('custom'),
+	custom: {
+		...reasoningEffortQuirk('custom'),
+		// QUIRK(custom): OpenAI-compatible vendors return chain-of-thought as
+		// `reasoning_content` and expect it back within a tool-call chain
+		// (DeepSeek's thinking mode rejects the request without it).
+		// @ai-sdk/openai-compatible re-emits `reasoning_content` from replayed
+		// reasoning parts on its own, but attaches no providerMetadata to them, so
+		// the runtime keeps the parts by text alone, on the current tool chain only.
+		replayReasoningText: true,
+	},
 	moonshotai: reasoningEffortQuirk('moonshotai'),
 };
 

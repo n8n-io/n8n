@@ -16,6 +16,7 @@ import { invokeAxios } from './axios/invoke';
 import { buildAxiosConfigFromLegacyRequest, buildLegacyAgentOptions } from './axios/legacy';
 import { followSsrfRedirects, shouldFollowRedirectsManually } from './axios/redirect';
 import {
+	destroyRequestBody,
 	resolveLegacyRequestUrl,
 	throwIfDomainNotAllowed,
 	validateProxySsrf,
@@ -41,9 +42,25 @@ export interface LegacyRequestCallbacks {
  * Exposed to callers as {@link HttpRequestClient.requestLegacy}; kept in its own
  * module so the whole legacy path can be removed in one go once the deprecated
  * request helpers are gone.
- *
  */
 export async function executeLegacyRequest(
+	// oxlint-disable-next-line typescript/no-deprecated
+	requestObject: IRequestOptions,
+	ssrfBridge: SsrfBridge | undefined,
+	logger: Logger,
+	callbacks?: LegacyRequestCallbacks,
+): Promise<unknown> {
+	try {
+		return await sendLegacyRequest(requestObject, ssrfBridge, logger, callbacks);
+	} catch (error) {
+		// The URL, SSRF and domain checks can throw before axios reads the body.
+		destroyRequestBody(requestObject.body);
+		destroyRequestBody(requestObject.formData);
+		throw error;
+	}
+}
+
+async function sendLegacyRequest(
 	// oxlint-disable-next-line typescript/no-deprecated
 	requestObject: IRequestOptions,
 	ssrfBridge: SsrfBridge | undefined,
@@ -77,7 +94,7 @@ export async function executeLegacyRequest(
 					agentOptions: buildLegacyAgentOptions(requestObject),
 					allowedDomains: requestObject.allowedDomains,
 					sendCredentialsOnCrossOriginRedirect:
-						requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+						requestObject.sendCredentialsOnCrossOriginRedirect ?? false,
 					authSendImmediately: requestObject.auth?.sendImmediately,
 				})
 			: await invokeAxios(axiosConfig, requestObject.auth?.sendImmediately);

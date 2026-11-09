@@ -775,7 +775,7 @@ onScopeDispose(() => {
 					:disabled="!helpDisabled"
 					:content="i18n.baseText('instanceAi.setupPanel.helpUnavailableWhileBuilding')"
 				>
-					<span :tabindex="helpDisabled ? 0 : undefined">
+					<span :class="$style.helpTrigger" :tabindex="helpDisabled ? 0 : undefined">
 						<N8nButton
 							variant="ghost"
 							size="small"
@@ -804,6 +804,7 @@ onScopeDispose(() => {
 					<N8nCopyInput
 						:class="$style.redirectInput"
 						:value="redirectUrl"
+						:label="i18n.baseText('instanceAi.setupPanel.redirectUrl')"
 						:copy-label="i18n.baseText('instanceAi.setupPanel.copyRedirectUrl')"
 						size="small"
 					/>
@@ -853,9 +854,17 @@ onScopeDispose(() => {
 	color: var(--text-color--subtle);
 }
 
+// The tooltip anchors to this wrapper. Inline-flex keeps it the size of the
+// button; a plain inline span around the button spans the full row.
+.helpTrigger {
+	display: inline-flex;
+	// Offset the button padding so the label aligns with the content above
+	margin-inline-start: calc(-1 * var(--spacing--2xs));
+}
+
 .help {
-	padding-inline: 0;
-	color: var(--text-color--subtle);
+	--button--color: var(--text-color--subtler);
+	padding-inline: var(--spacing--2xs);
 }
 
 .form .existing {

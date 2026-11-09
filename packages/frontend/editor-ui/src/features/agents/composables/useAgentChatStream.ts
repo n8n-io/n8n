@@ -10,12 +10,19 @@ import type {
 	AgentChatQueueItem,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
+	AgentTokenUsage,
 	CancellationResumeData,
 } from '@n8n/api-types';
-import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
+import {
+	AGENT_CHAT_ERROR_CODES,
+	applyForwardedChildChunk,
+	APPROVAL_TOOL_NAME,
+	emptyChildTrace,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { convertFileToBinaryData, resolveFileMimeType } from '@/app/utils/fileUtils';
 import {
+	agentChatBaseUrl,
 	cancelAgentChatExecution,
 	cancelAgentChatRun,
 	clearTestChatMessages,
@@ -26,11 +33,13 @@ import {
 	steerAgentQueuedMessage,
 	reorderAgentQueuedMessage,
 	getTestChatMessages,
+	type AgentChatChannel,
 } from './useAgentApi';
 
 import {
 	applyOpenSuspensions,
 	convertDbMessages,
+	createStoppedMessage,
 	findOpenInteractive,
 	findTailOpenInteractive,
 	findTailSteerableInteractive,
@@ -41,13 +50,16 @@ import {
 	setMessageInteractives,
 	upsertMessageInteractive,
 } from '@/features/ai/shared/agentsChat/messageMappers';
+import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thinking';
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
-import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
+import { CHAT_MESSAGE_ROLE, CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
+import { isPolicyRefusedToolOutput } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
+import type { AgentUsageUpdate } from '../types';
 
 export interface FatalAgentError {
 	message: string;
@@ -70,10 +82,24 @@ export interface UseAgentChatStreamParams {
 	 */
 	continueSessionId?: Ref<string | undefined>;
 	newSession?: Ref<boolean>;
+	/**
+	 * `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'`
+	 * talks to the published n8n Chat channel; `'system'` talks to a system
+	 * agent, such as the n8n Assistant. See `capabilities` for the differences
+	 * between channels.
+	 */
+	channel?: Ref<AgentChatChannel>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
+	onUsageUpdated?: (update: AgentUsageUpdate) => void;
+	/** The agent is no longer available in n8n Chat (unpublished before send, or mid-run/resume). */
+	onAgentUnavailable?: () => void;
 	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
 	budgetCards?: boolean;
+	/** Card types of the chat host. The stream maps suspended tool calls with them. */
+	interactionExtensions?: readonly AgentsChatInteractionExtension[];
+	/** Called with each event of the chat stream, as received. */
+	onStreamEvent?: (event: AgentSseEvent) => void;
 }
 
 type ResumePayload =
@@ -104,8 +130,20 @@ function warningKey(warning: AgentChatWarning): string {
 
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
+	const extensions = params.interactionExtensions ?? [];
 	const locale = useI18n();
 	const { showError } = useToast();
+	const channel = params.channel ?? ref<AgentChatChannel>('chat');
+	/**
+	 * What the current channel supports. n8n Chat has no single default thread
+	 * to fall back to like the builder's test chat — `previewHistory` gates
+	 * that fallback.
+	 */
+	const capabilities = computed(() => ({
+		previewHistory: channel.value === 'chat',
+		/** Only the builder chat has a session detail view to link a background job's trace to. */
+		traceLinks: channel.value === 'chat',
+	}));
 
 	const messages = ref<ChatMessage[]>([]);
 	const isStreamOpen = ref(false);
@@ -194,7 +232,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
 		const lastMsg = messages.value[messages.value.length - 1];
-		if (!lastMsg || lastMsg.role === 'user') return 'waitingFirstChunk';
+		if (!lastMsg || lastMsg.role === CHAT_MESSAGE_ROLE.USER) return 'waitingFirstChunk';
 		return 'receiving';
 	});
 
@@ -222,10 +260,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					params.projectId.value,
 					params.agentId.value,
 					continueId,
+					channel.value,
 				);
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 				runningExecutionId = envelope.activeExecutionId;
+			} else if (!capabilities.value.previewHistory) {
+				// A fresh n8n Chat has no default thread to fall back to (unlike the
+				// builder's single test chat) — nothing to load until the first
+				// message mints a session.
+				dbMessages = [];
+				runningExecutionId = null;
 			} else {
 				const envelope = await getTestChatMessages(
 					rootStore.restApiContext,
@@ -242,7 +287,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			clearTimeout(retryTimer);
 			if (!isStreamOpen.value && streamAtStart === streamVersion) {
 				messages.value = restoreBudgetNotices(
-					applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions),
+					applyOpenSuspensions(
+						convertDbMessages(dbMessages, extensions),
+						openSuspensions,
+						extensions,
+					),
 				);
 				isRecovering.value = false;
 				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
@@ -334,6 +383,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.projectId.value,
 				params.agentId.value,
 				threadId,
+				channel.value,
 			);
 			if (!disposed && target === targetKey() && version === queueVersion) {
 				queuedMessages.value = result.items.filter((item) => !consumedQueueIds.has(item.id));
@@ -361,6 +411,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				threadId,
 				queueId,
 				{ message },
+				channel.value,
 			);
 			if (disposed || target !== targetKey()) return 'failed';
 			queueVersion++;
@@ -396,6 +447,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				threadId,
 				queueId,
 				{ targetQueueId, expectedQueueIds },
+				channel.value,
 			);
 		} catch (error) {
 			if (!disposed && target === targetKey()) {
@@ -428,6 +480,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				threadId,
 				queueId,
 				{ executionId },
+				channel.value,
 			);
 			if (disposed || target !== targetKey()) return;
 			queuedMessages.value = queuedMessages.value.map((item) =>
@@ -445,9 +498,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
-	async function removeQueuedMessage(queueId: string): Promise<void> {
+	async function removeQueuedMessage(queueId: string): Promise<'removed' | 'failed'> {
 		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
-		if (!threadId || removingQueueIds.value.has(queueId)) return;
+		if (!threadId || removingQueueIds.value.has(queueId)) return 'failed';
 		const target = targetKey();
 		removingQueueIds.value.add(queueId);
 		try {
@@ -457,16 +510,19 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.agentId.value,
 				threadId,
 				queueId,
+				channel.value,
 			);
-			if (disposed || target !== targetKey()) return;
+			if (disposed || target !== targetKey()) return 'failed';
 			queueVersion++;
 			queuedMessages.value = queuedMessages.value.filter((item) => item.id !== queueId);
 			for (const [controller, session] of streams) {
 				if (session.queueId === queueId && !session.executionId) controller.abort();
 			}
+			return 'removed';
 		} catch (error) {
 			if (!disposed && target === targetKey())
 				showError(error, locale.baseText('agents.chat.queue.removeError'));
+			return 'failed';
 		} finally {
 			if (target === targetKey()) {
 				removingQueueIds.value.delete(queueId);
@@ -554,14 +610,19 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	// -------------------------------------------------------------------------
 
 	interface StreamSession {
+		stopReport?: boolean;
 		target: string;
 		controller: AbortController;
 		queueId?: string;
 		userMessage?: ChatMessage;
 		executionId?: string;
+		sessionId?: string;
+		usageComplete?: boolean;
 		needsStartValidation?: boolean;
+		silentBeforeStart?: boolean;
 		busy?: boolean;
-		onAccepted?: () => void;
+		/** Gets the queue item id when the message was queued rather than started. */
+		onAccepted?: (queueId?: string) => void;
 		/**
 		 * Set when the stream emitted an `error` event. Callers (notably
 		 * `resume`) inspect this so they can roll back optimistic UI state
@@ -590,6 +651,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 */
 	function ensureCurrent(session: StreamSession): ChatMessage {
 		if (session.current) return session.current;
+
 		const msg = reactive<ChatMessage>({
 			id: crypto.randomUUID(),
 			role: 'assistant',
@@ -597,6 +659,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			toolCalls: [],
 			status: CHAT_MESSAGE_STATUS.STREAMING,
 			executionId: session.executionId,
+			...(session.stopReport ? { stopReport: true } : {}),
 		});
 		messages.value.push(msg);
 		session.current = msg;
@@ -604,14 +667,29 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return msg;
 	}
 
+	/** Owner-aware notice identity: same code and same budget owner. */
+	function sameBudgetNotice(
+		a: { code: string; agentId?: string },
+		b: { code: string; agentId?: string },
+	): boolean {
+		return a.code === b.code && a.agentId === b.agentId;
+	}
+
 	function attachBudgetNotice(
 		session: StreamSession,
 		code: 'budget.monthly' | 'budget.session' | 'budget.alert',
+		agentId?: string,
 	): void {
 		const msg = ensureCurrent(session);
 		const notices = msg.budgetNotices ?? [];
-		if (notices.some((notice) => notice.code === code)) return;
-		msg.budgetNotices = [...notices, { id: crypto.randomUUID(), code }];
+		// Distinct budget owners keep separate cards for the same code.
+		const matchesNotice = (notice: { code: string; agentId?: string }) =>
+			sameBudgetNotice(notice, { code, agentId });
+		if (notices.some(matchesNotice)) return;
+		msg.budgetNotices = [
+			...notices,
+			{ id: crypto.randomUUID(), code, ...(agentId !== undefined ? { agentId } : {}) },
+		];
 		const key = session.executionId ?? msg.id;
 		let forTarget = pendingBudgetNotices.get(session.target);
 		if (!forTarget) {
@@ -619,8 +697,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			pendingBudgetNotices.set(session.target, forTarget);
 		}
 		const entry = forTarget.get(key) ?? { notices: [], source: msg };
-		if (!entry.notices.some((notice) => notice.code === code)) {
-			entry.notices.push({ id: crypto.randomUUID(), code });
+		if (!entry.notices.some(matchesNotice)) {
+			entry.notices.push({
+				id: crypto.randomUUID(),
+				code,
+				...(agentId !== undefined ? { agentId } : {}),
+			});
 		}
 		forTarget.set(key, entry);
 	}
@@ -643,7 +725,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		) => {
 			const merged = pending.get(key) ?? [];
 			for (const notice of notices) {
-				if (!merged.some((item) => item.code === notice.code)) merged.push(notice);
+				if (!merged.some((item) => sameBudgetNotice(item, notice))) merged.push(notice);
 			}
 			pending.set(key, merged);
 			if (!sources.has(key)) sources.set(key, source);
@@ -665,7 +747,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const restored = next.map((message) => ({ ...message }));
 		for (let index = restored.length - 1; index >= 0; index--) {
 			const message = restored[index];
-			if (message.role !== 'assistant' || message.executionId === undefined) continue;
+			if (message.role !== CHAT_MESSAGE_ROLE.ASSISTANT || message.executionId === undefined)
+				continue;
 			const notices = pending.get(message.executionId);
 			if (!notices) continue;
 			message.budgetNotices = notices;
@@ -805,29 +888,66 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			let changed = false;
 			for (const toolCall of message.toolCalls ?? []) {
 				if (toolCall.runId !== runId && !isToolCallInFlight(toolCall)) continue;
-				toolCall.state = TOOL_CALL_STATE.CANCELLED;
-				toolCall.canceled = true;
+				markToolCallCancelled(message, toolCall);
 				changed = true;
-
-				const interactive = getMessageInteractive(message, toolCall.toolCallId);
-				if (interactive) {
-					upsertMessageInteractive(message, {
-						...interactive,
-						resolvedAt: Date.now(),
-						cancelled: true,
-					});
-				}
 			}
 			if (changed) markMessageSuccessIfSettled(message);
 		}
 	}
 
+	function markToolCallCancelled(message: ChatMessage, toolCall: ToolCall): void {
+		toolCall.state = TOOL_CALL_STATE.CANCELLED;
+		toolCall.canceled = true;
+		const interactive = getMessageInteractive(message, toolCall.toolCallId);
+		if (interactive) {
+			upsertMessageInteractive(message, {
+				...interactive,
+				resolvedAt: Date.now(),
+				cancelled: true,
+			});
+		}
+	}
+
+	/**
+	 * Replace the payload of the keyed host event that a message of this turn
+	 * already has. Returns false when the turn has no such event.
+	 */
+	function replaceKeyedHostEvent(
+		session: StreamSession,
+		event: Extract<AgentSseEvent, { type: 'host-event' }>,
+	): boolean {
+		for (const msg of session.minted) {
+			const index =
+				msg.hostEvents?.findIndex(
+					(existing) => existing.name === event.name && existing.key === event.key,
+				) ?? -1;
+			if (index === -1 || !msg.hostEvents) continue;
+			msg.hostEvents = msg.hostEvents.map((existing, i) =>
+				i === index ? { ...existing, payload: event.payload } : existing,
+			);
+			return true;
+		}
+		return false;
+	}
+
+	function holdsOnlyHostEvents(msg: ChatMessage): boolean {
+		return (
+			!!msg.hostEvents?.length &&
+			!msg.content &&
+			(msg.toolCalls?.length ?? 0) === 0 &&
+			getMessageThinkingSegments(msg).length === 0 &&
+			!msg.budgetNotices?.length
+		);
+	}
+
 	function dropOrphanMintedBubbles(session: StreamSession): void {
 		for (const msg of session.minted) {
 			if (
+				!msg.stopReport &&
 				!msg.content &&
 				(msg.toolCalls?.length ?? 0) === 0 &&
-				getMessageThinkingSegments(msg).length === 0
+				getMessageThinkingSegments(msg).length === 0 &&
+				!msg.hostEvents?.length
 			) {
 				messages.value = messages.value.filter((m) => m !== msg);
 				session.minted.delete(msg);
@@ -894,7 +1014,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			settleOpenReasoning(session);
 			if (session.current) markMessageSuccessIfSettled(session.current);
 			session.current = undefined;
-			messages.value.push(...convertDbMessages([event.message]));
+			messages.value.push(...convertDbMessages([event.message], extensions));
 		}
 	}
 
@@ -910,12 +1030,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		// Controller validation failures only emit `error`. Any other event proves
 		// that the backend admitted and persisted this turn.
 		if (event.type !== 'error') acknowledgeSessionCreation();
+
 		switch (event.type) {
 			case 'message-queued':
 				session.queueId = event.queueId;
 				acceptedSessionId.value = event.sessionId;
 				detachExcessWaitingStreams();
-				session.onAccepted?.();
+				session.onAccepted?.(event.queueId);
 				session.onAccepted = undefined;
 				if (consumedQueueIds.has(event.queueId)) {
 					session.controller.abort();
@@ -950,7 +1071,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (session.userMessage) {
 					if (
 						!messages.value.some(
-							(message) => message.role === 'user' && message.executionId === event.executionId,
+							(message) =>
+								message.role === CHAT_MESSAGE_ROLE.USER &&
+								message.executionId === event.executionId,
 						)
 					) {
 						messages.value.push({
@@ -965,6 +1088,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				void refreshQueue();
 				clearTimeout(stopAcceptanceTimer);
 				session.executionId = event.executionId;
+				session.sessionId = event.sessionId;
+				notifyUsage(session);
+				session.stopReport = event.stopReport;
 				activeExecutionId.value = event.executionId;
 				acceptedSessionId.value = event.sessionId;
 				session.onAccepted?.();
@@ -975,8 +1101,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'finish-step':
 				// LLM iteration boundary — the next text/tool event mints a
 				// fresh ChatMessage. We don't flip status here; `done` is what
-				// finalizes the message at the end of the stream.
-				session.current = undefined;
+				// finalizes the message at the end of the stream. A message with
+				// only host events, such as the turn setup sends before the first
+				// step, takes the next step too, as the history shows it.
+				if (!session.stopReport && !(session.current && holdsOnlyHostEvents(session.current))) {
+					session.current = undefined;
+				}
 				break;
 			case 'text-start':
 			case 'text-end':
@@ -1088,7 +1218,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (found) {
 					const toolResultEvent = event as typeof event & { canceled?: boolean };
 					found.tc.output = event.output;
-					const failed = event.isError || isFailedDelegateOutput(found.tc.tool, event.output);
+					const failed =
+						event.isError ||
+						isFailedDelegateOutput(found.tc.tool, event.output) ||
+						isPolicyRefusedToolOutput(event.output);
 					found.tc.state = failed
 						? TOOL_CALL_STATE.ERROR
 						: toolResultEvent.canceled === true
@@ -1097,7 +1230,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
-					const updated = rebuildInteractiveFromHistory(found.tc);
+					const updated = rebuildInteractiveFromHistory(found.tc, extensions);
 					if (updated && currentInteractive?.resolvedAt === undefined) {
 						upsertMessageInteractive(found.msg, updated);
 					}
@@ -1136,10 +1269,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					};
 					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
 				}
-				const interactive = rebuildInteractiveFromHistory({
-					...tc,
-					output: undefined,
-				});
+				const interactive = rebuildInteractiveFromHistory({ ...tc, output: undefined }, extensions);
 				if (interactive) {
 					interactive.runId = payload.runId;
 					upsertMessageInteractive(msg, interactive);
@@ -1155,18 +1285,53 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				applyForwardedChildChunk(found.tc.childProgress, event.chunk);
 				break;
 			}
+			case 'host-event': {
+				// Keep the event on the turn. The host renders it by name; the chat
+				// renders nothing for it by itself. A keyed event replaces the
+				// earlier event with the same name and key, in its position, also
+				// when that event is on an earlier step of the turn.
+				if (event.key !== undefined && replaceKeyedHostEvent(session, event)) break;
+				const msg = ensureCurrent(session);
+				msg.hostEvents = [
+					...(msg.hostEvents ?? []),
+					{
+						id: crypto.randomUUID(),
+						name: event.name,
+						...(event.key !== undefined ? { key: event.key } : {}),
+						payload: event.payload,
+					},
+				];
+				break;
+			}
 			case 'message':
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
+			case 'usage':
+				notifyUsage(session, event.usage);
+				break;
 			case 'finish': {
+				if (event.usage) notifyUsage(session, event.usage);
+				if (event.finishReason === 'cancelled' && session.executionId) {
+					settleOpenReasoning(session);
+					for (const message of session.minted) {
+						for (const toolCall of message.toolCalls ?? []) {
+							if (isToolCallInFlight(toolCall)) markToolCallCancelled(message, toolCall);
+						}
+						markMessageSuccessIfSettled(message);
+					}
+					const notice = createStoppedMessage(session.executionId);
+					if (!messages.value.some(({ id }) => id === notice.id)) messages.value.push(notice);
+				}
 				if (!params.budgetCards || event.finishReason !== 'guardrail') break;
 				const code = event.guardrail?.code;
 				if (code !== undefined && isBudgetStopCode(code)) attachBudgetNotice(session, code);
 				break;
 			}
 			case 'budget-notice': {
-				if (params.budgetCards) attachBudgetNotice(session, event.code);
+				if (params.budgetCards) {
+					attachBudgetNotice(session, event.code, event.agentId);
+				}
 				break;
 			}
 			case 'warning': {
@@ -1184,18 +1349,30 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'error': {
 				session.errorEmitted = true;
-				if (event.errorCode === 'turn_already_running') {
+
+				if (session.silentBeforeStart && !session.executionId) {
+					session.terminalEventReceived = true;
+
+					break;
+				}
+
+				if (event.errorCode === AGENT_CHAT_ERROR_CODES.turnAlreadyRunning) {
 					session.busy = true;
 					isCancelling.value = false;
 					stopTargetId = undefined;
 					isRecovering.value = true;
 					return { done: true };
 				}
+
+				if (session.stopReport && session.minted.size === 0) ensureCurrent(session);
+
 				settleOpenReasoning(session);
 				dropOrphanMintedBubbles(session);
 				markInFlightStateFailed(session);
-				if (event.errorCode === 'agent_misconfigured') {
+				if (event.errorCode === AGENT_CHAT_ERROR_CODES.agentMisconfigured) {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
+				} else if (event.errorCode === AGENT_CHAT_ERROR_CODES.agentUnavailable) {
+					params.onAgentUnavailable?.();
 				} else if (session.userMessage && !session.executionId) {
 					showError(new Error(event.message), locale.baseText('agents.chat.queue.sendError'));
 				} else {
@@ -1210,9 +1387,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					);
 				}
 				session.terminalEventReceived = true;
+				notifyUsage(session, undefined, true);
 				break;
 			}
 			case 'done':
+				notifyUsage(session, undefined, true);
+				if (session.stopReport && session.minted.size === 0) ensureCurrent(session);
 				if (event.executionId === activeExecutionId.value) activeExecutionId.value = null;
 				settleOpenReasoning(session);
 				if (event.executionId) {
@@ -1236,7 +1416,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			default:
 				break;
 		}
+
 		return undefined;
+	}
+
+	function notifyUsage(session: StreamSession, usage?: AgentTokenUsage, complete = false): void {
+		const sessionId = session.sessionId;
+		if (!sessionId || !session.executionId) return;
+		if (complete) session.usageComplete = true;
+		params.onUsageUpdated?.({
+			sessionId,
+			executionId: session.executionId,
+			usage,
+			complete: session.usageComplete === true,
+		});
 	}
 
 	function detachExcessWaitingStreams(): void {
@@ -1303,6 +1496,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					} catch {
 						continue;
 					}
+					params.onStreamEvent?.(event);
 					const result =
 						event.type === 'execution-started' && session.needsStartValidation
 							? await handleDelayedExecutionStart(event, session)
@@ -1339,13 +1533,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function postAndConsume(
 		url: string,
 		body: Record<string, unknown>,
-		onAccepted?: () => void,
+		onAccepted?: (queueId?: string) => void,
 		userMessage?: ChatMessage,
+		waitForStart = false,
 	): Promise<{ outcome: StreamOutcome }> {
 		const controller = new AbortController();
 		const session: StreamSession = {
 			controller,
 			userMessage,
+			silentBeforeStart: waitForStart,
 			target: targetKey(),
 			onAccepted,
 			errorEmitted: false,
@@ -1355,11 +1551,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			openReasoning: new Map(),
 		};
 		streams.set(controller, session);
-		if (!userMessage) {
+
+		if (!userMessage && !waitForStart) {
 			isStreamOpen.value = true;
 			streamVersion++;
 			abortController.value = controller;
 		}
+
 		let settleStream: (() => void) | undefined;
 		streamSettlements.set(
 			controller,
@@ -1437,23 +1635,49 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
+	async function requestTaskStop(planId: string | null): Promise<void> {
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+
+		if (!threadId) throw new Error('Session not found');
+
+		const url = `${agentChatBaseUrl(rootStore.restApiContext, params.projectId.value, params.agentId.value, channel.value)}/${encodeURIComponent(threadId)}/task-cancellation/stream`;
+		await new Promise<void>((resolve, reject) => {
+			void postAndConsume(url, { planId }, () => resolve(), undefined, true).then(({ outcome }) => {
+				if (outcome === 'completed') resolve();
+				else reject(new Error('Could not confirm the stop request'));
+			}, reject);
+		});
+	}
+
 	async function streamChat(
 		message: string,
 		files?: File[],
-		onAccepted?: () => void,
+		onAccepted?: (queueId?: string) => void,
 		userMessage?: ChatMessage,
+		clientContext?: Record<string, unknown>,
 	) {
 		const target = targetKey();
-		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
+		const baseUrl = agentChatBaseUrl(
+			rootStore.restApiContext,
+			params.projectId.value,
+			params.agentId.value,
+			channel.value,
+		);
 		const body: Record<string, unknown> = { message };
 		const sessionId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		const newSession = params.newSession?.value === true && sessionId !== acknowledgedSessionId;
+		// The backend rejects a `projectId` that differs from an existing thread's project
+		// (e.g. after a move), so send it only when this request creates the session.
+		const url =
+			channel.value === 'system' && (!sessionId || newSession)
+				? `${baseUrl}?projectId=${encodeURIComponent(params.projectId.value)}`
+				: baseUrl;
 		if (sessionId) {
 			body.sessionId = sessionId;
 			body.messageId = userMessage?.id;
 			if (newSession) body.newSession = true;
 		}
+		if (clientContext) body.clientContext = clientContext;
 		if (files?.length) {
 			body.attachments = await Promise.all(
 				files.map(async (file) => {
@@ -1535,7 +1759,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					payload.resumeData,
 					found.tc.input,
 				);
-				const updated = rebuildInteractiveFromHistory(found.tc);
+				const updated = rebuildInteractiveFromHistory(found.tc, extensions);
 				if (updated?.toolName === APPROVAL_TOOL_NAME) {
 					const approved = getApprovalDecision(payload.resumeData);
 					if (approved !== undefined) updated.resolvedValue = { approved };
@@ -1564,8 +1788,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			});
 		}
 
-		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
+		const url = `${agentChatBaseUrl(rootStore.restApiContext, params.projectId.value, params.agentId.value, channel.value)}/resume`;
 		const { outcome } = await postAndConsume(
 			url,
 			{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },
@@ -1622,10 +1845,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		);
 	}
 
+	/**
+	 * `clientContext` is per-message context that a system agent's provider reads.
+	 * The request body carries it only when it is set.
+	 */
 	async function sendMessage(
 		text: string,
 		files?: File[],
-		onAccepted?: () => void,
+		onAccepted?: (queueId?: string) => void,
+		clientContext?: Record<string, unknown>,
 	): Promise<'sent' | 'busy'> {
 		const trimmed = text.trim();
 		if ((!trimmed && !files?.length) || isSubmitting.value || isLoadingHistory.value) return 'busy';
@@ -1656,11 +1884,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			void streamChat(
 				trimmed,
 				files,
-				() => {
-					onAccepted?.();
+				(queueId) => {
+					onAccepted?.(queueId);
 					release();
 				},
 				userMessage,
+				clientContext,
 			)
 				.then(({ outcome }) => {
 					release(outcome === 'busy' ? 'busy' : 'sent');
@@ -1728,6 +1957,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.agentId.value,
 				threadId,
 				executionId,
+				channel.value,
 			);
 			if (!cancelRequested && target === targetKey() && stopTargetId === executionId) {
 				isCancelling.value = false;
@@ -1770,6 +2000,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.projectId.value,
 				params.agentId.value,
 				openSuspension.runId,
+				channel.value,
 			);
 			if (cancelled) markRunCancelled(openSuspension.runId);
 			else await refreshHistory();
@@ -1784,6 +2015,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	return {
+		capabilities,
 		queuedMessages,
 		canSteer,
 		steeringQueueIds,
@@ -1807,6 +2039,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		clearHistory,
 		clearBudgetNotices,
 		sendMessage,
+		requestTaskStop,
 		stopGenerating,
 		detachStream,
 		resume,

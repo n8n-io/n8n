@@ -1,6 +1,5 @@
 import { Container } from '@n8n/di';
-
-import { FavoriteResourceResolverRegistry } from '@/modules/favorites/favorite-resource-resolver.registry';
+import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -15,6 +14,7 @@ export function registerFavoriteResolver() {
 					{ name, projectId },
 				]),
 			),
-		exists: async (id) => await agentRepository.existsBy({ id }),
+		// Instance agents have no project, so they cannot be favorites.
+		exists: async (id) => (await agentRepository.getProjectIdById(id)) !== null,
 	});
 }

@@ -12,9 +12,8 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@n8n/backend-services';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@n8n/backend-services';
+import { CacheService, UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 /**
@@ -54,7 +53,7 @@ const oauth2WebhookNode = (requireExecuteAccess?: boolean): INode => ({
 	},
 });
 
-/** Mirrors what `TestWebhooks.needsWebhook` writes when the editor starts listening. */
+/** Mirrors what `TestWebhooks.registerWebhooks` writes when the editor starts listening. */
 const registerTestWebhook = async (
 	webhookPath: string,
 	node: INode,

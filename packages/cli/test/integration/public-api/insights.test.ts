@@ -9,7 +9,7 @@ import { type Project, type User } from '@n8n/db';
 import { DateTime } from 'luxon';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
+import { createCompactedInsightsEvent } from '@n8n/backend-module-insights/testing';
 
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { addApiKey, createOwnerWithApiKey, createUser } from '../shared/db/users';

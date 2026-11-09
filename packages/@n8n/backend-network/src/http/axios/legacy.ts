@@ -29,7 +29,6 @@ import type { SsrfBridge } from '../../ssrf';
  * Builds the per-request Node agent options for a legacy `IRequestOptions`,
  * including the relaxed TLS settings the legacy path applies when `rejectUnauthorized` is `false`.
  * Shared with the manual redirect follower so both derive agents the same way.
- *
  */
 // oxlint-disable-next-line typescript/no-deprecated
 export function buildLegacyAgentOptions(requestObject: IRequestOptions): AgentOptions {
@@ -287,7 +286,7 @@ export async function buildAxiosConfigFromLegacyRequest(
 		agentOptions,
 		axiosConfig,
 		requestObject.proxy,
-		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+		requestObject.sendCredentialsOnCrossOriginRedirect ?? false,
 		requestObject.allowedDomains,
 		ssrfBridge ?? 'disabled',
 	);

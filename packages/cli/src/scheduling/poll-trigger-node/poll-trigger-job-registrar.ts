@@ -27,6 +27,8 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	/** Instance-default timezone, used to resolve the `'DEFAULT'`/empty sentinel. */
 	private readonly defaultTimezone: string;
 
+	private readonly pollTimeoutSeconds: number;
+
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
@@ -36,6 +38,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	) {
 		super();
 		this.defaultTimezone = globalConfig.generic.timezone;
+		this.pollTimeoutSeconds = globalConfig.scheduler.pollTimeoutSeconds;
 		this.logger = this.logger.scoped('scheduler');
 	}
 
@@ -63,6 +66,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 			payload: { ...payload },
 			desired,
 			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+			timeoutSeconds: this.pollTimeoutSeconds,
 		});
 
 		this.logger.debug('Provisioned scheduler jobs for poll trigger node', {
