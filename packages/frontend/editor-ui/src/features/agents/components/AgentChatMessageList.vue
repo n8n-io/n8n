@@ -1248,7 +1248,6 @@ watch(
 
 .chatMessage {
 	overflow-wrap: break-word;
-	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 
 	& + .chatMessage {
