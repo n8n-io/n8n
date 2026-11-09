@@ -15,7 +15,6 @@ export const pendingRekaPrefixes = [
 	'FocusScope',
 	'HoverCard',
 	'Tabs',
-	'VisuallyHidden',
 ] as const;
 
 /**

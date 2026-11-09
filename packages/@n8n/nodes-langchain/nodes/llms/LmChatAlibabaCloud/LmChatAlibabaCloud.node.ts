@@ -135,7 +135,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		icon: 'file:alibaba.svg',
 		group: ['transform'],
 		version: [1, 1.1],
-		description: 'For advanced usage with an AI chain',
+		description: 'Run Qwen models, with optional response-format settings',
 		defaults: {
 			name: 'Qwen Cloud Chat Model',
 		},

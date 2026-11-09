@@ -26,9 +26,11 @@ import type {
 	JsonValue,
 } from 'n8n-workflow';
 import {
+	ERROR_MESSAGE_REDACTED_MESSAGE,
 	getEmptyGroupAnchor,
 	hasCredentialChanges,
 	hasNonPositionalChanges,
+	isExecutionOutputRedacted,
 	TelemetryHelpers,
 	toExecutionContextEstablishmentHookParameter,
 } from 'n8n-workflow';
@@ -386,6 +388,15 @@ export class TelemetryEventRelay extends EventRelay {
 			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
 			'trusted-source-healthy': (event) => this.trustedSourceHealthy(event),
 			'trusted-source-first-authenticated': (event) => this.trustedSourceFirstAuthenticated(event),
+			'app-created': (event) => this.appCreated(event),
+			'app-visibility-changed': (event) => this.appVisibilityChanged(event),
+			'app-deleted': (event) => this.appDeleted(event),
+			'app-published': (event) => this.appPublished(event),
+			'app-unpublished': (event) => this.appUnpublished(event),
+			'app-build-finished': (event) => this.appBuildFinished(event),
+			'app-opened': (event) => this.appOpened(event),
+			'app-interacted': (event) => this.appInteracted(event),
+			'app-bindings-changed': (event) => this.appBindingsChanged(event),
 		});
 	}
 
@@ -576,6 +587,143 @@ export class TelemetryEventRelay extends EventRelay {
 			creds_pushed: credsPushed,
 			variables_pushed: variablesPushed,
 			public_api: publicApi,
+		});
+	}
+
+	// #endregion
+
+	// #region Apps
+
+	private appCreated({
+		userId,
+		threadId,
+		appId,
+		projectId,
+		visibility,
+	}: RelayEventMap['app-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_CREATED_APP, {
+			app_id: appId,
+			project_id: projectId,
+			user_id: userId,
+			thread_id: threadId,
+			visibility,
+		});
+	}
+
+	private appVisibilityChanged({
+		userId,
+		appId,
+		from,
+		to,
+	}: RelayEventMap['app-visibility-changed']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_CHANGED_APP_VISIBILITY, {
+			app_id: appId,
+			user_id: userId,
+			from,
+			to,
+		});
+	}
+
+	private appDeleted({ userId, appId, wasPublished }: RelayEventMap['app-deleted']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_DELETED_APP, {
+			app_id: appId,
+			user_id: userId,
+			was_published: wasPublished,
+		});
+	}
+
+	private appPublished({
+		userId,
+		appId,
+		versionId,
+		visibility,
+		isFirstPublish,
+	}: RelayEventMap['app-published']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_PUBLISHED_APP, {
+			app_id: appId,
+			version_id: versionId,
+			user_id: userId,
+			access_level: visibility,
+			is_first_publish: isFirstPublish,
+		});
+	}
+
+	private appUnpublished({ userId, appId }: RelayEventMap['app-unpublished']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_UNPUBLISHED_APP, {
+			app_id: appId,
+			user_id: userId,
+		});
+	}
+
+	private appBuildFinished({
+		userId,
+		threadId,
+		appId,
+		versionId,
+		changeSource,
+		status,
+		attempts,
+		durationMs,
+	}: RelayEventMap['app-build-finished']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.APP_BUILD_FINISHED, {
+			app_id: appId,
+			version_id: versionId,
+			user_id: userId,
+			thread_id: threadId,
+			change_source: changeSource,
+			status,
+			attempts,
+			duration_ms: durationMs,
+		});
+	}
+
+	private appOpened({ userId, appId, versionId, isPreview }: RelayEventMap['app-opened']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_INTERACTED_WITH_APP, {
+			app_id: appId,
+			version_id: versionId,
+			user_id: userId,
+			interaction_type: 'app_opened',
+			is_preview: isPreview,
+		});
+	}
+
+	private appBindingsChanged({
+		appId,
+		projectId,
+		versionId,
+		userId,
+		workflowCount,
+		dataTableCount,
+		agentCount,
+		addedCount,
+		removedCount,
+	}: RelayEventMap['app-bindings-changed']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_CHANGED_APP_BINDINGS, {
+			app_id: appId,
+			project_id: projectId,
+			version_id: versionId,
+			user_id: userId,
+			workflow_count: workflowCount,
+			data_table_count: dataTableCount,
+			agent_count: agentCount,
+			added_count: addedCount,
+			removed_count: removedCount,
+		});
+	}
+
+	private appInteracted({
+		userId,
+		appId,
+		versionId,
+		interactionType,
+		isPreview,
+	}: RelayEventMap['app-interacted']) {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_INTERACTED_WITH_APP, {
+			app_id: appId,
+			version_id: versionId,
+			user_id: userId,
+			interaction_type: interactionType,
+			is_preview: isPreview,
 		});
 	}
 
@@ -1789,7 +1937,14 @@ export class TelemetryEventRelay extends EventRelay {
 					this.telemetry.track('User ran out of free AI credits');
 				}
 
-				telemetryProperties.error_message = runData?.data.resultData.error.message;
+				// Under an active redaction policy the message can carry node output.
+				telemetryProperties.error_message = isExecutionOutputRedacted(
+					runData.data,
+					workflow.settings,
+					runData.mode,
+				)
+					? ERROR_MESSAGE_REDACTED_MESSAGE
+					: runData.data.resultData.error.message;
 				let errorNodeName =
 					'node' in runData?.data.resultData.error
 						? runData?.data.resultData.error.node?.name
