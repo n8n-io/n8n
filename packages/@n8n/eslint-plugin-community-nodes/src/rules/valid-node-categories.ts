@@ -52,9 +52,11 @@ export const ValidNodeCategoriesRule = createRule({
 				}
 
 				for (const category of categories.value.elements) {
-					if (!category) continue;
-					if (category.type !== AST_NODE_TYPES.Literal || typeof category.value !== 'string') {
-						context.report({ node: category, messageId: 'invalidCategoryType' });
+					if (category?.type !== AST_NODE_TYPES.Literal || typeof category.value !== 'string') {
+						context.report({
+							node: category ?? categories.value,
+							messageId: 'invalidCategoryType',
+						});
 					} else if (category.value === 'Marketing') {
 						context.report({ node: category, messageId: 'marketingCategory' });
 					} else if (!validCategories.has(category.value)) {
@@ -94,9 +96,11 @@ export const ValidNodeCategoriesRule = createRule({
 			}
 
 			for (const subcategory of aiSubcategories.value.elements) {
-				if (!subcategory) continue;
-				if (subcategory.type !== AST_NODE_TYPES.Literal || typeof subcategory.value !== 'string') {
-					context.report({ node: subcategory, messageId: 'invalidAiSubcategoryType' });
+				if (subcategory?.type !== AST_NODE_TYPES.Literal || typeof subcategory.value !== 'string') {
+					context.report({
+						node: subcategory ?? aiSubcategories.value,
+						messageId: 'invalidAiSubcategoryType',
+					});
 				} else if (!validAiSubcategories.has(subcategory.value)) {
 					context.report({
 						node: subcategory,

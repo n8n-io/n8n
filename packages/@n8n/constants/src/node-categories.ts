@@ -14,6 +14,7 @@ export const CODEX_NODE_CATEGORIES = [
 	CODEX_AI_CATEGORY,
 ] as const;
 
+/** Direct values for codex.subcategories.AI. */
 export const CODEX_AI_SUBCATEGORIES = {
 	AGENTS: 'Agents',
 	CHAINS: 'Chains',
@@ -27,7 +28,6 @@ export const CODEX_AI_SUBCATEGORIES = {
 	EMBEDDINGS: 'Embeddings',
 	DOCUMENT_LOADERS: 'Document Loaders',
 	TEXT_SPLITTERS: 'Text Splitters',
-	OTHER_TOOLS: 'Other Tools',
 	ROOT_NODES: 'Root Nodes',
 	MODEL_CONTEXT_PROTOCOL: 'Model Context Protocol',
 	HUMAN_IN_THE_LOOP: 'Human in the Loop',

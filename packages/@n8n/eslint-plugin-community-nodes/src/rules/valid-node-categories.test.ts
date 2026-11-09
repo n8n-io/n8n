@@ -1,4 +1,5 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
 import { ValidNodeCategoriesRule } from './valid-node-categories.js';
 
@@ -32,7 +33,7 @@ export class Example${javascript ? '' : ' implements INodeType'} {
 }`;
 }
 
-ruleTester.run<string, []>('valid-node-categories', ValidNodeCategoriesRule, {
+ruleTester.run('valid-node-categories', ValidNodeCategoriesRule, {
 	valid: [
 		// CE-2027: Both codex sources must use the same AI taxonomy.
 		{
@@ -49,6 +50,24 @@ ruleTester.run<string, []>('valid-node-categories', ValidNodeCategoriesRule, {
 			name: 'inline JavaScript codex with a supported AI subcategory',
 			filename: 'nodes/Example/Example.node.js',
 			code: inlineCodex(['AI'], { AI: ['Agents'] }, true),
+		},
+		{
+			name: 'JSON codex with nested tool and vector store subcategories',
+			filename,
+			code: codex(['AI'], {
+				AI: ['Tools', 'Vector Stores'],
+				Tools: ['Other Tools'],
+				'Vector Stores': ['Other Vector Stores'],
+			}),
+		},
+		{
+			name: 'inline codex with nested tool and vector store subcategories',
+			filename: 'nodes/Example/Example.node.ts',
+			code: inlineCodex(['AI'], {
+				AI: ['Tools', 'Vector Stores'],
+				Tools: ['Other Tools'],
+				'Vector Stores': ['Other Vector Stores'],
+			}),
 		},
 		{
 			name: 'all supported community categories',
@@ -84,6 +103,57 @@ ruleTester.run<string, []>('valid-node-categories', ValidNodeCategoriesRule, {
 		},
 	],
 	invalid: [
+		{
+			name: 'JSON codex with Other Tools as a direct AI subcategory',
+			filename,
+			code: codex(['AI'], { AI: ['Other Tools'] }),
+			errors: [{ messageId: 'invalidAiSubcategory', data: { subcategory: 'Other Tools' } }],
+		},
+		{
+			name: 'inline codex with Other Tools as a direct AI subcategory',
+			filename: 'nodes/Example/Example.node.ts',
+			code: inlineCodex(['AI'], { AI: ['Other Tools'] }),
+			errors: [{ messageId: 'invalidAiSubcategory', data: { subcategory: 'Other Tools' } }],
+		},
+		{
+			name: 'inline TypeScript codex with only an AI subcategory hole',
+			filename: 'nodes/Example/Example.node.ts',
+			code: inlineCodex(['AI'], { AI: [] }).replace('"AI":[]', '"AI":[,]'),
+			errors: [{ messageId: 'invalidAiSubcategoryType', type: AST_NODE_TYPES.ArrayExpression }],
+		},
+		{
+			name: 'inline JavaScript codex with only an AI subcategory hole',
+			filename: 'nodes/Example/Example.node.js',
+			code: inlineCodex(['AI'], { AI: [] }, true).replace('"AI":[]', '"AI":[,]'),
+			errors: [{ messageId: 'invalidAiSubcategoryType', type: AST_NODE_TYPES.ArrayExpression }],
+		},
+		{
+			name: 'inline TypeScript codex with a supported AI subcategory and a hole',
+			filename: 'nodes/Example/Example.node.ts',
+			code: inlineCodex(['AI'], { AI: ['Tools'] }).replace('["Tools"]', '["Tools",,]'),
+			errors: [{ messageId: 'invalidAiSubcategoryType', type: AST_NODE_TYPES.ArrayExpression }],
+		},
+		{
+			name: 'inline JavaScript codex with a supported AI subcategory and a hole',
+			filename: 'nodes/Example/Example.node.js',
+			code: inlineCodex(['AI'], { AI: ['Tools'] }, true).replace('["Tools"]', '["Tools",,]'),
+			errors: [{ messageId: 'invalidAiSubcategoryType', type: AST_NODE_TYPES.ArrayExpression }],
+		},
+		{
+			name: 'inline TypeScript codex with only a category hole',
+			filename: 'nodes/Example/Example.node.ts',
+			code: inlineCodex([]).replace('"categories":[]', '"categories":[,]'),
+			errors: [{ messageId: 'invalidCategoryType', type: AST_NODE_TYPES.ArrayExpression }],
+		},
+		{
+			name: 'inline JavaScript codex with a supported category and a hole',
+			filename: 'nodes/Example/Example.node.js',
+			code: inlineCodex(['Development'], undefined, true).replace(
+				'["Development"]',
+				'["Development",,]',
+			),
+			errors: [{ messageId: 'invalidCategoryType', type: AST_NODE_TYPES.ArrayExpression }],
+		},
 		{
 			name: 'JSON codex with an unknown AI subcategory',
 			filename,
