@@ -578,6 +578,46 @@ describe('SettingsSkillsView', () => {
 			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 		});
 
+		it('reads one upload at a time, so a second pick cannot open the modal twice', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const read = Promise.withResolvers<string>();
+			const slow = skillFile();
+			Object.defineProperty(slow, 'text', { value: async () => await read.promise });
+
+			await fireEvent.change(view.getByTestId('skills-upload-folder-input'), {
+				target: { files: [slow] },
+			});
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [skillFile()] },
+			});
+			read.resolve('---\nname: slow-skill\ndescription: d\n---\ni');
+
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1));
+			await new Promise(process.nextTick);
+			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+			expect(lastModalData().skill?.name).toBe('slow-skill');
+		});
+
+		it('drops an upload that finishes after the user left the page', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const read = Promise.withResolvers<string>();
+			const slow = skillFile();
+			Object.defineProperty(slow, 'text', { value: async () => await read.promise });
+
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [slow] },
+			});
+			view.unmount();
+			read.reject(new Error('disk'));
+			await new Promise(process.nextTick);
+			await new Promise(process.nextTick);
+
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			expect(showErrorMock).not.toHaveBeenCalled();
+		});
+
 		it('ignores a cancelled picker', async () => {
 			const view = renderView();
 			await new Promise(process.nextTick);

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import { saveAs } from 'file-saver';
@@ -349,6 +349,13 @@ function openCreateModal(
 
 type CreateAction = 'github' | 'uploadFolder' | 'uploadFile' | 'manual';
 
+// One upload at a time, and none that lands after the user left the page.
+const uploadBusy = ref(false);
+let unmounted = false;
+onBeforeUnmount(() => {
+	unmounted = true;
+});
+
 // Only "Connect to GitHub" is behind the Skill Sync flag. The other items are for everyone.
 const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => [
 	...(skillSyncEnabled.value
@@ -366,12 +373,14 @@ const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => 
 		label: i18n.baseText('settings.context.skills.actions.uploadFolder'),
 		icon: 'folder-open',
 		testId: 'skills-create-upload-folder',
+		disabled: uploadBusy.value,
 	},
 	{
 		id: 'uploadFile',
 		label: i18n.baseText('settings.context.skills.actions.uploadSkillFile'),
 		icon: 'file-text',
 		testId: 'skills-create-upload-file',
+		disabled: uploadBusy.value,
 	},
 	{
 		id: 'manual',
@@ -399,17 +408,22 @@ async function onSkillFilesPicked(event: Event) {
 	const files = Array.from(input.files ?? []);
 	// Cleared so that the same pick fires a change event again.
 	input.value = '';
-	if (files.length === 0) return;
+	if (files.length === 0 || uploadBusy.value) return;
+	uploadBusy.value = true;
 	try {
 		const skill = await importSkillFiles(files);
+		if (unmounted) return;
 		openCreateModal({ skill, initialMethod: 'upload' });
 	} catch (error) {
+		if (unmounted) return;
 		// The same texts as the upload step in the modal, so both paths read alike.
 		const key =
 			error instanceof AgentSkillImportError
 				? error.i18nKey
 				: 'agents.builder.skills.import.invalidFolder';
 		showError(new Error(i18n.baseText(key)), i18n.baseText('settings.context.skills.upload.error'));
+	} finally {
+		uploadBusy.value = false;
 	}
 }
 
