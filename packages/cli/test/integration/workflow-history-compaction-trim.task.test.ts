@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { EventService, WorkflowVersionedSettings } from '@n8n/backend-services';
+import type { EventService } from '@n8n/backend-services';
 import { createWorkflow, createWorkflowHistory, mockLogger, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -63,7 +63,6 @@ describe('WorkflowHistoryCompactionTrimTask', () => {
 			logger,
 			repository,
 			mock<EventService>(),
-			mock<WorkflowVersionedSettings>(),
 		);
 		return { task: new WorkflowHistoryCompactionTrimTask(service), logger };
 	}
