@@ -1,0 +1,13 @@
+{
+	"node": "n8n-nodes-base.cal",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Productivity", "Utility"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/cal/"
+			}
+		]
+	}
+}
