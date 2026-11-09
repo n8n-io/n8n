@@ -2882,8 +2882,8 @@ function getImportedAgentRoute(agent: { localId: string; projectId: string }): R
 }
 
 /** Reloads the open Agent when the package changed it. Otherwise opens the first imported Agent. */
-async function onPackageImported(result: ImportResultDto): Promise<void> {
-	if (result.agents.some((imported) => imported.localId === agentId.value)) {
+async function onPackageImported(result: ImportResultDto, openAgentId: string): Promise<void> {
+	if (result.agents.some((imported) => imported.localId === openAgentId)) {
 		// A queued autosave holds the config from before the import and would overwrite it.
 		cancelQueuedAutosaves();
 		await onConfigUpdated();
@@ -2901,11 +2901,18 @@ async function openImportPackageModal() {
 	} catch {
 		return;
 	}
+	// The user can leave the Agent while the import runs. Then the result must not change the new page.
+	const initiatingPath = route.fullPath;
+	const initiatingAgentId = agentId.value;
+	const onImported = async (result: ImportResultDto) => {
+		if (route.fullPath !== initiatingPath || agentId.value !== initiatingAgentId) return;
+		await onPackageImported(result, initiatingAgentId);
+	};
 	uiStore.openModalWithData({
 		name: PACKAGE_IMPORT_MODAL_KEY,
 		data: {
 			projectId: projectId.value,
-			onImported: onPackageImported,
+			onImported,
 			agentRoute: getImportedAgentRoute,
 		},
 	});

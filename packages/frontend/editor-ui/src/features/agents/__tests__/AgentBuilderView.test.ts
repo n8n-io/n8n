@@ -59,6 +59,7 @@ const routeParams = reactive({ projectId: 'p1', agentId: 'a1' });
 // like `params`/`query` mutations already do.
 const routeState = reactive({
 	name: AGENT_BUILDER_VIEW as string,
+	fullPath: '/projects/p1/agents/a1',
 	params: routeParams,
 	query: routeQuery,
 });
@@ -883,6 +884,7 @@ function resetViewMocks() {
 	routeParams.projectId = 'p1';
 	routeParams.agentId = 'a1';
 	routeState.name = AGENT_BUILDER_VIEW;
+	routeState.fullPath = '/projects/p1/agents/a1';
 	routeGuards.leave = undefined;
 	routeGuards.update = undefined;
 	agentEvalsFlagMock.enabled = false;
@@ -7347,5 +7349,17 @@ describe('AgentBuilderView — package export and import', () => {
 			name: AGENT_BUILDER_VIEW,
 			params: { projectId: 'p2', agentId: 'a2' },
 		});
+	});
+
+	it('ignores a finished import after the user left the Agent', async () => {
+		const data = await openImportDialog();
+		fetchConfigMock.mockClear();
+		routeState.fullPath = '/home/workflows';
+
+		await data.onImported({ agents: [{ localId: 'a1', projectId: 'p1' }] });
+		await data.onImported({ agents: [{ localId: 'a2', projectId: 'p2' }] });
+
+		expect(fetchConfigMock).not.toHaveBeenCalled();
+		expect(routerPush).not.toHaveBeenCalled();
 	});
 });
