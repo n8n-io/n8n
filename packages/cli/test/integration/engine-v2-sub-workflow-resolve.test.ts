@@ -12,7 +12,8 @@ import type {
 	INodeExecutionData,
 	INodeType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { EngineControlPlaneServer } from '@/modules/engine-v2/engine-control-plane-server';
 import { EngineSubWorkflowClient } from '@/modules/engine-v2/engine-sub-workflow-client';

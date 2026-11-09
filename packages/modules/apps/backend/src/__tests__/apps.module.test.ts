@@ -7,6 +7,12 @@ import { mock } from 'vitest-mock-extended';
 import { AppsModule } from '../apps.module';
 import { AppsConfig } from '../apps.config';
 import { AppProtectedResource } from '../auth/app-protected-resource';
+import {
+	AppAgentPort,
+	AppBindingAdapters,
+	AppDataTablePort,
+	AppWorkflowPort,
+} from '../bindings/app-binding-ports';
 import { AppBlobStore } from '../storage/app-blob-store';
 import {
 	SnapshotAppSourceVersionStore,
@@ -46,13 +52,22 @@ describe('AppsModule', () => {
 		Container.set(AppBlobStore, blobs);
 		Container.set(SnapshotAppSourceVersionStore, sourceVersions);
 		Container.set(SnapshotAppBuildResultStore, buildResults);
+		const dataTables = mock<AppDataTablePort>();
+		const workflows = mock<AppWorkflowPort>();
+		const agents = mock<AppAgentPort>();
+		const resolve = vi.fn(() => ({ dataTables, workflows, agents }));
+		Container.set(AppBindingAdapters, { resolve });
 		const module = new AppsModule();
 		expect((await module.entities()).map((entity) => entity.name)).toEqual([
 			'App',
 			'AppVersion',
 			'AppArtifact',
 		]);
+		expect(resolve).not.toHaveBeenCalled();
 		await module.init();
+		expect(Container.get(AppDataTablePort)).toBe(dataTables);
+		expect(Container.get(AppWorkflowPort)).toBe(workflows);
+		expect(Container.get(AppAgentPort)).toBe(agents);
 		expect(blobs.init).toHaveBeenCalledOnce();
 		expect(Container.get(AppSourceVersionStore)).toBe(sourceVersions);
 		expect(Container.get(AppBuildResultStore)).toBe(buildResults);

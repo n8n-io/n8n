@@ -1,7 +1,6 @@
+import type { DataTableRepository } from '@n8n/backend-module-data-table';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
 import { AssistantArtifactNamesService } from '../assistant-artifact-names.service';
 

@@ -116,6 +116,7 @@ import {
 	assertTagWritesAllowed,
 	assertVariableWritesAllowed,
 	assertPackageImportApiKeyScopes,
+	assertWorkflowPublishingAllowed,
 } from './import-gates';
 import { identifyRequirements } from './import-result';
 
@@ -229,6 +230,9 @@ export class ImportOrchestrator {
 			options.apiKeyScopes,
 			plans.map((plan) => plan.workflowPlan),
 		);
+		for (const { workflowPlan } of plans) {
+			assertWorkflowPublishingAllowed(options.apiKeyScopes, workflowPlan);
+		}
 		const creations = plans.flatMap((plan) => plan.variablePlan.creations);
 		const overwrites = plans.flatMap((plan) => plan.variablePlan.overwrites);
 

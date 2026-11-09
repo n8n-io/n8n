@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-apps",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
@@ -29,6 +29,8 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
+    "@n8n/telemetry": "workspace:*",
+    "uuid": "catalog:",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend"
   },
@@ -46,6 +48,7 @@
     "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
     "@vitejs/plugin-vue": "catalog:frontend",
+    "@vue/test-utils": "catalog:frontend",
     "eslint": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
