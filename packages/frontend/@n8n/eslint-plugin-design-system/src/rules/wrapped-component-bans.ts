@@ -67,6 +67,12 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'reka-ui',
+		prefixes: ['Listbox'],
+		allowedFolders: ['components/N8nListbox'],
+		replacement: ['N8nListbox', 'N8nListboxItem'],
+	},
+	{
+		library: 'reka-ui',
 		prefixes: ['NumberField'],
 		allowedFolders: ['components/N8nInputNumber'],
 		replacement: 'N8nInputNumber',
