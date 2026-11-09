@@ -309,62 +309,19 @@ describe('WorkflowDependencyQueryService', () => {
 	});
 
 	describe('getDependencyListGaps', () => {
-		const nodeRow = (
-			workflowId: string,
-			nodeId: string,
-			publishedVersionId: string | null = null,
-		) => ({
-			workflowId,
-			publishedVersionId,
-			dependencyType: 'nodeType' as const,
-			dependencyInfo: { nodeId },
-		});
-		const callRow = (
-			workflowId: string,
-			nodeId: string,
-			publishedVersionId: string | null = null,
-		) => ({
-			workflowId,
-			publishedVersionId,
-			dependencyType: 'workflowCall' as const,
-			dependencyInfo: { nodeId },
-		});
-
 		beforeEach(() => {
-			dependencyRepository.findNodeReferenceRows.mockResolvedValue([]);
-			dependencyRepository.isDraftIndexCurrent.mockResolvedValue(true);
+			dependencyRepository.countWorkflowsWithUnreferencedNodes.mockResolvedValue(0);
+			workflowRepository.hasWorkflowsNeedingIndexing.mockResolvedValue(false);
 		});
 
-		it('returns no gaps for a credential', async () => {
-			await expect(service.getDependencyListGaps('cred-1', 'credential')).resolves.toEqual([]);
-			expect(dependencyRepository.findNodeReferenceRows).not.toHaveBeenCalled();
-		});
-
-		it('returns no gaps when every sub-workflow node has a static reference', async () => {
-			dependencyRepository.findNodeReferenceRows.mockImplementation(
-				async (_types, referenceType, workflowId) =>
-					referenceType === 'workflowCall' && workflowId === undefined
-						? [nodeRow('wf-2', 'n1'), callRow('wf-2', 'n1')]
-						: [],
-			);
-
+		it('returns no gaps when every reference is static and the index is current', async () => {
 			await expect(service.getDependencyListGaps('wf-1', 'workflow')).resolves.toEqual([]);
 		});
 
 		it('counts other workflows that pick a sub-workflow at runtime', async () => {
-			dependencyRepository.findNodeReferenceRows.mockImplementation(
-				async (_types, referenceType, workflowId) =>
-					referenceType === 'workflowCall' && workflowId === undefined
-						? [
-								// wf-2 has a static call in its draft, but not in its published version.
-								nodeRow('wf-2', 'n1'),
-								callRow('wf-2', 'n1'),
-								nodeRow('wf-2', 'n1', 'pub-2'),
-								nodeRow('wf-3', 'n1'),
-								// The requested workflow does not count as its own caller.
-								nodeRow('wf-1', 'n1'),
-							]
-						: [],
+			dependencyRepository.countWorkflowsWithUnreferencedNodes.mockImplementation(
+				async (_types, referenceType, filter) =>
+					referenceType === 'workflowCall' && filter?.excludeWorkflowId === 'wf-1' ? 2 : 0,
 			);
 
 			await expect(service.getDependencyListGaps('wf-1', 'workflow')).resolves.toEqual([
@@ -372,30 +329,46 @@ describe('WorkflowDependencyQueryService', () => {
 			]);
 		});
 
-		it('reports runtime references and an outdated index on the requested workflow', async () => {
-			dependencyRepository.findNodeReferenceRows.mockImplementation(
-				async (_types, referenceType, workflowId) =>
-					referenceType === 'dataTableId' && workflowId === 'wf-1' ? [nodeRow('wf-1', 'n1')] : [],
+		it('reports runtime references in the requested workflow', async () => {
+			dependencyRepository.countWorkflowsWithUnreferencedNodes.mockImplementation(
+				async (_types, referenceType, filter) =>
+					referenceType === 'dataTableId' && filter?.workflowId === 'wf-1' ? 1 : 0,
 			);
-			dependencyRepository.isDraftIndexCurrent.mockResolvedValue(false);
 
 			await expect(service.getDependencyListGaps('wf-1', 'workflow')).resolves.toEqual([
 				{ reason: 'runtimeReferences' },
-				{ reason: 'indexOutdated' },
 			]);
 		});
 
 		it('counts workflows that pick a data table at runtime', async () => {
-			dependencyRepository.findNodeReferenceRows.mockResolvedValue([nodeRow('wf-2', 'n1')]);
+			dependencyRepository.countWorkflowsWithUnreferencedNodes.mockResolvedValue(1);
 
 			await expect(service.getDependencyListGaps('dt-1', 'dataTable')).resolves.toEqual([
 				{ reason: 'runtimeCallers', workflowCount: 1 },
 			]);
-			expect(dependencyRepository.findNodeReferenceRows).toHaveBeenCalledWith(
+			expect(dependencyRepository.countWorkflowsWithUnreferencedNodes).toHaveBeenCalledTimes(1);
+			expect(dependencyRepository.countWorkflowsWithUnreferencedNodes).toHaveBeenCalledWith(
 				['n8n-nodes-base.dataTable', 'n8n-nodes-base.dataTableTool'],
 				'dataTableId',
 				undefined,
 			);
 		});
+
+		it('does not look for runtime references for a credential', async () => {
+			await expect(service.getDependencyListGaps('cred-1', 'credential')).resolves.toEqual([]);
+			expect(dependencyRepository.countWorkflowsWithUnreferencedNodes).not.toHaveBeenCalled();
+		});
+
+		/** A caller whose index is behind can be missing from any list, whatever the resource type. */
+		it.each(['workflow', 'credential', 'dataTable'] as const)(
+			'reports a lagging index for a %s',
+			async (resourceType) => {
+				workflowRepository.hasWorkflowsNeedingIndexing.mockResolvedValue(true);
+
+				await expect(service.getDependencyListGaps('id-1', resourceType)).resolves.toEqual([
+					{ reason: 'indexBehind' },
+				]);
+			},
+		);
 	});
 });

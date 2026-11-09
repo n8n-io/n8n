@@ -225,12 +225,12 @@ function describeGap(
 					'This workflow picks a sub-workflow or data table at runtime, for example through an expression. ' +
 					'Those references are not listed.',
 			};
-		case 'indexOutdated':
+		case 'indexBehind':
 			return {
 				code: gap.reason,
 				message:
-					'This workflow changed after the dependency index last read it. ' +
-					'The links that it holds can be out of date. Try again in a few seconds.',
+					'The dependency index has not read the latest version of some workflows yet. ' +
+					'The list can be out of date. Try again in a few seconds.',
 			};
 	}
 }

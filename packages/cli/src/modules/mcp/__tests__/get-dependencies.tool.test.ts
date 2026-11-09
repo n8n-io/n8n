@@ -248,7 +248,7 @@ describe('get_dependencies', () => {
 		const { tool, dependencies } = harness();
 		dependencies.getDependencyListGaps.mockResolvedValue([
 			{ reason: 'runtimeCallers', workflowCount: 3 },
-			{ reason: 'indexOutdated' },
+			{ reason: 'indexBehind' },
 		]);
 
 		const payload = payloadOf(
@@ -256,10 +256,7 @@ describe('get_dependencies', () => {
 		);
 
 		expect(payload.mayBeIncomplete).toBe(true);
-		expect(payload.incompleteReasons.map((r) => r.code)).toEqual([
-			'runtimeCallers',
-			'indexOutdated',
-		]);
+		expect(payload.incompleteReasons.map((r) => r.code)).toEqual(['runtimeCallers', 'indexBehind']);
 		expect(payload.incompleteReasons[0].message).toContain('3 workflows pick a sub-workflow');
 	});
 

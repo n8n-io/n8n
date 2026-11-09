@@ -61,8 +61,8 @@ export type DependencyListGap =
 	| { reason: 'runtimeCallers'; workflowCount: number }
 	/** The requested workflow picks a sub-workflow or data table at runtime. */
 	| { reason: 'runtimeReferences' }
-	/** The requested workflow changed after the index last read it. */
-	| { reason: 'indexOutdated' };
+	/** The index has not read the current version of some workflow yet. */
+	| { reason: 'indexBehind' };
 
 const RESOURCE_DEPENDENCY_TYPES: Record<
 	DependencyResourceType,
@@ -350,7 +350,8 @@ export class WorkflowDependencyQueryService {
 	 * Reasons why the dependency list of a resource can miss items. The index skips references it
 	 * cannot read without running the workflow, such as a sub-workflow ID set by an expression. A
 	 * node of a referencing type that has no reference row is such a node, or a node with no
-	 * target yet, so the result can over-report. Evaluation nodes are not checked.
+	 * target yet, so the result can over-report. Evaluation nodes are not checked. The list can
+	 * also miss items while the index has not read the current version of some workflow.
 	 *
 	 * The counts span every workflow on the instance, not only the ones the user can read: a
 	 * hidden workflow can still use the resource.
@@ -359,74 +360,39 @@ export class WorkflowDependencyQueryService {
 		resourceId: string,
 		resourceType: DependencyResourceType,
 	): Promise<DependencyListGap[]> {
-		const gaps: DependencyListGap[] = [];
-
-		if (resourceType === 'credential') return gaps;
-
-		if (resourceType === 'dataTable') {
-			const workflowIds = await this.findWorkflowsWithRuntimeReferences(
-				DATA_TABLE_SELECTOR_NODE_TYPES,
-				'dataTableId',
+		const count = async (
+			nodeTypes: string[],
+			referenceType: 'workflowCall' | 'dataTableId',
+			filter?: { workflowId?: string; excludeWorkflowId?: string },
+		) =>
+			await this.dependencyRepository.countWorkflowsWithUnreferencedNodes(
+				nodeTypes,
+				referenceType,
+				filter,
 			);
-			if (workflowIds.size > 0) {
-				gaps.push({ reason: 'runtimeCallers', workflowCount: workflowIds.size });
-			}
-			return gaps;
-		}
 
-		const [callers, ownWorkflowCalls, ownDataTables, indexCurrent] = await Promise.all([
-			this.findWorkflowsWithRuntimeReferences(WORKFLOW_SELECTOR_NODE_TYPES, 'workflowCall'),
-			this.findWorkflowsWithRuntimeReferences(
-				WORKFLOW_SELECTOR_NODE_TYPES,
-				'workflowCall',
-				resourceId,
-			),
-			this.findWorkflowsWithRuntimeReferences(
-				DATA_TABLE_SELECTOR_NODE_TYPES,
-				'dataTableId',
-				resourceId,
-			),
-			this.dependencyRepository.isDraftIndexCurrent(resourceId),
+		const [indexBehind, callers, ownWorkflowCalls, ownDataTables] = await Promise.all([
+			// Any workflow can hold a link to the resource, so a lag anywhere can hide an item.
+			this.workflowRepository.hasWorkflowsNeedingIndexing(),
+			resourceType === 'workflow'
+				? count(WORKFLOW_SELECTOR_NODE_TYPES, 'workflowCall', { excludeWorkflowId: resourceId })
+				: resourceType === 'dataTable'
+					? count(DATA_TABLE_SELECTOR_NODE_TYPES, 'dataTableId')
+					: 0,
+			resourceType === 'workflow'
+				? count(WORKFLOW_SELECTOR_NODE_TYPES, 'workflowCall', { workflowId: resourceId })
+				: 0,
+			resourceType === 'workflow'
+				? count(DATA_TABLE_SELECTOR_NODE_TYPES, 'dataTableId', { workflowId: resourceId })
+				: 0,
 		]);
 
-		callers.delete(resourceId);
-		if (callers.size > 0) gaps.push({ reason: 'runtimeCallers', workflowCount: callers.size });
-		if (ownWorkflowCalls.size > 0 || ownDataTables.size > 0) {
-			gaps.push({ reason: 'runtimeReferences' });
-		}
-		if (!indexCurrent) gaps.push({ reason: 'indexOutdated' });
+		const gaps: DependencyListGap[] = [];
+		if (callers > 0) gaps.push({ reason: 'runtimeCallers', workflowCount: callers });
+		if (ownWorkflowCalls > 0 || ownDataTables > 0) gaps.push({ reason: 'runtimeReferences' });
+		if (indexBehind) gaps.push({ reason: 'indexBehind' });
 
 		return gaps;
-	}
-
-	/** Workflows with a node of the given types that has no `referenceType` row in the same version. */
-	private async findWorkflowsWithRuntimeReferences(
-		nodeTypes: string[],
-		referenceType: 'workflowCall' | 'dataTableId',
-		workflowId?: string,
-	): Promise<Set<string>> {
-		const rows = await this.dependencyRepository.findNodeReferenceRows(
-			nodeTypes,
-			referenceType,
-			workflowId,
-		);
-
-		const nodeKey = (row: (typeof rows)[number]) => {
-			const nodeId = row.dependencyInfo?.nodeId;
-			const version = row.publishedVersionId === null ? 'draft' : 'published';
-			return `${row.workflowId}:${version}:${typeof nodeId === 'string' ? nodeId : ''}`;
-		};
-
-		const referencedNodes = new Set(
-			rows.filter((row) => row.dependencyType === referenceType).map(nodeKey),
-		);
-
-		const result = new Set<string>();
-		for (const row of rows) {
-			if (row.dependencyType !== 'nodeType') continue;
-			if (!referencedNodes.has(nodeKey(row))) result.add(row.workflowId);
-		}
-		return result;
 	}
 
 	/**

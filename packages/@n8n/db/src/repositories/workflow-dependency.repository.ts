@@ -105,58 +105,58 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	}
 
 	/**
-	 * The `nodeType` rows for the given node types, and every row of `referenceType`, in
-	 * workflows that are not archived. Both kinds of row carry the node ID in `dependencyInfo`.
-	 * A caller can compare them to find nodes that have no static reference, for example a
-	 * node that picks its sub-workflow through an expression.
+	 * How many workflows that are not archived hold a node of the given types with no
+	 * `referenceType` row for the same node in the same version (draft or published). The indexer
+	 * writes no reference row when it cannot read the target without running the workflow, for
+	 * example when an expression sets a sub-workflow ID.
 	 */
-	async findNodeReferenceRows(
+	async countWorkflowsWithUnreferencedNodes(
 		nodeTypes: string[],
 		referenceType: 'workflowCall' | 'dataTableId',
-		workflowId?: string,
-	): Promise<
-		Array<
-			Pick<
+		filter: { workflowId?: string; excludeWorkflowId?: string } = {},
+	): Promise<number> {
+		if (nodeTypes.length === 0) return 0;
+
+		const nodeId = (alias: string) =>
+			this.databaseConfig.type === 'postgresdb'
+				? `${alias}.dependencyInfo ->> 'nodeId'`
+				: `JSON_EXTRACT(${alias}.dependencyInfo, '$.nodeId')`;
+
+		const qb = this.createQueryBuilder('node')
+			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = node.workflowId')
+			.leftJoin(
 				WorkflowDependency,
-				'workflowId' | 'publishedVersionId' | 'dependencyType' | 'dependencyInfo'
-			>
-		>
-	> {
-		if (nodeTypes.length === 0) return [];
+				'reference',
+				[
+					'reference.workflowId = node.workflowId',
+					'reference.dependencyType = :referenceType',
+					// The same version: both draft rows, or both published rows.
+					'((reference.publishedVersionId IS NULL AND node.publishedVersionId IS NULL) OR ' +
+						'(reference.publishedVersionId IS NOT NULL AND node.publishedVersionId IS NOT NULL))',
+					`${nodeId('reference')} = ${nodeId('node')}`,
+				].join(' AND '),
+				{ referenceType },
+			)
+			.where('node.dependencyType = :nodeType', { nodeType: 'nodeType' })
+			.andWhere('node.dependencyKey IN (:...nodeTypes)', { nodeTypes })
+			.andWhere('workflow.isArchived = :isArchived', { isArchived: false })
+			.andWhere('reference.id IS NULL');
 
-		const workflowFilter = {
-			...(workflowId ? { workflowId } : {}),
-			workflow: { isArchived: false },
-		};
+		if (filter.workflowId) {
+			qb.andWhere('node.workflowId = :workflowId', { workflowId: filter.workflowId });
+		}
+		if (filter.excludeWorkflowId) {
+			qb.andWhere('node.workflowId != :excludeWorkflowId', {
+				excludeWorkflowId: filter.excludeWorkflowId,
+			});
+		}
 
-		return await this.find({
-			where: [
-				{ ...workflowFilter, dependencyType: 'nodeType', dependencyKey: In(nodeTypes) },
-				{ ...workflowFilter, dependencyType: referenceType },
-			],
-			select: ['workflowId', 'publishedVersionId', 'dependencyType', 'dependencyInfo'],
-		});
-	}
+		const row = await qb
+			.select('COUNT(DISTINCT node.workflowId)', 'total')
+			.getRawOne<{ total: number | string }>();
 
-	/**
-	 * Whether the draft rows of a workflow describe its current version. False when the workflow
-	 * changed after it was last indexed, or when it was never indexed.
-	 */
-	async isDraftIndexCurrent(workflowId: string): Promise<boolean> {
-		const row = await this.createQueryBuilder('dependency')
-			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = dependency.workflowId')
-			.where('dependency.workflowId = :workflowId', { workflowId })
-			.andWhere('dependency.publishedVersionId IS NULL')
-			.select('MAX(dependency.workflowVersionId)', 'indexedVersion')
-			.addSelect('MAX(workflow.versionCounter)', 'currentVersion')
-			.getRawOne<{
-				indexedVersion: number | string | null;
-				currentVersion: number | string | null;
-			}>();
-
-		if (row?.indexedVersion === null || row?.indexedVersion === undefined) return false;
-		// Postgres can return integer aggregates as strings.
-		return Number(row.indexedVersion) >= Number(row.currentVersion);
+		// Postgres returns COUNT as a bigint string.
+		return Number(row?.total ?? 0);
 	}
 
 	/**

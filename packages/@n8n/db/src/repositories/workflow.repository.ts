@@ -2108,11 +2108,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	 *
 	 */
 	async findWorkflowsNeedingIndexing(batchSize?: number): Promise<WorkflowEntity[]> {
-		const qb = this.createQueryBuilder('workflow');
-		const workflowIdAlias = 'workflowId';
-		const maxVersionIdAlias = 'maxVersionId';
-		const minIndexVersionAlias = 'minIndexVersion';
-		const depAlias = 'dep';
+		const qb = this.buildNeedingDraftIndexingQuery();
 
 		// Only select columns needed for indexing to avoid loading large unused
 		// JSON columns (connections, staticData, pinData) that can cause OOM.
@@ -2124,6 +2120,74 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			'workflow.nodes',
 			'workflow.settings',
 		]);
+
+		if (batchSize) {
+			qb.limit(batchSize);
+		}
+
+		return await qb.getMany();
+	}
+
+	/**
+	 * Find active workflows that need published version indexing.
+	 * These are workflows where:
+	 * - activeVersionId IS NOT NULL (workflow is active/published)
+	 * - No dependency rows exist with matching publishedVersionId = activeVersionId,
+	 *   or the matching rows were written by an older indexer version
+	 *
+	 * This includes the activeVersion relation for efficiency.
+	 */
+	async findWorkflowsNeedingPublishedVersionIndexing(
+		batchSize?: number,
+	): Promise<WorkflowEntity[]> {
+		const qb = this.buildNeedingPublishedIndexingQuery();
+
+		// Only select columns needed for indexing to avoid loading large unused
+		// JSON columns (connections, staticData, pinData) that can cause OOM.
+		// For published version indexing we need the published version's nodes
+		// (from activeVersion), not the draft nodes. `settings` holds the error workflow.
+		qb.select([
+			'workflow.id',
+			'workflow.versionCounter',
+			'workflow.activeVersionId',
+			'workflow.settings',
+		]);
+
+		// Include the published version's nodes for indexing (skip connections to save memory).
+		// The primary key (versionId) must be selected for TypeORM to hydrate the relation.
+		qb.leftJoin('workflow.activeVersion', 'activeVersion');
+		qb.addSelect(['activeVersion.versionId', 'activeVersion.nodes']);
+
+		if (batchSize) {
+			qb.limit(batchSize);
+		}
+
+		return await qb.getMany();
+	}
+
+	/**
+	 * Whether the dependency index has not read the current version of some workflow yet.
+	 * Uses the same conditions as the two find methods above, so it is true while their
+	 * workflows wait for indexing.
+	 */
+	async hasWorkflowsNeedingIndexing(): Promise<boolean> {
+		const draft = await this.buildNeedingDraftIndexingQuery().select('workflow.id').getExists();
+		if (draft) return true;
+
+		return await this.buildNeedingPublishedIndexingQuery()
+			// The indexer skips a workflow whose published version is missing, so such a workflow
+			// would stay in this result for good.
+			.innerJoin('workflow.activeVersion', 'activeVersion')
+			.select('workflow.id')
+			.getExists();
+	}
+
+	private buildNeedingDraftIndexingQuery() {
+		const qb = this.createQueryBuilder('workflow');
+		const workflowIdAlias = 'workflowId';
+		const maxVersionIdAlias = 'maxVersionId';
+		const minIndexVersionAlias = 'minIndexVersion';
+		const depAlias = 'dep';
 
 		qb.leftJoin(
 			(subQuery) => {
@@ -2151,40 +2215,15 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.orWhere(`${qb.escape(depAlias)}.${qb.escape(minIndexVersionAlias)} < :indexVersion`, {
 				indexVersion: WORKFLOW_DEPENDENCY_INDEX_VERSION,
 			});
-		if (batchSize) {
-			qb.limit(batchSize);
-		}
 
-		return await qb.getMany();
+		return qb;
 	}
 
-	/**
-	 * Find active workflows that need published version indexing.
-	 * These are workflows where:
-	 * - activeVersionId IS NOT NULL (workflow is active/published)
-	 * - No dependency rows exist with matching publishedVersionId = activeVersionId,
-	 *   or the matching rows were written by an older indexer version
-	 *
-	 * This includes the activeVersion relation for efficiency.
-	 */
-	async findWorkflowsNeedingPublishedVersionIndexing(
-		batchSize?: number,
-	): Promise<WorkflowEntity[]> {
+	private buildNeedingPublishedIndexingQuery() {
 		const qb = this.createQueryBuilder('workflow');
 		const depAlias = 'dep';
 		const publishedVersionIdAlias = 'publishedVersionId';
 		const minIndexVersionAlias = 'minIndexVersion';
-
-		// Only select columns needed for indexing to avoid loading large unused
-		// JSON columns (connections, staticData, pinData) that can cause OOM.
-		// For published version indexing we need the published version's nodes
-		// (from activeVersion), not the draft nodes. `settings` holds the error workflow.
-		qb.select([
-			'workflow.id',
-			'workflow.versionCounter',
-			'workflow.activeVersionId',
-			'workflow.settings',
-		]);
 
 		// Left join to find matching published version dependencies
 		qb.leftJoin(
@@ -2209,16 +2248,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			{ indexVersion: WORKFLOW_DEPENDENCY_INDEX_VERSION },
 		);
 
-		// Include the published version's nodes for indexing (skip connections to save memory).
-		// The primary key (versionId) must be selected for TypeORM to hydrate the relation.
-		qb.leftJoin('workflow.activeVersion', 'activeVersion');
-		qb.addSelect(['activeVersion.versionId', 'activeVersion.nodes']);
-
-		if (batchSize) {
-			qb.limit(batchSize);
-		}
-
-		return await qb.getMany();
+		return qb;
 	}
 
 	/**
