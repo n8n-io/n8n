@@ -1,4 +1,9 @@
-import type { InstanceAiHandoffContext, InstanceAiWorkflowAttachment } from '@n8n/api-types';
+import type {
+	AssistantAgentTargetsState,
+	InstanceAiHandoffContext,
+	InstanceAiWorkflowAttachment,
+} from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
 import { computed, reactive, type DeepReadonly } from 'vue';
 
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
@@ -26,6 +31,10 @@ interface UseAssistantArtifactThreadOptions {
 	sendMessage: (text: string, handoffContext?: InstanceAiHandoffContext) => void;
 	/** A workflow handed off to a new thread. Its preview opens before the first message. */
 	pendingWorkflowAttachment?: InstanceAiWorkflowAttachment;
+	/** The agents that the thread metadata binds. */
+	agentTargets?: () => DeepReadonly<AssistantAgentTargetsState> | null;
+	/** The artifact of the active preview tab. */
+	activeArtifactId?: () => string | undefined;
 }
 
 /**
@@ -34,6 +43,7 @@ interface UseAssistantArtifactThreadOptions {
  */
 export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOptions) {
 	const workflowsListStore = useWorkflowsListStore();
+	const i18n = useI18n();
 
 	const artifactTurns = computed(() =>
 		toAssistantArtifactTurns(options.messages(), options.isStreaming()),
@@ -47,6 +57,12 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 		workflowNameLookup: (id) => workflowsListStore.getWorkflowById(id)?.name,
 		archivedWorkflowIds: () => archivedWorkflowIds.value,
 		pendingWorkflowAttachment: () => options.pendingWorkflowAttachment,
+		agentBuilderTarget: () => options.agentTargets?.()?.bound ?? undefined,
+		pendingAgentTarget: () => {
+			const pending = options.agentTargets?.()?.pending;
+			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
+		},
+		agentBuilderTargets: () => [...(options.agentTargets?.()?.targets ?? [])],
 	});
 
 	const thread: ArtifactThread = reactive({
@@ -61,6 +77,7 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 		isStreaming: computed(() => options.isStreaming()),
 		// The chat streams as soon as it accepts a message.
 		isSendingMessage: false,
+		activeArtifactId: computed(() => options.activeArtifactId?.()),
 		currentTasks,
 		// The editor snapshot seeds only current-runtime threads. The preview fetches the workflow.
 		consumePendingHandoff: () => undefined,

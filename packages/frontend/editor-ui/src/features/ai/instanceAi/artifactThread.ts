@@ -38,6 +38,8 @@ export interface ArtifactThread extends ArtifactPreviewMemory {
 	isHydratingThread: boolean;
 	isStreaming: boolean;
 	isSendingMessage: boolean;
+	/** The artifact of the active preview tab, which the next message is about. */
+	activeArtifactId: string | undefined;
 	currentTasks: TaskList | null;
 	consumePendingHandoff: (workflowId: string) => Omit<PendingHandoff, 'workflowId'> | undefined;
 	sendMessage: (message: string, opts: ArtifactSendMessageOptions) => Promise<boolean>;

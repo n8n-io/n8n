@@ -33,6 +33,7 @@ function createArtifactThread(overrides: Partial<ArtifactThread> = {}): Artifact
 		isHydratingThread: false,
 		isStreaming: false,
 		isSendingMessage: false,
+		activeArtifactId: undefined,
 		currentTasks: null,
 		consumePendingHandoff: () => undefined,
 		sendMessage: async () => true,
