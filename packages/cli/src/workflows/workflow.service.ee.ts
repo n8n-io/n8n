@@ -97,10 +97,7 @@ export type CredentialGuardOptions = {
 	allowUninspectableSource?: boolean;
 	/** Fail the save when a read-only node has other edits to non-editable fields. */
 	rejectReadOnlyNodeEdits?: boolean;
-	/**
-	 * Node fields the caller's payload never carries, for example fields its request schema strips.
-	 * The credential guard leaves them out when it compares a submitted node with the stored node.
-	 */
+	/** Node fields the caller's payload never carries. The credential guard strips these when comparing with a saved node. */
 	unsentNodeFields?: readonly string[];
 };
 

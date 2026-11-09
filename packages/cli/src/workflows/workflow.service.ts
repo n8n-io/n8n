@@ -146,12 +146,9 @@ type WorkflowUpdateOptions = {
 	allowUnresolvedErrorWorkflow?: boolean;
 	/** The history version this update restores, so its nodes keep their credentials. */
 	restoredFromVersionId?: string;
-	/** Fail the save instead of restoring when the user edits a node whose credential they have no access to. */
+	/** Fail the save when a read-only node has other edits to non-editable fields. */
 	rejectReadOnlyNodeEdits?: boolean;
-	/**
-	 * Node fields the caller's payload never carries, for example fields its request schema strips.
-	 * The credential guard leaves them out when it compares a submitted node with the stored node.
-	 */
+	/** Node fields the caller's payload never carries. The credential guard strips these when comparing with a saved node. */
 	unsentNodeFields?: readonly string[];
 };
 
