@@ -1,0 +1,87 @@
+packages/cli/src/modules/agents/register-user-deletion-handler.ts
+  s_abe416d94b4232::t_3e08a5926b97df 8,23-26
+  s_abe416d94b4232::t_c58f55541d9686 7,28
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_abe416d94b4232::t_605bf8bc01d0c2 108-133
+  s_abe416d94b4232::t_7af9ee01444300 20-22
+packages/cli/test/integration/agents/system-agent-user-deletion.test.ts
+  s_abe416d94b4232::t_bc8ca4a03d6a54 8,222
+  s_abe416d94b4232::t_be94184e634518 425-430,472-480
+  s_abe416d94b4232::t_9195d2db39edc2 275-284,495-497
+  s_abe416d94b4232::t_e79ed9df221116 431-471
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  s_abe416d94b4232::t_7af9ee01444300 125,147,151-152
+  s_abe416d94b4232::t_605bf8bc01d0c2 127-146,148-150
+  s_abe416d94b4232::t_94f08abe3e76b4 5
+  s_abe416d94b4232::t_9580f3284e929b 126
+packages/cli/src/modules/agents/agent-project-cleanup.service.ts
+  s_abe416d94b4232::t_3e08a5926b97df 65-68
+packages/cli/test/integration/database/repositories/agent-user-deletion.repository.test.ts
+  s_abe416d94b4232::t_7e9cdeadb1f317 83
+  s_abe416d94b4232::t_ec162926e7a6ea 1-82,84-86
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_abe416d94b4232::t_237bfc1e66e9e3 1063-1066,1074-1075
+  s_abe416d94b4232::t_9b03f079b26dad 1067-1073
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_abe416d94b4232::t_c58f55541d9686 251
+packages/@n8n/backend-services/src/services/ownership-transfer-handler.registry.ts
+  s_abe416d94b4232::t_3e08a5926b97df 25,27
+  s_abe416d94b4232::t_237bfc1e66e9e3 26
+packages/cli/src/services/user.service.ts
+  s_abe416d94b4232::t_ee725a69aee949 704-707
+  s_abe416d94b4232::t_447f070fa483ee 708
+packages/cli/src/services/project.service.ee.ts
+  s_abe416d94b4232::t_3e08a5926b97df 272,274
+  s_abe416d94b4232::t_b698d530c32fe2 273
+packages/cli/test/integration/agents/agent-project-cleanup.test.ts
+  s_abe416d94b4232::t_b698d530c32fe2 88
+  s_abe416d94b4232::t_9195d2db39edc2 207-219
+  s_abe416d94b4232::t_0e79ee38868a98 14-17,32-34,43-44,55,59,68-70,87,89
+  s_abe416d94b4232::t_f028de09bec800 35-42,45-54,56-58,60-67,71-86
+  s_abe416d94b4232::t_bc8ca4a03d6a54 2,13
+  s_abe416d94b4232::t_fdfcb9aa3c1ed3 90-91
+packages/cli/src/services/ownership-transfer/ownership-transfer.service.ts
+  s_abe416d94b4232::t_3e08a5926b97df 130-135
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_abe416d94b4232::t_6f23f2f91c9444 168-180
+  s_abe416d94b4232::t_c58f55541d9686 23-25,102-103,165-167,181-201,218
+packages/cli/src/modules/agents/repositories/agent-project-deletion.repository.ts
+  s_abe416d94b4232::t_3e08a5926b97df 34-37
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_abe416d94b4232::t_150ca45e9a98ed 97
+  s_abe416d94b4232::t_6f23f2f91c9444 183-188
+packages/cli/src/modules/agents/repositories/agent-user-deletion.repository.ts
+  s_abe416d94b4232::t_3e08a5926b97df 28-31
+  s_abe416d94b4232::t_c58f55541d9686 2-27,32-37,39-66,68-70,73-77
+  s_abe416d94b4232::t_551535e34fb4cc 38,67
+  s_abe416d94b4232::t_7e9cdeadb1f317 71-72
+  s_abe416d94b4232::t_6f23f2f91c9444 1
+packages/cli/src/modules/agents/__tests__/agent-execution-thread.repository.test.ts
+  s_abe416d94b4232::t_150ca45e9a98ed 11-12,23-24
+  s_abe416d94b4232::t_6f23f2f91c9444 30-38
+packages/cli/src/modules/agents/repositories/agent-chat-attachment.repository.ts
+  s_abe416d94b4232::t_237bfc1e66e9e3 39
+  s_abe416d94b4232::t_a57a02fbab8e27 42-43
+  s_abe416d94b4232::t_551535e34fb4cc 44
+packages/cli/src/modules/agents/__tests__/agent-knowledge-mirror.service.test.ts
+  s_abe416d94b4232::t_17ccccf9b36a0a 132-135,181-182
+  s_abe416d94b4232::t_9195d2db39edc2 183-184
+  s_abe416d94b4232::t_551535e34fb4cc 164
+  s_abe416d94b4232::t_ba8b91da7f2e1d 178-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "98b509364b28e47f93cb0150434786ff7d82c27d",
+  "prompts": {},
+  "sessions": {
+    "s_abe416d94b4232": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19c1e-ab9b-7db2-b5b6-6f22b848d545",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
