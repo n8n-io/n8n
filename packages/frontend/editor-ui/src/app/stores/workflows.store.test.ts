@@ -742,6 +742,39 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
+	describe('updateWorkflow', () => {
+		it('takes the version-scoped settings of the saved workflow and keeps the local live settings', async () => {
+			workflowsStore.setWorkflowId('w1');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w1'));
+			workflowDocumentStore.setSettings({
+				executionOrder: 'v1',
+				timezone: 'Europe/Berlin',
+				engineType: 'v2',
+			});
+
+			vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
+				createTestWorkflow({
+					id: 'w1',
+					versionId: 'v2',
+					checksum: 'checksum-2',
+					nodes: [],
+					connections: {},
+					settings: { executionOrder: 'v1', timezone: 'UTC', engineType: 'v1' },
+				}),
+			);
+
+			await workflowsStore.updateWorkflow('w1', {
+				nodes: [],
+				connections: {},
+				restoredFromVersionId: 'old',
+			});
+
+			expect(workflowDocumentStore.settings).toEqual(
+				expect.objectContaining({ engineType: 'v1', timezone: 'Europe/Berlin' }),
+			);
+		});
+	});
+
 	describe('fetchPublicationStatus', () => {
 		it('should call GET /workflows/:id/publication-status and return the payload', async () => {
 			const workflowId = 'workflow-abc';
