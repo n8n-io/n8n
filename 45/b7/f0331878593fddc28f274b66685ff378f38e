@@ -1,0 +1,43 @@
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_a28420daca0293::t_3165be8754bea5 742,744-747,1080,1262,1266
+  s_a28420daca0293::t_6330e93fe45a56 109
+  s_a28420daca0293::t_e41234d8e3f869 1089,1190-1194
+  s_a28420daca0293::t_d06a572600f24f 1,1069-1079,1081-1088,1090-1189,1195-1261,1263-1265
+  s_a28420daca0293::t_65fb0c0042a705 8,17,88-90,103,107-108
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-environment.factory.ts
+  s_a28420daca0293::t_56531980ae0a45 21,110,239,453,518,543
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-agent.factory.test.ts
+  s_a28420daca0293::t_a76565c99fbc0e 243-289,291-292,294-301
+  s_a28420daca0293::t_848fb20add1f70 290,293
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-environment.factory.test.ts
+  s_a28420daca0293::t_6de3df421f55cc 166-192
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  h_2f80f0e06f710c 449
+  s_a28420daca0293::t_273d540b37cf0b 163,515-516,676-679
+  s_a28420daca0293::t_aaa7b58c7aa093 20,548
+  s_a28420daca0293::t_abbe2d21cffc11 43,132,175-177,179-196,199,206-211,221-222,231-238,250,299-310,331,352-358,369,374,514,518-524,526-547,549-550,680-688
+packages/cli/src/modules/instance-ai/turn-setup/assistant-agent.factory.ts
+  s_a28420daca0293::t_5b31fd18ff6ebf 19
+  s_a28420daca0293::t_56531980ae0a45 178,328,336-340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "45b7f0331878593fddc28f274b66685ff378f38e",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a28420daca0293": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8204b224-30e6-4aca-975b-c3612e1b2a23",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

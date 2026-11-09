@@ -1,0 +1,47 @@
+packages/cli/src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts
+  s_32942547bb62b6::t_3120493367a5e8 171,181-189
+packages/cli/test/shared/external-secrets/utils.ts
+  s_32942547bb62b6::t_bfd4e816c05454 49-50
+packages/cli/src/modules/external-secrets.ee/external-secrets.service.ee.ts
+  s_32942547bb62b6::t_5380229cc20b88 55-56,76-77
+  s_32942547bb62b6::t_3120493367a5e8 57-61,78-82
+packages/cli/src/modules/external-secrets.ee/types.ts
+  s_32942547bb62b6::t_3120493367a5e8 41-43
+packages/cli/test/integration/external-secrets/secret-providers-project.api.test.ts
+  s_32942547bb62b6::t_bfd4e816c05454 10,81,84,496-519,523-549
+  s_32942547bb62b6::t_a2896e194bfad8 520-522
+packages/cli/src/modules/external-secrets.ee/external-secrets-manager.ee.ts
+  s_32942547bb62b6::t_3120493367a5e8 90-97,102
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets.service.ee.test.ts
+  s_32942547bb62b6::t_3120493367a5e8 13,17-18,45-67
+packages/cli/src/modules/external-secrets.ee/providers/infisical.ts
+  s_32942547bb62b6::t_3120493367a5e8 152-153
+packages/cli/src/modules/external-secrets.ee/__tests__/redaction.service.ee.test.ts
+  s_32942547bb62b6::t_3120493367a5e8 185-220
+packages/cli/src/modules/external-secrets.ee/providers/azure-key-vault/azure-key-vault.ts
+  s_32942547bb62b6::t_3120493367a5e8 51
+packages/cli/src/modules/external-secrets.ee/providers/one-password.ts
+  s_32942547bb62b6::t_3120493367a5e8 30-31
+packages/cli/src/modules/external-secrets.ee/providers/vault.ts
+  s_32942547bb62b6::t_3120493367a5e8 292-293
+packages/cli/src/modules/external-secrets.ee/redaction.service.ee.ts
+  s_32942547bb62b6::t_3120493367a5e8 2,48-71
+packages/cli/src/modules/external-secrets.ee/__tests__/external-secrets-manager.ee.test.ts
+  s_32942547bb62b6::t_3120493367a5e8 193-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "245ecfa5b0d24bc2c62206216a21f52c047a3f29",
+  "prompts": {},
+  "sessions": {
+    "s_32942547bb62b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51c82916-db6b-416b-87f5-be0a2af7d486",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
