@@ -136,7 +136,7 @@ export function recreateNodeExecutionStack(
 
 						a.ok(
 							nodeIncomingData,
-							`Start node(${incomingConnection.to.name}) has an incoming connection with no run or pinned data. This is not supported. The connection in question is "${sourceNode.name}->${startNode.name}". Are you sure the start nodes come from the "findStartNodes" function?`,
+							`Start node(${incomingConnection.to.name}) has an incoming connection that carries no run or pinned items. This is not supported. The connection in question is "${sourceNode.name}->${startNode.name}". Are you sure the start nodes come from the "findStartNodes" function?`,
 						);
 
 						incomingData.push(nodeIncomingData.data);

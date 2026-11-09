@@ -34,7 +34,8 @@ function carriesItems(data: INodeExecutionData[] | null): data is INodeExecution
  *
  * Partial executions use this function to give a node the same inputs that a
  * full execution gives it. The pinned-data rule copies
- * `WorkflowExecute.getPinnedOutput`.
+ * `WorkflowExecute.getPinnedOutput`, but it does not check if the node is
+ * disabled. Partial executions remove disabled nodes before they call it.
  */
 export function getIncomingDataForConnection(
 	connection: Pick<GraphConnection, 'from' | 'type' | 'outputIndex'>,

@@ -375,8 +375,8 @@ export function findRootsAboveOtherRoots(
 /**
  * Whether an earlier run left items on one output of a node. Mirrors how the
  * engine's `getIncomingDataForConnection` reads run data: any run of the node
- * counts, and an empty output does not. The engine follows only the outputs that carried
- * items, so an untaken IF branch never runs on a replay.
+ * counts, and an empty output does not. The engine follows only the outputs
+ * that carried items, so an untaken IF branch never runs on a replay.
  */
 function outputCarriedItems(runData: IRunData, nodeName: string, outputIndex: number): boolean {
 	return (runData[nodeName] ?? []).some(

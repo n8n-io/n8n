@@ -1429,7 +1429,6 @@ describe('WorkflowExecute', () => {
 				output: 'specifiedInput',
 				useDataOfInput: 1,
 			};
-			const triggerItem = { name: 'trigger' };
 
 			function createMerge(parameters: INode['parameters']): INode {
 				return {
@@ -1491,7 +1490,11 @@ describe('WorkflowExecute', () => {
 			function unusedIfBranch(parameters: INode['parameters']) {
 				const merge = createMerge(parameters);
 				const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
-				const ifNode = createNodeData({ name: 'if', type: 'n8n-nodes-base.if' });
+				const ifNode = createNodeData({
+					name: 'if',
+					type: 'n8n-nodes-base.if',
+					parameters: { conditions: { boolean: [{ value1: true, value2: true }] } },
+				});
 				const onFalse = createNodeData({ name: 'onFalse' });
 				return new DirectedGraph()
 					.addNodes(trigger, ifNode, onFalse, merge)
@@ -1503,95 +1506,98 @@ describe('WorkflowExecute', () => {
 					);
 			}
 
-			const triggerRunData: IRunData = { trigger: [toITaskData([{ data: triggerItem }])] };
-
 			test.each<{
 				case: string;
 				graph: DirectedGraph;
 				pinData: IPinData;
-				runData: IRunData;
-				expectedRun: string[];
-				expectedMergeOutput: IDataObject[] | undefined;
+				nodesRunBefore: string[];
+				mergeRuns: boolean;
 			}>([
 				{
 					case: 'a pinned input and an input that did not run yet, append',
 					graph: pinnedSibling(append),
 					pinData: { set1: [{ json: { name: 'set1' } }] },
-					runData: triggerRunData,
-					expectedRun: ['set2', 'merge'],
-					expectedMergeOutput: [{ name: 'set1' }, triggerItem],
+					nodesRunBefore: ['trigger'],
+					mergeRuns: true,
 				},
 				{
 					case: 'a pinned input and an input that did not run yet, choose branch',
 					graph: pinnedSibling(chooseBranch),
 					pinData: { set1: [{ json: { name: 'set1' } }] },
-					runData: triggerRunData,
-					expectedRun: ['set2', 'merge'],
-					expectedMergeOutput: [{ name: 'set1' }],
+					nodesRunBefore: ['trigger'],
+					mergeRuns: true,
 				},
 				{
 					case: 'an input pinned with no items, choose branch',
 					graph: pinnedSibling(chooseBranch),
 					pinData: { set1: [] },
-					runData: triggerRunData,
-					expectedRun: ['set2'],
-					expectedMergeOutput: undefined,
+					nodesRunBefore: ['trigger'],
+					mergeRuns: false,
 				},
 				{
 					case: 'the error output of a pinned node, append',
 					graph: pinnedErrorOutput(append),
 					pinData: { http: [{ json: { name: 'http' } }] },
-					runData: triggerRunData,
-					expectedRun: ['merge'],
-					expectedMergeOutput: [{ name: 'http' }],
+					nodesRunBefore: ['trigger', 'http'],
+					mergeRuns: true,
 				},
 				{
 					case: 'the error output of a pinned node, choose branch',
 					graph: pinnedErrorOutput(chooseBranch),
 					pinData: { http: [{ json: { name: 'http' } }] },
-					runData: triggerRunData,
-					expectedRun: [],
-					expectedMergeOutput: undefined,
+					nodesRunBefore: ['trigger', 'http'],
+					mergeRuns: false,
 				},
 				{
 					case: 'an IF branch that had no items in the last run, append',
 					graph: unusedIfBranch(append),
 					pinData: {},
-					runData: {
-						...triggerRunData,
-						if: [{ ...toITaskData([]), data: { main: [[{ json: triggerItem }], []] } }],
-					},
-					expectedRun: ['merge'],
-					expectedMergeOutput: [triggerItem],
+					nodesRunBefore: ['trigger', 'if'],
+					mergeRuns: true,
 				},
-			])('$case', async ({ graph, pinData, runData, expectedRun, expectedMergeOutput }) => {
+			])('$case', async ({ graph, pinData, nodesRunBefore, mergeRuns }) => {
 				// ARRANGE
-				const waitPromise = createDeferredPromise<IRun>();
-				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
-				const workflowExecute = new WorkflowExecute(additionalData, 'manual');
-				const workflow = graph.toWorkflow({
-					name: '',
-					active: false,
-					nodeTypes,
-					settings: { executionOrder: 'v1' },
+				const toWorkflow = () =>
+					graph.toWorkflow({
+						name: '',
+						active: false,
+						nodeTypes,
+						settings: { executionOrder: 'v1' },
+					});
+				const fullRunPromise = createDeferredPromise<IRun>();
+				const fullRunWorkflow = toWorkflow();
+				await new WorkflowExecute(
+					Helpers.WorkflowExecuteAdditionalData(fullRunPromise),
+					'manual',
+				).run({
+					workflow: fullRunWorkflow,
+					startNode: fullRunWorkflow.getNode('trigger')!,
+					pinData,
 				});
-				const nodesRunBefore = Object.keys(runData);
+				const fullRunData = (await fullRunPromise.promise).data.resultData.runData;
 
 				// ACT
-				await workflowExecute.runPartialWorkflow2(workflow, structuredClone(runData), pinData, [], {
-					nodeName: 'merge',
-					mode: 'inclusive',
-				});
-				const result = await waitPromise.promise;
+				const partialRunPromise = createDeferredPromise<IRun>();
+				await new WorkflowExecute(
+					Helpers.WorkflowExecuteAdditionalData(partialRunPromise),
+					'manual',
+				).runPartialWorkflow2(
+					toWorkflow(),
+					structuredClone(pick(fullRunData, nodesRunBefore)),
+					pinData,
+					[],
+					{ nodeName: 'merge', mode: 'inclusive' },
+				);
+				const partialRunData = (await partialRunPromise.promise).data.resultData.runData;
 
 				// ASSERT
-				const resultRunData = result.data.resultData.runData;
-				const nodesRun = Object.keys(resultRunData).filter(
-					(name) => !nodesRunBefore.includes(name) && !(name in pinData),
-				);
-				expect(nodesRun.sort()).toEqual([...expectedRun].sort());
-				const mergeOutput = resultRunData.merge?.[0]?.data?.main?.[0];
-				expect(mergeOutput?.map((item) => item.json)).toEqual(expectedMergeOutput);
+				const executedNodes = (runData: IRunData) =>
+					Object.keys(runData)
+						.filter((name) => !(name in pinData))
+						.sort();
+				expect(fullRunData.merge !== undefined).toBe(mergeRuns);
+				expect(executedNodes(partialRunData)).toEqual(executedNodes(fullRunData));
+				expect(partialRunData.merge?.[0]?.data).toEqual(fullRunData.merge?.[0]?.data);
 			});
 		});
 	});
