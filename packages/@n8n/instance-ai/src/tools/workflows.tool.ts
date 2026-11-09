@@ -592,7 +592,7 @@ async function handleNodeUsage(
 		note:
 			`Counts are how many workflows use each type, out of workflowsInScope. ${absence} ` +
 			'Node types only — for parameter-level convention (retry settings, naming, model ' +
-			'options), read one workflow with `get`.',
+			'options), run `get_workflow` through `call_tool` on one workflow.',
 	};
 }
 
@@ -721,7 +721,8 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 			error: message,
 			availableWorkflows: available,
 			hint:
-				'No workflow exists with that id. Pick one from `availableWorkflows` or run `list_workflows` through `call_tool` for the current set. ' +
+				// The self-healing agent reads this too and has no `call_tool` or `list_workflows`.
+				'No workflow exists with that id. Pick one from `availableWorkflows`. ' +
 				'Do not retry with a guessed id — if the user did not provide one, you are building a new workflow.',
 		};
 	}

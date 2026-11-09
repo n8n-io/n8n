@@ -58,7 +58,7 @@ output items — no workflow to build, set up, verify, or clean up afterwards.
 Direct execution is sufficient when ALL of these hold:
 
 - The effect is one node call (one write, one API operation). A read-back of
-  the destination may be a second `execute` call of a read operation.
+  the destination may be a second `execute_node` run (through `call_tool`) of a read operation.
 - The input items are already at hand — pasted into the chat or read earlier
   in the conversation — so you can pass them literally as `input` items.
   Parameters must not use expressions referencing other nodes; they cannot

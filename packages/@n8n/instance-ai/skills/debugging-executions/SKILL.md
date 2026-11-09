@@ -98,7 +98,7 @@ when a sandbox workspace is available.
 
 A message about a failed run often names its execution, for example "currently
 viewing its execution `<id>`". Read that execution by its id. Do not pick a run
-from `list` instead: `list` can return an older run, and it does not show a
+by running `list_executions` through `call_tool` instead: `list_executions` can return an older run, and it does not show a
 manual run that n8n did not save.
 
 When saving manual executions is turned off, n8n can keep a finished manual run

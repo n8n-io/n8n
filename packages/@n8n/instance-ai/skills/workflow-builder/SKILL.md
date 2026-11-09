@@ -284,8 +284,8 @@ workflow, load the `error-workflows` reference and follow its build → publish
     pass the real n8n `workflowId` on the first `workflow_builder_build_workflow` call only when
     you wrote the file yourself. Never pass local SDK workflow IDs as n8n
     workflow IDs.
-    If you know the workflow's folder (from a `list` result's `folder`), call
-    `list_workflows(folderPath)` to read its sibling workflows before
+    If you know the workflow's folder (from a `list_workflows` result's `folder`), run
+    `list_workflows` through `call_tool` with `folderPath` to read its sibling workflows before
     editing. Match the project's existing naming, node choices, and structure.
 11. After a successful direct `workflow_builder_build_workflow` result, if the tool output
     contains `postBuildFlow.required: true`, follow the inlined

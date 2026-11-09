@@ -511,8 +511,8 @@ const UNSAVED_EXECUTION_GUIDANCE =
 
 const EXTRA_DESCRIPTIONS: Partial<Record<ExecutionToolAction, string>> = {
 	run:
-		' This is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-		"list_workflows, then run it here with the user's values as inputData. " +
+		' This is how you satisfy "trigger/run my <workflow>": find the workflow by running ' +
+		"list_workflows through call_tool, then run it here with the user's values as inputData. " +
 		'Do not treat such a request as a request to build something. ' +
 		'To verify a workflow you built, run workflow_builder_verify_built_workflow through call_tool, not this tool. ' +
 		'Reserve this tool for runs the user explicitly asked for: it runs the workflow live ' +
