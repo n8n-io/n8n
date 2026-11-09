@@ -493,7 +493,7 @@ describe('promotion-environment apply-selection command', () => {
 
 		expect(applyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			{ workflowIds: ['wf-1', 'wf-2'], folderIds: [], includeProject: false },
+			{ workflowIds: ['wf-1', 'wf-2'] },
 			undefined,
 		);
 	});
@@ -509,7 +509,7 @@ describe('promotion-environment apply-selection command', () => {
 
 		expect(applyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			{ workflowIds: ['wf-1'], folderIds: [], includeProject: false },
+			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
 		);
 	});
@@ -536,13 +536,22 @@ describe('promotion-environment apply-selection command', () => {
 		expect(exit).toHaveBeenCalledWith(3);
 	});
 
-	it('exits 4 with a Continue command that resends the same workflow ids', async () => {
-		const { run, logToStderr, exit } = runApplySelection(BLOCKED_RESULT);
+	it('exits 4 with a Continue command that resends the same workflow and folder ids', async () => {
+		const { run, applyProjectSelection, logToStderr, exit } = runApplySelection(BLOCKED_RESULT, {
+			format: 'table',
+			workflow: ['wf-1', 'wf-2'],
+			folder: ['f-1'],
+		});
 
 		await run();
 
+		expect(applyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1', 'wf-2'], folderIds: ['f-1'] },
+			undefined,
+		);
 		expect(logToStderr.mock.calls[0][0]).toContain(
-			`n8n-cli promotion-environment apply-selection-continue proj-1 -w wf-1 -w wf-2 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`,
+			`n8n-cli promotion-environment apply-selection-continue proj-1 -w wf-1 -w wf-2 --folder f-1 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`,
 		);
 		expect(exit).toHaveBeenCalledWith(4);
 	});
@@ -575,7 +584,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 
 		expect(continueApplyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			{ workflowIds: ['wf-1'], folderIds: [], includeProject: false },
+			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
 			undefined,
 		);
@@ -607,7 +616,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 
 		expect(continueApplyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			{ workflowIds: ['wf-1'], folderIds: [], includeProject: false },
+			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
 			true,
 		);

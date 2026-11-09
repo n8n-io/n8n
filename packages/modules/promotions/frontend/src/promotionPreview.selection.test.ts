@@ -3,7 +3,6 @@ import {
 	applyPreview,
 	buildSelectionGraph,
 	clearSelection,
-	containerCheckState,
 	includedChangeCount,
 	initialSelectionState,
 	resolveInclusion,
@@ -110,7 +109,7 @@ describe('promotion preview selection', () => {
 		expect(inclusion.included).toEqual(new Set([reconciliation.key]));
 	});
 
-	it('should select a renamed folder with its workflows from the tree, and only the folder from its card', () => {
+	it('should select a renamed folder with its workflows, and keep only the folder when its workflows are cleared', () => {
 		const renamedFolder = { ...payments, selectable: true };
 		const withFolder = buildSelectionGraph(
 			billingPreview({
@@ -120,36 +119,28 @@ describe('promotion preview selection', () => {
 			}),
 			'promote',
 		);
-		const check = (selected: ReadonlySet<string>, target: 'tree' | 'card') =>
-			selectionCheck(
-				withFolder,
-				renamedFolder,
-				{
-					selected,
-					inclusion: resolveInclusion(withFolder, selected),
-					disabled: new Set(),
-					locked: false,
-				},
-				target,
-			);
+		const check = (selected: ReadonlySet<string>) =>
+			selectionCheck(withFolder, renamedFolder, {
+				selected,
+				inclusion: resolveInclusion(withFolder, selected),
+				disabled: new Set(),
+				locked: false,
+			});
 
 		let state = selectedState(reconciliation.key);
-		expect(containerCheckState(withFolder, state.selected, payments.key)).toBe('indeterminate');
+		expect(check(state.selected)).toMatchObject({ checked: false, indeterminate: true });
 
 		state = toggleContainer(state, withFolder, payments.key);
 		expect(state.selected).toEqual(new Set([payments.key, reconciliation.key, reminders.key]));
-		expect(containerCheckState(withFolder, state.selected, payments.key)).toBe('checked');
+		expect(check(state.selected)).toMatchObject({ checked: true, indeterminate: false });
 
-		state = toggleContainer(state, withFolder, payments.key);
-		expect(state.selected.size).toBe(0);
-
-		state = toggleSelection(state, withFolder, payments.key);
+		state = toggleSelection(state, withFolder, reconciliation.key);
+		state = toggleSelection(state, withFolder, reminders.key);
 		expect(state.selected).toEqual(new Set([payments.key]));
-		expect(check(state.selected, 'card')).toMatchObject({ checked: true, indeterminate: false });
-		expect(check(state.selected, 'tree')).toMatchObject({ checked: false, indeterminate: true });
+		expect(check(state.selected)).toMatchObject({ checked: false, indeterminate: true });
 	});
 
-	it('should include a renamed project with any selection on Promote, but on Apply only when it is selected', () => {
+	it('should include a renamed project with any selection, on Promote and on Apply', () => {
 		const renamedProject = {
 			...billingResources.project,
 			previousName: 'Old billing',
@@ -161,15 +152,14 @@ describe('promotion preview selection', () => {
 				r.key === renamedProject.key ? renamedProject : r,
 			),
 		});
-		const promote = buildSelectionGraph(preview, 'promote');
-		const apply = buildSelectionGraph(preview, 'apply');
-		const workflowOnly = new Set([kpiReport.key]);
 
-		expect(resolveInclusion(promote, workflowOnly).included.has(renamedProject.key)).toBe(true);
-		expect(resolveInclusion(apply, workflowOnly).included.has(renamedProject.key)).toBe(false);
-		expect(
-			resolveInclusion(apply, new Set([renamedProject.key])).included.has(renamedProject.key),
-		).toBe(true);
+		for (const direction of ['promote', 'apply'] as const) {
+			const inclusion = resolveInclusion(
+				buildSelectionGraph(preview, direction),
+				new Set([kpiReport.key]),
+			);
+			expect(inclusion.included.has(renamedProject.key)).toBe(true);
+		}
 	});
 
 	it('should select every workflow on load until the user changes the selection', () => {

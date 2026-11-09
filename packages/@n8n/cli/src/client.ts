@@ -119,15 +119,13 @@ export interface PromotionExpectedSource {
 	commitSha: string;
 }
 
-/** A project Promote always writes the project itself, so an empty selection promotes only it. */
-export interface PromotionPromoteSelection {
+/**
+ * A project Promote or Apply always includes the project itself, so an empty selection covers
+ * only the project.
+ */
+export interface PromotionSelection {
 	workflowIds?: string[];
 	folderIds?: string[];
-}
-
-export interface PromotionApplySelection extends PromotionPromoteSelection {
-	/** Also apply the project's name, icon, description and telemetry tags. */
-	includeProject?: boolean;
 }
 
 /** References in a package that must be set up on this instance before Apply can import it. */
@@ -510,7 +508,7 @@ export class N8nClient {
 
 	async promoteProjectSelection(
 		projectId: string,
-		selection: PromotionPromoteSelection,
+		selection: PromotionSelection,
 		commitMessage?: string,
 	) {
 		return await this.post<PromotePackageResult>(`/promotions/projects/${projectId}/promote`, {
@@ -522,7 +520,7 @@ export class N8nClient {
 
 	async applyProjectSelection(
 		projectId: string,
-		selection: PromotionApplySelection,
+		selection: PromotionSelection,
 		expectedSource?: PromotionExpectedSource,
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply`, {
@@ -534,7 +532,7 @@ export class N8nClient {
 
 	async continueApplyProjectSelection(
 		projectId: string,
-		selection: PromotionApplySelection,
+		selection: PromotionSelection,
 		expectedSource: PromotionExpectedSource,
 		confirmDestructiveChanges?: boolean,
 	) {

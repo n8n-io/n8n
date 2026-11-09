@@ -191,7 +191,7 @@ const includedChanges = computed(() =>
 const request = computed(() => ({
 	...(graph.value
 		? toOperationRequest(graph.value, selection.selected.value)
-		: { workflowIds: [], folderIds: [], includeProject: false }),
+		: { workflowIds: [], folderIds: [] }),
 	confirmDestructiveChanges: touchesDestructiveChange(blockers.value, selection.selected.value),
 }));
 const hasSelectedBlocked = computed(() =>

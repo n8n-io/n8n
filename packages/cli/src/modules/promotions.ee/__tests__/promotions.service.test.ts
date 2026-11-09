@@ -2532,6 +2532,7 @@ describe('PromotionsService', () => {
 				expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledWith(
 					{
 						user: actor,
+						projectConflictPolicy: 'overwrite',
 						overwriteDeletionPolicy: 'hard-delete',
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 						tagConflictPolicy: 'rename',

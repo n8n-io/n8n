@@ -39,23 +39,28 @@ export function usePromotionOutcome() {
 			deleted: String(workflows.deleted),
 			notPublished: String(notPublished),
 		};
-		const message = withFolderNotes(
-			i18n,
-			i18n.baseText(
-				notPublished
-					? 'promotions.operation.incoming.applied.messageNotPublished'
-					: 'promotions.operation.incoming.applied.message',
-				{ interpolate },
-			),
-			result.counts,
+		const workflowSummary = i18n.baseText(
+			notPublished
+				? 'promotions.operation.incoming.applied.messageNotPublished'
+				: 'promotions.operation.incoming.applied.message',
+			{ interpolate },
 		);
+		// A project or folder Apply changes no workflows, so leave out a sentence of zeros.
+		const workflowsChanged =
+			workflows.created +
+				workflows.updated +
+				workflows.archived +
+				workflows.deleted +
+				notPublished >
+			0;
+		const notes = [
+			withFolderNotes(i18n, workflowsChanged ? workflowSummary : '', result.counts),
+			projects.updated > 0 ? i18n.baseText('promotions.applied.projectUpdated') : '',
+		].filter(Boolean);
 		// A workflow can be imported and still fail to publish, so success alone would mislead.
 		toast.showMessage({
 			title: i18n.baseText('promotions.operation.incoming.applied.title'),
-			message:
-				projects.updated > 0
-					? `${message} ${i18n.baseText('promotions.applied.projectUpdated')}`
-					: message,
+			message: notes.length > 0 ? notes.join(' ') : workflowSummary,
 			type: notPublished ? 'warning' : 'success',
 		});
 	}

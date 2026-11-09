@@ -79,7 +79,7 @@ export function withFolderNotes(
 			adjustToNumber: count,
 			interpolate: { count: String(count) },
 		});
-	const notes = [message];
+	const notes = message ? [message] : [];
 	if (folders.created > 0) {
 		notes.push(
 			i18n.baseText('promotions.applied.created', {

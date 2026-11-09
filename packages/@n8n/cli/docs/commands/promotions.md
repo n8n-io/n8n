@@ -470,20 +470,21 @@ IDs, see [`list-changes`](#promotion-environment-list-changes).
 n8n-cli promotion-environment apply-selection proj-abc -w wf-1 -w wf-2
 n8n-cli promotion-environment apply-selection proj-abc -w wf-1 \
   --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
-n8n-cli promotion-environment apply-selection proj-abc --folder folder-1 --include-project
+n8n-cli promotion-environment apply-selection proj-abc --folder folder-1
+n8n-cli promotion-environment apply-selection proj-abc
 ```
 
 | Flag | Description |
 |------|-------------|
 | `-w, --workflow` | Workflow ID to apply. Repeat the flag for more than one. |
 | `--folder` | Folder ID to apply. Repeat the flag for more than one. |
-| `--include-project` | Also apply the project's name, icon, description, and telemetry tags. |
 | `--expected-environment-id` | ID of the Apply environment that you reviewed. |
 | `--expected-branch` | Branch that you reviewed. |
 | `--expected-commit-sha` | Full commit SHA that you reviewed (40 or 64 lowercase hex characters). |
 
-Pass at least one `-w`, `--folder` or `--include-project`. Selected IDs on the
-branch are imported. Instance workflows this project owns whose IDs are absent
+The project's name, icon, description, and telemetry tags always come from the
+branch. Without `-w` and `--folder`, the command applies only the project.
+Selected IDs on the branch are imported. Instance workflows this project owns whose IDs are absent
 from the branch are removed. Unselected content stays unchanged. A selected
 workflow or folder is created, or moves within the project to match the branch,
 together with the folders above it, and those folders take the name on the
@@ -513,7 +514,7 @@ n8n-cli promotion-environment apply-selection-continue proj-abc -w wf-1 -w wf-2 
   --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
 ```
 
-Resend the same `-w`, `--folder`, and `--include-project` flags. The three `--expected-*` flags are required: use
+Resend the same `-w` and `--folder` flags. The three `--expected-*` flags are required: use
 the `environmentId`, `git.branchName`, and `git.commitSha` that the blocked Apply
 reported. The command runs the Apply check again. The results and exit codes are
 the same as for `apply-selection`. The server keeps no session, so run the

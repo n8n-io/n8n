@@ -145,7 +145,7 @@ const tagNote = computed(() => {
 					:model-value="selection.checked"
 					:indeterminate="selection.indeterminate"
 					:disabled="selection.disabled"
-					:aria-label="selectLabel(resource, 'card')"
+					:aria-label="selectLabel(resource)"
 					data-test-id="promotion-preview-card-checkbox"
 					@update:model-value="emit('toggle')"
 				/>

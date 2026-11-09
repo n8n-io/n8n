@@ -33,7 +33,7 @@ const check = (fields: Partial<ApplyCheckResult> = {}): ApplyCheckResult => ({
 });
 
 describe('promotion operation', () => {
-	it('should send the selected workflows, folders and project, and leave their shared dependencies to the server', () => {
+	it('should send the selected workflows and folders, and leave the project and their shared dependencies to the server', () => {
 		const graph = buildSelectionGraph(billingPreview(), 'apply');
 		const { reminders, reconciliation, payments, project } = billingResources;
 
@@ -43,7 +43,7 @@ describe('promotion operation', () => {
 				graph,
 				new Set([reminders.key, reconciliation.key, payments.key, project.key]),
 			),
-		).toEqual({ workflowIds: ['w1', 'w2'], folderIds: ['f1'], includeProject: true });
+		).toEqual({ workflowIds: ['w1', 'w2'], folderIds: ['f1'] });
 	});
 
 	it('should block only the workflows that need a missing binding or moved to another project', () => {

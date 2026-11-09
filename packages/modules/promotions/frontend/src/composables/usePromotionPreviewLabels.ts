@@ -95,13 +95,10 @@ export function usePromotionPreviewLabels() {
 		return i18n.baseText('promotions.preview.marker.conflict', options);
 	}
 
-	/**
-	 * In the tree, the checkbox of a project or folder selects it and everything inside it. On its
-	 * change card, it selects only the project or folder.
-	 */
-	function selectLabel(resource: PromotionResource, target: 'tree' | 'card' = 'tree'): string {
+	/** The checkbox of a project or folder selects it and everything inside it. */
+	function selectLabel(resource: PromotionResource): string {
 		const interpolate = { name: resource.name };
-		return isContainer(resource) && (target === 'tree' || !resource.selectable)
+		return isContainer(resource)
 			? i18n.baseText('promotions.preview.selectContainer', { interpolate })
 			: i18n.baseText('promotions.preview.select', { interpolate });
 	}

@@ -47,20 +47,16 @@ export type ApplyPreview = {
 };
 
 /**
- * The request of a selective Apply. The package is the source of truth, and a destructive data
- * table change waits for a confirmation.
+ * The request of a selective Apply. The package is the source of truth, also for the project
+ * details, and a destructive data table change waits for a confirmation.
  */
 export function applySelectionRequest(
 	user: User,
-	{
-		confirmDestructiveChanges = false,
-		includeProject = false,
-	}: { confirmDestructiveChanges?: boolean; includeProject?: boolean } = {},
+	confirmDestructiveChanges = false,
 ): ImportSelectionRequest {
 	return {
 		user,
-		// Only when asked, so a spread over the full Apply policy keeps its own project policy.
-		...(includeProject ? { projectConflictPolicy: ProjectConflictPolicy.Overwrite } : {}),
+		projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 		// Hard delete, so that the next preview has nothing left to show.
 		overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 		dataTableSchemaConflictPolicy: confirmDestructiveChanges
@@ -127,8 +123,7 @@ export class ApplyPreviewService {
 		const onBranch = inventory.projects.some(({ id }) => id === projectId);
 		const plan = onBranch
 			? await this.packagesService.planPackageSelection(
-					// Plans the project details too, so the preview shows their change.
-					applySelectionRequest(user, { includeProject: true }),
+					applySelectionRequest(user),
 					reader,
 					selection,
 					'check',

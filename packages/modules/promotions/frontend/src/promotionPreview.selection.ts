@@ -127,17 +127,6 @@ function requiredClosure(graph: SelectionGraph, key: ResourceKey): ResourceKey[]
 	return reached;
 }
 
-/**
- * Whether the operation writes this project or folder together with a selected resource inside
- * it. Promote always writes the project. Apply changes the project details only when users
- * select the project.
- */
-function writesWith(graph: SelectionGraph, key: ResourceKey): boolean {
-	const resource = graph.resources.get(key);
-	if (!resource || resource.change === 'unchanged') return false;
-	return graph.direction === 'promote' || resource.type !== 'project';
-}
-
 export function resolveInclusion(
 	graph: SelectionGraph,
 	selected: ReadonlySet<ResourceKey>,
@@ -152,7 +141,7 @@ export function resolveInclusion(
 		reasons.set(key, { kind: 'selected' });
 		for (const dependency of requiredClosure(graph, key)) addTo(required, dependency, key);
 		for (const ancestor of ancestorsOf(graph, key)) {
-			if (writesWith(graph, ancestor)) addTo(containers, ancestor, key);
+			if (graph.resources.get(ancestor)?.change !== 'unchanged') addTo(containers, ancestor, key);
 		}
 		for (const reference of graph.calls.get(key) ?? []) addTo(called, reference, key);
 	}
@@ -202,7 +191,7 @@ export function selectableDescendants(graph: SelectionGraph, containerKey: Resou
 	return selectableKeys(graph).filter((key) => ancestorsOf(graph, key).includes(containerKey));
 }
 
-/** What the tree checkbox of a project or folder selects: the container itself and everything in it. */
+/** What the checkbox of a project or folder selects: the container itself and everything in it. */
 function containerKeys(graph: SelectionGraph, containerKey: ResourceKey): ResourceKey[] {
 	const descendants = selectableDescendants(graph, containerKey);
 	return canSelect(graph, containerKey) ? [containerKey, ...descendants] : descendants;
@@ -211,8 +200,8 @@ function containerKeys(graph: SelectionGraph, containerKey: ResourceKey): Resour
 type CheckState = 'checked' | 'indeterminate' | 'unchecked';
 
 /**
- * A project or folder in the tree shows the state of itself and the selectable resources inside
- * it. A disabled resource counts only while it is selected, because users cannot add it.
+ * A project or folder shows the state of itself and the selectable resources inside it. A
+ * disabled resource counts only while it is selected, because users cannot add it.
  */
 export function containerCheckState(
 	graph: SelectionGraph,
@@ -231,9 +220,9 @@ export function containerCheckState(
 export type SelectionCheck = { checked: boolean; indeterminate: boolean; disabled: boolean };
 
 /**
- * The checkbox of a resource. Workflows toggle themselves. In the tree, a project or folder
- * toggles itself and everything inside it; on its change card (`target: 'card'`), only itself.
- * Dependencies stay read-only: they are checked while a selected workflow needs them.
+ * The checkbox of a resource in the tree and on its change card. Workflows toggle themselves,
+ * projects and folders toggle themselves and everything inside them, and dependencies stay
+ * read-only: they are checked while a selected workflow needs them.
  */
 export function selectionCheck(
 	graph: SelectionGraph,
@@ -244,10 +233,9 @@ export function selectionCheck(
 		disabled: DisabledKeys;
 		locked: boolean;
 	},
-	target: 'tree' | 'card' = 'tree',
 ): SelectionCheck {
 	const { selected, inclusion, disabled, locked } = state;
-	if (isContainer(resource) && (target === 'tree' || !resource.selectable)) {
+	if (isContainer(resource)) {
 		const check = containerCheckState(graph, selected, resource.key, disabled);
 		const canAdd = containerKeys(graph, resource.key).some((key) => !disabled.has(key));
 		return {
@@ -258,10 +246,6 @@ export function selectionCheck(
 	}
 	if (resource.selectable) {
 		const checked = selected.has(resource.key);
-		// A project or folder that the operation writes with a selected resource inside it.
-		if (!checked && inclusion.included.has(resource.key)) {
-			return { checked: true, indeterminate: false, disabled: true };
-		}
 		return {
 			checked,
 			indeterminate: false,

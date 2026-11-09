@@ -8,7 +8,7 @@ import { computed, ref, shallowRef, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
-import { isEmptySelection, type OperationSelection } from '../promotionOperation';
+import type { OperationSelection } from '../promotionOperation';
 import {
 	applyProjectSelection,
 	continueApplyProjectSelection,
@@ -123,7 +123,6 @@ export function usePromotionOperation(
 		const expected = {
 			workflowIds: request.workflowIds,
 			folderIds: request.folderIds,
-			includeProject: request.includeProject,
 			expectedSource: { environmentId: source.environmentId, ...source.git },
 			expectedPreviewRevision: preview.value?.revision,
 		};
@@ -150,7 +149,8 @@ export function usePromotionOperation(
 	}
 
 	async function submit(request: OperationRequest) {
-		if (isBusy.value || isEmptySelection(request)) return;
+		// The page enables the submit only with a selection. A project-only selection sends no ids.
+		if (isBusy.value) return;
 		const source = check.value;
 		if (direction.value === 'apply' && !source) return;
 		// Set before the dialog, so a second click does not open another one.

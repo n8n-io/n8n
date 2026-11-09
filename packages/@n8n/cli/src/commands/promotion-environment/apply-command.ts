@@ -2,8 +2,8 @@ import { BaseCommand, EXIT_BLOCKED, EXIT_SOURCE_CHANGED, EXIT_SUCCESS } from '..
 import type {
 	ApplyPackageResult,
 	PromotionApplyCheck,
-	PromotionApplySelection,
 	PromotionProjectDeletion,
+	PromotionSelection,
 } from '../../client';
 
 type ReportFlags = { quiet?: boolean; format?: string; json?: boolean; jq?: string };
@@ -122,29 +122,15 @@ export function environmentContinueCommand(environmentId: string): ContinueComma
 		expectedSourceArgs(result);
 }
 
-/** The selection from the flags, or `undefined` when the flags select nothing. */
-export function toApplySelection(flags: {
-	workflow?: string[];
-	folder?: string[];
-	includeProject?: boolean;
-}): PromotionApplySelection | undefined {
-	const workflowIds = flags.workflow ?? [];
-	const folderIds = flags.folder ?? [];
-	const includeProject = flags.includeProject === true;
-	if (workflowIds.length === 0 && folderIds.length === 0 && !includeProject) return undefined;
-	return { workflowIds, folderIds, includeProject };
-}
-
 /** The command that resumes a blocked selection Apply. It resends the same selection. */
 export function selectionContinueCommand(
 	projectId: string,
-	{ workflowIds = [], folderIds = [], includeProject }: PromotionApplySelection,
+	{ workflowIds = [], folderIds = [] }: PromotionSelection,
 ): ContinueCommand {
 	return (result) =>
 		`n8n-cli promotion-environment apply-selection-continue ${shellQuote(projectId)}` +
 		workflowIds.map((id) => ` -w ${shellQuote(id)}`).join('') +
 		folderIds.map((id) => ` --folder ${shellQuote(id)}`).join('') +
-		(includeProject ? ' --include-project' : '') +
 		expectedSourceArgs(result);
 }
 

@@ -2151,7 +2151,7 @@ describe('Apply moves and renames within a project', () => {
 		expect(await head()).toBe(before);
 	});
 
-	it('applies only the selected folders and project details on project Apply', async () => {
+	it('applies only the selected folders on project Apply, and the project details with every selection', async () => {
 		const { exportSource } = await connect();
 		const {
 			project,
@@ -2183,11 +2183,10 @@ describe('Apply moves and renames within a project', () => {
 		expect((await folderOf(reports.id)).name).toBe('Reports');
 		expect((await folderOf(archive.id)).name).toBe('Local archive');
 		expect(await folders.findOneBy({ id: drafts.id })).toBeNull();
-		expect(await projectName()).toBe('Local orders');
+		expect(await projectName()).toBe('Orders');
 
 		const second = await service.applyProjectSelection(project.id, owner, {
 			folderIds: [archive.id, drafts.id],
-			includeProject: true,
 		});
 
 		assert(second.status === 'applied');
@@ -2195,10 +2194,6 @@ describe('Apply moves and renames within a project', () => {
 		expect((await folderOf(archive.id)).name).toBe('Archive');
 		expect((await folderOf(drafts.id)).name).toBe('Drafts');
 		expect((await folderOf(notes.id)).name).toBe('Notes');
-		expect(await projectName()).toBe('Orders');
-		await expect(service.applyProjectSelection(project.id, owner, {})).rejects.toThrow(
-			'Select at least one',
-		);
 	});
 
 	it('says when the branch project of a moved workflow does not exist here yet', async () => {
@@ -2416,9 +2411,7 @@ describe('Create the projects of the Apply package that are missing here', () =>
 			(await loadApplyPreview(project.id)).resources.filter(({ change }) => change !== 'unchanged');
 		expect(await pendingChanges()).toEqual([]);
 
-		const applied = await service.applyProjectSelection(project.id, owner, {
-			includeProject: true,
-		});
+		const applied = await service.applyProjectSelection(project.id, owner, {});
 		expect(applied.status).toBe('applied');
 		expect(await projectRepository.findOneByOrFail({ id: project.id })).toMatchObject({
 			name: 'Orders',

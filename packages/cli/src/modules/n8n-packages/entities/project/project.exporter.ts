@@ -61,7 +61,9 @@ export class ProjectExporter {
 			request.projectIds,
 		);
 
-		const selectedWorkflowIds = request.workflowIds ? new Set(request.workflowIds) : undefined;
+		// A selection of only folders still selects, so it must not export every workflow.
+		const selectedWorkflowIds =
+			request.workflowIds || request.folderIds ? new Set(request.workflowIds) : undefined;
 
 		if (request.workflowIds) {
 			await this.assertSelectionInProjects(request.workflowIds, projects, request.user);

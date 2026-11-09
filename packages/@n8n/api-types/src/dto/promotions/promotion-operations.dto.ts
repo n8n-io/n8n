@@ -163,16 +163,15 @@ const expectedPreviewRevisionSchema = z
 			'status `preview-changed` without writing when it differs, for example after a local edit.',
 	});
 
-/** The selection of a project Apply. The service rejects a selection that selects nothing. */
+/**
+ * The selection of a project Apply. Apply always applies the project details, so a request
+ * without workflows and folders applies only the project.
+ */
 const applySelectionShape = {
 	workflowIds: promotionSelectedIdsSchema('workflowIds'),
 	folderIds: promotionSelectedIdsSchema('folderIds').openapi({
 		description:
 			'Folders of the project on the branch. Apply creates a selected folder, or moves and renames it to match the branch.',
-	}),
-	includeProject: z.boolean().optional().openapi({
-		description:
-			"Also applies the project's name, icon, description and telemetry tags from the branch.",
 	}),
 };
 

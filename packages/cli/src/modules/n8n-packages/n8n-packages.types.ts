@@ -331,8 +331,8 @@ export interface ImportSelection {
  * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`),
  * `dataTableSchemaConflictPolicy` (defaults to `fail`), `tagConflictPolicy` (defaults to `skip`),
  * `credentialConflictPolicy` (defaults to `keep-existing`), `layoutConflictPolicy` (defaults to
- * `fail`; only promotions set it), and `publishingPolicy` (defaults to `match-source`; only
- * promotions set it).
+ * `fail`; only promotions set it), `publishingPolicy` (defaults to `match-source`; only
+ * promotions set it), and `projectConflictPolicy` (defaults to `merge`; only promotions set it).
  */
 export type ImportSelectionRequest = {
 	user: User;

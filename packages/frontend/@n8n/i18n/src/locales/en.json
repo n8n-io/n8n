@@ -10713,7 +10713,7 @@
 	"promotions.bindings.warnings.title": "Warnings",
 	"promotions.bindings.warnings.variableShadowed": "A project variable overrides the global variable {name} for these workflows. You can continue.",
 	"promotions.operation.incoming.confirmSelected.title": "Apply the selected changes?",
-	"promotions.operation.incoming.confirmSelected.message": "This applies only the selected changes to this project. The folders that hold a selected workflow also move and take their names from the branch. Nothing else changes.",
+	"promotions.operation.incoming.confirmSelected.message": "This applies the selected changes, with the project name and the folders they are in. Nothing else changes.",
 	"promotions.operation.incoming.confirmSelected.confirmButtonText": "Apply",
 	"promotions.operation.incoming.applied.title": "Changes applied",
 	"promotions.operation.incoming.applied.message": "Workflows: {created} created, {updated} updated, {archived} archived, {deleted} deleted.",

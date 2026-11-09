@@ -12,36 +12,24 @@ import type { ResourceKey, SelectionGraph } from './promotionPreview.selection';
  * The request and the blockers of a promote or an apply from the preview page.
  */
 
-export type OperationSelection = {
-	workflowIds: string[];
-	folderIds: string[];
-	/** Apply only: whether the project details change too. Promote always writes the project. */
-	includeProject: boolean;
-};
+export type OperationSelection = { workflowIds: string[]; folderIds: string[] };
 
-/** What users selected. The server adds the dependencies and the folders above. */
+/**
+ * What users selected. The server adds the project, the dependencies and the folders above, so
+ * a selection of only the project sends no ids.
+ */
 export function toOperationRequest(
 	graph: SelectionGraph,
 	selected: ReadonlySet<ResourceKey>,
 ): OperationSelection {
 	const workflowIds = new Set<string>();
 	const folderIds = new Set<string>();
-	let includeProject = false;
 	for (const key of selected) {
 		const resource = graph.resources.get(key);
 		if (resource?.type === 'workflow') workflowIds.add(resource.id);
 		if (resource?.type === 'folder') folderIds.add(resource.id);
-		if (resource?.type === 'project') includeProject = true;
 	}
-	return {
-		workflowIds: [...workflowIds].sort(),
-		folderIds: [...folderIds].sort(),
-		includeProject,
-	};
-}
-
-export function isEmptySelection({ workflowIds, folderIds, includeProject }: OperationSelection) {
-	return workflowIds.length === 0 && folderIds.length === 0 && !includeProject;
+	return { workflowIds: [...workflowIds].sort(), folderIds: [...folderIds].sort() };
 }
 
 /**

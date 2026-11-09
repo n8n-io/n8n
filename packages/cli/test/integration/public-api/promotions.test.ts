@@ -2470,7 +2470,6 @@ describe('Promotions in Public API', () => {
 		const selectionBody = {
 			workflowIds: ['w1', 'w2'],
 			folderIds: ['f1'],
-			includeProject: true,
 			expectedSource: { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) },
 		};
 
@@ -2535,10 +2534,9 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it('requires a selection and a supported source on Continue', async () => {
+		it('requires a supported source and no unknown fields on Continue', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			for (const body of [
-				{ expectedSource: selectionBody.expectedSource }, // selects nothing
 				{ workflowIds: ['w1'] }, // no expectedSource
 				{ ...selectionBody, force: true }, // unexpected field
 				{

@@ -874,13 +874,6 @@ export class PromotionsService {
 			confirmDestructiveChanges?: boolean;
 		},
 	): Promise<ApplyPackageResultDto> {
-		if (
-			selection.workflowIds.length === 0 &&
-			selection.folderIds.length === 0 &&
-			!selection.includeProject
-		) {
-			throw new BadRequestError('Select at least one workflow, folder or the project to apply.');
-		}
 		const input = await this.resolver.resolveForProject(projectId, 'apply');
 		return await this.trackApply(
 			input,
@@ -940,10 +933,7 @@ export class PromotionsService {
 			new Set(moves.workflows.map(({ id }) => id)),
 		);
 		const plan = await this.n8nPackagesService.planPackageSelection(
-			applySelectionRequest(actor, {
-				confirmDestructiveChanges,
-				includeProject: requested.includeProject,
-			}),
+			applySelectionRequest(actor, confirmDestructiveChanges),
 			reader,
 			selection,
 			'enforce',
@@ -1014,7 +1004,7 @@ export class PromotionsService {
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
 		const plan = await this.n8nPackagesService.planPackage(
 			// Both Apply flows share the policies of a selection.
-			{ ...IMPORT_POLICY, ...applySelectionRequest(actor, { confirmDestructiveChanges }) },
+			{ ...IMPORT_POLICY, ...applySelectionRequest(actor, confirmDestructiveChanges) },
 			reader,
 			'enforce',
 		);
@@ -1631,15 +1621,11 @@ async function pathExists(target: string): Promise<boolean> {
 	}
 }
 
-/** What a project Apply selects. A project Apply changes the project details only when asked. */
-type ApplySelection = { workflowIds: string[]; folderIds: string[]; includeProject: boolean };
+/** What a project Apply selects. The project details always come along. */
+type ApplySelection = { workflowIds: string[]; folderIds: string[] };
 
 function toApplySelection(request: ApplySelectionDto | ContinueApplySelectionDto): ApplySelection {
-	return {
-		workflowIds: request.workflowIds ?? [],
-		folderIds: request.folderIds ?? [],
-		includeProject: request.includeProject === true,
-	};
+	return { workflowIds: request.workflowIds ?? [], folderIds: request.folderIds ?? [] };
 }
 
 function appliedOutcome(
