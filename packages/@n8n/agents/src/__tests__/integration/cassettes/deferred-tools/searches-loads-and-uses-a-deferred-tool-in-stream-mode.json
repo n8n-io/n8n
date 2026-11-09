@@ -9,7 +9,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "You are testing deferred tool discovery. For character counting requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not count manually."
+					"text": "<built_in_rules>\n- <tool_catalog_rules>\nMost of your tools are not in your toolset. The \"Tool catalog\" section in the conversation lists them by namespace, with their names only, not their arguments. When that section changes, a newer one replaces it.\n- To use one, get its input schema with find_tools, then run it with call_tool. Do this even when you know the name, and even when a skill names the tool.\n- Skills and instructions often name a catalog tool directly, such as \"call `some_tool` with the IDs\". Read that as call_tool with tool \"some_tool\" and those arguments. Never emit a tool call whose name is a catalog tool.\n- Look up every tool the task will need in one find_tools call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.\n- When you do not know a tool's name, search by query or list a namespace.\n</tool_catalog_rules>\n</built_in_rules>\n\nYou are testing deferred tool discovery. For character counting requests, first call find_tools, then call call_tool with the exact returned tool name. Do not count manually."
 				}
 			],
 			"messages": [
@@ -18,172 +18,64 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Use deferred tools to count the characters in the text \"n8n\". Search for the tool, load it, call it, then answer with the length."
+							"text": "<context>\n# Tool catalog\n- tools: count_characters\n</context>"
+						},
+						{
+							"type": "text",
+							"text": "Use deferred tools to count the characters in the text \"n8n\". Find the tool, call it, then answer with the length."
 						}
 					]
 				}
 			],
 			"tools": [
 				{
-					"name": "search_tools",
-					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"name": "find_tools",
+					"description": "Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.\n- tools: the full description and input schema of each named tool.\n- namespace alone: every tool in that namespace, briefly.\n- query, optionally with namespace: the tools that best match the keywords, best first.\n- pattern, optionally with namespace: tools whose name or description matches the regular expression.\nA lookup that returns 5 tools or fewer includes their full schemas.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
-							"query": {
+							"namespace": {
 								"type": "string",
-								"minLength": 1,
-								"description": "Keywords describing the capability or integration you need"
-							}
-						},
-						"required": ["query"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "load_tool",
-					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"toolName": {
-								"type": "string",
-								"minLength": 1,
-								"description": "Exact tool name returned by search_tools"
-							}
-						},
-						"required": ["toolName"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				}
-			],
-			"tool_choice": {
-				"type": "auto"
-			},
-			"stream": true
-		},
-		"status": 200,
-		"response": [
-			"1f8b0800000000000013cd564b6fd34010bef757ace6c2c5a9e2d2a2d637244022840b978a12b49aaca7f192cdaebb8fd010f9bfa3b5e3244ed214a452ea8be579ec7cdf3c3c4b73d23e6333720e27c49d47eb4f72f498b125f845499041470949fb0dd9126626270519088521a75e81721a7ae7bd8bde59ffec22edf7534840e6f10c37e1fdf4bdbc7af7d30fc7e74edf205dbf0dc54d21e690ec448204ac515180ce49e751c7b0c2684fda43f6ed7b02ce9b925b426734643a28b51239ba0ba4057584397994cab5b2d0a297ba0c9e7b3325ed20bb4c5f27205014c48525f4d268deb5e8b77a4b983fa46b7d63002a0b9a9145c52f66fbf61b6d5aec6aab044cf01d780938b27329887b4916328889c9d1e631c7fa966ce4cd276420036d3cc7394a8563455055ac3a39a1a6d4ab34f2b132627ab8e0074cea1839dd3744b7f591e7cacfd37d34ac5f1940c59a6713bb947ab2138c4114c243f872521e8fe3ab4d3af81a4917d7da6c85eee32ba55841aa640b139830417be60b62a2408bc293754cea96c2b3a36323d0977a042c38a9272ca75bb29672e68d51ee940dc9b319b1ba326cbc608ed08a225ade1acb7043a2211615d1f3745d9223fd60cac7dac1945b7c1e3bee6fdb2b3dd25ec6281e1cb5ff94f81d783f1d86e1d7c1fcc3d597417af3e9d79bcf83703dc74b4840e32cfa35d9e175eeea4065f0902dab38b14ac5515a87c8a525e1e3c03c65d1d3fda237e3fec319bd362ed17a89aa166ec6e73fa3588ee00e5e403602d9c508323682d8db8ff7f133c1da1eb20da897814d4f465035a09e6adad303dcdadbc141561d256cb1e8ecefedc9fec32d5efdbb35bebb77cff796c0e642b49fbe6d1dacdc7e036c6fc6e665090000"
-		],
-		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:11Z",
-			"anthropic-ratelimit-output-tokens-limit": "2000000",
-			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:11Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:11Z",
-			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:11Z",
-			"cache-control": "no-cache",
-			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a154f7a28c5f3ec1-VIE",
-			"connection": "keep-alive",
-			"content-encoding": "gzip",
-			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
-			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Fri, 03 Jul 2026 09:47:11 GMT",
-			"request-id": "req_011CceurkzBqScYMufvkZd3N",
-			"server": "cloudflare",
-			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-514d19fce61da56c2ca1addbad738b34-6cb9357f426719c8-01",
-			"transfer-encoding": "chunked",
-			"vary": "Accept-Encoding",
-			"x-robots-tag": "none"
-		},
-		"responseIsBinary": false
-	},
-	{
-		"scope": "https://api.anthropic.com:443",
-		"method": "POST",
-		"path": "/v1/messages",
-		"body": {
-			"model": "claude-haiku-4-5",
-			"max_tokens": 64000,
-			"system": [
-				{
-					"type": "text",
-					"text": "You are testing deferred tool discovery. For character counting requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not count manually."
-				}
-			],
-			"messages": [
-				{
-					"role": "user",
-					"content": [
-						{
-							"type": "text",
-							"text": "Use deferred tools to count the characters in the text \"n8n\". Search for the tool, load it, call it, then answer with the length."
-						}
-					]
-				},
-				{
-					"role": "assistant",
-					"content": [
-						{
-							"type": "text",
-							"text": "I'll help you count the characters in \"n8n\" using deferred tools. Let me start by searching for a character counting tool."
-						},
-						{
-							"type": "tool_use",
-							"id": "toolu_01LuLYJvF9RJ1ZKz6MJuWva8",
-							"name": "search_tools",
-							"input": {
-								"query": "character counting"
+								"description": "A namespace, as the tool catalog lists it"
 							},
-							"caller": {
-								"type": "direct"
-							}
-						}
-					]
-				},
-				{
-					"role": "user",
-					"content": [
-						{
-							"type": "tool_result",
-							"tool_use_id": "toolu_01LuLYJvF9RJ1ZKz6MJuWva8",
-							"content": "{\"results\":[{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":false}]}"
-						}
-					]
-				}
-			],
-			"tools": [
-				{
-					"name": "search_tools",
-					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
+							"tools": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Tool names to get in full, with their input schemas. Name every tool you will need in one lookup."
+							},
 							"query": {
 								"type": "string",
-								"minLength": 1,
-								"description": "Keywords describing the capability or integration you need"
+								"description": "Keywords for what you want to do, matched against names and descriptions"
+							},
+							"pattern": {
+								"type": "string",
+								"description": "Regular expression matched against tool names and descriptions"
 							}
 						},
-						"required": ["query"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				},
 				{
-					"name": "load_tool",
-					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"name": "call_tool",
+					"description": "Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
-							"toolName": {
+							"tool": {
 								"type": "string",
 								"minLength": 1,
-								"description": "Exact tool name returned by search_tools"
+								"description": "The tool's name, as the tool catalog lists it"
+							},
+							"arguments": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings."
 							}
 						},
-						"required": ["toolName"],
+						"required": ["tool"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -196,33 +88,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013cd564d6fdb300cbdf757683c3b45dc2d19e2db86751f18500c4bb10e5806419598d8ab2cb9129da50bfcdf0739716b2769da022b325f0c9194f8f82852c4391a4a588ede8b19724fc2d191122412b604ba291012e828216ad6902c21b70a352420b52815f652915d95bd57bd41efa47f3288fbfd1822c85438c3cf783f7e930efdf4faf2dd7b399e5e94f3c528a5b7379f21daf0041138ab8340789f791226b895d6101a82e4c7cf083cd9823b14de1a484ca9f55ae4f1ba4423b123544822d3be91950dfacc142571b257683c24a3978308a4902972e95050660def5af41bbd43a1eed3357b83032c52ccd109cd07f9b6fd9d364e37b55504b6a4b6288ec0a39b67123965e82081408c124e058ecd145d889bcfd04202c6121773916971a911aa8aadbeeae80857095f93c92fb59557bbd3bec3a4f6a470b10ab7ad0fd1aef7112e8261fd4b00aa8edf2233b30d470c8210eec3a65093d88fad36e9605b49ba986ecdd6c83e84444143cd3e7a9e0dc20bf6894d6d6914a314d904a42d0d71990a2724a1f3136064ad3e6667f637d3482c47a6ad502ca363a8f6a4d3160f65d3162db48c3d8285a75f9278cf25b156f3d263d31fc2bae4fdf8dbf8fbcd47f9f5e2cf6c787a2ec7a3e9e9f0cbf9102230220ffb42f43c18d75e8a92205956a1f4b40e35717bbeca1c4ababbf9ff3ec5f1768a5735fccb5b736b5c084799d0b5b0a986ff07ce7252137f26729c74b01d1857c2d6600e8ca3aec88d9c1d1852e80f2b440706d26a52153cfcc03cad23c5db6c3753c8cef03a4a6885d39913da5de791d342f57ce3c2c6fbfe7a50edbe6677e3d736876d1d34fbfe029eb0b497d4090000"
+			"1f8b0800000000000013c597df4fdb3010c7dff92bac7bd94b3a35fc182c6f0381b64993b697094190e5da476270eccc760a5d95ff7d72d3744969199a20cd4be5bb73efe3ef39be18a7a87d420a748e65489d67d6ef09e65942e6e0672542023d2744ed1892391446a08204b86295c051cee47d353a1c1d8df6c7fb47f1781c43045284ff70191dc7f15966bf7d3afd7c9e1d64c787853e1631defd86682d1344608d0a06e69c749ee990961bed517b48ae6f9a01931a2d24ba522a02e74d492d326774cfe4f057859a63cf28d033a95c6babdae5485d569e7a738fda41121fc471049cf11c29b7c8bc349af643c6addf2213db7ceddc9001cb1c0bb44cd1a3e269fc5f6f9caf7beb084ce57b7c1138b453c9917a1994802095605604d5f52ddab0709aa18104b4f1944d99546ca282c0ae4414dd29750442b24c1be7255f4a5393fe53efed61b36196c5a01365f8fde66db32164c125f0b111a7eb0fda2ce7797c0c818b9f04a0de0c504a9dad6524108cb00d52a0f2ec79c845480fb2b1f4e156614bc42f7dc6ad2abd19c03ba5488eaaec710c4e4166a622dc54da139f23e139b38c7bb46e85353c92d4246db7d0e0d9f5894e7bfb77f8f5574eea8c086c2806cf7f8bd6a220de18d5d16178198474dc4cd1cedea73ad517d23a0ff5f01c1151e84981e4566a1104195e89f0668672242fa8476895ff3ad44dd96178fd36113fd3268c51b472d87e61847145c7f1e9c7abc9d9c3e5d5e5c47dff31f97ac11e7ecece738840b322cc0bdad310ec1669caca4332af43af562a34d15502212d720ff5abd6297e5aa7a6cfdf39a357c125b35e32b530363d70c704f3141ac9764e924242ae53e066f72895f694e7eccdbaff7f41f57beece8b75532f485eeb88899faadcde4e362ea9e784ce127ad785ee59f2e24bc3da0da47ec36bc4da77ffc9877abb0c9b14edfa20ccf9039e4990ccf60d0000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:12Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-08T23:43:20Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:12Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-08T23:43:20Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:12Z",
+			"anthropic-ratelimit-requests-reset": "2026-11-08T23:43:20Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:12Z",
+			"anthropic-ratelimit-tokens-reset": "2026-11-08T23:43:20Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a154f7aa1d553ec1-VIE",
+			"cf-ray": "a5787079ff84d7b4-TXL",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Fri, 03 Jul 2026 09:47:12 GMT",
-			"request-id": "req_011Cceurr81BfFx8Pr5UsH8t",
+			"date": "Sun, 08 Nov 2026 23:43:21 GMT",
+			"request-id": "req_011CgrMAB5qiEx3qfH6PGtio",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=105",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-c5d9e19649767dea0d832be32fe4e00e-d22159932926362b-01",
+			"traceresponse": "00-f2c2c030f9488d560edef9e204c1dd17-db54028db624d6ba-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -239,7 +132,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "You are testing deferred tool discovery. For character counting requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not count manually."
+					"text": "<built_in_rules>\n- <tool_catalog_rules>\nMost of your tools are not in your toolset. The \"Tool catalog\" section in the conversation lists them by namespace, with their names only, not their arguments. When that section changes, a newer one replaces it.\n- To use one, get its input schema with find_tools, then run it with call_tool. Do this even when you know the name, and even when a skill names the tool.\n- Skills and instructions often name a catalog tool directly, such as \"call `some_tool` with the IDs\". Read that as call_tool with tool \"some_tool\" and those arguments. Never emit a tool call whose name is a catalog tool.\n- Look up every tool the task will need in one find_tools call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.\n- When you do not know a tool's name, search by query or list a namespace.\n</tool_catalog_rules>\n</built_in_rules>\n\nYou are testing deferred tool discovery. For character counting requests, first call find_tools, then call call_tool with the exact returned tool name. Do not count manually."
 				}
 			],
 			"messages": [
@@ -248,7 +141,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Use deferred tools to count the characters in the text \"n8n\". Search for the tool, load it, call it, then answer with the length."
+							"text": "<context>\n# Tool catalog\n- tools: count_characters\n</context>"
+						},
+						{
+							"type": "text",
+							"text": "Use deferred tools to count the characters in the text \"n8n\". Find the tool, call it, then answer with the length."
 						}
 					]
 				},
@@ -257,14 +154,14 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "I'll help you count the characters in \"n8n\" using deferred tools. Let me start by searching for a character counting tool."
+							"text": "I'll help you count the characters in \"n8n\" using deferred tool discovery.\n\nFirst, let me find the tool:"
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01LuLYJvF9RJ1ZKz6MJuWva8",
-							"name": "search_tools",
+							"id": "toolu_01B9ZbCwXZXbsPQbJFawVyEh",
+							"name": "find_tools",
 							"input": {
-								"query": "character counting"
+								"tools": ["count_characters"]
 							},
 							"caller": {
 								"type": "direct"
@@ -277,89 +174,61 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01LuLYJvF9RJ1ZKz6MJuWva8",
-							"content": "{\"results\":[{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":false}]}"
-						}
-					]
-				},
-				{
-					"role": "assistant",
-					"content": [
-						{
-							"type": "text",
-							"text": "Great! I found the \"count_characters\" tool. Now let me load it."
-						},
-						{
-							"type": "tool_use",
-							"id": "toolu_01VSXyHcRWzg6ETcS9fE6PT6",
-							"name": "load_tool",
-							"input": {
-								"toolName": "count_characters"
-							},
-							"caller": {
-								"type": "direct"
-							}
-						}
-					]
-				},
-				{
-					"role": "user",
-					"content": [
-						{
-							"type": "tool_result",
-							"tool_use_id": "toolu_01VSXyHcRWzg6ETcS9fE6PT6",
-							"content": "{\"status\":\"loaded\",\"toolName\":\"count_characters\",\"tool\":{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":true},\"message\":\"Tool \\\"count_characters\\\" is loaded and will be available on the next model turn.\"}"
+							"tool_use_id": "toolu_01B9ZbCwXZXbsPQbJFawVyEh",
+							"content": "{\"tools\":[{\"name\":\"count_characters\",\"namespace\":\"tools\",\"description\":\"Count the characters in a text string\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\",\"description\":\"Text to count\"}},\"required\":[\"text\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}}],\"missing\":[]}"
 						}
 					]
 				}
 			],
 			"tools": [
 				{
-					"name": "search_tools",
-					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"name": "find_tools",
+					"description": "Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.\n- tools: the full description and input schema of each named tool.\n- namespace alone: every tool in that namespace, briefly.\n- query, optionally with namespace: the tools that best match the keywords, best first.\n- pattern, optionally with namespace: tools whose name or description matches the regular expression.\nA lookup that returns 5 tools or fewer includes their full schemas.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
+							"namespace": {
+								"type": "string",
+								"description": "A namespace, as the tool catalog lists it"
+							},
+							"tools": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Tool names to get in full, with their input schemas. Name every tool you will need in one lookup."
+							},
 							"query": {
 								"type": "string",
-								"minLength": 1,
-								"description": "Keywords describing the capability or integration you need"
+								"description": "Keywords for what you want to do, matched against names and descriptions"
+							},
+							"pattern": {
+								"type": "string",
+								"description": "Regular expression matched against tool names and descriptions"
 							}
 						},
-						"required": ["query"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				},
 				{
-					"name": "load_tool",
-					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"name": "call_tool",
+					"description": "Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
-							"toolName": {
+							"tool": {
 								"type": "string",
 								"minLength": 1,
-								"description": "Exact tool name returned by search_tools"
+								"description": "The tool's name, as the tool catalog lists it"
+							},
+							"arguments": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings."
 							}
 						},
-						"required": ["toolName"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "count_characters",
-					"description": "Count the characters in a text string",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"text": {
-								"type": "string",
-								"description": "Text to count"
-							}
-						},
-						"required": ["text"],
+						"required": ["tool"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -372,33 +241,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013c555516fd330107edfaf88ee8597143565832e8f888118d234101a12145957e768cc5c3bb3cfdb5095ff8e9c366bd2761ba04ee425caddd9df7777dfe5e89a0ce7c99cbcc71909cfe8f8a040c63c5900ffaa0872e839216dbf215fc0dc16a42107a931143428515d86c1e1e068301a8e8eb2e13083145411eff03331cc8e2f4e3e7c7efdf5931dd1b83cad6ecbb31b3c1c43ba81042938aba301bd579ed14458690d9361c8bf7d4fc1b3ad8423f4d6406e82d62b93a7ab404652cf5810a3d2beb58596bd325560c1f6928c873ccb5e8e5390284b12d211b2b246f44386addf1116f7f9dab31181aa92e6e4508ba3f976fcda9b959bde3a051bb86b1aa7e0c95d2b49821539c82156a64057c4229b1fe462e2624616723096055ea3d238d504759dc4a73e38a065bf57b514536de5e5eeaeef0869700aba5d26dbf5c75c57e7986e6360f3ca0196c85dec4a99d9065802d108f7f12b48333eccaf09e9f15b5afabceec256ecceec4df2fe99d68944ad132e29d1160b2a12b656276ce1e1ba3d19af44da60b821244b7428999c4f94492660c66602cf779475b35fb67aaca3b6ea107becbabf5548f68042acd522786aff0df13b8861f6e5cd099d4cc3db2c1c8ececf2f8e4f3f5ec9d3779082c1f9122f1816eb8234605560c817751c3eade354dcc114ca91e4a8fdfdf52fdbeedf726e7f7a6bee822b74ac5037c6ee0cec594cff446631694436813c8aa94fedffb38be2aed7a4f6a5ee6cf3ba76a5ed4cabe7844e1abda5d395f11fae9efa0977cfc6b278f5a2ded5d4f52adf2e60d707dbb2f80d2421c0152a080000"
+			"1f8b0800000000000013cd576d6fd33010febe5f61dde7546a4a072cdf6012ab9086d000898922ebe6dc5233c7ce6ca71daaf2df9193a64bdaaebc68a3fb14f9ee9ce7f1bdda3427ed139693739811771ead3f4ad163c296e07f160409f49410b56b4896909b941424201496290d66286fcac178703c180d47c7f170184304320dff70191fc6f16966cfdf4cde2e269faecf4e4fbfdaf82c9e5c42b481041158a382009d93cea30eb0c2684fda43f2ed7bb340a9c942a24ba52270de14dc123aa37b2247b72569413d614a1ea572adac6c8f2375517aeecd0d6907493c3e7919814031232e2ca19746f3bec9b0d55bc2f4215dbb37205031a39c2c2a7e9c6fdbdf6be3d9a6b68ac094be2b1a45e0c8cea520ee65f0040457a568d3e0757d4d361c9c676420016d3cc7394a85572a38d8154469774b15412a31d3c6792956aea91863ac3a3aa2264b5611e057ca889bddb9b2c3a42693d25de391ae3e3864b5cfd35d30ac3f09400ddc072fa4ce36d01804213c443025e5713fc1daa447b091f489adcd56f43e980553e45b96ff1d9fe5c4042ac5fc8c983746417500120be9670d8320a80ee28829e8d71af6a6e993814f21d98f1c5acdefeac3141ddcbdd9f4f7e516ef293763142f1db5ed39ac4b3e8cdf7d5e5cd07c72fbf1d5c558bc38b7efbf5cdec50222d098d778a814af332e6a9a2524cb2aaac5a101adff9f4a4bc243f5e815126fc7a6e9933f9cd16be302ad97a86a61af9d3c0736cb69edeee906ad03b34ad8148429eb623a3015cfc50c2dee1a0207e1233c59d786ebc05c223605b459f9c8fdf69fb8e4a4bd5b77c1e71029166aab9d46cf83d214927a4835f973603255b5d10a1f6f78c5fd9fb56f869d07eb29a17390de25be3ba4fef82abff12ea89ef072bf711b3f193fd0ceef9f4fdb1eedea603b32bf0094bbfb149e0d0000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:13Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-08T23:43:22Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:13Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-08T23:43:22Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:13Z",
+			"anthropic-ratelimit-requests-reset": "2026-11-08T23:43:22Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:13Z",
+			"anthropic-ratelimit-tokens-reset": "2026-11-08T23:43:22Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a154f7b0a8e03ec1-VIE",
+			"cf-ray": "a57870825d6fd7b4-TXL",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Fri, 03 Jul 2026 09:47:13 GMT",
-			"request-id": "req_011CceurvcdHmZBMrTrm6HEw",
+			"date": "Sun, 08 Nov 2026 23:43:22 GMT",
+			"request-id": "req_011CgrMAGprzisdmMhQ59smT",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=149",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-4a959235b1c2f49267291aff7890ebf6-d6004d2d28bd4f26-01",
+			"traceresponse": "00-db20ab769b2ca8ff18ff52fb3e92aea8-b3c826e8afd7089c-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -415,7 +285,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "You are testing deferred tool discovery. For character counting requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not count manually."
+					"text": "<built_in_rules>\n- <tool_catalog_rules>\nMost of your tools are not in your toolset. The \"Tool catalog\" section in the conversation lists them by namespace, with their names only, not their arguments. When that section changes, a newer one replaces it.\n- To use one, get its input schema with find_tools, then run it with call_tool. Do this even when you know the name, and even when a skill names the tool.\n- Skills and instructions often name a catalog tool directly, such as \"call `some_tool` with the IDs\". Read that as call_tool with tool \"some_tool\" and those arguments. Never emit a tool call whose name is a catalog tool.\n- Look up every tool the task will need in one find_tools call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.\n- When you do not know a tool's name, search by query or list a namespace.\n</tool_catalog_rules>\n</built_in_rules>\n\nYou are testing deferred tool discovery. For character counting requests, first call find_tools, then call call_tool with the exact returned tool name. Do not count manually."
 				}
 			],
 			"messages": [
@@ -424,7 +294,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Use deferred tools to count the characters in the text \"n8n\". Search for the tool, load it, call it, then answer with the length."
+							"text": "<context>\n# Tool catalog\n- tools: count_characters\n</context>"
+						},
+						{
+							"type": "text",
+							"text": "Use deferred tools to count the characters in the text \"n8n\". Find the tool, call it, then answer with the length."
 						}
 					]
 				},
@@ -433,14 +307,14 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "I'll help you count the characters in \"n8n\" using deferred tools. Let me start by searching for a character counting tool."
+							"text": "I'll help you count the characters in \"n8n\" using deferred tool discovery.\n\nFirst, let me find the tool:"
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01LuLYJvF9RJ1ZKz6MJuWva8",
-							"name": "search_tools",
+							"id": "toolu_01B9ZbCwXZXbsPQbJFawVyEh",
+							"name": "find_tools",
 							"input": {
-								"query": "character counting"
+								"tools": ["count_characters"]
 							},
 							"caller": {
 								"type": "direct"
@@ -453,8 +327,8 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01LuLYJvF9RJ1ZKz6MJuWva8",
-							"content": "{\"results\":[{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":false}]}"
+							"tool_use_id": "toolu_01B9ZbCwXZXbsPQbJFawVyEh",
+							"content": "{\"tools\":[{\"name\":\"count_characters\",\"namespace\":\"tools\",\"description\":\"Count the characters in a text string\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\",\"description\":\"Text to count\"}},\"required\":[\"text\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}}],\"missing\":[]}"
 						}
 					]
 				},
@@ -463,14 +337,17 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Great! I found the \"count_characters\" tool. Now let me load it."
+							"text": "Now let me call the tool with the text \"n8n\":"
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01VSXyHcRWzg6ETcS9fE6PT6",
-							"name": "load_tool",
+							"id": "toolu_01FTwRevHqP7R4c3MrJUYx1c",
+							"name": "call_tool",
 							"input": {
-								"toolName": "count_characters"
+								"tool": "count_characters",
+								"arguments": {
+									"text": "n8n"
+								}
 							},
 							"caller": {
 								"type": "direct"
@@ -483,37 +360,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01VSXyHcRWzg6ETcS9fE6PT6",
-							"content": "{\"status\":\"loaded\",\"toolName\":\"count_characters\",\"tool\":{\"name\":\"count_characters\",\"description\":\"Count the characters in a text string\",\"loaded\":true},\"message\":\"Tool \\\"count_characters\\\" is loaded and will be available on the next model turn.\"}"
-						}
-					]
-				},
-				{
-					"role": "assistant",
-					"content": [
-						{
-							"type": "text",
-							"text": "Now I'll call the loaded tool to count the characters in \"n8n\"."
-						},
-						{
-							"type": "tool_use",
-							"id": "toolu_01WDEeEbuF1u42PPV9JQqcJG",
-							"name": "count_characters",
-							"input": {
-								"text": "n8n"
-							},
-							"caller": {
-								"type": "direct"
-							}
-						}
-					]
-				},
-				{
-					"role": "user",
-					"content": [
-						{
-							"type": "tool_result",
-							"tool_use_id": "toolu_01WDEeEbuF1u42PPV9JQqcJG",
+							"tool_use_id": "toolu_01FTwRevHqP7R4c3MrJUYx1c",
 							"content": "{\"length\":3}"
 						}
 					]
@@ -521,51 +368,53 @@
 			],
 			"tools": [
 				{
-					"name": "search_tools",
-					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"name": "find_tools",
+					"description": "Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.\n- tools: the full description and input schema of each named tool.\n- namespace alone: every tool in that namespace, briefly.\n- query, optionally with namespace: the tools that best match the keywords, best first.\n- pattern, optionally with namespace: tools whose name or description matches the regular expression.\nA lookup that returns 5 tools or fewer includes their full schemas.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
+							"namespace": {
+								"type": "string",
+								"description": "A namespace, as the tool catalog lists it"
+							},
+							"tools": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Tool names to get in full, with their input schemas. Name every tool you will need in one lookup."
+							},
 							"query": {
 								"type": "string",
-								"minLength": 1,
-								"description": "Keywords describing the capability or integration you need"
+								"description": "Keywords for what you want to do, matched against names and descriptions"
+							},
+							"pattern": {
+								"type": "string",
+								"description": "Regular expression matched against tool names and descriptions"
 							}
 						},
-						"required": ["query"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				},
 				{
-					"name": "load_tool",
-					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"name": "call_tool",
+					"description": "Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
-							"toolName": {
+							"tool": {
 								"type": "string",
 								"minLength": 1,
-								"description": "Exact tool name returned by search_tools"
+								"description": "The tool's name, as the tool catalog lists it"
+							},
+							"arguments": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings."
 							}
 						},
-						"required": ["toolName"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "count_characters",
-					"description": "Count the characters in a text string",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"text": {
-								"type": "string",
-								"description": "Text to count"
-							}
-						},
-						"required": ["text"],
+						"required": ["tool"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -578,33 +427,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013b5544d8fd33010bdf7575873ac52941422c0e745e280901601075864cdc6b38d55d70ef6a42d5ae5bf23b7cd36e9c7c26573b1f2de38efbd194d684d8ea558518cb8201519034f34324af108fca72190302221ebdf413ec2ca6bb220a1b2d86a9ad56896edeccdac9ccdf37959e4790119189dbe11172a2f6ee2c7cda772f363f9e11b6e6f37dfd75fd6abdbcf909d284106c1db04608c2632ba245b79c7e418e4cf5f1944f68d0a84d13b90aeb5f60045fadd92ab68046a623436f658dbbb37ae6959b15f928b208b79f936830aab9a541508d978a7c62579cf07427d8debef26056a6a5a5140abcad579fd912dea53b6cbc0b73cf29741a4b036152936144042ea8cc6a05393dd0385145c2dc88304e759e11a8dc57b4bd075e2f8749309eda77ee8a8bab7be5a5e9efd85929d9aa6ed3ef2904f890ff798b6a9707748806ea0da18b73891119040b8e64c93657cded9ae64e46c8f8c1d3d951d7c7dad0986ad79a63b2fe641a453dc817be7ee60278ac645319dbe16558d012ba610a753619cb0e4165cbf82eefa087df3af09fa66607114b8dff38b5147240ca28d3611c869c56d70f0dffbd8bde0429e6ed0fbee6ccac79fdb79eb861cec2efd058e578bd42f050000"
+			"1f8b0800000000000013bd54c16edb300cbde72b0c1e0367b0b325187c1b8662bbac8762e80eeb20b012670b51244fa2830e85ff7d5012a7b6eb2edb21f5c5161f693e3e498f7664b948b61402962402a3e79942c6227904fe5d1314300021edd6503cc2d62932508034d8285a54a837cde2dd62b55866cb559e6539a4a055fc47284596e71f4bffe5c3f595bbbebdfa74f3f986fceedbed0ad2512748c13b130318820e8c36b695ce325986e2fb8fc302b5250f856d8c4921b0ab85270cce0e42817e3564250d828a18b5095dace9c6d1b66e58b0db900d50e4eb6c9d82445991909e90b5b362989275b827542f615d6dec4075455bf268c46afb3cff09cdab31daa6e01aee87962904f23b2d49b08e4a40944aa1575175fb937c1c5c94e4a000eb58e00eb5c17b13050e3591ea97b429288da57581b53c4ad326a7a79dcde870568efb20ee8d939be9133391b2a7a4e8e1a04b1f8fb21ceb981e62e2fe5500b483beb5b6e5a8510231082f71536418ffce6d9f32e076880c399dd28eccbe5694ec3fdb73f25c8c427207f6bd857fd8a18b51b883e4780d43c7e3f56598cfa17dfdb66f1359a147c9e4c37cfee6dcf8d174cedd1157f7583cdfd3ce8427471a80d01b61e08a4056096ebc85fff0c691d1b61774cb91bde5ebdee19e92624ad53e06a7c23f88e39c47e6060000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:14Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-08T23:43:23Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:14Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-08T23:43:23Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:14Z",
+			"anthropic-ratelimit-requests-reset": "2026-11-08T23:43:23Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:14Z",
+			"anthropic-ratelimit-tokens-reset": "2026-11-08T23:43:23Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a154f7b6baf73ec1-VIE",
+			"cf-ray": "a578708a0ae1d7b4-TXL",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Fri, 03 Jul 2026 09:47:15 GMT",
-			"request-id": "req_011CceurzwKrkaUB7bQH8wLF",
+			"date": "Sun, 08 Nov 2026 23:43:23 GMT",
+			"request-id": "req_011CgrMAN58XFDRS7Pb1EyZK",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=93",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-25bd1d0ae35afc7ca760f1ef839c2610-5efb93333f97d57f-01",
+			"traceresponse": "00-af63bf95899a3c1fec6303658e0c7556-17971e9aa0e1d171-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"

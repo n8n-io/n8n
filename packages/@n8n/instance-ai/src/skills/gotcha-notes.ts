@@ -151,9 +151,10 @@ export function detectJustLoadedSkills(messages: readonly AgentMessage[]): Set<s
 		if (!isLlmMessage(message) || message.role !== 'assistant') continue;
 		for (const part of message.content) {
 			if (part.type !== 'tool-call' || part.toolName !== SKILL_LOAD_TOOL_NAME) continue;
-			if (isPlainObject(part.input) && typeof part.input.skillId === 'string') {
-				loaded.add(part.input.skillId);
-			}
+			if (!isPlainObject(part.input)) continue;
+			// load_skill accepts the skill id as `skillId` or `name`.
+			const id = part.input.skillId ?? part.input.name;
+			if (typeof id === 'string') loaded.add(id);
 		}
 		break;
 	}
@@ -178,7 +179,11 @@ export function detectGotchaPhases(messages: readonly AgentMessage[]): Set<Gotch
 			const name = calledToolName(part.toolName, part.input);
 			if (AFTER_BUILD_TOOLS.has(name)) phases.add('after-build');
 			if (EDITING_TOOLS.has(name)) phases.add('editing');
-			if (name === DOMAIN_TOOL_IDS.BUILD_WORKFLOW) builtThisTurn = true;
+			if (name === DOMAIN_TOOL_IDS.BUILD_WORKFLOW) {
+				// A second build in the same turn changes the workflow the first one saved.
+				if (builtThisTurn) phases.add('editing');
+				builtThisTurn = true;
+			}
 		}
 	}
 	if (builtBefore) phases.add('editing');

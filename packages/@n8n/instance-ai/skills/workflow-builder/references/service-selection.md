@@ -62,8 +62,9 @@ workflow, or after the user has made a credential choice).
 when the type is covered. Use its `id` like any stored credential id:
 `newCredential('Gateway credits', '__AI_GATEWAY_MANAGED__')`. The build keeps
 it and attaches Gateway credits, even when the user has their own credential
-of that type. Write it whenever the user asks for Gateway credits; otherwise
-the normal reuse rules apply. When the user has no stored credential of a
+of that type. Write it whenever the user asks for Gateway credits, or when
+the Preference rule above applies to a new node; otherwise the normal reuse
+rules apply. When the user has no stored credential of a
 covered type, the build attaches Gateway credits even without this entry.
 
 If `credentialResolutionNote` on the build result says Gateway credits are

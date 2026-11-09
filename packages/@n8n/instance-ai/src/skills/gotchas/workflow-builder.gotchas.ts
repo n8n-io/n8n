@@ -159,7 +159,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'outside-payload-contract',
-			text: 'When an outside system calls the workflow (a voice or chat platform, a form tool, a partner webhook) and the request does not give its field names, tool names or value formats, do not invent them. Ask the user for the payload, or for a sample call, before you write the nodes that read it. Match the case of field names exactly: `$json.date` and `$json.Date` are different fields. Verify warns when an expression reads a field that no input item has.',
+			text: 'When an outside system calls the workflow (a voice or chat platform, a form tool, a partner webhook) and the request does not give its field names, tool names or value formats, do not invent them. Ask the user for the payload, or for a sample call, before you write the nodes that read it. Match the case of field names exactly: `$json.date` and `$json.Date` are different fields. Verify often warns when an expression reads a field that no input item has, but it does not check every node, so do not rely on it.',
 			appliesWhen:
 				'A Webhook, Form or chat trigger receives data from an outside system, and later nodes read fields, tool names or values from it.',
 			fixes:
@@ -179,7 +179,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'expression-sandbox-limits',
-			text: "n8n expressions block `Object.prototype`, `.call(`, `.apply(`, `constructor` and any property named `arguments`. To check for a key, write `'key' in $json` or `$json.key !== undefined`. Put anything more complex in a Code node.",
+			text: "n8n expressions block `prototype`, `constructor` and any property named `arguments`. To check for a key, write `'key' in $json` or `$json.key !== undefined`. Put anything more complex in a Code node.",
 			appliesWhen:
 				'Writing an n8n expression that checks keys, calls prototype methods, or reads a property named `arguments`.',
 			fixes:

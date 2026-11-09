@@ -254,9 +254,11 @@ export class InstanceAiModelService {
 			const provider = endpoint ? splitModelId(endpoint.id).provider : undefined;
 			const usesOpenAi = endpoint && (provider === 'openai' || provider === 'custom');
 			const apiKey = usesOpenAi ? endpoint.apiKey : process.env.OPENAI_API_KEY;
-			if (!apiKey) return undefined;
+			// Self-hosted custom endpoints can run without an API key.
+			const keylessCustom = provider === 'custom' && !!endpoint?.url;
+			if (!apiKey && !keylessCustom) return undefined;
 			return createEmbeddingModel(DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, {
-				apiKey,
+				apiKey: apiKey ?? '',
 				baseURL: (usesOpenAi && endpoint.url) || undefined,
 				fetch: this.getModelFetch(),
 			});

@@ -31,7 +31,7 @@ export const INTENT_RECOGNITION_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'chat-trigger-is-not-an-agent',
-			text: 'Never satisfy an agent-anchored request with a Chat Trigger + AI Agent node workflow. A Chat Trigger workflow is right when chat only starts a fixed graph (paste an input, run fixed steps, reply). It is also right when the user explicitly asks for a workflow or names a Chat Trigger or an AI Agent node: build that workflow and do not ask.',
+			text: 'Never satisfy an agent-anchored request with a Chat Trigger + AI Agent node workflow. A Chat Trigger workflow is right when chat only starts a fixed graph (paste an input, run fixed steps, reply). It is also right when the user explicitly asks for a workflow: build that workflow and do not ask. An explicit Agent request still goes to `agent-builder`.',
 			appliesWhen:
 				'The user asks for an agent, assistant or bot that people chat with, and does not ask for a workflow or name its nodes.',
 			fixes: 'Built Chat Trigger + AI Agent node workflows for chat assistants.',
@@ -49,7 +49,7 @@ export const INTENT_RECOGNITION_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'degenerate-shell',
-			text: 'A workflow that is only a trigger plus one AI Agent step doing all the work is an Agent in a workflow shell. Re-anchor to an Agent (a scheduled duty becomes a task on it), also when this happens mid-build.',
+			text: 'A workflow that is only a trigger plus one AI Agent step doing all the work is an Agent in a workflow shell. Re-anchor to an Agent (a scheduled duty becomes a task on it).',
 			appliesWhen:
 				'A recurring or on-demand duty is open-ended (research, investigate, decide what matters), and a workflow would only add a schedule and a destination.',
 			fixes: 'Shipped trigger + single AI Agent node workflows for delegated duties.',
@@ -115,7 +115,7 @@ export const INTENT_RECOGNITION_GOTCHAS: SkillGotchaSet = {
 			id: 'existing-agent-in-editor',
 			text: 'An agent opened in the editor that the user asks to change is agent-anchored: build that agent with `agent-builder`, even when a workflow could do it, and even when a capability is unsupported.',
 			appliesWhen:
-				'An existing agent is open in the editor and the user asks it to also do something, or to change its tools, model, instructions or tasks.',
+				'An existing agent is open in the editor, no workflow is in context, and the user asks it to also do something, or to change its tools, model, instructions or tasks.',
 			fixes: 'Started a workflow build to add a capability to an open agent.',
 			origin: '#37479',
 			evalCases: [],

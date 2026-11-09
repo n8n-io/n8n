@@ -34,6 +34,10 @@ describe('toNodeOutputShape', () => {
 		expect(toNodeOutputShape(gemini({}), raw)).toEqual([candidate, candidate]);
 	});
 
+	it('maps an empty candidates array to zero items', () => {
+		expect(toNodeOutputShape(gemini({}), [{ candidates: [], usageMetadata: {} }])).toEqual([]);
+	});
+
 	it('keeps the raw response when Simplify Output is off', () => {
 		expect(toNodeOutputShape(gemini({ simplify: false }), raw)).toEqual(raw);
 	});

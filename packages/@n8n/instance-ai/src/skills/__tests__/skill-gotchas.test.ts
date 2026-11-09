@@ -180,6 +180,11 @@ describe('detectGotchaPhases', () => {
 			new Set(['after-build', 'editing']),
 		);
 	});
+
+	it('counts a second build in the same turn as editing', () => {
+		const build = call('workflow_builder_build_workflow', 'resolved');
+		expect(detectGotchaPhases([build, build])).toEqual(new Set(['after-build', 'editing']));
+	});
 });
 
 describe('createGotchaNotesProvider', () => {
@@ -337,6 +342,30 @@ describe('createGotchaNotesProvider', () => {
 				threshold: 0.8,
 			});
 			expect(await provider(onLoadRequest([user, loadCall('intent-recognition')]))).toEqual([
+				{ id: gotchaNoteId('intent-recognition', 'a'), content: 'Rule A' },
+			]);
+		});
+
+		it('fires when the skill loads by name', async () => {
+			const provider = createGotchaNotesProvider({
+				sets: onLoadSets,
+				embeddingModel: model,
+				threshold: 0.8,
+			});
+			const loadByName: AgentMessage = {
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'load',
+						toolName: 'load_skill',
+						input: { name: 'intent-recognition' },
+						state: 'resolved',
+						output: {},
+					},
+				],
+			};
+			expect(await provider(onLoadRequest([user, loadByName]))).toEqual([
 				{ id: gotchaNoteId('intent-recognition', 'a'), content: 'Rule A' },
 			]);
 		});

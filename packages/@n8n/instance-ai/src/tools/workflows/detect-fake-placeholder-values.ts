@@ -14,8 +14,11 @@ const REPLACE_ME = /^replace[_-]me$/i;
 const BRACKET_FORM =
 	/^[<[{]\s*(?:your|insert|enter|replace|placeholder)(?:\b|_)[^<>[\]{}]*[>\]}]$/i;
 
-/** Parameter keys whose value is UI hint text, not a value the node uses. */
-const HINT_KEYS = new Set(['placeholder', 'notice', 'hint', 'description']);
+/**
+ * Parameter keys whose value is UI hint text, not a value the node uses.
+ * `description` is left out: some nodes use it as a real input.
+ */
+const HINT_KEYS = new Set(['placeholder', 'notice', 'hint']);
 
 function looksLikeFakePlaceholder(value: string): boolean {
 	const trimmed = value.trim();

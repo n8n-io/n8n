@@ -12,7 +12,7 @@
 /**
  * The point in a conversation from which a gotcha can apply.
  * - `after-build`: a workflow was built, verified or run in this conversation.
- * - `editing`: the agent works on saved workflow code (fetched or built).
+ * - `editing`: the agent works on saved workflow code (fetched, or built in an earlier turn or earlier in this turn).
  */
 export type GotchaPhase = 'after-build' | 'editing';
 

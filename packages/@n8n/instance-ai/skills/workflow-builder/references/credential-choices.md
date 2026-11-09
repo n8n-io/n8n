@@ -59,7 +59,8 @@ credential creation, with existing credentials still listed. Pass it only on
 an explicit request, never by default — reuse is the right behavior everywhere
 else. Never ask the user to choose among existing credentials, not even when
 exactly one exists: setup still lists them, so say so in one short sentence.
-If they had skipped that card earlier, pass `reopenSkipped` alongside it.
+If they had skipped that card earlier, also pass `reopenSkipped` to `setup_workflow`
+(`setup_credentials` has no such parameter).
 
 ## Credential choices during setup
 
