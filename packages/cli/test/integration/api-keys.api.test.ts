@@ -325,7 +325,8 @@ describe('Owner shell', () => {
 			id: ownerShell.id,
 			firstName: ownerShell.firstName ?? null,
 			lastName: ownerShell.lastName ?? null,
-			email: ownerShell.email,
+			// The owner shell has no email yet. The response type needs a string.
+			email: ownerShell.email ?? '',
 		};
 
 		expect(retrieveAllApiKeysResponse.body.data.counts.all).toBe(2);
