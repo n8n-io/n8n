@@ -97,6 +97,21 @@ async function submit(api: ApiHelpers, path: string, value: string) {
 	return response.status();
 }
 
+async function expectNoActionPage(api: ApiHelpers, path: string, answer?: string) {
+	const response = await api.webhooks.trigger(path, {
+		headers: BROWSER,
+		maxNotFoundRetries: 0,
+		...(answer !== undefined && { method: 'POST', multipart: { 'field-0': answer } }),
+	});
+	expect(response.status()).toBe(200);
+	expect(await response.text()).toContain('No action required');
+}
+
+async function statusAndAfterRuns(api: ApiHelpers, executionId: string) {
+	const { status, data } = await api.workflows.getExecution(executionId);
+	return { status, afterRuns: flatted.parse(data).resultData.runData.After?.length };
+}
+
 async function responseAfterResume(api: ApiHelpers, executionId: string) {
 	const execution = await api.workflows.waitForExecutionById(executionId);
 	expect(execution.status).toBe('success');
@@ -160,9 +175,44 @@ test.describe(
 			expect(await request(api, rejectPath!)).toBe(200);
 			expect(await approvedAfterResume(api, executionId)).toBe(false);
 
-			// The page says that no action is required, and the run stays as it ended.
-			expect(await request(api, approvePath)).toBe(200);
+			await expectNoActionPage(api, approvePath);
 			expect(await approvedAfterResume(api, executionId)).toBe(false);
+		});
+
+		test('should show the no-action page for a spent link while the run waits further on @engine:v2', async ({
+			api,
+			services,
+		}) => {
+			const { executionId, approvePath, rejectPath } = await startAndReadButtons(
+				api,
+				services.proxy,
+				{
+					transform: (workflow) => {
+						workflow.nodes!.push({
+							id: 'wait',
+							name: 'Wait',
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1.1,
+							position: [800, 0],
+							parameters: { resume: 'webhook', options: {} },
+							webhookId: crypto.randomUUID(),
+						});
+						workflow.connections!.After = { main: [[{ node: 'Wait', type: 'main', index: 0 }]] };
+						return workflow;
+					},
+				},
+			);
+
+			expect(await request(api, rejectPath!)).toBe(200);
+			await expect
+				.poll(async () => await statusAndAfterRuns(api, executionId))
+				.toEqual({ status: 'waiting', afterRuns: 1 });
+
+			await expectNoActionPage(api, approvePath);
+			expect(await statusAndAfterRuns(api, executionId)).toEqual({
+				status: 'waiting',
+				afterRuns: 1,
+			});
 		});
 
 		test('should refuse a changed link, then resume once on the sent link @engine:v2', async ({
@@ -185,7 +235,7 @@ test.describe(
 
 			expect(await request(api, approvePath)).toBe(200);
 			expect(await approvedAfterResume(api, executionId)).toBe(true);
-			expect(await request(api, approvePath)).toBe(200);
+			await expectNoActionPage(api, approvePath);
 			expect(await approvedAfterResume(api, executionId)).toBe(true);
 		});
 
@@ -200,7 +250,12 @@ test.describe(
 					.resumeUrl,
 			);
 
-			expect(await request(api, `${resumeUrl.pathname}${resumeUrl.search}`)).toBe(409);
+			const refused = await api.webhooks.trigger(`${resumeUrl.pathname}${resumeUrl.search}`, {
+				headers: BROWSER,
+				maxNotFoundRetries: 0,
+			});
+			expect(refused.status()).toBe(409);
+			expect(await refused.text()).toContain('step_bound_only');
 
 			expect(await request(api, approvePath)).toBe(200);
 			expect(await approvedAfterResume(api, executionId)).toBe(true);
@@ -219,17 +274,17 @@ test.describe(
 			expect(await approvedAfterResume(api, executionId)).toBe(true);
 		});
 
-		for (const { responseType, label, form, value, response } of [
+		for (const { responseType, field, form, value, response } of [
 			{
 				responseType: 'freeText',
-				label: 'Response',
+				field: '<textarea',
 				form: {},
 				value: 'hello world',
 				response: { text: 'hello world' },
 			},
 			{
 				responseType: 'customForm',
-				label: 'Answer',
+				field: 'Answer',
 				form: { defineForm: 'fields', formFields: { values: [{ fieldLabel: 'Answer' }] } },
 				value: 'forty-two',
 				response: { Answer: 'forty-two' },
@@ -253,7 +308,7 @@ test.describe(
 					maxNotFoundRetries: 0,
 				});
 				expect(page.status()).toBe(200);
-				expect(await page.text()).toContain(label);
+				expect(await page.text()).toContain(field);
 				expect(await request(api, approvePath.replace('approved=true', 'approved=false'))).toBe(
 					401,
 				);
@@ -263,9 +318,8 @@ test.describe(
 				expect(await submit(api, approvePath, value)).toBe(200);
 				expect(await responseAfterResume(api, executionId)).toMatchObject(response);
 
-				// The page says that no action is required, and the run stays as it ended.
-				expect(await submit(api, approvePath, 'again')).toBe(200);
-				expect(await request(api, approvePath)).toBe(200);
+				await expectNoActionPage(api, approvePath, 'again');
+				await expectNoActionPage(api, approvePath);
 				expect(await responseAfterResume(api, executionId)).toMatchObject(response);
 			});
 		}

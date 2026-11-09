@@ -26,7 +26,7 @@ async function mockTelegram(proxy: ProxyServer) {
 		httpResponse: {
 			statusCode: 200,
 			headers: { 'Content-Type': ['application/json'] },
-			body: JSON.stringify({ ok: true, result: { url: '', message_id: 1 } }),
+			body: JSON.stringify({ ok: true, result: { url: '' } }),
 		},
 		times: { unlimited: true },
 	});
