@@ -75,12 +75,16 @@ comma and a space: `fix(core, editor): ...`.
    - Scope: Which scope from the Scopes list fits? Omit the scope if none fits.
    - Summary: What does the change do? Start it with a capital letter.
 
-5. **Push branch if needed**:
+5. **Prepare preview feature flag labels**: Inspect the full PR diff against
+   the target base branch for new PostHog flags. For each new flag, prepare
+   its label as described in Preview Feature Flags below.
+
+6. **Push branch if needed**:
    ```bash
    git push -u origin HEAD
    ```
 
-6. **Create PR** using gh CLI. Read `.github/pull_request_template.md` as the
+7. **Create PR** using gh CLI. Read `.github/pull_request_template.md` as the
    body structure, then populate each section with actual content before
    creating the PR:
    - **Summary**: describe what the PR does
@@ -101,6 +105,8 @@ comma and a space: `fix(core, editor): ...`.
    4. Each sentence is true for the diff.
 
    When a later commit changes a fact in the body, update the body.
+   Add one `--label "<label>"` argument for each preview feature flag label
+   prepared in step 5.
 
    ```bash
    gh pr create --draft --title "<type>(<scope>): <summary>" --body "$(cat <<'EOF'
@@ -108,6 +114,46 @@ comma and a space: `fix(core, editor): ...`.
    EOF
    )"
    ```
+
+## Preview Feature Flags
+
+PR previews use `flag:` labels to override PostHog flags for that preview.
+
+| Label | Preview value |
+|-------|---------------|
+| `flag:136_skill_sync` | Boolean `true` |
+| `flag:136_skill_sync=false` | Boolean `false` |
+| `flag:<key>=<variant>` | Named A/B variant |
+
+1. Compare the branch with the target base using `git diff <base>...HEAD`.
+   Inspect new experiment definitions in
+   `packages/frontend/editor-ui/src/app/constants/experiments.ts`, shared
+   flag constants in `packages/@n8n/api-types`, and new PostHog checks elsewhere
+   in the diff. Resolve constants to the exact PostHog key string.
+   Exclude removed flags, existing flags that the PR only references, and
+   flag names that appear only in tests or documentation. Environment
+   variables and license gates do not use these labels.
+2. Automatically prepare one label for each new flag. Use `flag:<key>` for a
+   boolean flag. Read the flag's consumers and variant definitions for an
+   A/B experiment. Use `flag:<key>=<variant>` with the exact variant that
+   shows the new behavior. Do not assume that boolean `true` selects a named
+   variant. If the required variant is unclear, report it instead of guessing.
+   Preserve any value that the user explicitly requested for the same key.
+3. Check for each exact label name with `gh label list --search "<label>"`.
+   Reuse an existing label. If the label is missing, create it before the PR:
+   ```bash
+   gh label create "<label>" --color "1D76DB" --description "Set a feature flag in PR previews"
+   ```
+4. Add every prepared label with `gh pr create --label "<label>"` in step 7.
+   Repeat `--label` for multiple flags. For a PR that already exists, use
+   `gh pr edit <number> --add-label "<label>"`. Preserve unrelated labels and
+   avoid conflicting values for the same key. Verify the result with
+   `gh pr view <number> --json labels`. Report any label operation that fails.
+
+Labels work before deployment and after the preview is online. A label
+change restarts an online preview once, which takes about two minutes.
+The n8n-assistant PR comment shows the preview URL, commit, and active flags.
+Include the selected labels in the PR's **How to test** section.
 
 ## PR Body Guidelines
 
