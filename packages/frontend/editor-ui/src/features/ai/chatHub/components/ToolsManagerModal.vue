@@ -409,7 +409,14 @@ function onDialogOpenUpdate(open: boolean) {
 			<!-- Settings view header -->
 			<div v-else :class="$style.settingsHeader">
 				<div :class="$style.settingsHeaderLeft">
-					<N8nIconButton icon="arrow-left" text size="large" variant="ghost" @click="handleBack" />
+					<N8nIconButton
+						icon="arrow-left"
+						text
+						size="large"
+						variant="ghost"
+						data-test-id="chat-tools-manager-back"
+						@click="handleBack"
+					/>
 					<N8nDialogTitle>
 						<N8nInlineTextEdit
 							:model-value="settingsNodeName"

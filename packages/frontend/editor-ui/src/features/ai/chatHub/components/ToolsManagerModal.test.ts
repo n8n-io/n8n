@@ -498,19 +498,18 @@ describe('ToolsManagerModal', () => {
 
 	describe('settings view', () => {
 		it('should show back button in settings view', async () => {
-			const { getAllByText } = renderComponent({ props: defaultProps() });
+			const { getAllByText, getByTestId } = renderComponent({ props: defaultProps() });
 
 			const addButtons = getAllByText('chatHub.toolsManager.add');
 			await userEvent.click(addButtons[0]);
 
 			await waitFor(() => {
-				const backButton = document.body.querySelector('.backButton');
-				expect(backButton).toBeTruthy();
+				expect(getByTestId('chat-tools-manager-back')).toBeTruthy();
 			});
 		});
 
 		it('should return to list view when back button is clicked', async () => {
-			const { getAllByText, queryByTestId } = renderComponent({
+			const { getAllByText, getByTestId, queryByTestId } = renderComponent({
 				props: defaultProps(),
 			});
 
@@ -522,8 +521,7 @@ describe('ToolsManagerModal', () => {
 			});
 
 			// Click back - use fireEvent to bypass pointer-events check on body
-			const backButton = document.body.querySelector('.backButton') as HTMLElement;
-			await fireEvent.click(backButton);
+			await fireEvent.click(getByTestId('chat-tools-manager-back'));
 
 			await waitFor(() => {
 				expect(queryByTestId('tool-settings-content')).toBeNull();
