@@ -476,6 +476,26 @@ describe('InstanceAiConversation', () => {
 		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(true);
 	});
 
+	it('lets the user retry a failed load in a thread too short to scroll', async () => {
+		Object.assign(thread, { hasOlderMessages: true });
+		thread.loadOlderMessages = vi.fn(async () => {
+			throw new Error('Network error');
+		});
+		const wrapper = mountConversation();
+		// The content fits in the view, so the user cannot scroll away from the top.
+		const view = { scrollHeight: 400, clientHeight: 500 } as HTMLElement;
+		const retryNotice = '[data-test-id="instance-ai-older-messages-error"]';
+
+		await infiniteScroll.load?.();
+		await nextTick();
+		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(false);
+
+		await wrapper.find(`${retryNotice} button`).trigger('click');
+
+		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(true);
+		expect(wrapper.find(retryNotice).exists()).toBe(false);
+	});
+
 	it('renders the above-input and inline-offers slots', () => {
 		const renderer = createThreadComponentRenderer(
 			InstanceAiConversation,

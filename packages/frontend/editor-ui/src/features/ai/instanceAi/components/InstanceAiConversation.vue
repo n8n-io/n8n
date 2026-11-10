@@ -13,6 +13,7 @@ import {
 } from 'vue';
 import { storeToRefs } from 'pinia';
 import {
+	N8nButton,
 	N8nChatMessage,
 	N8nIconButton,
 	N8nScrollArea,
@@ -439,7 +440,7 @@ watch(
 	},
 );
 
-// Stops a failed load from retrying in a loop. Leaving the top area allows a new try.
+// Stops a failed load from retrying in a loop. The retry button or leaving the top area allows a new try.
 const loadOlderFailed = ref(false);
 watch(
 	() => arrivedState.top,
@@ -942,9 +943,23 @@ defineExpose({
 		<!-- Floats over the messages, so the content does not move when it disappears. -->
 		<N8nSpinner
 			v-if="isLoadingOlderMessages"
-			:class="$style.olderMessagesSpinner"
+			:class="$style.olderMessagesStatus"
 			data-test-id="instance-ai-older-messages-loading"
 		/>
+		<!-- A thread too short to scroll cannot leave the top area, so it needs this button to try again. -->
+		<div
+			v-else-if="loadOlderFailed"
+			:class="[$style.olderMessagesStatus, $style.olderMessagesError]"
+			role="alert"
+			data-test-id="instance-ai-older-messages-error"
+		>
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('instanceAi.thread.loadOlderError') }}
+			</N8nText>
+			<N8nButton variant="ghost" size="xsmall" @click="loadOlderFailed = false">
+				{{ i18n.baseText('generic.retry') }}
+			</N8nButton>
+		</div>
 		<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
 			<div
 				ref="scrollable"
@@ -1144,12 +1159,23 @@ defineExpose({
 	position: relative;
 }
 
-.olderMessagesSpinner {
+.olderMessagesStatus {
 	position: absolute;
 	top: var(--spacing--sm);
 	left: 50%;
 	transform: translateX(-50%);
 	z-index: 1;
+}
+
+.olderMessagesError {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--4xs) var(--spacing--4xs) var(--spacing--sm);
+	background-color: var(--background--surface);
+	border: var(--border);
+	border-radius: var(--radius--full);
+	box-shadow: var(--shadow--xs);
 }
 
 .scrollArea {
