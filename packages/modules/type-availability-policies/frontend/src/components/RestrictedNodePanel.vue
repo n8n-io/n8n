@@ -62,7 +62,7 @@ const description = computed(() =>
 		</div>
 		<ContactAdminModal
 			v-model:open="isContactAdminOpen"
-			:node-type-name="nodeTypeName"
+			:type-name="nodeTypeName"
 			:audience="contactCopy.audience"
 		/>
 	</div>

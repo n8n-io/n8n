@@ -142,11 +142,6 @@ export interface ImportOrchestrationInput {
 	explicitDeleteWorkflowIds?: string[];
 	/** Treat the project root as a workflow location (project packages, which set the layout). */
 	checkRootPlacement: boolean;
-	/**
-	 * Under `layoutConflictPolicy=follow-package`, the folders a move may touch. A selection moves only the
-	 * folders that hold a selected workflow, so unselected content stays where it is. Omitted means all.
-	 */
-	movableFolderIds?: ReadonlySet<string>;
 }
 
 /**
@@ -470,7 +465,6 @@ export class ImportOrchestrator {
 			...context,
 			folderConflictPolicy: options.folderConflictPolicy,
 			layoutConflictPolicy: options.layoutConflictPolicy,
-			movableFolderIds: input.movableFolderIds,
 		};
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
@@ -784,7 +778,10 @@ function scopeAgentRequirements(
 	};
 }
 
-/** Imported channels never use package credentials, so a channel reference alone requires none. */
+/**
+ * Imported channels never use package credentials, so a channel reference alone requires none.
+ * Exports write channels without credential IDs, but older packages still carry them.
+ */
 function withoutChannelOnlyConsumers<
 	T extends { id: string; usedBy: PackageRequirementConsumer[] },
 >(requirements: T[] | undefined, agents: AgentPlanItem[]): T[] | undefined {

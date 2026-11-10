@@ -13,8 +13,6 @@ export const pendingRekaPrefixes = [
 	'ContextMenu',
 	'DropdownMenu',
 	'FocusScope',
-	'HoverCard',
-	'VisuallyHidden',
 ] as const;
 
 /**

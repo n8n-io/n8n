@@ -28,7 +28,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { Telemetry } from '@/telemetry';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
@@ -105,6 +105,7 @@ import { SystemAgentRegistry } from '@/modules/agents/system-agents/system-agent
 import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-access';
 
 import { createMember, createAdmin } from '../../shared/db/users';
+import type { AgentSandboxFilesService } from '@/modules/agents/agent-sandbox-files.service';
 
 // Share the transaction class loaded by the built BaseRepository.
 const { TypeOrmTransaction, TypeOrmTransactionRunner } = createRequire(__filename)(
@@ -291,6 +292,7 @@ describe('AgentExecutionRepository', () => {
 				steering,
 				mock<AgentToolApprovalService>(),
 				mock<AgentKnowledgeUsageTracker>(),
+				mock<AgentSandboxFilesService>(),
 			),
 		};
 	}
@@ -529,6 +531,7 @@ describe('AgentExecutionRepository', () => {
 						repository,
 						mock<SystemAgentUsageRelay>(),
 						mock<AgentChatAttachmentService>({ returnToParent: async () => [] }),
+						mock<AgentSandboxFilesService>(),
 					),
 					service,
 					mockLogger(),

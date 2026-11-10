@@ -1,9 +1,10 @@
-ARG NODE_VERSION=26.12.1
+# check=skip=InvalidDefaultArgInFrom
 ARG N8N_VERSION=snapshot
 
-# The digest pins node:26.12.1-alpine3.24 for amd64 and arm64. Change the tag and the digest together.
-ARG BUILDER_IMAGE=node:26.12.1-alpine3.24@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
-ARG RUNTIME_IMAGE=n8nio/base:26.12.1@sha256:435e5310b29cfa5880b5512703f7d10bafcf0f5dd700c7adac6ee8cfbe77306a
+# docker/docker-bake.hcl sets these. Build with `pnpm build:docker` or
+# `docker buildx bake`, not plain `docker build`.
+ARG BUILDER_IMAGE
+ARG RUNTIME_IMAGE
 
 # The runtime base has no compiler, so this stage supplies one.
 FROM ${BUILDER_IMAGE} AS toolchain
@@ -45,7 +46,7 @@ WORKDIR /build/node_modules/@confluentinc/kafka-javascript
 RUN BUILD_LIBRDKAFKA=0 node "$NODE_GYP" rebuild --release
 
 # A separate workflow builds the base image. A new base reaches this image only
-# when you change RUNTIME_IMAGE above.
+# when you change its pin in docker/docker-bake.hcl.
 FROM ${RUNTIME_IMAGE}
 
 ARG N8N_VERSION

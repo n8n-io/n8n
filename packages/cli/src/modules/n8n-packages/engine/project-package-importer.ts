@@ -347,7 +347,7 @@ export class ProjectPackageImporter {
 		importSource: PackageImportSource,
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
-		const folders = await this.packageParser.getFolders(reader, basePrefix);
+		const allFolders = await this.packageParser.getFolders(reader, basePrefix);
 		const allWorkflows = await this.packageParser.getWorkflows(reader, basePrefix);
 		const agents =
 			!request.selection && manifest.agents?.length
@@ -360,6 +360,12 @@ export class ProjectPackageImporter {
 					request.selection!.selectedWorkflowIds.includes(workflow.sourceWorkflowId),
 				)
 			: allWorkflows;
+		const selectedFolderIds = request.selection
+			? foldersInSelection(allFolders, workflows, request.selection.selectedFolderIds ?? [])
+			: undefined;
+		const folders = selectedFolderIds
+			? allFolders.filter(({ sourceFolderId }) => selectedFolderIds.has(sourceFolderId))
+			: allFolders;
 
 		// Requirements and bindings are both scoped to this project's workflows so another project's
 		// binding is not seen as an orphan here (which would block the whole multi-project import).
@@ -436,7 +442,6 @@ export class ProjectPackageImporter {
 			),
 			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
 			checkRootPlacement: true,
-			...(request.selection ? { movableFolderIds: foldersHolding(folders, workflows) } : {}),
 		};
 	}
 
@@ -483,24 +488,28 @@ function deletesForProject(
 	return selection.deletedWorkflowIds;
 }
 
-/** The folders that hold a selected workflow, with every folder above them. */
-function foldersHolding(
+/**
+ * The folders that a selection creates, moves or renames: the selected folders and the folders
+ * that hold a selected workflow, with every folder above them. Other folders stay as they are.
+ */
+function foldersInSelection(
 	folders: Array<{ sourceFolderId: string; parentFolderId: string | null }>,
 	workflows: Array<{ parentFolderId: string | null }>,
+	selectedFolderIds: string[],
 ): Set<string> {
 	const parentOf = new Map(
 		folders.map(({ sourceFolderId, parentFolderId }) => [sourceFolderId, parentFolderId]),
 	);
-	const holding = new Set<string>();
-	for (const workflow of workflows) {
+	const result = new Set<string>();
+	for (const start of [...selectedFolderIds, ...workflows.map((w) => w.parentFolderId)]) {
 		// A visited folder ends the walk, which also stops a cycle.
 		for (
-			let current = workflow.parentFolderId;
-			current !== null && !holding.has(current);
+			let current = start;
+			current !== null && !result.has(current);
 			current = parentOf.get(current) ?? null
 		) {
-			holding.add(current);
+			result.add(current);
 		}
 	}
-	return holding;
+	return result;
 }
