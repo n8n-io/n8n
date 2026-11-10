@@ -17,10 +17,10 @@ const TEXT_LINE_HEIGHT_RATIO = 1.2;
 const registeredFontFamilies = new Map<string, string>();
 
 async function getFontFamily(fontPath: string): Promise<string> {
+	const { GlobalFonts } = await import('@napi-rs/canvas');
 	const registeredFamily = registeredFontFamilies.get(fontPath);
 	if (registeredFamily) return registeredFamily;
 
-	const { GlobalFonts } = await import('@napi-rs/canvas');
 	const family = `n8n-edit-image-${registeredFontFamilies.size}-${pathParse(fontPath).name}`;
 	if (!GlobalFonts.registerFromPath(fontPath, family)) {
 		throw new UserError('The selected font could not be loaded.');
