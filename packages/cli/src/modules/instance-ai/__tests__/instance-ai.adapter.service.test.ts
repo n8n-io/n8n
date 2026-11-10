@@ -4,6 +4,7 @@ import type { EventService } from '@n8n/backend-services';
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
 	const {
+		AppNamespaceTakenError,
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
@@ -11,6 +12,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		formatRedactedError,
 	} = await import('@n8n/instance-ai/errors');
 	return {
+		AppNamespaceTakenError,
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
@@ -1964,6 +1966,7 @@ import { type DataTableRepository, type DataTableService } from '@n8n/backend-mo
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
+	AppNamespaceTakenError,
 	WorkflowEditorLockedError,
 	WorkflowNotFoundError,
 	WorkflowSaveConflictError,
@@ -9334,6 +9337,30 @@ describe('createContext: appService', () => {
 			'project-1',
 			{ name: 'Todos', namespace: 'todos', visibility: 'instance' },
 			{ id: APP_ID, actor: { userId: 'user-1', threadId: 'thread-1' } },
+		);
+	});
+
+	it('reports a namespace conflict as a taken namespace', async () => {
+		const { apps } = mockAppsModule(true);
+		apps.createApp.mockRejectedValue(
+			new ConflictError('An app already uses this namespace. Choose another namespace.'),
+		);
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		const created = context.appService?.createApp({ name: 'Todos', namespace: 'todos' });
+
+		await expect(created).rejects.toBeInstanceOf(AppNamespaceTakenError);
+		await expect(created).rejects.toThrow('An app already uses the namespace "todos".');
+	});
+
+	it('passes other create failures through unchanged', async () => {
+		const { apps } = mockAppsModule(true);
+		const failure = new BadRequestError('App IDs must be UUIDs.');
+		apps.createApp.mockRejectedValue(failure);
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await expect(context.appService?.createApp({ name: 'Todos', namespace: 'todos' })).rejects.toBe(
+			failure,
 		);
 	});
 

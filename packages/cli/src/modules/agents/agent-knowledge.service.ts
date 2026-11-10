@@ -20,21 +20,24 @@ import type { Readable } from 'node:stream';
 import { BadRequestError } from '@n8n/errors';
 
 import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
+import {
+	KnowledgeFileStore,
+	type StoredKnowledgeFile,
+} from '@/modules/knowledge/files/knowledge-file-store';
+import {
+	KnowledgeUploadError,
+	type KnowledgeUploadFailureReason,
+} from '@/modules/knowledge/files/knowledge-upload.error';
+import {
+	storageFileNameForOriginalFileName,
+	toAgentFileDto,
+} from '@/modules/knowledge/files/storage-naming';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
-import {
-	AgentKnowledgeUploadError,
-	type AgentKnowledgeUploadFailureReason,
-} from './agent-knowledge-upload.error';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
-import {
-	AgentKnowledgeFileStore,
-	type StoredAgentKnowledgeFile,
-} from './agent-knowledge-file-store';
 import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
 import { createKnowledgeTelemetryHmac } from './agent-knowledge-telemetry';
-import { storageFileNameForOriginalFileName, toAgentFileDto } from './agent-knowledge-storage';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -53,7 +56,7 @@ export class AgentKnowledgeService {
 		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentKnowledgeMirrorService: AgentKnowledgeMirrorService,
-		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
+		private readonly agentKnowledgeFileStore: KnowledgeFileStore,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
@@ -197,7 +200,7 @@ export class AgentKnowledgeService {
 		await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
 	}
 
-	/** Stores the file's bytes via AgentKnowledgeFileStore, then reserves its DB row. */
+	/** Stores the file's bytes via KnowledgeFileStore, then reserves its DB row. */
 	private async storeAgentFile(
 		agentId: string,
 		projectId: string,
@@ -230,7 +233,7 @@ export class AgentKnowledgeService {
 		agentId: string,
 		fileId: string,
 		file: Express.Multer.File,
-		stored: StoredAgentKnowledgeFile,
+		stored: StoredKnowledgeFile,
 		ctx: OperationContext,
 	): Promise<KnowledgeFile> {
 		return await this.agentFileRepository.saveUploadedFile(
@@ -257,7 +260,7 @@ export class AgentKnowledgeService {
 			const extractedText = Buffer.from(await this.extractPdfText(file.path), 'utf-8');
 			// Extracted text can be larger than the compressed PDF, and the sandbox rejects files above the limit.
 			if (extractedText.byteLength > MAX_AGENT_FILE_SIZE_BYTES) {
-				throw new AgentKnowledgeUploadError(
+				throw new KnowledgeUploadError(
 					`The text in "${file.originalname}" is larger than ${MAX_AGENT_FILE_SIZE_MB} MB`,
 					'file_size',
 				);
@@ -290,7 +293,7 @@ export class AgentKnowledgeService {
 			.replaceAll('\u0000', '')
 			.trim();
 		if (!extractedText) {
-			throw new AgentKnowledgeUploadError(
+			throw new KnowledgeUploadError(
 				'PDF contains no extractable text and cannot be added to knowledge',
 				'pdf_no_text',
 			);
@@ -314,7 +317,7 @@ export class AgentKnowledgeService {
 		);
 		const uploadTotalSizeBytes = files.reduce((total, file) => total + file.size, 0);
 		if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
-			throw new AgentKnowledgeUploadError(
+			throw new KnowledgeUploadError(
 				`Knowledge base limit reached. The total size can't be larger than ${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB.`,
 				'total_limit',
 			);
@@ -350,8 +353,8 @@ export class AgentKnowledgeService {
 		}
 	}
 
-	private duplicateFileNameError(fileName: string): AgentKnowledgeUploadError {
-		return new AgentKnowledgeUploadError(
+	private duplicateFileNameError(fileName: string): KnowledgeUploadError {
+		return new KnowledgeUploadError(
 			`A knowledge file named "${fileName}" already exists for this agent`,
 			'duplicate_name',
 		);
@@ -360,11 +363,11 @@ export class AgentKnowledgeService {
 	private validateMetadataLength(
 		label: string,
 		value: string,
-		reason?: AgentKnowledgeUploadFailureReason,
+		reason?: KnowledgeUploadFailureReason,
 	) {
 		if (value.length > MAX_AGENT_FILE_METADATA_LENGTH) {
 			const message = `${label} must be ${MAX_AGENT_FILE_METADATA_LENGTH} characters or less`;
-			throw reason ? new AgentKnowledgeUploadError(message, reason) : new BadRequestError(message);
+			throw reason ? new KnowledgeUploadError(message, reason) : new BadRequestError(message);
 		}
 	}
 
