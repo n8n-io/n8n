@@ -103,13 +103,8 @@ const handleClick = (event: MouseEvent) => {
 		</Transition>
 
 		<div :class="$style['button-inner']">
-			<slot v-if="!loading" name="icon">
-				<N8nIcon
-					v-if="icon && !loading"
-					:icon="icon"
-					:fallback-icon="fallbackIcon"
-					:size="computedIconSize"
-				/>
+			<slot name="icon">
+				<N8nIcon v-if="icon" :icon="icon" :fallback-icon="fallbackIcon" :size="computedIconSize" />
 			</slot>
 
 			<span v-if="label">{{ label }}</span>
@@ -426,6 +421,7 @@ const handleClick = (event: MouseEvent) => {
 	}
 }
 
+// Hide the content but keep it in layout, so a loading button keeps its width.
 .loading-container + .button-inner {
 	pointer-events: none;
 	opacity: 0;
