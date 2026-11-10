@@ -17,7 +17,7 @@ type WorkflowPackageKeyHandling = {
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	name: 'copy';
-	description: 'exclude';
+	description: 'copy';
 	active: 'exclude';
 	isArchived: 'copy';
 	nodes: 'copy';
@@ -42,7 +42,7 @@ type WorkflowPackageKeyHandling = {
 
 export type WorkflowPackageContent = Pick<
 	WorkflowEntity,
-	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings'
+	'name' | 'description' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings'
 >;
 
 const serializePayload = definePackageSerializationPayload<
@@ -79,6 +79,8 @@ export class WorkflowSerializer {
 			serializePayload({
 				id: workflow.id,
 				name: workflow.name,
+				// Omit an empty description, so an old export keeps its blob hash.
+				...(workflow.description ? { description: workflow.description } : {}),
 				nodes: this.stripCredentialNames(workflow.nodes),
 				connections: workflow.connections,
 				settings: workflow.settings ? { ...workflow.settings } : undefined,
@@ -126,6 +128,8 @@ export class WorkflowSerializer {
 
 		return {
 			name: parsed.name,
+			// An absent key means the source has no description, so the import clears it.
+			description: parsed.description ?? null,
 			nodes: parsed.nodes as INode[],
 			connections: parsed.connections as IConnections,
 			nodeGroups: parsed.nodeGroups ?? [],

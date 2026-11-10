@@ -1,4 +1,4 @@
-import type { SerializedCredential } from '@n8n/api-types';
+import { CREDENTIAL_DESCRIPTIONS_FLAG, type SerializedCredential } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import {
@@ -27,6 +27,7 @@ import {
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { PostHogClient } from '@/posthog';
 import {
 	affixRoleToSaveCredential,
 	saveCredential,
@@ -58,6 +59,7 @@ const licenseMocker = new LicenseMocker();
 const saveOwnedCredential = affixRoleToSaveCredential('credential:owner');
 
 mockInstance(ActiveWorkflowManager);
+const posthog = mockInstance(PostHogClient);
 
 async function importPackage(
 	params: Pick<ImportPackageRequest, 'user' | 'packageBuffer'> & Partial<ImportPackageRequest>,
@@ -1190,4 +1192,135 @@ describe('credentialConflictPolicy=overwrite writes', () => {
 		).rejects.toBeInstanceOf(UnprocessableRequestError);
 		await expectNothingWritten({ ...credential, data: 'unreadable' } as CredentialsEntity);
 	});
+});
+
+describe('credential description', () => {
+	const setFlag = (enabled: boolean) =>
+		posthog.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+			flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : undefined,
+		);
+
+	const savedWithDescription = async () => {
+		const credential = await saveOwnedCredential(
+			githubCredentialPayload({ name: 'GitHub', data: { accessToken: 'stored-secret' } }),
+			{ project },
+		);
+		await Container.get(CredentialsRepository).update(credential.id, { description: 'Old' });
+		return credential;
+	};
+
+	afterEach(() => {
+		posthog.getFeatureFlagForInstance.mockResolvedValue(undefined);
+	});
+
+	it('overwrite writes the package description', async () => {
+		setFlag(true);
+		const credential = await savedWithDescription();
+
+		const result = await importPackage({
+			user: owner,
+			projectId: project.id,
+			credentialConflictPolicy: 'overwrite',
+			packageBuffer: await workflowPackage(credential, { name: 'GitHub', description: 'New' }),
+		});
+
+		expect(result.credentials.updated).toEqual([credential.id]);
+		expect((await storedCredential(credential.id)).credential.description).toBe('New');
+	});
+
+	it('overwrite clears the description when the package has null', async () => {
+		setFlag(true);
+		const credential = await savedWithDescription();
+
+		await importPackage({
+			user: owner,
+			projectId: project.id,
+			credentialConflictPolicy: 'overwrite',
+			packageBuffer: await workflowPackage(credential, { name: 'GitHub', description: null }),
+		});
+
+		expect((await storedCredential(credential.id)).credential.description).toBeNull();
+	});
+
+	it('overwrite keeps the description when the package does not decide it', async () => {
+		setFlag(true);
+		const credential = await savedWithDescription();
+
+		const result = await importPackage({
+			user: owner,
+			projectId: project.id,
+			credentialConflictPolicy: 'overwrite',
+			packageBuffer: await workflowPackage(credential, { name: 'GitHub' }),
+		});
+
+		expect(result.credentials.updated).toEqual([]);
+		expect((await storedCredential(credential.id)).credential.description).toBe('Old');
+	});
+
+	it('overwrite writes nothing when descriptions are off', async () => {
+		setFlag(false);
+		const credential = await savedWithDescription();
+
+		const result = await importPackage({
+			user: owner,
+			projectId: project.id,
+			credentialConflictPolicy: 'overwrite',
+			packageBuffer: await workflowPackage(credential, { name: 'GitHub', description: 'New' }),
+		});
+
+		expect(result.credentials.updated).toEqual([]);
+		expect((await storedCredential(credential.id)).credential.description).toBe('Old');
+	});
+
+	it('fail reports a description-only change as a difference', async () => {
+		setFlag(true);
+		const credential = await savedWithDescription();
+
+		const issues = await blockingIssuesOf(
+			importPackage({
+				user: owner,
+				projectId: project.id,
+				credentialConflictPolicy: 'fail',
+				packageBuffer: await workflowPackage(credential, { name: 'GitHub', description: 'New' }),
+			}),
+		);
+
+		expect(issues.length).toBeGreaterThan(0);
+	});
+
+	it.each([
+		{ enabled: true, expected: 'From the source' },
+		{ enabled: false, expected: null },
+	])(
+		'a created credential takes the description under keep-existing (descriptions on: $enabled)',
+		async ({ enabled, expected }) => {
+			setFlag(enabled);
+			const workflow = serializedWorkflowWithCredential({
+				id: 'wf-source',
+				name: 'Uses missing credential',
+				credentialId: 'missing-cred',
+				credentialName: 'Missing GitHub',
+			});
+
+			await importPackage({
+				user: owner,
+				projectId: project.id,
+				credentialMissingMode: 'create-stub',
+				packageBuffer: await buildImportPackageBuffer([workflow], {
+					credentials: [
+						serializedCredential({
+							id: 'missing-cred',
+							name: 'Missing GitHub',
+							description: 'From the source',
+						}),
+					],
+				}),
+			});
+
+			const created = await Container.get(CredentialsRepository).findOneByOrFail({
+				name: 'Missing GitHub',
+			});
+			expect(created.description).toBe(expected);
+		},
+	);
 });

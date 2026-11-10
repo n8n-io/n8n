@@ -19,6 +19,14 @@ describe('serializedWorkflowSchema', () => {
 		isArchived: false,
 	});
 
+	it.each(['Syncs orders', null, undefined])('accepts the description %s', (description) => {
+		expect(() => serializedWorkflowSchema.parse({ ...workflow(1), description })).not.toThrow();
+	});
+
+	it('rejects a description that is not a string', () => {
+		expect(() => serializedWorkflowSchema.parse({ ...workflow(1), description: 5 })).toThrow();
+	});
+
 	it('accepts a finite node typeVersion', () => {
 		expect(() => serializedWorkflowSchema.parse(workflow(1.2))).not.toThrow();
 	});

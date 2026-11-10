@@ -347,6 +347,32 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	);
 }, 30_000);
 
+it('lists a workflow whose only change is its description', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Preview', owner);
+	const workflow = await createWorkflow(
+		{ name: 'Documented', nodes: [], connections: {} },
+		project,
+	);
+	const environments = await createInstanceEnvironments();
+	const endpoint = `/promotions/projects/${project.id}/changes/promote`;
+	const agent = server.publicApiAgentWithCookie(owner);
+	await Container.get(PromotionsService).promote(environments.promote.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	expect(changedResources((await agent.get(endpoint).expect(200)).body)).toEqual([]);
+
+	await Container.get(WorkflowRepository).update(workflow.id, {
+		description: 'Deprecated, use v2',
+	});
+
+	const response = await agent.get(endpoint).expect(200);
+	expect(changedWorkflows(response.body)).toEqual([
+		expect.objectContaining({ id: workflow.id, change: 'modified' }),
+	]);
+});
+
 it('marks a workflow that moved into a project that has no files on the branch yet', async () => {
 	const owner = await createOwner();
 	const billing = await createTeamProject('Billing', owner);

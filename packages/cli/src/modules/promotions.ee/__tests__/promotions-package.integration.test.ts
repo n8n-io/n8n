@@ -1595,6 +1595,35 @@ describe('Apply a project selection', () => {
 		expect(await repository.count()).toBe(1);
 	});
 
+	it.each([
+		{ source: 'Runs nightly', target: 'Old description', expected: 'Runs nightly' },
+		{ source: null, target: 'Old description', expected: null },
+	])(
+		'applies a description-only change ($source) to the same workflow',
+		async ({ source, target, expected }) => {
+			const remote = await createRemote();
+			const environments = await createInstanceEnvironments(remote.bareDir);
+			await service.clone(environments.apply.id, owner);
+			const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Order']);
+			const repository = Container.get(WorkflowRepository);
+			await repository.update(workflows[0].id, { description: source });
+			await exportPackageToRemote(remote);
+			await repository.update(workflows[0].id, { description: target });
+
+			const result = await service.applyProjectSelection(project.id, owner, {
+				workflowIds: [workflows[0].id],
+			});
+
+			expect(result).toMatchObject({
+				status: 'applied',
+				counts: { workflows: { created: 0, updated: 1 } },
+			});
+			expect((await repository.findOneByOrFail({ id: workflows[0].id })).description).toBe(
+				expected,
+			);
+		},
+	);
+
 	it('moves a selected workflow to the folder the branch places it in', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
