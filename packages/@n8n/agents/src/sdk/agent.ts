@@ -11,8 +11,14 @@ import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import type { VectorStore } from './vector-store';
 import {
+	createContextCueProvider,
+	type ContextCueProviderOptions,
+	type ContextCueSet,
+} from '../context-cues';
+import {
 	AgentRuntime,
 	type AgentRuntimeConfig,
+	type ContextCueProvider,
 	type VolatileInstructionsProvider,
 } from '../runtime/loop/agent-runtime';
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
@@ -251,6 +257,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private volatileInstructionsProviderValue?: VolatileInstructionsProvider;
 
+	private contextCueProviders: ContextCueProvider[] = [];
+
 	private defaultExecutionOptions?: ExecutionOptions;
 
 	private buildPromise: Promise<AgentRuntimeConfig> | undefined;
@@ -326,6 +334,24 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this {
 		this.volatileInstructionsProviderValue = provider;
 		return this;
+	}
+
+	/** Add a provider of context cues that the runtime appends to the conversation before each model call. */
+	contextCueProvider(provider: ContextCueProvider): this {
+		this.contextCueProviders.push(provider);
+		return this;
+	}
+
+	/**
+	 * Add skill-scoped context cues. Before each model call, the runtime
+	 * retrieves the cues that match the current step and adds them to the conversation.
+	 * Without an embedding model, retrieval uses BM25.
+	 */
+	contextCues(
+		sets: readonly ContextCueSet[],
+		options: Omit<ContextCueProviderOptions, 'sets'> = {},
+	): this {
+		return this.contextCueProvider(createContextCueProvider({ ...options, sets }));
 	}
 
 	/** Add a tool to the agent's capabilities. Accepts a built tool or a Tool builder (which will be built automatically). Can also accept an array of tools. */
@@ -1256,6 +1282,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...(mcpConnectionFailures.length > 0 ? { mcpConnectionFailures } : {}),
 			...(this.volatileInstructionsProviderValue
 				? { volatileInstructionsProvider: this.volatileInstructionsProviderValue }
+				: {}),
+			...(this.contextCueProviders.length > 0
+				? { contextCueProviders: [...this.contextCueProviders] }
 				: {}),
 		};
 	}
