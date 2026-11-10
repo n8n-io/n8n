@@ -2,7 +2,7 @@ import { sleep } from '@n8n/utils/sleep';
 import { nanoid } from 'nanoid';
 
 import type { RunRecord } from './invariants';
-import { FINAL_STATUSES, lines, quote } from './probes';
+import { FINAL_STATUSES, lines } from './probes';
 import type { RigStack } from './stack';
 import { chain, nodes, webhookPath } from './workflows';
 
@@ -11,6 +11,7 @@ export interface WorkloadRequest {
 	sentAt: number;
 	status: number;
 	ms: number;
+	executionId?: string;
 }
 
 export interface Effect {
@@ -51,15 +52,15 @@ export class Workload {
 			ssl: 'disable',
 		});
 		const path = webhookPath('workload');
+		const webhook = nodes.webhook(path);
+		webhook.parameters.options = { responseData: '={{ $execution.id }}' };
 		const record = nodes.postgresQuery(
 			'Record Effect',
 			`insert into ${TABLE} (execution_id, request_id) values ($1, $2)`,
 			'={{ [$execution.id, $json.body.requestId] }}',
 			{ id: credentialId, name: 'test-rig postgres' },
 		);
-		const workflowId = await rig.api.createWorkflow(
-			chain('workload', [nodes.webhook(path), record]),
-		);
+		const workflowId = await rig.api.createWorkflow(chain('workload', [webhook, record]));
 		await rig.api.waitForWebhook(path);
 		return new Workload(rig, workflowId, path);
 	}
@@ -68,8 +69,9 @@ export class Workload {
 		const requestId = nanoid(10);
 		const sentAt = Date.now();
 		const { result, abort } = this.rig.api.webhookInBackground(this.path, { requestId });
-		const done = result.then(({ status, ms }) => {
-			this.requests.push({ requestId, sentAt, status, ms });
+		const done = result.then(({ status, body, ms }) => {
+			const executionId = status === 200 && body ? body : undefined;
+			this.requests.push({ requestId, sentAt, status, ms, executionId });
 			this.inFlight.delete(done);
 		});
 		this.inFlight.set(done, abort);
@@ -109,21 +111,6 @@ export class Workload {
 		return await this.rig.db.statusesOf(this.workflowId);
 	}
 
-	async executionsByRequest(requestIds: string[]): Promise<Record<string, string[]>> {
-		const byRequest: Record<string, string[]> = {};
-		if (requestIds.length === 0) return byRequest;
-		const rows = lines(
-			await this.rig.db.sql(
-				`select r.id, d."executionId" from unnest(array[${requestIds.map(quote).join(',')}]) as r(id) join execution_data d on strpos(d.data, '"' || r.id || '"') > 0 join execution_entity e on e.id = d."executionId" where e."workflowId" = ${quote(this.workflowId)} order by d."executionId"`,
-			),
-		);
-		for (const row of rows) {
-			const [requestId, executionId] = row.split('|');
-			(byRequest[requestId] ??= []).push(executionId);
-		}
-		return byRequest;
-	}
-
 	/** Waits until every execution is final and the queue is empty, or the timeout passes, then reads the run. */
 	async record(requests: WorkloadRequest[], settleTimeoutMs: number): Promise<RunRecord> {
 		const deadline = Date.now() + settleTimeoutMs;
@@ -137,18 +124,7 @@ export class Workload {
 					(FINAL_STATUSES as readonly string[]).includes(status),
 				);
 			if (settled || Date.now() > deadline) {
-				const effects = await this.effects();
-				const done = new Set(effects.map((e) => e.requestId));
-				const lost = requests
-					.filter((r) => r.status === 200 && !done.has(r.requestId))
-					.map((r) => r.requestId);
-				return {
-					requests,
-					executions,
-					effects,
-					executionsByRequest: await this.executionsByRequest(lost),
-					bull: { wait, active },
-				};
+				return { requests, executions, effects: await this.effects(), bull: { wait, active } };
 			}
 			await sleep(500);
 		}

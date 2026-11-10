@@ -28,8 +28,9 @@ describe('workload', () => {
 			expect(requests.length).toBeGreaterThanOrEqual(20);
 			expect(requests.every((r) => r.status === 200)).toBe(true);
 			expect(record.effects).toHaveLength(requests.length);
-			const byRequest = await workload.executionsByRequest(requests.map((r) => r.requestId));
-			expect(Object.values(byRequest).map((ids) => ids.length)).toEqual(requests.map(() => 1));
+			expect(
+				requests.filter((r) => !r.executionId || !(r.executionId in record.executions)),
+			).toEqual([]);
 			expect(checkWorkload(record)).toEqual([]);
 		} finally {
 			await rig.stop();
