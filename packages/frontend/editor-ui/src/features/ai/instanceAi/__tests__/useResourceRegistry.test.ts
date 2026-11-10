@@ -269,6 +269,93 @@ describe('useResourceRegistry', () => {
 			expect(resourceNameIndex.get('existing workflow')?.id).toBe('wf-existing');
 		});
 
+		test('registers a get_workflow_as_code read under the workflow name', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'get_workflow_as_code',
+								args: { workflowId: '234' },
+								result: {
+									workflowId: '234',
+									name: 'Add labels to Github PRs',
+									nodeCount: 1,
+									nodes: [{ name: 'Schedule Trigger', line: 3 }],
+									filePath: '/workspace/workflows/234.ts',
+									status: 'written',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('234')).toEqual(
+				expect.objectContaining({ type: 'workflow', id: '234', name: 'Add labels to Github PRs' }),
+			);
+			expect(linkableResourceNameIndex.get('add labels to github prs')?.id).toBe('234');
+			expect(linkableResourceNameIndex.has('untitled')).toBe(false);
+		});
+
+		test('registers a large get_workflow read that returns a structure summary', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'get_workflow',
+								args: { workflowId: '234' },
+								result: {
+									id: '234',
+									name: 'Add labels to Github PRs',
+									nodeCount: 40,
+									structure: 'Schedule Trigger → GitHub → If Community',
+									note: 'Node parameters omitted to keep context small.',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('234')).toEqual(
+				expect.objectContaining({ type: 'workflow', id: '234', name: 'Add labels to Github PRs' }),
+			);
+			expect(linkableResourceNameIndex.get('add labels to github prs')?.id).toBe('234');
+		});
+
+		test.each([
+			{
+				toolName: 'get_workflow',
+				result: { workflowId: 'wf-missing', found: false, error: 'Not found' },
+			},
+			{
+				toolName: 'get_workflow_as_code',
+				result: { workflowId: 'wf-missing', name: '', code: '', error: 'Not found' },
+			},
+		])('does not register a failed $toolName read', async ({ toolName, result }) => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [makeToolCall({ toolName, args: { workflowId: 'wf-missing' }, result })],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.has('wf-missing')).toBe(false);
+			expect(linkableResourceNameIndex.size).toBe(0);
+		});
+
 		test('does not collide when multiple workflows have no name', async () => {
 			const { messages, producedArtifacts } = setup();
 

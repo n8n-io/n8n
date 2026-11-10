@@ -279,6 +279,12 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		return;
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
+	const isWorkflowRead = WORKFLOW_READ_TOOLS.has(
+		resolveBuilderToolName(tc.toolName, tc.args?.action),
+	);
+	// A failed read can name a workflow that does not exist (e.g. a guessed id).
+	const isFailedWorkflowRead =
+		isWorkflowRead && (typeof result.error === 'string' || result.found === false);
 
 	// --- Workflows --------------------------------------------------------
 	// List result: { workflows: [{ id, name }, ...] } — index by name only.
@@ -294,11 +300,13 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	// so fall back to the existing entry before regressing to 'Untitled'.
 	// A failed build still names its target workflow and the unsaved name, so
 	// skip it to keep the existing entry as it was.
-	if (typeof result.workflowId === 'string' && result.success !== false) {
+	// Reads such as get_workflow_as_code also return { workflowId, name }.
+	if (typeof result.workflowId === 'string' && result.success !== false && !isFailedWorkflowRead) {
 		const existing = col.produced.get(result.workflowId);
 		const name =
 			optionalString(result.workflowName) ??
 			optionalString(tc.args?.name) ??
+			optionalString(result.name) ??
 			existing?.name ??
 			'Untitled';
 		recordProduced(col, { type: 'workflow', id: result.workflowId, name });
@@ -320,12 +328,13 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		recordProduced(col, { type: 'workflow', id: workflowId, name });
 	}
 
-	// A small `get_workflow` result, and historical workflows action=get-json events, return
-	// the workflow document itself, not under a `workflow` key.
+	// A `get_workflow` result, and historical workflows action=get-json events, return
+	// the workflow document itself, not under a `workflow` key. A large workflow comes
+	// back with a `structure` summary in place of `nodes`.
 	if (
-		(isFormerWorkflowsCall ||
-			WORKFLOW_READ_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action))) &&
-		Array.isArray(result.nodes)
+		(isFormerWorkflowsCall || isWorkflowRead) &&
+		!isFailedWorkflowRead &&
+		(Array.isArray(result.nodes) || result.structure !== undefined)
 	) {
 		const entry = entryFromListItem('workflow', result);
 		if (entry) recordProduced(col, entry);
