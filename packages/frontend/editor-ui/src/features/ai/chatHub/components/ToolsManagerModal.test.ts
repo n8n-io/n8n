@@ -320,10 +320,10 @@ describe('ToolsManagerModal', () => {
 		it('should hide tools that chat users are not allowed to add', () => {
 			vi.mocked(hasRole).mockReturnValue(true);
 
-			const { container, getByText } = renderComponent({ props: defaultProps() });
+			const { getByText } = renderComponent({ props: defaultProps() });
 
 			expect(getByText('Tool A')).toBeTruthy();
-			expect(getAvailableItems(container)).toHaveLength(1);
+			expect(getAvailableItems()).toHaveLength(1);
 		});
 
 		it('should show those tools to users who can build workflows', () => {
@@ -357,9 +357,9 @@ describe('ToolsManagerModal', () => {
 			it('should mark the tool and keep only the remove action for a chat user', () => {
 				vi.mocked(hasRole).mockReturnValue(true);
 
-				const { container } = renderComponent({ props: defaultProps() });
+				renderComponent({ props: defaultProps() });
 
-				const [configured] = getConfiguredItems(container);
+				const [configured] = getConfiguredItems();
 				expect(
 					configured.querySelector('[data-test-id="chat-tool-role-blocked-icon"]'),
 				).toBeTruthy();
@@ -371,9 +371,9 @@ describe('ToolsManagerModal', () => {
 				vi.mocked(hasRole).mockReturnValue(true);
 				mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 
-				const { container } = renderComponent({ props: defaultProps() });
+				renderComponent({ props: defaultProps() });
 
-				const [removeBtn] = getActionButtons(getConfiguredItems(container)[0]);
+				const [removeBtn] = getActionButtons(getConfiguredItems()[0]);
 				await userEvent.click(removeBtn);
 
 				await waitFor(() => {
@@ -384,9 +384,9 @@ describe('ToolsManagerModal', () => {
 			it('should show the tool as usual for users who can build workflows', () => {
 				vi.mocked(hasRole).mockReturnValue(false);
 
-				const { container } = renderComponent({ props: defaultProps() });
+				renderComponent({ props: defaultProps() });
 
-				const [configured] = getConfiguredItems(container);
+				const [configured] = getConfiguredItems();
 				expect(configured.querySelector('[data-test-id="chat-tool-role-blocked-icon"]')).toBeNull();
 				expect(getActionButtons(configured)).toHaveLength(2);
 				expect(getToggle(configured)).toBeTruthy();
