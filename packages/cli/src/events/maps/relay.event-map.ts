@@ -174,7 +174,7 @@ export type RelayEventMap = ModuleEventMap & {
 		projectIds?: string[];
 		counts: ExportPackageEventCounts;
 		credentialExportPolicy: CredentialExportPolicy;
-		includeArchivedWorkflows: boolean;
+		includeArchived: boolean;
 	};
 
 	'n8n-package-export-failed': {

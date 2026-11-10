@@ -205,11 +205,11 @@ describe('ExportPackageRequestDto', () => {
 		});
 	});
 
-	describe('includeArchivedWorkflows', () => {
-		it.each([true, false])('accepts %s', (includeArchivedWorkflows) => {
+	describe('includeArchived', () => {
+		it.each([true, false])('accepts %s', (includeArchived) => {
 			const result = ExportPackageRequestDto.safeParse({
 				workflowIds: ['wf-1'],
-				includeArchivedWorkflows,
+				includeArchived,
 			});
 
 			expect(result.success).toBe(true);
@@ -219,13 +219,13 @@ describe('ExportPackageRequestDto', () => {
 			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1'] });
 
 			expect(result.success).toBe(true);
-			if (result.success) expect(result.data.includeArchivedWorkflows).toBe(false);
+			if (result.success) expect(result.data.includeArchived).toBe(false);
 		});
 
 		it('rejects non-boolean values', () => {
 			const result = ExportPackageRequestDto.safeParse({
 				workflowIds: ['wf-1'],
-				includeArchivedWorkflows: 'yes',
+				includeArchived: 'yes',
 			});
 
 			expect(result.success).toBe(false);

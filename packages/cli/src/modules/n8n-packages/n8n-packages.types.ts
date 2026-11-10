@@ -279,7 +279,7 @@ export interface ExportPackageRequest {
 	canExportVariableValues?: boolean;
 	includeTags?: boolean;
 	/** Whether folder and project exports include archived workflows. Explicit ids always export. */
-	includeArchivedWorkflows?: boolean;
+	includeArchived?: boolean;
 	dependencyPolicy?: ExportDependencyPolicy;
 	versionPolicy?: ExportVersionPolicy;
 	credentialExportPolicy?: CredentialExportPolicy;

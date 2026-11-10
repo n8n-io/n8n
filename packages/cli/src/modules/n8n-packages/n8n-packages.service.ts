@@ -93,7 +93,7 @@ interface WrittenExport {
 	folderIds: string[];
 	projectIds: string[];
 	credentialExportPolicy: CredentialExportPolicy;
-	includeArchivedWorkflows: boolean;
+	includeArchived: boolean;
 }
 
 type DirectoryProjectPackage =
@@ -176,7 +176,7 @@ export class N8nPackagesService {
 			...(result.projectIds.length ? { projectIds: result.projectIds } : {}),
 			counts: result.counts,
 			credentialExportPolicy: result.credentialExportPolicy,
-			includeArchivedWorkflows: result.includeArchivedWorkflows,
+			includeArchived: result.includeArchived,
 		});
 
 		return { stream, counts: result.counts };
@@ -216,14 +216,14 @@ export class N8nPackagesService {
 		const versionPolicy = request.versionPolicy ?? ExportVersionPolicy.Latest;
 		const credentialExportPolicy =
 			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
-		const includeArchivedWorkflows = request.includeArchivedWorkflows ?? false;
+		const includeArchived = request.includeArchived ?? false;
 
 		const { folderExportResult, workflowExportResult, projectExportResult, agentExportResult } =
 			await this.exportSelectedEntities(writer, request, {
 				includeTags,
 				versionPolicy,
 				dependencyPolicy,
-				includeArchivedWorkflows,
+				includeArchived,
 			});
 
 		const allFoldersBeforeAutoInclude = [
@@ -435,7 +435,7 @@ export class N8nPackagesService {
 			folderIds: allFolders.map(({ id }) => id),
 			projectIds: allProjects.map(({ id }) => id),
 			credentialExportPolicy,
-			includeArchivedWorkflows,
+			includeArchived,
 		};
 	}
 
@@ -446,13 +446,13 @@ export class N8nPackagesService {
 			includeTags: boolean;
 			versionPolicy: ExportVersionPolicy;
 			dependencyPolicy: ExportDependencyPolicy;
-			includeArchivedWorkflows: boolean;
+			includeArchived: boolean;
 		},
 	) {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
-		const { includeTags, versionPolicy, dependencyPolicy, includeArchivedWorkflows } = options;
+		const { includeTags, versionPolicy, dependencyPolicy, includeArchived } = options;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -462,7 +462,7 @@ export class N8nPackagesService {
 						writer,
 						includeTags,
 						versionPolicy,
-						includeArchivedWorkflows,
+						includeArchived,
 					})
 				: undefined;
 
@@ -492,7 +492,7 @@ export class N8nPackagesService {
 						writer,
 						includeTags,
 						versionPolicy,
-						includeArchivedWorkflows,
+						includeArchived,
 					})
 				: undefined;
 
