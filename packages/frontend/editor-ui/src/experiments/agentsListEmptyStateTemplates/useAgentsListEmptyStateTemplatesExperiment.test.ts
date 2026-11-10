@@ -43,6 +43,15 @@ describe('useAgentsListEmptyStateTemplatesExperiment', () => {
 		},
 	);
 
+	it.each([
+		AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.control,
+		AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.test,
+	])('exposes the %s variant', (assigned) => {
+		getVariant.mockReturnValue(assigned);
+
+		expect(useAgentsListEmptyStateTemplatesExperiment().variant.value).toBe(assigned);
+	});
+
 	it('returns no enabled feature and tracks no exposure when Instance AI is not ready', () => {
 		getVariant.mockReturnValue(AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.test);
 		instanceAiReady.value = false;

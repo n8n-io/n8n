@@ -38,5 +38,5 @@ export function useAgentsListEmptyStateTemplatesExperiment() {
 		posthogStore.trackExposure(AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.name);
 	}
 
-	return { isFeatureEnabled, trackExposure };
+	return { isFeatureEnabled, variant, trackExposure };
 }

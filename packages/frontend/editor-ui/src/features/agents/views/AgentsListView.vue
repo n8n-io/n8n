@@ -58,8 +58,11 @@ const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 const { createAgent } = useCreateAgent();
 const { callDebounced } = useDebounce();
-const { isFeatureEnabled: templatesExperimentEnabled, trackExposure: trackTemplatesExposure } =
-	useAgentsListEmptyStateTemplatesExperiment();
+const {
+	isFeatureEnabled: templatesExperimentEnabled,
+	variant: templatesVariant,
+	trackExposure: trackTemplatesExposure,
+} = useAgentsListEmptyStateTemplatesExperiment();
 const showTemplatesIntro = computed(() => templatesExperimentEnabled.value);
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
@@ -79,11 +82,17 @@ const loading = ref(true);
 const projectId = computed(() => route.params.projectId as string | undefined);
 
 // Exposure covers both arms: control users see the default empty state, test users
-// the templates intro. The composable skips unenrolled users.
+// the templates intro. The source mirrors the layout's empty-state condition, so a
+// filtered list never counts, and includes the variant so a late flag or Instance AI
+// readiness still fires while the surface is visible.
 watch(
-	() => !loading.value && allAgents.value.length === 0,
-	(agentsListEmpty) => {
-		if (agentsListEmpty) trackTemplatesExposure();
+	() =>
+		!loading.value &&
+		allAgents.value.length === 0 &&
+		!filters.value.search &&
+		templatesVariant.value !== undefined,
+	(surfaceVisible) => {
+		if (surfaceVisible) trackTemplatesExposure();
 	},
 );
 
