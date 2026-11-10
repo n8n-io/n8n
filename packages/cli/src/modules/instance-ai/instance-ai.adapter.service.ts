@@ -2488,10 +2488,10 @@ export class InstanceAiAdapterService {
 					});
 				};
 
-				const refusedRun = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
-				if (refusedRun) {
-					trackBuilderExecutedWorkflow('error', refusedRun.error);
-					return refusedRun;
+				const refused = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
+				if (refused) {
+					trackBuilderExecutedWorkflow('error', refused.telemetryError);
+					return refused.result;
 				}
 
 				try {
@@ -2857,10 +2857,10 @@ export class InstanceAiAdapterService {
 				};
 
 				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
-				const refusedRun = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
-				if (refusedRun) {
-					trackStepRun('error', refusedRun.error);
-					return describe(refusedRun);
+				const refused = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
+				if (refused) {
+					trackStepRun('error', refused.telemetryError);
+					return describe(refused.result);
 				}
 
 				try {
@@ -5132,14 +5132,20 @@ function refusalMessage(refusal: CredentialRefusal) {
  * The project check lets an Owner or Admin use any personal credential in their
  * personal project, but redaction would hide the result of such a run. So a run
  * that needs a credential the user cannot use through their own access never
- * starts, and has no execution.
+ * starts, and has no execution. Telemetry gets the message only, because the
+ * description can name a project.
  */
 async function refuseWithoutOwnAccess(
 	nodes: INode[],
 	userId: string,
-): Promise<ExecutionResult | undefined> {
+): Promise<{ result: ExecutionResult; telemetryError: string } | undefined> {
 	const refusal = await findOwnAccessCredentialRefusal(nodes, userId);
-	return refusal && { executionId: '', status: 'error', error: refusalMessage(refusal) };
+	return (
+		refusal && {
+			result: { executionId: '', status: 'error', error: refusalMessage(refusal) },
+			telemetryError: refusal.message,
+		}
+	);
 }
 
 /** Output branches of a run that a non-main connection carried. */
