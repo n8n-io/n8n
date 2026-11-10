@@ -55,6 +55,12 @@ const stepWaiting: LifecycleEvent = {
 	at: '2026-08-25T10:00:01.200Z',
 };
 
+const stepResumed: LifecycleEvent = {
+	...stepFields,
+	type: 'step:started',
+	at: '2026-08-25T10:00:01.300Z',
+};
+
 describe('EngineLifecycleEventPushRelay', () => {
 	let push: Push;
 	let logger: Logger;
@@ -339,12 +345,30 @@ describe('EngineLifecycleEventPushRelay', () => {
 		it('still reports the outcome after the step resumes', () => {
 			register();
 
-			relay.relay([stepStarted, stepWaiting, stepStarted, stepCompleted]);
+			relay.relay([stepStarted, stepWaiting, stepResumed, stepCompleted]);
 
-			expect(sentOfType('nodeExecuteBefore')).toHaveLength(1);
 			const statuses = sentOfType('nodeExecuteAfter').map((m) => m.data.data.executionStatus);
 			expect(statuses).toEqual(['waiting', 'success']);
 			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(1);
+		});
+
+		it('shows the node running again when the step resumes, with the first start', () => {
+			register();
+
+			relay.relay([stepStarted, stepWaiting, stepResumed]);
+
+			const [first, resumed] = sentOfType('nodeExecuteBefore');
+			expect(resumed.data.data).toEqual(first.data.data);
+			expect(resumed.data.sequenceNumber).toBeGreaterThan(first.data.sequenceNumber);
+		});
+
+		it('shows a second wait after the step resumes', () => {
+			register();
+
+			relay.relay([stepStarted, stepWaiting, stepResumed, stepWaiting]);
+
+			const statuses = sentOfType('nodeExecuteAfter').map((m) => m.data.data.executionStatus);
+			expect(statuses).toEqual(['waiting', 'waiting']);
 		});
 
 		it('ignores a redelivered wait, since the editor appends every waiting run', () => {

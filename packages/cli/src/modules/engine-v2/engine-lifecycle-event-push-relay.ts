@@ -105,7 +105,16 @@ export class EngineLifecycleEventPushRelay {
 	}
 
 	private onStepStarted(update: StepUpdate, session: EngineV2PushSession): void {
-		if (session.steps.has(update.stepId)) return;
+		const known = session.steps.get(update.stepId);
+		if (known?.waiting && !known.settled) {
+			// A resumed wait. Keep the first start time: the editor's logs drop a
+			// start that matches an existing run, and would keep a newer one as a
+			// stale "running" row.
+			known.waiting = false;
+			this.sendNodeExecuteBefore(update.executionId, update.nodeName, known, session);
+			return;
+		}
+		if (known) return;
 
 		const run = new EngineV2StepRun(session.nextExecutionIndex++, Date.parse(update.at));
 		session.steps.set(update.stepId, run);
