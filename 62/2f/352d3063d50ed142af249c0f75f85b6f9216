@@ -1,0 +1,21 @@
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  s_e1fd5053c69b9a::t_85f0eed353ea2f 52-68,123
+packages/@n8n/expression-runtime/src/runtime/__tests__/context.test.ts
+  s_e1fd5053c69b9a::t_f6086df1263a81 75-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "622f352d3063d50ed142af249c0f75f85b6f9216",
+  "prompts": {},
+  "sessions": {
+    "s_e1fd5053c69b9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe7725cf-959f-405d-a4c0-d4f58908f789",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
