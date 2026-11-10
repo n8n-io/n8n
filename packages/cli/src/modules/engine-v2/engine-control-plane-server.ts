@@ -1,7 +1,6 @@
 import { inTest, Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { createEngineHttpServer, setEngineServerTls } from '@n8n/engine';
 import express, { type Application } from 'express';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -13,7 +12,7 @@ import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-a
 import { EngineCredentialsController } from './engine-credentials.controller';
 import { EngineDataTablesController } from './engine-data-tables.controller';
 import { EngineSubWorkflowController } from './engine-sub-workflow.controller';
-import { EngineTlsMaterial } from './engine-tls-material';
+import { EngineMtls } from './engine-mtls';
 import {
 	CREDENTIALS_RESOLVE_PATH,
 	DATA_TABLES_CALL_PATH,
@@ -30,8 +29,6 @@ import {
 export class EngineControlPlaneServer {
 	private server: Server | undefined;
 
-	private stopTlsReload?: () => void;
-
 	/** The bound port, which differs from the configured one when that is `0`. */
 	get port(): number | undefined {
 		return (this.server?.address() as AddressInfo | null)?.port;
@@ -39,7 +36,7 @@ export class EngineControlPlaneServer {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		private readonly tlsMaterial: EngineTlsMaterial,
+		private readonly mtls: EngineMtls,
 		private readonly credentialsController: EngineCredentialsController,
 		private readonly dataTablesController: EngineDataTablesController,
 		private readonly subWorkflowController: EngineSubWorkflowController,
@@ -55,10 +52,7 @@ export class EngineControlPlaneServer {
 
 		const { controlPlaneHost: host, controlPlanePort: port } = this.engineConfig;
 
-		const { tls } = this.tlsMaterial;
-		const server = createEngineHttpServer(app, tls);
-		this.server = server;
-		this.stopTlsReload = this.tlsMaterial.onReload((next) => setEngineServerTls(server, next));
+		this.server = this.mtls.createServer(app);
 		this.server.on('error', (error: NodeJS.ErrnoException) => {
 			if (error.code !== 'EADDRINUSE') {
 				// Nothing else handles these, so an unlogged one is a silent failure.
@@ -85,14 +79,13 @@ export class EngineControlPlaneServer {
 		const shownHost = host.includes(':') ? `[${host}]` : host;
 		// The bound port, not the configured one, which is `0` when the OS picks it.
 		this.logger.info(
-			`Engine v2 control plane listening on ${tls ? 'https' : 'http'}://${shownHost}:${this.port}`,
+			`Engine v2 control plane listening on ${this.mtls.enabled ? 'https' : 'http'}://${shownHost}:${this.port}`,
 		);
 	}
 
 	async stop(): Promise<void> {
 		if (!this.server) return;
 
-		this.stopTlsReload?.();
 		await new Promise<void>((resolve, reject) => {
 			this.server!.close((error) => (error ? reject(error) : resolve()));
 		});

@@ -18,8 +18,8 @@ import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsController } from '../engine-credentials.controller';
 import type { EngineDataTablesController } from '../engine-data-tables.controller';
+import { EngineMtls } from '../engine-mtls';
 import type { EngineSubWorkflowController } from '../engine-sub-workflow.controller';
-import { EngineTlsMaterial } from '../engine-tls-material';
 
 const authSecret = 'a'.repeat(32);
 
@@ -40,18 +40,26 @@ describe('EngineControlPlaneServer', () => {
 			...overrides,
 		});
 
-	/** Fixed material that never reloads. */
-	const fixedTls = (tls: EngineTlsMaterial['tls']) =>
-		({
-			tls,
-			onReload: () => () => {},
-			reloadingClient: (build) => build(tls),
-		}) as Pick<EngineTlsMaterial, 'tls' | 'onReload' | 'reloadingClient'> as EngineTlsMaterial;
+	const openedMtls: EngineMtls[] = [];
 
-	const startServer = async (tlsMaterial = fixedTls(undefined)) => {
+	/** Real mTLS over the given files, which it watches until the test ends. */
+	const mtlsFrom = (files: Partial<EngineConfig> = {}) => {
+		const logger = mock<Logger>();
+		logger.scoped.mockReturnValue(logger);
+		const config = engineConfig({ tlsCertFile: '', tlsKeyFile: '', tlsCaFile: '', ...files });
+		const mtls = new EngineMtls(config, Container.get(OutboundHttp), logger);
+		openedMtls.push(mtls);
+		return mtls;
+	};
+
+	afterEach(() => {
+		for (const mtls of openedMtls.splice(0)) mtls.close();
+	});
+
+	const startServer = async (mtls = mtlsFrom()) => {
 		server = new EngineControlPlaneServer(
 			engineConfig(),
-			tlsMaterial,
+			mtls,
 			credentialsController,
 			dataTablesController,
 			mock<EngineSubWorkflowController>(),
@@ -234,16 +242,18 @@ describe('EngineControlPlaneServer', () => {
 
 		afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-		const leaf = (name: string) => ({
-			cert: readFileSync(certs.leaves[name].certFile),
-			key: readFileSync(certs.leaves[name].keyFile),
+		const filesOf = (leaf: { certFile: string; keyFile: string }) => ({
+			tlsCertFile: leaf.certFile,
+			tlsKeyFile: leaf.keyFile,
+			tlsCaFile: certs.caFile,
 		});
 
-		const dataPlaneTransport = (controlPlaneBaseUrl: string) =>
-			new EngineControlPlaneTransport(
-				engineConfig({ controlPlaneBaseUrl }),
-				Container.get(OutboundHttp),
-				fixedTls({ ...leaf('dp'), ca: readFileSync(certs.caFile) }),
+		const dataPlaneClient = (
+			controlPlaneBaseUrl: string,
+			mtls = mtlsFrom(filesOf(certs.leaves.dp)),
+		) =>
+			new EngineControlPlaneTransport(engineConfig({ controlPlaneBaseUrl }), mtls).forScope(
+				'credentials:read',
 			);
 
 		const resolveVia = async (client: HttpRequestClient) =>
@@ -262,12 +272,12 @@ describe('EngineControlPlaneServer', () => {
 				},
 			);
 			await server.stop();
-			await startServer(fixedTls({ ...leaf('cp'), ca: readFileSync(certs.caFile) }));
+			await startServer(mtlsFrom(filesOf(certs.leaves.cp)));
 			baseUrl = `https://127.0.0.1:${server.port}`;
 		});
 
 		it('accepts the control plane transport of a data plane with a certificate from the trusted CA', async () => {
-			const response = await resolveVia(dataPlaneTransport(baseUrl).forScope('credentials:read'));
+			const response = await resolveVia(dataPlaneClient(baseUrl));
 
 			expect(response.statusCode).toBe(200);
 			expect(credentialsController.resolveCredential).toHaveBeenCalledOnce();
@@ -278,19 +288,11 @@ describe('EngineControlPlaneServer', () => {
 			try {
 				const other = generateTlsCerts(otherDir, { cp: loopback });
 				await server.stop();
-				await startServer(
-					fixedTls({
-						cert: readFileSync(other.leaves.cp.certFile),
-						key: readFileSync(other.leaves.cp.keyFile),
-						ca: readFileSync(certs.caFile),
-					}),
-				);
+				await startServer(mtlsFrom(filesOf(other.leaves.cp)));
 				vi.stubEnv('NODE_TLS_REJECT_UNAUTHORIZED', '0');
 
 				await expect(
-					resolveVia(
-						dataPlaneTransport(`https://127.0.0.1:${server.port}`).forScope('credentials:read'),
-					),
+					resolveVia(dataPlaneClient(`https://127.0.0.1:${server.port}`)),
 				).rejects.toThrow(/certificate/);
 				expect(credentialsController.resolveCredential).not.toHaveBeenCalled();
 			} finally {
@@ -302,6 +304,10 @@ describe('EngineControlPlaneServer', () => {
 		it('uses renewed certificates for new connections in both directions once the files are replaced', async () => {
 			const fingerprintOf = (leafName: string) =>
 				new X509Certificate(readFileSync(certs.leaves[leafName].certFile)).fingerprint256;
+			const replace = (files: ReturnType<typeof filesOf>, leafName: string) => {
+				copyFileSync(certs.leaves[leafName].keyFile, files.tlsKeyFile);
+				copyFileSync(certs.leaves[leafName].certFile, files.tlsCertFile);
+			};
 			const mount = (leafName: string) => {
 				const mountDir = mkdtempSync(join(dir, 'mount-'));
 				const files = {
@@ -312,10 +318,6 @@ describe('EngineControlPlaneServer', () => {
 				copyFileSync(certs.caFile, files.tlsCaFile);
 				replace(files, leafName);
 				return files;
-			};
-			const replace = (files: Partial<EngineConfig>, leafName: string) => {
-				copyFileSync(certs.leaves[leafName].keyFile, files.tlsKeyFile!);
-				copyFileSync(certs.leaves[leafName].certFile, files.tlsCertFile!);
 			};
 			const serverFingerprint = async () =>
 				await new Promise<string>((resolve, reject) => {
@@ -328,46 +330,36 @@ describe('EngineControlPlaneServer', () => {
 
 			const cpFiles = mount('cp');
 			const dpFiles = mount('dp');
-			const cpTls = new EngineTlsMaterial(engineConfig(cpFiles));
-			const dpTls = new EngineTlsMaterial(engineConfig(dpFiles));
+			const cpMtls = mtlsFrom(cpFiles);
+			const dpMtls = mtlsFrom(dpFiles);
 			await server.stop();
-			await startServer(cpTls);
-			cpTls.watch(mock<Logger>());
-			dpTls.watch(mock<Logger>());
+			await startServer(cpMtls);
+			const clientFingerprints: string[] = [];
+			server['server']!.on('secureConnection', (socket: TLSSocket) => {
+				clientFingerprints.push(socket.getPeerCertificate().fingerprint256);
+			});
+			const client = dataPlaneClient(`https://127.0.0.1:${server.port}`, dpMtls);
+			await resolveVia(client);
 
-			try {
-				const clientFingerprints: string[] = [];
-				server['server']!.on('secureConnection', (socket: TLSSocket) => {
-					clientFingerprints.push(socket.getPeerCertificate().fingerprint256);
-				});
-				const client = new EngineControlPlaneTransport(
-					engineConfig({ controlPlaneBaseUrl: `https://127.0.0.1:${server.port}` }),
-					Container.get(OutboundHttp),
-					dpTls,
-				).forScope('credentials:read');
-				await resolveVia(client);
+			replace(cpFiles, 'renewedCp');
+			replace(dpFiles, 'renewedDp');
+			await vi.waitFor(
+				() => {
+					expect(cpMtls['tls']?.current.cert).toEqual(
+						readFileSync(certs.leaves.renewedCp.certFile),
+					);
+					expect(dpMtls['tls']?.current.cert).toEqual(
+						readFileSync(certs.leaves.renewedDp.certFile),
+					);
+				},
+				{ timeout: 4000, interval: 50 },
+			);
 
-				replace(cpFiles, 'renewedCp');
-				replace(dpFiles, 'renewedDp');
-				const renewedCp = readFileSync(certs.leaves.renewedCp.certFile);
-				const renewedDp = readFileSync(certs.leaves.renewedDp.certFile);
-				await vi.waitFor(
-					() => {
-						expect(cpTls.tls?.cert).toEqual(renewedCp);
-						expect(dpTls.tls?.cert).toEqual(renewedDp);
-					},
-					{ timeout: 4000, interval: 50 },
-				);
+			const response = await resolveVia(client);
 
-				const response = await resolveVia(client);
-
-				expect(response.statusCode).toBe(200);
-				expect(clientFingerprints).toEqual([fingerprintOf('dp'), fingerprintOf('renewedDp')]);
-				await expect(serverFingerprint()).resolves.toBe(fingerprintOf('renewedCp'));
-			} finally {
-				cpTls.stopWatching();
-				dpTls.stopWatching();
-			}
+			expect(response.statusCode).toBe(200);
+			expect(clientFingerprints).toEqual([fingerprintOf('dp'), fingerprintOf('renewedDp')]);
+			await expect(serverFingerprint()).resolves.toBe(fingerprintOf('renewedCp'));
 		});
 
 		it('rejects a valid token without a client certificate', async () => {

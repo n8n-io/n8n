@@ -6,13 +6,11 @@ import type { EngineRuntime, ExecutionResponseSender, LifecycleEventCallback } f
 import {
 	AllowAllAdmittance,
 	createDataSource,
-	createEngineHttpServer,
 	createEngineRuntime,
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
 	noopExecutionResponseSender,
-	setEngineServerTls,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
 import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
@@ -31,7 +29,7 @@ import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
 import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
-import { EngineTlsMaterial } from './engine-tls-material';
+import { EngineMtls } from './engine-mtls';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
 
@@ -58,8 +56,6 @@ export class EngineV2Runtime {
 
 	private server?: Server;
 
-	private stopTlsReload?: () => void;
-
 	/**
 	 * Shared by every credential request. Aborted after the engine has stopped,
 	 * so no request outlives it.
@@ -72,7 +68,7 @@ export class EngineV2Runtime {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		private readonly tlsMaterial: EngineTlsMaterial,
+		private readonly mtls: EngineMtls,
 		private readonly nodeTypes: NodeTypesProxy,
 		private readonly logger: Logger,
 		private readonly credentialsClient: EngineCredentialsClient,
@@ -199,21 +195,20 @@ export class EngineV2Runtime {
 
 	private async initServer(): Promise<void> {
 		const { host, port } = this.engineConfig;
-		const { tls } = this.tlsMaterial;
 
 		this.server = await new Promise<Server>((resolve, reject) => {
 			assert(this.engine, 'Engine v2 cannot start without an engine runtime');
 
-			const server = createEngineHttpServer(this.engine.app, tls);
-			this.stopTlsReload = this.tlsMaterial.onReload((next) => setEngineServerTls(server, next));
-			const listener = server.listen(port, host);
+			const listener = this.mtls.createServer(this.engine.app).listen(port, host);
 			listener.once('listening', () => resolve(listener));
 			listener.once('error', reject);
 		});
 
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
-		this.logger.info(`Engine v2 listening on ${tls ? 'https' : 'http'}://${shownHost}:${port}`);
+		this.logger.info(
+			`Engine v2 listening on ${this.mtls.enabled ? 'https' : 'http'}://${shownHost}:${port}`,
+		);
 	}
 
 	/**
@@ -242,8 +237,6 @@ export class EngineV2Runtime {
 	}
 
 	private async closeServer(): Promise<void> {
-		this.stopTlsReload?.();
-		this.stopTlsReload = undefined;
 		if (!this.server) return;
 
 		await new Promise<void>((resolve, reject) => {

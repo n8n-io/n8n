@@ -29,8 +29,8 @@ export class EngineV2Module implements ModuleInterface {
 	async init() {
 		const engineConfig = Container.get(EngineConfig);
 		const logger = Container.get(Logger).scoped('engine-v2');
-		const { EngineTlsMaterial } = await import('./engine-tls-material.js');
-		const tlsMaterial = Container.get(EngineTlsMaterial);
+		const { EngineMtls } = await import('./engine-mtls.js');
+		const mtls = Container.get(EngineMtls);
 
 		if (engineConfig.mode === 'in-process' && Container.get(ExecutionsConfig).mode === 'queue') {
 			throw new UserError('The in-process engine does not support queue mode.');
@@ -38,9 +38,8 @@ export class EngineV2Module implements ModuleInterface {
 
 		if (engineConfig.mode === 'remote') {
 			assertRemoteConfig(engineConfig);
-			tlsMaterial.assertSecureTransport({ N8N_ENGINE_BASE_URL: engineConfig.baseUrl }, logger);
-			tlsMaterial.watch(logger);
-		} else if (tlsMaterial.tls) {
+			mtls.assertSecureTransport({ N8N_ENGINE_BASE_URL: engineConfig.baseUrl });
+		} else if (mtls.enabled) {
 			throw new UserError(
 				'N8N_ENGINE_TLS_* applies only to N8N_ENGINE_MODE=remote. Both planes run in this process and talk over loopback, so remove the TLS settings.',
 			);
@@ -165,8 +164,8 @@ export class EngineV2Module implements ModuleInterface {
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).stop();
 
-		const { EngineTlsMaterial } = await import('./engine-tls-material.js');
-		Container.get(EngineTlsMaterial).stopWatching();
+		const { EngineMtls } = await import('./engine-mtls.js');
+		Container.get(EngineMtls).close();
 	}
 }
 

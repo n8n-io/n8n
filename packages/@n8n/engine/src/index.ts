@@ -3,14 +3,8 @@ export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 
 export type { EngineLogger } from './logging';
 
-export {
-	assertSecureTransport,
-	createEngineHttpServer,
-	loadEngineTls,
-	setEngineServerTls,
-	watchEngineTls,
-} from './tls';
-export type { EngineTls, EngineTlsFiles, EngineTlsWatcher } from './tls';
+export { assertSecureTransport, createEngineHttpServer, openEngineTls } from './tls';
+export type { EngineTls, EngineTlsFiles, EngineTlsSource } from './tls';
 
 export {
 	ACTION_TOKEN_SPEC,

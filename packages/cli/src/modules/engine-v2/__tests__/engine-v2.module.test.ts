@@ -1,3 +1,5 @@
+import type { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EngineConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -9,7 +11,7 @@ import { RedisClientService } from '@n8n/backend-services';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
-import { EngineTlsMaterial } from '../engine-tls-material';
+import { EngineMtls } from '../engine-mtls';
 import { EngineV2LifecycleSubscriptions } from '../engine-lifecycle-event-subscriptions';
 import { EngineV2Module } from '../engine-v2.module';
 import { EngineV2Runtime } from '../engine-v2.runtime';
@@ -18,14 +20,14 @@ import { ExecutionChannelSender } from '../execution-channel/execution-channel-s
 import { LifecycleEventChannelSender } from '../execution-channel/lifecycle-event-sender';
 import type { RedisChannelSubscriber } from '../execution-channel/redis-execution-channel-subscriber';
 
-const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
 /** The real boot check, over files this test does not need to write. */
-const useTls = (value: EngineTlsMaterial['tls']) => {
-	const material = new EngineTlsMaterial(Container.get(EngineConfig));
-	vi.spyOn(material, 'tls', 'get').mockReturnValue(value);
-	vi.spyOn(material, 'watch').mockReturnValue();
-	Container.set(EngineTlsMaterial, material);
-	return material;
+const useTls = (enabled: boolean) => {
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
+	const mtls = new EngineMtls(Container.get(EngineConfig), mock<OutboundHttp>(), logger);
+	vi.spyOn(mtls, 'enabled', 'get').mockReturnValue(enabled);
+	Container.set(EngineMtls, mtls);
+	return mtls;
 };
 
 describe('EngineV2Module', () => {
@@ -50,7 +52,7 @@ describe('EngineV2Module', () => {
 			resumeSecret: '',
 			tlsInsecureAllowPlainHttp: false,
 		});
-		useTls(undefined);
+		useTls(false);
 		runtime = mockInstance(EngineV2Runtime);
 		client = mockInstance(EngineDataPlaneClient);
 		controlPlaneServer = mockInstance(EngineControlPlaneServer);
@@ -154,7 +156,7 @@ describe('EngineV2Module', () => {
 		});
 
 		it('refuses TLS files, which only remote mode uses', async () => {
-			useTls(tls);
+			useTls(true);
 
 			await expect(module.init()).rejects.toThrow('N8N_ENGINE_MODE=remote');
 			expect(controlPlaneServer.start).not.toHaveBeenCalled();
@@ -177,15 +179,14 @@ describe('EngineV2Module', () => {
 			engineConfig.tlsInsecureAllowPlainHttp = true;
 		});
 
-		it('starts over mutual TLS with an https data plane address and watches the TLS files', async () => {
-			const material = useTls(tls);
+		it('starts over mutual TLS with an https data plane address', async () => {
+			useTls(true);
 			engineConfig.baseUrl = 'https://engine:3000';
 			engineConfig.tlsInsecureAllowPlainHttp = false;
 
 			await module.init();
 
 			expect(controlPlaneServer.start).toHaveBeenCalled();
-			expect(material.watch).toHaveBeenCalledOnce();
 		});
 
 		it('refuses to start over plain HTTP without the opt-out', async () => {
@@ -196,7 +197,7 @@ describe('EngineV2Module', () => {
 		});
 
 		it('refuses an http data plane address when TLS is on', async () => {
-			useTls(tls);
+			useTls(true);
 
 			await expect(module.init()).rejects.toThrow('N8N_ENGINE_BASE_URL must start with https://');
 			expect(controlPlaneServer.start).not.toHaveBeenCalled();
@@ -339,12 +340,11 @@ describe('EngineV2Module', () => {
 		});
 
 		it('stops watching the TLS files', async () => {
-			const material = useTls(undefined);
-			const stopWatching = vi.spyOn(material, 'stopWatching');
+			const close = vi.spyOn(useTls(false), 'close');
 
 			await module.shutdown();
 
-			expect(stopWatching).toHaveBeenCalledOnce();
+			expect(close).toHaveBeenCalledOnce();
 		});
 	});
 });

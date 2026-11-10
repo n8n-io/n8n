@@ -8,7 +8,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { assertSecureTransport, createEngineHttpServer, loadEngineTls } from '../engine-tls';
+import {
+	assertSecureTransport,
+	createEngineHttpServer,
+	loadEngineTls,
+	openEngineTls,
+	type EngineTlsSource,
+} from '../engine-tls';
 
 const LOOPBACK = ['DNS:localhost', 'IP:127.0.0.1'];
 
@@ -93,38 +99,29 @@ describe('engine TLS', () => {
 		beforeEach(() => logger.warn.mockReset());
 
 		it('accepts TLS with https peer URLs', () => {
-			const tls = loadEngineTls(filesOf('server'));
-
 			expect(() =>
-				assertSecureTransport(config(), tls, { N8N_ENGINE_BASE_URL: 'https://dp:3000' }, logger),
+				assertSecureTransport(config(), true, { N8N_ENGINE_BASE_URL: 'https://dp:3000' }, logger),
 			).not.toThrow();
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('refuses TLS with an http peer URL', () => {
-			const tls = loadEngineTls(filesOf('server'));
-
 			expect(() =>
-				assertSecureTransport(config(), tls, { N8N_ENGINE_BASE_URL: 'http://dp:3000' }, logger),
+				assertSecureTransport(config(), true, { N8N_ENGINE_BASE_URL: 'http://dp:3000' }, logger),
 			).toThrow(
 				'N8N_ENGINE_BASE_URL must start with https:// when engine TLS is on. Got: http://dp:3000',
 			);
 		});
 
 		it('refuses plain HTTP without the opt-out', () => {
-			expect(() => assertSecureTransport(config(), undefined, {}, logger)).toThrow(
+			expect(() => assertSecureTransport(config(), false, {}, logger)).toThrow(
 				/needs N8N_ENGINE_TLS_CERT_FILE, N8N_ENGINE_TLS_KEY_FILE and N8N_ENGINE_TLS_CA_FILE.*N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP=true/,
 			);
 		});
 
 		it('allows plain HTTP with the opt-out, and warns', () => {
 			expect(() =>
-				assertSecureTransport(
-					config(true),
-					undefined,
-					{ N8N_ENGINE_BASE_URL: 'http://dp' },
-					logger,
-				),
+				assertSecureTransport(config(true), false, { N8N_ENGINE_BASE_URL: 'http://dp' }, logger),
 			).not.toThrow();
 			expect(logger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP'),
@@ -135,9 +132,10 @@ describe('engine TLS', () => {
 	describe('createEngineHttpServer', () => {
 		let server: Server;
 		let port: number;
+		let tls: EngineTlsSource | undefined;
 
 		beforeAll(async () => {
-			const tls = loadEngineTls(filesOf('server'));
+			tls = openEngineTls(filesOf('server'), { info: vi.fn(), error: vi.fn() });
 			server = createEngineHttpServer((req, res) => {
 				res.writeHead(200).end(`reached ${req.url}`);
 			}, tls);
@@ -147,6 +145,7 @@ describe('engine TLS', () => {
 
 		afterAll(async () => {
 			await new Promise<void>((resolve) => server.close(() => resolve()));
+			tls?.close();
 		});
 
 		/** Each call gets its own agent, so no TLS session is reused across cases. */

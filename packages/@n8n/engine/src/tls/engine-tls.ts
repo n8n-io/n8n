@@ -1,8 +1,8 @@
-import { UnexpectedError, UserError } from '@n8n/errors';
+import { UserError } from '@n8n/errors';
 import { X509Certificate } from 'node:crypto';
 import { readFileSync, watch } from 'node:fs';
 import { createServer as createHttpServer, type RequestListener, type Server } from 'node:http';
-import { createServer as createHttpsServer, Server as HttpsServer } from 'node:https';
+import { createServer as createHttpsServer } from 'node:https';
 import { dirname } from 'node:path';
 import { createSecureContext, type SecureContextOptions, type TLSSocket } from 'node:tls';
 
@@ -22,6 +22,16 @@ export interface EngineTls {
 	ca: Buffer;
 }
 
+/** This process's TLS material, which follows changes to the files. */
+export interface EngineTlsSource {
+	/** The newest valid certificate, key and CA. */
+	readonly current: EngineTls;
+	/** Calls `listener` after each reload. Returns a function that removes it. */
+	subscribe(listener: (tls: EngineTls) => void): () => void;
+	/** Stops watching the files. */
+	close(): void;
+}
+
 const ENV_NAMES: Record<keyof EngineTlsFiles, string> = {
 	tlsCertFile: 'N8N_ENGINE_TLS_CERT_FILE',
 	tlsKeyFile: 'N8N_ENGINE_TLS_KEY_FILE',
@@ -35,10 +45,6 @@ const HEALTHZ_PATH = '/healthz';
 
 /** Waits for the other files of an update before reloading, so it reads them together. */
 const RELOAD_DEBOUNCE_MS = 1000;
-
-export interface EngineTlsWatcher {
-	close(): void;
-}
 
 /**
  * Reads the TLS files, or returns `undefined` when none is set. Throws at boot
@@ -85,11 +91,11 @@ export function loadEngineTls(files: EngineTlsFiles): EngineTls | undefined {
  */
 export function assertSecureTransport(
 	config: { tlsInsecureAllowPlainHttp: boolean },
-	tls: EngineTls | undefined,
+	tlsEnabled: boolean,
 	peerUrls: Record<string, string>,
 	logger: Pick<EngineLogger, 'warn'>,
 ): void {
-	if (tls) {
+	if (tlsEnabled) {
 		for (const [name, url] of Object.entries(peerUrls)) {
 			if (!url.startsWith('https://')) {
 				throw new UserError(`${name} must start with https:// when engine TLS is on. Got: ${url}`);
@@ -110,18 +116,103 @@ export function assertSecureTransport(
 }
 
 /**
+ * Reads the TLS files and watches them, or returns `undefined` when none is
+ * set. Open it once per process and share it between the server and the
+ * clients, so both always use the same certificate.
+ *
+ * Watches the directories, not the files: Kubernetes updates a mounted Secret
+ * by swapping a `..data` symlink, and a watch on the file misses that. Files
+ * that are not valid, for example half written, keep the current ones. Throws
+ * at boot when the files are not usable or cannot be watched.
+ */
+export function openEngineTls(
+	files: EngineTlsFiles,
+	logger: Pick<EngineLogger, 'info' | 'error'>,
+	debounceMs = RELOAD_DEBOUNCE_MS,
+): EngineTlsSource | undefined {
+	const initial = loadEngineTls(files);
+	if (!initial) return undefined;
+
+	let current = initial;
+	// Advances only when every listener took the new files, so a failed apply is retried.
+	let applied = initial;
+	const listeners = new Set<(tls: EngineTls) => void>();
+
+	const reload = () => {
+		let next: EngineTls | undefined;
+		try {
+			next = loadEngineTls(files);
+		} catch (error) {
+			logger.error(
+				'The engine TLS files changed but are not valid. Keeping the current certificate.',
+				{ error },
+			);
+			return;
+		}
+
+		if (!next || isSameTls(next, applied)) return;
+
+		current = next;
+		const errors: unknown[] = [];
+		for (const listener of listeners) {
+			try {
+				listener(next);
+			} catch (error) {
+				errors.push(error);
+			}
+		}
+
+		if (errors.length > 0) {
+			logger.error('Could not apply the reloaded engine TLS certificate', { errors });
+			return;
+		}
+
+		applied = next;
+		logger.info('Reloaded the engine TLS certificate');
+	};
+
+	let timer: NodeJS.Timeout | undefined;
+	const directories = new Set([files.tlsCertFile, files.tlsKeyFile, files.tlsCaFile].map(dirname));
+	const watchers = [...directories].map((directory) =>
+		// Not persistent, so the watch alone does not keep the process running.
+		watch(directory, { persistent: false }, () => {
+			clearTimeout(timer);
+			timer = setTimeout(reload, debounceMs).unref();
+		}).on('error', (error) => {
+			logger.error('Stopped watching the engine TLS files', { directory, error });
+		}),
+	);
+
+	return {
+		get current() {
+			return current;
+		},
+		subscribe(listener) {
+			listeners.add(listener);
+			return () => listeners.delete(listener);
+		},
+		close() {
+			clearTimeout(timer);
+			for (const watcher of watchers) watcher.close();
+		},
+	};
+}
+
+/**
  * An HTTP server, or with `tls` an HTTPS server that requires a client
- * certificate signed by `tls.ca` on every path except `/healthz`.
+ * certificate signed by the engine CA on every path except `/healthz`. It
+ * gives new connections the reloaded certificate, and open connections keep
+ * the one they started with.
  */
 export function createEngineHttpServer(
 	handler: RequestListener,
-	tls: EngineTls | undefined,
+	tls: EngineTlsSource | undefined,
 ): Server {
 	if (!tls) return createHttpServer(handler);
 
-	return createHttpsServer(
+	const server = createHttpsServer(
 		{
-			...secureContextOptions(tls),
+			...secureContextOptions(tls.current),
 			requestCert: true,
 			// Checked per request instead, so a probe without a client certificate
 			// still reaches `/healthz`.
@@ -139,82 +230,15 @@ export function createEngineHttpServer(
 				.end(JSON.stringify({ code: 401, message: 'A valid client certificate is required' }));
 		},
 	);
+
+	const unsubscribe = tls.subscribe((next) => server.setSecureContext(secureContextOptions(next)));
+	server.once('close', unsubscribe);
+
+	return server;
 }
 
 function secureContextOptions(tls: EngineTls): SecureContextOptions {
 	return { ...tls, minVersion: 'TLSv1.2' };
-}
-
-/**
- * Gives new connections to a server from `createEngineHttpServer` the new
- * certificate, key and CA. Open connections keep the ones they started with.
- */
-export function setEngineServerTls(server: Server, tls: EngineTls): void {
-	if (!(server instanceof HttpsServer)) {
-		throw new UnexpectedError('Cannot set TLS on an engine server that runs plain HTTP');
-	}
-
-	server.setSecureContext(secureContextOptions(tls));
-}
-
-/**
- * Reads the TLS files again when they change, and calls `onReload` with the new
- * contents. Watches the directories, not the files: Kubernetes updates a mounted
- * Secret by swapping a `..data` symlink, and a watch on the file misses that.
- * Files that are not valid, for example half written, keep the current ones.
- */
-export function watchEngineTls(
-	files: EngineTlsFiles,
-	current: EngineTls,
-	onReload: (tls: EngineTls) => void,
-	logger: Pick<EngineLogger, 'info' | 'error'>,
-	debounceMs = RELOAD_DEBOUNCE_MS,
-): EngineTlsWatcher {
-	let loaded = current;
-	let timer: NodeJS.Timeout | undefined;
-
-	const reload = () => {
-		let next: EngineTls | undefined;
-		try {
-			next = loadEngineTls(files);
-		} catch (error) {
-			logger.error(
-				'The engine TLS files changed but are not valid. Keeping the current certificate.',
-				{
-					error,
-				},
-			);
-			return;
-		}
-
-		if (!next || isSameTls(next, loaded)) return;
-
-		try {
-			onReload(next);
-			loaded = next;
-			logger.info('Reloaded the engine TLS certificate');
-		} catch (error) {
-			logger.error('Could not apply the reloaded engine TLS certificate', { error });
-		}
-	};
-
-	const directories = new Set([files.tlsCertFile, files.tlsKeyFile, files.tlsCaFile].map(dirname));
-	const watchers = [...directories].map((directory) =>
-		// Not persistent, so the watch alone does not keep the process running.
-		watch(directory, { persistent: false }, () => {
-			clearTimeout(timer);
-			timer = setTimeout(reload, debounceMs).unref();
-		}).on('error', (error) => {
-			logger.error('Stopped watching the engine TLS files', { directory, error });
-		}),
-	);
-
-	return {
-		close() {
-			clearTimeout(timer);
-			for (const watcher of watchers) watcher.close();
-		},
-	};
 }
 
 function isSameTls(a: EngineTls, b: EngineTls): boolean {

@@ -1,23 +1,12 @@
-import type {
-	HttpRequestClient,
-	HttpRequestClientOptions,
-	OutboundHttp,
-} from '@n8n/backend-network';
+import type { HttpRequestClient, HttpRequestClientOptions } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
 import { InvalidActionTokenError, verifyActionToken } from '@n8n/engine';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
-import type { EngineTlsMaterial } from '../engine-tls-material';
+import type { EngineMtls } from '../engine-mtls';
 
 const authSecret = 'a'.repeat(32);
-const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
-/** A plain object: a deep mock would wrap the buffers, which TLS cannot read. */
-const tlsMaterialWith = (value: EngineTlsMaterial['tls']) =>
-	({
-		tls: value,
-		reloadingClient: (build) => build(value),
-	}) as Pick<EngineTlsMaterial, 'tls' | 'reloadingClient'> as EngineTlsMaterial;
 
 describe('EngineControlPlaneTransport', () => {
 	let http: HttpRequestClient;
@@ -26,12 +15,9 @@ describe('EngineControlPlaneTransport', () => {
 	let engineConfig: EngineConfig;
 
 	/** Rebuilds the transport so each test can vary the config. */
-	const newTransport = (
-		overrides: Partial<EngineConfig> = {},
-		tlsMaterial = tlsMaterialWith(undefined),
-	) => {
+	const newTransport = (overrides: Partial<EngineConfig> = {}) => {
 		http = mock<HttpRequestClient>();
-		const outboundHttp = mock<OutboundHttp>({
+		const mtls = mock<EngineMtls>({
 			requests: vi.fn((options?: HttpRequestClientOptions) => {
 				clientOptions = options;
 				return http;
@@ -44,7 +30,7 @@ describe('EngineControlPlaneTransport', () => {
 			...overrides,
 		});
 
-		return new EngineControlPlaneTransport(engineConfig, outboundHttp, tlsMaterial);
+		return new EngineControlPlaneTransport(engineConfig, mtls);
 	};
 
 	/** Resolves the authorization header the way the HTTP client does per request. */
@@ -71,20 +57,6 @@ describe('EngineControlPlaneTransport', () => {
 			);
 
 			expect(clientOptions?.baseURL).toBe('https://cp.internal:8443');
-		});
-
-		it('presents the client certificate and verifies the control plane against the engine CA alone when TLS is on', () => {
-			newTransport({}, tlsMaterialWith(tls)).forScope('credentials:read');
-
-			expect(clientOptions?.connectionPool).toEqual({
-				agentOptions: { ...tls, rejectUnauthorized: true },
-			});
-		});
-
-		it('uses no connection pool over plain HTTP', () => {
-			newTransport().forScope('credentials:read');
-
-			expect(clientOptions?.connectionPool).toBeUndefined();
 		});
 
 		it('opts out of SSRF protection for the n8n-controlled host', () => {

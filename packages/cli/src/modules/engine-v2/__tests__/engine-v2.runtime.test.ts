@@ -20,7 +20,7 @@ import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsClient } from '../engine-credentials-client';
 import type { EngineSubWorkflowClient } from '../engine-sub-workflow-client';
-import type { EngineTlsMaterial } from '../engine-tls-material';
+import type { EngineMtls } from '../engine-mtls';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { RemoteCredentialsHelper } from '../remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from '../remote-data-table-proxy-provider';
@@ -88,8 +88,7 @@ const mocks = vi.hoisted(() => {
 		v1StepExecutor,
 		stepDataLoader,
 		createDataSource: vi.fn((_url: string) => dataSource),
-		createEngineHttpServer: vi.fn((_app: unknown, _tls: unknown) => httpServer),
-		setEngineServerTls: vi.fn((_server: unknown, _tls: unknown) => {}),
+		createServer: vi.fn((_app: unknown) => httpServer),
 		createEngineRuntime: vi.fn((_options: unknown) => engine),
 		createEngineStepDataLoader: vi.fn((_executionStore: unknown, _stepStore: unknown) => {
 			return stepDataLoader;
@@ -106,8 +105,6 @@ vi.mock('@n8n/engine', async (importOriginal) => ({
 	AllowAllAdmittance: vi.fn(),
 	SharedSecretIdentityVerifier: vi.fn(),
 	createDataSource: mocks.createDataSource,
-	createEngineHttpServer: mocks.createEngineHttpServer,
-	setEngineServerTls: mocks.setEngineServerTls,
 	createEngineRuntime: mocks.createEngineRuntime,
 	mintResumeToken: vi.fn((_secret: string, executionId: string) => `token-for-${executionId}`),
 	mintStepBoundResumeToken: vi.fn(() => 'step-bound-token'),
@@ -146,21 +143,10 @@ describe('EngineV2Runtime', () => {
 		lifecycleEventSender: { send: vi.fn().mockResolvedValue(undefined) },
 	});
 
-	let tlsMaterial: EngineTlsMaterial;
-	const stopTlsReload = vi.fn();
-
-	const newRuntime = (
-		databaseUrl = 'postgres://engine',
-		config: Partial<EngineConfig> = {},
-		tls?: EngineTlsMaterial['tls'],
-	) => {
-		tlsMaterial = {
-			tls,
-			onReload: vi.fn(() => stopTlsReload),
-		} as Partial<EngineTlsMaterial> as EngineTlsMaterial;
-		return new EngineV2Runtime(
+	const newRuntime = (databaseUrl = 'postgres://engine', config: Partial<EngineConfig> = {}) =>
+		new EngineV2Runtime(
 			engineConfig(databaseUrl, config),
-			tlsMaterial,
+			{ enabled: false, createServer: mocks.createServer } as unknown as EngineMtls,
 			nodeTypes,
 			mockLogger(),
 			credentialsClient,
@@ -171,7 +157,6 @@ describe('EngineV2Runtime', () => {
 			additionalDataBuilder,
 			binaryDataService,
 		);
-	};
 
 	const stepContext = {
 		executionId: 'exec-1',
@@ -435,35 +420,8 @@ describe('EngineV2Runtime', () => {
 		it('serves the engine API on the configured address', async () => {
 			await newRuntime().init(senders());
 
-			expect(mocks.createEngineHttpServer).toHaveBeenCalledWith(mocks.engine.app, undefined);
+			expect(mocks.createServer).toHaveBeenCalledWith(mocks.engine.app);
 			expect(mocks.httpServer.listen).toHaveBeenCalledWith(3000, '0.0.0.0');
-		});
-
-		it('serves the engine API over mutual TLS when TLS is on', async () => {
-			const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
-
-			await newRuntime(undefined, {}, tls).init(senders());
-
-			expect(mocks.createEngineHttpServer).toHaveBeenCalledWith(mocks.engine.app, tls);
-		});
-
-		it('gives new connections to the engine API the reloaded certificate', async () => {
-			const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
-			const renewed = { ...tls, cert: Buffer.from('renewed cert') };
-			await newRuntime(undefined, {}, tls).init(senders());
-
-			const [onReload] = vi.mocked(tlsMaterial.onReload).mock.calls[0];
-			onReload(renewed);
-
-			expect(mocks.setEngineServerTls).toHaveBeenCalledExactlyOnceWith(mocks.httpServer, renewed);
-		});
-
-		it('follows certificate reloads before the engine API starts to listen', async () => {
-			await newRuntime().init(senders());
-
-			expect(vi.mocked(tlsMaterial.onReload).mock.invocationCallOrder[0]).toBeLessThan(
-				mocks.httpServer.listen.mock.invocationCallOrder[0],
-			);
 		});
 
 		it('closes the connection when migrations fail', async () => {
@@ -480,7 +438,6 @@ describe('EngineV2Runtime', () => {
 
 			await expect(newRuntime().init(senders())).rejects.toThrow('listen failed');
 
-			expect(stopTlsReload).toHaveBeenCalledOnce();
 			expect(mocks.server.close).not.toHaveBeenCalled();
 			expect(mocks.engine.stop).toHaveBeenCalled();
 			expect(mocks.dataSource.destroy).toHaveBeenCalled();
