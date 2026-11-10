@@ -170,7 +170,11 @@ const operationInputSchema = z
 		node: nodeInputSchema.optional().describe('For addNode.'),
 		parameters: z.record(z.string(), z.unknown()).optional().describe('For updateNodeParameters.'),
 		replace: z.boolean().optional().describe('For updateNodeParameters; default false.'),
-		path: z.string().min(2).optional().describe('For setNodeParameter; JSON Pointer path.'),
+		path: z
+			.string()
+			.min(2)
+			.optional()
+			.describe('For setNodeParameter; JSON Pointer path, e.g. "/jsCode" or "/options/timeout".'),
 		value: z.unknown().optional().describe('For setNodeParameter.'),
 		oldName: z.string().optional().describe('For renameNode.'),
 		newName: z.string().optional().describe('For renameNode or updateNodeGroup.'),

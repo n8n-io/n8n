@@ -318,8 +318,7 @@ describe('update-workflow MCP tool', () => {
 			z.object(tool.config.outputSchema as z.ZodRawShape).strict();
 
 		test('error-path structuredContent conforms to declared outputSchema', async () => {
-			// A JSON Pointer path without a leading "/" passes input validation but
-			// fails at apply time — the exact repro from the ticket.
+			// A dotted path passes input validation but fails at apply time.
 			const tool = createTool();
 			const result = (await callHandler(
 				{
@@ -328,7 +327,7 @@ describe('update-workflow MCP tool', () => {
 						{
 							type: 'setNodeParameter',
 							nodeName: 'B',
-							path: 'parameters.url',
+							path: 'options.url',
 							value: 'https://new',
 						},
 					],
@@ -340,7 +339,7 @@ describe('update-workflow MCP tool', () => {
 			expect(result.isError).toBe(true);
 			const structured = result.structuredContent as { error?: string };
 			expect(structured.error).toContain('Operation 0 failed');
-			expect(structured.error).toContain('is invalid or contains unsafe segments');
+			expect(structured.error).toContain('is not a valid JSON Pointer');
 
 			// ...and the error envelope validates against the published schema,
 			// so strict clients no longer reject it with -32602.

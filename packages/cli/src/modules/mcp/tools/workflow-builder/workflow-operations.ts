@@ -461,18 +461,25 @@ const sanitizeUnsafeKeys = (value: unknown): unknown => {
 	return out;
 };
 
+const toJsonPointer = (path: string): string | null => {
+	if (path.startsWith('/')) return path;
+	const dottedParametersKey = /^parameters\.([^./]+)$/.exec(path);
+	if (dottedParametersKey) return `/parameters/${dottedParametersKey[1]}`;
+	return path.includes('.') ? null : `/${path}`;
+};
+
 /**
- * Decode a JSON Pointer path (RFC 6901) into safe segments, or null if malformed/unsafe.
+ * Decode a JSON Pointer path (RFC 6901) into safe segments, or 'malformed' / 'unsafe'.
  * A numeric segment indexes an array (must reference an existing element) or keys an object — see `setAtPointer`.
  */
-const parseJsonPointer = (path: string): string[] | null => {
+const parseJsonPointer = (path: string): string[] | 'malformed' | 'unsafe' => {
 	if (!path.startsWith('/')) {
-		return null;
+		return 'malformed';
 	}
 
 	const tail = path.slice(1);
 	if (tail.length === 0) {
-		return null;
+		return 'malformed';
 	}
 
 	const rawSegments = tail.split('/');
@@ -483,14 +490,17 @@ const parseJsonPointer = (path: string): string[] | null => {
 
 	for (const raw of rawSegments) {
 		if (invalidEscapeSequenceRegex.test(raw)) {
-			return null;
+			return 'malformed';
 		}
 
 		// Unescape RFC 6901 JSON Pointer tokens: '~1' -> '/' and '~0' -> '~'.
 		// reject empty segments or segments that are not considered safe object property names
 		const seg = raw.replace(/~1/g, '/').replace(/~0/g, '~');
-		if (seg.length === 0 || !isSafeObjectProperty(seg)) {
-			return null;
+		if (seg.length === 0) {
+			return 'malformed';
+		}
+		if (!isSafeObjectProperty(seg)) {
+			return 'unsafe';
 		}
 
 		segments.push(seg);
@@ -786,13 +796,23 @@ const handleSetNodeParameter: OpHandler<'setNodeParameter'> = (op, ctx) => {
 		return `node '${op.nodeName}' not found`;
 	}
 
-	const segments = parseJsonPointer(op.path);
-	if (!segments) {
-		return `path '${op.path}' is invalid or contains unsafe segments`;
+	const pointer = toJsonPointer(op.path);
+	const segments = pointer ? parseJsonPointer(pointer) : 'malformed';
+	if (segments === 'malformed') {
+		return `path '${op.path}' is not a valid JSON Pointer. Use a JSON Pointer that starts with "/", such as "/jsCode" or "/options/timeout"`;
+	}
+	if (segments === 'unsafe') {
+		return `path '${op.path}' contains an unsafe segment`;
 	}
 
 	const params = (node.parameters ?? {}) as Record<string, unknown>;
-	const setError = setAtPointer(params, segments, op.value);
+	const hasParametersPrefix =
+		segments.length > 1 && segments[0] === 'parameters' && !Object.hasOwn(params, 'parameters');
+	const setError = setAtPointer(
+		params,
+		hasParametersPrefix ? segments.slice(1) : segments,
+		op.value,
+	);
 	if (setError) {
 		return setError;
 	}
