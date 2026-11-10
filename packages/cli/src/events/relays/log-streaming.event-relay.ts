@@ -91,6 +91,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
+			'workflow-deactivated-by-system': (event) => this.workflowDeactivatedBySystem(event),
 			'workflow-saved': (event) => this.workflowSaved(event),
 			'workflow-version-updated': (event) => this.workflowVersionUpdated(event),
 			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
@@ -325,6 +326,24 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName: workflow.name,
 				deactivatedVersionId,
+			},
+		});
+	}
+
+	private workflowDeactivatedBySystem({
+		workflowId,
+		workflowName,
+		deactivatedVersionId,
+		reason,
+	}: RelayEventMap['workflow-deactivated-by-system']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.deactivated',
+			payload: {
+				userId: null,
+				workflowId,
+				workflowName,
+				deactivatedVersionId,
+				reason,
 			},
 		});
 	}

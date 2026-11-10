@@ -75,6 +75,12 @@ export type { UserLike };
  */
 export type PolicyWriteOrigin = 'composed-save' | 'document-api';
 
+export type SystemDeactivationReason =
+	| 'memory-guard'
+	| 'crash-recovery'
+	| 'source-control-pull'
+	| 'instance-ai-eval-rollback';
+
 export type CrashDetector =
 	| 'stall'
 	| 'queue-recovery'
@@ -238,6 +244,13 @@ export type RelayEventMap = ModuleEventMap & {
 		publicApi: boolean;
 		deactivatedVersionId: string | null;
 		source?: WorkflowActionSource;
+	};
+
+	'workflow-deactivated-by-system': {
+		workflowId: string;
+		workflowName: string;
+		deactivatedVersionId: string;
+		reason: SystemDeactivationReason;
 	};
 
 	'workflow-pre-execute': {
