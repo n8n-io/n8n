@@ -4,7 +4,7 @@ import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 
 import { reportAffectedNodes } from '../../detection-report';
 import type {
@@ -18,7 +18,7 @@ import { BreakingChangeCategory } from '../../types';
 export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowRule {
 	id = 'always-output-data-multi-output-v3';
 
-	constructor(private readonly nodeTypes: NodeTypes) {}
+	constructor(private readonly nodeTypes: NodeTypesProxy) {}
 
 	getMetadata(): BreakingChangeRuleMetadata {
 		return {

@@ -48,6 +48,16 @@ export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 				},
 			];
 		}
+		if (isRuntimeToolCatalog(message)) {
+			return [
+				{
+					...message,
+					type: 'llm',
+					role: 'user',
+					content: [{ type: 'text', text: message.data.content }],
+				},
+			];
+		}
 		if (isRuntimeSkillUpdate(message)) {
 			// Some providers reject system-role messages after the conversation starts.
 			const content = [
@@ -68,6 +78,16 @@ export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 		}
 		return [];
 	});
+}
+
+export function isRuntimeToolCatalog<T extends AgentMessage>(
+	message: T,
+): message is T & { type: 'custom'; data: CustomAgentMessages['runtimeToolCatalog'] } {
+	return (
+		message.type === 'custom' &&
+		'type' in message.data &&
+		message.data.type === 'n8n:runtime-tool-catalog'
+	);
 }
 
 export function isRuntimeSkillCatalog<T extends AgentMessage>(

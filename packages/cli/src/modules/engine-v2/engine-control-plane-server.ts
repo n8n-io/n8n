@@ -11,21 +11,18 @@ import { send } from '@/response-helper';
 import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-auth.middleware';
 import { EngineCredentialsController } from './engine-credentials.controller';
 import { EngineDataTablesController } from './engine-data-tables.controller';
-import { EngineLifecycleEventController } from './engine-lifecycle-event.controller';
 import { EngineSubWorkflowController } from './engine-sub-workflow.controller';
 import {
 	CREDENTIALS_RESOLVE_PATH,
 	DATA_TABLES_CALL_PATH,
-	STATUS_CALLBACK_PATH,
 	SUB_WORKFLOWS_RESOLVE_PATH,
 } from './engine-v2.constants';
 
 /**
- * Provides services for the engine in the data plane: lifecycle events,
- * credentials, data tables, and sub-workflow resolution. It listens on its own
- * host and port, separate from the REST API server, so an operator can restrict
- * these internal routes to the network that the data plane uses without
- * touching the editor's routes.
+ * Provides services for the engine in the data plane: credentials, data tables,
+ * and sub-workflow resolution. It listens on its own host and port, separate
+ * from the REST API server, so an operator can restrict these internal routes
+ * to the network that the data plane uses without touching the editor's routes.
  */
 @Service()
 export class EngineControlPlaneServer {
@@ -38,7 +35,6 @@ export class EngineControlPlaneServer {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		private readonly lifecycleEventController: EngineLifecycleEventController,
 		private readonly credentialsController: EngineCredentialsController,
 		private readonly dataTablesController: EngineDataTablesController,
 		private readonly subWorkflowController: EngineSubWorkflowController,
@@ -103,20 +99,6 @@ export class EngineControlPlaneServer {
 		// Auth is per route, because each route requires its own token scope. It
 		// runs before the body parser, so an unauthenticated body is never read.
 		// n8n's parser bounds the body by `N8N_PAYLOAD_SIZE_MAX`.
-		app.post(
-			STATUS_CALLBACK_PATH,
-			createEngineControlPlaneAuthMiddleware(
-				this.engineConfig,
-				this.logger,
-				'lifecycle-events:write',
-			),
-			rawBodyReader,
-			bodyParser,
-			send(
-				async (req, res) => await this.lifecycleEventController.receiveLifecycleEvents(req, res),
-			),
-		);
-
 		app.post(
 			CREDENTIALS_RESOLVE_PATH,
 			createEngineControlPlaneAuthMiddleware(this.engineConfig, this.logger, 'credentials:read'),
