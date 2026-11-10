@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import debounce from 'lodash/debounce';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -15,7 +15,6 @@ import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmpty
 import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useAgentsListEmptyStateTemplatesExperiment } from '@/experiments/agentsListEmptyStateTemplates/useAgentsListEmptyStateTemplatesExperiment';
 import {
 	duplicateAgent,
@@ -59,12 +58,9 @@ const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 const { createAgent } = useCreateAgent();
 const { callDebounced } = useDebounce();
-const { isFeatureEnabled: templatesExperimentEnabled } =
+const { isFeatureEnabled: templatesExperimentEnabled, trackExposure: trackTemplatesExposure } =
 	useAgentsListEmptyStateTemplatesExperiment();
-const instanceAiReady = useInstanceAiReady();
-const showTemplatesIntro = computed(
-	() => templatesExperimentEnabled.value && instanceAiReady.value,
-);
+const showTemplatesIntro = computed(() => templatesExperimentEnabled.value);
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
@@ -81,6 +77,15 @@ const totalAgents = ref(0);
 const loading = ref(true);
 
 const projectId = computed(() => route.params.projectId as string | undefined);
+
+// Exposure covers both arms: control users see the default empty state, test users
+// the templates intro. The composable skips unenrolled users.
+watch(
+	() => !loading.value && allAgents.value.length === 0,
+	(agentsListEmpty) => {
+		if (agentsListEmpty) trackTemplatesExposure();
+	},
+);
 
 const sortFns = {
 	lastUpdated: (a: AgentResource, b: AgentResource) =>

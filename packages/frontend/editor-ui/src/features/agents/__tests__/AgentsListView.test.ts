@@ -14,7 +14,7 @@ import {
 } from '../constants';
 
 const templatesEnabled = ref(false);
-const instanceAiReady = ref(false);
+const trackTemplatesExposure = vi.fn();
 
 const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
@@ -103,13 +103,10 @@ vi.mock(
 	() => ({
 		useAgentsListEmptyStateTemplatesExperiment: () => ({
 			isFeatureEnabled: computed(() => templatesEnabled.value),
+			trackExposure: trackTemplatesExposure,
 		}),
 	}),
 );
-
-vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
-	useInstanceAiReady: () => computed(() => instanceAiReady.value),
-}));
 
 vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({
@@ -206,7 +203,6 @@ describe('AgentsListView — project page', () => {
 		mocks.routeProjectId = 'project-1';
 		mocks.isSummaryEnabled = false;
 		templatesEnabled.value = false;
-		instanceAiReady.value = false;
 	});
 
 	afterEach(() => {
@@ -418,7 +414,6 @@ describe('AgentsListView — overview page', () => {
 		mocks.routeProjectId = undefined;
 		mocks.isSummaryEnabled = false;
 		templatesEnabled.value = false;
-		instanceAiReady.value = false;
 	});
 
 	afterEach(() => {
@@ -482,7 +477,6 @@ describe('AgentsListView — create agent', () => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
 		templatesEnabled.value = false;
-		instanceAiReady.value = false;
 	});
 
 	it('opens the builder for a new pending agent in the current project', async () => {
@@ -509,23 +503,35 @@ describe('AgentsListView — empty state templates', () => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
 		templatesEnabled.value = false;
-		instanceAiReady.value = false;
 		mocks.listAgentsPage.mockResolvedValue({ count: 0, data: [] });
 	});
 
-	it('keeps the current empty state unless the flag is on and Instance AI is ready', async () => {
+	it('keeps the current empty state unless the experiment is enabled', async () => {
 		const flagOff = await mountView();
 		expect(flagOff.find('[data-test-id="agents-list-intro"]').exists()).toBe(false);
 		expect(flagOff.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(true);
 
 		templatesEnabled.value = true;
-		const notReady = await mountView();
-		expect(notReady.find('[data-test-id="agents-list-intro"]').exists()).toBe(false);
+		const enabled = await mountView();
+		expect(enabled.find('[data-test-id="agents-list-intro"]').exists()).toBe(true);
+		expect(enabled.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(false);
+	});
 
-		instanceAiReady.value = true;
-		const ready = await mountView();
-		expect(ready.find('[data-test-id="agents-list-intro"]').exists()).toBe(true);
-		expect(ready.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(false);
+	it('records experiment exposure for the rendered empty state', async () => {
+		await mountView();
+
+		expect(trackTemplatesExposure).toHaveBeenCalledTimes(1);
+	});
+
+	it('records no exposure when the list has agents', async () => {
+		mocks.listAgentsPage.mockResolvedValueOnce({
+			count: 1,
+			data: [agent('agent-1', 'Support Agent')],
+		});
+
+		await mountView();
+
+		expect(trackTemplatesExposure).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -549,7 +555,6 @@ describe('AgentsListView — empty state templates', () => {
 		},
 	])('records $name and opens the builder', async ({ testId, source, starter }) => {
 		templatesEnabled.value = true;
-		instanceAiReady.value = true;
 		const wrapper = await mountView();
 
 		await wrapper.get(`[data-test-id="${testId}"]`).trigger('click');
