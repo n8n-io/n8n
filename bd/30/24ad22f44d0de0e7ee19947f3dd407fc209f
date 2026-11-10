@@ -1,0 +1,25 @@
+packages/frontend/@n8n/design-system/src/css/markdownStyles.test.ts
+  s_cf0f92656472c2::t_e6844af5b42c46 7-8,10-11
+packages/frontend/editor-ui/src/features/agents/components/AgentChatTaskSummary.vue
+  s_cf0f92656472c2::t_77dfa61b5eee5c 65
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillViewer.vue
+  s_cf0f92656472c2::t_87087df52fcc9d 469
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ThinkingBlock.vue
+  s_cf0f92656472c2::t_200c07d0743ecd 167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd3024ad22f44d0de0e7ee19947f3dd407fc209f",
+  "prompts": {},
+  "sessions": {
+    "s_cf0f92656472c2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1c115-6ef7-7465-9d3d-43e10efc75e0",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
