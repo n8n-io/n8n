@@ -1,6 +1,15 @@
-import { observeHookedMethods, olderThan } from './catalogue';
+import type { HookedMethod } from './catalogue';
+import { HOOKED_METHODS, observeHookedMethods, olderThan } from './catalogue';
+import { LEADER_HOOKS } from '../multi-main';
+
+const refOf = (ref: HookedMethod) => `${ref.file} ${ref.target}.${ref.method}`;
+const listed = new Set(HOOKED_METHODS.map(refOf));
 
 describe('HOOKED_METHODS', () => {
+	it('lists every method the leader hooks use', () => {
+		expect(LEADER_HOOKS.map(refOf).filter((ref) => !listed.has(ref))).toEqual([]);
+	});
+
 	it('leaves engine methods out of the install check, which runs without engine v2', () => {
 		expect(observeHookedMethods('latest').some((h) => h.file.startsWith('@n8n/engine/'))).toBe(
 			false,
