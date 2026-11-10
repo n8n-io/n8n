@@ -8,8 +8,10 @@ import { InvalidActionTokenError, verifyActionToken } from '@n8n/engine';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
+import type { EngineTlsMaterial } from '../engine-tls-material';
 
 const authSecret = 'a'.repeat(32);
+const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
 
 describe('EngineControlPlaneTransport', () => {
 	let http: HttpRequestClient;
@@ -18,7 +20,10 @@ describe('EngineControlPlaneTransport', () => {
 	let engineConfig: EngineConfig;
 
 	/** Rebuilds the transport so each test can vary the config. */
-	const newTransport = (overrides: Partial<EngineConfig> = {}) => {
+	const newTransport = (
+		overrides: Partial<EngineConfig> = {},
+		tlsMaterial: Pick<EngineTlsMaterial, 'tls'> = { tls: undefined },
+	) => {
 		http = mock<HttpRequestClient>();
 		const outboundHttp = mock<OutboundHttp>({
 			requests: vi.fn((options?: HttpRequestClientOptions) => {
@@ -33,7 +38,11 @@ describe('EngineControlPlaneTransport', () => {
 			...overrides,
 		});
 
-		return new EngineControlPlaneTransport(engineConfig, outboundHttp);
+		return new EngineControlPlaneTransport(
+			engineConfig,
+			outboundHttp,
+			tlsMaterial as EngineTlsMaterial,
+		);
 	};
 
 	/** Resolves the authorization header the way the HTTP client does per request. */
@@ -60,6 +69,20 @@ describe('EngineControlPlaneTransport', () => {
 			);
 
 			expect(clientOptions?.baseURL).toBe('https://cp.internal:8443');
+		});
+
+		it('presents the client certificate and verifies the control plane against the engine CA alone when TLS is on', () => {
+			newTransport({}, { tls }).forScope('credentials:read');
+
+			expect(clientOptions?.connectionPool).toEqual({
+				agentOptions: { ...tls, rejectUnauthorized: true },
+			});
+		});
+
+		it('uses no connection pool over plain HTTP', () => {
+			newTransport().forScope('credentials:read');
+
+			expect(clientOptions?.connectionPool).toBeUndefined();
 		});
 
 		it('opts out of SSRF protection for the n8n-controlled host', () => {
