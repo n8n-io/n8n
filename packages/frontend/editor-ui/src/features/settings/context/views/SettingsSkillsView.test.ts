@@ -1135,6 +1135,7 @@ describe('SettingsSkillsView', () => {
 				skillCount: 1,
 				updatesAvailable: 0,
 				updatesBlocked: 0,
+				health: 'connected' as const,
 				lastCheckedAt: null,
 				canReview: true,
 			};
@@ -1373,7 +1374,25 @@ describe('SettingsSkillsView', () => {
 				await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
 
 				expect(showErrorMock).toHaveBeenCalledWith(new Error(text), 'Could not check for updates');
+				expect(skillsStore.fetchSources).toHaveBeenCalled();
 				expect(showMessageMock).not.toHaveBeenCalled();
+			});
+
+			it('refreshes source health after a failed check', async () => {
+				const view = await renderWithSource();
+				skillsStore.checkSource.mockRejectedValue(new Error('Network down'));
+				skillsStore.fetchSources.mockImplementation(async () => {
+					const failedSource = { ...source, health: 'unreachable' as const };
+					skillsStore.sources = [failedSource];
+					return [failedSource];
+				});
+
+				await clickCheck(view);
+
+				await waitFor(() =>
+					expect(view.getByRole('button', { name: 'Unreachable' })).toBeInTheDocument(),
+				);
+				expect(view.queryByTestId('skill-group-checking')).toBeNull();
 			});
 
 			it('keeps the error of a failure without a reason', async () => {

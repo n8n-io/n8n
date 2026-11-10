@@ -19,6 +19,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 
 import SkillAgentsCell from './SkillAgentsCell.vue';
 import SkillScopeBadge from './SkillScopeBadge.vue';
+import SkillSourceHealth from './SkillSourceHealth.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import { useSkillDeleteRule } from '../skills.utils';
 
@@ -244,7 +245,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.updatedAt'),
 		key: 'updatedAt',
-		width: 130,
+		width: props.sources ? 180 : 130,
 	},
 	{
 		title: '',
@@ -275,6 +276,8 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			:extra-groups="extraGroups"
 			:collapsed-groups="props.collapsedSourceIds ?? []"
 			:group-row-props="groupRowProps"
+			:pin-columns="props.sources ? 1 : 0"
+			:pin-end-columns="props.sources ? 2 : 0"
 			@update:options="emit('update:options', $event)"
 			@click:row="onRowClick"
 			@click:group="onGroupClick"
@@ -334,9 +337,10 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 				/>
 			</template>
 
-			<!-- The update count and the progress sit in the empty cell of the source row, left of its menu. -->
+			<!-- Health and updates stay beside the source menu when the table scrolls. -->
 			<template #[`group.updatedAt`]="{ group }">
 				<div v-if="sourcesById.get(group)" :class="$style.sourceStatus">
+					<SkillSourceHealth :source="sourcesById.get(group)!" />
 					<N8nSpinner
 						v-if="props.checkingSourceIds?.includes(group)"
 						size="small"
@@ -361,6 +365,11 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 				<div v-if="sourcesById.get(group)" :class="$style.actions" @click.stop>
 					<N8nActionToggle
 						:actions="sourceActions(sourcesById.get(group)!)"
+						:aria-label="
+							i18n.baseText('settings.context.skills.sources.actions', {
+								interpolate: { source: sourceName(group) },
+							})
+						"
 						data-test-id="skill-group-actions"
 						@action="(action: SourceAction) => onSourceAction(sourcesById.get(group)!, action)"
 					/>
@@ -529,6 +538,8 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 .sourceStatus {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	flex-wrap: wrap;
+	gap: var(--spacing--5xs) var(--spacing--2xs);
+	padding-block: var(--spacing--5xs);
 }
 </style>

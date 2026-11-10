@@ -136,6 +136,7 @@ describe('Sources in the skills table', () => {
 					skillCount: 3,
 					updatesAvailable: 1,
 					updatesBlocked: 0,
+					health: 'connected',
 					canReview: true,
 				}),
 			]);
@@ -148,6 +149,37 @@ describe('Sources in the skills table', () => {
 				}),
 			]);
 			expect((await outsider.get('/skill-sources').expect(200)).body.data).toEqual([]);
+		});
+
+		it('shows stored check health to viewers, and clears it after a successful check', async () => {
+			const sourceId = await connect('acme/zeta');
+			const lastCheckedAt = new Date('2026-01-01T00:00:00.000Z');
+			await db().update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{
+					lastCheckedAt,
+					lastErrorReason: 'credential_missing',
+				},
+			);
+
+			const [source] = (await viewer.get('/skill-sources').expect(200)).body
+				.data as SkillSourceListItem[];
+			expect(source).toMatchObject({
+				health: 'credential_expired',
+				lastCheckedAt: lastCheckedAt.toISOString(),
+				canReview: false,
+				updatesAvailable: 0,
+				updatesBlocked: 0,
+			});
+			expect(source).not.toHaveProperty('credentialId');
+			expect(source).not.toHaveProperty('lastErrorReason');
+
+			await editor.post(`/skill-sources/${sourceId}/check`).expect(200);
+			const [recovered] = (await viewer.get('/skill-sources').expect(200)).body
+				.data as SkillSourceListItem[];
+			expect(recovered.health).toBe('connected');
+			expect(recovered.lastCheckedAt).not.toBe(lastCheckedAt.toISOString());
 		});
 
 		it('keeps a source that has no synced skills left', async () => {

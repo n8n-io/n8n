@@ -436,6 +436,34 @@ describe('N8nDataTableServer', () => {
 		});
 	});
 
+	it('pins trailing columns in headers, source groups, and data rows', async () => {
+		const { container, rerender } = render(N8nDataTableServer<Item>, {
+			props: {
+				items: items.slice(0, 1),
+				headers,
+				itemsLength: 1,
+				pinColumns: 1,
+				pinEndColumns: 2,
+				groupBy: () => 'source',
+			},
+		});
+
+		for (const row of container.querySelectorAll('tr')) {
+			const cells = row.querySelectorAll('th, td');
+			expect(cells[0]).toHaveStyle({ left: '0px' });
+			expect(cells[1]).not.toHaveClass('is-pinned');
+			expect(cells[3]).toHaveClass('is-pinned-end-edge');
+			expect(cells[3]).toHaveStyle({ right: '150px' });
+			expect(cells[4]).toHaveStyle({ right: '0px' });
+		}
+
+		await rerender({ pinColumns: 4 });
+		const cells = container.querySelectorAll('thead th');
+		expect(cells[3]).toHaveStyle({ left: '450px' });
+		expect(cells[4]).toHaveClass('is-pinned-end-edge');
+		expect(cells[4]).toHaveStyle({ right: '0px' });
+	});
+
 	it('should pin the leading columns when given a count', () => {
 		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 2 },

@@ -219,6 +219,9 @@ export type SkillSourceRepositoryList = {
 	truncated: boolean;
 };
 
+/** Health of a source, based on its latest check result. */
+export type SkillSourceHealth = 'connected' | 'credential_expired' | 'unreachable' | 'delayed';
+
 /** One connected source, for its group row in the skills table. */
 export type SkillSourceListItem = {
 	id: string;
@@ -241,6 +244,7 @@ export type SkillSourceListItem = {
 	updatesAvailable: number;
 	/** Updates that the security check blocked. */
 	updatesBlocked: number;
+	health: SkillSourceHealth;
 	lastCheckedAt: string | null;
 	/** Whether the user may review updates and check the source now. */
 	canReview: boolean;

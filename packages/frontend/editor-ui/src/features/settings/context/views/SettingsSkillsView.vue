@@ -751,6 +751,7 @@ async function onCheckSource(source: SkillSourceListItem) {
 		return;
 	} finally {
 		checkingSourceIds.value = checkingSourceIds.value.filter((id) => id !== source.id);
+		await loadSources();
 	}
 	const { label, updatesFound, throttled } = result;
 	showMessage({
@@ -770,7 +771,6 @@ async function onCheckSource(source: SkillSourceListItem) {
 					}),
 		type: 'success',
 	});
-	await loadSources();
 }
 
 async function onOpenSource(sourceId: string) {

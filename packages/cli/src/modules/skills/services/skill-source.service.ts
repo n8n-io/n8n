@@ -49,6 +49,7 @@ import {
 	type SkillTarget,
 } from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
+import { skillSourceHealth } from '../utils/skill-source-health';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
 import type { ResolvedSkillSourceCredential } from './skill-source-credentials.contracts';
@@ -241,6 +242,7 @@ export class SkillSourceService {
 				skillCount: count.skills,
 				updatesAvailable: canReview(source) ? count.available : 0,
 				updatesBlocked: canReview(source) ? count.blocked : 0,
+				health: skillSourceHealth(source.lastErrorReason),
 				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
 				canReview: canReview(source),
 			};

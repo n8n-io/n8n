@@ -355,6 +355,7 @@ describe('SkillsTable', () => {
 			skillCount: 2,
 			updatesAvailable: 0,
 			updatesBlocked: 0,
+			health: 'connected',
 			lastCheckedAt: null,
 			canReview: true,
 			...overrides,
@@ -400,6 +401,16 @@ describe('SkillsTable', () => {
 			const { getByTestId } = renderGrouped({ sources: [] });
 
 			expect(getByTestId('skill-group-title')).toHaveTextContent('Unknown source');
+		});
+
+		it('names the source menu and keeps health visible without review permission', () => {
+			const { getByRole, queryByTestId } = renderGrouped({
+				sources: [source({ canReview: false, health: 'unreachable', updatesAvailable: 2 })],
+			});
+
+			expect(getByRole('button', { name: 'Actions for acme/skills · main' })).toBeInTheDocument();
+			expect(getByRole('button', { name: 'Unreachable' })).toBeInTheDocument();
+			expect(queryByTestId('skill-group-updates')).toBeNull();
 		});
 
 		it('shows the configured project icon on the source scope badge', () => {
