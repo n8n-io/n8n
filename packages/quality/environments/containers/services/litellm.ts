@@ -134,7 +134,7 @@ class LoopbackContainer extends GenericContainer {
 async function assertPortFree(port: number) {
 	if ((await getPort({ port })) !== port) {
 		throw new Error(
-			`Port ${port} is in use. A LiteLLM gateway may run already. Stop it with "pnpm --filter n8n-containers services:clean", then start again.`,
+			`Port ${port} is in use. A LiteLLM gateway may run already. Stop it with "pnpm --filter n8n-containers services:clean". If you started it with --name, use "docker rm -f <name>-litellm <name>-litellm-front-door".`,
 		);
 	}
 }

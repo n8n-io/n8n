@@ -389,9 +389,14 @@ summary shows the base URL and the login for each method:
 | Basic auth | `http://localhost:4001/basic/v1` | User `n8n`, password `test-password` |
 | None | `http://localhost:4001/none/v1` | No login |
 
-The ports listen on 127.0.0.1 only. Stop the gateway with
-`pnpm --filter n8n-containers services:clean`. This command stops all
-`pnpm services` containers.
+The ports listen on 127.0.0.1 only. This service has no OAuth2 client
+credentials login. Test that login against a real identity provider, for
+example Azure OpenAI with Microsoft Entra ID.
+
+Stop the gateway with `pnpm --filter n8n-containers services:clean`. This
+command removes the containers whose names start with `n8n-svc-`, which is the
+default for `pnpm services`. If you started the gateway with `--name <name>`,
+remove it with `docker rm -f <name>-litellm <name>-litellm-front-door`.
 
 ### Models
 
