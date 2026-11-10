@@ -37,7 +37,7 @@ function checkHeader(headers: Headers, { name, value }: Record<string, unknown>)
 		throw credentialIncomplete();
 	}
 	const received = headers[name.toLowerCase()];
-	if (typeof received !== 'string') {
+	if (typeof received !== 'string' || received === '') {
 		throw new WebhookChannelError(401, 'missing_credentials', 'No authorization data provided');
 	}
 	if (!safeEqual(received, value)) {
