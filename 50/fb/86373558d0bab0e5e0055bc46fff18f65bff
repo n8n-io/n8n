@@ -1,0 +1,66 @@
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-thread-history.repository.integration.test.ts
+  s_4d9059acd7398a::t_f583e9e7d8b46c 109-116,119-138
+  s_4d9059acd7398a::t_36748581696571 117-118
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_4d9059acd7398a::t_fde23a558dc2e6 479-484,489-491,494-499,501-502,506-513
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_4d9059acd7398a::t_262b90fe810e21 549-567,571
+  s_4d9059acd7398a::t_0ba2d837ac4cd1 510-511,519,523,527
+  s_39fc83a213c517::t_d1f5a31db5c568 102-106,113-114,116-139
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_4d9059acd7398a::t_872cf337c6ef2e 953-958,1041,1047,1051-1053,1056,1064,1072-1074,1078-1135,1143,1147-1149
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_4d9059acd7398a::t_3ad87e8f9b4f06 124-125
+  s_4d9059acd7398a::t_767419dc0830f1 565-566,636,643,1348-1349,1394-1398,1409,1450-1499,1875,1908
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_4d9059acd7398a::t_c6ce89cf2f4836 427-428,431,442-474,476-477
+  s_4d9059acd7398a::t_92a93837f5c850 475
+  s_4d9059acd7398a::t_7058051a557124 478
+  s_69f4cc3b345b0a::t_f6086b096433e9 15-22,928-933,1132-1139
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_69f4cc3b345b0a::t_364b2dff38a237 1414-1415
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_39fc83a213c517::t_c78750500859e7 1941-1942,1954,1956-1957,2254-2255
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_4d9059acd7398a::t_e7e2413363b65b 1634,1644
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_4d9059acd7398a::t_e55b533f1792e4 884
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_39fc83a213c517::t_e1e33afd5bb972 8195
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_39fc83a213c517::t_615e4f58b0b0d0 3766-3862
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.memory.api.ts
+  s_39fc83a213c517::t_a3e9153f9471f9 101,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50fb86373558d0bab0e5e0055bc46fff18f65bff",
+  "prompts": {},
+  "sessions": {
+    "s_39fc83a213c517": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7ac6c0b-56df-4db5-aa22-bf1d2d9131a3",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_4d9059acd7398a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c182171-be99-4707-9bed-1695d61e6167",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_69f4cc3b345b0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a393806-9b92-44b9-b788-dffc75be88c1",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
