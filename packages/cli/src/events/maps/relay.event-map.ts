@@ -1338,6 +1338,18 @@ export type RelayEventMap = ModuleEventMap & {
 		projectId: string;
 	};
 
+	'agent-archived': {
+		user: UserLike;
+		agentId: string;
+		projectId: string;
+	};
+
+	'agent-unarchived': {
+		user: UserLike;
+		agentId: string;
+		projectId: string;
+	};
+
 	// #region Instance Policies
 
 	'instance-policies-updated': { user: UserLike } & (
