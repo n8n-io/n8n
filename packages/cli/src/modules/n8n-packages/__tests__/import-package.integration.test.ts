@@ -2677,38 +2677,40 @@ describe('credential-missing-mode: create-with-values', () => {
 		});
 	});
 
-	it('rejects a package whose bundled credential data carries literal values', async () => {
+	it('drops a literal value from bundled credential data and creates the credential as a stub', async () => {
 		const owner = await createOwner();
 
-		await expect(
-			importPackage({
-				user: owner,
-				credentialMissingMode: 'create-with-values',
-				packageBuffer: await buildImportPackageBuffer(
-					[
-						serializedWorkflowWithCredential({
-							id: 'wf-leak',
-							name: 'Leaky workflow',
-							credentialId: 'leaky-cred',
-							credentialName: 'Leaky GitHub',
-						}),
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-leak',
+						name: 'Leaky workflow',
+						credentialId: 'leaky-cred',
+						credentialName: 'Leaky GitHub',
+					}),
+				],
+				{
+					sourceId,
+					credentials: [
+						{
+							id: 'leaky-cred',
+							name: 'Leaky GitHub',
+							type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+							data: { accessToken: 'ghp_literal_secret' },
+						},
 					],
-					{
-						sourceId,
-						credentials: [
-							{
-								id: 'leaky-cred',
-								name: 'Leaky GitHub',
-								type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
-								data: { accessToken: 'ghp_literal_secret' },
-							},
-						],
-					},
-				),
-			}),
-		).rejects.toThrow('failed schema validation');
+				},
+			),
+		});
 
-		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+		// The literal never reaches the destination, so no package data is left to seed from.
+		expect(result.credentials.stubbed).toEqual(['leaky-cred']);
+		expect(result.credentials.seeded).toEqual([]);
+		expect(result.credentials.incomplete).toEqual([]);
+		expect(await Container.get(CredentialsRepository).count()).toBe(1);
 	});
 
 	it('requires the credential:create scope when create-with-values creates a credential, and writes nothing without it', async () => {
