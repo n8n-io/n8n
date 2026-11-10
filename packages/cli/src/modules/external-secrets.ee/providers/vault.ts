@@ -7,6 +7,7 @@ import {
 } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	IDataObject,
 	IHttpRequestMethods,
@@ -119,6 +120,10 @@ interface KvMount {
 	path: string;
 	version: string;
 	subPath: string;
+}
+
+function isCachedSecretData(value: IDataObject[string]): value is IDataObject {
+	return isRecord(value);
 }
 
 export class VaultProvider extends SecretsProvider {
@@ -528,6 +533,7 @@ export class VaultProvider extends SecretsProvider {
 		mount: KvMount,
 		path: string,
 		limit: KvReadLimit,
+		previousSecrets: IDataObject | null,
 	): Promise<IDataObject | null> {
 		const { path: mountPath, version: kvVersion, subPath } = mount;
 		this.logger.debug(`Getting kv secrets from ${mountPath}${path} (version ${kvVersion})`);
@@ -538,11 +544,10 @@ export class VaultProvider extends SecretsProvider {
 				async () => await this.#http.request<VaultResponse<VaultSecretList>>(listRequest),
 			);
 		} catch (error) {
-			// A broken or timed-out request fails the whole pull, so the last complete snapshot
-			// stays. Only a denied or missing path is skipped.
+			// A transport failure preserves the full snapshot. Other failures keep this path's cache.
 			if (isTransportFailure(error)) throw error;
 			const errorContext = buildHttpProviderErrorContext(error);
-			this.logger.debug('Vault provider failed to list KV secrets', {
+			this.logger.warn('Vault provider failed to list KV secrets', {
 				providerName: this.name,
 				operation: 'update',
 				mountPath,
@@ -550,15 +555,21 @@ export class VaultProvider extends SecretsProvider {
 				vaultApiPath: listRequest.url,
 				...errorContext,
 			});
-			return null;
+			return previousSecrets;
 		}
 		const data = Object.fromEntries(
 			(
 				await Promise.allSettled(
 					listBody.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {
 						if (key.endsWith('/')) {
-							const folder = await this.getKVSecrets(mount, path + key, limit);
 							const folderKey = (path + key).slice(subPath.length, -1);
+							const previousFolder = previousSecrets?.[folderKey];
+							const folder = await this.getKVSecrets(
+								mount,
+								path + key,
+								limit,
+								isCachedSecretData(previousFolder) ? previousFolder : null,
+							);
 							return folder === null ? null : [folderKey, folder];
 						}
 						const secretPath = this.kvApiPath(mountPath, kvVersion, 'data', path + key);
@@ -578,7 +589,7 @@ export class VaultProvider extends SecretsProvider {
 						} catch (error) {
 							if (isTransportFailure(error)) throw error;
 							const errorContext = buildHttpProviderErrorContext(error);
-							this.logger.debug('Vault provider failed to read KV secret', {
+							this.logger.warn('Vault provider failed to read KV secret', {
 								providerName: this.name,
 								operation: 'update',
 								mountPath,
@@ -586,13 +597,14 @@ export class VaultProvider extends SecretsProvider {
 								secretPath,
 								...errorContext,
 							});
-							return null;
+							const previousSecret = previousSecrets?.[key];
+							return isCachedSecretData(previousSecret) ? [key, previousSecret] : null;
 						}
 					}),
 				)
 			)
 				.map((i) => {
-					// Only a transport failure rejects here; every other read error was already skipped.
+					// Transport failures reject after all reads finish.
 					if (i.status === 'rejected') throw i.reason;
 					return i.value;
 				})
@@ -719,15 +731,21 @@ export class VaultProvider extends SecretsProvider {
 				(
 					await Promise.allSettled(
 						kvMounts.map(async (mount): Promise<[string, IDataObject] | null> => {
-							const value = await this.getKVSecrets(mount, mount.subPath, limit);
+							const mountKey = mount.path.slice(0, -1);
+							const folders = mount.subPath.split('/').filter(Boolean);
+							const previousSecrets = folders.reduce<IDataObject | null>((inner, folder) => {
+								const previousFolder = inner?.[folder];
+								return isCachedSecretData(previousFolder) ? previousFolder : null;
+							}, this.cachedSecrets[mountKey] ?? null);
+							const value = await this.getKVSecrets(mount, mount.subPath, limit, previousSecrets);
 							if (value === null) {
 								return null;
 							}
-							const nested = mount.subPath
-								.split('/')
-								.filter(Boolean)
-								.reduceRight<IDataObject>((inner, folder) => ({ [folder]: inner }), value);
-							return [mount.path.substring(0, mount.path.length - 1), nested];
+							const nested = folders.reduceRight<IDataObject>(
+								(inner, folder) => ({ [folder]: inner }),
+								value,
+							);
+							return [mountKey, nested];
 						}),
 					)
 				)

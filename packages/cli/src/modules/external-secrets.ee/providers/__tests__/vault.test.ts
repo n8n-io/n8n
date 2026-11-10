@@ -447,7 +447,7 @@ describe('VaultProvider', () => {
 
 			expect(provider.hasSecret('forbidden')).toBe(false);
 			expect(provider.getSecretNames()).toHaveLength(0);
-			expect(logger.debug).toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledWith(
 				'Vault provider failed to list KV secrets',
 				expect.objectContaining({
 					operation: 'update',
@@ -490,7 +490,9 @@ describe('VaultProvider', () => {
 			{ operation: 'mount LIST', failedPath: listPath },
 			{ operation: 'folder LIST', failedPath: `${listPath}team/` },
 			{ operation: 'secret GET', failedPath: `${dataPath}team/app` },
-		])('should keep cached secrets when $operation returns HTTP 503', async ({ failedPath }) => {
+			{ operation: 'sub-path LIST', failedPath: `${listPath}team/`, subPath: 'team/' },
+			{ operation: 'sub-path GET', failedPath: `${dataPath}team/app`, subPath: 'team/' },
+		])('should keep cached secrets after $operation fails', async ({ failedPath, subPath }) => {
 			const { provider } = await initProvider(
 				[
 					{ method: 'GET', pathname: listPath, body: { data: { keys: ['team/'] } } },
@@ -511,7 +513,7 @@ describe('VaultProvider', () => {
 						body: { errors: ['Service unavailable'] },
 					},
 				],
-				vaultSettingsWithKvPath('secret/', version),
+				vaultSettingsWithKvPath('secret/', version, subPath),
 			);
 			const expectedSecrets = { team: { app: { password: 'cached-password' } } };
 
@@ -526,15 +528,39 @@ describe('VaultProvider', () => {
 			expect(provider.getSecret('secret')).toEqual(expectedSecrets);
 			expect(provider.hasSecret('secret')).toBe(true);
 			expect(provider.getSecretNames()).toEqual(['secret.team.app.password']);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					providerName: 'vault',
+					operation: 'update',
+					kvVersion: version,
+					statusCode: 503,
+				}),
+			);
 		});
 
-		it('should replace changed secrets and remove keys absent from a successful LIST', async () => {
+		it.each([200, 503])('should apply a successful LIST after HTTP %s', async (status) => {
 			const { provider } = await initProvider(
 				[
-					{ method: 'GET', pathname: listPath, body: { data: { keys: ['app', 'removed'] } } },
-					{ method: 'GET', pathname: listPath, body: { data: { keys: ['app'] } } },
+					{
+						method: 'GET',
+						pathname: listPath,
+						body: { data: { keys: ['app', 'retained', 'removed'] } },
+					},
+					{ method: 'GET', pathname: listPath, body: { data: { keys: ['app', 'retained'] } } },
 					{ method: 'GET', pathname: `${dataPath}app`, body: secretResponse('cached-password') },
 					{ method: 'GET', pathname: `${dataPath}app`, body: secretResponse('updated-password') },
+					{
+						method: 'GET',
+						pathname: `${dataPath}retained`,
+						body: secretResponse('previous-password'),
+					},
+					{
+						method: 'GET',
+						pathname: `${dataPath}retained`,
+						status,
+						body: secretResponse('new-password'),
+					},
 					{ method: 'GET', pathname: `${dataPath}removed`, body: secretResponse('old-password') },
 				],
 				vaultSettingsWithKvPath('secret/', version),
@@ -544,13 +570,20 @@ describe('VaultProvider', () => {
 
 			expect(provider.getSecret('secret')).toEqual({
 				app: { password: 'cached-password' },
+				retained: { password: 'previous-password' },
 				removed: { password: 'old-password' },
 			});
 
 			await provider.update();
 
-			expect(provider.getSecret('secret')).toEqual({ app: { password: 'updated-password' } });
-			expect(provider.getSecretNames()).toEqual(['secret.app.password']);
+			expect(provider.getSecret('secret')).toEqual({
+				app: { password: 'updated-password' },
+				retained: { password: status === 503 ? 'previous-password' : 'new-password' },
+			});
+			expect(provider.getSecretNames()).toEqual([
+				'secret.app.password',
+				'secret.retained.password',
+			]);
 		});
 	});
 
