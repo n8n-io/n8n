@@ -1846,12 +1846,12 @@ export class OauthService {
 			}
 
 			// Use a client secret only when the server needs one. Else use public-client PKCE.
-			const authentication = tokenEndpointAuthMethods.includes('none')
-				? undefined
-				: this.selectClientSecretAuthenticationMethod(tokenEndpointAuthMethods);
-			return authentication
-				? { grantType: 'authorizationCode', authentication, usePkce: true }
-				: { grantType: 'pkce', usePkce: true };
+			const authentication = this.selectClientSecretAuthenticationMethod(tokenEndpointAuthMethods);
+			if (authentication && !tokenEndpointAuthMethods.includes('none')) {
+				return { grantType: 'authorizationCode', authentication, usePkce: true };
+			}
+
+			return { grantType: 'pkce', usePkce: true };
 		}
 
 		if (grantTypes.includes('client_credentials')) {
