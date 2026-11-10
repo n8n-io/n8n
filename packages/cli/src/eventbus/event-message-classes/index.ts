@@ -115,6 +115,8 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow.resumed',
 	'n8n.audit.workflow.archived',
 	'n8n.audit.workflow.unarchived',
+	'n8n.audit.agent.archived',
+	'n8n.audit.agent.unarchived',
 	'n8n.audit.workflow.activated',
 	'n8n.audit.workflow.deactivated',
 	'n8n.audit.workflow.version.updated',

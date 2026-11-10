@@ -81,6 +81,7 @@ const agentListFilterSchema = z
 		ids: z.array(z.string().min(1)).min(1).max(50).optional(),
 		availableInMCP: z.boolean().optional(),
 		availableInChat: z.boolean().optional(),
+		includeArchived: z.boolean().optional(),
 	})
 	.strict();
 

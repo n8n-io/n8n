@@ -21,7 +21,7 @@ export interface FolderExportRequest {
 	writer: PackageWriter;
 	includeTags: boolean;
 	versionPolicy: ExportVersionPolicy;
-	includeArchivedWorkflows: boolean;
+	includeArchived: boolean;
 	/**
 	 * Directory the folder tree is written under. Empty for a top-level folder
 	 * export (`folders/...`); a project exporter passes `projects/<slug>-<id>` so
@@ -80,7 +80,7 @@ export class FolderExporter {
 
 		const workflowIdsByFolder = await this.workflowFinder.findWorkflowIdsByFolder(
 			folders.map((folder) => folder.id),
-			{ includeArchived: request.includeArchivedWorkflows },
+			{ includeArchived: request.includeArchived },
 		);
 
 		const foldersToWrite = request.selectedWorkflowIds

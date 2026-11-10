@@ -105,6 +105,12 @@ export class SubAgentSourceResolver {
 			};
 		}
 
+		if (agent.isArchived) {
+			throw new UserError(
+				`Sub-agent "${agent.name}" is archived. Restore it before delegating to it.`,
+			);
+		}
+
 		if (context.usePublishedVersion) {
 			const activeVersion = agent.activeVersion;
 			if (!activeVersion?.schema) {

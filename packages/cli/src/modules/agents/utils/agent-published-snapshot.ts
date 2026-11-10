@@ -45,6 +45,9 @@ export async function resolveAgentRunSource<T extends Agent>(
 	agentSkillRefs: AgentSkillRefsService,
 	ctx: OperationContext,
 ): Promise<AgentRunSource<T>> {
+	if (agentEntity.isArchived) {
+		throw new OperationalError('Agent is archived. Restore the agent before running it.');
+	}
 	if (!usePublishedVersion) {
 		return { agent: agentEntity, ...(await agentSkillRefs.readDraft(agentEntity, ctx)) };
 	}

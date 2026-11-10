@@ -2095,6 +2095,9 @@ export class McpAgentToolsService {
 	private async resolveAgent(user: User, agentId: string): Promise<ProjectAgent> {
 		const agent = await this.agentsService.findByIdForUser(agentId, user);
 		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
+		if (agent.isArchived) {
+			throw new UserError(`Agent "${agentId}" is archived and cannot be accessed.`);
+		}
 		if (!agent.availableInMCP) {
 			throw new UserError(
 				'Agent is not available in MCP. Enable MCP access from the agents list, or from the MCP settings page.',

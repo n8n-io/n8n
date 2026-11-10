@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
 	listAgentsPageGlobal: vi.fn(),
 	routerPush: vi.fn(),
+	routerReplace: vi.fn(),
 	setTitle: vi.fn(),
 	executeWeeklySummary: vi.fn(),
 	isSummaryEnabled: false,
@@ -48,7 +49,7 @@ vi.mock('vue-router', async (importOriginal) => {
 	return {
 		...actual,
 		useRoute: () => ({ params: { projectId: mocks.routeProjectId }, query: {} }),
-		useRouter: () => ({ push: mocks.routerPush }),
+		useRouter: () => ({ push: mocks.routerPush, replace: mocks.routerReplace }),
 	};
 });
 
@@ -376,6 +377,28 @@ describe('AgentsListView — project page', () => {
 				sortBy: 'name:asc',
 				filter: { query: 'Support' },
 			}),
+		);
+	});
+
+	it('requests archived agents and syncs the URL when the show-archived filter is on', async () => {
+		mocks.listAgentsPage.mockResolvedValue({ count: 0, data: [] });
+
+		const wrapper = await mountView();
+		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			expect.objectContaining({ filter: undefined }),
+		);
+
+		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
+		layout.vm.$emit('update:filters', { search: '', homeProject: '', showArchived: true });
+		await flushPromises();
+
+		expect(mocks.routerReplace).toHaveBeenCalledWith({ query: { showArchived: 'true' } });
+		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			expect.objectContaining({ filter: { includeArchived: true } }),
 		);
 	});
 

@@ -1,7 +1,7 @@
 import type { OperationContext } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 
-import { ConflictError } from '@n8n/errors';
+import { BadRequestError, ConflictError } from '@n8n/errors';
 
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -23,7 +23,11 @@ export async function saveAgentDraftFenced(
 	agent: Agent,
 	ctx: OperationContext = {},
 	metadata?: AgentDefinitionMetadata,
+	{ allowArchivedUpdate = false }: { allowArchivedUpdate?: boolean } = {},
 ): Promise<Agent> {
+	if (agent.isArchived && !allowArchivedUpdate) {
+		throw new BadRequestError('Cannot update an archived agent');
+	}
 	const won = await agentRepository.saveDraftFenced(agent, ctx, metadata);
 	if (!won) {
 		throw new ConflictError('Agent was modified concurrently; please retry');

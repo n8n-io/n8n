@@ -103,12 +103,13 @@ export default class PackageExport extends BaseCommand {
 				'Whether expression values from credential data are bundled into the package; a literal value travels only when it decides whether a field with a bundled expression shows (default on the instance: expression-values-only)',
 			aliases: ['credential-export-policy'],
 		})(),
-		includeArchivedWorkflows: Flags.option({
+		includeArchived: Flags.option({
 			description:
-				'Whether folder and project exports include their archived workflows (workflows given by id always export)',
+				'Whether folder and project exports include their archived workflows and agents (workflows and agents given by id always export)',
 			options: ['true', 'false'] as const,
 			default: 'false',
-			aliases: ['include-archived-workflows'],
+			// The last two are the names before agents could be archived.
+			aliases: ['include-archived', 'include-archived-workflows', 'includeArchivedWorkflows'],
 		})(),
 	};
 
@@ -123,7 +124,7 @@ export default class PackageExport extends BaseCommand {
 		const dependencyPolicy = flags.dependencyPolicy;
 		const versionPolicy = flags.versionPolicy;
 		const credentialExportPolicy = flags.credentialExportPolicy;
-		const includeArchivedWorkflows = flags.includeArchivedWorkflows === 'true';
+		const includeArchived = flags.includeArchived === 'true';
 
 		const hasLooseSelection = agentIds.length > 0 || workflowIds.length > 0 || folderIds.length > 0;
 		if (projectIds.length > 0 && hasLooseSelection) {
@@ -148,7 +149,7 @@ export default class PackageExport extends BaseCommand {
 								dependencyPolicy,
 								versionPolicy,
 								credentialExportPolicy,
-								...(includeArchivedWorkflows ? { includeArchivedWorkflows } : {}),
+								...(includeArchived ? { includeArchived } : {}),
 							}
 						: {
 								...(agentIds.length > 0 ? { agentIds } : {}),
@@ -159,7 +160,7 @@ export default class PackageExport extends BaseCommand {
 								dependencyPolicy,
 								versionPolicy,
 								credentialExportPolicy,
-								...(includeArchivedWorkflows ? { includeArchivedWorkflows } : {}),
+								...(includeArchived ? { includeArchived } : {}),
 							},
 				);
 			} catch (error) {

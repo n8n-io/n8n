@@ -142,10 +142,17 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return agents.sort((left, right) => left.id.localeCompare(right.id));
 	}
 
-	async findIdsInProjectsForExport(projectIds: string[]): Promise<string[]> {
+	async findIdsInProjectsForExport(
+		projectIds: string[],
+		{ includeArchived = false }: { includeArchived?: boolean } = {},
+	): Promise<string[]> {
 		const ids: string[] = [];
+		const archivedFilter = includeArchived ? {} : { isArchived: false };
 		for (const projects of chunkIds([...new Set(projectIds)])) {
-			const agents = await this.find({ select: ['id'], where: { projectId: In(projects) } });
+			const agents = await this.find({
+				select: ['id'],
+				where: { projectId: In(projects), ...archivedFilter },
+			});
 			ids.push(...agents.map(({ id }) => id));
 		}
 		return ids.sort();
@@ -205,6 +212,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				'agent.updatedAt',
 			])
 			.where(projectScopeSql)
+			.andWhere('agent.isArchived = :isArchived', { isArchived: false })
 			.orderBy('agent.updatedAt', 'DESC');
 
 		if (projectIds !== null) {
@@ -368,6 +376,9 @@ export class AgentRepository extends BaseRepository<Agent> {
 		query: SelectQueryBuilder<Agent>,
 		filter: ListAgentsQueryDto['filter'],
 	): void {
+		if (!filter?.includeArchived) {
+			query.andWhere('agent.isArchived = :isArchived', { isArchived: false });
+		}
 		if (filter?.query) {
 			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${filter.query}%` });
 		}
@@ -606,10 +617,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 		const criteria =
 			'ids' in where
-				? { id: In(where.ids), scope: projectScope }
+				? { id: In(where.ids), scope: projectScope, isArchived: false }
 				: 'projectIds' in where
-					? { projectId: In(where.projectIds), scope: projectScope }
-					: { scope: projectScope };
+					? { projectId: In(where.projectIds), scope: projectScope, isArchived: false }
+					: { scope: projectScope, isArchived: false };
 
 		const agents = await this.find({
 			select: ['id', 'projectId', 'availableInMCP'],
@@ -795,17 +806,38 @@ export class AgentRepository extends BaseRepository<Agent> {
 			);
 	}
 
-	/** Draft writes do not conflict with publication of a fixed saved version. */
+	/**
+	 * Sets the archive state of an unpublished agent. Advances the publication
+	 * revision so a publication that started before the change loses its fence.
+	 * Returns false when the agent is published.
+	 */
+	async setArchived(id: string, isArchived: boolean): Promise<boolean> {
+		const result = await this.update(
+			{ id, scope: projectScope, activeVersionId: IsNull() },
+			{ isArchived, publicationRevision: () => '"publicationRevision" + 1' },
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Draft writes do not conflict with publication of a fixed saved version.
+	 * `archive` marks the agent archived in the same write as the unpublication.
+	 */
 	async setActiveVersionFenced(
 		id: string,
 		publicationRevision: number,
 		activeVersionId: string | null,
 		ctx: OperationContext = {},
+		{ archive = false }: { archive?: boolean } = {},
 	): Promise<boolean> {
 		const result = await this.managerFor(ctx)
 			.createQueryBuilder()
 			.update(Agent)
-			.set({ activeVersionId, publicationRevision: () => '"publicationRevision" + 1' })
+			.set({
+				activeVersionId,
+				publicationRevision: () => '"publicationRevision" + 1',
+				...(archive ? { isArchived: true } : {}),
+			})
 			.where('id = :id AND "publicationRevision" = :publicationRevision', {
 				id,
 				publicationRevision,

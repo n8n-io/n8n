@@ -62,6 +62,15 @@ vi.mock('../composables/useAgentPermissions', () => ({
 	useAgentPermissions: () => ({ canCreate: canCreateAgentRef }),
 }));
 
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: {} }),
+}));
+
+const listAgentsPageSpy = vi.hoisted(() => vi.fn());
+vi.mock('../composables/useAgentApi', () => ({
+	listAgentsPage: listAgentsPageSpy,
+}));
+
 const showErrorSpy = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy }),
@@ -922,6 +931,35 @@ describe('AgentCapabilitiesSection', () => {
 		expect(refreshProjectAgentsSpy).toHaveBeenCalledOnce();
 		expect(wrapper.text()).toContain('Notion Research Agent');
 		expect(wrapper.text()).not.toContain(child.id);
+	});
+
+	it('loads an archived sub-agent by id and shows the Archived badge', async () => {
+		const archived = makeAgent({ id: 'agent-archived', name: 'Old Agent', isArchived: true });
+		refreshProjectAgentsSpy.mockResolvedValueOnce([]);
+		listAgentsPageSpy.mockResolvedValueOnce({ count: 1, data: [archived] });
+
+		const wrapper = mountSection(
+			[],
+			{},
+			{
+				name: 'Parent Agent',
+				model: '',
+				instructions: '',
+				tools: [],
+				subAgents: { agents: [{ agentId: archived.id }] },
+			},
+			[],
+			[],
+		);
+		await flushPromises();
+
+		expect(listAgentsPageSpy).toHaveBeenCalledWith({}, expect.any(String), {
+			filter: { ids: [archived.id], includeArchived: true },
+		});
+		expect(wrapper.text()).toContain('Old Agent');
+		expect(wrapper.find('[data-testid="agent-capabilities-sub-agent-archived"]').exists()).toBe(
+			true,
+		);
 	});
 
 	it('never exposes an unresolved sub-agent id as the chip label', async () => {

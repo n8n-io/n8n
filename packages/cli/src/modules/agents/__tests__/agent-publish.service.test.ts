@@ -1690,7 +1690,9 @@ describe('AgentPublishService', () => {
 
 		await service.unpublishAgent(agentId, projectId, user, 'user', undefined, 3);
 
-		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(agentId, 7, null, ctx);
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(agentId, 7, null, ctx, {
+			archive: false,
+		});
 		expect(agent.revision).toBe(3);
 		expect(agent.publicationRevision).toBe(8);
 	});
@@ -1710,4 +1712,65 @@ describe('AgentPublishService', () => {
 			expect(eventService.emit).not.toHaveBeenCalled();
 		},
 	);
+
+	it('unpublishes and archives a published agent in one write', async () => {
+		const { service, agentRepository, eventService, ctx } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ activeVersionId: versionId, publicationRevision: 2 }),
+		);
+
+		await service.archiveAgent(agentId, projectId, user);
+
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(agentId, 2, null, ctx, {
+			archive: true,
+		});
+		expect(agentRepository.setArchived).not.toHaveBeenCalled();
+		expect(eventService.emit).toHaveBeenCalledWith('agent-archived', { user, agentId, projectId });
+	});
+
+	it('reports a conflict when the agent is published during the archive', async () => {
+		const { service, agentRepository, eventService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentRepository.setArchived.mockResolvedValue(false);
+
+		await expect(service.archiveAgent(agentId, projectId, user)).rejects.toBeInstanceOf(
+			ConflictError,
+		);
+		expect(eventService.emit).not.toHaveBeenCalledWith('agent-archived', expect.anything());
+	});
+
+	it('restores an archived agent without a publication', async () => {
+		const { service, agentRepository, eventService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
+		agentRepository.setArchived.mockResolvedValue(true);
+
+		await service.unarchiveAgent(agentId, projectId, user);
+
+		expect(agentRepository.setArchived).toHaveBeenCalledWith(agentId, false);
+		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
+		expect(eventService.emit).toHaveBeenCalledWith('agent-unarchived', {
+			user,
+			agentId,
+			projectId,
+		});
+	});
+
+	it('rejects archive state changes that do not apply, and the publication of an archived agent', async () => {
+		const { service, agentRepository } = makeService();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		await expect(service.unarchiveAgent(agentId, projectId, user)).rejects.toThrow(
+			'Agent is not archived.',
+		);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
+		await expect(service.archiveAgent(agentId, projectId, user)).rejects.toThrow(
+			'Agent is already archived.',
+		);
+		await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+			'Cannot publish an archived agent',
+		);
+		expect(agentRepository.setArchived).not.toHaveBeenCalled();
+		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
+	});
 });

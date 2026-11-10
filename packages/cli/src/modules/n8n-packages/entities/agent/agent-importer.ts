@@ -7,6 +7,7 @@ import type { Scope } from '@n8n/permissions';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
+import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { CompleteAgentDefinition } from '@/modules/agents/utils/agent-definition';
@@ -32,6 +33,7 @@ import type { ImportEntityProperties } from '../../n8n-packages.types';
 import type { SerializedSkill } from '../../spec/serialized/skill.schema';
 import { decideImportConflictAction } from '../import-conflict-policy';
 import { SkillImporter } from '../skill/skill-importer';
+import { decideWorkflowArchiveTransition } from '../workflow/workflow-archive-transition';
 import { derivePublishedState } from '../workflow/workflow-published-state';
 import { decidePublishingAction } from '../workflow/workflow-publishing-policy';
 
@@ -43,6 +45,7 @@ export class AgentImporter {
 		private readonly configService: AgentConfigService,
 		private readonly configPreparation: AgentConfigPreparationService,
 		private readonly policyService: AgentPolicyService,
+		private readonly publishService: AgentPublishService,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly settingsService: AgentsSettingsService,
 		private readonly skillImporter: SkillImporter,
@@ -193,9 +196,11 @@ export class AgentImporter {
 						// The shared skill writes of this package raised the revision of the Agents that follow them.
 						expectedRevision:
 							item.existing.revision + (raisedRevisions.get(item.sourceAgentId) ?? 0),
+						allowArchivedUpdate: item.existing.isArchived,
 					},
 				);
 			}
+			agent = await this.applyArchiveTransition(context, item, agent);
 			const channels = item.channels.map((channel) => this.withSetupUrl(channel, agent));
 			outcomes.push({
 				status: item.action === 'create' ? 'created' : 'updated',
@@ -238,13 +243,20 @@ export class AgentImporter {
 			? await this.agentsService.findById(agent.sourceAgentId, context.projectId)
 			: null;
 		const statuses = { create: 'created', update: 'updated', skip: 'skipped' } as const;
-		const publishingAction = decidePublishingAction(options.publishingPolicy, {
-			status: statuses[action],
-			currentlyPublished: Boolean(existing?.activeVersionId),
-			sourcePublished: derivePublishedState(agent.metadata),
-		});
+		// The archive step unpublishes an archived Agent, so the publication sweep leaves it alone.
+		const publishingAction = agent.isArchived
+			? 'noop'
+			: decidePublishingAction(options.publishingPolicy, {
+					status: statuses[action],
+					currentlyPublished: Boolean(existing?.activeVersionId),
+					sourcePublished: derivePublishedState(agent.metadata),
+				});
+		const archiveTransition =
+			action === 'skip'
+				? null
+				: decideWorkflowArchiveTransition(agent.isArchived, existing?.isArchived ?? false);
 		const channels: ImportedChannel[] = [];
-		const item = { ...structuredClone(agent), publishingAction, channels };
+		const item = { ...structuredClone(agent), publishingAction, archiveTransition, channels };
 		if (action === 'create') return { ...item, action, existing: null };
 		if (!existing) {
 			return {
@@ -255,6 +267,20 @@ export class AgentImporter {
 			};
 		}
 		return { ...item, action, existing };
+	}
+
+	private async applyArchiveTransition(
+		context: AgentImportMatchContext,
+		item: AgentPlanItem,
+		agent: ProjectAgent,
+	): Promise<ProjectAgent> {
+		if (item.archiveTransition === 'archive') {
+			return await this.publishService.archiveAgent(agent.id, context.projectId, context.user);
+		}
+		if (item.archiveTransition === 'unarchive') {
+			return await this.publishService.unarchiveAgent(agent.id, context.projectId, context.user);
+		}
+		return agent;
 	}
 
 	private withSetupUrl(channel: ImportedChannel, agent: ProjectAgent): ImportedAgentChannel {

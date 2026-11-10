@@ -96,6 +96,7 @@ const { resolveProjectName } = useAgentProjectNameResolver();
 
 const {
 	agentsResources,
+	archivedSelection,
 	isLoadingResources,
 	loadError,
 	hasMoreAgentsToLoad,
@@ -106,6 +107,13 @@ const {
 	setAgentsResources,
 	refreshAgentName,
 } = useAgentResourcesLocator(projectId, resolveProjectName);
+
+// The dropdown shows an archived item only while it is the selected value.
+const dropdownResources = computed(() => {
+	const archived = archivedSelection.value;
+	if (!archived || archived.value !== props.modelValue?.value) return agentsResources.value;
+	return [archived, ...agentsResources.value];
+});
 
 const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getModeLabel } =
 	useResourceLocatorModes(
@@ -300,7 +308,7 @@ defineExpose({ showDropdown });
 			:show="isDropdownVisible"
 			:filterable="true"
 			:filter-required="false"
-			:resources="agentsResources"
+			:resources="dropdownResources"
 			:loading="isLoadingResources"
 			:filter="searchFilter"
 			:has-more="hasMoreAgentsToLoad"
