@@ -550,15 +550,27 @@ describe('project shell import', () => {
 			expect((await reconcile('overwrite')).removedWorkflows).toEqual([]);
 		});
 
-		it('rejects the import when the API key lacks the workflow:delete scope', async () => {
-			await expect(
-				importProjects(
-					owner,
-					await projectPackage(),
-					['project:create', 'project:update', 'folder:create', 'folder:update', 'workflow:import'],
-					{ projectConflictPolicy: 'overwrite' },
-				),
-			).rejects.toBeInstanceOf(ForbiddenError);
+		it('requires workflow:delete and folder:delete only when the import removes one', async () => {
+			const overwrite = async (apiKeyScopes: string[]) =>
+				await importProjects(owner, await projectPackage(), apiKeyScopes, {
+					projectConflictPolicy: 'overwrite',
+				});
+
+			await overwrite(['workflow:import']);
+
+			const stale = await createWorkflow({ name: 'Stale' }, project);
+			await expect(overwrite(['workflow:import'])).rejects.toBeInstanceOf(ForbiddenError);
+			expect((await findWorkflow(stale.id))?.isArchived).toBe(false);
+			await overwrite(['workflow:import', 'workflow:delete']);
+			expect((await findWorkflow(stale.id))?.isArchived).toBe(true);
+
+			const empty = await createFolder(project, { name: 'empty' });
+			await expect(overwrite(['workflow:import', 'workflow:delete'])).rejects.toBeInstanceOf(
+				ForbiddenError,
+			);
+			expect(await findFolder(empty.id)).not.toBeNull();
+			await overwrite(['workflow:import', 'folder:delete']);
+			expect(await findFolder(empty.id)).toBeNull();
 		});
 
 		it.each(['merge', 'fail'] as const)(

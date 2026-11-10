@@ -57,9 +57,10 @@ flowchart LR
   modes, so Apply returns it as a blocker. `import` throws the same error for it as before.
 - A new gate returns issues. Throw only for API-key scopes and malformed packages. Older
   checks still throw in both modes: the licence checks and `assertCanPublish`.
-- Project and folder gates read the plan, not the package. A project or folder that the import
-  keeps as it is needs no scope. Workflow packages still check the folder scopes and licence
-  before the plan (LIGO-1438).
+- Project, folder and removal gates read the plan, not the package. A project or folder that the
+  import keeps as it is needs no scope, and an `overwrite` that removes nothing needs no delete
+  scope. Workflow packages still check the folder scopes and licence before the plan
+  (LIGO-1438).
 
 ### Adding an IMPORT property
 

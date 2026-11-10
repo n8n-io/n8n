@@ -15,6 +15,7 @@ import type {
 	WorkflowImportPlan,
 	WorkflowPlanItem,
 } from '../entities/workflow/workflow-import.types';
+import type { WorkflowRemovalPlan } from '../entities/workflow/workflow-removal.types';
 import type { CredentialConflictPolicy } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
 
@@ -79,8 +80,7 @@ export function assertProjectWritesAllowed(
 
 /**
  * A workflow can go into a folder that already exists without the folders licence, as elsewhere
- * in n8n. Creating, changing or removing a folder needs the licence. The folder:delete scope is
- * checked before planning.
+ * in n8n. Creating, changing or removing a folder needs the licence.
  */
 export function assertFolderWritesAllowed(
 	licenseState: LicenseState,
@@ -103,6 +103,17 @@ export function assertFolderWritesAllowed(
 	}
 	if (hasCreations) assertPackageImportApiKeyScopes(apiKeyScopes, ['folder:create']);
 	if (hasUpdates) assertPackageImportApiKeyScopes(apiKeyScopes, ['folder:update']);
+	if (hasRemovals) assertPackageImportApiKeyScopes(apiKeyScopes, ['folder:delete']);
+}
+
+/** An `overwrite` import that removes no workflow needs no `workflow:delete` scope. */
+export function assertWorkflowRemovalsAllowed(
+	apiKeyScopes: string[] | undefined,
+	removalPlans: Array<Pick<WorkflowRemovalPlan, 'removals'>>,
+): void {
+	if (removalPlans.some((plan) => plan.removals.length > 0)) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['workflow:delete']);
+	}
 }
 
 /**

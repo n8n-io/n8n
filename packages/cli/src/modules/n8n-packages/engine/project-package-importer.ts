@@ -11,7 +11,6 @@ import type {
 	CredentialBindingRequest,
 	CredentialUpdateScope,
 } from '../entities/credential/credential.types';
-import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter, projectRefusalError } from '../entities/project/project-importer';
 import type { ProjectImportPlan } from '../entities/project/project-import.types';
@@ -450,13 +449,6 @@ export class ProjectPackageImporter {
 	): void {
 		if ((manifest.workflows?.length ?? 0) > 0) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:import']);
-		}
-
-		// `overwrite` archives workflows the package omits, so require the scope up front rather than
-		// discovering mid-import that the caller may not remove what reconciliation demands.
-		if (removesUnpackagedWorkflows(request.folderConflictPolicy)) {
-			// Folders it empties go too, so it needs both removal scopes up front.
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:delete', 'folder:delete']);
 		}
 
 		// Selection imports preserve folders, so explicit deletions need only workflow:delete.
