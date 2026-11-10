@@ -821,7 +821,6 @@ it('archives a matched Agent only with the agent:delete API-key grant', async ()
 	await agents.update({ projectId: sourceProject.id }, { isArchived: true });
 	const archived = await download();
 	await agents.delete({ projectId: sourceProject.id });
-	await deleteSourceSkills();
 	expect((await upload(live)).statusCode).toBe(200);
 	const scopes: ApiKeyScope[] = [
 		'agent:import',
