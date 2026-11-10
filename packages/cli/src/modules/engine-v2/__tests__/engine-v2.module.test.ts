@@ -163,6 +163,16 @@ describe('EngineV2Module', () => {
 			expect(runtime.init).not.toHaveBeenCalled();
 		});
 
+		it('starts in queue mode', async () => {
+			executionsConfig.mode = 'queue';
+
+			await module.init();
+
+			expect(controlPlaneServer.start).toHaveBeenCalled();
+			expect(redisClientService.createClient).toHaveBeenCalledTimes(1);
+			expect(runtime.init).not.toHaveBeenCalled();
+		});
+
 		it('registers the client as the data plane provider', async () => {
 			await module.init();
 
