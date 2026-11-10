@@ -12,7 +12,6 @@ export interface RunRecord {
 	/** Status of every execution of the workload workflow, by id. */
 	executions: Record<string, string>;
 	effects: Effect[];
-	executionsByRequest: Record<string, string[]>;
 	bull: Pick<BullState, 'wait' | 'active'>;
 }
 
@@ -35,21 +34,14 @@ export function everyExecutionFinished({ executions }: RunRecord): Violation[] {
 }
 
 /** An accepted request has its effect, or an execution that ended without success accounts for it. */
-export function noAcceptedRequestLost({
-	requests,
-	executions,
-	effects,
-	executionsByRequest,
-}: RunRecord): Violation[] {
+export function noAcceptedRequestLost({ requests, executions, effects }: RunRecord): Violation[] {
 	const done = new Set(effects.map((e) => e.requestId));
 	const lost = accepted(requests)
 		.filter((r) => !done.has(r.requestId))
-		.filter(
-			(r) =>
-				!(executionsByRequest[r.requestId] ?? []).some(
-					(id) => id in executions && executions[id] !== 'success',
-				),
-		)
+		.filter((r) => {
+			const status = r.executionId && executions[r.executionId];
+			return !status || status === 'success';
+		})
 		.map((r) => r.requestId);
 	return lost.length ? [{ invariant: 'no accepted request lost', detail: { missing: lost } }] : [];
 }

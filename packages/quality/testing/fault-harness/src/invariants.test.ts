@@ -10,16 +10,21 @@ import {
 	queueDrained,
 } from './invariants';
 
-const request = (requestId: string, status = 200) => ({ requestId, status, sentAt: 0, ms: 1 });
+const request = (requestId: string, status = 200, executionId?: string) => ({
+	requestId,
+	status,
+	sentAt: 0,
+	ms: 1,
+	executionId,
+});
 
 const healthy: RunRecord = {
-	requests: [request('a'), request('b'), request('c', 0)],
+	requests: [request('a', 200, '1'), request('b', 200, '2'), request('c', 0)],
 	executions: { 1: 'success', 2: 'success' },
 	effects: [
 		{ requestId: 'a', executionId: '1' },
 		{ requestId: 'b', executionId: '2' },
 	],
-	executionsByRequest: {},
 	bull: { wait: [], active: [] },
 };
 
@@ -46,7 +51,6 @@ describe('workload invariants', () => {
 			...healthy,
 			effects: [healthy.effects[0]],
 			executions: { 1: 'success', 2: 'crashed' },
-			executionsByRequest: { b: ['2'] },
 		};
 		expect(noAcceptedRequestLost(failed)).toEqual([]);
 	});
@@ -54,9 +58,9 @@ describe('workload invariants', () => {
 	it('flag a missing effect when only another request has a failed execution', () => {
 		const masked = {
 			...healthy,
+			requests: [request('a', 200, '1'), request('b', 200, '2'), request('c', 0, '3')],
 			effects: [healthy.effects[0]],
 			executions: { 1: 'success', 3: 'error' },
-			executionsByRequest: {},
 		};
 		expect(noAcceptedRequestLost(masked)).toEqual([
 			{ invariant: 'no accepted request lost', detail: { missing: ['b'] } },
@@ -64,12 +68,7 @@ describe('workload invariants', () => {
 	});
 
 	it('flag a missing effect when the execution of the request succeeded', () => {
-		const succeeded = {
-			...healthy,
-			effects: [healthy.effects[0]],
-			executionsByRequest: { b: ['2'] },
-		};
-		expect(noAcceptedRequestLost(succeeded)).toEqual([
+		expect(noAcceptedRequestLost({ ...healthy, effects: [healthy.effects[0]] })).toEqual([
 			{ invariant: 'no accepted request lost', detail: { missing: ['b'] } },
 		]);
 	});
