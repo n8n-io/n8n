@@ -188,10 +188,12 @@ export class ProvisioningService {
 		}
 
 		let projectRoleMap: Record<string, string>;
+		let hasInvalidEntryType = false;
 		try {
 			projectRoleMap = {};
 			for (const entry of projectIdToRoles) {
 				if (typeof entry !== 'string') {
+					hasInvalidEntryType = true;
 					this.logger.warn(
 						`Skipping invalid project role mapping entry. Expected string, received ${typeof entry}.`,
 						{ userId, entry },
@@ -223,24 +225,31 @@ export class ProvisioningService {
 		const projectIds = Object.keys(projectRoleMap);
 		const roleSlugs = [...new Set(Object.values(projectRoleMap))];
 
-		if (projectIds.length === 0) {
+		// An array with only invalid entries is treated as an authoritative
+		// "no project roles" claim unless the entries were not strings at all.
+		if (projectIds.length === 0 && hasInvalidEntryType) {
 			return;
 		}
 
-		const [existingProjects, existingRoles] = await Promise.all([
-			this.projectRepository.find({
-				where: { id: In(projectIds), type: Not('personal') },
-				select: ['id'],
-			}),
-			this.roleRepository.find({
-				where: {
-					slug: In(roleSlugs),
-					roleType: 'project',
-				},
-				select: ['displayName', 'slug'],
-			}),
-		]);
-		const existingProjectIds = new Set(existingProjects.map((project) => project.id));
+		const existingProjectIds = new Set<string>();
+		let existingRoles: Role[] = [];
+		if (projectIds.length > 0) {
+			const [existingProjects, roles] = await Promise.all([
+				this.projectRepository.find({
+					where: { id: In(projectIds), type: Not('personal') },
+					select: ['id'],
+				}),
+				this.roleRepository.find({
+					where: {
+						slug: In(roleSlugs),
+						roleType: 'project',
+					},
+					select: ['displayName', 'slug'],
+				}),
+			]);
+			existingProjects.forEach((project) => existingProjectIds.add(project.id));
+			existingRoles = roles;
+		}
 
 		const validProjectToRoleMappings: Array<{ projectId: string; roleSlug: string }> = [];
 
@@ -267,10 +276,9 @@ export class ProvisioningService {
 
 		if (validProjectToRoleMappings.length === 0) {
 			this.logger.warn(
-				'Skipping project role provisioning altogether. No valid project to role mappings found.',
+				'No valid project to role mappings found. Removing existing project access.',
 				{ userId, projectRoleMap },
 			);
-			return;
 		}
 
 		const currentlyAccessibleProjects = await this.projectRepository.find({
@@ -287,6 +295,13 @@ export class ProvisioningService {
 		const projectsToRemoveAccessFrom = currentlyAccessibleProjects.filter(
 			(project) => !validProjectIds.has(project.id),
 		);
+
+		if (
+			projectsToRemoveAccessFrom.length === 0 &&
+			validProjectToRoleMappings.length === 0
+		) {
+			return;
+		}
 
 		await this.projectRepository.manager.transaction(async (tx) => {
 			for (const project of projectsToRemoveAccessFrom) {

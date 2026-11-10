@@ -626,6 +626,7 @@ describe('ProvisioningService', () => {
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(entityManager.delete).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipping project role provisioning. Invalid projectIdToRole type: expected array, received object',
@@ -642,6 +643,7 @@ describe('ProvisioningService', () => {
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(entityManager.delete).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipping project role provisioning. Invalid projectIdToRole type: expected array, received string',
@@ -658,6 +660,7 @@ describe('ProvisioningService', () => {
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(entityManager.delete).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipping invalid project role mapping entry. Expected string, received object.',
@@ -676,12 +679,14 @@ describe('ProvisioningService', () => {
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(entityManager.delete).not.toHaveBeenCalled();
 		});
 
-		it('should do nothing if the provided role does not exist', async () => {
+		it('should not add access if the provided role does not exist', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = ['project-1:non-existent-role'];
-			projectRepository.find.mockResolvedValue([mock<Project>({ id: 'project-1' })]);
+			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'project-1' })]);
+			projectRepository.find.mockResolvedValueOnce([]);
 			roleRepository.find.mockResolvedValue([]);
 
 			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
@@ -689,9 +694,10 @@ describe('ProvisioningService', () => {
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(entityManager.delete).not.toHaveBeenCalled();
 		});
 
-		it('should do nothing if no valid project to role mappings are found', async () => {
+		it('should remove existing access if no valid project to role mappings are found', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = [
 				'nonExistentProject:non-existent-role',
@@ -699,6 +705,10 @@ describe('ProvisioningService', () => {
 			];
 			// Mock that no projects exist
 			projectRepository.find.mockResolvedValueOnce([]);
+			// Mock that the user still has access to one existing project
+			projectRepository.find.mockResolvedValueOnce([
+				mock<Project>({ id: 'existing-project', type: 'team' }),
+			]);
 			// Mock that roles exist but projects don't
 			roleRepository.find.mockResolvedValue([
 				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
@@ -708,7 +718,16 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'existing-project',
+				userId,
+			});
 			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('sso-user-project-access-updated', {
+				projectsAdded: 0,
+				projectsRemoved: 1,
+				userId,
+			});
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped provisioning project role for project with ID nonExistentProject, because project does not exist or is a personal project.',
 				{
@@ -717,6 +736,52 @@ describe('ProvisioningService', () => {
 					roleSlug: 'project:non-existent-role',
 				},
 			);
+		});
+
+		it('should remove existing access when the project role claim is empty', async () => {
+			const userId = 'user-id-123';
+			// The claim is empty, so no existing project lookup is needed.
+			projectRepository.find.mockResolvedValueOnce([
+				mock<Project>({ id: 'existing-project', type: 'team' }),
+			]);
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionProjectRolesForUser(userId, []);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'existing-project',
+				userId,
+			});
+			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('sso-user-project-access-updated', {
+				projectsAdded: 0,
+				projectsRemoved: 1,
+				userId,
+			});
+		});
+
+		it('should remove team access when the claim only references a personal project', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = ['personalProject1:viewer'];
+			// Personal projects are excluded from the existing-project lookup.
+			projectRepository.find.mockResolvedValueOnce([]);
+			projectRepository.find.mockResolvedValueOnce([
+				mock<Project>({ id: 'team-project', type: 'team' }),
+			]);
+			roleRepository.find.mockResolvedValue([
+				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
+			]);
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'team-project',
+				userId,
+			});
+			expect(projectService.addUser).not.toHaveBeenCalled();
 		});
 
 		it('should skip projectIds that reference a personal project', async () => {
@@ -788,6 +853,10 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'project1',
+				userId,
+			});
 			expect(projectService.addUser).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipping project role provisioning for role with slug project:admin, because role does not exist or is not specific to projects.',
