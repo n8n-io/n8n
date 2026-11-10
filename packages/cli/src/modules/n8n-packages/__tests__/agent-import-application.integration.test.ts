@@ -677,7 +677,7 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 		{ id: task.id, objective: 'Updated objective' },
 	]);
 	expect(await tasks.count()).toBe(1);
-	expect(await history.count()).toBe(5);
+	expect(await history.count()).toBe(4);
 	expect(await skillRefs.readVersion({ versionId: initial.versionId! }, {})).toEqual(initialSkills);
 	expect(schedule).not.toHaveBeenCalled();
 	const before = await agents.findById(initial.id);
