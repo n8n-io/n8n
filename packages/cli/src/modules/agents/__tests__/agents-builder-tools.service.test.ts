@@ -2003,50 +2003,30 @@ describe('AgentsBuilderToolsService', () => {
 		});
 	});
 
-	describe('credential suggestions', () => {
-		const ownCredential = { id: 'own', name: 'My Anthropic', type: 'anthropicApi' };
-		const colleagueCredential = { id: 'colleague', name: 'Their Anthropic', type: 'anthropicApi' };
-		const globalCredential = { id: 'global', name: 'Shared Slack', type: 'slackApi' };
+	it('resolves the main model only from credentials the user can use through their own access', async () => {
+		const { service, builderModelLiveLookupService, credentialsPermissionChecker } = makeService();
+		credentialProvider.list.mockResolvedValue([
+			{ id: 'own', name: 'My Anthropic', type: 'anthropicApi' },
+			{ id: 'colleague', name: 'Their Anthropic', type: 'anthropicApi' },
+		]);
+		credentialsPermissionChecker.filterUsableThroughOwnAccess.mockImplementation(
+			async (_user, credentials) => credentials.filter((c) => c.id !== 'colleague'),
+		);
+		builderModelLiveLookupService.list.mockResolvedValue([
+			{ name: 'Claude Sonnet 5', value: 'claude-sonnet-5' },
+		]);
+		const tool = service
+			.getTools(agentId, projectId, credentialProvider, credentialService, user)
+			.json.find((candidate) => candidate.name === BUILDER_TOOLS.RESOLVE_LLM)!;
 
-		function makeServiceWithCredentials() {
-			const setup = makeService();
-			credentialProvider.list.mockResolvedValue([
-				ownCredential,
-				colleagueCredential,
-				globalCredential,
-			]);
-			setup.credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
-				colleagueCredential.id,
-			]);
-			return setup;
-		}
+		const result = await tool.handler!(
+			{ provider: 'anthropic', model: 'claude-sonnet-5' },
+			ctx as never,
+		);
 
-		it('resolves the main model only from credentials the user can use through their own access', async () => {
-			const { service, builderModelLiveLookupService, credentialsPermissionChecker } =
-				makeServiceWithCredentials();
-			builderModelLiveLookupService.list.mockResolvedValue([
-				{ name: 'Claude Sonnet 5', value: 'claude-sonnet-5' },
-			]);
-			const tool = service
-				.getTools(agentId, projectId, credentialProvider, credentialService, user)
-				.json.find((candidate) => candidate.name === BUILDER_TOOLS.RESOLVE_LLM)!;
-
-			const result = await tool.handler!(
-				{ provider: 'anthropic', model: 'claude-sonnet-5' },
-				ctx as never,
-			);
-
-			expect(result).toEqual(
-				expect.objectContaining({ ok: true, credentialId: 'own', credentialName: 'My Anthropic' }),
-			);
-			expect(
-				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
-			).toHaveBeenCalledWith(
-				user,
-				[ownCredential.id, colleagueCredential.id, globalCredential.id],
-				{ ignoreGlobalUseScope: true },
-			);
-		});
+		expect(result).toEqual(
+			expect.objectContaining({ ok: true, credentialId: 'own', credentialName: 'My Anthropic' }),
+		);
 	});
 
 	describe('agent_builder_build_custom_tool tool', () => {

@@ -729,25 +729,16 @@ export class CredentialsService {
 
 	/**
 	 * The credentials the user can use in this workflow or project through their
-	 * own access, as if they held no instance-wide `credential:use`: owned, shared
-	 * with them, in a project they belong to, or global. Execution redaction asks
-	 * the same question, so the n8n Assistant offers only these.
+	 * own access. The n8n Assistant offers only these.
 	 */
 	async getCredentialsAUserCanUseThemselves(
 		user: User,
 		options: Parameters<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>[1],
 	): Promise<WorkflowCredentialResult[]> {
-		const credentials = await this.getCredentialsAUserCanUseInAWorkflow(user, options);
-		if (credentials.length === 0) return credentials;
-
-		const inaccessibleIds = new Set(
-			await this.credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser(
-				user,
-				credentials.map((c) => c.id),
-				{ ignoreGlobalUseScope: true },
-			),
+		return await this.credentialsPermissionChecker.filterUsableThroughOwnAccess(
+			user,
+			await this.getCredentialsAUserCanUseInAWorkflow(user, options),
 		);
-		return credentials.filter((c) => !inaccessibleIds.has(c.id));
 	}
 
 	/**

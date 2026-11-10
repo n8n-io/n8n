@@ -99,7 +99,6 @@ import {
 } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
-import { withSuggestibleCredentials } from '../utils/suggestible-credentials';
 import { SkillNameTakenError, skillNameTakenToolMessage } from '@/modules/skills';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
@@ -604,19 +603,11 @@ export class AgentsBuilderToolsService {
 		user: User,
 		options?: BuilderToolsOptions,
 	): BuilderTools {
-		// The model picker sees only the suggestible credentials. Validation and
-		// test runs keep the full provider.
-		const suggestionProvider = withSuggestibleCredentials(
-			credentialProvider,
-			this.credentialsPermissionChecker,
-			user,
-		);
 		return {
 			json: this.getJsonTools(
 				agentId,
 				projectId,
 				credentialProvider,
-				suggestionProvider,
 				credentialService,
 				user,
 				options,
@@ -696,7 +687,6 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
-		suggestionProvider: CredentialProvider,
 		credentialService: BuilderCredentialService,
 		user: User,
 		options?: BuilderToolsOptions,
@@ -725,7 +715,7 @@ export class AgentsBuilderToolsService {
 			this.withConfigMutationMarker(publishAgentTool, agentId),
 			this.withConfigMutationMarker(unpublishAgentTool, agentId),
 			callAgentTool,
-			this.createLlmTool(suggestionProvider, modelLookup, user, projectId),
+			this.createLlmTool(credentialProvider, modelLookup, user, projectId),
 			this.withConfigMutationMarker(
 				this.withConfigSnapshotOnResume(
 					this.createConfigureChannelTool(agentId, projectId, user, track),
@@ -838,7 +828,16 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 	): BuiltTool {
 		return buildResolveLlmTool({
-			credentialProvider,
+			// The model picker offers only credentials the user can use through their
+			// own access. Validation and test runs keep the full provider.
+			credentialProvider: {
+				resolve: async (credentialId) => await credentialProvider.resolve(credentialId),
+				list: async () =>
+					await this.credentialsPermissionChecker.filterUsableThroughOwnAccess(
+						user,
+						await credentialProvider.list(),
+					),
+			},
 			modelLookup,
 			isProviderServedByGateway: async (provider) => {
 				try {

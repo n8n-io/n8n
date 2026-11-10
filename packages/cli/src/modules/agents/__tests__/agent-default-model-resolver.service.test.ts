@@ -18,8 +18,8 @@ function makeService(credentials: TestCredential[] = [], inaccessibleIds: string
 	const aiGatewayService = mock<AiGatewayService>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(credentials as never);
-	credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue(
-		inaccessibleIds,
+	credentialsPermissionChecker.filterUsableThroughOwnAccess.mockImplementation(async (_user, all) =>
+		all.filter((c) => !inaccessibleIds.includes(c.id)),
 	);
 
 	return {

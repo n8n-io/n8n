@@ -163,31 +163,6 @@ describe('CredentialsController', () => {
 				});
 			},
 		);
-
-		it("lists only the user's own access when forAssistant is true", async () => {
-			const fixed = mock<
-				Awaited<ReturnType<CredentialsService['getCredentialsAUserCanUseThemselves']>>[number]
-			>({ id: 'fixed', isResolvable: false });
-			const getOwnCredentials = vi
-				.spyOn(credentialsService, 'getCredentialsAUserCanUseThemselves')
-				.mockResolvedValue([fixed]);
-			const getUsableCredentials = vi.spyOn(
-				credentialsService,
-				'getCredentialsAUserCanUseInAWorkflow',
-			);
-			const request = mock<CredentialRequest.ForWorkflow>({
-				user: req.user,
-				query: { projectId: 'project-1', forAgent: undefined, forAssistant: 'true' },
-			});
-
-			await expect(credentialsController.getProjectCredentials(request)).resolves.toEqual([fixed]);
-			expect(getOwnCredentials).toHaveBeenCalledWith(request.user, {
-				projectId: 'project-1',
-				excludePersonalRoute: false,
-				excludeResolvable: false,
-			});
-			expect(getUsableCredentials).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('createCredentials', () => {

@@ -252,6 +252,28 @@ export class CredentialsPermissionChecker {
 		return unusable.map((c) => c.id);
 	}
 
+	/**
+	 * The credentials that `user` can use through their own access: owned, shared
+	 * with them, in a project they belong to, or global. An instance-wide
+	 * `credential:use` does not count. Redaction asks the same question, so the
+	 * n8n Assistant suggests only these.
+	 */
+	async filterUsableThroughOwnAccess<T extends { id: string }>(
+		user: User,
+		credentials: T[],
+	): Promise<T[]> {
+		if (credentials.length === 0) return credentials;
+
+		const inaccessibleIds = new Set(
+			await this.resolveInaccessibleCredentialIdsForUser(
+				user,
+				credentials.map((c) => c.id),
+				{ ignoreGlobalUseScope: true },
+			),
+		);
+		return credentials.filter((c) => !inaccessibleIds.has(c.id));
+	}
+
 	/** Loads the role relation (scopes are eager) so `hasGlobalScope` can resolve. */
 	private async loadUserWithRole(userId: string) {
 		return await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });

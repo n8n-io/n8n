@@ -3005,10 +3005,9 @@ export class InstanceAiAdapterService {
 		const adapter: InstanceAiCredentialService = {
 			async list(options) {
 				// In a project-bound thread the credential list is always the bound
-				// project's usable set, narrowed to what the user can use through their
-				// own access: the credentials whose run data redaction lets them see.
-				// `preventTampering` (workflow.service.ee.ts) accepts all of them. A
-				// caller-supplied workflowId/projectId must not broaden it.
+				// project's usable set, narrowed to the user's own access. `preventTampering`
+				// (workflow.service.ee.ts) accepts all of it. A caller-supplied
+				// workflowId/projectId must not broaden it.
 				if (boundProjectId) {
 					const scoped = await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 						projectId: boundProjectId,
@@ -3025,8 +3024,8 @@ export class InstanceAiAdapterService {
 				}
 
 				// Unbound runs (temporary-workflow archiving, the only caller without a
-				// bound project) scope to the caller-supplied workflow or project, with the
-				// same own-access narrowing, so the save path still accepts every candidate.
+				// bound project) scope to the caller-supplied workflow or project so the
+				// candidates still match what the save path will accept.
 				if (options?.workflowId || options?.projectId) {
 					const scoped = options.workflowId
 						? await credentialsService.getCredentialsAUserCanUseThemselves(user, {

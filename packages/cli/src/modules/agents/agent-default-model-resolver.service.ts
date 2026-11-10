@@ -11,7 +11,6 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
 import { LLM_PROVIDER_DEFAULTS, LLM_PROVIDER_PRIORITY } from './llm-provider-defaults';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { filterSuggestibleCredentials } from './utils/suggestible-credentials';
 import { findVerifiedModelId } from './utils/provider-model-id';
 
 /**
@@ -41,8 +40,7 @@ export class AgentDefaultModelResolverService {
 	 * or the default is not live — the caller keeps the agent as a draft.
 	 */
 	async resolve(user: User, projectId: string): Promise<AgentModelCredentialConfig | null> {
-		const credentials = await filterSuggestibleCredentials(
-			this.credentialsPermissionChecker,
+		const credentials = await this.credentialsPermissionChecker.filterUsableThroughOwnAccess(
 			user,
 			await createAgentCredentialProvider(this.credentialsService, projectId, user).list(),
 		);

@@ -1393,6 +1393,22 @@ describe('CredentialsPermissionChecker', () => {
 		});
 	});
 
+	it("filterUsableThroughOwnAccess keeps only what the user's own access allows", async () => {
+		const user = mock<User>({ role: GLOBAL_OWNER_ROLE });
+		credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([
+			{ id: 'colleague', name: 'Their Gmail', exists: true, ownerProject: null },
+		]);
+
+		await expect(
+			permissionChecker.filterUsableThroughOwnAccess(user, [{ id: 'own' }, { id: 'colleague' }]),
+		).resolves.toEqual([{ id: 'own' }]);
+		expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
+			user,
+			['own', 'colleague'],
+			{ ignoreGlobalUseScope: true },
+		);
+	});
+
 	describe('resolveInaccessibleCredentialIdsForUserId', () => {
 		const userId = 'user-123';
 

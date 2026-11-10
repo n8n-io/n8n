@@ -527,15 +527,7 @@ describe('NodeCredentials', () => {
 
 	it('keeps the Assistant scope in the credentials fetch', () => {
 		renderComponent(
-			{
-				props: {
-					node: httpNode,
-					standalone: true,
-					workflowId: 'wf-setup',
-					projectId: 'project-1',
-					forAssistant: true,
-				},
-			},
+			{ props: { node: httpNode, standalone: true, workflowId: 'wf-setup', forAssistant: true } },
 			{ merge: true },
 		);
 
