@@ -40,14 +40,35 @@ function serializeLifecycleEvent(
 	}
 
 	const bytes = Buffer.byteLength(serialized.result);
-	if (bytes > maxFrameBytes) {
-		// TODO(CET-302): decide what to send for an event over the size limit.
-		return failure(logger, 'Dropped a lifecycle event that exceeds the frame size limit', event, {
-			bytes,
-		});
+	if (bytes <= maxFrameBytes) return { ok: true, frame: serialized.result };
+
+	// An event over the limit sheds what the host can read from the data plane
+	// instead: a failed step's details, then its stack. The message always fits.
+	for (const slimmer of slimmerForms(event)) {
+		const frame = JSON.stringify(slimmer);
+		if (Buffer.byteLength(frame) > maxFrameBytes) continue;
+		logger.info(
+			'Sent a lifecycle event without part of its error: it exceeds the frame size limit',
+			{
+				executionId: event.executionId,
+				type: event.type,
+				bytes,
+			},
+		);
+		return { ok: true, frame };
 	}
 
-	return { ok: true, frame: serialized.result };
+	return failure(logger, 'Dropped a lifecycle event that exceeds the frame size limit', event, {
+		bytes,
+	});
+}
+
+function* slimmerForms(event: LifecycleEvent): Generator<LifecycleEvent> {
+	if (event.type !== 'step:failed') return;
+	const { details: _details, ...withoutDetails } = event.error;
+	yield { ...event, error: withoutDetails };
+	const { stack: _stack, ...messageOnly } = withoutDetails;
+	yield { ...event, error: messageOnly };
 }
 
 function deserializeLifecycleEvent(frame: string, logger: Logger): Result<LifecycleEvent, Error> {

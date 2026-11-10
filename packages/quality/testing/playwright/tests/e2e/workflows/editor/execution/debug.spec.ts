@@ -77,7 +77,7 @@ test.describe(
 		});
 
 		// TODO(CET-332): the fixture runs Code nodes, and engine v2 does not support task runners yet.
-		test('should show the structured error of an imported failed execution @engine:v2', async ({
+		test('should show the structured error of a failed step, live and after import @engine:v2', async ({
 			n8n,
 		}) => {
 			// Manual Trigger -> `Error` Set node whose expression names a node that does
@@ -87,15 +87,24 @@ test.describe(
 				NOTIFICATIONS.PROBLEM_IN_NODE,
 				{ timeout: 10_000 },
 			);
-			await importLastExecutionForDebugging(n8n);
 
+			// Live, from the push messages of the run.
 			await n8n.canvas.openNode('Error');
+			await expectMissingNodeError(n8n);
+			await n8n.ndv.close();
 
+			// After a reload, from the stored execution.
+			await importLastExecutionForDebugging(n8n);
+			await n8n.canvas.openNode('Error');
+			await expectMissingNodeError(n8n);
+		});
+
+		async function expectMissingNodeError(n8n: n8nPage) {
 			await expect(n8n.ndv.getNodeRunErrorMessage()).toContainText("Referenced node doesn't exist");
 			await expect(n8n.ndv.getNodeRunErrorDescription()).toContainText(
 				"The node 'Missing' doesn't exist, but it's used in an expression here.",
 			);
-		});
+		}
 
 		test('should exit debug mode after successful execution @engine:v2-pending', async ({
 			n8n,

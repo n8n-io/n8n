@@ -28,7 +28,12 @@ const every: LifecycleEvent[] = [
 	{ type: 'execution:cancelled', ...executionEvent },
 	{ type: 'step:started', ...stepEvent },
 	{ type: 'step:completed', ...stepEvent, outputs: [[{ json: { x: 1 } }], null] },
-	{ type: 'step:failed', ...stepEvent },
+	{ type: 'step:failed', ...stepEvent, error: { name: 'Error', message: 'boom' } },
+	{
+		type: 'step:failed',
+		...stepEvent,
+		error: { name: 'NodeApiError', message: 'boom', stack: 'at x', details: { httpCode: '429' } },
+	},
 ];
 
 describe('lifecycleEventSchema', () => {

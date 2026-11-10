@@ -1,9 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { LifecycleEvent } from '@n8n/engine';
-import { fromStepInputs } from '@n8n/node-engine-compatibility';
+import type { LifecycleEvent, StepError } from '@n8n/engine';
+import { fromStepInputs, fromV1ErrorDetails } from '@n8n/node-engine-compatibility';
 import type { ExecutionStatus, INodeExecutionData, ITaskData } from 'n8n-workflow';
-import { WorkflowOperationError } from 'n8n-workflow';
 
 import { Push } from '@/push';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
@@ -14,13 +13,8 @@ import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connecti
 /** A lifecycle event scoped to one step. */
 type StepUpdate = Extract<LifecycleEvent, { stepId: string }>;
 
-/**
- * Placeholder error: no failure detail is available yet, and without an
- * `error` the editor would show a failed step as successful.
- *
- * TODO(CAT-2878 follow-up): carry the real failure through and drop this.
- */
-const STEP_FAILURE_DESCRIPTION = 'Engine v2 does not report error detail yet.';
+/** How a step settled: with its output slots, or with the error it recorded. */
+type StepOutcome = { outputs: INodeExecutionData[][] } | { error: StepError };
 
 /**
  * Relays engine lifecycle events to the editor as push messages.
@@ -64,9 +58,9 @@ export class EngineLifecycleEventPushRelay {
 			case 'step:started':
 				return this.onStepStarted(update, session);
 			case 'step:completed':
-				return this.onStepSettled(update, session, fromStepInputs(update.outputs));
+				return this.onStepSettled(update, session, { outputs: fromStepInputs(update.outputs) });
 			case 'step:failed':
-				return this.onStepSettled(update, session, undefined);
+				return this.onStepSettled(update, session, { error: update.error });
 			case 'execution:completed':
 				return this.onExecutionFinished(update.executionId, update.workflowId, 'success', session);
 			case 'execution:failed':
@@ -97,7 +91,7 @@ export class EngineLifecycleEventPushRelay {
 		this.sendNodeExecuteBefore(executionId, trigger.nodeName, run, session);
 		this.sendNodeExecuteAfter(executionId, trigger.nodeName, run, session, {
 			executionTime: 0,
-			outputs: trigger.outputs,
+			outcome: { outputs: trigger.outputs },
 		});
 	}
 
@@ -110,13 +104,10 @@ export class EngineLifecycleEventPushRelay {
 		this.sendNodeExecuteBefore(update.executionId, update.nodeName, run, session);
 	}
 
-	/**
-	 * @param outputs The step's output slots, or `undefined` when it failed.
-	 */
 	private onStepSettled(
 		update: StepUpdate,
 		session: EngineV2PushSession,
-		outputs: INodeExecutionData[][] | undefined,
+		outcome: StepOutcome,
 	): void {
 		const started = session.steps.get(update.stepId);
 		if (started?.settled) return;
@@ -128,7 +119,7 @@ export class EngineLifecycleEventPushRelay {
 		this.sendNodeExecuteAfter(update.executionId, update.nodeName, run, session, {
 			// Same clock, same process — the difference is safe to trust.
 			executionTime: Math.max(0, Date.parse(update.at) - run.startTime),
-			outputs,
+			outcome,
 		});
 
 		run.settled = true;
@@ -175,9 +166,10 @@ export class EngineLifecycleEventPushRelay {
 		nodeName: string,
 		run: EngineV2StepRun,
 		session: EngineV2PushSession,
-		result: { executionTime: number; outputs: INodeExecutionData[][] | undefined },
+		result: { executionTime: number; outcome: StepOutcome },
 	): void {
-		const { executionTime, outputs } = result;
+		const { executionTime, outcome } = result;
+		const outputs = 'outputs' in outcome ? outcome.outputs : undefined;
 		// Every output slot is `main`: no other connection type exists here.
 		const data = outputs ? { main: outputs } : undefined;
 
@@ -187,17 +179,17 @@ export class EngineLifecycleEventPushRelay {
 			// No input lineage to report, so `source` is empty. See CAT-4265.
 			source: [],
 			executionTime,
-			executionStatus: outputs ? 'success' : 'error',
+			executionStatus: 'error' in outcome ? 'error' : 'success',
 			data,
-			...(outputs
-				? {}
-				: {
-						error: new WorkflowOperationError(
-							'Node execution failed',
-							undefined,
-							STEP_FAILURE_DESCRIPTION,
+			...('error' in outcome
+				? {
+						error: fromV1ErrorDetails(
+							outcome.error.name,
+							outcome.error.message,
+							outcome.error.details,
 						),
-					}),
+					}
+				: {}),
 		};
 
 		const itemCountByConnectionType = getItemCountByConnectionType(data);

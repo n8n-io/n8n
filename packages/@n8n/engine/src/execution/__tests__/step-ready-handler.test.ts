@@ -1444,6 +1444,7 @@ describe('StepReadyHandler lifecycle events', () => {
 		expect(lifecycleEventPublisher.publish).toHaveBeenNthCalledWith(2, {
 			type: 'step:failed',
 			...stepFields,
+			error: { name: 'Error', message: 'boom', stack: expect.stringContaining('boom') as string },
 		});
 	});
 
