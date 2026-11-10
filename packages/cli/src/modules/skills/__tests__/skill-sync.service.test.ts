@@ -1,5 +1,6 @@
 import type { User } from '@n8n/db';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import type { SkillSourceConnection } from '../database/entities/skill-source-connection.entity';
@@ -127,8 +128,8 @@ describe('SkillSyncService', () => {
 			sources.claimCheckNow.mockResolvedValue(true);
 			sources.findLinksBySource.mockResolvedValue([]);
 			sources.countPendingUpdates.mockResolvedValue(0);
-			const started = Promise.withResolvers<undefined>();
-			const result = Promise.withResolvers<string>();
+			const started = createDeferredPromise<undefined>();
+			const result = createDeferredPromise<string>();
 			probe.mockImplementationOnce(async () => {
 				started.resolve(undefined);
 				return await result.promise;
