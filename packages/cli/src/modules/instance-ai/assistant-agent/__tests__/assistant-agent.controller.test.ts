@@ -7,13 +7,15 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { AssistantAgentController } from '../assistant-agent.controller';
+import type { AssistantThreadCreditsService } from '../assistant-thread-credits.service';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
 
 const THREAD_ID = 'thread-1';
 
 describe('AssistantAgentController', () => {
 	const threadTabs = mock<AssistantThreadTabsService>();
-	const controller = new AssistantAgentController(threadTabs);
+	const threadCredits = mock<AssistantThreadCreditsService>();
+	const controller = new AssistantAgentController(threadTabs, threadCredits);
 
 	const user = mock<User>({ id: 'user-1' });
 	const req = mock<AuthenticatedRequest>({ user });
@@ -44,6 +46,36 @@ describe('AssistantAgentController', () => {
 				globalOnly: true,
 			});
 		}
+		expect(metadata.routes.get('getThreadCredits')?.path).toBe('/threads/:threadId/credits');
+		expect(metadata.routes.get('getThreadCredits')?.accessScope).toEqual({
+			scope: 'instanceAi:message',
+			globalOnly: true,
+		});
+	});
+
+	describe('getThreadCredits', () => {
+		it('returns the credit total of the thread', async () => {
+			threadCredits.getTotal.mockResolvedValue(2.5);
+
+			await expect(controller.getThreadCredits(req, res, THREAD_ID)).resolves.toEqual({
+				creditsUsed: 2.5,
+			});
+			expect(threadCredits.getTotal).toHaveBeenCalledWith(user, THREAD_ID);
+		});
+
+		it('returns null before the first claim', async () => {
+			threadCredits.getTotal.mockResolvedValue(undefined);
+
+			await expect(controller.getThreadCredits(req, res, THREAD_ID)).resolves.toEqual({
+				creditsUsed: null,
+			});
+		});
+
+		it('rejects a thread that the user cannot use', async () => {
+			threadCredits.getTotal.mockRejectedValue(new NotFoundError('Session not found'));
+
+			await expect(controller.getThreadCredits(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
+		});
 	});
 
 	describe('getThreadTabs', () => {

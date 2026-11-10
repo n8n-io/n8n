@@ -24,9 +24,9 @@ import { homedir } from 'node:os';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { v5 as uuidv5 } from 'uuid';
 
+import { assertKnowledgePathSegment } from '@/modules/knowledge/files/storage-naming';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
-import { assertKnowledgePathSegment } from './agent-knowledge-storage';
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';

@@ -327,23 +327,37 @@ API key needs `promotions:promote`. For `apply` the rows are what applying the
 branch would change on this instance, and the key needs `promotions:apply`.
 `commitSha` is the commit the rows were read from. Table output shows the rows
 only. Use `--json` to get the rows and `commitSha` together. Connect the
-environment first. Use the `id` of each row to build a selective promote.
+environment first. Use the `id` of each row as a `-w` value of a selective
+promote or apply. The rows list workflows only. To find folder IDs, list the
+project's folders on the source instance with
+`GET /api/v1/projects/{projectId}/folders`. A folder keeps its ID on every
+instance it is promoted to.
 
 ## `promotion-environment promote-selection`
 
-Read a chosen set of a project's workflows now, and push their current state to
-the branch of the project's Promote environment, or of the instance Promote
-environment.
+Read a chosen set of a project's workflows and folders now, and push their
+current state to the branch of the project's Promote environment, or of the
+instance Promote environment.
 
 ```bash
 n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -w wf-2
 n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -m "Promote checkout flow"
+n8n-cli promotion-environment promote-selection proj-abc --folder folder-1
+n8n-cli promotion-environment promote-selection proj-abc
 ```
 
 | Flag | Description |
 |------|-------------|
-| `-w, --workflow` | Workflow ID to promote. Repeat the flag for more than one. Required. |
+| `-w, --workflow` | Workflow ID to promote. Repeat the flag for more than one. |
+| `--folder` | Folder ID to promote. Repeat the flag for more than one. |
 | `-m, --message` | Commit message. If you omit it, the commit uses a generated message. |
+
+The project's own details (name, icon, description, and telemetry tags) are
+always pushed. Without `-w` and `--folder`, the command promotes only the
+project, for example a new empty project. A selected folder is pushed with the
+folders above it. A renamed or moved folder moves the workflows inside it on the
+branch, without changing their content. When the branch already matches the
+selection, the command fails with "Nothing to promote".
 
 Archived workflows stay on the branch as archived. A selected workflow that was
 deleted leaves this project's branch. A selected workflow that moved into or out
@@ -447,27 +461,33 @@ n8n-cli promotion-environment apply env-2 \
 
 ## `promotion-environment apply-selection`
 
-Apply a chosen set of a project's workflow changes from its Apply branch. This is
-the apply counterpart of `promote-selection`: build the selection from the `id`
-values that `list-changes proj-abc apply` returns.
+Apply a chosen set of a project's workflow and folder changes from its Apply
+branch. This is the apply counterpart of `promote-selection`. Use the `id`
+values that `list-changes proj-abc apply` returns as `-w` values. For folder
+IDs, see [`list-changes`](#promotion-environment-list-changes).
 
 ```bash
 n8n-cli promotion-environment apply-selection proj-abc -w wf-1 -w wf-2
 n8n-cli promotion-environment apply-selection proj-abc -w wf-1 \
   --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
+n8n-cli promotion-environment apply-selection proj-abc --folder folder-1
+n8n-cli promotion-environment apply-selection proj-abc
 ```
 
 | Flag | Description |
 |------|-------------|
-| `-w, --workflow` | Workflow ID to apply. Repeat the flag for more than one. Required. |
+| `-w, --workflow` | Workflow ID to apply. Repeat the flag for more than one. |
+| `--folder` | Folder ID to apply. Repeat the flag for more than one. |
 | `--expected-environment-id` | ID of the Apply environment that you reviewed. |
 | `--expected-branch` | Branch that you reviewed. |
 | `--expected-commit-sha` | Full commit SHA that you reviewed (40 or 64 lowercase hex characters). |
 
-Selected IDs on the branch are imported. Instance workflows this project owns
-whose IDs are absent from the branch are removed. Unselected content stays
-unchanged. A selected workflow moves within the project to match the branch,
-together with the folders that hold it, and those folders take the name on the
+The project's name, icon, description, and telemetry tags always come from the
+branch. Without `-w` and `--folder`, the command applies only the project.
+Selected IDs on the branch are imported. A selected workflow that this project
+owns but the branch does not hold is removed. Unselected content stays unchanged. A selected
+workflow or folder is created, or moves within the project to match the branch,
+together with the folders above it, and those folders take the name on the
 branch. Other folders stay as they are. A selected workflow, or a folder that the
 branch holds in this project, that the branch and this instance hold in different
 projects is refused before any write. Without the `--expected-*` flags, the command applies the branch tip;
@@ -477,7 +497,7 @@ none.
 The results and exit codes are the same as for `apply`: `applied` (`0`),
 `source-changed` (`3`), and `blocked` (`4`). When it exits `4`, the output shows
 the `apply-selection-continue` command to run after you resolve the bindings; it
-resends the same workflow ids. With `--json`, the output is the full result for
+resends the same selection. With `--json`, the output is the full result for
 each status.
 
 Connect the environment first. The API key needs `promotions:apply`. The
@@ -494,7 +514,7 @@ n8n-cli promotion-environment apply-selection-continue proj-abc -w wf-1 -w wf-2 
   --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
 ```
 
-Resend the same workflow ids. The three `--expected-*` flags are required: use
+Resend the same `-w` and `--folder` flags. The three `--expected-*` flags are required: use
 the `environmentId`, `git.branchName`, and `git.commitSha` that the blocked Apply
 reported. The command runs the Apply check again. The results and exit codes are
 the same as for `apply-selection`. The server keeps no session, so run the
