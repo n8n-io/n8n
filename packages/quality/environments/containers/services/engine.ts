@@ -84,6 +84,18 @@ export function createEngineTlsFiles(
 	}
 }
 
+/**
+ * MockServer (the `proxy` capability) intercepts TLS and drops the client
+ * certificate, so traffic between the planes must not go through it.
+ */
+function bypassProxyBetweenPlanes(env: Record<string, string>, projectName: string): void {
+	const hosts = (env.NO_PROXY ?? '').split(',').filter(Boolean);
+	for (const host of [engineHostname(projectName), mainHostname(projectName)]) {
+		if (!hosts.includes(host)) hosts.push(host);
+	}
+	env.NO_PROXY = hosts.join(',');
+}
+
 function applySharedStoragePath(env: Record<string, string>): void {
 	env.N8N_STORAGE_PATH = ENGINE_SHARED_STORAGE_PATH;
 	delete env.N8N_BINARY_DATA_STORAGE_PATH;
@@ -207,6 +219,7 @@ export function applyEngineEnv(
 		env.N8N_ENGINE_CONTROL_PLANE_PORT = String(ENGINE_CONTROL_PLANE_PORT);
 		env.N8N_ENGINE_AUTH_SECRET = authSecret;
 		applySharedStoragePath(env);
+		bypassProxyBetweenPlanes(env, projectName);
 		// The main never touches the data plane database in this mode, and it
 		// refuses to start with the resume secret.
 		delete env.N8N_ENGINE_DATABASE_URL;
@@ -243,6 +256,7 @@ export function engineContainerEnv(
 	);
 
 	applySharedStoragePath(env);
+	bypassProxyBetweenPlanes(env, projectName);
 
 	return {
 		...env,

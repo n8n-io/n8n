@@ -121,6 +121,13 @@ describe('applyEngineEnv', () => {
 			expect(containerEnv()).toMatchObject(ENGINE_TLS_ENV);
 		});
 
+		test('sends traffic between the planes past the HTTP proxy, and keeps the caller NO_PROXY hosts', () => {
+			const env: Record<string, string> = { ...postgresEnv, NO_PROXY: 'localhost,keycloak' };
+			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, ...engineOptions });
+
+			expect(env.NO_PROXY).toBe('localhost,keycloak,proj-n8n-engine,proj-n8n');
+		});
+
 		test('opens the control plane server to the engine container on the stack port', () => {
 			expect(containerEnv()).toMatchObject({
 				N8N_ENGINE_CONTROL_PLANE_HOST: '0.0.0.0',
@@ -248,6 +255,12 @@ describe('engineContainerEnv', () => {
 
 	test('gives the engine its TLS files for mutual TLS with the main', () => {
 		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions)).toMatchObject(ENGINE_TLS_ENV);
+	});
+
+	test('sends traffic between the planes past the HTTP proxy', () => {
+		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions).NO_PROXY).toBe(
+			'proj-n8n-engine,proj-n8n',
+		);
 	});
 
 	test('shares the secret both planes verify against', () => {
