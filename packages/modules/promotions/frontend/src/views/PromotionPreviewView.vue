@@ -92,10 +92,15 @@ const selection = usePromotionSelection(graph, {
 const activeWorkflowKey = ref<ResourceKey>();
 const details = usePromotionResourceDetails(
 	async (keys) =>
-		await getPromotionResourceDetails(rootStore.restApiContext, props.projectId, props.direction, {
-			commitSha: preview.value?.commitSha ?? null,
-			keys,
-		}),
+		await getPromotionResourceDetails(
+			rootStore.publicApiContext,
+			props.projectId,
+			props.direction,
+			{
+				commitSha: preview.value?.commitSha ?? null,
+				keys,
+			},
+		),
 	preview,
 	graph,
 	activeWorkflowKey,
