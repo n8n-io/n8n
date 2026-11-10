@@ -119,8 +119,7 @@ services:
       n8n_engine2:
         condition: service_healthy
 
-  # The control plane. Engine v2 does not support queue mode, so the main runs
-  # in regular mode.
+  # The control plane.
   n8n:
     image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
     user: root:root

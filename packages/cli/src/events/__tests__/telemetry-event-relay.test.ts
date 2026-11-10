@@ -5603,7 +5603,11 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-environment-created', {
 				user,
 				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'Deploy key',
 				providerType: 'git',
+				repository: 'git@github.com:o/r.git',
 				direction: 'promote',
 				environmentScope: 'instance',
 				createBranchOnPromotion: true,
@@ -5631,6 +5635,7 @@ describe('TelemetryEventRelay', () => {
 				user,
 				providerId: 'prov-1',
 				providerType: 'gitlab',
+				authType: 'token',
 				changedFields: ['name', 'auth'],
 				outcome: 'success',
 				durationMs: 120,
@@ -5658,7 +5663,9 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-provider-deleted', {
 				user,
 				providerId: 'prov-1',
+				providerName: 'Deploy key',
 				providerType: 'git',
+				authType: 'ssh-key',
 			});
 
 			const payload = { user_id: 'user123', provider_id: 'prov-1', provider_type: 'git' };
@@ -5675,7 +5682,12 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-environment-updated', {
 				user,
 				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'Deploy key',
+				repository: 'git@github.com:o/r.git',
 				direction: 'apply',
+				environmentScope: 'instance',
 				changedFields: ['provider', 'settings'],
 			});
 
@@ -5698,6 +5710,10 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-environment-deleted', {
 				user,
 				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'Deploy key',
+				repository: 'git@github.com:o/r.git',
 				direction: 'promote',
 				environmentScope: 'projects',
 			});
