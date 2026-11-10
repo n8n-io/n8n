@@ -427,9 +427,10 @@ function onActivate(event: MouseEvent) {
 /* stylelint-disable */
 .running::after,
 .waiting::after {
-	@include styles.status-animated-after;
+	$status-inset: 3px;
+	@include styles.status-animated-after($status-inset);
 	// The pseudo-element starts at the padding edge. Keep its curve concentric with the node.
-	--canvas-node--status-radius-offset: calc(3px - var(--canvas-node--border-width));
+	--canvas-node--status-radius-offset: calc(#{$status-inset} - var(--canvas-node--border-width));
 	border-radius: calc(var(--radius--lg) + var(--canvas-node--status-radius-offset));
 }
 
