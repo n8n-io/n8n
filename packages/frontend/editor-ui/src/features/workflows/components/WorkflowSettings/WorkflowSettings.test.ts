@@ -242,6 +242,106 @@ describe('WorkflowSettingsVue', () => {
 		}
 	});
 
+	describe('Timezone', () => {
+		const getTimezoneLabels = (timezoneSelect: HTMLElement) => {
+			const dropdownId = timezoneSelect
+				.querySelector('.select-trigger[aria-describedby]')
+				?.getAttribute('aria-describedby');
+			const dropdown = dropdownId ? document.getElementById(dropdownId) : null;
+			return Array.from(dropdown?.querySelectorAll('.el-select-dropdown__item') ?? [], (item) =>
+				item.textContent?.trim(),
+			);
+		};
+
+		beforeEach(() => {
+			settingsStore.getTimezones = vi.fn().mockResolvedValue({
+				'Europe/Berlin': 'Europe/Berlin',
+				'Europe/Paris': 'Europe/Paris',
+				'America/New_York': 'America/New_York',
+			});
+		});
+
+		it('shows only the timezones that match the query, ignoring case', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const timezoneSelect = getByTestId('workflow-settings-timezone');
+			await userEvent.type(within(timezoneSelect).getByRole('combobox'), 'EUROPE');
+
+			await waitFor(() =>
+				expect(getTimezoneLabels(timezoneSelect)).toEqual(['Europe/Berlin', 'Europe/Paris']),
+			);
+		});
+
+		it('shows all timezones again after the dropdown closes', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const timezoneSelect = getByTestId('workflow-settings-timezone');
+			await userEvent.type(within(timezoneSelect).getByRole('combobox'), 'berlin');
+			await waitFor(() => expect(getTimezoneLabels(timezoneSelect)).toEqual(['Europe/Berlin']));
+
+			await userEvent.click(document.body);
+			await getDropdownItems(timezoneSelect);
+
+			await waitFor(() => expect(getTimezoneLabels(timezoneSelect)).toHaveLength(4));
+		});
+	});
+
+	describe('Sections', () => {
+		const getSectionTitles = (dialog: HTMLElement) =>
+			within(dialog)
+				.getAllByRole('heading', { level: 2 })
+				.map((heading) => heading.textContent?.trim());
+
+		it('hides the Access section when sharing and MCP access are off', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(false);
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getSectionTitles(getByTestId('workflow-settings-dialog'))).toEqual([
+				'Executions',
+				'Execution data',
+				'Insights',
+			]);
+		});
+
+		it('shows the Access section when only MCP access is on', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
+			settingsStore.moduleSettings = {
+				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+			};
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getSectionTitles(getByTestId('workflow-settings-dialog'))).toContain('Access');
+		});
+
+		it('shows custom span attributes in the Insights section', async () => {
+			settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];
+			settingsStore.settings.enterprise.otelCustomSpanAttributes = true;
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+			settingsStore.moduleSettings = { otel: { enabled: true } };
+			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
+			await flushPromises();
+
+			const dialog = getByTestId('workflow-settings-dialog');
+			expect(getSectionTitles(dialog)).toEqual([
+				'Executions',
+				'Access',
+				'Execution data',
+				'Insights',
+			]);
+			const insightsSection = within(dialog)
+				.getByRole('heading', { level: 2, name: 'Insights' })
+				.closest('section');
+			expect(
+				insightsSection?.contains(getByTestId('workflow-settings-custom-telemetry-tags')),
+			).toBe(true);
+		});
+	});
+
 	it('should not render workflow caller policy when sharing is not enabled', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
 		const { getByTestId } = createComponent({ pinia });
