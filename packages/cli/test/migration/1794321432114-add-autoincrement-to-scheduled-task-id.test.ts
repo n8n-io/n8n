@@ -31,7 +31,7 @@ describe.skipIf(!isSqlite)('AddAutoincrementToScheduledTaskId migration', () => 
 	): Promise<void> {
 		const columns = Object.keys(values);
 		await context.runQuery(
-			`INSERT INTO ${context.escape.tableName('scheduled_task')} (${columns.map((c) => `"${c}"`).join(', ')})
+			`INSERT INTO ${context.escape.tableName('scheduled_task')} (${columns.map((c) => context.escape.columnName(c)).join(', ')})
 			 VALUES (${columns.map((c) => `:${c}`).join(', ')})`,
 			values,
 		);
@@ -39,7 +39,7 @@ describe.skipIf(!isSqlite)('AddAutoincrementToScheduledTaskId migration', () => 
 
 	async function readTasks(context: TestMigrationContext) {
 		return await context.runQuery<Array<Record<string, unknown>>>(
-			`SELECT * FROM ${context.escape.tableName('scheduled_task')} ORDER BY "id"`,
+			`SELECT * FROM ${context.escape.tableName('scheduled_task')} ORDER BY ${context.escape.columnName('id')}`,
 		);
 	}
 
@@ -50,13 +50,22 @@ describe.skipIf(!isSqlite)('AddAutoincrementToScheduledTaskId migration', () => 
 		await initDbUpToMigration(MIGRATION_NAME);
 
 		await withContext(async (context) => {
+			const jobColumns = [
+				'name',
+				'kind',
+				'intervalSeconds',
+				'taskType',
+				'ownerType',
+				'ownerId',
+				'createdAt',
+				'updatedAt',
+			].map((c) => context.escape.columnName(c));
 			await context.runQuery(
-				`INSERT INTO ${context.escape.tableName('scheduled_job')}
-				   ("name", "kind", "intervalSeconds", "taskType", "ownerType", "ownerId", "createdAt", "updatedAt")
+				`INSERT INTO ${context.escape.tableName('scheduled_job')} (${jobColumns.join(', ')})
 				 VALUES ('job', 'interval', 60, 'test', 'workflow', 'wf-1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 			);
 			const [job] = await context.runQuery<Array<{ id: number }>>(
-				`SELECT "id" FROM ${context.escape.tableName('scheduled_job')} WHERE "name" = 'job'`,
+				`SELECT ${context.escape.columnName('id')} FROM ${context.escape.tableName('scheduled_job')} WHERE ${context.escape.columnName('name')} = 'job'`,
 			);
 			jobId = job.id;
 
@@ -113,10 +122,11 @@ describe.skipIf(!isSqlite)('AddAutoincrementToScheduledTaskId migration', () => 
 	it('does not reuse the id of a deleted newest task', async () => {
 		await withContext(async (context) => {
 			const table = context.escape.tableName('scheduled_task');
+			const id = context.escape.columnName('id');
 			const [{ maxId }] = await context.runQuery<Array<{ maxId: number }>>(
-				`SELECT MAX("id") AS "maxId" FROM ${table}`,
+				`SELECT MAX(${id}) AS "maxId" FROM ${table}`,
 			);
-			await context.runQuery(`DELETE FROM ${table} WHERE "id" = :maxId`, { maxId });
+			await context.runQuery(`DELETE FROM ${table} WHERE ${id} = :maxId`, { maxId });
 
 			await insertTask(context, {
 				jobId,
@@ -127,7 +137,7 @@ describe.skipIf(!isSqlite)('AddAutoincrementToScheduledTaskId migration', () => 
 			});
 
 			const [{ newId }] = await context.runQuery<Array<{ newId: number }>>(
-				`SELECT MAX("id") AS "newId" FROM ${table}`,
+				`SELECT MAX(${id}) AS "newId" FROM ${table}`,
 			);
 			expect(newId).toBeGreaterThan(maxId);
 		});
