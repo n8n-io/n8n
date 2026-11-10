@@ -23,6 +23,40 @@ import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { searchModels } from './methods/searchModels';
 
+const OUTPUT_SCHEMA_EXAMPLE = `{
+  "type": "object",
+  "properties": {
+    "answer": { "type": "string" }
+  },
+  "required": ["answer"],
+  "additionalProperties": false
+}`;
+
+function parseOutputSchema(
+	ctx: ISupplyDataFunctions,
+	rawSchema: string | object | undefined,
+	itemIndex: number,
+): Record<string, unknown> {
+	let schema: unknown = rawSchema ?? OUTPUT_SCHEMA_EXAMPLE;
+	if (typeof schema === 'string') {
+		try {
+			schema = JSON.parse(schema);
+		} catch (error) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Output Schema is not valid JSON: ${(error as Error).message}`,
+				{ itemIndex },
+			);
+		}
+	}
+	if (typeof schema !== 'object' || schema === null || Array.isArray(schema)) {
+		throw new NodeOperationError(ctx.getNode(), 'Output Schema must be a JSON object.', {
+			itemIndex,
+		});
+	}
+	return schema as Record<string, unknown>;
+}
+
 const ANTHROPIC_MODEL_BUILDER_HINT = {
 	propertyHint:
 		'When extended thinking is needed, use Adaptive mode and choose an Effort level. ' +
@@ -537,6 +571,31 @@ export class LmChatAnthropic implements INodeType {
 							{ name: '1 Hour', value: '1h' },
 						],
 					},
+					{
+						displayName: 'Output Format',
+						name: 'outputFormat',
+						type: 'options',
+						default: 'text',
+						description:
+							'Whether to constrain the final response to a JSON schema using <a href="https://docs.anthropic.com/en/docs/build-with-claude/structured-outputs">Anthropic structured outputs</a>. The API enforces the schema while generating, so the response is always valid JSON that matches it. Tool calls are not affected.',
+						options: [
+							{ name: 'Text', value: 'text' },
+							{ name: 'JSON Schema', value: 'jsonSchema' },
+						],
+					},
+					{
+						displayName: 'Output Schema',
+						name: 'outputSchema',
+						type: 'json',
+						default: OUTPUT_SCHEMA_EXAMPLE,
+						description:
+							'JSON Schema the response must match. Every object needs "additionalProperties": false, and some keywords such as oneOf are not supported (use anyOf). <a href="https://docs.anthropic.com/en/docs/build-with-claude/structured-outputs">See the supported subset</a>.',
+						displayOptions: {
+							show: {
+								outputFormat: ['jsonSchema'],
+							},
+						},
+					},
 				],
 			},
 			{
@@ -548,6 +607,18 @@ export class LmChatAnthropic implements INodeType {
 				displayOptions: {
 					show: {
 						'/options.promptCaching': ['5m', '1h'],
+					},
+				},
+			},
+			{
+				displayName:
+					'The final response is JSON text that matches the Output Schema. On the AI Agent, leave Require Specific Output Format off and parse the agent output in the next node.',
+				name: 'outputFormatNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'/options.outputFormat': ['jsonSchema'],
 					},
 				},
 			},
@@ -586,6 +657,8 @@ export class LmChatAnthropic implements INodeType {
 			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 			streaming?: boolean;
 			promptCaching?: 'disabled' | '5m' | '1h';
+			outputFormat?: 'text' | 'jsonSchema';
+			outputSchema?: string | object;
 		};
 
 		// Pre-flight check for the one model family we have confirmed rejects manual thinking, so
@@ -649,6 +722,15 @@ export class LmChatAnthropic implements INodeType {
 			invocationKwargs.cache_control = {
 				type: 'ephemeral',
 				ttl: options.promptCaching,
+			};
+		}
+
+		if (options.outputFormat === 'jsonSchema') {
+			const schema = parseOutputSchema(this, options.outputSchema, itemIndex);
+			// Merged into output_config so the effort set by adaptive thinking is kept.
+			invocationKwargs.output_config = {
+				...(invocationKwargs.output_config as Record<string, unknown> | undefined),
+				format: { type: 'json_schema', schema },
 			};
 		}
 

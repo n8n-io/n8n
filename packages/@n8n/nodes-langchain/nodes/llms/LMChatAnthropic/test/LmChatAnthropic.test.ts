@@ -1261,4 +1261,128 @@ describe('LmChatAnthropic', () => {
 			});
 		});
 	});
+
+	describe('output format', () => {
+		const schema = {
+			type: 'object',
+			properties: { answer: { type: 'string' } },
+			required: ['answer'],
+			additionalProperties: false,
+		};
+
+		function formatContext(options: Record<string, unknown>) {
+			const mockContext = setupMockContext({ typeVersion: 1.6 });
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options') return options;
+				return undefined;
+			});
+			return mockContext;
+		}
+
+		it('should not set output_config when the option is left unset', async () => {
+			await lmChatAnthropic.supplyData.call(formatContext({}), 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({ invocationKwargs: {} }),
+			);
+		});
+
+		it('should not set output_config when the output format is text', async () => {
+			await lmChatAnthropic.supplyData.call(formatContext({ outputFormat: 'text' }), 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({ invocationKwargs: {} }),
+			);
+		});
+
+		it('should send the schema written as JSON text', async () => {
+			await lmChatAnthropic.supplyData.call(
+				formatContext({ outputFormat: 'jsonSchema', outputSchema: JSON.stringify(schema) }),
+				0,
+			);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: { output_config: { format: { type: 'json_schema', schema } } },
+				}),
+			);
+		});
+
+		it('should accept the schema as an object returned by an expression', async () => {
+			await lmChatAnthropic.supplyData.call(
+				formatContext({ outputFormat: 'jsonSchema', outputSchema: schema }),
+				0,
+			);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: { output_config: { format: { type: 'json_schema', schema } } },
+				}),
+			);
+		});
+
+		it('should keep the adaptive thinking effort next to the format', async () => {
+			await lmChatAnthropic.supplyData.call(
+				formatContext({
+					thinkingMode: 'adaptive',
+					effort: 'high',
+					promptCaching: '5m',
+					outputFormat: 'jsonSchema',
+					outputSchema: JSON.stringify(schema),
+				}),
+				0,
+			);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: expect.objectContaining({
+						thinking: { type: 'adaptive' },
+						output_config: { effort: 'high', format: { type: 'json_schema', schema } },
+						cache_control: { type: 'ephemeral', ttl: '5m' },
+					}),
+				}),
+			);
+		});
+
+		it('should throw when the schema is not valid JSON', async () => {
+			await expect(
+				lmChatAnthropic.supplyData.call(
+					formatContext({ outputFormat: 'jsonSchema', outputSchema: '{ "type": ' }),
+					0,
+				),
+			).rejects.toThrow(NodeOperationError);
+		});
+
+		it('should throw when the schema is not a JSON object', async () => {
+			await expect(
+				lmChatAnthropic.supplyData.call(
+					formatContext({ outputFormat: 'jsonSchema', outputSchema: '[]' }),
+					0,
+				),
+			).rejects.toThrow('Output Schema must be a JSON object.');
+		});
+
+		it('should describe the output format options and show the schema only for JSON Schema', () => {
+			const properties = lmChatAnthropic.description.properties;
+			const optionsField = properties.find((p) => p.name === 'options' && p.type === 'collection');
+			const innerOptions = (optionsField as { options: INodeProperties[] }).options;
+
+			const formatField = innerOptions.find((o) => o.name === 'outputFormat');
+			expect(formatField).toBeDefined();
+			expect(formatField!.default).toBe('text');
+			expect(
+				(formatField as { options: Array<{ value: string }> }).options.map((o) => o.value),
+			).toEqual(['text', 'jsonSchema']);
+
+			const schemaField = innerOptions.find((o) => o.name === 'outputSchema');
+			expect(schemaField).toBeDefined();
+			expect(schemaField!.type).toBe('json');
+			expect(schemaField!.displayOptions?.show?.outputFormat).toEqual(['jsonSchema']);
+
+			const notice = properties.find((p) => p.name === 'outputFormatNotice');
+			expect(notice!.type).toBe('notice');
+			expect(notice!.displayOptions?.show?.['/options.outputFormat']).toEqual(['jsonSchema']);
+		});
+	});
 });
