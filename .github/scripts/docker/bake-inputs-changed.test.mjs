@@ -15,10 +15,16 @@ const plan = (args, extra = {}) => ({
 });
 
 describe('changedTargets', () => {
-	it('ignores tags and context, and the order of args', () => {
+	it('ignores the context and the order of args', () => {
 		const before = bakeInputs(plan({ A: '1', B: '2' }), ['base']);
-		const after = bakeInputs(plan({ B: '2', A: '1' }, { tags: ['other'], context: 'x' }), ['base']);
+		const after = bakeInputs(plan({ B: '2', A: '1' }, { context: 'x' }), ['base']);
 		assert.deepEqual(changedTargets(before, after), []);
+	});
+
+	it('reports a changed tag', () => {
+		const before = bakeInputs(plan({}), ['base']);
+		const after = bakeInputs(plan({}, { tags: ['n8nio/base:26-v3'] }), ['base']);
+		assert.deepEqual(changedTargets(before, after), ['base']);
 	});
 
 	it('reports a changed build arg', () => {

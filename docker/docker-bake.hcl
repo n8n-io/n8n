@@ -1,23 +1,25 @@
 # Every n8n image build uses this file. `pnpm build:docker` and CI both drive
 # these targets, so a pin changed here changes both.
 #
-# This file is the only place for base image pins: the Dockerfiles have no
-# defaults for them. The podman path of scripts/dockerize-n8n.mjs reads the
-# defaults as text, so keep each one a plain string.
-#
-# Images that n8n publishes (n8nio/base, n8nio/node-pc) take two PRs. See
-# docker/AGENTS.md. In short: the first PR changes their inputs, master
-# publishes them on merge, and the second PR pins the digest master published.
+# All base image pins are here. The Dockerfiles have no defaults for them. Keep
+# each pin a plain string: the podman path of scripts/dockerize-n8n.mjs reads
+# them as text. To change n8nio/base or n8nio/node-pc, read docker/AGENTS.md.
 
 variable "NODE_VERSION" { default = "26.13.0" }
 
-# n8nio/base and n8nio/base:*-debian build on these. The base tag is the Node
-# version of the DHI ref.
+# n8nio/base builds on these. The tag of each base is the Node version of its
+# DHI ref. No n8n image uses the Node 22 and 24 bases.
 variable "DHI_REF" {
   default = "dhi.io/node:26.13.0-alpine3.24-dev@sha256:3e61a81f5d83780aff01cb2d8f2251698bf3fe7d522bef71a9656fa93333b504"
 }
 variable "DEBIAN_DHI_REF" {
   default = "dhi.io/node:26.13.0-debian13-dev@sha256:6c7e2d41ac2cad140e61f765740708f5ab19ac3e734b3d56e029923cb11be4fd"
+}
+variable "NODE_22_DHI_REF" {
+  default = "dhi.io/node:22.23.4-alpine3.24-dev@sha256:6074fc885bbf6a1c707d16189076cd2b9d989095abfc4f3f973dac93455bdae5"
+}
+variable "NODE_24_DHI_REF" {
+  default = "dhi.io/node:24.22.2-alpine3.24-dev@sha256:e640b13bfdb3befe5820fde98520aba1d81de96ebb5237f1f3a166352924707a"
 }
 
 variable "BUILDER_IMAGE" {
@@ -27,8 +29,7 @@ variable "DEBIAN_BUILDER_IMAGE" {
   default = "node:26.13.0-trixie-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072"
 }
 
-# Published by build-base-image.yml on master. Pin the <version>-<commit> tag's
-# digest.
+# Published by build-base-image.yml on master.
 variable "RUNTIME_IMAGE" {
   default = "n8nio/base:26.13.0@sha256:02079402e2a7f33a41e8bf8943a2f6a08b45fd7a749abafaa20ef44bf4b6fd76"
 }
@@ -36,8 +37,7 @@ variable "DEBIAN_RUNTIME_IMAGE" {
   default = "n8nio/base:26.13.0-debian@sha256:f7c8a059f942c7656154c18b17e1e739c79e23fe3b42475984f65f79eed0156f"
 }
 
-# Published by build-node-pc-image.yml on master, from NODE_VERSION and
-# RUNTIME_IMAGE. Pin the <version>-<commit> tag's digest.
+# Published by build-node-pc-image.yml on master.
 variable "PC_BUILDER_IMAGE" {
   default = "n8nio/node-pc:26.13.0-dev@sha256:3c61f963d32a93401083fa4b8ed97aa42fb8f4b05c4de2e724a9097d15184311"
 }
@@ -52,7 +52,8 @@ variable "ALPINE_IMAGE" {
 variable "PYTHON_IMAGE" {
   default = "python:3.13.18-alpine3.24@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8"
 }
-# Debian 13, like the distroless runtime: that image runs this Python's glibc.
+# Debian 13, the release of the distroless runtime. That image runs the glibc
+# of this Python image.
 variable "DEBIAN_PYTHON_IMAGE" {
   default = "python:3.13.18-slim-trixie@sha256:ae14d4ce8771606477a81446e7ef429edd6762305fc50c84507c1041fa8285d1"
 }
@@ -197,7 +198,19 @@ target "base-debian" {
   tags = tags(BASE_DEBIAN_TAGS, "n8nio/base:${dhi_node_version(DEBIAN_DHI_REF)}-debian")
 }
 
-# build-node-pc-image.yml builds these per architecture and sets the tags.
+target "base-node-22" {
+  inherits = ["base"]
+  args     = { DHI_REF = NODE_22_DHI_REF }
+  tags     = ["n8nio/base:22"]
+}
+
+target "base-node-24" {
+  inherits = ["base"]
+  args     = { DHI_REF = NODE_24_DHI_REF }
+  tags     = ["n8nio/base:${dhi_node_version(NODE_24_DHI_REF)}"]
+}
+
+# build-node-pc-image.yml builds the runtime and dev stages and sets the tags.
 target "node-pc" {
   inherits   = ["_context"]
   dockerfile = "docker/images/node-pc/Dockerfile"
@@ -208,12 +221,6 @@ target "node-pc" {
     RUNTIME_IMAGE = RUNTIME_IMAGE
   }
   tags = ["n8nio/node-pc:${NODE_VERSION}"]
-}
-
-target "node-pc-dev" {
-  inherits = ["node-pc"]
-  target   = "dev"
-  tags     = ["n8nio/node-pc:${NODE_VERSION}-dev"]
 }
 
 group "default" { targets = ["n8n", "runners"] }

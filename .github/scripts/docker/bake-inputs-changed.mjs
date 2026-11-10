@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 /**
- * Decides whether an image that n8n publishes must build again.
+ * Decides whether an image that n8n publishes must build.
  *
- * The publish workflows trigger on any change to docker/docker-bake.hcl. Most
+ * The publish workflows run on any change to docker/docker-bake.hcl, but most
  * changes there do not touch their image, and a rebuild moves the image's tag
- * to a new digest. This script compares the resolved bake inputs of the
- * targets (Dockerfile, stage, build args) and the given paths between two
- * commits.
+ * to a new digest. The image changed when, between two commits, a target's
+ * resolved Dockerfile, stage, build args or tags changed, or its Dockerfile
+ * content changed. On a PR, a change to a --pr-paths file also counts, so that
+ * the PR runs the changed build steps. A dispatch always builds.
  *
- * Usage: node bake-inputs-changed.mjs --base <commit> --targets a,b --paths p,q
+ * Usage: node bake-inputs-changed.mjs --event <github event> --base <commit>
+ *   --targets a,b [--pr-paths p,q]
  * Writes changed=true|false to $GITHUB_OUTPUT.
  */
 
@@ -21,13 +23,18 @@ import { pathToFileURL } from 'node:url';
 
 const BAKE_FILE = 'docker/docker-bake.hcl';
 
-/** The inputs that decide the image: Dockerfile, stage and build args. */
+/** The inputs that decide the image. */
 export function bakeInputs(plan, targets) {
 	const inputs = {};
 	for (const name of targets) {
 		const target = plan.target?.[name];
 		inputs[name] = target
-			? { dockerfile: target.dockerfile, target: target.target ?? null, args: target.args ?? {} }
+			? {
+					dockerfile: target.dockerfile,
+					target: target.target ?? null,
+					args: target.args ?? {},
+					tags: target.tags ?? [],
+				}
 			: null;
 	}
 	return inputs;
@@ -47,8 +54,8 @@ export function changedTargets(before, after) {
 }
 
 function resolve(cwd, targets) {
-	// Bake reads environment variables with the names of its variables as
-	// overrides. Resolve from the file alone.
+	// Bake reads an environment variable with the name of a bake variable as an
+	// override. Resolve from the file alone.
 	const env = { PATH: process.env.PATH, HOME: process.env.HOME };
 	if (process.env.DOCKER_CONFIG) env.DOCKER_CONFIG = process.env.DOCKER_CONFIG;
 	const out = execFileSync('docker', ['buildx', 'bake', '-f', BAKE_FILE, '--print', ...targets], {
@@ -60,48 +67,73 @@ function resolve(cwd, targets) {
 	return bakeInputs(JSON.parse(out), targets);
 }
 
-function pathsChanged(base, paths) {
-	if (paths.length === 0) return false;
+function filesChanged(base, files) {
+	if (files.length === 0) return false;
 	try {
-		execFileSync('git', ['diff', '--quiet', base, 'HEAD', '--', ...paths]);
+		execFileSync('git', ['diff', '--quiet', base, 'HEAD', '--', ...files]);
 		return false;
 	} catch {
 		return true;
 	}
 }
 
-function main() {
-	const { values } = parseArgs({
-		options: { base: { type: 'string' }, targets: { type: 'string' }, paths: { type: 'string' } },
-	});
-	const targets = (values.targets ?? '').split(',').filter(Boolean);
-	const paths = (values.paths ?? '').split(',').filter(Boolean);
-	if (!values.base || targets.length === 0) throw new Error('--base and --targets are required');
+function decide({ event, base, targets, prPaths }) {
+	if (event === 'workflow_dispatch') return 'a dispatch always builds';
+	if (!base || /^0+$/.test(base)) return 'no base commit to compare with';
 
-	let reasons = [];
-	if (pathsChanged(values.base, paths)) reasons.push(`files under ${paths.join(', ')}`);
-
-	const worktree = mkdtempSync(path.join(tmpdir(), 'bake-base-'));
 	try {
-		execFileSync('git', ['worktree', 'add', '--detach', worktree, values.base], {
-			stdio: 'ignore',
-		});
-		let before;
+		execFileSync('git', ['cat-file', '-e', `${base}^{commit}`], { stdio: 'ignore' });
+	} catch {
+		execFileSync('git', ['fetch', '--no-tags', '--depth=1', 'origin', base], { stdio: 'ignore' });
+	}
+
+	const after = resolve(process.cwd(), targets);
+	const worktree = mkdtempSync(path.join(tmpdir(), 'bake-base-'));
+	let before;
+	try {
+		execFileSync('git', ['worktree', 'add', '--detach', worktree, base], { stdio: 'ignore' });
 		try {
 			before = resolve(worktree, targets);
 		} catch {
 			before = Object.fromEntries(targets.map((name) => [name, null]));
 		}
-		const changed = changedTargets(before, resolve(process.cwd(), targets));
-		if (changed.length > 0) reasons.push(`bake inputs of ${changed.join(', ')}`);
 	} finally {
 		execFileSync('git', ['worktree', 'remove', '--force', worktree], { stdio: 'ignore' });
 		rmSync(worktree, { recursive: true, force: true });
 	}
 
-	const result = reasons.length > 0;
-	console.log(result ? `Changed: ${reasons.join('; ')}.` : 'No input of these images changed.');
-	if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `changed=${result}\n`);
+	const changed = changedTargets(before, after);
+	if (changed.length > 0) return `bake inputs of ${changed.join(', ')} changed`;
+
+	const dockerfiles = [...new Set(Object.values(after).map((input) => input.dockerfile))];
+	if (filesChanged(base, dockerfiles)) return `${dockerfiles.join(', ')} changed`;
+	if (event === 'pull_request' && filesChanged(base, prPaths))
+		return `${prPaths.join(', ')} changed`;
+	return null;
+}
+
+function main() {
+	const { values } = parseArgs({
+		options: {
+			event: { type: 'string' },
+			base: { type: 'string' },
+			targets: { type: 'string' },
+			'pr-paths': { type: 'string' },
+		},
+	});
+	const list = (value) => (value ?? '').split(',').filter(Boolean);
+	const targets = list(values.targets);
+	if (!values.event || targets.length === 0) throw new Error('--event and --targets are required');
+
+	const reason = decide({
+		event: values.event,
+		base: values.base,
+		targets,
+		prPaths: list(values['pr-paths']),
+	});
+	console.log(reason ? `Build: ${reason}.` : 'Skip: no input of these images changed.');
+	if (process.env.GITHUB_OUTPUT)
+		appendFileSync(process.env.GITHUB_OUTPUT, `changed=${Boolean(reason)}\n`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) main();

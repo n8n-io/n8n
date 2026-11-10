@@ -12,8 +12,8 @@
 #                       stage, which must compile native addons against this
 #                       Node's headers
 #
-# docker/docker-bake.hcl sets these. Build with the node-pc bake targets, not
-# plain `docker build`.
+# The node-pc target in docker/docker-bake.hcl sets these. Do not use plain
+# `docker build`.
 ARG NODE_VERSION
 ARG ALPINE_IMAGE
 ARG RUNTIME_IMAGE
@@ -90,8 +90,8 @@ ENV npm_config_nodedir=/usr/local
 
 # ---------------------------------------------------------------------------
 
-# RUNTIME_IMAGE (`n8nio/base`) with one change, namely the stock Node files
-# (node, npm, npx) are swapped for the pointer-compressed build's files.
+# RUNTIME_IMAGE (`n8nio/base`), with the pointer-compressed Node in place of
+# the stock node, npm and npx.
 FROM ${RUNTIME_IMAGE} AS runtime
 
 RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node

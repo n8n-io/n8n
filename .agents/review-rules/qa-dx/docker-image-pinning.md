@@ -4,8 +4,9 @@ Applies to: `docker/docker-bake.hcl`, `docker/images/**/Dockerfile*`.
 
 ## A tag and its digest change together
 
-Every base image pin lives in `docker/docker-bake.hcl` as a plain string
-(podman parses them); flag a pin default added back to a Dockerfile there.
+The n8n, runners, base and node-pc pins live in `docker/docker-bake.hcl` as
+plain strings (podman parses them); flag a pin default added back to those
+Dockerfiles. `engine` keeps its own.
 Pins are `tag@sha256:...`. The tag is documentation; the digest is what
 actually resolves. Flag a diff that edits one without the other — a bumped tag
 with a stale digest silently keeps building the old image, and a bumped digest
