@@ -213,13 +213,19 @@ describe('lifecycle events of engine v2 runs', () => {
 
 	test('shows a step that waits as waiting in its editor', async () => {
 		startExecution.mockImplementation(async (request: StartExecutionRequest) => {
-			const [started, stepStarted] = runEvents(
-				request.executionId,
-				request.workflowId,
-				request.graph.nodes.find((n) => n.name === SET_NAME)!.id,
-			);
+			const nodeId = request.graph.nodes.find((n) => n.name === SET_NAME)!.id;
+			const [started, stepStarted] = runEvents(request.executionId, request.workflowId, nodeId);
+			const stepWaiting: LifecycleEvent = {
+				type: 'step:waiting',
+				executionId: request.executionId,
+				stepId: 'step-1',
+				nodeId,
+				nodeName: SET_NAME,
+				iteration: 0,
+				at,
+			};
 			await lifecycleEventSender.send(
-				[started, stepStarted, { ...stepStarted, type: 'step:waiting' }],
+				[started, stepStarted, stepWaiting],
 				new AbortController().signal,
 			);
 			return { executionId: request.executionId };
