@@ -539,7 +539,7 @@ describe('VaultProvider', () => {
 			);
 		});
 
-		it.each([200, 503])('should apply a successful LIST after HTTP %s', async (status) => {
+		it.each([200, 503])('should apply a successful LIST with GET status %s', async (status) => {
 			const { provider } = await initProvider(
 				[
 					{
@@ -584,6 +584,54 @@ describe('VaultProvider', () => {
 				'secret.app.password',
 				'secret.retained.password',
 			]);
+		});
+
+		it.each([403, 503])('should refresh secrets after a LIST returns HTTP %s', async (status) => {
+			const { provider } = await initProvider(
+				[
+					{
+						method: 'GET',
+						pathname: listPath,
+						body: { data: { keys: ['app', 'removed'] } },
+					},
+					{ method: 'GET', pathname: listPath, status, body: { errors: ['LIST failed'] } },
+					{ method: 'GET', pathname: listPath, body: { data: { keys: ['app', 'added'] } } },
+					{ method: 'GET', pathname: `${dataPath}app`, body: secretResponse('cached-password') },
+					{ method: 'GET', pathname: `${dataPath}app`, body: secretResponse('updated-password') },
+					{ method: 'GET', pathname: `${dataPath}removed`, body: secretResponse('old-password') },
+					{ method: 'GET', pathname: `${dataPath}added`, body: secretResponse('new-password') },
+				],
+				vaultSettingsWithKvPath('secret/', version),
+			);
+			const cachedSecrets = {
+				app: { password: 'cached-password' },
+				removed: { password: 'old-password' },
+			};
+
+			await provider.update();
+
+			expect(provider.getSecret('secret')).toEqual(cachedSecrets);
+
+			await provider.update();
+
+			expect(provider.getSecret('secret')).toEqual(cachedSecrets);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Vault provider failed to list KV secrets',
+				expect.objectContaining({
+					operation: 'update',
+					mountPath: 'secret/',
+					kvVersion: version,
+					statusCode: status,
+				}),
+			);
+
+			await provider.update();
+
+			expect(provider.getSecret('secret')).toEqual({
+				app: { password: 'updated-password' },
+				added: { password: 'new-password' },
+			});
+			expect(provider.getSecretNames()).toEqual(['secret.app.password', 'secret.added.password']);
 		});
 	});
 
