@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { OutboundHttp } from '@n8n/backend-network';
+import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mintActionToken, mintIdentityToken } from '@n8n/engine';
@@ -246,8 +246,8 @@ describe('EngineControlPlaneServer', () => {
 				fixedTls({ ...leaf('dp'), ca: readFileSync(certs.caFile) }),
 			);
 
-		const resolveVia = async (transport: EngineControlPlaneTransport) =>
-			await transport.forScope('credentials:read').request({
+		const resolveVia = async (client: HttpRequestClient) =>
+			await client.request({
 				url: '/internal/credentials/resolve',
 				method: 'POST',
 				body,
@@ -267,7 +267,7 @@ describe('EngineControlPlaneServer', () => {
 		});
 
 		it('accepts the control plane transport of a data plane with a certificate from the trusted CA', async () => {
-			const response = await resolveVia(dataPlaneTransport(baseUrl));
+			const response = await resolveVia(dataPlaneTransport(baseUrl).forScope('credentials:read'));
 
 			expect(response.statusCode).toBe(200);
 			expect(credentialsController.resolveCredential).toHaveBeenCalledOnce();
@@ -288,7 +288,9 @@ describe('EngineControlPlaneServer', () => {
 				vi.stubEnv('NODE_TLS_REJECT_UNAUTHORIZED', '0');
 
 				await expect(
-					resolveVia(dataPlaneTransport(`https://127.0.0.1:${server.port}`)),
+					resolveVia(
+						dataPlaneTransport(`https://127.0.0.1:${server.port}`).forScope('credentials:read'),
+					),
 				).rejects.toThrow(/certificate/);
 				expect(credentialsController.resolveCredential).not.toHaveBeenCalled();
 			} finally {
@@ -338,12 +340,12 @@ describe('EngineControlPlaneServer', () => {
 				server['server']!.on('secureConnection', (socket: TLSSocket) => {
 					clientFingerprints.push(socket.getPeerCertificate().fingerprint256);
 				});
-				const transport = new EngineControlPlaneTransport(
+				const client = new EngineControlPlaneTransport(
 					engineConfig({ controlPlaneBaseUrl: `https://127.0.0.1:${server.port}` }),
 					Container.get(OutboundHttp),
 					dpTls,
-				);
-				await resolveVia(transport);
+				).forScope('credentials:read');
+				await resolveVia(client);
 
 				replace(cpFiles, 'renewedCp');
 				replace(dpFiles, 'renewedDp');
@@ -357,7 +359,7 @@ describe('EngineControlPlaneServer', () => {
 					{ timeout: 4000, interval: 50 },
 				);
 
-				const response = await resolveVia(transport);
+				const response = await resolveVia(client);
 
 				expect(response.statusCode).toBe(200);
 				expect(clientFingerprints).toEqual([fingerprintOf('dp'), fingerprintOf('renewedDp')]);
