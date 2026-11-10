@@ -1,0 +1,70 @@
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 24,85
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 208-209,212,222,228
+packages/@n8n/cli/src/client.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 789
+packages/@n8n/cli/src/commands/package/export.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 106,111,126,151,162
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 96,179,219,226,438,449,455,465,495
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 521,524-525
+  s_08690fb8a4caf5::t_8849cd2d4d7b24 530
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 233
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 54,73,115,175,223,246
+packages/cli/src/public-api/v1/controllers/__tests__/n8n-packages.public.controller.test.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 41,362,365,371
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 53,56
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 661,1273
+packages/@n8n/cli/docs/commands/package.md
+  s_08690fb8a4caf5::t_fdb7b923349799 34
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 259
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 3778
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 219
+packages/@n8n/api-types/src/dto/packages/export-package-request.openapi.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 45
+packages/cli/src/events/maps/relay.event-map.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 177
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 27,160,174
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 282
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 23,228,232,243
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 108,131,151,168,185,201,242,306,341,380,404,430
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 41,62
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 502
+packages/cli/test/integration/public-api/n8n-packages-export.test.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 248
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_08690fb8a4caf5::t_fdb7b923349799 1727,1739
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  s_08690fb8a4caf5::t_c4be85960f5c04 115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f1452debe7a00420f08f9b9de4e7636d551bdbe",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
