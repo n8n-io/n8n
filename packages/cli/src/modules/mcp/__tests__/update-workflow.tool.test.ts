@@ -413,7 +413,7 @@ describe('update-workflow MCP tool', () => {
 					ruleId: 'cron-removed-v3',
 					title: 'Cron node removed',
 					impact: 'executionsFail' as const,
-					resolution: 'workflowEdit' as const,
+					assistantAction: 'fix' as const,
 					issues: [{ title: 'Removed', description: 'Gone', level: 'error' as const }],
 				},
 			],

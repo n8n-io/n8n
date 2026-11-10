@@ -67,6 +67,7 @@ export const createMigrateWorkflowTool = (
 			'The fix rewrites the flagged nodes and saves the result as a new draft version; it never publishes. ' +
 			'Prefer it to editing the nodes by hand for migratable rules. ' +
 			'The result lists the findings still open on the workflow, so no extra check is needed. ' +
+			'If the fix refuses a node, it changes nothing: make the replacement with update_workflow. ' +
 			'Afterwards, tell the user about every unmapped parameter and note. If the workflow was published, publish it again with publish_workflow only after the user agrees.',
 		inputSchema,
 		outputSchema,

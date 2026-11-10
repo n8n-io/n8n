@@ -1,4 +1,5 @@
 import type {
+	BreakingChangeAssistantAction,
 	BreakingChangeLightReportResult,
 	BreakingChangeRuleDetailResult,
 	BreakingChangeRuleImpact,
@@ -32,7 +33,6 @@ import type { MigrationFindingSyncService } from '@/modules/breaking-changes/syn
 import type { MigrationFindingTriageService } from '@/modules/breaking-changes/triage/migration-finding-triage.service';
 import {
 	BreakingChangeCategory,
-	type BreakingChangeRuleResolution,
 	type IBreakingChangeInstanceRule,
 	type IBreakingChangeWorkflowRule,
 } from '@/modules/breaking-changes/types';
@@ -95,8 +95,8 @@ const workflowRule = (
 	id: string,
 	{
 		version = 'v3',
-		resolution,
-	}: { version?: 'v2' | 'v3'; resolution?: BreakingChangeRuleResolution } = {},
+		assistant,
+	}: { version?: 'v2' | 'v3'; assistant?: BreakingChangeAssistantAction } = {},
 ): IBreakingChangeWorkflowRule => ({
 	id,
 	getMetadata: () => ({
@@ -105,7 +105,7 @@ const workflowRule = (
 		description: id,
 		category: BreakingChangeCategory.workflow,
 		impact: 'executionsFail',
-		...(resolution ? { resolution } : {}),
+		...(assistant ? { assistant } : {}),
 	}),
 	getRecommendations: async () => [],
 	detectWorkflow: async () => ({ isAffected: false, issues: [] }),
@@ -188,8 +188,8 @@ describe('get_migration_report', () => {
 		const deps = makeDeps();
 		withRules(
 			deps,
-			workflowRule('removed-node'),
-			workflowRule('embedded-chat', { resolution: 'userConfirmation' }),
+			workflowRule('removed-node', { assistant: 'fix' }),
+			workflowRule('embedded-chat'),
 		);
 		deps.queryService.getLightReport.mockResolvedValue(lightReport());
 
@@ -210,14 +210,14 @@ describe('get_migration_report', () => {
 				{
 					ruleId: 'removed-node',
 					impact: 'executionsFail',
-					resolution: 'workflowEdit',
+					assistantAction: 'fix',
 					openWorkflows: 3,
 					wontFixWorkflows: 1,
 				},
 				{
 					ruleId: 'embedded-chat',
 					impact: 'capabilityRemoved',
-					resolution: 'userConfirmation',
+					assistantAction: 'none',
 					openWorkflows: 1,
 					wontFixWorkflows: 0,
 				},
@@ -226,10 +226,9 @@ describe('get_migration_report', () => {
 				{
 					ruleId: 'docker-only',
 					impact: 'upgradeBlocked',
-					resolution: 'instanceConfiguration',
 					issues: [{ title: 'npm install' }],
 				},
-				{ ruleId: 'task-runner-timeout', resolution: 'instanceConfiguration' },
+				{ ruleId: 'task-runner-timeout' },
 			],
 		});
 		expect(result.structuredContent).not.toHaveProperty('incomplete');
@@ -384,7 +383,7 @@ describe('get_migration_findings', () => {
 			expect(output.rules).toHaveLength(1);
 			expect(output.rules[0]).toMatchObject({
 				ruleId: 'removed-node',
-				resolution: 'workflowEdit',
+				assistantAction: 'none',
 				totalWorkflows: 2,
 			});
 			expect(output.rules[0].workflows[0]).toEqual({
@@ -471,8 +470,8 @@ describe('get_migration_findings', () => {
 			const deps = makeDeps();
 			withRules(
 				deps,
-				workflowRule('removed-node'),
-				workflowRule('embedded-chat', { resolution: 'userConfirmation' }),
+				workflowRule('removed-node', { assistant: 'fix' }),
+				workflowRule('embedded-chat', { assistant: 'review' }),
 			);
 			deps.workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				mcpWorkflow('wf-1', true, 'published-version'),
@@ -501,7 +500,7 @@ describe('get_migration_findings', () => {
 			const output = result.structuredContent as Output;
 			expect(output.rules.map((rule) => rule.ruleId)).toEqual(['removed-node', 'embedded-chat']);
 			expect(output.rules[1]).toMatchObject({
-				resolution: 'userConfirmation',
+				assistantAction: 'review',
 				totalWorkflows: 1,
 				workflows: [
 					{
@@ -648,7 +647,7 @@ describe('readWorkflowMigrationFindings', () => {
 
 	it('lists the open and notified findings most severe first and counts the others', async () => {
 		const deps = makeDeps();
-		withRules(deps, workflowRule('embedded-chat', { resolution: 'userConfirmation' }));
+		withRules(deps, workflowRule('embedded-chat', { assistant: 'review' }));
 		deps.queryService.getWorkflowFindings.mockResolvedValue([
 			workflowFinding('embedded-chat', 'behaviorChanges', 'open', 'Chat'),
 			// A notification does not resolve the finding.
@@ -670,14 +669,14 @@ describe('readWorkflowMigrationFindings', () => {
 					ruleId: 'removed-node',
 					title: 'removed-node title',
 					impact: 'executionsFail',
-					resolution: 'workflowEdit',
+					assistantAction: 'none',
 					issues: [expect.objectContaining({ nodeName: 'Old' })],
 				},
 				{
 					ruleId: 'embedded-chat',
 					title: 'embedded-chat title',
 					impact: 'behaviorChanges',
-					resolution: 'userConfirmation',
+					assistantAction: 'review',
 					issues: [expect.objectContaining({ nodeName: 'Chat' })],
 				},
 			],

@@ -1,4 +1,5 @@
 import {
+	breakingChangeAssistantActionSchema,
 	breakingChangeRuleImpactSchema,
 	breakingChangeWorkflowIssueSchema,
 	type BreakingChangeRecommendation,
@@ -54,17 +55,12 @@ export const impactSchema = breakingChangeRuleImpactSchema.describe(
 	'What happens if the issue is not fixed before the update: upgradeBlocked (the instance does not start or the update cannot proceed), executionsFail (affected executions error), executionsMightFail (a default changes, so affected executions can error depending on the workload; an admin can keep the current value through configuration), behaviorChanges (executions run with a different result), capabilityRemoved (a removed capability, no runtime impact)',
 );
 
-export const resolutionSchema = z
-	.enum(['workflowEdit', 'userConfirmation', 'instanceConfiguration'])
-	.describe(
-		'How a finding is resolved: workflowEdit (fix the workflow; the finding clears on save), userConfirmation (no workflow edit clears it; once the user confirms the change is handled, set the finding to wont_fix), instanceConfiguration (change the deployment or environment; no workflow edit applies)',
-	);
+export const assistantActionSchema = breakingChangeAssistantActionSchema.describe(
+	'What to do with a finding of this rule when the rule is not migratable: fix (change the workflow so the finding no longer applies), review (the right change depends on what the user wants: explain what changes for the workflow, and change the workflow only after the user agrees), none (n8n offers no assisted fix for this rule: tell the user what the recommendations say, and change the workflow only when the user asks for it)',
+);
 
-type RuleResolution = z.infer<typeof resolutionSchema>;
-
-/** The resolution a workflow rule declares, `workflowEdit` unless it says otherwise. */
-export const workflowRuleResolution = (ruleRegistry: RuleRegistry, ruleId: string) =>
-	ruleRegistry.getRule(ruleId)?.getMetadata().resolution ?? 'workflowEdit';
+export const workflowRuleAssistantAction = (ruleRegistry: RuleRegistry, ruleId: string) =>
+	ruleRegistry.getRule(ruleId)?.getMetadata().assistant ?? 'none';
 
 /** The rule fields every migration report tool returns. */
 export const ruleOutputShape = {
@@ -72,7 +68,6 @@ export const ruleOutputShape = {
 	title: z.string(),
 	description: z.string(),
 	impact: impactSchema,
-	resolution: resolutionSchema,
 	documentationUrl: z.string().optional(),
 	recommendations: z
 		.array(z.object({ action: z.string(), description: z.string() }))
@@ -92,15 +87,24 @@ type RuleSource = {
 	migratable: boolean;
 };
 
-export const toRuleOutput = (rule: RuleSource, resolution: RuleResolution) => ({
+export const toRuleOutput = (rule: RuleSource) => ({
 	ruleId: rule.ruleId,
 	title: rule.ruleTitle,
 	description: rule.ruleDescription,
 	impact: rule.ruleImpact,
-	resolution,
 	...(rule.ruleDocumentationUrl ? { documentationUrl: rule.ruleDocumentationUrl } : {}),
 	recommendations: rule.recommendations,
 	migratable: rule.migratable,
+});
+
+export const workflowRuleOutputShape = {
+	...ruleOutputShape,
+	assistantAction: assistantActionSchema,
+} satisfies z.ZodRawShape;
+
+export const toWorkflowRuleOutput = (ruleRegistry: RuleRegistry, rule: RuleSource) => ({
+	...toRuleOutput(rule),
+	assistantAction: workflowRuleAssistantAction(ruleRegistry, rule.ruleId),
 });
 
 /** What a save tool reports about the migration findings of the workflow it saved. */
@@ -113,7 +117,7 @@ export const workflowMigrationFindingsSchema = z
 					ruleId: z.string(),
 					title: z.string(),
 					impact: impactSchema,
-					resolution: resolutionSchema,
+					assistantAction: assistantActionSchema,
 					issues: z.array(breakingChangeWorkflowIssueSchema),
 				}),
 			)
@@ -123,7 +127,7 @@ export const workflowMigrationFindingsSchema = z
 			.int()
 			.min(0)
 			.describe(
-				'Findings fixed in the draft only. They are resolved when the workflow is published',
+				'Findings fixed in the draft only. They are resolved when the workflow is published. Publish it only after the user agrees',
 			),
 		wontFixFindings: z
 			.number()
@@ -179,7 +183,7 @@ export async function readWorkflowMigrationFindings(
 					ruleId: finding.ruleId,
 					title: finding.ruleTitle,
 					impact: finding.ruleImpact,
-					resolution: workflowRuleResolution(deps.ruleRegistry, finding.ruleId),
+					assistantAction: workflowRuleAssistantAction(deps.ruleRegistry, finding.ruleId),
 					issues: finding.issues,
 				}))
 				.sort(byImpact),

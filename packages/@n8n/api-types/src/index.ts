@@ -369,6 +369,7 @@ export type {
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
+	breakingChangeAssistantActionSchema,
 	breakingChangeInstanceIssueSchema,
 	breakingChangeRuleImpactSchema,
 	breakingChangeWorkflowIssueSchema,

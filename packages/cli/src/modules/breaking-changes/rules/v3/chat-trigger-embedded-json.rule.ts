@@ -33,8 +33,6 @@ export class ChatTriggerEmbeddedJsonRule implements IBreakingChangeWorkflowRule 
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
 			documentationUrl: 'https://www.npmjs.com/package/@n8n/chat',
-			// The fix is in the page that embeds the chat, so no workflow edit clears the finding.
-			resolution: 'userConfirmation',
 		};
 	}
 

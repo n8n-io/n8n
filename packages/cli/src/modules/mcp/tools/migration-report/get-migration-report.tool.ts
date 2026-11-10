@@ -19,7 +19,8 @@ import {
 	incompleteReportShape,
 	ruleOutputShape,
 	toRuleOutput,
-	workflowRuleResolution,
+	toWorkflowRuleOutput,
+	workflowRuleOutputShape,
 	type MigrationReportToolDeps,
 } from './migration-report.utils';
 
@@ -47,7 +48,7 @@ const outputSchema = {
 	workflowRules: z
 		.array(
 			z.object({
-				...ruleOutputShape,
+				...workflowRuleOutputShape,
 				openWorkflows: z
 					.number()
 					.int()
@@ -87,7 +88,7 @@ export const createGetMigrationReportTool = (
 			`Read the migration report for the upgrade to n8n ${deps.targetVersion}: the breaking changes that affect this instance, most severe first. ` +
 			`Call it first when the user asks about upgrading to ${deps.targetVersion}, about breaking changes, or about the migration report. ` +
 			`Workflow rules count the workflows with an open finding; call ${MCP_GET_MIGRATION_FINDINGS_TOOL_NAME} with a ruleId to see the affected workflows and nodes. ` +
-			"Each rule's resolution says how its findings are resolved. " +
+			"Each workflow rule's assistantAction says what to do with its findings. " +
 			'Instance rules are configuration, environment, or deployment changes that no workflow edit can fix: explain them to the user and link their documentation. ' +
 			'A user who cannot edit every workflow sees only the workflows they can edit.',
 		inputSchema,
@@ -128,14 +129,14 @@ export const createGetMigrationReportTool = (
 				affectedWorkflows: totalAffectedWorkflows,
 				workflowRules: report.workflowResults
 					.map((rule) => ({
-						...toRuleOutput(rule, workflowRuleResolution(deps.ruleRegistry, rule.ruleId)),
+						...toWorkflowRuleOutput(deps.ruleRegistry, rule),
 						openWorkflows: rule.nbAffectedWorkflows,
 						wontFixWorkflows: rule.nbWontFixWorkflows,
 					}))
 					.sort(byImpact),
 				instanceRules: report.instanceResults
 					.map((rule) => ({
-						...toRuleOutput(rule, 'instanceConfiguration'),
+						...toRuleOutput(rule),
 						issues: rule.instanceIssues,
 					}))
 					.sort(byImpact),

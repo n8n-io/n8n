@@ -24,9 +24,8 @@ import {
 	byImpact,
 	getReportUrl,
 	getWorkflowUrl,
-	ruleOutputShape,
-	toRuleOutput,
-	workflowRuleResolution,
+	toWorkflowRuleOutput,
+	workflowRuleOutputShape,
 	INCOMPLETE_REPORT_NOTE,
 	incompleteReportShape,
 	type MigrationReportToolDeps,
@@ -77,7 +76,7 @@ const outputSchema = {
 	rules: z
 		.array(
 			z.object({
-				...ruleOutputShape,
+				...workflowRuleOutputShape,
 				totalWorkflows: z
 					.number()
 					.int()
@@ -158,7 +157,7 @@ export const createGetMigrationFindingsTool = (
 			reportUrl: getReportUrl(deps.urlService, ruleId),
 			rules: [
 				{
-					...toRuleOutput(detail, workflowRuleResolution(deps.ruleRegistry, ruleId)),
+					...toWorkflowRuleOutput(deps.ruleRegistry, detail),
 					totalWorkflows: findings.length,
 					workflows,
 					...(findings.length > shown.length ? { truncated: true } : {}),
@@ -190,7 +189,7 @@ export const createGetMigrationFindingsTool = (
 		)
 			.filter((finding) => ruleId === undefined || finding.ruleId === ruleId)
 			.map((finding) => ({
-				...toRuleOutput(finding, workflowRuleResolution(deps.ruleRegistry, finding.ruleId)),
+				...toWorkflowRuleOutput(deps.ruleRegistry, finding),
 				totalWorkflows: 1,
 				workflows: [
 					{
@@ -223,7 +222,10 @@ export const createGetMigrationFindingsTool = (
 			description:
 				'List what the migration report flags, with the affected nodes and how to fix them. ' +
 				`Pass a ruleId from the workflowRules of ${MCP_GET_MIGRATION_REPORT_TOOL_NAME} to list the workflows that rule flags, or a workflowId to list every rule that flags that workflow. ` +
-				`Fix a workflow by following the rule's recommendations with the workflow tools (get_workflow_details, then update_workflow), or with ${MCP_MIGRATE_WORKFLOW_TOOL_NAME} when the rule is migratable. ` +
+				`When the rule is migratable, fix the workflow with ${MCP_MIGRATE_WORKFLOW_TOOL_NAME}. Otherwise, the rule's assistantAction says what to do. ` +
+				"For fix, follow the rule's recommendations with the workflow tools (get_workflow_details, then update_workflow). " +
+				'For review, explain what changes for the workflow and change the workflow only after the user agrees. ' +
+				'For none, tell the user what the recommendations say and change the workflow only when the user asks for it. ' +
 				'If the workflow tools are not available, this connection cannot edit workflows: tell the user, and list what to fix instead. ' +
 				'You do not need to call this tool again after a fix: update_workflow and migrate_workflow report what is still open on the workflow they saved. ' +
 				'Workflows that are not available in MCP are listed without their issues, and MCP tools cannot edit them.',
