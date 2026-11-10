@@ -18,6 +18,7 @@ import {
 	renderObserverTranscript,
 	runObservationLogObserver,
 } from '../memory/observation-log-observer';
+import { settleAbandonedToolCallsInMemory } from '../memory/strip-orphaned-tool-messages';
 import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 
 type GenerateTextCall = Record<string, unknown>;
@@ -1167,6 +1168,62 @@ describe('runObservationLogObserver', () => {
 			expect(lastObserveInput.transcript).toContain('email sent');
 		},
 	);
+
+	it('observes past a suspended tool call after the host settles it as abandoned', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [
+				message('m1', 'user', 'Build a Telegram workflow.', new Date(2026, 4, 12, 14, 30)),
+				{
+					id: 'm2',
+					createdAt: new Date(2026, 4, 12, 14, 31),
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc1',
+							toolName: 'setup_workflow',
+							input: {},
+							state: 'pending',
+							suspension: { message: 'Configure credentials for your workflow' },
+						},
+					],
+				},
+				message('m3', 'user', 'Add a schedule trigger.', new Date(2026, 4, 12, 14, 32)),
+				message('m4', 'assistant', 'Added the trigger.', new Date(2026, 4, 12, 14, 33)),
+			],
+		});
+
+		const observe = vi.fn().mockResolvedValue('* IMPORTANT (14:40) Progress noted.');
+		const run = async () =>
+			await runObservationLogObserver({
+				memory: store,
+				observationScopeId: 'thread-1',
+				observationLogTailLimit: 20,
+				tokenCounter: () => 10,
+				now: new Date(2026, 4, 12, 14, 40),
+				observe,
+			});
+
+		await run();
+		expect(await run()).toEqual({ status: 'skipped', reason: 'pending-tool-call' });
+
+		// The user stopped the turn, so the suspension can never resume.
+		expect(
+			await settleAbandonedToolCallsInMemory(store, { threadId: 'thread-1', resourceId: 'user-1' }),
+		).toBe(1);
+
+		expect(await run()).toMatchObject({ status: 'ran', cursorAdvanced: true });
+		expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: 'm4' });
+		const [stored] = await store.getMessages('thread-1', { limit: 3 });
+		expect(stored).toMatchObject({
+			id: 'm2',
+			content: [{ type: 'tool-call', state: 'rejected' }],
+		});
+	});
 
 	it('does not persist secret values echoed by the observer into observation entries', async () => {
 		const store = new InMemoryMemory();

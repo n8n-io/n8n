@@ -235,6 +235,22 @@ describe('Canvas', () => {
 		expect(container.querySelector(`[data-id="${connections[0].id}"]`)).toBeInTheDocument();
 	});
 
+	it('emits a clipboard paste from the empty-canvas context menu', async () => {
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+
+		const { container, emitted, getByTestId } = renderComponent({
+			props: { nodes: [], connections: [] },
+		});
+
+		await fireEvent.contextMenu(container.querySelector('.vue-flow__pane')!);
+		await waitFor(() => expect(getByTestId('context-menu-item-paste')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('context-menu-item-paste'));
+
+		expect(emitted()['paste:clipboard']).toHaveLength(1);
+		useContextMenu().close();
+	});
+
 	it('places an added sticky at the canvas right-click after the canvas is panned', async () => {
 		workflowDocumentStore.setScopes(['workflow:update']);
 		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);

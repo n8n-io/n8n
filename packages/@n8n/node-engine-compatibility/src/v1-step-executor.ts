@@ -10,7 +10,6 @@ import {
 	CHAT_NODE_TYPE,
 	Expression,
 	isNodeClassInstance,
-	SEND_AND_WAIT_OPERATION,
 	UnexpectedError,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
@@ -58,16 +57,17 @@ function toStepResult(
 	context: DurableWaitExecuteContext,
 	nodeResult: INodeExecutionData[][],
 ): StepExecutionResult {
-	// The node ran to the end on an empty result; the sub-execution it asked for is
-	// what the step owes, and the node runs again once the sub-execution ends.
+	// The node declared a sub-execution. Awaited, the node ran to the end on an empty
+	// result and runs again once the sub-execution ends. Detached, its outputs stand.
 	const { declaration } = context.subWorkflowCalls;
-	if (declaration?.awaited) return { subExecution: declaration };
+	if (declaration) {
+		return declaration.awaited
+			? { subExecution: declaration }
+			: { subExecution: { ...declaration, outputs: toStepOutputs(nodeResult) } };
+	}
 
 	const { waitTill } = context.runExecutionData;
-	if (waitTill === undefined) {
-		const outputs = toStepOutputs(nodeResult);
-		return declaration ? { subExecution: { ...declaration, outputs } } : { outputs };
-	}
+	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
 		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
 		return { wait: { resumeBinding: context.resumeBinding } };
@@ -106,9 +106,9 @@ export class V1StepExecutor implements IStepExecutor {
 		const stepData = await this.deps.loadStepData(request.context);
 
 		const node = toV1Node(request.node, stepConfig);
-		// Engine v2 cannot route a reply to these steps yet. Fail before the node
+		// Engine v2 cannot route a chat reply to a step yet. Fail before the node
 		// sends the message. The Chat node waits in every version and operation.
-		if (node.parameters.operation === SEND_AND_WAIT_OPERATION || node.type === CHAT_NODE_TYPE) {
+		if (node.type === CHAT_NODE_TYPE) {
 			throw new UnsupportedWaitError(node.name, 'an approval');
 		}
 

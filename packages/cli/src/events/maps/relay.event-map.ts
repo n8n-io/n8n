@@ -75,6 +75,12 @@ export type { UserLike };
  */
 export type PolicyWriteOrigin = 'composed-save' | 'document-api';
 
+export type SystemDeactivationReason =
+	| 'memory-guard'
+	| 'crash-recovery'
+	| 'source-control-pull'
+	| 'instance-ai-eval-rollback';
+
 export type CrashDetector =
 	| 'stall'
 	| 'queue-recovery'
@@ -240,6 +246,13 @@ export type RelayEventMap = ModuleEventMap & {
 		source?: WorkflowActionSource;
 	};
 
+	'workflow-deactivated-by-system': {
+		workflowId: string;
+		workflowName: string;
+		deactivatedVersionId: string;
+		reason: SystemDeactivationReason;
+	};
+
 	'workflow-pre-execute': {
 		executionId: string;
 		userId?: string;
@@ -378,6 +391,10 @@ export type RelayEventMap = ModuleEventMap & {
 	'user-logged-in': {
 		user: UserLike;
 		authenticationMethod: AuthenticationMethod;
+	};
+
+	'user-logged-out': {
+		user: UserLike;
 	};
 
 	'user-login-failed': {
@@ -1387,8 +1404,12 @@ export type RelayEventMap = ModuleEventMap & {
 		user: UserLike;
 		/** Set when the outcome is 'success'. */
 		providerId?: string;
+		/** Set when the outcome is 'success'. */
+		providerName?: string;
 		providerType: PromotionProviderType;
 		authType: PromotionProviderAuthType;
+		/** Git host providers only. Set when the outcome is 'success'. */
+		hostBaseUrl?: string;
 		outcome: 'success' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
@@ -1397,7 +1418,12 @@ export type RelayEventMap = ModuleEventMap & {
 	'promotion-environment-created': {
 		user: UserLike;
 		environmentId: string;
+		environmentName: string;
+		providerId: string;
+		providerName: string;
 		providerType: PromotionProviderType;
+		/** The remote URL without query or fragment, or the Git host repository path. */
+		repository: string;
 		direction: PromotionDirection;
 		environmentScope: PromotionEnvironmentScope;
 		/** Promote environments only. */
@@ -1407,7 +1433,12 @@ export type RelayEventMap = ModuleEventMap & {
 	'promotion-provider-updated': {
 		user: UserLike;
 		providerId: string;
+		/** The name after the update. Set when the outcome is 'success'. */
+		providerName?: string;
 		providerType: PromotionProviderType;
+		authType: PromotionProviderAuthType;
+		/** Git host providers only. The URL after the update. Set when the outcome is 'success'. */
+		hostBaseUrl?: string;
 		/** The fields the request sent, never their values. */
 		changedFields: Array<'name' | 'auth' | 'config'>;
 		outcome: 'success' | 'failed';
@@ -1418,13 +1449,24 @@ export type RelayEventMap = ModuleEventMap & {
 	'promotion-provider-deleted': {
 		user: UserLike;
 		providerId: string;
+		providerName: string;
 		providerType: PromotionProviderType;
+		authType: PromotionProviderAuthType;
+		/** Git host providers only. */
+		hostBaseUrl?: string;
 	};
 
+	/** Name, provider, and repository are the values after the update. */
 	'promotion-environment-updated': {
 		user: UserLike;
 		environmentId: string;
+		environmentName: string;
+		providerId: string;
+		providerName: string;
+		/** The remote URL without query or fragment, or the Git host repository path. */
+		repository: string;
 		direction: PromotionDirection;
+		environmentScope: PromotionEnvironmentScope;
 		/** The fields the request sent, never their values. */
 		changedFields: Array<'name' | 'remote' | 'provider' | 'settings'>;
 	};
@@ -1432,6 +1474,11 @@ export type RelayEventMap = ModuleEventMap & {
 	'promotion-environment-deleted': {
 		user: UserLike;
 		environmentId: string;
+		environmentName: string;
+		providerId: string;
+		providerName: string;
+		/** The remote URL without query or fragment, or the Git host repository path. */
+		repository: string;
 		direction: PromotionDirection;
 		environmentScope: PromotionEnvironmentScope;
 	};
@@ -1464,6 +1511,8 @@ export type RelayEventMap = ModuleEventMap & {
 		};
 		/** Project scope only. */
 		selectedWorkflowCount?: number;
+		/** Project scope only. */
+		selectedFolderCount?: number;
 		/** Set when the outcome is not 'failed'. */
 		openedReview?: boolean;
 	};
@@ -1480,6 +1529,10 @@ export type RelayEventMap = ModuleEventMap & {
 		workflowsChanged?: number;
 		/** Set when the outcome is 'applied'. */
 		workflowsFailedToPublish?: number;
+		/** Set when the outcome is 'applied'. */
+		foldersChanged?: number;
+		/** Set when the outcome is 'applied'. */
+		projectsChanged?: number;
 	};
 
 	'promotion-merge-request-opened': {
