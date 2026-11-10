@@ -50,7 +50,7 @@ describe('execution ledger started rows', () => {
 	});
 
 	const executionExists = async (id: string) =>
-		(await Container.get(ExecutionRepository).findOneBy({ id })) !== null;
+		await Container.get(ExecutionRepository).existsBy({ id });
 
 	it('writes one started row with the run facts', async () => {
 		const executionId = await persistence.create(payload(), {}, { source: 'instance_ai' });
@@ -111,21 +111,11 @@ describe('execution ledger started rows', () => {
 	});
 
 	it('writes a blocked ended row for a run created finished', async () => {
-		const executionId = await persistence.create(
-			payload({ status: 'error', stoppedAt: new Date() }),
-		);
+		const executionId = await persistence.create(payload({ status: 'error' }));
 
-		const rows = await claimAllLedgerRows();
-		expect(
-			rows.map(({ executionId: id, event, outcome, blockedBy }) => ({
-				id,
-				event,
-				outcome,
-				blockedBy,
-			})),
-		).toEqual([
-			{ id: executionId, event: 'started', outcome: 'none', blockedBy: 'none' },
-			{ id: executionId, event: 'ended', outcome: 'blocked', blockedBy: 'startFailed' },
+		expect(await claimAllLedgerRows()).toMatchObject([
+			{ executionId, event: 'started', outcome: 'none', blockedBy: 'none' },
+			{ executionId, event: 'ended', outcome: 'blocked', blockedBy: 'startFailed' },
 		]);
 	});
 
@@ -137,15 +127,7 @@ describe('execution ledger started rows', () => {
 		const replacementId = await persistence.create(payload({ deduplicationKey }));
 
 		expect(await executionExists(tombstoneId)).toBe(false);
-		const rows = await claimAllLedgerRows();
-		expect(
-			rows.map(({ executionId, event, outcome, blockedBy }) => ({
-				executionId,
-				event,
-				outcome,
-				blockedBy,
-			})),
-		).toEqual([
+		expect(await claimAllLedgerRows()).toMatchObject([
 			{ executionId: tombstoneId, event: 'ended', outcome: 'blocked', blockedBy: 'startFailed' },
 			{ executionId: replacementId, event: 'started', outcome: 'none', blockedBy: 'none' },
 		]);

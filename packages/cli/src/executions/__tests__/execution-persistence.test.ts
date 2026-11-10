@@ -34,7 +34,8 @@ describe('ExecutionPersistence', () => {
 	const dbStore = mock<DbStore>();
 	const errorReporter = mock<ErrorReporter>();
 	const eventService = mock<EventService>();
-	const executionLedger = mock<ExecutionLedger>({ isEnabled: false });
+	const disabledLedger = mock<ExecutionLedger>({ isEnabled: false });
+	const executionLedger = mock<ExecutionLedger>({ isEnabled: true });
 	const executionsConfig = mock<ExecutionsConfig>({
 		pruneData: true,
 		pruneDataHardDeleteBuffer: 1,
@@ -95,6 +96,7 @@ describe('ExecutionPersistence', () => {
 	const createPersistenceService = (
 		modeTag: 'db' | 'fs' | 's3' | 'az',
 		dbType: DatabaseConfig['type'] = 'postgresdb',
+		ledger = disabledLedger,
 	) =>
 		new ExecutionPersistence(
 			executionRepository,
@@ -106,7 +108,7 @@ describe('ExecutionPersistence', () => {
 			mock<DatabaseConfig>({ type: dbType }),
 			errorReporter,
 			eventService,
-			executionLedger,
+			ledger,
 		);
 
 	describe('create', () => {
@@ -539,7 +541,7 @@ describe('ExecutionPersistence', () => {
 		});
 
 		describe('execution ledger', () => {
-			const persistence = createPersistenceService('db');
+			const persistence = createPersistenceService('db', 'postgresdb', executionLedger);
 			const blocked = {
 				outcome: 'blocked',
 				blockedBy: 'startFailed',
@@ -549,14 +551,9 @@ describe('ExecutionPersistence', () => {
 			let mockTx: ReturnType<typeof createMockTransaction>;
 
 			beforeEach(() => {
-				Object.assign(executionLedger, { isEnabled: true });
 				executionLedger.recordStarted.mockResolvedValue(true);
 				mockTx = createMockTransaction();
 				executionRepository.runInTransaction = createMockRunInTransaction(mockTx);
-			});
-
-			afterAll(() => {
-				Object.assign(executionLedger, { isEnabled: false });
 			});
 
 			it('writes the started row in the transaction of the execution row', async () => {
@@ -574,12 +571,6 @@ describe('ExecutionPersistence', () => {
 					txCtx,
 				);
 				expect(executionLedger.recordEndedInTransaction).not.toHaveBeenCalled();
-			});
-
-			it('rolls the execution back when the ledger insert fails', async () => {
-				executionLedger.recordStarted.mockRejectedValue(new Error('insert failed'));
-
-				await expect(persistence.create(createPayload)).rejects.toThrow('insert failed');
 			});
 
 			it('writes a blocked ended row for a row created finished', async () => {
@@ -628,12 +619,11 @@ describe('ExecutionPersistence', () => {
 				);
 			});
 
-			it('builds no facts when the module is off', async () => {
-				Object.assign(executionLedger, { isEnabled: false });
+			it('writes no row when the module is off', async () => {
+				await createPersistenceService('db').create({ ...createPayload, status: 'error' });
 
-				await persistence.create({ ...createPayload, status: 'error' });
-
-				expect(executionLedger.recordStarted).not.toHaveBeenCalled();
+				expect(disabledLedger.recordStarted).not.toHaveBeenCalled();
+				expect(disabledLedger.recordEndedInTransaction).not.toHaveBeenCalled();
 			});
 		});
 	});

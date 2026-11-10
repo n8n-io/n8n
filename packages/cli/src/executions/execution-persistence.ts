@@ -1,5 +1,9 @@
 import { parseFlatted } from '@n8n/backend-common';
-import { EventService, ExecutionLedger } from '@n8n/backend-services';
+import {
+	EventService,
+	ExecutionLedger,
+	type ExecutionLedgerStartedFacts,
+} from '@n8n/backend-services';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -157,9 +161,16 @@ export class ExecutionPersistence {
 				);
 
 				await this.recordInLedger(
-					{ ...executionEntity, executionId, workflowName: workflowData.name },
+					{
+						executionId,
+						workflowId: executionEntity.workflowId,
+						workflowName: workflowData.name,
+						mode: executionEntity.mode,
+						source: options.source,
+						occurredAt: executionEntity.createdAt,
+					},
+					{ ...executionEntity, skipLedger: options.skipLedger },
 					reclaimedTombstone,
-					options,
 					c,
 				);
 
@@ -194,22 +205,13 @@ export class ExecutionPersistence {
 
 	/** A row created finished and a reclaimed tombstone never ran, so both get an `ended blocked` row. */
 	private async recordInLedger(
-		created: {
-			executionId: string;
-			workflowId: string;
-			workflowName: string;
-			mode: WorkflowExecuteMode;
-			status: ExecutionStatus;
-			createdAt: Date;
-			stoppedAt?: Date;
-		},
+		started: ExecutionLedgerStartedFacts,
+		row: { status: ExecutionStatus; stoppedAt?: Date; skipLedger?: true },
 		tombstone: ReclaimedTombstone | null,
-		options: CreateExecutionOptions,
 		ctx: OperationContext,
 	): Promise<void> {
 		if (!this.executionLedger.isEnabled) return;
 
-		const { executionId, workflowId, workflowName, mode, createdAt } = created;
 		const blocked = {
 			outcome: 'blocked',
 			blockedBy: 'startFailed',
@@ -218,35 +220,21 @@ export class ExecutionPersistence {
 		} as const;
 
 		if (tombstone) {
+			// Same dedup key, so the same workflow: the name and the time come from the new run.
+			const { executionId, workflowId, mode } = tombstone;
 			await this.executionLedger.recordEndedInTransaction(
-				{
-					...blocked,
-					executionId: tombstone.executionId,
-					workflowId: tombstone.workflowId,
-					// Same dedup key, so the same workflow.
-					workflowName,
-					mode: tombstone.mode,
-					occurredAt: createdAt,
-				},
+				{ ...started, ...blocked, executionId, workflowId, mode, source: undefined },
 				ctx,
 			);
 		}
 
-		if (options.skipLedger) return;
+		if (row.skipLedger) return;
 
-		const startedFacts = {
-			executionId,
-			workflowId,
-			workflowName,
-			mode,
-			source: options.source,
-			occurredAt: createdAt,
-		};
-		const started = await this.executionLedger.recordStarted(startedFacts, ctx);
-		if (!started || !isTerminalExecutionStatus(created.status)) return;
+		const recorded = await this.executionLedger.recordStarted(started, ctx);
+		if (!recorded || !isTerminalExecutionStatus(row.status)) return;
 
 		await this.executionLedger.recordEndedInTransaction(
-			{ ...startedFacts, ...blocked, occurredAt: created.stoppedAt ?? createdAt },
+			{ ...started, ...blocked, occurredAt: row.stoppedAt ?? started.occurredAt },
 			ctx,
 		);
 	}
