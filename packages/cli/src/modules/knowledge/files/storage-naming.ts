@@ -2,17 +2,16 @@ import type { AgentFileDto } from '@n8n/api-types';
 import { getPromptWorkspaceRoot, type SandboxProvider } from '@n8n/agents/sandbox';
 import path from 'node:path';
 
-import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
+import type { KnowledgeFile } from '../entities/knowledge-file.entity';
+import { KnowledgeUploadError } from './knowledge-upload.error';
 
-import { AgentKnowledgeUploadError } from './agent-knowledge-upload.error';
-
-export interface AgentKnowledgePaths {
+export interface KnowledgePaths {
 	filesDir: string;
 	manifest: string;
 	stagingDir: string;
 }
 
-export function getAgentKnowledgePaths(provider: SandboxProvider): AgentKnowledgePaths {
+export function getKnowledgePaths(provider: SandboxProvider): KnowledgePaths {
 	const home = path.dirname(getPromptWorkspaceRoot(provider));
 	const mirrorDir = `${home}/knowledge-mirror`;
 	return {
@@ -56,7 +55,7 @@ function sanitizeStorageFileName(originalName: string): string {
 	// `path.basename` passes through `.`, `..`, and empty names, which would
 	// resolve outside the scoped knowledge files directory when joined.
 	if (!sanitized || sanitized === '.' || sanitized === '..') {
-		throw new AgentKnowledgeUploadError(
+		throw new KnowledgeUploadError(
 			`Invalid knowledge file name "${originalName}"`,
 			'invalid_file_name',
 		);

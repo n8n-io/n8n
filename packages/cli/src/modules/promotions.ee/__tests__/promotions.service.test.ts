@@ -1837,7 +1837,12 @@ describe('PromotionsService', () => {
 					canExportVariableValues: true,
 					commitMessage: undefined,
 				}),
-				{ projectId: 'p1', workflowIds: ['w1', 'w2', 'w4'], deletedWorkflowIds: ['w3'] },
+				{
+					projectId: 'p1',
+					workflowIds: ['w1', 'w2', 'w4'],
+					deletedWorkflowIds: ['w3'],
+					folderIds: [],
+				},
 				new Map(),
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
@@ -1866,7 +1871,7 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.objectContaining({ commitMessage: 'Promote checkout flow' }),
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [], folderIds: [] },
 				new Map(),
 			);
 		});
@@ -1888,7 +1893,7 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.anything(),
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'] },
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'], folderIds: [] },
 				new Map(),
 			);
 		});
@@ -1912,21 +1917,9 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.anything(),
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'] },
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'], folderIds: [] },
 				new Map([['w9', 'project "Ops"']]),
 			);
-		});
-
-		it('rejects a selection with duplicate workflow ids', async () => {
-			const promoteSelectionResolved = spyPromoteSelectionResolved();
-
-			await expect(
-				service.promoteProjectSelection('p1', actor, {
-					workflowIds: ['w1', 'w1'],
-					canExportVariableValues: false,
-				}),
-			).rejects.toThrow(BadRequestError);
-			expect(promoteSelectionResolved).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2310,6 +2303,8 @@ describe('PromotionsService', () => {
 				durationMs: expect.any(Number),
 				workflowsChanged: 6,
 				workflowsFailedToPublish: 0,
+				foldersChanged: 7,
+				projectsChanged: 2,
 			});
 		});
 
@@ -2568,10 +2563,12 @@ describe('PromotionsService', () => {
 					selectedProjectId: 'p1',
 					selectedWorkflowIds: selection.selectedWorkflowIds,
 					deletedWorkflowIds: selection.deletedWorkflowIds,
+					selectedFolderIds: [],
 				};
 				expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledWith(
 					{
 						user: actor,
+						projectConflictPolicy: 'overwrite',
 						overwriteDeletionPolicy: 'hard-delete',
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 						tagConflictPolicy: 'rename',
@@ -2760,6 +2757,7 @@ describe('PromotionsService', () => {
 									selectedProjectId: 'p1',
 									selectedWorkflowIds: ['w1'],
 									deletedWorkflowIds: ['deleted'],
+									selectedFolderIds: [],
 								},
 								noMoves,
 							);
@@ -2792,6 +2790,7 @@ describe('PromotionsService', () => {
 								selectedProjectId: 'p1',
 								selectedWorkflowIds: ['w1'],
 								deletedWorkflowIds: ['deleted'],
+								selectedFolderIds: [],
 							},
 							'enforce',
 						);

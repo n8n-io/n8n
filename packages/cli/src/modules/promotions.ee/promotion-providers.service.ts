@@ -64,7 +64,11 @@ export class PromotionProvidersService {
 			(observed) =>
 				this.eventService.emit('promotion-provider-created', {
 					user: actor,
-					...(observed.ok && { providerId: observed.result.provider.id }),
+					...(observed.ok && {
+						providerId: observed.result.provider.id,
+						providerName: observed.result.provider.name,
+						hostBaseUrl: gitHostBaseUrl(observed.result.provider),
+					}),
 					providerType: input.type,
 					authType: input.auth.authType,
 					outcome: observed.ok ? 'success' : 'failed',
@@ -157,7 +161,12 @@ export class PromotionProvidersService {
 				this.eventService.emit('promotion-provider-updated', {
 					user: actor,
 					providerId: id,
+					...(observed.ok && {
+						providerName: observed.result.name,
+						hostBaseUrl: gitHostBaseUrl(observed.result),
+					}),
 					providerType: current.type,
+					authType: current.authType,
 					changedFields: [
 						...(input.name !== undefined ? ['name' as const] : []),
 						...(input.auth !== undefined ? ['auth' as const] : []),
@@ -222,7 +231,10 @@ export class PromotionProvidersService {
 		this.eventService.emit('promotion-provider-deleted', {
 			user: actor,
 			providerId: id,
+			providerName: provider.name,
 			providerType: provider.type,
+			authType: provider.authType,
+			hostBaseUrl: gitHostBaseUrl(provider),
 		});
 	}
 
@@ -410,6 +422,16 @@ export class PromotionProvidersService {
 		const parsed = promotionGitSshKeyConfigSchema.safeParse(provider.config);
 		return parsed.success ? parsed.data.keyType : 'ed25519';
 	}
+}
+
+/** Does not throw, so a provider with an unreadable config can still be deleted. */
+function gitHostBaseUrl(provider: {
+	type: PromotionProviderType;
+	config: PromotionProviderConfig;
+}): string | undefined {
+	if (!isPromotionGitHostType(provider.type)) return undefined;
+	const parsed = promotionGitHostConfigSchema.safeParse(provider.config);
+	return parsed.success ? parsed.data.baseUrl : undefined;
 }
 
 /** A row we cannot decrypt or parse. The admin has to replace the credentials. */

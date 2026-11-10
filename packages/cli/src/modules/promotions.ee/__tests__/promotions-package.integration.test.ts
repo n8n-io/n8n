@@ -2163,7 +2163,7 @@ describe('Apply moves and renames within a project', () => {
 		expect(await head()).toBe(before);
 	});
 
-	it('renames only the folders that hold a selected workflow on project Apply', async () => {
+	it('applies only the selected folders on project Apply, and the project details with every selection', async () => {
 		const { exportSource } = await connect();
 		const {
 			project,
@@ -2171,6 +2171,7 @@ describe('Apply moves and renames within a project', () => {
 		} = await setupProjectWithWorkflows('Orders', ['Report', 'Old order']);
 		const reports = await createFolder(project, { name: 'Reports' });
 		const archive = await createFolder(project, { name: 'Archive' });
+		const drafts = await createFolder(project, { name: 'Drafts' });
 		const repository = Container.get(WorkflowRepository);
 		await repository.update(report.id, { parentFolder: reports });
 		await repository.update(old.id, { parentFolder: archive });
@@ -2178,15 +2179,33 @@ describe('Apply moves and renames within a project', () => {
 		const folders = Container.get(FolderRepository);
 		await folders.update(reports.id, { name: 'Local reports' });
 		await folders.update(archive.id, { name: 'Local archive' });
+		// Only the branch holds the empty "Drafts" folder. Only this instance holds "Notes".
+		await folders.delete(drafts.id);
+		const notes = await createFolder(project, { name: 'Notes' });
+		await projectRepository.update(project.id, { name: 'Local orders' });
+		const projectName = async () =>
+			(await projectRepository.findOneByOrFail({ id: project.id })).name;
 
 		const result = await service.applyProjectSelection(project.id, owner, {
 			workflowIds: [report.id],
 		});
 
 		assert(result.status === 'applied');
-		expect(result.counts.folders).toMatchObject({ updated: 1, moved: 0, renamed: 1 });
+		expect(result.counts.folders).toMatchObject({ created: 0, updated: 1, moved: 0, renamed: 1 });
 		expect((await folderOf(reports.id)).name).toBe('Reports');
 		expect((await folderOf(archive.id)).name).toBe('Local archive');
+		expect(await folders.findOneBy({ id: drafts.id })).toBeNull();
+		expect(await projectName()).toBe('Orders');
+
+		const second = await service.applyProjectSelection(project.id, owner, {
+			folderIds: [archive.id, drafts.id],
+		});
+
+		assert(second.status === 'applied');
+		expect(second.counts.folders).toMatchObject({ created: 1, renamed: 1 });
+		expect((await folderOf(archive.id)).name).toBe('Archive');
+		expect((await folderOf(drafts.id)).name).toBe('Drafts');
+		expect((await folderOf(notes.id)).name).toBe('Notes');
 	});
 
 	it('says when the branch project of a moved workflow does not exist here yet', async () => {
@@ -2363,6 +2382,58 @@ describe('Check of the Apply preview', () => {
 });
 
 describe('Create the projects of the Apply package that are missing here', () => {
+	it('promotes an empty project, creates it here, and has nothing left to apply', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
+		const project = await createTeamProject('Orders', owner);
+		await projectRepository.update(project.id, { description: 'Order handling' });
+		const promoteProject = async () =>
+			await service.promoteProjectSelection(project.id, owner, { canExportVariableValues: true });
+
+		// The branch has no package yet.
+		await promoteProject();
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		expect(await readBranchEntities(dir, PACKAGE_ENTITY_LAYOUT.projects.fileName)).toEqual([
+			expect.objectContaining({ id: project.id, name: 'Orders' }),
+		]);
+		expect(await readBranchEntities(dir, 'workflow.json')).toEqual([]);
+		await expect(promoteProject()).rejects.toThrow('Nothing to promote');
+
+		// The project exists only on the source instance.
+		await projectService.deleteProject(owner, project.id);
+		const { data } = await service.listMissingProjects(environments.apply.id);
+		expect(data).toEqual([
+			expect.objectContaining({ id: project.id, name: 'Orders', description: 'Order handling' }),
+		]);
+		const [missing] = data;
+		await projectService.createTeamProject(
+			owner,
+			{ name: missing.name, icon: missing.icon },
+			{
+				id: missing.id,
+				description: missing.description ?? null,
+				customTelemetryTags: missing.customTelemetryTags,
+			},
+		);
+
+		const pendingChanges = async () =>
+			(await loadApplyPreview(project.id)).resources.filter(({ change }) => change !== 'unchanged');
+		expect(await pendingChanges()).toEqual([]);
+
+		// An Apply that selects nothing applies only the project details from the branch.
+		await projectRepository.update(project.id, { name: 'Local orders', description: 'Local' });
+		const applied = await service.applyProjectSelection(project.id, owner, {});
+		expect(applied.status).toBe('applied');
+		expect(await projectRepository.findOneByOrFail({ id: project.id })).toMatchObject({
+			name: 'Orders',
+			description: 'Order handling',
+		});
+		expect(await pendingChanges()).toEqual([]);
+	});
+
 	it('lists a missing project, creates it with the same ID, and then applies its workflow', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
@@ -3286,7 +3357,7 @@ describe('Promote a project selection — branch effects', () => {
 		expect(onBranch).toHaveLength(2);
 	});
 
-	it('moves a renamed folder, so unselected workflows ride along unchanged', async () => {
+	it('promotes only a renamed folder, and the workflows inside move along unchanged', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.promote.id, owner);
@@ -3294,8 +3365,8 @@ describe('Promote a project selection — branch effects', () => {
 
 		const project = await createTeamProject('Orders', owner);
 		const folder = await createFolder(project, { name: 'Sales' });
-		const selected = await createWorkflow(
-			{ name: 'Selected', nodes: [], connections: {}, parentFolder: folder },
+		const changed = await createWorkflow(
+			{ name: 'Changed', nodes: [], connections: {}, parentFolder: folder },
 			project,
 		);
 		const unselected = await createWorkflow(
@@ -3309,22 +3380,27 @@ describe('Promote a project selection — branch effects', () => {
 
 		const folderRepository = Container.get(FolderRepository);
 		await folderRepository.update(folder.id, { name: 'Revenue' });
+		// A local change that this promote must not carry.
+		await Container.get(WorkflowRepository).update(changed.id, { name: 'Changed locally' });
 		await service.promoteProjectSelection(project.id, owner, {
-			workflowIds: [selected.id],
-			commitMessage: 'Rename folder, promote one workflow',
+			folderIds: [folder.id],
 			canExportVariableValues: true,
 		});
 
-		const { dir } = await inspectBranch(remote.bareDir);
+		const { dir, git } = await inspectBranch(remote.bareDir);
 		const folders = await readBranchEntities(dir, 'folder.json');
 		const workflows = await readBranchEntities(dir, 'workflow.json');
 		const folderEntry = folders.find((f) => f.id === folder.id)!;
-		const selectedEntry = workflows.find((w) => w.id === selected.id)!;
+		const changedEntry = workflows.find((w) => w.id === changed.id)!;
 		const unselectedEntry = workflows.find((w) => w.id === unselected.id)!;
 
 		const renamedTarget = folderBefore.target.replace(/[^/]+$/, `revenue-${folder.id}`);
+		expect((await git.log({ maxCount: 1 })).latest?.message).toBe('Promote 1 folder from "Orders"');
 		expect(folderEntry).toMatchObject({ name: 'Revenue', target: renamedTarget });
-		expect(selectedEntry.target).toBe(`${renamedTarget}/workflows/selected-${selected.id}`);
+		expect(changedEntry).toMatchObject({
+			name: 'Changed',
+			target: `${renamedTarget}/workflows/changed-${changed.id}`,
+		});
 		expect(unselectedEntry.target).toBe(`${renamedTarget}/workflows/unselected-${unselected.id}`);
 		expect(unselectedEntry).toMatchObject({ name: 'Unselected' });
 		await expect(stat(path.join(dir, 'n8n', folderBefore.target))).rejects.toThrow();

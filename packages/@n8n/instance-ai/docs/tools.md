@@ -1589,7 +1589,9 @@ The orchestrator receives the safe native domain tools and orchestration tools
 from `src/tools/index.ts`. Its workflow tool omits raw workflow JSON reads and
 full-definition replacements. It receives the four node tools: `search_nodes`, `get_node_types`, `get_node_parameter_options`, and `execute_node`.
 External and local MCP tools are added after their names are checked against the
-native tools active for the current request.
+native tools active for the current request. "Always allow" on their approval cards
+saves a thread grant, the same grant that built-in tools use
+(`createThreadApprovalContext`).
 
 The embedded Agent Builder uses the agents-module builder's own tool surface
 through `agent_builder_build_agent`. It does not receive the Instance AI domain registry. It

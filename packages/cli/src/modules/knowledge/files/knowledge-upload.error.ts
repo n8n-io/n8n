@@ -7,19 +7,16 @@ type KnowledgeUploadFailure = Extract<
 >;
 
 /** Every server reason except `unknown`, which covers the errors that are not this class. */
-export type AgentKnowledgeUploadFailureReason = Exclude<
-	KnowledgeUploadFailure['reason'],
-	'unknown'
->;
+export type KnowledgeUploadFailureReason = Exclude<KnowledgeUploadFailure['reason'], 'unknown'>;
 
 /**
  * A rejected knowledge file upload. The message is what the user sees. The
  * reason is a fixed code for the "User failed agent knowledge upload" event.
  */
-export class AgentKnowledgeUploadError extends BadRequestError {
+export class KnowledgeUploadError extends BadRequestError {
 	constructor(
 		message: string,
-		readonly reason: AgentKnowledgeUploadFailureReason,
+		readonly reason: KnowledgeUploadFailureReason,
 	) {
 		super(message);
 	}

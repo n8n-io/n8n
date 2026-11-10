@@ -9,6 +9,13 @@ import { nanoid } from 'nanoid';
 
 import { BadRequestError, NotFoundError, OperationalError } from '@n8n/errors';
 
+import { KnowledgeFileStore } from '@/modules/knowledge/files/knowledge-file-store';
+import {
+	assertKnowledgePathSegment,
+	getKnowledgePaths,
+	type KnowledgePaths,
+	storageFileNameForOriginalFileName,
+} from '@/modules/knowledge/files/storage-naming';
 import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 import {
@@ -24,7 +31,6 @@ import {
 	parseRipgrepFilesOutput,
 	parseRipgrepOutput,
 } from './agent-knowledge-commands';
-import { AgentKnowledgeFileStore } from './agent-knowledge-file-store';
 import {
 	assertValidKnowledgeFilePath,
 	DEFAULT_GLOB_FILES_LIMIT,
@@ -41,12 +47,6 @@ import {
 	type SearchKnowledgeResult,
 } from './agent-knowledge-retrieval';
 import {
-	assertKnowledgePathSegment,
-	getAgentKnowledgePaths,
-	type AgentKnowledgePaths,
-	storageFileNameForOriginalFileName,
-} from './agent-knowledge-storage';
-import {
 	type AgentSandboxRuntime,
 	AgentSandboxRuntimeService,
 	sanitizeSandboxErrorDetail,
@@ -57,7 +57,7 @@ import { AgentRepository } from './repositories/agent.repository';
 const GLOB_MATCH_TIMEOUT_MS = 250;
 
 interface AgentKnowledgeMirrorRuntime extends AgentSandboxRuntime {
-	paths: AgentKnowledgePaths;
+	paths: KnowledgePaths;
 }
 
 interface AgentKnowledgeReferenceLookup {
@@ -129,7 +129,7 @@ export class AgentKnowledgeMirrorService {
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
+		private readonly agentKnowledgeFileStore: KnowledgeFileStore,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
 	) {}
 
@@ -459,7 +459,7 @@ export class AgentKnowledgeMirrorService {
 			projectId,
 			agentId,
 		);
-		return { ...runtime, paths: getAgentKnowledgePaths(runtime.provider) };
+		return { ...runtime, paths: getKnowledgePaths(runtime.provider) };
 	}
 
 	private resolveSearchFiles(

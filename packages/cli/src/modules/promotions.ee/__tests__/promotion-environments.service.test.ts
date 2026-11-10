@@ -154,7 +154,7 @@ describe('PromotionEnvironmentsService', () => {
 		});
 	});
 
-	it('emits an event with the direction and scope of the environment it deletes', async () => {
+	it('emits an event that describes the environment it deletes', async () => {
 		environmentRepository.deleteEnvironment.mockResolvedValue(true);
 
 		await service.delete(ENVIRONMENT_ID, actor);
@@ -162,6 +162,10 @@ describe('PromotionEnvironmentsService', () => {
 		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-deleted', {
 			user: actor,
 			environmentId: ENVIRONMENT_ID,
+			environmentName: 'Staging',
+			providerId: 'prov1',
+			providerName: 'Deploy key',
+			repository: 'git@github.com:o/r.git',
 			direction: 'promote',
 			environmentScope: 'projects',
 		});
@@ -212,7 +216,12 @@ describe('PromotionEnvironmentsService', () => {
 		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-updated', {
 			user: actor,
 			environmentId: ENVIRONMENT_ID,
+			environmentName: 'Renamed',
+			providerId: 'prov1',
+			providerName: 'Deploy key',
+			repository: 'git@github.com:o/r.git',
 			direction: 'promote',
+			environmentScope: 'projects',
 			changedFields: ['name'],
 		});
 	});
@@ -335,6 +344,46 @@ describe('PromotionEnvironmentsService', () => {
 			});
 		});
 	});
+
+	it('names the new provider when an update changes it', async () => {
+		environmentRepository.updateEnvironment.mockResolvedValue(true);
+		providersService.getEntity.mockResolvedValue({ ...provider(), id: 'prov2', name: 'Bot user' });
+
+		await service.update(ENVIRONMENT_ID, { providerId: 'prov2' }, actor);
+
+		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-updated', {
+			user: actor,
+			environmentId: ENVIRONMENT_ID,
+			environmentName: 'Staging',
+			providerId: 'prov2',
+			providerName: 'Bot user',
+			repository: 'git@github.com:o/r.git',
+			direction: 'promote',
+			environmentScope: 'projects',
+			changedFields: ['provider'],
+		});
+	});
+
+	it.each([
+		[
+			'an HTTPS',
+			'https://git.example.com/o/r.git?private_token=secret#main',
+			'https://git.example.com/o/r.git',
+		],
+		['an SCP-style', 'git@git.example.com:o/r.git?token=secret', 'git@git.example.com:o/r.git'],
+	])(
+		'names %s remote without its query string and fragment',
+		async (_kind, remoteUrl, repository) => {
+			environmentRepository.updateEnvironment.mockResolvedValue(true);
+
+			await service.update(ENVIRONMENT_ID, { remote: { schemaVersion: 1, remoteUrl } }, actor);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-environment-updated',
+				expect.objectContaining({ repository, changedFields: ['remote'] }),
+			);
+		},
+	);
 
 	describe('checkout state', () => {
 		it('reports an environment with no checkout as disconnected', async () => {

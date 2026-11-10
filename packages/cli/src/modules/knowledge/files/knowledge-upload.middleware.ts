@@ -9,17 +9,14 @@ import multer from 'multer';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 
-import {
-	AgentKnowledgeUploadError,
-	type AgentKnowledgeUploadFailureReason,
-} from './agent-knowledge-upload.error';
+import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
 
-const allowedAgentFileExtensions = new Set<string>(ALLOWED_AGENT_FILE_EXTENSIONS);
+const allowedKnowledgeFileExtensions = new Set<string>(ALLOWED_AGENT_FILE_EXTENSIONS);
 
-export function isAllowedAgentFile(file: Pick<Express.Multer.File, 'originalname'>) {
+export function isAllowedKnowledgeFile(file: Pick<Express.Multer.File, 'originalname'>) {
 	const extension = path.extname(file.originalname).toLowerCase();
 
-	return allowedAgentFileExtensions.has(extension);
+	return allowedKnowledgeFileExtensions.has(extension);
 }
 
 /**
@@ -44,7 +41,7 @@ export function describeMulterError(error: multer.MulterError): string {
 export function multerFailureReason(
 	error: multer.MulterError,
 	filesFieldName: string,
-): AgentKnowledgeUploadFailureReason | undefined {
+): KnowledgeUploadFailureReason | undefined {
 	switch (error.code) {
 		case 'LIMIT_UNEXPECTED_FILE':
 			// Multer uses this code for a file part with another field name too.
@@ -58,9 +55,9 @@ export function multerFailureReason(
 
 /**
  * Best-effort removal of multer's on-disk temp files. The upload handler hands
- * successful uploads to AgentKnowledgeService (which cleans up its own temp
+ * successful uploads to KnowledgeFileService (which cleans up its own temp
  * files), but early bail-outs (knowledge base disabled, upload error, no files)
- * return before that, so the controller calls this to avoid leaking temp files.
+ * return before that, so the caller calls this to avoid leaking temp files.
  */
 export async function cleanupUploadedTempFiles(files: Express.Multer.File[]) {
 	await Promise.all(
@@ -72,14 +69,14 @@ export async function cleanupUploadedTempFiles(files: Express.Multer.File[]) {
 }
 
 @Service()
-export class AgentUploadMiddleware {
+export class KnowledgeUploadMiddleware {
 	private readonly upload: multer.Multer = multer({
 		storage: multer.diskStorage({}),
 		limits: { fileSize: MAX_AGENT_FILE_SIZE_BYTES },
 		fileFilter: (_req, file, done) => {
-			if (!isAllowedAgentFile(file)) {
+			if (!isAllowedKnowledgeFile(file)) {
 				done(
-					new AgentKnowledgeUploadError(
+					new KnowledgeUploadError(
 						'Only CSV, PDF, Markdown, and TXT files are allowed',
 						'file_type',
 					),
