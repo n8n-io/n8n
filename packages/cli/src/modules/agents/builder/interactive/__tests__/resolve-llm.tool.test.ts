@@ -84,7 +84,7 @@ describe('agent_builder_resolve_llm tool', () => {
 		expect(result).toEqual({
 			ok: true,
 			provider: 'openrouter',
-			model: 'anthropic/claude-sonnet-5',
+			model: 'anthropic/claude-sonnet-5.5',
 			credentialId: 'c2',
 			credentialName: 'My OpenRouter',
 		});
@@ -377,7 +377,7 @@ describe('agent_builder_resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'openrouter',
-				model: 'anthropic/claude-sonnet-5',
+				model: 'anthropic/claude-sonnet-5.5',
 				credentialId: 'c2',
 				credentialName: 'Work OpenRouter',
 			});

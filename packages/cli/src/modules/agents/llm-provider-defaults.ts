@@ -71,7 +71,7 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	},
 	openRouterApi: {
 		provider: 'openrouter',
-		defaultModel: 'anthropic/claude-sonnet-5',
+		defaultModel: 'anthropic/claude-sonnet-5.5',
 	},
 	nvidiaApi: {
 		provider: 'nvidia',
@@ -79,7 +79,7 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	},
 	vercelAiGatewayApi: {
 		provider: 'vercel',
-		defaultModel: 'anthropic/claude-sonnet-5',
+		defaultModel: 'anthropic/claude-sonnet-5.5',
 	},
 	moonshotApi: {
 		provider: 'moonshotai',
