@@ -154,7 +154,7 @@ describe('WorkflowPublishedDataService', () => {
 			expect(result).not.toHaveProperty('versionSettings');
 		});
 
-		test('keeps the workflow engine when the published version stores no settings', async () => {
+		test('runs on v1 when the published version stores no settings', async () => {
 			enableEngineV2Module();
 			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue({
 				...record(),
@@ -163,7 +163,7 @@ describe('WorkflowPublishedDataService', () => {
 
 			const result = await service.getPublishedWorkflowDataForExecution('wf-1');
 
-			expect(result?.settings?.engineType).toBe('v2');
+			expect(result?.settings?.engineType).toBe('v1');
 		});
 
 		test('uses the workflow settings without the engine-v2 module', async () => {

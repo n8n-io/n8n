@@ -25,8 +25,8 @@ describe('WorkflowVersionedSettings', () => {
 			});
 		});
 
-		it('keeps the workflow engine when the published version stores no settings', () => {
-			expect(service.forPublishedRun(draftSettings, { settings: {} })?.engineType).toBe('v2');
+		it('runs on v1 when the published version stores no settings', () => {
+			expect(service.forPublishedRun(draftSettings, { settings: {} })?.engineType).toBe('v1');
 		});
 	});
 
