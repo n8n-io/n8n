@@ -1241,7 +1241,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 						);
 						await expect
 							.poll(async () => {
-								const [row] = await holder.query<Array<{ blocked: boolean }>>(
+								const [row]: Array<{ blocked: boolean }> = await holder.query(
 									`SELECT EXISTS (
 										SELECT 1 FROM pg_stat_activity
 										WHERE pg_backend_pid() = ANY(pg_blocking_pids(pid))
