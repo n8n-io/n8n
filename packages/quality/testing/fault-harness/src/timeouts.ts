@@ -1,8 +1,5 @@
-/** Bull and shutdown timeouts at n8n defaults, divided by `scale`; `overrides` win. */
-export function scaledTimeouts(
-	scale: number,
-	overrides: Record<string, string> = {},
-): Record<string, string> {
+/** Bull and shutdown timeouts at n8n defaults, divided by `scale`. */
+export function scaledTimeouts(scale: number): Record<string, string> {
 	if (!(scale >= 1)) throw new Error(`scale must be 1 or more, got ${scale}`);
 	const ms = (value: number) => String(Math.round(value / scale));
 	return {
@@ -10,7 +7,6 @@ export function scaledTimeouts(
 		QUEUE_WORKER_LOCK_RENEW_TIME: ms(10_000),
 		QUEUE_WORKER_STALLED_INTERVAL: ms(30_000),
 		N8N_GRACEFUL_SHUTDOWN_TIMEOUT: String(Math.max(1, Math.round(30 / scale))),
-		...overrides,
 	};
 }
 
