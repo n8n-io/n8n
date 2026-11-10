@@ -134,6 +134,20 @@ function isEmptyKvListResponse(statusCode: number | undefined, body: unknown): b
 	);
 }
 
+function isDeletedKvV2SecretResponse(statusCode: number | undefined, body: unknown): boolean {
+	if (
+		statusCode !== 404 ||
+		!isRecord(body) ||
+		!isRecord(body.data) ||
+		body.data.data !== null ||
+		!isRecord(body.data.metadata)
+	) {
+		return false;
+	}
+	const { deletion_time: deletionTime, destroyed } = body.data.metadata;
+	return destroyed === true || (typeof deletionTime === 'string' && deletionTime !== '');
+}
+
 export class VaultProvider extends SecretsProvider {
 	properties: INodeProperties[] = [
 		DOCS_HELP_NOTICE,
@@ -609,6 +623,14 @@ export class VaultProvider extends SecretsProvider {
 							];
 						} catch (error) {
 							if (isTransportFailure(error)) throw error;
+							// KV v2 keeps deleted versions in metadata LIST responses.
+							if (
+								kvVersion === '2' &&
+								isHttpRequestError(error) &&
+								isDeletedKvV2SecretResponse(error.response?.status, error.response?.data)
+							) {
+								return null;
+							}
 							const errorContext = buildHttpProviderErrorContext(error);
 							this.logger.warn('Vault provider failed to read KV secret', {
 								providerName: this.name,

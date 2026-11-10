@@ -845,6 +845,130 @@ describe('VaultProvider', () => {
 		});
 	});
 
+	describe('KV v2 version state', () => {
+		afterEach(() => {
+			nock.cleanAll();
+		});
+
+		describe.each([
+			{ location: 'mount root', subPath: '', folderPath: '' },
+			{ location: 'nested folder', subPath: '', folderPath: 'team/' },
+			{ location: 'configured sub-path', subPath: 'team/project/', folderPath: '' },
+		])('at a $location', ({ subPath, folderPath }) => {
+			it.each([
+				{
+					state: 'deleted',
+					metadata: { deletion_time: '2026-11-10T00:00:00Z', destroyed: false },
+				},
+				{ state: 'destroyed', metadata: { deletion_time: '', destroyed: true } },
+			])('should remove a $state version that remains listed', async ({ metadata }) => {
+				const provider = new VaultProvider(logger);
+				await provider.init(vaultSettingsWithKvPath('secret/', '2', subPath));
+				const path = subPath + folderPath;
+				const vault = nock(VAULT_BASE_URL);
+				if (folderPath !== '') {
+					vault
+						.get(`/v1/secret/metadata/${subPath}`)
+						.query({ list: true })
+						.times(4)
+						.reply(200, { data: { keys: [folderPath] } });
+				}
+				vault
+					.get(`/v1/secret/metadata/${path}`)
+					.query({ list: true })
+					.times(4)
+					.reply(200, { data: { keys: ['app', 'sibling'] } })
+					.get(`/v1/secret/data/${path}app`)
+					.reply(200, kvV2SecretResponse({ password: 'cached-password' }))
+					.get(`/v1/secret/data/${path}sibling`)
+					.reply(200, kvV2SecretResponse({ password: 'old-password' }))
+					.get(`/v1/secret/data/${path}app`)
+					.twice()
+					.reply(404, { data: { data: null, metadata: { ...metadata, version: 1 } } })
+					.get(`/v1/secret/data/${path}sibling`)
+					.times(3)
+					.reply(200, kvV2SecretResponse({ password: 'updated-password' }))
+					.get(`/v1/secret/data/${path}app`)
+					.reply(200, kvV2SecretResponse({ password: 'new-password' }));
+				const cachePath = path.split('/').filter(Boolean);
+				const appPath = [...cachePath, 'app'];
+				const siblingPath = [...cachePath, 'sibling'];
+
+				await provider.update();
+				expect(get(provider.getSecret('secret'), appPath)).toEqual({
+					password: 'cached-password',
+				});
+
+				for (let refresh = 0; refresh < 2; refresh++) {
+					await provider.update();
+					expect(get(provider.getSecret('secret'), appPath)).toBeUndefined();
+					expect(get(provider.getSecret('secret'), siblingPath)).toEqual({
+						password: 'updated-password',
+					});
+					expect(provider.getSecretNames()).toEqual([
+						['secret', ...siblingPath, 'password'].join('.'),
+					]);
+				}
+
+				await provider.update();
+				expect(get(provider.getSecret('secret'), appPath)).toEqual({ password: 'new-password' });
+				expect(provider.getSecretNames()).toEqual([
+					['secret', ...appPath, 'password'].join('.'),
+					['secret', ...siblingPath, 'password'].join('.'),
+				]);
+				expect(logger.warn).not.toHaveBeenCalled();
+				expect(vault.isDone()).toBe(true);
+			});
+		});
+
+		it.each([
+			{ response: '404 without metadata', status: 404, body: { errors: [] } },
+			{
+				response: '404 without deletion markers',
+				status: 404,
+				body: { data: { data: null, metadata: { deletion_time: '', destroyed: false } } },
+			},
+			{
+				response: '404 with a secret payload',
+				status: 404,
+				body: { data: { data: {}, metadata: { destroyed: true } } },
+			},
+			{
+				response: '404 without secret data',
+				status: 404,
+				body: { data: { metadata: { destroyed: true } } },
+			},
+			...[403, 429, 503].map((status) => ({
+				response: `HTTP ${status}`,
+				status,
+				body: { errors: ['GET failed'] },
+			})),
+		])('should keep cached data after GET returns $response', async ({ status, body }) => {
+			const provider = new VaultProvider(logger);
+			await provider.init(vaultSettingsWithKvPath('secret/', '2'));
+			const vault = nock(VAULT_BASE_URL)
+				.get('/v1/secret/metadata/')
+				.query({ list: true })
+				.twice()
+				.reply(200, { data: { keys: ['app'] } })
+				.get('/v1/secret/data/app')
+				.reply(200, kvV2SecretResponse({ password: 'cached-password' }))
+				.get('/v1/secret/data/app')
+				.reply(status, body);
+
+			await provider.update();
+			await provider.update();
+
+			expect(provider.getSecret('secret')).toEqual({ app: { password: 'cached-password' } });
+			expect(provider.getSecretNames()).toEqual(['secret.app.password']);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Vault provider failed to read KV secret',
+				expect.objectContaining({ statusCode: status }),
+			);
+			expect(vault.isDone()).toBe(true);
+		});
+	});
+
 	describe.each(['1', '2'])('secret discovery with KV v%s', (version) => {
 		async function loadSecret(data: Record<string, unknown>) {
 			const { provider } = await initProvider([
