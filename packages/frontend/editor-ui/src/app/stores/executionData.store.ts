@@ -752,7 +752,10 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		 * that has its data, and a fetched run that is trimmed or has no output.
 		 */
 		function fillTrimmedNodeRunData(nodeName: string, fetchedRuns: ITaskData[] | undefined) {
-			const tasksData = execution.value?.data?.resultData.runData[nodeName];
+			const current = execution.value;
+			if (!current?.data) return;
+			const { resultData } = current.data;
+			const tasksData = resultData.runData[nodeName];
 			if (tasksData?.length !== 1 || fetchedRuns?.length !== 1) return;
 
 			// Same check as `isTrimmedTaskData`. That helper's module imports the
@@ -769,12 +772,15 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			// An own `error` key makes the panel count the run as one item, so set
 			// it only when the fetched run failed.
 			const { error: _liveError, ...liveFields } = liveRun;
-			tasksData.splice(0, 1, {
+			const filledRun: ITaskData = {
 				...liveFields,
 				data: fetchedRun.data,
 				...(fetchedRun.error ? { error: fetchedRun.error } : {}),
-			});
+			};
 
+			execution.value = withResultData(current, current.data, {
+				runData: { ...resultData.runData, [nodeName]: [filledRun] },
+			});
 			commitExecutionMutation(CHANGE_ACTION.UPDATE, nodeName);
 		}
 

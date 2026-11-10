@@ -1582,20 +1582,17 @@ describe('RunData', () => {
 	});
 
 	describe('trimmed execution data placeholder', () => {
+		const trimmedItems = [
+			{
+				json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+				pairedItem: { item: 0 },
+			},
+		];
 		const trimmedRun = {
 			startTime: Date.now(),
 			executionIndex: 0,
 			executionTime: 1,
-			data: {
-				main: [
-					[
-						{
-							json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
-							pairedItem: { item: 0 },
-						},
-					],
-				],
-			},
+			data: { main: [trimmedItems] },
 			source: [null],
 		} as unknown as ITaskData;
 
@@ -1706,7 +1703,7 @@ describe('RunData', () => {
 			// the schema shows the older run for output 1.
 			const latestRun = {
 				...trimmedRun,
-				data: { main: [trimmedRun.data.main[0], []] },
+				data: { main: [trimmedItems, []] },
 			};
 			const olderRun = {
 				...trimmedRun,

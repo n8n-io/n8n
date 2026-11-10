@@ -834,7 +834,15 @@ describe('executionData.store', () => {
 					data: {
 						resultData: {
 							runData: {
-								NodeA: [{ executionIndex: 0, executionStatus: 'running', source: [] } as never],
+								NodeA: [
+									{
+										executionIndex: 0,
+										executionStatus: 'running',
+										source: [],
+										// Trimmed, so `fillTrimmedNodeRunData` has a run to fill.
+										data: { main: [[{ json: { __isTrimmedManualExecutionDataItem: true } }]] },
+									} as never,
+								],
 								NodeB: [{ executionIndex: 1, executionStatus: 'success', source: [] } as never],
 							},
 						},
@@ -877,6 +885,16 @@ describe('executionData.store', () => {
 			{
 				name: 'updateNodeExecutionRunData',
 				mutate: (store) => store.updateNodeExecutionRunData(createNodeExecuteAfterDataPayload()),
+				action: 'update',
+				nodeName: 'NodeA',
+				changedNode: 'NodeA',
+			},
+			{
+				name: 'fillTrimmedNodeRunData',
+				mutate: (store) =>
+					store.fillTrimmedNodeRunData('NodeA', [
+						createTestTaskData({ data: { main: [[{ json: { value: 1 } }]] } }),
+					]),
 				action: 'update',
 				nodeName: 'NodeA',
 				changedNode: 'NodeA',
@@ -1145,6 +1163,33 @@ describe('executionData.store', () => {
 				},
 			},
 			{
+				name: 'fillTrimmedNodeRunData',
+				execution: () => {
+					const execution = createSeedExecution();
+					execution.data?.resultData.runData.NodeB.splice(
+						0,
+						1,
+						createTestTaskData({
+							executionIndex: 2,
+							executionStatus: 'success',
+							source: [{ previousNode: 'NodeA' }],
+							data: { main: [[{ json: { __isTrimmedManualExecutionDataItem: true } }]] },
+						}),
+					);
+					return execution;
+				},
+				mutate: (store) =>
+					store.fillTrimmedNodeRunData('NodeB', [
+						createTestTaskData({ data: { main: [[{ json: { value: 1 } }]] } }),
+					]),
+				verify: (store) => {
+					expect(store.executionRunData?.NodeB[0].data).toEqual({
+						main: [[{ json: { value: 1 } }]],
+					});
+					expect(store.executionRunData?.NodeB[0].executionIndex).toBe(2);
+				},
+			},
+			{
 				name: 'clearNodeExecutionData',
 				mutate: (store) => store.clearNodeExecutionData('NodeA'),
 				verify: (store) => {
@@ -1199,17 +1244,20 @@ describe('executionData.store', () => {
 			},
 		];
 
-		it.each(cases)('$name never writes into a frozen execution', ({ mutate, verify }) => {
-			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
-			store.setExecution(deepFreeze(createSeedExecution()));
+		it.each(cases)(
+			'$name never writes into a frozen execution',
+			({ execution, mutate, verify }) => {
+				const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+				store.setExecution(deepFreeze((execution ?? createSeedExecution)()));
 
-			expect(() => mutate(store)).not.toThrow();
-			verify(store);
-		});
+				expect(() => mutate(store)).not.toThrow();
+				verify(store);
+			},
+		);
 
-		it.each(cases)('$name leaves no Vue proxy in the payload', ({ mutate }) => {
+		it.each(cases)('$name leaves no Vue proxy in the payload', ({ execution, mutate }) => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
-			store.setExecution(createSeedExecution());
+			store.setExecution((execution ?? createSeedExecution)());
 
 			mutate(store);
 
