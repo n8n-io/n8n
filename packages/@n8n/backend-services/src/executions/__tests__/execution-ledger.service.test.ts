@@ -93,12 +93,12 @@ describe('ExecutionLedger', () => {
 			await ledger.recordStarted(startedFacts, txCtx);
 
 			expect(logger.error).toHaveBeenCalledExactlyOnceWith(
-				'Workflow wf-1 has no owner project, so execution exec-1 is not in the execution ledger',
+				'Execution exec-1 of workflow wf-1 is not in the execution ledger: the workflow has no owner project',
 				{ executionId: 'exec-1', workflowId: 'wf-1' },
 			);
 			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(
 				expect.objectContaining({
-					message: 'The workflow has no owner project, so the run is not in the execution ledger',
+					message: 'The run is not in the execution ledger: the workflow has no owner project',
 				}),
 				{ shouldBeLogged: false },
 			);

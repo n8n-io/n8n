@@ -87,18 +87,25 @@ export class ExecutionLedger {
 	) {
 		if (result.recorded) return;
 
+		const cause = UNRECORDED_CAUSES[result.reason];
 		this.logger.error(
-			`Workflow ${workflowId} has no owner project, so execution ${executionId} is not in the execution ledger`,
+			`Execution ${executionId} of workflow ${workflowId} is not in the execution ledger: ${cause}`,
 			{ executionId, workflowId },
 		);
-		// No IDs in the reported message, so Sentry groups every case in one issue.
-		const error = new UnexpectedError(
-			'The workflow has no owner project, so the run is not in the execution ledger',
-			{ extra: { executionId, workflowId } },
-		);
+		// No IDs in the reported message, so Sentry groups every case of a reason in one issue.
+		const error = new UnexpectedError(`The run is not in the execution ledger: ${cause}`, {
+			extra: { executionId, workflowId },
+		});
 		this.errorReporter.error(error, { shouldBeLogged: false });
 	}
 }
+
+type UnrecordedReason = Extract<ExecutionLedgerWriteResult, { recorded: false }>['reason'];
+
+/** A new reason needs its own text, so the type is exhaustive. */
+const UNRECORDED_CAUSES: Record<UnrecordedReason, string> = {
+	noOwnerProject: 'the workflow has no owner project',
+};
 
 function assertTransaction(ctx: OperationContext) {
 	if (!ctx.trx) throw new UnexpectedError('A ledger insert needs an active transaction');

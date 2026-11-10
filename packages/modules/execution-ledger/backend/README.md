@@ -6,7 +6,8 @@ it with `N8N_ENABLED_MODULES=execution-ledger`.
 
 Core code records runs through the `ExecutionLedger` service in `@n8n/backend-services`. At init, the module
 binds `ExecutionLedgerRowWriter` to that service. When the module is off, the service does
-nothing.
+nothing. The writer records workflow runs only (`entityType = workflow`). Agent messages have no
+execution row and get their own hook in a later ticket.
 
 The n8n runtime loads the module through the lazy import in
 `packages/cli/src/modules/modules.manifest.ts`.
