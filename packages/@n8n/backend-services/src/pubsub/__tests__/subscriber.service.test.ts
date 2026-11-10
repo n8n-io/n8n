@@ -4,8 +4,7 @@ import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
 import { mock } from 'vitest-mock-extended';
 
-import type { RedisClientService } from '@n8n/backend-services';
-
+import type { RedisClientService } from '../../services/redis-client.service';
 import type { PubSubEventBus } from '../pubsub.eventbus';
 import type { McpRelayMessage } from '../subscriber.service';
 import { Subscriber } from '../subscriber.service';
@@ -389,12 +388,12 @@ describe('Subscriber', () => {
 
 			messageHandler('n8n:n8n.commands', makeCommandMsg('reload-license', true));
 
-			expect((subscriber as any).debouncedHandlers.size).toBe(1);
+			expect(subscriber['debouncedHandlers'].size).toBe(1);
 
 			vi.advanceTimersByTime(300);
 
 			expect(pubsubEventBus.emit).toHaveBeenCalledWith('reload-license', undefined);
-			expect((subscriber as any).debouncedHandlers.size).toBe(0);
+			expect(subscriber['debouncedHandlers'].size).toBe(0);
 		});
 
 		it('should not drop community-package-install events for different packages within 300ms', () => {

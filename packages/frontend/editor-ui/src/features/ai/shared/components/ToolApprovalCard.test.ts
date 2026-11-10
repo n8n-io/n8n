@@ -4,7 +4,7 @@ import { i18nInstance, setLanguage } from '@n8n/i18n';
 import { nextTick } from 'vue';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import ApprovalCard from '../components/interactive/ApprovalCard.vue';
+import ToolApprovalCard from './ToolApprovalCard.vue';
 import type { ApprovalInput } from '@/features/ai/shared/agentsChat/types';
 import { parseApprovalInput } from '@/features/ai/shared/agentsChat/messageMappers';
 
@@ -16,10 +16,10 @@ const approvalInput = {
 } satisfies ApprovalInput;
 
 function mountCard(input: ApprovalInput = approvalInput) {
-	return mount(ApprovalCard, { props: { input }, global: { plugins: [i18nInstance] } });
+	return mount(ToolApprovalCard, { props: { input }, global: { plugins: [i18nInstance] } });
 }
 
-describe('ApprovalCard', () => {
+describe('ToolApprovalCard', () => {
 	afterEach(() => {
 		setLanguage('en');
 	});
