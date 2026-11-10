@@ -138,7 +138,6 @@ function onCancel() {
 					:show-delete="data.showDelete ?? true"
 					:hide-create-new="data.hideCreateNew ?? true"
 					:data-testid="data.pickerDataTestId"
-					teleported
 					:credential-modal-append-to-body="data.appendToBody"
 					@credential-selected="onCredentialSelect"
 					@credential-deselected="onCredentialDeselect"
