@@ -1,10 +1,12 @@
 <script lang="ts" setup>
-import type {
-	DiscoveredSkill,
-	SkillSourceConnectResponse,
-	SkillSourceCredentialOption,
-	SkillSourceDiscovery,
-	SkillSourceRepositoryOption,
+import {
+	isGitHubSkillSourceCredentialType,
+	type DiscoveredSkill,
+	type GitHubSkillSourceCredentialType,
+	type SkillSourceConnectResponse,
+	type SkillSourceCredentialOption,
+	type SkillSourceDiscovery,
+	type SkillSourceRepositoryOption,
 } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -63,17 +65,29 @@ const GITHUB_LINK = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+([/?#].*)?
 /** A web link to another host, such as GitLab. */
 const OTHER_HOST_LINK = /^https?:\/\/(?!(www\.)?github\.com([/?#:]|$))[^\s/?#]+/i;
 
-/** The credential types that read a private repository. */
-const GITHUB_CREDENTIAL_TYPES = ['githubApi', 'githubAppApi', 'githubOAuth2Api'] as const;
-type GitHubCredentialType = (typeof GITHUB_CREDENTIAL_TYPES)[number];
-/** GitHub OAuth2 has a fixed scope with write access to every repository of the account. */
-const OAUTH2_CREDENTIAL_TYPE: GitHubCredentialType = 'githubOAuth2Api';
+/** GitHub OAuth2 has a fixed scope with write access to the repositories of the account. */
+const OAUTH2_CREDENTIAL_TYPE: GitHubSkillSourceCredentialType = 'githubOAuth2Api';
 
-/** The options of the credential select that open the credential modal instead of picking. */
+/** The options of the credential select that create a credential instead of picking one. */
 const NEW_CREDENTIAL_PREFIX = '__new__:';
-const NEW_OAUTH2_CREDENTIAL = `${NEW_CREDENTIAL_PREFIX}${OAUTH2_CREDENTIAL_TYPE}`;
+const newCredentialValue = (type: GitHubSkillSourceCredentialType) =>
+	`${NEW_CREDENTIAL_PREFIX}${type}`;
+const NEW_OAUTH2_CREDENTIAL = newCredentialValue(OAUTH2_CREDENTIAL_TYPE);
 /** "None, the repository is public". The select needs a value for it. */
 const NO_CREDENTIAL = '__none__';
+
+/** What a value of the credential select asks for. */
+type CredentialSelectAction =
+	| { kind: 'none' }
+	| { kind: 'new'; type: GitHubSkillSourceCredentialType }
+	| { kind: 'pick'; id: string };
+
+function parseCredentialSelect(value: string): CredentialSelectAction {
+	if (value === NO_CREDENTIAL) return { kind: 'none' };
+	if (!value.startsWith(NEW_CREDENTIAL_PREFIX)) return { kind: 'pick', id: value };
+	const type = value.slice(NEW_CREDENTIAL_PREFIX.length);
+	return isGitHubSkillSourceCredentialType(type) ? { kind: 'new', type } : { kind: 'none' };
+}
 
 /** The repository field also takes a link. `github.com/…` without a protocol gets one. */
 function asLink(text: string): string | null {
@@ -94,7 +108,7 @@ const { reasonText } = useSkillSourceReasons();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
-const oauth = useCredentialOAuth();
+const credentialOAuth = useCredentialOAuth();
 
 const step = ref<'repository' | 'review'>('repository');
 const scope = ref('');
@@ -264,11 +278,11 @@ const credentialItems = computed<SelectItem[]>(() => [
 		? [
 				{ type: 'separator' as const },
 				{
-					value: `${NEW_CREDENTIAL_PREFIX}githubApi`,
+					value: newCredentialValue('githubApi'),
 					label: i18n.baseText('settings.context.skills.connect.credential.new'),
 				},
 				{
-					value: `${NEW_CREDENTIAL_PREFIX}githubAppApi`,
+					value: newCredentialValue('githubAppApi'),
 					label: i18n.baseText('settings.context.skills.connect.credential.newApp'),
 				},
 				{
@@ -405,66 +419,70 @@ const credentialModalOpen = computed(
 	() => uiStore.isModalActiveById?.[CREDENTIAL_EDIT_MODAL_KEY] ?? false,
 );
 
-/** Where the success box says a credential made from this dialog lives. */
-function createdScopeLabel() {
-	return parseScope(scope.value).scope === 'instance'
-		? i18n.baseText('settings.context.skills.connect.credential.created.personal')
-		: (selectedScope.value?.label ?? '');
+/** Where a credential made from this dialog goes, and what its success box says. */
+type NewCredentialTarget = { projectId: string; requestedScope: string; scopeLabel: string };
+
+function newCredentialTarget(): NewCredentialTarget | null {
+	const project = credentialProject.value;
+	if (!project || !canCreateCredential.value) return null;
+	const requestedScope = scope.value;
+	const scopeLabel =
+		parseScope(requestedScope).scope === 'instance'
+			? i18n.baseText('settings.context.skills.connect.credential.created.personal')
+			: (selectedScope.value?.label ?? '');
+	return { projectId: project.id, requestedScope, scopeLabel };
 }
 
-function openCredentialModal(type: GitHubCredentialType) {
-	const project = credentialProject.value;
-	if (!project || !canCreateCredential.value) return;
-	const requestedScope = scope.value;
-	const scopeLabel = createdScopeLabel();
-	uiStore.openNewCredential(type, false, false, project.id, undefined, undefined, undefined, {
+function openCredentialModal(type: GitHubSkillSourceCredentialType, target: NewCredentialTarget) {
+	uiStore.openNewCredential(type, false, false, target.projectId, undefined, undefined, undefined, {
 		hideAskAssistant: true,
 		appendToBody: true,
 		closeOnSave: true,
 		onCredentialCreated: (credential) => {
-			void onCredentialCreated(credential.id, requestedScope, scopeLabel);
+			void onCredentialCreated(credential.id, target);
 		},
 	});
 }
 
-async function onCredentialCreated(id: string, requestedScope: string, scopeLabel: string) {
+async function onCredentialCreated(id: string, target: NewCredentialTarget) {
 	// The user may have closed the dialog or picked another scope while the modal was open.
-	if (!props.open || step.value !== 'repository' || requestedScope !== scope.value) return;
+	if (!props.open || step.value !== 'repository' || target.requestedScope !== scope.value) return;
 	await loadCredentials(id);
-	if (credentialId.value === id) createdCredential.value = { id, scopeLabel };
+	if (credentialId.value === id) createdCredential.value = { id, scopeLabel: target.scopeLabel };
 }
 
 /**
  * With a managed GitHub OAuth2 app on the instance, n8n creates the credential and opens the
- * GitHub sign-in at once, with no credential form. The popup must open in the click itself.
+ * GitHub sign-in at once, with no credential form. Call this in the select handler, so that the
+ * browser allows the popup.
  */
-async function signInWithGitHub() {
-	const project = credentialProject.value;
-	if (!project || !canCreateCredential.value) return;
-	const requestedScope = scope.value;
-	const scopeLabel = createdScopeLabel();
-	const credential = await oauth.createAndAuthorize(OAUTH2_CREDENTIAL_TYPE, undefined, {
-		projectId: project.id,
+async function signInWithGitHub(target: NewCredentialTarget) {
+	const credential = await credentialOAuth.createAndAuthorize(OAUTH2_CREDENTIAL_TYPE, undefined, {
+		projectId: target.projectId,
 	});
-	if (credential) await onCredentialCreated(credential.id, requestedScope, scopeLabel);
+	if (credential) await onCredentialCreated(credential.id, target);
+}
+
+function createCredential(type: GitHubSkillSourceCredentialType) {
+	const target = newCredentialTarget();
+	if (!target) return;
+	if (
+		type === OAUTH2_CREDENTIAL_TYPE &&
+		credentialOAuth.canOAuthCredentialQuickConnect(OAUTH2_CREDENTIAL_TYPE)
+	) {
+		void signInWithGitHub(target);
+	} else {
+		openCredentialModal(type, target);
+	}
 }
 
 function onCredentialSelect(value: string) {
-	if (
-		value === NEW_OAUTH2_CREDENTIAL &&
-		oauth.canOAuthCredentialQuickConnect(OAUTH2_CREDENTIAL_TYPE)
-	) {
-		void signInWithGitHub();
+	const action = parseCredentialSelect(value);
+	if (action.kind === 'new') {
+		createCredential(action.type);
 		return;
 	}
-	if (value.startsWith(NEW_CREDENTIAL_PREFIX)) {
-		const type = GITHUB_CREDENTIAL_TYPES.find(
-			(known) => known === value.slice(NEW_CREDENTIAL_PREFIX.length),
-		);
-		if (type) openCredentialModal(type);
-		return;
-	}
-	credentialId.value = value === NO_CREDENTIAL ? '' : value;
+	credentialId.value = action.kind === 'pick' ? action.id : '';
 	createdCredential.value = null;
 }
 

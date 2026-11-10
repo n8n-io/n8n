@@ -994,10 +994,10 @@ describe('SkillSourceConnectDialog', () => {
 
 			expect(
 				await view.findByText(
-					'Gives n8n write access to every repository that your account can reach',
+					'Gives n8n write access to your repositories and admin access to your organizations',
 				),
 			).toBeInTheDocument();
-			await selectCredential(view, '+ Sign in with GitHub (OAuth2)');
+			await selectCredential(view, '+ Sign in with GitHub');
 
 			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
 				'githubOAuth2Api',
@@ -1019,7 +1019,7 @@ describe('SkillSourceConnectDialog', () => {
 			});
 			const view = render();
 
-			await selectCredential(view, '+ Sign in with GitHub (OAuth2)');
+			await selectCredential(view, '+ Sign in with GitHub');
 
 			expect(oauth.createAndAuthorize).toHaveBeenCalledWith('githubOAuth2Api', undefined, {
 				projectId: 'personal-1',
@@ -1037,7 +1037,7 @@ describe('SkillSourceConnectDialog', () => {
 			const view = render();
 			await waitFor(() => expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledTimes(1));
 
-			await selectCredential(view, '+ Sign in with GitHub (OAuth2)');
+			await selectCredential(view, '+ Sign in with GitHub');
 
 			await waitFor(() => expect(oauth.createAndAuthorize).toHaveBeenCalled());
 			expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledTimes(1);
@@ -1050,7 +1050,7 @@ describe('SkillSourceConnectDialog', () => {
 
 			await selectCredential(view, 'Ada account');
 			expect(view.getByTestId('skill-source-oauth-warning')).toHaveTextContent(
-				'OAuth2 gives n8n write access to every repository that this account can reach',
+				'This GitHub sign-in gives n8n write access to every repository that the account can reach, and admin access to its organizations',
 			);
 
 			await selectCredential(view, 'Ada token');

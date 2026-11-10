@@ -3,6 +3,11 @@ import {
 	OutboundHttp,
 	type HttpRequestClient,
 } from '@n8n/backend-network';
+import {
+	GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES,
+	isGitHubSkillSourceCredentialType,
+	type GitHubSkillSourceCredentialType,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { isRecord } from '@n8n/utils/is-record';
@@ -69,9 +74,21 @@ const CREDENTIAL_INVALID = 'GitHub refused the credential. Its token is wrong or
 const API = 'https://api.github.com';
 /** The repositories that the repository select lists at most: 10 pages of 100. */
 const MAX_REPOSITORY_PAGES = 10;
-const TOKEN_CREDENTIAL = 'githubApi';
-const APP_CREDENTIAL = 'githubAppApi';
-const OAUTH2_CREDENTIAL = 'githubOAuth2Api';
+const APP_CREDENTIAL: GitHubSkillSourceCredentialType = 'githubAppApi';
+
+/**
+ * Where each credential type holds its token. A GitHub App gets a fresh one on each resolve.
+ * OAuth2 holds it in `oauthTokenData` once the user connected the account.
+ */
+const TOKEN_OF: Record<
+	GitHubSkillSourceCredentialType,
+	(data: Record<string, unknown>) => unknown
+> = {
+	githubApi: (data) => data.accessToken,
+	githubAppApi: (data) => data.accessToken,
+	githubOAuth2Api: (data) =>
+		isRecord(data.oauthTokenData) ? data.oauthTokenData.access_token : undefined,
+};
 
 /**
  * Reads skills from GitHub repositories. Branches come from `ls-refs` over git smart HTTP. A
@@ -89,7 +106,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	 * OAuth2 account. OAuth2 has a fixed scope with write access to every repository of the
 	 * user, so the connect dialog warns about it.
 	 */
-	readonly credentialTypes = [TOKEN_CREDENTIAL, APP_CREDENTIAL, OAUTH2_CREDENTIAL];
+	readonly credentialTypes: readonly string[] = GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES;
 
 	readonly capabilities: SkillSourceCapabilities = {
 		discovery: 'listing',
@@ -130,10 +147,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return isGitHubLink(input);
 	}
 
-	/**
-	 * A token and a GitHub App hold the token in `accessToken`, and a GitHub App gets a fresh
-	 * one. OAuth2 holds it in `oauthTokenData` once the user connected the account.
-	 */
+	/** The token of the credential, from where its type holds it. */
 	authFrom(credential: {
 		id?: string;
 		type: string;
@@ -141,10 +155,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}): SkillSourceAuth {
 		this.checkCredential(credential);
 		const { id, type, data } = credential;
-		const token =
-			type === OAUTH2_CREDENTIAL && isRecord(data.oauthTokenData)
-				? data.oauthTokenData.access_token
-				: data.accessToken;
+		const token = isGitHubSkillSourceCredentialType(type) ? TOKEN_OF[type](data) : undefined;
 		if (typeof token !== 'string' || token === '') {
 			throw new SkillSourceReadError('credential_invalid', 'The credential has no token.');
 		}
