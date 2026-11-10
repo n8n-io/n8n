@@ -202,9 +202,6 @@ function noteOf(skill: DiscoveredSkill): string {
 								/>
 								<button type="button" :class="$style.itemText" @click="previewKey = item.key">
 									<N8nText bold size="small">{{ titleOf(item) }}</N8nText>
-									<N8nText v-if="item.description" size="small" color="text-light">
-										{{ item.description }}
-									</N8nText>
 									<N8nText
 										v-if="activeTab === 'blocked'"
 										size="small"

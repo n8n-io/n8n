@@ -3944,7 +3944,6 @@
 	"settings.context.skills.versions.agents.latest": "Latest (v{version})",
 	"settings.context.skills.versions.agents.pinned": "v{version}",
 	"settings.context.skills.versions.agents.publishedUses": "Published agent uses v{version}",
-	"settings.context.skills.actions.create": "Create skill",
 	"settings.context.skills.actions.edit": "Edit",
 	"settings.context.skills.actions.view": "View",
 	"settings.context.skills.actions.timeline": "Version history",
