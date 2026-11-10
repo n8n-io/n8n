@@ -43,30 +43,29 @@ describe('toV1ErrorDetails', () => {
 });
 
 describe('fromV1ErrorDetails', () => {
-	it('rebuilds a node error the editor can render', () => {
+	it('rebuilds the error fields the editor renders after a reload', () => {
 		const details = toV1ErrorDetails(
-			new NodeOperationError(node, 'boom', { description: 'Check the credentials' }),
+			new NodeOperationError(node, 'boom', {
+				description: 'Check the credentials',
+				itemIndex: 2,
+			}),
 		);
 
 		const error = fromV1ErrorDetails('NodeOperationError', 'boom', details);
 
-		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(error).toBeInstanceOf(WorkflowOperationError);
 		expect(error).toMatchObject({
 			name: 'NodeOperationError',
 			message: 'boom',
 			description: 'Check the credentials',
-			level: 'warning',
-			node: { name: 'Subject' },
+			context: { itemIndex: 2 },
 		});
-	});
-
-	it('carries the HTTP code onto the rebuilt error', () => {
-		const details = toV1ErrorDetails(
-			new NodeApiError(node, {}, { httpCode: '429', message: 'Too many' }),
-		);
-
-		expect(fromV1ErrorDetails('NodeApiError', 'Too many', details)).toMatchObject({
-			httpCode: '429',
+		// What `ExecutionBaseError.toJSON` serializes is what reaches the editor.
+		expect(error.toJSON?.()).toMatchObject({
+			name: 'NodeOperationError',
+			message: 'boom',
+			description: 'Check the credentials',
+			context: { itemIndex: 2 },
 		});
 	});
 
@@ -79,9 +78,9 @@ describe('fromV1ErrorDetails', () => {
 	});
 
 	it('ignores details it does not recognise', () => {
-		const error = fromV1ErrorDetails('Error', 'odd', { level: 'loud', node: { name: 'x' } });
+		const error = fromV1ErrorDetails('Error', 'odd', { description: 7, context: 'nope' });
 
-		expect(error).toBeInstanceOf(WorkflowOperationError);
-		expect(error.level).toBe('warning');
+		expect(error.description).toBeUndefined();
+		expect(error.context).toEqual({});
 	});
 });

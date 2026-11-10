@@ -77,6 +77,26 @@ test.describe(
 		});
 
 		// TODO(CET-332): the fixture runs Code nodes, and engine v2 does not support task runners yet.
+		test('should show the structured error of an imported failed execution @engine:v2', async ({
+			n8n,
+		}) => {
+			// Manual Trigger -> `Error` Set node whose expression names a node that does
+			// not exist. No Code node, so the run works on both engines.
+			await n8n.start.fromImportedWorkflow('Engine_v2_run_error_details.json');
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				NOTIFICATIONS.PROBLEM_IN_NODE,
+				{ timeout: 10_000 },
+			);
+			await importLastExecutionForDebugging(n8n);
+
+			await n8n.canvas.openNode('Error');
+
+			await expect(n8n.ndv.getNodeRunErrorMessage()).toContainText("Referenced node doesn't exist");
+			await expect(n8n.ndv.getNodeRunErrorDescription()).toContainText(
+				"The node 'Missing' doesn't exist, but it's used in an expression here.",
+			);
+		});
+
 		test('should exit debug mode after successful execution @engine:v2-pending', async ({
 			n8n,
 		}) => {

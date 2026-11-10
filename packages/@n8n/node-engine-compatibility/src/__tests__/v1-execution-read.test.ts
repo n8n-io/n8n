@@ -196,7 +196,6 @@ describe('toV1RunExecutionData', () => {
 			name: 'NodeApiError',
 			message: 'Too many requests',
 			description: 'Wait and try again',
-			httpCode: '429',
 			context: { itemIndex: 3 },
 		});
 	});
