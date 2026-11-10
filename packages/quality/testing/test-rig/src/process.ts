@@ -24,9 +24,8 @@ export async function until(
 ): Promise<number> {
 	const deadline = Date.now() + timeoutMs;
 	for (;;) {
-		const held = await check();
+		if (await check()) return Date.now();
 		if (Date.now() > deadline) throw new Error(`${label} not reached in ${timeoutMs}ms`);
-		if (held) return Date.now();
 		await sleep(intervalMs);
 	}
 }
