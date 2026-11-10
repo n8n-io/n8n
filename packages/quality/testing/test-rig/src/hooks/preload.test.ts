@@ -13,6 +13,7 @@ class Service {
 	async twice(input) { return [await this.work(input), await this.work(input)]; }
 	async counted() { calls += 1; return calls; }
 	async failing() { calls += 1; return calls; }
+	cancellable() { calls += 1; const p = Promise.resolve('done'); p.cancel = () => 'cancelled'; return p; }
 	calls() { return calls; }
 }
 module.exports = { Service };
@@ -195,6 +196,44 @@ describe('preload', () => {
 		expect(result(r, 'dropped')).toBe(-1);
 		expect(result(r, 'failed')).toEqual({ error: 'test-rig fault at fail' });
 		expect(result(r, 'calls')).toBe(0);
+	});
+
+	it('fails a call after it resolves and keeps the preserved methods', async () => {
+		const r = await run(
+			[
+				{
+					...service,
+					point: 'late',
+					method: 'cancellable',
+					kind: 'fault',
+					arm: 'always',
+					preserve: ['cancel'],
+					detail: { out: 'result' },
+				},
+			],
+			`const p = s.cancellable();
+			report('cancel', p.cancel());
+			await settle('run', () => p);
+			report('calls', s.calls());`,
+		);
+		expect(result(r, 'cancel')).toBe('cancelled');
+		expect(result(r, 'run')).toEqual({ error: 'test-rig fault at late' });
+		expect(result(r, 'calls')).toBe(1);
+		expect(events(r.lines, 'hit').map((e) => e?.detail)).toEqual([{ out: 'done' }]);
+	});
+
+	it('drops every call while armed and keeps the arm by default', async () => {
+		arm('skip');
+		const r = await run(
+			[{ ...service, point: 'skip', method: 'counted', kind: 'drop', returns: -1 }],
+			`await settle('first', () => s.counted());
+			await settle('second', () => s.counted());
+			report('calls', s.calls());`,
+		);
+		expect(result(r, 'first')).toBe(-1);
+		expect(result(r, 'second')).toBe(-1);
+		expect(result(r, 'calls')).toBe(0);
+		expect(existsSync(join(controlDir, 'skip.arm'))).toBe(true);
 	});
 
 	it('pauses an armed call until release and consumes the arm once', async () => {
