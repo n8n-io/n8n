@@ -120,6 +120,13 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(SystemAgentRegistrationService).register(
 			Container.get(AssistantAgentProvider),
 		);
+		const { InstanceAiCreditService } = await import('./instance-ai-credit.service.js');
+		const { AssistantThreadCreditsService } = await import(
+			'./assistant-agent/assistant-thread-credits.service.js'
+		);
+		Container.get(InstanceAiCreditService).useAgentThreadCredits(
+			Container.get(AssistantThreadCreditsService),
+		);
 		// Its routes depend on the agents module, so they load only with the agent.
 		await import('./assistant-agent/assistant-agent.controller.js');
 		this.assistantAgentRegistered = true;

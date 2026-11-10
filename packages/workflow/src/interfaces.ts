@@ -1428,6 +1428,12 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		 * a restart. Without the option the engine suspends and persists the execution.
 		 */
 		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
+		/**
+		 * Builds the signed reference that an approval button carries, for example
+		 * Telegram's `callback_data` (64 bytes at most). The reference carries the
+		 * decision. The node never reads the secret that signs it.
+		 */
+		getApprovalCallbackReference(decision: 'approve' | 'decline'): string;
 		sendMessageToUI(message: any): void;
 		/**
 		 * Whether the run's resolved redaction policy redacts output that leaves the
@@ -3871,6 +3877,8 @@ export type WorkflowExecutionMockDataSource =
 
 export interface IWorkflowExecutionTelemetryMetadata {
 	mockDataSources?: WorkflowExecutionMockDataSource[];
+	/** Credentials the run uses only through the acting user's own access, not the workflow's project. */
+	personalCredentialsCount?: number;
 }
 
 /**

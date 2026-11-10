@@ -116,7 +116,7 @@ export class AiController {
 					mode: payload.payload.mode,
 					resumeData: payload.payload.resumeData,
 				},
-				req.user,
+				req.user.toIUser(),
 				signal,
 			);
 
@@ -175,7 +175,7 @@ export class AiController {
 			const handleClose = () => abortController.abort();
 			res.on('close', handleClose);
 
-			const aiResponse = await this.aiService.chat(payload, req.user);
+			const aiResponse = await this.aiService.chat(payload, req.user.toIUser());
 			if (aiResponse.body) {
 				res.header('Content-type', 'application/json-lines').flush();
 				try {
@@ -208,7 +208,7 @@ export class AiController {
 		@Body payload: AiApplySuggestionRequestDto,
 	): Promise<AiAssistantSDK.ApplySuggestionResponse> {
 		try {
-			return await this.aiService.applySuggestion(payload, req.user);
+			return await this.aiService.applySuggestion(payload, req.user.toIUser());
 		} catch (e) {
 			throw this.toResponseError(e);
 		}
@@ -228,7 +228,7 @@ export class AiController {
 	): Promise<AiAssistantSDK.AskAiResponsePayload> {
 		try {
 			// oxlint-disable-next-line typescript/no-deprecated
-			return await this.aiService.askAi(payload, req.user);
+			return await this.aiService.askAi(payload, req.user.toIUser());
 		} catch (e) {
 			throw this.toResponseError(e);
 		}
@@ -253,7 +253,7 @@ export class AiController {
 		try {
 			const sessions = await this.workflowBuilderService.getSessions(
 				payload.workflowId,
-				req.user,
+				req.user.toIUser(),
 				payload.codeBuilder,
 			);
 			return sessions;
@@ -306,7 +306,7 @@ export class AiController {
 		_: Response,
 	): Promise<AiAssistantSDK.BuilderInstanceCreditsResponse> {
 		try {
-			return await this.workflowBuilderService.getBuilderInstanceCredits(req.user);
+			return await this.workflowBuilderService.getBuilderInstanceCredits(req.user.toIUser());
 		} catch (e) {
 			throw this.toResponseError(e);
 		}
@@ -322,7 +322,7 @@ export class AiController {
 		try {
 			const success = await this.workflowBuilderService.truncateMessagesAfter(
 				payload.workflowId,
-				req.user,
+				req.user.toIUser(),
 				payload.messageId,
 				payload.versionCardId,
 			);
@@ -340,7 +340,7 @@ export class AiController {
 		@Body payload: AiClearSessionRequestDto,
 	): Promise<{ success: boolean }> {
 		try {
-			await this.workflowBuilderService.clearSession(payload.workflowId, req.user);
+			await this.workflowBuilderService.clearSession(payload.workflowId, req.user.toIUser());
 			return { success: true };
 		} catch (e) {
 			throw this.toResponseError(e);

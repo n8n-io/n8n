@@ -1,7 +1,7 @@
 import { IncomingMessage } from 'http';
 import { Readable } from 'stream';
 
-import { binaryToString } from '../binary-string';
+import { binaryToString, bufferToString, isCharsetSupported } from '../binary-string';
 import { Socket } from 'net';
 
 const bufferToIncomingMessage = (buffer: Buffer, encoding = 'utf-8') => {
@@ -113,5 +113,62 @@ describe('binaryToString', () => {
 		const stream = Readable.from(Buffer.from('Test'));
 		const result = await binaryToString(stream);
 		expect(result).toBe('Test');
+	});
+});
+
+describe('bufferToString', () => {
+	it.each([
+		['iso-8859-1', [0x47, 0x72, 0xfc, 0xdf, 0x65], 'Grüße'],
+		['ISO_8859-1:1987', [0x47, 0x72, 0xfc, 0xdf, 0x65], 'Grüße'],
+		['windows-1252', [0x35, 0x80, 0x20, 0x93, 0x71, 0x94], '5€ “q”'],
+		['us-ascii', [0x48, 0x69], 'Hi'],
+		['shift_jis', [0x82, 0xb1, 0x82, 0xf1, 0x82, 0xc9, 0x82, 0xbf, 0x82, 0xcd], 'こんにちは'],
+		['utf-16be', [0x00, 0x47, 0x00, 0xfc], 'Gü'],
+	])('decodes a charset that Node does not know (%s)', (charset, bytes, text) => {
+		expect(bufferToString(Buffer.from(bytes), charset)).toBe(text);
+	});
+
+	it.each([
+		'utf8',
+		'utf-8',
+		'utf16le',
+		'ucs2',
+		'latin1',
+		'binary',
+		'ascii',
+		'base64',
+		'hex',
+	] as const)('decodes %s the same way as Buffer.toString', (charset) => {
+		const buffer = Buffer.from([0xef, 0xbb, 0xbf, ...Array.from({ length: 256 }, (_, i) => i)]);
+
+		expect(bufferToString(buffer, charset)).toBe(buffer.toString(charset));
+	});
+
+	it('keeps a leading byte order mark', () => {
+		expect(bufferToString(Buffer.from([0xfe, 0xff, 0x00, 0x61]), 'utf-16')).toBe('\ufeffa');
+		expect(bufferToString(Buffer.from([0xef, 0xbb, 0xbf, 0x61]), 'utf-8')).toBe('\ufeffa');
+	});
+
+	it('defaults to utf-8', () => {
+		expect(bufferToString(Buffer.from('Grüße'))).toBe('Grüße');
+	});
+
+	it('throws on an unknown charset', () => {
+		expect(() => bufferToString(Buffer.from('a'), 'not-a-charset')).toThrow(
+			"Encoding not recognized: 'not-a-charset'",
+		);
+	});
+});
+
+describe('isCharsetSupported', () => {
+	it.each(['utf-8', 'latin1', 'base64url', 'ISO-8859-1', 'windows-1252', 'utf-7', 'Shift_JIS'])(
+		'accepts %s',
+		(charset) => {
+			expect(isCharsetSupported(charset)).toBe(true);
+		},
+	);
+
+	it.each(['not-a-charset', ''])('rejects %p', (charset) => {
+		expect(isCharsetSupported(charset)).toBe(false);
 	});
 });
