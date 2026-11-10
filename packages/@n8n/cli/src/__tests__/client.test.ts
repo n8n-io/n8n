@@ -123,20 +123,26 @@ describe('N8nClient packages', () => {
 		it.each([
 			{
 				title: 'applies a selection with only the workflow ids by default',
-				send: async () => await client.applyProjectSelection('proj-1', ['wf-1', 'wf-2']),
+				send: async () =>
+					await client.applyProjectSelection('proj-1', { workflowIds: ['wf-1', 'wf-2'] }),
 				path: 'apply',
 				body: { workflowIds: ['wf-1', 'wf-2'] },
 			},
 			{
 				title: 'pins the reviewed source when applying a selection',
-				send: async () => await client.applyProjectSelection('proj-1', ['wf-1'], expectedSource),
+				send: async () =>
+					await client.applyProjectSelection('proj-1', { workflowIds: ['wf-1'] }, expectedSource),
 				path: 'apply',
 				body: { workflowIds: ['wf-1'], expectedSource },
 			},
 			{
 				title: 'continues a selection apply against the reviewed source',
 				send: async () =>
-					await client.continueApplyProjectSelection('proj-1', ['wf-1'], expectedSource),
+					await client.continueApplyProjectSelection(
+						'proj-1',
+						{ workflowIds: ['wf-1'] },
+						expectedSource,
+					),
 				path: 'apply/continue',
 				body: { workflowIds: ['wf-1'], expectedSource },
 			},
@@ -144,7 +150,12 @@ describe('N8nClient packages', () => {
 				title:
 					'continues a selection apply with the confirmation of destructive data table changes',
 				send: async () =>
-					await client.continueApplyProjectSelection('proj-1', ['wf-1'], expectedSource, true),
+					await client.continueApplyProjectSelection(
+						'proj-1',
+						{ workflowIds: ['wf-1'] },
+						expectedSource,
+						true,
+					),
 				path: 'apply/continue',
 				body: { workflowIds: ['wf-1'], expectedSource, confirmDestructiveChanges: true },
 			},

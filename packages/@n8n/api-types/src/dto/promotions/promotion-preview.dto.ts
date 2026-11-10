@@ -58,7 +58,10 @@ export const promotionResourceSchema = z.object({
 	parentKey: z.string().nullable(),
 	previousParentKey: z.string().nullable().optional(),
 	change: promotionResourceChangeSchema,
-	/** Whether the user can select the resource directly. Only workflows can be selected for now. */
+	/**
+	 * Whether the user can select the resource directly: a workflow, or a project or folder that
+	 * is added or modified. Dependencies come with the workflows that use them.
+	 */
 	selectable: z.boolean(),
 	/**
 	 * Only for deleted workflows on Promote: the project that owns the workflow on this instance now.

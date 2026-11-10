@@ -6,7 +6,6 @@ import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { ActionToggle } from './components/ActionToggle';
 import { CodeNodeEditor } from './components/CodeNodeEditor';
-import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { InlineExpressionEditor } from './components/InlineExpressionEditor';
 import { NodeCreator } from './components/NodeCreator';
 import { NodeCredentials } from './components/NodeCredentials';
@@ -651,12 +650,18 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.codeNodeEditor.getFullscreenEditor();
 	}
 
+	/**
+	 * Fullscreen code editor dialog.
+	 * The node details view is also a dialog, so this locator stays on the editor.
+	 */
 	getCodeEditorDialog() {
-		return dialogRootIn(this.page);
+		return this.page.getByRole('dialog').filter({
+			has: this.page.getByTestId('code-editor-fullscreen'),
+		});
 	}
 
 	async closeCodeEditorDialog() {
-		await dialogCloseIconIn(this.getCodeEditorDialog()).click();
+		await this.getCodeEditorDialog().getByTestId('dialog-close-button').click();
 	}
 
 	getNodeRunSuccessIndicator() {
