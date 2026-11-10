@@ -6,6 +6,7 @@ const mockAgentInstances: Array<{
 	instructions: Mock;
 	tool: Mock;
 	deferredTool: Mock;
+	toolDeferral: Mock;
 	skills: Mock;
 	checkpoint: Mock;
 	memory: Mock;
@@ -34,6 +35,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.instructions = vi.fn().mockReturnThis();
 		this.tool = vi.fn().mockReturnThis();
 		this.deferredTool = vi.fn().mockReturnThis();
+		this.toolDeferral = vi.fn().mockReturnThis();
 		this.skills = vi.fn().mockReturnThis();
 		this.checkpoint = vi.fn().mockReturnThis();
 		this.memory = vi.fn().mockReturnThis();
@@ -184,8 +186,8 @@ function getDeferredTools(agentIndex = 0) {
 	const calls = (instance?.deferredTool.mock.calls ?? []) as unknown as Array<
 		[Array<Record<string, unknown>>, unknown]
 	>;
-	const tools = calls[0]?.[0];
-	return Object.fromEntries((tools ?? []).map((tool) => [getToolKey(tool), tool]));
+	const tools = calls.flatMap(([group]) => group);
+	return Object.fromEntries(tools.map((tool) => [getToolKey(tool), tool]));
 }
 
 function getToolKey(tool: Record<string, unknown>) {
@@ -244,21 +246,19 @@ describe('createInstanceAgent', () => {
 		});
 		expect(attachedTools['plan-run-1']).toBeUndefined();
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
-		expect(attachedTools['workflow_builder_build_workflow-run-1']).toMatchObject({
+		expect(deferredTools['workflow_builder_build_workflow-run-1']).toMatchObject({
 			name: 'workflow_builder_build_workflow-run-1',
 		});
-		expect(attachedTools['list_workflows-run-1']).toMatchObject({
+		expect(deferredTools['list_workflows-run-1']).toMatchObject({
 			name: 'list_workflows-run-1',
 		});
-		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
-			name: 'verify-built-workflow-run-1',
-		});
-		expect(attachedTools['search_nodes-run-1']).toMatchObject({
+		expect(deferredTools['search_nodes-run-1']).toMatchObject({
 			name: 'search_nodes-run-1',
 		});
-		expect(secondRunAttachedTools['search_nodes-run-2']).toMatchObject({
+		expect(getDeferredTools(1)['search_nodes-run-2']).toMatchObject({
 			name: 'search_nodes-run-2',
 		});
+		expect(secondRunAttachedTools['research-run-2']).toMatchObject({ name: 'research-run-2' });
 	});
 
 	it('shares one domain context between domain and orchestration tools', async () => {
@@ -290,11 +290,11 @@ describe('createInstanceAgent', () => {
 			mcpManager: createMcpManagerStub(),
 		} as never);
 		expect(getDeferredTools()).not.toHaveProperty('workflow_builder_task_control-profile');
-		expect(getAttachedTools()).not.toHaveProperty('search_nodes-profile');
-		expect(getAttachedTools()).toHaveProperty('workflow_builder_build_workflow-profile');
+		expect(getDeferredTools()).not.toHaveProperty('search_nodes-profile');
+		expect(getDeferredTools()).toHaveProperty('workflow_builder_build_workflow-profile');
 	});
 
-	it('keeps workflow-builder skill tool names always loaded', async () => {
+	it('defers n8n resource tools to the tool catalog and keeps harness tools loaded', async () => {
 		await createInstanceAgent({
 			modelId: 'test-model',
 			context: {
@@ -322,8 +322,12 @@ describe('createInstanceAgent', () => {
 			'run_workflow',
 		]) {
 			const scopedName = `${toolName}-builder-skill-run`;
+			expect(deferredTools[scopedName]).toMatchObject({ name: scopedName });
+			expect(attachedTools[scopedName]).toBeUndefined();
+		}
+		for (const toolName of ['research', 'n8n-docs']) {
+			const scopedName = `${toolName}-builder-skill-run`;
 			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
-			expect(deferredTools[scopedName]).toBeUndefined();
 		}
 	});
 
@@ -691,6 +695,22 @@ describe('createInstanceAgent', () => {
 				{ slug: 'linear', toolNames: ['mcp_linear_create_issue'] },
 				{ slug: 'notion', toolNames: [] },
 			]);
+		});
+
+		it('lists deferred MCP tools under their server tool group', async () => {
+			await buildWith();
+
+			const calls = mockAgentInstances[0].deferredTool.mock.calls as Array<
+				[Array<{ name: string }>, { group: string } | undefined]
+			>;
+			const linearCall = calls.find(([tools]) =>
+				tools.some((tool) => tool.name === 'mcp_linear_create_issue'),
+			);
+			expect(linearCall?.[1]).toEqual({
+				group: 'mcp_linear',
+				groupDescription: 'tools from the mcp_linear MCP server',
+			});
+			expect(linearCall?.[0]).toHaveLength(1);
 		});
 
 		it('reports no tools for a service whose only tool has an unsafe name', async () => {
