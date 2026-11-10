@@ -190,6 +190,25 @@ describe('PromotionEnvironmentsService', () => {
 		});
 	});
 
+	it('names the new provider when an update changes it', async () => {
+		environmentRepository.updateEnvironment.mockResolvedValue(true);
+		providersService.getEntity.mockResolvedValue({ ...provider(), id: 'prov2', name: 'Bot user' });
+
+		await service.update(ENVIRONMENT_ID, { providerId: 'prov2' }, actor);
+
+		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-updated', {
+			user: actor,
+			environmentId: ENVIRONMENT_ID,
+			environmentName: 'Staging',
+			providerId: 'prov2',
+			providerName: 'Bot user',
+			repository: 'git@github.com:o/r.git',
+			direction: 'promote',
+			environmentScope: 'projects',
+			changedFields: ['provider'],
+		});
+	});
+
 	it.each([
 		[
 			'an HTTPS',
