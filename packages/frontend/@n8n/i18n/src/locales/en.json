@@ -1898,7 +1898,7 @@
 	"agentSessions.filters.reset": "Reset filters",
 	"agentSessions.status.succeeded": "Succeeded",
 	"agentSessions.status.error": "Error",
-	"agentSessions.fixWithAssistant": "Fix",
+	"agentSessions.fixWithAssistant": "Fix error",
 	"agentSessions.fixWithAssistantPrompt": "Fix this error: {error}",
 	"agentSessions.loadMore": "Load more",
 	"agentSessions.delete": "Delete session",

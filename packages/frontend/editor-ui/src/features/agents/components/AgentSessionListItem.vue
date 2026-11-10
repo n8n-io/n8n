@@ -181,13 +181,7 @@ function formatDuration(ms: number): string {
 		:data-depth="row.depth"
 		data-test-id="agent-session-list-item"
 	>
-		<RouterLink
-			:class="$style.sessionLink"
-			:to="{
-				name: AGENT_SESSION_DETAIL_VIEW,
-				params: { projectId, agentId, threadId: row.thread.id },
-			}"
-		>
+		<div :class="$style.sessionContent">
 			<div :class="$style.listStart">
 				<div
 					v-if="row.depth > 0"
@@ -244,28 +238,56 @@ function formatDuration(ms: number): string {
 						data-testid="agent-session-status-indicator"
 					/>
 				</div>
-				<div v-if="row.thread.status === 'running'" :class="$style.activityLabel">
-					<Transition
-						type="transition"
-						:enter-active-class="$style.labelEnterActive"
-						:leave-active-class="$style.labelLeaveActive"
-						:enter-from-class="$style.labelEnterFrom"
-						:leave-to-class="$style.labelLeaveTo"
-					>
-						<N8nText
-							:key="rowTitle(row.thread)"
-							step="sm"
-							color="text-dark"
-							:class="[$style.activityWord, $style.shimmer]"
-							bold
+				<RouterLink
+					:class="$style.sessionLink"
+					:to="{
+						name: AGENT_SESSION_DETAIL_VIEW,
+						params: { projectId, agentId, threadId: row.thread.id },
+					}"
+				>
+					<div v-if="row.thread.status === 'running'" :class="$style.activityLabel">
+						<Transition
+							type="transition"
+							:enter-active-class="$style.labelEnterActive"
+							:leave-active-class="$style.labelLeaveActive"
+							:enter-from-class="$style.labelEnterFrom"
+							:leave-to-class="$style.labelLeaveTo"
 						>
-							{{ rowTitle(row.thread) }}
-						</N8nText>
-					</Transition>
-				</div>
-				<N8nText v-else step="sm" color="text-dark" bold data-test-id="agent-session-title">
-					{{ threadTitleOf(row.thread) }}
-				</N8nText>
+							<N8nText
+								:key="rowTitle(row.thread)"
+								step="sm"
+								color="text-dark"
+								:class="[$style.activityWord, $style.shimmer]"
+								bold
+							>
+								{{ rowTitle(row.thread) }}
+							</N8nText>
+						</Transition>
+					</div>
+					<N8nText
+						v-else
+						:class="$style.sessionTitle"
+						step="sm"
+						color="text-dark"
+						bold
+						data-test-id="agent-session-title"
+					>
+						{{ threadTitleOf(row.thread) }}
+					</N8nText>
+				</RouterLink>
+				<N8nButton
+					v-if="assistantAvailable && row.thread.status === 'error'"
+					:class="$style.fixButton"
+					size="xsmall"
+					variant="solid"
+					icon="n8n-assistant"
+					:loading="fixingThreadId === row.thread.id"
+					:disabled="fixingThreadId !== null"
+					data-test-id="agent-session-fix-with-assistant"
+					@click="emit('fix-with-assistant')"
+				>
+					{{ i18n.baseText('agentSessions.fixWithAssistant') }}
+				</N8nButton>
 			</div>
 			<div v-if="row.thread.status !== 'running'" :class="$style.listEnd">
 				<N8nBadge
@@ -285,43 +307,9 @@ function formatDuration(ms: number): string {
 					</N8nText>
 				</N8nTooltip>
 			</div>
-		</RouterLink>
+		</div>
 		<div :class="$style.actionGroup">
-			<div
-				v-if="assistantAvailable && row.thread.status === 'error'"
-				:class="$style.fixButtonGroup"
-			>
-				<N8nButton
-					:class="$style.groupButtonLeft"
-					size="small"
-					variant="ghost"
-					icon="n8n-assistant"
-					:loading="fixingThreadId === row.thread.id"
-					:disabled="fixingThreadId !== null"
-					data-test-id="agent-session-fix-with-assistant"
-					@click="emit('fix-with-assistant')"
-				>
-					{{ i18n.baseText('agentSessions.fixWithAssistant') }}
-				</N8nButton>
-				<N8nDropdownMenu placement="bottom-end" :items="actions" @select="emit('action', $event)">
-					<template #trigger>
-						<N8nIconButton
-							:class="$style.groupButtonRight"
-							icon="chevron-down"
-							variant="ghost"
-							size="small"
-							:aria-label="i18n.baseText('agentSessions.actions')"
-							data-test-id="agent-session-actions"
-						/>
-					</template>
-				</N8nDropdownMenu>
-			</div>
-			<N8nDropdownMenu
-				v-else
-				placement="bottom-end"
-				:items="actions"
-				@select="emit('action', $event)"
-			>
+			<N8nDropdownMenu placement="bottom-end" :items="actions" @select="emit('action', $event)">
 				<template #trigger>
 					<N8nIconButton
 						icon="ellipsis"
@@ -346,12 +334,14 @@ function formatDuration(ms: number): string {
 	/** Rails extend over this border so lines join across rows. */
 	--n8n-agent-session-list-row-border-width: 1px;
 
+	position: relative;
+	isolation: isolate;
 	display: flex;
 	align-items: stretch;
 	border: var(--n8n-agent-session-list-row-border-width) solid transparent;
 	border-radius: var(--radius);
 
-	&:hover:not(:has(.actionGroup:hover)) {
+	&:hover:not(:has(.actionGroup:hover, .fixButton:hover)) {
 		background-color: var(--background--hover);
 	}
 
@@ -360,7 +350,7 @@ function formatDuration(ms: number): string {
 	}
 }
 
-.sessionLink {
+.sessionContent {
 	display: flex;
 	flex: 1;
 	align-items: center;
@@ -369,9 +359,31 @@ function formatDuration(ms: number): string {
 	min-width: 0;
 	padding-inline-start: var(--spacing--xs);
 	height: var(--height--2xl);
+}
+
+.sessionLink {
+	display: flex;
+	align-items: center;
+	min-width: 0;
 	color: inherit;
 	text-decoration: none;
 	outline: 0;
+
+	/** Extend the native link without putting the row controls inside it. */
+	&::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		border-radius: inherit;
+	}
+}
+
+.fixButton,
+.actionGroup,
+.listEnd {
+	position: relative;
+	z-index: 2;
 }
 
 .listStart,
@@ -382,12 +394,21 @@ function formatDuration(ms: number): string {
 }
 
 .listStart {
+	flex: 1;
 	min-width: 0;
 	align-self: stretch;
 }
 
+.sessionTitle {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .listEnd {
-	flex-wrap: wrap;
+	flex-shrink: 0;
+	white-space: nowrap;
 	justify-content: flex-end;
 	gap: var(--spacing--sm);
 	font-variant-numeric: tabular-nums;
@@ -452,38 +473,8 @@ function formatDuration(ms: number): string {
 	flex-shrink: 0;
 }
 
-.fixButtonGroup {
-	display: inline-flex;
-	align-items: center;
-	border-radius: var(--radius--full);
-	background-color: var(--color--primary);
-	margin-inline-start: var(--spacing--3xs);
-
-	:global(button) {
-		--button--color: var(--text-color--inverse);
-		--button--color--background-hover: color-mix(
-			in srgb,
-			var(--color--primary),
-			light-dark(var(--color--neutral-white), var(--color--neutral-black)) 10%
-		);
-		--button--color--background-active: color-mix(
-			in srgb,
-			var(--color--primary),
-			light-dark(var(--color--neutral-white), var(--color--neutral-black)) 12%
-		);
-	}
-}
-
-.groupButtonLeft {
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
-}
-
-.groupButtonRight {
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
-	border-left: var(--border);
-	border-left-color: color-mix(in srgb, var(--text-color--inverse) 20%, transparent);
+.fixButton {
+	flex-shrink: 0;
 }
 
 .activityLabel {
