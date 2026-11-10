@@ -363,9 +363,70 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `taskRunner` | - | External task runner |
 | `loadBalancer` | - | Caddy for multi-main |
 | `cloudflared` | - | Cloudflare Tunnel for public webhook URLs |
+| `litellm` | - | OpenAI-compatible AI gateway (LiteLLM) with four logins |
 
 **Note:** For observability (logs + metrics), enable all three: `['victoriaLogs', 'victoriaMetrics', 'vector']`.
 The `observability` capability shortcut handles this automatically: `test.use({ capability: 'observability' })`.
+
+## AI Gateway (LiteLLM)
+
+Use this service to test nodes against an OpenAI-compatible AI gateway, for
+example with the Custom Model Endpoint credential. LiteLLM is an open-source AI
+gateway. A small Caddy proxy in front of it adds the logins that LiteLLM does
+not have.
+
+```bash
+pnpm --filter n8n-containers services --services litellm
+```
+
+The first start downloads about 2.5 GB. Each start takes about one minute. The
+summary shows the base URL and the login for each method:
+
+| Login | Base URL | Value |
+|-------|----------|-------|
+| Bearer token | `http://localhost:4000/v1` | Key `sk-n8n-test-gateway` |
+| API key in header | `http://localhost:4000/v1` | Header `Ocp-Apim-Subscription-Key`, key `sk-n8n-test-gateway` |
+| Basic auth | `http://localhost:4001/basic/v1` | User `n8n`, password `test-password` |
+| None | `http://localhost:4001/none/v1` | No login |
+
+The ports listen on 127.0.0.1 only. Stop the gateway with
+`pnpm --filter n8n-containers services:clean`. This command stops all
+`pnpm services` containers.
+
+### Models
+
+- `mock-model` is always available. It returns a fixed reply, also as a stream.
+  It costs nothing.
+- To add a real model, set the variables below before you start the service.
+  The gateway then serves an Azure OpenAI deployment under its deployment name.
+  It signs in to Microsoft Entra ID with a client secret. The app registration
+  needs the "Cognitive Services OpenAI User" role on the resource.
+
+| Variable | Value |
+|----------|-------|
+| `LITELLM_AZURE_API_BASE` | The resource URL, for example `https://<resource>.openai.azure.com` |
+| `LITELLM_AZURE_DEPLOYMENT` | The deployment name |
+| `LITELLM_AZURE_TENANT_ID` | The directory (tenant) ID |
+| `LITELLM_AZURE_CLIENT_ID` | The application (client) ID |
+| `LITELLM_AZURE_CLIENT_SECRET` | The client secret |
+| `LITELLM_AZURE_API_VERSION` | Optional. The default is `2025-03-01-preview` |
+
+Set all five required variables, or none. Do not write the secret to a file.
+Type it into the shell instead:
+
+```bash
+read -rs LITELLM_AZURE_CLIENT_SECRET && export LITELLM_AZURE_CLIENT_SECRET
+```
+
+### Known limits
+
+- LiteLLM runs without a database. A request with a wrong key gets 400
+  "No connected db", not 401. A request with no key gets 401.
+- LiteLLM logs "Could not identify azure model" on each Azure call. The calls
+  work. LiteLLM does not guess the model from the deployment name, so it tracks
+  no cost.
+- The default image pre-pull in CI skips this image. Pull it with
+  `pnpm --filter n8n-containers exec tsx pull-test-images.ts litellm`.
 
 ## CLI Options
 
