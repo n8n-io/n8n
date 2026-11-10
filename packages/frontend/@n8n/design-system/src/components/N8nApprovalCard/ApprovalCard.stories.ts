@@ -45,6 +45,15 @@ export const NarrowWithLongUrl: Story = {
 		const description = canvas.getByRole('region');
 		await expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth);
 		await expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth);
+		const suffix = canvas.getByText('during this session');
+		await expect(suffix).toBeVisible();
+		await expect(suffix.scrollWidth).toBeLessThanOrEqual(suffix.clientWidth);
+		const suffixBounds = suffix.getBoundingClientRect();
+		const sessionRowBounds = canvas
+			.getByRole('button', { name: /during this session/ })
+			.getBoundingClientRect();
+		await expect(suffixBounds.left).toBeGreaterThanOrEqual(sessionRowBounds.left);
+		await expect(suffixBounds.right).toBeLessThanOrEqual(sessionRowBounds.right);
 		for (const row of canvasElement.querySelectorAll('[role="toolbar"] button')) {
 			const bounds = row.getBoundingClientRect();
 			await expect(bounds.height).toBe(

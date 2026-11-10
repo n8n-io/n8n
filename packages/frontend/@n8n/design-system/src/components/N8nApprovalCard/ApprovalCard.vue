@@ -299,8 +299,8 @@ function onKeydown(event: KeyboardEvent) {
 				>
 					<N8nIcon :class="$style.leadingIcon" :icon="option.icon" size="large" />
 					<span :class="$style.label">
-						<N8nText step="sm" bold>{{ option.label }}</N8nText>
-						<N8nText v-if="option.suffix" step="sm" color="text-light">{{
+						<N8nText :class="$style.labelStrong" step="sm" bold>{{ option.label }}</N8nText>
+						<N8nText v-if="option.suffix" :class="$style.suffix" step="sm" color="text-light">{{
 							' ' + option.suffix
 						}}</N8nText>
 					</span>
@@ -479,7 +479,19 @@ function onKeydown(event: KeyboardEvent) {
 
 .label {
 	flex: 1;
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.labelStrong {
 	min-width: 0;
 	@include utils.utils-ellipsis;
+}
+
+.suffix {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 </style>
