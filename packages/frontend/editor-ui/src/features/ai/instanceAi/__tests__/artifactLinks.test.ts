@@ -106,11 +106,11 @@ describe('toRouterPaths and routerPathHref', () => {
 		expect(toRouterPaths('https://other.test/workflow/wf-1')).toEqual([]);
 	});
 
-	it('offers the path without a whole-segment base first, then the path as written', () => {
+	it('recognizes app routes after removing a whole-segment base', () => {
 		const { toRouterPaths } = setup('/n8n/');
 		const pathnames = (href: string) => toRouterPaths(href).map(({ pathname }) => pathname);
 
-		expect(pathnames('/n8n/workflow/wf-1')).toEqual(['/workflow/wf-1', '/n8n/workflow/wf-1']);
+		expect(pathnames('/n8n/workflow/wf-1')).toEqual(['/workflow/wf-1']);
 		expect(pathnames('/n8n')).toEqual(['/', '/n8n']);
 		expect(pathnames('/n8nx/workflow/wf-1')).toEqual(['/n8nx/workflow/wf-1']);
 	});

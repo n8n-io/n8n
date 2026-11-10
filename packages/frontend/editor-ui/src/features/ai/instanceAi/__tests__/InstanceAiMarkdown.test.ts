@@ -291,20 +291,38 @@ describe('InstanceAiMarkdown with the shared renderer', () => {
 			expect(link?.target).toBe('_blank');
 		});
 
+		it.each([
+			'/workflow/settings/context/skills?skillId=skill%201&tab=a+b#details',
+			'/workflow/settings/personal?tab=a%20b#details',
+		])('keeps the prefixed Settings link %s unchanged', async (path) => {
+			const hrefs = [path, `${window.location.origin}${path}`];
+			const links = (
+				await renderWithBase(hrefs.map((href) => `[Settings](${href})`).join(' '), {
+					base: '/workflow/',
+				})
+			).querySelectorAll('a');
+
+			expect(links).toHaveLength(hrefs.length);
+			links.forEach((link, index) => {
+				expect(link.getAttribute('href')).toBe(hrefs[index]);
+				expect(link.dataset.resourceChip).toBeUndefined();
+			});
+		});
+
 		it('leaves unrecognized and cross-origin links unchanged', async () => {
 			const links = (
 				await renderWithBase(
-					'[Settings](/n8n/settings/personal) ' + '[Other site](https://example.com/workflow/wf-1)',
+					'[Unknown](/n8n/unknown-page) ' + '[Other site](https://example.com/workflow/wf-1)',
 				)
 			).querySelectorAll('a');
 
-			expect(links[0].getAttribute('href')).toBe('/n8n/settings/personal');
+			expect(links[0].getAttribute('href')).toBe('/n8n/unknown-page');
 			expect(links[1].getAttribute('href')).toBe('https://example.com/workflow/wf-1');
 			expect(links[0].dataset.resourceChip).toBeUndefined();
 			expect(links[1].dataset.resourceChip).toBeUndefined();
 		});
 
-		it.each(['credentials/cred-1', 'datatables'])(
+		it.each(['credentials', 'credentials/cred-1', 'datatables'])(
 			'keeps the home route for %s when the base is /home/',
 			async (resourcePath) => {
 				const path = `/home/${resourcePath}?tab=details#item`;

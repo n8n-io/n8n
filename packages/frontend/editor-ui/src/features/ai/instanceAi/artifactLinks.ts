@@ -87,8 +87,8 @@ export function useArtifactLinks() {
 	}
 
 	/**
-	 * Router paths of a same-origin link: first without the router base, then as written. A base
-	 * such as `/projects/` can also start an app route, so the caller keeps the first supported one.
+	 * Prefer a known app route without the base. Otherwise, offer both paths because
+	 * a base such as `/projects/` can also start an unprefixed app route.
 	 */
 	function toRouterPaths(href: string): RouterPath[] {
 		const isRootRelative = href.startsWith('/') && !href.startsWith('//');
@@ -109,7 +109,11 @@ export function useArtifactLinks() {
 		const base = router.options.history.base;
 		const hasBase = base !== '' && (url.pathname === base || url.pathname.startsWith(`${base}/`));
 		if (!hasBase) return [toRouterPath(url.pathname)];
-		return [toRouterPath(url.pathname.slice(base.length) || '/'), toRouterPath(url.pathname)];
+		const withoutBase = toRouterPath(url.pathname.slice(base.length) || '/');
+		const route = router.resolve(withoutBase.fullPath);
+		// Unnamed legacy redirects must not override canonical paths such as `/home/credentials`.
+		if (route.name && route.name !== VIEWS.NOT_FOUND) return [withoutBase];
+		return [withoutBase, toRouterPath(url.pathname)];
 	}
 
 	return {

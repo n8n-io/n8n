@@ -19,6 +19,8 @@ export function createArtifactTestRouter(base = '/') {
 			{ path: '/home/credentials/:credentialId?', name: VIEWS.CREDENTIALS, component: Stub },
 			{ path: '/home/datatables', name: DATA_TABLE_VIEW, component: Stub },
 			{ path: '/home/agents', name: AGENTS_LIST_VIEW, component: Stub },
+			{ path: '/credentials', redirect: '/home/credentials' },
+			{ path: '/settings/personal', name: VIEWS.PERSONAL_SETTINGS, component: Stub },
 			{
 				path: '/settings/context/skills',
 				name: VIEWS.SETTINGS_CONTEXT_SKILLS,
@@ -44,7 +46,7 @@ export function createArtifactTestRouter(base = '/') {
 					{ path: 'apps/:appId', name: APP_DETAIL_VIEW, component: Stub },
 				],
 			},
-			{ path: '/:pathMatch(.*)*', component: Stub },
+			{ path: '/:pathMatch(.*)*', name: VIEWS.NOT_FOUND, component: Stub },
 		],
 	});
 }
