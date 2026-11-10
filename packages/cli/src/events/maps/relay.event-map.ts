@@ -380,6 +380,10 @@ export type RelayEventMap = ModuleEventMap & {
 		authenticationMethod: AuthenticationMethod;
 	};
 
+	'user-logged-out': {
+		user: UserLike;
+	};
+
 	'user-login-failed': {
 		userEmail: string;
 		authenticationMethod: AuthenticationMethod;

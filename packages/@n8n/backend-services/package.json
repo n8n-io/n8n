@@ -52,6 +52,7 @@
     "ioredis": "5.3.2",
     "jose": "^6.2.9",
     "jsonwebtoken": "catalog:",
+    "lodash": "catalog:",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*"
   },
@@ -69,7 +70,6 @@
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "ioredis-mock": "catalog:",
-    "lodash": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",

@@ -217,14 +217,24 @@ describe('ToolsConnectionModal', () => {
 			nodeTypeName: 'n8n-nodes-base.gmailTool',
 			restriction: { name: 'n8n-nodes-base.gmailTool', available: false, scope: 'instance' },
 		};
-		const restrictedApp: ToolConnectionItem = {
+		const restrictedGatewayDuplicate: ToolConnectionItem = {
+			...restrictedGateway,
 			id: 'nodeType:gmail',
+			category: 'app-action',
+			freeCredits: undefined,
+		};
+		const restrictedApp: ToolConnectionItem = {
+			id: 'nodeType:outlook',
 			kind: 'node',
-			title: 'Gmail',
+			title: 'Outlook',
 			status: 'none',
 			category: 'app-action',
-			nodeTypeName: 'n8n-nodes-base.gmailTool',
-			restriction: { name: 'n8n-nodes-base.gmailTool', available: false, scope: 'project' },
+			nodeTypeName: 'n8n-nodes-base.microsoftOutlookTool',
+			restriction: {
+				name: 'n8n-nodes-base.microsoftOutlookTool',
+				available: false,
+				scope: 'project',
+			},
 		};
 		const usableApp: ToolConnectionItem = {
 			id: 'nodeType:sheets',
@@ -237,23 +247,69 @@ describe('ToolsConnectionModal', () => {
 		const { getAllByTestId, getByTestId } = renderWith({
 			// Restricted first, and one of them gateway-backed: the all-tab rank sort alone
 			// would keep it above the usable tool.
-			items: [restrictedGateway, restrictedApp, usableApp],
+			items: [restrictedGateway, restrictedGatewayDuplicate, restrictedApp, usableApp],
 			categories: ['all', 'app-action'],
 		});
 
+		// The restricted plain Gmail row is a gateway duplicate, so "All" shows Gmail once.
 		const titlesOnAll = getAllByTestId('tools-connection-row').map((row) => row.textContent);
+		expect(titlesOnAll).toHaveLength(3);
 		expect(titlesOnAll[0]).toContain('Google Sheets');
 		expect(titlesOnAll[1]).toContain('Gmail');
-		expect(titlesOnAll[2]).toContain('Gmail');
+		expect(titlesOnAll[2]).toContain('Outlook');
 		expect(getAllByTestId('node-restricted-icon')).toHaveLength(2);
 
 		await fireEvent.click(getByTestId('tab-app-action'));
 		await waitFor(() => {
 			const titles = getAllByTestId('tools-connection-row').map((row) => row.textContent);
-			expect(titles).toHaveLength(2);
+			expect(titles).toHaveLength(3);
 			expect(titles[0]).toContain('Google Sheets');
 			expect(titles[1]).toContain('Gmail');
+			expect(titles[2]).toContain('Outlook');
 		});
+	});
+
+	it('lists a gateway-backed node once on the all tab and in both of its own tabs', async () => {
+		const gatewayRow: ToolConnectionItem = {
+			id: 'n8n-connect:browserbase',
+			kind: 'node',
+			title: 'Browserbase',
+			status: 'none',
+			category: 'n8n-connect',
+			freeCredits: true,
+			nodeTypeName: 'n8n-nodes-base.browserbaseTool',
+		};
+		const plainRow: ToolConnectionItem = {
+			id: 'nodeType:browserbase',
+			kind: 'node',
+			title: 'Browserbase',
+			status: 'none',
+			category: 'app-action',
+			nodeTypeName: 'n8n-nodes-base.browserbaseTool',
+		};
+		const connectedRow: ToolConnectionItem = {
+			...plainRow,
+			id: 'tool:browserbase-1',
+			status: 'connected',
+		};
+		const { getAllByTestId, getByTestId } = renderWith({
+			items: [gatewayRow, plainRow, connectedRow],
+			categories: ['all', 'n8n-connect', 'app-action'],
+		});
+
+		const hasFreeCreditsPill = () =>
+			getAllByTestId('tools-connection-row').map((row) =>
+				Boolean(row.textContent?.includes('Free credits')),
+			);
+
+		expect(getByTestId('tab-all').textContent).toContain('(2)');
+		expect(getByTestId('tab-n8n-connect').textContent).toContain('(1)');
+		expect(getByTestId('tab-app-action').textContent).toContain('(2)');
+		// The already-added instance stays, then the gateway row; the plain row is gone.
+		expect(hasFreeCreditsPill()).toEqual([false, true]);
+
+		await fireEvent.click(getByTestId('tab-app-action'));
+		await waitFor(() => expect(hasFreeCreditsPill()).toEqual([false, false]));
 	});
 
 	it('lists connectors on Gateway credits first on the Connectors tab, keeping their order', async () => {

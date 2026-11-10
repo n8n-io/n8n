@@ -32,7 +32,7 @@ import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -126,7 +126,7 @@ function makeService({ isKnowledgeActive = true } = {}) {
 	agentTaskRepository.replaceForAgent.mockResolvedValue(false);
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
 	const agentPolicyService = mock<AgentPolicyService>();
-	const agentFileRepository = mock<AgentFileRepository>();
+	const agentFileRepository = mock<KnowledgeFileRepository>();
 	agentFileRepository.getKnowledgeTotals.mockResolvedValue({ fileCount: 0, totalBytes: 0 });
 
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);

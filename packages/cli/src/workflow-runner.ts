@@ -32,8 +32,10 @@ import {
 	createRunExecutionData,
 	ExecutionCancelledError,
 	hasExecutionRunNodes,
+	isExecutionOutputRedacted,
 	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
+	redactErrorReport,
 	TimeoutExecutionCancelledError,
 	Workflow,
 	WorkflowOperationError,
@@ -291,8 +293,18 @@ export class WorkflowRunner {
 			}
 		}
 
-		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
-		this.errorReporter.error(error, { executionId });
+		// The run data is gone at this point, so the stored workflow setting decides;
+		// the instance floor is already enforced on that setting.
+		const redacted = isExecutionOutputRedacted(
+			undefined,
+			hooks?.workflowData.settings,
+			executionMode,
+		);
+		this.logger.error(
+			`Problem with execution ${executionId}: ${redacted ? error.constructor.name : error.message}. Aborting.`,
+		);
+		const toReport = redacted ? redactErrorReport(error) : error;
+		if (toReport) this.errorReporter.error(toReport, { executionId });
 
 		if (error instanceof MaxStalledCountError) {
 			const claimed = await this.executionCrashService.markAsCrashedWithoutCounting(
@@ -441,11 +453,14 @@ export class WorkflowRunner {
 
 		if (!establishContextError) {
 			try {
-				await this.credentialsPermissionChecker.check(
+				const { personalCredentialsCount } = await this.credentialsPermissionChecker.check(
 					data.workflowData.id,
 					data.workflowData.nodes,
 					data.userId,
 				);
+				// Reuses the check's result so telemetry costs no extra query. Always
+				// set, so a reused `data` object cannot keep the count of an earlier run.
+				data.telemetryMetadata = { ...data.telemetryMetadata, personalCredentialsCount };
 			} catch (error) {
 				const executionId = await this.activeExecutions.add(data, existingExecution);
 				await this.failExecution(data, executionId, error, responsePromise, existingExecution);

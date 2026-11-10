@@ -38,7 +38,8 @@ type ExecutionTrackDataKey =
 	| 'prod_success'
 	| 'manual_crashed'
 	| 'prod_crashed'
-	| `${'instance_ai'}_${'mock' | 'real'}_${'manual' | 'prod'}_${'error' | 'success' | 'crashed'}`;
+	| `${'instance_ai'}_${'mock' | 'real'}_${'manual' | 'prod'}_${'error' | 'success' | 'crashed'}`
+	| `personal_credentials_${'manual' | 'prod'}`;
 
 interface IExecutionTrackData {
 	count: number;
@@ -305,6 +306,11 @@ export class Telemetry implements TelemetryTracker {
 				const instanceAiDataType = properties.mock_data_sources ? 'mock' : 'real';
 				const sourceKey: ExecutionTrackDataKey = `instance_ai_${instanceAiDataType}_${executionMode}_${executionStatus}`;
 				this.addExecutionTrackData(workflowId, sourceKey, execTime);
+			}
+
+			// Counted in the per-workflow aggregate, not as an event for each run.
+			if (properties.personal_credentials_count) {
+				this.addExecutionTrackData(workflowId, `personal_credentials_${executionMode}`, execTime);
 			}
 
 			if (properties.used_end_user_credentials) {
