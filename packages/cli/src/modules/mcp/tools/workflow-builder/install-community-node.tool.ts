@@ -6,7 +6,7 @@ import z from 'zod';
 
 import type { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
 import type { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
-import type { NodeTypes } from '@/node-types';
+import type { INodeTypes } from 'n8n-workflow';
 
 import { INSTALL_COMMUNITY_NODE_TOOL, USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -61,7 +61,7 @@ const outputSchema = {
  * registry payload does not carry credential declarations for any vetted
  * package, so anything derived from it would silently always be empty.
  */
-function credentialTypesOf(nodeTypeNames: string[], nodeTypes: NodeTypes): string[] {
+function credentialTypesOf(nodeTypeNames: string[], nodeTypes: INodeTypes): string[] {
 	const types = new Set<string>();
 	for (const name of nodeTypeNames) {
 		try {
@@ -94,7 +94,7 @@ export const createInstallCommunityNodeTool = (
 	user: User,
 	communityNodeTypesService: CommunityNodeTypesService,
 	communityPackagesLifecycleService: CommunityPackagesLifecycleService,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: INSTALL_COMMUNITY_NODE_TOOL.toolName,

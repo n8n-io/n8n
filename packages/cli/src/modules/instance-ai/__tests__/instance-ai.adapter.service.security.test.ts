@@ -36,6 +36,7 @@ import {
 	type RoleService,
 	type CredentialsFinderService,
 	type InstanceWriteAccessService,
+	type NodeTypesProxy,
 	type TelemetryProxy,
 } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
@@ -77,9 +78,9 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { NodeTypes } from '@/node-types';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
 
-import type { NodeTypes } from '@/node-types';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
@@ -124,7 +125,7 @@ const credentialsFinderService = mock<CredentialsFinderService>();
 const activeExecutions = mock<ActiveExecutions>();
 const workflowRunner = mock<WorkflowRunner>();
 const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
-const nodeTypes = mock<NodeTypes>();
+const nodeTypes = mock<NodeTypesProxy>();
 const dataTableService = mock<DataTableService>();
 const dataTableRepository = mock<DataTableRepository>();
 const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -147,7 +148,7 @@ const nodeResourceExplorerService = new NodeResourceExplorerService(
 	dynamicNodeParametersService,
 	credentialsFinderService,
 	projectRepository,
-	nodeTypes,
+	nodeTypes as unknown as NodeTypes,
 );
 
 const policyEnforcementService = mock<PolicyEnforcementService>();
@@ -242,7 +243,7 @@ describe('exploreResources — credential ownership check', () => {
 
 		const ctx = service.createContext(person);
 		await expect(ctx.nodeService.exploreResources!(baseParams)).rejects.toThrow(
-			'Credential cred-123 not found or not accessible',
+			'Credential cred-123 has type "someOtherType", not "googleSheetsOAuth2Api"',
 		);
 
 		expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
@@ -332,7 +333,7 @@ describe('exploreResources — eval-seeded credential', () => {
 
 		await expect(
 			ctx.nodeService.exploreResources!({ ...baseParams, credentialType: 'slackApi' }),
-		).rejects.toThrow('Credential cred-123 not found or not accessible');
+		).rejects.toThrow('Credential cred-123 has type "googleSheetsOAuth2Api", not "slackApi"');
 		expectNoProviderCall();
 	});
 

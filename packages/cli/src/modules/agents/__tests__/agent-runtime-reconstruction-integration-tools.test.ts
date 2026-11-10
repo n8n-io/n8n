@@ -2,6 +2,7 @@ import type { AgentPublishHistoryRepository } from '../repositories/agent-publis
 import type {
 	CredentialsFinderService,
 	EventService,
+	NodeTypesProxy,
 	ProjectScopeService,
 	Publisher,
 	TelemetryProxy,
@@ -16,6 +17,7 @@ import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
 	TransactionRunner,
 	User,
+	UserRepository,
 	CredentialsEntity,
 	ProjectRelationRepository,
 	WorkflowRepository,
@@ -30,7 +32,6 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
-import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
@@ -335,6 +336,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentBackgroundJobService>(),
 			mock<AgentsSettingsService>(),
 			skillRefs,
+			mock<UserRepository>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -352,7 +354,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		agentValidationService = new AgentValidationService(
 			agentRepository,
 			definitionService,
-			mock<NodeTypes>(),
+			mock<NodeTypesProxy>(),
 			mock<WorkflowRepository>(),
 			chatIntegrationRegistry,
 			mock<AiGatewayService>(),

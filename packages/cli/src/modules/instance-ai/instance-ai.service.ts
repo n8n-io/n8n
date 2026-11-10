@@ -24,6 +24,7 @@ import {
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
+	TOOL_CATALOG_CALL_TOOL_NAME,
 	resolveBuilderToolName,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
@@ -64,6 +65,7 @@ import {
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
+	createThreadApprovalContext,
 	orchestratorAgentId,
 	type ConfirmationData,
 	type DomainAccessTracker,
@@ -199,7 +201,10 @@ import {
 	type OrchestratorResumeReason,
 } from './tracing';
 import { buildResumeTraceInput } from './tracing/resume-trace-input';
-import { buildSuspensionTraceOutputs } from './tracing/suspension-trace';
+import {
+	buildSuspensionTraceMetadata,
+	buildSuspensionTraceOutputs,
+} from './tracing/suspension-trace';
 import { WorkflowVerificationObligationService } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 
@@ -864,12 +869,16 @@ export class InstanceAiService {
 		threadId: string,
 		runId: string,
 		signal: AbortSignal,
+		context: InstanceAiContext | undefined,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
 		}
+		const approvalContext = context && createThreadApprovalContext(context);
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
+			// Lets the SDK approval gate read and save "Always allow" grants of the thread.
+			...(approvalContext ? { approvalContext } : {}),
 			abortSignal: signal,
 			// Recover token usage from raw provider events so a stopped/errored run
 			// is still billed for the tokens consumed before the stop.
@@ -902,12 +911,16 @@ export class InstanceAiService {
 		agentRunId: string,
 		toolCallId: string,
 		signal: AbortSignal,
+		context: InstanceAiContext | undefined,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
 		}
+		const approvalContext = context && createThreadApprovalContext(context);
 		return {
 			runId: agentRunId,
+			// Mirrors the stream options: a decision on an SDK approval card can save a grant.
+			...(approvalContext ? { approvalContext } : {}),
 			toolCallId,
 			abortSignal: signal,
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
@@ -2107,8 +2120,11 @@ export class InstanceAiService {
 	): string | undefined {
 		if (!toolName || !suspendPayload) return undefined;
 		// Only setup suspends with `setupRequests`, so a former multi-action call is a setup.
-		if (resolveBuilderToolName(toolName, 'setup') !== WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW)
-			return undefined;
+		// A deferred `setup_workflow` suspends under the tool catalog's `call_tool` name.
+		const isSetupTool =
+			toolName === TOOL_CATALOG_CALL_TOOL_NAME ||
+			resolveBuilderToolName(toolName, 'setup') === WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW;
+		if (!isSetupTool) return undefined;
 		if (!Array.isArray(suspendPayload.setupRequests)) return undefined;
 		return typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
 	}
@@ -2764,7 +2780,13 @@ export class InstanceAiService {
 				tracing,
 			);
 
-			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
+			const streamOptions = this.buildOrchestratorAgentStreamOptions(
+				user,
+				threadId,
+				runId,
+				signal,
+				environment.context,
+			);
 
 			streamReached = true;
 			await this.turnInput.onInputAccepted(environment, turnInputRuntime, turnInput, {
@@ -2940,30 +2962,12 @@ export class InstanceAiService {
 				await this.tracing.finalizeRunTracing(runId, tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				});
 				messageTraceFinalization = {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				};
 				return;
 			}
@@ -3873,6 +3877,7 @@ export class InstanceAiService {
 					opts.agentRunId,
 					opts.toolCallId,
 					opts.signal,
+					opts.orchestrationContext?.domainContext,
 				),
 				onResumeClaimed,
 			};
@@ -4038,30 +4043,12 @@ export class InstanceAiService {
 				await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				});
 				messageTraceFinalization = {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				};
 
 				return;

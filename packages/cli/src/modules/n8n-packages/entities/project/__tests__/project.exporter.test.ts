@@ -383,34 +383,37 @@ describe('ProjectExporter', () => {
 			expect(result.workflowEntries.map((e) => e.id)).toEqual(['w-published']);
 		});
 
-		it('writes the project shell only for an empty selection', async () => {
-			const project = makeProject();
-			const { exporter, workflowFinder, workflowExporter } = makeExporter({
-				projects: [project],
-			});
-			workflowFinder.findRootWorkflowIdsInProject.mockResolvedValue(['w1']);
-			workflowExporter.export.mockResolvedValue({ entries: [], requirements: emptyRequirements });
-			const writer = new CapturingWriter();
+		it.each([{ workflowIds: [] }, { folderIds: [] }])(
+			'writes the project shell only for an empty selection: %j',
+			async (selection) => {
+				const project = makeProject();
+				const { exporter, workflowFinder, workflowExporter } = makeExporter({
+					projects: [project],
+				});
+				workflowFinder.findRootWorkflowIdsInProject.mockResolvedValue(['w1']);
+				workflowExporter.export.mockResolvedValue({ entries: [], requirements: emptyRequirements });
+				const writer = new CapturingWriter();
 
-			const result = await exporter.export({
-				user,
-				projectIds: [project.id],
-				workflowIds: [],
-				writer,
-				includeTags: true,
-				versionPolicy: 'latest',
-				includeArchivedWorkflows: false,
-			});
+				const result = await exporter.export({
+					user,
+					projectIds: [project.id],
+					...selection,
+					writer,
+					includeTags: true,
+					versionPolicy: 'latest',
+					includeArchivedWorkflows: false,
+				});
 
-			expect(workflowExporter.export).not.toHaveBeenCalled();
-			expect(result.entries).toEqual([
-				{ id: project.id, name: 'billing', target: 'projects/billing-projectbilling01' },
-			]);
-			expect(result.workflowEntries).toEqual([]);
-			expect(writer.files.map((f) => f.path)).toEqual([
-				'projects/billing-projectbilling01/project.json',
-			]);
-		});
+				expect(workflowExporter.export).not.toHaveBeenCalled();
+				expect(result.entries).toEqual([
+					{ id: project.id, name: 'billing', target: 'projects/billing-projectbilling01' },
+				]);
+				expect(result.workflowEntries).toEqual([]);
+				expect(writer.files.map((f) => f.path)).toEqual([
+					'projects/billing-projectbilling01/project.json',
+				]);
+			},
+		);
 	});
 
 	it('exports a personal project', async () => {

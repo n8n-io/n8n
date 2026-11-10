@@ -89,6 +89,7 @@ import { SkillService } from '../../skills';`,
 	it.each([
 		"import { Foo } from '../../../services/foo';",
 		"import { RoleService } from '../../../permissions.ee/role-service';",
+		"import { userHasScopes } from '@/permissions.ee/check-access';",
 		"import { Foo } from '@/services/foo';",
 		"import { Telemetry } from '../../../telemetry';",
 		"import { AgentSkillUsage } from '../../agents/agent-skill-usage';",
@@ -111,7 +112,6 @@ import { SkillService } from '../../skills';`,
 			`${modules}/skills/services/example.ts`,
 			`
 import { PostHogClient } from '@/posthog';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { Skill } from '../database/entities/skill.entity';
 import { SkillService } from '@/modules/skills/services/skill.service';
 import { Service } from '@n8n/di';`,

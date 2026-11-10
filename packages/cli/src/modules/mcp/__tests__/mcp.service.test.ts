@@ -24,6 +24,7 @@ import {
 	WorkflowPublishedDataService,
 	AiPreferenceService,
 	CredentialsFinderService,
+	NodeTypesProxy,
 	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
@@ -40,8 +41,11 @@ import {
 	User,
 } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
-import type { IRun } from 'n8n-workflow';
-import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	type IRun,
+	ManualExecutionCancelledError,
+} from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
@@ -54,7 +58,6 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
-import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
@@ -145,7 +148,7 @@ describe('McpService', () => {
 			mockInstance(ProjectService),
 			mockInstance(NodeCatalogService),
 			mockInstance(WorkflowCreationService),
-			mockInstance(NodeTypes),
+			mockInstance(NodeTypesProxy),
 			mockInstance(ProjectRepository),
 			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
@@ -204,7 +207,7 @@ describe('McpService', () => {
 				mockInstance(ProjectService),
 				mockInstance(NodeCatalogService),
 				mockInstance(WorkflowCreationService),
-				mockInstance(NodeTypes),
+				mockInstance(NodeTypesProxy),
 				mockInstance(ProjectRepository),
 				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
@@ -417,7 +420,7 @@ describe('McpService', () => {
 				mockInstance(ProjectService),
 				mockInstance(NodeCatalogService),
 				mockInstance(WorkflowCreationService),
-				mockInstance(NodeTypes),
+				mockInstance(NodeTypesProxy),
 				mockInstance(ProjectRepository),
 				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
@@ -1427,7 +1430,7 @@ describe('McpService', () => {
 				mockInstance(ProjectService),
 				nodeCatalogService,
 				mockInstance(WorkflowCreationService),
-				mockInstance(NodeTypes),
+				mockInstance(NodeTypesProxy),
 				mockInstance(ProjectRepository),
 				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
@@ -1488,7 +1491,7 @@ describe('McpService', () => {
 				mockInstance(ProjectService),
 				nodeCatalogService,
 				mockInstance(WorkflowCreationService),
-				mockInstance(NodeTypes),
+				mockInstance(NodeTypesProxy),
 				mockInstance(ProjectRepository),
 				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
@@ -1574,7 +1577,7 @@ describe('McpService', () => {
 					mockInstance(ProjectService),
 					mockInstance(NodeCatalogService),
 					mockInstance(WorkflowCreationService),
-					mockInstance(NodeTypes),
+					mockInstance(NodeTypesProxy),
 					mockInstance(ProjectRepository),
 					mockInstance(FolderFinderService),
 					mockInstance(SharedWorkflowRepository),

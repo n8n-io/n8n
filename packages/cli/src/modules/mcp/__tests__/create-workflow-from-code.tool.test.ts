@@ -11,9 +11,8 @@ import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/crea
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
-import { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import { UrlService, TelemetryProxy } from '@n8n/backend-services';
+import { UrlService, NodeTypesProxy, TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -100,7 +99,7 @@ describe('create-workflow-from-code MCP tool', () => {
 	let createWorkflowMock: Mock;
 	let urlService: UrlService;
 	let telemetry: TelemetryProxy;
-	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
+	let nodeTypes: ReturnType<typeof mockInstance<NodeTypesProxy>>;
 	let dataTableOps: DataTableOpsMock;
 
 	beforeEach(() => {
@@ -120,7 +119,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
-		nodeTypes = mockInstance(NodeTypes);
+		nodeTypes = mockInstance(NodeTypesProxy);
 		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 			if (type === '@n8n/n8n-nodes-langchain.agent') {
 				return { description: { group: ['transform'], outputs: [NodeConnectionTypes.Main] } };

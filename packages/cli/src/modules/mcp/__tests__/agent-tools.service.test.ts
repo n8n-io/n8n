@@ -6,6 +6,7 @@ import {
 	type EventService,
 	ProjectScopeService,
 	UrlService,
+	NodeTypesProxy,
 	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
@@ -72,7 +73,6 @@ import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
 import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
-import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -192,7 +192,7 @@ describe('McpAgentToolsService', () => {
 		agentModelCatalogService,
 		mockInstance(AttachableWorkflowsService),
 		mcpRegistryService,
-		mockInstance(NodeTypes),
+		mockInstance(NodeTypesProxy),
 		mockInstance(OauthService),
 		outboundHttp,
 		urlService,

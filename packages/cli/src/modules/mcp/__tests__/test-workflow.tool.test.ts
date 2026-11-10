@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { TelemetryProxy } from '@n8n/backend-services';
+import { NodeTypesProxy, TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { type IExecutionResponse, User } from '@n8n/db';
 import {
@@ -22,7 +22,6 @@ import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';
 import { McpService } from '@/modules/mcp/mcp.service';
-import { NodeTypes } from '@/node-types';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -37,7 +36,7 @@ function mockViewedExecution(resultData: Record<string, unknown>) {
 	} as unknown as IExecutionResponse);
 }
 
-// Helper to create a mock NodeTypes that recognizes trigger vs non-trigger nodes
+// Helper to create a mock NodeTypesProxy that recognizes trigger vs non-trigger nodes
 const TRIGGER_NODE_TYPES = new Set([
 	WEBHOOK_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -45,7 +44,7 @@ const TRIGGER_NODE_TYPES = new Set([
 ]);
 
 function createMockNodeTypes() {
-	const instance = mockInstance(NodeTypes);
+	const instance = mockInstance(NodeTypesProxy);
 	instance.getByNameAndVersion.mockImplementation(((type: string) => {
 		if (!type) throw new Error(`Unknown node type: ${type}`);
 		return {

@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { TelemetryProxy } from '@n8n/backend-services';
+import { NodeTypesProxy, TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import {
@@ -11,7 +11,6 @@ import {
 import type { Mock } from 'vitest';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { NodeTypes } from '@/node-types';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
@@ -44,7 +43,7 @@ const TRIGGER_NODE_TYPES = new Set([
 ]);
 
 function createMockNodeTypes() {
-	const instance = mockInstance(NodeTypes);
+	const instance = mockInstance(NodeTypesProxy);
 	instance.getByNameAndVersion.mockImplementation(((type: string) => {
 		if (type === 'n8n-nodes-base.unknownNode') throw new Error(`Unknown node type: ${type}`);
 		return {

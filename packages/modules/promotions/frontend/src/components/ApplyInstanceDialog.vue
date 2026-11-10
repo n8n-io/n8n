@@ -17,7 +17,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { ref, shallowRef } from 'vue';
 
-import { withMoveAndRenameNote } from '../promotionResult';
+import { withFolderNotes } from '../promotionResult';
 import { applyPromotion } from '../promotionsSettings.api';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
 import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
@@ -69,7 +69,7 @@ function reportApplied(result: AppliedResult) {
 	// A workflow can be imported and still fail to publish, so success alone would mislead.
 	toast.showMessage({
 		title: i18n.baseText('settings.promotions.apply.toast.success.title'),
-		message: withMoveAndRenameNote(
+		message: withFolderNotes(
 			i18n,
 			i18n.baseText(
 				notPublished

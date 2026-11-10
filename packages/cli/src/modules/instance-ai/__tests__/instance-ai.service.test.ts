@@ -15,6 +15,8 @@ vi.mock('@n8n/instance-ai', async () => {
 	const profiles = await vi.importActual<typeof import('@n8n/instance-ai')>('@n8n/instance-ai');
 	return {
 		resolvePromptProfile: profiles.resolvePromptProfile,
+		MAX_STEPS: profiles.MAX_STEPS,
+		createThreadApprovalContext: profiles.createThreadApprovalContext,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		SELF_HEALING_PROFILE_VERSION: profiles.SELF_HEALING_PROFILE_VERSION,
@@ -268,6 +270,7 @@ import {
 	type WorkSummary,
 	type SuspendedRunState,
 	type ManagedBackgroundTask,
+	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
 	type OrchestrationContext,
@@ -6117,6 +6120,23 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			}),
 		).toBeUndefined();
 	});
+
+	it('extracts workflow setup suspension ids from a setup card that call_tool ran', () => {
+		const service = createSetupFollowUpService({});
+
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('call_tool', {
+				workflowId: 'wf-1',
+				setupRequests: [],
+			}),
+		).toBe('wf-1');
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('call_tool', {
+				workflowId: 'wf-1',
+				message: 'Publish workflow?',
+			}),
+		).toBeUndefined();
+	});
 });
 
 type TaskControlInternals = {
@@ -7244,4 +7264,83 @@ describe('InstanceAiService — instance-context turn event', () => {
 			);
 		},
 	);
+});
+
+describe('approval context of orchestrator runs', () => {
+	interface OptionsServiceInternals {
+		buildOrchestratorAgentStreamOptions: (
+			user: User,
+			threadId: string,
+			runId: string,
+			signal: AbortSignal,
+			context: InstanceAiContext | undefined,
+		) => Record<string, unknown>;
+		buildOrchestratorResumeAgentOptions: (
+			user: User,
+			threadId: string,
+			runId: string,
+			agentRunId: string,
+			toolCallId: string,
+			signal: AbortSignal,
+			context: InstanceAiContext | undefined,
+		) => Record<string, unknown>;
+	}
+
+	function createOptionsService(): OptionsServiceInternals {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as OptionsServiceInternals;
+		Object.assign(service, {
+			instanceAiConfig: { runDebugEnabled: false },
+			aiConfig: {},
+			runState: { getBuildMode: vi.fn(), getPromptVersion: vi.fn() },
+		});
+		return service;
+	}
+
+	function optionsFor(service: OptionsServiceInternals, context: InstanceAiContext | undefined) {
+		const user = mock<User>({ id: 'user-1' });
+		const signal = new AbortController().signal;
+		return [
+			service.buildOrchestratorAgentStreamOptions(user, 'thread-1', 'run-1', signal, context),
+			service.buildOrchestratorResumeAgentOptions(
+				user,
+				'thread-1',
+				'run-1',
+				'agent-run-1',
+				'call-1',
+				signal,
+				context,
+			),
+		];
+	}
+
+	it('lets MCP approval cards read and save the thread grants when streaming and resuming', async () => {
+		const grantSessionToolApproval = vi.fn(async () => {});
+		const context = {
+			sessionApprovedToolKeys: new Set(['mcp:notes:list_notes']),
+			grantSessionToolApproval,
+		} as unknown as InstanceAiContext;
+
+		for (const options of optionsFor(createOptionsService(), context)) {
+			const approvalContext = options.approvalContext as {
+				approvedKeys: Set<string>;
+				onDecision: (key: string, decision: { approved: boolean; scope?: string }) => Promise<void>;
+			};
+			expect(approvalContext.approvedKeys.has('mcp:notes:list_notes')).toBe(true);
+			await approvalContext.onDecision('mcp:notes:create_note', {
+				approved: true,
+				scope: 'session',
+			});
+		}
+
+		expect(grantSessionToolApproval).toHaveBeenCalledTimes(2);
+		expect(grantSessionToolApproval).toHaveBeenCalledWith('mcp:notes:create_note');
+	});
+
+	it('passes no approval context when the run has no thread grants', () => {
+		for (const options of optionsFor(createOptionsService(), undefined)) {
+			expect(options).not.toHaveProperty('approvalContext');
+		}
+	});
 });
