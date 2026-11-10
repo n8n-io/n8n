@@ -28,9 +28,11 @@ const byName = (containers: Container[]) =>
 	[...containers].sort((a, b) => a.getName().localeCompare(b.getName(), 'en', { numeric: true }));
 
 const running = new Set<HarnessStack>();
+const starting = new Set<Promise<unknown>>();
 
 /** Stops every stack this process started and has not stopped, for cleanup after a timeout or an interrupt. */
 export async function stopAllStacks() {
+	await Promise.allSettled([...starting]);
 	const results = await Promise.allSettled(
 		[...running].map(async (harness) => await harness.stop()),
 	);
@@ -48,6 +50,8 @@ export class HarnessStack {
 
 	readonly redis: RedisProbe;
 
+	private stopping?: Promise<void>;
+
 	private constructor(
 		readonly stack: N8NStack,
 		readonly hooks: HookSpec[],
@@ -60,7 +64,7 @@ export class HarnessStack {
 	static async start(options: StackOptions): Promise<HarnessStack> {
 		const hooks = parseHookSpecs(options.hooks ?? []);
 		const mains = options.mains ?? 1;
-		const stack = await createN8NStack({
+		const creating = createN8NStack({
 			projectName: `harness-${options.name}-${process.pid}-${Date.now().toString(36)}`,
 			postgres: true,
 			mains,
@@ -78,9 +82,13 @@ export class HarnessStack {
 				...scaledTimeouts(options.scale),
 				...options.env,
 			},
+		}).then((stack) => {
+			const harness = new HarnessStack(stack, hooks);
+			running.add(harness);
+			return harness;
 		});
-		const harness = new HarnessStack(stack, hooks);
-		running.add(harness);
+		starting.add(creating);
+		const harness = await creating.finally(() => starting.delete(creating));
 		try {
 			await harness.assertHooksInstalled();
 		} catch (error) {
@@ -162,7 +170,7 @@ export class HarnessStack {
 	}
 
 	async stop() {
-		if (!running.delete(this)) return;
-		await this.stack.stop();
+		this.stopping ??= this.stack.stop().finally(() => running.delete(this));
+		await this.stopping;
 	}
 }
