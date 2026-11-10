@@ -106,6 +106,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-mfa-disabled': (event) => this.userMfaDisabled(event),
 			'user-signed-up': (event) => this.userSignedUp(event),
 			'user-logged-in': (event) => this.userLoggedIn(event),
+			'user-logged-out': (event) => this.userLoggedOut(event),
 			'user-login-failed': (event) => this.userLoginFailed(event),
 			'user-login-email-conflict': (event) => this.userLoginEmailConflict(event),
 			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
@@ -627,6 +628,14 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.success',
 			payload: { ...user, authenticationMethod },
+		});
+	}
+
+	@Redactable()
+	private userLoggedOut({ user }: RelayEventMap['user-logged-out']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.logout',
+			payload: user,
 		});
 	}
 

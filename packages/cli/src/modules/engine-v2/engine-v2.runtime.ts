@@ -7,7 +7,9 @@ import {
 	AllowAllAdmittance,
 	createDataSource,
 	createEngineRuntime,
+	mintApprovalCallback,
 	mintResumeToken,
+	mintStepBoundResumeToken,
 	noopExecutionResponseSender,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
@@ -134,7 +136,7 @@ export class EngineV2Runtime {
 					nodeTypes: this.nodeTypes,
 					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
 					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
-					resumeToken: this.resumeTokenMinter(),
+					...this.resumeMinters(),
 					resolveSubWorkflow: async (request) =>
 						await this.subWorkflowClient.resolve(request, stopping.signal),
 				}),
@@ -145,11 +147,20 @@ export class EngineV2Runtime {
 		this.engine = engine;
 	}
 
-	private resumeTokenMinter(): V1StepExecutorDeps['resumeToken'] {
+	private resumeMinters(): Pick<
+		V1StepExecutorDeps,
+		'resumeToken' | 'stepBoundResumeToken' | 'approvalCallback'
+	> {
 		const { resumeSecret } = this.engineConfig;
-		if (!resumeSecret) return undefined;
+		if (!resumeSecret) return {};
 
-		return ({ executionId }) => mintResumeToken(resumeSecret, executionId);
+		return {
+			resumeToken: ({ executionId }) => mintResumeToken(resumeSecret, executionId),
+			stepBoundResumeToken: ({ stepId, binding }) =>
+				mintStepBoundResumeToken(resumeSecret, stepId, binding),
+			approvalCallback: ({ stepId, decision }) =>
+				mintApprovalCallback(resumeSecret, stepId, decision),
+		};
 	}
 
 	private buildAdditionalData(

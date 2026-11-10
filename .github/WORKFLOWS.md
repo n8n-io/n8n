@@ -615,8 +615,8 @@ Runs on push to `master`:
 ```
 Push to master
 ├─ build-and-format (Blacksmith: build, then format check; populate master cache)
-├─ unit-test (matrix: Node 24.22.1, 26.12.1)
-│   └─ Coverage only on 24.22.1
+├─ unit-test (matrix: Node 24.22.2, 26.13.0)
+│   └─ Coverage only on 24.22.2
 ├─ lint
 ├─ (performance: CodSpeed benchmarks, paused until the plugin supports Vitest 5)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
@@ -698,7 +698,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '26.12.1'
+  node-version:        # default: '26.13.0'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
@@ -958,6 +958,10 @@ must apply the `large-scale-change` label. The gate checks the actor from the
 label event and verifies their current team membership. The label alone is not
 sufficient. Label changes re-evaluate the status. Removing the label removes
 the exemption.
+
+An approval from the n8n Release Helper makes the **Required Reviews** status
+succeed without required OWNERS team approvals. The gate uses the latest review
+state from `n8n-release-helper[bot]`. Dismissing its approval removes the skip.
 
 Every path that writes the status runs in the base repository context, because
 a fork-context run has no secrets and a read-only token. PR changes arrive

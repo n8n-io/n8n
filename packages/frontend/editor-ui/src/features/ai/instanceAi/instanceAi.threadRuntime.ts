@@ -67,10 +67,7 @@ import {
 } from './instanceAi.reducer';
 import { createArtifactPreviewMemory } from './artifactPreviewMemory';
 import { getLatestBuildResult } from './canvasPreview.utils';
-import {
-	useResourceRegistry,
-	type TransientWorkflowArtifactReference,
-} from './useResourceRegistry';
+import { useResourceRegistry } from './useResourceRegistry';
 import { buildThreadArtifactsContext, type OpenThreadTab } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
@@ -607,15 +604,6 @@ export function createThreadRuntime(
 	function clearPendingWorkflowAttachment(): void {
 		pendingWorkflowAttachment.value = null;
 	}
-	const transientWorkflowReferences = reactive(
-		new Map<string, TransientWorkflowArtifactReference>(),
-	);
-	function upsertTransientWorkflowReference(reference: TransientWorkflowArtifactReference): void {
-		transientWorkflowReferences.set(reference.referenceId, { ...reference });
-	}
-	function removeTransientWorkflowReference(referenceId: string): void {
-		transientWorkflowReferences.delete(referenceId);
-	}
 
 	// Preview state that survives the preview canvas unmounting on a tab switch.
 	// A fresh runtime per thread resets it (INS-611, INS-1192).
@@ -664,7 +652,6 @@ export function createThreadRuntime(
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
 		pendingWorkflowAttachment: () => pendingWorkflowAttachment.value ?? undefined,
-		transientWorkflowReferences: () => [...transientWorkflowReferences.values()],
 		agentBuilderTargets: () =>
 			getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 		appTargets: () => getAppTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
@@ -1373,7 +1360,6 @@ export function createThreadRuntime(
 		activeArtifactId.value = undefined;
 		openTabs.value = undefined;
 		pendingWorkflowAttachment.value = null;
-		transientWorkflowReferences.clear();
 		pendingHandoff.value = null;
 		disarmGenerationStallWatchdog();
 	}
@@ -1845,9 +1831,6 @@ export function createThreadRuntime(
 		pendingWorkflowAttachment,
 		setPendingWorkflowAttachment,
 		clearPendingWorkflowAttachment,
-		transientWorkflowReferences,
-		upsertTransientWorkflowReference,
-		removeTransientWorkflowReference,
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,
