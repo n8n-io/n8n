@@ -2,7 +2,15 @@ import type { SsrfProtectionService } from '@n8n/backend-network';
 import type { EventService, UrlService } from '@n8n/backend-services';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { UnimplementedError } from '@n8n/engine';
-import type { DataTableProxyProvider, ICredentialsHelper, IExecuteFunctions } from 'n8n-workflow';
+import type {
+	DataTableProxyProvider,
+	EnvProviderState,
+	ICredentialsHelper,
+	IExecuteFunctions,
+	INode,
+	IRunExecutionData,
+	Workflow,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineAdditionalDataBuilder } from '../engine-additional-data';
@@ -97,9 +105,12 @@ describe('EngineAdditionalDataBuilder', () => {
 		expect(() => secrets.listSecrets('vault')).toThrow(UnimplementedError);
 	});
 
-	it('fails on the first $vars read instead of resolving undefined', () => {
-		expect(() => build().variables.someName).toThrow(UnimplementedError);
-	});
+	it.each(['someName', 'constructor', 'toString', '__proto__'])(
+		'fails on a $vars read of %s instead of resolving a prototype value',
+		(name) => {
+			expect(() => build().variables[name]).toThrow(UnimplementedError);
+		},
+	);
 
 	it('enumerates $vars as empty, so the task broker can serialize the data for a runner', () => {
 		const { variables } = build();
@@ -139,10 +150,14 @@ describe('EngineAdditionalDataBuilder', () => {
 			expect(taskRequester.getRunnerStatus).toHaveBeenCalledWith('python');
 		});
 
-		it('hands a runner task to the task requester', async () => {
+		it('hands a runner task to the task requester with the execution context unchanged', async () => {
 			taskRequester.startTask.mockResolvedValue({ ok: true, result: [] });
 			const data = build();
 			const executeFunctions = mock<IExecuteFunctions>();
+			const node = mock<INode>();
+			const workflow = mock<Workflow>();
+			const runExecutionData = mock<IRunExecutionData>();
+			const envProviderState = mock<EnvProviderState>();
 
 			const result = await data.startRunnerTask(
 				data,
@@ -150,35 +165,35 @@ describe('EngineAdditionalDataBuilder', () => {
 				{},
 				executeFunctions,
 				{ main: [] },
-				mock(),
-				mock(),
-				mock(),
+				node,
+				workflow,
+				runExecutionData,
 				0,
 				0,
 				'Code',
 				[],
 				{},
 				'manual',
-				mock(),
+				envProviderState,
 			);
 
 			expect(result).toEqual({ ok: true, result: [] });
-			expect(taskRequester.startTask).toHaveBeenCalledWith(
+			expect(taskRequester.startTask).toHaveBeenCalledExactlyOnceWith(
 				data,
 				'javascript',
 				{},
 				executeFunctions,
 				{ main: [] },
-				expect.anything(),
-				expect.anything(),
-				expect.anything(),
+				node,
+				workflow,
+				runExecutionData,
 				0,
 				0,
 				'Code',
 				[],
 				{},
 				'manual',
-				expect.anything(),
+				envProviderState,
 			);
 		});
 	});

@@ -35,7 +35,11 @@ const unimplementedVariables: IWorkflowExecuteAdditionalData['variables'] = new 
 	{
 		get: (target, property) => {
 			// Serializers and inspectors probe these before they read anything.
-			if (typeof property === 'symbol' || property in target || property === 'toJSON') {
+			if (
+				typeof property === 'symbol' ||
+				Object.hasOwn(target, property) ||
+				property === 'toJSON'
+			) {
 				return Reflect.get(target, property);
 			}
 			throw new UnimplementedError('Variables ($vars) are not supported on Engine v2 yet');
