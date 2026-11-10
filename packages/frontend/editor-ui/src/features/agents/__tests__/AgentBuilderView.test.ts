@@ -1036,6 +1036,45 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
 	});
 
+	it.each([false, true])(
+		'keeps every tab selectable for a new agent (artifact: %s)',
+		async (artifactMode) => {
+			if (!artifactMode) history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+			else mockPendingAgentRow('a1');
+			const wrapper = await renderView({
+				waitForAsyncSetup: true,
+				props: artifactMode
+					? {
+							artifactMode: true,
+							artifactProjectId: 'p1',
+							artifactAgentId: 'a1',
+							artifactAgentPending: true,
+						}
+					: {},
+			});
+			const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
+
+			expect(editor.props('mainTabOptions')).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ value: 'agent' }),
+					expect.objectContaining({ value: 'knowledge' }),
+					expect.objectContaining({ value: 'sessions' }),
+					expect.objectContaining({ value: 'settings' }),
+				]),
+			);
+			for (const tab of ['knowledge', 'sessions', 'settings', 'agent']) {
+				editor.vm.$emit('update:activeMainTab', tab);
+				await flushPromises();
+				expect(editor.props('activeMainTab')).toBe(tab);
+			}
+			expect(editor.props('agentUnsaved')).toBe(true);
+			expect(createAgentMock).not.toHaveBeenCalled();
+			expect(fetchSessionThreadsMock).not.toHaveBeenCalled();
+			expect(listAgentFilesMock).not.toHaveBeenCalled();
+			expect(showErrorMock).not.toHaveBeenCalled();
+		},
+	);
+
 	it('persists a route-backed agent only after its first configuration change', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		const wrapper = await renderView();
@@ -6844,8 +6883,7 @@ describe('AgentBuilderView — evals focus request', () => {
 	});
 
 	it('ignores the request while the agent is still unsaved', async () => {
-		// Unsaved narrows the row to Agent only, so honouring the request here
-		// would render evals content with no Evals tab visible to match it.
+		// Keep the Assistant generation request pending until the Agent exists.
 		mockPendingAgentRow('aBcDeFgHiJkLmNoP');
 		const wrapper = await seedFocusRequest('aBcDeFgHiJkLmNoP', true, {
 			artifactMode: true,
