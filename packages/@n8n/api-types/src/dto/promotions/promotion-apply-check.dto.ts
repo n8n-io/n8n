@@ -36,9 +36,13 @@ export const promotionVariableScopeSchema = z.discriminatedUnion('kind', [
 	z.object({ kind: z.literal('project'), project: promotionBindingProjectSchema }),
 ]);
 
-/** The package reader validates that each leaf is an expression. */
+/**
+ * The package reader keeps an expression for each leaf. It also keeps a plain value of a field
+ * that decides which other fields show, such as a toggle or an auth type.
+ */
 export type PromotionCredentialExpressionValue =
 	| string
+	| boolean
 	| PromotionCredentialExpressionValue[]
 	| { [key: string]: PromotionCredentialExpressionValue };
 
@@ -49,6 +53,7 @@ const expressionValueRef = { $ref: `#/components/schemas/${expressionValueCompon
 const promotionCredentialExpressionValueSchema: z.ZodType<PromotionCredentialExpressionValue> = z
 	.union([
 		z.string(),
+		z.boolean(),
 		z.array(z.lazy(() => promotionCredentialExpressionValueSchema)).openapi({
 			type: 'array',
 			items: expressionValueRef,
@@ -60,7 +65,8 @@ const promotionCredentialExpressionValueSchema: z.ZodType<PromotionCredentialExp
 	])
 	.openapi(expressionValueComponentName, {
 		description:
-			'Values can be strings, arrays, or nested objects. Every leaf is an expression string.',
+			'Values can be strings, booleans, arrays, or nested objects. A string leaf is an expression, ' +
+			'except the plain value of a field that decides which other fields show.',
 	});
 
 export const promotionCredentialExpressionDataSchema = z

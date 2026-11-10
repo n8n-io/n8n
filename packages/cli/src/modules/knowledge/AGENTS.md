@@ -6,7 +6,7 @@ Guidance for the knowledge module (`packages/cli/src/modules/knowledge`). See th
 
 The module owns knowledge for Agents: uploaded files and their retrieval, and external vector-store connections. The implementation is moving here from `packages/cli/src/modules/agents/` in steps, with no user-facing change.
 
-Vector-store construction, embedding credential resolution and connection testing now live in this module. Agents calls them and supplies the credential provider. File upload, storage and retrieval implementation still live in Agents. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
+Vector-store construction, embedding credential resolution and connection testing now live in this module. Agents calls them and supplies the credential provider. The knowledge file entity (`KnowledgeFile`, table `agent_files`), its repository, the file store (`KnowledgeFileStore`, which `init()` wires to the configured blob backends), the storage naming helpers and the upload error live here too. The file service, the upload middleware and retrieval still live in Agents. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
 
 ## Boundary
 
@@ -44,15 +44,16 @@ vector-stores/   external vector-store connections
 
 ## Disabled module
 
-`N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. While the agents module still registers `AgentFile`, the guards below only switch the feature off. Once the entity moves here, it is not registered with TypeORM while the `agent_files` table still exists, and an unguarded repository call fails with a metadata error. The guards exist now so that move stays a pure move.
+`N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. `KnowledgeFile` is then not registered with TypeORM while the `agent_files` table still exists, and an unguarded `KnowledgeFileRepository` call fails with a metadata error. The guards below keep every caller away from the repository while the module is off.
 
 `knowledge-availability.service.ts` (`KnowledgeAvailabilityService`) is the one place that answers whether knowledge is available: `isModuleActive()` and `isFileKnowledgeEnabled()` (module active and sandbox on). Every consumer asks it before a knowledge call, derives its own flags from it, and raises the error that fits its own surface. The check runs at two levels on purpose: the controllers answer the user with the same 404 as the sandbox gate, and the facade protects the callers that bypass the controllers, today the deletion cascades. With the module off:
 
 - `agents.knowledgeBaseEnabled` is false, so the editor hides the files panel in the agent's Knowledge tab.
 - The file routes and the knowledge warm-up route return the same 404 as the sandbox gate: `Agent knowledge base is not enabled`.
-- The `AgentKnowledgeService` facade rejects upload, list, warm-up and single-file delete before it touches the repository. `destroyKnowledgeSandbox` still runs: it needs no entity.
+- The `AgentKnowledgeService` facade rejects upload, list, warm-up and single-file delete before it touches the repository.
 - Runtime reconstruction attaches the workspace but not the knowledge tools, and does not query the file repository.
-- Agent and project deletion still delete the agent's files and their stored bytes. `deleteAllFilesForAgent` has no module gate: it is cleanup, not a feature entry point. Whoever moves the entity here must decide how that cleanup runs with the module off, or the bytes of deleted agents leak.
+- The telemetry reads of the file totals (the publish event and the daily knowledge snapshot) report no files.
+- Agent and project deletion cannot read the agent's files, so `deleteAllFilesForAgent` logs a warning and returns. The `agent_files` rows go with the agent through the database cascade, but their stored bytes stay in `binary_data` or the blob store. This is a known gap: an operator who deletes agents while the module is off leaves their knowledge bytes behind. `destroyKnowledgeSandbox` still runs: it needs no entity.
 - Vector stores keep working. They are plain code, not an entity.
 
 Each guard has a test. A new consumer, or a new knowledge call in the agents module, asks `KnowledgeAvailabilityService` and gets a test.

@@ -61,6 +61,7 @@ async function prepare(
 	}
 	const filePath = normalizeWorkflowSourceFilePath(input.filePath, {
 		workspaceRoot: context.workspaceRoot,
+		fallbackWorkspaceRoot: context.fallbackWorkspaceRoot,
 	});
 	let binding = await getWorkflowSourceFileBinding(context, filePath, { requirePersistence: true });
 	if (input.workflowId && binding?.workflowId && input.workflowId !== binding.workflowId) {

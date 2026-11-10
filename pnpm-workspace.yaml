@@ -121,11 +121,7 @@ catalog:
   '@mozilla/readability': ^0.6.0
   '@n8n_io/ai-assistant-sdk': 1.27.0
   '@napi-rs/canvas': 1.0.11
-  '@napi-rs/canvas-linux-arm64-musl': 1.0.11
-  '@napi-rs/canvas-linux-x64-musl': 1.0.11
   '@napi-rs/image': 1.15.0
-  '@napi-rs/image-linux-arm64-musl': 1.15.0
-  '@napi-rs/image-linux-x64-musl': 1.15.0
   '@openrouter/ai-sdk-provider': ^3.0.0
   '@opentelemetry/api': 1.9.1
   '@opentelemetry/sdk-trace-base': 2.10.0
@@ -135,8 +131,8 @@ catalog:
   # Must satisfy openai's ">=5.4.0 <6" optional peer: an unmet range gives openai a second peer
   # context, which splits @langchain/core into two physical copies.
   '@smithy/signature-v4': 5.7.2
-  '@stryker-mutator/core': 10.0.0
-  '@stryker-mutator/vitest-runner': 10.0.0
+  '@stryker-mutator/core': 10.1.1
+  '@stryker-mutator/vitest-runner': 10.1.1
   '@supabase/supabase-js': 2.112.3
   '@testcontainers/k3s': ^11.13.0
   '@testcontainers/kafka': ^11.13.0
@@ -249,6 +245,7 @@ catalog:
   markdown-it: ^13.0.2
   markdown-it-link-attributes: ^4.0.1
   mime-types: 3.0.2
+  mocha: ^11.8.0
   moment-timezone: 0.5.48
   mqtt-packet: 9.0.0
   ms: 2.1.3
@@ -374,7 +371,7 @@ catalogs:
     '@typescript/native': 'npm:typescript@7.0.2'
     typescript: 'npm:@typescript/typescript6@6.0.2'
   undici-v6:
-    undici: ^6.28.1
+    undici: ^6.29.1
   undici-v7:
     undici: ^7.30.1
   # knip needs zod 4 while the default catalog pins zod 3.
@@ -398,7 +395,7 @@ overrides:
   '@types/node': ^20.17.50
   chokidar: 4.0.3
   esbuild: 'catalog:'
-  multer: ^2.4.0
+  multer: ^2.5.0
   prebuild-install: 7.1.3
   pug: ^3.0.3
   semver: 'catalog:'
@@ -425,7 +422,14 @@ overrides:
   katex: 0.18.2
   body-parser: 2.3.0
   glob@10: 10.5.0
-  glob@7: 7.2.3
+  # These consumers use the same APIs in the maintained releases.
+  js-beautify@<1.15.4: 1.15.4
+  module-lookup-amd@9.0.5: 9.1.3
+  '@codemirror/buildhelper>mocha': 'catalog:'
+  # YAMLJS uses only glob.sync() in its two CLI commands.
+  'yamljs@0.3.0>glob': 10.5.0
+  # Preserve SQLite's prebuilt install and update its source-build fallback.
+  'sqlite3@5.1.7>node-gyp': 12.4.0
   jws@3: 3.2.2
   jws@4: 4.0.1
   qs: 'catalog:'
@@ -524,6 +528,7 @@ patchedDependencies:
   vue-tsc@2.2.8: patches/vue-tsc@2.2.8.patch
   ics: patches/ics.patch
   minifaker: patches/minifaker.patch
+  multer@2.5.0: patches/multer@2.5.0.patch
   z-vue-scan: patches/z-vue-scan.patch
   '@lezer/highlight': patches/@lezer__highlight.patch
   v-code-diff: patches/v-code-diff.patch

@@ -134,6 +134,8 @@ const { baseUrl } = useRootStore();
 
 const { isPublicApiEnabled } = settingsStore;
 
+const showKeyTable = computed(() => isPublicApiEnabled && hasAnyKeys.value);
+
 const apiDocsURL = computed(() => {
 	if (!isSwaggerUIEnabled) return `https://${DOCS_DOMAIN}/api/api-reference/`;
 
@@ -298,7 +300,7 @@ function onOpenScopes(apiKey: ApiKey) {
 </script>
 
 <template>
-	<N8nSettingsLayout full-width :class="$style.layout">
+	<N8nSettingsLayout :full-width="showKeyTable" :class="$style.layout">
 		<!-- Three links in one sentence, so the built-in docs link is off and the sentence is composed in the slot. -->
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.api')"
@@ -340,7 +342,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			</template>
 		</N8nSettingsPageHeader>
 
-		<div v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.tableArea">
+		<div v-if="showKeyTable" :class="$style.tableArea">
 			<div :class="$style.toolbar">
 				<N8nTabs
 					v-if="canManageAllKeys"

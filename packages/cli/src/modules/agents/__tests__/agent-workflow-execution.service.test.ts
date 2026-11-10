@@ -44,6 +44,7 @@ import type { IntegrationMessageContext } from '../integrations/integration-tool
 import type { ToolRegistry } from '../tool-registry';
 import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 const aiConfigMock = mock<AiConfig>();
 
@@ -174,6 +175,7 @@ function makeService() {
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
 			knowledgeUsageTracker,
+			mock<AgentSandboxFilesService>(),
 		),
 		telemetry,
 		credentialsService,

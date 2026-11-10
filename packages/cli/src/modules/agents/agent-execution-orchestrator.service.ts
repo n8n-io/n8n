@@ -252,6 +252,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	toolRegistry: ToolRegistry;
 	/** Saved budget from the reconstructed runtime. Absent when the config has none. */
 	budget?: BudgetGuardrailConfig;
+	/** See `ReconstructedAgentRuntime.modelCredentialGatewayManaged`. */
+	modelCredentialGatewayManaged?: boolean;
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
 	userId?: string;
@@ -785,6 +787,7 @@ export class AgentExecutionOrchestratorService {
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
+					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					agentId,
 					message,
 					modelMessage,
@@ -865,6 +868,7 @@ export class AgentExecutionOrchestratorService {
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
+					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					agentId,
 					projectId,
 					message,
@@ -925,6 +929,7 @@ export class AgentExecutionOrchestratorService {
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
+					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					agentId,
 					message,
 					memory,
@@ -983,6 +988,7 @@ export class AgentExecutionOrchestratorService {
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
 					budget: runtime.budget,
+					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					agentId,
 					userId: user.id,
 					message,
@@ -1354,6 +1360,7 @@ export class AgentExecutionOrchestratorService {
 					budget: runtime.budget,
 					sessionId: memoryScope.threadId,
 					agentId: config.agentId,
+					...(runtime.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
 					...(config.chatSurface === 'preview' && config.onBudgetNotice
 						? { onNotice: config.onBudgetNotice }
 						: {}),
@@ -1649,6 +1656,7 @@ export class AgentExecutionOrchestratorService {
 			toolRegistry: runtime.toolRegistry,
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			budget: runtime.budget,
+			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 			agentId,
 			userId: user.id,
 			message,
@@ -1760,6 +1768,7 @@ export class AgentExecutionOrchestratorService {
 					budget: config.budget,
 					sessionId: threadId,
 					agentId,
+					...(config.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
 					...(config.chatSurface === 'preview' && config.onBudgetNotice
 						? { onNotice: config.onBudgetNotice }
 						: {}),
@@ -1864,6 +1873,7 @@ export class AgentExecutionOrchestratorService {
 			toolRegistry: runtime.toolRegistry,
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			budget: runtime.budget,
+			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 			agentId,
 			...(access.ownerId ? { userId: access.ownerId } : {}),
 			message,

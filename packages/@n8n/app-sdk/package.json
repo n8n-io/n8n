@@ -1,6 +1,6 @@
 {
   "name": "@n8n/app-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Browser client that n8n apps use to reach their bound workflows, data tables, and agents",
   "type": "module",
   "sideEffects": false,
