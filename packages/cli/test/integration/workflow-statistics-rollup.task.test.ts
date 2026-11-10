@@ -169,13 +169,19 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 	it('keeps both buffers when a fold fails and retries without losing counts', async () => {
 		await seedIncrements();
 		await seedAgentIncrements();
-		vi.spyOn(licenseMetricsRepository, 'rollupAgentIncrements').mockRejectedValueOnce(
-			new Error('Fold failed'),
+		const rollupAgentIncrements =
+			licenseMetricsRepository.rollupAgentIncrements.bind(licenseMetricsRepository);
+		vi.spyOn(licenseMetricsRepository, 'rollupAgentIncrements').mockImplementationOnce(
+			async (ctx, batchSize) => {
+				expect(await rollupAgentIncrements(ctx, batchSize)).toBe(5000);
+				throw new Error('Fold failed');
+			},
 		);
 
 		await expect(task.run(signal)).rejects.toThrow('Fold failed');
 		expect(await pendingIncrements()).toBe(WORKFLOW_IDS.length * ROWS_PER_WORKFLOW + AGENT_TURNS);
 		expect(await repository.find()).toEqual([]);
+		expect(await licenseMetricsRepository.getFirstAgentExecutionDate()).toBeNull();
 		expect(statisticsService.emitFirstOccurrenceEvent).not.toHaveBeenCalled();
 
 		while ((await pendingIncrements()) > 0) await task.run(signal);

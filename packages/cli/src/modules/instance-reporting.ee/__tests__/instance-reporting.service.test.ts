@@ -573,6 +573,32 @@ describe('InstanceReportingService', () => {
 			]);
 		});
 
+		test.each([
+			{ insightsStart: '2026-03-23', agentStart: '2026-03-24' },
+			{ insightsStart: '2026-03-24', agentStart: '2026-03-23' },
+		])(
+			'reports from the earlier date when insights start at $insightsStart and agents start at $agentStart',
+			async ({ insightsStart, agentStart }) => {
+				const { service, http, reportRepository, insightsService, licenseMetricsRepository } =
+					makeHarness();
+				reportRepository.findLastCoveredDay.mockResolvedValue(null);
+				insightsService.getEarliestDataDate.mockResolvedValue(
+					new Date(`${insightsStart}T00:00:00.000Z`),
+				);
+				licenseMetricsRepository.getFirstAgentExecutionDate.mockResolvedValue(
+					new Date(`${agentStart}T00:00:00.000Z`),
+				);
+
+				await service.sendReport(new Date());
+
+				expect(
+					body(http)
+						.dataPoints.filter(({ kind }) => kind === 'daily')
+						.map(({ date }) => date),
+				).toEqual(['2026-03-23', '2026-03-24', REPORT_DATE]);
+			},
+		);
+
 		test('omits label when no label is configured', async () => {
 			const { service, http } = makeHarness(makeConfig({ instanceReportingLabel: '' }));
 
