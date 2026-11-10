@@ -1664,8 +1664,9 @@ export class AgentsBuilderToolsService {
 		const parsed = readStructuredToolInput(operations);
 		if (!parsed.ok) return { ok: false, stage: 'parse', errors: parsed.errors };
 		const fresh = await this.getFreshConfigSnapshot(agentId, projectId, baseConfigHash);
-		if (!fresh.ok) return fresh;
-		if (!fresh.snapshot.config) {
+		// An absent config has a null hash, which a patch cannot send, so it fails as stale.
+		if (!fresh.ok && fresh.config !== null) return fresh;
+		if (!fresh.ok || !fresh.snapshot.config) {
 			return {
 				ok: false,
 				stage: 'patch',

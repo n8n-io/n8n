@@ -908,6 +908,29 @@ describe('AgentsBuilderToolsService', () => {
 			);
 		});
 
+		it('agent_builder_patch_config refuses an agent with no config instead of reporting a stale result', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.findById.mockResolvedValue({
+				...makeAgent(),
+				schema: null,
+			} as unknown as ProjectAgent);
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: 'any-hash',
+					operations: [{ op: 'replace', path: '/instructions', value: 'Updated instructions' }],
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				stage: 'patch',
+				errors: [{ path: '(root)', message: 'Agent has no JSON config yet.' }],
+			});
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+		});
+
 		it('agent_builder_patch_config reports a stale result with the current config when the config changes during the write', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
