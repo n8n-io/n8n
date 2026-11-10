@@ -202,6 +202,73 @@ describe('useAssistantAtMentions', () => {
 		expect(input.selectionStart).toBe(10);
 	});
 
+	it('removes the space after a trigger at the start of the draft', async () => {
+		const value = '@ here';
+		const { text, input, mentions } = setup(value);
+		input.value = value;
+		input.setSelectionRange(1, 1);
+		await mentions.handleTextChange(value);
+
+		await mentions.clearActiveRange();
+
+		expect(text.value).toBe('here');
+		expect(input.selectionStart).toBe(0);
+	});
+
+	it('removes the space after a dismissed trigger at the start of the draft', async () => {
+		const value = '@ here';
+		const { text, input, mentions } = setup(value);
+		input.focus();
+		input.value = value;
+		input.setSelectionRange(1, 1);
+		await mentions.handleTextChange(value);
+
+		mentions.handleMenuOpenChange(false);
+		await nextTick();
+
+		expect(text.value).toBe('here');
+		expect(input.selectionStart).toBe(0);
+	});
+
+	it('removes the space after a trigger that follows a newline', async () => {
+		const value = 'Line one\n@ here';
+		const { text, input, mentions } = setup(value);
+		input.value = value;
+		input.setSelectionRange(10, 10);
+		await mentions.handleTextChange(value);
+
+		await mentions.clearActiveRange();
+
+		expect(text.value).toBe('Line one\nhere');
+		expect(input.selectionStart).toBe(9);
+	});
+
+	it('removes the space after a trigger that follows a tab', async () => {
+		const value = 'Say\t@ here';
+		const { text, input, mentions } = setup(value);
+		input.value = value;
+		input.setSelectionRange(5, 5);
+		await mentions.handleTextChange(value);
+
+		await mentions.clearActiveRange();
+
+		expect(text.value).toBe('Say\there');
+		expect(input.selectionStart).toBe(4);
+	});
+
+	it('keeps a newline that follows a trigger', async () => {
+		const value = 'Hello\n@\nthere';
+		const { text, input, mentions } = setup(value);
+		input.value = value;
+		input.setSelectionRange(7, 7);
+		await mentions.handleTextChange(value);
+
+		await mentions.clearActiveRange();
+
+		expect(text.value).toBe('Hello\n\nthere');
+		expect(input.selectionStart).toBe(6);
+	});
+
 	it('leaves the draft unchanged when the picker was opened from the button', async () => {
 		const { text, input, mentions } = setup('Replace this');
 		input.setSelectionRange(0, 7);

@@ -30,9 +30,19 @@ function findLastMentionTriggerIndex(text: string): number {
 	return -1;
 }
 
+/** True at the start of the text or after whitespace. */
+function isMentionBoundary(text: string, triggerIndex: number): boolean {
+	return triggerIndex === 0 || /\s/.test(text[triggerIndex - 1] ?? '');
+}
+
+/**
+ * Remove a typed trigger and its query. Also remove one following space when
+ * the trigger starts the text or follows whitespace. That space would stay
+ * in the draft.
+ */
 function textWithoutTypedRange(text: string, range: MentionRange): string {
-	const spaceOnBothSides = text[range.start - 1] === ' ' && text[range.end] === ' ';
-	const end = spaceOnBothSides ? range.end + 1 : range.end;
+	const end =
+		isMentionBoundary(text, range.start) && text[range.end] === ' ' ? range.end + 1 : range.end;
 	return text.slice(0, range.start) + text.slice(end);
 }
 
@@ -137,10 +147,9 @@ export function useAssistantAtMentions(options: {
 		savedSelection.value = { start: caret, end: caret };
 		const valueBeforeCaret = value.slice(0, caret);
 		const possibleTriggerIndex = findLastMentionTriggerIndex(valueBeforeCaret);
-		const triggerIndex =
-			possibleTriggerIndex === 0 || /\s/.test(valueBeforeCaret[possibleTriggerIndex - 1] ?? '')
-				? possibleTriggerIndex
-				: -1;
+		const triggerIndex = isMentionBoundary(valueBeforeCaret, possibleTriggerIndex)
+			? possibleTriggerIndex
+			: -1;
 		const range = activeRange.value;
 		if (triggerIndex >= 0 && (!range || range.origin !== 'typed' || range.start !== triggerIndex)) {
 			if (dismissedTypedTriggerIndex.value === triggerIndex && !range) return;
