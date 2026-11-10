@@ -456,6 +456,54 @@ describe('Source Control Helper', () => {
 			},
 		);
 
+		test.each(directions)(
+			'should detect modifications when only settings differ (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ settings: { availableInMCP: true } });
+				const remote = createWorkflowVersion({ settings: { availableInMCP: false } });
+
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
+
+		test.each(directions)(
+			'should not detect modifications when settings are equal (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({
+					settings: { timezone: 'Europe/Berlin', availableInMCP: true },
+				});
+				const remote = createWorkflowVersion({
+					settings: { availableInMCP: true, timezone: 'Europe/Berlin' },
+				});
+
+				expect(isWorkflowModified(local, remote, direction)).toBe(false);
+			},
+		);
+
+		test.each(directions)(
+			'should treat missing local settings and empty remote settings as equal (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ settings: null });
+				const remote = createWorkflowVersion({ settings: {} });
+
+				expect(isWorkflowModified(local, remote, direction)).toBe(false);
+			},
+		);
+
+		it('should ignore a remote file without settings key on pull', () => {
+			const local = createWorkflowVersion({ settings: { availableInMCP: true } });
+			const remote = createWorkflowVersion({ settings: undefined });
+
+			expect(isWorkflowModified(local, remote, 'pull')).toBe(false);
+		});
+
+		it('should detect local settings against a remote file without settings key on push', () => {
+			const local = createWorkflowVersion({ settings: { availableInMCP: true } });
+			const remote = createWorkflowVersion({ settings: undefined });
+
+			expect(isWorkflowModified(local, remote, 'push')).toBe(true);
+		});
+
 		test.each(directions)('should detect modifications when owner changes (%s)', (direction) => {
 			const local = createWorkflowVersion({
 				owner: {

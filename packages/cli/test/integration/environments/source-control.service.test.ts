@@ -1413,6 +1413,66 @@ describe('SourceControlService', () => {
 		});
 	});
 
+	describe('workflow settings modification detection', () => {
+		let testGlobalOwner: User;
+
+		beforeAll(async () => {
+			testGlobalOwner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		});
+
+		afterEach(() => {
+			globMock.mockClear();
+			fsReadFile.mockClear();
+		});
+
+		const getPushStatusOf = async (workflowId: string, remoteWorkflow: ExportableWorkflow) => {
+			const workflowFile = `${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${workflowId}.json`;
+
+			globMock.mockImplementation(async (_path, opts) =>
+				opts.cwd?.endsWith(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER) ? [workflowFile] : [],
+			);
+			fsReadFile.mockImplementation(async (file) =>
+				Buffer.from(
+					JSON.stringify(basename(file as string) === `${workflowId}.json` ? remoteWorkflow : {}),
+				),
+			);
+
+			const result = (await service.getStatus(testGlobalOwner, {
+				direction: 'push',
+				preferLocalVersion: true,
+				verbose: false,
+			})) as SourceControlledFile[];
+
+			return result.find((r) => r.type === 'workflow' && r.id === workflowId)?.status;
+		};
+
+		it('should detect a workflow as modified when only its settings change', async () => {
+			const workflow = await createWorkflow(
+				{ settings: { availableInMCP: true } },
+				testGlobalOwner,
+			);
+			const remoteWorkflow = {
+				...toExportableWorkflow(workflow, testGlobalOwner),
+				settings: { availableInMCP: false },
+			};
+
+			expect(await getPushStatusOf(workflow.id, remoteWorkflow)).toBe('modified');
+		});
+
+		it('should not list a workflow when its settings match the remote file', async () => {
+			const workflow = await createWorkflow(
+				{ settings: { availableInMCP: true } },
+				testGlobalOwner,
+			);
+			const remoteWorkflow = {
+				...toExportableWorkflow(workflow, testGlobalOwner),
+				settings: { availableInMCP: true },
+			};
+
+			expect(await getPushStatusOf(workflow.id, remoteWorkflow)).toBeUndefined();
+		});
+	});
+
 	describe('isGlobal flag modification detection', () => {
 		let testGlobalOwner: User;
 		let testProject: Project;

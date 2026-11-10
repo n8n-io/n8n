@@ -239,6 +239,7 @@ export class SourceControlImportService {
 					versionId: remote.versionId ?? '',
 					name: remote.name,
 					description: remote.description,
+					settings: remote.settings,
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
@@ -308,6 +309,7 @@ export class SourceControlImportService {
 				versionId: true,
 				name: true,
 				description: true,
+				settings: {},
 				updatedAt: true,
 				parentFolder: {
 					id: true,
@@ -345,6 +347,7 @@ export class SourceControlImportService {
 				versionId: local.versionId,
 				name: local.name,
 				description: local.description ?? null,
+				settings: local.settings,
 				localId: local.id,
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
