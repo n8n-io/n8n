@@ -8,6 +8,7 @@ import { Service } from '@n8n/di';
 import { BadRequestError, UnexpectedError } from '@n8n/errors';
 
 import { AgentChatIntegration } from '../../agent-chat-integration';
+import type { IntegrationActionDefinition } from '../../integration-tool-types';
 
 /**
  * The webhook channel: an external caller sends a message over HTTP and gets the
@@ -28,6 +29,12 @@ export class WebhookIntegration extends AgentChatIntegration {
 
 	/** There is one URL for each agent, so a request cannot tell two connections apart. */
 	readonly singleConnectionPerAgent = true;
+
+	/**
+	 * The reply is the agent's text in the HTTP response, so the channel has no
+	 * action tool. Without actions, the channel offers no approval setting.
+	 */
+	readonly actionToolDefinitions: IntegrationActionDefinition[] = [];
 
 	readonly builderGuidance = {
 		capabilities: [

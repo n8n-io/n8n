@@ -45,6 +45,7 @@ describe('AgentChannelWebhookInstructions', () => {
 						type: 'approval_request',
 						name: 'send_email',
 						arguments: '{"to":"ana@example.com"}',
+						supports_session_approval: true,
 						url: '<approval URL>',
 					},
 				],

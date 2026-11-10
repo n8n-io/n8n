@@ -16,8 +16,11 @@ describe('authenticateWebhookRequest with header auth', () => {
 		).not.toThrow();
 	});
 
+	it('rejects a missing header with 401', () => {
+		expectStatus(() => authenticateWebhookRequest({}, 'headerAuth', headerCredential), 401);
+	});
+
 	it.each([
-		['a missing header', {}],
 		['a wrong value', { 'x-api-key': 'key-2' }],
 		['a value of another length', { 'x-api-key': 'key-10' }],
 	])('rejects %s with 403', (_, headers) => {

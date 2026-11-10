@@ -28,6 +28,7 @@ const examples = {
 					type: 'approval_request',
 					name: 'send_email',
 					arguments: JSON.stringify({ to: 'ana@example.com' }),
+					supports_session_approval: true,
 					url: '<approval URL>',
 				},
 			],
@@ -98,6 +99,9 @@ const authenticationHint = computed(() => {
 					{{ i18n.baseText('agents.channels.webhook.instructions.approval.decision') }}
 				</N8nText>
 				<N8nCodeBlock :code="examples.decision" language="json" />
+				<N8nText :class="$style.hint" size="small">
+					{{ i18n.baseText('agents.channels.webhook.instructions.approval.session') }}
+				</N8nText>
 				<N8nText :class="$style.hint" size="small">
 					{{ i18n.baseText('agents.channels.webhook.instructions.approval.pending') }}
 				</N8nText>
