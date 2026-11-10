@@ -106,11 +106,16 @@ vi.mock('vue-router', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
-	N8nActionDropdown: {
-		name: 'N8nActionDropdown',
-		template: '<div data-test-id="agent-session-actions" />',
+	N8nDropdownMenu: {
+		name: 'N8nDropdownMenu',
+		template: '<div><slot name="trigger" /></div>',
 		props: ['items', 'activatorIcon'],
 		emits: ['select'],
+	},
+	N8nEmptyState: {
+		props: ['description'],
+		template:
+			'<div><slot name="heading" /><slot v-if="description" name="description" /><slot name="additionalContent" /></div>',
 	},
 	N8nBadge: {
 		props: ['leadingIcon'],
@@ -290,7 +295,7 @@ describe('AgentSessionsListView', () => {
 		const wrapper = await mountView({
 			threads: [makeThread({ status: 'running', source: 'slack' })],
 		});
-		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		const menu = wrapper.getComponent({ name: 'N8nDropdownMenu' });
 		expect(menu.props('items')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'stop', disabled: false })]),
 		);
@@ -305,7 +310,7 @@ describe('AgentSessionsListView', () => {
 		'hides Stop for a %s session',
 		async (status) => {
 			const wrapper = await mountView({ threads: [makeThread({ status })] });
-			const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+			const menu = wrapper.getComponent({ name: 'N8nDropdownMenu' });
 			expect(menu.props('items')).not.toEqual(
 				expect.arrayContaining([expect.objectContaining({ id: 'stop' })]),
 			);
@@ -319,7 +324,7 @@ describe('AgentSessionsListView', () => {
 	it('hides Stop without execute permission', async () => {
 		agentPermissions.canExecute.value = false;
 		const wrapper = await mountView({ threads: [makeThread({ status: 'running' })] });
-		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		const menu = wrapper.getComponent({ name: 'N8nDropdownMenu' });
 		expect(menu.props('items')).not.toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'stop' })]),
 		);
@@ -333,7 +338,7 @@ describe('AgentSessionsListView', () => {
 		const pending = Promise.withResolvers<{ cancelRequested: boolean }>();
 		stopSession.mockReturnValueOnce(pending.promise);
 		const wrapper = await mountView({ threads: [makeThread({ status: 'running' })] });
-		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		const menu = wrapper.getComponent({ name: 'N8nDropdownMenu' });
 		menu.vm.$emit('select', 'stop');
 		await flushPromises();
 		expect(menu.props('items')).toEqual(
@@ -553,7 +558,7 @@ describe('AgentSessionsListView', () => {
 			threads: [makeThread({ parentAgentId: 'parent-agent-1', parentThreadId: 'parent-thread-1' })],
 		});
 
-		wrapper.getComponent({ name: 'N8nActionDropdown' }).vm.$emit('select', 'goToParentRun');
+		wrapper.getComponent({ name: 'N8nDropdownMenu' }).vm.$emit('select', 'goToParentRun');
 		await flushPromises();
 
 		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
@@ -839,16 +844,16 @@ describe('AgentSessionsListView', () => {
 
 		it('keeps the link and parent action on child rows', async () => {
 			const wrapper = await mountView({
-				threads: [makeNode('root'), makeNode('child', 'root')],
+				threads: [makeNode('root'), { ...makeNode('child', 'root'), agentId: 'child-agent' }],
 			});
 			const child = rowById(wrapper, 'child');
 
 			expect(child.getComponent({ name: 'RouterLink' }).props('to')).toEqual({
 				name: 'AgentSessionDetailView',
-				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'child' },
+				params: { projectId: 'project-1', agentId: 'child-agent', threadId: 'child' },
 			});
 
-			child.getComponent({ name: 'N8nActionDropdown' }).vm.$emit('select', 'goToParentRun');
+			child.getComponent({ name: 'N8nDropdownMenu' }).vm.$emit('select', 'goToParentRun');
 			await flushPromises();
 
 			expect(routerPush).toHaveBeenCalledExactlyOnceWith({

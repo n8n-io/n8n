@@ -1,5 +1,21 @@
 import { describe, expect, test } from 'vitest';
-import { formatTokenCount } from '../token-count';
+import { compactTokenFormatter, formatTokenCount } from '../token-count';
+
+describe('compactTokenFormatter', () => {
+	test.each([0, 999, 1000, 1300, 999999, 2_400_000, -1300, 1.25, NaN, Infinity, -Infinity])(
+		'preserves timeline formatting for %s',
+		(tokens) => {
+			const timelineFormatter = new Intl.NumberFormat('en-US', {
+				notation: 'compact',
+				maximumFractionDigits: 1,
+			});
+
+			expect(compactTokenFormatter.format(tokens).toUpperCase()).toBe(
+				timelineFormatter.format(tokens).toUpperCase(),
+			);
+		},
+	);
+});
 
 describe('formatTokenCount', () => {
 	test.each([
