@@ -120,3 +120,23 @@ describe('nodeNameToToolName', () => {
 		});
 	});
 });
+
+describe('truncation must not produce an empty name', () => {
+	it('should keep a non-empty name when truncation leaves only hyphens', () => {
+		const name = '-'.repeat(64) + 'Suffix';
+		const result = nodeNameToToolName(name);
+		expect(result).not.toBe('');
+		expect(result).toMatch(/^[a-zA-Z0-9_-]{1,64}$/);
+	});
+
+	it('should keep a non-empty name when truncation leaves only underscores', () => {
+		const name = '_'.repeat(64) + 'Suffix';
+		const result = nodeNameToToolName(name);
+		expect(result).not.toBe('');
+		expect(result).toMatch(/^[a-zA-Z0-9_-]{1,64}$/);
+	});
+
+	it('should still trim trailing separators for ordinary long names', () => {
+		expect(nodeNameToToolName('a'.repeat(63) + ' more text')).toBe('a'.repeat(63));
+	});
+});
