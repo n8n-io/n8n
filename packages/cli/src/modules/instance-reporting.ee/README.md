@@ -13,6 +13,12 @@ UTC day, including on Community instances and when diagnostics are disabled.
 The counts survive agent and session deletion. Recording starts with this
 version. Past agent turns are not added to the counts.
 
+On PostgreSQL, each turn appends an increment. The existing workflow statistics
+task folds workflow and agent increments every five seconds. Each fold uses
+one transaction and the existing advisory lock. Counts can be delayed while
+increments await a fold. SQLite updates the daily counter directly, as it does
+for workflow statistics.
+
 Every report is persisted in `instance_monitoring_report` before it is
 sent, so a retry resends the exact same measurement under the same `batchId`
 rather than taking fresh numbers — the cumulative total's day-to-day diff is

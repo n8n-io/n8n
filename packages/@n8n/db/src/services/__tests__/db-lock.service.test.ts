@@ -207,6 +207,22 @@ describe('DbLockService', () => {
 		});
 	});
 
+	describe('tryWithLockContext', () => {
+		it('passes the active transaction in an operation context', async () => {
+			databaseConfig.type = 'postgresdb';
+			mockTx.query.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: true }]);
+			const run = vi.fn(async () => 'result');
+
+			await expect(service.tryWithLockContext(1001, run, { subKey: 7 })).resolves.toBe('result');
+
+			expect(run).toHaveBeenCalledWith({ trx: expect.any(TypeOrmTransaction) });
+			expect(mockTx.query).toHaveBeenCalledWith(
+				'SELECT pg_try_advisory_xact_lock($1, $2)',
+				[1001, 7],
+			);
+		});
+	});
+
 	describe('tryWithLock', () => {
 		it('should execute fn when lock is acquired', async () => {
 			databaseConfig.type = 'postgresdb';

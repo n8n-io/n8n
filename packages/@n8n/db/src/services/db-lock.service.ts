@@ -186,6 +186,18 @@ export class DbLockService {
 		return await this.withLock(lockId, async (_manager, ctx) => await fn(ctx), options);
 	}
 
+	async tryWithLockContext<T>(
+		lockId: DbLock,
+		fn: (ctx: OperationContext) => Promise<T>,
+		options?: { subKey?: number },
+	): Promise<T> {
+		return await this.tryWithLock(
+			lockId,
+			async (manager) => await fn({ trx: new TypeOrmTransaction(manager) }),
+			options,
+		);
+	}
+
 	/**
 	 * Execute `fn` inside a database transaction, but only if the advisory
 	 * lock (Postgres) or in-process mutex (SQLite) can be acquired immediately.

@@ -1,5 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { DbLock, DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
+import {
+	DbLock,
+	DbLockService,
+	LicenseMetricsRepository,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
 import { ErrorReporter } from 'n8n-core';
@@ -18,8 +23,7 @@ const BATCH_DELAY_MS = 250;
 const SKIP_WARN_THRESHOLD = 5;
 
 /**
- * Folds statistics increments in the `workflow_statistics_delta` table
- * into the `workflow_statistics` table.
+ * Folds workflow and agent statistics increments into their counters.
  */
 @Service()
 export class WorkflowStatisticsRollupService {
@@ -33,6 +37,7 @@ export class WorkflowStatisticsRollupService {
 		private readonly dbLockService: DbLockService,
 		private readonly repository: WorkflowStatisticsRepository,
 		private readonly statisticsService: WorkflowStatisticsService,
+		private readonly licenseMetricsRepository: LicenseMetricsRepository,
 	) {
 		this.logger = this.logger.scoped('workflow-statistics');
 	}
@@ -55,7 +60,7 @@ export class WorkflowStatisticsRollupService {
 		}
 	}
 
-	/** Fold one batch of increments and fire any resulting milestones. Returns increments folded. */
+	/** Fold each buffer and fire workflow milestones. Return the largest batch size. */
 	private async rollupBatch(): Promise<number> {
 		const result = await this.foldBatch();
 		if (!result) return 0;
@@ -76,9 +81,16 @@ export class WorkflowStatisticsRollupService {
 	/** Fold a batch under an advisory lock. Returns null if another run or process holds the lock. */
 	private async foldBatch(): Promise<RollupResult | null> {
 		try {
-			const result = await this.dbLockService.tryWithLock(
+			const result = await this.dbLockService.tryWithLockContext(
 				DbLock.WORKFLOW_STATISTICS_ROLLUP,
-				async (tx) => await this.repository.rollupIncrements(tx, BATCH_SIZE),
+				async (ctx) => {
+					const workflows = await this.repository.rollupIncrementsInContext(ctx, BATCH_SIZE);
+					const agentIncrements = await this.licenseMetricsRepository.rollupAgentIncrements(
+						ctx,
+						BATCH_SIZE,
+					);
+					return { ...workflows, increments: Math.max(workflows.increments, agentIncrements) };
+				},
 			);
 			this.consecutiveLockSkips = 0;
 			return result;

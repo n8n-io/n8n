@@ -1,7 +1,12 @@
 import { mockLogger, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { SchedulerConfig } from '@n8n/config';
-import { DbLockService, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
+import {
+	DbLockService,
+	LicenseMetricsRepository,
+	StatisticsNames,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
 import { mock } from 'vitest-mock-extended';
@@ -18,12 +23,15 @@ const OVERLAPPING_RUNS = 4;
 const WORKFLOW_IDS = ['wf-rollup-1', 'wf-rollup-2', 'wf-rollup-3'];
 /** More than one 5000-row batch in total, so the runs contend for several folds. */
 const ROWS_PER_WORKFLOW = 2_000;
+const AGENT_TURNS = 6001;
 const LOCK_SKIP_TIMEOUT_MS = 5_000;
 
 /** The delta table exists on Postgres only. */
 describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 	const signal = new AbortController().signal;
 	let repository: WorkflowStatisticsRepository;
+	let licenseMetricsRepository: LicenseMetricsRepository;
+	let agentDeltaTable: string;
 	let statisticsService: ReturnType<typeof mock<WorkflowStatisticsService>>;
 	let task: WorkflowStatisticsRollupTask;
 	let deltaTable: string;
@@ -33,6 +41,8 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 		Container.get(GlobalConfig).database.postgresdb.poolSize = OVERLAPPING_RUNS;
 		await testDb.init();
 		repository = Container.get(WorkflowStatisticsRepository);
+		licenseMetricsRepository = Container.get(LicenseMetricsRepository);
+		agentDeltaTable = `${Container.get(GlobalConfig).database.tablePrefix}agent_execution_statistics_delta`;
 		deltaTable = `${Container.get(GlobalConfig).database.tablePrefix}workflow_statistics_delta`;
 	});
 
@@ -45,6 +55,7 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 				Container.get(DbLockService),
 				repository,
 				statisticsService,
+				licenseMetricsRepository,
 			),
 			mock<SchedulerConfig>({ leaseDurationSeconds: 60 }),
 		);
@@ -52,7 +63,12 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 
 	afterEach(async () => {
 		vi.restoreAllMocks();
-		await testDb.truncate(['WorkflowStatistics', 'WorkflowStatisticsDelta']);
+		await testDb.truncate([
+			'WorkflowStatistics',
+			'WorkflowStatisticsDelta',
+			'AgentExecutionStatistics',
+			'AgentExecutionStatisticsDelta',
+		]);
 	});
 
 	afterAll(async () => await testDb.terminate());
@@ -67,9 +83,17 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 		}
 	}
 
+	async function seedAgentIncrements(): Promise<void> {
+		await repository.query(
+			`INSERT INTO ${agentDeltaTable} ("periodStart")
+			SELECT '2026-11-10 00:00:00+00'::timestamptz FROM generate_series(1, $1)`,
+			[AGENT_TURNS],
+		);
+	}
+
 	async function pendingIncrements(): Promise<number> {
 		const [{ count }]: Array<{ count: number }> = await repository.query(
-			`SELECT COUNT(*)::int AS count FROM ${deltaTable}`,
+			`SELECT ((SELECT COUNT(*) FROM ${deltaTable}) + (SELECT COUNT(*) FROM ${agentDeltaTable}))::int AS count`,
 		);
 		return count;
 	}
@@ -106,6 +130,7 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 
 	it('should fold each increment once and fire each milestone once when runs overlap', async () => {
 		await seedIncrements();
+		await seedAgentIncrements();
 		const { lockSkips } = holdFirstFoldUntilLockSkip();
 
 		await Promise.all(Array.from({ length: OVERLAPPING_RUNS }, async () => await task.run(signal)));
@@ -114,6 +139,13 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 		while ((await pendingIncrements()) > 0) {
 			await task.run(signal);
 		}
+
+		expect(
+			await licenseMetricsRepository.getDailyAgentExecutions({
+				startDate: new Date('2026-11-10T00:00:00.000Z'),
+				endDate: new Date('2026-11-10T00:00:00.000Z'),
+			}),
+		).toEqual(new Map([['2026-11-10', AGENT_TURNS]]));
 
 		const counters = await repository.findBy({ name: StatisticsNames.productionSuccess });
 		expect(
@@ -133,5 +165,22 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 			([, workflowId]) => workflowId,
 		);
 		expect(milestoneWorkflowIds.sort()).toEqual([...WORKFLOW_IDS].sort());
+	});
+	it('keeps both buffers when a fold fails and retries without losing counts', async () => {
+		await seedIncrements();
+		await seedAgentIncrements();
+		vi.spyOn(licenseMetricsRepository, 'rollupAgentIncrements').mockRejectedValueOnce(
+			new Error('Fold failed'),
+		);
+
+		await expect(task.run(signal)).rejects.toThrow('Fold failed');
+		expect(await pendingIncrements()).toBe(WORKFLOW_IDS.length * ROWS_PER_WORKFLOW + AGENT_TURNS);
+		expect(await repository.find()).toEqual([]);
+		expect(statisticsService.emitFirstOccurrenceEvent).not.toHaveBeenCalled();
+
+		while ((await pendingIncrements()) > 0) await task.run(signal);
+		expect(await licenseMetricsRepository.getLicenseRenewalMetrics()).toMatchObject({
+			productionRootExecutions: WORKFLOW_IDS.length * ROWS_PER_WORKFLOW + AGENT_TURNS,
+		});
 	});
 });
