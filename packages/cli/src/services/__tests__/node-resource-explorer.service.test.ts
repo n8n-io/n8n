@@ -2,6 +2,7 @@ import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { ProjectRepository, User } from '@n8n/db';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
@@ -90,9 +91,11 @@ describe('NodeResourceExplorerService', () => {
 	test('rejects when the credential type does not match the requested type', async () => {
 		mockCredentialOwned({ type: 'someOtherApi' });
 
-		await expect(service.exploreResources(user, baseParams)).rejects.toThrow(
+		const lookup = service.exploreResources(user, baseParams);
+		await expect(lookup).rejects.toThrow(
 			'Credential cred-1 has type "someOtherApi", not "slackApi"',
 		);
+		await expect(lookup).rejects.toBeInstanceOf(UserError);
 		expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
 		expect(dynamicNodeParametersService.getOptionsViaMethodName).not.toHaveBeenCalled();
 	});
