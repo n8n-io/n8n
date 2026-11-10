@@ -819,6 +819,24 @@ describe('sanitizeMcpToolSchemas', () => {
 			expect(schema.safeParse({ action: 'filter' }).success).toBe(true);
 			expect(flattenedObject(schema).shape.value.description).toBe('Only for "filter"');
 		});
+
+		it('should treat a field as optional when its preprocess step throws on undefined', () => {
+			const value = z.preprocess((input) => {
+				if (input === undefined) throw new Error('no value');
+				return input;
+			}, z.string());
+			const union = z.discriminatedUnion('action', [
+				z.object({ action: z.literal('filter'), value }),
+				z.object({ action: z.literal('list') }),
+			]);
+			// Precondition: Zod cannot tell if this field is optional.
+			expect(() => value.isOptional()).toThrow('no value');
+
+			const schema = sanitizeInputSchema(union);
+
+			expect(schema.safeParse({ action: 'filter' }).success).toBe(true);
+			expect(flattenedObject(schema).shape.value.description).toBe('Only for "filter"');
+		});
 	});
 
 	describe('per-action required fields', () => {

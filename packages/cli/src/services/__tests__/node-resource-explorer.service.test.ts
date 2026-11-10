@@ -91,8 +91,10 @@ describe('NodeResourceExplorerService', () => {
 		mockCredentialOwned({ type: 'someOtherApi' });
 
 		await expect(service.exploreResources(user, baseParams)).rejects.toThrow(
-			'Credential cred-1 not found or not accessible',
+			'Credential cred-1 has type "someOtherApi", not "slackApi"',
 		);
+		expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		expect(dynamicNodeParametersService.getOptionsViaMethodName).not.toHaveBeenCalled();
 	});
 
 	test("does not mutate the caller's currentNodeParameters when auto-filling authentication", async () => {
