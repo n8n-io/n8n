@@ -3,6 +3,7 @@ import {
 	initDbUpToMigration,
 	runSingleMigration,
 	type TestMigrationContext,
+	undoLastSingleMigration,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -141,5 +142,13 @@ describe.skipIf(!isSqlite)('AddAutoincrementToScheduledTaskId migration', () => 
 			);
 			expect(newId).toBeGreaterThan(maxId);
 		});
+	});
+
+	it('keeps the ids and data of existing tasks on rollback', async () => {
+		const before = await withContext(readTasks);
+
+		await undoLastSingleMigration();
+
+		expect(await withContext(readTasks)).toEqual(before);
 	});
 });
