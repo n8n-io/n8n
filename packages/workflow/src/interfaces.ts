@@ -3877,6 +3877,8 @@ export type WorkflowExecutionMockDataSource =
 
 export interface IWorkflowExecutionTelemetryMetadata {
 	mockDataSources?: WorkflowExecutionMockDataSource[];
+	/** Credentials the run uses only through the acting user's own access, not the workflow's project. */
+	personalCredentialsCount?: number;
 }
 
 /**

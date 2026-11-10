@@ -196,14 +196,19 @@ function getExecutionTelemetryProperties(
 	telemetryMetadata: RelayEventMap['workflow-post-execute']['telemetryMetadata'],
 ): ITelemetryTrackProperties {
 	const executionSource = source ?? 'user';
+	const { mockDataSources, personalCredentialsCount } = telemetryMetadata ?? {};
+	const personalCredentials = personalCredentialsCount
+		? { personal_credentials_count: personalCredentialsCount }
+		: {};
 
-	if (executionSource !== 'instance_ai') return { execution_source: executionSource };
-
-	const { mockDataSources } = telemetryMetadata ?? {};
+	if (executionSource !== 'instance_ai') {
+		return { execution_source: executionSource, ...personalCredentials };
+	}
 
 	return {
 		execution_source: executionSource,
 		...(mockDataSources?.length ? { mock_data_sources: mockDataSources.join(',') } : {}),
+		...personalCredentials,
 	};
 }
 
