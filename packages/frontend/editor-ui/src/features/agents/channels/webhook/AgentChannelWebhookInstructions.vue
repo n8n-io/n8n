@@ -110,7 +110,7 @@ const authenticationHint = computed(() => {
 				:class="$style.learnMore"
 				data-testid="webhook-instructions-learn-more"
 			>
-				{{ i18n.baseText('generic.learnMore') }}
+				{{ i18n.baseText('agents.channels.webhook.instructions.docs') }}
 			</N8nLink>
 		</div>
 	</N8nCollapsiblePanel>

@@ -4,10 +4,11 @@ import {
 	webhookCredentialType,
 	type AgentWebhookAuthentication,
 } from '@n8n/api-types';
-import { N8nButton, N8nCopyInput, N8nStepper, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCopyInput, N8nLink, N8nStepper, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref, watch } from 'vue';
+import { I18nT } from 'vue-i18n';
 
 import { getAgentWebhookUrl } from '../../composables/useAgentApi';
 import type { AgentChannelViewProps } from '../types';
@@ -24,6 +25,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const rootStore = useRootStore();
+
+const RESPONSES_FORMAT_URL = 'https://platform.openai.com/docs/api-reference/responses';
 
 const authentication = ref<AgentWebhookAuthentication>(
 	webhookAuthentication({ settings: props.savedSettings }) ?? 'none',
@@ -78,8 +81,8 @@ const steps = computed(() => [
 	},
 	{
 		id: 'endpoint',
+		// The description has a link, so the step content renders it.
 		title: i18n.baseText('agents.channels.webhook.setup.endpoint.title'),
-		description: i18n.baseText('agents.channels.webhook.setup.endpoint.description'),
 	},
 ]);
 
@@ -100,7 +103,7 @@ defineExpose({ credentialId, currentSettings, credentialRequired });
 	<div :class="$style.webhookSetup" tabindex="-1" data-agent-modal-autofocus>
 		<N8nStepper v-if="mode === 'setup'" :steps="steps">
 			<template #default="{ step }">
-				<div :class="$style.stepContent">
+				<div :class="[$style.stepContent, step.id === 'endpoint' && $style.stepContentDescribed]">
 					<AgentChannelWebhookAuth
 						v-if="step.id === 'authentication'"
 						v-model="credentialId"
@@ -119,6 +122,15 @@ defineExpose({ credentialId, currentSettings, credentialRequired });
 					/>
 
 					<template v-else>
+						<N8nText step="sm" color="text-light" data-testid="webhook-endpoint-description">
+							<I18nT keypath="agents.channels.webhook.setup.endpoint.description" scope="global">
+								<template #link>
+									<N8nLink :to="RESPONSES_FORMAT_URL" new-window>
+										{{ i18n.baseText('agents.channels.webhook.url.responsesFormat') }}
+									</N8nLink>
+								</template>
+							</I18nT>
+						</N8nText>
 						<div v-if="endpointUrl" :class="$style.urlField">
 							<label for="webhook-endpoint-url">
 								<N8nText size="small" bold>
@@ -129,36 +141,25 @@ defineExpose({ credentialId, currentSettings, credentialRequired });
 								id="webhook-endpoint-url"
 								:value="endpointUrl"
 								:label="i18n.baseText('agents.channels.webhook.url.label')"
-								size="large"
+								size="medium"
 								:class="$style.urlInput"
 								:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
 								:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
 								data-testid="webhook-url"
 							/>
-							<N8nText :class="$style.hint" size="small">
-								{{ i18n.baseText('agents.channels.webhook.url.hint') }}
-							</N8nText>
 						</div>
 						<AgentChannelWebhookInstructions :authentication="authentication" />
 						<N8nButton
 							v-if="!connected"
+							variant="outline"
 							:class="$style.connectButton"
 							:disabled="connectDisabled"
 							:loading="loading"
 							data-testid="webhook-connect"
 							@click="emit('connect')"
 						>
-							{{ i18n.baseText('generic.connect') }}
+							{{ i18n.baseText('generic.done') }}
 						</N8nButton>
-						<!-- Connecting closes the setup, so the notice shows before it. -->
-						<N8nText
-							v-if="!isPublished"
-							:class="$style.hint"
-							size="small"
-							data-testid="webhook-publish-notice"
-						>
-							{{ i18n.baseText('agents.channels.webhook.publishNotice') }}
-						</N8nText>
 					</template>
 				</div>
 			</template>
@@ -190,20 +191,23 @@ defineExpose({ credentialId, currentSettings, credentialRequired });
 					id="webhook-endpoint-url"
 					:value="endpointUrl"
 					:label="i18n.baseText('agents.channels.webhook.url.label')"
-					size="small"
+					size="medium"
 					:class="$style.urlInput"
 					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
 					:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
 					data-testid="webhook-url"
 				/>
-				<N8nText :class="$style.hint" size="small">
-					{{ i18n.baseText('agents.channels.webhook.url.hint') }}
+				<N8nText :class="$style.hint" size="small" data-testid="webhook-url-hint">
+					<I18nT keypath="agents.channels.webhook.url.hint" scope="global">
+						<template #link>
+							<N8nLink :to="RESPONSES_FORMAT_URL" new-window size="small">
+								{{ i18n.baseText('agents.channels.webhook.url.responsesFormat') }}
+							</N8nLink>
+						</template>
+					</I18nT>
 				</N8nText>
 			</div>
 			<AgentChannelWebhookInstructions :authentication="authentication" />
-			<N8nText v-if="!isPublished" :class="$style.hint" size="small">
-				{{ i18n.baseText('agents.channels.webhook.publishNotice') }}
-			</N8nText>
 		</template>
 	</div>
 </template>
@@ -226,6 +230,11 @@ defineExpose({ credentialId, currentSettings, credentialRequired });
 	padding-top: var(--spacing--xs);
 }
 
+// Sits as close to the title as a step description does.
+.stepContentDescribed {
+	padding-top: var(--spacing--3xs);
+}
+
 .urlField {
 	display: flex;
 	flex-direction: column;
@@ -243,7 +252,6 @@ defineExpose({ credentialId, currentSettings, credentialRequired });
 
 .urlInput input {
 	font-family: monospace;
-	font-size: var(--font-size--2xs);
 	text-overflow: ellipsis;
 }
 

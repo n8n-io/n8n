@@ -71,6 +71,6 @@ describe('AgentChannelWebhookInstructions', () => {
 		const link = wrapper.get('[data-testid="webhook-instructions-learn-more"]');
 		expect(link.attributes('href')).toMatch(/^https:\/\/docs\.n8n\.io\//);
 		expect(link.attributes('target')).toBe('_blank');
-		expect(link.text()).toBe('generic.learnMore');
+		expect(link.text()).toBe('agents.channels.webhook.instructions.docs');
 	});
 });

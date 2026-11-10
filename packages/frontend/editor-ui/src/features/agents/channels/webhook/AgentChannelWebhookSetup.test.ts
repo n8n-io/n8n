@@ -1,3 +1,4 @@
+import { i18nInstance } from '@n8n/i18n';
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
@@ -73,7 +74,8 @@ function mountView(overrides: Record<string, unknown> = {}) {
 			runtime: { load: async () => {}, loading: ref(false) },
 			...overrides,
 		},
-		global: { stubs },
+		// `I18nT` resolves against the real global i18n instance.
+		global: { stubs, plugins: [i18nInstance] },
 	});
 }
 
@@ -156,10 +158,25 @@ describe('AgentChannelWebhookSetup', () => {
 		},
 	);
 
-	it('tells an unpublished agent to publish before it connects', () => {
-		const wrapper = mountView({ isPublished: false });
+	it('finishes the setup with Done', () => {
+		const wrapper = mountView();
 
-		expect(wrapper.find('[data-testid="webhook-publish-notice"]').exists()).toBe(true);
+		expect(wrapper.get('[data-testid="webhook-connect"]').text()).toBe('generic.done');
+	});
+
+	it.each([
+		['setup', 'webhook-endpoint-description'],
+		['edit', 'webhook-url-hint'],
+	] as const)('links to the Responses format in %s mode', async (mode, testId) => {
+		getAgentWebhookUrl.mockResolvedValue({ url: 'https://n8n.example.com/agent-webhook/agent-1' });
+		const wrapper = mountView({ mode });
+		await flushPromises();
+
+		const link = wrapper.get(`[data-testid="${testId}"] a`);
+		expect(link.attributes('href')).toBe(
+			'https://platform.openai.com/docs/api-reference/responses',
+		);
+		expect(link.attributes('target')).toBe('_blank');
 	});
 
 	it('shows the endpoint URL that the backend builds', async () => {
