@@ -124,16 +124,39 @@ describe('PromotionCheckoutCleanupService', () => {
 				'github.com ssh-ed25519 AAAA',
 			);
 		});
+	});
 
+	describe('resetCheckoutAfterSettingsChange', () => {
 		it('logs a warning and does not throw when the reset fails', async () => {
 			vi.spyOn(workingDirectory, 'resetCheckout').mockRejectedValue(new Error('EBUSY'));
 
-			await expect(service[method](LIVE_ID)).resolves.toBeUndefined();
+			await expect(service.resetCheckoutAfterSettingsChange(LIVE_ID)).resolves.toBeUndefined();
 
 			expect(logger.warn).toHaveBeenCalledWith('Failed to reset the local promotion checkout', {
 				environmentId: LIVE_ID,
 				error: 'EBUSY',
 			});
+		});
+	});
+
+	describe('resetCheckoutAfterDisconnect', () => {
+		it('throws the removal error and still publishes on multi-main', async () => {
+			isMultiMain = true;
+			vi.spyOn(workingDirectory, 'resetCheckout').mockRejectedValue(new Error('EBUSY'));
+
+			await expect(service.resetCheckoutAfterDisconnect(LIVE_ID)).rejects.toThrow('EBUSY');
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'promotion-environment-changed',
+				payload: { environmentIds: [LIVE_ID], change: 'checkout-disconnected' },
+			});
+		});
+
+		it('does not throw when the publish fails', async () => {
+			isMultiMain = true;
+			publisher.publishCommand.mockRejectedValue(new Error('redis down'));
+
+			await expect(service.resetCheckoutAfterDisconnect(LIVE_ID)).resolves.toBeUndefined();
 		});
 	});
 

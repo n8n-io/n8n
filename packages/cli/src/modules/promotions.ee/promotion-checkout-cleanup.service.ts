@@ -16,14 +16,6 @@ type EnvironmentChangedCommand = PubSubCommandMap['promotion-environment-changed
 
 type EnvironmentChange = EnvironmentChangedCommand['change'];
 
-/**
- * The one place that removes local checkouts, so that the environment lock
- * ([LIGO-1129](https://linear.app/n8n/issue/LIGO-1129)) can be added here only.
- *
- * A checkout is a disposable cache, and no operation uses one that does not match
- * the stored configuration. A failed cleanup only leaves disk in use, so it logs
- * a warning and never fails the request.
- */
 @Service()
 export class PromotionCheckoutCleanupService {
 	constructor(
@@ -42,9 +34,17 @@ export class PromotionCheckoutCleanupService {
 		this.publishToOtherMains([environmentId], 'deleted');
 	}
 
+	/**
+	 * Unlike the other cleanups, a failed removal fails the request. Disconnect changes
+	 * nothing in the database, so a checkout left behind still matches the stored
+	 * settings and later operations would use it.
+	 */
 	async resetCheckoutAfterDisconnect(environmentId: string): Promise<void> {
-		await this.reset([environmentId]);
-		this.publishToOtherMains([environmentId], 'checkout-disconnected');
+		try {
+			await this.workingDirectory.resetCheckout(environmentId);
+		} finally {
+			this.publishToOtherMains([environmentId], 'checkout-disconnected');
+		}
 	}
 
 	async resetCheckoutAfterSettingsChange(environmentId: string): Promise<void> {

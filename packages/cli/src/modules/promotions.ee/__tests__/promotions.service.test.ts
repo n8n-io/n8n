@@ -318,17 +318,11 @@ describe('PromotionsService', () => {
 			});
 		});
 
-		it('logs a warning and does not fail when the checkout removal fails', async () => {
+		it('fails when the checkout removal fails', async () => {
 			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
 			vi.spyOn(workingDirectory, 'resetCheckout').mockRejectedValueOnce(new Error('EBUSY'));
 
-			const result = await service.disconnect(ENVIRONMENT_ID);
-
-			expect(result.hasCheckout).toBe(false);
-			expect(logger.warn).toHaveBeenCalledWith('Failed to reset the local promotion checkout', {
-				environmentId: ENVIRONMENT_ID,
-				error: 'EBUSY',
-			});
+			await expect(service.disconnect(ENVIRONMENT_ID)).rejects.toThrow('EBUSY');
 		});
 	});
 
