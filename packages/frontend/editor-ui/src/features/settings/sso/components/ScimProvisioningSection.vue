@@ -8,12 +8,12 @@ import {
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nSwitch2,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import * as scimApi from '@n8n/rest-api-client/api/scim';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { ElSwitch } from 'element-plus';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
 	/** SCIM works only while SAML or OIDC login is on. */
@@ -63,14 +63,20 @@ async function run(action: () => Promise<void>, errorTitle: string) {
 }
 
 async function load() {
-	config.value = await scimApi.getScimConfig(rootStore.restApiContext);
+	try {
+		config.value = await scimApi.getScimConfig(rootStore.restApiContext);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.sso.scim.load.error'));
+	}
 }
 
+// The responses carry the new state, so the page does not load the config again.
+// A failed reload must not look like a failed save.
 async function setEnabled(value: boolean) {
 	showDisableDialog.value = false;
 	await run(async () => {
-		await scimApi.setScimEnabled(rootStore.restApiContext, value);
-		await load();
+		const { enabled: saved } = await scimApi.setScimEnabled(rootStore.restApiContext, value);
+		if (config.value) config.value = { ...config.value, enabled: saved };
 	}, i18n.baseText('settings.sso.scim.enable.error'));
 }
 
@@ -79,7 +85,8 @@ async function generateToken() {
 	await run(async () => {
 		const { token } = await scimApi.generateScimToken(rootStore.restApiContext);
 		newToken.value = token;
-		await load();
+		if (config.value)
+			config.value = { ...config.value, hasToken: true, tokenHint: token.slice(-4) };
 	}, i18n.baseText('settings.sso.scim.token.error'));
 }
 
@@ -88,13 +95,13 @@ function onGenerateClick() {
 	else void generateToken();
 }
 
-onMounted(async () => {
-	try {
-		await load();
-	} catch (error) {
-		showError(error, i18n.baseText('settings.sso.scim.load.error'));
-	}
-});
+onMounted(load);
+
+// Turning single sign-on off also turns SCIM off on the backend.
+watch(
+	() => props.ssoEnabled,
+	async () => await load(),
+);
 </script>
 
 <template>
@@ -113,10 +120,11 @@ onMounted(async () => {
 				"
 			>
 				<template #action>
-					<ElSwitch
+					<N8nSwitch2
 						v-model="toggleValue"
 						size="large"
 						:disabled="saving || (!props.ssoEnabled && !enabled)"
+						:aria-label="i18n.baseText('settings.sso.scim.enable.title')"
 						data-test-id="sso-scim-toggle"
 					/>
 				</template>

@@ -76,11 +76,6 @@ vi.mock('@n8n/rest-api-client/api/roleMappingRule', () => ({
 	moveRoleMappingRule: vi.fn(),
 }));
 
-const checkEnvFeatureFlag = vi.fn().mockReturnValue(false);
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag: () => ({ check: { value: checkEnvFeatureFlag } }),
-}));
-
 vi.mock('@n8n/rest-api-client/api/scim', () => ({
 	getScimConfig: vi.fn().mockResolvedValue({
 		enabled: false,
@@ -899,12 +894,19 @@ describe('SettingsSso View', () => {
 	});
 
 	describe('SCIM provisioning', () => {
-		const setUpScim = ({ moduleActive = true, optIn = true, canManage = true } = {}) => {
+		const setUpScim = ({
+			moduleActive = true,
+			optIn = 'true',
+			canManage = true,
+		}: { moduleActive?: boolean; optIn?: string; canManage?: boolean } = {}) => {
 			const settingsStore = mockedStore(useSettingsStore);
 			settingsStore.isModuleActive.mockImplementation(
 				(name: string) => name === 'scim' && moduleActive,
 			);
-			checkEnvFeatureFlag.mockImplementation((flag: string) => flag === 'SCIM' && optIn);
+			settingsStore.settings = {
+				...settingsStore.settings,
+				envFeatureFlags: { N8N_ENV_FEAT_SCIM: optIn },
+			};
 			const rbacStore = mockedStore(useRBACStore);
 			rbacStore.hasScope.mockImplementation(
 				(scope: Scope | Scope[]) => scope === 'scim:manage' && canManage,
@@ -921,7 +923,9 @@ describe('SettingsSso View', () => {
 
 		it.each([
 			['the module is not licensed', { moduleActive: false }],
-			['the opt-in is off', { optIn: false }],
+			['the opt-in is off', { optIn: 'false' }],
+			// The backend accepts only 'true' for the opt-in.
+			['the opt-in is not exactly true', { optIn: '1' }],
 			['the user cannot manage SCIM', { canManage: false }],
 		])('hides the SCIM section when %s', async (_, options) => {
 			setUpScim(options);

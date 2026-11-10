@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
@@ -30,7 +29,6 @@ const i18n = useI18n();
 const ssoStore = useSSOStore();
 const settingsStore = useSettingsStore();
 const rbacStore = useRBACStore();
-const { check: envFeatureFlag } = useEnvFeatureFlag();
 const provisioningStore = useUserRoleProvisioningStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -66,12 +64,13 @@ const hasAnySsoEnabled = computed(
 
 /**
  * SCIM needs the `feat:scim` license, the pre-GA opt-in `N8N_ENV_FEAT_SCIM`
- * and the `scim:manage` scope.
+ * and the `scim:manage` scope. The backend accepts only `'true'` for the
+ * opt-in, so the page does not use the looser `useEnvFeatureFlag` check.
  */
 const showScimSection = computed(
 	() =>
 		settingsStore.isModuleActive('scim') &&
-		envFeatureFlag.value('SCIM') &&
+		settingsStore.settings.envFeatureFlags?.N8N_ENV_FEAT_SCIM === 'true' &&
 		rbacStore.hasScope('scim:manage'),
 );
 

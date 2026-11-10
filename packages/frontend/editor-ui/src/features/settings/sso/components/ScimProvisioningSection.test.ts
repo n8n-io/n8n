@@ -56,9 +56,6 @@ describe('ScimProvisioningSection', () => {
 
 	it('shows the new token once after it is generated', async () => {
 		generateScimToken.mockResolvedValue({ token: 'n8n_scim_secret', baseUrl: baseConfig.baseUrl });
-		getScimConfig
-			.mockResolvedValueOnce(baseConfig)
-			.mockResolvedValueOnce({ ...baseConfig, hasToken: true, tokenHint: 'cret' });
 
 		const { getByTestId, getByText, getByRole } = renderComponent({ props: { ssoEnabled: true } });
 		await waitFor(() => expect(getByTestId('sso-scim-generate-token')).toBeInTheDocument());
@@ -69,6 +66,18 @@ describe('ScimProvisioningSection', () => {
 		expect(getByRole('textbox', { name: 'Token' })).toHaveValue('n8n_scim_secret');
 		expect(getByText('Copy this token now. You will not see it again.')).toBeVisible();
 		expect(getByTestId('sso-scim-generate-token')).toHaveTextContent('Generate new token');
+		// The token response is enough: a failed reload cannot hide the new token state.
+		expect(getScimConfig).toHaveBeenCalledTimes(1);
+	});
+
+	it('loads the config again when single sign-on changes', async () => {
+		const { getByTestId, rerender } = renderComponent({ props: { ssoEnabled: true } });
+		await waitFor(() => expect(getByTestId('sso-scim-toggle')).toBeInTheDocument());
+
+		getScimConfig.mockResolvedValue(baseConfig);
+		await rerender({ ssoEnabled: false });
+
+		await waitFor(() => expect(getScimConfig).toHaveBeenCalledTimes(2));
 	});
 
 	it('asks for confirmation before it replaces an existing token', async () => {
