@@ -131,8 +131,8 @@ export const importPackageRequestFieldDocs = {
 			'then removed too, but only once nothing is left inside them. Removals are listed under ' +
 			'`removedWorkflows` and `removedFolders`; see `overwriteDeletionPolicy`. A folder whose ' +
 			'id sits under a different parent, or belongs to another project, always blocks the ' +
-			'import. `overwrite` is project-packages-only. It needs the `workflow:delete` scope ' +
-			'only when it removes a workflow, and `folder:delete` only when it removes a folder. ' +
+			'import. `overwrite` is project-packages-only. When it removes a workflow, it needs the ' +
+			'`workflow:delete` scope. When it removes a folder, it needs `folder:delete`. ' +
 			'It is rejected against a `projectConflictPolicy` other than `overwrite`, and blocks ' +
 			'up front if the caller cannot delete something it would remove. ' +
 			'A project package needs the `folder:create` scope only when the import creates a ' +
