@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddWakeAttemptToAgentBackgroundJob1794216957260 implements ReversibleMigration {
+export class AddWakeAttemptToAgentBackgroundJob1794310439584 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		// Nullable: only results that a started wake has received carry an attempt.
 		await addColumns(
