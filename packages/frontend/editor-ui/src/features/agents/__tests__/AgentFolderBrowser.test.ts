@@ -99,7 +99,7 @@ describe('AgentFolderBrowser', () => {
 			params: { projectId: 'project' },
 			query: { folderId: 'child' },
 		});
-		expect(wrapper.text()).toContain('2 agents.heading');
+		expect(wrapper.text()).toContain('agents.folders.agentCount');
 	});
 
 	it('moves a dragged Agent to root through the native breadcrumb drop', async () => {

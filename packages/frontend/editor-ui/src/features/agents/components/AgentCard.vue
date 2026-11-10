@@ -262,9 +262,13 @@ async function toggleMCPAccess(enabled: boolean) {
 				</N8nBadge>
 			</N8nText>
 		</template>
-		<N8nText v-if="showFolderPath && agent.folderPath?.length" size="small" color="text-light">{{
-			agent.folderPath.join(' / ')
-		}}</N8nText>
+		<N8nText
+			v-if="showFolderPath && agent.folderPath?.length"
+			:class="$style.folderPath"
+			size="small"
+			color="text-light"
+			>{{ agent.folderPath.join(' / ') }}</N8nText
+		>
 		<div :class="$style.cardDescription">
 			<span>
 				{{ locale.baseText('agents.list.updated') }}
@@ -369,6 +373,12 @@ async function toggleMCPAccess(enabled: boolean) {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	gap: var(--spacing--2xs);
+	flex-wrap: wrap;
+}
+
+.folderPath {
+	padding: 0 var(--spacing--sm);
+	overflow-wrap: anywhere;
 }
 
 .mcpIndicator {

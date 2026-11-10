@@ -1004,6 +1004,7 @@
 	"agents.folders.relocate": "Move contents to another folder",
 	"agents.folders.permanent": "Permanently delete contents",
 	"agents.folders.deleteDescription": "This permanently deletes this folder, its subfolders, and {count} Agents. You cannot undo this action.",
+	"agents.folders.agentCount": "{count} Agent | {count} Agents",
 	"agents.folders.error": "Could not update the Agent folder",
 	"agents.folders.invalidName": "Use a valid folder name with 1 to 128 characters. Do not use path separators or start with a dot.",
 	"agents.builder.chatMode.noPermission": "You don’t have permission to test this agent",

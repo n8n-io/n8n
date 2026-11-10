@@ -3,8 +3,6 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nActionToggle,
-	N8nBreadcrumbs,
-	N8nButton,
 	N8nCard,
 	N8nIcon,
 	N8nPagination,
@@ -26,12 +24,14 @@ import { moveAgent } from '../composables/useAgentApi';
 import { PROJECT_AGENTS } from '../constants';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import AgentFolderDialog, { type AgentFolderAction } from './AgentFolderDialog.vue';
+import AgentFolderToolbar from './AgentFolderToolbar.vue';
 
 const props = defineProps<{
 	projectId: string;
 	folderId: string | null;
 	search: string;
 	sortBy: string;
+	hideToolbar?: boolean;
 }>();
 const emit = defineEmits<{ changed: []; count: [value: number] }>();
 const rootStore = useRootStore();
@@ -125,13 +125,8 @@ watch(page, () => {
 	void refresh();
 });
 
-function onBreadcrumbDrop(event: DragEvent) {
-	const target = event.target;
-	const item = target instanceof Element ? target.closest<HTMLElement>('[data-resourceid]') : null;
-
-	if (item?.dataset.resourceid) {
-		void drop(item.dataset.resourceid);
-	}
+function createFolder() {
+	action.value = { mode: 'create', parentFolderId: props.folderId };
 }
 
 function navigate(id: string) {
@@ -221,6 +216,12 @@ async function drop(targetId: string) {
 }
 
 defineExpose({
+	breadcrumbs,
+	folderPermissions,
+	isDragging: computed(() => dragged.value !== null),
+	navigate,
+	drop,
+	createFolder,
 	startAgentDrag,
 	endDrag: () => {
 		dragged.value = null;
@@ -231,25 +232,16 @@ defineExpose({
 
 <template>
 	<section :class="$style.browser" data-testid="agent-folders">
-		<div :class="$style.toolbar" @dragover.prevent @drop.prevent="drop(folderId ?? PROJECT_ROOT)">
-			<N8nBreadcrumbs
-				:items="breadcrumbs"
-				:drag-active="dragged !== null"
-				@item-selected="navigate($event.id)"
-				@item-drop="drop($event.id)"
-				@dragover.prevent
-				@drop.prevent.stop="onBreadcrumbDrop"
-			/>
-			<N8nButton
-				v-if="folderPermissions.create"
-				variant="ghost"
-				icon="folder-plus"
-				data-testid="agent-folder-create"
-				@click="action = { mode: 'create', parentFolderId: folderId }"
-			>
-				{{ i18n.baseText('agents.folders.create') }}
-			</N8nButton>
-		</div>
+		<AgentFolderToolbar
+			v-if="!hideToolbar"
+			:items="breadcrumbs"
+			:folder-id="folderId"
+			:can-create="Boolean(folderPermissions.create)"
+			:drag-active="dragged !== null"
+			@navigate="navigate"
+			@drop="drop"
+			@create="createFolder"
+		/>
 		<N8nCard
 			v-for="folder in folders"
 			:key="folder.id"
@@ -266,14 +258,21 @@ defineExpose({
 			@dragover.prevent
 			@drop.prevent.stop="drop(folder.id)"
 		>
+			<template #prepend>
+				<N8nIcon icon="folder" size="xlarge" />
+			</template>
 			<template #header>
 				<div :class="$style.name">
-					<N8nIcon icon="folder" /><N8nText bold>{{ folder.name }}</N8nText>
+					<N8nText tag="h2" size="small" bold>{{ folder.name }}</N8nText>
 				</div>
 			</template>
-			<N8nText size="small" color="text-light"
-				>{{ folder.agentCount ?? 0 }} {{ i18n.baseText('agents.heading') }}</N8nText
-			>
+			<N8nText size="small" color="text-light">
+				{{
+					i18n.baseText('agents.folders.agentCount', {
+						interpolate: { count: folder.agentCount ?? 0 },
+					})
+				}}
+			</N8nText>
 			<N8nText v-if="search" size="small" color="text-light">{{ folder.path.join(' / ') }}</N8nText>
 			<template #append
 				><N8nActionToggle
@@ -304,22 +303,19 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--2xs);
 }
-.toolbar {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--xs);
-}
+
 .folder {
 	cursor: pointer;
 }
+
 .name {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
 	min-width: 0;
 	overflow-wrap: anywhere;
+	margin-bottom: var(--spacing--5xs);
 }
 </style>
