@@ -23,7 +23,7 @@ import type { Server } from 'node:http';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
@@ -67,7 +67,7 @@ export class EngineV2Runtime {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly logger: Logger,
 		private readonly credentialsClient: EngineCredentialsClient,
 		transport: EngineControlPlaneTransport,
