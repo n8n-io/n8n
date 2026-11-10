@@ -14,8 +14,10 @@ export {
 export { generateNanoId } from '@n8n/utils/generate-nano-id';
 export { chunkIds } from './utils/chunk-ids';
 export {
-	dbNowLiteral,
-	dbNowPlusMsLiteral,
+	dbTxNowLiteral,
+	dbTxNowPlusMsLiteral,
+	dbClockNowLiteral,
+	dbClockNowPlusMsLiteral,
 	parseDbTime,
 } from './utils/dialect-time';
 export { toDialectQuery } from './utils/dialect-sql';

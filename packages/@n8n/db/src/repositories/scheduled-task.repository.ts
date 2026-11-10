@@ -19,9 +19,9 @@ import {
 	TerminalTaskStatusList,
 } from '../entities/scheduled-task';
 import {
-	columnOrNowPlusMsLiteral,
-	dbNowLiteral,
-	dbNowPlusMsLiteral,
+	columnOrTxNowPlusMsLiteral,
+	dbTxNowLiteral,
+	dbTxNowPlusMsLiteral,
 	parseDbTime,
 } from '../utils/dialect-time';
 
@@ -255,7 +255,10 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		const qb = manager
 			.createQueryBuilder()
 			.update(ScheduledTask)
-			.set({ status: ScheduledTaskStatus.Missed, finishedAt: () => dbNowLiteral(this.isPostgres) })
+			.set({
+				status: ScheduledTaskStatus.Missed,
+				finishedAt: () => dbTxNowLiteral(this.isPostgres),
+			})
 			.where({ status: ScheduledTaskStatus.Pending });
 		qb.andWhere(
 			new Brackets((bracketQb) => {
@@ -306,10 +309,10 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			.update(ScheduledTask)
 			.set({
 				missedAfter: () =>
-					columnOrNowPlusMsLiteral(this.isPostgres, this.runAtColumn, misfireGraceSeconds * 1000),
+					columnOrTxNowPlusMsLiteral(this.isPostgres, this.runAtColumn, misfireGraceSeconds * 1000),
 			})
 			.where({ jobId: In(jobIds), status: ScheduledTaskStatus.Pending, missedAfter: Not(IsNull()) })
-			.andWhere(`${this.missedAfterColumn} > ${dbNowLiteral(this.isPostgres)}`)
+			.andWhere(`${this.missedAfterColumn} > ${dbTxNowLiteral(this.isPostgres)}`)
 			.execute();
 	}
 
@@ -385,7 +388,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 */
 	private claimableSql(alias = ''): string {
 		const deadline = `${alias}"missedAfter"`;
-		return `(${deadline} IS NULL OR ${deadline} > ${dbNowLiteral(this.isPostgres)} OR ${alias}"attempts" > 0)`;
+		return `(${deadline} IS NULL OR ${deadline} > ${dbTxNowLiteral(this.isPostgres)} OR ${alias}"attempts" > 0)`;
 	}
 
 	private async claimWithPostgres(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
@@ -502,8 +505,8 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 				startedAt: IsNull(),
 			},
 			{
-				startedAt: () => dbNowLiteral(this.isPostgres),
-				leaseExpiresAt: () => dbNowPlusMsLiteral(this.isPostgres, leaseMs),
+				startedAt: () => dbTxNowLiteral(this.isPostgres),
+				leaseExpiresAt: () => dbTxNowPlusMsLiteral(this.isPostgres, leaseMs),
 			},
 		);
 		return result.affected ?? 0;
@@ -520,7 +523,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 */
 	async renewLease(claim: HostedClaimedRef, expiresInMs: number): Promise<boolean> {
 		const rowsAffected = await this.runGuardedUpdate(claim, {
-			leaseExpiresAt: () => dbNowPlusMsLiteral(this.isPostgres, expiresInMs),
+			leaseExpiresAt: () => dbTxNowPlusMsLiteral(this.isPostgres, expiresInMs),
 		});
 		return rowsAffected > 0;
 	}
@@ -538,14 +541,14 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		return await this.manager.transaction(async (tx) => {
 			const rowsAffected = await this.runGuardedUpdate(
 				claim,
-				{ dispatchedAt: () => dbNowLiteral(this.isPostgres) },
+				{ dispatchedAt: () => dbTxNowLiteral(this.isPostgres) },
 				tx,
 			);
 			if (rowsAffected > 0) {
 				const placeholder = this.isPostgres ? '$1' : '?';
 				await tx.query(
 					`UPDATE ${this.jobTableName}
-					    SET "lastDispatchedAt" = ${dbNowLiteral(this.isPostgres)}
+					    SET "lastDispatchedAt" = ${dbTxNowLiteral(this.isPostgres)}
 					  WHERE "id" = (SELECT "jobId" FROM ${this.tableName} WHERE "id" = ${placeholder})`,
 					[claim.id],
 				);
@@ -558,7 +561,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	async completeTask(claim: HostedClaimedRef): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Succeeded,
-			finishedAt: () => dbNowLiteral(this.isPostgres),
+			finishedAt: () => dbTxNowLiteral(this.isPostgres),
 			errorMessage: null,
 		});
 	}
@@ -570,7 +573,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	async failTaskTerminal(claim: HostedClaimedRef, errorMessage: string): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Failed,
-			finishedAt: () => dbNowLiteral(this.isPostgres),
+			finishedAt: () => dbTxNowLiteral(this.isPostgres),
 			attempts: () => 'attempts + 1',
 			errorMessage,
 		});
@@ -589,7 +592,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Pending,
-			runAt: () => dbNowPlusMsLiteral(this.isPostgres, backoffMs),
+			runAt: () => dbTxNowPlusMsLiteral(this.isPostgres, backoffMs),
 			attempts: () => 'attempts + 1',
 			errorMessage,
 			claimedBy: null,
@@ -632,7 +635,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		// another reaper already claimed.
 		return await this.createQueryBuilder('t')
 			.where('t.status = :running', { running: ScheduledTaskStatus.Running })
-			.andWhere(`t.leaseExpiresAt < ${dbNowLiteral(this.isPostgres)}`)
+			.andWhere(`t.leaseExpiresAt < ${dbTxNowLiteral(this.isPostgres)}`)
 			.orderBy('t.leaseExpiresAt', 'ASC')
 			.limit(limit)
 			.getMany();
@@ -652,7 +655,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * The caller runs this behind a short scrape cache.
 	 */
 	async getMetricSnapshot(): Promise<ScheduledTaskMetricSnapshot> {
-		const now = dbNowLiteral(this.isPostgres);
+		const now = dbTxNowLiteral(this.isPostgres);
 		const claimable = this.claimableSql();
 		// "running" is computed through a subquery (and not a FILTER) to prevent
 		// the WHERE to use 'IN', which does not take the partial index into account
@@ -699,7 +702,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 */
 	async readDbTime(manager?: EntityManager): Promise<Date> {
 		const [row]: Array<{ dbNow: Date | string }> = await (manager ?? this.manager).query(
-			`SELECT ${dbNowLiteral(this.isPostgres)} AS "dbNow"`,
+			`SELECT ${dbTxNowLiteral(this.isPostgres)} AS "dbNow"`,
 		);
 		return parseDbTime(row.dbNow);
 	}
@@ -719,7 +722,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			ref,
 			{
 				status: ScheduledTaskStatus.Pending,
-				runAt: () => dbNowPlusMsLiteral(this.isPostgres, backoffMs),
+				runAt: () => dbTxNowPlusMsLiteral(this.isPostgres, backoffMs),
 				attempts: () => 'attempts + 1',
 				leaseEpoch: () => 'leaseEpoch + 1',
 				claimedBy: null,
@@ -748,7 +751,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			ref,
 			{
 				status: ScheduledTaskStatus.Failed,
-				finishedAt: () => dbNowLiteral(this.isPostgres),
+				finishedAt: () => dbTxNowLiteral(this.isPostgres),
 				attempts: () => 'attempts + 1',
 				errorMessage,
 			},
@@ -769,7 +772,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			ref,
 			{
 				status: ScheduledTaskStatus.Succeeded,
-				finishedAt: () => dbNowLiteral(this.isPostgres),
+				finishedAt: () => dbTxNowLiteral(this.isPostgres),
 				errorMessage: null,
 			},
 			'post-dispatch',
@@ -833,7 +836,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			.update(ScheduledTask)
 			.set(values)
 			.where({ id, status: ScheduledTaskStatus.Running, leaseEpoch: claimedEpoch })
-			.andWhere(`${this.leaseExpiresAtColumn} < ${dbNowLiteral(this.isPostgres)}`)
+			.andWhere(`${this.leaseExpiresAtColumn} < ${dbTxNowLiteral(this.isPostgres)}`)
 			.andWhere(dispatchedFence)
 			.execute();
 		return result.affected ?? 0;
@@ -881,7 +884,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			 WHERE "id" IN (
 			   SELECT t."id" FROM ${this.tableName} t
 			    WHERE t."status" = ANY($1)
-			      AND t."finishedAt" <= ${dbNowPlusMsLiteral(true, -options.olderThanMs)}
+			      AND t."finishedAt" <= ${dbTxNowPlusMsLiteral(true, -options.olderThanMs)}
 			    ORDER BY t."finishedAt"
 			    LIMIT $2
 			    FOR UPDATE SKIP LOCKED)`,
@@ -897,7 +900,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 				`id IN (
 					SELECT "id" FROM ${this.tableName}
 					 WHERE "status" IN (:...statuses)
-					   AND "finishedAt" <= ${dbNowPlusMsLiteral(false, -options.olderThanMs)}
+					   AND "finishedAt" <= ${dbTxNowPlusMsLiteral(false, -options.olderThanMs)}
 					 ORDER BY "finishedAt"
 					 LIMIT :limit)`,
 				{ statuses: options.statuses, limit: options.limit },
@@ -975,13 +978,13 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			`WITH stale AS MATERIALIZED (
 			   SELECT t."id"
 			     FROM ${this.tableName} t
-			    WHERE ${this.staleSql('t.', dbNowLiteral(true))}
+			    WHERE ${this.staleSql('t.', dbTxNowLiteral(true))}
 			    ORDER BY t."missedAfter"
 			    LIMIT $2
 			    FOR UPDATE SKIP LOCKED
 			 ), retired AS (
 			   UPDATE ${this.tableName}
-			      SET "status" = $1, "finishedAt" = ${dbNowLiteral(true)}
+			      SET "status" = $1, "finishedAt" = ${dbTxNowLiteral(true)}
 			    WHERE "id" IN (SELECT "id" FROM stale)
 			   RETURNING "id", "jobId", "taskType", "missedAfter"
 			 )
@@ -1005,12 +1008,12 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			   SELECT t."id", (${this.atConcurrencyLimitSql('t.', 'j.')}) AS "heldByConcurrencyLimit"
 			     FROM ${this.tableName} t
 			     JOIN ${this.jobTableName} j ON j."id" = t."jobId"
-			    WHERE ${this.staleSql('t.', dbNowLiteral(false))}
+			    WHERE ${this.staleSql('t.', dbTxNowLiteral(false))}
 			    ORDER BY t."missedAfter"
 			    LIMIT ?
 			 )
 			 UPDATE ${this.tableName}
-			    SET "status" = '${ScheduledTaskStatus.Missed}', "finishedAt" = ${dbNowLiteral(false)}
+			    SET "status" = '${ScheduledTaskStatus.Missed}', "finishedAt" = ${dbTxNowLiteral(false)}
 			  WHERE "id" IN (SELECT "id" FROM stale)
 			 RETURNING "id", "jobId", "taskType",
 			           (SELECT s."heldByConcurrencyLimit" FROM stale s WHERE s."id" = ${this.tableName}."id")

@@ -1,8 +1,8 @@
 import { DatabaseConfig } from '@n8n/config';
 import {
 	BaseRepository,
-	dbNowLiteral,
-	dbNowPlusMsLiteral,
+	dbTxNowLiteral,
+	dbTxNowPlusMsLiteral,
 	OperationContext,
 	TransactionRunner,
 } from '@n8n/db';
@@ -115,7 +115,7 @@ export class TrustedSourceRepository {
 			.managerFor(ctx)
 			.createQueryBuilder()
 			.update(TrustedSourceEntity)
-			.set({ firstAuthenticatedAt: () => dbNowLiteral(this.isPostgres) })
+			.set({ firstAuthenticatedAt: () => dbTxNowLiteral(this.isPostgres) })
 			.where('id = :id AND "firstAuthenticatedAt" IS NULL', { id })
 			.execute();
 		return result.affected === 1;
@@ -130,8 +130,8 @@ export class TrustedSourceRepository {
 		{ errorRetrySeconds, healthyRefreshSeconds, limit }: DueQuery,
 		ctx: OperationContext,
 	): Promise<TrustedSourceEntity[]> {
-		const errorCutoff = dbNowPlusMsLiteral(this.isPostgres, -errorRetrySeconds * 1000);
-		const healthyCutoff = dbNowPlusMsLiteral(this.isPostgres, -healthyRefreshSeconds * 1000);
+		const errorCutoff = dbTxNowPlusMsLiteral(this.isPostgres, -errorRetrySeconds * 1000);
+		const healthyCutoff = dbTxNowPlusMsLiteral(this.isPostgres, -healthyRefreshSeconds * 1000);
 		return await this.table
 			.managerFor(ctx)
 			.createQueryBuilder(TrustedSourceEntity, 'source')
@@ -187,14 +187,14 @@ export class TrustedSourceRepository {
 		leaseSeconds: number,
 		ctx: OperationContext,
 	): Promise<boolean> {
-		const staleBefore = dbNowPlusMsLiteral(this.isPostgres, -leaseSeconds * 1000);
+		const staleBefore = dbTxNowPlusMsLiteral(this.isPostgres, -leaseSeconds * 1000);
 		const result = await this.table
 			.managerFor(ctx)
 			.createQueryBuilder()
 			.update(TrustedSourceEntity)
 			.set({
 				discoveryClaimToken: token,
-				discoveryClaimedAt: () => dbNowLiteral(this.isPostgres),
+				discoveryClaimedAt: () => dbTxNowLiteral(this.isPostgres),
 			})
 			.where(
 				`id = :id AND ("discoveryClaimedAt" IS NULL OR "discoveryClaimedAt" < ${staleBefore})`,
@@ -217,7 +217,7 @@ export class TrustedSourceRepository {
 			.update(TrustedSourceEntity)
 			.set({
 				...changes,
-				lastCheckedAt: () => dbNowLiteral(this.isPostgres),
+				lastCheckedAt: () => dbTxNowLiteral(this.isPostgres),
 				discoveryClaimToken: null,
 				discoveryClaimedAt: null,
 			})

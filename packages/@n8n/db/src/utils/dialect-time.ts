@@ -10,7 +10,7 @@
 /**
  * @returns DB-clock `now`, per dialect.
  */
-export function dbNowLiteral(isPostgres: boolean): string {
+export function dbTxNowLiteral(isPostgres: boolean): string {
 	return isPostgres ? 'CURRENT_TIMESTAMP(3)' : "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')";
 }
 
@@ -19,7 +19,7 @@ export function dbNowLiteral(isPostgres: boolean): string {
  * A negative `ms` gives an instant in the past (e.g. a retention cutoff).
  * `ms` is caller-computed (safe to inline).
  */
-export function dbNowPlusMsLiteral(isPostgres: boolean, ms: number): string {
+export function dbTxNowPlusMsLiteral(isPostgres: boolean, ms: number): string {
 	const rounded = Math.round(ms);
 	if (isPostgres) {
 		return `CURRENT_TIMESTAMP(3) + (${rounded} || ' milliseconds')::interval`;
@@ -28,9 +28,20 @@ export function dbNowPlusMsLiteral(isPostgres: boolean, ms: number): string {
 	return `STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '${seconds < 0 ? '' : '+'}${seconds} seconds')`;
 }
 
+export function dbClockNowLiteral(isPostgres: boolean): string {
+	return isPostgres ? 'clock_timestamp()::timestamptz(3)' : dbTxNowLiteral(false);
+}
+
+export function dbClockNowPlusMsLiteral(isPostgres: boolean, ms: number): string {
+	if (isPostgres) {
+		return `clock_timestamp()::timestamptz(3) + (${Math.round(ms)} || ' milliseconds')::interval`;
+	}
+	return dbTxNowPlusMsLiteral(false, ms);
+}
+
 /**
  * A column's value plus a millisecond offset, per dialect. Unlike
- * {@link dbNowPlusMsLiteral}, the base is a stored column, not DB-now, so a value
+ * {@link dbTxNowPlusMsLiteral}, the base is a stored column, not DB-now, so a value
  * derived from another column isn't re-anchored to the current instant.
  * `ms` is caller-computed (safe to inline); `columnExpr` must already be a safe
  * SQL fragment (a quoted column name), never caller input.
@@ -51,7 +62,7 @@ export function columnPlusMsLiteral(isPostgres: boolean, columnExpr: string, ms:
  * `ms` is caller-computed (safe to inline); `columnExpr` must already be a safe
  * SQL fragment (a quoted column name), never caller input.
  */
-export function columnOrNowPlusMsLiteral(
+export function columnOrTxNowPlusMsLiteral(
 	isPostgres: boolean,
 	columnExpr: string,
 	ms: number,
@@ -63,7 +74,7 @@ export function columnOrNowPlusMsLiteral(
 	const seconds = rounded / 1000;
 	// SQLite's `%Y-%m-%d %H:%M:%f` is fixed-width and zero-padded, so a lexical MAX
 	// on the formatted strings agrees with a chronological one.
-	return `STRFTIME('%Y-%m-%d %H:%M:%f', MAX(${columnExpr}, ${dbNowLiteral(false)}), '${seconds < 0 ? '' : '+'}${seconds} seconds')`;
+	return `STRFTIME('%Y-%m-%d %H:%M:%f', MAX(${columnExpr}, ${dbTxNowLiteral(false)}), '${seconds < 0 ? '' : '+'}${seconds} seconds')`;
 }
 
 /**
@@ -73,13 +84,13 @@ export function columnOrNowPlusMsLiteral(
  * `ms` is caller-computed (safe to inline); `columnExpr` must already be a safe
  * SQL fragment (a quoted column name), never caller input.
  */
-export function laterOfColumnAndNowPlusMsLiteral(
+export function laterOfColumnAndTxNowPlusMsLiteral(
 	isPostgres: boolean,
 	columnExpr: string,
 	ms: number,
 ): string {
-	const now = dbNowLiteral(isPostgres);
-	const offset = dbNowPlusMsLiteral(isPostgres, ms);
+	const now = dbTxNowLiteral(isPostgres);
+	const offset = dbTxNowPlusMsLiteral(isPostgres, ms);
 	if (isPostgres) {
 		return `GREATEST(COALESCE(${columnExpr}, ${now}), ${offset})`;
 	}

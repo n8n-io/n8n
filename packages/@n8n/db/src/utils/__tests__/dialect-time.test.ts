@@ -1,38 +1,40 @@
 import {
-	dbNowLiteral,
-	dbNowPlusMsLiteral,
-	laterOfColumnAndNowPlusMsLiteral,
+	dbClockNowLiteral,
+	dbClockNowPlusMsLiteral,
+	dbTxNowLiteral,
+	dbTxNowPlusMsLiteral,
+	laterOfColumnAndTxNowPlusMsLiteral,
 	parseDbTime,
 } from '../dialect-time';
 
-describe('dbNowLiteral', () => {
+describe('dbTxNowLiteral', () => {
 	it('uses millisecond precision on both dialects', () => {
-		expect(dbNowLiteral(true)).toBe('CURRENT_TIMESTAMP(3)');
-		expect(dbNowLiteral(false)).toBe("STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')");
+		expect(dbTxNowLiteral(true)).toBe('CURRENT_TIMESTAMP(3)');
+		expect(dbTxNowLiteral(false)).toBe("STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')");
 	});
 });
 
-describe('dbNowPlusMsLiteral', () => {
+describe('dbTxNowPlusMsLiteral', () => {
 	it('offsets the DB clock by whole milliseconds on postgres', () => {
-		expect(dbNowPlusMsLiteral(true, 1500)).toBe(
+		expect(dbTxNowPlusMsLiteral(true, 1500)).toBe(
 			"CURRENT_TIMESTAMP(3) + (1500 || ' milliseconds')::interval",
 		);
 	});
 
 	it('offsets the DB clock by seconds on sqlite', () => {
-		expect(dbNowPlusMsLiteral(false, 1500)).toBe(
+		expect(dbTxNowPlusMsLiteral(false, 1500)).toBe(
 			"STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '+1.5 seconds')",
 		);
 	});
 
 	it('rounds a fractional offset so the literal stays a plain number', () => {
-		expect(dbNowPlusMsLiteral(true, 1000.4)).toBe(
+		expect(dbTxNowPlusMsLiteral(true, 1000.4)).toBe(
 			"CURRENT_TIMESTAMP(3) + (1000 || ' milliseconds')::interval",
 		);
 	});
 
 	it('offsets the DB clock into the past on postgres', () => {
-		expect(dbNowPlusMsLiteral(true, -1500)).toBe(
+		expect(dbTxNowPlusMsLiteral(true, -1500)).toBe(
 			"CURRENT_TIMESTAMP(3) + (-1500 || ' milliseconds')::interval",
 		);
 	});
@@ -40,27 +42,27 @@ describe('dbNowPlusMsLiteral', () => {
 	// A '+-1.5 seconds' modifier would be invalid: STRFTIME returns NULL and the
 	// comparison silently matches nothing, so the sign must replace the '+'.
 	it('offsets the DB clock into the past on sqlite without a doubled sign', () => {
-		expect(dbNowPlusMsLiteral(false, -1500)).toBe(
+		expect(dbTxNowPlusMsLiteral(false, -1500)).toBe(
 			"STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '-1.5 seconds')",
 		);
 	});
 
 	it('treats a negative offset that rounds to zero as now on sqlite', () => {
-		expect(dbNowPlusMsLiteral(false, -0.4)).toBe(
+		expect(dbTxNowPlusMsLiteral(false, -0.4)).toBe(
 			"STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '+0 seconds')",
 		);
 	});
 });
 
-describe('laterOfColumnAndNowPlusMsLiteral', () => {
+describe('laterOfColumnAndTxNowPlusMsLiteral', () => {
 	it('takes the later of the column and the offset on postgres', () => {
-		expect(laterOfColumnAndNowPlusMsLiteral(true, '"backoffUntil"', 5000)).toBe(
+		expect(laterOfColumnAndTxNowPlusMsLiteral(true, '"backoffUntil"', 5000)).toBe(
 			'GREATEST(COALESCE("backoffUntil", CURRENT_TIMESTAMP(3)), CURRENT_TIMESTAMP(3) + (5000 || \' milliseconds\')::interval)',
 		);
 	});
 
 	it('takes the later of the column and the offset on sqlite', () => {
-		expect(laterOfColumnAndNowPlusMsLiteral(false, '"backoffUntil"', 5000)).toBe(
+		expect(laterOfColumnAndTxNowPlusMsLiteral(false, '"backoffUntil"', 5000)).toBe(
 			"MAX(COALESCE(\"backoffUntil\", STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '+5 seconds'))",
 		);
 	});
@@ -68,12 +70,47 @@ describe('laterOfColumnAndNowPlusMsLiteral', () => {
 	// SQLite's scalar MAX returns NULL as soon as one argument is NULL, so without
 	// the COALESCE a first failure would clear the deadline instead of setting it.
 	it('coalesces the column on both dialects, so a null one cannot swallow the offset', () => {
-		expect(laterOfColumnAndNowPlusMsLiteral(true, '"backoffUntil"', 5000)).toContain(
+		expect(laterOfColumnAndTxNowPlusMsLiteral(true, '"backoffUntil"', 5000)).toContain(
 			'COALESCE("backoffUntil"',
 		);
-		expect(laterOfColumnAndNowPlusMsLiteral(false, '"backoffUntil"', 5000)).toContain(
+		expect(laterOfColumnAndTxNowPlusMsLiteral(false, '"backoffUntil"', 5000)).toContain(
 			'COALESCE("backoffUntil"',
 		);
+	});
+});
+
+describe('dbClockNowLiteral', () => {
+	it('uses the statement clock at millisecond precision on postgres', () => {
+		expect(dbClockNowLiteral(true)).toBe('clock_timestamp()::timestamptz(3)');
+	});
+
+	it('matches the transaction literal on sqlite', () => {
+		expect(dbClockNowLiteral(false)).toBe(dbTxNowLiteral(false));
+	});
+});
+
+describe('dbClockNowPlusMsLiteral', () => {
+	it('offsets the statement clock by whole milliseconds on postgres', () => {
+		expect(dbClockNowPlusMsLiteral(true, 1500)).toBe(
+			"clock_timestamp()::timestamptz(3) + (1500 || ' milliseconds')::interval",
+		);
+	});
+
+	it('offsets the statement clock into the past on postgres', () => {
+		expect(dbClockNowPlusMsLiteral(true, -1500)).toBe(
+			"clock_timestamp()::timestamptz(3) + (-1500 || ' milliseconds')::interval",
+		);
+	});
+
+	it('rounds a fractional offset on postgres', () => {
+		expect(dbClockNowPlusMsLiteral(true, 1000.4)).toBe(
+			"clock_timestamp()::timestamptz(3) + (1000 || ' milliseconds')::interval",
+		);
+	});
+
+	it('matches the transaction literal on sqlite', () => {
+		expect(dbClockNowPlusMsLiteral(false, 1500)).toBe(dbTxNowPlusMsLiteral(false, 1500));
+		expect(dbClockNowPlusMsLiteral(false, -1500)).toBe(dbTxNowPlusMsLiteral(false, -1500));
 	});
 });
 

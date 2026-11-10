@@ -68,7 +68,7 @@ import type {
 import { TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { chunkIds } from '../utils/chunk-ids';
-import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
+import { dbTxNowLiteral, dbTxNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
 import { separate } from '../utils/separate';
 
 class PostgresLiveRowsRetrievalError extends UnexpectedError {
@@ -783,7 +783,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			qb.where({
 				stoppedAt: Raw(
 					(column) =>
-						`${column} <= ${dbNowPlusMsLiteral(isPostgres, -pruneDataMaxAge * Time.hours.toMilliseconds)}`,
+						`${column} <= ${dbTxNowPlusMsLiteral(isPostgres, -pruneDataMaxAge * Time.hours.toMilliseconds)}`,
 				),
 			});
 
@@ -802,7 +802,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 		return await this.createQueryBuilder()
 			.update(ExecutionEntity)
-			.set({ deletedAt: () => dbNowLiteral(isPostgres) })
+			.set({ deletedAt: () => dbTxNowLiteral(isPostgres) })
 			.where({
 				deletedAt: IsNull(),
 				// Only mark executions as deleted if they are in an end state
@@ -823,7 +823,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		const results = await this.find({
 			select: ['workflowId', 'id', 'storedAt'],
 			where: {
-				deletedAt: Raw((column) => `${column} <= ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
+				deletedAt: Raw((column) => `${column} <= ${dbTxNowPlusMsLiteral(isPostgres, -bufferMs)}`),
 				...(before === undefined ? {} : { id: LessThan(before) }),
 			},
 			order: { id: 'DESC' },
@@ -859,7 +859,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 				mode: 'manual',
 				// A run whose final data was never written still has its start status.
 				status: In(['success', 'error', 'crashed', 'canceled']),
-				deletedAt: Raw((column) => `${column} > ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
+				deletedAt: Raw((column) => `${column} > ${dbTxNowPlusMsLiteral(isPostgres, -bufferMs)}`),
 			},
 			relations: { metadata: true },
 			// An unsaved manual execution is soft-deleted when it finishes.

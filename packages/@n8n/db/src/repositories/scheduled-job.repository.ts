@@ -8,7 +8,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { ScheduledJob } from '../entities/scheduled-job';
 import type { ScheduledJobOwner, ScheduledJobOwnerRef } from '../entities/scheduled-job';
 import { ScheduledTask, ScheduledTaskStatus } from '../entities/scheduled-task';
-import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
+import { dbTxNowLiteral, dbTxNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
 
 /** The new clock values for one advanced job. */
 export interface JobAdvance {
@@ -105,8 +105,8 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		limit: number,
 		lookaheadMs = 0,
 	): Promise<{ now: Date; jobs: ScheduledJob[] } | undefined> {
-		const nowExpression = dbNowLiteral(this.isPostgres);
-		const dueExpression = dbNowPlusMsLiteral(this.isPostgres, lookaheadMs);
+		const nowExpression = dbTxNowLiteral(this.isPostgres);
+		const dueExpression = dbTxNowPlusMsLiteral(this.isPostgres, lookaheadMs);
 
 		const query = manager
 			.createQueryBuilder(ScheduledJob, 'job')
@@ -211,7 +211,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			owner.ownerMemberId === null ? '"ownerMemberId" IS NULL' : '"ownerMemberId" = :ownerMemberId';
 		await this.createQueryBuilder()
 			.update(ScheduledJob)
-			.set({ nextRunAt: () => dbNowPlusMsLiteral(this.isPostgres, -secondsInPast * 1000) })
+			.set({ nextRunAt: () => dbTxNowPlusMsLiteral(this.isPostgres, -secondsInPast * 1000) })
 			.where(`"ownerType" = :ownerType AND "ownerId" = :ownerId AND ${memberClause}`, {
 				ownerType: owner.ownerType,
 				ownerId: owner.ownerId,
