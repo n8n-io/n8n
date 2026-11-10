@@ -9,6 +9,7 @@ import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
 import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	type InstanceAiAgentNode,
 	type InstanceAiCredentialDestination,
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
@@ -3197,7 +3198,7 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 				],
 				children: [],
 				timeline: [],
-			},
+			} satisfies InstanceAiAgentNode,
 			status: 'completed',
 			backgroundTasks: [],
 		};
