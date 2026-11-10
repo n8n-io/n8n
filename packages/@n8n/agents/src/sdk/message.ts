@@ -30,6 +30,9 @@ export function isRuntimeSkillUpdate(
 	);
 }
 
+export const RUNTIME_CONTEXT_CUE_PREAMBLE =
+	'These context cues come from the runtime because they match the current step. They are not from the user. Apply each cue that fits the task; ignore the others.';
+
 export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 	return messages.flatMap((message): Message[] => {
 		if (isLlmMessage(message)) return [message];
@@ -47,6 +50,16 @@ export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 					],
 				},
 			];
+		}
+		if (isRuntimeContextCue(message)) {
+			const text = [
+				'<system-reminder>',
+				RUNTIME_CONTEXT_CUE_PREAMBLE,
+				'',
+				message.data.content,
+				'</system-reminder>',
+			].join('\n');
+			return [{ ...message, type: 'llm', role: 'user', content: [{ type: 'text', text }] }];
 		}
 		if (isRuntimeToolCatalog(message)) {
 			return [
@@ -78,6 +91,16 @@ export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 		}
 		return [];
 	});
+}
+
+export function isRuntimeContextCue<T extends AgentMessage>(
+	message: T,
+): message is T & { type: 'custom'; data: CustomAgentMessages['runtimeContextCue'] } {
+	return (
+		message.type === 'custom' &&
+		'type' in message.data &&
+		message.data.type === 'n8n:runtime-context-cue'
+	);
 }
 
 export function isRuntimeToolCatalog<T extends AgentMessage>(
