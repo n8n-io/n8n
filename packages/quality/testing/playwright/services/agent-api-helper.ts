@@ -89,6 +89,11 @@ export class AgentApiHelper {
 	}
 
 	async delete(projectId: string, agentId: string): Promise<void> {
+		// The delete route accepts only an archived agent.
+		const archived = await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/archive`,
+		);
+		if (!archived.ok()) throw new TestError(`Failed to archive agent: ${await archived.text()}`);
 		const response = await this.api.request.delete(
 			`/rest/projects/${projectId}/agents/v2/${agentId}`,
 		);
