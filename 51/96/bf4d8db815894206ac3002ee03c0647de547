@@ -1,0 +1,42 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environment.repository.integration.test.ts
+  s_7cda6668a07874::t_cc554ea1b212c7 1-11,13-20,22-28,30-71,73
+  s_7cda6668a07874::t_90383efa43504a 12,21,29,72
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_7cda6668a07874::t_53be67b18c3f20 27,57,90,94,100,141-155,206-216
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environment.resolver.integration.test.ts
+  s_7cda6668a07874::t_280d4a745f5c14 11,16,24,42,58,78-88
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-changes.integration.test.ts
+  s_7cda6668a07874::t_ba4b7748d2fef5 11,27,66,69,82,126-136
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review.repository.integration.test.ts
+  s_7cda6668a07874::t_158c578b55e13e 5,11,19,32,45,58-68,164,320-330
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_7cda6668a07874::t_055ef07c9d7fb3 40,88,128,147,173,284-299,965,3681-3695,3889
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-environment.repository.ts
+  s_7cda6668a07874::t_c10613a6206b8d 25,29-37,43-47,55,57,67-70,72,90-92,99,103-104,107-114,120-121,124-126,128
+packages/cli/src/modules/promotions.ee/promotion-environment.resolver.ts
+  s_7cda6668a07874::t_ef0e2fe7dd7d99 36,58-59
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_7cda6668a07874::t_e66cc01659ddba 110-120,147-154,320
+packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
+  s_7cda6668a07874::t_eef237bbe737da 219
+packages/cli/test/integration/promotion-review-inbox.test.ts
+  s_7cda6668a07874::t_f1130982e3fc39 6,11,138,170-181,208,226,372
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_7cda6668a07874::t_a24a2129d417f6 10,19,46,89,96,169,1050,1546,1575,1591,1630,1668,1670,1720,1726,1975,1996,2013,2049
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5196bf4d8db815894206ac3002ee03c0647de547",
+  "prompts": {},
+  "sessions": {
+    "s_7cda6668a07874": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f0ab7fa1-bb0c-4f43-ad46-46b0fb9c7ac0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

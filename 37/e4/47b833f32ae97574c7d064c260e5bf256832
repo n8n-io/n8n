@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/MicrosoftTeamTrigger.test.ts
+  s_45432d6c11fe01::t_d1a2183d02fe73 209-237
+  s_45432d6c11fe01::t_7f5251f6f6cf8e 255
+  s_45432d6c11fe01::t_46c93d297411db 508-512
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37e447b833f32ae97574c7d064c260e5bf256832",
+  "prompts": {},
+  "sessions": {
+    "s_45432d6c11fe01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ec53337-4498-42a3-9a31-d1c0a201d101",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

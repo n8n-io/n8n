@@ -1,0 +1,85 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/assistantCredits.store.test.ts
+  s_4b239ab2d9ccd1::t_bf89982e861ae5 1-152
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/module.descriptor.test.ts
+  s_4b239ab2d9ccd1::t_b1671a14b9d6ff 391-395
+  s_4b239ab2d9ccd1::t_5a6c661097ba30 389-390,396
+  s_4b239ab2d9ccd1::t_0dce1ad23c7009 21-27,384-388,397-436
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentCredits.api.ts
+  s_4b239ab2d9ccd1::t_d097e95d6cc2b2 1-10
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_4b239ab2d9ccd1::t_b0fcddc46bf29b 20,689,709,724-725,1290,1394,1400,1407-1408,1418,1432,1442
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-thread-metadata.service.test.ts
+  s_4b239ab2d9ccd1::t_46124e45498dd6 84-89,100-102
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_4b239ab2d9ccd1::t_b0fcddc46bf29b 18,114-116
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_4b239ab2d9ccd1::t_744241c9825c3d 753-756
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_4b239ab2d9ccd1::t_b17de328b8ce71 8,17-18,30,40,75-79
+packages/cli/src/modules/agents/system-agents/system-agent-thread-metadata.service.ts
+  s_4b239ab2d9ccd1::t_16ff4e01cf116f 33-34,42,44,52
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_4b239ab2d9ccd1::t_a7996f26d77033 34,139-140,979-980
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_4b239ab2d9ccd1::t_744241c9825c3d 94-95
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_4b239ab2d9ccd1::t_a7996f26d77033 40,199-200,1059-1060,1105-1106,1186,1194-1195
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiView.vue
+  s_4b239ab2d9ccd1::t_a7996f26d77033 15,111
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_4b239ab2d9ccd1::t_744241c9825c3d 118-121,449-453
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.test.ts
+  s_4b239ab2d9ccd1::t_bf89982e861ae5 292-293,295,297-298,301-302
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_4b239ab2d9ccd1::t_d097e95d6cc2b2 296-313,315
+packages/cli/src/modules/instance-ai/instance-ai-credit.service.ts
+  s_4b239ab2d9ccd1::t_9ff0fa92869dd5 18-26,37,54-55,70-74,178,320-321,325,340-345,347-351
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module-init.test.ts
+  s_4b239ab2d9ccd1::t_ffe2b455b1c106 18,21,73-76,132-133,153-154,301,312,318-319
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantAgentThreads.store.test.ts
+  s_4b239ab2d9ccd1::t_5e526229c243b2 12,23-26,50,54-96
+packages/@n8n/api-types/src/index.ts
+  s_4b239ab2d9ccd1::t_3f835d21605a01 776
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.controller.ts
+  s_4b239ab2d9ccd1::t_ed78e3b8e7d6d9 1-5,10,25-38
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-thread-credits.service.ts
+  s_4b239ab2d9ccd1::t_4327b166ba81c9 1-59
+packages/@n8n/api-types/src/schemas/assistant-thread-credits.schema.ts
+  s_4b239ab2d9ccd1::t_3f835d21605a01 1-8
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_4b239ab2d9ccd1::t_9ff0fa92869dd5 123-129
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-thread-credits.service.test.ts
+  s_4b239ab2d9ccd1::t_24c887ab334165 1-89
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.controller.test.ts
+  s_4b239ab2d9ccd1::t_b1671a14b9d6ff 77
+  s_4b239ab2d9ccd1::t_13b05164893857 10,17-18,49-76,78
+packages/cli/src/modules/instance-ai/__tests__/credit-counting.test.ts
+  s_4b239ab2d9ccd1::t_4aa4ee1811c734 569-647
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.store.ts
+  s_4b239ab2d9ccd1::t_d097e95d6cc2b2 15,58-59,154-181,195-197
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiViewHeader.test.ts
+  s_4b239ab2d9ccd1::t_1cd9580b9810c3 6,8-10,34-49,69-92
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_4b239ab2d9ccd1::t_53861c12585e8f 24,110-111,113-116,416
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_4b239ab2d9ccd1::t_744241c9825c3d 661
+  s_4b239ab2d9ccd1::t_06b6eb3dbd68a4 416-423
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantCredits.store.ts
+  s_4b239ab2d9ccd1::t_07832c267b14de 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e6393ca86692b41dfef5fb79159d93bf1ca69372",
+  "prompts": {},
+  "sessions": {
+    "s_4b239ab2d9ccd1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81067f7a-bf99-4a1a-922b-436f0b09a4bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

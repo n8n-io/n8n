@@ -1,0 +1,110 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_53e8d1b413a99f::t_632b7ed99e6697 345,363-366
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_53e8d1b413a99f::t_c9af5b5af68093 57
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_53e8d1b413a99f::t_3708b2854538c6 13-19,73-74,77-82,85-86,90-91,93-94,102,104-107,109-112,115,117,126,131,133-136,138-145,148,150,161-176,178-182,191,196-197,199,205-216,221-223,225,232-233,235-236,239-240,242-246,251-258,260-266,315-316,318,321-329,331-338,408,410-411,413,415-416,421,423,444,459,461,464-466,468-469,474,507,516-520,522,525-527,537-543,545,547,551-552,555,558-559,563,565-566,571,574,579
+  s_53e8d1b413a99f::t_1ede8c7e0e9f38 72,84,103,132,317
+  s_53e8d1b413a99f::t_64707ade86367e 217-220,381
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useSetupPanelState.ts
+  s_53e8d1b413a99f::t_d389df178c902d 12
+  s_53e8d1b413a99f::t_c9af5b5af68093 27,73
+packages/frontend/editor-ui/src/features/ai/instanceAi/artifactThread.ts
+  s_53e8d1b413a99f::t_c0b13c00626874 10-12,17-22,43
+  s_53e8d1b413a99f::t_53385bc617f69b 1-5,8-9,13-16,25-27,29-42,44
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiWorkflowPreview.test.ts
+  s_53e8d1b413a99f::t_95730ea32af051 3,39-42
+  s_53e8d1b413a99f::t_d2bb1528d9d155 2
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useBuildingArtifactIds.ts
+  s_53e8d1b413a99f::t_c9af5b5af68093 22,32-33,38
+  s_53e8d1b413a99f::t_0836b60cb3b37f 18-19
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_53e8d1b413a99f::t_632b7ed99e6697 188
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/createThreadComponentRenderer.ts
+  s_53e8d1b413a99f::t_95730ea32af051 2,20-22
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_53e8d1b413a99f::t_fcd3e3ced280d6 83,85-89,92-93,95
+  s_53e8d1b413a99f::t_95730ea32af051 2,17-19
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTreeArtifactTurns.ts
+  s_53e8d1b413a99f::t_123163c71efaeb 48,51,55-56,66,69-70,75
+  s_53e8d1b413a99f::t_64707ade86367e 7
+  s_53e8d1b413a99f::t_c093f98c909700 1-6,8-38,43-47,59,62-65,67-68,71-74,76-100
+  s_53e8d1b413a99f::t_f7d5a7456fdcc6 39-42,49-50,52-54,57-58,60-61
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useSetupPanelExecution.ts
+  s_53e8d1b413a99f::t_c9af5b5af68093 109-111
+  s_53e8d1b413a99f::t_d389df178c902d 43
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_53e8d1b413a99f::t_db6676d845d006 651,659,720,1819
+  s_53e8d1b413a99f::t_863f9371f16a15 69
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useSetupPanelExecution.test.ts
+  s_53e8d1b413a99f::t_95730ea32af051 2,61-63
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_53e8d1b413a99f::t_2ffea91ee4ec13 3-34
+  s_53e8d1b413a99f::t_dd91118a7f98c6 1418,1428,1443-1445
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_53e8d1b413a99f::t_c9af5b5af68093 215-216,218,220
+packages/frontend/editor-ui/src/features/ai/instanceAi/artifactTurns.ts
+  s_53e8d1b413a99f::t_df4935151c4667 1-29,33-56,63-83
+  s_53e8d1b413a99f::t_390d74616582e4 30-32
+  s_53e8d1b413a99f::t_123163c71efaeb 57-62
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_53e8d1b413a99f::t_95730ea32af051 2,68,1773
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_53e8d1b413a99f::t_64707ade86367e 455-457,474-476,497-499,519-521,570-572
+  s_53e8d1b413a99f::t_1f4612f95f5f2b 2,25,218-219,425,543,547
+  s_53e8d1b413a99f::t_ed0dcaf7a84adc 192-194
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useIsAgentWorking.ts
+  s_53e8d1b413a99f::t_64707ade86367e 24
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantArtifactThread.ts
+  s_53e8d1b413a99f::t_5a31f0b58de8b5 8,13-14,33,38-39,46,55,67
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/setupPanel/__tests__/InstanceAiSetupPanel.interactions.test.ts
+  s_53e8d1b413a99f::t_cb3f2b2a57facb 26
+  s_53e8d1b413a99f::t_95730ea32af051 2,348-351
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/artifactThread.test.ts
+  s_53e8d1b413a99f::t_c8e746c70d5568 28
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_53e8d1b413a99f::t_95730ea32af051 2,73
+  s_53e8d1b413a99f::t_70b53e0a41b40e 3
+  s_53e8d1b413a99f::t_f932b1b928e1e2 225,234-237,249,253-256,259,268-270
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiArtifactsPanel.test.ts
+  s_53e8d1b413a99f::t_41f5d7c6605c0c 8-13
+  s_53e8d1b413a99f::t_fcd3e3ced280d6 528,530-534,537-538
+  s_53e8d1b413a99f::t_95730ea32af051 2,28-31
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useAgentMutationRefresh.ts
+  s_53e8d1b413a99f::t_c9af5b5af68093 13-15
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_53e8d1b413a99f::t_123163c71efaeb 461-464,466,469-471,476,478-479
+  s_53e8d1b413a99f::t_53385bc617f69b 732-734
+  s_53e8d1b413a99f::t_374d8672eb064d 698,717,735,737-738
+  s_53e8d1b413a99f::t_fe0d0c9fafe120 13,15,194,200,207,231,253,265,271,439-442,444-445,453,465,472,477,488-489
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_53e8d1b413a99f::t_c9af5b5af68093 160-162
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/useAgentMutationRefresh.test.ts
+  s_53e8d1b413a99f::t_95730ea32af051 2,63-64
+  s_53e8d1b413a99f::t_70b53e0a41b40e 3
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTreeArtifactTurns.test.ts
+  s_53e8d1b413a99f::t_d2bb1528d9d155 3,42-45,55,65
+  s_53e8d1b413a99f::t_c8e746c70d5568 1-2,4-41,46-54,56-64,66-172
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantArtifactTurns.test.ts
+  s_53e8d1b413a99f::t_64707ade86367e 122-124
+  s_53e8d1b413a99f::t_cfa0723f57f543 6,10-12,15,17,42,69,77,80-84,92,95-113,115-121,125-134
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantArtifactTurns.ts
+  s_53e8d1b413a99f::t_b636ea372c43f7 3,11,15,20-22,40,82-95,99,102,105,108,110,112,116-118
+  s_53e8d1b413a99f::t_64707ade86367e 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b7959f8f1e5f16ed4ebb8b9b7d4d5ba75db251a1",
+  "prompts": {},
+  "sessions": {
+    "s_53e8d1b413a99f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c09ae1ae-1bdf-4e66-8a6d-f7eb7997f339",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

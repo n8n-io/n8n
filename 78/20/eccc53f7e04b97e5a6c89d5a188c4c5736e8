@@ -1,0 +1,60 @@
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-trace-input.test.ts
+  s_99a275355d51ed::t_4f904301ff635d 35-44
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_99a275355d51ed::t_5bbdee73fed794 29,309-319
+  s_99a275355d51ed::t_a4ca9970d63a01 931,1043
+  s_99a275355d51ed::t_72362f55da4a9d 130,282-283,285,287-288,293-294,297,302,304-305,320-348,783
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_99a275355d51ed::t_777f91b94f3d6c 71-82
+packages/@n8n/instance-ai/skills/data-table-manager/references/data-table-playbook.md
+  s_99a275355d51ed::t_55d239486b46e0 151
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-trace-input.ts
+  s_99a275355d51ed::t_4f904301ff635d 35-38,40-46,53,63
+  s_99a275355d51ed::t_d9aef10fd85ec0 39
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_99a275355d51ed::t_ccb0abab290c80 50
+  s_99a275355d51ed::t_777f91b94f3d6c 648,743,915-923,930-931
+packages/@n8n/instance-ai/src/index.ts
+  s_99a275355d51ed::t_846d94d9781718 815-816
+packages/@n8n/instance-ai/src/tools/attachments/parse-file.tool.ts
+  s_99a275355d51ed::t_6dcdfb78a6c94f 157-275,279,283,286-290,292-297,299-302,314-331,333-338
+  s_99a275355d51ed::t_976c332d6acdba 2-6,24
+  ai_agent 304-312
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_99a275355d51ed::t_61d40eb2b4ea5b 1201-1202
+  s_99a275355d51ed::t_b0d0faa81d20f7 783-817
+packages/@n8n/instance-ai/src/types.ts
+  s_99a275355d51ed::t_8db7423b308ad8 1879-1884
+  s_99a275355d51ed::t_7d118b3a99c11b 1689-1700
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_99a275355d51ed::t_1a06480f277814 18,268-287
+packages/@n8n/instance-ai/docs/tools.md
+  s_99a275355d51ed::t_55d239486b46e0 1242-1251,1255-1256
+packages/@n8n/instance-ai/src/tools/attachments/__tests__/parse-file.tool.test.ts
+  s_99a275355d51ed::t_c1e012e62d7551 2,272-344
+  ai_agent 3-7
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-turn-trace.ts
+  s_99a275355d51ed::t_4f904301ff635d 47-50,157
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_99a275355d51ed::t_5bbdee73fed794 77-80,254
+  ai_agent 255
+  s_99a275355d51ed::t_5343b88b28c0f4 173,186,218,238-240,242-244,256,265
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_99a275355d51ed::t_c170fa3c4d36a6 256-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7820eccc53f7e04b97e5a6c89d5a188c4c5736e8",
+  "prompts": {},
+  "sessions": {
+    "s_99a275355d51ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3ae5620-19a8-43a2-827b-ae8615bbd509",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

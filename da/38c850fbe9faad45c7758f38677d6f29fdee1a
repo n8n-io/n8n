@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_c14973217c3406::t_46a4f5d1baa676 236-237,1901
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_c14973217c3406::t_3e888866f716b8 15,983-1035,1037-1066,1068-1069,1072-1073,1081-1083,1087-1090,1098
+  s_c14973217c3406::t_2e1e78f789329e 1036
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_c14973217c3406::t_61a6e5aec2e328 9,16,131-134,205-211,238-242,251,256-257,262,269,275-280,300-317,479,487-489
+  s_c14973217c3406::t_2e1e78f789329e 252
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_c14973217c3406::t_49419a670859de 229,241-247,249-259
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_c14973217c3406::t_af1c47fb9a10fd 1
+  s_c14973217c3406::t_d77c8310a819f9 873-890,898-902,904-949
+  s_c14973217c3406::t_d008307464ff8d 891-892,897
+  s_c14973217c3406::t_2e1e78f789329e 893-895
+  s_c14973217c3406::t_06baf02e8c7ab4 903
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "da38c850fbe9faad45c7758f38677d6f29fdee1a",
+  "prompts": {},
+  "sessions": {
+    "s_c14973217c3406": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84e60ee5-595c-4efd-81c6-5222a74371cb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

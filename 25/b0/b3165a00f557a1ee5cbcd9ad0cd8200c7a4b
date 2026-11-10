@@ -1,0 +1,80 @@
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_22e68c351b3f9a::t_8ce1d448ef76cf 44,70
+packages/modules/promotions/frontend/src/composables/usePromotionBindings.test.ts
+  s_22e68c351b3f9a::t_06f744a20af116 278-290
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_22e68c351b3f9a::t_6460948fcecd5b 310-325
+packages/modules/promotions/frontend/src/components/ApplyInstanceDialog.test.ts
+  s_22e68c351b3f9a::t_aa966d9b62f177 339-360
+packages/modules/promotions/frontend/src/promotionErrors.ts
+  s_22e68c351b3f9a::t_9137583e6ec7ee 1-8
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_22e68c351b3f9a::t_00d3caabfea8ef 4,970
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.test.ts
+  s_22e68c351b3f9a::t_8d5497ac631e7d 1-4,5,7-16,21-28,29-46,48-65
+  s_0da4b348b3b902::t_d97d793e2c3664 6,17-19,47
+  s_0da4b348b3b902::t_a09964db3376d2 20
+packages/cli/src/public-api/v1/shared/spec/responses/locked.yml
+  s_22e68c351b3f9a::t_8ce1d448ef76cf 1
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_22e68c351b3f9a::t_a364ec621bd360 2863-2896
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_22e68c351b3f9a::t_71a199ce7bf9b6 157,163,338,344,362,367,386,392,414,530,536,557,565,587,594,655,661-662,685,693,710,717
+  s_0da4b348b3b902::t_8732bebf89a534 409
+packages/modules/promotions/frontend/src/components/ApplyInstanceDialog.vue
+  s_22e68c351b3f9a::t_e0ff0df4f52be4 20
+  s_22e68c351b3f9a::t_acc0971d59b17e 140-143
+packages/modules/promotions/frontend/src/components/PromotionBindingsDialog.test.ts
+  s_22e68c351b3f9a::t_06f744a20af116 6,344-365
+  s_22e68c351b3f9a::t_cf55b1a5ed6cf8 366-369
+packages/modules/promotions/frontend/src/composables/usePromotionBindings.ts
+  s_22e68c351b3f9a::t_3cbc628d369973 8,39-40,253-255
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_22e68c351b3f9a::t_3cbc628d369973 10663
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_22e68c351b3f9a::t_de6a49062b322e 5,62-63
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_22e68c351b3f9a::t_ddc64716486567 5,75-76
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/connectPromotionCheckout.generated.yml
+  s_22e68c351b3f9a::t_2d4791a217809a 5,35-36
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_22e68c351b3f9a::t_a132e731eead06 5,68-69
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_22e68c351b3f9a::t_d4713cb19b81ad 5,79-80
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionEnvironment.generated.yml
+  s_22e68c351b3f9a::t_04e608ba6c45f6 5,24-25
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  s_22e68c351b3f9a::t_99eabf57c1a148 28-29
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_22e68c351b3f9a::t_e00ffd68c8dd0f 5,51-52
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_22e68c351b3f9a::t_7d1137b466a856 5,58-59
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionEnvironment.generated.yml
+  s_22e68c351b3f9a::t_af347c8a11ce71 5,98-99
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
+  s_22e68c351b3f9a::t_62524b7f076a35 5,93-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "25b0b3165a00f557a1ee5cbcd9ad0cd8200c7a4b",
+  "prompts": {},
+  "sessions": {
+    "s_0da4b348b3b902": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39a28ab-fdbc-4a8e-8e76-7040acec36d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_22e68c351b3f9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13a8e809-843c-4729-a542-7d2b362b2bbb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
