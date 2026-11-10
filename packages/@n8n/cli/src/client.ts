@@ -119,6 +119,15 @@ export interface PromotionExpectedSource {
 	commitSha: string;
 }
 
+/**
+ * A project Promote or Apply always includes the project itself, so an empty selection covers
+ * only the project.
+ */
+export interface PromotionSelection {
+	workflowIds?: string[];
+	folderIds?: string[];
+}
+
 /** References in a package that must be set up on this instance before Apply can import it. */
 export interface PromotionApplyCheck {
 	missingProjects: Array<Record<string, unknown>>;
@@ -497,9 +506,13 @@ export class N8nClient {
 		);
 	}
 
-	async promoteProjectSelection(projectId: string, workflowIds: string[], commitMessage?: string) {
+	async promoteProjectSelection(
+		projectId: string,
+		selection: PromotionSelection,
+		commitMessage?: string,
+	) {
 		return await this.post<PromotePackageResult>(`/promotions/projects/${projectId}/promote`, {
-			workflowIds,
+			...selection,
 			// Dropped by JSON serialization when undefined, so the server default applies.
 			commitMessage,
 		});
@@ -507,11 +520,11 @@ export class N8nClient {
 
 	async applyProjectSelection(
 		projectId: string,
-		workflowIds: string[],
+		selection: PromotionSelection,
 		expectedSource?: PromotionExpectedSource,
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply`, {
-			workflowIds,
+			...selection,
 			// Dropped by JSON serialization when undefined, so the branch tip is applied.
 			expectedSource,
 		});
@@ -519,12 +532,12 @@ export class N8nClient {
 
 	async continueApplyProjectSelection(
 		projectId: string,
-		workflowIds: string[],
+		selection: PromotionSelection,
 		expectedSource: PromotionExpectedSource,
 		confirmDestructiveChanges?: boolean,
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply/continue`, {
-			workflowIds,
+			...selection,
 			expectedSource,
 			confirmDestructiveChanges,
 		});

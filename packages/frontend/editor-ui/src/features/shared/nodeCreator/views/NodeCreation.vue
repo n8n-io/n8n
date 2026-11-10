@@ -29,13 +29,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
-import {
-	N8nAssistantIcon,
-	N8nButton,
-	N8nButtonList,
-	N8nIconButton,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nIcon, N8nButton, N8nButtonList, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -289,7 +283,7 @@ function openCommandBar(event: MouseEvent) {
 			>
 				<template #default>
 					<div>
-						<N8nAssistantIcon size="large" />
+						<N8nIcon icon="n8n-assistant" :size="18" />
 					</div>
 				</template>
 			</N8nButton>
