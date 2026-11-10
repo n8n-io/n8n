@@ -2363,8 +2363,6 @@ export class InstanceAiAdapterService {
 					: workflow.connections;
 
 				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
-				const refusedRun = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
-				if (refusedRun) return refusedRun;
 
 				// Force-save AI-initiated executions so that follow-up
 				// `executions(list/get/debug)` calls can read the result, regardless of
@@ -2489,6 +2487,12 @@ export class InstanceAiAdapterService {
 						...(error ? { error: redactTelemetryText(error) } : {}),
 					});
 				};
+
+				const refusedRun = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
+				if (refusedRun) {
+					trackBuilderExecutedWorkflow('error', refusedRun.error);
+					return refusedRun;
+				}
 
 				try {
 					const executionId = await workflowRunner.run(runData);
@@ -2854,7 +2858,10 @@ export class InstanceAiAdapterService {
 
 				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
 				const refusedRun = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
-				if (refusedRun) return describe(refusedRun);
+				if (refusedRun) {
+					trackStepRun('error', refusedRun.error);
+					return describe(refusedRun);
+				}
 
 				try {
 					const executionId = await workflowRunner.run(runData);

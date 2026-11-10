@@ -6475,10 +6475,8 @@ describe('createExecutionAdapter run()', () => {
 
 	it('refuses a run the user cannot make through their own access, before it starts', async () => {
 		const node = { id: 'n1', name: 'Send', type: 'n8n-nodes-base.slack', typeVersion: 1 };
-		const { adapter, mockWorkflowRunner, mockExecutionPersistence } = createRunAdapterForTests({
-			id: 'wf-1',
-			nodes: [node],
-		});
+		const { adapter, mockWorkflowRunner, mockExecutionPersistence, mockTelemetry } =
+			createRunAdapterForTests({ id: 'wf-1', nodes: [node] }, { threadId: 'thread-1' });
 		const checker = mock<CredentialsPermissionChecker>();
 		checker.checkForUser.mockRejectedValue(
 			new UserError('Node "Send" uses the credential "Bot", which you cannot use'),
@@ -6497,6 +6495,10 @@ describe('createExecutionAdapter run()', () => {
 			ignoreGlobalUseScope: true,
 		});
 		expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({ status: 'error' }),
+		);
 	});
 
 	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {
@@ -6747,7 +6749,7 @@ describe('createExecutionAdapter runStep()', () => {
 	});
 
 	it('refuses a step the user cannot run through their own access, before it starts', async () => {
-		const harness = createRunAdapterForTests(chainWorkflow);
+		const harness = createRunAdapterForTests(chainWorkflow, { threadId: 'thread-1' });
 		const checker = mock<CredentialsPermissionChecker>();
 		checker.checkForUser.mockRejectedValue(
 			new UserError('Node "Send" uses the credential "Bot", which you cannot use'),
@@ -6764,6 +6766,10 @@ describe('createExecutionAdapter runStep()', () => {
 			error: 'Node "Send" uses the credential "Bot", which you cannot use',
 		});
 		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+		expect(harness.mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({ status: 'error' }),
+		);
 	});
 
 	it('rejects a disabled node instead of starting a run the engine would refuse', async () => {

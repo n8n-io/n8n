@@ -1122,13 +1122,33 @@ describe('InstanceAiSetupCredential', () => {
 			const picker = rendered.getByRole('button', { name: 'Select existing connection' });
 			expect(picker).toHaveAttribute('data-project-id', 'workflow-project');
 			expect(picker).toHaveAttribute('data-workflow-id', 'wf');
-			// The scoped list, not the shared slice that another scope's fetch may replace.
-			expect(picker).toHaveAttribute('data-credential-ids', credential.id);
 			await fireEvent.click(picker);
 			expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0][1]).toBe('existing');
 			expect(store.createNewCredential).not.toHaveBeenCalled();
 		},
 	);
+
+	it('gives the picker no credentials while the store holds another scope', async () => {
+		const store = mockedStore(useCredentialsStore);
+		const credential = { ...savedCredential, isResolvable: true };
+		store.hasUsableCredentialsForScope = vi.fn().mockReturnValue(false);
+		store.getUsableCredentialByType = vi.fn().mockReturnValue([credential]);
+		store.getCredentialById = vi.fn().mockReturnValue(credential);
+		const rendered = renderComponent({
+			props: {
+				node: {
+					...node,
+					credentials: { serviceApi: { id: credential.id, name: credential.name } },
+				},
+			},
+		});
+		await flushPromises();
+
+		expect(rendered.getByRole('button', { name: 'Select existing connection' })).toHaveAttribute(
+			'data-credential-ids',
+			'',
+		);
+	});
 
 	it('offers an existing credential before the announced workflow node exists', async () => {
 		const store = mockedStore(useCredentialsStore);
