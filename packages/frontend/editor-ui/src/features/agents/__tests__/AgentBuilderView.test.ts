@@ -206,6 +206,7 @@ const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
 const repointConfigMock = vi.fn();
 const deleteAgentMock = vi.fn().mockResolvedValue(undefined);
+const archiveAgentMock = vi.fn();
 const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
@@ -272,6 +273,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	updateAgentSkill: updateAgentSkillMock,
 	createAgentSkill: createAgentSkillMock,
 	deleteAgent: deleteAgentMock,
+	archiveAgent: archiveAgentMock,
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 	getModelCatalog: vi.fn().mockResolvedValue({}),
@@ -3764,6 +3766,41 @@ describe('AgentBuilderView — configuration validation', () => {
 			expect(updateConfigMock).toHaveBeenCalledTimes(1);
 		},
 	);
+
+	it('archives only after a skipped save persists', async () => {
+		archiveAgentMock.mockReset();
+		archiveAgentMock.mockResolvedValue(makeAgentResponse({ isArchived: true }));
+		agentPermissionsMock.canDelete.value = true;
+		const wrapper = await renderView();
+		agentPermissionsMock.canDelete.value = false;
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		const header = wrapper.getComponent({ name: 'AgentBuilderHeader' });
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<string | undefined>;
+		};
+		vm.onConfigFieldUpdate({ instructions: 'Local edit' });
+		const saving = vm.flushAutosave();
+		assistant.vm.$emit('update:building', true);
+		await expect(saving).resolves.toBe('skipped');
+		assistant.vm.$emit('update:building', false);
+		await nextTick();
+
+		updateConfigMock.mockRejectedValueOnce(new Error('Save failed'));
+		header.vm.$emit('header-action', 'archive');
+		await flushPromises();
+		expect(archiveAgentMock).not.toHaveBeenCalled();
+
+		header.vm.$emit('header-action', 'archive');
+		await flushPromises();
+		expect(updateConfigMock).toHaveBeenLastCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ instructions: 'Local edit' }),
+			'hash-1',
+		);
+		expect(archiveAgentMock).toHaveBeenCalledTimes(1);
+	});
 
 	it('surfaces unpublished workflow tools in a modal and aborts the publish', async () => {
 		const notPublished = {

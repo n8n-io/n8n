@@ -2847,11 +2847,8 @@ async function onArchiveAgent() {
 	const targetAgentId = agentId.value;
 	if (!target) return;
 	// Save pending edits first. The backend rejects edits to an archived agent.
-	try {
-		await flushAutosave();
-	} catch {
-		return;
-	}
+	// A locked editor has no edits of its own to save.
+	if (!isEditingLocked.value && !(await flushBeforePublish())) return;
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	const updated = await archive(target);
 	if (updated && !isStaleAgentTarget(targetProjectId, targetAgentId)) onUnpublished(updated);

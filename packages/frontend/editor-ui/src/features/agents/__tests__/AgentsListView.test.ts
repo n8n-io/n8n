@@ -202,11 +202,15 @@ const mountView = async () => {
 	return wrapper;
 };
 
+// The route query is shared state. Reset it so no suite inherits it.
+beforeEach(() => {
+	mocks.routeQuery = {};
+});
+
 describe('AgentsListView — project page', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
-		mocks.routeQuery = {};
 		mocks.isSummaryEnabled = false;
 		templatesEnabled.value = false;
 		instanceAiReady.value = false;
