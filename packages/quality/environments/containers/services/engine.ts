@@ -39,7 +39,8 @@ export const ENGINE_CONTROL_PLANE_PORT = 3001;
  * a response. The stack mounts one host dir here in both containers. The stack
  * owns the path: a caller's `N8N_STORAGE_PATH` or deprecated
  * `N8N_BINARY_DATA_STORAGE_PATH` would point the planes at different dirs, or
- * fail the start when the two differ.
+ * fail the start when the two differ. The mode is pinned too: in queue mode
+ * n8n defaults to `database`, which the engine cannot reach.
  */
 export const ENGINE_SHARED_STORAGE_PATH = '/data/storage';
 
@@ -98,6 +99,7 @@ function bypassProxyBetweenPlanes(env: Record<string, string>, projectName: stri
 
 function applySharedStoragePath(env: Record<string, string>): void {
 	env.N8N_STORAGE_PATH = ENGINE_SHARED_STORAGE_PATH;
+	env.N8N_DEFAULT_BINARY_DATA_MODE = 'filesystem';
 	delete env.N8N_BINARY_DATA_STORAGE_PATH;
 }
 

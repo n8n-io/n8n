@@ -2,7 +2,7 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EngineRuntime, ExecutionResponseSender } from '@n8n/engine';
+import type { EngineRuntime, ExecutionResponseSender, LifecycleEventCallback } from '@n8n/engine';
 import {
 	AllowAllAdmittance,
 	createDataSource,
@@ -27,13 +27,19 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { NodeTypes } from '@/node-types';
 
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
-import { EngineControlPlaneClient } from './engine-control-plane-client';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
 import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
 import { EngineTlsMaterial } from './engine-tls-material';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
+
+/** The data plane ends of the execution channel. */
+export interface EngineV2ChannelSenders {
+	responseSender: ExecutionResponseSender;
+	/** Without it, the engine publishes no lifecycle events. */
+	lifecycleEventSender?: { send: LifecycleEventCallback };
+}
 
 /**
  * Runs the engine v2 data plane inside the n8n process.
@@ -66,7 +72,6 @@ export class EngineV2Runtime {
 		private readonly tlsMaterial: EngineTlsMaterial,
 		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
-		private readonly controlPlaneClient: EngineControlPlaneClient,
 		private readonly credentialsClient: EngineCredentialsClient,
 		transport: EngineControlPlaneTransport,
 		private readonly subWorkflowClient: EngineSubWorkflowClient,
@@ -79,11 +84,13 @@ export class EngineV2Runtime {
 		this.dataTablesHttp = transport.forScope('data-tables:use');
 	}
 
-	async init(responseSender: ExecutionResponseSender = noopExecutionResponseSender): Promise<void> {
+	async init(
+		senders: EngineV2ChannelSenders = { responseSender: noopExecutionResponseSender },
+	): Promise<void> {
 		try {
 			await this.initDb();
 
-			this.initEngine(responseSender);
+			this.initEngine(senders);
 
 			await this.initServer();
 		} catch (error) {
@@ -112,7 +119,7 @@ export class EngineV2Runtime {
 		await this.dataSource.runMigrations();
 	}
 
-	private initEngine(responseSender: ExecutionResponseSender): void {
+	private initEngine({ responseSender, lifecycleEventSender }: EngineV2ChannelSenders): void {
 		assert(this.dataSource, 'Engine v2 cannot start without a data source');
 
 		const stopping = new AbortController();
@@ -128,8 +135,9 @@ export class EngineV2Runtime {
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
 			externalDependencies: ({ executionStore, stepStore }) => ({
-				lifecycleEventCallback: async (events, signal) =>
-					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
+				lifecycleEventCallback: lifecycleEventSender
+					? async (events, signal) => await lifecycleEventSender.send(events, signal)
+					: undefined,
 				// The same call the v1 hard delete makes: one prefix per run, safe to repeat.
 				deleteExecutionFiles: async ({ workflowId, executionId }) =>
 					await this.binaryDataService.deleteMany([

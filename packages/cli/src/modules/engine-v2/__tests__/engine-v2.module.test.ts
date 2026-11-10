@@ -10,9 +10,12 @@ import { RedisClientService } from '@n8n/backend-services';
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
 import { EngineTlsMaterial } from '../engine-tls-material';
+import { EngineV2LifecycleSubscriptions } from '../engine-lifecycle-event-subscriptions';
 import { EngineV2Module } from '../engine-v2.module';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { ExecutionChannelReceiver } from '../execution-channel/execution-channel-receiver';
+import { ExecutionChannelSender } from '../execution-channel/execution-channel-sender';
+import { LifecycleEventChannelSender } from '../execution-channel/lifecycle-event-sender';
 import type { RedisChannelSubscriber } from '../execution-channel/redis-execution-channel-subscriber';
 
 const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
@@ -31,6 +34,7 @@ describe('EngineV2Module', () => {
 	let client: EngineDataPlaneClient;
 	let controlPlaneServer: EngineControlPlaneServer;
 	let webhookResponseRegistry: EngineV2WebhookResponseRegistry;
+	let lifecycleSubscriptions: EngineV2LifecycleSubscriptions;
 	let redisClientService: RedisClientService;
 	let subscriber: ReturnType<typeof mock<RedisChannelSubscriber>>;
 
@@ -49,6 +53,7 @@ describe('EngineV2Module', () => {
 		client = mockInstance(EngineDataPlaneClient);
 		controlPlaneServer = mockInstance(EngineControlPlaneServer);
 		webhookResponseRegistry = mockInstance(EngineV2WebhookResponseRegistry);
+		lifecycleSubscriptions = mockInstance(EngineV2LifecycleSubscriptions);
 		subscriber = mock<RedisChannelSubscriber>();
 		mockInstance(GlobalConfig, { redis: mock<GlobalConfig['redis']>({ prefix: 'n8n' }) });
 		redisClientService = mockInstance(RedisClientService, {
@@ -108,6 +113,36 @@ describe('EngineV2Module', () => {
 			);
 			expect(runtime.init).toHaveBeenCalledWith(expect.anything());
 			expect(redisClientService.createClient).not.toHaveBeenCalled();
+		});
+
+		it('carries lifecycle events in memory from the engine to the subscriptions', async () => {
+			await module.init();
+
+			expect(lifecycleSubscriptions.useReceiver).toHaveBeenCalledWith(
+				expect.any(ExecutionChannelReceiver),
+			);
+			expect(runtime.init).toHaveBeenCalledWith({
+				responseSender: expect.any(ExecutionChannelSender),
+				lifecycleEventSender: expect.any(LifecycleEventChannelSender),
+			});
+		});
+
+		it('delivers a lifecycle event from the engine to its subscriber', async () => {
+			await module.init();
+			const [receiver] = vi.mocked(lifecycleSubscriptions.useReceiver).mock.calls[0];
+			const lifecycleEventSender = vi.mocked(runtime.init).mock.calls[0][0]?.lifecycleEventSender;
+			const handler = vi.fn();
+			const event = {
+				type: 'execution:completed' as const,
+				executionId: 'exec-1',
+				workflowId: 'wf-1',
+				at: '2026-10-29T10:00:00.000Z',
+			};
+			await receiver.receive('exec-1', handler);
+
+			await lifecycleEventSender?.send([event], new AbortController().signal);
+
+			expect(handler).toHaveBeenCalledExactlyOnceWith(event);
 		});
 
 		it('generates a secret when unset', async () => {
@@ -171,6 +206,16 @@ describe('EngineV2Module', () => {
 			expect(runtime.init).not.toHaveBeenCalled();
 		});
 
+		it('starts in queue mode', async () => {
+			executionsConfig.mode = 'queue';
+
+			await module.init();
+
+			expect(controlPlaneServer.start).toHaveBeenCalled();
+			expect(redisClientService.createClient).toHaveBeenCalledTimes(1);
+			expect(runtime.init).not.toHaveBeenCalled();
+		});
+
 		it('registers the client as the data plane provider', async () => {
 			await module.init();
 
@@ -194,6 +239,20 @@ describe('EngineV2Module', () => {
 			expect(subscriber.on).toHaveBeenCalledWith('message', expect.any(Function));
 			expect(webhookResponseRegistry.useReceiver).toHaveBeenCalledWith(
 				expect.any(ExecutionChannelReceiver),
+			);
+		});
+
+		it('receives lifecycle events over Redis on their own channel', async () => {
+			subscriber.subscribe.mockResolvedValue(1);
+			await module.init();
+			const [receiver] = vi.mocked(lifecycleSubscriptions.useReceiver).mock.calls[0];
+
+			expect(receiver).toBeInstanceOf(ExecutionChannelReceiver);
+			await receiver.receive('exec-1', vi.fn());
+
+			expect(redisClientService.createClient).toHaveBeenCalledTimes(1);
+			expect(subscriber.subscribe).toHaveBeenCalledExactlyOnceWith(
+				'n8n:engine-v2-lifecycle:exec-1',
 			);
 		});
 
