@@ -105,7 +105,7 @@ export class WorkflowSuggestionActionsService {
 			if (suggestions.some(({ closedReason }) => closedReason === 'outdated')) return 'outdated';
 			if (suggestions.some(({ state }) => state !== 'pending')) return 'already_closed';
 
-			for (const [index, suggestion] of suggestions.entries()) {
+			for (const [index, suggestion] of sortBy(suggestions, 'workflowId').entries()) {
 				const discarded = await this.suggestions.closePending(
 					suggestion,
 					'discarded',
