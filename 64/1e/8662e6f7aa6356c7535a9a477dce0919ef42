@@ -1,0 +1,61 @@
+docker/images/runners/Dockerfile
+  s_02433e65d08be9::t_ead574ef004ff6 2-7,12,44,50,96,98,118,125
+docker/images/runners/Dockerfile.distroless
+  s_02433e65d08be9::t_208e109deedc0f 55,123
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_02433e65d08be9::t_28260244c956f0 9,34,243-299
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_02433e65d08be9::t_d7962263be9695 79-105,308
+packages/@n8n/task-runner-python/pyproject.toml
+  s_02433e65d08be9::t_c49c10219dc556 8,16
+packages/@n8n/task-runner-python/uv.lock
+  s_02433e65d08be9::t_1700b5b24a9230 8,438,481,483,485
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_02433e65d08be9::t_839bcf8948bc40 226-228,934-964,996-1021,2056-2098
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_02433e65d08be9::t_1ab2d748c8695d 383-404
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_02433e65d08be9::t_b7a4e0962f5260 29,327-346
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_02433e65d08be9::t_fa43078b1cc72c 21,153-184
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_02433e65d08be9::t_852a738af7bb27 373,385,397,405,876-937
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_02433e65d08be9::t_588a9d9731952b 167-168,875-876
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_02433e65d08be9::t_c029af1ef2a933 332,340-341
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_02433e65d08be9::t_3d9e52b267652b 16,40-41,158,162,164,167,175
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_02433e65d08be9::t_612765d6d79834 21-22,47,59,68-69,131,178,191,211,226,245
+packages/cli/src/modules/agents/types/agent-task-stop.ts
+  s_02433e65d08be9::t_0dc62777c54c50 3-7
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_02433e65d08be9::t_dbe7c29c2129e8 2129,2137-2141,2857-2865,2867-2869,2871,2873,2875-2876
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_02433e65d08be9::t_93492bc9e5feeb 14,405,421-428
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTaskCancellation.test.ts
+  s_02433e65d08be9::t_9abed3fbdd7b48 8,39,49,60,64-86
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_02433e65d08be9::t_b0ff5c64faf5bc 1165,1181,1239,1244
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatTaskControls.ts
+  s_02433e65d08be9::t_19b262e6afafe6 33-35,66,145-147,151,402
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTaskCancellation.ts
+  s_02433e65d08be9::t_45c065d347c248 7,13,64,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "641e8662e6f7aa6356c7535a9a477dce0919ef42",
+  "prompts": {},
+  "sessions": {
+    "s_02433e65d08be9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57edf01f-5c93-4c43-9dae-4e2dedc34c62",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jessie Auguste <jessie.auguste@n8n.io>"
+    }
+  }
+}
