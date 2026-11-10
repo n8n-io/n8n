@@ -3851,4 +3851,116 @@ describe('LogStreamingEventRelay', () => {
 			},
 		);
 	});
+
+	describe('promotion events', () => {
+		const user = () => ({
+			id: 'user-1',
+			email: 'admin@n8n.io',
+			firstName: 'Ad',
+			lastName: 'Min',
+			role: { slug: 'global:admin' },
+		});
+		const redactedUser = {
+			userId: 'user-1',
+			_email: 'admin@n8n.io',
+			_firstName: 'Ad',
+			_lastName: 'Min',
+			globalRole: 'global:admin',
+		};
+		const provider = {
+			providerId: 'prov-1',
+			providerName: 'GitLab bot',
+			providerType: 'gitlab',
+			authType: 'token',
+			hostBaseUrl: 'https://gitlab.example.com',
+		} as const;
+		const environment = {
+			environmentId: 'env-1',
+			environmentName: 'Production',
+			providerId: 'prov-1',
+			providerName: 'GitLab bot',
+			repository: 'acme/workflows',
+			direction: 'promote',
+			environmentScope: 'instance',
+		} as const;
+
+		it('should log provider and environment changes without telemetry-only fields', () => {
+			eventService.emit('promotion-provider-created', {
+				user: user(),
+				...provider,
+				outcome: 'success',
+				durationMs: 300,
+			});
+			eventService.emit('promotion-provider-updated', {
+				user: user(),
+				...provider,
+				changedFields: ['auth', 'config'],
+				outcome: 'success',
+				durationMs: 120,
+			});
+			eventService.emit('promotion-provider-deleted', { user: user(), ...provider });
+			eventService.emit('promotion-environment-created', {
+				user: user(),
+				...environment,
+				providerType: 'gitlab',
+				createBranchOnPromotion: true,
+			});
+			eventService.emit('promotion-environment-updated', {
+				user: user(),
+				...environment,
+				changedFields: ['provider'],
+			});
+			eventService.emit('promotion-environment-deleted', { user: user(), ...environment });
+
+			expect(vi.mocked(eventBus.sendAuditEvent).mock.calls.map(([event]) => event)).toEqual([
+				{
+					eventName: 'n8n.audit.promotions.provider.created',
+					payload: { ...redactedUser, ...provider },
+				},
+				{
+					eventName: 'n8n.audit.promotions.provider.updated',
+					payload: { ...redactedUser, ...provider, changedFields: ['auth', 'config'] },
+				},
+				{
+					eventName: 'n8n.audit.promotions.provider.deleted',
+					payload: { ...redactedUser, ...provider },
+				},
+				{
+					eventName: 'n8n.audit.promotions.environment.created',
+					payload: { ...redactedUser, ...environment },
+				},
+				{
+					eventName: 'n8n.audit.promotions.environment.updated',
+					payload: { ...redactedUser, ...environment, changedFields: ['provider'] },
+				},
+				{
+					eventName: 'n8n.audit.promotions.environment.deleted',
+					payload: { ...redactedUser, ...environment },
+				},
+			]);
+		});
+
+		it('should not log a provider create or update that failed', () => {
+			eventService.emit('promotion-provider-created', {
+				user: user(),
+				providerType: 'gitlab',
+				authType: 'token',
+				outcome: 'failed',
+				failureKind: 'user',
+				durationMs: 300,
+			});
+			eventService.emit('promotion-provider-updated', {
+				user: user(),
+				providerId: 'prov-1',
+				providerType: 'gitlab',
+				authType: 'token',
+				changedFields: ['auth'],
+				outcome: 'failed',
+				failureKind: 'user',
+				durationMs: 120,
+			});
+
+			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
+		});
+	});
 });

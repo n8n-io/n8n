@@ -198,6 +198,12 @@ export class LogStreamingEventRelay extends EventRelay {
 			'trusted-source-created': (event) => this.trustedSourceCreated(event),
 			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
 			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
+			'promotion-provider-created': (event) => this.promotionProviderCreated(event),
+			'promotion-provider-updated': (event) => this.promotionProviderUpdated(event),
+			'promotion-provider-deleted': (event) => this.promotionProviderDeleted(event),
+			'promotion-environment-created': (event) => this.promotionEnvironmentCreated(event),
+			'promotion-environment-updated': (event) => this.promotionEnvironmentUpdated(event),
+			'promotion-environment-deleted': (event) => this.promotionEnvironmentDeleted(event),
 			'mcp-oauth-completed': (event) => this.mcpOauthCompleted(event),
 			'mcp-tool-called': (event) => this.mcpToolCalled(event),
 			'mcp-access-updated': (event) => this.mcpAccessUpdated(event),
@@ -1677,6 +1683,150 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.trusted-source.deleted',
 			payload: { ...user, sourceId, issuer },
+		});
+	}
+
+	// #endregion
+
+	// #region Promotions
+
+	// Audit only completed changes. The provider create and update events also report failed attempts.
+
+	@Redactable()
+	private promotionProviderCreated({
+		user,
+		providerId,
+		providerName,
+		providerType,
+		authType,
+		hostBaseUrl,
+		outcome,
+	}: RelayEventMap['promotion-provider-created']) {
+		if (outcome !== 'success') return;
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.promotions.provider.created',
+			payload: { ...user, providerId, providerName, providerType, authType, hostBaseUrl },
+		});
+	}
+
+	@Redactable()
+	private promotionProviderUpdated({
+		user,
+		providerId,
+		providerName,
+		providerType,
+		authType,
+		hostBaseUrl,
+		changedFields,
+		outcome,
+	}: RelayEventMap['promotion-provider-updated']) {
+		if (outcome !== 'success') return;
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.promotions.provider.updated',
+			payload: {
+				...user,
+				providerId,
+				providerName,
+				providerType,
+				authType,
+				hostBaseUrl,
+				changedFields,
+			},
+		});
+	}
+
+	@Redactable()
+	private promotionProviderDeleted({
+		user,
+		providerId,
+		providerName,
+		providerType,
+		authType,
+		hostBaseUrl,
+	}: RelayEventMap['promotion-provider-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.promotions.provider.deleted',
+			payload: { ...user, providerId, providerName, providerType, authType, hostBaseUrl },
+		});
+	}
+
+	@Redactable()
+	private promotionEnvironmentCreated({
+		user,
+		environmentId,
+		environmentName,
+		providerId,
+		providerName,
+		repository,
+		direction,
+		environmentScope,
+	}: RelayEventMap['promotion-environment-created']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.promotions.environment.created',
+			payload: {
+				...user,
+				environmentId,
+				environmentName,
+				providerId,
+				providerName,
+				repository,
+				direction,
+				environmentScope,
+			},
+		});
+	}
+
+	@Redactable()
+	private promotionEnvironmentUpdated({
+		user,
+		environmentId,
+		environmentName,
+		providerId,
+		providerName,
+		repository,
+		direction,
+		environmentScope,
+		changedFields,
+	}: RelayEventMap['promotion-environment-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.promotions.environment.updated',
+			payload: {
+				...user,
+				environmentId,
+				environmentName,
+				providerId,
+				providerName,
+				repository,
+				direction,
+				environmentScope,
+				changedFields,
+			},
+		});
+	}
+
+	@Redactable()
+	private promotionEnvironmentDeleted({
+		user,
+		environmentId,
+		environmentName,
+		providerId,
+		providerName,
+		repository,
+		direction,
+		environmentScope,
+	}: RelayEventMap['promotion-environment-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.promotions.environment.deleted',
+			payload: {
+				...user,
+				environmentId,
+				environmentName,
+				providerId,
+				providerName,
+				repository,
+				direction,
+				environmentScope,
+			},
 		});
 	}
 
