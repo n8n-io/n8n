@@ -685,10 +685,6 @@ describe('ExecutionService', () => {
 	});
 
 	describe('getLastSuccessfulExecution', () => {
-		beforeEach(() => {
-			workflowRepository.findSettings.mockResolvedValue({});
-		});
-
 		it('should return the redacted last successful execution for a workflow', async () => {
 			/**
 			 * Arrange
@@ -813,7 +809,6 @@ describe('ExecutionService', () => {
 				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
 
 				expect(result).toBe(v2Execution);
-				expect(workflowRepository.findSettings).not.toHaveBeenCalled();
 			});
 
 			it('should compare the engines by creation, as each engine picks its newest run', async () => {
@@ -840,40 +835,18 @@ describe('ExecutionService', () => {
 			});
 		});
 
-		describe('for a workflow on engine v2', () => {
-			const workflowId = 'workflow-v2';
-			const mockUser = mock<User>();
+		it('should read only engine v1 without the engine-v2 module', async () => {
+			const execution = mock<IExecutionResponse>({ id: 'v1-execution' });
+			executionPersistence.findMultipleExecutions.mockResolvedValue([execution]);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
 
-			beforeEach(() => {
-				workflowRepository.findSettings.mockResolvedValue({ engineType: 'v2' });
-			});
+			const result = await executionService.getLastSuccessfulExecution(
+				'workflow-123',
+				mock<User>(),
+			);
 
-			it('should read the latest successful execution from the data plane', async () => {
-				const execution = mock<IExecutionResponse>({ id: V2_EXECUTION_ID, workflowId });
-				engineV2ExecutionReader.findLatest.mockResolvedValue(execution);
-				executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
-
-				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
-
-				expect(result).toEqual(execution);
-				expect(engineV2ExecutionReader.findLatest).toHaveBeenCalledWith({ status: ['success'] }, [
-					workflowId,
-				]);
-				expect(executionPersistence.findMultipleExecutions).not.toHaveBeenCalled();
-				expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(execution, {
-					user: mockUser,
-					redactExecutionData: undefined,
-				});
-			});
-
-			it('should return undefined when the data plane has no successful execution', async () => {
-				engineV2ExecutionReader.findLatest.mockResolvedValue(undefined);
-
-				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
-
-				expect(result).toBeUndefined();
-				expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
-			});
+			expect(result).toBe(execution);
+			expect(engineV2ExecutionReader.findLatest).not.toHaveBeenCalled();
 		});
 	});
 
