@@ -9,6 +9,7 @@ import {
 } from 'n8n-workflow';
 import { UnexpectedError, UserError } from '@n8n/errors';
 import type { Mock } from 'vitest';
+import z from 'zod';
 
 vi.mock(
 	'@n8n/workflow-sdk',
@@ -33,8 +34,12 @@ import { createTestWorkflowTool, testWorkflow } from '../tools/test-workflow.too
 
 function mockViewedExecution(resultData: Record<string, unknown>) {
 	vi.mocked(loadExecutionForViewer).mockResolvedValue({
-		data: { resultData },
+		data: { resultData: { runData: {}, ...resultData } },
 	} as unknown as IExecutionResponse);
+}
+
+function items(count: number) {
+	return Array.from({ length: count }, () => ({ json: {} }));
 }
 
 // Helper to create a mock NodeTypes that recognizes trigger vs non-trigger nodes
@@ -75,7 +80,7 @@ describe('test-workflow MCP tool', () => {
 	let logger: Logger;
 
 	beforeEach(() => {
-		vi.mocked(loadExecutionForViewer).mockReset();
+		vi.mocked(loadExecutionForViewer).mockReset().mockResolvedValue(undefined);
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		activeExecutions = mockInstance(ActiveExecutions);
 		workflowRunner = mockInstance(WorkflowRunner);
@@ -660,6 +665,7 @@ describe('test-workflow MCP tool', () => {
 				executionId: 'exec-failed',
 				status: 'error',
 				error: 'NodeApiError error (401) (details hidden by n8n)',
+				nodeResults: [],
 			});
 		});
 
@@ -693,7 +699,7 @@ describe('test-workflow MCP tool', () => {
 			});
 		});
 
-		test('does not load the execution when the run succeeds', async () => {
+		test('loads the execution for the user when the run succeeds', async () => {
 			setupSuccessfulExecution();
 			(workflowRunner.run as Mock).mockResolvedValue('exec-success');
 			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
@@ -713,7 +719,7 @@ describe('test-workflow MCP tool', () => {
 				{ Trigger: [{ json: {} }] },
 			);
 
-			expect(loadExecutionForViewer).not.toHaveBeenCalled();
+			expect(loadExecutionForViewer).toHaveBeenCalledWith('exec-success', user);
 		});
 
 		test('handles workflow returning undefined data', async () => {
@@ -734,6 +740,246 @@ describe('test-workflow MCP tool', () => {
 					{ Trigger: [{ json: {} }] },
 				),
 			).rejects.toThrow(UnexpectedError);
+		});
+	});
+
+	describe('node results', () => {
+		const runTestWorkflow = async (status: 'success' | 'error') => {
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(
+				createWorkflow({
+					settings: { availableInMCP: true },
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Trigger',
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				}),
+			);
+			(workflowRunner.run as Mock).mockResolvedValue('exec-1');
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
+				status,
+				data: { resultData: status === 'error' ? { error: { message: 'raw' } } : {} },
+			});
+			return await testWorkflow(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				mcpService,
+				logger,
+				'wf-1',
+				{ Trigger: [{ json: {} }] },
+			);
+		};
+
+		test('lists the nodes that ran in execution order with item counts for each output', async () => {
+			mockViewedExecution({
+				runData: {
+					Set: [{ executionIndex: 2, executionStatus: 'success', data: { main: [items(2)] } }],
+					Trigger: [{ executionIndex: 0, executionStatus: 'success', data: { main: [items(1)] } }],
+					If: [{ executionIndex: 1, executionStatus: 'success', data: { main: [items(2), []] } }],
+				},
+			});
+
+			const result = await runTestWorkflow('success');
+
+			expect(result).toEqual({
+				executionId: 'exec-1',
+				status: 'success',
+				nodeResults: [
+					{ nodeName: 'Trigger', status: 'success', itemCounts: [1] },
+					{ nodeName: 'If', status: 'success', itemCounts: [2, 0] },
+					{ nodeName: 'Set', status: 'success', itemCounts: [2] },
+				],
+			});
+		});
+
+		test('names the failed node and gives its error message as the user may see it', async () => {
+			mockViewedExecution({
+				redactedError: { type: 'NodeApiError', httpCode: '401' },
+				runData: {
+					Trigger: [{ executionIndex: 0, executionStatus: 'success', data: { main: [items(1)] } }],
+					Code: [
+						{ executionIndex: 1, executionStatus: 'error', error: { message: 'x is not defined' } },
+					],
+					HTTP: [
+						{
+							executionIndex: 2,
+							executionStatus: 'error',
+							redactedError: { type: 'NodeApiError', httpCode: '401' },
+						},
+					],
+				},
+			});
+
+			const result = await runTestWorkflow('error');
+
+			expect(result).toEqual({
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'NodeApiError error (401) (details hidden by n8n)',
+				nodeResults: [
+					{ nodeName: 'Trigger', status: 'success', itemCounts: [1] },
+					{ nodeName: 'Code', status: 'error', itemCounts: [], error: 'x is not defined' },
+					{
+						nodeName: 'HTTP',
+						status: 'error',
+						itemCounts: [],
+						error: 'NodeApiError error (401) (details hidden by n8n)',
+					},
+				],
+			});
+		});
+
+		test('limits the number of nodes and the length of error messages', async () => {
+			const longMessage = 'e'.repeat(1000);
+			const runData: Record<string, unknown[]> = Object.fromEntries(
+				Array.from({ length: 60 }, (_, index) => [
+					`Node ${index}`,
+					[{ executionIndex: index, executionStatus: 'success', data: { main: [items(1)] } }],
+				]),
+			);
+			runData['Node 59'] = [
+				{ executionIndex: 59, executionStatus: 'error', error: { message: longMessage } },
+			];
+			mockViewedExecution({ error: { message: longMessage }, runData });
+
+			const result = await runTestWorkflow('error');
+
+			expect(result.truncated).toBe(true);
+			expect(result.nodeResults).toHaveLength(50);
+			expect(result.nodeResults?.[0].nodeName).toBe('Node 10');
+			expect(result.nodeResults?.[49]).toEqual({
+				nodeName: 'Node 59',
+				status: 'error',
+				itemCounts: [],
+				error: `${'e'.repeat(500)}...`,
+			});
+			expect(result.error).toBe(`${'e'.repeat(500)}...`);
+		});
+
+		test('omits node results when the execution cannot be loaded for the user', async () => {
+			vi.mocked(loadExecutionForViewer).mockResolvedValue(undefined);
+
+			const result = await runTestWorkflow('success');
+
+			expect(result).toEqual({ executionId: 'exec-1', status: 'success' });
+		});
+	});
+
+	describe('output schema', () => {
+		const triggerNode = {
+			id: 'node-1',
+			name: 'Trigger',
+			type: MANUAL_TRIGGER_NODE_TYPE,
+			typeVersion: 1,
+			position: [0, 0],
+			disabled: false,
+			parameters: {},
+		} as INode;
+
+		const callHandler = async () => {
+			const tool = createTestWorkflowTool(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				telemetry,
+				mcpService,
+				logger,
+			);
+			const result = await tool.handler(
+				{
+					workflowId: 'wf-1',
+					pinData: { Trigger: [{ json: {} }] },
+					triggerNodeName: undefined,
+					timeout: undefined,
+				},
+				{} as any,
+			);
+			expect(result.content).toEqual([
+				{ type: 'text', text: JSON.stringify(result.structuredContent) },
+			]);
+			return z.object(tool.config.outputSchema!).strict().parse(result.structuredContent);
+		};
+
+		beforeEach(() => {
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(
+				createWorkflow({ settings: { availableInMCP: true }, nodes: [triggerNode] }),
+			);
+			(workflowRunner.run as Mock).mockResolvedValue('exec-1');
+			(activeExecutions.has as Mock).mockReturnValue(true);
+		});
+
+		test('success result matches the output schema', async () => {
+			mockViewedExecution({
+				runData: {
+					Trigger: [{ executionIndex: 0, executionStatus: 'success', data: { main: [items(1)] } }],
+				},
+			});
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
+				status: 'success',
+				data: { resultData: {} },
+			});
+
+			await expect(callHandler()).resolves.toMatchObject({ status: 'success' });
+		});
+
+		test('failed run result matches the output schema', async () => {
+			mockViewedExecution({
+				error: { message: 'failed' },
+				runData: {
+					Trigger: [{ executionIndex: 0, executionStatus: 'error', error: { message: 'failed' } }],
+				},
+			});
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
+				status: 'error',
+				data: { resultData: { error: { message: 'failed' } } },
+			});
+
+			await expect(callHandler()).resolves.toMatchObject({ status: 'error', error: 'failed' });
+		});
+
+		test('timeout result matches the output schema', async () => {
+			(activeExecutions.getPostExecutePromise as Mock).mockRejectedValue(
+				new McpExecutionTimeoutError('exec-1', 300_000),
+			);
+			(activeExecutions.stopExecution as Mock).mockImplementation(() => {});
+
+			await expect(callHandler()).resolves.toMatchObject({ executionId: 'exec-1' });
+		});
+
+		test('credential refusal result matches the output schema', async () => {
+			const httpNode = {
+				...triggerNode,
+				id: 'node-2',
+				name: 'HTTP',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Owner API Key' } },
+			} as INode;
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(
+				createWorkflow({ settings: { availableInMCP: true }, nodes: [triggerNode, httpNode] }),
+			);
+			mockInstance(CredentialsPermissionChecker).check.mockRejectedValue(
+				Object.assign(new UserError('Credential refused'), { node: httpNode }),
+			);
+			(activeExecutions.has as Mock).mockReturnValue(false);
+
+			await expect(callHandler()).resolves.toMatchObject({ error: 'Credential refused' });
+		});
+
+		test('thrown error result matches the output schema', async () => {
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
+
+			await expect(callHandler()).resolves.toMatchObject({ executionId: null });
 		});
 	});
 
