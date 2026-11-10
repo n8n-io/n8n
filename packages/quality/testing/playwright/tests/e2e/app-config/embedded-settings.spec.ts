@@ -37,6 +37,11 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
+		test.skip(
+			!!process.env.N8N_EDITOR_URL,
+			'backend-served page only: the Vite dev server does not embed the settings',
+		);
+
 		test('loads the sign-in page without a settings request @auth:none', async ({ n8n }) => {
 			const settingsRequests = recordSettingsRequests(n8n.page);
 			const deniedResponses = recordDeniedResponses(n8n.page);
