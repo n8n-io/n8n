@@ -1,5 +1,5 @@
-import type { PIIConfig } from '../../actions/checks/pii';
-import { PIIEntity, createPiiCheckFn } from '../../actions/checks/pii';
+import type { PIIConfig } from '../pii';
+import { PIIEntity, createPiiCheckFn } from '../pii';
 
 describe('pii guardrail', () => {
 	it('masks detected PII and triggers tripwire', async () => {
