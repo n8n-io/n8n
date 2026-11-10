@@ -148,21 +148,25 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: ./.github/actions/docker-registry-login
 
+      - name: Normalize GHCR owner
+        shell: bash
+        run: echo "GHCR_ORG=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
       - name: Tag stable/latest GHCR image
         if: needs.validate-inputs.outputs.release_channel == 'stable'
         run: |
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:stable" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:latest" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:stable" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:latest" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ env.GHCR_ORG }}/n8n:stable" "ghcr.io/${{ env.GHCR_ORG }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ env.GHCR_ORG }}/n8n:latest" "ghcr.io/${{ env.GHCR_ORG }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ env.GHCR_ORG }}/runners:stable" "ghcr.io/${{ env.GHCR_ORG }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ env.GHCR_ORG }}/runners:latest" "ghcr.io/${{ env.GHCR_ORG }}/runners:${{ needs.validate-inputs.outputs.version }}"
 
       - name: Tag beta/next GHCR image
         if: needs.validate-inputs.outputs.release_channel == 'beta'
         run: |
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:beta" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:next" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:beta" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:next" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ env.GHCR_ORG }}/n8n:beta" "ghcr.io/${{ env.GHCR_ORG }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ env.GHCR_ORG }}/n8n:next" "ghcr.io/${{ env.GHCR_ORG }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ env.GHCR_ORG }}/runners:beta" "ghcr.io/${{ env.GHCR_ORG }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ env.GHCR_ORG }}/runners:next" "ghcr.io/${{ env.GHCR_ORG }}/runners:${{ needs.validate-inputs.outputs.version }}"
 
   update-docs:
     name: Update latest and next in the docs

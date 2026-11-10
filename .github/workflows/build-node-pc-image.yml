@@ -44,6 +44,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Normalize GHCR owner
+        shell: bash
+        run: echo "GHCR_ORG=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
@@ -71,8 +75,8 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ env.NODE_VERSION }}-${{ matrix.arch }}
             ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.arch }}
-            ghcr.io/${{ github.repository_owner }}/node-pc:${{ env.NODE_VERSION }}-${{ matrix.arch }}
-            ghcr.io/${{ github.repository_owner }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.arch }}
+            ghcr.io/${{ env.GHCR_ORG }}/node-pc:${{ env.NODE_VERSION }}-${{ matrix.arch }}
+            ghcr.io/${{ env.GHCR_ORG }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.arch }}
           no-cache: true
 
       # No no-cache here: reuses the compile layers from the runtime build
@@ -92,8 +96,8 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ env.NODE_VERSION }}-dev-${{ matrix.arch }}
             ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.arch }}
-            ghcr.io/${{ github.repository_owner }}/node-pc:${{ env.NODE_VERSION }}-dev-${{ matrix.arch }}
-            ghcr.io/${{ github.repository_owner }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.arch }}
+            ghcr.io/${{ env.GHCR_ORG }}/node-pc:${{ env.NODE_VERSION }}-dev-${{ matrix.arch }}
+            ghcr.io/${{ env.GHCR_ORG }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.arch }}
 
   create-multi-arch-manifest:
     needs: build
@@ -114,7 +118,7 @@ jobs:
         run: |
           for REPO in \
             "${{ secrets.DOCKER_USERNAME }}/node-pc" \
-            "ghcr.io/${{ github.repository_owner }}/node-pc" \
+            "ghcr.io/${{ env.GHCR_ORG }}/node-pc" \
           ; do
             for DEV in "" "-dev"; do
               AMD64="$REPO:${{ env.NODE_VERSION }}-${{ github.sha }}$DEV-amd64"

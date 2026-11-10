@@ -60,6 +60,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
+      - name: Normalize GHCR owner
+        shell: bash
+        run: echo "GHCR_ORG=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
       - name: Resolve build inputs
         id: inputs
         env:
@@ -137,5 +141,5 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/base:${{ steps.inputs.outputs.tag }}-${{ github.sha }}
             ${{ secrets.DOCKER_USERNAME }}/base:${{ steps.inputs.outputs.tag }}
-            ghcr.io/${{ github.repository_owner }}/base:${{ steps.inputs.outputs.tag }}-${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/base:${{ steps.inputs.outputs.tag }}
+            ghcr.io/${{ env.GHCR_ORG }}/base:${{ steps.inputs.outputs.tag }}-${{ github.sha }}
+            ghcr.io/${{ env.GHCR_ORG }}/base:${{ steps.inputs.outputs.tag }}

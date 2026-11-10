@@ -19,9 +19,13 @@ jobs:
           sparse-checkout: .github/scripts
           sparse-checkout-cone-mode: false
 
+      - name: Normalize GHCR owner
+        shell: bash
+        run: echo "GHCR_ORG=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
       - name: Delete stale CI images
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_ORG: ${{ github.repository_owner }}
+          GHCR_ORG: ${{ env.GHCR_ORG }}
           GHCR_REPO: ${{ github.event.repository.name }}
         run: node .github/scripts/cleanup-ghcr-images.mjs --stale 3
