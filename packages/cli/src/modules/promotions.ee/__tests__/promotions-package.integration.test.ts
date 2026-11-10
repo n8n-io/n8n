@@ -497,10 +497,7 @@ async function setupProjectWithWorkflows(projectName: string, workflowNames: str
 
 /** The Apply preview, read through the test's `service` and its working directory. */
 async function loadApplyPreview(projectId: string) {
-	const preview = await changeService().getPreview(owner, projectId, 'apply', {
-		sort: 'name',
-		order: 'asc',
-	});
+	const preview = await changeService().getPreview(owner, projectId, 'apply');
 	assert(preview.check && preview.commitSha && preview.revision);
 	return {
 		...preview,
@@ -515,21 +512,16 @@ function changeService() {
 		service,
 		packagesService,
 		Container.get(ApplyPreviewService),
-		Container.get(WorkflowRepository),
 		Container.get(SharedWorkflowRepository),
 		Container.get(LocalPackageEntities),
 		Container.get(PromotionEnvironmentResolver),
 		Container.get(PromotionReviewGateService),
-		mockLogger(),
 	);
 }
 
 async function listApplyChanges(projectId: string) {
-	const { changes } = await changeService().getChanges(owner, projectId, 'apply', {
-		sort: 'name',
-		order: 'asc',
-	});
-	return changes;
+	const { resources } = await changeService().getPreview(owner, projectId, 'apply');
+	return resources.filter(({ change }) => change !== 'unchanged');
 }
 
 function dataTableNode(table: { id: string; name: string }): INode {

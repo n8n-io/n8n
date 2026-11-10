@@ -2,11 +2,7 @@ import { redactText } from '@n8n/utils/redaction/redact-text';
 import { Buffer } from 'node:buffer';
 import { z } from 'zod';
 
-import {
-	assertKnowledgePathSegment,
-	type KnowledgePaths,
-} from '@/modules/knowledge/files/storage-naming';
-
+import { assertKnowledgePathSegment, type KnowledgePaths } from '../files/storage-naming';
 import {
 	DEFAULT_SEARCH_TEXT_LIMIT,
 	MAX_OPERATION_OUTPUT_CHARS,
@@ -20,7 +16,7 @@ import {
 	type ReadKnowledgeRequest,
 	type SearchKnowledgeMatch,
 	type SearchKnowledgeRequest,
-} from './agent-knowledge-retrieval';
+} from './retrieval-schemas';
 
 const COMMAND_TIMEOUT_SECONDS = 20;
 export const MIRROR_SYNC_TIMEOUT_SECONDS = 120;
