@@ -429,6 +429,10 @@ describe('GET /resolve-signup-token', () => {
 });
 
 describe('POST /logout', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	test('should log user out', async () => {
 		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 		const ownerAgent = testServer.authAgentFor(owner);
@@ -445,5 +449,34 @@ describe('POST /logout', () => {
 
 		ownerAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=${cookie!.value}`);
 		await ownerAgent.get('/login').expect(401);
+	});
+
+	test('should emit `user-logged-out` once and not again for the revoked cookie', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const ownerAgent = testServer.authAgentFor(owner);
+		// @ts-expect-error `accessInfo` types are incorrect
+		const cookie = ownerAgent.jar.getCookie(AUTH_COOKIE_NAME, { path: '/' });
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const logoutEvents = () =>
+			emitSpy.mock.calls.filter(([eventName]) => eventName === 'user-logged-out');
+
+		await ownerAgent.post('/logout').expect(200);
+
+		expect(logoutEvents()).toEqual([
+			['user-logged-out', { user: expect.objectContaining({ id: owner.id }) }],
+		]);
+
+		ownerAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=${cookie!.value}`);
+		await ownerAgent.post('/logout').expect(401);
+
+		expect(logoutEvents()).toHaveLength(1);
+	});
+
+	test('should return 401 and emit nothing without a session', async () => {
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		await testServer.authlessAgent.post('/logout').expect(401);
+
+		expect(emitSpy).not.toHaveBeenCalledWith('user-logged-out', expect.anything());
 	});
 });

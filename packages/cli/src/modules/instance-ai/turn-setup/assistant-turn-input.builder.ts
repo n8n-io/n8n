@@ -269,7 +269,6 @@ export class AssistantTurnInputBuilder {
 			memory,
 			taskStorage,
 			conversationHistory,
-			aiPreferencesEnabled,
 			instanceContextEnabled,
 			skillScope,
 		} = environment;
@@ -478,7 +477,7 @@ export class AssistantTurnInputBuilder {
 		// same way they skip the other ambient context: the block from the user turn is
 		// already in the history the follow-up replays.
 		const aiPreferencesTurn =
-			aiPreferencesEnabled && resumeReason === undefined
+			resumeReason === undefined
 				? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId, loadReplayedHistory)
 				: undefined;
 		const threadContextBlock = buildThreadContextBlock([

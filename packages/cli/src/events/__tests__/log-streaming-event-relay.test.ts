@@ -1101,6 +1101,31 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `user-logged-out` event', () => {
+			const event: RelayEventMap['user-logged-out'] = {
+				user: {
+					id: 'user405',
+					email: 'loggedout@example.com',
+					firstName: 'Logged',
+					lastName: 'Out',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+			};
+
+			eventService.emit('user-logged-out', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.logout',
+				payload: {
+					userId: 'user405',
+					_email: 'loggedout@example.com',
+					_firstName: 'Logged',
+					_lastName: 'Out',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
 		it('should log on `user-mfa-enabled` event', () => {
 			const event: RelayEventMap['user-mfa-enabled'] = {
 				user: {
@@ -3806,7 +3831,7 @@ describe('LogStreamingEventRelay', () => {
 						surfaces: ['public-api'],
 						identitySubject: 'binding',
 						linkByEmail: 'verified-only',
-						provisionHuman: 'off',
+						provisionPerson: 'off',
 						roleMappingMode: 'off',
 					},
 				});
