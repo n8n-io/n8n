@@ -959,6 +959,10 @@ label event and verifies their current team membership. The label alone is not
 sufficient. Label changes re-evaluate the status. Removing the label removes
 the exemption.
 
+An approval from the n8n Release Helper makes the **Required Reviews** status
+succeed without required OWNERS team approvals. The gate uses the latest review
+state from `n8n-release-helper[bot]`. Dismissing its approval removes the skip.
+
 Every path that writes the status runs in the base repository context, because
 a fork-context run has no secrets and a read-only token. PR changes arrive
 through `pull_request_target`, which is safe here because no step checks out
