@@ -127,8 +127,8 @@ A hook wraps one method in a compiled n8n file. By default it pauses the call un
 | `target`, `method` | Where the method lives inside the module exports, such as `JobProcessor.prototype`, `prototype` for a class export, or `''` for the exports object, and the method name |
 | `kind` | `pause` (default: wait for release, then call through), `observe` (log a hit only), `fault` (fail the call), or `drop` (return `returns` without calling) |
 | `arm` | `file` (default: the test arms it) or `always` (default for `observe`) |
-| `once` | Fire once each time the hook is armed; default for every kind except `drop` |
-| `scope` | Another method (`file`, `target`, `method`); fire only inside a call of it, at most once per call |
+| `once` | Fire once each time the hook is armed; default for every kind except `drop`. An `observe` hook ignores it and logs every matching call |
+| `scope` | Another method (`file`, `target`, `method`); fire only inside a call of it, at most once per call. An `observe` hook logs every matching call inside it |
 | `where` | Conditions on the call, such as `[{ path: 'args.0.node.name', equals: 'Pause' }]`; a condition can use `truthy` instead of `equals` |
 | `detail` | Values to log with each hit, such as `{ executionId: 'args.0.executionId' }` |
 | `phase` | `before` the call or `after` it resolves, when `where` and `detail` can also read `result`; default `before`, except `fault`, which calls through and then rejects |
