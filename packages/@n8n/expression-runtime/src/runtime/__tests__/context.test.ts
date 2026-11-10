@@ -1,3 +1,5 @@
+import { IANAZone } from 'luxon';
+
 import { buildContext } from '../context';
 
 function makeRef(impl: (args: unknown[]) => unknown) {
@@ -56,5 +58,31 @@ describe('buildContext proxy', () => {
 		void ('$missing' in ctx);
 		void ('$missing' in ctx);
 		expect(calls).toBe(1);
+	});
+});
+
+describe('buildContext timezone', () => {
+	const callbacks = {
+		getValueAtPath: makeRef(() => undefined),
+		getArrayElement: makeRef(() => undefined),
+		callHost: makeRef(() => undefined),
+	};
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('does not validate a known timezone again', () => {
+		buildContext(callbacks, 'Asia/Tokyo');
+		const isValidZone = vi.spyOn(IANAZone, 'isValidZone');
+
+		buildContext(callbacks, 'Asia/Tokyo');
+
+		expect(isValidZone).not.toHaveBeenCalled();
+	});
+
+	it('rejects an invalid timezone on every evaluation', () => {
+		expect(() => buildContext(callbacks, 'Not/AZone')).toThrow('Invalid timezone');
+		expect(() => buildContext(callbacks, 'Not/AZone')).toThrow('Invalid timezone');
 	});
 });
