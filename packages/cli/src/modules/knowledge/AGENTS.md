@@ -6,7 +6,7 @@ Guidance for the knowledge module (`packages/cli/src/modules/knowledge`). See th
 
 The module owns knowledge for Agents: uploaded files and their retrieval, and external vector-store connections. The implementation is moving here from `packages/cli/src/modules/agents/` in steps, with no user-facing change.
 
-Vector-store construction, embedding credential resolution and connection testing now live in this module. Agents calls them and supplies the credential provider. The knowledge file entity (`KnowledgeFile`, table `agent_files`), its repository, the file store (`KnowledgeFileStore`, which `init()` wires to the configured blob backends), the storage naming helpers and the upload error live here too. The file service, the upload middleware and retrieval still live in Agents. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
+Vector-store construction, embedding credential resolution and connection testing now live in this module. Agents calls them and supplies the credential provider. Uploaded-file knowledge lives in `files/` (the file store, which `init()` wires to the configured blob backends; the file service, `KnowledgeFileService`: upload, list, delete, scope-based; the upload middleware, the storage naming helpers and the upload error), plus the entity (`KnowledgeFile`, table `agent_files`) in `entities/` and its repository in `repositories/`. Retrieval (the sandbox mirror and the search commands) still lives in Agents. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
 
 ## Boundary
 
@@ -16,7 +16,7 @@ Three contracts at the module root define the file knowledge boundary. File know
 - `knowledge-retriever.ts`: what the module offers to consumers. `hasFiles`, `findFiles`, `searchText` and `readFile` take a scope and the request types the agents module uses, and return its result types unchanged, because tool outputs must stay identical.
 - `knowledge-sandbox-provider.ts`: what the module needs from a consumer. A sandbox to mirror files into, command execution in it, warm-up and teardown. The agents module implements it over its sandbox runtime.
 
-The agents module keeps the controllers, `getAgentOrThrow` and every user and project permission check, the three `Tool` definitions, the workspace half of the sandbox runtime, and the `AgentKnowledgeService` facade. The knowledge module never checks project membership. Ownership is the caller's job.
+The agents module keeps the controllers, `getAgentOrThrow` and every user and project permission check, the three `Tool` definitions, the workspace half of the sandbox runtime, and the `AgentKnowledgeService` facade. The knowledge module never checks project membership. Ownership is the caller's job. The caller also owns the fence around its row writes: `KnowledgeFileService.uploadFiles` takes a `KnowledgeWriteRunner`, and the agents facade passes its project-deletion lock through it.
 
 The contracts are compile-time only; nothing binds them at runtime yet. The change that first implements each one adds its binding: a concrete `@Service` for `KnowledgeRetriever` that consumers inject by class, and a registry `@Service` in this module for `KnowledgeSandboxProvider` that the agents module registers its adapter with during `init()` (the pattern of `workflow-index/agent-usage-provider-proxy.service.ts`). Until the retrieval schemas move here, `knowledge-retriever.ts` takes its request and result types from the agents module through `import type`, which is erased at runtime.
 
@@ -29,6 +29,7 @@ entities/        entity classes
 repositories/    repositories
 files/           upload, storage and file service code
 retrieval/       sandbox mirror, search commands, retrieval schemas
+telemetry/       helpers shared by the knowledge telemetry events
 vector-stores/   external vector-store connections
 ```
 
