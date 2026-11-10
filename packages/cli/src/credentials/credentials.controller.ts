@@ -52,8 +52,8 @@ import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 
-/** Keeps the audit payload of a list read bounded; `credentialCount` carries the full number. */
-const AUDITED_CREDENTIAL_IDS_LIMIT = 100;
+/** Ids per `credentials-list-data-read` event: keeps each audit message small enough for a syslog line. */
+const AUDITED_CREDENTIAL_IDS_CHUNK_SIZE = 100;
 
 @RestController('/credentials')
 export class CredentialsController {
@@ -113,18 +113,26 @@ export class CredentialsController {
 			delete c.shared;
 		});
 
-		if (query.includeData) {
-			// One event per request, not per credential: the editor asks for the data of every
-			// editable credential on each app load, so per-credential events would flood a SIEM.
-			const withData = credentials.filter((c) => 'data' in c && c.data !== undefined);
-			if (withData.length > 0) {
-				this.eventService.emit('credentials-list-data-read', {
-					user: req.user,
-					credentialIds: withData.slice(0, AUDITED_CREDENTIAL_IDS_LIMIT).map((c) => c.id),
-					credentialCount: withData.length,
-					publicApi: false,
-				});
-			}
+		// Audit what the response carries, not what the request asked for. One event per chunk
+		// of ids, not per credential: the editor asks for the data of every editable credential
+		// on each app load, so per-credential events would flood a SIEM, and one unbounded
+		// event would not fit a syslog line.
+		const idsWithData = credentials
+			.filter((c) => 'data' in c && c.data !== undefined)
+			.map((c) => c.id);
+		const chunkCount = Math.ceil(idsWithData.length / AUDITED_CREDENTIAL_IDS_CHUNK_SIZE);
+		for (let chunk = 0; chunk < chunkCount; chunk++) {
+			this.eventService.emit('credentials-list-data-read', {
+				user: req.user,
+				credentialIds: idsWithData.slice(
+					chunk * AUDITED_CREDENTIAL_IDS_CHUNK_SIZE,
+					(chunk + 1) * AUDITED_CREDENTIAL_IDS_CHUNK_SIZE,
+				),
+				credentialCount: idsWithData.length,
+				chunk: chunk + 1,
+				chunkCount,
+				publicApi: false,
+			});
 		}
 
 		return credentials;
@@ -177,8 +185,16 @@ export class CredentialsController {
 					includeInstanceCredentials: true,
 				});
 
-		if (query.includeData && 'data' in credential && credential.data !== undefined) {
-			// Decrypted data is about to leave the server: audit the read.
+		const scopes = await this.credentialsService.getCredentialScopes(
+			req.user,
+			req.params.credentialId,
+		);
+
+		await this.credentialDescriptions.stripIfDisabled(credential);
+
+		// Audit what the response carries, not what the request asked for, and only once the
+		// response is complete: a failure above must not log a read that never happened.
+		if ('data' in credential && credential.data !== undefined) {
 			this.eventService.emit('credentials-data-read', {
 				user: req.user,
 				credentialType: credential.type,
@@ -187,12 +203,6 @@ export class CredentialsController {
 			});
 		}
 
-		const scopes = await this.credentialsService.getCredentialScopes(
-			req.user,
-			req.params.credentialId,
-		);
-
-		await this.credentialDescriptions.stripIfDisabled(credential);
 		return { ...credential, scopes };
 	}
 

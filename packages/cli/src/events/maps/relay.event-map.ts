@@ -582,12 +582,20 @@ export type RelayEventMap = ModuleEventMap & {
 		publicApi: boolean;
 	};
 
-	/** A user retrieved the decrypted data of several credentials at once through `includeData=true` on the list. */
+	/**
+	 * A user retrieved the decrypted data of several credentials at once through
+	 * `includeData=true` on the list. One event per chunk of ids, so that every id is
+	 * recorded and every event stays small.
+	 */
 	'credentials-list-data-read': {
 		user: UserLike;
-		/** Ids of the credentials whose data was returned, capped to keep the payload bounded. */
+		/** Ids of the credentials whose data was returned, this chunk only. */
 		credentialIds: string[];
+		/** Number of credentials whose data was returned, across all chunks. */
 		credentialCount: number;
+		/** 1-based index of this chunk. */
+		chunk: number;
+		chunkCount: number;
 		publicApi: boolean;
 	};
 

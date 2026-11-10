@@ -1387,6 +1387,8 @@ describe('LogStreamingEventRelay', () => {
 				},
 				credentialIds: ['cred1', 'cred2'],
 				credentialCount: 2,
+				chunk: 1,
+				chunkCount: 1,
 				publicApi: false,
 			};
 
@@ -1402,6 +1404,8 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: GLOBAL_OWNER_ROLE.slug,
 					credentialIds: ['cred1', 'cred2'],
 					credentialCount: 2,
+					chunk: 1,
+					chunkCount: 1,
 					publicApi: false,
 				},
 			});

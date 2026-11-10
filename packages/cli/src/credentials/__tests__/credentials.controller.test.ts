@@ -215,6 +215,17 @@ describe('CredentialsController', () => {
 			expect(emitSpy).not.toHaveBeenCalledWith('credentials-data-read', expect.anything());
 		});
 
+		it('should not emit when the response fails after the data was decrypted', async () => {
+			vi.spyOn(credentialsService, 'getOne').mockResolvedValue(decrypted);
+			getCredentialScopesSpy.mockRejectedValue(new Error('scopes unavailable'));
+
+			await expect(
+				credentialsController.getOne(requestFor(), res, 'cred-1', query(true)),
+			).rejects.toThrow('scopes unavailable');
+
+			expect(emitSpy).not.toHaveBeenCalled();
+		});
+
 		describe('with sharing licensed', () => {
 			type GetOneForUserResult = Awaited<ReturnType<EnterpriseCredentialsService['getOneForUser']>>;
 
@@ -276,22 +287,35 @@ describe('CredentialsController', () => {
 				user: req.user,
 				credentialIds: ['cred-1', 'cred-3'],
 				credentialCount: 2,
+				chunk: 1,
+				chunkCount: 1,
 				publicApi: false,
 			});
 		});
 
-		it('should cap the audited ids and keep the full count', async () => {
+		it('should split the ids into chunks of 100 and record every id', async () => {
 			const many = Array.from({ length: 120 }, (_, i) => withData(`cred-${i}`));
 			vi.spyOn(credentialsService, 'getMany').mockResolvedValue(many as GetManyResult);
 
 			await credentialsController.getMany(requestFor(), res, query(true));
 
-			const [, payload] = emitSpy.mock.calls[0] as [
-				string,
-				{ credentialIds: string[]; credentialCount: number },
-			];
-			expect(payload.credentialIds).toHaveLength(100);
-			expect(payload.credentialCount).toBe(120);
+			expect(emitSpy).toHaveBeenCalledTimes(2);
+			const payloads = emitSpy.mock.calls.map(
+				([, payload]) =>
+					payload as {
+						credentialIds: string[];
+						credentialCount: number;
+						chunk: number;
+						chunkCount: number;
+					},
+			);
+			expect(payloads[0]).toMatchObject({ credentialCount: 120, chunk: 1, chunkCount: 2 });
+			expect(payloads[0].credentialIds).toHaveLength(100);
+			expect(payloads[1]).toMatchObject({ credentialCount: 120, chunk: 2, chunkCount: 2 });
+			expect(payloads[1].credentialIds).toHaveLength(20);
+			expect([...payloads[0].credentialIds, ...payloads[1].credentialIds]).toEqual(
+				many.map((c) => (c as { id: string }).id),
+			);
 		});
 
 		it('should not emit when the data was not requested', async () => {

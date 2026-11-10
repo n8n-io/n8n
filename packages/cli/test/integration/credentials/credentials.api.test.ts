@@ -140,7 +140,7 @@ describe('GET /credentials', () => {
 			expect(payload.user.id).toBe(owner.id);
 			expect(payload.credentialIds).toEqual(expect.arrayContaining([first.id, second.id]));
 			expect(payload.credentialCount).toBe(payload.credentialIds.length);
-			expect(payload.publicApi).toBe(false);
+			expect(payload).toMatchObject({ chunk: 1, chunkCount: 1, publicApi: false });
 		} finally {
 			emitSpy.mockRestore();
 		}

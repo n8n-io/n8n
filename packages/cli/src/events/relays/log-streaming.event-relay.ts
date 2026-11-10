@@ -776,11 +776,13 @@ export class LogStreamingEventRelay extends EventRelay {
 		user,
 		credentialIds,
 		credentialCount,
+		chunk,
+		chunkCount,
 		publicApi,
 	}: RelayEventMap['credentials-list-data-read']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.list.data.read',
-			payload: { ...user, credentialIds, credentialCount, publicApi },
+			payload: { ...user, credentialIds, credentialCount, chunk, chunkCount, publicApi },
 		});
 	}
 
