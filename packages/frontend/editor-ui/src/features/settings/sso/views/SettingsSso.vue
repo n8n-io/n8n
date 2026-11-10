@@ -1,10 +1,13 @@
 <script lang="ts" setup>
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	N8nButton,
 	N8nDialog,
@@ -20,10 +23,14 @@ import {
 import AuthenticationBackLink from '../components/AuthenticationBackLink.vue';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
 import OidcSettingsForm from '../components/OidcSettingsForm.vue';
+import ScimProvisioningSection from '../components/ScimProvisioningSection.vue';
 import { useUserRoleProvisioningStore } from '../provisioning/composables/userRoleProvisioning.store';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
+const settingsStore = useSettingsStore();
+const rbacStore = useRBACStore();
+const { check: envFeatureFlag } = useEnvFeatureFlag();
 const provisioningStore = useUserRoleProvisioningStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -55,6 +62,21 @@ const options = computed(() => {
 
 const hasAnySsoEnabled = computed(
 	() => ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled,
+);
+
+/**
+ * SCIM needs the `feat:scim` license, the pre-GA opt-in `N8N_ENV_FEAT_SCIM`
+ * and the `scim:manage` scope.
+ */
+const showScimSection = computed(
+	() =>
+		settingsStore.isModuleActive('scim') &&
+		envFeatureFlag.value('SCIM') &&
+		rbacStore.hasScope('scim:manage'),
+);
+
+const isSsoLoginEnabled = computed(
+	() => ssoStore.isSamlLoginEnabled || ssoStore.isOidcLoginEnabled,
 );
 
 const activeForm = computed(() => {
@@ -189,6 +211,12 @@ onMounted(() => {
 			</template>
 		</N8nEmptyState>
 
+		<ScimProvisioningSection
+			v-if="showScimSection"
+			:class="$style.scim"
+			:sso-enabled="isSsoLoginEnabled"
+		/>
+
 		<N8nDialog
 			:open="showUnsavedChangesDialog"
 			size="medium"
@@ -233,5 +261,9 @@ onMounted(() => {
 
 .actionBox {
 	margin-top: var(--spacing--lg);
+}
+
+.scim {
+	margin-top: var(--spacing--2xl);
 }
 </style>

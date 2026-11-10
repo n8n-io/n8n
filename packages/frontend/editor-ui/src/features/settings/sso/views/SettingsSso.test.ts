@@ -8,6 +8,8 @@ import { useSSOStore, SupportedProtocols } from '../sso.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 const renderView = createComponentRenderer(SettingsSso);
 
@@ -71,6 +73,25 @@ vi.mock('@n8n/rest-api-client/api/roleMappingRule', () => ({
 	updateRoleMappingRule: vi.fn(),
 	deleteRoleMappingRule: vi.fn(),
 	moveRoleMappingRule: vi.fn(),
+}));
+
+const checkEnvFeatureFlag = vi.fn().mockReturnValue(false);
+vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
+	useEnvFeatureFlag: () => ({ check: { value: checkEnvFeatureFlag } }),
+}));
+
+vi.mock('@n8n/rest-api-client/api/scim', () => ({
+	getScimConfig: vi.fn().mockResolvedValue({
+		enabled: false,
+		hasToken: false,
+		tokenHint: null,
+		baseUrl: 'https://n8n.example.com/scim/v2',
+		onDelete: 'disable',
+		dataAction: 'transfer',
+		transferProjectId: null,
+	}),
+	setScimEnabled: vi.fn(),
+	generateScimToken: vi.fn(),
 }));
 
 // Mock window.open to avoid JSDOM "Not implemented" error
@@ -873,6 +894,40 @@ describe('SettingsSso View', () => {
 
 			// Verify store still has SAML (unchanged)
 			expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.SAML);
+		});
+	});
+
+	describe('SCIM provisioning', () => {
+		const setUpScim = ({ moduleActive = true, optIn = true, canManage = true } = {}) => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.isModuleActive.mockImplementation(
+				(name: string) => name === 'scim' && moduleActive,
+			);
+			checkEnvFeatureFlag.mockImplementation((flag: string) => flag === 'SCIM' && optIn);
+			const rbacStore = mockedStore(useRBACStore);
+			rbacStore.hasScope.mockImplementation(
+				(scope: string) => scope === 'scim:manage' && canManage,
+			);
+		};
+
+		it('shows the SCIM section with the license, the opt-in and the scope', async () => {
+			setUpScim();
+
+			const { findByTestId } = renderView();
+
+			expect(await findByTestId('sso-scim-section')).toBeInTheDocument();
+		});
+
+		it.each([
+			['the module is not licensed', { moduleActive: false }],
+			['the opt-in is off', { optIn: false }],
+			['the user cannot manage SCIM', { canManage: false }],
+		])('hides the SCIM section when %s', async (_, options) => {
+			setUpScim(options);
+
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => expect(queryByTestId('sso-scim-section')).not.toBeInTheDocument());
 		});
 	});
 });

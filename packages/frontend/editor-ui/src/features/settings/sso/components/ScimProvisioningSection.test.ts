@@ -1,0 +1,147 @@
+import type { ScimConfigResponse } from '@n8n/api-types';
+import { createTestingPinia } from '@pinia/testing';
+import { waitFor, within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+
+import { createComponentRenderer } from '@/__tests__/render';
+
+import ScimProvisioningSection from './ScimProvisioningSection.vue';
+
+const getScimConfig = vi.fn();
+const setScimEnabled = vi.fn();
+const generateScimToken = vi.fn();
+
+vi.mock('@n8n/rest-api-client/api/scim', () => ({
+	getScimConfig: async (...args: unknown[]) => await getScimConfig(...args),
+	setScimEnabled: async (...args: unknown[]) => await setScimEnabled(...args),
+	generateScimToken: async (...args: unknown[]) => await generateScimToken(...args),
+}));
+
+const showError = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError }),
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: {} }),
+}));
+
+const baseConfig: ScimConfigResponse = {
+	enabled: false,
+	hasToken: false,
+	tokenHint: null,
+	baseUrl: 'https://n8n.example.com/scim/v2',
+	onDelete: 'disable',
+	dataAction: 'transfer',
+	transferProjectId: null,
+};
+
+const renderComponent = createComponentRenderer(ScimProvisioningSection, {
+	pinia: createTestingPinia(),
+});
+
+describe('ScimProvisioningSection', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		getScimConfig.mockResolvedValue(baseConfig);
+	});
+
+	it('shows the base URL and asks for a token when none exists', async () => {
+		const { getByTestId, getByText } = renderComponent({ props: { ssoEnabled: true } });
+
+		await waitFor(() => expect(getByTestId('sso-scim-base-url')).toBeInTheDocument());
+		expect(getByText('Generate a token and paste it into your identity provider.')).toBeVisible();
+		expect(getByTestId('sso-scim-generate-token')).toHaveTextContent('Generate token');
+	});
+
+	it('shows the new token once after it is generated', async () => {
+		generateScimToken.mockResolvedValue({ token: 'n8n_scim_secret', baseUrl: baseConfig.baseUrl });
+		getScimConfig
+			.mockResolvedValueOnce(baseConfig)
+			.mockResolvedValueOnce({ ...baseConfig, hasToken: true, tokenHint: 'cret' });
+
+		const { getByTestId, getByText, getByRole } = renderComponent({ props: { ssoEnabled: true } });
+		await waitFor(() => expect(getByTestId('sso-scim-generate-token')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('sso-scim-generate-token'));
+
+		await waitFor(() => expect(getByTestId('sso-scim-token')).toBeInTheDocument());
+		expect(getByRole('textbox', { name: 'Token' })).toHaveValue('n8n_scim_secret');
+		expect(getByText('Copy this token now. You will not see it again.')).toBeVisible();
+		expect(getByTestId('sso-scim-generate-token')).toHaveTextContent('Generate new token');
+	});
+
+	it('asks for confirmation before it replaces an existing token', async () => {
+		getScimConfig.mockResolvedValue({ ...baseConfig, hasToken: true, tokenHint: 'abcd' });
+		generateScimToken.mockResolvedValue({ token: 'n8n_scim_new', baseUrl: baseConfig.baseUrl });
+
+		const { getByTestId, getByRole, getByText, queryByTestId } = renderComponent({
+			props: { ssoEnabled: true },
+		});
+		await waitFor(() => expect(getByText('A token ending in abcd is active.')).toBeVisible());
+		expect(queryByTestId('sso-scim-token')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('sso-scim-generate-token'));
+		await waitFor(() => expect(getByRole('dialog')).toBeInTheDocument());
+		expect(generateScimToken).not.toHaveBeenCalled();
+
+		await userEvent.click(
+			within(getByRole('dialog')).getByRole('button', { name: 'Generate new token' }),
+		);
+
+		await waitFor(() => expect(generateScimToken).toHaveBeenCalledTimes(1));
+	});
+
+	it('turns SCIM on', async () => {
+		setScimEnabled.mockResolvedValue({ enabled: true });
+
+		const { getByTestId } = renderComponent({ props: { ssoEnabled: true } });
+		await waitFor(() => expect(getByTestId('sso-scim-toggle')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('sso-scim-toggle'));
+
+		await waitFor(() => expect(setScimEnabled).toHaveBeenCalledWith(expect.anything(), true));
+	});
+
+	it('asks for confirmation before it turns SCIM off', async () => {
+		getScimConfig.mockResolvedValue({ ...baseConfig, enabled: true, hasToken: true });
+		setScimEnabled.mockResolvedValue({ enabled: false });
+
+		const { getByTestId, getByRole } = renderComponent({ props: { ssoEnabled: true } });
+		await waitFor(() => expect(getByTestId('sso-scim-toggle')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('sso-scim-toggle'));
+		await waitFor(() => expect(getByRole('dialog')).toBeInTheDocument());
+		await userEvent.click(getByRole('button', { name: 'Turn off' }));
+
+		await waitFor(() => expect(setScimEnabled).toHaveBeenCalledWith(expect.anything(), false));
+	});
+
+	it('cannot turn SCIM on while single sign-on is off', async () => {
+		const { getByTestId, getByText } = renderComponent({ props: { ssoEnabled: false } });
+		await waitFor(() => expect(getByTestId('sso-scim-toggle')).toBeInTheDocument());
+
+		expect(
+			getByText('Turn on SAML or OIDC login first. SCIM works only with single sign-on.'),
+		).toBeVisible();
+		await userEvent.click(getByTestId('sso-scim-toggle'));
+
+		expect(setScimEnabled).not.toHaveBeenCalled();
+	});
+
+	it('shows an error when the token request fails', async () => {
+		generateScimToken.mockRejectedValue(new Error('conflict'));
+
+		const { getByTestId } = renderComponent({ props: { ssoEnabled: true } });
+		await waitFor(() => expect(getByTestId('sso-scim-generate-token')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('sso-scim-generate-token'));
+
+		await waitFor(() =>
+			expect(showError).toHaveBeenCalledWith(
+				expect.any(Error),
+				'Could not generate the SCIM token',
+			),
+		);
+	});
+});
