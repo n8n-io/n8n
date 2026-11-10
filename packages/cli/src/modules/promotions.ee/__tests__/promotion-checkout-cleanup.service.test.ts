@@ -38,6 +38,7 @@ describe('PromotionCheckoutCleanupService', () => {
 		await workingDirectory.writeDescriptor({
 			schemaVersion: 1,
 			environmentId,
+			providerId: 'prov1',
 			remoteUrl: 'git@github.com:o/r.git',
 			checkoutBranchName: 'main',
 		});
@@ -481,6 +482,13 @@ describe('PromotionCheckoutCleanupService', () => {
 				{
 					change: 'remote',
 					overrides: { remote: { schemaVersion: 1, remoteUrl: 'git@github.com:o/other.git' } },
+				},
+				{
+					change: 'provider',
+					overrides: {
+						providerId: 'prov2',
+						provider: { id: 'prov2', type: 'git', config: {} } as PromotionProvider,
+					},
 				},
 			])('resets a checkout of an old $change and keeps the host keys', async ({ overrides }) => {
 				const paths = await createCheckout(LIVE_ID);

@@ -380,7 +380,12 @@ export class PromotionEnvironmentsService {
 		}
 
 		const matchesEnvironment = await this.workingDirectory.matchesDescriptor(
-			buildCacheDescriptor({ environmentId: environment.id, remote, config: resolved }),
+			buildCacheDescriptor({
+				environmentId: environment.id,
+				providerId: environment.providerId,
+				remote,
+				config: resolved,
+			}),
 		);
 		return { hasCheckout, matchesEnvironment };
 	}

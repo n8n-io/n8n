@@ -1498,6 +1498,7 @@ export class PromotionsService {
 	private descriptorFor(input: PromotionOperationInput): PromotionCacheDescriptor {
 		return buildCacheDescriptor({
 			environmentId: input.environmentId,
+			providerId: input.providerId,
 			remote: input.remote,
 			config: input.config,
 		});

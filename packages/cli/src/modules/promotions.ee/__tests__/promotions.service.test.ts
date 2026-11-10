@@ -141,6 +141,7 @@ describe('PromotionsService', () => {
 		await workingDirectory.writeDescriptor({
 			schemaVersion: 1,
 			environmentId: input.environmentId,
+			providerId: input.providerId,
 			remoteUrl: input.remote.remoteUrl,
 			checkoutBranchName: branchName,
 		});
@@ -234,6 +235,7 @@ describe('PromotionsService', () => {
 				}),
 			);
 			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.toMatchObject({
+				providerId: 'prov1',
 				remoteUrl: REMOTE_URL,
 				checkoutBranchName: 'staging',
 			});
@@ -807,6 +809,18 @@ describe('PromotionsService', () => {
 					},
 				}),
 			);
+
+			await expect(
+				service.promote(ENVIRONMENT_ID, actor, {
+					canExportVariableValues: true,
+					commitMessage: 'm',
+				}),
+			).rejects.toThrow('not connected');
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+		});
+
+		it('refuses to promote when the checkout was cloned with another provider', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput({ providerId: 'prov2' }));
 
 			await expect(
 				service.promote(ENVIRONMENT_ID, actor, {

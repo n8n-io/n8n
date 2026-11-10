@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { OperationContext, ProjectRepository, TransactionRunner, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
-import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { MockedFunction } from 'vitest';
@@ -403,6 +403,7 @@ describe('PromotionEnvironmentsService', () => {
 			await workingDirectory.writeDescriptor({
 				schemaVersion: 1,
 				environmentId: ENVIRONMENT_ID,
+				providerId: 'prov1',
 				remoteUrl: 'git@github.com:o/r.git',
 				checkoutBranchName: 'main',
 			});
@@ -426,6 +427,7 @@ describe('PromotionEnvironmentsService', () => {
 			await workingDirectory.writeDescriptor({
 				schemaVersion: 1,
 				environmentId: ENVIRONMENT_ID,
+				providerId: 'prov1',
 				remoteUrl: 'git@github.com:o/r.git',
 				checkoutBranchName: 'main',
 			});
@@ -455,6 +457,7 @@ describe('PromotionEnvironmentsService', () => {
 			await workingDirectory.writeDescriptor({
 				schemaVersion: 1,
 				environmentId: ENVIRONMENT_ID,
+				providerId: 'prov1',
 				remoteUrl: 'https://gitlab.example.com/platform/workflows.git',
 				checkoutBranchName: 'main',
 			});
@@ -476,12 +479,20 @@ describe('PromotionEnvironmentsService', () => {
 		it.each([
 			{
 				changedField: 'branch',
+				providerId: 'prov1',
 				remoteUrl: 'git@github.com:o/r.git',
 				checkoutBranchName: 'release',
 			},
 			{
 				changedField: 'remote',
+				providerId: 'prov1',
 				remoteUrl: 'git@github.com:o/other.git',
+				checkoutBranchName: 'main',
+			},
+			{
+				changedField: 'provider',
+				providerId: 'prov2',
+				remoteUrl: 'git@github.com:o/r.git',
 				checkoutBranchName: 'main',
 			},
 		])('reports a checkout as stale when its $changedField changed', async (descriptor) => {
@@ -490,9 +501,33 @@ describe('PromotionEnvironmentsService', () => {
 			await workingDirectory.writeDescriptor({
 				schemaVersion: 1,
 				environmentId: ENVIRONMENT_ID,
+				providerId: descriptor.providerId,
 				remoteUrl: descriptor.remoteUrl,
 				checkoutBranchName: descriptor.checkoutBranchName,
 			});
+
+			const result = await service.findOne(ENVIRONMENT_ID);
+
+			expect(result.checkout).toEqual({
+				hasCheckout: true,
+				matchesEnvironment: false,
+			});
+		});
+
+		it('reports a checkout as stale when its descriptor has no provider', async () => {
+			gitService.hasCheckout.mockResolvedValue(true);
+			const { repositoryFolder, descriptorFile } = workingDirectory.paths(ENVIRONMENT_ID);
+			await mkdir(repositoryFolder, { recursive: true });
+			// The shape that an earlier version wrote.
+			await writeFile(
+				descriptorFile,
+				JSON.stringify({
+					schemaVersion: 1,
+					environmentId: ENVIRONMENT_ID,
+					remoteUrl: 'git@github.com:o/r.git',
+					checkoutBranchName: 'main',
+				}),
+			);
 
 			const result = await service.findOne(ENVIRONMENT_ID);
 

@@ -57,14 +57,16 @@ export class PromotionWorkingDirectoryService {
 
 	/**
 	 * Whether the checkout on this machine was cloned from the configuration we just
-	 * resolved. Catches a remote or branch change made by another process, which
-	 * could not invalidate this machine's cache.
+	 * resolved. Catches a remote, branch, or provider change made by another process,
+	 * which could not invalidate this machine's cache. A descriptor without a provider
+	 * does not match.
 	 */
 	async matchesDescriptor(expected: PromotionCacheDescriptor): Promise<boolean> {
 		const stored = await this.readDescriptor(expected.environmentId);
 		if (!stored) return false;
 		return (
 			stored.schemaVersion === expected.schemaVersion &&
+			stored.providerId === expected.providerId &&
 			stored.remoteUrl === expected.remoteUrl &&
 			stored.checkoutBranchName === expected.checkoutBranchName
 		);

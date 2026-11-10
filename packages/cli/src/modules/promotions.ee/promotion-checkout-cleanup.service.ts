@@ -154,7 +154,12 @@ export class PromotionCheckoutCleanupService {
 			return false;
 		}
 		return await this.workingDirectory.matchesDescriptor(
-			buildCacheDescriptor({ environmentId: environment.id, remote, config }),
+			buildCacheDescriptor({
+				environmentId: environment.id,
+				providerId: environment.providerId,
+				remote,
+				config,
+			}),
 		);
 	}
 
