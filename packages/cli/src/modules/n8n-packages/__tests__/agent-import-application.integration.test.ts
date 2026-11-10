@@ -468,37 +468,54 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 });
 
 it.each(['project', 'instance'] as const)(
-	'reports a skill ID owned by another %s in the preview without replacing its content',
+	'imports a copy of a skill whose ID belongs to another %s',
 	async (scope) => {
 		const input = fixture();
 		input.manifest.agents.splice(1);
 		const elsewhere = await createTeamProject('Elsewhere', owner);
-		const body = {
-			name: 'Existing skill',
-			description: 'Keep this skill.',
-			instructions: 'Keep these instructions.',
-		};
 		await createSkill({
 			id: 'support_source_skill',
 			projectId: scope === 'project' ? elsewhere.id : null,
 			createdById: owner.id,
-			content: body,
-		});
-		const before = await findLatestSkillVersion('support_source_skill');
-		await expect(importSelected(input)).rejects.toMatchObject({
-			meta: {
-				issues: [
-					expect.objectContaining({
-						type: 'agent-invalid',
-						path: 'skills.support_source_skill',
-						message: expect.stringContaining('already belongs to another'),
-					}),
-				],
+			content: {
+				name: 'Existing skill',
+				description: 'Keep this skill.',
+				instructions: 'Keep these instructions.',
 			},
 		});
+		const before = await findLatestSkillVersion('support_source_skill');
+		await importSelected(input);
 		expect(await findLatestSkillVersion('support_source_skill')).toEqual(before);
-		expect(await agents.findById('support_source')).toBeNull();
+		const refs = await Container.get(AgentSkillRefsService).refsForDraft(
+			{ id: 'support_source' },
+			{},
+		);
+		expect(refs).toEqual([
+			{ type: 'skill', id: expect.not.stringMatching('support_source_skill') },
+		]);
+		const copyId = refs[0].id;
+		expect(await findSkill(copyId)).toMatchObject({ projectId: project.id, source: 'import' });
+		const { name, description, instructions } = packageSkill(input).skill;
+		expect(await findLatestSkillVersion(copyId)).toMatchObject({
+			version: 1,
+			name,
+			description,
+			instructions,
+		});
+		const skillIds = await findSkillIds();
+		await importSelected(input);
+		expect(await findSkillIds()).toEqual(skillIds);
+		expect(await findLatestSkillVersion(copyId)).toMatchObject({ version: 1 });
+		// The import must find the copy again after the deletion of the original skill.
 		await deleteSkill('support_source_skill');
+		await importSelected(input);
+		expect(await findSkillIds()).toEqual(skillIds.filter((id) => id !== 'support_source_skill'));
+		expect(
+			await Container.get(AgentSkillRefsService).refsForDraft({ id: 'support_source' }, {}),
+		).toEqual([{ type: 'skill', id: copyId }]);
+		expect(await findLatestSkillVersion(copyId)).toMatchObject({ version: 1 });
+		await agents.delete({});
+		await deleteSkill(copyId);
 	},
 );
 

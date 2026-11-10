@@ -352,11 +352,12 @@ export function handleAgentFinishOutput(
 				thinking?: string;
 			}>;
 
-			// Filter out thinking blocks and join text blocks
+			// Filter out thinking blocks and concatenate text blocks. Some providers (e.g. Mistral)
+			// stream one block per delta, so blocks are fragments and must not get a separator.
 			const textOutputs = multiOutputSteps
 				.filter((output) => output.type === 'text' && output.text)
 				.map((output) => output.text)
-				.join('\n')
+				.join('')
 				.trim();
 
 			if (textOutputs) {
@@ -367,7 +368,7 @@ export function handleAgentFinishOutput(
 				const thinkingOutputs = multiOutputSteps
 					.filter((output) => output.type === 'thinking' && output.thinking)
 					.map((output) => output.thinking)
-					.join('\n')
+					.join('')
 					.trim();
 
 				if (thinkingOutputs) {

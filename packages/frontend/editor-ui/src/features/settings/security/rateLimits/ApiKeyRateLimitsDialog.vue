@@ -273,6 +273,7 @@ function save() {
 						v-if="RATE_LIMIT_ROW_KEYS.some(canReset)"
 						variant="ghost"
 						size="small"
+						icon="undo-2"
 						:label="i18n.baseText('settings.security.rateLimits.dialog.resetAll')"
 						data-test-id="rate-limits-reset-all"
 						@click="resetAll"
