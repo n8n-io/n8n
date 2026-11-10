@@ -163,7 +163,8 @@ export class CredentialImporter {
 				ownerProjectId,
 				name: packageCredential.name,
 				...(packageCredential.data !== undefined ? { data: packageCredential.data } : {}),
-				...(packageCredential.description !== undefined
+				// Like `credentialDiffers`: with descriptions off, the description decides nothing.
+				...(descriptionsEnabled && packageCredential.description !== undefined
 					? { description: packageCredential.description }
 					: {}),
 			};

@@ -507,6 +507,7 @@ oneOf:
           description:
             type: string
             nullable: true
+            maxLength: 512
           data:
             type: object
             additionalProperties:
@@ -534,6 +535,7 @@ oneOf:
           description:
             type: string
             nullable: true
+            maxLength: 512
           data:
             type: object
             additionalProperties:

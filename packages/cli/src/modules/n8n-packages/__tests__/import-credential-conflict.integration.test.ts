@@ -1285,7 +1285,9 @@ describe('credential description', () => {
 			}),
 		);
 
-		expect(issues.length).toBeGreaterThan(0);
+		expect(issues).toEqual([
+			expect.objectContaining({ type: 'credential-conflict', kind: 'differs' }),
+		]);
 	});
 
 	it.each([

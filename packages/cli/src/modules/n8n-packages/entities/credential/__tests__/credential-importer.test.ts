@@ -549,6 +549,31 @@ describe('CredentialImporter', () => {
 			).rejects.toThrow(UnprocessableRequestError);
 		});
 
+		it.each([
+			{ enabled: true, expected: { description: 'From the package' } },
+			{ enabled: false, expected: {} },
+		])(
+			'carries the package description on the candidate only when descriptions are on ($enabled)',
+			async ({ enabled, expected }) => {
+				credentialDescriptions.isEnabled.mockResolvedValue(enabled);
+				credentialsFinder.findById.mockResolvedValue(destination());
+				credentialsService.decryptOrFail.mockResolvedValue({ accessToken: 'stored-secret' });
+
+				const result = await importer.plan(
+					context,
+					bindingRequest([requirement], {
+						conflictPolicy: 'overwrite',
+						packageCredentials: new Map([
+							['cred-1', packageFile({ description: 'From the package' })],
+						]),
+					}),
+				);
+
+				expect(result.candidates[0]).toMatchObject(expected);
+				expect(result.candidates[0].description).toBe(enabled ? 'From the package' : undefined);
+			},
+		);
+
 		it('keeps an equal candidate out of the updates', async () => {
 			credentialsFinder.findById.mockResolvedValue(destination());
 			credentialsService.decryptOrFail.mockResolvedValue({
