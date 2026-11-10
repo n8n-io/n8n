@@ -1,0 +1,48 @@
+packages/modules/promotions/frontend/src/promoteErrorMessage.test.ts
+  s_3577b5c5c8d1c1::t_5bebaaeeedaf70 4,11-26,30,39,47,56
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_3577b5c5c8d1c1::t_7c3e91794ed86c 12,118-121
+packages/cli/src/modules/promotions.ee/promotion-changes.controller.ts
+  s_3577b5c5c8d1c1::t_c149206afe21cf 10
+  s_3577b5c5c8d1c1::t_e768862800d8ed 31
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_3577b5c5c8d1c1::t_63f4633c0628eb 2-5,32,186-194,256-258,268-269,273,281-282,285-288,290-292,301-302,344-345,377,392-399,401,405,408-415,420
+  s_3577b5c5c8d1c1::t_17a62b67fd225c 423,438,444-445,448-449,452-456
+  s_3577b5c5c8d1c1::t_39471b3a0dff67 498-500,509-512,517-518,520-522,525-534,536-537,540,542-544,552,557-558,581-583,587-589,591-595,622-623,627-629,663-665,670,693-694,853,1062-1063,1069-1074,1077
+  s_3577b5c5c8d1c1::t_c149206afe21cf 553,1064-1068
+  s_3577b5c5c8d1c1::t_4dd9b6505fca4e 1
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3577b5c5c8d1c1::t_e768862800d8ed 650
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_3577b5c5c8d1c1::t_c149206afe21cf 81,87
+  s_3577b5c5c8d1c1::t_b4da5ab47adc90 1,65,94
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_3577b5c5c8d1c1::t_3e7c8f1b72b419 2299-2308,2319-2320,2329,2331,2336,2338
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_3577b5c5c8d1c1::t_c90d5843489263 19,28,43-44,74-75,82,104-105,124-125,133
+  s_3577b5c5c8d1c1::t_dc9589ca9c511a 71
+packages/cli/BREAKING-CHANGES.md
+  s_3577b5c5c8d1c1::t_5429cdd08a8a8f 41-53
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_3577b5c5c8d1c1::t_12f85ae875c950 488,511-512
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_3577b5c5c8d1c1::t_1cd3026421f967 169
+packages/modules/promotions/frontend/src/promoteErrorMessage.ts
+  s_3577b5c5c8d1c1::t_1cd3026421f967 3,8-12,19,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12e22e8fe55c8ee634a66773b19b6f3ed2f36596",
+  "prompts": {},
+  "sessions": {
+    "s_3577b5c5c8d1c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9385f1cb-01a1-4804-b347-ae01a2d5700b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
