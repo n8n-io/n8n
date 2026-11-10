@@ -4,11 +4,11 @@ import { shrink } from '../chaos/shrink';
 import { parseChaosArgs, USAGE } from './chaos-args';
 import { stopAllStacks } from '../stack';
 
-async function main() {
+async function main(): Promise<number> {
 	const args = parseChaosArgs(process.argv.slice(2));
 	if (args.help) {
 		console.log(USAGE);
-		return;
+		return 0;
 	}
 	if (!process.env.TEST_IMAGE_N8N) throw new Error(`set TEST_IMAGE_N8N\n${USAGE}`);
 
@@ -51,16 +51,25 @@ async function main() {
 			console.log(`  +${atMs} ms ${describeFault(fault)}`);
 	}
 	console.log(`\nlogs and records in ${args.outDir}; replay with --seed ${args.seed}`);
-	process.exit(result.violations.length || failedFaults.length ? 1 : 0);
+	return result.violations.length || failedFaults.length ? 1 : 0;
 }
 
 if (require.main === module) {
-	process.once('SIGINT', () => {
+	let interrupted = false;
+	process.on('SIGINT', () => {
+		if (interrupted) process.exit(130);
+		interrupted = true;
 		console.error('interrupted; stopping stacks');
-		void stopAllStacks().finally(() => process.exit(130));
+		void stopAllStacks()
+			.catch((error: unknown) => console.error(error instanceof Error ? error.message : error))
+			.finally(() => process.exit(130));
 	});
-	main().catch((error: unknown) => {
-		console.error(error instanceof Error ? error.message : error);
-		process.exit(2);
-	});
+	void main()
+		.catch((error: unknown) => {
+			console.error(error instanceof Error ? error.message : error);
+			return 2;
+		})
+		.then((code) => {
+			if (!interrupted) process.exit(code);
+		});
 }
