@@ -26,6 +26,7 @@ Complete reference for n8n's `.github/` folder.
 │   ├── trim-fe-packageJson.js            # Strip frontend devDeps
 │   ├── ensure-provenance-fields.mjs      # Add license/author fields
 │   ├── validate-docs-links.js            # Check documentation URLs
+│   ├── check-inflight.mjs                # Reject inflight in checked-in pnpm lockfiles
 │   ├── send-build-stats.mjs              # Turbo build telemetry → webhook
 │   └── docker/
 │       ├── docker-tags.mjs               # Generate image tags
@@ -80,6 +81,10 @@ Complete reference for n8n's `.github/` folder.
 ---
 
 ## Quick Reference
+
+The PR format job runs `pnpm check:dependencies` on every PR and merge group.
+This check rejects the exact package `inflight` in all checked-in pnpm lockfiles.
+It includes development and optional dependencies. It allows `promise-inflight`.
 
 | Prefix     | Purpose                                 |
 |------------|-----------------------------------------|
@@ -508,6 +513,20 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Release PR verification
+
+When the selected ref contains `packages/quality/policy/code-health`,
+`release-create-pr.yml` verifies the npm-install dependency graph for all publishable
+packages before it creates a release PR. It resolves the selected ref once.
+Verification, release preparation, and the release base branch use
+that commit SHA, even if the selected branch advances. Verification runs in blocking
+mode. A failure stops PR creation and auto-merge setup. This gate also
+applies to patch, minor, and experimental releases that call this workflow.
+
+For older release refs without the verifier package, the verification job emits a
+notice and skips dependency verification, even in blocking mode. Release PR creation
+can continue without that check.
+
 ### Standalone prereleases
 
 Set `prerelease: true` on `release-create-pr.yml` to publish a bare SemVer as a
@@ -601,8 +620,8 @@ Runs on push to `master`:
 ```
 Push to master
 ├─ build-and-format (Blacksmith: build, then format check; populate master cache)
-├─ unit-test (matrix: Node 24.22.1, 26.12.1)
-│   └─ Coverage only on 24.22.1
+├─ unit-test (matrix: Node 24.22.2, 26.13.0)
+│   └─ Coverage only on 24.22.2
 ├─ lint
 ├─ (performance: CodSpeed benchmarks, paused until the plugin supports Vitest 5)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
@@ -684,7 +703,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '26.12.1'
+  node-version:        # default: '26.13.0'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
@@ -944,6 +963,10 @@ must apply the `large-scale-change` label. The gate checks the actor from the
 label event and verifies their current team membership. The label alone is not
 sufficient. Label changes re-evaluate the status. Removing the label removes
 the exemption.
+
+An approval from the n8n Release Helper makes the **Required Reviews** status
+succeed without required OWNERS team approvals. The gate uses the latest review
+state from `n8n-release-helper[bot]`. Dismissing its approval removes the skip.
 
 Every path that writes the status runs in the base repository context, because
 a fork-context run has no secrets and a read-only token. PR changes arrive

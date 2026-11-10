@@ -106,7 +106,27 @@ export class CreateExecutionLedgerTable1793280161358 implements ReversibleMigrat
 		}
 	}
 
-	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
-		await dropTable(tableName);
+	async down(context: MigrationContext) {
+		await this.warnAboutUnfoldedRows(context);
+		await context.schemaBuilder.dropTable(tableName);
+	}
+
+	// Unfolded rows are lost on revert. A revert must not fail, so warn instead of refusing.
+	private async warnAboutUnfoldedRows({
+		escape,
+		runQuery,
+		queryRunner,
+		tablePrefix,
+		logger,
+		migrationName,
+	}: MigrationContext) {
+		if (!(await queryRunner.hasTable(`${tablePrefix}${tableName}`))) return;
+
+		const [{ count }] = await runQuery<Array<{ count: string | number }>>(
+			`SELECT COUNT(*) AS "count" FROM ${escape.tableName(tableName)}`,
+		);
+		if (Number(count) > 0) {
+			logger.warn(`[${migrationName}] Dropping ${count} ledger rows that no fold step has read`);
+		}
 	}
 }

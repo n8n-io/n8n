@@ -12,9 +12,11 @@ import {
 	BuiltTool,
 	CredentialProvider,
 	ModelConfig,
+	type Workspace,
 } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	N8N_CHAT_CONTEXT_TOOL_NAME,
 	N8N_CHAT_INTEGRATION_TYPE,
@@ -55,6 +57,7 @@ import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import { WorkflowRunner } from '@/workflow-runner';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
@@ -92,7 +95,6 @@ import {
 import { toAgentDocument } from './json-config/agent-document';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { resolveCredentialAwareModelConfig } from './json-config/model-config';
-import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
@@ -114,6 +116,11 @@ import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolve
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
+import {
+	AgentSandboxFilesService,
+	SANDBOX_FILES_INSTRUCTIONS,
+} from './agent-sandbox-files.service';
+import { createImportFilesTool, IMPORT_FILES_TOOL_NAME } from './tools/import-files.tool';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
  * row exists, so anything keyed on a real agent id (checkpoints, knowledge
@@ -128,6 +135,12 @@ export interface ReconstructedAgentRuntime {
 	mcpServerAttributions: Map<string, string>;
 	/** Saved budget config, including a turned-off guardrail. Absent when unset. */
 	budget?: BudgetGuardrailConfig;
+	/**
+	 * The main model credential is the Gateway credits marker: the run debits
+	 * the shared wallet, so the budget guardrail also attaches the gateway 402
+	 * classifier — a depleted wallet ends the run with `budget.credits`.
+	 */
+	modelCredentialGatewayManaged?: boolean;
 }
 
 export interface SubAgentDelegationConfig {
@@ -233,6 +246,27 @@ interface ToolRunIdentity {
 	backgroundTasksEnabled: boolean;
 }
 
+/**
+ * Harness tools stay eager, so the model sees their schemas without a tool search.
+ * The user's own tools (workflow, node, integration, MCP) stay deferred.
+ */
+function harnessEagerToolNames(params: RuntimeDependencies): string[] {
+	return [
+		...CORE_WORKSPACE_TOOL_NAMES,
+		'load_skill',
+		MARK_SESSION_FAILED_TOOL_NAME,
+		DELEGATE_SUB_AGENT_TOOL_NAME,
+		WRITE_TODOS_TOOL_NAME,
+		READ_BINARY_DATA_TOOL_NAME,
+		GET_ENVIRONMENT_TOOL_NAME,
+		RECALL_MEMORY_TOOL_NAME,
+		FLAG_MEMORY_TOOL_NAME,
+		...Object.values(AGENT_PLAN_TOOL_NAMES),
+		// Only top-level runs with background tasks get these tools.
+		...(params.backgroundTasksEnabled ? [BACKGROUND_JOBS_TOOL_NAME] : []),
+	];
+}
+
 async function getChatIntegrationToolServices() {
 	const { IntegrationMessageContextService } = await import(
 		'./integrations/integration-message-context.service.js'
@@ -313,7 +347,7 @@ export class AgentRuntimeReconstructionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
@@ -333,6 +367,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsService: CredentialsService,
 		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -711,6 +746,9 @@ export class AgentRuntimeReconstructionService {
 			...(options.config.config?.guardrails?.budget !== undefined
 				? { budget: options.config.config.guardrails.budget }
 				: {}),
+			...(options.config.credential === AI_GATEWAY_MANAGED_TAG
+				? { modelCredentialGatewayManaged: true }
+				: {}),
 		};
 	}
 
@@ -1046,24 +1084,7 @@ export class AgentRuntimeReconstructionService {
 		const { agent, agentId, projectId, runtimeProfile, config, abortSignal } = params;
 
 		throwIfAborted(abortSignal);
-		// Harness tools stay eager, so the model sees their schemas without a tool search.
-		// The user's own tools (workflow, node, integration, MCP) stay deferred.
-		agent.nativeToolDeferral({
-			eagerToolNames: [
-				...CORE_WORKSPACE_TOOL_NAMES,
-				'load_skill',
-				MARK_SESSION_FAILED_TOOL_NAME,
-				DELEGATE_SUB_AGENT_TOOL_NAME,
-				WRITE_TODOS_TOOL_NAME,
-				READ_BINARY_DATA_TOOL_NAME,
-				GET_ENVIRONMENT_TOOL_NAME,
-				RECALL_MEMORY_TOOL_NAME,
-				FLAG_MEMORY_TOOL_NAME,
-				...Object.values(AGENT_PLAN_TOOL_NAMES),
-				// Only top-level runs with background tasks get these tools.
-				...(params.backgroundTasksEnabled ? [BACKGROUND_JOBS_TOOL_NAME] : []),
-			],
-		});
+		agent.nativeToolDeferral({ eagerToolNames: harnessEagerToolNames(params) });
 
 		agent.tool(createGetEnvironmentTool());
 		const parentWorkspaceHandle = await this.attachWorkspaceAndKnowledge(params);
@@ -1118,15 +1139,29 @@ export class AgentRuntimeReconstructionService {
 		return parentWorkspaceHandle;
 	}
 
+	private async attachWorkspaceTools(params: RuntimeDependencies, workspace: Workspace) {
+		const { agent, projectId } = params;
+		agent.workspace(workspace);
+		if (!(await this.sandboxFiles.isEnabled())) return;
+		const getInstructions = workspace.getInstructions.bind(workspace);
+		workspace.getInstructions = () =>
+			[getInstructions(), SANDBOX_FILES_INSTRUCTIONS].filter(Boolean).join('\n\n');
+		agent.tool(createImportFilesTool({ projectId, workspace, sandboxFiles: this.sandboxFiles }));
+		// Eager only when attached, so a user tool with the same name stays deferred.
+		agent.nativeToolDeferral({
+			eagerToolNames: [...harnessEagerToolNames(params), IMPORT_FILES_TOOL_NAME],
+		});
+	}
+
 	private async attachWorkspace(
 		params: RuntimeDependencies,
 	): Promise<AgentSandboxRuntime | undefined> {
-		const { agent, agentId, projectId, runtimeProfile, parentWorkspace, sandboxPrincipalHash } =
-			params;
+		const { agentId, projectId, runtimeProfile, parentWorkspace, sandboxPrincipalHash } = params;
 		if (runtimeProfile === 'sub-agent') {
 			// Delegated runs use the parent's sandbox only.
 			if (parentWorkspace) {
-				agent.workspace(
+				await this.attachWorkspaceTools(
+					params,
 					this.agentWorkspaceService.getDelegatedAgentWorkspace(
 						parentWorkspace.handle,
 						parentWorkspace.delegationThreadId,
@@ -1147,7 +1182,7 @@ export class AgentRuntimeReconstructionService {
 				sandboxPrincipalHash,
 			);
 			throwIfAborted(params.abortSignal);
-			agent.workspace(workspace);
+			await this.attachWorkspaceTools(params, workspace);
 			return handle;
 		} catch (error) {
 			throwIfAborted(params.abortSignal);
@@ -1209,6 +1244,7 @@ export class AgentRuntimeReconstructionService {
 									buildFileUploadGuidance(
 										integrationDef.fileUploadLimits,
 										!integrationDef.disableStreaming,
+										this.agentChatAttachmentService.maxStoredFileBytes,
 									),
 								]
 							: []),

@@ -34,7 +34,7 @@ n8n-cli package export -w abc --include-tags=false -o export.n8np
 | `--include-archived-workflows` | `false` (default) or `true`. Whether folder and project exports include their archived workflows. When `true`, they travel with `isArchived: true` and are archived on import. Workflows given by `--workflow-id` always export, also when archived. |
 | `--dependency-policy` | Policy for workflow and agent dependencies outside the selected package contents. `fail` (default) aborts when a required definition is absent from the package. `include-in-package` adds accessible dependencies recursively. `reference-only` records external requirements without including their definitions. |
 | `--version-policy` | Which version of each workflow and agent to export. `latest` (default) exports the current draft. `published-strict` requires a published version. `prefer-published` uses the published version when available and the draft otherwise. `ignore-unpublished` skips unpublished selections. Skills always export their latest saved version. |
-| `--credential-export-policy` | Whether expression values from credential data are bundled into the package: `expression-values-only` (default on the instance) includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`); `no-values` keeps credential data out of the package, so each credential file carries only its id, name and type. Literal values never travel either way. |
+| `--credential-export-policy` | Whether expression values from credential data are bundled into the package: `expression-values-only` (default on the instance) includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`); `no-values` keeps credential data out of the package, so each credential file carries only its id, name and type. A literal value travels only when it decides whether another credential field shows (a toggle or an auth type, for example) and an exported expression sits in that field. No other literal value travels. |
 
 Provide at least one `--agent-id`, `--workflow-id`, `--folder-id`, or `--project-id`.
 Explicit Agent selections require `agent:export`. Workflow and folder selections
@@ -43,6 +43,11 @@ exports require `project:export`, including projects with Agents.
 
 Export summaries include Agent counts from the server, including added dependencies.
 JSON output includes these counts and the selected Agent IDs.
+
+The package keeps the channels of each Agent without their credential IDs. A
+credential that only a channel uses is not a package requirement. The import
+keeps a connected destination channel. Set up each channel that the import
+marks `setup-required`. See the import section for details.
 
 `--version-policy` applies to workflows and agents, including agents in a
 project export. The selected version supplies the definition and its references.

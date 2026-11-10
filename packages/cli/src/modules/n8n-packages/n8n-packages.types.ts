@@ -120,7 +120,7 @@ export const ExportVersionPolicy = {
 } as const;
 
 export const CredentialExportPolicy = {
-	/** Bundles only expression-valued fields from credential data; literal values never travel. */
+	/** Bundles expression-valued fields from credential data. A literal travels only when it decides whether a field with a bundled expression shows. */
 	ExpressionValuesOnly: 'expression-values-only',
 	/** Keeps credential data out of the package; credential.json carries id, name and type only. */
 	NoValues: 'no-values',
