@@ -40,7 +40,7 @@ const FILES = {
 	'README.md': '# Skills\n',
 	'skills/pdf/SKILL.md': skillMd('pdf'),
 	'skills/pdf/references/pages.md': '# Pages\n',
-	'skills/pdf/scripts/split.py': 'print(1)\n',
+	'skills/pdf/assets/form.pdf': '%PDF-1.4\n',
 	'skills/docx/SKILL.md': skillMd('docx'),
 	'skills/broken/SKILL.md': 'no frontmatter here\n',
 };
@@ -152,7 +152,7 @@ describe('SkillSourceController', () => {
 					location: 'skills/pdf',
 					name: 'pdf',
 					description: 'pdf description',
-					skippedFiles: ['scripts/split.py'],
+					skippedFiles: ['assets/form.pdf'],
 					nameTaken: false,
 					error: null,
 					webUrl: 'https://github.com/acme/skills/tree/main/skills/pdf',
