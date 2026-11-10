@@ -54,6 +54,7 @@ import {
 	formatLockfileImpact,
 	parseLockfileImpact,
 	readLockfileImpact,
+	readRuntimeLockfileImpactDirs,
 } from './core/read-lockfile-impact.js';
 import {
 	generateBaseline,
@@ -861,6 +862,14 @@ function runSelect(options: CliOptions): void {
 		? changedRuntimeDepsFromManifests(manifests).length > 0
 		: false;
 	const lockfileImporters = runtimeDepsChanged ? readLockfileImporters() : undefined;
+	// Which packages' resolved runtime dependencies the lockfile change touched.
+	// An unchanged lockfile touched none. Without a base ref it stays unknown.
+	const lockfileImpactedDirs =
+		runtimeDepsChanged && options.baseRef
+			? changedFiles.includes(LOCKFILE)
+				? readRuntimeLockfileImpactDirs(options.baseRef)
+				: []
+			: undefined;
 	// The closure classifies override pins; a runtime-dep change already forces
 	// broad, so don't compute it then.
 	const overridesChanged =
@@ -877,6 +886,7 @@ function runSelect(options: CliOptions): void {
 		tsconfigs: diffs(isTsconfig),
 		configs: diffs(isBackendConfig),
 		lockfileImporters,
+		lockfileImpactedDirs,
 		runtimeClosure: overridesChanged ? readRuntimeClosure() : undefined,
 		lineScopes: readSelectLineScopes(changedFiles, options),
 	});

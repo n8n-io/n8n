@@ -12,6 +12,7 @@ import {
 	formatLockfileImpact,
 	parseLockfileImpact,
 	readLockfileImpact,
+	readRuntimeLockfileImpactDirs,
 } from './read-lockfile-impact.js';
 
 const lock = (zod: string, rootTurbo = '2.0.0', turboDep = '1.0.0') => `---
@@ -83,6 +84,11 @@ describe('readLockfileImpact', () => {
 	it('ignores a transitive change below the root package dependencies', () => {
 		writeFileSync(join(dir, 'pnpm-lock.yaml'), lock('3.0.0', '2.0.0', '1.0.1'));
 		expect(readLockfileImpact('HEAD')).toEqual([]);
+	});
+
+	it('lists the dirs whose resolved runtime dependencies changed, not devDependencies', () => {
+		writeFileSync(join(dir, 'pnpm-lock.yaml'), lock('3.1.0', '2.1.0'));
+		expect(readRuntimeLockfileImpactDirs('HEAD')).toEqual(['packages/a']);
 	});
 });
 
