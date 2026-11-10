@@ -155,12 +155,19 @@ function keepRepositoryIn(list: SkillSourceRepositoryOption[]) {
 	if (!list.some((option) => repositoryKey(option) === repository.value)) repository.value = '';
 }
 
-/** The quick-connect check reads the credential types, which the settings page may not have. */
+/**
+ * The quick-connect check reads the credential types, which the settings page may not have.
+ * The credential select waits for them, so "Sign in with GitHub" never opens the form by mistake.
+ */
+const credentialTypesLoading = ref(false);
 async function loadCredentialTypes() {
+	credentialTypesLoading.value = true;
 	try {
 		await credentialsStore.fetchCredentialTypes(false);
 	} catch {
 		// Without the types, "Sign in with GitHub" opens the credential form instead.
+	} finally {
+		credentialTypesLoading.value = false;
 	}
 }
 
@@ -702,7 +709,7 @@ function onInteractOutside(event: Event) {
 						:model-value="credentialId || NO_CREDENTIAL"
 						:items="credentialItems"
 						size="large"
-						:disabled="credentialsLoading"
+						:disabled="credentialsLoading || credentialTypesLoading"
 						data-test-id="skill-source-credential-select"
 						@update:model-value="onCredentialSelect(String($event ?? ''))"
 					>
@@ -713,6 +720,7 @@ function onInteractOutside(event: Event) {
 									{{ i18n.baseText('settings.context.skills.connect.credential.newOAuth2.note') }}
 								</N8nText>
 							</span>
+							<span v-else>{{ item.label }}</span>
 						</template>
 					</N8nSelect2>
 				</N8nInputLabel>

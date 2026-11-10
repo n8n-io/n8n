@@ -15,7 +15,7 @@ import type { ICredentialDataDecryptedObject, IHttpRequestHelper } from 'n8n-wor
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialsService } from './credentials.service';
-import { OauthService } from '@/oauth/oauth.service';
+import { OauthService, type OAuth2CredentialTokenRevision } from '@/oauth/oauth.service';
 import {
 	SkillSourceCredentials,
 	SkillSourceCredentialsProxy,
@@ -96,8 +96,13 @@ export class CliSkillSourceCredentials extends SkillSourceCredentials {
 		let data = await this.decrypt(credential, { projectId: decryptIn, userId: user?.id });
 		check?.({ id: credential.id, type: credential.type, data });
 		if (oauth2TokenExpiresSoon(data)) {
-			// The shared refresh saves the new token, so the next decrypt reads it.
-			await this.oauthService.refreshOAuth2CredentialById(credential.id, decryptIn);
+			// The shared refresh saves the new token, so the next decrypt reads it. With the token
+			// that this resolve read, a refresh that ran meanwhile is not repeated.
+			await this.oauthService.refreshOAuth2CredentialById(
+				credential.id,
+				decryptIn,
+				oauth2TokenRevision(data),
+			);
 			data = await this.decrypt(credential, { projectId: decryptIn, userId: user?.id });
 		}
 		return {
@@ -183,6 +188,17 @@ function oauth2TokenExpiresSoon(data: ICredentialDataDecryptedObject): boolean {
 	if (!isRecord(tokenData) || typeof tokenData.refresh_token !== 'string') return false;
 	const expiresAt = Number(tokenData.n8n_expires_at);
 	return Number.isFinite(expiresAt) && expiresAt <= Date.now() + OAUTH2_EXPIRY_MARGIN_MS;
+}
+
+/** The access token and expiry that this resolve read, as the shared refresh compares them. */
+function oauth2TokenRevision(data: ICredentialDataDecryptedObject): OAuth2CredentialTokenRevision {
+	const tokenData = isRecord(data.oauthTokenData) ? data.oauthTokenData : {};
+	const accessToken = tokenData.access_token;
+	const expiresAt = Number(tokenData.n8n_expires_at);
+	return {
+		...(typeof accessToken === 'string' && accessToken ? { accessToken } : {}),
+		...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
+	};
 }
 
 /**

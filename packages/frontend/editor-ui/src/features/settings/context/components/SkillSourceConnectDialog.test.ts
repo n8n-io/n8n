@@ -15,6 +15,7 @@ import { waitFor, within } from '@testing-library/vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentSkillModalScopeOption } from '@/features/agents/components/AgentSkillModal.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
 import SkillSourceConnectDialog from './SkillSourceConnectDialog.vue';
@@ -179,6 +180,14 @@ async function selectCredential(view: View, value: string) {
 	const select = view.getByTestId('skill-source-credential-select');
 	await waitFor(() => expect(within(select).getByRole('option', { name: value })).toBeTruthy());
 	await userEvent.selectOptions(select, within(select).getByRole('option', { name: value }));
+}
+
+/** Waits until the credential list loaded, so only other loads can keep the select busy. */
+async function selectCredentialOptionsLoaded(view: View) {
+	const select = view.getByTestId('skill-source-credential-select');
+	await waitFor(() =>
+		expect(within(select).getByRole('option', { name: 'Ada token' })).toBeTruthy(),
+	);
 }
 
 async function typeRepository(view: View, text: string) {
@@ -1011,6 +1020,24 @@ describe('SkillSourceConnectDialog', () => {
 			);
 		});
 
+		it('keeps the credential select disabled until the credential types load', async () => {
+			let typesLoaded = () => {};
+			mockedStore(useCredentialsStore).fetchCredentialTypes.mockReturnValue(
+				new Promise<void>((resolve) => {
+					typesLoaded = resolve;
+				}),
+			);
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			const view = render();
+			await selectCredentialOptionsLoaded(view);
+
+			expect(view.getByTestId('skill-source-credential-select')).toBeDisabled();
+			typesLoaded();
+			await waitFor(() =>
+				expect(view.getByTestId('skill-source-credential-select')).not.toBeDisabled(),
+			);
+		});
+
 		it('signs in with GitHub in one step when the instance has a managed GitHub OAuth2 app', async () => {
 			oauth.canOAuthCredentialQuickConnect.mockReturnValue(true);
 			oauth.createAndAuthorize.mockImplementation(async () => {
@@ -1050,7 +1077,7 @@ describe('SkillSourceConnectDialog', () => {
 
 			await selectCredential(view, 'Ada account');
 			expect(view.getByTestId('skill-source-oauth-warning')).toHaveTextContent(
-				'This GitHub sign-in gives n8n write access to every repository that the account can reach, and admin access to its organizations',
+				'This GitHub sign-in gives n8n write access to every repository that the account can reach, admin access to its organizations, and more',
 			);
 
 			await selectCredential(view, 'Ada token');
