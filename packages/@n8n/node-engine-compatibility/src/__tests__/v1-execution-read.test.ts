@@ -206,6 +206,18 @@ describe('toV1RunExecutionData', () => {
 		expect(toV1RunExecutionData(graph, [step()]).executionData).toBeUndefined();
 	});
 
+	it('carries the pin data the run used, so the canvas marks those nodes as pinned', () => {
+		const pinData = { Set: [{ json: { pinned: true } }] };
+
+		const data = toV1RunExecutionData(graph, [step()], pinData);
+
+		expect(data.resultData.pinData).toEqual(pinData);
+	});
+
+	it('carries no pin data when the run used none', () => {
+		expect(toV1RunExecutionData(graph, [step()]).resultData.pinData).toBeUndefined();
+	});
+
 	describe('parallel branches', () => {
 		// Two branches off the trigger. Row creation order says nothing about
 		// which branch settled first.
