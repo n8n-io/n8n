@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_86a4adedfe341d::t_6edc4170741a67 87,380
+packages/cli/src/modules/agents/llm-provider-defaults.ts
+  s_86a4adedfe341d::t_6edc4170741a67 74,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0ae2155684598f0a5c5ecd495bfcdfaf35f4475",
+  "prompts": {},
+  "sessions": {
+    "s_86a4adedfe341d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c125-dcd0-7141-bde0-7903be7874f9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
