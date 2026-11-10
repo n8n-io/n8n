@@ -101,6 +101,8 @@ export type {
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
 	NativeToolDeferralConfig,
+	ToolDeferralConfig,
+	ToolDeferralMode,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
@@ -219,6 +221,9 @@ export {
 	withPromptSizeBreakdown,
 } from './runtime/loop/prompt-size-usage';
 export type {
+	ContextCueEntry,
+	ContextCueProvider,
+	ContextCueRequest,
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
 } from './runtime/loop/agent-runtime';
@@ -316,7 +321,24 @@ export {
 	filterLlmMessages,
 	getCreatedAt,
 	isLlmMessage,
+	isRuntimeContextCue,
 } from './sdk/message';
+export {
+	createContextCueProvider,
+	parseAblatedContextCues,
+	whenSkillLoads,
+	whileSkillActive,
+} from './context-cues';
+export type {
+	ContextCue,
+	ContextCueMatch,
+	ContextCueProviderOptions,
+	ContextCueRetrievalMethod,
+	ContextCueRetrievalTrace,
+	ContextCueSet,
+	ContextCueSetPredicate,
+	ContextCueStepQuery,
+} from './context-cues';
 export { fetchProviderCatalog } from './sdk/catalog';
 export type {
 	ProviderCatalog,

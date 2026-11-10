@@ -21,7 +21,7 @@ const TEST_ENTRY_POINTS = new Set(['', 'testing']);
  * What the skills module may import from the rest of cli. The list only shrinks, so the module
  * can move into its own package.
  */
-const CLI_ALLOWLIST = new Set(['posthog', 'telemetry', 'permissions.ee/check-access']);
+const CLI_ALLOWLIST = new Set(['posthog', 'telemetry']);
 
 const ENTRY_SUGGESTION =
 	'Import the skills module from @/modules/skills. Export the symbol from its index.ts if another module needs it.';

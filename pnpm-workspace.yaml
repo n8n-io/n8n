@@ -115,7 +115,7 @@ catalog:
   '@lezer/highlight': 1.2.3
   '@lezer/lr': 1.4.5
   '@modelcontextprotocol/ext-apps': 1.3.2
-  '@modelcontextprotocol/node': 2.0.0
+  '@modelcontextprotocol/node': 2.1.0
   '@modelcontextprotocol/sdk': 1.32.0
   '@modelcontextprotocol/server': 2.3.0
   '@mozilla/readability': ^0.6.0
@@ -420,7 +420,7 @@ overrides:
   'knip>zod': catalog:zod-v4
   js-yaml: 4.3.2
   katex: 0.18.2
-  body-parser: 2.3.0
+  body-parser: 2.4.0
   glob@10: 10.5.0
   # These consumers use the same APIs in the maintained releases.
   js-beautify@<1.15.4: 1.15.4
