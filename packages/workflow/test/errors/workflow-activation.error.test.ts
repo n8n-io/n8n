@@ -1,6 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 
 import {
+	NodeApiError,
 	NodeOperationError,
 	WorkflowActivationError,
 	WorkflowOperationError,
@@ -104,6 +105,44 @@ describe('WorkflowActivationError', () => {
 			);
 
 			const error = new WorkflowActivationError('activation failed', { cause: nodeCause });
+
+			expect(error.level).toBe('warning');
+		});
+	});
+
+	describe('level from the error code in the cause chain', () => {
+		const errorWithCode = (message: string, code: string): Error =>
+			Object.assign(new Error(message), { code });
+
+		it('keeps level error for a cause with code GREETING_TIMEOUT', () => {
+			const greetingTimeout = errorWithCode(
+				'Failed to receive greeting from server in required time',
+				'GREETING_TIMEOUT',
+			);
+
+			const error = new WorkflowActivationError('activation failed', { cause: greetingTimeout });
+
+			expect(error.level).toBe('error');
+		});
+
+		test.each(['CONNECT_TIMEOUT', 'ENOTFOUND', 'ECONNRESET', 'EAI_AGAIN'])(
+			'sets level warning for a cause with code %s',
+			(code) => {
+				const error = new WorkflowActivationError('activation failed', {
+					cause: errorWithCode('connection failed', code),
+				});
+
+				expect(error.level).toBe('warning');
+			},
+		);
+
+		it('sets level warning when a NodeApiError wraps an error with code ECONNRESET', () => {
+			const nodeApiError = new NodeApiError(
+				mock<INode>(),
+				errorWithCode('read ECONNRESET', 'ECONNRESET'),
+			);
+
+			const error = new WorkflowActivationError('activation failed', { cause: nodeApiError });
 
 			expect(error.level).toBe('warning');
 		});
