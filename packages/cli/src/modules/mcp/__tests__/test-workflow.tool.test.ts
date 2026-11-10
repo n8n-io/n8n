@@ -103,6 +103,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				true,
 			);
 
 			expect(tool.name).toBe('test_workflow');
@@ -665,7 +666,6 @@ describe('test-workflow MCP tool', () => {
 				executionId: 'exec-failed',
 				status: 'error',
 				error: 'NodeApiError error (401) (details hidden by n8n)',
-				nodeResults: [],
 			});
 		});
 
@@ -699,7 +699,7 @@ describe('test-workflow MCP tool', () => {
 			});
 		});
 
-		test('loads the execution for the user when the run succeeds', async () => {
+		test('does not load the execution when the run succeeds', async () => {
 			setupSuccessfulExecution();
 			(workflowRunner.run as Mock).mockResolvedValue('exec-success');
 			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
@@ -719,7 +719,7 @@ describe('test-workflow MCP tool', () => {
 				{ Trigger: [{ json: {} }] },
 			);
 
-			expect(loadExecutionForViewer).toHaveBeenCalledWith('exec-success', user);
+			expect(loadExecutionForViewer).not.toHaveBeenCalled();
 		});
 
 		test('handles workflow returning undefined data', async () => {
@@ -744,22 +744,27 @@ describe('test-workflow MCP tool', () => {
 	});
 
 	describe('node results', () => {
-		const runTestWorkflow = async (status: 'success' | 'error') => {
-			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(
-				createWorkflow({
-					settings: { availableInMCP: true },
-					nodes: [
-						{
-							id: 'node-1',
-							name: 'Trigger',
-							type: WEBHOOK_NODE_TYPE,
-							typeVersion: 1,
-							position: [0, 0],
-							disabled: false,
-							parameters: {},
-						} as INode,
-					],
-				}),
+		const runTestWorkflow = async (
+			status: 'success' | 'error',
+			{ executionReadGranted = true, canReadExecutions = true } = {},
+		) => {
+			const workflow = createWorkflow({
+				settings: { availableInMCP: true },
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Trigger',
+						type: WEBHOOK_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+					} as INode,
+				],
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+			(workflowFinderService.findWorkflowHeadForUser as Mock).mockResolvedValue(
+				canReadExecutions ? workflow : null,
 			);
 			(workflowRunner.run as Mock).mockResolvedValue('exec-1');
 			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
@@ -776,6 +781,9 @@ describe('test-workflow MCP tool', () => {
 				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
+				undefined,
+				undefined,
+				executionReadGranted,
 			);
 		};
 
@@ -865,6 +873,47 @@ describe('test-workflow MCP tool', () => {
 			expect(result.error).toBe(`${'e'.repeat(500)}...`);
 		});
 
+		test('adds the item counts of all runs of a node and takes the status of the last run', async () => {
+			mockViewedExecution({
+				runData: {
+					Trigger: [{ executionIndex: 0, executionStatus: 'success', data: { main: [items(1)] } }],
+					Loop: [
+						{ executionIndex: 1, executionStatus: 'success', data: { main: [items(2), null] } },
+						{
+							executionIndex: 2,
+							executionStatus: 'error',
+							data: { main: [items(1), items(3)] },
+							error: { message: 'second run failed' },
+						},
+					],
+				},
+			});
+
+			const result = await runTestWorkflow('success');
+
+			expect(result.nodeResults).toEqual([
+				{ nodeName: 'Trigger', status: 'success', itemCounts: [1] },
+				{ nodeName: 'Loop', status: 'error', itemCounts: [3, 3], error: 'second run failed' },
+			]);
+		});
+
+		test('omits node results when the token does not grant execution read', async () => {
+			mockViewedExecution({ error: { message: 'failed' } });
+
+			const result = await runTestWorkflow('error', { executionReadGranted: false });
+
+			expect(result).toEqual({ executionId: 'exec-1', status: 'error', error: 'failed' });
+			expect(workflowFinderService.findWorkflowHeadForUser).not.toHaveBeenCalled();
+		});
+
+		test('omits node results when the user cannot read executions of the workflow', async () => {
+			mockViewedExecution({ error: { message: 'failed' } });
+
+			const result = await runTestWorkflow('error', { canReadExecutions: false });
+
+			expect(result).toEqual({ executionId: 'exec-1', status: 'error', error: 'failed' });
+		});
+
 		test('omits node results when the execution cannot be loaded for the user', async () => {
 			vi.mocked(loadExecutionForViewer).mockResolvedValue(undefined);
 
@@ -895,6 +944,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				true,
 			);
 			const result = await tool.handler(
 				{
@@ -915,6 +965,7 @@ describe('test-workflow MCP tool', () => {
 			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(
 				createWorkflow({ settings: { availableInMCP: true }, nodes: [triggerNode] }),
 			);
+			(workflowFinderService.findWorkflowHeadForUser as Mock).mockResolvedValue({});
 			(workflowRunner.run as Mock).mockResolvedValue('exec-1');
 			(activeExecutions.has as Mock).mockReturnValue(true);
 		});
@@ -1148,6 +1199,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				true,
 			);
 
 			const result = await tool.handler(
@@ -1198,6 +1250,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				true,
 			);
 
 			await tool.handler(
@@ -1230,6 +1283,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				true,
 			);
 
 			const result = await tool.handler(
@@ -1307,6 +1361,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				true,
 			);
 
 			const result = await tool.handler(
@@ -1473,6 +1528,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				true,
 			);
 
 			await tool.handler(
@@ -1516,6 +1572,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				logger,
+				true,
 			);
 
 			await tool.handler(

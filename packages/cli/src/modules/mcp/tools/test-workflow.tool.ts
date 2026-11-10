@@ -101,7 +101,9 @@ const outputSchema = {
 	nodeResults: z
 		.array(nodeResultSchema)
 		.optional()
-		.describe('The nodes that ran, in execution order'),
+		.describe(
+			'The nodes that ran, in execution order. Absent when you cannot read executions of this workflow',
+		),
 	truncated: z
 		.boolean()
 		.optional()
@@ -119,6 +121,7 @@ export const createTestWorkflowTool = (
 	telemetry: Telemetry,
 	mcpService: McpService,
 	logger: Logger,
+	executionReadGranted: boolean,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'test_workflow',
 	config: {
@@ -164,6 +167,7 @@ export const createTestWorkflowTool = (
 				pinData as IPinData,
 				triggerNodeName,
 				timeout,
+				executionReadGranted,
 			);
 
 			telemetryPayload.results = {
@@ -223,6 +227,7 @@ export async function testWorkflow(
 	pinData: IPinData,
 	triggerNodeName?: string,
 	timeoutSeconds: number = WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS,
+	executionReadGranted = false,
 ): Promise<TestWorkflowOutput> {
 	const workflow = await getMcpWorkflow(
 		workflowId,
@@ -330,10 +335,18 @@ export async function testWorkflow(
 		mcpService,
 		timeoutSeconds * Time.seconds.toMilliseconds,
 	);
-	const viewedResultData = await loadResultDataForViewer(executionId, user, logger);
-	const nodeSummary = viewedResultData ? summarizeNodeResults(viewedResultData.runData) : {};
-
 	const hasError = data.status === 'error' || data.data.resultData?.error;
+	const canReadExecution =
+		executionReadGranted &&
+		(await workflowFinderService.findWorkflowHeadForUser(workflowId, user, ['execution:read'])) !==
+			null;
+	const viewedResultData =
+		hasError || canReadExecution
+			? await loadResultDataForViewer(executionId, user, logger)
+			: undefined;
+	const nodeSummary =
+		canReadExecution && viewedResultData ? summarizeNodeResults(viewedResultData.runData) : {};
+
 	if (!hasError) {
 		return { executionId, status: data.status, ...nodeSummary };
 	}
