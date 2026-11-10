@@ -33,7 +33,8 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/design-system
+          # Prototype: the editor-ui stories need every package that the editor depends on.
+          build-command: pnpm run build --filter=@n8n/vitest-config --filter='n8n-editor-ui^...'
 
       - name: Build
         working-directory: packages/frontend/@n8n/storybook
