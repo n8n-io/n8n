@@ -10,9 +10,8 @@ import * as toastModule from '@n8n/composables/useToast';
 import type { AgentPreviewHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
-import AgentSessionsListView, {
-	AGENT_SESSION_ASSISTANT_KEY,
-} from '../views/AgentSessionsListView.vue';
+import AgentSessionsListView from '../views/AgentSessionsListView.vue';
+import { AGENT_SESSION_ASSISTANT_KEY } from '../components/agentBuilderInjectionKeys';
 
 const fixButton = '[data-test-id="agent-session-fix-with-assistant"]';
 const ready = ref(true);
@@ -88,7 +87,7 @@ async function mountView(threads = [makeThread()], provideAssistant = true) {
 					}
 				: {},
 			renderStubDefaultSlot: true,
-			stubs: { RouterLink: RouterLinkStub, N8nButton: false },
+			stubs: { RouterLink: RouterLinkStub, N8nButton: false, AgentSessionListItem: false },
 		},
 	});
 }
@@ -125,6 +124,9 @@ describe('AgentSessionsListView Assistant handoff', () => {
 		ready.value = true;
 		await nextTick();
 		expect(wrapper.find(fixButton).exists()).toBe(true);
+		expect(wrapper.get(fixButton).text()).toBe(
+			useI18n().baseText('agentSessions.fixWithAssistant'),
+		);
 
 		ready.value = false;
 		await nextTick();
