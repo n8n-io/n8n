@@ -13,13 +13,7 @@ export function externalServicesSkill(): RuntimeSkill {
 		name: 'Agent Builder External Services',
 		description:
 			'Use when connecting the target agent to an external product: deciding whether Slack, Discord, Linear, Telegram, or another platform is a chat integration/trigger versus a callable service, and adding, removing, or updating chat integrations or MCP servers.',
-		recommendedTools: [
-			'agent-context',
-			'agent_builder_configure_channel',
-			'setup_credentials',
-			'agent_builder_verify_mcp_server',
-			'agent_builder_patch_config',
-		],
+		recommendedNamespaces: ['agents', 'credentials'],
 		allowedTools: [
 			'agent-context',
 			'agent_builder_configure_channel',

@@ -1318,8 +1318,8 @@ carries *what* it does.
 Build n8n Apps. Present only when the apps module is active, the run has a
 bound project and the sandbox is available. The adapter wires `appService`, and
 the turn setup removes it without a sandbox, so the tool, the `app-builder`
-skill and the `<app-targets>` block share one gate. Deferred: the skill lists
-the tool in `recommended_tools`.
+skill and the `<app-targets>` block share one gate. Deferred: the tool is in the
+default `tools` namespace, which the skill lists in `recommended_namespaces`.
 
 | Action | Scope | Description |
 |--------|-------|-------------|
@@ -1623,7 +1623,7 @@ existing domain.
 4. Register it in `src/tools/index.ts` with `createOrchestratorDomainTools` or
    `createOrchestrationTools`
 5. Decide whether it belongs in `ALWAYS_LOADED_TOOL_NAMES`. Everything not in
-   that set is normally reached through `search_tools` + `load_tool`. Deferral is the right default, but a tool whose job is to reveal
+   that set is listed by name in the tool catalog and run through `call_tool`. Deferral is the right default, but a tool whose job is to reveal
    an absence, or to redirect the model's attention, cannot be found by
    searching for it
 6. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles

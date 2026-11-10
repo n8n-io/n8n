@@ -252,13 +252,37 @@ function parsePath(segments: string): string[] {
 	return path;
 }
 
-/** Items to check a field against: every item when complete, else the first-item preview. */
+/**
+ * Items to check a field against. Only complete item lists count: a first-item
+ * preview can miss an optional field that later items have.
+ */
 function sampleItems(nodeOutput: unknown): Array<Record<string, unknown>> | undefined {
-	const items = completeItems(nodeOutput);
-	if (items) return items.filter(isRecord);
-	const output = outputForInspection(nodeOutput);
-	if (isRecord(output) && isRecord(output._firstItemPreview)) return [output._firstItemPreview];
-	return undefined;
+	return completeItems(nodeOutput)?.filter(isRecord);
+}
+
+/** The reference handles a missing value itself (`$json.a ?? 'x'`, `$json.a || 'x'`, `$json.a?.b`). */
+const GUARDED_SUFFIX = /^\s*(?:\?\?|\|\||\?\.)/;
+
+/** Nodes whose input comes, directly or through executed nodes, from a simulated node. */
+function fixtureDerivedNodes(
+	nodeNames: string[],
+	byDestination: ReturnType<typeof mapConnectionsByDestination>,
+	simulatedNodeNames: ReadonlySet<string>,
+	resultData: Record<string, unknown>,
+): Set<string> {
+	const derived = new Set(simulatedNodeNames);
+	const visiting = new Set<string>();
+	const visit = (name: string): boolean => {
+		if (derived.has(name)) return true;
+		if (visiting.has(name) || !(name in resultData)) return false;
+		visiting.add(name);
+		const parents = getParentNodes(byDestination, name, NodeConnectionTypes.Main, 1);
+		const fromFixture = parents.some((parent) => visit(parent));
+		if (fromFixture) derived.add(name);
+		return fromFixture;
+	};
+	for (const name of nodeNames) visit(name);
+	return derived;
 }
 
 /**
@@ -337,6 +361,12 @@ export function buildMissingFieldNote(
 	const byDestination = mapConnectionsByDestination(toEngineConnections(workflow.connections));
 	const findings: string[] = [];
 	const fixtureFindings: string[] = [];
+	const fixtureDerived = fixtureDerivedNodes(
+		(workflow.nodes ?? []).map((node) => node.name).filter((name) => typeof name === 'string'),
+		byDestination,
+		simulatedNodeNames,
+		resultData,
+	);
 
 	for (const node of workflow.nodes ?? []) {
 		if (findings.length + fixtureFindings.length >= MAX_MISSING_FIELDS) break;
@@ -347,11 +377,13 @@ export function buildMissingFieldNote(
 		if (parents.length !== 1) continue; // Merge-style inputs: `$json` depends on the input index.
 		const inputItems = sampleItems(resultData[parents[0]]);
 		if (!inputItems || inputItems.length === 0) continue;
-		const fromFixture = simulatedNodeNames.has(parents[0]);
+		const fromFixture = fixtureDerived.has(parents[0]);
 
 		const reported = new Set<string>();
 		for (const expression of expressionStrings(node.parameters)) {
 			for (const match of expression.matchAll(JSON_PATH_REF)) {
+				const rest = expression.slice((match.index ?? 0) + match[0].length);
+				if (GUARDED_SUFFIX.test(rest)) continue;
 				const path = parsePath(match[1]);
 				const key = path.join('.');
 				if (path.length === 0 || reported.has(key)) continue;

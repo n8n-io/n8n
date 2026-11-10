@@ -788,6 +788,54 @@ describe('buildMissingFieldNote', () => {
 		expect(note).not.toContain('Split Out');
 	});
 
+	it('skips references that handle a missing value', () => {
+		const note = buildMissingFieldNote(
+			{ Webhook: wrap([{ body: {} }]), Score: wrap([{}]) },
+			workflowWith('n8n-nodes-base.set', {
+				a: "={{ $json.body.a ?? 'x' }}",
+				b: "={{ $json.body.b || 'x' }}",
+				c: '={{ $json.body.c?.d }}',
+			}),
+			new Set(),
+		);
+		expect(note).toBeUndefined();
+	});
+
+	it('skips inputs that are only a first-item preview', () => {
+		const note = buildMissingFieldNote(
+			{
+				Webhook: wrap({ _itemCount: 2, _truncated: true, _firstItemPreview: { body: {} } }),
+				Score: wrap([{}]),
+			},
+			workflowWith('n8n-nodes-base.set', { a: '={{ $json.body.a }}' }),
+			new Set(),
+		);
+		expect(note).toBeUndefined();
+	});
+
+	it('blames the fixture when a simulated node feeds the input through an executed node', () => {
+		const workflow = workflowWith('n8n-nodes-base.set', { text: '={{ $json.missing }}' });
+		workflow.nodes.splice(1, 0, {
+			id: '3',
+			name: 'Edit',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 3,
+			position: [100, 0] as [number, number],
+			parameters: {},
+		});
+		workflow.connections = {
+			Webhook: { main: [[{ node: 'Edit', type: 'main' as const, index: 0 }]] },
+			// @ts-expect-error -- add a second source node to the connections map
+			Edit: { main: [[{ node: 'Score', type: 'main' as const, index: 0 }]] },
+		};
+		const note = buildMissingFieldNote(
+			{ Webhook: wrap([{ a: 1 }]), Edit: wrap([{ a: 1 }]), Score: wrap([{}]) },
+			workflow,
+			new Set(['Webhook']),
+		);
+		expect(note).toContain('Fixture field check');
+	});
+
 	it('skips Code nodes, simulated nodes and resolved fields', () => {
 		const data = { Webhook: wrap([{ body: { a: 1 } }]), Score: wrap([{}]) };
 		expect(

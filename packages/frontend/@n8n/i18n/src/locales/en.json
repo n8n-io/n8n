@@ -9079,6 +9079,8 @@
 	"instanceAi.tools.search_models": "Searching models",
 	"instanceAi.tools.search_tools": "Searching tools",
 	"instanceAi.tools.load_tool": "Loading tool",
+	"instanceAi.tools.find_tools": "Finding tools",
+	"instanceAi.tools.call_tool": "Running tool",
 	"instanceAi.tools.save_user_preference": "Saving preference",
 	"instanceAi.tools.leave-onboarding": "Leaving onboarding",
 	"instanceAi.tools.updateWorkingMemory": "Updating memory",

@@ -7,16 +7,9 @@ description: >-
   expression error. Also load when a live run you started for the user fails
   with an error from a node or an external service (for example a 401), before
   you explain the cause to the user.
-recommended_tools:
-  - list_executions
-  - get_execution
-  - run_workflow
-  - run_workflow_step
-  - debug_execution
-  - get_execution_node_output
-  - get_resolved_node_parameters
-  - get_workflow
-  - get_workflow_as_code
+recommended_namespaces:
+  - executions
+  - workflows
 ---
 
 # Debugging Executions
@@ -26,7 +19,7 @@ with wrong or empty values.
 
 ## When the user reports it still fails
 
-Re-run the failing path with `run_workflow` (or
+Re-run the failing path by running `run_workflow` through `call_tool` (or
 `workflow_builder_verify_built_workflow`) and inspect the real result before responding. Do not
 restate that the workflow is "fixed", "verified", or "working", and do not
 attribute the reported failure to a test-harness artifact, stale state, or "it
@@ -95,7 +88,7 @@ the fix — an earlier execution ran the old version.
 
 ## Testing event-triggered workflows
 
-Use `run_workflow` with `inputData` matching the trigger's output
+Run `run_workflow` through `call_tool` with `inputData` matching the trigger's output
 shape — do not rebuild the workflow with a Manual Trigger. For trigger
 `inputData` shapes, read the workspace file
 `knowledge-base/reference/trigger-input-data-shapes.md`
@@ -217,7 +210,7 @@ that Agent:
   and it does not report which. Do not name a single Agent to the user when
   this field holds more than one.
 - A tool on two Agents where one runs above the other is refused. Run the
-  upper Agent, then read the tool with `get_execution_node_output`.
+  upper Agent, then read the tool by running `get_execution_node_output` through `call_tool`.
 
 The tool's own arguments come from `toolArguments` — the values the agent would
 normally decide:

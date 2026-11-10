@@ -30,10 +30,17 @@ const codeLines = (content: string) =>
 		.filter((l) => !/^\s*\/\//.test(l))
 		.join('\n');
 
+// Count occurrences per name, so a name dropped from one node still fails
+// when the same name appears elsewhere in the file.
+const countBy = (values: string[]) => {
+	const counts = new Map<string, number>();
+	for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+	return counts;
+};
 const fieldNames = (content: string) =>
-	new Set([...codeLines(content).matchAll(/([A-Za-z_$][\w$]*)\??\s*:/g)].map((m) => m[1]));
+	countBy([...codeLines(content).matchAll(/([A-Za-z_$][\w$]*)\??\s*:/g)].map((m) => m[1]));
 const literals = (content: string) =>
-	new Set([...codeLines(content).matchAll(/'([^'\n]*)'/g)].map((m) => m[1]));
+	countBy([...codeLines(content).matchAll(/'([^'\n]*)'/g)].map((m) => m[1]));
 const KEPT_TAGS = ['@default', '@loadOptionsMethod', '@searchListMethod', '@builderHint', '@hint'];
 const tagCount = (content: string, tag: string) => content.split(tag).length - 1;
 
@@ -56,11 +63,14 @@ for (const file of walk(root)) {
 	perNode.set(node, entry);
 
 	const name = relative(root, file);
-	for (const field of fieldNames(original)) {
-		if (!fieldNames(compact).has(field)) failures.push(`${name}: lost field ${field}`);
+	const compactFields = fieldNames(compact);
+	for (const [field, count] of fieldNames(original)) {
+		if ((compactFields.get(field) ?? 0) < count) failures.push(`${name}: lost field ${field}`);
 	}
-	for (const literal of literals(original)) {
-		if (!literals(compact).has(literal)) failures.push(`${name}: lost literal '${literal}'`);
+	const compactLiterals = literals(compact);
+	for (const [literal, count] of literals(original)) {
+		if ((compactLiterals.get(literal) ?? 0) < count)
+			failures.push(`${name}: lost literal '${literal}'`);
 	}
 	for (const tag of KEPT_TAGS) {
 		if (tagCount(original, tag) !== tagCount(compact, tag))

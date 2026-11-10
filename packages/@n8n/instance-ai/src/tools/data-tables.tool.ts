@@ -569,7 +569,7 @@ async function handleCreate(
 		if (isNameConflictError(error)) {
 			return {
 				denied: true,
-				reason: `Table "${input.name}" already exists. Use list_data_tables to find it and get_data_table_schema to check its columns.`,
+				reason: `Table "${input.name}" already exists. Run list_data_tables through call_tool to find it and get_data_table_schema to check its columns.`,
 			};
 		}
 		throw error;
@@ -945,7 +945,8 @@ const EXTRA_DESCRIPTIONS: Partial<Record<DataTableToolAction, string>> = {
 	query:
 		'Keep queries targeted (column filter and/or limit ≤ 5), especially when diagnosing. Never ' +
 		'pull a table unfiltered. After a failed or 0-row query, only retry strictly narrower.',
-	create: 'Call get_data_table_schema before you reference the new table in SDK code.',
+	create:
+		'Run get_data_table_schema through call_tool before you reference the new table in SDK code.',
 };
 
 function getActionDescription(action: DataTableToolAction, skillGuidance: boolean): string {

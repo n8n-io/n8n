@@ -17,7 +17,7 @@ describe('builder guidance', () => {
 			'agent_builder_create_skills',
 		];
 
-		expect(skill?.recommendedTools).toEqual(expect.arrayContaining(skillTools));
+		expect(skill?.recommendedNamespaces).toEqual(['agents']);
 		expect(skill?.allowedTools).toEqual(expect.arrayContaining(skillTools));
 	});
 
