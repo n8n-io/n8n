@@ -6,7 +6,7 @@ import type {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
-import type { LicenseMetricsRepository } from '@n8n/db';
+import type { AgentExecutionStatisticsRepository, LicenseMetricsRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -79,7 +79,7 @@ function makeReport(overrides: Partial<InstanceMonitoringReport> = {}): Instance
 }
 
 interface Harness {
-	licenseMetricsRepository: Mocked<LicenseMetricsRepository>;
+	agentExecutionStatisticsRepository: Mocked<AgentExecutionStatisticsRepository>;
 	service: InstanceReportingService;
 	reportRepository: Mocked<InstanceMonitoringReportRepository>;
 	settingsService: Mocked<InstanceReportingSettingsService>;
@@ -120,9 +120,10 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	const insightsConfig = new InsightsConfig();
 
 	const licenseMetricsRepository = mock<LicenseMetricsRepository>();
-	licenseMetricsRepository.getDailyAgentExecutions.mockResolvedValue(new Map());
-	licenseMetricsRepository.getFirstAgentExecutionDate.mockResolvedValue(null);
 	licenseMetricsRepository.getLicenseRenewalMetrics.mockResolvedValue(LICENSE_METRICS_MOCK);
+	const agentExecutionStatisticsRepository = mock<AgentExecutionStatisticsRepository>();
+	agentExecutionStatisticsRepository.getDailyAgentExecutions.mockResolvedValue(new Map());
+	agentExecutionStatisticsRepository.getFirstAgentExecutionDate.mockResolvedValue(null);
 
 	const license = mock<License>();
 	license.loadCertStr.mockResolvedValue(LICENSE_CERT);
@@ -152,10 +153,11 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 		mockLogger(),
 		eventService,
 		outboundHttp,
+		agentExecutionStatisticsRepository,
 	);
 
 	return {
-		licenseMetricsRepository,
+		agentExecutionStatisticsRepository,
 		service,
 		reportRepository,
 		settingsService,
@@ -536,10 +538,11 @@ describe('InstanceReportingService', () => {
 		test.each([null, '2026-03-01'])(
 			'adds agent turns to daily counts with first billable day %s',
 			async (firstBillableDay) => {
-				const { service, http, insightsService, licenseMetricsRepository } = makeHarness();
+				const { service, http, insightsService, agentExecutionStatisticsRepository } =
+					makeHarness();
 				insightsService.getFirstBillableDay.mockResolvedValue(firstBillableDay);
 				insightsService.getDailyBillableExecutions.mockResolvedValue(new Map([[REPORT_DATE, 42]]));
-				licenseMetricsRepository.getDailyAgentExecutions.mockResolvedValue(
+				agentExecutionStatisticsRepository.getDailyAgentExecutions.mockResolvedValue(
 					new Map([[REPORT_DATE, 3]]),
 				);
 
@@ -553,14 +556,19 @@ describe('InstanceReportingService', () => {
 		);
 
 		test('reports agent history when the instance has no workflow insights', async () => {
-			const { service, http, reportRepository, insightsService, licenseMetricsRepository } =
-				makeHarness();
+			const {
+				service,
+				http,
+				reportRepository,
+				insightsService,
+				agentExecutionStatisticsRepository,
+			} = makeHarness();
 			reportRepository.findLastCoveredDay.mockResolvedValue(null);
 			insightsService.getDailyExecutionTotals.mockResolvedValue(new Map());
-			licenseMetricsRepository.getFirstAgentExecutionDate.mockResolvedValue(
+			agentExecutionStatisticsRepository.getFirstAgentExecutionDate.mockResolvedValue(
 				new Date('2026-03-24T00:00:00.000Z'),
 			);
-			licenseMetricsRepository.getDailyAgentExecutions.mockResolvedValue(
+			agentExecutionStatisticsRepository.getDailyAgentExecutions.mockResolvedValue(
 				new Map([['2026-03-24', 2]]),
 			);
 
@@ -579,13 +587,18 @@ describe('InstanceReportingService', () => {
 		])(
 			'reports from the earlier date when insights start at $insightsStart and agents start at $agentStart',
 			async ({ insightsStart, agentStart }) => {
-				const { service, http, reportRepository, insightsService, licenseMetricsRepository } =
-					makeHarness();
+				const {
+					service,
+					http,
+					reportRepository,
+					insightsService,
+					agentExecutionStatisticsRepository,
+				} = makeHarness();
 				reportRepository.findLastCoveredDay.mockResolvedValue(null);
 				insightsService.getEarliestDataDate.mockResolvedValue(
 					new Date(`${insightsStart}T00:00:00.000Z`),
 				);
-				licenseMetricsRepository.getFirstAgentExecutionDate.mockResolvedValue(
+				agentExecutionStatisticsRepository.getFirstAgentExecutionDate.mockResolvedValue(
 					new Date(`${agentStart}T00:00:00.000Z`),
 				);
 

@@ -2,7 +2,7 @@ import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing
 import type { EventService } from '@n8n/backend-services';
 import { mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
-import type { LicenseMetricsRepository } from '@n8n/db';
+import type { AgentExecutionStatisticsRepository, LicenseMetricsRepository } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createScheduler, type Scheduler, type SchedulerPasses } from '@n8n/scheduler';
@@ -75,8 +75,9 @@ describe('instance reporting across mains', () => {
 		insights.getDailyExecutionTotals.mockResolvedValue(new Map([[REPORT_DAY, 5]]));
 		insights.getFirstBillableDay.mockResolvedValue(null);
 		const metrics = mock<LicenseMetricsRepository>();
-		metrics.getDailyAgentExecutions.mockResolvedValue(new Map());
-		metrics.getFirstAgentExecutionDate.mockResolvedValue(null);
+		const agentStatistics = mock<AgentExecutionStatisticsRepository>();
+		agentStatistics.getDailyAgentExecutions.mockResolvedValue(new Map());
+		agentStatistics.getFirstAgentExecutionDate.mockResolvedValue(null);
 		metrics.getLicenseRenewalMetrics.mockResolvedValue(
 			mock<Awaited<ReturnType<LicenseMetricsRepository['getLicenseRenewalMetrics']>>>({
 				productionRootExecutions: 10,
@@ -95,6 +96,7 @@ describe('instance reporting across mains', () => {
 			mockLogger(),
 			events,
 			outboundHttp,
+			agentStatistics,
 		);
 		const task = new InstanceReportingTask(service);
 		const scheduler = createScheduler({

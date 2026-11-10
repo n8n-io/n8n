@@ -15,7 +15,7 @@ import type {
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
-import { LicenseMetricsRepository, UserRepository, type User } from '@n8n/db';
+import { AgentExecutionStatisticsRepository, UserRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { OperationalError, UserError } from '@n8n/errors';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
@@ -382,13 +382,13 @@ export class AgentExecutionOrchestratorService {
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly userRepository: UserRepository,
-		private readonly licenseMetricsRepository: LicenseMetricsRepository,
+		private readonly agentExecutionStatisticsRepository: AgentExecutionStatisticsRepository,
 	) {}
 
 	private async beforeProductionExecution(agentId: string): Promise<void> {
 		await this.externalHooks.run('agent.preExecute', [agentId]);
 		try {
-			await this.licenseMetricsRepository.recordAgentExecution();
+			await this.agentExecutionStatisticsRepository.recordAgentExecution();
 		} catch (error) {
 			this.logger.error('Failed to record agent execution statistic', { error });
 		}

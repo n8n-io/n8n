@@ -1,11 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Between, DataSource, Repository, Entity } from '@n8n/typeorm';
-
-import { buildStatisticsDeltaClaimQuery } from './statistics-delta';
-import { AgentExecutionStatistics } from '../entities/agent-execution-statistics';
-import type { OperationContext } from '../services/transaction';
-import { entityManagerOf } from '../services/typeorm-transaction';
+import { DataSource, Repository, Entity } from '@n8n/typeorm';
 
 @Entity()
 export class LicenseMetrics {}
@@ -26,72 +21,6 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 
 	toColumnName(name: string) {
 		return this.manager.connection.driver.escape(name);
-	}
-
-	async recordAgentExecution(now = new Date()): Promise<void> {
-		const periodStart = new Date(now);
-		periodStart.setUTCHours(0, 0, 0, 0);
-		if (this.globalConfig.database.type === 'postgresdb') {
-			await this.query(
-				`INSERT INTO ${this.toTableName('agent_execution_statistics_delta')} ("periodStart") VALUES ($1)`,
-				[periodStart],
-			);
-			return;
-		}
-		const table = this.toTableName('agent_execution_statistics');
-		const count = this.toColumnName('count');
-		const period = this.toColumnName('periodStart');
-		const [query, parameters] = this.manager
-			.createQueryBuilder()
-			.insert()
-			.into(AgentExecutionStatistics)
-			.values({ periodStart, count: 1 })
-			.getQueryAndParameters();
-		await this.query(
-			`${query} ON CONFLICT (${period}) DO UPDATE SET ${count} = ${table}.${count} + 1`,
-			parameters,
-		);
-	}
-
-	async rollupAgentIncrements(ctx: OperationContext, batchSize: number): Promise<number> {
-		const manager = ctx.trx ? entityManagerOf(ctx.trx) : this.manager;
-		const stats = this.toTableName('agent_execution_statistics');
-		const delta = this.toTableName('agent_execution_statistics_delta');
-		const claimBatch = buildStatisticsDeltaClaimQuery(delta, ['"periodStart"']);
-		const [result] = await manager.query<Array<{ increments: number }>>(
-			`WITH batch AS (${claimBatch}),
-			agg AS (
-				SELECT "periodStart", COUNT(*) AS "count" FROM batch GROUP BY "periodStart"
-			),
-			upsert AS (
-				INSERT INTO ${stats} ("periodStart", "count")
-				SELECT "periodStart", "count" FROM agg
-				ON CONFLICT ("periodStart") DO UPDATE SET "count" = ${stats}."count" + EXCLUDED."count"
-			)
-			SELECT COUNT(*)::int AS increments FROM batch`,
-			[batchSize],
-		);
-		return result.increments;
-	}
-
-	async getDailyAgentExecutions({
-		startDate,
-		endDate,
-	}: { startDate: Date; endDate: Date }): Promise<Map<string, number>> {
-		const rows = await this.manager.find(AgentExecutionStatistics, {
-			where: { periodStart: Between(startDate, endDate) },
-		});
-		return new Map(
-			rows.map(({ periodStart, count }) => [periodStart.toISOString().slice(0, 10), count]),
-		);
-	}
-
-	async getFirstAgentExecutionDate(): Promise<Date | null> {
-		const [first] = await this.manager.find(AgentExecutionStatistics, {
-			order: { periodStart: 'ASC' },
-			take: 1,
-		});
-		return first?.periodStart ?? null;
 	}
 
 	async getLicenseRenewalMetrics() {

@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import {
 	DbLock,
 	DbLockService,
-	LicenseMetricsRepository,
+	AgentExecutionStatisticsRepository,
 	WorkflowStatisticsRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -37,7 +37,7 @@ export class WorkflowStatisticsRollupService {
 		private readonly dbLockService: DbLockService,
 		private readonly repository: WorkflowStatisticsRepository,
 		private readonly statisticsService: WorkflowStatisticsService,
-		private readonly licenseMetricsRepository: LicenseMetricsRepository,
+		private readonly agentExecutionStatisticsRepository: AgentExecutionStatisticsRepository,
 	) {
 		this.logger = this.logger.scoped('workflow-statistics');
 	}
@@ -85,10 +85,8 @@ export class WorkflowStatisticsRollupService {
 				DbLock.WORKFLOW_STATISTICS_ROLLUP,
 				async (ctx) => {
 					const workflows = await this.repository.rollupIncrementsInContext(ctx, BATCH_SIZE);
-					const agentIncrements = await this.licenseMetricsRepository.rollupAgentIncrements(
-						ctx,
-						BATCH_SIZE,
-					);
+					const agentIncrements =
+						await this.agentExecutionStatisticsRepository.rollupAgentIncrements(ctx, BATCH_SIZE);
 					return { ...workflows, increments: Math.max(workflows.increments, agentIncrements) };
 				},
 			);

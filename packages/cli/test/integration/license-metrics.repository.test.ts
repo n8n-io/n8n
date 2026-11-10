@@ -4,6 +4,7 @@ import {
 	StatisticsNames,
 	TransactionRunner,
 	LicenseMetricsRepository,
+	AgentExecutionStatisticsRepository,
 	ServiceAccountRepository,
 	WorkflowStatisticsRepository,
 } from '@n8n/db';
@@ -16,12 +17,14 @@ const isPostgres = process.env.DB_TYPE === 'postgresdb';
 
 describe('LicenseMetricsRepository', () => {
 	let licenseMetricsRepository: LicenseMetricsRepository;
+	let agentExecutionStatisticsRepository: AgentExecutionStatisticsRepository;
 	let workflowStatisticsRepository: WorkflowStatisticsRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
 
 		licenseMetricsRepository = Container.get(LicenseMetricsRepository);
+		agentExecutionStatisticsRepository = Container.get(AgentExecutionStatisticsRepository);
 
 		workflowStatisticsRepository = Container.get(WorkflowStatisticsRepository);
 	});
@@ -44,14 +47,14 @@ describe('LicenseMetricsRepository', () => {
 
 	async function foldAgentIncrements(batchSize = 5000) {
 		if (!isPostgres) return 0;
-		return await licenseMetricsRepository.rollupAgentIncrements({}, batchSize);
+		return await agentExecutionStatisticsRepository.rollupAgentIncrements({}, batchSize);
 	}
 
 	describe('agent executions', () => {
 		test('returns no agent history before the first turn', async () => {
-			expect(await licenseMetricsRepository.getFirstAgentExecutionDate()).toBeNull();
+			expect(await agentExecutionStatisticsRepository.getFirstAgentExecutionDate()).toBeNull();
 			expect(
-				await licenseMetricsRepository.getDailyAgentExecutions({
+				await agentExecutionStatisticsRepository.getDailyAgentExecutions({
 					startDate: new Date('2026-11-01T00:00:00.000Z'),
 					endDate: new Date('2026-11-10T00:00:00.000Z'),
 				}),
@@ -66,26 +69,26 @@ describe('LicenseMetricsRepository', () => {
 				await Promise.all(
 					Array.from(
 						{ length: 5 },
-						async () => await licenseMetricsRepository.recordAgentExecution(startDate),
+						async () => await agentExecutionStatisticsRepository.recordAgentExecution(startDate),
 					),
 				);
-				expect(await licenseMetricsRepository.getFirstAgentExecutionDate()).toBeNull();
+				expect(await agentExecutionStatisticsRepository.getFirstAgentExecutionDate()).toBeNull();
 
 				await expect(
 					Container.get(TransactionRunner).run({}, async (ctx) => {
-						expect(await licenseMetricsRepository.rollupAgentIncrements(ctx, 2)).toBe(2);
+						expect(await agentExecutionStatisticsRepository.rollupAgentIncrements(ctx, 2)).toBe(2);
 						throw new Error('Roll back the fold');
 					}),
 				).rejects.toThrow('Roll back the fold');
 				expect(
-					await licenseMetricsRepository.getDailyAgentExecutions({ startDate, endDate }),
+					await agentExecutionStatisticsRepository.getDailyAgentExecutions({ startDate, endDate }),
 				).toEqual(new Map());
 
 				const batchSizes: number[] = [];
 				for (let batch = 0; batch < 4; batch++) batchSizes.push(await foldAgentIncrements(2));
 				expect(batchSizes).toEqual([2, 2, 1, 0]);
 				expect(
-					await licenseMetricsRepository.getDailyAgentExecutions({ startDate, endDate }),
+					await agentExecutionStatisticsRepository.getDailyAgentExecutions({ startDate, endDate }),
 				).toEqual(new Map([['2026-11-09', 5]]));
 			},
 		);
@@ -95,15 +98,17 @@ describe('LicenseMetricsRepository', () => {
 				Array.from(
 					{ length: 10 },
 					async () =>
-						await licenseMetricsRepository.recordAgentExecution(
+						await agentExecutionStatisticsRepository.recordAgentExecution(
 							new Date('2026-11-09T23:59:59.999Z'),
 						),
 				),
 			);
-			await licenseMetricsRepository.recordAgentExecution(new Date('2026-11-10T00:00:00.000Z'));
+			await agentExecutionStatisticsRepository.recordAgentExecution(
+				new Date('2026-11-10T00:00:00.000Z'),
+			);
 			await foldAgentIncrements();
 			expect(
-				await licenseMetricsRepository.getDailyAgentExecutions({
+				await agentExecutionStatisticsRepository.getDailyAgentExecutions({
 					startDate: new Date('2026-11-09T00:00:00.000Z'),
 					endDate: new Date('2026-11-10T00:00:00.000Z'),
 				}),
@@ -114,12 +119,12 @@ describe('LicenseMetricsRepository', () => {
 				]),
 			);
 			expect(
-				await licenseMetricsRepository.getDailyAgentExecutions({
+				await agentExecutionStatisticsRepository.getDailyAgentExecutions({
 					startDate: new Date('2026-11-10T00:00:00.000Z'),
 					endDate: new Date('2026-11-10T00:00:00.000Z'),
 				}),
 			).toEqual(new Map([['2026-11-10', 1]]));
-			expect(await licenseMetricsRepository.getFirstAgentExecutionDate()).toEqual(
+			expect(await agentExecutionStatisticsRepository.getFirstAgentExecutionDate()).toEqual(
 				new Date('2026-11-09T00:00:00.000Z'),
 			);
 			expect(await licenseMetricsRepository.getLicenseRenewalMetrics()).toMatchObject({
@@ -167,7 +172,7 @@ describe('LicenseMetricsRepository', () => {
 				),
 			]);
 
-			await licenseMetricsRepository.recordAgentExecution();
+			await agentExecutionStatisticsRepository.recordAgentExecution();
 			await foldAgentIncrements();
 
 			const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();

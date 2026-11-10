@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
 	DbLockService,
-	LicenseMetricsRepository,
+	AgentExecutionStatisticsRepository,
 	WorkflowStatisticsRepository,
 } from '@n8n/db';
 import { StatisticsNames } from '@n8n/db';
@@ -20,7 +20,7 @@ describe('WorkflowStatisticsRollupService', () => {
 		const errorReporter = mock<ErrorReporter>();
 		const dbLockService = mock<DbLockService>();
 		const repository = mock<WorkflowStatisticsRepository>();
-		const licenseMetricsRepository = mock<LicenseMetricsRepository>();
+		const agentExecutionStatisticsRepository = mock<AgentExecutionStatisticsRepository>();
 		const statisticsService = mock<WorkflowStatisticsService>();
 		const logger = mock<Logger>(); // the scoped logger the service actually logs to
 		const service = new WorkflowStatisticsRollupService(
@@ -29,7 +29,7 @@ describe('WorkflowStatisticsRollupService', () => {
 			dbLockService,
 			repository,
 			statisticsService,
-			licenseMetricsRepository,
+			agentExecutionStatisticsRepository,
 		);
 		return {
 			service,
@@ -38,7 +38,7 @@ describe('WorkflowStatisticsRollupService', () => {
 			dbLockService,
 			repository,
 			statisticsService,
-			licenseMetricsRepository,
+			agentExecutionStatisticsRepository,
 		};
 	};
 
@@ -111,13 +111,14 @@ describe('WorkflowStatisticsRollupService', () => {
 		});
 
 		it('drains agent batches when there are no pending workflow increments', async () => {
-			const { service, dbLockService, repository, licenseMetricsRepository } = makeService();
+			const { service, dbLockService, repository, agentExecutionStatisticsRepository } =
+				makeService();
 			const context = mock<OperationContext>();
 			dbLockService.tryWithLockContext.mockImplementation(
 				async (_lock, fold) => await fold(context),
 			);
 			repository.rollupIncrementsInContext.mockResolvedValue(batchOf(0));
-			licenseMetricsRepository.rollupAgentIncrements
+			agentExecutionStatisticsRepository.rollupAgentIncrements
 				.mockResolvedValueOnce(5000)
 				.mockResolvedValueOnce(3);
 
@@ -126,8 +127,11 @@ describe('WorkflowStatisticsRollupService', () => {
 			await run;
 
 			expect(repository.rollupIncrementsInContext).toHaveBeenCalledTimes(2);
-			expect(licenseMetricsRepository.rollupAgentIncrements).toHaveBeenCalledTimes(2);
-			expect(licenseMetricsRepository.rollupAgentIncrements).toHaveBeenCalledWith(context, 5000);
+			expect(agentExecutionStatisticsRepository.rollupAgentIncrements).toHaveBeenCalledTimes(2);
+			expect(agentExecutionStatisticsRepository.rollupAgentIncrements).toHaveBeenCalledWith(
+				context,
+				5000,
+			);
 		});
 
 		it('pauses between full batches', async () => {

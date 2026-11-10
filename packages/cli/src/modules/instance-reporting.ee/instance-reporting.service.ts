@@ -3,7 +3,7 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
-import { LicenseMetricsRepository } from '@n8n/db';
+import { AgentExecutionStatisticsRepository, LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { InstanceSettings } from 'n8n-core';
@@ -90,6 +90,7 @@ export class InstanceReportingService {
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
 		outboundHttp: OutboundHttp,
+		private readonly agentExecutionStatisticsRepository: AgentExecutionStatisticsRepository,
 	) {
 		this.logger = this.logger.scoped('instance-reporting');
 
@@ -371,7 +372,7 @@ export class InstanceReportingService {
 
 		const [insightsStart, agentStart] = await Promise.all([
 			this.insightsService.getEarliestDataDate(),
-			this.licenseMetricsRepository.getFirstAgentExecutionDate(),
+			this.agentExecutionStatisticsRepository.getFirstAgentExecutionDate(),
 		]);
 		const dataStart =
 			[insightsStart, agentStart]
@@ -410,7 +411,8 @@ export class InstanceReportingService {
 				),
 				this.readDays(
 					days,
-					async (range) => await this.licenseMetricsRepository.getDailyAgentExecutions(range),
+					async (range) =>
+						await this.agentExecutionStatisticsRepository.getDailyAgentExecutions(range),
 				),
 				// Same source as the `productionRootExecutions` license metric, so the
 				// reported total matches what the license server sees.

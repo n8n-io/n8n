@@ -4,6 +4,7 @@ import type { SchedulerConfig } from '@n8n/config';
 import {
 	DbLockService,
 	LicenseMetricsRepository,
+	AgentExecutionStatisticsRepository,
 	StatisticsNames,
 	WorkflowStatisticsRepository,
 } from '@n8n/db';
@@ -31,6 +32,7 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 	const signal = new AbortController().signal;
 	let repository: WorkflowStatisticsRepository;
 	let licenseMetricsRepository: LicenseMetricsRepository;
+	let agentExecutionStatisticsRepository: AgentExecutionStatisticsRepository;
 	let agentDeltaTable: string;
 	let statisticsService: ReturnType<typeof mock<WorkflowStatisticsService>>;
 	let task: WorkflowStatisticsRollupTask;
@@ -42,6 +44,7 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 		await testDb.init();
 		repository = Container.get(WorkflowStatisticsRepository);
 		licenseMetricsRepository = Container.get(LicenseMetricsRepository);
+		agentExecutionStatisticsRepository = Container.get(AgentExecutionStatisticsRepository);
 		agentDeltaTable = `${Container.get(GlobalConfig).database.tablePrefix}agent_execution_statistics_delta`;
 		deltaTable = `${Container.get(GlobalConfig).database.tablePrefix}workflow_statistics_delta`;
 	});
@@ -55,7 +58,7 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 				Container.get(DbLockService),
 				repository,
 				statisticsService,
-				licenseMetricsRepository,
+				agentExecutionStatisticsRepository,
 			),
 			mock<SchedulerConfig>({ leaseDurationSeconds: 60 }),
 		);
@@ -141,7 +144,7 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 		}
 
 		expect(
-			await licenseMetricsRepository.getDailyAgentExecutions({
+			await agentExecutionStatisticsRepository.getDailyAgentExecutions({
 				startDate: new Date('2026-11-10T00:00:00.000Z'),
 				endDate: new Date('2026-11-10T00:00:00.000Z'),
 			}),
@@ -169,9 +172,10 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 	it('keeps both buffers when a fold fails and retries without losing counts', async () => {
 		await seedIncrements();
 		await seedAgentIncrements();
-		const rollupAgentIncrements =
-			licenseMetricsRepository.rollupAgentIncrements.bind(licenseMetricsRepository);
-		vi.spyOn(licenseMetricsRepository, 'rollupAgentIncrements').mockImplementationOnce(
+		const rollupAgentIncrements = agentExecutionStatisticsRepository.rollupAgentIncrements.bind(
+			agentExecutionStatisticsRepository,
+		);
+		vi.spyOn(agentExecutionStatisticsRepository, 'rollupAgentIncrements').mockImplementationOnce(
 			async (ctx, batchSize) => {
 				expect(await rollupAgentIncrements(ctx, batchSize)).toBe(5000);
 				throw new Error('Fold failed');
@@ -181,7 +185,7 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 		await expect(task.run(signal)).rejects.toThrow('Fold failed');
 		expect(await pendingIncrements()).toBe(WORKFLOW_IDS.length * ROWS_PER_WORKFLOW + AGENT_TURNS);
 		expect(await repository.find()).toEqual([]);
-		expect(await licenseMetricsRepository.getFirstAgentExecutionDate()).toBeNull();
+		expect(await agentExecutionStatisticsRepository.getFirstAgentExecutionDate()).toBeNull();
 		expect(statisticsService.emitFirstOccurrenceEvent).not.toHaveBeenCalled();
 
 		while ((await pendingIncrements()) > 0) await task.run(signal);

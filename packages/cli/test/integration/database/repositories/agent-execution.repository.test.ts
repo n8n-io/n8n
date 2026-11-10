@@ -1,4 +1,4 @@
-import type { LicenseMetricsRepository } from '@n8n/db';
+import type { AgentExecutionStatisticsRepository } from '@n8n/db';
 import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import type {
 	AgentSessionOrigin,
@@ -1549,7 +1549,7 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentsSettingsService>(),
 				mock<AgentSkillRefsService>(),
 				mock<UserRepository>(),
-				mock<LicenseMetricsRepository>(),
+				mock<AgentExecutionStatisticsRepository>(),
 			);
 			const resume = async (
 				user: User,
