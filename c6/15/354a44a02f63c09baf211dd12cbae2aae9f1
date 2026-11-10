@@ -1,0 +1,63 @@
+packages/cli/src/modules/skills/services/skill-source.service.ts
+  s_b35db572acb2e0::t_092f0396699d2f 52,245
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b35db572acb2e0::t_964cbea0ec8459 4036-4046
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_b35db572acb2e0::t_092f0396699d2f 754
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  s_b35db572acb2e0::t_7d933544e392de 335-338,553-557
+  s_b35db572acb2e0::t_964cbea0ec8459 97-101,127,330,333-334,339,343-350,871-877
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceHealth.vue
+  s_b35db572acb2e0::t_092f0396699d2f 1-11,13-14,38-47,49-63,65-66
+  s_b35db572acb2e0::t_ca5ffd5b27caca 12,27-37,48,64
+  s_b35db572acb2e0::t_e12cbfe0ade5fa 15-26
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.types.ts
+  s_b35db572acb2e0::t_092f0396699d2f 26-27
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.test.ts
+  s_b35db572acb2e0::t_9241153feca93d 16-20
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceHealth.test.ts
+  s_b35db572acb2e0::t_e12cbfe0ade5fa 37-40,44-45,49,51-54
+  s_b35db572acb2e0::t_9241153feca93d 1-15,31-36,41-43,46-48,55-56
+  s_b35db572acb2e0::t_7d933544e392de 16-30
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.vue
+  s_b35db572acb2e0::t_964cbea0ec8459 22,248,279-280,340,343,541-543
+  s_b35db572acb2e0::t_7d933544e392de 368-372
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.test.ts
+  s_b35db572acb2e0::t_9241153feca93d 439-441,448-466
+  s_b35db572acb2e0::t_7d933544e392de 442-447
+packages/@n8n/api-types/src/skills/skill-sources.schema.ts
+  s_b35db572acb2e0::t_ed6e55c3165ea0 222-224,247
+packages/cli/src/modules/skills/__tests__/skill-source-health.test.ts
+  s_b35db572acb2e0::t_b236974f5c5b3e 1-16
+packages/frontend/@n8n/design-system/src/components/N8nActionToggle/ActionToggle.vue
+  s_b35db572acb2e0::t_092f0396699d2f 113
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.stories.ts
+  s_b35db572acb2e0::t_80127a678087e7 195-197
+  s_b35db572acb2e0::t_9241153feca93d 181
+packages/cli/src/modules/skills/__tests__/integration/skill-source-rows.integration.test.ts
+  s_b35db572acb2e0::t_b236974f5c5b3e 139,154-156,165,168,174-178,181-182
+  s_b35db572acb2e0::t_7d933544e392de 157-164,166-167,169-173,179-180
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.test.ts
+  s_b35db572acb2e0::t_9241153feca93d 358,406-413
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_b35db572acb2e0::t_9241153feca93d 1138,1377,1381-1391,1395
+  s_b35db572acb2e0::t_7d933544e392de 1392-1394
+packages/cli/src/modules/skills/utils/skill-source-health.ts
+  s_b35db572acb2e0::t_ed6e55c3165ea0 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c615354a44a02f63c09baf211dd12cbae2aae9f1",
+  "prompts": {},
+  "sessions": {
+    "s_b35db572acb2e0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c03e-43d9-7472-8eeb-eca19f4195b3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
