@@ -28,8 +28,9 @@ jobs:
         uses: ./.github/actions/docker-registry-login
 
       - name: Normalize GHCR owner
+        id: normalize-ghcr-owner
         shell: bash
-        run: echo "GHCR_ORG=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+        run: echo "ghcr_org=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
       - name: Build
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
@@ -42,4 +43,4 @@ jobs:
           provenance: false
           push: true
           tags: |
-            ghcr.io/${{ env.GHCR_ORG }}/n8n-benchmark:latest
+            ghcr.io/${{ steps.normalize-ghcr-owner.outputs.ghcr_org }}/n8n-benchmark:latest
