@@ -1,5 +1,4 @@
 import type {
-	SelfHealingReviewState,
 	WorkflowSuggestionContent,
 	WorkflowSuggestionBaseline,
 	WorkflowSuggestionActivity as WorkflowSuggestionActivityDto,
@@ -16,13 +15,17 @@ import { ConflictError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
-import { SelfHealingResult } from '../../self-healing/database/self-healing-result.entity';
+import { SelfHealingResultRepository } from '../../self-healing/database/self-healing-result.repository';
 import { WorkflowSuggestionActivity } from './workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from './workflow-suggestion.entity';
 
 @Service()
 export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggestion> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly results: SelfHealingResultRepository,
+	) {
 		super(WorkflowSuggestion, dataSource.manager, transactionRunner);
 	}
 
@@ -128,21 +131,13 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			},
 		);
 		if (result.affected !== 1) return false;
-		await this.closeResult(
+		await this.results.closeResult(
 			suggestion.selfHealingResultId,
 			reason === 'discarded' ? 'dismissed' : reason,
 			ctx,
 		);
 		await this.appendActivity(suggestion.id, reason, actor, ctx);
 		return true;
-	}
-
-	async closeResult(id: string, reviewState: SelfHealingReviewState, ctx: OperationContext) {
-		await this.managerFor(ctx).update(
-			SelfHealingResult,
-			{ id, reviewState: 'open' },
-			{ reviewState },
-		);
 	}
 
 	async getPendingForWorkflow(workflowId: string, ctx: OperationContext = {}) {
@@ -152,7 +147,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		});
 	}
 
-	async getForResult(selfHealingResultId: string, ctx: OperationContext = {}) {
+	async getForResult(selfHealingResultId: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).find(WorkflowSuggestion, {
 			where: { selfHealingResultId },
 			order: { workflowId: 'ASC' },

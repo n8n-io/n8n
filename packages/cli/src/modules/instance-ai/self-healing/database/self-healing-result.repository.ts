@@ -1,4 +1,4 @@
-import type { InboxCounts, InboxState } from '@n8n/api-types';
+import type { InboxCounts, InboxState, SelfHealingReviewState } from '@n8n/api-types';
 import {
 	BaseRepository,
 	SharedWorkflow,
@@ -134,7 +134,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		);
 	}
 
-	async getOpenResultIds(workflowId: string, ctx: OperationContext = {}) {
+	async getOpenResultIds(workflowId: string, ctx: OperationContext) {
 		const results = await this.openResultsForWorkflowQuery(workflowId, undefined, ctx).getRawMany<{
 			id: string;
 		}>();
@@ -237,11 +237,15 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		);
 	}
 
-	async dismissResult(id: string, ctx: OperationContext) {
+	async closeResult(
+		id: string,
+		reviewState: Exclude<SelfHealingReviewState, 'open'>,
+		ctx: OperationContext,
+	) {
 		const result = await this.managerFor(ctx).update(
 			SelfHealingResult,
 			{ id, reviewState: 'open' },
-			{ reviewState: 'dismissed' },
+			{ reviewState },
 		);
 		return result.affected === 1;
 	}

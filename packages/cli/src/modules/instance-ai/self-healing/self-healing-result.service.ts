@@ -24,7 +24,6 @@ import {
 import { Service } from '@n8n/di';
 import type { SelfHealingOutput } from '@n8n/instance-ai';
 import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
-import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import uniqBy from 'lodash/uniqBy';
 
@@ -32,6 +31,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
+import { hasGraphChanges } from '../workflow-suggestions/workflow-suggestion-graph';
 import {
 	WorkflowSuggestionService,
 	type PreparedWorkflowSuggestion,
@@ -213,9 +213,8 @@ export class SelfHealingResultService {
 			usage: input.usage,
 		});
 
-		const changed = candidates.filter(
-			({ baseline: { original }, graph }) =>
-				!isEqual(original.nodes, graph.nodes) || !isEqual(original.connections, graph.connections),
+		const changed = candidates.filter(({ baseline: { original }, graph }) =>
+			hasGraphChanges(original, graph),
 		);
 		if (output.outcome === 'fix_ready' && changed.length === 0) {
 			throw new ConflictError('The suggestion has no workflow changes.');
@@ -317,21 +316,21 @@ export class SelfHealingResultService {
 		const visited = new Set([workflowId]);
 		let frontier = [workflowId];
 		for (let depth = 0; depth < MAX_HIERARCHY_DEPTH && frontier.length > 0; depth++) {
-			const rows = await this.dependencies.findDependenciesForResources(frontier, [], true);
-			const found = rows.filter(({ dependencyType }) => dependencyType === 'workflowCall');
+			const found = await this.dependencies.findWorkflowCalls(frontier);
 			const owners = await this.ownership.findOwnerProjectsByWorkflowIds(
-				found.map(({ dependencyKey }) => dependencyKey),
+				found.map(({ calledWorkflowId }) => calledWorkflowId),
 			);
 
 			frontier = [];
-			for (const { workflowId: caller, dependencyKey: called } of found) {
+			for (const call of found) {
+				const called = call.calledWorkflowId;
 				if (!visited.has(called)) {
 					if (owners.get(called)?.id !== projectId) continue;
 					if (visited.size >= MAX_HIERARCHY_WORKFLOWS) continue;
 					visited.add(called);
 					frontier.push(called);
 				}
-				calls.push({ callerWorkflowId: caller, calledWorkflowId: called });
+				calls.push(call);
 			}
 		}
 		return calls;
@@ -424,7 +423,10 @@ export class SelfHealingResultService {
 			if (suggestions.length > 0) {
 				return await this.actions.discardPending(reviewer, projectId, suggestions, ctx);
 			}
-			if (result.reviewState !== 'closed' && !(await this.results.dismissResult(result.id, ctx))) {
+			if (
+				result.reviewState !== 'closed' &&
+				!(await this.results.closeResult(result.id, 'dismissed', ctx))
+			) {
 				return 'already_closed';
 			}
 			return 'dismissed';

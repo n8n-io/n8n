@@ -372,6 +372,29 @@ describe('WorkflowDependencyRepository', () => {
 		});
 	});
 
+	describe('findWorkflowCalls()', () => {
+		it('should return the workflow calls of the given callers only', async () => {
+			const caller = await createWorkflow({ versionId: 'v1', nodes: [] });
+			const other = await createWorkflow({ versionId: 'v1', nodes: [] });
+			const add = async (workflowId: string, dependencyKey: string) => {
+				const dependencies = new WorkflowDependencies(workflowId, 1, 'current-version');
+				dependencies.add({ dependencyType: 'workflowCall', dependencyKey, dependencyInfo: null });
+				dependencies.add({
+					dependencyType: 'credentialId',
+					dependencyKey: 'cred',
+					dependencyInfo: null,
+				});
+				await workflowDependencyRepository.updateDependenciesForWorkflow(workflowId, dependencies);
+			};
+			await add(caller.id, 'child');
+			await add(other.id, 'other-child');
+
+			expect(await workflowDependencyRepository.findWorkflowCalls([caller.id])).toEqual([
+				{ callerWorkflowId: caller.id, calledWorkflowId: 'child' },
+			]);
+		});
+	});
+
 	describe('isCalledBy()', () => {
 		it('should match workflow calls of the given published versions only', async () => {
 			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });

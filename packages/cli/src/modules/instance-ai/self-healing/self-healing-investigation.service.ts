@@ -12,13 +12,13 @@ import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { selfHealingOutputSchema } from '@n8n/instance-ai';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
-import isEqual from 'lodash/isEqual';
 import { randomUUID } from 'node:crypto';
 
 import { DurableEventLog } from '../event-bus/durable-event-log';
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
 import { InstanceAiService } from '../instance-ai.service';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
+import { hasGraphChanges } from '../workflow-suggestions/workflow-suggestion-graph';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import type { SelfHealingInvestigation } from './database/self-healing-investigation.entity';
 import type { SelfHealingConfiguration } from './database/self-healing-configuration.entity';
@@ -266,12 +266,7 @@ export class SelfHealingInvestigationService {
 				const candidate = await compile();
 				if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
 				const { nodes, connections } = candidate.workflow;
-				if (
-					isEqual(baseline.original.nodes, nodes) &&
-					isEqual(baseline.original.connections, connections)
-				) {
-					continue;
-				}
+				if (!hasGraphChanges(baseline.original, { nodes, connections })) continue;
 
 				const workflowName = baseline.original.name;
 				missingSetup.push(

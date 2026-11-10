@@ -14,7 +14,6 @@ import {
 import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { calculateWorkflowChecksum, WORKFLOW_CHECKSUM_FIELDS } from 'n8n-workflow';
 import { z } from 'zod';
@@ -26,6 +25,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { SelfHealingResultRepository } from '../self-healing/database/self-healing-result.repository';
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
+import { hasGraphChanges } from './workflow-suggestion-graph';
 
 const suggestionInputSchema = z
 	.object({
@@ -143,7 +143,7 @@ export class WorkflowSuggestionService {
 		}
 		validateWorkflowStructure(input.graph);
 		const graph = structuredClone(input.graph);
-		if (isEqual(original.nodes, graph.nodes) && isEqual(original.connections, graph.connections)) {
+		if (!hasGraphChanges(original, graph)) {
 			throw new ConflictError('The suggestion has no workflow changes.');
 		}
 		return {
@@ -295,7 +295,7 @@ export class WorkflowSuggestionService {
 				ctx,
 			);
 		}
-		await this.suggestions.closeResult(selfHealingResultId, 'outdated', ctx);
+		await this.results.closeResult(selfHealingResultId, 'outdated', ctx);
 	}
 
 	async reconcileWorkflow(workflowId: string) {
@@ -316,7 +316,7 @@ export class WorkflowSuggestionService {
 	}
 
 	async closeResultsOfMovedWorkflow(workflowId: string) {
-		for (const id of await this.results.getOpenResultIds(workflowId)) {
+		for (const id of await this.results.getOpenResultIds(workflowId, {})) {
 			await this.closeResultAsOutdated(id);
 		}
 	}
