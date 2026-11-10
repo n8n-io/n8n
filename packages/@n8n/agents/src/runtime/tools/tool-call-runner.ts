@@ -408,7 +408,6 @@ export class ToolCallRunner {
 	): Promise<unknown> {
 		const {
 			toolCallId,
-			toolName,
 			runId,
 			persistence,
 			resumeData,
@@ -420,9 +419,10 @@ export class ToolCallRunner {
 			continuation,
 			resumeSchema,
 		} = params;
+		// Name the span after the tool that runs, so a call_tool dispatch shows the real tool.
 		return await this.telemetry.withToolSpan(
 			toolCallId,
-			toolName,
+			builtTool.name,
 			input,
 			resolvedTelemetry,
 			async () =>

@@ -203,7 +203,10 @@ import {
 	type OrchestratorResumeReason,
 } from './tracing';
 import { buildResumeTraceInput } from './tracing/resume-trace-input';
-import { buildSuspensionTraceOutputs } from './tracing/suspension-trace';
+import {
+	buildSuspensionTraceMetadata,
+	buildSuspensionTraceOutputs,
+} from './tracing/suspension-trace';
 import { WorkflowVerificationObligationService } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 
@@ -2947,30 +2950,12 @@ export class InstanceAiService {
 				await this.tracing.finalizeRunTracing(runId, tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				});
 				messageTraceFinalization = {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				};
 				return;
 			}
@@ -4045,30 +4030,12 @@ export class InstanceAiService {
 				await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				});
 				messageTraceFinalization = {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				};
 
 				return;

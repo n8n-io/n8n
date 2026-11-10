@@ -10048,6 +10048,49 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(toolSpan?.end).toHaveBeenCalledTimes(1);
 	});
 
+	it('names the tool span after the tool that call_tool runs', async () => {
+		const tracer = {
+			startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
+				const span = {
+					end: vi.fn(),
+					recordException: vi.fn(),
+					setAttributes: vi.fn(),
+					setStatus: vi.fn(),
+				};
+				return await (fn as (s: typeof span) => Promise<unknown>)(span);
+			}),
+		};
+		const action = new ToolBuilder('lookup_total')
+			.description('Compute the total.')
+			.input(z.object({ value: z.number() }))
+			.handler(async ({ value }) => await Promise.resolve({ total: value * 2 }))
+			.build();
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc1', 'call_tool', {
+					tool: 'lookup_total',
+					arguments: { value: 21 },
+				}),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('42'));
+
+		const runtime = new AgentRuntime({
+			name: 'tool-catalog-telemetry-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+			deferredTools: [action],
+			nativeToolDeferral: { eagerToolNames: [] },
+			telemetry: { ...baseTelemetry, tracer },
+		});
+
+		await runtime.generate('test');
+
+		const names = tracer.startActiveSpan.mock.calls.map(([name]) => name);
+		expect(names).toContain('execute_tool lookup_total');
+		expect(names).not.toContain('execute_tool call_tool');
+	});
+
 	it('passes inherited telemetry to tool handlers for sub-agent scenarios', async () => {
 		let capturedTelemetry: BuiltTelemetry | undefined;
 
