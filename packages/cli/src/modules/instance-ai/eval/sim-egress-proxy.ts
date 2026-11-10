@@ -30,7 +30,6 @@ export function isSimHost(host: string, patterns: readonly string[]): boolean {
 	const h = host.toLowerCase();
 	return patterns.some((raw) => {
 		const pattern = raw.toLowerCase();
-		if (pattern.startsWith('*.') && h === pattern.slice(2)) return true;
 		if (!pattern.includes('.') || !/[*{]/.test(pattern)) return h === pattern;
 		const source = pattern
 			.split(/(\*|\{[^{}.]+\})/)

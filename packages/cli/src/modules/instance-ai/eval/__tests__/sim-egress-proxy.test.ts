@@ -53,6 +53,7 @@ describe('isSimHost', () => {
 		expect(isSimHost('api.example.com', patterns)).toBe(false);
 		expect(isSimHost('evil.com.zendesk.com.example.com', patterns)).toBe(false);
 		expect(isSimHost('a.b.zendesk.com', patterns)).toBe(false);
+		expect(isSimHost('myshopify.com', patterns)).toBe(false);
 	});
 
 	it('never lets a malformed template match other hosts', () => {
