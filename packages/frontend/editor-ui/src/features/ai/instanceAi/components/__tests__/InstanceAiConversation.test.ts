@@ -25,6 +25,7 @@ import {
 } from '../../composables/useInstanceAiHandoff';
 import type { InstanceAiEmbedSubject } from '../../embed/instanceAiEmbed.types';
 import type { InstanceAiHandoffContext, InstanceAiMessage } from '@n8n/api-types';
+import type { UseInfiniteScrollOptions } from '@vueuse/core';
 import { ResponseError } from '@n8n/rest-api-client';
 import { USER_TYPED_MESSAGE } from '../../prefills';
 
@@ -51,17 +52,36 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
 
-// jsdom has no layout, so the top-of-list trigger cannot fire. Keep its load callback to call it directly.
-const infiniteScroll = vi.hoisted(() => ({ load: undefined as (() => Promise<void>) | undefined }));
+// jsdom has no layout, so the scroll state and the top-of-list trigger cannot fire. Drive them directly.
+const infiniteScroll = vi.hoisted(() => ({
+	load: undefined as (() => Promise<void>) | undefined,
+	options: undefined as UseInfiniteScrollOptions | undefined,
+	/** The `bottom` value that the scroll state reads when it measures the view. */
+	measuredBottom: true,
+}));
 
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@vueuse/core')>();
-	const { ref } = await import('vue');
+	const { reactive, ref } = await import('vue');
 	return {
 		...actual,
-		useScroll: () => ({ arrivedState: { bottom: true } }),
-		useInfiniteScroll: (_el: unknown, load: () => Promise<void>) => {
+		useScroll: () => {
+			// The same start state as vueuse, before any scroll event.
+			const arrivedState = reactive({ top: true, bottom: false });
+			return {
+				arrivedState,
+				measure: () => {
+					arrivedState.bottom = infiniteScroll.measuredBottom;
+				},
+			};
+		},
+		useInfiniteScroll: (
+			_el: unknown,
+			load: () => Promise<void>,
+			options: UseInfiniteScrollOptions,
+		) => {
 			infiniteScroll.load = load;
+			infiniteScroll.options = options;
 			return { isLoading: ref(false), reset: () => {} };
 		},
 	};
@@ -74,6 +94,7 @@ describe('InstanceAiConversation', () => {
 	beforeEach(() => {
 		// Prevent stashed hand-off state from leaking between test cases.
 		localStorage.clear();
+		infiniteScroll.measuredBottom = true;
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 		useSettingsStore().moduleSettings = { 'instance-ai': { ...defaultModuleSettings } };
@@ -381,6 +402,32 @@ describe('InstanceAiConversation', () => {
 
 		expect(thread.loadOlderMessages).toHaveBeenCalledOnce();
 		expect(scrollTop).toBe(620);
+	});
+
+	it('loads older messages after the first scroll event', () => {
+		Object.assign(thread, { hasOlderMessages: true });
+		mountConversation();
+		const view = { scrollHeight: 1000, clientHeight: 500 } as HTMLElement;
+
+		// On mount the view is at the top before it scrolls to the bottom.
+		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(false);
+		// One scroll event that the throttled scroll state does not see.
+		infiniteScroll.options?.onScroll?.(new Event('scroll'));
+		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(true);
+	});
+
+	it('stops following new messages when older messages load', async () => {
+		Object.assign(thread, { hasMessages: true });
+		thread.loadOlderMessages = vi.fn(async () => {});
+		const wrapper = mountConversation();
+		expect(wrapper.find('[data-icon="arrow-down"]').exists()).toBe(false);
+
+		// One jump to the top that the throttled scroll state did not see.
+		infiniteScroll.measuredBottom = false;
+		await infiniteScroll.load?.();
+		await nextTick();
+
+		expect(wrapper.find('[data-icon="arrow-down"]').exists()).toBe(true);
 	});
 
 	it('renders the above-input and inline-offers slots', () => {

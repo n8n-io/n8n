@@ -426,7 +426,7 @@ const scrollContainerRef = computed(
 );
 /** Distance from the top, in px, at which older history starts to load. */
 const OLDER_MESSAGES_DISTANCE = 200;
-const { arrivedState } = useScroll(scrollContainerRef, {
+const { arrivedState, measure: measureScroll } = useScroll(scrollContainerRef, {
 	throttle: 100,
 	offset: { top: OLDER_MESSAGES_DISTANCE, bottom: 100 },
 });
@@ -447,11 +447,17 @@ watch(
 		if (!nearTop) loadOlderFailed.value = false;
 	},
 );
+const viewScrolled = ref(false);
 const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
 	scrollContainerRef,
 	async () => {
 		const container = scrollContainerRef.value;
 		if (!container) return;
+		// The throttled scroll state can miss one scroll event, such as a jump to the top.
+		// Measure it now, so that auto-follow does not move the view to the bottom when the page lands.
+		// Set the flag directly: when the state was already wrong, its watcher does not run.
+		measureScroll();
+		userScrolledUp.value = !arrivedState.bottom;
 		const { scrollHeight } = container;
 		try {
 			await thread.loadOlderMessages();
@@ -468,12 +474,16 @@ const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
 	{
 		direction: 'top',
 		distance: OLDER_MESSAGES_DISTANCE,
-		// Wait until the user scrolls up: on mount the view is at the top before it scrolls to the bottom.
+		// This listener has no throttle, so it also gets a single scroll event.
+		onScroll: () => {
+			viewScrolled.value = true;
+		},
+		// Wait for the first scroll: on mount the view is at the top before it scrolls to the bottom.
 		// A thread too short to scroll still fills itself.
 		canLoadMore: (el) =>
 			thread.hasOlderMessages &&
 			!loadOlderFailed.value &&
-			(userScrolledUp.value || (el !== null && el.scrollHeight <= el.clientHeight)),
+			(viewScrolled.value || (el !== null && el.scrollHeight <= el.clientHeight)),
 	},
 );
 
