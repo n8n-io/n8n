@@ -17,6 +17,7 @@
 		"packages/@n8n/telemetry",
 		"packages/@n8n/tournament",
 		"packages/@n8n/utils",
+		"packages/@n8n/workflow-engine-check",
 		"packages/workflow"
 	],
 	"backend": [

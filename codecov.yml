@@ -96,6 +96,7 @@ component_management:
         - packages/@n8n/task-runner/**
         - packages/@n8n/task-runner-python/**
         - packages/@n8n/tournament/**
+        - packages/@n8n/workflow-engine-check/**
         - packages/@n8n/workflow-sdk/**
     - component_id: frontend_packages
       name: Frontend
