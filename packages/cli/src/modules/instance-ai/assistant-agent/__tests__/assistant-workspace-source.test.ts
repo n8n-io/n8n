@@ -6,16 +6,18 @@ import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { AiService } from '@/services/ai.service';
+import type { Telemetry } from '@/telemetry';
 
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import type { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
-import { InstanceAiSandboxService } from '../../sandbox';
+import { InstanceAiSandboxService, type InstanceAiSandboxProviderHealth } from '../../sandbox';
 import {
 	AssistantSandboxWorkspaceSource,
 	type AssistantSandboxLease,
 } from '../assistant-workspace-source';
 
 vi.mock('../../sandbox', () => ({
+	InstanceAiSandboxProviderHealth: class {},
 	InstanceAiSandboxService: vi.fn(function () {
 		return {
 			resolveSandboxConfig: vi.fn(),
@@ -28,6 +30,8 @@ vi.mock('../../sandbox', () => ({
 describe('AssistantSandboxWorkspaceSource', () => {
 	const user = { id: 'user-1' } as User;
 	const scope = { agentId: 'assistant', threadId: 'thread-1', projectId: 'project-1', user };
+
+	const providerHealth = mock<InstanceAiSandboxProviderHealth>();
 
 	function createSource(workflowBuilderAvailable = true) {
 		const settingsService = mock<InstanceAiSettingsService>();
@@ -44,6 +48,8 @@ describe('AssistantSandboxWorkspaceSource', () => {
 			mock<AiService>(),
 			settingsService,
 			adapterService,
+			mock<Telemetry>(),
+			providerHealth,
 		);
 		const sandboxService = vi.mocked(InstanceAiSandboxService).mock.results.at(-1)?.value as Record<
 			string,
@@ -59,6 +65,12 @@ describe('AssistantSandboxWorkspaceSource', () => {
 		adapterService.getTemplatesService.mockReturnValue(templatesService);
 
 		expect(options?.getTemplatesService()).toBe(templatesService);
+	});
+
+	it('creates sandboxes with the provider health of the process', () => {
+		const { options } = createSource();
+
+		expect(options?.providerHealth).toBe(providerHealth);
 	});
 
 	it('gives no lease when the instance cannot run the workflow builder sandbox', async () => {

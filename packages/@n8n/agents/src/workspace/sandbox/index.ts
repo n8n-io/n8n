@@ -1,7 +1,14 @@
 export {
 	DEFAULT_SANDBOX_PROVIDER,
+	isSandboxProvider,
 	normalizeSandboxProvider,
 } from './provider';
+export {
+	getSandboxFailureClass,
+	isSandboxProviderUnavailableError,
+	SandboxProviderHealth,
+	type SandboxProviderHealthOptions,
+} from './provider-failover';
 export {
 	WORKSPACE_DIR,
 	DAYTONA_HOME,

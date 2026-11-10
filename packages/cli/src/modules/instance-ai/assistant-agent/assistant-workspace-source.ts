@@ -12,10 +12,11 @@ import type {
 	SystemAgentWorkspaceSource,
 } from '@/modules/agents/system-agents/system-agent.types';
 import { AiService } from '@/services/ai.service';
+import { Telemetry } from '@/telemetry';
 
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
-import { InstanceAiSandboxService } from '../sandbox';
+import { InstanceAiSandboxProviderHealth, InstanceAiSandboxService } from '../sandbox';
 
 /**
  * The Assistant sandbox of one turn. Getting the lease does not start the
@@ -51,6 +52,8 @@ export class AssistantSandboxWorkspaceSource
 		aiService: AiService,
 		private readonly settingsService: InstanceAiSettingsService,
 		adapterService: InstanceAiAdapterService,
+		telemetry: Telemetry,
+		providerHealth: InstanceAiSandboxProviderHealth,
 	) {
 		this.sandboxService = new InstanceAiSandboxService({
 			config: globalConfig.instanceAi,
@@ -64,6 +67,8 @@ export class AssistantSandboxWorkspaceSource
 			settingsService,
 			aiService,
 			getTemplatesService: () => adapterService.getTemplatesService(),
+			telemetry,
+			providerHealth,
 		});
 	}
 
