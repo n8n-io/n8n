@@ -27,6 +27,10 @@ const configFacets = {
 		.describe('Whether an unbound subject may be linked to an existing user by email claim'),
 	provision_human: z
 		.enum(['off', 'jit'])
+		.meta({ deprecated: true })
+		.describe('Deprecated: renamed to provision_person, which carries the same value.'),
+	provision_person: z
+		.enum(['off', 'jit'])
 		.describe("'jit' creates a user on first authentication when no binding or email match exists"),
 	role_mapping_mode: z
 		.enum(['off', 'on-provision', 'continuous'])
