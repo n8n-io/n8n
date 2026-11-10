@@ -64,3 +64,8 @@ export function hasManagedOAuthApp(credentialType: ICredentialType | undefined):
 		overwrittenProperties.includes('clientId') && overwrittenProperties.includes('clientSecret')
 	);
 }
+
+/** Whether n8n registers the OAuth app on connect. A managed app takes precedence. */
+export function hasAutomaticOAuthApp(credentialType: ICredentialType | undefined): boolean {
+	return !!credentialType?.dynamicClientRegistration && !hasManagedOAuthApp(credentialType);
+}

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
@@ -28,7 +28,7 @@ import {
 } from '@n8n/frontend-constants/self-healing';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
-import PromotionPreviewBadges from '@/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue';
+import { loadPromotionPreviewBadges } from '@n8n/frontend-module-promotions';
 
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
@@ -37,6 +37,9 @@ import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useCreateApp } from '@n8n/frontend-module-apps';
+
+// Lazy, so the badges and their preview code stay out of the boot chunk.
+const PromotionPreviewBadges = defineAsyncComponent(loadPromotionPreviewBadges);
 
 const route = useRoute();
 const router = useRouter();

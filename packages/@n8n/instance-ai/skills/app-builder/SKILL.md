@@ -4,7 +4,8 @@ description: >-
   Load before calling the apps tool. Use when the user wants to build or change
   an n8n App: a small web app, form, dashboard, tracker or other browser UI that
   n8n hosts. Also load when the conversation lists app targets or a pending app.
-recommended_tools:
+recommended_tool_groups:
+  - tools
   - apps
   - workspace_execute_command
 ---

@@ -11,14 +11,11 @@ import type {
 	SkillService,
 	SkillTarget,
 } from '@/modules/skills';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentSkillRepository } from '../repositories/agent-skill.repository';
-
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 const ctx: OperationContext = {};
 const pinId = '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f';
@@ -39,7 +36,6 @@ describe('AgentSkillRefsService', () => {
 
 	beforeEach(() => {
 		// The module mock outlives each test, so clear the calls of earlier ones.
-		vi.mocked(userHasScopes).mockClear();
 		agentSkillRepository = mock<AgentSkillRepository>();
 		skillService = mock<SkillService>();
 		skillRuntime = mock<SkillRuntimeService>();

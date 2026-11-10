@@ -141,9 +141,6 @@ export {
 	aiPreferenceContentSchema,
 	aiPreferenceScopeSchema,
 	aiPreferenceSourceSchema,
-	CONTEXT_PREFERENCES_CONTROL_VARIANT,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
 	aiPreferenceScopeOf,
 	aiPreferenceTargetOf,
 } from './schemas/ai-preference.schema';
@@ -367,6 +364,7 @@ export type {
 	MigrationNotifyResult,
 	MigrationNotifySkipReason,
 	WorkflowMigrationResult,
+	BreakingChangeAssistantAction,
 } from './schemas/breaking-changes.schema';
 
 export {
@@ -455,6 +453,7 @@ export {
 	confirmationInputTypeSchema,
 	appBlueprintSchema,
 	appBlueprintResumeSchema,
+	appBlueprintErrorsSchema,
 	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
 	mcpConnectServerSchema,
@@ -611,6 +610,7 @@ export type {
 	InstanceAiRunLimitMeta,
 	AppBlueprint,
 	AppBlueprintResume,
+	AppBlueprintErrors,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -704,7 +704,6 @@ export type {
 	InstanceAiEnvManagedFields,
 	InstanceAiVerificationFailure,
 	InstanceAiVerificationResponse,
-	InstanceAiUserPreferencesResponse,
 	InstanceAiProviderConnection,
 	InstanceAiSandboxProvider,
 	InstanceAiConnectionUpdate,
@@ -729,6 +728,8 @@ export type {
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
+	InstanceAiMigrationReportHandoffContext,
+	InstanceAiAutomatedMigrationOutcome,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifact,
 	InstanceAiThreadArtifactsContext,

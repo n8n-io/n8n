@@ -41,12 +41,11 @@ const SCOPES = new Set(['pr', 'full']);
 
 /**
  * The schema-docs check runs on the primary Postgres leg only, since the
- * committed docs come from that one version. PRs collect coverage on that leg.
- * Merge groups use the full scope and skip duplicate coverage collection.
+ * committed docs come from that one version. Scope 'pr' collects coverage on
+ * that leg. Scope 'full' collects no coverage.
  *
  * Scope 'pr' keeps SQLite plus the primary Postgres leg. Scope 'full' keeps
- * every Postgres major. The merge queue generates with 'full', so every merge
- * still gates on the older majors.
+ * every Postgres major. CI runs DB tests on PRs only, with 'pr'.
  *
  * @param {PostgresVersions} versions
  * @param {'pr' | 'full'} scope
