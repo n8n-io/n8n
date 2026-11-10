@@ -382,8 +382,7 @@ function formatDuration(ms: number): string {
 }
 
 .fixButton,
-.actionGroup,
-.listEnd {
+.actionGroup {
 	position: relative;
 	z-index: 2;
 }
