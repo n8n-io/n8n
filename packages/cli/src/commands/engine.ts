@@ -49,13 +49,13 @@ export class Engine extends BaseCommand {
 		// The control plane runs in another process, so the execution channel uses Redis.
 		const logger = this.logger.scoped('engine-v2');
 		const { createRedisExecutionChannelPublisher } = await import(
-			'@/modules/engine-v2/response-channel/redis-execution-response-channel.js'
+			'@/modules/engine-v2/execution-channel/redis-execution-channel.js'
 		);
 		const { ExecutionChannelSender } = await import(
-			'@/modules/engine-v2/response-channel/in-memory-execution-response-sender.js'
+			'@/modules/engine-v2/execution-channel/execution-channel-sender.js'
 		);
 		const { createExecutionResponseCodec } = await import(
-			'@/modules/engine-v2/response-channel/execution-response-frame.js'
+			'@/modules/engine-v2/execution-channel/execution-response-frame.js'
 		);
 		this.channelPublisher = await createRedisExecutionChannelPublisher(logger);
 

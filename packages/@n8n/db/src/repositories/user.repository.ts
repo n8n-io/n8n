@@ -121,7 +121,8 @@ export class UserRepository extends BaseRepository<User> {
 	 */
 	async findAllWithRoleAndAuthIdentities(): Promise<User[]> {
 		return await this.find({
-			relations: ['role', 'authIdentities'],
+			// `details` holds a service account's name, which eager loading would otherwise load.
+			relations: ['role', 'authIdentities', 'details'],
 			order: { id: 'ASC' },
 			loadEagerRelations: false,
 		});
@@ -153,8 +154,10 @@ export class UserRepository extends BaseRepository<User> {
 			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
 			.leftJoinAndSelect('user.role', 'role')
 			.leftJoinAndSelect('role.scopes', 'scopes')
+			// A query builder skips eager relations, and a service account's name is in `details`.
+			.leftJoinAndSelect('user.details', 'details')
 			.where('apiKey.apiKey = :apiKey', { apiKey })
-			.select(['user', 'role', 'scopes'])
+			.select(['user', 'role', 'scopes', 'details'])
 			.getOne();
 
 		return keyOwner;

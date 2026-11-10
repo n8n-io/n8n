@@ -68,6 +68,7 @@ import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
+import { toUserLike } from '@/utils/to-user-like';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -555,13 +556,7 @@ export class WorkflowsController {
 				dbWorkflow.id,
 			);
 			this.eventService.emit('workflow-executed', {
-				user: {
-					id: req.user.id,
-					email: req.user.email,
-					firstName: req.user.firstName,
-					lastName: req.user.lastName,
-					role: req.user.role,
-				},
+				user: toUserLike(req.user),
 				workflowId: dbWorkflow.id,
 				workflowName: dbWorkflow.name,
 				executionId: result.executionId,

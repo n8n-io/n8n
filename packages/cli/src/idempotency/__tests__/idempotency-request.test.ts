@@ -117,6 +117,24 @@ describe('requestFingerprint', () => {
 		);
 	});
 
+	it('hashes a raw body in the declared charset', () => {
+		const req = {
+			method: 'POST',
+			originalUrl: '/api/v1/workflows',
+			rawBody: Buffer.from('{"name":"Grüße"}', 'utf16le').swap16(),
+			encoding: 'utf-16be' as BufferEncoding,
+		};
+
+		expect(requestFingerprint(req)).toBe(
+			fingerprintParts({
+				method: 'POST',
+				path: '/api/v1/workflows',
+				query: '',
+				body: '{"name":"Grüße"}',
+			}),
+		);
+	});
+
 	it('changes when an uploaded file has the same name and size but different bytes', () => {
 		const first = requestFingerprint(request([file]));
 		const second = requestFingerprint(request([{ ...file, buffer: Buffer.from('bbbb') }]));

@@ -113,8 +113,8 @@ export interface V1StepExecutorDeps {
 	 * Without it, the URLs carry a random token that the engine cannot verify.
 	 */
 	resumeToken?: (context: { executionId: string }) => string;
-	/** Absent in a host that runs no sub-workflows, where a call fails the node. */
-	resolveSubWorkflow?: SubWorkflowResolver;
+	/** Resolves the sub-workflow a node calls. */
+	resolveSubWorkflow: SubWorkflowResolver;
 	/**
 	 * Mints the token of a resume URL that a node builds with
 	 * `getSignedResumeUrl`. `binding` is the path and query of the URL without

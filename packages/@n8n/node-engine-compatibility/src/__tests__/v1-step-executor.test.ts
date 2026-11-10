@@ -1,5 +1,10 @@
 import type { JsonValue, StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
-import { prepareUrlForSigning, UnrecognizedNodeTypeError } from 'n8n-core';
+import { mintApprovalCallback } from '@n8n/engine';
+import {
+	parseHitlCallbackReference,
+	prepareUrlForSigning,
+	UnrecognizedNodeTypeError,
+} from 'n8n-core';
 import type {
 	IConnections,
 	IDataObject,
@@ -30,6 +35,7 @@ import { V1StepExecutor } from '../v1-step-executor';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 import {
 	items,
+	noSubWorkflows,
 	stepRequest,
 	testAdditionalDataFactory,
 	testNodeTypes,
@@ -108,6 +114,7 @@ describe('V1StepExecutor', () => {
 		});
 		const resumeToken = vi.fn(() => 'minted');
 		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
 			nodeTypes: testNodeTypes,
 			resumeToken,
 			additionalDataFactory: testAdditionalDataFactory,
@@ -134,6 +141,7 @@ describe('V1StepExecutor', () => {
 		const graph = graphWith('test.echoParam', { message: 'hi' });
 		const additionalDataFactory = vi.fn(testAdditionalDataFactory);
 		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
 			nodeTypes: testNodeTypes,
 			additionalDataFactory,
 			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
@@ -497,6 +505,7 @@ describe('V1StepExecutor', () => {
 			const graph = graphWith('test.waitsUntil', { waitTill: '2026-10-01T12:00:00.000Z' });
 			const setExecutionStatus = vi.fn();
 			const executor = new V1StepExecutor({
+				resolveSubWorkflow: noSubWorkflows,
 				nodeTypes: testNodeTypes,
 				additionalDataFactory: async (context) => ({
 					...(await testAdditionalDataFactory(context)),
@@ -548,17 +557,14 @@ describe('V1StepExecutor', () => {
 			await expect(execution).rejects.toBeInstanceOf(UserError);
 		});
 
-		it('fails a send-and-wait step before the node sends its message', async () => {
+		it('runs a send-and-wait step', async () => {
 			const graph = graphWith('test.echoParam', { operation: 'sendAndWait' });
 			const echo = testNodeTypes.getByNameAndVersion('test.echoParam');
 			const execute = vi.spyOn(echo, 'execute');
 
-			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+			await testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
 
-			await expect(execution).rejects.toThrow(
-				'Node "Subject" sends a message and waits, and engine v2 cannot end that wait yet.',
-			);
-			expect(execute).not.toHaveBeenCalled();
+			expect(execute).toHaveBeenCalledOnce();
 		});
 
 		it('fails a Chat node step before the node sends its message', async () => {
@@ -566,6 +572,7 @@ describe('V1StepExecutor', () => {
 			const echo = testNodeTypes.getByNameAndVersion('test.echoParam');
 			const execute = vi.spyOn(echo, 'execute');
 			const executor = new V1StepExecutor({
+				resolveSubWorkflow: noSubWorkflows,
 				nodeTypes: { ...testNodeTypes, getByNameAndVersion: () => echo },
 				additionalDataFactory: testAdditionalDataFactory,
 				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
@@ -607,6 +614,7 @@ describe('V1StepExecutor', () => {
 				nodeTypes: testNodeTypes,
 				additionalDataFactory: testAdditionalDataFactory,
 				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+				resolveSubWorkflow: noSubWorkflows,
 				...minters,
 			});
 
@@ -889,14 +897,6 @@ describe('sub-workflows', () => {
 		expect(resolveSubWorkflow).toHaveBeenCalledTimes(1);
 	});
 
-	it('refuses the call when the host resolves no sub-workflows', async () => {
-		const graph = graphWith(EXECUTE_WORKFLOW_TYPE);
-
-		await expect(testStepExecutor(graph).execute(stepRequest(graph, 'n', input))).rejects.toThrow(
-			'This host cannot run sub-workflows',
-		);
-	});
-
 	it('refuses the call from any node but the Execute Sub-workflow node, asking the host for nothing', async () => {
 		const graph = graphWith('test.runsSubWorkflow');
 		const resolveSubWorkflow = vi.fn().mockResolvedValue(resolved);
@@ -943,6 +943,7 @@ describe('the v1 execution mode a node sees', () => {
 		} as unknown as INodeType;
 
 		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
 			nodeTypes: { ...testNodeTypes, getByNameAndVersion: () => reportsMode },
 			additionalDataFactory: async (): Promise<IWorkflowExecuteAdditionalData> =>
 				await testAdditionalDataFactory({
@@ -966,5 +967,16 @@ describe('the v1 execution mode a node sees', () => {
 	// `isStreaming()` accepts only a few v1 modes, so a webhook run could not stream.
 	it.each(['webhook', 'trigger', 'manual'])('is the host mode %s', async (hostMode) => {
 		await expect(modeSeenBy(hostMode)).resolves.toBe(hostMode);
+	});
+});
+
+describe('approval callback layout', () => {
+	it('is parsed by core as the engine mints it', () => {
+		// The two packages cannot import each other, so each holds the layout.
+		const stepId = '01926a4e-7f5c-7000-8000-000000000001';
+
+		const parsed = parseHitlCallbackReference(mintApprovalCallback('secret', stepId, 'd'));
+
+		expect(parsed).toMatchObject({ kind: 'step', stepId, decision: 'd' });
 	});
 });

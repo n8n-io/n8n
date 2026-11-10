@@ -242,6 +242,34 @@ describe('Telemetry', () => {
 			);
 		});
 
+		test('should count runs that use personal credentials in the aggregate, not as events', async () => {
+			const payload: Parameters<Telemetry['trackWorkflowExecution']>[0] = {
+				workflow_id: '1',
+				is_manual: false,
+				success: true,
+				personal_credentials_count: 2,
+			};
+
+			const firstProdExecTime = fakeTestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(payload);
+			fakeTestSystemTime('2022-01-01 12:30:00');
+			telemetry.trackWorkflowExecution({ ...payload, success: false });
+
+			const manualExecTime = fakeTestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution({ ...payload, is_manual: true });
+
+			telemetry.trackWorkflowExecution({ ...payload, personal_credentials_count: undefined });
+
+			expect(spyTrack).not.toHaveBeenCalled();
+
+			const execBuffer = telemetry.getCountsBuffer();
+
+			expect(execBuffer['1'].personal_credentials_prod?.count).toBe(2);
+			expect(execBuffer['1'].personal_credentials_prod?.first).toEqual(firstProdExecTime);
+			expect(execBuffer['1'].personal_credentials_manual?.count).toBe(1);
+			expect(execBuffer['1'].personal_credentials_manual?.first).toEqual(manualExecTime);
+		});
+
 		test('should fire "Workflow execution errored" event for failed executions', async () => {
 			const payload = {
 				workflow_id: '1',
