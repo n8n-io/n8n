@@ -1,7 +1,7 @@
 import moment from 'moment-timezone';
 import type {
-	IExecuteFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -14,7 +14,6 @@ export class Nasa implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'NASA',
 		name: 'nasa',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:nasa.png',
 		group: ['transform'],
 		version: 1,
@@ -861,6 +860,7 @@ export class Nasa implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				let endpoint = '';
+				let baseUrl: string | undefined;
 				let includeCloseApproachData = false;
 
 				// additionalFields are brought up here to prevent repetition on most endpoints.
@@ -882,6 +882,7 @@ export class Nasa implements INodeType {
 							moment().format('YYYY-MM-DD');
 					}
 				}
+
 				if (resource === 'asteroidNeoFeed') {
 					if (operation === 'get') {
 						endpoint = '/neo/rest/v1/feed';
@@ -896,6 +897,7 @@ export class Nasa implements INodeType {
 							moment(additionalFields.endDate as string).format('YYYY-MM-DD') || currentDate;
 					}
 				}
+
 				if (resource === 'asteroidNeoLookup') {
 					if (operation === 'get') {
 						const asteroidId = this.getNodeParameter('asteroidId', i) as IDataObject;
@@ -911,6 +913,7 @@ export class Nasa implements INodeType {
 						);
 					}
 				}
+
 				if (resource === 'asteroidNeoBrowse') {
 					if (operation === 'getAll') {
 						returnAll = this.getNodeParameter('returnAll', 0);
@@ -930,7 +933,10 @@ export class Nasa implements INodeType {
 						);
 					}
 				}
+
 				if (resource.startsWith('donki')) {
+					baseUrl = 'https://ccmc.gsfc.nasa.gov';
+
 					if (additionalFields.startDate) {
 						qs.startDate = moment(additionalFields.startDate as string).format('YYYY-MM-DD');
 					} else {
@@ -945,51 +951,52 @@ export class Nasa implements INodeType {
 
 					if (resource === 'donkiCoronalMassEjection') {
 						if (operation === 'get') {
-							endpoint = '/DONKI/CME';
+							baseUrl += '/DONKI-API/get/CME';
 						}
 					} else if (resource === 'donkiGeomagneticStorm') {
 						if (operation === 'get') {
-							endpoint = '/DONKI/GST';
+							baseUrl += '/DONKI-API/get/GST';
 						}
 					} else if (resource === 'donkiInterplanetaryShock') {
 						if (operation === 'get') {
-							endpoint = '/DONKI/IPS';
+							baseUrl += '/DONKI-API/get/IPS';
 
 							qs.location = (additionalFields.location as string) || 'ALL'; // default per API
 							qs.catalog = (additionalFields.catalog as string) || 'ALL'; // default per API
 						}
 					} else if (resource === 'donkiSolarFlare') {
 						if (operation === 'get') {
-							endpoint = '/DONKI/FLR';
+							baseUrl += '/DONKI-API/get/FLR';
 						}
 					} else if (resource === 'donkiSolarEnergeticParticle') {
 						if (operation === 'get') {
-							endpoint = '/DONKI/SEP';
+							baseUrl += '/DONKI-API/get/SEP';
 						}
 					} else if (resource === 'donkiMagnetopauseCrossing') {
 						if (operation === 'get') {
-							endpoint = '/DONKI/MPC';
+							baseUrl += '/DONKI-API/get/MPC';
 						}
 					} else if (resource === 'donkiRadiationBeltEnhancement') {
 						if (operation === 'get') {
-							endpoint = '/DONKI/RBE';
+							baseUrl += '/DONKI-API/get/RBE';
 						}
 					} else if (resource === 'donkiHighSpeedStream') {
 						if (operation === 'get') {
-							endpoint = '/DONKI/HSS';
+							baseUrl += '/DONKI-API/get/HSS';
 						}
 					} else if (resource === 'donkiWsaEnlilSimulation') {
 						if (operation === 'get') {
-							endpoint = '/DONKI/WSAEnlilSimulations';
+							baseUrl += '/DONKI-API/get/WSAEnlilSimulations';
 						}
 					} else if (resource === 'donkiNotifications') {
 						if (operation === 'get') {
-							endpoint = '/DONKI/notifications';
+							baseUrl += '/DONKI-API/get/notifications';
 
 							qs.type = (additionalFields.type as string) || 'all'; // default per API
 						}
 					}
 				}
+
 				if (resource === 'earthImagery') {
 					if (operation === 'get') {
 						endpoint = '/planetary/earth/imagery';
@@ -1019,20 +1026,12 @@ export class Nasa implements INodeType {
 							qs.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
 						}
 					}
-
-					if (operation === 'get') {
-						endpoint = '/insight_weather/earth/imagery';
-
-						// Hardcoded because these are the only options available right now.
-						qs.feedtype = 'json';
-						qs.ver = '1.0';
-					}
 				}
 
 				if (returnAll) {
-					responseData = nasaApiRequestAllItems.call(this, propertyName, 'GET', endpoint, qs);
+					responseData = await nasaApiRequestAllItems.call(this, propertyName, 'GET', endpoint, qs);
 				} else {
-					responseData = await nasaApiRequest.call(this, 'GET', endpoint, qs);
+					responseData = await nasaApiRequest.call(this, 'GET', endpoint, qs, undefined, baseUrl);
 
 					if (propertyName !== '') {
 						responseData = responseData[propertyName];
