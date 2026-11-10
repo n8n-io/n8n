@@ -27,10 +27,8 @@ const props = withDefaults(
 		openAppPreview?: (id: string) => boolean;
 		artifactLinks?: Pick<
 			ReturnType<typeof useArtifactLinks>,
-			'artifactHref' | 'routerPathHref' | 'toRouterPaths'
+			'artifactHref' | 'routerPathHref' | 'toRouterPath'
 		>;
-		buildAppHref?: (projectId: string, id: string) => string;
-		buildSkillHref?: (id: string) => string;
 	}>(),
 	{ options: () => ({}), singlePre: false, artifactLinks: undefined },
 );
@@ -68,8 +66,6 @@ const markdown = useChatMarkdownOptions(() => props.options);
 				:open-skill-preview="props.openSkillPreview"
 				:open-app-preview="props.openAppPreview"
 				:artifact-links="props.artifactLinks"
-				:build-app-href="props.buildAppHref"
-				:build-skill-href="props.buildSkillHref"
 			/>
 		</template>
 		<template #code-block="{ code, language }">

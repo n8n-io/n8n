@@ -37,10 +37,8 @@ const props = defineProps<{
 	openAppPreview?: (id: string) => boolean;
 	artifactLinks?: Pick<
 		ReturnType<typeof useArtifactLinks>,
-		'artifactHref' | 'routerPathHref' | 'toRouterPaths'
+		'artifactHref' | 'routerPathHref' | 'toRouterPath'
 	>;
-	buildAppHref?: (projectId: string, id: string) => string;
-	buildSkillHref?: (id: string) => string;
 }>();
 
 const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
@@ -61,26 +59,23 @@ const entry = computed(() =>
 	),
 );
 
-const routerPaths = computed(() => {
-	if (props.artifactLinks) return props.artifactLinks.toRouterPaths(props.href);
+const routerPath = computed(() => {
+	if (props.artifactLinks) return props.artifactLinks.toRouterPath(props.href);
 	const url = getSameOriginUrl(props.href);
 	return url
-		? [{ pathname: url.pathname, fullPath: `${url.pathname}${url.search}${url.hash}` }]
-		: [];
+		? { pathname: url.pathname, fullPath: `${url.pathname}${url.search}${url.hash}` }
+		: undefined;
 });
 
 const internalRoute = computed(() => {
-	const matches = routerPaths.value.flatMap((routerPath) => {
-		const route = INTERNAL_ROUTE_PATTERNS.find(({ pattern }) => pattern.test(routerPath.pathname));
-		return route ? [{ routerPath, type: route.type, fallback: route.fallback }] : [];
-	});
-	return matches.find(({ fallback }) => !fallback) ?? matches[0];
+	const pathname = routerPath.value?.pathname;
+	return pathname === undefined
+		? undefined
+		: INTERNAL_ROUTE_PATTERNS.find(({ pattern }) => pattern.test(pathname));
 });
 
 const preview = computed(() => {
-	const resolved = routerPaths.value
-		.map(({ fullPath }) => resolveAgentTestLink(fullPath))
-		.find((target) => target !== undefined);
+	const resolved = routerPath.value ? resolveAgentTestLink(routerPath.value.fullPath) : undefined;
 	if (!resolved || !props.agentPreviewTarget) return resolved;
 	const target = props.agentPreviewTarget;
 	return {
@@ -109,16 +104,10 @@ const href = computed(() => {
 				props.artifactLinks.artifactHref(resourceType, id.value, entry.value?.projectId) ?? '#'
 			);
 		}
-		return buildResourceUrl(
-			resourceType,
-			id.value,
-			entry.value?.projectId,
-			props.buildAppHref,
-			props.buildSkillHref,
-		);
+		return buildResourceUrl(resourceType, id.value, entry.value?.projectId);
 	}
-	return internalRoute.value && props.artifactLinks
-		? props.artifactLinks.routerPathHref(internalRoute.value.routerPath.fullPath)
+	return internalRoute.value && routerPath.value && props.artifactLinks
+		? props.artifactLinks.routerPathHref(routerPath.value.fullPath)
 		: props.href;
 });
 

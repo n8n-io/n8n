@@ -1,6 +1,7 @@
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import { APP_DETAIL_VIEW } from '@n8n/frontend-module-apps';
 import { VIEWS } from '@/app/constants';
+import { getSameOriginUrl } from '@/features/ai/shared/components/ChatMarkdown/ChatResourceLink.utils';
 import { AGENT_BUILDER_VIEW, AGENTS_LIST_VIEW } from '@/features/agents/constants';
 import { DATA_TABLE_DETAILS, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
 
@@ -50,8 +51,6 @@ function artifactRoute(
 	}
 }
 
-const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
-
 interface RouterPath {
 	pathname: string;
 	fullPath: string;
@@ -87,33 +86,17 @@ export function useArtifactLinks() {
 	}
 
 	/**
-	 * Prefer a known app route without the base. Otherwise, offer both paths because
-	 * a base such as `/projects/` can also start an unprefixed app route.
+	 * Removes the router base once, so the link matches the app routes. A base
+	 * that is also an app route segment, such as `/workflow/`, is not supported
+	 * for links that leave out the base.
 	 */
-	function toRouterPaths(href: string): RouterPath[] {
-		const isRootRelative = href.startsWith('/') && !href.startsWith('//');
-		if (!isRootRelative && !ABSOLUTE_URL_PATTERN.test(href)) return [];
-
-		let url: URL;
-		try {
-			url = new URL(href, window.location.origin);
-		} catch {
-			return [];
-		}
-		if (url.origin !== window.location.origin) return [];
-
-		const toRouterPath = (pathname: string) => ({
-			pathname,
-			fullPath: `${pathname}${url.search}${url.hash}`,
-		});
+	function toRouterPath(href: string): RouterPath | undefined {
+		const url = getSameOriginUrl(href);
+		if (!url) return undefined;
 		const base = router.options.history.base;
 		const hasBase = base !== '' && (url.pathname === base || url.pathname.startsWith(`${base}/`));
-		if (!hasBase) return [toRouterPath(url.pathname)];
-		const withoutBase = toRouterPath(url.pathname.slice(base.length) || '/');
-		const route = router.resolve(withoutBase.fullPath);
-		// Unnamed legacy redirects must not override canonical paths such as `/home/credentials`.
-		if (route.name && route.name !== VIEWS.NOT_FOUND) return [withoutBase];
-		return [withoutBase, toRouterPath(url.pathname)];
+		const pathname = hasBase ? url.pathname.slice(base.length) || '/' : url.pathname;
+		return { pathname, fullPath: `${pathname}${url.search}${url.hash}` };
 	}
 
 	return {
@@ -121,6 +104,6 @@ export function useArtifactLinks() {
 		artifactUrl,
 		openArtifactInNewTab,
 		routerPathHref,
-		toRouterPaths,
+		toRouterPath,
 	};
 }

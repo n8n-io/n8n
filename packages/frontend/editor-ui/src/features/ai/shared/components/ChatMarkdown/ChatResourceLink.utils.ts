@@ -9,19 +9,16 @@ export const resourceIcons: Record<string, InstanceType<typeof ResourceIcon>['$p
 	skill: 'graduation-cap',
 	app: 'layout-grid',
 };
-export const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string; fallback?: boolean }> =
-	[
-		{ pattern: /^\/workflow\/([a-zA-Z0-9]+)/, type: 'workflow' },
-		{ pattern: /^\/home\/credentials(?:\/|$)/, type: 'credential' },
-		{ pattern: /^\/home\/data-?tables(?:\/|$)/, type: 'data-table' },
-		{ pattern: /^\/home\/agents(?:\/|$)/, type: 'agent' },
-		{ pattern: /^\/projects\/[^/]+\/credentials(?:\/|$)/, type: 'credential' },
-		{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
-		{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
-		{ pattern: /^\/projects\/[^/]+\/apps(?:\/|$)/, type: 'app' },
-		{ pattern: /^\/credentials(?:\/|$)/, type: 'credential', fallback: true },
-		{ pattern: /^\/data-?tables(?:\/|$)/, type: 'data-table', fallback: true },
-	];
+export const INTERNAL_ROUTE_PATTERNS = [
+	{ pattern: /^\/workflow\/([a-zA-Z0-9]+)/, type: 'workflow' },
+	{ pattern: /^\/(?:home\/)?credentials(?:\/|$)/, type: 'credential' },
+	{ pattern: /^\/(?:home\/)?data-?tables(?:\/|$)/, type: 'data-table' },
+	{ pattern: /^\/home\/agents(?:\/|$)/, type: 'agent' },
+	{ pattern: /^\/projects\/[^/]+\/credentials(?:\/|$)/, type: 'credential' },
+	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
+	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
+	{ pattern: /^\/projects\/[^/]+\/apps(?:\/|$)/, type: 'app' },
+];
 
 export function getResourceLinkIcon(href: string, origin = window.location.origin) {
 	try {
@@ -60,24 +57,16 @@ export function decodeResourceId(value: string): string {
 	}
 }
 
-export function buildResourceUrl(
-	type: string,
-	id: string,
-	projectId: string | undefined,
-	buildAppHref?: (projectId: string, id: string) => string,
-	buildSkillHref?: (id: string) => string,
-): string {
+export function buildResourceUrl(type: string, id: string, projectId: string | undefined): string {
 	const encodedId = encodeURIComponent(id);
 	if (projectId) {
 		if (type === 'data-table') return `/projects/${projectId}/datatables/${encodedId}`;
 		if (type === 'credential') return `/projects/${projectId}/credentials/${encodedId}`;
 		if (type === 'agent') return `/projects/${projectId}/agents/${encodedId}`;
-		if (type === 'app' && buildAppHref) return buildAppHref(projectId, id);
 	}
 	if (type === 'workflow') return `/workflow/${encodedId}`;
 	if (type === 'credential') return `/home/credentials/${encodedId}`;
 	if (type === 'data-table') return '/home/datatables';
 	if (type === 'agent') return '/home/agents';
-	if (type === 'skill' && buildSkillHref) return buildSkillHref(id);
 	return '#';
 }

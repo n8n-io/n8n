@@ -276,8 +276,6 @@ describe('InstanceAiMarkdown with the shared renderer', () => {
 		it.each([
 			{ base: '/n8n/', href: '/workflow/wf-1' },
 			{ base: '/n8n/', href: '/n8n/workflow/wf-1' },
-			{ base: '/workflow/', href: '/workflow/wf-1' },
-			{ base: '/workflow/', href: '/workflow/workflow/wf-1' },
 		])('adds the base $base once to the internal link $href', async ({ base, href }) => {
 			const query = '?tab=a%20b&x=1+2#node';
 			const link = (
@@ -289,24 +287,6 @@ describe('InstanceAiMarkdown with the shared renderer', () => {
 			expect(link?.getAttribute('href')).toBe(`${base}workflow/wf-1${query}`);
 			expect(link?.dataset.resourceChip).toBe('workflow');
 			expect(link?.target).toBe('_blank');
-		});
-
-		it.each([
-			'/workflow/settings/context/skills?skillId=skill%201&tab=a+b#details',
-			'/workflow/settings/personal?tab=a%20b#details',
-		])('keeps the prefixed Settings link %s unchanged', async (path) => {
-			const hrefs = [path, `${window.location.origin}${path}`];
-			const links = (
-				await renderWithBase(hrefs.map((href) => `[Settings](${href})`).join(' '), {
-					base: '/workflow/',
-				})
-			).querySelectorAll('a');
-
-			expect(links).toHaveLength(hrefs.length);
-			links.forEach((link, index) => {
-				expect(link.getAttribute('href')).toBe(hrefs[index]);
-				expect(link.dataset.resourceChip).toBeUndefined();
-			});
 		});
 
 		it('leaves unrecognized and cross-origin links unchanged', async () => {
@@ -322,28 +302,9 @@ describe('InstanceAiMarkdown with the shared renderer', () => {
 			expect(links[1].dataset.resourceChip).toBeUndefined();
 		});
 
-		it.each(['credentials', 'credentials/cred-1', 'datatables'])(
-			'keeps the home route for %s when the base is /home/',
-			async (resourcePath) => {
-				const path = `/home/${resourcePath}?tab=details#item`;
-				const links = (
-					await renderWithBase(`[Resource](${path}) [Based resource](/home${path})`, {
-						base: '/home/',
-					})
-				).querySelectorAll('a');
-
-				expect(links).toHaveLength(2);
-				for (const link of links) {
-					expect(link.getAttribute('href')).toBe(`/home${path}`);
-				}
-			},
-		);
-
 		it.each([
 			{ base: '/n8n/', href: '/projects/project-1/agents/agent-1/preview' },
 			{ base: '/n8n/', href: '/n8n/projects/project-1/agents/agent-1?openPreview=true' },
-			{ base: '/projects/', href: '/projects/project-1/agents/agent-1/preview' },
-			{ base: '/projects/', href: '/projects/projects/project-1/agents/agent-1/preview' },
 		])('opens the agent Preview link $href under the base $base', async ({ base, href }) => {
 			const openAgentChatPreview = vi.fn(() => true);
 			const link = (

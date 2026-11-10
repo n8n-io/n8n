@@ -78,11 +78,11 @@ describe('useArtifactLinks', () => {
 	);
 });
 
-describe('toRouterPaths and routerPathHref', () => {
+describe('toRouterPath and routerPathHref', () => {
 	it.each(BASES)(
 		'read links with or without the history base $base and add the base once',
 		({ base, prefix }) => {
-			const { toRouterPaths, routerPathHref } = setup(base);
+			const { toRouterPath, routerPathHref } = setup(base);
 			const pathname = '/workflow/wf-1';
 			const fullPath = `${pathname}?a=b%20c&d=e+f#node`;
 
@@ -91,27 +91,25 @@ describe('toRouterPaths and routerPathHref', () => {
 				`${prefix}${fullPath}`,
 				`${window.location.origin}${prefix}${fullPath}`,
 			]) {
-				const [routerPath] = toRouterPaths(href);
-				expect(routerPath).toEqual({ pathname, fullPath });
-				expect(routerPathHref(routerPath.fullPath)).toBe(`${prefix}${fullPath}`);
+				expect(toRouterPath(href)).toEqual({ pathname, fullPath });
+				expect(routerPathHref(fullPath)).toBe(`${prefix}${fullPath}`);
 			}
 		},
 	);
 
 	it('ignores relative and cross-origin links', () => {
-		const { toRouterPaths } = setup('/n8n/');
+		const { toRouterPath } = setup('/n8n/');
 
-		expect(toRouterPaths('workflow/wf-1')).toEqual([]);
-		expect(toRouterPaths('//other.test/workflow/wf-1')).toEqual([]);
-		expect(toRouterPaths('https://other.test/workflow/wf-1')).toEqual([]);
+		expect(toRouterPath('workflow/wf-1')).toBeUndefined();
+		expect(toRouterPath('//other.test/workflow/wf-1')).toBeUndefined();
+		expect(toRouterPath('https://other.test/workflow/wf-1')).toBeUndefined();
 	});
 
-	it('recognizes app routes after removing a whole-segment base', () => {
-		const { toRouterPaths } = setup('/n8n/');
-		const pathnames = (href: string) => toRouterPaths(href).map(({ pathname }) => pathname);
+	it('removes only a whole-segment base', () => {
+		const { toRouterPath } = setup('/n8n/');
 
-		expect(pathnames('/n8n/workflow/wf-1')).toEqual(['/workflow/wf-1']);
-		expect(pathnames('/n8n')).toEqual(['/', '/n8n']);
-		expect(pathnames('/n8nx/workflow/wf-1')).toEqual(['/n8nx/workflow/wf-1']);
+		expect(toRouterPath('/n8n/workflow/wf-1')?.pathname).toBe('/workflow/wf-1');
+		expect(toRouterPath('/n8n')?.pathname).toBe('/');
+		expect(toRouterPath('/n8nx/workflow/wf-1')?.pathname).toBe('/n8nx/workflow/wf-1');
 	});
 });
