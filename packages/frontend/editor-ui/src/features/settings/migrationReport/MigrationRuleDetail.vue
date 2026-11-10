@@ -6,14 +6,9 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type {
 	BreakingChangeRuleDetailResult,
 	BreakingChangeRuleDetailWorkflow,
-	BreakingChangeWorkflowOwner,
-	MigrationFindingListedStatus,
 	MigrationFindingTriageStatus,
-	MigrationNotifyResult,
-	MigrationNotifySkipReason,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	N8nBadge,
 	N8nButton,
@@ -33,17 +28,16 @@ import {
 	N8nTooltip,
 	N8nUserSelect,
 } from '@n8n/design-system';
-import type { IUser, TableHeader } from '@n8n/design-system';
+import type { TableHeader } from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@n8n/composables/useToast';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useAsyncState, useDebounceFn } from '@vueuse/core';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { I18nT } from 'vue-i18n';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
@@ -53,26 +47,19 @@ import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
 import SplitButton from './components/SplitButton.vue';
 import ArchiveWorkflowsModal from './ArchiveWorkflowsModal.vue';
-import type { ArchiveWorkflowsModalMode } from './constants';
+import { useArchiveFlow } from './composables/useArchiveFlow';
+import { useFindingTriage } from './composables/useFindingTriage';
+import { useOwnerNotify } from './composables/useOwnerNotify';
+import { useOwnerPicker } from './composables/useOwnerPicker';
 import {
 	archiveTargets,
 	canNotifyRow,
 	findUnusedOpenWorkflows,
-	needsArchiveConfirmation,
 	notifyOwnerCount,
 	notifyTargets,
-	shouldPromptToArchive,
 	statusChangeTargets,
 } from './bulkTargets';
-import { withArchived, withNotified, withOwner, withRestored, withStatuses } from './findingRows';
-import {
-	findingState,
-	isBusy,
-	isSelectable,
-	isStale,
-	withIds,
-	type RowContext,
-} from './findingState';
+import { findingState, isBusy, isSelectable, isStale, type RowContext } from './findingState';
 import {
 	countQuickFilters,
 	DEFAULT_WORKFLOW_FILTERS,
@@ -94,8 +81,6 @@ const rootStore = useRootStore();
 const rbacStore = useRBACStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
-const toast = useToast();
-const workflowsStore = useWorkflowsStore();
 
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
@@ -145,99 +130,8 @@ const personalLabel = computed(() =>
 	i18n.baseText('settings.migrationReport.detail.filters.project.personal'),
 );
 
-// The picker lists the users who can open the focused row's workflow. One list
-// serves every row, since only one picker is open at a time.
-const isLoadingUsers = ref(false);
-const activeWorkflowId = ref<string | undefined>();
-const memberOptions = ref<IUser[]>([]);
-
-function userOption(user: {
-	id: string;
-	firstName?: string | null;
-	lastName?: string | null;
-	email?: string | null;
-}): IUser {
-	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
-	return {
-		id: user.id,
-		firstName: user.firstName,
-		lastName: user.lastName,
-		email: user.email,
-		fullName: fullName || undefined,
-	};
-}
-
-// An owner that just came back from the server, registered as an option one
-// tick before the row takes it as its value, so the picker can resolve the label.
-const incomingOwners = ref(new Map<string, BreakingChangeWorkflowOwner>());
-
-/** The candidates for the row's workflow, plus the row's owner so the picker never shows a bare id. */
-function ownerOptionsFor(workflow: AffectedWorkflow): IUser[] {
-	const options = workflow.id === activeWorkflowId.value ? [...memberOptions.value] : [];
-	for (const owner of [workflow.owner, incomingOwners.value.get(workflow.id)]) {
-		// The picker needs an email on every option; an owner without one is left out.
-		if (owner?.email && !options.some((option) => option.id === owner.id)) {
-			options.push(userOption(owner));
-		}
-	}
-	return options;
-}
-
-// A focus on another row can start a new load before the last one answered;
-// only the latest answer may fill the list.
-let memberRequestSequence = 0;
-
-async function loadMembers(workflowId: string) {
-	const sequence = ++memberRequestSequence;
-	isLoadingUsers.value = true;
-	try {
-		const candidates = await breakingChangesApi.getWorkflowOwnerCandidates(
-			rootStore.restApiContext,
-			workflowId,
-		);
-		if (sequence !== memberRequestSequence) return;
-		// The picker needs an email on every option.
-		memberOptions.value = candidates.filter((user) => user.email).map(userOption);
-	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('settings.migrationReport.detail.owner.search.error.title'),
-		);
-	} finally {
-		if (sequence === memberRequestSequence) isLoadingUsers.value = false;
-	}
-}
-
-function onOwnerPickerFocus(workflow: AffectedWorkflow) {
-	if (activeWorkflowId.value === workflow.id && memberOptions.value.length > 0) return;
-	activeWorkflowId.value = workflow.id;
-	memberOptions.value = [];
-	void loadMembers(workflow.id);
-}
-
-// A quick second change can answer before the first; only the latest answer may land.
-const ownerRequestSequence = new Map<string, number>();
-
-async function onOwnerChange(workflow: AffectedWorkflow, userId: string) {
-	const sequence = (ownerRequestSequence.get(workflow.id) ?? 0) + 1;
-	ownerRequestSequence.set(workflow.id, sequence);
-	try {
-		const { owner } = userId
-			? await breakingChangesApi.assignWorkflowOwner(rootStore.restApiContext, workflow.id, userId)
-			: await breakingChangesApi.unassignWorkflowOwner(rootStore.restApiContext, workflow.id);
-		if (ownerRequestSequence.get(workflow.id) !== sequence) return;
-		if (owner) {
-			incomingOwners.value = new Map(incomingOwners.value).set(workflow.id, owner);
-			await nextTick();
-		}
-		updateRows((rows) => withOwner(rows, workflow.id, owner ?? undefined));
-		const remaining = new Map(incomingOwners.value);
-		remaining.delete(workflow.id);
-		incomingOwners.value = remaining;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.migrationReport.detail.owner.error.title'));
-	}
-}
+const { isLoadingUsers, ownerOptionsFor, onOwnerPickerFocus, onOwnerChange } =
+	useOwnerPicker(updateRows);
 
 const showMigrate = computed(() => state.value.migratable);
 
@@ -331,57 +225,24 @@ function openMigrateModal(workflows: AffectedWorkflow[]) {
 // migration fixes the finding on save, so a migrated row is not unresolved either.
 const openCount = computed(() => quickFilterCounts.value.open);
 
-// Rows with a state change in flight. One change at a time keeps the revert correct.
-const savingWorkflowIds = ref<Set<string>>(new Set());
+const { savingWorkflowIds, onFindingStatusChange, changeFindingStatuses } = useFindingTriage({
+	ruleId: () => props.migrationRuleId,
+	updateRows,
+	isBusy: (workflow) => isBusy(workflow, rowContext.value),
+	onRowWontFix: (workflow) => promptToArchive(workflow),
+});
 
-// Rows with a notification in flight. Its response sets the status, so a state
-// change must wait for it.
-const notifyingWorkflowIds = ref<Set<string>>(new Set());
+const { notifyingWorkflowIds, onNotify, notifyMany } = useOwnerNotify({
+	ruleId: () => props.migrationRuleId,
+	updateRows,
+	isBusy: (workflow) => isBusy(workflow, rowContext.value),
+});
 
 const rowContext = computed<RowContext>(() => ({
 	migratedIds: migratedWorkflowIds.value,
 	savingIds: savingWorkflowIds.value,
 	notifyingIds: notifyingWorkflowIds.value,
 }));
-
-function setFindingStatuses(statuses: Map<string, MigrationFindingListedStatus>) {
-	updateRows((rows) => withStatuses(rows, statuses));
-}
-
-// Puts the rows back as they were before a failed change, notified date included.
-function restoreWorkflows(previous: AffectedWorkflow[]) {
-	updateRows((rows) => withRestored(rows, previous));
-}
-
-function setSaving(workflowIds: string[], saving: boolean) {
-	savingWorkflowIds.value = withIds(savingWorkflowIds.value, workflowIds, saving);
-}
-
-async function onFindingStatusChange(
-	workflow: AffectedWorkflow,
-	status: MigrationFindingTriageStatus,
-) {
-	if (status === workflow.status || isBusy(workflow, rowContext.value)) return;
-
-	setFindingStatuses(new Map([[workflow.id, status]]));
-	setSaving([workflow.id], true);
-	try {
-		await breakingChangesApi.updateFindingStatus(
-			rootStore.restApiContext,
-			props.migrationRuleId,
-			workflow.id,
-			status,
-		);
-		if (status === 'wont_fix' && shouldPromptToArchive(state.value.ruleImpact, workflow)) {
-			archiveDialog.value = { mode: 'prompt', workflows: [workflow] };
-		}
-	} catch (error) {
-		restoreWorkflows([workflow]);
-		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
-	} finally {
-		setSaving([workflow.id], false);
-	}
-}
 
 const selectedWorkflowIds = ref<string[]>([]);
 
@@ -392,31 +253,6 @@ const selectedWorkflows = computed(() => {
 
 function bulkTargets(status: MigrationFindingTriageStatus): AffectedWorkflow[] {
 	return statusChangeTargets(selectedWorkflows.value, status, rowContext.value);
-}
-
-/** Changes the state of all `workflows` in one request. Returns false when the request fails. */
-async function changeFindingStatuses(
-	workflows: AffectedWorkflow[],
-	status: MigrationFindingTriageStatus,
-): Promise<boolean> {
-	const workflowIds = workflows.map((workflow) => workflow.id);
-	setFindingStatuses(new Map(workflowIds.map((workflowId) => [workflowId, status])));
-	setSaving(workflowIds, true);
-	try {
-		await breakingChangesApi.updateFindingStatuses(
-			rootStore.restApiContext,
-			props.migrationRuleId,
-			workflowIds,
-			status,
-		);
-		return true;
-	} catch (error) {
-		restoreWorkflows(workflows);
-		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
-		return false;
-	} finally {
-		setSaving(workflowIds, false);
-	}
 }
 
 async function onBulkStatusChange(status: MigrationFindingTriageStatus) {
@@ -434,72 +270,6 @@ async function onBulkStatusChange(status: MigrationFindingTriageStatus) {
 const unusedOpenWorkflows = computed(() =>
 	findUnusedOpenWorkflows(state.value.affectedWorkflows, rowContext.value),
 );
-
-const skipReasonKeys: Record<
-	MigrationNotifySkipReason,
-	| 'settings.migrationReport.detail.notify.skipped.noOwner'
-	| 'settings.migrationReport.detail.notify.skipped.noFinding'
-	| 'settings.migrationReport.detail.notify.skipped.sendFailed'
-	| 'settings.migrationReport.detail.notify.skipped.recentlyNotified'
-> = {
-	no_owner: 'settings.migrationReport.detail.notify.skipped.noOwner',
-	no_finding: 'settings.migrationReport.detail.notify.skipped.noFinding',
-	send_failed: 'settings.migrationReport.detail.notify.skipped.sendFailed',
-	recently_notified: 'settings.migrationReport.detail.notify.skipped.recentlyNotified',
-};
-
-/**
- * Emails the owners of `workflows` in one request and marks the notified rows.
- * Returns undefined when the request fails.
- */
-async function notifyOwners(
-	workflows: AffectedWorkflow[],
-): Promise<MigrationNotifyResult | undefined> {
-	const workflowIds = workflows.map((workflow) => workflow.id);
-	setNotifying(workflowIds, true);
-	try {
-		const result = await breakingChangesApi.notifyFindingOwners(
-			rootStore.restApiContext,
-			props.migrationRuleId,
-			workflowIds,
-		);
-		updateRows((rows) => withNotified(rows, result.notifiedWorkflowIds, new Date()));
-		return result;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.migrationReport.detail.notify.error.title'));
-		return undefined;
-	} finally {
-		setNotifying(workflowIds, false);
-	}
-}
-
-function setNotifying(workflowIds: string[], notifying: boolean) {
-	notifyingWorkflowIds.value = withIds(notifyingWorkflowIds.value, workflowIds, notifying);
-}
-
-/** Emails the owner of one workflow. A second call on a notified row is a reminder. */
-async function onNotify(workflow: AffectedWorkflow) {
-	if (isBusy(workflow, rowContext.value)) return;
-	const result = await notifyOwners([workflow]);
-	if (!result) return;
-
-	const skipped = result.skipped.find((entry) => entry.workflowId === workflow.id);
-	if (skipped) {
-		toast.showMessage({
-			type: 'error',
-			title: i18n.baseText('settings.migrationReport.detail.notify.error.title'),
-			message: i18n.baseText(skipReasonKeys[skipped.reason]),
-		});
-		return;
-	}
-	toast.showMessage({
-		type: 'success',
-		title: i18n.baseText('settings.migrationReport.detail.notify.success.title'),
-		message: i18n.baseText('settings.migrationReport.detail.notify.success.message', {
-			interpolate: { owner: ownerLabel(workflow, unassignedLabel.value), name: workflow.name },
-		}),
-	});
-}
 
 const bulkNotifyTargets = computed(() =>
 	notifyTargets(selectedWorkflows.value, rowContext.value, canNotify.value),
@@ -525,32 +295,8 @@ const selectedWithoutOwnerCount = computed(
 );
 
 async function onBulkNotify() {
-	const workflows = bulkNotifyTargets.value;
-	if (workflows.length === 0) return;
-	const result = await notifyOwners(workflows);
-	if (!result) return;
-
-	const notifiedCount = result.notifiedWorkflowIds.length;
-	if (result.skipped.length > 0) {
-		const reasons = new Set(result.skipped.map((entry) => entry.reason));
-		toast.showMessage({
-			type: 'warning',
-			title: i18n.baseText('settings.migrationReport.detail.bulk.notify.partial.title', {
-				interpolate: { notified: String(notifiedCount), total: String(workflows.length) },
-			}),
-			message: [...reasons].map((reason) => i18n.baseText(skipReasonKeys[reason])).join('. '),
-		});
-	} else {
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('settings.migrationReport.detail.bulk.notify.success.title', {
-				adjustToNumber: notifiedCount,
-				interpolate: { count: String(notifiedCount) },
-			}),
-		});
-	}
+	const notified = new Set(await notifyMany(bulkNotifyTargets.value));
 	// Keep the rows that the user selected while the request was in flight.
-	const notified = new Set(result.notifiedWorkflowIds);
 	selectedWorkflowIds.value = selectedWorkflowIds.value.filter(
 		(workflowId) => !notified.has(workflowId),
 	);
@@ -563,14 +309,24 @@ function reviewUnusedWorkflows() {
 	workflowFilters.value = { ...UNUSED_WORKFLOW_FILTERS };
 }
 
-// The open archive dialog, if any. The page does the work when the user confirms.
-const archiveDialog = ref<{ mode: ArchiveWorkflowsModalMode; workflows: AffectedWorkflow[] }>();
-
-function onArchiveDialogConfirm() {
-	if (!archiveDialog.value) return;
-	const { mode, workflows } = archiveDialog.value;
-	void (mode === 'prompt' ? archiveWorkflows(workflows) : markWontFixAndArchive(workflows));
-}
+const {
+	archiveDialog,
+	promptToArchive,
+	startBulkArchive,
+	onArchiveDialogConfirm,
+	closeArchiveDialog,
+} = useArchiveFlow({
+	ruleImpact: () => state.value.ruleImpact,
+	updateRows,
+	stateOf: (workflow) => findingState(workflow, rowContext.value),
+	markWontFix: async (workflows) => await changeFindingStatuses(workflows, 'wont_fix'),
+	onBulkArchiveStart: (workflowIds) => {
+		const started = new Set(workflowIds);
+		selectedWorkflowIds.value = selectedWorkflowIds.value.filter(
+			(workflowId) => !started.has(workflowId),
+		);
+	},
+});
 
 const bulkArchiveTargets = computed(() =>
 	archiveTargets(selectedWorkflows.value, rowContext.value),
@@ -585,57 +341,7 @@ const bulkWontFixActions = computed(() => [
 ]);
 
 function onBulkWontFixAndArchive() {
-	const workflows = bulkArchiveTargets.value;
-	if (workflows.length === 0) return;
-	if (!needsArchiveConfirmation(workflows)) {
-		void markWontFixAndArchive(workflows);
-		return;
-	}
-	archiveDialog.value = { mode: 'confirm', workflows };
-}
-
-async function markWontFixAndArchive(workflows: AffectedWorkflow[]) {
-	const toMark = workflows.filter(
-		(workflow) => findingState(workflow, rowContext.value) !== 'wont_fix',
-	);
-	if (toMark.length > 0 && !(await changeFindingStatuses(toMark, 'wont_fix'))) return;
-	const done = new Set(workflows.map((workflow) => workflow.id));
-	selectedWorkflowIds.value = selectedWorkflowIds.value.filter((id) => !done.has(id));
-	await archiveWorkflows(workflows);
-}
-
-async function archiveWorkflows(workflows: AffectedWorkflow[]) {
-	const count = workflows.length;
-	// One request per workflow. A bulk archive endpoint would be faster for large selections.
-	const archivedIds = new Set<string>();
-	for (const workflow of workflows) {
-		try {
-			await workflowsStore.archiveWorkflow(workflow.id);
-			archivedIds.add(workflow.id);
-		} catch {
-			// Counted below. The user may triage a workflow without the right to archive it.
-		}
-	}
-
-	updateRows((rows) => withArchived(rows, archivedIds));
-
-	if (archivedIds.size === count) {
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('settings.migrationReport.detail.wontFix.archive.success.title', {
-				adjustToNumber: count,
-				interpolate: { count: String(count) },
-			}),
-		});
-	} else {
-		toast.showMessage({
-			type: 'warning',
-			title: i18n.baseText('settings.migrationReport.detail.wontFix.archive.partial.title', {
-				interpolate: { archived: String(archivedIds.size), total: String(count) },
-			}),
-			message: i18n.baseText('settings.migrationReport.detail.wontFix.archive.partial.message'),
-		});
-	}
+	startBulkArchive(bulkArchiveTargets.value);
 }
 
 async function markUnusedWorkflowsAsWontFix() {
@@ -1106,7 +812,7 @@ watch(
 			:mode="archiveDialog.mode"
 			:workflows="archiveDialog.workflows"
 			@confirm="onArchiveDialogConfirm"
-			@close="archiveDialog = undefined"
+			@close="closeArchiveDialog"
 		/>
 	</N8nSettingsLayout>
 </template>
