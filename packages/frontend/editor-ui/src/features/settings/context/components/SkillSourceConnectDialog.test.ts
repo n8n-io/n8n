@@ -21,6 +21,13 @@ import SkillSourceConnectDialog from './SkillSourceConnectDialog.vue';
 import { useSkillsStore } from '../skills.store';
 
 const showErrorMock = vi.fn();
+const oauth = vi.hoisted(() => ({
+	canOAuthCredentialQuickConnect: vi.fn(() => false),
+	createAndAuthorize: vi.fn(),
+}));
+vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
+	useCredentialOAuth: () => oauth,
+}));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock, showMessage: vi.fn() }),
 }));
@@ -195,6 +202,8 @@ async function review(view: View, link = 'https://github.com/acme/skills') {
 
 describe('SkillSourceConnectDialog', () => {
 	beforeEach(() => {
+		oauth.canOAuthCredentialQuickConnect.mockReset().mockReturnValue(false);
+		oauth.createAndAuthorize.mockReset();
 		createTestingPinia();
 		skillsStore = mockedStore(useSkillsStore);
 		skillsStore.fetchSourceCredentials.mockResolvedValue([]);
@@ -1000,6 +1009,39 @@ describe('SkillSourceConnectDialog', () => {
 				undefined,
 				expect.objectContaining({ closeOnSave: true }),
 			);
+		});
+
+		it('signs in with GitHub in one step when the instance has a managed GitHub OAuth2 app', async () => {
+			oauth.canOAuthCredentialQuickConnect.mockReturnValue(true);
+			oauth.createAndAuthorize.mockImplementation(async () => {
+				skillsStore.fetchSourceCredentials.mockResolvedValue([OAUTH]);
+				return { id: OAUTH.id };
+			});
+			const view = render();
+
+			await selectCredential(view, '+ Sign in with GitHub (OAuth2)');
+
+			expect(oauth.createAndAuthorize).toHaveBeenCalledWith('githubOAuth2Api', undefined, {
+				projectId: 'personal-1',
+			});
+			expect(uiStore.openNewCredential).not.toHaveBeenCalled();
+			await waitFor(() =>
+				expect(view.getByTestId('skill-source-credential-select')).toHaveValue(OAUTH.id),
+			);
+			expect(view.getByTestId('skill-source-oauth-warning')).toBeInTheDocument();
+		});
+
+		it('reloads nothing when the user closes the GitHub sign-in', async () => {
+			oauth.canOAuthCredentialQuickConnect.mockReturnValue(true);
+			oauth.createAndAuthorize.mockResolvedValue(null);
+			const view = render();
+			await waitFor(() => expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledTimes(1));
+
+			await selectCredential(view, '+ Sign in with GitHub (OAuth2)');
+
+			await waitFor(() => expect(oauth.createAndAuthorize).toHaveBeenCalled());
+			expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledTimes(1);
+			expect(view.queryByTestId('skill-source-credential-created')).not.toBeInTheDocument();
 		});
 
 		it('warns about write access while an OAuth2 credential is picked', async () => {

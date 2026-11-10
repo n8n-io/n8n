@@ -31,6 +31,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentSkillModalScopeOption } from '@/features/agents/components/AgentSkillModal.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 
 import SkillSourceReview from './SkillSourceReview.vue';
 import { useSkillsStore } from '../skills.store';
@@ -91,6 +93,8 @@ const skillsStore = useSkillsStore();
 const { reasonText } = useSkillSourceReasons();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
+const oauth = useCredentialOAuth();
 
 const step = ref<'repository' | 'review'>('repository');
 const scope = ref('');
@@ -137,10 +141,20 @@ function keepRepositoryIn(list: SkillSourceRepositoryOption[]) {
 	if (!list.some((option) => repositoryKey(option) === repository.value)) repository.value = '';
 }
 
+/** The quick-connect check reads the credential types, which the settings page may not have. */
+async function loadCredentialTypes() {
+	try {
+		await credentialsStore.fetchCredentialTypes(false);
+	} catch {
+		// Without the types, "Sign in with GitHub" opens the credential form instead.
+	}
+}
+
 watch(
 	() => props.open,
 	(open) => {
 		if (!open) return;
+		void loadCredentialTypes();
 		discoverRun += 1;
 		credentialsRun += 1;
 		discovering.value = false;
@@ -391,14 +405,18 @@ const credentialModalOpen = computed(
 	() => uiStore.isModalActiveById?.[CREDENTIAL_EDIT_MODAL_KEY] ?? false,
 );
 
+/** Where the success box says a credential made from this dialog lives. */
+function createdScopeLabel() {
+	return parseScope(scope.value).scope === 'instance'
+		? i18n.baseText('settings.context.skills.connect.credential.created.personal')
+		: (selectedScope.value?.label ?? '');
+}
+
 function openCredentialModal(type: GitHubCredentialType) {
 	const project = credentialProject.value;
 	if (!project || !canCreateCredential.value) return;
 	const requestedScope = scope.value;
-	const scopeLabel =
-		parseScope(requestedScope).scope === 'instance'
-			? i18n.baseText('settings.context.skills.connect.credential.created.personal')
-			: (selectedScope.value?.label ?? '');
+	const scopeLabel = createdScopeLabel();
 	uiStore.openNewCredential(type, false, false, project.id, undefined, undefined, undefined, {
 		hideAskAssistant: true,
 		appendToBody: true,
@@ -416,7 +434,29 @@ async function onCredentialCreated(id: string, requestedScope: string, scopeLabe
 	if (credentialId.value === id) createdCredential.value = { id, scopeLabel };
 }
 
+/**
+ * With a managed GitHub OAuth2 app on the instance, n8n creates the credential and opens the
+ * GitHub sign-in at once, with no credential form. The popup must open in the click itself.
+ */
+async function signInWithGitHub() {
+	const project = credentialProject.value;
+	if (!project || !canCreateCredential.value) return;
+	const requestedScope = scope.value;
+	const scopeLabel = createdScopeLabel();
+	const credential = await oauth.createAndAuthorize(OAUTH2_CREDENTIAL_TYPE, undefined, {
+		projectId: project.id,
+	});
+	if (credential) await onCredentialCreated(credential.id, requestedScope, scopeLabel);
+}
+
 function onCredentialSelect(value: string) {
+	if (
+		value === NEW_OAUTH2_CREDENTIAL &&
+		oauth.canOAuthCredentialQuickConnect(OAUTH2_CREDENTIAL_TYPE)
+	) {
+		void signInWithGitHub();
+		return;
+	}
 	if (value.startsWith(NEW_CREDENTIAL_PREFIX)) {
 		const type = GITHUB_CREDENTIAL_TYPES.find(
 			(known) => known === value.slice(NEW_CREDENTIAL_PREFIX.length),
