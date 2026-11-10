@@ -9,6 +9,9 @@ import AgentModalMultiStep from '../components/modals/AgentModalMultiStep.vue';
 
 vi.mock('@n8n/design-system', async () => {
 	const { defineComponent, nextTick, onMounted, ref } = await import('vue');
+	// The design system re-exports this primitive. Use that component so a nested
+	// dialog still pauses focus.
+	const { FocusScope } = await import('@n8n/design-system/components/FocusScope');
 	return {
 		N8nDialog: defineComponent({
 			props: {
@@ -85,6 +88,7 @@ vi.mock('@n8n/design-system', async () => {
 				/>
 			`,
 		}),
+		FocusScope,
 		N8nIcon: defineComponent({ template: '<i />' }),
 		N8nIconButton: defineComponent({
 			inheritAttrs: false,
@@ -311,6 +315,7 @@ describe('AgentModal', () => {
 		expect(wrapper.get('[data-testid="agent-modal-back"]').attributes('disabled')).toBeDefined();
 		expect(wrapper.find('[data-testid="dialog-close-button"]').exists()).toBe(false);
 		expect(wrapper.emitted('update:open')).toBeUndefined();
+		wrapper.unmount();
 	});
 
 	it('releases and restores focus and dismissal for a nested parameter editor', async () => {
@@ -338,13 +343,23 @@ describe('AgentModal', () => {
 			},
 		});
 		const wrapper = mount(AgentModal, {
+			attachTo: document.body,
 			props: { open: true, title: 'Tool settings' },
 			slots: { default: () => h(editor) },
 		});
 		const dialog = wrapper.get('[role="dialog"]');
-		await wrapper.get('[data-test-id="open-editor"]').trigger('click');
+		const opener = wrapper.get<HTMLButtonElement>('[data-test-id="open-editor"]');
+		const editorInput = document.querySelector<HTMLInputElement>(
+			'[data-test-id="parameter-editor-input"]',
+		)!;
+		opener.element.focus();
+		await opener.trigger('click');
+		await flushPromises();
 		expect(dialog.attributes('data-trap-focus')).toBe('false');
 		expect(dialog.attributes('data-disable-outside-pointer-events')).toBe('false');
+		expect(document.activeElement).toBe(opener.element);
+		editorInput.focus();
+		expect(document.activeElement).toBe(editorInput);
 		await wrapper.get('[data-test-id="dialog-escape"]').trigger('click');
 		await wrapper.get('[data-test-id="dialog-dismiss"]').trigger('click');
 		expect(dialog.attributes('data-escape-prevented')).toBe('true');
@@ -355,13 +370,15 @@ describe('AgentModal', () => {
 			bubbles: true,
 			cancelable: true,
 		});
-		document.querySelector('[data-test-id="parameter-editor-input"]')!.dispatchEvent(escape);
+		editorInput.dispatchEvent(escape);
 		wrapper.getComponent(N8nDialog).vm.$emit('escapeKeyDown', escape);
 		await flushPromises();
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(escape.defaultPrevented).toBe(true);
 		expect(wrapper.emitted('update:open')).toBeUndefined();
 		expect(dialog.attributes('data-trap-focus')).toBe('true');
 		expect(dialog.attributes('data-disable-outside-pointer-events')).toBe('true');
+		expect(document.activeElement).toBe(editorInput);
 		await wrapper.get('[data-test-id="dialog-dismiss"]').trigger('click');
 		expect(wrapper.emitted('update:open')).toEqual([[false]]);
 		wrapper.unmount();

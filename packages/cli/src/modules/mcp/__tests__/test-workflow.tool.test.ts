@@ -22,7 +22,7 @@ import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';
 import { McpService } from '@/modules/mcp/mcp.service';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -42,7 +42,7 @@ function items(count: number) {
 	return Array.from({ length: count }, () => ({ json: {} }));
 }
 
-// Helper to create a mock NodeTypes that recognizes trigger vs non-trigger nodes
+// Helper to create a mock NodeTypesProxy that recognizes trigger vs non-trigger nodes
 const TRIGGER_NODE_TYPES = new Set([
 	WEBHOOK_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -50,7 +50,7 @@ const TRIGGER_NODE_TYPES = new Set([
 ]);
 
 function createMockNodeTypes() {
-	const instance = mockInstance(NodeTypes);
+	const instance = mockInstance(NodeTypesProxy);
 	instance.getByNameAndVersion.mockImplementation(((type: string) => {
 		if (!type) throw new Error(`Unknown node type: ${type}`);
 		return {

@@ -731,22 +731,12 @@ export {
 } from './public-api-rate-limit-settings/rate-limit-settings-public.dto';
 
 export {
-	PromotionChangesDto,
-	PromotionChangesQueryDto,
 	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
 	parsePromotionsWorkflowsMovedCrossProjectMeta,
 	promotionsWorkflowsMovedCrossProjectMetaSchema,
-	promotableResourceSchema,
-	promotableResourceStatusSchema,
-	promotableResourceTypeSchema,
 	promoteRequestSchema,
 	PromoteSelectionRequestDto,
-	promotionChangesSchema,
-	type PromotableResource,
-	type PromotableResourceStatus,
-	type PromotableResourceType,
 	type PromoteRequest,
-	type PromotionChanges,
 	type PromotionsWorkflowsMovedCrossProjectMeta,
 } from './promotions/promotable-resource.dto';
 

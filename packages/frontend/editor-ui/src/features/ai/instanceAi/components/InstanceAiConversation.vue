@@ -466,6 +466,7 @@ watch(
 
 // --- Chat input ref for auto-focus ---
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+const inputSwapRef = useTemplateRef<HTMLElement>('inputSwap');
 
 function focusChatInputIfFocusIsIdle() {
 	if (props.autofocus === false) return;
@@ -492,6 +493,18 @@ watch([chatInputRef, () => props.autofocus], ([input, autofocus], [, previousAut
 		if (chatInputRef.value !== input || props.autofocus === false) return;
 		if (forceFocus) input.focus();
 		else focusChatInputIfFocusIsIdle();
+	});
+});
+
+watch(hasFloatingConfirmation, (isFloating) => {
+	if (isFloating) return;
+	void nextTick(() => {
+		// The leaving panel can still hold focus during its transition.
+		if (inputSwapRef.value?.contains(document.activeElement)) {
+			chatInputRef.value?.focus();
+			return;
+		}
+		focusChatInputIfFocusIsIdle();
 	});
 });
 
@@ -945,8 +958,8 @@ defineExpose({
 					<InstanceAiStatusBar />
 				</div>
 
-				<!-- Floating input slot - replaced by the confirmation panel while a
-					 floating interaction is pending. The credit banner stays
+				<!-- Floating input slot - the confirmation panel takes the place of the
+					 hidden input while a floating interaction is pending. The credit banner stays
 					 anchored above the slot in both states. The leaving child is
 					 positioned absolutely during the cross-fade so the in-flow child
 					 can size the slot to its natural height. -->
@@ -988,17 +1001,16 @@ defineExpose({
 								@dismiss="creditBanner.dismiss()"
 							/>
 							<slot name="above-input" />
-							<div :class="$style.inputSwap">
+							<div ref="inputSwap" :class="$style.inputSwap">
 								<Transition name="input-swap">
-									<InstanceAiConfirmationPanel
-										v-if="hasFloatingConfirmation"
-										key="floating-confirmation"
-										kind="floating"
-									/>
+									<InstanceAiConfirmationPanel v-if="hasFloatingConfirmation" kind="floating" />
+								</Transition>
+								<!-- Hidden, not unmounted, so the unsent draft survives the confirmation. -->
+								<Transition name="input-swap">
 									<InstanceAiInput
-										v-else-if="greetingPhase === null && !awaitingOnboardingGreeting"
+										v-if="greetingPhase === null && !awaitingOnboardingGreeting"
+										v-show="!hasFloatingConfirmation"
 										ref="chatInputRef"
-										key="chat-input"
 										:is-streaming="thread.isStreaming"
 										:is-out-of-credits="isOutOfCredits"
 										:is-submitting="
@@ -1028,7 +1040,10 @@ defineExpose({
 										@stop="handleStop"
 										@dismiss-context-chip="dismissComposerContextChip"
 									>
-										<template v-if="$slots['composer-start']" #footer-start>
+										<template
+											v-if="$slots['composer-start'] && !hasFloatingConfirmation"
+											#footer-start
+										>
 											<slot name="composer-start" />
 										</template>
 									</InstanceAiInput>

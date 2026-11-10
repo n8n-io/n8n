@@ -6,7 +6,7 @@
  * package dir). That's the whole point: plain vitest packages (DI or not)
  * need no bespoke vitest config. Packages that DO need special handling ship
  * their own `stryker.config.mjs`, which mutate.mjs prefers over this default
- * (e.g. packages/workflow carves out the isolated-vm engine — see DEVP-257).
+ * (e.g. packages/workflow runs its vitest config in the `forks` pool for the vm engine).
  *
  * Reporter paths are relative to the run cwd, so reports land in
  * <package-dir>/reports/mutation/ and mutate.mjs reads raw.json from there.
@@ -32,6 +32,9 @@ export default {
 	jsonReporter: { fileName: 'reports/mutation/raw.json' },
 	timeoutMS: 60_000,
 	concurrency: Number(process.env.STRYKER_CONCURRENCY ?? 4),
-	tempDirName: '.stryker-tmp',
+	// `--inPlace` keeps a backup of the package in the temp dir. Vitest 5 only
+	// excludes node_modules and .git by default, so a temp dir in the package
+	// root puts the backed-up test files in the test run.
+	tempDirName: 'node_modules/.stryker-tmp',
 	cleanTempDir: true,
 };
