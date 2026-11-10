@@ -12,7 +12,10 @@ import type {
 	IntegrationToolConnectionDescriptor,
 } from '../integration-tools';
 import { N8nChatIntegration } from '../platforms/n8n-chat/n8n-chat-integration';
-import type { AgentOutboundFiles } from '../agent-outbound-files.service';
+import { AgentOutboundFiles } from '../agent-outbound-files.service';
+import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
+import type { AgentChatAttachment } from '../../entities/agent-chat-attachment.entity';
 
 const makeContext = (): IntegrationMessageContext => ({
 	integrationConnectionId: 'n8n_chat',
@@ -21,6 +24,19 @@ const makeContext = (): IntegrationMessageContext => ({
 	interactingUserId: 'user-1',
 	updatedAt: '2026-06-10T00:00:00.000Z',
 });
+
+const file = mock<AgentChatAttachment>({
+	id: 'file-1',
+	fileName: 'outputs/report.pdf',
+	mimeType: 'application/pdf',
+	fileSizeBytes: 2048,
+});
+const outputFile = {
+	fileId: 'file-1',
+	fileName: 'outputs/report.pdf',
+	mimeType: 'application/pdf',
+	sizeBytes: 2048,
+};
 
 describe('N8nChatIntegration', () => {
 	const personRepository = mock<PersonRepository>();
@@ -47,6 +63,33 @@ describe('N8nChatIntegration', () => {
 			expect(result.messageContext?.messageId).toBeUndefined();
 			expect(result.messageContext?.updatedAt).not.toBe('2026-06-10T00:00:00.000Z');
 		}
+	});
+
+	it('respond with text and files returns the files for the reply', async () => {
+		const result = await integration.executeAction({
+			chat: undefined,
+			descriptor: mock(),
+			action: 'respond',
+			input: { message: { text: 'Here is the report' }, fileIds: ['file-1'] },
+			currentMessageContext: undefined,
+			files: [file],
+		});
+		expect(result).toEqual({ ok: true, files: [outputFile], note: expect.any(String) });
+	});
+
+	it('respond with a card and files returns the files with the message context', async () => {
+		const result = await integration.executeAction({
+			chat: undefined,
+			descriptor: mock(),
+			action: 'respond',
+			input: {
+				message: { card: { components: [{ type: 'section', text: 'hi' }] } },
+				fileIds: ['file-1'],
+			},
+			currentMessageContext: makeContext(),
+			files: [file],
+		});
+		expect(result).toMatchObject({ ok: true, files: [outputFile], messageContext: {} });
 	});
 
 	it('respond without current context returns NO_MESSAGE_CONTEXT', async () => {
@@ -246,6 +289,40 @@ describe('internal integration dispatch', () => {
 		});
 		expect(result).toMatchObject({ ok: true });
 		expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
+	});
+
+	describe('reply files', () => {
+		const attachmentService = mock<AgentChatAttachmentService>();
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+			new AgentOutboundFiles(attachmentService, registry, {
+				resolveFileRefs: async (refs: string[]) => refs,
+			} as unknown as AgentSandboxFilesService),
+		);
+		const fileScope = { projectId: 'project-1', threadId: 'thread-1' };
+		const respondWithFile = {
+			descriptor,
+			action: 'respond' as const,
+			input: { message: { text: 'Here is the report' }, fileIds: ['file-1'] },
+			awaitResponse: false,
+			currentMessageContext: makeContext(),
+			fileScope,
+		};
+
+		it('checks read access in the thread of the run and returns the files', async () => {
+			attachmentService.getReadable.mockResolvedValueOnce(file);
+			const result = await executor.execute(respondWithFile);
+			expect(attachmentService.getReadable).toHaveBeenCalledWith('file-1', fileScope);
+			expect(result).toMatchObject({ ok: true, files: [outputFile] });
+		});
+
+		it('rejects a file that the thread cannot read', async () => {
+			attachmentService.getReadable.mockResolvedValueOnce(null);
+			const result = await executor.execute(respondWithFile);
+			expect(result).toMatchObject({ ok: false, error: { code: 'FILE_NOT_FOUND' } });
+		});
 	});
 
 	it('action executor returns UNSUPPORTED_ACTION for send_dm on n8n_chat', async () => {
