@@ -1,9 +1,14 @@
+import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Repository } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
-import { eligibleAccountsWhere, type EligibleAccountsQuery } from './user.repository';
+import {
+	eligibleAccountsWhere,
+	type EligibleAccountsQuery,
+	UserRepository,
+} from './user.repository';
 import { Person } from '../entities';
 import type { IPersonalizationSurveyAnswers } from '../entities/types-db';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
@@ -26,8 +31,22 @@ class PersonTable extends BaseRepository<Person> {
 export class PersonRepository {
 	private readonly table: PersonTable;
 
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly userRepository: UserRepository,
+	) {
 		this.table = new PersonTable(dataSource, transactionRunner);
+	}
+
+	/** The users list query, limited to persons. */
+	buildUserListQuery(listQueryOptions?: UsersListFilterDto, roleSlugs?: string[]) {
+		return this.userRepository.buildUserQuery(listQueryOptions, roleSlugs, 'person');
+	}
+
+	/** The status counts of the users list, limited to persons. */
+	async countUserListStatuses(filter: UsersListFilterDto['filter'], roleSlugs?: string[]) {
+		return await this.userRepository.countUsersListStatuses(filter, roleSlugs, 'person');
 	}
 
 	async findById(id: string, ctx: OperationContext = {}): Promise<Person | null> {
