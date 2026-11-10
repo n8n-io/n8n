@@ -111,16 +111,12 @@ export class EngineConfig {
 	 * subject alternative name must match the host in the URL the other side
 	 * dials. Set it together with `N8N_ENGINE_TLS_KEY_FILE` and
 	 * `N8N_ENGINE_TLS_CA_FILE`.
-	 *
-	 * This is in development and not ready for use.
 	 */
 	@Env('N8N_ENGINE_TLS_CERT_FILE')
 	tlsCertFile: string = '';
 
 	/**
 	 * Path to the private key of `N8N_ENGINE_TLS_CERT_FILE`, in PEM format.
-	 *
-	 * This is in development and not ready for use.
 	 */
 	@Env('N8N_ENGINE_TLS_KEY_FILE')
 	tlsKeyFile: string = '';
@@ -128,8 +124,6 @@ export class EngineConfig {
 	/**
 	 * Path to the certificate authority bundle, in PEM format. The control plane
 	 * and the engine accept only a peer whose certificate this authority signed.
-	 *
-	 * This is in development and not ready for use.
 	 */
 	@Env('N8N_ENGINE_TLS_CA_FILE')
 	tlsCaFile: string = '';
@@ -139,8 +133,6 @@ export class EngineConfig {
 	 * HTTP. Without the three `N8N_ENGINE_TLS_*` files, both refuse to start
 	 * unless you set this to `true`. Plain HTTP sends tokens and credentials
 	 * unencrypted, so use it only for local development.
-	 *
-	 * This is in development and not ready for use.
 	 */
 	@Env('N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP')
 	tlsInsecureAllowPlainHttp: boolean = false;
