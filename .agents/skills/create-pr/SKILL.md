@@ -31,11 +31,17 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
 ### Scopes (optional but recommended)
 
 - `API` - Public API changes
+- `ai-builder` - AI Workflow Builder and Instance AI
 - `benchmark` - Benchmark CLI changes
 - `core` - Core/backend/private API
 - `editor` - Editor UI changes
 - `engine` - New workflow execution engine v2 (@n8n/engine package & engine-v2 module in cli)
 - `* Node` - Specific node (e.g., `Slack Node`, `GitHub Node`)
+
+`check-pr-title` accepts only these scopes. Do not use a package or folder
+name as the scope (for example `instance-ai`, `cli`, `evals` or `docker`).
+If no scope fits, omit the scope. To give two scopes, separate them with a
+comma and a space: `fix(core, editor): ...`.
 
 ### Summary Rules
 
@@ -66,15 +72,19 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
 
 4. **Analyze changes** to determine:
    - Type: What kind of change is this?
-   - Scope: Which package/area is affected?
-   - Summary: What does the change do?
+   - Scope: Which scope from the Scopes list fits? Omit the scope if none fits.
+   - Summary: What does the change do? Start it with a capital letter.
 
-5. **Push branch if needed**:
+5. **Identify feature flag test settings**: Inspect the full PR diff for new
+   PostHog flags. Record the keys and values needed to test the new behavior
+   as described in Feature Flag Test Settings below.
+
+6. **Push branch if needed**:
    ```bash
    git push -u origin HEAD
    ```
 
-6. **Create PR** using gh CLI. Read `.github/pull_request_template.md` as the
+7. **Create PR** using gh CLI. Read `.github/pull_request_template.md` as the
    body structure, then populate each section with actual content before
    creating the PR:
    - **Summary**: describe what the PR does
@@ -95,6 +105,7 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
    4. Each sentence is true for the diff.
 
    When a later commit changes a fact in the body, update the body.
+   If step 5 found new flags, include their test settings in **How to test**.
 
    ```bash
    gh pr create --draft --title "<type>(<scope>): <summary>" --body "$(cat <<'EOF'
@@ -102,6 +113,37 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
    EOF
    )"
    ```
+
+## Feature Flag Test Settings
+
+1. Compare the branch with `origin/master` using `git diff origin/master...HEAD`.
+   If the PR targets another branch, use `origin/<target-branch>` instead.
+   Inspect new experiment definitions in
+   `packages/frontend/editor-ui/src/app/constants/experiments.ts`, shared
+   flag constants in `packages/@n8n/api-types`, and new PostHog checks elsewhere
+   in the diff. Resolve constants to the exact PostHog key string.
+   Exclude removed flags, existing flags that the PR only references, and
+   flag names that appear only in tests or documentation.
+2. Select a test value for each new flag. Use `true` to enable a boolean flag.
+   Read the flag's consumers and variant definitions for an A/B experiment.
+   Use the exact variant that shows the new behavior.
+   Do not assume that boolean `true` selects a named variant.
+   If the required variant is unclear, report it instead of guessing.
+   Preserve any value that the user explicitly requested for the same key.
+3. If step 1 found at least one new flag, include `N8N_FEATURE_FLAG_OVERRIDES`
+   in **How to test**. This environment variable accepts a JSON object that maps
+   PostHog keys to boolean values or named variants. Tell the tester to set it
+   before starting the test instance.
+   For example:
+   ```bash
+   export N8N_FEATURE_FLAG_OVERRIDES='{"136_skill_sync":true}'
+   ```
+   Use JSON `false` to disable a boolean flag, or a string for a named variant.
+   Combine multiple overrides in one JSON object.
+
+The Codespace preview runner does not read `flag:` labels. Do not create or
+apply them. For supported preview settings, see the Preview toggles and Preview
+environment from a webhook sections in `.github/WORKFLOWS.md`.
 
 ## PR Body Guidelines
 
@@ -203,15 +245,22 @@ chore: Update dependencies to latest versions
 
 The PR title must match this pattern:
 ```
-^(feat|fix|perf|test|docs|refactor|build|ci|chore|revert)(\([a-zA-Z0-9 ]+( Node)?\))?!?: [A-Z].+[^.]$
+^(feat|fix|perf|test|docs|refactor|build|ci|chore|revert)(\((API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node)(, (API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node))*\))?!?: [A-Z].+[^.]$
 ```
 
 Key validation rules:
 - Type must be one of the allowed types
-- Scope is optional but must be in parentheses if present
+- Scope is optional, but if present it must be in parentheses and in the Scopes list (or `<display name> Node`)
 - Exclamation mark for breaking changes goes before the colon
 - Summary must start with capital letter
+- Summary must not start with a past-tense verb (`Added`)
 - Summary must not end with a period
+- No ticket number (`N8N-1234`) and no PR number (`#12345`)
+- `(no-changelog)`, if used, must be the last part of the summary
+
+Check the title against these rules before you run `gh pr create`. The two
+most frequent failures are a package name as the scope and a lowercase first
+letter in the summary.
 
 ## Plan Section
 

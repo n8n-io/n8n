@@ -40,7 +40,6 @@ describe('AgentSkillUpload', () => {
 				name: 'Summarize notes',
 				description: 'Use for notes',
 				instructions: '# Playbook\nFollow these steps.',
-				allowedTools: ['load_workflow'],
 				references: undefined,
 			},
 		]);

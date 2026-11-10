@@ -16,6 +16,8 @@ export type Command =
 	| 'discover'
 	| 'distribute'
 	| 'affected-packages'
+	| 'lockfile-impact'
+	| 'test-run'
 	| 'scope'
 	| 'test-scoped'
 	| 'filter-shard'
@@ -65,6 +67,8 @@ export interface CliOptions {
 	inputsDir?: string;
 	outLcov?: string;
 	outMap?: string;
+	/** Commit the coverage ran on, recorded in the map by merge-coverage. */
+	mapSha?: string;
 	mapFile?: string;
 	allSpecsFile?: string;
 	/** Path to a newline-separated allowlist of spec paths (distribute). */
@@ -83,6 +87,8 @@ const SUBCOMMANDS: Record<string, Command> = {
 	discover: 'discover',
 	distribute: 'distribute',
 	'affected-packages': 'affected-packages',
+	'lockfile-impact': 'lockfile-impact',
+	'test-run': 'test-run',
 	scope: 'scope',
 	'test-scoped': 'test-scoped',
 	'filter-shard': 'filter-shard',
@@ -205,6 +211,9 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	},
 	'--out-map=': (opts, value) => {
 		opts.outMap = value;
+	},
+	'--sha=': (opts, value) => {
+		opts.mapSha = value;
 	},
 	'--map=': (opts, value) => {
 		opts.mapFile = value;

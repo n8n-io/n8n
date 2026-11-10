@@ -99,6 +99,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import {
@@ -945,7 +946,10 @@ function getOptionsOptionDescription(option: INodePropertyOptions): string {
 }
 
 async function loadRemoteParameterOptions() {
+	// A read-only view shows the stored value; it has no use for live options
+	// and may not be allowed to load them with the node's credential.
 	if (
+		props.isReadOnly ||
 		!node.value ||
 		!hasRemoteMethod.value ||
 		remoteParameterOptionsLoading.value ||
@@ -986,11 +990,7 @@ async function loadRemoteParameterOptions() {
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
 	} catch (error: unknown) {
-		if (error instanceof Error) {
-			remoteParameterOptionsLoadingIssues.value = error.message;
-		} else {
-			remoteParameterOptionsLoadingIssues.value = String(error);
-		}
+		remoteParameterOptionsLoadingIssues.value = getErrorMessage(error);
 	}
 
 	remoteParameterOptionsLoading.value = false;
@@ -1480,7 +1480,8 @@ onBeforeUnmount(() => {
 watch(
 	() => node.value?.credentials,
 	async (newCredentials, oldCredentials) => {
-		if (!hasRemoteMethod.value || !node.value) return;
+		// Read-only: no options are loaded, so there is nothing to validate the value against.
+		if (!hasRemoteMethod.value || !node.value || props.isReadOnly) return;
 		await loadRemoteParameterOptions();
 		// Credentials changed again while loading — a newer run will validate the fresh results.
 		if (!node.value || node.value.credentials !== newCredentials) return;

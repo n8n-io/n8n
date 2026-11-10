@@ -82,6 +82,11 @@ import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCreden
 import TypeToConfirmDialog from './TypeToConfirmDialog.vue';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import { useCredentialForm } from '../../composables/useCredentialForm';
+import {
+	RestrictedTypeCallout,
+	useCredentialTypeRestriction,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -299,6 +304,7 @@ const {
 	homeProject,
 	setCredentialPropertyDefaults,
 	resetCredentialData,
+	clearOverwrittenProperties,
 	testCredential,
 	retestCredential,
 	initialize,
@@ -666,10 +672,16 @@ function cacheCurrentData(): void {
 	credentialDataCache.value[key] = { ...credentialData.value };
 }
 
+// Sharing edits live in the same object, so a mode switch must not revert them.
+function restoreCachedData(cached: ICredentialDataDecryptedObject): void {
+	const { sharedWithProjects, homeProject } = credentialData.value;
+	credentialData.value = { ...cached, sharedWithProjects, homeProject };
+}
+
 function restoreOrReset(): void {
 	const cached = credentialDataCache.value[getCurrentModeCacheKey()];
 	if (cached) {
-		credentialData.value = { ...cached };
+		restoreCachedData(cached);
 	} else {
 		resetCredentialData();
 	}
@@ -829,6 +841,34 @@ function onDescriptionEdit(text: string) {
 	credentialDescription.value = text;
 	hasUnsavedChanges.value = true;
 }
+
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+
+const policyProjectId = computed(() => {
+	if (props.mode !== 'edit') return homeProject.value?.id;
+	if (!currentCredential.value) return undefined;
+	return currentCredential.value.homeProject?.id ?? homeProject.value?.id;
+});
+
+const projectBeforeEdit = typeAvailabilityPoliciesStore.requestedProjectId;
+
+watch(
+	policyProjectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	if (projectBeforeEdit && projectBeforeEdit !== policyProjectId.value) {
+		void typeAvailabilityPoliciesStore.fetchForProject(projectBeforeEdit);
+	}
+});
+
+const { restriction: credentialTypeRestriction } = useCredentialTypeRestriction(
+	() => credentialTypeName.value,
+);
 
 function scrollToTop() {
 	setTimeout(() => {
@@ -1531,6 +1571,20 @@ async function onDisconnectMyConnection(): Promise<void> {
 	}
 }
 
+function applySelectedOAuthMode(): void {
+	if (!useCustomOAuth.value) clearOverwrittenProperties();
+
+	// The selected mode has no confirmed connection yet, so a token from another
+	// mode must not make the banner show "connected".
+	connectedByMe.value = false;
+	connectedAccountIdentifier.value = undefined;
+	credentialData.value = {
+		...credentialData.value,
+		oauthTokenData: null as unknown as CredentialInformation,
+	};
+	hasUnsavedChanges.value = true;
+}
+
 async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 	if (payload.quickConnectEnabled) {
 		isQuickConnectMode.value = true;
@@ -1543,6 +1597,10 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 	useCustomOAuth.value = payload.customOauth ?? false;
 
 	if (!activeNodeType.value?.credentials) {
+		// Without a node only the OAuth app mode can change, so keep the other fields.
+		const cached = credentialDataCache.value[getCurrentModeCacheKey()];
+		if (cached) restoreCachedData(cached);
+		applySelectedOAuthMode();
 		return;
 	}
 	const credentialsForType = getNodeCredentialForSelectedAuthType(
@@ -1554,20 +1612,9 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 		uiStore.activeCredentialType = credentialsForType.name;
 
 		restoreOrReset();
-
-		// A freshly selected auth mode has no confirmed connection yet — without this,
-		// stale `oauthTokenData`/`connectedByMe` restored from a mode cached earlier in
-		// this session (or carried over from the loaded credential) makes the banner
-		// misreport "connected" for a mode that was never actually saved.
-		connectedByMe.value = false;
-		connectedAccountIdentifier.value = undefined;
-		credentialData.value = {
-			...credentialData.value,
-			oauthTokenData: null as unknown as CredentialInformation,
-		};
+		applySelectedOAuthMode();
 
 		pendingAuthType.value = payload.type;
-		hasUnsavedChanges.value = true;
 		// Also update credential name but only if the default name is still used
 		if (!hasUserSpecifiedName.value) {
 			const newDefaultName = await credentialsStore.getNewCredentialName({
@@ -1742,6 +1789,12 @@ const { width } = useElementSize(credNameRef);
 										</N8nButton>
 									</template>
 								</N8nCallout>
+								<RestrictedTypeCallout
+									v-if="credentialTypeRestriction"
+									surface="credential"
+									:type-name="credentialType.displayName"
+									:restriction="credentialTypeRestriction"
+								/>
 								<CredentialConfig
 									:credential-type="credentialType"
 									:credential-properties="credentialProperties"

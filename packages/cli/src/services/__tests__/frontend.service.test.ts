@@ -130,6 +130,7 @@ describe('FrontendService', () => {
 
 	const credentialsOverwrites = mock<CredentialsOverwrites>({
 		getAll: vi.fn().mockReturnValue({}),
+		getNewerAppProperties: vi.fn().mockReturnValue([]),
 	});
 
 	const license = mock<License>({
@@ -1153,6 +1154,32 @@ describe('FrontendService', () => {
 			(service as any).overwriteCredentialsProperties();
 
 			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should hide the fields that only the newer app of a rollout sets', () => {
+			const credential = {
+				name: 'notionOAuth2Api',
+				displayName: 'Notion OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({
+				notionOAuth2Api: { clientId: 'id', clientSecret: 'secret' },
+			});
+			(credentialsOverwrites.getNewerAppProperties as Mock).mockReturnValue([
+				'clientId',
+				'clientSecret',
+				'scope',
+			]);
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__overwrittenProperties).toEqual(['clientId', 'clientSecret', 'scope']);
+
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({});
+			(credentialsOverwrites.getNewerAppProperties as Mock).mockReturnValue([]);
 		});
 
 		it('should not propagate __skipManagedCreation from a skip-listed parent to extending types', () => {

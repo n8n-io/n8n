@@ -8,7 +8,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
 import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY } from '../communityNodes.constants';
 import { useCommunityNodesStore } from '../communityNodes.store';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 
 const fetchWorkflowsWithNodesIncluded = vi.fn();
 vi.mock('@/app/stores/workflowsList.store', () => ({
@@ -201,6 +201,11 @@ describe('CommunityPackageManageConfirmModal', () => {
 		expect(screen.getByText('Active')).toBeInTheDocument();
 		expect(screen.getByText('Confirm update')).toBeInTheDocument();
 		expect(screen.getByText('Cancel')).toBeInTheDocument();
+		expect(
+			within(screen.getByTestId('communityPackageManageConfirm-modal')).getByRole('button', {
+				name: 'Confirm update',
+			}),
+		).toBeVisible();
 		expect(screen.getByText('Package includes: OldNode, TestNode')).toBeInTheDocument();
 	});
 

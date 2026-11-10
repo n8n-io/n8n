@@ -3,11 +3,10 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	StatisticsNames,
 	LicenseMetricsRepository,
-	ServiceAccount,
+	ServiceAccountRepository,
 	WorkflowStatisticsRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
 
 import { createManyCredentials } from './shared/db/credentials';
 import { createAdmin, createMember, createOwner, createUser } from './shared/db/users';
@@ -111,8 +110,10 @@ describe('LicenseMetricsRepository', () => {
 
 		test('should not count service accounts as users', async () => {
 			await createMember();
-			const serviceAccounts = Container.get(DataSource).getRepository(ServiceAccount);
-			await serviceAccounts.save(serviceAccounts.create({ role: GLOBAL_MEMBER_ROLE }));
+			await Container.get(ServiceAccountRepository).create({
+				name: 'Deploy bot',
+				role: GLOBAL_MEMBER_ROLE,
+			});
 
 			const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();
 

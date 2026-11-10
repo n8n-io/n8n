@@ -8,8 +8,9 @@ import {
 import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Attachment, Thread, Author, Message } from 'chat';
-import { UserError, type Logger } from 'n8n-workflow';
+import type { ActionEvent, Attachment, Thread, Author, Message } from 'chat';
+import type { Logger } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { ChatInstance } from './chat-integration.service';
 import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
@@ -120,6 +121,20 @@ export interface AgentChatIntegrationBuilderGuidance {
 	capabilities: string[];
 	useIntegrationWhen: string[];
 	useNodeToolWhen: string[];
+}
+
+/** One send posts at most this many messages of files, so a runaway call cannot flood the conversation. */
+export const MAX_FILE_MESSAGES_PER_SEND = 3;
+
+export interface FileUploadLimits {
+	/** Maximum number of files in one message. */
+	maxFiles: number;
+	/** Maximum size of one file. */
+	maxFileBytes: number;
+	/** Maximum length of the text that goes with files. Undefined means no limit. */
+	maxCaptionLength?: number;
+	/** Maximum size of an image that is sent as an image. A larger image is sent as a file. */
+	maxImageBytes?: number;
 }
 
 export interface PlatformAgentContext {
@@ -315,6 +330,25 @@ export abstract class AgentChatIntegration {
 	/** Optional additional guidance appended to the generated action tool description. */
 	readonly actionToolGuidance?: string[];
 
+	/**
+	 * Upload limits of the platform for files that an agent sends with a
+	 * message. Undefined means that the platform cannot send agent files.
+	 */
+	readonly fileUploadLimits?: FileUploadLimits;
+
+	/**
+	 * Post agent files as typed `attachments` instead of `files`. The type comes
+	 * from the MIME type, so the platform can send an image as a photo.
+	 */
+	readonly sendFilesAsAttachments: boolean = false;
+
+	/**
+	 * Split files into groups that the platform can send in one message. Keep
+	 * the order that the agent gave. Undefined sends all files as one group.
+	 * Groups larger than `fileUploadLimits.maxFiles` are split again.
+	 */
+	groupOutboundFiles?<T extends { mimeType: string; fileSizeBytes: number }>(files: T[]): T[][];
+
 	/** Read-only context queries exposed through the generated integration context tool. */
 	get contextQueries(): IntegrationContextQuery[] {
 		return this.contextToolDefinitions.map((definition) => definition.name);
@@ -369,6 +403,12 @@ export abstract class AgentChatIntegration {
 	 * message that preceded the card.
 	 */
 	readonly singleStreamedRunPerTurn: boolean = false;
+
+	/**
+	 * Most characters of reply text in one platform message. Longer replies
+	 * continue in a new message. `undefined` (default) means no limit.
+	 */
+	readonly maxMessageLength: number | undefined = undefined;
 
 	/**
 	 * True when this integration is an internal channel (e.g. the in-app n8n
@@ -585,7 +625,14 @@ export abstract class AgentChatIntegration {
 	normalizeComponents?(
 		components: SuspendComponent[],
 		context: NormalizeComponentsContext,
-	): SuspendComponent[];
+	): SuspendComponent[] | Promise<SuspendComponent[]>;
+
+	/**
+	 * Optional: handle a button or list tap that is not a resume. Return `true`
+	 * to claim the tap, so the bridge does not try to resume the run. WhatsApp
+	 * uses this for its "More…" list row.
+	 */
+	claimAction?(event: ActionEvent): Promise<boolean>;
 
 	/**
 	 * Optional per-platform thread ID formatting.
@@ -650,6 +697,15 @@ export abstract class AgentChatIntegration {
 		isNewMention: boolean;
 		platformAgentContext: PlatformAgentContext;
 	}): ReplyExpectation;
+
+	/**
+	 * For a synthetic message that reports a failed send: the platform ID of
+	 * the message that failed, and the text to give a chat that sent it. The
+	 * bridge sends the report to the session that sent the message.
+	 */
+	getFailedSendReport?(
+		message: Message<unknown>,
+	): { messageId: string; chatNotice: string } | undefined;
 
 	/** Replacement text for action cards preserved after a user responds. */
 	formatActionDecisionMessage?(params: ActionDecisionMessageParams): string | undefined;

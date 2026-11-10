@@ -1,3 +1,4 @@
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleVertex } from '@ai-sdk/google-vertex';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { LanguageModel } from 'ai';
@@ -7,6 +8,7 @@ import {
 	createEmbeddingModel,
 	createModel,
 	supportsSplitSystemMessages,
+	usesOfficialAnthropicApi,
 } from '../model/model-factory';
 import { forgetEndpointApiStyles } from '../model/openai-api-style';
 
@@ -41,7 +43,7 @@ vi.mock('@ai-sdk/openai', () => {
 	// error (an `APICallError` carries `statusCode`) when the endpoint rejects it.
 	const buildModel =
 		(opts: ProviderOpts | undefined, api?: 'chat-completions') => (model: string) => {
-			const callEndpoint = async () => {
+			const callEndpoint = async (options?: { providerOptions?: unknown }) => {
 				const base = (opts?.baseURL ?? 'https://api.openai.com/v1').replace(/\/+$/, '');
 				const url = `${base}${api === 'chat-completions' ? '/chat/completions' : '/responses'}`;
 				const response = await (opts?.fetch ?? globalThis.fetch)(url, { method: 'POST' });
@@ -51,7 +53,7 @@ vi.mock('@ai-sdk/openai', () => {
 						url,
 					});
 				}
-				return { api, url };
+				return { api, url, providerOptions: options?.providerOptions };
 			};
 			return {
 				provider: 'openai',
@@ -61,7 +63,8 @@ vi.mock('@ai-sdk/openai', () => {
 				baseURL: opts?.baseURL,
 				fetch: opts?.fetch,
 				headers: opts?.headers,
-				specificationVersion: 'v3',
+				// Match the real provider: `ai` adapts a v3 model and reads its result content.
+				specificationVersion: 'v4',
 				supportedUrls: {},
 				doGenerate: callEndpoint,
 				doStream: callEndpoint,
@@ -274,6 +277,7 @@ vi.mock('@ai-sdk/minimax', () => ({
 vi.mock('@ai-sdk/amazon-bedrock', () => ({
 	createAmazonBedrock:
 		(opts?: {
+			apiKey?: string;
 			region?: string;
 			accessKeyId?: string;
 			secretAccessKey?: string;
@@ -282,6 +286,7 @@ vi.mock('@ai-sdk/amazon-bedrock', () => ({
 		(model: string) => ({
 			provider: 'aws-bedrock',
 			modelId: model,
+			apiKey: opts?.apiKey,
 			region: opts?.region,
 			accessKeyId: opts?.accessKeyId,
 			secretAccessKey: opts?.secretAccessKey,
@@ -315,7 +320,9 @@ vi.mock('undici', () => ({
 
 /** What the mocked OpenAI stubs report back about the endpoint they reached. */
 type EndpointModel = {
-	doGenerate: (options: unknown) => Promise<{ api?: string; url: string }>;
+	doGenerate: (
+		options: unknown,
+	) => Promise<{ api?: string; url: string; providerOptions?: unknown }>;
 	doStream: (options: unknown) => Promise<{ api?: string; url: string }>;
 };
 
@@ -417,6 +424,21 @@ describe('createModel', () => {
 				url: 'https://proxy.example/v1/responses',
 			});
 			expect(paths).toEqual(['/v1/responses']);
+		});
+
+		it('sends Responses calls to a custom endpoint with store disabled', async () => {
+			// Reported failure: LiteLLM serves /responses without storing items, so the
+			// SDK default `store: true` replayed history as unresolvable item_reference.
+			const { fetchFn } = fakeEndpoint({ '/v1/responses': 200 });
+			const model = build({ url: 'https://litellm.example/v1' }, fetchFn);
+
+			const result = await model.doGenerate({
+				prompt: [],
+				providerOptions: { openai: { reasoningEffort: 'low' } },
+			});
+			expect(result.providerOptions).toEqual({
+				openai: { store: false, reasoningEffort: 'low' },
+			});
 		});
 
 		it('moves to chat completions when the endpoint has no /responses route', async () => {
@@ -1198,6 +1220,16 @@ describe('createModel', () => {
 			expect(model.accessKeyId).toBe('AKIAIOSFODNN7EXAMPLE');
 		});
 
+		it('should pin an empty apiKey so the SDK ignores AWS_BEARER_TOKEN_BEDROCK', () => {
+			const model = createModel({
+				id: 'aws-bedrock/amazon.titan-text-lite-v1',
+				region: 'us-east-1',
+				accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+				secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+			}) as unknown as Record<string, unknown>;
+			expect(model.apiKey).toBe('');
+		});
+
 		it('should throw if region is missing', () => {
 			expect(() =>
 				createModel({
@@ -1371,6 +1403,43 @@ describe('supportsSplitSystemMessages', () => {
 		['azure-openai/my-chat', false],
 	] as const)('checks split system messages for %s', (model, expected) => {
 		expect(supportsSplitSystemMessages(model)).toBe(expected);
+	});
+});
+
+describe('usesOfficialAnthropicApi', () => {
+	it.each([
+		['a model id string', 'anthropic/claude-sonnet-5', true],
+		['a config with no base URL', { id: 'anthropic/claude-sonnet-5', apiKey: 'k' }, true],
+		[
+			'a config with the Anthropic base URL',
+			{ id: 'anthropic/claude-sonnet-5', apiKey: 'k', baseURL: 'https://api.anthropic.com' },
+			true,
+		],
+		[
+			'a config with a custom base URL',
+			{ id: 'anthropic/claude-sonnet-5', apiKey: 'k', baseURL: 'https://gateway.example.com/v1' },
+			false,
+		],
+		[
+			'a config with a custom url alias',
+			{ id: 'anthropic/claude-sonnet-5', apiKey: 'k', url: 'https://gateway.example.com' },
+			false,
+		],
+		['a config with an empty url', { id: 'anthropic/claude-sonnet-5', apiKey: 'k', url: '' }, true],
+		[
+			'a config with an unparsable base URL',
+			{ id: 'anthropic/claude-sonnet-5', apiKey: 'k', baseURL: 'not a url' },
+			false,
+		],
+		[
+			'a pre-built model',
+			createAnthropic({ apiKey: 'k', baseURL: 'https://proxy.example.com/anthropic/v1' })(
+				'claude-haiku-5-5',
+			),
+			false,
+		],
+	] as const)('returns the expected value for %s', (_name, model, expected) => {
+		expect(usesOfficialAnthropicApi(model)).toBe(expected);
 	});
 });
 

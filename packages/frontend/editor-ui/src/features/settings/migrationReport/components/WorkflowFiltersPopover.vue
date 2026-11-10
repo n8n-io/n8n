@@ -2,6 +2,7 @@
 import {
 	N8nBadge,
 	N8nButton,
+	N8nCheckbox,
 	N8nOption,
 	N8nPopover,
 	N8nSegmentControl,
@@ -312,6 +313,12 @@ const publishedOptions = computed<Array<{ value: PublishedFilter; label: string 
 						/>
 					</N8nSelect>
 				</div>
+				<N8nCheckbox
+					:label="i18n.baseText('settings.migrationReport.detail.filters.showArchived')"
+					:model-value="filters.showArchived"
+					data-test-id="migration-rule-filter-show-archived"
+					@update:model-value="setFilter('showArchived', $event)"
+				/>
 				<div :class="$style.footer">
 					<N8nButton
 						variant="ghost"

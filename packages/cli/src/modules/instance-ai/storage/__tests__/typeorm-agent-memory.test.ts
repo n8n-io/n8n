@@ -85,23 +85,29 @@ describe('TypeORMAgentMemory', () => {
 		const { memory } = createMemory({ threadRepo });
 		const scope = { threadId: 'thread-1', resourceId: 'user-1', agentName: 'builder' };
 		await Promise.all([
-			memory.skillState.save(scope, ['workflow-builder']),
-			memory.skillState.save({ ...scope, agentName: 'reviewer' }, ['review']),
+			memory.skillState.save(scope, {
+				skillIds: ['workflow-builder'],
+				versions: { 'workflow-builder': 'v2', revoked: null },
+			}),
+			memory.skillState.save({ ...scope, agentName: 'reviewer' }, { skillIds: ['review'] }),
 		]);
-		await expect(memory.skillState.load(scope)).resolves.toEqual(['workflow-builder']);
-		await expect(memory.skillState.load({ ...scope, agentName: 'reviewer' })).resolves.toEqual([
-			'review',
-		]);
+		await expect(memory.skillState.load(scope)).resolves.toEqual({
+			skillIds: ['workflow-builder'],
+			versions: { 'workflow-builder': 'v2', revoked: null },
+		});
+		await expect(memory.skillState.load({ ...scope, agentName: 'reviewer' })).resolves.toEqual({
+			skillIds: ['review'],
+		});
 		await expect(
 			memory.skillState.load({ ...scope, resourceId: 'other-user' }),
 		).resolves.toBeUndefined();
 		expect(thread.metadata).toHaveProperty('titleSource', 'user');
 
-		await memory.skillState.save(scope, []);
-		await expect(memory.skillState.load(scope)).resolves.toEqual([]);
-		await expect(memory.skillState.load({ ...scope, agentName: 'reviewer' })).resolves.toEqual([
-			'review',
-		]);
+		await memory.skillState.save(scope, { skillIds: [] });
+		await expect(memory.skillState.load(scope)).resolves.toEqual({ skillIds: [] });
+		await expect(memory.skillState.load({ ...scope, agentName: 'reviewer' })).resolves.toEqual({
+			skillIds: ['review'],
+		});
 	});
 
 	it('treats missing skill metadata as a legacy thread', async () => {

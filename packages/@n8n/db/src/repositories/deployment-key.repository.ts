@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, IsNull } from '@n8n/typeorm';
+import { DataSource, IsNull, MoreThan } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -303,9 +303,18 @@ export class DeploymentKeyRepository {
 		});
 	}
 
-	/** Every OAuth signing key, active and inactive, so retired keys stay verifiable. */
-	async findOAuthSigningKeys(): Promise<DeploymentKey[]> {
-		return await this.store.find({ where: { type: OAUTH_SIGNING_KEY_TYPE } });
+	/**
+	 * The active OAuth signing keys and the keys retired after `retiredAfter`,
+	 * so recently retired keys stay verifiable. Older retired rows are left
+	 * out here, so a row that no longer decrypts cannot fail the read.
+	 */
+	async findPublishableOAuthSigningKeys(retiredAfter: Date): Promise<DeploymentKey[]> {
+		return await this.store.find({
+			where: [
+				{ type: OAUTH_SIGNING_KEY_TYPE, status: 'active' },
+				{ type: OAUTH_SIGNING_KEY_TYPE, status: 'inactive', updatedAt: MoreThan(retiredAfter) },
+			],
+		});
 	}
 
 	/**

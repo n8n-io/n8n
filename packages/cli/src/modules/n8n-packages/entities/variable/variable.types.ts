@@ -104,8 +104,15 @@ export function computeVariableLimitFailure(
 	};
 }
 
+/** A requirement that the target resolves. */
+export interface VariableMatch {
+	name: string;
+	/** Scopes that hold a variable with this name for the target project. Runtime `$vars` reads the project one first. */
+	scopes: Array<'project' | 'global'>;
+}
+
 export interface VariableImportPlan {
-	matched: string[];
+	matched: VariableMatch[];
 	missing: VariableResolutionFailure[];
 	creations: VariableCreation[];
 	conflicts: VariableConflict[];

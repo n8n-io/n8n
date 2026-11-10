@@ -8,10 +8,9 @@ import { useContextStore } from '../context.store';
 import { useSkillsStore } from '../skills.store';
 
 const push = vi.fn();
-const flags = vi.hoisted(() => ({ preferences: true, skills: false }));
+const flags = vi.hoisted(() => ({ skills: false }));
 
 vi.mock('../context.utils', () => ({
-	isContextPreferencesEnabled: () => flags.preferences,
 	isContextSkillsEnabled: () => flags.skills,
 }));
 const showErrorMock = vi.fn();
@@ -31,7 +30,6 @@ const renderView = createComponentRenderer(SettingsContextView);
 describe('SettingsContextView', () => {
 	beforeEach(() => {
 		createTestingPinia();
-		flags.preferences = true;
 		flags.skills = false;
 		push.mockClear();
 		showErrorMock.mockClear();
@@ -61,7 +59,7 @@ describe('SettingsContextView', () => {
 		expect(getByTestId('settings-context-sources-row')).toBeInTheDocument();
 	});
 
-	it('marks Skills and Sources as unavailable while the skills hub is off', () => {
+	it('marks Skills and Sources as unavailable while the agents module is off', () => {
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('settings-context-skills-row')).toHaveTextContent('Coming soon');
@@ -89,7 +87,7 @@ describe('SettingsContextView', () => {
 		expect(push).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
 	});
 
-	describe('with the skills hub on', () => {
+	describe('with the skills module on', () => {
 		beforeEach(() => {
 			flags.skills = true;
 		});
@@ -115,15 +113,6 @@ describe('SettingsContextView', () => {
 			await new Promise(process.nextTick);
 
 			expect(showErrorMock).toHaveBeenCalled();
-		});
-
-		it('hides Preferences when only the skills hub is on', () => {
-			flags.preferences = false;
-
-			const { queryByTestId } = renderView();
-
-			expect(queryByTestId('settings-context-preferences-row')).not.toBeInTheDocument();
-			expect(mockedStore(useContextStore).fetchPreferenceCount).not.toHaveBeenCalled();
 		});
 	});
 });

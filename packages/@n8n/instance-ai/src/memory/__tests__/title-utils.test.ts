@@ -1,4 +1,16 @@
-import { truncateToTitle } from '../title-utils';
+const { generateTitleFromMessage } = vi.hoisted(() => ({
+	generateTitleFromMessage: vi.fn(
+		async (_model: unknown, _message: string, _opts?: unknown) =>
+			await Promise.resolve('Slack alerts'),
+	),
+}));
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents')>()),
+	createModel: vi.fn(() => ({})),
+	generateTitleFromMessage,
+}));
+
+import { generateTitleForRun, truncateToTitle } from '../title-utils';
 
 describe('truncateToTitle', () => {
 	it('returns short messages unchanged', () => {
@@ -48,5 +60,19 @@ describe('truncateToTitle', () => {
 		const result = truncateToTitle(msg);
 		// lastSpace is at position 2, which is <= 20, so it should truncate at 60
 		expect(result).toBe(msg.slice(0, 60) + '\u2026');
+	});
+});
+
+describe('generateTitleForRun', () => {
+	beforeEach(() => generateTitleFromMessage.mockClear());
+
+	it('names the title call instance-ai.thread_title only when request labels are on', async () => {
+		await generateTitleForRun('anthropic/claude-x', 'hi', { requestLabels: true });
+		await generateTitleForRun('anthropic/claude-x', 'hi');
+
+		expect(generateTitleFromMessage.mock.calls.map((call) => call[2])).toEqual([
+			{ functionId: 'instance-ai.thread_title' },
+			{},
+		]);
 	});
 });

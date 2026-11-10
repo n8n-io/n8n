@@ -1,11 +1,12 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 
-import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
+import { MAX_AGENT_FILE_SIZE_BYTES, MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { NotFoundError } from '@n8n/errors';
@@ -20,8 +21,8 @@ import { createKnowledgeTelemetryHmac } from '../agent-knowledge-telemetry';
 import { AgentKnowledgeUploadError } from '../agent-knowledge-upload.error';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
-import type { AgentFile } from '../entities/agent-file.entity';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
+import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 const instanceSecret = 'instance-secret';
@@ -74,7 +75,7 @@ function makeMulterFile(overrides: Partial<Express.Multer.File> = {}): Express.M
 	};
 }
 
-function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
+function makeAgentFile(overrides: Partial<KnowledgeFile> = {}): KnowledgeFile {
 	const createdAt = overrides.createdAt ?? new Date('2026-06-01T10:00:00.000Z');
 	return {
 		id: 'file-1',
@@ -88,13 +89,13 @@ function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 		updatedAt: createdAt,
 		agent: undefined as never,
 		...overrides,
-	} as unknown as AgentFile;
+	} as unknown as KnowledgeFile;
 }
 
 class InMemoryAgentFileRepository {
-	private readonly files = new Map<string, AgentFile>();
+	private readonly files = new Map<string, KnowledgeFile>();
 
-	create(input: Partial<AgentFile>): AgentFile {
+	private create(input: Partial<KnowledgeFile>): KnowledgeFile {
 		const createdAt = new Date();
 		return {
 			id: input.id ?? 'generated-id',
@@ -107,15 +108,21 @@ class InMemoryAgentFileRepository {
 			createdAt,
 			updatedAt: createdAt,
 			agent: undefined as never,
-		} as unknown as AgentFile;
+		} as unknown as KnowledgeFile;
 	}
 
-	async save(file: AgentFile): Promise<AgentFile> {
+	async save(file: KnowledgeFile): Promise<KnowledgeFile> {
 		this.files.set(file.id, { ...file });
 		return file;
 	}
 
-	async findByAgentId(agentIdToFind: string): Promise<AgentFile[]> {
+	async saveUploadedFile(
+		input: Parameters<KnowledgeFileRepository['saveUploadedFile']>[0],
+	): Promise<KnowledgeFile> {
+		return await this.save(this.create(input));
+	}
+
+	async findByAgentId(agentIdToFind: string): Promise<KnowledgeFile[]> {
 		return [...this.files.values()]
 			.filter((file) => file.agentId === agentIdToFind)
 			.sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
@@ -125,7 +132,7 @@ class InMemoryAgentFileRepository {
 		return [...this.files.values()].some((file) => file.agentId === agentIdToFind);
 	}
 
-	async findByIdAndAgentId(fileId: string, agentIdToFind: string): Promise<AgentFile | null> {
+	async findByIdAndAgentId(fileId: string, agentIdToFind: string): Promise<KnowledgeFile | null> {
 		const file = this.files.get(fileId);
 		if (!file || file.agentId !== agentIdToFind) {
 			return null;
@@ -133,7 +140,15 @@ class InMemoryAgentFileRepository {
 		return file;
 	}
 
-	async delete(criteria: { id?: string; agentId?: string }): Promise<void> {
+	async deleteByIdAndAgentId(fileId: string, agentIdToFind: string): Promise<void> {
+		await this.delete({ id: fileId, agentId: agentIdToFind });
+	}
+
+	async deleteByAgentId(agentIdToFind: string): Promise<void> {
+		await this.delete({ agentId: agentIdToFind });
+	}
+
+	private async delete(criteria: { id?: string; agentId?: string }): Promise<void> {
 		for (const [id, file] of this.files.entries()) {
 			if (criteria.id && file.id !== criteria.id) continue;
 			if (criteria.agentId && file.agentId !== criteria.agentId) continue;
@@ -141,10 +156,15 @@ class InMemoryAgentFileRepository {
 		}
 	}
 
-	all(): AgentFile[] {
+	all(): KnowledgeFile[] {
 		return [...this.files.values()];
 	}
 }
+
+const projectDeletion = mock<AgentProjectDeletionRepository>();
+projectDeletion.withWritableProject.mockImplementation(
+	async (_projectId, write, ctx = {}) => await write(ctx),
+);
 
 describe('AgentKnowledgeService', () => {
 	let agentRepository: Mocked<AgentRepository>;
@@ -161,7 +181,7 @@ describe('AgentKnowledgeService', () => {
 	) {
 		return new AgentKnowledgeService(
 			agentRepository,
-			agentFileRepository as unknown as AgentFileRepository,
+			agentFileRepository as unknown as KnowledgeFileRepository,
 			agentSandboxRuntimeService,
 			agentKnowledgeMirrorService,
 			agentKnowledgeFileStore,
@@ -169,6 +189,7 @@ describe('AgentKnowledgeService', () => {
 			logger,
 			knowledgeAvailabilityService,
 			mock<GlobalConfig>({ diagnostics: { enabled: diagnosticsEnabled } }),
+			projectDeletion,
 		);
 	}
 
@@ -525,6 +546,27 @@ describe('AgentKnowledgeService', () => {
 				await rm(tempDirectory, { recursive: true, force: true });
 			}
 		});
+
+		it('gives a PDF whose text is above the file size limit the file_size reason', async () => {
+			loadMock.mockResolvedValue([{ pageContent: 'a'.repeat(MAX_AGENT_FILE_SIZE_BYTES + 1) }]);
+			const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+			try {
+				const pdfFilePath = path.join(tempDirectory, 'large.pdf');
+				await writeFile(pdfFilePath, '%PDF-1.4');
+
+				await expect(
+					service.uploadFiles(agentId, projectId, [
+						makeMulterFile({
+							originalname: 'large.pdf',
+							mimetype: 'application/pdf',
+							path: pdfFilePath,
+						}),
+					]),
+				).rejects.toMatchObject({ reason: 'file_size' });
+			} finally {
+				await rm(tempDirectory, { recursive: true, force: true });
+			}
+		});
 	});
 
 	it('returns false and deletes nothing when the agent has no such file', async () => {
@@ -682,16 +724,20 @@ describe('AgentKnowledgeService', () => {
 			expect(agentSandboxRuntimeService.warmKnowledgeSandbox).not.toHaveBeenCalled();
 		});
 
-		it('still deletes all files and their blobs on agent deletion', async () => {
+		it('keeps the stored blobs on agent deletion and warns, because the file entity is not registered', async () => {
 			const file = makeAgentFile({ id: 'file-1' });
 			await agentFileRepository.save(file);
 
 			await service.deleteAllFilesForAgent(projectId, agentId);
 
-			expect(await agentFileRepository.findByAgentId(agentId)).toHaveLength(0);
-			expect(agentKnowledgeFileStore.delete).toHaveBeenCalledWith([
-				{ storedAt: file.storedAt, storageKey: file.storageKey },
-			]);
+			expect(await agentFileRepository.findByAgentId(agentId)).toHaveLength(1);
+			expect(agentKnowledgeFileStore.delete).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Knowledge module is inactive'),
+				{
+					agentId,
+				},
+			);
 		});
 
 		it('still destroys the sandbox, which needs no module entity', async () => {

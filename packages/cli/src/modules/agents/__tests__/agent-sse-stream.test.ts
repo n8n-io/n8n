@@ -65,6 +65,31 @@ async function collectSerializedEvents(chunks: StreamChunk[]): Promise<AgentSseE
 	return events;
 }
 
+describe('agent-sse-stream — usage', () => {
+	it('sends turn totals without internal usage metadata', async () => {
+		const usage = { promptTokens: 100, completionTokens: 20, totalTokens: 120, cost: 0.01 };
+		const events = await collectSerializedEvents([
+			{
+				type: 'usage',
+				model: 'openai/test',
+				usage: { ...usage, additionalMetadata: { internal: true } },
+			},
+			{ type: 'finish', finishReason: 'stop', usage },
+		]);
+		expect(events).toEqual([
+			{ type: 'usage', usage },
+			{ type: 'finish', finishReason: 'stop', usage },
+		]);
+	});
+
+	it('keeps an unavailable price absent from the event', async () => {
+		const usage = { promptTokens: 100, completionTokens: 20, totalTokens: 120 };
+		expect(await collectSerializedEvents([{ type: 'usage', model: 'openai/test', usage }])).toEqual(
+			[{ type: 'usage', usage }],
+		);
+	});
+});
+
 describe('agent-sse-stream — connection setup', () => {
 	afterEach(() => {
 		vi.useRealTimers();
@@ -284,7 +309,11 @@ describe('agent-sse-stream — stream completion', () => {
 		expect(events).toEqual([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
-			{ type: 'finish', finishReason },
+			{
+				type: 'finish',
+				finishReason,
+				usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+			},
 		]);
 	});
 

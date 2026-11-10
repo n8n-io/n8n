@@ -115,6 +115,34 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByTestId('node-restricted-panel');
 	}
 
+	/** The lock beside a credential type select whose saved value a policy blocks. */
+	getRestrictedCredentialTypeMarker(parameterName: string): Locator {
+		return this.getParameterInput(parameterName).getByTestId('credential-select-restricted');
+	}
+
+	/** The parameter input also holds the credential picker, so click the select itself. */
+	async openCredentialTypeList(parameterName: string): Promise<void> {
+		await this.getParameterInput(parameterName).getByTestId('credential-select').click();
+	}
+
+	/** The options of the open credential type list. A search hides the options it does not match. */
+	getCredentialTypeOptions(): Locator {
+		return this.getVisiblePopper()
+			.getByTestId('credential-select-option')
+			.filter({ visible: true });
+	}
+
+	getCredentialTypeOption(credentialType: string): Locator {
+		return this.getVisiblePopper().locator(
+			`[data-test-id="credential-select-option"][data-credential-name="${credentialType}"]`,
+		);
+	}
+
+	/** The popover that explains a restricted type. It is teleported out of the NDV. */
+	getRestrictedTypePopover(): Locator {
+		return this.getVisiblePoppers().getByTestId('node-restricted-popover');
+	}
+
 	getInputPanel() {
 		return this.container.getByTestId('ndv-input-panel');
 	}

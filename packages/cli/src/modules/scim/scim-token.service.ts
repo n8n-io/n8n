@@ -1,108 +1,105 @@
 import { type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
-import { randomUUID } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 
-import { JwtService, UrlService } from '@n8n/backend-services';
+import { UrlService } from '@n8n/backend-services';
 
-import { ScimApiKeyRepository } from './database/scim-api-key.repository';
+import { ScimTokenRepository } from './database/scim-token.repository';
 
-const API_KEY_PURPOSE = 'scimApiKey' as const;
-const API_KEY_ISSUER = 'n8n';
-const REDACT_API_KEY_REVEAL_COUNT = 4;
-const REDACT_API_KEY_MAX_LENGTH = 10;
-const REDACT_API_KEY_MIN_HIDDEN_CHARS = 6;
+/** Makes the token easy to recognize, for example for a secret scanner. */
+const TOKEN_PREFIX = 'n8n_scim_';
+/** 256 random bits. */
+const TOKEN_RANDOM_BYTES = 32;
+/** The prefix and 32 bytes as base64url, which gives 43 characters. */
+const TOKEN_FORMAT = /^n8n_scim_[\w-]{43}$/;
+const TOKEN_HINT_LENGTH = 4;
 
 /**
- * Service for managing SCIM API keys, including creation, retrieval, deletion, and authentication.
+ * The database keeps this hash, not the token. The token has 256 random
+ * bits, so a fast hash without a salt is enough.
+ */
+export const hashScimToken = (token: string) => createHash('sha256').update(token).digest('hex');
+
+/** Compares two hex hashes in constant time. */
+const hashesMatch = (a: string, b: string) => {
+	const left = Buffer.from(a, 'hex');
+	const right = Buffer.from(b, 'hex');
+	return left.length === right.length && timingSafeEqual(left, right);
+};
+
+/**
+ * Manages the one SCIM token of the instance. Every user with `scim:manage`
+ * sees, rotates and revokes the same token.
+ *
+ * The full token value leaves this service only from `rotateToken`, once.
  */
 @Service()
 export class ScimTokenService {
 	constructor(
-		private readonly apiKeyRepository: ScimApiKeyRepository,
-		private readonly jwtService: JwtService,
+		private readonly scimTokenRepository: ScimTokenRepository,
 		private readonly urlService: UrlService,
 	) {}
 
-	private signApiKey(user: User) {
-		return this.jwtService.sign(API_KEY_PURPOSE, {
-			sub: user.id,
-			iss: API_KEY_ISSUER,
-			jti: randomUUID(),
-		});
-	}
-
 	/**
-	 * Whether the user has a SCIM token and, if so, its last four
-	 * characters for display. The full value is never exposed here.
+	 * Whether the instance has a SCIM token and, if so, its last four
+	 * characters for display.
 	 */
-	async getTokenInfoForUser(
-		user: User,
+	async getTokenInfo(
 		ctx: OperationContext = {},
 	): Promise<{ hasToken: boolean; lastFour: string | null }> {
-		const apiKey = await this.apiKeyRepository.findByUserId(user.id, ctx);
+		const token = await this.scimTokenRepository.findInstanceToken(ctx);
 
 		return {
-			hasToken: !!apiKey,
-			lastFour: apiKey ? apiKey.apiKey.slice(-REDACT_API_KEY_REVEAL_COUNT) : null,
+			hasToken: !!token,
+			lastFour: token ? token.tokenHint : null,
 		};
 	}
 
 	/**
-	 * Find SCIM API key for a user
-	 */
-	async findScimApiKeyForUser(user: User, { redact = true } = {}, ctx: OperationContext = {}) {
-		const apiKey = await this.apiKeyRepository.findByUserId(user.id, ctx);
-
-		if (apiKey && redact) {
-			apiKey.apiKey = this.redactApiKey(apiKey.apiKey);
-		}
-
-		return apiKey;
-	}
-
-	/**
-	 * Verify a SCIM API key. The key must be a valid JWT, exist in the
-	 * database, and belong to a user that still exists, is not disabled and
-	 * still holds `scim:manage`.
+	 * Verify a SCIM token. The hash of the token must match the hash of the
+	 * stored instance token. Its creator does not matter.
 	 */
 	async verifyApiKey(apiKey: string, ctx: OperationContext = {}): Promise<boolean> {
-		try {
-			this.jwtService.verify(API_KEY_PURPOSE, apiKey, { issuer: API_KEY_ISSUER });
-		} catch {
-			// A malformed, expired or wrongly-audienced token is simply not valid.
-			return false;
-		}
+		// A value in another format cannot be the token, so skip the read.
+		if (!TOKEN_FORMAT.test(apiKey)) return false;
 
-		// Everything below can only fail for reasons that are not the caller's
-		// fault, so let those propagate. Reporting a database outage as an
-		// invalid token would tell the IdP to treat its credential as revoked.
-		const key = await this.apiKeyRepository.findByKey(apiKey, ctx);
+		// A database failure is not the caller's fault, so let it propagate.
+		// Reporting a database outage as an invalid token would tell the IdP to
+		// treat its credential as revoked.
+		const current = await this.scimTokenRepository.findInstanceToken(ctx);
 
-		if (!key?.user || key.user.disabled) return false;
-
-		// The scope is checked on each request, not only when the key is made,
-		// because the user can lose it later through any kind of role change.
-		return this.canHoldToken(key.user);
-	}
-
-	/** Whether the user's global role still allows a SCIM token. */
-	canHoldToken(user: User): boolean {
-		return hasGlobalScope(user, 'scim:manage');
+		return !!current && hashesMatch(current.tokenHash, hashScimToken(apiKey));
 	}
 
 	/**
-	 * Delete all SCIM API keys for a user
+	 * Create the instance token, or replace the current one. The previous
+	 * token stops working at once. Returns the token value, which no other
+	 * call can return later.
+	 *
+	 * Throws `ScimTokenConflictError` when another request changed the token
+	 * after this one read it.
 	 */
-	async deleteAllScimApiKeysForUser(user: User, ctx: OperationContext = {}) {
-		await this.apiKeyRepository.deleteAllForUser(user.id, ctx);
+	async rotateToken(user: User, ctx: OperationContext = {}): Promise<string> {
+		const current = await this.scimTokenRepository.findInstanceToken(ctx);
+		const token = TOKEN_PREFIX + randomBytes(TOKEN_RANDOM_BYTES).toString('base64url');
+
+		await this.scimTokenRepository.replace(
+			current?.tokenHash ?? null,
+			{
+				tokenHash: hashScimToken(token),
+				tokenHint: token.slice(-TOKEN_HINT_LENGTH),
+				createdById: user.id,
+				createdAt: new Date(),
+			},
+			ctx,
+		);
+
+		return token;
 	}
 
-	/**
-	 * Rotate SCIM API key for a user
-	 */
-	async rotateScimApiKey(user: User, ctx: OperationContext = {}) {
-		return await this.apiKeyRepository.replaceForUser(user.id, this.signApiKey(user), ctx);
+	/** Revoke the instance token, whoever created it. */
+	async revokeToken(ctx: OperationContext = {}) {
+		await this.scimTokenRepository.revokeInstanceToken(ctx);
 	}
 
 	/**
@@ -110,21 +107,5 @@ export class ScimTokenService {
 	 */
 	getScimBaseUrl(): string {
 		return `${this.urlService.getInstanceBaseUrl()}/scim/v2`;
-	}
-
-	/**
-	 * Redact API key for display purposes
-	 */
-	private redactApiKey(apiKey: string) {
-		if (REDACT_API_KEY_REVEAL_COUNT >= apiKey.length - REDACT_API_KEY_MIN_HIDDEN_CHARS) {
-			return '*'.repeat(apiKey.length);
-		}
-
-		const visiblePart = apiKey.slice(-REDACT_API_KEY_REVEAL_COUNT);
-		const redactedPart = '*'.repeat(
-			Math.max(0, REDACT_API_KEY_MAX_LENGTH - REDACT_API_KEY_REVEAL_COUNT),
-		);
-
-		return redactedPart + visiblePart;
 	}
 }

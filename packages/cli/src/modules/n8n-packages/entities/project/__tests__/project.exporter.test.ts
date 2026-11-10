@@ -275,12 +275,24 @@ describe('ProjectExporter', () => {
 			folderExporter.export.mockResolvedValue({
 				entries: [{ id: 'f1', name: 'F1', target: 'projects/billing/folders/f1' }],
 				workflowEntries: [
-					{ id: 'w-in-f1', name: 'In F1', target: 'projects/billing/folders/f1/workflows/x' },
+					{
+						id: 'w-in-f1',
+						name: 'In F1',
+						target: 'projects/billing/folders/f1/workflows/x',
+						isArchived: false,
+					},
 				],
 				requirements: emptyRequirements,
 			});
 			workflowExporter.export.mockResolvedValue({
-				entries: [{ id: 'w-root', name: 'Root', target: 'projects/billing/workflows/root' }],
+				entries: [
+					{
+						id: 'w-root',
+						name: 'Root',
+						target: 'projects/billing/workflows/root',
+						isArchived: false,
+					},
+				],
 				requirements: emptyRequirements,
 			});
 
@@ -312,7 +324,9 @@ describe('ProjectExporter', () => {
 			});
 			workflowFinder.findAllWorkflowIdsForUser.mockResolvedValue(['w1']);
 			workflowExporter.export.mockResolvedValue({
-				entries: [{ id: 'w1', name: 'W1', target: 'projects/billing/workflows/w1' }],
+				entries: [
+					{ id: 'w1', name: 'W1', target: 'projects/billing/workflows/w1', isArchived: false },
+				],
 				requirements: emptyRequirements,
 			});
 
@@ -346,7 +360,12 @@ describe('ProjectExporter', () => {
 			workflowFinder.findAllWorkflowIdsForUser.mockResolvedValue(['w-published', 'w-unpublished']);
 			workflowExporter.export.mockResolvedValue({
 				entries: [
-					{ id: 'w-published', name: 'Published', target: 'projects/billing/workflows/pub' },
+					{
+						id: 'w-published',
+						name: 'Published',
+						target: 'projects/billing/workflows/pub',
+						isArchived: false,
+					},
 				],
 				requirements: emptyRequirements,
 			});

@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -211,5 +212,15 @@ describe('CredentialOptionsService', () => {
 		await expect(service.lookupDraft(user, request, 'n8n-project')).rejects.toThrow(
 			'Could not load the list. Try again or enter an ID.',
 		);
+	});
+
+	it('tells the user to reconnect when the managed app is no longer available', async () => {
+		helper.applyDefaultsAndOverwrites.mockRejectedValue(
+			new ManagedAppUnavailableError('Reconnect the credential to continue.'),
+		);
+		await expect(service.lookupDraft(user, request, 'n8n-project')).rejects.toThrow(
+			'Reconnect the credential to continue.',
+		);
+		expect(loader).not.toHaveBeenCalled();
 	});
 });
