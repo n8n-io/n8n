@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const migrationName = 'IndexSelfHealingInvestigationActivity1793700906582';
+const migrationName = 'IndexSelfHealingInvestigationActivity1794320826000';
 
 async function withQueryRunner<T>(operation: (context: TestMigrationContext) => Promise<T>) {
 	const context = createTestMigrationContext(Container.get(DataSource));

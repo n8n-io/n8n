@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddIncludeSubWorkflowsToSelfHealingConfiguration1793691671000
+export class AddIncludeSubWorkflowsToSelfHealingConfiguration1794320824000
 	implements ReversibleMigration
 {
 	async up({ escape, runQuery }: MigrationContext) {
