@@ -726,6 +726,7 @@ describe('McpClient', () => {
 			executeFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
 				const merged: Record<string, unknown> = {
 					...defaultParams,
+					options: { ...defaultParams.options, convertToBinary: true },
 					operation: 'executeTool',
 					...params,
 				};
