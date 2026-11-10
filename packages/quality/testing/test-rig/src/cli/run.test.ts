@@ -18,6 +18,12 @@ describe('runFailed', () => {
 	it('fails when an image is missing', () => {
 		expect(runFailed([row, { ...row, passed: 0, note: 'image missing' }])).toBe(true);
 	});
+
+	it('does not fail on a variant with no image', () => {
+		expect(runFailed([row, { ...row, image: '-', passed: 0, total: 0, note: 'no image' }])).toBe(
+			false,
+		);
+	});
 });
 
 describe('parseRunArgs', () => {

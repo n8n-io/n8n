@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { anything, below, includes, is, isNot, Scenario, variant } from './scenario';
+import { anything, below, excludes, includes, is, isNot, Scenario, variant } from './scenario';
 
 describe('Scenario', () => {
 	let dir: string;
@@ -80,6 +80,7 @@ describe('matchers', () => {
 		['includes in an array', includes({ a: 1 }), [{ a: 1 }], [{ a: 2 }]],
 		['includes in a string', includes('ab'), 'xaby', 'xy'],
 		['includes with a value that is not an array or string', includes('ab'), 'ab', 12],
+		['excludes', excludes('ab'), 'xy', 'xaby'],
 	])('%s', (_label, expectation, pass, fail) => {
 		expect(expectation.test(pass)).toBe(true);
 		expect(expectation.test(fail)).toBe(false);
@@ -90,12 +91,8 @@ describe('matchers', () => {
 	});
 
 	it('describes each expectation', () => {
-		expect([is(1), isNot('a'), below(3), includes(2), anything].map((e) => e.describe)).toEqual([
-			'is 1',
-			'is not "a"',
-			'is below 3',
-			'includes 2',
-			'is anything',
-		]);
+		expect(
+			[is(1), isNot('a'), below(3), includes(2), excludes(2), anything].map((e) => e.describe),
+		).toEqual(['is 1', 'is not "a"', 'is below 3', 'includes 2', 'excludes 2', 'is anything']);
 	});
 });
