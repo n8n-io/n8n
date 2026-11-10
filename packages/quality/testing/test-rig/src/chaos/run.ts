@@ -7,7 +7,7 @@ import type { AppliedFault } from './execute';
 import { runSchedule } from './execute';
 import type { Fault, FaultKind, ScheduledFault } from './schedule';
 import { generateSchedule } from './schedule';
-import { HOOK_DIR, hook } from '../hooks/control';
+import { HOOK_DIR, hitBetween, hook } from '../hooks/control';
 import type { HookSpec } from '../hooks/spec';
 import { FILES } from '../hooks/spec';
 import type { Violation } from '../invariants';
@@ -89,7 +89,7 @@ export function rigExecutor(rig: RigStack) {
 	const upstream = (to: 'postgres' | 'redis') =>
 		rig.container(to === 'postgres' ? /-postgres$/ : /-redis$/);
 
-	return async (fault: Fault) => {
+	return async (fault: Fault): Promise<Pick<AppliedFault, 'hit'> | undefined> => {
 		const container = byName(fault.target);
 		switch (fault.kind) {
 			case 'kill':
@@ -115,10 +115,11 @@ export function rigExecutor(rig: RigStack) {
 				return;
 			case 'hook': {
 				const point = hook([container], fault.point);
+				const armedAt = Date.now();
 				await point.arm();
 				await sleep(fault.forMs);
 				await point.disarm();
-				return;
+				return { hit: hitBetween(await logs(container), fault.point, armedAt, Date.now()) };
 			}
 		}
 	};
