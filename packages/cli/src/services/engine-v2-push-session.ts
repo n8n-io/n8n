@@ -7,6 +7,8 @@ import type { INodeExecutionData } from 'n8n-workflow';
 export class EngineV2StepRun {
 	/** Whether the step's outcome has been reported. */
 	settled = false;
+	/** Whether the step has been reported as waiting. */
+	waiting = false;
 
 	constructor(
 		/** Pairs this run's `nodeExecuteAfter` with its `nodeExecuteAfterData`. */

@@ -211,6 +211,37 @@ describe('lifecycle events of engine v2 runs', () => {
 		expect(Container.get(EngineV2PushRegistry).get(executionId)).toBeUndefined();
 	});
 
+	test('shows a step that waits as waiting in its editor', async () => {
+		startExecution.mockImplementation(async (request: StartExecutionRequest) => {
+			const [started, stepStarted] = runEvents(
+				request.executionId,
+				request.workflowId,
+				request.graph.nodes.find((n) => n.name === SET_NAME)!.id,
+			);
+			await lifecycleEventSender.send(
+				[started, stepStarted, { ...stepStarted, type: 'step:waiting' }],
+				new AbortController().signal,
+			);
+			return { executionId: request.executionId };
+		});
+
+		const { executionId } = await manualRun('push-1');
+
+		expect(sentMessages().at(-1)).toEqual({
+			message: expect.objectContaining({
+				type: 'nodeExecuteAfter',
+				data: expect.objectContaining({
+					executionId,
+					nodeName: SET_NAME,
+					data: expect.objectContaining({ executionStatus: 'waiting' }),
+				}),
+			}),
+			pushRef: 'push-1',
+		});
+		// The run is not over, so the editor keeps its session.
+		expect(Container.get(EngineV2PushRegistry).get(executionId)).toBeDefined();
+	});
+
 	test('stops relaying once the run has finished', async () => {
 		const { workflow, executionId } = await manualRun('push-1');
 		pushSend().mockClear();

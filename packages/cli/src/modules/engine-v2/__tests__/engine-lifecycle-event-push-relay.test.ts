@@ -49,6 +49,12 @@ const stepFailed: LifecycleEvent = {
 	at: '2026-08-25T10:00:01.500Z',
 };
 
+const stepWaiting: LifecycleEvent = {
+	...stepFields,
+	type: 'step:waiting',
+	at: '2026-08-25T10:00:01.200Z',
+};
+
 describe('EngineLifecycleEventPushRelay', () => {
 	let push: Push;
 	let logger: Logger;
@@ -312,6 +318,49 @@ describe('EngineLifecycleEventPushRelay', () => {
 
 			const { error } = sentOfType('nodeExecuteAfter')[0].data.data;
 			expect(JSON.stringify(error)).toContain('Node execution failed');
+		});
+	});
+
+	describe('step:waiting', () => {
+		it('marks the node waiting with the start executionIndex and sends no data message', () => {
+			register();
+
+			relay.relay([stepStarted, stepWaiting]);
+
+			const [before] = sentOfType('nodeExecuteBefore');
+			const [after] = sentOfType('nodeExecuteAfter');
+			expect(after.data.data.executionStatus).toBe('waiting');
+			expect(after.data.data.executionIndex).toBe(before.data.data.executionIndex);
+			expect(after.data.data.error).toBeUndefined();
+			expect(after.data.itemCountByConnectionType).toEqual({});
+			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(0);
+		});
+
+		it('still reports the outcome after the step resumes', () => {
+			register();
+
+			relay.relay([stepStarted, stepWaiting, stepStarted, stepCompleted]);
+
+			expect(sentOfType('nodeExecuteBefore')).toHaveLength(1);
+			const statuses = sentOfType('nodeExecuteAfter').map((m) => m.data.data.executionStatus);
+			expect(statuses).toEqual(['waiting', 'success']);
+			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(1);
+		});
+
+		it('ignores a redelivered wait, since the editor appends every waiting run', () => {
+			register();
+
+			relay.relay([stepStarted, stepWaiting, stepWaiting]);
+
+			expect(sentOfType('nodeExecuteAfter')).toHaveLength(1);
+		});
+
+		it('still reports the wait when the start was lost', () => {
+			register();
+
+			relay.relay([stepWaiting]);
+
+			expect(sentOfType('nodeExecuteAfter')[0].data.data.executionStatus).toBe('waiting');
 		});
 	});
 
