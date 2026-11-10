@@ -6,7 +6,7 @@ import {
 	WorkflowActivationError,
 	WorkflowOperationError,
 } from '../../src/errors';
-import type { INode } from '../../src/interfaces';
+import type { INode, JsonObject } from '../../src/interfaces';
 
 describe('WorkflowActivationError', () => {
 	it('should default to `error` level', () => {
@@ -139,7 +139,7 @@ describe('WorkflowActivationError', () => {
 		it('sets level warning when a NodeApiError wraps an error with code ECONNRESET', () => {
 			const nodeApiError = new NodeApiError(
 				mock<INode>(),
-				errorWithCode('read ECONNRESET', 'ECONNRESET'),
+				errorWithCode('read ECONNRESET', 'ECONNRESET') as unknown as JsonObject,
 			);
 
 			const error = new WorkflowActivationError('activation failed', { cause: nodeApiError });
