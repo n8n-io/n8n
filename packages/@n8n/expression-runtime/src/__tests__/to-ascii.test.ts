@@ -3,7 +3,10 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { toAscii } from '../extensions/to-ascii';
 import { TO_ASCII_CHARMAP_HOST_FUNCTION } from '../runtime/host-function-names';
-import { createBridge, engineName } from './test-bridge';
+import { MemoryLimitError, TimeoutError } from '../types';
+import { createBridge, engineName, isQuickJS, newBridge } from './test-bridge';
+
+const CONVERT_VERY_LONG_STRING = 'return extend("é".repeat(5000000), "replaceSpecialChars", [])';
 
 describe(`replaceSpecialChars with the host character map (${engineName})`, () => {
 	let evaluator: ExpressionEvaluator;
@@ -53,6 +56,29 @@ describe(`replaceSpecialChars with the host character map (${engineName})`, () =
 		expect(result).toBe('undefined');
 
 		await bridge.dispose();
+	});
+
+	it('should stop a very long string at the time limit', async () => {
+		const bridge = newBridge({ timeout: 200 });
+		await bridge.initialize();
+
+		try {
+			expect(() => bridge.execute(CONVERT_VERY_LONG_STRING, {})).toThrow(TimeoutError);
+		} finally {
+			await bridge.dispose();
+		}
+	});
+
+	// QuickJS lets a string built with `+=` grow past the memory limit, with or without this method.
+	it.skipIf(isQuickJS)('should stop a very long string at the memory limit', async () => {
+		const bridge = newBridge({ memoryLimit: 8, timeout: 5000 });
+		await bridge.initialize();
+
+		try {
+			expect(() => bridge.execute(CONVERT_VERY_LONG_STRING, {})).toThrow(MemoryLimitError);
+		} finally {
+			await bridge.dispose();
+		}
 	});
 
 	it('should work on a bridge that starts synchronously', async () => {
