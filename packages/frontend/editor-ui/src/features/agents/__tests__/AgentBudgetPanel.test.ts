@@ -97,6 +97,7 @@ function mountPanel() {
 
 beforeEach(() => {
 	pushListeners.clear();
+	sessionStorage.removeItem('N8N_AGENT_BUDGET_COVERAGE_CALLOUT_DISMISSED');
 });
 
 describe('AgentBudgetPanel', () => {
@@ -285,5 +286,42 @@ describe('AgentBudgetPanel', () => {
 		await flushPromises();
 
 		expect(getAgentBudgetSpend).not.toHaveBeenCalled();
+	});
+
+	it('shows the coverage caption callout by default', async () => {
+		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 42 });
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-budget-coverage-callout"]').exists()).toBe(true);
+	});
+
+	it('hides the coverage caption callout once dismissed', async () => {
+		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 42 });
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		await wrapper.get('[data-testid="agent-budget-coverage-dismiss"]').trigger('click');
+
+		expect(wrapper.find('[data-testid="agent-budget-coverage-callout"]').exists()).toBe(false);
+	});
+
+	it('keeps the coverage caption callout hidden across a remount until storage is cleared', async () => {
+		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 42 });
+		const first = mountPanel();
+		await flushPromises();
+		await first.get('[data-testid="agent-budget-coverage-dismiss"]').trigger('click');
+		first.unmount();
+
+		const second = mountPanel();
+		await flushPromises();
+		expect(second.find('[data-testid="agent-budget-coverage-callout"]').exists()).toBe(false);
+
+		sessionStorage.removeItem('N8N_AGENT_BUDGET_COVERAGE_CALLOUT_DISMISSED');
+		second.unmount();
+
+		const third = mountPanel();
+		await flushPromises();
+		expect(third.find('[data-testid="agent-budget-coverage-callout"]').exists()).toBe(true);
 	});
 });
