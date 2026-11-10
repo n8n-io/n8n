@@ -1131,11 +1131,9 @@ onBeforeUnmount(() => {
 						<N8nSettingsRow
 							data-test-id="error-workflow"
 							:title="i18n.baseText('workflowSettings.errorWorkflow')"
+							:description="helpTexts.errorWorkflow"
 							action-fill
 						>
-							<template #description>
-								<span v-n8n-html="helpTexts.errorWorkflow" />
-							</template>
 							<template #action>
 								<N8nSelect
 									v-model="workflowSettings.errorWorkflow"

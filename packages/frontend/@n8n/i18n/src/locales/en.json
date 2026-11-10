@@ -5868,7 +5868,7 @@
 	"workflowSettings.executionLogic.placeholder": "Select execution order",
 	"workflowSettings.binaryMode": "Binary Mode",
 	"workflowSettings.helpTexts.engineType": "The execution engine that runs this workflow. This isn't related to Execution Logic.",
-	"workflowSettings.helpTexts.errorWorkflow": "A second workflow to run if the current one fails.<br />The second workflow should have an 'Error Trigger' node.",
+	"workflowSettings.helpTexts.errorWorkflow": "A second workflow to run if the current one fails. The second workflow should have an 'Error Trigger' node.",
 	"workflowSettings.helpTexts.executionTimeout": "How long the workflow should wait before timing out",
 	"workflowSettings.helpTexts.executionTimeoutToggle": "Whether to cancel workflow execution after a defined time",
 	"workflowSettings.helpTexts.saveDataErrorExecution": "Whether to save data of executions that fail",

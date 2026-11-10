@@ -96,8 +96,6 @@ const slots = defineSlots<{
 	info?: () => unknown;
 	action?: () => unknown;
 	expanded?: () => unknown;
-	/** Rich description content (for example, links). Replaces the `description` prop text. */
-	description?: () => unknown;
 }>();
 
 // Stable, per-instance id so the disclosure trigger can `aria-controls` its region.
@@ -239,14 +237,11 @@ function onKeydown(event: KeyboardEvent) {
 							{{ title }}
 						</N8nText>
 						<N8nTooltip
-							v-if="description || slots.description"
+							v-if="description"
 							:content="description"
 							:disabled="!isDescriptionTruncated"
 							placement="top"
 						>
-							<template v-if="slots.description" #content>
-								<slot name="description" />
-							</template>
 							<N8nText
 								ref="descriptionRef"
 								:class="$style.description"
@@ -254,9 +249,7 @@ function onKeydown(event: KeyboardEvent) {
 								size="small"
 								color="text-light"
 							>
-								<slot name="description">
-									{{ description }}
-								</slot>
+								{{ description }}
 							</N8nText>
 						</N8nTooltip>
 					</slot>
