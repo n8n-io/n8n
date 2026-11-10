@@ -1,0 +1,25 @@
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_08690fb8a4caf5::t_b021b956a93bcd 1091
+packages/@n8n/cli/docs/commands/package.md
+  s_08690fb8a4caf5::t_ceb12f085577dd 34
+packages/@n8n/cli/src/commands/package/export.ts
+  s_08690fb8a4caf5::t_b08fa5f6132510 111
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_08690fb8a4caf5::t_51307a5102ac8b 259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f451c74f1f5488f6b325bf29b74de0bfa4213972",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
