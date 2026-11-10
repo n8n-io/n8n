@@ -6,7 +6,7 @@ import './zod-extend';
 import '../controllers';
 
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
-import type { BinaryResponse, ResponseDtoClass } from '@n8n/decorators';
+import type { ApiKeyScopeRequirement, BinaryResponse, ResponseDtoClass } from '@n8n/decorators';
 import { UnexpectedError } from '@n8n/errors';
 import { z } from 'zod';
 
@@ -16,6 +16,7 @@ import {
 	isRequestBodyRequired,
 	resolvePublicApiRoutes,
 	scopeRequirementToString,
+	scopesInRequirement,
 	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
 
@@ -299,6 +300,34 @@ function buildResponses(
 	return responses;
 }
 
+// GitBook does not render `x-required-scope`. OpenAPI 3.0 cannot scope an `apiKey` requirement.
+// The description states the scope for readers.
+function describeRequiredApiKeyScope(requirement: ApiKeyScopeRequirement): string {
+	const scopeList = scopesInRequirement(requirement)
+		.map((scope) => `\`${scope}\``)
+		.join(', ');
+
+	if (typeof requirement === 'string') {
+		return `Requires the ${scopeList} API key scope.`;
+	}
+
+	if ('anyOf' in requirement) {
+		return `Requires one of these API key scopes: ${scopeList}.`;
+	}
+
+	return `Requires all of these API key scopes: ${scopeList}.`;
+}
+
+/** Joins the route's description and its required API key scope into one Markdown description. */
+function buildOperationDescription(route: ResolvedPublicApiRoute): string | undefined {
+	const paragraphs = [
+		route.description?.trim(),
+		route.apiKeyScope ? describeRequiredApiKeyScope(route.apiKeyScope) : undefined,
+	].filter((paragraph): paragraph is string => Boolean(paragraph));
+
+	return paragraphs.length ? paragraphs.join('\n\n') : undefined;
+}
+
 export interface GeneratedDecoratorOperation {
 	/** Where to write the generated fragment, relative to the `v1` directory. */
 	outputPath: string;
@@ -328,6 +357,7 @@ export function getDecoratorGeneratedOperations(
 		const requestParams = buildPathParams(route);
 		const requestBody = buildRequestBody(route);
 		const resource = route.path.split('/').find(Boolean) ?? 'root';
+		const description = buildOperationDescription(route);
 
 		const config: RouteConfig = {
 			method: route.method,
@@ -335,7 +365,7 @@ export function getDecoratorGeneratedOperations(
 			operationId: route.handlerName,
 			...(route.tags?.length ? { tags: route.tags } : {}),
 			...(route.summary ? { summary: route.summary } : {}),
-			...(route.description ? { description: route.description } : {}),
+			...(description ? { description } : {}),
 			...(route.apiKeyScope
 				? { 'x-required-scope': scopeRequirementToString(route.apiKeyScope) }
 				: {}),

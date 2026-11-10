@@ -2,7 +2,10 @@ operationId: getRoleMappingRules
 tags:
   - RoleMappingRule
 summary: Retrieve role-mapping rules
-description: Returns the configured role-mapping rules. `order` is the rule's evaluation position within its own `type`, so instance and project rules each have their own sequence starting at 0 — filter by `type` to retrieve a single evaluation order.
+description: |-
+  Returns the configured role-mapping rules. `order` is the rule's evaluation position within its own `type`, so instance and project rules each have their own sequence starting at 0 — filter by `type` to retrieve a single evaluation order.
+
+  Requires the `roleMappingRule:list` API key scope.
 x-required-scope: roleMappingRule:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml

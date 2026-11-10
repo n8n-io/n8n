@@ -32,6 +32,18 @@ describe('generated OpenAPI spec is up to date', () => {
 	);
 });
 
+describe('Scoped operation descriptions state the API key scope', () => {
+	it.each(getGeneratedArtifacts().filter(({ content }) => content.includes('x-required-scope')))(
+		'$outputPath ends its description with the scope sentence',
+		({ content }) => {
+			const operation = parse(content) as OpenAPIV3.OperationObject;
+			const lastParagraph = operation.description?.split('\n\n').pop();
+
+			expect(lastParagraph).toMatch(/^Requires .*API key scopes?/);
+		},
+	);
+});
+
 describe('Apply response documentation', () => {
 	it.each(['applyPackage', 'continueApplyPackage'])(
 		'%s exposes all outcomes and the required gates',

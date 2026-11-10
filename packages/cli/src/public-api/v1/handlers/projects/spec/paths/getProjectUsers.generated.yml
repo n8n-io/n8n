@@ -2,7 +2,10 @@ operationId: getProjectUsers
 tags:
   - Projects
 summary: List project members
-description: Returns a list of all members of a project including their role. Requires user:list scope.
+description: |-
+  Returns a list of all members of a project including their role. Requires user:list scope.
+
+  Requires the `user:list` API key scope.
 x-required-scope: user:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
