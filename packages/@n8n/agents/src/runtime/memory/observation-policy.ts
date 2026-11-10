@@ -11,7 +11,8 @@ export const DEFAULT_WINDOW_SHARES = {
 	observeNew: 0.1,
 	midRunAt: 0.6,
 	waitAt: 0.9,
-	reflectAt: 0.6,
+	// Lower than midRunAt so the log is condensed well before it crowds a large window.
+	reflectAt: 0.3,
 } as const;
 
 /** Token thresholds the orchestrator compares estimates against. */

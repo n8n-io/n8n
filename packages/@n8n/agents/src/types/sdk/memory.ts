@@ -499,7 +499,7 @@ export interface ObservationWindowShares {
 	midRunAt?: number;
 	/** Visible window size at which the loop waits for observation. Default 0.9. */
 	waitAt?: number;
-	/** Observation log size that triggers the Reflector. Default 0.6. */
+	/** Observation log size that triggers the Reflector. Default 0.3. */
 	reflectAt?: number;
 }
 

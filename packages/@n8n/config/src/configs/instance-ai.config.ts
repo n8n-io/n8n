@@ -110,7 +110,7 @@ export class InstanceAiConfig {
 	 * When false, or when the window size is unknown, it uses the fixed token thresholds.
 	 */
 	@Env('N8N_INSTANCE_AI_OBSERVATION_WINDOW_SHARES')
-	observationWindowShares: boolean = false;
+	observationWindowShares: boolean = true;
 
 	/**
 	 * How n8n Assistant replays earlier messages. One of `masked` or `cacheAware`.
@@ -118,14 +118,14 @@ export class InstanceAiConfig {
 	 * and replaces older messages with the memory summary only after a pause or when the conversation is too long.
 	 */
 	@Env('N8N_INSTANCE_AI_OBSERVATION_HISTORY_MODE', observationHistoryModeSchema)
-	observationHistoryMode: z.infer<typeof observationHistoryModeSchema> = 'masked';
+	observationHistoryMode: z.infer<typeof observationHistoryModeSchema> = 'cacheAware';
 
 	/**
 	 * Where n8n Assistant puts its memory summary. One of `system` or `message`.
 	 * With `message`, summary updates don't change the system prompt, which improves prompt-cache reuse.
 	 */
 	@Env('N8N_INSTANCE_AI_OBSERVATION_LOG_PLACEMENT', observationLogPlacementSchema)
-	observationLogPlacement: z.infer<typeof observationLogPlacementSchema> = 'system';
+	observationLogPlacement: z.infer<typeof observationLogPlacementSchema> = 'message';
 
 	/**
 	 * What n8n Assistant does when a memory summary call fails during a turn. One of `disableForRun` or `retry`.
@@ -149,7 +149,7 @@ export class InstanceAiConfig {
 	 * Whether n8n Assistant can read earlier messages of a conversation that its memory summary replaced.
 	 */
 	@Env('N8N_INSTANCE_AI_HISTORY_RECALL')
-	historyRecall: boolean = false;
+	historyRecall: boolean = true;
 
 	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
 	browserUseEnabled: boolean = true;

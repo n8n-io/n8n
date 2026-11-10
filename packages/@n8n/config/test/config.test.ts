@@ -408,13 +408,13 @@ describe('GlobalConfig', () => {
 			maxConcurrentRuns: -1,
 			maxConcurrentRunsPerUser: -1,
 			maxConcurrentSubAgents: -1,
-			observationWindowShares: false,
-			observationHistoryMode: 'masked',
-			observationLogPlacement: 'system',
+			observationWindowShares: true,
+			observationHistoryMode: 'cacheAware',
+			observationLogPlacement: 'message',
 			observationFailurePolicy: 'disableForRun',
 			observerMaxBatches: 0,
 			reflectionMode: 'background',
-			historyRecall: false,
+			historyRecall: true,
 		},
 		queue: {
 			health: {

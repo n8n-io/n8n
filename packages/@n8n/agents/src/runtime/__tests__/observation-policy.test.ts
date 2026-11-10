@@ -37,7 +37,7 @@ describe('resolveObservationThresholds', () => {
 			midRunSoft: 120_000,
 			midRunHard: 180_000,
 			replayLimit: 180_000,
-			reflect: 120_000,
+			reflect: 60_000,
 			source: 'windowShare',
 		});
 	});
