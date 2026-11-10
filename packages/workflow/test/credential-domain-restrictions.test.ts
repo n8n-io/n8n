@@ -140,6 +140,32 @@ describe('isDomainAllowed', () => {
 		});
 	});
 
+	describe('with internationalised domain names', () => {
+		it('should allow an exact match against a non-ASCII allowlist entry', () => {
+			expect(
+				isDomainAllowed({ url: 'https://münchen.de/api', allowedDomains: 'münchen.de' }),
+			).toBe(true);
+		});
+
+		it('should allow a wildcard match against a non-ASCII allowlist entry', () => {
+			expect(
+				isDomainAllowed({ url: 'https://shop.münchen.de', allowedDomains: '*.münchen.de' }),
+			).toBe(true);
+		});
+
+		it('should allow an allowlist entry that is already written in punycode', () => {
+			expect(
+				isDomainAllowed({ url: 'https://münchen.de', allowedDomains: 'xn--mnchen-3ya.de' }),
+			).toBe(true);
+		});
+
+		it('should still block a different IDN host', () => {
+			expect(isDomainAllowed({ url: 'https://köln.de', allowedDomains: 'münchen.de' })).toBe(
+				false,
+			);
+		});
+	});
+
 	describe('edge cases', () => {
 		it('should handle invalid URLs safely', () => {
 			expect(isDomainAllowed({ url: 'not-a-valid-url', allowedDomains: 'example.com' })).toBe(
