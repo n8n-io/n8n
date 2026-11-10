@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_memory_entry_locks" ("agentId" varchar(36) NOT NULL, "resourceId" varchar(255) NOT NULL, "holderId" varchar(64) NOT NULL, "heldUntil" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_0ccf6d9ea6f44fa1c264fc2f795" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_9594c0983cfee1c8ff49b05848b" FOREIGN KEY ("resourceId") REFERENCES "agents_resources" ("id") ON DELETE CASCADE, PRIMARY KEY ("agentId", "resourceId"))
+CREATE TABLE "agents_memory_entry_locks" ("agentId" varchar(36) NOT NULL, "resourceId" varchar(1024) NOT NULL, "holderId" varchar(64) NOT NULL, "heldUntil" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_0ccf6d9ea6f44fa1c264fc2f795" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_9594c0983cfee1c8ff49b05848b" FOREIGN KEY ("resourceId") REFERENCES "agents_resources" ("id") ON DELETE CASCADE, PRIMARY KEY ("agentId", "resourceId"))
 ```
 
 </details>
@@ -19,7 +19,7 @@ CREATE TABLE "agents_memory_entry_locks" ("agentId" varchar(36) NOT NULL, "resou
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | heldUntil | datetime(3) |  | false |  |  |  |
 | holderId | varchar(64) |  | false |  |  |  |
-| resourceId | varchar(255) |  | false |  | [agents_resources](agents_resources.md) |  |
+| resourceId | varchar(1024) |  | false |  | [agents_resources](agents_resources.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -52,7 +52,7 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ heldUntil
   varchar_64_ holderId
-  varchar_255_ resourceId PK
+  varchar_1024_ resourceId PK
   datetime_3_ updatedAt
 }
 "agents" {
@@ -75,7 +75,7 @@ erDiagram
 }
 "agents_resources" {
   datetime_3_ createdAt
-  varchar_255_ id PK
+  varchar_1024_ id PK
   TEXT metadata
   datetime_3_ updatedAt
 }

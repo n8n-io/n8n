@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_resources" ("id" varchar(255) PRIMARY KEY NOT NULL, "metadata" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
+CREATE TABLE "agents_resources" ("id" varchar(1024) PRIMARY KEY NOT NULL, "metadata" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
 ```
 
 </details>
@@ -16,7 +16,7 @@ CREATE TABLE "agents_resources" ("id" varchar(255) PRIMARY KEY NOT NULL, "metada
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(255) |  | false | [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_candidates](agents_memory_entry_candidates.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) |  |  |
+| id | varchar(1024) |  | false | [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_candidates](agents_memory_entry_candidates.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) |  |  |
 | metadata | TEXT |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -44,7 +44,7 @@ erDiagram
 
 "agents_resources" {
   datetime_3_ createdAt
-  varchar_255_ id PK
+  varchar_1024_ id PK
   TEXT metadata
   datetime_3_ updatedAt
 }
@@ -58,7 +58,7 @@ erDiagram
   varchar_36_ id PK
   datetime_3_ lastSeenAt
   TEXT metadata
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
   datetime_3_ updatedAt
@@ -71,11 +71,11 @@ erDiagram
   TEXT evidenceText
   varchar_36_ id PK
   varchar_32_ kind
-  varchar_255_ resourceId FK
+  varchar_1024_ resourceId FK
   varchar_255_ runId
   varchar_36_ sourceMessageId FK
   varchar_16_ status
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   varchar_255_ toolCallId
   datetime_3_ updatedAt
 }
@@ -84,7 +84,7 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ heldUntil
   varchar_64_ holderId
-  varchar_255_ resourceId PK
+  varchar_1024_ resourceId PK
   datetime_3_ updatedAt
 }
 ```

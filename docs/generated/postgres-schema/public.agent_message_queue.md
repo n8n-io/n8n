@@ -12,7 +12,7 @@
 | position | integer | 0 | false |  |  | Pending turn order within the session |
 | steeringExecutionId | varchar(36) |  | true |  | [public.agent_execution](public.agent_execution.md) | Execution reserved to consume this input |
 | steeringOrder | integer |  | true |  |  | Acceptance order among outstanding steers |
-| threadId | varchar(128) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
+| threadId | varchar(1024) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -63,7 +63,7 @@ erDiagram
   integer position
   varchar_36_ steeringExecutionId FK
   integer steeringOrder
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution" {
@@ -90,7 +90,7 @@ erDiagram
   varchar_16_ status
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   json timeline
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
@@ -104,9 +104,9 @@ erDiagram
   json modelContent
   timestamp_3__with_time_zone modelContextAt
   json origin
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_36_ role
-  varchar_255_ threadId FK
+  varchar_1024_ threadId FK
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
@@ -116,10 +116,10 @@ erDiagram
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
-  varchar_128_ id
+  varchar_1024_ id
   uuid ownerId FK
   varchar_36_ parentAgentId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   varchar_255_ projectId FK
   integer sessionNumber
   varchar_32_ taskId

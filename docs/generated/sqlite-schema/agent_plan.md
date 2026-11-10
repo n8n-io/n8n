@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_plan" ("id" varchar PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "revision" integer NOT NULL DEFAULT (1), "formatVersion" integer NOT NULL, "data" text NOT NULL, "closedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_plan_revision" CHECK ("revision" > 0), CONSTRAINT "CHK_agent_plan_format_version" CHECK ("formatVersion" > 0), CONSTRAINT "FK_a72ec0a4fc0c1d6aa1d7a177e32" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE)
+CREATE TABLE "agent_plan" ("id" varchar PRIMARY KEY NOT NULL, "threadId" varchar(1024) NOT NULL, "revision" integer NOT NULL DEFAULT (1), "formatVersion" integer NOT NULL, "data" text NOT NULL, "closedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_plan_revision" CHECK ("revision" > 0), CONSTRAINT "CHK_agent_plan_format_version" CHECK ("formatVersion" > 0), CONSTRAINT "FK_a72ec0a4fc0c1d6aa1d7a177e32" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -21,7 +21,7 @@ CREATE TABLE "agent_plan" ("id" varchar PRIMARY KEY NOT NULL, "threadId" varchar
 | formatVersion | INTEGER |  | false |  |  |  |
 | id | varchar |  | false | [agent_background_job](agent_background_job.md) [agent_plan_history](agent_plan_history.md) |  |  |
 | revision | INTEGER | 1 | false |  |  |  |
-| threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
+| threadId | varchar(1024) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -58,12 +58,12 @@ erDiagram
   INTEGER formatVersion
   varchar id PK
   INTEGER revision
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   datetime_3_ updatedAt
 }
 "agent_background_job" {
   varchar_36_ childExecutionId
-  varchar_128_ childThreadId
+  varchar_1024_ childThreadId
   datetime_3_ createdAt
   TEXT error
   TEXT files
@@ -72,8 +72,8 @@ erDiagram
   datetime_3_ notifiedAt
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
-  varchar_255_ parentResourceId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentResourceId
+  varchar_1024_ parentThreadId
   varchar pauseRequestId
   varchar planId FK
   varchar planTaskId
@@ -102,10 +102,10 @@ erDiagram
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
-  varchar_128_ id PK
+  varchar_1024_ id PK
   varchar ownerId FK
   varchar_36_ parentAgentId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   varchar_255_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId

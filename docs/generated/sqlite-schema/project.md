@@ -120,15 +120,15 @@ erDiagram
   TEXT binaryDataId
   VARCHAR_64_ contentHash
   datetime_3_ createdAt
-  varchar_128_ createdByThreadId
+  varchar_1024_ createdByThreadId
   varchar_255_ fileName
   INTEGER fileSizeBytes
   varchar_16_ id PK
   varchar_255_ mimeType
   varchar_36_ projectId FK
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_32_ source
-  varchar_128_ threadId
+  varchar_1024_ threadId
   datetime_3_ updatedAt
 }
 "agent_execution_threads" {
@@ -137,10 +137,10 @@ erDiagram
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
-  varchar_128_ id PK
+  varchar_1024_ id PK
   varchar ownerId FK
   varchar_36_ parentAgentId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   varchar_255_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId

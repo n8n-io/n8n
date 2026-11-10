@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_file_grants" ("attachmentId" varchar(16) NOT NULL, "threadId" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_10af5c940fc14c3637358924508" FOREIGN KEY ("attachmentId") REFERENCES "agent_chat_attachments" ("id") ON DELETE CASCADE, PRIMARY KEY ("attachmentId", "threadId"))
+CREATE TABLE "agent_file_grants" ("attachmentId" varchar(16) NOT NULL, "threadId" varchar(1024) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_10af5c940fc14c3637358924508" FOREIGN KEY ("attachmentId") REFERENCES "agent_chat_attachments" ("id") ON DELETE CASCADE, PRIMARY KEY ("attachmentId", "threadId"))
 ```
 
 </details>
@@ -17,7 +17,7 @@ CREATE TABLE "agent_file_grants" ("attachmentId" varchar(16) NOT NULL, "threadId
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | attachmentId | varchar(16) |  | false |  | [agent_chat_attachments](agent_chat_attachments.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| threadId | varchar(128) |  | false |  |  |  |
+| threadId | varchar(1024) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -45,7 +45,7 @@ erDiagram
 "agent_file_grants" {
   varchar_16_ attachmentId PK
   datetime_3_ createdAt
-  varchar_128_ threadId PK
+  varchar_1024_ threadId PK
   datetime_3_ updatedAt
 }
 "agent_chat_attachments" {
@@ -53,15 +53,15 @@ erDiagram
   TEXT binaryDataId
   VARCHAR_64_ contentHash
   datetime_3_ createdAt
-  varchar_128_ createdByThreadId
+  varchar_1024_ createdByThreadId
   varchar_255_ fileName
   INTEGER fileSizeBytes
   varchar_16_ id PK
   varchar_255_ mimeType
   varchar_36_ projectId FK
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_32_ source
-  varchar_128_ threadId
+  varchar_1024_ threadId
   datetime_3_ updatedAt
 }
 ```

@@ -3,6 +3,8 @@ import { Entity, JoinColumn, ManyToOne, PrimaryColumn, type Relation } from '@n8
 
 import { Agent } from './agent.entity';
 
+import { AGENT_THREAD_ID_MAX_LENGTH } from '../integrations/types';
+
 /** Subscribed chat thread for an agent integration, shared by all main instances. */
 @Entity({ name: 'agent_chat_subscriptions' })
 export class AgentChatSubscription extends WithTimestamps {
@@ -33,7 +35,7 @@ export class AgentChatSubscription extends WithTimestamps {
 
 	@PrimaryColumn({
 		type: 'varchar',
-		length: 255,
+		length: AGENT_THREAD_ID_MAX_LENGTH,
 		comment: 'Platform thread ID the agent is subscribed to',
 	})
 	threadId: string;

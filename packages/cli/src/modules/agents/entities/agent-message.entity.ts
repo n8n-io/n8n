@@ -5,6 +5,8 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 import { AgentThreadEntity } from './agent-thread.entity';
 
+import { AGENT_THREAD_ID_MAX_LENGTH } from '../integrations/types';
+
 export interface AgentMessageOrigin {
 	source: string | null;
 	hidden?: boolean;
@@ -22,10 +24,10 @@ export interface AgentMessageOrigin {
 // The migration owns this expression index because TypeORM cannot synchronize it.
 @Index('IDX_agents_messages_model_context', { synchronize: false })
 export class AgentMessageEntity extends WithTimestampsAndStringId {
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	threadId: string;
 
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	resourceId: string;
 
 	@Column({ type: 'varchar', length: 36 })

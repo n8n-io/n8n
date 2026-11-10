@@ -3,6 +3,8 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8
 
 import { Agent } from './agent.entity';
 
+import { AGENT_THREAD_ID_MAX_LENGTH } from '../integrations/types';
+
 /**
  * A file a user attached to an agent conversation (preview chat or a channel
  * message). Bytes live in `BinaryDataService`; message content parts reference
@@ -35,15 +37,15 @@ export class AgentChatAttachment extends WithTimestampsAndStringId {
 	 * Root thread of the delegation tree; it owns the file. Widths match
 	 * agent_execution.threadId (prefixed ids exceed a bare uuid).
 	 */
-	@Column({ type: 'varchar', length: 128 })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	threadId: string;
 
 	/** Thread that made the file: the root thread or one of its sub-agent threads. */
-	@Column({ type: 'varchar', length: 128 })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	createdByThreadId: string;
 
 	/** Per-user scope within the thread (platform user), when known. */
-	@Column({ type: 'varchar', length: 255, nullable: true })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH, nullable: true })
 	resourceId: string | null;
 
 	/**

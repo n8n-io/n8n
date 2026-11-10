@@ -27,7 +27,7 @@
 | status | varchar(16) |  | false |  |  |  |
 | stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
 | storedAt | varchar(2) | 'db'::character varying | false |  |  |  |
-| threadId | varchar(128) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
+| threadId | varchar(1024) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
 | timeline | json |  | true |  |  |  |
 | totalTokens | integer |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -97,7 +97,7 @@ erDiagram
   varchar_16_ status
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   json timeline
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
@@ -105,7 +105,7 @@ erDiagram
 }
 "public.agent_background_job" {
   varchar_36_ childExecutionId
-  varchar_128_ childThreadId
+  varchar_1024_ childThreadId
   timestamp_3__with_time_zone createdAt
   text error
   json files
@@ -114,8 +114,8 @@ erDiagram
   timestamp_3__with_time_zone notifiedAt
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
-  varchar_255_ parentResourceId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentResourceId
+  varchar_1024_ parentThreadId
   uuid pauseRequestId
   uuid planId FK
   uuid planTaskId
@@ -146,7 +146,7 @@ erDiagram
   integer position
   varchar_36_ steeringExecutionId FK
   integer steeringOrder
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution_threads" {
@@ -155,10 +155,10 @@ erDiagram
   varchar_255_ agentName
   timestamp_3__with_time_zone createdAt
   varchar_8_ emoji
-  varchar_128_ id
+  varchar_1024_ id
   uuid ownerId FK
   varchar_36_ parentAgentId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentThreadId
   varchar_255_ projectId FK
   integer sessionNumber
   varchar_32_ taskId

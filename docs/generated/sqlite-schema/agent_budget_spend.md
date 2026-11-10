@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_budget_spend" ("key" varchar(128) PRIMARY KEY NOT NULL, "totalUsd" real NOT NULL DEFAULT (0), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_budget_spend_total_usd_non_negative" CHECK ("totalUsd" >= 0))
+CREATE TABLE "agent_budget_spend" ("key" varchar(1024) PRIMARY KEY NOT NULL, "totalUsd" real NOT NULL DEFAULT (0), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_budget_spend_total_usd_non_negative" CHECK ("totalUsd" >= 0))
 ```
 
 </details>
@@ -16,7 +16,7 @@ CREATE TABLE "agent_budget_spend" ("key" varchar(128) PRIMARY KEY NOT NULL, "tot
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| key | varchar(128) |  | false |  |  |  |
+| key | varchar(1024) |  | false |  |  |  |
 | totalUsd | REAL | 0 | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -42,7 +42,7 @@ erDiagram
 
 "agent_budget_spend" {
   datetime_3_ createdAt
-  varchar_128_ key PK
+  varchar_1024_ key PK
   REAL totalUsd
   datetime_3_ updatedAt
 }

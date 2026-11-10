@@ -8,7 +8,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | lastObservedAt | timestamp(3) with time zone |  | false |  |  |  |
 | lastObservedMessageId | varchar(36) |  | false |  |  |  |
-| observationScopeId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | agents_threads.id source stream checkpointed by this cursor |
+| observationScopeId | varchar(1024) |  | false |  | [public.agents_threads](public.agents_threads.md) | agents_threads.id source stream checkpointed by this cursor |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -45,7 +45,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
-  varchar_255_ observationScopeId FK
+  varchar_1024_ observationScopeId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents" {
@@ -68,9 +68,9 @@ erDiagram
 }
 "public.agents_threads" {
   timestamp_3__with_time_zone createdAt
-  varchar_128_ id
+  varchar_1024_ id
   text metadata
-  varchar_255_ resourceId
+  varchar_1024_ resourceId
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
 }

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "parentAgentId" varchar(36) NOT NULL, "parentThreadId" varchar(128) NOT NULL, "title" varchar(255) NOT NULL, "subAgentId" varchar(36), "childThreadId" varchar(128), "childExecutionId" varchar(36), "workflowId" varchar(36), "timeoutAt" datetime(3), "result" text, "error" text, "settledAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "notifiedAt" datetime(3), "parentResourceId" varchar(255) NOT NULL, "parentPrincipalHash" varchar(64) NOT NULL, "pauseRequestId" varchar, "sourceExecutionId" varchar(36), "planId" varchar, "planTaskId" varchar, "files" text, "skippedFiles" text, CONSTRAINT "CHK_agent_background_job_kind" CHECK (((((("kind" IN ('subagent', 'workflow'))))))), CONSTRAINT "CHK_agent_background_job_status" CHECK ((("status" IN ('running', 'suspended', 'paused', 'completed', 'failed', 'cancelled')))), CONSTRAINT "FK_ce131bff629d89015893e350e9c" FOREIGN KEY ("planId") REFERENCES "agent_plan" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_4db3b7ebea4ed4f69649982018c" FOREIGN KEY ("sourceExecutionId") REFERENCES "agent_execution" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_d46c6f00730c2ef8bcb6ee24b67" FOREIGN KEY ("parentAgentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "parentAgentId" varchar(36) NOT NULL, "parentThreadId" varchar(1024) NOT NULL, "title" varchar(255) NOT NULL, "subAgentId" varchar(36), "childThreadId" varchar(1024), "childExecutionId" varchar(36), "workflowId" varchar(36), "timeoutAt" datetime(3), "result" text, "error" text, "settledAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "notifiedAt" datetime(3), "parentResourceId" varchar(1024) NOT NULL, "parentPrincipalHash" varchar(64) NOT NULL, "pauseRequestId" varchar, "sourceExecutionId" varchar(36), "planId" varchar, "planTaskId" varchar, "files" text, "skippedFiles" text, CONSTRAINT "CHK_agent_background_job_kind" CHECK (((((("kind" IN ('subagent', 'workflow'))))))), CONSTRAINT "CHK_agent_background_job_status" CHECK ((("status" IN ('running', 'suspended', 'paused', 'completed', 'failed', 'cancelled')))), CONSTRAINT "FK_ce131bff629d89015893e350e9c" FOREIGN KEY ("planId") REFERENCES "agent_plan" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_4db3b7ebea4ed4f69649982018c" FOREIGN KEY ("sourceExecutionId") REFERENCES "agent_execution" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_d46c6f00730c2ef8bcb6ee24b67" FOREIGN KEY ("parentAgentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -16,7 +16,7 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | childExecutionId | varchar(36) |  | true |  |  |  |
-| childThreadId | varchar(128) |  | true |  |  |  |
+| childThreadId | varchar(1024) |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | error | TEXT |  | true |  |  |  |
 | files | TEXT |  | true |  |  |  |
@@ -25,8 +25,8 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 | notifiedAt | datetime(3) |  | true |  |  |  |
 | parentAgentId | varchar(36) |  | false |  | [agents](agents.md) |  |
 | parentPrincipalHash | varchar(64) |  | false |  |  |  |
-| parentResourceId | varchar(255) |  | false |  |  |  |
-| parentThreadId | varchar(128) |  | false |  |  |  |
+| parentResourceId | varchar(1024) |  | false |  |  |  |
+| parentThreadId | varchar(1024) |  | false |  |  |  |
 | pauseRequestId | varchar |  | true |  |  |  |
 | planId | varchar |  | true |  | [agent_plan](agent_plan.md) |  |
 | planTaskId | varchar |  | true |  |  |  |
@@ -78,7 +78,7 @@ erDiagram
 
 "agent_background_job" {
   varchar_36_ childExecutionId
-  varchar_128_ childThreadId
+  varchar_1024_ childThreadId
   datetime_3_ createdAt
   TEXT error
   TEXT files
@@ -87,8 +87,8 @@ erDiagram
   datetime_3_ notifiedAt
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
-  varchar_255_ parentResourceId
-  varchar_128_ parentThreadId
+  varchar_1024_ parentResourceId
+  varchar_1024_ parentThreadId
   varchar pauseRequestId
   varchar planId FK
   varchar planTaskId
@@ -128,7 +128,7 @@ erDiagram
   INTEGER formatVersion
   varchar id PK
   INTEGER revision
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   datetime_3_ updatedAt
 }
 "agent_execution" {
@@ -155,7 +155,7 @@ erDiagram
   varchar_16_ status
   datetime_3_ stoppedAt
   varchar_2_ storedAt
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   TEXT timeline
   INTEGER totalTokens
   datetime_3_ updatedAt

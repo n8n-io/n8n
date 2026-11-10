@@ -2,6 +2,8 @@ import type { EpisodicMemoryStatus, JSONObject } from '@n8n/agents';
 import { BinaryColumn, DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, type ValueTransformer } from '@n8n/typeorm';
 
+import { AGENT_THREAD_ID_MAX_LENGTH } from '../integrations/types';
+
 const BYTES_PER_FLOAT = Float32Array.BYTES_PER_ELEMENT;
 
 /**
@@ -30,7 +32,7 @@ export class AgentMemoryEntryEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36 })
 	agentId: string;
 
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	resourceId: string;
 
 	@Column({ type: 'text' })

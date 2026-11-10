@@ -61,7 +61,7 @@ erDiagram
   INTEGER formatVersion
   varchar id PK
   INTEGER revision
-  varchar_128_ threadId FK
+  varchar_1024_ threadId FK
   datetime_3_ updatedAt
 }
 ```

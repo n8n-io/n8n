@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| key | varchar(128) |  | false |  |  | Session key is the root thread id. Month key is {agentId}:{YYYY-MM}. |
+| key | varchar(1024) |  | false |  |  | Session key is the root thread id. Month key is {agentId}:{YYYY-MM}. |
 | totalUsd | double precision | 0 | false |  |  | Running USD estimate for this ledger key. A check rejects a negative total. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -34,7 +34,7 @@ erDiagram
 
 "public.agent_budget_spend" {
   timestamp_3__with_time_zone createdAt
-  varchar_128_ key
+  varchar_1024_ key
   double_precision totalUsd
   timestamp_3__with_time_zone updatedAt
 }

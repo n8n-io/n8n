@@ -1,6 +1,8 @@
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
+import { AGENT_THREAD_ID_MAX_LENGTH } from '../integrations/types';
+
 @Entity({ name: 'agents_memory_entry_sources' })
 @Index(['memoryEntryId', 'observationId', 'evidenceHash'], { unique: true })
 @Index(['memoryEntryId', 'candidateId', 'evidenceHash'], {
@@ -24,7 +26,7 @@ export class AgentMemoryEntrySourceEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	candidateId: string | null;
 
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	threadId: string;
 
 	@Column({ type: 'varchar', length: 64 })

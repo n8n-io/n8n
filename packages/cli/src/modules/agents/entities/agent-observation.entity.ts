@@ -2,6 +2,8 @@ import type { ObservationLogMarker, ObservationLogStatus } from '@n8n/agents';
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
+import { AGENT_THREAD_ID_MAX_LENGTH } from '../integrations/types';
+
 @Entity({ name: 'agents_observations' })
 @Index(['agentId', 'observationScopeId', 'status', 'createdAt', 'id'])
 @Index(['agentId', 'observationScopeId', 'createdAt', 'id'])
@@ -12,7 +14,7 @@ export class AgentObservationEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36 })
 	agentId: string;
 
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: AGENT_THREAD_ID_MAX_LENGTH })
 	observationScopeId: string;
 
 	@Column({ type: 'varchar', length: 16 })
