@@ -204,7 +204,12 @@ const backLabel = computed(() =>
 	}),
 );
 
-const totalChanges = computed(() => (graph.value ? totalChangeCount(graph.value) : 0));
+// A whole-instance Apply has no selection, so it counts every change.
+const totalChanges = computed(() => {
+	if (!graph.value) return 0;
+	if (!isInstance.value) return totalChangeCount(graph.value);
+	return [...graph.value.resources.values()].filter(({ change }) => change !== 'unchanged').length;
+});
 const includedChanges = computed(() =>
 	graph.value ? includedChangeCount(graph.value, selection.inclusion.value) : 0,
 );

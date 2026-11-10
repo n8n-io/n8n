@@ -1013,6 +1013,7 @@ describe('PromotionPreviewView', () => {
 
 	describe('whole-instance Apply', () => {
 		// The branch no longer holds the "Sales" project, so Apply deletes it and its workflow.
+		// Apply applies the whole package, so the server marks nothing as selectable.
 		const instancePreview = (fields: Partial<ApplyCheckResult> = {}) => {
 			const preview = previewWithCheck(check(fields));
 			return {
@@ -1027,7 +1028,7 @@ describe('PromotionPreviewView', () => {
 						parentKey: 'project:team-b',
 						change: 'deleted',
 					}),
-				],
+				].map((entry) => ({ ...entry, selectable: false })),
 			};
 		};
 

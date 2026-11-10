@@ -10867,7 +10867,7 @@
 	"promotions.preview.confirmInstance.title": "Apply all changes?",
 	"promotions.preview.confirmInstance.message": "This applies every change in this preview to the instance.",
 	"promotions.preview.confirmDestructive.title": "Apply data table changes?",
-	"promotions.preview.confirmDestructive.message": "This apply changes data tables that the workflows use. It removes or retypes columns, and the values in those columns can't be restored. Rows and other columns are kept.",
+	"promotions.preview.confirmDestructive.message": "Apply removes or retypes columns in data tables that the workflows use. The values in those columns can't be restored. Rows and other columns are kept.",
 	"promotions.preview.confirmProjectDeletion.title": "Apply and delete projects?",
 	"promotions.preview.confirmProjectDeletion.message": "Apply deletes the project {projects} and everything in it. You can't undo this. | Apply deletes the projects {projects} and everything in them. You can't undo this.",
 	"promotions.preview.confirmProjectDeletion.dataTables": "Apply also removes or retypes data table columns. The values in those columns can't be restored.",

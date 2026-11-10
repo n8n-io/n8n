@@ -40,7 +40,14 @@ export class LocalPackageEntities {
 	async ownedByProjects(projectIds: string[]): Promise<PromotionResource[]> {
 		if (projectIds.length === 0) return [];
 		const [credentials, tables, variables] = await Promise.all([
-			this.sharedCredentialsRepository.findOwnedCredentialsByProjects(projectIds),
+			// One query for each project, so each credential keeps its project.
+			Promise.all(
+				projectIds.map(async (projectId) =>
+					(await this.sharedCredentialsRepository.findOwnedCredentialsByProjects([projectId])).map(
+						({ id, name }) => ({ id, name, projectId }),
+					),
+				),
+			).then((perProject) => perProject.flat()),
 			this.moduleRegistry.isActive('data-table')
 				? this.dataTableService
 						.getManyAndCount({ filter: { projectId: projectIds } })
@@ -51,13 +58,13 @@ export class LocalPackageEntities {
 		const deleted = (
 			type: PromotionResource['type'],
 			key: string,
-			{ id, name }: { id: string; name: string },
+			{ id, name, projectId }: { id: string; name: string; projectId: string },
 		): PromotionResource => ({
 			key,
 			type,
 			id,
 			name,
-			parentKey: null,
+			parentKey: resourceKey('project', projectId),
 			change: 'deleted',
 			selectable: false,
 			revision: { before: null, after: null },
@@ -68,7 +75,7 @@ export class LocalPackageEntities {
 			),
 			...tables.map((table) => deleted('dataTable', resourceKey('dataTable', table.id), table)),
 			...variables.map(({ id, key, projectId }) =>
-				deleted('variable', variableResourceKey(key, projectId), { id, name: key }),
+				deleted('variable', variableResourceKey(key, projectId), { id, name: key, projectId }),
 			),
 		];
 	}
