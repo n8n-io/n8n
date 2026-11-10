@@ -30,6 +30,12 @@ function findLastMentionTriggerIndex(text: string): number {
 	return -1;
 }
 
+function textWithoutTypedRange(text: string, range: MentionRange): string {
+	const spaceOnBothSides = text[range.start - 1] === ' ' && text[range.end] === ' ';
+	const end = spaceOnBothSides ? range.end + 1 : range.end;
+	return text.slice(0, range.start) + text.slice(end);
+}
+
 export function useAssistantAtMentions(options: {
 	text: Ref<string>;
 	enabled: MaybeRefOrGetter<boolean>;
@@ -181,7 +187,7 @@ export function useAssistantAtMentions(options: {
 		const range = activeRange.value;
 		const typed = range?.origin === 'typed';
 		if (typed && range) {
-			updateText(options.text.value.slice(0, range.start) + options.text.value.slice(range.end));
+			updateText(textWithoutTypedRange(options.text.value, range));
 		}
 		close(false, 'selected');
 
@@ -218,7 +224,7 @@ export function useAssistantAtMentions(options: {
 			return false;
 		}
 
-		updateText(text.slice(0, range.start) + text.slice(range.end));
+		updateText(textWithoutTypedRange(text, range));
 		close();
 		void nextTick(() => {
 			const input = options.getInputElement();

@@ -170,8 +170,36 @@ describe('useAssistantAtMentions', () => {
 		await mentions.handleTextChange(value);
 		await mentions.clearActiveRange();
 
-		expect(text.value).toBe('Compare  with the current workflow');
+		expect(text.value).toBe('Compare with the current workflow');
 		expect(input.selectionStart).toBe(8);
+	});
+
+	it('collapses a doubled space when a typed pick removes the trigger', async () => {
+		const value = 'Something @ here';
+		const { text, input, mentions } = setup(value);
+		input.value = value;
+		input.setSelectionRange(11, 11);
+		await mentions.handleTextChange(value);
+
+		await mentions.clearActiveRange();
+
+		expect(text.value).toBe('Something here');
+		expect(input.selectionStart).toBe(10);
+	});
+
+	it('collapses a doubled space when a typed trigger is dismissed', async () => {
+		const value = 'Something @ here';
+		const { text, input, mentions } = setup(value);
+		input.focus();
+		input.value = value;
+		input.setSelectionRange(11, 11);
+		await mentions.handleTextChange(value);
+
+		mentions.handleMenuOpenChange(false);
+		await nextTick();
+
+		expect(text.value).toBe('Something here');
+		expect(input.selectionStart).toBe(10);
 	});
 
 	it('leaves the draft unchanged when the picker was opened from the button', async () => {
