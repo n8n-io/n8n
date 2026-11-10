@@ -43,7 +43,8 @@ function serializeLifecycleEvent(
 	if (bytes <= maxFrameBytes) return { ok: true, frame: serialized.result };
 
 	// An event over the limit sheds what the host can read from the data plane
-	// instead: a failed step's details, then its stack. The message always fits.
+	// instead: a failed step's details, then its stack. An event whose name and
+	// message alone are over the limit is still dropped.
 	for (const slimmer of slimmerForms(event)) {
 		const frame = JSON.stringify(slimmer);
 		if (Buffer.byteLength(frame) > maxFrameBytes) continue;
