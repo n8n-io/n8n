@@ -255,16 +255,17 @@ watch(
    of changed items reads as one block. */
 .n8n-markdown li:is(.skill-diff-added, .skill-diff-removed) {
 	--skill-diff-reach: calc(
-		var(--skill-diff-inset, var(--spacing--xs)) + var(--markdown--spacing) * 4
+		var(--skill-diff-inset, var(--spacing--xs)) +
+			var(--n8n-markdown--spacing, var(--markdown--spacing)) * 4
 	);
 }
 
 .n8n-markdown ul > li:is(.skill-diff-added, .skill-diff-removed) {
-	--skill-diff-pad: calc(var(--markdown--spacing) / 2);
+	--skill-diff-pad: calc(var(--n8n-markdown--spacing, var(--markdown--spacing)) / 2);
 }
 
 .n8n-markdown ol > li:is(.skill-diff-added, .skill-diff-removed) {
-	--skill-diff-pad: calc(var(--markdown--spacing) * 0.75);
+	--skill-diff-pad: calc(var(--n8n-markdown--spacing, var(--markdown--spacing)) * 0.75);
 }
 
 :is(.n8n-markdown, .skill-diff-lines) .skill-diff-added {
@@ -364,13 +365,16 @@ watch(
 
 /* The paragraph above keeps its bottom margin, so the callout moves up to meet its colour. */
 .n8n-markdown .skill-finding-note {
-	margin: calc(var(--spacing--4xs) - var(--markdown--spacing) * 2)
+	margin: calc(var(--spacing--4xs) - var(--n8n-markdown--spacing, var(--markdown--spacing)) * 2)
 		calc(var(--skill-finding-note-bleed) * -1) 0;
 }
 
 /* In a list item, the callout also reaches back over the list indent. */
 .n8n-markdown li > .skill-finding-note {
-	margin-left: calc((var(--skill-finding-note-bleed) + var(--markdown--spacing) * 4) * -1);
+	margin-left: calc(
+		(var(--skill-finding-note-bleed) + var(--n8n-markdown--spacing, var(--markdown--spacing)) * 4) *
+			-1
+	);
 }
 
 .n8n-markdown .skill-finding-note:first-child {

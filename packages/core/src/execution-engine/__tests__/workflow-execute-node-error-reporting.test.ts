@@ -14,12 +14,19 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	ApplicationError,
 	NodeConnectionTypes,
+	NodeOperationError,
 	OperationalError,
 	UnexpectedError,
 	UserError,
 	Workflow,
 } from 'n8n-workflow';
-import type { INodeType, INodeTypes, IWorkflowExecuteAdditionalData, IRun } from 'n8n-workflow';
+import type {
+	INodeType,
+	INodeTypes,
+	IWorkflowExecuteAdditionalData,
+	IWorkflowSettings,
+	IRun,
+} from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -86,6 +93,7 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 	async function runWorkflowThatThrows(
 		error: unknown,
 		additionalDataOverrides: Partial<IWorkflowExecuteAdditionalData> = {},
+		workflowSettings: IWorkflowSettings = {},
 	): Promise<IRun> {
 		const nodeType = mock<INodeType>({
 			description: {
@@ -110,6 +118,7 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 			connections: {},
 			active: false,
 			nodeTypes: mockNodeTypes,
+			settings: workflowSettings,
 		});
 
 		const waitPromise = createDeferredPromise<IRun>();
@@ -183,6 +192,99 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		expect(mockErrorReporter.error).toHaveBeenCalledTimes(1);
 		const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
 		expect(reported).toBe(baseError);
+	});
+
+	describe('when the run is redacted', () => {
+		// The engine runs in manual mode here, so 'all' covers the run and
+		// 'non-manual' does not.
+		const redactAll: IWorkflowSettings = { redactionPolicy: 'all' };
+
+		it('should report a BaseError as class + stack only, without its message', async () => {
+			const baseError = new UnexpectedError('secret value');
+
+			await runWorkflowThatThrows(baseError, {}, redactAll);
+
+			expect(mockErrorReporter.error).toHaveBeenCalledTimes(1);
+			const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+			expect(reported).not.toBe(baseError);
+			expect(reported.name).toBe('UnexpectedError');
+			expect(reported.message).toBe('UnexpectedError');
+			expect(reported.stack).not.toContain('secret value');
+			expect(reported.stack).toMatch(/^UnexpectedError\n\s+at /);
+		});
+
+		it('should label the report with the class when the error name was changed', async () => {
+			const baseError = Object.assign(new UnexpectedError('secret value'), { name: 'secret name' });
+
+			await runWorkflowThatThrows(baseError, {}, redactAll);
+
+			const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+			expect(reported.name).toBe('UnexpectedError');
+			expect(reported.message).toBe('UnexpectedError');
+			expect(reported.stack).not.toContain('secret');
+		});
+
+		it('should not report a BaseError that must not reach Sentry', async () => {
+			const baseError = new OperationalError('secret value');
+			expect(baseError.shouldReport).toBe(false);
+
+			await runWorkflowThatThrows(baseError, {}, redactAll);
+
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should not report a warning-level BaseError that Sentry would ignore', async () => {
+			// `NodeOperationError` keeps `shouldReport` true while it sets `level` to
+			// 'warning' after construction, so the level check must run here.
+			const node = createNodeData({ name: 'ThrowingNode', type: 'n8n-nodes-base.manualTrigger' });
+			const baseError = new NodeOperationError(node, 'secret value');
+			expect(baseError.shouldReport).toBe(true);
+			expect(baseError.level).toBe('warning');
+
+			await runWorkflowThatThrows(baseError, {}, redactAll);
+
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should not report an ApplicationError whose cause is an axios error', async () => {
+			const wrappedError = new ApplicationError('wrapper', { cause: createAxiosError() });
+
+			await runWorkflowThatThrows(wrappedError, {}, redactAll);
+
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should not report an ApplicationError whose cause must not reach Sentry', async () => {
+			const wrappedError = new ApplicationError('wrapper', {
+				cause: new OperationalError('secret value'),
+			});
+
+			await runWorkflowThatThrows(wrappedError, {}, redactAll);
+
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should report the cause of an ApplicationError as class + stack only', async () => {
+			const causeError = new Error('secret value');
+			const wrappedError = new ApplicationError('wrapper', { cause: causeError });
+
+			await runWorkflowThatThrows(wrappedError, {}, redactAll);
+
+			expect(mockErrorReporter.error).toHaveBeenCalledTimes(1);
+			const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+			expect(reported).not.toBe(causeError);
+			expect(reported.message).toBe('Error');
+			expect(reported.stack).not.toContain('secret value');
+		});
+
+		it('should report a BaseError as-is when the policy does not cover the run mode', async () => {
+			const baseError = new UnexpectedError('visible value');
+
+			await runWorkflowThatThrows(baseError, {}, { redactionPolicy: 'non-manual' });
+
+			const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+			expect(reported).toBe(baseError);
+		});
 	});
 
 	it('should not report an axios error', async () => {

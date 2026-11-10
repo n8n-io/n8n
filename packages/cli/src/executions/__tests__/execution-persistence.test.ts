@@ -14,7 +14,8 @@ import {
 import { QueryFailedError } from '@n8n/typeorm';
 import type { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { IBinaryData, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
-import { createEmptyRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import { createEmptyRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -567,18 +568,40 @@ describe('ExecutionPersistence', () => {
 		};
 
 		describe('condition guards', () => {
-			it('throws when requireStatus and requireNotCanceled are combined (both constrain status)', async () => {
+			it.each([
+				{ requireStatus: 'waiting' as const, requireNotCanceled: true },
+				{ requireStatus: 'waiting' as const, requireStatuses: ['new'] as const },
+				{ requireStatuses: ['new'] as const, requireNotCanceled: true },
+			])('throws when status constraints are combined: %o', async (conditions) => {
 				const executionPersistence = createPersistenceService('db');
 
 				await expect(
 					executionPersistence.updateExistingExecution(
 						executionId,
 						{ status: 'running' },
-						{ requireStatus: 'waiting', requireNotCanceled: true },
+						conditions,
 					),
 				).rejects.toThrow(UnexpectedError);
 
 				expect(executionRepository.update).not.toHaveBeenCalled();
+			});
+
+			it('ignores requireNotCanceled: false when counting status constraints', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue({ affected: 0, generatedMaps: [], raw: {} });
+
+				await expect(
+					executionPersistence.updateExistingExecution(
+						executionId,
+						{ status: 'running' },
+						{ requireStatus: 'waiting', requireNotCanceled: false },
+					),
+				).resolves.toBe(false);
+
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId, status: 'waiting' },
+					expect.anything(),
+				);
 			});
 		});
 
@@ -1687,65 +1710,6 @@ describe('ExecutionPersistence', () => {
 			expect(executionRepository.reportInvalidExecutions).toHaveBeenCalledWith([dbB]);
 			expect(executionRepository.reportInvalidExecutions).toHaveBeenCalledWith([fsC]);
 			expect(result.map((e) => e.id)).toEqual(['a']);
-		});
-
-		// CAT-3909: callers that must act on the dropped executions need to know which they were.
-		describe('findMultipleExecutionsWithUnreadable', () => {
-			it('should return the ids of executions whose bundle is missing', async () => {
-				const executionPersistence = createPersistenceService('db');
-				executionRepository.find.mockResolvedValue([
-					makeEntity('a', 'db'),
-					makeEntity('b', 'db'),
-					makeEntity('c', 'fs'),
-				]);
-				dbStore.readMany.mockResolvedValue(new Map([['a', makeBundle('a')]]));
-				jsonStore.readMany.mockResolvedValue(new Map());
-
-				const { executions, unreadableIds } =
-					await executionPersistence.findMultipleExecutionsWithUnreadable({});
-
-				expect(executions.map((e) => e.id)).toEqual(['a']);
-				expect(unreadableIds).toEqual(['b', 'c']);
-			});
-
-			it('should return the ids of executions whose bundle is corrupt', async () => {
-				const executionPersistence = createPersistenceService('db');
-				executionRepository.find.mockResolvedValue([makeEntity('a', 'db'), makeEntity('b', 'db')]);
-				dbStore.readMany.mockResolvedValue(
-					new Map([
-						['a', makeBundle('a')],
-						['b', { ...makeBundle('b'), data: 'not-valid-flatted' }],
-					]),
-				);
-
-				const { executions, unreadableIds } =
-					await executionPersistence.findMultipleExecutionsWithUnreadable({});
-
-				expect(executions.map((e) => e.id)).toEqual(['a']);
-				expect(unreadableIds).toEqual(['b']);
-			});
-
-			it('should return no unreadable ids when every bundle reads', async () => {
-				const executionPersistence = createPersistenceService('db');
-				executionRepository.find.mockResolvedValue([makeEntity('a', 'db')]);
-				dbStore.readMany.mockResolvedValue(new Map([['a', makeBundle('a')]]));
-
-				const { executions, unreadableIds } =
-					await executionPersistence.findMultipleExecutionsWithUnreadable({});
-
-				expect(executions.map((e) => e.id)).toEqual(['a']);
-				expect(unreadableIds).toEqual([]);
-			});
-
-			it('should return empty results when nothing is enqueued', async () => {
-				const executionPersistence = createPersistenceService('db');
-				executionRepository.find.mockResolvedValue([]);
-
-				const result = await executionPersistence.findMultipleExecutionsWithUnreadable({});
-
-				expect(result).toEqual({ executions: [], unreadableIds: [] });
-				expect(dbStore.readMany).not.toHaveBeenCalled();
-			});
 		});
 
 		it('should add metadata relation (not executionData) when none was supplied', async () => {

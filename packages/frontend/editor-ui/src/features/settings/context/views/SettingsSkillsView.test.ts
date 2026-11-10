@@ -15,7 +15,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
-import { waitFor, within } from '@testing-library/vue';
+import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import { mock } from 'vitest-mock-extended';
 
 import { getDropdownItems } from '@/__tests__/utils';
@@ -107,6 +107,22 @@ function lastModalData(): AgentSkillModalData {
 	const call = uiStore.openModalWithData.mock.calls.at(-1);
 	if (!call) throw new Error('The modal was not opened');
 	return call[0].data as AgentSkillModalData;
+}
+
+/** Opens the "Create skills" menu and picks one item. */
+async function pickCreateItem(view: ReturnType<typeof renderView>, testId: string) {
+	await userEvent.click(view.getByTestId('skills-create-menu-button'));
+	await userEvent.click(await view.findByTestId(testId));
+}
+
+/** The labels of the open "Create skills" menu, in order. */
+function createMenuLabels(): string[] {
+	return screen.getAllByRole('menuitem').map((item) => item.textContent?.trim() ?? '');
+}
+
+/** A SKILL.md the import reads as a skill. */
+function skillFile(content = '---\nname: brand-voice\ndescription: Write copy.\n---\nBe brief.') {
+	return new File([content], 'SKILL.md', { type: 'text/markdown' });
 }
 
 function setPermissions({
@@ -469,6 +485,180 @@ describe('SettingsSkillsView', () => {
 	});
 
 	describe('create', () => {
+		it('offers Upload folder, Upload SKILL.md and Create manually to every creator', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(view.getByTestId('skills-create-menu-button'));
+
+			await view.findByTestId('skills-create-manual');
+			expect(createMenuLabels()).toEqual(['Upload folder', 'Upload SKILL.md', 'Create manually']);
+			expect(view.queryByTestId('skills-create-github')).not.toBeInTheDocument();
+		});
+
+		it('opens the form at once from "Create manually"', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+
+			await pickCreateItem(view, 'skills-create-manual');
+
+			expect(lastModalData().initialStep).toBe('manual');
+			expect(lastModalData().skill).toBeUndefined();
+		});
+
+		it('opens the folder picker from "Upload folder" and fills the modal with the skill', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const input = view.getByTestId<HTMLInputElement>('skills-upload-folder-input');
+			const pick = vi.spyOn(input, 'click');
+			expect(input).toHaveAttribute('webkitdirectory');
+
+			await pickCreateItem(view, 'skills-create-upload-folder');
+			expect(pick).toHaveBeenCalled();
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			await fireEvent.change(input, { target: { files: [skillFile()] } });
+
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+			expect(lastModalData().skill).toEqual({
+				name: 'brand-voice',
+				description: 'Write copy.',
+				instructions: 'Be brief.',
+			});
+			expect(lastModalData().initialMethod).toBe('upload');
+			expect(lastModalData().initialStep).toBeUndefined();
+			expect(lastModalData().scopeOptions?.[0]?.value).toBe('project:personal-1');
+		});
+
+		it('opens the file picker from "Upload SKILL.md" and fills the modal with the skill', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const input = view.getByTestId<HTMLInputElement>('skills-upload-file-input');
+			const pick = vi.spyOn(input, 'click');
+			expect(input).toHaveAttribute('accept', '.md,text/markdown');
+
+			await pickCreateItem(view, 'skills-create-upload-file');
+			expect(pick).toHaveBeenCalled();
+			await fireEvent.change(input, { target: { files: [skillFile()] } });
+
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+			expect(lastModalData().skill?.name).toBe('brand-voice');
+			expect(lastModalData().initialMethod).toBe('upload');
+		});
+
+		it('shows a translated error and keeps the modal closed when the upload cannot be read', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [skillFile('No frontmatter here')] },
+			});
+
+			await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+			expect(showErrorMock).toHaveBeenCalledWith(
+				new Error('SKILL.md must start with YAML frontmatter.'),
+				'Could not upload the skill',
+			);
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+
+		it('shows the generic translated error when the file cannot be read', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const unreadable = skillFile();
+			Object.defineProperty(unreadable, 'text', {
+				value: async () => await Promise.reject(new Error('disk')),
+			});
+
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [unreadable] },
+			});
+
+			await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+			expect(showErrorMock).toHaveBeenCalledWith(
+				new Error('Could not import the skill. Check the selected files and try again.'),
+				'Could not upload the skill',
+			);
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+
+		it('reads one upload at a time, so a second pick cannot open the modal twice', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const read = Promise.withResolvers<string>();
+			const slow = skillFile();
+			Object.defineProperty(slow, 'text', { value: async () => await read.promise });
+
+			await fireEvent.change(view.getByTestId('skills-upload-folder-input'), {
+				target: { files: [slow] },
+			});
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [skillFile()] },
+			});
+			read.resolve('---\nname: slow-skill\ndescription: d\n---\ni');
+
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1));
+			await new Promise(process.nextTick);
+			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+			expect(lastModalData().skill?.name).toBe('slow-skill');
+		});
+
+		it('drops an upload that finishes after the user left the page', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const read = Promise.withResolvers<string>();
+			const slow = skillFile();
+			Object.defineProperty(slow, 'text', { value: async () => await read.promise });
+
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [slow] },
+			});
+			view.unmount();
+			read.reject(new Error('disk'));
+			await new Promise(process.nextTick);
+			await new Promise(process.nextTick);
+
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			expect(showErrorMock).not.toHaveBeenCalled();
+		});
+
+		it('drops an upload when the user opens an existing skill before it finishes', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail());
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const read = Promise.withResolvers<string>();
+			const slow = skillFile();
+			Object.defineProperty(slow, 'text', { value: async () => await read.promise });
+
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [slow] },
+			});
+			await userEvent.click(view.getByText('research-search'));
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1));
+			const editData = lastModalData();
+			read.resolve('---\nname: slow-skill\ndescription: d\n---\ni');
+			await new Promise(process.nextTick);
+			await new Promise(process.nextTick);
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+			expect(lastModalData()).toBe(editData);
+			expect(editData.skill?.name).not.toBe('slow-skill');
+		});
+
+		it('ignores a cancelled picker', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [] },
+			});
+			await new Promise(process.nextTick);
+
+			expect(showErrorMock).not.toHaveBeenCalled();
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+
 		it('offers the personal project and the team projects the user can write to', async () => {
 			setPermissions({
 				projects: [
@@ -476,10 +666,10 @@ describe('SettingsSkillsView', () => {
 					{ id: 'team-2', name: 'Read only', type: 'team', scopes: ['projectSkill:read'] },
 				],
 			});
-			const { getByTestId } = renderView();
+			const view = renderView();
 			await new Promise(process.nextTick);
 
-			await userEvent.click(getByTestId('skills-create-button'));
+			await pickCreateItem(view, 'skills-create-manual');
 
 			expect(lastModalData().scopeOptions).toEqual([
 				{
@@ -499,10 +689,10 @@ describe('SettingsSkillsView', () => {
 
 		it('offers Global only to users who may create instance skills', async () => {
 			setPermissions({ instance: true });
-			const { getByTestId } = renderView();
+			const view = renderView();
 			await new Promise(process.nextTick);
 
-			await userEvent.click(getByTestId('skills-create-button'));
+			await pickCreateItem(view, 'skills-create-manual');
 
 			expect(lastModalData().scopeOptions?.[0]).toEqual({
 				value: 'instance',
@@ -514,9 +704,9 @@ describe('SettingsSkillsView', () => {
 
 		it('asks for a free default name in the scope the user picks', async () => {
 			skillsStore.fetchNewSkillName.mockResolvedValue('New skill 2');
-			const { getByTestId } = renderView();
+			const view = renderView();
 			await new Promise(process.nextTick);
-			await userEvent.click(getByTestId('skills-create-button'));
+			await pickCreateItem(view, 'skills-create-manual');
 
 			const name = await lastModalData().getDefaultName?.('project:personal-1');
 
@@ -536,9 +726,9 @@ describe('SettingsSkillsView', () => {
 				skillsStore.count = 1;
 				return { count: 1, data: skillsStore.skills };
 			});
-			const { getByTestId } = renderView();
+			const view = renderView();
 			await new Promise(process.nextTick);
-			await userEvent.click(getByTestId('skills-create-button'));
+			await pickCreateItem(view, 'skills-create-manual');
 
 			const content = {
 				name: 'brand-voice',
@@ -568,7 +758,7 @@ describe('SettingsSkillsView', () => {
 			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
 			const view = renderView();
 			await new Promise(process.nextTick);
-			await userEvent.click(view.getByTestId('skills-create-button'));
+			await pickCreateItem(view, 'skills-create-manual');
 			lastModalData().onConfirm({
 				skill: { name: 'brand-voice', description: 'Write copy.', instructions: 'Be brief.' },
 				scope: 'project:personal-1',
@@ -585,10 +775,10 @@ describe('SettingsSkillsView', () => {
 
 		it('reloads the creator filter after a create, so a first-time creator is listed', async () => {
 			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
-			const { getByTestId } = renderView();
+			const view = renderView();
 			await new Promise(process.nextTick);
 			expect(skillsStore.fetchCreators).toHaveBeenCalledTimes(1);
-			await userEvent.click(getByTestId('skills-create-button'));
+			await pickCreateItem(view, 'skills-create-manual');
 
 			lastModalData().onConfirm({
 				skill: { name: 'brand-voice', description: 'Write copy.', instructions: 'Be brief.' },
@@ -603,9 +793,9 @@ describe('SettingsSkillsView', () => {
 			skillsStore.createSkill.mockRejectedValue(
 				new ResponseError(SKILL_NAME_TAKEN_MESSAGE, { httpStatusCode: 409 }),
 			);
-			const { getByTestId } = renderView();
+			const view = renderView();
 			await new Promise(process.nextTick);
-			await userEvent.click(getByTestId('skills-create-button'));
+			await pickCreateItem(view, 'skills-create-manual');
 
 			const result = await lastModalData().onConfirm({
 				skill: { name: 'brand-voice', description: 'Write copy.', instructions: 'Be brief.' },
@@ -618,9 +808,9 @@ describe('SettingsSkillsView', () => {
 
 		it('says so when the search or the filter hides the new skill', async () => {
 			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
-			const { getByTestId } = renderView();
+			const view = renderView();
 			await new Promise(process.nextTick);
-			await userEvent.click(getByTestId('skills-create-button'));
+			await pickCreateItem(view, 'skills-create-manual');
 
 			lastModalData().onConfirm({
 				skill: { name: 'brand-voice', description: 'd', instructions: 'i' },
@@ -1061,23 +1251,21 @@ describe('SettingsSkillsView', () => {
 			return renderView({ global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub } } });
 		}
 
-		it('shows only "Create skill" when the flag is off', () => {
-			const { getByTestId, queryByTestId } = renderView();
-
-			expect(getByTestId('skills-create-button')).toBeInTheDocument();
-			expect(queryByTestId('skills-create-menu-button')).not.toBeInTheDocument();
-		});
-
-		it('offers "Connect to GitHub" in the "Create skills" menu when the flag is on', async () => {
+		it('offers "Connect to GitHub" first in the "Create skills" menu when the flag is on', async () => {
 			enableSkillSync();
-			const { getByTestId, queryByTestId, findByTestId } = renderWithDialogStub();
+			const view = renderWithDialogStub();
 
-			expect(queryByTestId('skills-create-button')).not.toBeInTheDocument();
-			await userEvent.click(getByTestId('skills-create-menu-button'));
-			expect(await findByTestId('skills-create-manual')).toHaveTextContent('Create manually');
-			await userEvent.click(await findByTestId('skills-create-github'));
+			await userEvent.click(view.getByTestId('skills-create-menu-button'));
 
-			expect(await findByTestId('connect-dialog-stub')).toBeInTheDocument();
+			await view.findByTestId('skills-create-manual');
+			expect(createMenuLabels()).toEqual([
+				'Connect to GitHub',
+				'Upload folder',
+				'Upload SKILL.md',
+				'Create manually',
+			]);
+			await userEvent.click(await view.findByTestId('skills-create-github'));
+			expect(await view.findByTestId('connect-dialog-stub')).toBeInTheDocument();
 		});
 
 		function source(overrides: Partial<SkillSourceListItem> = {}): SkillSourceListItem {

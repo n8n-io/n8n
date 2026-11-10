@@ -16,7 +16,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, inject, nextTick, onBeforeUnmount, ref } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -25,6 +25,7 @@ import { buildAlwaysAllowKey } from '../alwaysAllow';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
 import {
 	approvalInputs,
+	appBlueprintInputs,
 	continueInputs,
 	getConfirmationType,
 	mcpConnectInputs,
@@ -40,6 +41,7 @@ import GatewayResourceDecision from '../components/GatewayResourceDecision.vue';
 import InstanceAiChannelSetup from '../components/InstanceAiChannelSetup.vue';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import InstanceAiMcpConnectCard from '../components/InstanceAiMcpConnectCard.vue';
+import AppBlueprintCard from '../components/AppBlueprintCard.vue';
 import InstanceAiQuestions, { type QuestionAnswer } from '../components/InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
 import type {
@@ -77,6 +79,13 @@ function reopen() {
 	attempt.value += 1;
 }
 
+// A tool can suspend again on the same call, for example when n8n rejects the
+// answer. The new request is a new question, so the card opens again.
+watch(
+	() => props.input.requestId,
+	() => reopen(),
+);
+
 // A payload without a project uses the project of the thread.
 const threadProjectId = inject(ASSISTANT_AGENT_PROJECT_ID, undefined);
 const projectId = computed(() => props.input.projectId ?? threadProjectId);
@@ -86,6 +95,7 @@ const variant = computed(() => {
 	const { input } = props;
 	if (input.inputType === 'questions' && input.questions?.length) return 'questions';
 	if (input.mcpConnectRequest) return 'mcp-connect';
+	if (input.appBlueprint) return 'app-blueprint';
 	if (input.setupRequests?.length) return 'workflow-setup';
 	if (input.credentialRequests?.length) return 'credential-setup';
 	if (input.inputType === 'text') return 'text';
@@ -332,6 +342,17 @@ function onApprovalSelect(key: string) {
 			:read-only="isInactive"
 			data-test-id="assistant-agent-mcp-connect"
 			@resolve="onMcpConnectResolve"
+		/>
+		<AppBlueprintCard
+			v-else-if="variant === 'app-blueprint' && input.appBlueprint"
+			:blueprint="input.appBlueprint"
+			:errors="input.appBlueprintErrors"
+			:read-only="isInactive"
+			data-test-id="assistant-agent-app-blueprint"
+			@submit="
+				(body) =>
+					submit(body, body.kind === 'appBlueprint' ? appBlueprintInputs(body.approved) : undefined)
+			"
 		/>
 		<!-- The setup cards keep their own submitted state. -->
 		<InstanceAiWorkflowSetup

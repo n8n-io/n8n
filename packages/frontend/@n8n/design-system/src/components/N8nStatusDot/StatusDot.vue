@@ -1,16 +1,28 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
+
 import type { StatusDotProps } from './StatusDot.types';
 
 defineOptions({ name: 'N8nStatusDot' });
 
-withDefaults(defineProps<StatusDotProps>(), {
+const props = withDefaults(defineProps<StatusDotProps>(), {
 	variant: 'success',
+	appearance: 'fill',
 	pulse: false,
 });
+
+const showPulse = computed(() => props.pulse && props.appearance === 'fill');
 </script>
 
 <template>
-	<span :class="[$style[variant], { [$style.pulse]: pulse }]" aria-hidden="true" />
+	<span
+		:class="[
+			$style[variant],
+			appearance === 'outline' && $style.outline,
+			{ [$style.pulse]: showPulse },
+		]"
+		aria-hidden="true"
+	/>
 </template>
 
 <style lang="scss" module>
@@ -44,6 +56,17 @@ withDefaults(defineProps<StatusDotProps>(), {
 .primary {
 	composes: dot;
 	--status-dot--color: var(--color--primary);
+}
+
+.neutral {
+	composes: dot;
+	--status-dot--color: var(--color--text--tint-2);
+}
+
+.outline {
+	background-color: transparent;
+	border: var(--border);
+	border-color: var(--status-dot--color);
 }
 
 // Expanding and fading box-shadow ring, tinted with the dot's own color.

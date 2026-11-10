@@ -1,4 +1,4 @@
-import type { InstanceAiHandoffContext } from '@n8n/api-types';
+import type { InstanceAiHandoffContext, InstanceAiWorkflowAttachment } from '@n8n/api-types';
 import { computed, reactive, type DeepReadonly } from 'vue';
 
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
@@ -24,6 +24,8 @@ interface UseAssistantArtifactThreadOptions {
 	 * something. The hand-off context goes with the message.
 	 */
 	sendMessage: (text: string, handoffContext?: InstanceAiHandoffContext) => void;
+	/** A workflow handed off to a new thread. Its preview opens before the first message. */
+	pendingWorkflowAttachment?: InstanceAiWorkflowAttachment;
 }
 
 /**
@@ -42,11 +44,11 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 
 	const archivedWorkflowIds = computed(() => findArchivedAssistantWorkflowIds(options.messages()));
 
-	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
-		() => messages.value,
-		(id) => workflowsListStore.getWorkflowById(id)?.name,
-		() => archivedWorkflowIds.value,
-	);
+	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(() => messages.value, {
+		workflowNameLookup: (id) => workflowsListStore.getWorkflowById(id)?.name,
+		archivedWorkflowIds: () => archivedWorkflowIds.value,
+		pendingWorkflowAttachment: () => options.pendingWorkflowAttachment,
+	});
 
 	const thread: ArtifactThread = reactive({
 		id: options.threadId,
@@ -54,14 +56,14 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 		messages,
 		producedArtifacts,
 		resourceNameIndex,
-		pendingWorkflowAttachment: null,
+		pendingWorkflowAttachment: options.pendingWorkflowAttachment ?? null,
 		hydrationStatus: computed(() => (isHydratingThread.value ? 'hydrating' : 'ready')),
 		isHydratingThread,
 		isStreaming: computed(() => options.isStreaming()),
 		// The chat streams as soon as it accepts a message.
 		isSendingMessage: false,
 		currentTasks,
-		// Hand-offs from the editor open Assistant runtime threads, never these.
+		// The editor snapshot seeds only current-runtime threads. The preview fetches the workflow.
 		consumePendingHandoff: () => undefined,
 		sendMessage: async (text: string, opts: Parameters<ArtifactThread['sendMessage']>[1]) => {
 			options.sendMessage(text, opts.handoffContext);

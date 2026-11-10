@@ -6,6 +6,14 @@ import { concurrencyLimitSchema } from '../schemas';
 @Config
 export class InstanceAiConfig {
 	/**
+	 * Whether the n8n Assistant is on when no admin has turned it on or off in Settings > Assistant.
+	 * When unset, it's off on the Enterprise plan and on for all other plans. A choice saved in
+	 * Settings > Assistant overrides this variable.
+	 */
+	@Env('N8N_INSTANCE_AI_ENABLED')
+	enabled?: boolean;
+
+	/**
 	 * Enable workflow suggestions, self-healing investigations, and result review.
 	 */
 	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
@@ -21,7 +29,7 @@ export class InstanceAiConfig {
 
 	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
-	model: string = 'anthropic/claude-opus-4-8';
+	model: string = 'anthropic/claude-opus-5-5';
 
 	/** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:1234/v1" for LM Studio). */
 	@Env('N8N_INSTANCE_AI_MODEL_URL')

@@ -8,10 +8,9 @@ import { useContextStore } from '../context.store';
 import { useSkillsStore } from '../skills.store';
 
 const push = vi.fn();
-const flags = vi.hoisted(() => ({ preferences: true, skills: false }));
+const flags = vi.hoisted(() => ({ skills: false }));
 
 vi.mock('../context.utils', () => ({
-	isContextPreferencesEnabled: () => flags.preferences,
 	isContextSkillsEnabled: () => flags.skills,
 }));
 const showErrorMock = vi.fn();
@@ -31,7 +30,6 @@ const renderView = createComponentRenderer(SettingsContextView);
 describe('SettingsContextView', () => {
 	beforeEach(() => {
 		createTestingPinia();
-		flags.preferences = true;
 		flags.skills = false;
 		push.mockClear();
 		showErrorMock.mockClear();
@@ -114,15 +112,6 @@ describe('SettingsContextView', () => {
 			await new Promise(process.nextTick);
 
 			expect(showErrorMock).toHaveBeenCalled();
-		});
-
-		it('hides Preferences when only skills are on', () => {
-			flags.preferences = false;
-
-			const { queryByTestId } = renderView();
-
-			expect(queryByTestId('settings-context-preferences-row')).not.toBeInTheDocument();
-			expect(mockedStore(useContextStore).fetchPreferenceCount).not.toHaveBeenCalled();
 		});
 	});
 });

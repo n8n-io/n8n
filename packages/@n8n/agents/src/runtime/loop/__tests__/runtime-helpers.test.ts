@@ -1,5 +1,5 @@
 import type { TokenUsage } from '../../../types/sdk/agent';
-import { mergeUsage } from '../runtime-helpers';
+import { mergeUsage, resolveAiFinishReason } from '../runtime-helpers';
 
 describe('mergeUsage — input token details', () => {
 	it('sums noCache across both sides', () => {
@@ -53,4 +53,29 @@ describe('mergeUsage — input token details', () => {
 
 		expect(merged?.inputTokenDetails).toEqual({ noCache: 30, cacheRead: 10, cacheWrite: 20 });
 	});
+});
+
+describe('resolveAiFinishReason', () => {
+	it('treats a stop turn that calls a tool as tool-calls', () => {
+		expect(resolveAiFinishReason('stop', [{}])).toBe('tool-calls');
+	});
+
+	it('keeps stop when the turn has no tool calls', () => {
+		expect(resolveAiFinishReason('stop', [])).toBe('stop');
+	});
+
+	it('keeps stop when every call ran on the provider', () => {
+		expect(resolveAiFinishReason('stop', [{ providerExecuted: true }])).toBe('stop');
+	});
+
+	it('treats a stop turn as tool-calls when one of its calls runs locally', () => {
+		expect(resolveAiFinishReason('stop', [{ providerExecuted: true }, {}])).toBe('tool-calls');
+	});
+
+	it.each(['length', 'content-filter', 'other', 'error'] as const)(
+		'keeps %s even when the turn has tool calls',
+		(reason) => {
+			expect(resolveAiFinishReason(reason, [{}])).toBe(reason);
+		},
+	);
 });

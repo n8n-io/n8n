@@ -19,15 +19,13 @@ import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
-	OperationalError,
 	type INode,
 	type INodeCredentials,
 	type IBinaryData,
-	UnexpectedError,
 } from 'n8n-workflow';
 
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError, OperationalError, UnexpectedError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -522,7 +520,7 @@ export class ChatHubService {
 
 				// Resolve tool definitions from the session's join table
 				const tools = isNewSession
-					? (await this.chatHubToolService.getEnabledTools(user.id, trx)).map((t) => t.definition)
+					? await this.chatHubToolService.getEnabledToolDefinitions(user.id, trx)
 					: await this.chatHubToolService.getToolDefinitionsForSession(sessionId, trx);
 
 				const replyWorkflow = await this.chatHubWorkflowService.prepareReplyWorkflow(

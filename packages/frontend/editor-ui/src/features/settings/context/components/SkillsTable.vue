@@ -27,7 +27,7 @@ import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import { useSkillDeleteRule } from '../skills.utils';
 
-type SkillAction = 'edit' | 'timeline' | 'compare' | 'download' | 'stopSyncing' | 'delete';
+type SkillAction = 'edit' | 'timeline' | 'download' | 'stopSyncing' | 'delete';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -65,7 +65,6 @@ const props = defineProps<{
 const emit = defineEmits<{
 	open: [skill: SkillListItem];
 	timeline: [skill: SkillListItem];
-	compare: [skill: SkillListItem];
 	download: [skill: SkillListItem];
 	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
@@ -102,13 +101,6 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			icon: 'history',
 		},
 		{
-			value: 'compare',
-			label: i18n.baseText('settings.context.skills.actions.compare'),
-			icon: 'file-diff',
-			// A skill with one version has nothing to compare.
-			disabled: skill.latestVersion < 2,
-		},
-		{
 			value: 'download',
 			label: i18n.baseText('settings.context.skills.actions.download'),
 			icon: 'download',
@@ -137,7 +129,6 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 function onAction(skill: SkillListItem, action: SkillAction) {
 	if (action === 'edit') emit('open', skill);
 	else if (action === 'timeline') emit('timeline', skill);
-	else if (action === 'compare') emit('compare', skill);
 	else if (action === 'download') emit('download', skill);
 	else if (action === 'stopSyncing') emit('stopSyncing', skill);
 	else emit('delete', skill);

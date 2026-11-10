@@ -8,6 +8,7 @@ import type {
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	EventService,
+	ProjectScopeService,
 	RoleService,
 	RestrictedNodeTypesProviderProxy,
 	WorkflowMutationHooksProxy,
@@ -83,11 +84,12 @@ import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/wo
 import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
+import type { SystemDeactivationReason, WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
@@ -205,6 +207,8 @@ export class WorkflowService {
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly projectScopeService: ProjectScopeService,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {}
 
 	/**
@@ -324,11 +328,15 @@ export class WorkflowService {
 
 		// Use the new subquery-based repository methods
 		if (includeFolders) {
+			// `null` means global access, so the folder half stays unrestricted.
+			const folderProjectIds = await this.projectScopeService.getProjectIds(user, ['folder:list']);
+
 			[workflowsAndFolders, count] =
 				await this.workflowRepository.getWorkflowsAndFoldersWithCountWithSharingSubquery(
 					user,
 					sharingOptions,
 					listOptions,
+					folderProjectIds ?? undefined,
 				);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
@@ -1529,7 +1537,10 @@ export class WorkflowService {
 	 * crash-loop auto-deactivation). Skips permission and checksum checks and
 	 * does not emit `workflow-deactivated`; publish history records a null user.
 	 */
-	async deactivateWorkflowAsSystem(workflowId: string): Promise<void> {
+	async deactivateWorkflowAsSystem(
+		workflowId: string,
+		reason: SystemDeactivationReason,
+	): Promise<void> {
 		const workflow = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: { activeVersion: true },
@@ -1562,6 +1573,15 @@ export class WorkflowService {
 		}
 
 		await this._teardownActiveVersion(workflow, deactivatedVersionId, null);
+
+		await this.workflowIndexService.removePublishedDependenciesForWorkflow(workflowId);
+
+		this.eventService.emit('workflow-deactivated-by-system', {
+			workflowId,
+			workflowName: workflow.name,
+			deactivatedVersionId,
+			reason,
+		});
 	}
 
 	/**

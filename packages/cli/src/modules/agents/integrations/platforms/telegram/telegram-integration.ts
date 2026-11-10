@@ -7,9 +7,8 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Thread, Author } from 'chat';
 import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, UnexpectedError } from '@n8n/errors';
 import { UrlService } from '@n8n/backend-services';
 
 import { AgentRepository } from '../../../repositories/agent.repository';
@@ -33,6 +32,17 @@ import {
 } from './telegram-bridge-behavior';
 import { buildTelegramOriginDraft } from './telegram-origin';
 import type { DecodedThread, OriginInput } from '../../integration-origin-support';
+
+// Without an explicit list Telegram keeps whatever filter an earlier client set
+// on the bot, which can drop button clicks. These are the types the adapter
+// handles, minus message_reaction, which Telegram also leaves out by default.
+const ALLOWED_UPDATES = [
+	'message',
+	'edited_message',
+	'channel_post',
+	'edited_channel_post',
+	'callback_query',
+];
 
 /**
  * Telegram platform integration.
@@ -198,7 +208,12 @@ export class TelegramIntegration extends AgentChatIntegration {
 		const mode = ctx.ingressEnabled ? this.getMode() : 'webhook';
 		const secretToken = this.deriveSecretToken(ctx.agentId, ctx.credentialId);
 		const { createTelegramAdapter } = await loadTelegramAdapter();
-		return createTelegramAdapter({ botToken, mode, secretToken });
+		return createTelegramAdapter({
+			botToken,
+			mode,
+			secretToken,
+			longPolling: { allowedUpdates: ALLOWED_UPDATES },
+		});
 	}
 
 	validateConfig(integration: AgentIntegrationConfig): void {
@@ -241,6 +256,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 		const response = await this.botApiRequest(ctx.credential, 'setWebhook', {
 			url: webhookUrl,
 			secret_token: secretToken,
+			allowed_updates: ALLOWED_UPDATES,
 		});
 		if (!this.isOkStatus(response.statusCode)) {
 			throw new Error(`Failed to register Telegram webhook: ${this.stringifyBody(response.body)}`);

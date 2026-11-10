@@ -26,11 +26,10 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
-import { OperationalError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError, ForbiddenError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, OperationalError, UserError } from '@n8n/errors';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentContextService } from '@/modules/agents/agent-context.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
@@ -63,10 +62,9 @@ import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtim
 import { getAgentConfigHash, getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectScopeService, UrlService } from '@n8n/backend-services';
+import { ProjectScopeService, UrlService, NodeTypesProxy } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
@@ -479,7 +477,7 @@ export class McpAgentToolsService {
 		private readonly agentModelCatalogService: AgentModelCatalogService,
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly mcpRegistryService: McpRegistryService,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly oauthService: OauthService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly urlService: UrlService,

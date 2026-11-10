@@ -13,7 +13,7 @@ import { isContentToolResultOutput, type ContentToolResultOutput } from '../mode
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export {
-	EXPIRED_OFFLOADED_TOOL_RESULT,
+	RUN_SCOPED_OFFLOADED_TOOL_RESULT,
 	sanitizeOffloadedToolResultsForMemory,
 } from '../memory/tool-result-memory';
 
@@ -38,7 +38,8 @@ interface OffloadedToolResult extends JSONObject {
 		toolName: 'workspace_read_tool_result';
 		input: {
 			path: string;
-			view: 'describe';
+			view: 'json';
+			pointer: '';
 		};
 	};
 	message: string;
@@ -209,10 +210,11 @@ async function tryOffloadResult(
 			estimatedTokenCount: tokenCount,
 			requiredAction: {
 				toolName: 'workspace_read_tool_result',
-				input: { path, view: 'describe' },
+				// Start with the root children so the model copies exact pointers instead of guessing them.
+				input: { path, view: 'json', pointer: '' },
 			},
 			message:
-				'The complete tool result was stored in the workspace. Follow requiredAction before answering, then keep using workspace_read_tool_result with relevant JSON Pointers and nextOffset pages until you have enough evidence. Do not assume the first page is complete when hasMore is true.',
+				'The complete tool result was stored in the workspace. Follow requiredAction before answering, then keep using workspace_read_tool_result with the child pointer values it returns and nextOffset pages until you have enough evidence. The root pointer is an empty string, not "/". Do not assume the first page is complete when hasMore is true.',
 		};
 	} catch {
 		return undefined;

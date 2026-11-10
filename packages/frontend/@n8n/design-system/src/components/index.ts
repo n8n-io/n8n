@@ -5,7 +5,6 @@ export {
 	ThinkingMessage,
 	RestoreVersionConfirm,
 } from './AskAssistantChat';
-export { default as N8nAssistantIcon } from './AskAssistantIcon';
 export { default as N8nAssistantAvatar } from './AskAssistantAvatar';
 export { default as N8nAssistantText } from './AskAssistantText';
 export { default as N8nActionDropdown } from './N8nActionDropdown';
@@ -187,7 +186,7 @@ export type { ModalSidebarProps, ModalSidebarSide } from './N8nModalSidebar';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nStatusDot } from './N8nStatusDot';
-export type { StatusDotProps, StatusDotVariant } from './N8nStatusDot';
+export type { StatusDotAppearance, StatusDotProps, StatusDotVariant } from './N8nStatusDot';
 export { default as N8nStepper } from './N8nStepper/Stepper.vue';
 export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
@@ -240,4 +239,6 @@ export type {
 } from './N8nCommandBar/types';
 export * from './N8nDialog';
 export * from './N8nAlertDialog';
+export { FocusScope } from './FocusScope';
+export type { FocusScopeEmits, FocusScopeProps } from './FocusScope';
 export { default as N8nVisuallyHidden } from './N8nVisuallyHidden';

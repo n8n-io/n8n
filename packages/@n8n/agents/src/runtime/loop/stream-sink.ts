@@ -12,7 +12,7 @@ import type {
 	SuspendEmission,
 } from '../../types/runtime/agent-loop';
 import { withPromptSizeBreakdown } from './prompt-size-usage';
-import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
+import { classifyModelTurnError, mergeUsage, resolveAiFinishReason } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
 import { isAttachmentValidationError } from '../model/attachment-validation-error';
@@ -394,7 +394,8 @@ export class StreamSink implements RunOutputSink<void> {
 				? await raceWithStallDeadline(promise, idleMs, () => turnAbort.abort())
 				: await promise;
 
-		const aiFinishReason = await settle(result.finishReason);
+		const toolCalls = await settle(result.toolCalls);
+		const aiFinishReason = resolveAiFinishReason(await settle(result.finishReason), toolCalls);
 		const usage = await settle(result.usage);
 		const finalStep = await settle(result.finalStep);
 		const newMessages = fromAiMessages(await settle(result.responseMessages));
@@ -409,7 +410,7 @@ export class StreamSink implements RunOutputSink<void> {
 			finishReason: fromAiFinishReason(aiFinishReason),
 			usage: toTokenUsage(usage, finalStep.providerMetadata),
 			newMessages,
-			toolCalls: await settle(result.toolCalls),
+			toolCalls,
 			structuredOutput:
 				ctx.outputSpec && aiFinishReason !== 'tool-calls' ? await settle(result.output) : undefined,
 			...(errorReason && { errorReason }),
