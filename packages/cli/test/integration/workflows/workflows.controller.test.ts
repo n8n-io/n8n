@@ -1143,6 +1143,30 @@ describe('default engine', () => {
 });
 
 describe('GET /workflows/:workflowId', () => {
+	describe('home project', () => {
+		afterEach(() => {
+			testServer.license.enable('feat:sharing');
+		});
+
+		test.each([true, false])(
+			'should return homeProject and no shared relation when sharing license is %s',
+			async (sharingEnabled) => {
+				if (sharingEnabled) testServer.license.enable('feat:sharing');
+				else testServer.license.disable('feat:sharing');
+
+				const ownerProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+				const workflow = await createWorkflow({}, owner);
+
+				const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+
+				const { data } = response.body as { data: Record<string, unknown> };
+				expect(data.homeProject).toMatchObject({ id: ownerProject.id, type: 'personal' });
+				expect(data.sharedWithProjects).toEqual([]);
+				expect(data).not.toHaveProperty('shared');
+			},
+		);
+	});
+
 	test('should return pin data', async () => {
 		const workflow = makeWorkflow({ withPinData: true });
 		const workflowCreationResponse = await authOwnerAgent.post('/workflows').send(workflow);
