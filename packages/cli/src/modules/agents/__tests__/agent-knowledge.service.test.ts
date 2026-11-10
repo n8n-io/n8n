@@ -15,10 +15,11 @@ import type { InstanceSettings } from 'n8n-core';
 import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
-import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
+import type { KnowledgeFileStore } from '@/modules/knowledge/files/knowledge-file-store';
+import { KnowledgeUploadError } from '@/modules/knowledge/files/knowledge-upload.error';
+
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { createKnowledgeTelemetryHmac } from '../agent-knowledge-telemetry';
-import { AgentKnowledgeUploadError } from '../agent-knowledge-upload.error';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
@@ -171,7 +172,7 @@ describe('AgentKnowledgeService', () => {
 	let agentFileRepository: InMemoryAgentFileRepository;
 	let agentSandboxRuntimeService: Mocked<AgentSandboxRuntimeService>;
 	let agentKnowledgeMirrorService: Mocked<AgentKnowledgeMirrorService>;
-	let agentKnowledgeFileStore: Mocked<AgentKnowledgeFileStore>;
+	let agentKnowledgeFileStore: Mocked<KnowledgeFileStore>;
 	let logger: Mocked<Logger>;
 	let service: AgentKnowledgeService;
 
@@ -199,7 +200,7 @@ describe('AgentKnowledgeService', () => {
 		agentFileRepository = new InMemoryAgentFileRepository();
 		agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>();
 		agentKnowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-		agentKnowledgeFileStore = mock<AgentKnowledgeFileStore>();
+		agentKnowledgeFileStore = mock<KnowledgeFileStore>();
 		agentKnowledgeFileStore.write.mockImplementation(async (ref, content) => {
 			await drainIfStream(content);
 			return {
@@ -505,7 +506,7 @@ describe('AgentKnowledgeService', () => {
 			]);
 
 			await expect(upload).rejects.toThrow('MIME type must be');
-			await expect(upload).rejects.not.toBeInstanceOf(AgentKnowledgeUploadError);
+			await expect(upload).rejects.not.toBeInstanceOf(KnowledgeUploadError);
 		});
 
 		it('gives a full knowledge base the total_limit reason', async () => {
