@@ -301,6 +301,40 @@ describe('useResourceRegistry', () => {
 			expect(linkableResourceNameIndex.has('untitled')).toBe(false);
 		});
 
+		test('keeps the workflow name when a versioned get_workflow read returns a version label', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'get_workflow_as_code',
+								args: { workflowId: '234' },
+								result: { workflowId: '234', name: 'Add labels to Github PRs', nodes: [] },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'get_workflow',
+								args: { workflowId: '234', versionId: 'v-1' },
+								result: {
+									workflowId: '234',
+									versionId: 'v-1',
+									name: 'Before refactor',
+									nodes: [],
+									connections: {},
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('234')?.name).toBe('Add labels to Github PRs');
+			expect(linkableResourceNameIndex.has('before refactor')).toBe(false);
+		});
+
 		test('registers a large get_workflow read that returns a structure summary', async () => {
 			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 

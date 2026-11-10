@@ -300,13 +300,14 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	// so fall back to the existing entry before regressing to 'Untitled'.
 	// A failed build still names its target workflow and the unsaved name, so
 	// skip it to keep the existing entry as it was.
-	// Reads such as get_workflow_as_code also return { workflowId, name }.
+	// Reads such as get_workflow_as_code also return { workflowId, name }. A versioned
+	// get_workflow read returns the version's label as `name`, so it is skipped.
 	if (typeof result.workflowId === 'string' && result.success !== false && !isFailedWorkflowRead) {
 		const existing = col.produced.get(result.workflowId);
 		const name =
 			optionalString(result.workflowName) ??
 			optionalString(tc.args?.name) ??
-			optionalString(result.name) ??
+			(result.versionId === undefined ? optionalString(result.name) : undefined) ??
 			existing?.name ??
 			'Untitled';
 		recordProduced(col, { type: 'workflow', id: result.workflowId, name });
