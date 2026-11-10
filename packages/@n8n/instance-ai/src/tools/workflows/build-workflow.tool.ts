@@ -653,6 +653,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				// them from prompts/shell output) and converts them to relative.
 				filePath = normalizeWorkflowSourceFilePath(input.filePath, {
 					workspaceRoot: context.workspaceRoot,
+					fallbackWorkspaceRoot: context.fallbackWorkspaceRoot,
 				});
 			} catch (error) {
 				const guidance =

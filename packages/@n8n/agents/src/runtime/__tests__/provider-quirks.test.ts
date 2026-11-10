@@ -7,6 +7,8 @@ import {
 	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
 
+const OFFICIAL = { isOfficialApi: true };
+
 describe('getProviderQuirks', () => {
 	it('returns an empty object for an unknown provider', () => {
 		expect(getProviderQuirks('some-unknown-provider')).toEqual({});
@@ -37,7 +39,11 @@ describe('applyToolProviderOptionDefaults', () => {
 describe('thinkingToProviderOptions', () => {
 	it('anthropic: budget-thinking model defaults budgetTokens to 10000', () => {
 		expect(
-			getProviderQuirks('anthropic').thinkingToProviderOptions?.({}, 'anthropic/claude-sonnet-4-5'),
+			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
+				{},
+				'anthropic/claude-sonnet-4-5',
+				OFFICIAL,
+			),
 		).toEqual({
 			anthropic: { thinking: { type: 'enabled', budgetTokens: 10000 } },
 		});
@@ -48,6 +54,26 @@ describe('thinkingToProviderOptions', () => {
 			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
 				{ mode: 'adaptive' },
 				'anthropic/claude-sonnet-5',
+				OFFICIAL,
+			),
+		).toEqual({
+			anthropic: {
+				thinking: {
+					type: 'adaptive',
+					display: 'summarized',
+					blockBinding: { prefixMismatchBehavior: 'drop_block' },
+				},
+				effort: 'medium',
+			},
+		});
+	});
+
+	it('anthropic: omits blockBinding when the model does not call the official API', () => {
+		expect(
+			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
+				{ mode: 'adaptive' },
+				'anthropic/claude-haiku-5-5',
+				{ isOfficialApi: false },
 			),
 		).toEqual({
 			anthropic: {
@@ -62,10 +88,15 @@ describe('thinkingToProviderOptions', () => {
 			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
 				{ mode: 'adaptive', effort: 'high' },
 				'anthropic/claude-sonnet-5',
+				OFFICIAL,
 			),
 		).toEqual({
 			anthropic: {
-				thinking: { type: 'adaptive', display: 'summarized' },
+				thinking: {
+					type: 'adaptive',
+					display: 'summarized',
+					blockBinding: { prefixMismatchBehavior: 'drop_block' },
+				},
 				effort: 'high',
 			},
 		});
@@ -78,10 +109,15 @@ describe('thinkingToProviderOptions', () => {
 			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
 				{ budgetTokens: 4000 },
 				'anthropic/claude-sonnet-5',
+				OFFICIAL,
 			),
 		).toEqual({
 			anthropic: {
-				thinking: { type: 'adaptive', display: 'summarized' },
+				thinking: {
+					type: 'adaptive',
+					display: 'summarized',
+					blockBinding: { prefixMismatchBehavior: 'drop_block' },
+				},
 				effort: 'medium',
 			},
 		});
@@ -92,6 +128,7 @@ describe('thinkingToProviderOptions', () => {
 			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
 				{ mode: 'adaptive' },
 				'anthropic/claude-sonnet-4-5',
+				OFFICIAL,
 			),
 		).toEqual({
 			anthropic: { thinking: { type: 'enabled', budgetTokens: 10000 } },
@@ -103,6 +140,7 @@ describe('thinkingToProviderOptions', () => {
 			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
 				{ mode: 'enabled', effort: 'medium' },
 				'anthropic/claude-sonnet-4-5',
+				OFFICIAL,
 			),
 		).toEqual({
 			anthropic: {
@@ -117,6 +155,7 @@ describe('thinkingToProviderOptions', () => {
 			getProviderQuirks('anthropic').thinkingToProviderOptions?.(
 				{ mode: 'enabled', effort: 'medium', budgetTokens: 5000 },
 				'anthropic/claude-sonnet-4-5',
+				OFFICIAL,
 			),
 		).toEqual({
 			anthropic: {
@@ -131,6 +170,7 @@ describe('thinkingToProviderOptions', () => {
 			getProviderQuirks('google-vertex-anthropic').thinkingToProviderOptions?.(
 				{ mode: 'adaptive', effort: 'medium' },
 				'google-vertex-anthropic/claude-opus-4-8',
+				OFFICIAL,
 			),
 		).toEqual({
 			anthropic: {
@@ -148,7 +188,9 @@ describe('thinkingToProviderOptions', () => {
 	});
 
 	it('openai: defaults reasoningEffort to medium', () => {
-		expect(getProviderQuirks('openai').thinkingToProviderOptions?.({}, 'openai/gpt-5')).toEqual({
+		expect(
+			getProviderQuirks('openai').thinkingToProviderOptions?.({}, 'openai/gpt-5', OFFICIAL),
+		).toEqual({
 			openai: { reasoningEffort: 'medium', reasoningSummary: null },
 		});
 	});
@@ -158,6 +200,7 @@ describe('thinkingToProviderOptions', () => {
 			getProviderQuirks('openai').thinkingToProviderOptions?.(
 				{ reasoningEffort: 'medium' },
 				'openai/gpt-5.6-sol',
+				OFFICIAL,
 			),
 		).toEqual({
 			openai: { reasoningEffort: 'medium', reasoningSummary: null },
@@ -166,6 +209,7 @@ describe('thinkingToProviderOptions', () => {
 			getProviderQuirks('openai').thinkingToProviderOptions?.(
 				{ reasoningEffort: 'xhigh' },
 				'openai/gpt-5.6-sol',
+				OFFICIAL,
 			),
 		).toEqual({
 			openai: { reasoningEffort: 'xhigh', reasoningSummary: null },
@@ -177,6 +221,7 @@ describe('thinkingToProviderOptions', () => {
 			getProviderQuirks('google').thinkingToProviderOptions?.(
 				{ thinkingBudget: 2048, thinkingLevel: 'high' },
 				'google/gemini-3-pro',
+				OFFICIAL,
 			),
 		).toEqual({
 			google: { thinkingConfig: { thinkingBudget: 2048, thinkingLevel: 'high' } },
@@ -184,7 +229,9 @@ describe('thinkingToProviderOptions', () => {
 	});
 
 	it('xai: defaults reasoningEffort to high', () => {
-		expect(getProviderQuirks('xai').thinkingToProviderOptions?.({}, 'xai/grok-4')).toEqual({
+		expect(
+			getProviderQuirks('xai').thinkingToProviderOptions?.({}, 'xai/grok-4', OFFICIAL),
+		).toEqual({
 			xai: { reasoningEffort: 'high' },
 		});
 	});
@@ -196,6 +243,7 @@ describe('thinkingToProviderOptions', () => {
 					reasoningEffort: 'high',
 				},
 				'custom/Kimi-K3',
+				OFFICIAL,
 			),
 		).toEqual({
 			custom: { reasoningEffort: 'high' },
@@ -203,9 +251,9 @@ describe('thinkingToProviderOptions', () => {
 	});
 
 	it('custom: omits reasoning effort when unset', () => {
-		expect(getProviderQuirks('custom').thinkingToProviderOptions?.({}, 'custom/Kimi-K3')).toEqual(
-			{},
-		);
+		expect(
+			getProviderQuirks('custom').thinkingToProviderOptions?.({}, 'custom/Kimi-K3', OFFICIAL),
+		).toEqual({});
 	});
 
 	it('moonshotai: maps reasoningEffort to providerOptions.moonshotai', () => {
@@ -215,6 +263,7 @@ describe('thinkingToProviderOptions', () => {
 					reasoningEffort: 'low',
 				},
 				'moonshotai/kimi-k3',
+				OFFICIAL,
 			),
 		).toEqual({
 			moonshotai: { reasoningEffort: 'low' },

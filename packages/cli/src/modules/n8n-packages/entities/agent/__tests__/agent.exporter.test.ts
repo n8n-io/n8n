@@ -91,7 +91,7 @@ describe('AgentExporter', () => {
 
 			const snapshot = await source.exporter.prepare(source.agent, testCase.policy);
 			const selected = source[testCase.selected];
-			const integrations = [{ type: 'slack', credentialId: 'current-slack' }];
+			const integrations = [{ type: 'slack', credentialId: '' }];
 			if (testCase.selected === 'published')
 				integrations.push({ type: 'n8n_chat', credentialId: '' });
 			expect(snapshot).toEqual({
@@ -170,9 +170,19 @@ describe('AgentExporter', () => {
 		agent.integrations.push({ type: 'n8n_chat', credentialId: '' });
 		published.schema!.integrations = [];
 		const snapshot = await exporter.prepare(agent, ExportVersionPolicy.PublishedStrict);
-		expect(snapshot?.content.config?.integrations).toEqual([
-			{ type: 'slack', credentialId: 'current-slack' },
+		expect(snapshot?.content.config?.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
+	});
+
+	it('exports equal content for channels with different credentials', async () => {
+		const first = setup();
+		const second = setup();
+		second.agent.integrations = [{ type: 'slack', credentialId: 'other-slack' }];
+		const [a, b] = await Promise.all([
+			first.exporter.prepare(first.agent),
+			second.exporter.prepare(second.agent),
 		]);
+		expect(a?.content).toEqual(b?.content);
+		expect(a?.content.config?.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
 	});
 
 	it.each([

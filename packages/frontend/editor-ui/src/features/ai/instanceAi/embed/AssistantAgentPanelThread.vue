@@ -14,14 +14,14 @@ import type {
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, provide, ref, useTemplateRef, watch } from 'vue';
+import { computed, provide, ref, useTemplateRef, watch, type Ref } from 'vue';
 
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
 
 import { provideArtifactThread } from '../artifactThread';
 import {
-	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
+	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	ASSISTANT_AGENT_ID,
 	ASSISTANT_AGENT_PROJECT_ID,
 	ASSISTANT_AGENT_THREAD_ID,
@@ -49,20 +49,26 @@ import {
 } from '../instanceAi.handoffContext';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
-const props = defineProps<{
-	threadId: string;
-	subject: InstanceAiAgentAttachment;
-	/** True for a thread that the panel just created: it has no history to load. */
-	newSession: boolean;
-	placeholder?: string;
-	composerHeight?: string;
-	beforeSend?: () => Promise<void>;
-}>();
+const props = withDefaults(
+	defineProps<{
+		threadId: string;
+		subject: InstanceAiAgentAttachment;
+		/** True for a thread that the panel just created: it has no history to load. */
+		newSession: boolean;
+		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
+		visible?: boolean;
+		composerHeight?: string;
+		beforeSend?: () => Promise<void>;
+	}>(),
+	{ visible: true },
+);
 
 const emit = defineEmits<{
 	'update:building': [building: boolean];
 	'update:working': [working: boolean];
 	'message-sent': [];
+	'content-change': [hasContent: boolean];
 	'session-created': [];
 }>();
 
@@ -223,7 +229,7 @@ defineExpose({
 		:continue-session-id="props.threadId"
 		:new-session="isNewSession"
 		:agent-config="agentConfig"
-		:attachment-capabilities="ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES"
+		:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 		agent-status="production"
 		:connected-triggers="[]"
 		channel="system"
@@ -231,8 +237,12 @@ defineExpose({
 		:interaction-extensions="interactionExtensions"
 		:before-send="props.beforeSend"
 		:placeholder="props.placeholder"
+		:placeholder-preview="props.placeholderPreview"
+		:visible="props.visible"
+		autofocus
 		:composer-height="props.composerHeight"
 		data-test-id="instance-ai-embed-assistant-agent-thread"
+		@content-change="emit('content-change', $event)"
 		@session-created="onSessionCreated"
 		@message-accepted="onMessageAccepted"
 		@update:streaming="onStreamingChange"

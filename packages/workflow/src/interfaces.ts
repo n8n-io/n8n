@@ -1428,8 +1428,18 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		 * a restart. Without the option the engine suspends and persists the execution.
 		 */
 		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
+		/**
+		 * Builds the signed reference that an approval button carries, for example
+		 * Telegram's `callback_data` (64 bytes at most). The reference carries the
+		 * decision. The node never reads the secret that signs it.
+		 */
+		getApprovalCallbackReference(decision: 'approve' | 'decline'): string;
 		sendMessageToUI(message: any): void;
-		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
+		/**
+		 * Whether the run's resolved redaction policy redacts output that leaves the
+		 * execution-data pipeline (console output, AI event payloads) for this
+		 * execution's mode
+		 */
 		isConsoleOutputRedacted(): boolean;
 		sendResponse(response: IExecuteResponsePromiseData): Promise<void>;
 		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;

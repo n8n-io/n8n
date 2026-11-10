@@ -289,6 +289,9 @@ export class AuthController {
 	async logout(req: AuthenticatedRequest, res: Response) {
 		await this.authService.invalidateToken(req);
 		this.authService.clearCookie(res);
+
+		this.eventService.emit('user-logged-out', { user: req.user });
+
 		return { loggedOut: true };
 	}
 }
