@@ -6,7 +6,8 @@ import {
 	TransactionRunner,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, type FindOptionsWhere } from '@n8n/typeorm';
+import { isRecord } from '@n8n/utils/is-record';
+import { DataSource, In, type FindOptionsWhere } from '@n8n/typeorm';
 
 import { PromotionEnvironment } from '../entities/promotion-environment.entity';
 import { PromotionConflictError } from '../promotion-conflict.error';
@@ -102,6 +103,27 @@ export class PromotionEnvironmentRepository {
 
 	async countByProviderId(providerId: string, ctx: OperationContext): Promise<number> {
 		return await this.table.managerFor(ctx).count(PromotionEnvironment, { where: { providerId } });
+	}
+
+	async findExistingIds(ids: string[], ctx: OperationContext): Promise<Set<string>> {
+		if (ids.length === 0) return new Set();
+		const rows = await this.table
+			.managerFor(ctx)
+			.find(PromotionEnvironment, { select: { id: true }, where: { id: In(ids) } });
+		return new Set(rows.map((row) => row.id));
+	}
+
+	async findIdsWithRepositoryPathByProvider(
+		providerId: string,
+		ctx: OperationContext,
+	): Promise<string[]> {
+		// The object form of `select` does not accept a JSON column, so use the list form.
+		const rows = await this.table
+			.managerFor(ctx)
+			.find(PromotionEnvironment, { select: ['id', 'remote'], where: { providerId } });
+		return rows
+			.filter((row) => isRecord(row.remote) && 'repositoryPath' in row.remote)
+			.map((row) => row.id);
 	}
 
 	async listEnvironments(

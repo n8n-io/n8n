@@ -17,7 +17,7 @@ import { useToast } from '@n8n/composables/useToast';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { HOVER_DELAY } from '@/app/constants/durations';
 import type { ArtifactTab } from '../useCanvasPreview';
-import { appHref, skillsHubHref } from '../canvasPreview.utils';
+import { useArtifactLinks } from '../artifactLinks';
 import { hasTabSummary, useArtifactTabSummaries } from '../useArtifactTabSummaries';
 import { TAB_DRAG_IGNORE_ATTRIBUTE, useTabDragReorder } from '../composables/useTabDragReorder';
 import InstanceAiResourcePicker from './InstanceAiResourcePicker.vue';
@@ -53,6 +53,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const clipboard = useClipboard();
+const { artifactUrl, openArtifactInNewTab } = useArtifactLinks();
 const toast = useToast();
 const tabListRef = ref<HTMLElement | null>(null);
 const sizeToggleLabel = computed(() =>
@@ -114,23 +115,8 @@ watch(
 	},
 );
 
-function tabHref(tab: ArtifactTab): string | undefined {
-	if (tab.type === 'workflow') return `/workflow/${tab.id}`;
-	if (tab.type === 'data-table') {
-		return tab.projectId ? `/projects/${tab.projectId}/datatables/${tab.id}` : '/home/datatables';
-	}
-	if (tab.type === 'agent') {
-		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
-	}
-	if (tab.type === 'skill') return skillsHubHref(tab.id);
-	if (tab.type === 'app' && tab.projectId) return appHref(tab.projectId, tab.id);
-	return undefined;
-}
-
 function handleOpenInEditor(tab: ArtifactTab) {
-	const href = tabHref(tab);
-	if (!href) return;
-	window.open(href, '_blank', 'noopener');
+	openArtifactInNewTab(tab.type, tab.id, tab.projectId);
 }
 
 type HoverTarget = { tabId: string; reference: HTMLElement };
@@ -246,9 +232,8 @@ const tabDrag = useTabDragReorder({
 });
 
 async function handleCopyLink(tab: ArtifactTab) {
-	const href = tabHref(tab);
-	if (!href) return;
-	const url = new URL(href, window.location.origin).toString();
+	const url = artifactUrl(tab.type, tab.id, tab.projectId);
+	if (!url) return;
 	await clipboard.copy(url);
 	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 }

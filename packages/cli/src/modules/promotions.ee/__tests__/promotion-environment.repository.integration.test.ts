@@ -2,6 +2,7 @@ import { testDb, testModules } from '@n8n/backend-test-utils';
 import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
+import { v7 as uuidv7 } from 'uuid';
 
 import { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
@@ -25,6 +26,41 @@ beforeAll(async () => {
 afterAll(async () => {
 	await testDb.terminate();
 });
+
+beforeEach(async () => {
+	await environmentRows.delete({});
+	await providerRepository.delete({});
+});
+
+async function insertProvider(type: 'git' | 'gitlab') {
+	return await providerRepository.insertProvider({
+		name: type,
+		type,
+		authType: 'token',
+		config:
+			type === 'gitlab'
+				? { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' }
+				: { schemaVersion: 1 },
+		auth: `encrypted-${type}`,
+	});
+}
+
+async function insertEnvironment(
+	providerId: string,
+	remote: { schemaVersion: 1; remoteUrl: string } | { schemaVersion: 1; repositoryPath: string },
+) {
+	return await environmentRepository.insertEnvironment(
+		{
+			name: 'environment',
+			scope: 'projects',
+			providerId,
+			remote,
+			direction: 'promote',
+			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+		},
+		{},
+	);
+}
 
 test("methods that take ctx run inside the caller's transaction", async () => {
 	const provider = await providerRepository.insertProvider({
@@ -65,9 +101,57 @@ test("methods that take ctx run inside the caller's transaction", async () => {
 					ctx,
 				),
 			).toMatchObject({ count: 1, data: [{ id: environment.id }] });
+			expect(await environmentRepository.findExistingIds([environment.id], ctx)).toEqual(
+				new Set([environment.id]),
+			);
+			expect(
+				await environmentRepository.findIdsWithRepositoryPathByProvider(provider.id, ctx),
+			).toEqual([]);
 			throw rollback;
 		}),
 	).rejects.toBe(rollback);
 
 	expect(await environmentRows.findOneBy({ id: environmentId })).toBeNull();
+});
+
+describe('findExistingIds', () => {
+	it('returns only the IDs that still have a row', async () => {
+		const provider = await insertProvider('git');
+		const environment = await insertEnvironment(provider.id, {
+			schemaVersion: 1,
+			remoteUrl: 'https://example.com/org/repo.git',
+		});
+		const deletedId = uuidv7();
+
+		const existing = await environmentRepository.findExistingIds([environment.id, deletedId], {});
+
+		expect(existing).toEqual(new Set([environment.id]));
+	});
+
+	it('returns an empty set for an empty list', async () => {
+		await expect(environmentRepository.findExistingIds([], {})).resolves.toEqual(new Set());
+	});
+});
+
+describe('findIdsWithRepositoryPathByProvider', () => {
+	it('returns the environments of the provider that store a repository path', async () => {
+		const gitlab = await insertProvider('gitlab');
+		const otherGitlab = await insertProvider('gitlab');
+		const byPath = await insertEnvironment(gitlab.id, {
+			schemaVersion: 1,
+			repositoryPath: 'platform/workflows',
+		});
+		await insertEnvironment(gitlab.id, {
+			schemaVersion: 1,
+			remoteUrl: 'https://gitlab.example.com/platform/legacy.git',
+		});
+		await insertEnvironment(otherGitlab.id, {
+			schemaVersion: 1,
+			repositoryPath: 'platform/other',
+		});
+
+		const ids = await environmentRepository.findIdsWithRepositoryPathByProvider(gitlab.id, {});
+
+		expect(ids).toEqual([byPath.id]);
+	});
 });

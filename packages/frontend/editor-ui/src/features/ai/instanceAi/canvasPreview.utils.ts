@@ -510,11 +510,6 @@ function unwrapUntrustedToolResult(result: unknown): unknown {
 	}
 }
 
-/** The Skills Hub deep link that opens one skill. */
-export function skillsHubHref(skillId: string): string {
-	return `/settings/context/skills?skillId=${encodeURIComponent(skillId)}`;
-}
-
 export interface SkillArtifact {
 	skillId: string;
 	name?: string;
@@ -581,11 +576,6 @@ export function getLatestSkillArtifactResult(
 	node: InstanceAiAgentNode,
 ): SkillArtifactResult | undefined {
 	return getLatestToolArtifactResult(node, getSkillArtifactFromToolCall);
-}
-
-/** The app detail page of one app. */
-export function appHref(projectId: string, appId: string): string {
-	return `/projects/${projectId}/apps/${appId}`;
 }
 
 /** Name of the n8n Assistant tool that builds n8n Apps. */
