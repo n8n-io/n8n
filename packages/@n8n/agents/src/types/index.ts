@@ -128,7 +128,6 @@ export type {
 	ObservationLogMemoryConfig,
 	ObservationalMemoryConfig,
 	ObservationWindowShares,
-	ObservationHistoryMode,
 	ObservationLogPlacement,
 	ObservationFailurePolicy,
 	ObservationReflectionMode,
@@ -147,7 +146,11 @@ export type {
 	VectorFilter,
 } from './sdk/vector-store';
 
-export type { ObservationCursor } from './sdk/observation';
+export type {
+	BuiltObservationResumeStore,
+	ObservationCursor,
+	ObservationResumeState,
+} from './sdk/observation';
 
 export type {
 	BuiltObservationLogStore,

@@ -25,6 +25,24 @@ export type { SerializedMessageList };
 export const OBSERVATION_CONTINUATION_REMINDER =
 	'<system-reminder>Earlier conversation was reviewed for memory. Use the observation log if one is present. Continue the task from the available context. Do not repeat completed work. Do not mention this memory processing to the user.</system-reminder>';
 
+/**
+ * Put the notes at the start of the first user message, so the model reads
+ * the notes and then the request in one turn. A new user message carries
+ * them when the window does not start with one.
+ */
+function prependNotes(messages: ModelMessage[], notes: string): void {
+	const first = messages[0];
+	if (first?.role !== 'user') {
+		messages.unshift({ role: 'user', content: notes });
+		return;
+	}
+	const parts =
+		typeof first.content === 'string'
+			? [{ type: 'text' as const, text: first.content }]
+			: first.content;
+	messages[0] = { ...first, content: [{ type: 'text', text: notes }, ...parts] };
+}
+
 export type LlmContext = {
 	system: SystemModelMessage | SystemModelMessage[];
 	messages: ModelMessage[];
@@ -208,7 +226,7 @@ export class AgentMessageList {
 	 * message; `message` sends it as the first conversation message, so log
 	 * updates leave the system prefix byte-stable.
 	 */
-	observationLogPlacement: 'system' | 'message' = 'system';
+	observationLogPlacement: 'system' | 'message' = 'message';
 
 	/**
 	 * Short, model-facing note about MCP servers that failed to connect for
@@ -398,7 +416,7 @@ export class AgentMessageList {
 		}
 		const logInMessage =
 			this.observationLogPlacement === 'message' && this.observationLogMemory?.trim();
-		if (logInMessage) messages.unshift({ role: 'user', content: logInMessage });
+		if (logInMessage) prependNotes(messages, logInMessage);
 		return {
 			system: buildSystemMessages(
 				baseInstructions,
@@ -435,11 +453,16 @@ export class AgentMessageList {
 		};
 	}
 
-	/** Messages visible to the LLM: everything after the observation mask boundary. */
+	/**
+	 * Messages visible to the LLM: everything after the observation mask
+	 * boundary. The current turn's user request stays visible after a mid-turn
+	 * swap, so the model sees the notes, then the request, then its own steps.
+	 */
 	llmVisibleMessages(): AgentDbMessage[] {
 		const boundary = this.observationMaskBoundary;
 		if (!boundary) return this.all;
 		return this.all.filter((m) => {
+			if (this.inputSet.has(m) && 'role' in m && m.role === 'user') return true;
 			// createdAt can be an ISO string after a checkpoint JSON round-trip. An
 			// unparseable date cannot be compared — keep the message visible rather
 			// than silently dropping it from the window.

@@ -4,7 +4,6 @@ import { z } from 'zod';
 import { Config, Env } from '../decorators';
 import { concurrencyLimitSchema } from '../schemas';
 
-const observationHistoryModeSchema = z.enum(['masked', 'cacheAware']);
 const observationLogPlacementSchema = z.enum(['system', 'message']);
 const observationFailurePolicySchema = z.enum(['disableForRun', 'retry']);
 const observationReflectionModeSchema = z.enum(['background', 'afterObserve']);
@@ -81,7 +80,10 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';
 
-	/** Token threshold for Observer to trigger compression of message history. */
+	/**
+	 * Token threshold for Observer to trigger compression of message history.
+	 * Applies only when n8n can't find the model's context window. Otherwise, thresholds are shares of the window.
+	 */
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
 	observerMessageTokens: number = 30_000;
 
@@ -98,27 +100,19 @@ export class InstanceAiConfig {
 	reflectorObservationTokens: number = 40_000;
 
 	/**
-	 * Run the Observer inside a turn (at tool-loop boundaries). When false the
-	 * Observer runs only after the turn, which keeps the prompt prefix stable
-	 * within a turn and improves provider prompt-cache reuse.
+	 * Whether n8n Assistant summarizes the conversation into memory during a long turn, between tool calls.
+	 * When false, it summarizes only after the turn ends. This keeps the prompt stable within a turn and can improve prompt-cache reuse, but a long turn can then fill the model's context window.
 	 */
 	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
-	midRunObservation: boolean = false;
+	midRunObservation: boolean = true;
 
 	/**
-	 * Whether n8n Assistant sets its memory thresholds as shares of the model's context window.
-	 * When false, or when the window size is unknown, it uses the fixed token thresholds.
+	 * Largest context window, in tokens, that n8n Assistant uses to set its memory thresholds.
+	 * When the model's window is larger, n8n uses this value, so memory starts summarizing earlier on models with very large windows.
+	 * Set to 0 to use the model's full window.
 	 */
-	@Env('N8N_INSTANCE_AI_OBSERVATION_WINDOW_SHARES')
-	observationWindowShares: boolean = true;
-
-	/**
-	 * How n8n Assistant replays earlier messages. One of `masked` or `cacheAware`.
-	 * With `cacheAware`, it keeps the full conversation while the provider prompt cache is warm,
-	 * and replaces older messages with the memory summary only after a pause or when the conversation is too long.
-	 */
-	@Env('N8N_INSTANCE_AI_OBSERVATION_HISTORY_MODE', observationHistoryModeSchema)
-	observationHistoryMode: z.infer<typeof observationHistoryModeSchema> = 'cacheAware';
+	@Env('N8N_INSTANCE_AI_OBSERVATION_MAX_WINDOW_TOKENS')
+	observationMaxWindowTokens: number = 200_000;
 
 	/**
 	 * Where n8n Assistant puts its memory summary. One of `system` or `message`.
@@ -129,14 +123,14 @@ export class InstanceAiConfig {
 
 	/**
 	 * What n8n Assistant does when a memory summary call fails during a turn. One of `disableForRun` or `retry`.
-	 * With `retry`, it tries again at the next step, up to the batch limit.
+	 * With `retry`, it tries again at the next step.
 	 */
 	@Env('N8N_INSTANCE_AI_OBSERVATION_FAILURE_POLICY', observationFailurePolicySchema)
-	observationFailurePolicy: z.infer<typeof observationFailurePolicySchema> = 'disableForRun';
+	observationFailurePolicy: z.infer<typeof observationFailurePolicySchema> = 'retry';
 
-	/** Maximum memory summary calls in one turn. Set to 0 for no limit. */
+	/** Maximum memory summary calls after one turn. Each call reads one batch. Set to 0 for no limit. */
 	@Env('N8N_INSTANCE_AI_OBSERVER_MAX_BATCHES')
-	observerMaxBatches: number = 0;
+	observerMaxBatches: number = 5;
 
 	/**
 	 * When n8n Assistant condenses its memory summary. One of `background` or `afterObserve`.

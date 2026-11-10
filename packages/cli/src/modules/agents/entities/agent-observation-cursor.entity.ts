@@ -15,4 +15,20 @@ export class AgentObservationCursorEntity extends WithTimestamps {
 
 	@DateTimeColumn()
 	lastObservedAt: Date;
+
+	/** Last message replaced by `resumeNotes`; later requests start after it. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	resumeFromMessageId: string | null;
+
+	@DateTimeColumn({ nullable: true })
+	resumeFromAt: Date | null;
+
+	@Column({ type: 'text', nullable: true })
+	resumeNotes: string | null;
+
+	@Column({ type: 'int', nullable: true })
+	lastRequestTokens: number | null;
+
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	lastModelId: string | null;
 }

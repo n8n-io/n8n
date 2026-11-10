@@ -2000,11 +2000,10 @@ export interface InstanceAiMemoryConfig {
 		reflectorThresholdTokens: number;
 		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
 		midRunObservation?: boolean;
-		/** Rokura-style memory policy options, passed through to the agents SDK. All default off. */
+		/** Memory policy options, passed through to the agents SDK. Unset options use the SDK defaults. */
 		policy?: Pick<
 			ObservationalMemoryConfig,
 			| 'windowShares'
-			| 'historyMode'
 			| 'logPlacement'
 			| 'failurePolicy'
 			| 'maxObserverBatchesPerRun'

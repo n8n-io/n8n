@@ -20,6 +20,14 @@ function userMsg(text: string): AgentMessage {
 	return { role: 'user', content: [{ type: 'text', text }] };
 }
 
+/** After a mid-turn swap, the turn's request stays visible next to the notes. */
+function expectOnlyRequest(list: AgentMessageList) {
+	const messages = list.forLlm('base').messages;
+	expect(messages).toHaveLength(1);
+	expect(messages[0].role).toBe('user');
+	expect(messages[0].content).not.toBe(OBSERVATION_CONTINUATION_REMINDER);
+}
+
 function assistantMsg(text: string): AgentMessage {
 	return { role: 'assistant', content: [{ type: 'text', text }] };
 }
@@ -49,7 +57,13 @@ function buildOrchestrator(
 	const config = {
 		name: 'mid-run-agent',
 		memory: store,
-		observationalMemory,
+		// These cases cover the disable-for-run policy; retry has its own tests.
+		// System placement keeps the masked window easy to assert; message placement has its own tests.
+		observationalMemory: {
+			failurePolicy: 'disableForRun',
+			logPlacement: 'system',
+			...observationalMemory,
+		},
 		onMemoryTaskEvent: (event: ScopedMemoryTaskEvent) => events.push(event),
 	} as unknown as AgentRuntimeConfig;
 	const tracker = new BackgroundTaskTracker();
@@ -132,9 +146,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		const cursor = await store.getCursor(THREAD_ID);
 		expect(cursor?.lastObservedMessageId).toBe(list.messages().at(-1)?.id);
 
-		expect(list.forLlm('base').messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expectOnlyRequest(list);
 		expect(list.observationLogMemory).toContain('User set up mid-run observation.');
 	});
 
@@ -177,9 +189,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		await orchestrator.maybeObserveMidRun(list, runOptions());
 
 		expect(await store.getCursor(THREAD_ID)).not.toBeNull();
-		expect(list.forLlm('base').messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expectOnlyRequest(list);
 	});
 
 	it('contains orchestration failures instead of failing the run', async () => {
@@ -226,7 +236,8 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		await store.releaseObservationLogTaskLock(lock!);
 		await orchestrator.maybeObserveMidRun(list, runOptions());
 		expect(observe).toHaveBeenCalledTimes(1);
-		expect(list.llmVisibleMessages()).toHaveLength(0);
+		// Only the turn's request stays visible after the swap.
+		expect(list.llmVisibleMessages()).toHaveLength(1);
 	});
 
 	it('resets the budget after compaction and observes again when new messages cross it', async () => {
@@ -281,9 +292,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 			await orchestrator.maybeObserveMidRun(list, runOptions());
 
 			expect(observe).toHaveBeenCalledTimes(1);
-			expect(list.forLlm('base').messages).toEqual([
-				{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-			]);
+			expectOnlyRequest(list);
 		});
 
 		it('keeps the message estimate when the call reports no usage', async () => {
@@ -338,9 +347,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		// The next boundary activates the settled result without a new observer run.
 		await orchestrator.maybeObserveMidRun(list, runOptions());
 		expect(observe).toHaveBeenCalledTimes(1);
-		expect(list.forLlm('base').messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expectOnlyRequest(list);
 		expect(list.observationLogMemory).toContain('Background observation.');
 		expect(await store.getCursor(THREAD_ID)).not.toBeNull();
 	});
@@ -366,13 +373,10 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		d.resolve('* CRITICAL (14:30) First chunk observed.');
 		await boundary;
 
-		// Joined the in-flight result instead of running a second observer: the
-		// cursor covers only the first message, so the second stays visible.
-		expect(observe).toHaveBeenCalledTimes(1);
-		const visible = list.forLlm('base').messages;
-		expect(visible).toHaveLength(2);
-		expect(visible[0]).toEqual({ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER });
-		expect(JSON.stringify(visible[1])).toContain('y'.repeat(750));
+		// Joined the in-flight result first. The request stays visible, so the
+		// window is still too full and a second Observer call covers the reply.
+		expect(observe).toHaveBeenCalledTimes(2);
+		expectOnlyRequest(list);
 	});
 
 	it.each(['provider', 'commit'] as const)(
@@ -411,6 +415,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 			await orchestrator.loadInto(next, runOptions());
 			await orchestrator.maybeObserveMidRun(next, runOptions());
 			expect(observe).toHaveBeenCalledTimes(2);
+			// The next turn has no request of its own, so the reminder anchors the window.
 			expect(next.forLlm('base').messages).toEqual([
 				{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
 			]);
@@ -532,9 +537,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 				{ text: fact },
 			]);
 			expect(list.observationLogMemory).toContain(fact);
-			expect(list.forLlm('base').messages).toEqual([
-				{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-			]);
+			expectOnlyRequest(list);
 		},
 	);
 
@@ -838,9 +841,7 @@ describe('MemoryOrchestrator.saveToMemory observer gating', () => {
 		// and masks the window — no in-flight mid-run task remains.
 		await orchestrator.maybeObserveMidRun(list, runOptions());
 		expect(observe).toHaveBeenCalledTimes(1);
-		expect(list.forLlm('base').messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expectOnlyRequest(list);
 
 		// A small post-boundary tail is added before the turn ends. Its budget
 		// is below the threshold, so the gate alone would skip it.

@@ -44,7 +44,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
 | [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) | 10 |  | BASE TABLE |
 | [public.agents_messages](public.agents_messages.md) | 12 |  | BASE TABLE |
-| [public.agents_observation_cursors](public.agents_observation_cursors.md) | 6 |  | BASE TABLE |
+| [public.agents_observation_cursors](public.agents_observation_cursors.md) | 11 |  | BASE TABLE |
 | [public.agents_observation_locks](public.agents_observation_locks.md) | 7 |  | BASE TABLE |
 | [public.agents_observations](public.agents_observations.md) | 11 |  | BASE TABLE |
 | [public.agents_resources](public.agents_resources.md) | 4 |  | BASE TABLE |
@@ -93,7 +93,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_events](public.instance_ai_events.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_messages](public.instance_ai_messages.md) | 8 |  | BASE TABLE |
-| [public.instance_ai_observation_cursors](public.instance_ai_observation_cursors.md) | 5 |  | BASE TABLE |
+| [public.instance_ai_observation_cursors](public.instance_ai_observation_cursors.md) | 10 |  | BASE TABLE |
 | [public.instance_ai_observation_locks](public.instance_ai_observation_locks.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_observational_memory](public.instance_ai_observational_memory.md) | 32 |  | BASE TABLE |
 | [public.instance_ai_observations](public.instance_ai_observations.md) | 10 |  | BASE TABLE |
@@ -913,9 +913,14 @@ erDiagram
 "public.agents_observation_cursors" {
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
+  varchar_255_ lastModelId
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
+  integer lastRequestTokens
   varchar_255_ observationScopeId FK
+  timestamp_3__with_time_zone resumeFromAt
+  varchar_36_ resumeFromMessageId
+  text resumeNotes
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_observation_locks" {
@@ -1377,9 +1382,14 @@ erDiagram
 }
 "public.instance_ai_observation_cursors" {
   timestamp_3__with_time_zone createdAt
+  varchar_255_ lastModelId
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
+  integer lastRequestTokens
   uuid observationScopeId FK
+  timestamp_3__with_time_zone resumeFromAt
+  varchar_36_ resumeFromMessageId
+  text resumeNotes
   timestamp_3__with_time_zone updatedAt
 }
 "public.instance_ai_observation_locks" {

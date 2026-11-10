@@ -15,6 +15,10 @@ import {
 	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
 } from '../runtime/memory/observation-log-defaults';
+import {
+	DEFAULT_OBSERVATION_WINDOW_SHARES,
+	DEFAULT_OBSERVER_MAX_BATCHES_AFTER_TURN,
+} from '../runtime/memory/observation-policy';
 import { hasObservationLogStore } from '../runtime/memory/observation-log-store';
 import { createEmbeddingModel } from '../runtime/model/model-factory';
 import type {
@@ -41,6 +45,11 @@ export function resolveObservationalMemoryConfig(
 	const observerModel = options.defaultModel;
 	const reflectorModel = options.defaultModel;
 
+	// A fixed threshold is an explicit choice, so it replaces the default shares.
+	const windowShares =
+		config.windowShares ??
+		(config.observerThresholdTokens === undefined ? DEFAULT_OBSERVATION_WINDOW_SHARES : undefined);
+
 	return {
 		observerThresholdTokens:
 			config.observerThresholdTokens ?? DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
@@ -52,16 +61,14 @@ export function resolveObservationalMemoryConfig(
 		...(config.midRunObservation !== undefined
 			? { midRunObservation: config.midRunObservation }
 			: {}),
-		...(config.windowShares !== undefined ? { windowShares: config.windowShares } : {}),
-		...(config.historyMode !== undefined ? { historyMode: config.historyMode } : {}),
+		...(windowShares !== undefined ? { windowShares } : {}),
 		...(config.cacheTtlMs !== undefined ? { cacheTtlMs: config.cacheTtlMs } : {}),
-		...(config.logPlacement !== undefined ? { logPlacement: config.logPlacement } : {}),
-		...(config.failurePolicy !== undefined ? { failurePolicy: config.failurePolicy } : {}),
-		...(config.maxObserverBatchesPerRun !== undefined
-			? { maxObserverBatchesPerRun: config.maxObserverBatchesPerRun }
-			: {}),
+		logPlacement: config.logPlacement ?? 'message',
+		failurePolicy: config.failurePolicy ?? 'retry',
+		maxObserverBatchesPerRun:
+			config.maxObserverBatchesPerRun ?? DEFAULT_OBSERVER_MAX_BATCHES_AFTER_TURN,
 		...(config.reflectionMode !== undefined ? { reflectionMode: config.reflectionMode } : {}),
-		...(config.historyRecall !== undefined ? { historyRecall: config.historyRecall } : {}),
+		historyRecall: config.historyRecall ?? true,
 		observe: config.observe ?? createObservationLogObserveFn(observerModel),
 		reflect: config.reflect ?? createObservationLogReflectFn(reflectorModel),
 	};

@@ -264,8 +264,10 @@ export class AssistantAgentFactory {
 	}
 
 	/**
-	 * Memory policy options from config. Each one is off unless its env var turns it on.
-	 * A per-run observer threshold (from eval requests) wins over window shares.
+	 * Memory policy options from config. Thresholds are shares of the model's
+	 * window, like Agents get from the SDK defaults; the fixed token thresholds
+	 * apply only when the window is unknown. A per-run observer threshold (from
+	 * eval requests) wins over window shares.
 	 */
 	private buildObservationPolicy(
 		hasThresholdOverride: boolean,
@@ -273,8 +275,14 @@ export class AssistantAgentFactory {
 		const config = this.instanceAiConfig;
 		return {
 			// Empty shares use the SDK defaults and look the window up in the model catalog.
-			...(config.observationWindowShares && !hasThresholdOverride ? { windowShares: {} } : {}),
-			historyMode: config.observationHistoryMode,
+			...(!hasThresholdOverride
+				? {
+						windowShares:
+							config.observationMaxWindowTokens > 0
+								? { maxContextWindowTokens: config.observationMaxWindowTokens }
+								: {},
+					}
+				: {}),
 			logPlacement: config.observationLogPlacement,
 			failurePolicy: config.observationFailurePolicy,
 			...(config.observerMaxBatches > 0

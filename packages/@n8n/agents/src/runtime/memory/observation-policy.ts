@@ -2,17 +2,21 @@ import type { ObservationalMemoryConfig } from '../../types';
 
 /** Fraction of the fixed observer threshold at which mid-run observation starts in the background. */
 export const FIXED_MID_RUN_SOFT_RATIO = 0.7;
-/** Replay limit as a multiple of the fixed observer threshold when the window is unknown. */
-export const FIXED_REPLAY_LIMIT_RATIO = 2;
 export const DEFAULT_OBSERVATION_CACHE_TTL_MS = 5 * 60_000;
+/** Default Observer calls after one turn; each call reads one batch. */
+export const DEFAULT_OBSERVER_MAX_BATCHES_AFTER_TURN = 5;
+/** Share of the memory window that one Observer batch can fill. */
+export const OBSERVER_BATCH_SHARE = 0.6;
+
+/** Shares used when the host sets no fixed threshold. */
+export const DEFAULT_OBSERVATION_WINDOW_SHARES = { maxContextWindowTokens: 200_000 } as const;
 
 export const DEFAULT_WINDOW_SHARES = {
 	observeAt: 0.2,
 	observeNew: 0.1,
 	midRunAt: 0.6,
 	waitAt: 0.9,
-	// Lower than midRunAt so the log is condensed well before it crowds a large window.
-	reflectAt: 0.3,
+	reflectAt: 0.6,
 } as const;
 
 /** Token thresholds the orchestrator compares estimates against. */
@@ -23,17 +27,29 @@ export interface ObservationThresholds {
 	observeNew: number;
 	/** Visible tokens that start a background mid-run observation. */
 	midRunSoft: number;
-	/** Visible tokens at which the loop waits for observation. */
+	/** Request tokens at which the loop waits for observation and a new turn resumes from notes. */
 	midRunHard: number;
-	/**
-	 * Visible tokens above which `cacheAware` drops observed messages. It is the
-	 * `waitAt` share of the context window when the window is known, so a warm
-	 * cache keeps full history well past the fixed observer threshold.
-	 */
-	replayLimit: number;
+	/** Largest Observer batch, in tokens. Unlimited when the window is unknown. */
+	observerBatch: number | undefined;
 	/** Active observation-log tokens that trigger the Reflector. */
 	reflect: number | undefined;
 	source: 'fixed' | 'windowShare';
+}
+
+/**
+ * The window that memory shares are taken from: the model's window, limited
+ * by `maxContextWindowTokens`. The cap alone is used when the model's window
+ * is unknown. The model's window stays the provider limit for overrun checks.
+ */
+export function resolveMemoryWindow(
+	config: ObservationalMemoryConfig,
+	modelWindowTokens: number | undefined,
+): number | undefined {
+	const shares = config.windowShares;
+	const modelWindow = shares?.contextWindowTokens ?? modelWindowTokens;
+	const cap = shares?.maxContextWindowTokens;
+	if (cap === undefined || cap <= 0) return modelWindow;
+	return modelWindow !== undefined && modelWindow > 0 ? Math.min(modelWindow, cap) : cap;
 }
 
 /**
@@ -45,17 +61,16 @@ export function resolveObservationThresholds(
 	contextWindowTokens: number | undefined,
 ): ObservationThresholds | undefined {
 	const shares = config.windowShares;
-	const window = shares?.contextWindowTokens ?? contextWindowTokens;
+	const window = resolveMemoryWindow(config, contextWindowTokens);
 	if (shares && window !== undefined && window > 0) {
 		const at = (share: number | undefined, fallback: number) =>
 			Math.max(1, Math.floor(window * (share ?? fallback)));
-		const midRunHard = at(shares.waitAt, DEFAULT_WINDOW_SHARES.waitAt);
 		return {
 			observeFirst: at(shares.observeAt, DEFAULT_WINDOW_SHARES.observeAt),
 			observeNew: at(shares.observeNew, DEFAULT_WINDOW_SHARES.observeNew),
 			midRunSoft: at(shares.midRunAt, DEFAULT_WINDOW_SHARES.midRunAt),
-			midRunHard,
-			replayLimit: midRunHard,
+			midRunHard: at(shares.waitAt, DEFAULT_WINDOW_SHARES.waitAt),
+			observerBatch: at(OBSERVER_BATCH_SHARE, OBSERVER_BATCH_SHARE),
 			reflect: config.reflect ? at(shares.reflectAt, DEFAULT_WINDOW_SHARES.reflectAt) : undefined,
 			source: 'windowShare',
 		};
@@ -68,64 +83,51 @@ export function resolveObservationThresholds(
 		observeNew: observer,
 		midRunSoft: Math.max(1, Math.floor(observer * FIXED_MID_RUN_SOFT_RATIO)),
 		midRunHard: observer,
-		// Fixed thresholds observe at `observer`, so a limit equal to it would
-		// never replay full history. Use the window when it is known; it also
-		// caps the limit, so a large `observer` cannot overfill the context.
-		// Without a window, allow one more observer interval of headroom.
-		replayLimit:
+		observerBatch:
 			window !== undefined && window > 0
-				? Math.max(1, Math.floor(window * DEFAULT_WINDOW_SHARES.waitAt))
-				: observer * FIXED_REPLAY_LIMIT_RATIO,
+				? Math.max(1, Math.floor(window * OBSERVER_BATCH_SHARE))
+				: undefined,
 		reflect: config.reflectorThresholdTokens,
 		source: 'fixed',
 	};
 }
 
-export type HistoryReplay =
-	| { kind: 'full' }
-	| { kind: 'sinceCursor'; reason: 'masked-mode' | 'cache-cold' | 'over-limit' };
+export type ResumeReason = 'over-limit' | 'cache-cold' | 'model-switch';
 
 /**
- * Decide whether a turn replays the full history or only the messages after
- * the observation cursor. `cacheAware` keeps detail while the provider cache
- * is warm, because the swap then costs a cache rebuild and loses detail.
+ * Decide at the start of a turn whether the thread moves its resume point up
+ * to the cursor. Moving it rebuilds the prompt cache and drops detail, so it
+ * happens only when the request would not fit the window, or when there is no
+ * cache to keep: the thread was idle past the cache lifetime, or it moved to
+ * another model. A cold or switched thread resumes only when its request is
+ * big enough to be worth it (the first-observation share of the window).
  */
-export function decideHistoryReplay(input: {
-	config: ObservationalMemoryConfig;
+export function decideResume(input: {
+	/** Estimated input tokens of the request with the current view. */
+	requestTokens: number;
+	thresholds: ObservationThresholds;
+	/** The largest request memory lets through. */
+	windowTokens: number;
+	/** Tokens of the observed messages that the current view still replays. */
+	replaceableTokens: number;
 	now: number;
 	lastActivityAt: number | undefined;
-	fullHistoryTokens: number;
-	thresholds: ObservationThresholds;
-	/** Provider cache retention for the model, used when `cacheTtlMs` is unset. */
-	defaultCacheTtlMs?: number;
-}): HistoryReplay {
-	const { config, now, lastActivityAt, fullHistoryTokens, thresholds } = input;
-	if (config.historyMode !== 'cacheAware') return { kind: 'sinceCursor', reason: 'masked-mode' };
-	if (fullHistoryTokens >= thresholds.replayLimit) {
-		return { kind: 'sinceCursor', reason: 'over-limit' };
-	}
-	const ttl = config.cacheTtlMs ?? input.defaultCacheTtlMs ?? DEFAULT_OBSERVATION_CACHE_TTL_MS;
-	if (lastActivityAt === undefined || now - lastActivityAt > ttl) {
-		return { kind: 'sinceCursor', reason: 'cache-cold' };
-	}
-	return { kind: 'full' };
+	cacheTtlMs: number;
+	modelSwitched: boolean;
+}): ResumeReason | undefined {
+	if (input.requestTokens > input.windowTokens) return 'over-limit';
+	if (input.replaceableTokens <= 0) return undefined;
+	if (input.requestTokens < input.thresholds.observeFirst) return undefined;
+	if (input.modelSwitched) return 'model-switch';
+	const idle =
+		input.lastActivityAt === undefined || input.now - input.lastActivityAt > input.cacheTtlMs;
+	return idle ? 'cache-cold' : undefined;
 }
 
-/** Whether a failed or non-advancing Observer call stops observation for the run. */
-export function shouldDisableAfterFailure(
-	config: ObservationalMemoryConfig,
-	attemptsThisRun: number,
-): boolean {
-	if (config.failurePolicy !== 'retry') return true;
-	const max = config.maxObserverBatchesPerRun;
-	return max !== undefined && attemptsThisRun >= max;
-}
-
-/** Whether another Observer call fits in this run's batch budget. */
-export function hasObserverBatchBudget(
-	config: ObservationalMemoryConfig,
-	attemptsThisRun: number,
-): boolean {
-	const max = config.maxObserverBatchesPerRun;
-	return max === undefined || attemptsThisRun < max;
+/**
+ * Whether a failed or non-advancing Observer call stops observation for the
+ * run. With `retry`, the next trigger simply tries again.
+ */
+export function shouldDisableAfterFailure(config: ObservationalMemoryConfig): boolean {
+	return config.failurePolicy === 'disableForRun';
 }

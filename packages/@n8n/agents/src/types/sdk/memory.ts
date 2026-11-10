@@ -419,7 +419,10 @@ export interface ObservationLogMemoryConfig {
 }
 
 export interface ObservationalMemoryConfig {
-	/** Estimated visible-window tokens at which the Observer is scheduled mid-run and post-turn. */
+	/**
+	 * Fixed token threshold for the Observer. When set, it replaces the default
+	 * window shares. Window shares are used when this is unset.
+	 */
 	observerThresholdTokens?: number;
 	/**
 	 * Run the Observer at tool-loop boundaries inside a turn. Default `true`.
@@ -439,50 +442,40 @@ export interface ObservationalMemoryConfig {
 	/** Policy callback that returns drop/merge instructions for the active observation log. */
 	reflect?: ObservationLogReflectFn;
 	/**
-	 * Derive thresholds from shares of the model's context window instead of
-	 * the fixed token counts above. The fixed counts stay the fallback when the
-	 * window size is unknown.
+	 * Derive thresholds from shares of the context window. Default when
+	 * `observerThresholdTokens` is unset: the default shares with a 200k cap.
 	 */
 	windowShares?: ObservationWindowShares;
 	/**
-	 * `masked` (default) replays only messages after the observation cursor on
-	 * every turn. `cacheAware` replays the full history while the provider
-	 * prompt cache is warm, and switches to the log plus recent messages only
-	 * when the thread was idle longer than `cacheTtlMs` or the full history
-	 * reaches the `waitAt` share of the context window (or
-	 * `observerThresholdTokens` when the window is unknown).
-	 */
-	historyMode?: ObservationHistoryMode;
-	/**
-	 * Prompt-cache lifetime used by `cacheAware` history. Defaults to the
-	 * provider cache retention from `promptCaching` (for example 1 hour for
-	 * Anthropic, 24 hours for OpenAI).
+	 * Prompt-cache lifetime. A thread idle for longer resumes from its notes.
+	 * Defaults to the provider cache retention from `promptCaching`.
 	 */
 	cacheTtlMs?: number;
 	/**
-	 * `system` (default) renders the observation log into the system prompt.
-	 * `message` sends it as the first conversation message, so log updates do
-	 * not change the cached system prefix.
+	 * `message` (default) sends the observation log as the first conversation
+	 * message, so log updates do not change the cached system prefix.
+	 * `system` renders it into the system prompt.
 	 */
 	logPlacement?: ObservationLogPlacement;
 	/**
-	 * `disableForRun` (default) stops observation for the rest of the run after
-	 * a failed or non-advancing Observer call. `retry` tries again at the next
-	 * boundary, up to `maxObserverBatchesPerRun` attempts.
+	 * `retry` (default) tries a failed Observer call again at the next step.
+	 * `disableForRun` stops observation for the rest of the run.
 	 */
 	failurePolicy?: ObservationFailurePolicy;
-	/** Maximum Observer calls in one run. Unlimited when unset. */
+	/**
+	 * Maximum Observer calls after one turn. Each call reads one batch that fits
+	 * the memory window. A blocking mid-run observation has no limit. Default 5.
+	 */
 	maxObserverBatchesPerRun?: number;
 	/**
 	 * `background` (default) queues the Reflector after every turn.
 	 * `afterObserve` runs it only after an Observer call that advanced the cursor.
 	 */
 	reflectionMode?: ObservationReflectionMode;
-	/** Give the agent a `read_history` tool to read messages the log replaced. */
+	/** Give the agent a `read_history` tool to read messages the log replaced. Default `true`. */
 	historyRecall?: boolean;
 }
 
-export type ObservationHistoryMode = 'masked' | 'cacheAware';
 export type ObservationLogPlacement = 'system' | 'message';
 export type ObservationFailurePolicy = 'disableForRun' | 'retry';
 export type ObservationReflectionMode = 'background' | 'afterObserve';
@@ -491,6 +484,12 @@ export type ObservationReflectionMode = 'background' | 'afterObserve';
 export interface ObservationWindowShares {
 	/** Context window size. Looked up in the model catalog when unset. */
 	contextWindowTokens?: number;
+	/**
+	 * Upper limit for the window that the shares are taken from. The smaller of
+	 * this and the model's window is used, so memory starts early on very large
+	 * windows. Overrun checks still use the model's real window. No cap when unset.
+	 */
+	maxContextWindowTokens?: number;
 	/** Unobserved size that triggers the first observation. Default 0.2. */
 	observeAt?: number;
 	/** New unobserved size that triggers later observations. Default 0.1. */
@@ -499,7 +498,7 @@ export interface ObservationWindowShares {
 	midRunAt?: number;
 	/** Visible window size at which the loop waits for observation. Default 0.9. */
 	waitAt?: number;
-	/** Observation log size that triggers the Reflector. Default 0.3. */
+	/** Observation log size that triggers the Reflector. Default 0.6. */
 	reflectAt?: number;
 }
 

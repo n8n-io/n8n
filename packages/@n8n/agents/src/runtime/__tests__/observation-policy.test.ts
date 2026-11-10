@@ -1,6 +1,5 @@
 import {
-	decideHistoryReplay,
-	hasObserverBatchBudget,
+	decideResume,
 	resolveObservationThresholds,
 	shouldDisableAfterFailure,
 } from '../memory/observation-policy';
@@ -8,7 +7,7 @@ import {
 const noopReflect = async () => await Promise.resolve({ drop: [], merge: [] });
 
 describe('resolveObservationThresholds', () => {
-	it('keeps the fixed thresholds by default', () => {
+	it('keeps the fixed thresholds when no shares are set', () => {
 		expect(
 			resolveObservationThresholds(
 				{ observerThresholdTokens: 30_000, reflectorThresholdTokens: 40_000 },
@@ -19,7 +18,7 @@ describe('resolveObservationThresholds', () => {
 			observeNew: 30_000,
 			midRunSoft: 21_000,
 			midRunHard: 30_000,
-			replayLimit: 180_000,
+			observerBatch: 120_000,
 			reflect: 40_000,
 			source: 'fixed',
 		});
@@ -36,17 +35,19 @@ describe('resolveObservationThresholds', () => {
 			observeNew: 20_000,
 			midRunSoft: 120_000,
 			midRunHard: 180_000,
-			replayLimit: 180_000,
-			reflect: 60_000,
+			observerBatch: 120_000,
+			reflect: 120_000,
 			source: 'windowShare',
 		});
 	});
 
 	it('falls back to fixed thresholds when the window is unknown', () => {
-		expect(
-			resolveObservationThresholds({ observerThresholdTokens: 30_000, windowShares: {} }, undefined)
-				?.source,
-		).toBe('fixed');
+		const thresholds = resolveObservationThresholds(
+			{ observerThresholdTokens: 30_000, windowShares: {} },
+			undefined,
+		);
+		expect(thresholds?.source).toBe('fixed');
+		expect(thresholds?.observerBatch).toBeUndefined();
 	});
 
 	it('uses an explicit window over the looked-up one', () => {
@@ -56,120 +57,102 @@ describe('resolveObservationThresholds', () => {
 		).toBe(20_000);
 	});
 
-	it('leaves headroom above the observer threshold when the window is unknown', () => {
-		expect(
-			resolveObservationThresholds({ observerThresholdTokens: 30_000 }, undefined)?.replayLimit,
-		).toBe(60_000);
-	});
+	describe('with a window cap', () => {
+		const capped = { maxContextWindowTokens: 200_000 };
 
-	it('caps the replay limit at the window share when the fixed threshold is larger', () => {
-		expect(
-			resolveObservationThresholds({ observerThresholdTokens: 150_000 }, 100_000)?.replayLimit,
-		).toBe(90_000);
-	});
-});
-
-describe('decideHistoryReplay', () => {
-	const thresholds = resolveObservationThresholds({ observerThresholdTokens: 1_000 }, undefined)!;
-	const now = Date.UTC(2026, 10, 7, 12);
-
-	it('masks in the default mode', () => {
-		expect(
-			decideHistoryReplay({
-				config: {},
-				now,
-				lastActivityAt: now,
-				fullHistoryTokens: 1,
-				thresholds,
-			}),
-		).toEqual({ kind: 'sinceCursor', reason: 'masked-mode' });
-	});
-
-	it('replays the full history while the cache is warm', () => {
-		expect(
-			decideHistoryReplay({
-				config: { historyMode: 'cacheAware' },
-				now,
-				lastActivityAt: now - 60_000,
-				fullHistoryTokens: 500,
-				thresholds,
-			}),
-		).toEqual({ kind: 'full' });
-	});
-
-	it('swaps when the cache is cold', () => {
-		expect(
-			decideHistoryReplay({
-				config: { historyMode: 'cacheAware' },
-				now,
-				lastActivityAt: now - 6 * 60_000,
-				fullHistoryTokens: 500,
-				thresholds,
-			}),
-		).toEqual({ kind: 'sinceCursor', reason: 'cache-cold' });
-	});
-
-	it('swaps when the history is over the hard limit', () => {
-		expect(
-			decideHistoryReplay({
-				config: { historyMode: 'cacheAware' },
-				now,
-				lastActivityAt: now,
-				fullHistoryTokens: 2_000,
-				thresholds,
-			}),
-		).toEqual({ kind: 'sinceCursor', reason: 'over-limit' });
-	});
-
-	// Regression: with fixed thresholds the Observer runs only once history passes
-	// the threshold, so a limit equal to it never replayed full history.
-	it('replays full history past the fixed observer threshold when the window is known', () => {
-		expect(
-			decideHistoryReplay({
-				config: { historyMode: 'cacheAware' },
-				now,
-				lastActivityAt: now,
-				fullHistoryTokens: 10_000,
-				thresholds: resolveObservationThresholds({ observerThresholdTokens: 4_000 }, 1_000_000)!,
-			}),
-		).toEqual({ kind: 'full' });
-	});
-
-	it('uses the provider cache retention when cacheTtlMs is unset', () => {
-		const input = {
-			config: { historyMode: 'cacheAware' as const },
-			now,
-			lastActivityAt: now - 30 * 60_000,
-			fullHistoryTokens: 500,
-			thresholds,
-		};
-		expect(decideHistoryReplay({ ...input, defaultCacheTtlMs: 60 * 60_000 })).toEqual({
-			kind: 'full',
+		it('takes the shares from the cap when the model window is larger', () => {
+			expect(
+				resolveObservationThresholds(
+					{ windowShares: capped, reflect: noopReflect as never },
+					1_000_000,
+				),
+			).toEqual({
+				observeFirst: 40_000,
+				observeNew: 20_000,
+				midRunSoft: 120_000,
+				midRunHard: 180_000,
+				observerBatch: 120_000,
+				reflect: 120_000,
+				source: 'windowShare',
+			});
 		});
-		expect(
-			decideHistoryReplay({
-				...input,
-				config: { ...input.config, cacheTtlMs: 5 * 60_000 },
-				defaultCacheTtlMs: 60 * 60_000,
-			}),
-		).toEqual({ kind: 'sinceCursor', reason: 'cache-cold' });
+
+		it('keeps a model window smaller than the cap', () => {
+			expect(resolveObservationThresholds({ windowShares: capped }, 100_000)?.observeFirst).toBe(
+				20_000,
+			);
+		});
+
+		it('uses the cap when the model window is unknown', () => {
+			expect(resolveObservationThresholds({ windowShares: capped }, undefined)?.observeFirst).toBe(
+				40_000,
+			);
+		});
+
+		it('ignores a cap of 0', () => {
+			expect(
+				resolveObservationThresholds({ windowShares: { maxContextWindowTokens: 0 } }, 1_000_000)
+					?.observeFirst,
+			).toBe(200_000);
+		});
 	});
 });
 
-describe('failure policy and batch budget', () => {
-	it('disables after the first failure by default', () => {
-		expect(shouldDisableAfterFailure({}, 1)).toBe(true);
+describe('decideResume', () => {
+	const thresholds = resolveObservationThresholds({ windowShares: {} }, 200_000)!;
+	const now = Date.UTC(2026, 10, 10, 12);
+	const warmSmall = {
+		requestTokens: 50_000,
+		thresholds,
+		windowTokens: 200_000,
+		replaceableTokens: 30_000,
+		now,
+		lastActivityAt: now - 60_000,
+		cacheTtlMs: 5 * 60_000,
+		modelSwitched: false,
+	};
+
+	it('keeps the view while the cache is warm and the request fits', () => {
+		expect(decideResume(warmSmall)).toBeUndefined();
 	});
 
-	it('retries until the batch cap', () => {
-		const config = { failurePolicy: 'retry' as const, maxObserverBatchesPerRun: 3 };
-		expect(shouldDisableAfterFailure(config, 2)).toBe(false);
-		expect(shouldDisableAfterFailure(config, 3)).toBe(true);
-		expect(hasObserverBatchBudget(config, 2)).toBe(true);
-		expect(hasObserverBatchBudget(config, 3)).toBe(false);
+	it('keeps the view at the hard limit while it still fits the window', () => {
+		expect(decideResume({ ...warmSmall, requestTokens: 190_000 })).toBeUndefined();
 	});
 
-	it('has no batch cap when unset', () => {
-		expect(hasObserverBatchBudget({}, 1_000)).toBe(true);
+	it('resumes over the window even when little would be replaced', () => {
+		expect(decideResume({ ...warmSmall, requestTokens: 200_001, replaceableTokens: 0 })).toBe(
+			'over-limit',
+		);
+	});
+
+	it('resumes when the cache is cold', () => {
+		expect(decideResume({ ...warmSmall, lastActivityAt: now - 6 * 60_000 })).toBe('cache-cold');
+	});
+
+	it('resumes when the thread moved to another model', () => {
+		expect(decideResume({ ...warmSmall, modelSwitched: true })).toBe('model-switch');
+	});
+
+	it('does not resume a cold thread whose request is small', () => {
+		expect(
+			decideResume({ ...warmSmall, lastActivityAt: undefined, requestTokens: 39_999 }),
+		).toBeUndefined();
+	});
+
+	it('does not resume when nothing observed would be replaced', () => {
+		expect(
+			decideResume({ ...warmSmall, lastActivityAt: undefined, replaceableTokens: 0 }),
+		).toBeUndefined();
+	});
+});
+
+describe('shouldDisableAfterFailure', () => {
+	it('disables after the first failure with disableForRun', () => {
+		expect(shouldDisableAfterFailure({ failurePolicy: 'disableForRun' })).toBe(true);
+	});
+
+	it('keeps retrying with retry', () => {
+		expect(shouldDisableAfterFailure({ failurePolicy: 'retry' })).toBe(false);
 	});
 });

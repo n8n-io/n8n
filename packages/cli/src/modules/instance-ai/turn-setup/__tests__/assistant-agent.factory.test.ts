@@ -134,8 +134,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 	it('passes the configured memory policy to the observational memory options', () => {
 		const service = buildService();
 		Object.assign(service.instanceAiConfig, {
-			observationWindowShares: true,
-			observationHistoryMode: 'cacheAware',
+			observationMaxWindowTokens: 0,
 			observationLogPlacement: 'message',
 			observationFailurePolicy: 'retry',
 			observerMaxBatches: 5,
@@ -149,7 +148,6 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		).observationalMemory;
 		expect(policy).toEqual({
 			windowShares: {},
-			historyMode: 'cacheAware',
 			logPlacement: 'message',
 			failurePolicy: 'retry',
 			maxObserverBatchesPerRun: 5,
@@ -158,10 +156,23 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		});
 	});
 
-	it('keeps the eval threshold override when window shares are on', () => {
+	it('passes the window cap with the window shares, and omits it when set to 0', () => {
 		const service = buildService();
 		Object.assign(service.instanceAiConfig, {
-			observationWindowShares: true,
+			observationMaxWindowTokens: 200_000,
+		});
+		const create = () =>
+			service.createAgentMemoryOptions({ id: 'user-1' } as User, 'thread-1', 'run-1')
+				.observationalMemory.policy;
+		expect(create()?.windowShares).toEqual({ maxContextWindowTokens: 200_000 });
+
+		service.instanceAiConfig.observationMaxWindowTokens = 0;
+		expect(create()?.windowShares).toEqual({});
+	});
+
+	it('keeps the eval threshold override over window shares', () => {
+		const service = buildService();
+		Object.assign(service.instanceAiConfig, {
 			observerMaxBatches: 0,
 		});
 		const { policy, observerThresholdTokens } = service.createAgentMemoryOptions(

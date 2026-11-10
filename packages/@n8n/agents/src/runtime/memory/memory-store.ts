@@ -32,7 +32,7 @@ import type {
 	Thread,
 } from '../../types';
 import type { AgentDbMessage } from '../../types/sdk/message';
-import type { ObservationCursor } from '../../types/sdk/observation';
+import type { ObservationCursor, ObservationResumeState } from '../../types/sdk/observation';
 import type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
@@ -111,6 +111,8 @@ export class InMemoryMemory
 	private observationLogByScope = new Map<string, ObservationLogEntry[]>();
 
 	private cursorsByScope = new Map<string, ObservationCursor>();
+
+	private resumeStateByScope = new Map<string, ObservationResumeState>();
 
 	private locksByScope = new Map<string, ObservationLogTaskLockHandle>();
 
@@ -482,6 +484,18 @@ export class InMemoryMemory
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async setCursor(cursor: ObservationCursor): Promise<void> {
 		this.cursorsByScope.set(cursor.observationScopeId, cloneCursor(cursor));
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async getResumeState(observationScopeId: string): Promise<ObservationResumeState | null> {
+		const state = this.resumeStateByScope.get(observationScopeId);
+		return state ? structuredClone(state) : null;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async saveResumeState(state: ObservationResumeState): Promise<void> {
+		if (!this.cursorsByScope.has(state.observationScopeId)) return;
+		this.resumeStateByScope.set(state.observationScopeId, structuredClone(state));
 	}
 
 	async acquireObservationLogTaskLock(
