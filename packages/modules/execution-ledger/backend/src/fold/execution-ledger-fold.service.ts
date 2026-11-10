@@ -75,30 +75,31 @@ export class ExecutionLedgerFoldService {
 		// With no step, the claim would delete rows that no feature ever counted.
 		if (steps.length === 0) return 0;
 
-		let claimed = 0;
-		let afterCommit: AfterFoldCommit[] = [];
+		let folded: { claimed: number; afterCommit: AfterFoldCommit[] };
 		try {
-			await this.dbLockService.tryWithLockContext(DbLock.EXECUTION_LEDGER_FOLD, async (ctx) => {
-				const rows = await this.repository.claimBatch(FOLD_BATCH_SIZE, ctx);
-				if (rows.length === 0) return;
+			folded = await this.dbLockService.tryWithLockContext(
+				DbLock.EXECUTION_LEDGER_FOLD,
+				async (ctx) => {
+					const afterCommit: AfterFoldCommit[] = [];
+					const rows = await this.repository.claimBatch(FOLD_BATCH_SIZE, ctx);
+					if (rows.length === 0) return { claimed: 0, afterCommit };
 
-				const work: AfterFoldCommit[] = [];
-				for (const step of steps) {
-					try {
-						const stepWork = await withSavepoint(
-							ctx,
-							step.name,
-							async (stepCtx) => await step.fold(rows, stepCtx),
-						);
-						if (stepWork) work.push(stepWork);
-					} catch (error) {
-						if (error instanceof FoldTransactionLostError) throw error;
-						throw new FoldStepFailedError(step.name, this.recordFailure(rows[0].id), error);
+					for (const step of steps) {
+						try {
+							const stepWork = await withSavepoint(
+								ctx,
+								step.name,
+								async (stepCtx) => await step.fold(rows, stepCtx),
+							);
+							if (stepWork) afterCommit.push(stepWork);
+						} catch (error) {
+							if (error instanceof FoldTransactionLostError) throw error;
+							throw new FoldStepFailedError(step.name, this.recordFailure(rows[0].id), error);
+						}
 					}
-				}
-				claimed = rows.length;
-				afterCommit = work;
-			});
+					return { claimed: rows.length, afterCommit };
+				},
+			);
 		} catch (error) {
 			if (error instanceof DbLockUnavailableError) {
 				this.registerLockSkip();
@@ -108,9 +109,9 @@ export class ExecutionLedgerFoldService {
 		}
 
 		this.consecutiveLockSkips = 0;
-		if (claimed > 0) this.failedBatch = undefined;
+		if (folded.claimed > 0) this.failedBatch = undefined;
 
-		for (const work of afterCommit) {
+		for (const work of folded.afterCommit) {
 			try {
 				await work();
 			} catch (error) {
@@ -118,7 +119,7 @@ export class ExecutionLedgerFoldService {
 			}
 		}
 
-		return claimed;
+		return folded.claimed;
 	}
 
 	/** Returns how many times in a row this batch has failed, this one included. */

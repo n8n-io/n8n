@@ -17,7 +17,7 @@ export class ExecutionLedgerFoldTask implements SystemTask {
 	readonly target = clusterTarget({
 		scheduler: { retryOnFailure: true },
 		leaderTimer: {
-			/** Rows pile up while no instance is the leader, so a backlog is waiting. */
+			// Rows pile up while no instance is the leader, so a backlog is waiting.
 			runOnTakeover: true,
 		},
 	});

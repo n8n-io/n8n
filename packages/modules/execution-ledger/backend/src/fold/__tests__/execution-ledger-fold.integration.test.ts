@@ -11,6 +11,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
 import type { ErrorReporter } from 'n8n-core';
@@ -148,36 +149,31 @@ describe('ExecutionLedgerFoldService', () => {
 	});
 
 	describe('when two folds overlap', () => {
-		const isPostgres = () => Container.get(GlobalConfig).database.type === 'postgresdb';
 		// Each fold holds a connection, so Postgres needs a pool of two.
-		const poolTooSmall = () =>
-			isPostgres() && Container.get(GlobalConfig).database.postgresdb.poolSize < 2;
+		const poolTooSmall = () => {
+			const { type, postgresdb } = Container.get(GlobalConfig).database;
+			return type === 'postgresdb' && postgresdb.poolSize < 2;
+		};
 
 		it('skips the second fold while the first holds the lock', async (context) => {
 			if (poolTooSmall()) context.skip();
 
-			let releaseFirst!: () => void;
-			const firstBlocked = new Promise<void>((resolve) => {
-				releaseFirst = resolve;
-			});
-			let firstStarted!: () => void;
-			const firstInStep = new Promise<void>((resolve) => {
-				firstStarted = resolve;
-			});
+			const firstInStep = createDeferredPromise();
+			const releaseFirst = createDeferredPromise();
 			registry.register(
 				markerStep('slow', async () => {
-					firstStarted();
-					await firstBlocked;
+					firstInStep.resolve();
+					await releaseFirst.promise;
 				}),
 			);
 			await appendRows('run-1');
 
 			const first = service.foldBatch();
-			await firstInStep;
+			await firstInStep.promise;
 
 			expect(await service.foldBatch()).toBe(0);
 
-			releaseFirst();
+			releaseFirst.resolve();
 			expect(await first).toBe(1);
 		});
 	});

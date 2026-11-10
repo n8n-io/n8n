@@ -40,7 +40,6 @@ describe('ExecutionLedgerFoldService', () => {
 	let repository: ReturnType<typeof mock<ExecutionLedgerRepository>>;
 	let registry: FoldStepRegistry;
 	let service: ExecutionLedgerFoldService;
-	// Aliases keep the tests short.
 	let tryWithLockContext: typeof dbLockService.tryWithLockContext;
 	let claimBatch: typeof repository.claimBatch;
 
@@ -52,6 +51,8 @@ describe('ExecutionLedgerFoldService', () => {
 		registry.register(step);
 		return step;
 	};
+
+	const lockHeld = () => new DbLockUnavailableError('1011');
 
 	beforeEach(() => {
 		vi.mocked(withSavepoint).mockClear();
@@ -115,12 +116,11 @@ describe('ExecutionLedgerFoldService', () => {
 
 		it('runs after-commit work only after the lock call resolved, and only for steps that returned work', async () => {
 			const events: string[] = [];
-			tryWithLockContext.mockImplementation(
-				async (_k: unknown, fn: (c: OperationContext) => Promise<void>) => {
-					await fn(ctx);
-					events.push('committed');
-				},
-			);
+			tryWithLockContext.mockImplementation(async (_key, fn) => {
+				const result = await fn(ctx);
+				events.push('committed');
+				return result;
+			});
 			addStep('with_work', async () => {
 				events.push('fold');
 				return await Promise.resolve(async () => {
@@ -154,14 +154,14 @@ describe('ExecutionLedgerFoldService', () => {
 
 		it('returns 0 without throwing when the lock is held', async () => {
 			addStep('first');
-			tryWithLockContext.mockRejectedValue(new DbLockUnavailableError('1011'));
+			tryWithLockContext.mockRejectedValue(lockHeld());
 
 			await expect(service.foldBatch()).resolves.toBe(0);
 		});
 
 		it('warns once after 5 consecutive lock skips', async () => {
 			addStep('first');
-			tryWithLockContext.mockRejectedValue(new DbLockUnavailableError('1011'));
+			tryWithLockContext.mockRejectedValue(lockHeld());
 
 			for (let i = 0; i < 4; i++) await service.foldBatch();
 			expect(scopedLogger.warn).not.toHaveBeenCalled();
@@ -172,14 +172,10 @@ describe('ExecutionLedgerFoldService', () => {
 
 		it('restarts the skip count after a batch gets the lock', async () => {
 			addStep('first');
-			tryWithLockContext.mockRejectedValue(new DbLockUnavailableError('1011'));
+			tryWithLockContext.mockRejectedValue(lockHeld());
 			for (let i = 0; i < 4; i++) await service.foldBatch();
 
-			tryWithLockContext.mockImplementationOnce(
-				async (_k: unknown, fn: (c: OperationContext) => Promise<void>) => {
-					await fn(ctx);
-				},
-			);
+			tryWithLockContext.mockImplementationOnce(async (_key, fn) => await fn(ctx));
 			await service.foldBatch();
 			for (let i = 0; i < 4; i++) await service.foldBatch();
 
@@ -254,7 +250,7 @@ describe('ExecutionLedgerFoldService', () => {
 			await expect(service.foldBatch()).rejects.toBe(lost);
 
 			for (let i = 0; i < 4; i++) {
-				tryWithLockContext.mockRejectedValueOnce(new DbLockUnavailableError('1011'));
+				tryWithLockContext.mockRejectedValueOnce(lockHeld());
 				await service.foldBatch();
 			}
 			expect(scopedLogger.warn).not.toHaveBeenCalled();

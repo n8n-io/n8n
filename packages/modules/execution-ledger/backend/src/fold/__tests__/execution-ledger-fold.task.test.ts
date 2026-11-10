@@ -21,21 +21,15 @@ describe('ExecutionLedgerFoldTask', () => {
 		expect(build(30).task.schedule).toMatchObject({ kind: 'interval', intervalSeconds: 5 });
 	});
 
-	it('passes a 4000 ms budget to the fold when the lease is long', async () => {
-		const { task, fold } = build(30);
+	it.each([
+		{ lease: 30, budget: 4000 },
+		{ lease: 3, budget: 2000 },
+	])('passes a $budget ms budget to the fold with a $lease s lease', async ({ lease, budget }) => {
+		const { task, fold } = build(lease);
 		const signal = new AbortController().signal;
 
 		await task.run(signal);
 
-		expect(fold).toHaveBeenCalledWith(signal, 4000);
-	});
-
-	it('passes a 2000 ms budget to the fold when the lease is short', async () => {
-		const { task, fold } = build(3);
-		const signal = new AbortController().signal;
-
-		await task.run(signal);
-
-		expect(fold).toHaveBeenCalledWith(signal, 2000);
+		expect(fold).toHaveBeenCalledWith(signal, budget);
 	});
 });
