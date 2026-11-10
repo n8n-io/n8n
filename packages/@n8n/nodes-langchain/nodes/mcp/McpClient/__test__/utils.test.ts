@@ -415,6 +415,49 @@ describe('utils', () => {
 			}
 		});
 
+		it('caps a later page request at the remaining deadline', async () => {
+			const client = mockDeep<Client>();
+			const now = vi.spyOn(Date, 'now');
+			let clock = 0;
+			now.mockImplementation(() => clock);
+			client.listResources
+				.mockImplementationOnce(async () => {
+					// Use most of the budget before the first page returns.
+					clock += 250_000;
+					return {
+						resources: [{ uri: 'mem://a', name: 'a' }],
+						nextCursor: 'c1',
+					};
+				})
+				.mockResolvedValueOnce({ resources: [{ uri: 'mem://b', name: 'b' }] });
+
+			try {
+				const result = await getAllResources(client, { timeout: 60_000 }, node, 0);
+
+				expect(result).toEqual({
+					items: [
+						{ uri: 'mem://a', name: 'a' },
+						{ uri: 'mem://b', name: 'b' },
+					],
+					truncated: false,
+				});
+				expect(client.listResources).toHaveBeenNthCalledWith(
+					1,
+					{ cursor: undefined },
+					expect.objectContaining({ timeout: 60_000 }),
+				);
+				// Only 50s of the 5 minute budget is left, so the cap is lower
+				// than the 60s request timeout.
+				expect(client.listResources).toHaveBeenNthCalledWith(
+					2,
+					{ cursor: 'c1' },
+					expect.objectContaining({ timeout: 50_000 }),
+				);
+			} finally {
+				now.mockRestore();
+			}
+		});
+
 		it('returns the collected items when a page request fails at the deadline', async () => {
 			const client = mockDeep<Client>();
 			const now = vi.spyOn(Date, 'now');
