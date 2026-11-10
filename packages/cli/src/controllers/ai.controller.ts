@@ -213,29 +213,6 @@ export class AiController {
 		}
 	}
 
-<<<<<<< HEAD
-=======
-	/**
-	 * @deprecated Both callers are deprecated: the Code node's "Ask AI" tab is
-	 * hidden, and the AI Transform node is hidden and has an automated migration
-	 * to the Code node. Removed in v3.
-	 */
-	@Licensed('feat:askAi')
-	@Post('/ask-ai', { ipRateLimit: { limit: 100 } })
-	async askAi(
-		req: AuthenticatedRequest,
-		_: Response,
-		@Body payload: AiAskRequestDto,
-	): Promise<AiAssistantSDK.AskAiResponsePayload> {
-		try {
-			// oxlint-disable-next-line typescript/no-deprecated
-			return await this.aiService.askAi(payload, req.user.toIUser());
-		} catch (e) {
-			throw this.toResponseError(e);
-		}
-	}
-
->>>>>>> 04fb7076ca0f88051dcdb8e38aa107fc589ce6fe
 	@Post('/free-credits')
 	async aiCredits(req: AuthenticatedRequest, _: Response, @Body payload: AiFreeCreditsRequestDto) {
 		try {

@@ -189,32 +189,6 @@ describe('AiController', () => {
 		});
 	});
 
-<<<<<<< HEAD
-=======
-	describe('askAi method', () => {
-		const payload = mock<AiAskRequestDto>();
-
-		it('should ask AI successfully', async () => {
-			const clientResponse = mock<AiAssistantSDK.AskAiResponsePayload>();
-			aiService.askAi.mockResolvedValue(clientResponse);
-
-			const result = await controller.askAi(request, response, payload);
-
-			expect(aiService.askAi).toHaveBeenCalledWith(payload, request.user.toIUser());
-			expect(result).toEqual(clientResponse);
-		});
-
-		it('should throw InternalServerError if asking AI fails', async () => {
-			const mockError = new Error('Ask AI failed');
-			aiService.askAi.mockRejectedValue(mockError);
-
-			await expect(controller.askAi(request, response, payload)).rejects.toThrow(
-				InternalServerError,
-			);
-		});
-	});
-
->>>>>>> 04fb7076ca0f88051dcdb8e38aa107fc589ce6fe
 	describe('build', () => {
 		const payload: AiBuilderChatRequestDto = {
 			payload: {
