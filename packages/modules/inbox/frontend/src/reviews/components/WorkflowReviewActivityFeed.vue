@@ -145,7 +145,7 @@ onMounted(() => {
 		:class="[$style.feed, { [$style.feedWithComposer]: $slots.composer }]"
 		data-test-id="workflow-review-activity-feed"
 	>
-		<div v-if="$slots.header" :class="[$style.header, $style.lead]">
+		<div v-if="$slots.header" :class="$style.header">
 			<slot name="header" />
 		</div>
 		<N8nLoading v-if="loading && entries.length === 0" :loading="true" :rows="3" />
@@ -240,10 +240,6 @@ onMounted(() => {
 .header {
 	padding-inline: var(--spacing--sm);
 	padding-bottom: var(--spacing--sm);
-}
-
-.lead {
-	padding-bottom: var(--spacing--xl);
 }
 
 .list {

@@ -34,6 +34,7 @@ export type ModuleComponentSlot =
 	| 'workflow-diff-placeholder'
 	| 'code-diff'
 	| 'promotion-changes'
+	| 'promotion-changes-prototype'
 	| 'project-header'
 	| 'insights-summary'
 	| 'resources-list-layout';

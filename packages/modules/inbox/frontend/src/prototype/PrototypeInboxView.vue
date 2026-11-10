@@ -9,6 +9,7 @@ import type {
 import { N8nResizeWrapper, useResizablePanel } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
+// Old shows the components of master. New shows the copies in ./new.
 import InboxEmptyState from '../components/InboxEmptyState.vue';
 import InboxList from '../components/InboxList.vue';
 import type { InboxListSection } from '../components/InboxListSection.vue';
@@ -16,6 +17,10 @@ import type { InboxSelection } from '../inbox.constants';
 import PromotionReviewDetail from '../promotions/PromotionReviewDetail.vue';
 import WorkflowReviewDetail from '../reviews/WorkflowReviewDetail.vue';
 import SelfHealingResultDetail from '../self-healing/SelfHealingResultDetail.vue';
+import NewInboxList from './new/components/InboxList.vue';
+import NewPromotionReviewDetail from './new/promotions/PromotionReviewDetail.vue';
+import NewWorkflowReviewDetail from './new/reviews/WorkflowReviewDetail.vue';
+import NewSelfHealingResultDetail from './new/self-healing/SelfHealingResultDetail.vue';
 import { promotionActivityReview, prototypeItems } from './prototype.fixtures';
 import { prototypeSession } from './prototype.session';
 import { usePrototypeRequests } from './usePrototypeRequests';
@@ -40,8 +45,30 @@ const sidebarResizer = useResizablePanel({
 const sidebarWidth = sidebarResizer.width;
 
 const activeTab = ref<InboxState>('open');
-// New is the Changes layout under construction. Old is the layout from the last commit.
+// New is the layout under construction. Old is the product as it is on master.
 const changesLayout = ref<'new' | 'old'>('new');
+const isNew = computed(() => changesLayout.value === 'new');
+const views = computed(() =>
+	isNew.value
+		? {
+				List: NewInboxList,
+				WorkflowReview: NewWorkflowReviewDetail,
+				PromotionReview: NewPromotionReviewDetail,
+				SelfHealing: NewSelfHealingResultDetail,
+			}
+		: {
+				List: InboxList,
+				WorkflowReview: WorkflowReviewDetail,
+				PromotionReview: PromotionReviewDetail,
+				SelfHealing: SelfHealingResultDetail,
+			},
+);
+// Props that only the New components have. Old gets none of them.
+const workflowReviewNewProps = computed(() => (isNew.value ? { splitChanges: true } : {}));
+const promotionReviewNewProps = computed(() =>
+	isNew.value ? { activityReview: promotionActivityReview } : {},
+);
+const selfHealingNewProps = computed(() => (isNew.value ? { splitChanges: true } : {}));
 const selection = ref<InboxSelection | null>(null);
 const detailTab = ref<'activity' | 'changes'>('activity');
 
@@ -147,7 +174,8 @@ onBeforeUnmount(() => {
 				:resizer="sidebarResizer"
 				:supported-directions="['right']"
 			>
-				<InboxList
+				<component
+					:is="views.List"
 					:class="$style.sidebar"
 					:sections="sections"
 					:active-tab="activeTab"
@@ -160,7 +188,8 @@ onBeforeUnmount(() => {
 				/>
 			</N8nResizeWrapper>
 			<div :class="$style.main">
-				<WorkflowReviewDetail
+				<component
+					:is="views.WorkflowReview"
 					v-if="selection?.type === 'workflow_review'"
 					:review-id="selection.id"
 					:list-item="selectedReviewItem"
@@ -168,24 +197,26 @@ onBeforeUnmount(() => {
 					:on-item-change="onItemChange"
 					:is-active="isActive"
 					:is-selected="isSelected('workflow_review')"
-					:split-changes="changesLayout === 'new'"
+					v-bind="workflowReviewNewProps"
 					@update:tab="detailTab = $event"
 				>
 					<InboxEmptyState />
-				</WorkflowReviewDetail>
-				<PromotionReviewDetail
+				</component>
+				<component
+					:is="views.PromotionReview"
 					v-else-if="selectedPromotionItem"
 					:item="selectedPromotionItem"
 					:on-item-change="onItemChange"
-					:activity-review="changesLayout === 'new' ? promotionActivityReview : undefined"
+					v-bind="promotionReviewNewProps"
 				/>
-				<SelfHealingResultDetail
+				<component
+					:is="views.SelfHealing"
 					v-else-if="selection?.type === 'self_healing_result'"
 					:selection="selection"
 					:tab="detailTab"
 					:on-item-change="onItemChange"
 					:is-selected="isSelected('self_healing_result')"
-					:split-changes="changesLayout === 'new'"
+					v-bind="selfHealingNewProps"
 					@update:tab="detailTab = $event"
 				/>
 				<template v-else>

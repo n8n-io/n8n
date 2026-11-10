@@ -436,7 +436,7 @@ const storyTriggerStyle = `
 
 function leadingIconColor(item: ContextMenuLeaf<string>) {
 	return item.type === 'item' && item.variant === 'destructive'
-		? '--color--danger'
+		? '--icon-color--danger'
 		: '--icon-color';
 }
 

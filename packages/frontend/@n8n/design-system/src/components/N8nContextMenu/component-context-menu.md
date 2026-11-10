@@ -28,7 +28,7 @@ The default empty state uses i18n key `contextMenu.noItems` (`No items`). It sho
 
 **Icon color**
 
-The default leading icon uses the row tone: `--icon-color`, `--icon-color--subtle` when disabled, `--color--danger` when `variant` is `destructive`. If `icon.type` is `icon` and `icon.color` is set, that value wins. `#item-leading` replaces this default, including emoji and tone handling.
+The default leading icon uses the row tone: `--icon-color`, `--icon-color--subtle` when disabled, `--icon-color--danger` when `variant` is `destructive`. If `icon.type` is `icon` and `icon.color` is set, that value wins. `#item-leading` replaces this default, including emoji and tone handling.
 
 **Labels and indicators**
 
@@ -326,7 +326,7 @@ function onSelect(id: string) {
         :icon="item.icon.value"
         :class="ui.class"
         size="large"
-        :color="item.type === 'item' && item.variant === 'destructive' ? '--color--danger' : '--icon-color'"
+        :color="item.type === 'item' && item.variant === 'destructive' ? '--icon-color--danger' : '--icon-color'"
       />
     </template>
 

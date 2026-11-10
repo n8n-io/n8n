@@ -25,6 +25,14 @@ export const DropdownMenuWidthKey: InjectionKey<Ref<string>> = Symbol('DropdownM
 export const DropdownMenuSubWidthKey: InjectionKey<Ref<string | undefined>> =
 	Symbol('DropdownMenuSubWidth');
 
+/**
+ * Injection key that shows destructive rows in the danger color at rest. Default
+ * (false) keeps the danger color for the highlighted row only.
+ */
+export const DropdownMenuDestructiveAtRestKey: InjectionKey<Ref<boolean>> = Symbol(
+	'DropdownMenuDestructiveAtRest',
+);
+
 export interface DropdownMenuExternalNavigationController {
 	/** Handles a key for one visible menu level. */
 	handleExternalKeydown: (event: KeyboardEvent) => boolean;
@@ -171,6 +179,8 @@ export interface DropdownMenuProps<T = string, D = never> {
 	subMenuMaxHeight?: string | number;
 	/** Overrides the max-width of nested sub-menu content (CSS length). The root menu keeps `width`. */
 	subMenuWidth?: string;
+	/** Shows destructive rows in the danger color at rest. By default only the highlighted row shows it. */
+	destructiveAtRest?: boolean;
 	/** Whether to show loading state */
 	loading?: boolean;
 	/** Number of skeleton items to show when loading */

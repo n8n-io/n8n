@@ -12,6 +12,7 @@ import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, useId,
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
 	DropdownMenuPortalTargetKey,
+	DropdownMenuDestructiveAtRestKey,
 	DropdownMenuSubMaxHeightKey,
 	DropdownMenuSubWidthKey,
 	DropdownMenuWidthKey,
@@ -81,6 +82,11 @@ provide(
 provide(
 	DropdownMenuSubWidthKey,
 	computed(() => props.subMenuWidth),
+);
+
+provide(
+	DropdownMenuDestructiveAtRestKey,
+	computed(() => props.destructiveAtRest === true),
 );
 
 // Handle controlled/uncontrolled state

@@ -312,6 +312,8 @@ const treeResizer = useResizablePanel({
 .tree {
 	flex-shrink: 0;
 	min-height: 0;
+	/* Takes back the inset of the tree and its rows, so the row text lines up with the heading. */
+	margin-left: calc(-2 * var(--spacing--2xs));
 	border-right: var(--border);
 }
 

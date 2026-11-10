@@ -15,6 +15,7 @@ import Icon from '../N8nIcon/Icon.vue';
 import N8nLoading from '../N8nLoading';
 import {
 	DropdownMenuPortalTargetKey,
+	DropdownMenuDestructiveAtRestKey,
 	DropdownMenuSubMaxHeightKey,
 	DropdownMenuSubWidthKey,
 	DropdownMenuWidthKey,
@@ -58,6 +59,7 @@ const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 const subMenuMaxHeight = inject(DropdownMenuSubMaxHeightKey, ref(undefined));
 const subMenuWidth = inject(DropdownMenuSubWidthKey, ref(undefined));
+const destructiveAtRest = inject(DropdownMenuDestructiveAtRestKey, ref(false));
 const menuWidth = inject(DropdownMenuWidthKey, ref('24rem'));
 const externalNavigation = inject(DropdownMenuExternalNavigationKey, null);
 
@@ -274,6 +276,7 @@ onBeforeUnmount(() => {
 					$style['sub-trigger'],
 					props.class,
 					{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+					{ [$style.destructiveAtRest]: destructive && destructiveAtRest },
 				]"
 				@keydown.capture="handleSelectableParentKeydown"
 				@click.capture="handleSubMenuTriggerClick"
@@ -482,6 +485,7 @@ onBeforeUnmount(() => {
 				$style.item,
 				props.class,
 				{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+				{ [$style.destructiveAtRest]: destructive && destructiveAtRest },
 			]"
 			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
@@ -522,6 +526,7 @@ onBeforeUnmount(() => {
 				$style.item,
 				props.class,
 				{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+				{ [$style.destructiveAtRest]: destructive && destructiveAtRest },
 			]"
 			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
@@ -609,6 +614,23 @@ onBeforeUnmount(() => {
 	}
 
 	&.destructive.destructive:not([data-disabled]) {
+		&[data-highlighted],
+		&[data-virtual-highlighted] {
+			.item-label.item-label {
+				color: var(--text-color--danger);
+			}
+
+			.icon.icon,
+			.item-check.item-check,
+			.sub-indicator.sub-indicator {
+				color: var(--icon-color--danger) !important;
+			}
+		}
+	}
+
+	// Opt-in through `destructiveAtRest`. The danger color also shows at rest.
+	// The extra classes beat the highlighted-row rule above.
+	&.destructive.destructive.destructiveAtRest.destructiveAtRest:not([data-disabled]) {
 		.item-label.item-label {
 			color: var(--color--text--danger);
 		}
@@ -625,6 +647,18 @@ onBeforeUnmount(() => {
 	:global([data-menu-items]:has([data-virtual-highlighted])) &:not([data-virtual-highlighted]) {
 		&[data-highlighted] {
 			background-color: transparent;
+
+			&.destructive.destructive {
+				.item-label.item-label {
+					color: var(--text-color);
+				}
+
+				.icon.icon,
+				.item-check.item-check,
+				.sub-indicator.sub-indicator {
+					color: var(--color--text--tint-1) !important;
+				}
+			}
 		}
 	}
 }

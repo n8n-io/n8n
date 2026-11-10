@@ -1,7 +1,7 @@
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import type { RouteRecordSingleView } from 'vue-router';
 
-import { INBOX_PROTOTYPE_VIEW } from './inbox.constants';
+import { INBOX_PROTOTYPE_VIEW } from './prototype/prototype.constants';
 
 const inboxView = {
 	component: async () => await import('./views/InboxView.vue'),

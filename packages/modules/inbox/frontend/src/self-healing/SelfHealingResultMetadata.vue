@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import type { SelfHealingResultDetail } from '@n8n/api-types';
-import { N8nAssistantAvatar, N8nIcon, N8nLink, N8nText, N8nTimeAgo } from '@n8n/design-system';
+import {
+	N8nAssistantAvatar,
+	N8nCard,
+	N8nIcon,
+	N8nLink,
+	N8nText,
+	N8nTimeAgo,
+} from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
-
-import InboxAvatarTooltip from '../components/InboxAvatarTooltip.vue';
-import PrototypeStatusMenu from '../prototype/PrototypeStatusMenu.vue';
-import { prototypeSession, prototypeState } from '../prototype/prototype.session';
 
 const props = defineProps<{
 	detail: SelfHealingResultDetail;
@@ -17,19 +20,6 @@ const props = defineProps<{
 }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
-const inboxState = computed(() =>
-	prototypeState(props.detail.resultId, props.detail.reviewState === 'open' ? 'open' : 'closed'),
-);
-const outcomeLabel = computed(() => {
-	switch (props.detail.outcome) {
-		case 'fix_ready':
-			return i18n.baseText('inbox.outcome.fixReady');
-		case 'needs_you':
-			return i18n.baseText('inbox.outcome.needsAttention');
-		case 'could_not_fix':
-			return i18n.baseText('inbox.outcome.couldNotFix');
-	}
-});
 
 const usageRows = computed(() => {
 	const usage = props.detail.usage;
@@ -85,103 +75,96 @@ const usageRows = computed(() => {
 
 <template>
 	<aside :class="$style.metadata" data-test-id="self-healing-metadata">
-		<section :class="$style.section" data-test-id="self-healing-status-card">
-			<N8nText bold color="text-light" size="medium">{{
-				i18n.baseText('inbox.selfHealing.metadata.status')
-			}}</N8nText>
-			<PrototypeStatusMenu
-				v-if="prototypeSession.active"
-				:item-id="detail.resultId"
-				:state="inboxState"
-				:open-label="outcomeLabel"
-			>
-				<span
-					:class="[
-						$style.dot,
-						inboxState === 'closed'
-							? $style.dotClosed
-							: detail.outcome === 'needs_you'
-								? $style.dotAttention
-								: $style.dotOpen,
-					]"
-				/>
-			</PrototypeStatusMenu>
-			<N8nText v-else size="medium">{{ statusLabel }}</N8nText>
-		</section>
-		<section :class="$style.section">
-			<N8nText bold color="text-light" size="medium">{{
-				i18n.baseText('inbox.selfHealing.metadata.createdBy')
-			}}</N8nText>
-			<div :class="$style.person">
-				<InboxAvatarTooltip :name="i18n.baseText('inbox.selfHealing.metadata.assistant')">
+		<N8nCard :class="$style.card" data-test-id="self-healing-status-card">
+			<template #header>
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.metadata.status')
+				}}</N8nText>
+			</template>
+			<N8nText size="medium">{{ statusLabel }}</N8nText>
+		</N8nCard>
+		<N8nCard :class="[$style.card, $style.peopleCard]">
+			<div :class="$style.section">
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.metadata.createdBy')
+				}}</N8nText>
+				<div :class="$style.person">
 					<N8nAssistantAvatar size="small" />
-				</InboxAvatarTooltip>
-				<N8nText size="medium">{{ i18n.baseText('inbox.selfHealing.metadata.assistant') }}</N8nText>
+					<N8nText size="medium">{{
+						i18n.baseText('inbox.selfHealing.metadata.assistant')
+					}}</N8nText>
+				</div>
 			</div>
-		</section>
-		<section :class="$style.section">
-			<N8nText bold color="text-light" size="medium">{{
-				i18n.baseText('inbox.selfHealing.metadata.completed')
-			}}</N8nText>
-			<N8nText size="medium">
-				<time :datetime="detail.completedAt"
-					><N8nTimeAgo :date="detail.completedAt" :locale="rootStore.defaultLocale"
-				/></time>
-			</N8nText>
-		</section>
-		<section :class="$style.section">
-			<N8nText bold color="text-light" size="medium">{{
-				i18n.baseText('inbox.selfHealing.metadata.workflow')
-			}}</N8nText>
-			<N8nLink
-				:to="{ name: VIEWS.WORKFLOW, params: { workflowId: detail.workflowId } }"
-				theme="text"
-				size="medium"
-				:underline="false"
-				:class="$style.plainLink"
-				data-test-id="self-healing-workflow-link"
-			>
-				<span :class="$style.link">
-					<N8nIcon icon="workflow" size="medium" :class="$style.workflowIcon" />
-					<span :class="$style.workflowName">{{ workflowName }}</span>
-				</span>
-			</N8nLink>
-		</section>
-		<section :class="$style.section">
-			<N8nText bold color="text-light" size="medium">{{
-				i18n.baseText('inbox.selfHealing.metadata.execution')
-			}}</N8nText>
-			<N8nLink
-				v-if="detail.execution.status === 'available'"
-				:to="{
-					name: VIEWS.EXECUTION_PREVIEW,
-					params: { workflowId: detail.workflowId, executionId: detail.execution.id },
-				}"
-				theme="text"
-				size="medium"
-				:underline="false"
-				:class="$style.plainLink"
-				data-test-id="self-healing-execution-link"
-			>
-				{{
-					i18n.baseText('inbox.selfHealing.metadata.executionLink', {
-						interpolate: { id: detail.execution.id },
-					})
-				}}
-			</N8nLink>
-			<N8nText
-				v-else
-				size="small"
-				color="text-light"
-				data-test-id="self-healing-execution-unavailable"
-			>
-				{{ i18n.baseText('inbox.selfHealing.metadata.executionUnavailable') }}
-			</N8nText>
-		</section>
-		<section v-if="usageRows.length" :class="$style.section" data-test-id="self-healing-usage">
-			<N8nText bold color="text-light" size="medium">{{
-				i18n.baseText('inbox.selfHealing.usage.title')
-			}}</N8nText>
+			<div :class="$style.section">
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.metadata.completed')
+				}}</N8nText>
+				<N8nText size="medium">
+					<time :datetime="detail.completedAt"
+						><N8nTimeAgo :date="detail.completedAt" :locale="rootStore.defaultLocale"
+					/></time>
+				</N8nText>
+			</div>
+		</N8nCard>
+		<N8nCard :class="$style.card">
+			<template #header>
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.metadata.workflow')
+				}}</N8nText>
+			</template>
+			<div :class="$style.section">
+				<N8nLink
+					:to="{ name: VIEWS.WORKFLOW, params: { workflowId: detail.workflowId } }"
+					theme="text"
+					size="medium"
+					:underline="false"
+					:class="$style.plainLink"
+					data-test-id="self-healing-workflow-link"
+				>
+					<span :class="$style.link">
+						<N8nIcon icon="workflow" size="medium" :class="$style.workflowIcon" />
+						<span :class="$style.workflowName">{{ workflowName }}</span>
+					</span>
+				</N8nLink>
+			</div>
+			<div :class="$style.section">
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.metadata.execution')
+				}}</N8nText>
+				<N8nLink
+					v-if="detail.execution.status === 'available'"
+					:to="{
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: { workflowId: detail.workflowId, executionId: detail.execution.id },
+					}"
+					theme="text"
+					size="medium"
+					:underline="false"
+					:class="$style.plainLink"
+					data-test-id="self-healing-execution-link"
+				>
+					{{
+						i18n.baseText('inbox.selfHealing.metadata.executionLink', {
+							interpolate: { id: detail.execution.id },
+						})
+					}}
+				</N8nLink>
+				<N8nText
+					v-else
+					size="small"
+					color="text-light"
+					data-test-id="self-healing-execution-unavailable"
+				>
+					{{ i18n.baseText('inbox.selfHealing.metadata.executionUnavailable') }}
+				</N8nText>
+			</div>
+		</N8nCard>
+		<N8nCard v-if="usageRows.length" :class="$style.card" data-test-id="self-healing-usage">
+			<template #header>
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.usage.title')
+				}}</N8nText>
+			</template>
 			<dl :class="$style.usage">
 				<div
 					v-for="row in usageRows"
@@ -193,44 +176,36 @@ const usageRows = computed(() => {
 					<N8nText tag="dd" size="small">{{ row.value }}</N8nText>
 				</div>
 			</dl>
-		</section>
+		</N8nCard>
 	</aside>
 </template>
 
 <style module lang="scss">
 .metadata {
-	position: sticky;
-	top: 0;
-	align-self: flex-start;
 	display: flex;
-	/* Match the review metadata column. The design system has no column-width token. */
+	/* Match the prototype's metadata rail. The design system has no column-width token. */
 	flex: 0 0 min(18rem, 30%);
 	min-width: 14rem;
 	flex-direction: column;
-	gap: var(--spacing--lg);
-	margin-top: var(--spacing--5xs);
-	padding: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius--2xs);
+	gap: var(--spacing--2xs);
+	padding-top: var(--spacing--5xs);
+	overflow: auto;
 }
 
-.dot {
-	flex-shrink: 0;
-	width: var(--font-size--3xs);
-	height: var(--font-size--3xs);
-	border-radius: 50%;
+.card {
+	--card--padding: var(--spacing--xs);
+	--n8n--card-body--gap: var(--spacing--2xs);
+	align-items: stretch;
+	border-color: var(--border-color);
+	background-color: transparent;
+
+	> div {
+		gap: var(--spacing--4xs);
+	}
 }
 
-.dotOpen {
-	background-color: var(--color--blue-500);
-}
-
-.dotAttention {
-	background-color: var(--color--yellow-500);
-}
-
-.dotClosed {
-	background-color: var(--color--neutral-500);
+.peopleCard {
+	--n8n--card-body--gap: var(--spacing--sm);
 }
 
 .section {
@@ -260,7 +235,7 @@ const usageRows = computed(() => {
 
 .workflowIcon {
 	flex-shrink: 0;
-	/* Align the icon with the first line, as in the review column. */
+	/* Align the icon with the first line, as in the prototype. */
 	margin-top: calc((1lh - 1em) / 2);
 }
 
@@ -288,6 +263,7 @@ const usageRows = computed(() => {
 	}
 }
 
+/* Match the prototype's sidebar widths. There are no column-width tokens. */
 @media (max-width: 75rem) {
 	.metadata {
 		flex-basis: 15rem;
@@ -295,7 +271,7 @@ const usageRows = computed(() => {
 	}
 }
 
-/* Match the review detail breakpoint. Container queries cannot use CSS variables. */
+/* Match the prototype's detail breakpoint. Container queries cannot use CSS variables. */
 @container assistant-detail (max-width: 44rem) {
 	.metadata {
 		flex: 0 0 auto;

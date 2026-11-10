@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import type { InboxWorkflowReviewItem } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nEmptyState, N8nLoading } from '@n8n/design-system';
+import { N8nEmptyState, N8nHeading, N8nLoading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 
 import type { InboxItemChange } from '../inbox.constants';
-import PrototypeDirectionLine from '../prototype/PrototypeDirectionLine.vue';
-import PrototypeEditableTitle from '../prototype/PrototypeEditableTitle.vue';
-import { prototypeSession, prototypeTitle } from '../prototype/prototype.session';
 import WorkflowReviewDetailTabs from './components/WorkflowReviewDetailTabs.vue';
 import type { WorkflowReviewDetailTab } from './components/WorkflowReviewDetailTabs.vue';
+import WorkflowReviewStatusDot from './components/WorkflowReviewStatusDot.vue';
 import { useReviewActivityStore } from './reviewActivity.store';
 import { useReviewDetailStore } from './reviewDetail.store';
 import type { WorkflowReviewDecisionInput } from './workflowReviews.api';
@@ -24,8 +22,6 @@ const props = withDefaults(
 		onItemChange: (change: InboxItemChange) => void;
 		isActive: () => boolean;
 		isSelected: (reviewId: string) => boolean;
-		/** Prototype only. Changes is a resource list and a scrolling diff, with no metadata rail. */
-		splitChanges?: boolean;
 	}>(),
 	{ tab: 'activity' },
 );
@@ -46,40 +42,6 @@ const review = computed(() => {
 	}
 
 	return props.listItem?.id === props.reviewId ? props.listItem : null;
-});
-const displayTitle = computed(() => prototypeTitle(props.reviewId, review.value?.title ?? ''));
-
-const publishActor = computed(() => {
-	const requester = review.value?.requester;
-	if (!prototypeSession.active || !requester) return null;
-	return {
-		kind: 'person' as const,
-		firstName: requester.firstName,
-		lastName: requester.lastName,
-		email: requester.email,
-	};
-});
-
-const publishDirection = computed(() => {
-	const current = review.value;
-	if (!prototypeSession.active || !current) return null;
-	// A review lists one workflow today. Several names would not fit this line.
-	if ('workflows' in current) {
-		if (current.workflows.length !== 1) return null;
-		const workflow = current.workflows[0];
-		return {
-			keypath: 'inbox.prototype.direction.publish' as const,
-			resourceName: workflow.workflowName,
-			workflowId: workflow.workflowId,
-		};
-	}
-	if (!current.workflowName) return null;
-	// The list row has the name and not the workflow id. The detail supplies the id.
-	return {
-		keypath: 'inbox.prototype.direction.publish' as const,
-		resourceName: current.workflowName,
-		workflowId: null,
-	};
 });
 
 let isMounted = false;
@@ -214,16 +176,13 @@ onBeforeUnmount(() => {
 				:class="$style.reviewTitle"
 				data-test-id="workflow-review-request-title-row"
 			>
-				<PrototypeDirectionLine :actor="publishActor" :direction="publishDirection">
-					<PrototypeEditableTitle
-						:item-id="reviewId"
-						:text="displayTitle"
-						test-id="workflow-review-request-title"
-					/>
-				</PrototypeDirectionLine>
+				<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" />
+				<N8nHeading bold tag="h2" size="xlarge" data-test-id="workflow-review-request-title">{{
+					review.title
+				}}</N8nHeading>
 			</div>
 		</div>
-		<div :class="[$style.mainBody, { [$style.mainBodyLocked]: splitChanges && tab === 'changes' }]">
+		<div :class="$style.mainBody">
 			<div
 				v-if="detailNotFound"
 				:class="$style.emptyStateWrapper"
@@ -244,7 +203,6 @@ onBeforeUnmount(() => {
 				:review="review"
 				:tab="tab"
 				:deciding="deciding"
-				:split-changes="splitChanges"
 				@update:tab="emit('update:tab', $event)"
 				@decide="onDecide"
 			/>
@@ -279,10 +237,6 @@ onBeforeUnmount(() => {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-}
-
-.mainBodyLocked {
-	overflow: hidden;
 }
 
 .detailSkeleton {

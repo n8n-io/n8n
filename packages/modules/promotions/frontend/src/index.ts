@@ -9,3 +9,7 @@ export const loadPromotionPreviewBadges = async () =>
 
 export const loadPromotionReviewChanges = async () =>
 	await import('./components/review/PromotionReviewChanges.vue');
+
+// Prototype only. The New layout of the inbox prototype uses this copy.
+export const loadPromotionReviewChangesPrototype = async () =>
+	await import('./components/review/prototype/PromotionReviewChanges.vue');

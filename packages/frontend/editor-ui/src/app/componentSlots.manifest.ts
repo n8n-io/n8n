@@ -1,5 +1,8 @@
 import { componentRegistry } from '@n8n/frontend-module-sdk';
-import { loadPromotionReviewChanges } from '@n8n/frontend-module-promotions';
+import {
+	loadPromotionReviewChanges,
+	loadPromotionReviewChangesPrototype,
+} from '@n8n/frontend-module-promotions';
 import { defineAsyncComponent } from 'vue';
 
 /**
@@ -33,6 +36,12 @@ export const registerComponentSlots = () => {
 	);
 
 	componentRegistry.register('promotion-changes', defineAsyncComponent(loadPromotionReviewChanges));
+
+	// Prototype only: the New layout of the inbox prototype.
+	componentRegistry.register(
+		'promotion-changes-prototype',
+		defineAsyncComponent(loadPromotionReviewChangesPrototype),
+	);
 
 	componentRegistry.register(
 		'project-filter',

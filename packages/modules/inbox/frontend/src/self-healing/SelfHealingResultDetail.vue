@@ -39,8 +39,6 @@ const props = defineProps<{
 	tab: 'activity' | 'changes';
 	onItemChange: (change: InboxItemChange) => void;
 	isSelected: (id: string) => boolean;
-	/** Prototype only. Changes is a resource list and a scrolling diff, with no metadata rail. */
-	splitChanges?: boolean;
 }>();
 const emit = defineEmits<{ 'update:tab': [tab: 'activity' | 'changes'] }>();
 
@@ -282,7 +280,6 @@ async function onAction(action: SelfHealingResultAction) {
 				:pending-action="pendingAction"
 				:publish-access="publishAccess"
 				:can-chat="canChat"
-				:split-changes="splitChanges"
 				@update:tab="emit('update:tab', $event)"
 				@action="onAction"
 			>

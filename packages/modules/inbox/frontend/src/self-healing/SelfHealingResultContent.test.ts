@@ -58,16 +58,9 @@ function renderContent(
 	});
 }
 
-async function openMenu(name: 'Review' | 'Continue with…') {
+async function openMenu(name: 'Review' | 'Continue in…') {
 	await userEvent.click(screen.getByRole('button', { name }));
 	return await screen.findByRole('menu');
-}
-
-async function openContinueMenu(menu: HTMLElement) {
-	await userEvent.hover(within(menu).getByRole('menuitem', { name: 'Continue with…' }));
-	await screen.findByRole('menuitem', { name: 'Continue with Editor' });
-	const menus = screen.getAllByRole('menu');
-	return menus[menus.length - 1];
 }
 
 beforeEach(() => {
@@ -103,15 +96,12 @@ describe('SelfHealingResultContent', () => {
 			within(menu)
 				.getAllByRole('menuitem')
 				.map((item) => item.textContent?.trim()),
-		).toEqual(['Apply and publish', 'Continue with…', 'Discard and close']);
-		const nested = await openContinueMenu(menu);
-		expect(nested).toHaveTextContent(
+		).toEqual(['Apply and publish', 'Continue with Assistant', 'Continue with Editor']);
+		expect(menu).toHaveTextContent(
 			'Continuing saves the changes to the workflow draft. It does not publish them.',
 		);
 		await userEvent.click(within(menu).getByRole('menuitem', { name: 'Apply and publish' }));
-		await userEvent.click(getByRole('button', { name: 'Review' }));
-		const reopened = await screen.findByRole('menu');
-		await userEvent.click(within(reopened).getByRole('menuitem', { name: 'Discard and close' }));
+		await userEvent.click(getByRole('button', { name: 'Discard and close' }));
 
 		expect(emitted('action')).toEqual([['approve-and-publish'], ['dismiss']]);
 	});
@@ -123,8 +113,7 @@ describe('SelfHealingResultContent', () => {
 		const { emitted } = renderContent();
 
 		const menu = await openMenu('Review');
-		const nested = await openContinueMenu(menu);
-		await userEvent.click(within(nested).getByRole('menuitem', { name }));
+		await userEvent.click(within(menu).getByRole('menuitem', { name }));
 
 		expect(emitted('action')).toEqual([[action]]);
 	});
@@ -137,9 +126,8 @@ describe('SelfHealingResultContent', () => {
 		expect(within(menu).getByRole('menuitem', { name: 'Apply and publish' })).toHaveAttribute(
 			'data-disabled',
 		);
-		const nested = await openContinueMenu(menu);
 		expect(
-			within(nested).getByRole('menuitem', { name: 'Continue with Editor' }),
+			within(menu).getByRole('menuitem', { name: 'Continue with Editor' }),
 		).not.toHaveAttribute('data-disabled');
 		expect(menu).toHaveTextContent('Publish permission is required to apply and publish.');
 	});
@@ -156,9 +144,9 @@ describe('SelfHealingResultContent', () => {
 	});
 
 	it('disables every decision while a decision is pending', () => {
-		const { getByRole, queryByRole } = renderContent({ pendingAction: 'editor' });
+		const { getByRole } = renderContent({ pendingAction: 'editor' });
 
-		expect(queryByRole('button', { name: 'Discard and close' })).not.toBeInTheDocument();
+		expect(getByRole('button', { name: 'Discard and close' })).toBeDisabled();
 		expect(getByRole('button', { name: /Review/ })).toBeDisabled();
 	});
 
@@ -196,18 +184,15 @@ describe('SelfHealingResultContent', () => {
 			expect(queryByRole('button', { name: /Review/ })).not.toBeInTheDocument();
 			expect(queryByRole('tab', { name: 'Changes' }) !== null).toBe(proposal !== null);
 
-			const menu = await openMenu('Continue with…');
+			const menu = await openMenu('Continue in…');
 			expect(
 				within(menu)
 					.getAllByRole('menuitem')
 					.map((item) => item.textContent?.trim()),
-			).toEqual(['Continue with…', 'Discard and close']);
-			const nested = await openContinueMenu(menu);
-			expect(nested.textContent?.includes('Continuing')).toBe(notice);
-			await userEvent.click(within(nested).getByRole('menuitem', { name: 'Continue with Editor' }));
-			await userEvent.click(getByRole('button', { name: 'Continue with…' }));
-			const reopened = await screen.findByRole('menu');
-			await userEvent.click(within(reopened).getByRole('menuitem', { name: 'Discard and close' }));
+			).toEqual(['Continue with Assistant', 'Continue with Editor']);
+			expect(menu.textContent?.includes('Continuing')).toBe(notice);
+			await userEvent.click(within(menu).getByRole('menuitem', { name: 'Continue with Editor' }));
+			await userEvent.click(getByRole('button', { name: 'Discard and close' }));
 
 			expect(emitted('action')).toEqual([['editor'], ['dismiss']]);
 		},
@@ -225,7 +210,7 @@ describe('SelfHealingResultContent', () => {
 			/System\s*\|\s*Closed automatically because no fix was possible/,
 		);
 		expect(queryByRole('button', { name: 'Discard and close' })).not.toBeInTheDocument();
-		expect(queryByRole('button', { name: /Continue with|Review/ })).not.toBeInTheDocument();
+		expect(queryByRole('button', { name: /Continue in|Review/ })).not.toBeInTheDocument();
 		expect(queryByRole('tab', { name: 'Changes' })).not.toBeInTheDocument();
 	});
 
@@ -251,21 +236,20 @@ describe('SelfHealingResultContent', () => {
 	});
 
 	it('keeps the editor and discard available when chat is unavailable', async () => {
-		renderContent({
+		const { getByRole } = renderContent({
 			detail: result({ outcome: 'needs_you', suggestion: null }),
 			canChat: false,
 		});
 
-		const menu = await openMenu('Continue with…');
-		expect(within(menu).getByRole('menuitem', { name: 'Discard and close' })).toBeEnabled();
-		const nested = await openContinueMenu(menu);
+		expect(getByRole('button', { name: 'Discard and close' })).toBeEnabled();
+		const menu = await openMenu('Continue in…');
+		expect(within(menu).getByRole('menuitem', { name: 'Continue with Assistant' })).toHaveAttribute(
+			'data-disabled',
+		);
 		expect(
-			within(nested).getByRole('menuitem', { name: 'Continue with Assistant' }),
-		).toHaveAttribute('data-disabled');
-		expect(
-			within(nested).getByRole('menuitem', { name: 'Continue with Editor' }),
+			within(menu).getByRole('menuitem', { name: 'Continue with Editor' }),
 		).not.toHaveAttribute('data-disabled');
-		expect(nested).toHaveTextContent(
+		expect(menu).toHaveTextContent(
 			'Assistant is unavailable. You can still continue in the editor.',
 		);
 	});
@@ -338,11 +322,8 @@ describe('SelfHealingResultContent', () => {
 		});
 
 		expect(queryByTestId('self-healing-activity-panel')).not.toBeInTheDocument();
-		const menu = await openMenu('Continue with…');
-		const nested = await openContinueMenu(menu);
-		await userEvent.click(
-			within(nested).getByRole('menuitem', { name: 'Continue with Assistant' }),
-		);
+		const menu = await openMenu('Continue in…');
+		await userEvent.click(within(menu).getByRole('menuitem', { name: 'Continue with Assistant' }));
 		expect(emitted('action')).toEqual([['chat']]);
 	});
 
