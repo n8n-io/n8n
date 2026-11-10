@@ -27,6 +27,8 @@ import { ReloadingHttpRequestClient } from './reloading-http-request-client';
 export class EngineMtls {
 	private opened?: { tls: EngineTlsSource | undefined };
 
+	private readonly clients = new Set<HttpRequestClient>();
+
 	constructor(
 		private readonly engineConfig: EngineConfig,
 		private readonly outboundHttp: OutboundHttp,
@@ -61,6 +63,19 @@ export class EngineMtls {
 	 * certificate and lets running ones finish.
 	 */
 	requests(options: HttpRequestClientOptions): HttpRequestClient {
+		const client = this.newClient(options);
+		this.clients.add(client);
+		return client;
+	}
+
+	/** Closes the clients from `requests()` and stops watching the files. */
+	close(): void {
+		for (const client of this.clients) client.close();
+		this.clients.clear();
+		this.opened?.tls?.close();
+	}
+
+	private newClient(options: HttpRequestClientOptions): HttpRequestClient {
 		const { tls } = this;
 		if (!tls) return this.outboundHttp.requests(options);
 
@@ -73,10 +88,5 @@ export class EngineMtls {
 				}),
 			(reload) => tls.subscribe(reload),
 		);
-	}
-
-	/** Stops watching the files. */
-	close(): void {
-		this.opened?.tls?.close();
 	}
 }

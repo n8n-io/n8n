@@ -75,6 +75,14 @@ describe('EngineMtls', () => {
 			expect(mtls.enabled).toBe(false);
 		});
 
+		it('closes its clients when closed', () => {
+			mtls.requests(options);
+
+			mtls.close();
+
+			expect(clients[0].close).toHaveBeenCalledOnce();
+		});
+
 		it('creates a plain HTTP server', () => {
 			const handler = vi.fn();
 
@@ -126,11 +134,12 @@ describe('EngineMtls', () => {
 			expect(clients[1].request).toHaveBeenCalledExactlyOnceWith({ url: '/after-reload' });
 		});
 
-		it('stops watching the files when closed', () => {
+		it('closes its clients and stops watching the files when closed', () => {
 			mtls.requests(options);
 
 			mtls.close();
 
+			expect(clients[0].close).toHaveBeenCalledOnce();
 			expect(source.close).toHaveBeenCalledOnce();
 		});
 
