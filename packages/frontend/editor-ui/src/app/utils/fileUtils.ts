@@ -16,9 +16,18 @@ export function getBinaryDataFileName({
 	return `${name}.${fileExtension}`;
 }
 
+/** Generic types that some browsers report for a CSV file, for example on Windows. */
+const GENERIC_CSV_MIME_TYPES = new Set([
+	'',
+	'application/vnd.ms-excel',
+	'application/octet-stream',
+]);
+
 export function resolveFileMimeType(fileName: string, mimeType: string): string {
+	const extension = getFileExtension(fileName).toLowerCase();
+	if (extension === 'csv' && GENERIC_CSV_MIME_TYPES.has(mimeType)) return 'text/csv';
 	if (mimeType) return mimeType;
-	if (fileName.toLowerCase().endsWith('.md')) return 'text/markdown';
+	if (extension === 'md' || extension === 'markdown') return 'text/markdown';
 	return '';
 }
 

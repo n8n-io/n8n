@@ -9,13 +9,13 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	Project,
 	SharedWorkflowRepository,
-	User,
 	UserRepository,
 	WorkflowEntity,
 	WorkflowRepository,
 	WorkflowStatistics,
 	WorkflowStatisticsRepository,
 } from '@n8n/db';
+import { Person } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import type { ErrorReporter } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
@@ -476,7 +476,12 @@ describe('MigrationFindingQueryService', () => {
 				{ workflowId: 'wf-1', userId: 'user-1', source: 'suggested' } as MigrationWorkflowOwner,
 			]);
 			userRepository.findManyByIds.mockResolvedValue([
-				{ id: 'user-1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com' } as User,
+				Object.assign(new Person(), {
+					id: 'user-1',
+					firstName: 'Ada',
+					lastName: 'Lovelace',
+					email: 'ada@example.com',
+				}),
 			]);
 
 			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
