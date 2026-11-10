@@ -16,6 +16,7 @@ import type {
 	AuthenticatedRequest,
 	Folder,
 	FolderWithWorkflowAndSubFolderCountAndPath,
+	User,
 } from '@n8n/db';
 import {
 	ApiDescription,
@@ -34,11 +35,11 @@ import {
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
+import type { Scope } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError, NotFoundError, UserError } from '@n8n/errors';
-import { assertProjectScope } from '@/public-api/v1/shared/services/utils.service';
+import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -139,9 +140,9 @@ export class FoldersPublicController {
 		@Param('projectId', folderProjectIdParamSchema) projectId: string,
 		@Query query: ListFoldersQueryPublicDto,
 	): Promise<FolderListPublicDto> {
-		// Kept in the handler: it answers 404 for an unknown project, which @ProjectScope cannot do.
-		const resolvedProjectId = await this.resolveProjectId(req, projectId);
-		await assertProjectScope(req.user, resolvedProjectId, ['folder:list']);
+		const resolvedProjectId = await this.resolveProjectWithScope(req.user, projectId, [
+			'folder:list',
+		]);
 
 		const [data, count] = await this.folderService.getManyAndCount(resolvedProjectId, query);
 
@@ -162,10 +163,9 @@ export class FoldersPublicController {
 		@Param('projectId', folderProjectIdParamSchema) projectId: string,
 		@Body body: CreateFolderPublicDto,
 	): Promise<CreatedFolderPublicDto> {
-		const resolvedProjectId = await this.resolveProjectId(req, projectId);
-
-		// A 404 for an unknown project, so `@ProjectScope` (which answers 403) cannot be used here.
-		await assertProjectScope(req.user, resolvedProjectId, ['folder:create']);
+		const resolvedProjectId = await this.resolveProjectWithScope(req.user, projectId, [
+			'folder:create',
+		]);
 
 		try {
 			return toCreatedFolderPublicDto(
@@ -190,9 +190,9 @@ export class FoldersPublicController {
 		@Param('projectId', folderProjectIdParamSchema) projectId: string,
 		@Param('folderId', folderIdParamSchema) folderId: string,
 	): Promise<FolderDetailsPublicDto> {
-		// Kept as a manual check: it answers 404 for an unknown project, which `@ProjectScope` cannot.
-		const resolvedProjectId = await this.resolveProjectId(req, projectId);
-		await assertProjectScope(req.user, resolvedProjectId, ['folder:read']);
+		const resolvedProjectId = await this.resolveProjectWithScope(req.user, projectId, [
+			'folder:read',
+		]);
 
 		try {
 			const { folder, totalSubFolders, totalWorkflows } =
@@ -219,9 +219,9 @@ export class FoldersPublicController {
 		@Param('folderId', folderIdParamSchema) folderId: string,
 		@Body body: UpdateFolderPublicDto,
 	): Promise<UpdatedFolderPublicDto> {
-		// A manual check, not `@ProjectScope`: an unknown project has to stay a 404, not a 403.
-		const resolvedProjectId = await this.resolveProjectId(req, projectId);
-		await assertProjectScope(req.user, resolvedProjectId, ['folder:update']);
+		const resolvedProjectId = await this.resolveProjectWithScope(req.user, projectId, [
+			'folder:update',
+		]);
 
 		try {
 			const folder = await this.folderService.updateFolder(folderId, resolvedProjectId, body);
@@ -250,9 +250,9 @@ export class FoldersPublicController {
 		@Param('folderId', folderIdParamSchema) folderId: string,
 		@Query query: DeleteFolderQueryPublicDto,
 	): Promise<void> {
-		// Stays a manual check: an unknown project answers 404 here, where `@ProjectScope` answers 403.
-		const resolvedProjectId = await this.resolveProjectId(req, projectId);
-		await assertProjectScope(req.user, resolvedProjectId, ['folder:delete']);
+		const resolvedProjectId = await this.resolveProjectWithScope(req.user, projectId, [
+			'folder:delete',
+		]);
 
 		try {
 			await this.folderService.deleteFolder(req.user, folderId, resolvedProjectId, query);
@@ -261,14 +261,33 @@ export class FoldersPublicController {
 		}
 	}
 
-	private async resolveProjectId(req: AuthenticatedRequest, projectId: string): Promise<string> {
-		if (projectId !== PERSONAL_PROJECT_ALIAS) return projectId;
+	/**
+	 * Resolves the `personal` alias, then checks the user holds the scopes in the project. A manual
+	 * check instead of `@ProjectScope`: an unknown project has to answer 404, not 403.
+	 */
+	private async resolveProjectWithScope(
+		user: User,
+		projectId: string,
+		scopes: Scope[],
+	): Promise<string> {
+		let resolvedProjectId = projectId;
 
-		const personalProject = await this.projectService.getPersonalProject(req.user);
-		if (!personalProject) {
-			throw new NotFoundError('Could not find a personal project for this user');
+		if (projectId === PERSONAL_PROJECT_ALIAS) {
+			const personalProject = await this.projectService.getPersonalProject(user);
+			if (!personalProject) {
+				throw new NotFoundError('Could not find a personal project for this user');
+			}
+			resolvedProjectId = personalProject.id;
 		}
 
-		return personalProject.id;
+		if (!(await this.projectService.findProject(resolvedProjectId))) {
+			throw new NotFoundError(`Project with ID "${resolvedProjectId}" not found`);
+		}
+
+		if (!(await this.projectService.getProjectWithScope(user, resolvedProjectId, scopes))) {
+			throw new ForbiddenError();
+		}
+
+		return resolvedProjectId;
 	}
 }
