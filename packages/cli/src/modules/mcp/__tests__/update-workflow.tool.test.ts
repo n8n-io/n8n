@@ -417,6 +417,7 @@ describe('update-workflow MCP tool', () => {
 					issues: [{ title: 'Removed', description: 'Gone', level: 'error' as const }],
 				},
 			],
+			unpublishedFixes: 0,
 			wontFixFindings: 1,
 		};
 

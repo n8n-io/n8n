@@ -4,6 +4,7 @@ import {
 	type BreakingChangeRecommendation,
 	type BreakingChangeRuleImpact,
 	type BreakingChangeVersion,
+	type MigrationFindingListedStatus,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { UrlService } from '@n8n/backend-services';
@@ -117,6 +118,13 @@ export const workflowMigrationFindingsSchema = z
 				}),
 			)
 			.describe('Findings still open on this workflow. Empty when nothing is left to fix.'),
+		unpublishedFixes: z
+			.number()
+			.int()
+			.min(0)
+			.describe(
+				'Findings fixed in the draft only. They are resolved when the workflow is published',
+			),
 		wontFixFindings: z
 			.number()
 			.int()
@@ -159,7 +167,11 @@ export async function readWorkflowMigrationFindings(
 		if (!findings) return undefined;
 
 		// A notification does not resolve a finding, so a notified one is still open.
-		const open = findings.filter((finding) => finding.status !== 'wont_fix');
+		const open = findings.filter(
+			(finding) => finding.status === 'open' || finding.status === 'notified',
+		);
+		const countWithStatus = (status: MigrationFindingListedStatus) =>
+			findings.filter((finding) => finding.status === status).length;
 		return {
 			targetVersion: deps.targetVersion,
 			openFindings: open
@@ -171,7 +183,8 @@ export async function readWorkflowMigrationFindings(
 					issues: finding.issues,
 				}))
 				.sort(byImpact),
-			wontFixFindings: findings.length - open.length,
+			unpublishedFixes: countWithStatus('fixed_unpublished'),
+			wontFixFindings: countWithStatus('wont_fix'),
 		};
 	} catch (error) {
 		deps.logger.warn('Reading the migration findings of the saved workflow failed', {

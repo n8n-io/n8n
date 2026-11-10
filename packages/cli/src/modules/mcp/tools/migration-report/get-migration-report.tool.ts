@@ -48,7 +48,13 @@ const outputSchema = {
 		.array(
 			z.object({
 				...ruleOutputShape,
-				openWorkflows: z.number().int().min(0).describe('Workflows with an open finding'),
+				openWorkflows: z
+					.number()
+					.int()
+					.min(0)
+					.describe(
+						'Workflows with an unresolved finding. A fix that is not published counts as unresolved',
+					),
 				wontFixWorkflows: z
 					.number()
 					.int()

@@ -59,7 +59,7 @@ const workflowEntrySchema = z.object({
 	url: z.string(),
 	published: z.boolean().describe('Whether the workflow has a published version'),
 	status: migrationFindingListedStatusSchema.describe(
-		'open: still to fix. notified: still to fix, and the owner got a notification. wont_fix: a user accepted the change',
+		'open: still to fix. notified: still to fix, and the owner got a notification. fixed_unpublished: fixed in the draft, and resolved when the workflow is published. wont_fix: a user accepted the change',
 	),
 	availableInMCP: z
 		.boolean()
@@ -117,9 +117,9 @@ export const createGetMigrationFindingsTool = (
 		const detail = await deps.queryService.getRuleFindings(deps.targetVersion, ruleId, scope);
 
 		// Unresolved findings first: they are the ones left to fix.
-		const findings = [...detail.affectedWorkflows].sort(
-			(a, b) => Number(a.status === 'wont_fix') - Number(b.status === 'wont_fix'),
-		);
+		const findings = detail.affectedWorkflows
+			.filter((workflow) => !workflow.isArchived)
+			.sort((a, b) => Number(a.status === 'wont_fix') - Number(b.status === 'wont_fix'));
 		const shown = findings.slice(0, limit);
 
 		const availableInMcp = await deps.workflowRepository.findMcpAvailabilityByIds(

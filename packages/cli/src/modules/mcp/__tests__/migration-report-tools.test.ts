@@ -299,6 +299,7 @@ describe('get_migration_findings', () => {
 					{ title: 'Removed', description: 'Gone', level: 'error', nodeId: 'n1', nodeName: 'Old' },
 				],
 				status: 'wont_fix',
+				isArchived: false,
 			},
 			{
 				id: 'wf-2',
@@ -316,8 +317,10 @@ describe('get_migration_findings', () => {
 					},
 				],
 				status: 'open',
+				isArchived: false,
 			},
 		],
+		assistantAction: 'none',
 	});
 
 	it('asks for a ruleId or a workflowId', async () => {
@@ -443,6 +446,23 @@ describe('get_migration_findings', () => {
 			const output = result.structuredContent as Output;
 			expect(output.rules[0]).toMatchObject({ totalWorkflows: 2, truncated: true });
 			expect(output.rules[0].workflows).toHaveLength(1);
+		});
+
+		it('leaves archived workflows out of the list and the count', async () => {
+			const deps = makeDeps();
+			withRules(deps, workflowRule('removed-node'));
+			const detail = ruleDetail();
+			detail.affectedWorkflows[1].isArchived = true;
+			deps.queryService.getRuleFindings.mockResolvedValue(detail);
+			deps.workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(new Map([['wf-1', true]]));
+
+			const result = await createGetMigrationFindingsTool(owner, deps).handler({
+				ruleId: 'removed-node',
+			});
+
+			const output = result.structuredContent as Output;
+			expect(output.rules[0]).toMatchObject({ totalWorkflows: 1 });
+			expect(output.rules[0].workflows.map((workflow) => workflow.workflowId)).toEqual(['wf-1']);
 		});
 	});
 
@@ -621,11 +641,12 @@ describe('readWorkflowMigrationFindings', () => {
 		expect(await readWorkflowMigrationFindings(deps, 'wf-1')).toEqual({
 			targetVersion: 'v3',
 			openFindings: [],
+			unpublishedFixes: 0,
 			wontFixFindings: 0,
 		});
 	});
 
-	it('lists the open and notified findings most severe first and counts the accepted ones', async () => {
+	it('lists the open and notified findings most severe first and counts the others', async () => {
 		const deps = makeDeps();
 		withRules(deps, workflowRule('embedded-chat', { resolution: 'userConfirmation' }));
 		deps.queryService.getWorkflowFindings.mockResolvedValue([
@@ -633,6 +654,7 @@ describe('readWorkflowMigrationFindings', () => {
 			// A notification does not resolve the finding.
 			workflowFinding('removed-node', 'executionsFail', 'notified'),
 			workflowFinding('always-output', 'behaviorChanges', 'wont_fix'),
+			workflowFinding('paired-item', 'executionsFail', 'fixed_unpublished'),
 		]);
 
 		const result = await readWorkflowMigrationFindings(deps, 'wf-1');
@@ -659,6 +681,7 @@ describe('readWorkflowMigrationFindings', () => {
 					issues: [expect.objectContaining({ nodeName: 'Chat' })],
 				},
 			],
+			unpublishedFixes: 1,
 			wontFixFindings: 1,
 		});
 	});
@@ -749,7 +772,12 @@ describe('migrate_workflow', () => {
 			success: true,
 			...migrationResult,
 			url: `${BASE_URL}/workflow/wf-1`,
-			migrationFindings: { targetVersion: 'v3', openFindings: [], wontFixFindings: 0 },
+			migrationFindings: {
+				targetVersion: 'v3',
+				openFindings: [],
+				unpublishedFixes: 0,
+				wontFixFindings: 0,
+			},
 		});
 	});
 
