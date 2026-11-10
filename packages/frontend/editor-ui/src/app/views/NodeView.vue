@@ -703,10 +703,13 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 
 // The context menu has no paste event, so read the clipboard explicitly.
 async function onPasteFromContextMenu() {
+	// A browser paste prompt can stay open while the user navigates to another workflow
+	const originWorkflowId = workflowId.value;
 	let plainTextData: string;
 	try {
 		plainTextData = await navigator.clipboard.readText();
 	} catch {
+		if (!isStillOnWorkflow(originWorkflowId)) return;
 		toast.showMessage({
 			title: i18n.baseText('nodeView.showMessage.clipboardReadFailed.title'),
 			message: i18n.baseText('nodeView.showMessage.clipboardReadFailed.message', {
@@ -716,6 +719,8 @@ async function onPasteFromContextMenu() {
 		});
 		return;
 	}
+
+	if (!isStillOnWorkflow(originWorkflowId)) return;
 
 	if (!isPastableWorkflowText(plainTextData)) {
 		toast.showMessage({

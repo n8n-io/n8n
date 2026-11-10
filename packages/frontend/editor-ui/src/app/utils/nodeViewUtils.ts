@@ -29,6 +29,7 @@ import {
 	type ViewportTransform,
 } from '@vue-flow/core';
 import * as workflowUtils from 'n8n-workflow/common';
+import { isRecord } from '@n8n/utils/is-record';
 
 /*
  * Canvas constants and functions
@@ -656,10 +657,10 @@ export function calculateNodeSize(
 
 /** True when the canvas paste handler can import the text: workflow JSON or a workflow URL. */
 export function isPastableWorkflowText(text: string): boolean {
-	return (
-		VALID_WORKFLOW_IMPORT_URL_REGEX.test(text) ||
-		!!jsonParse<unknown>(text, { fallbackValue: null })
-	);
+	if (VALID_WORKFLOW_IMPORT_URL_REGEX.test(text)) return true;
+	// Same structure check as importWorkflowData
+	const data = jsonParse<unknown>(text, { fallbackValue: null });
+	return isRecord(data) && 'nodes' in data && 'connections' in data;
 }
 
 /**

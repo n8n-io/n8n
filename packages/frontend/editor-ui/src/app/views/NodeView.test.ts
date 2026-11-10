@@ -1279,6 +1279,28 @@ describe('NodeView', () => {
 			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
 		});
 
+		it('ignores a context menu clipboard read that ends after NodeView has unmounted', async () => {
+			let resolveRead: (text: string) => void = () => {};
+			Object.defineProperty(window.navigator, 'clipboard', {
+				value: {
+					readText: vi.fn(
+						async () => await new Promise<string>((resolve) => (resolveRead = resolve)),
+					),
+				},
+				configurable: true,
+			});
+			mockShowMessage.mockClear();
+			const { findByTestId, unmount } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-paste'));
+			unmount();
+			resolveRead('just some text');
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockShowMessage).not.toHaveBeenCalled();
+			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
+		});
+
 		it('drops a deferred paste once NodeView has unmounted', async () => {
 			const { unmount } = renderNodeView();
 
