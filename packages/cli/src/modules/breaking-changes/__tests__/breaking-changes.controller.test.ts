@@ -59,6 +59,7 @@ function ruleResult(ruleId: string): BreakingChangeRuleDetailResult {
 		affectedWorkflows: [],
 		recommendations: [],
 		migratable: false,
+		assistantAction: 'none',
 	};
 }
 

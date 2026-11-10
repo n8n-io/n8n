@@ -34,6 +34,7 @@ import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-l
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
@@ -339,6 +340,23 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 				publishedN8nChat: true,
 			}),
 		);
+	});
+
+	it('uses the AI Gateway token refresh fetch of the credential provider for models', async () => {
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+		const credentialProvider = new AgentsCredentialProvider(mock<CredentialsService>(), projectId);
+		const refreshFetch = vi.fn<typeof fetch>();
+		vi.spyOn(credentialProvider, 'createAiGatewayTokenRefreshFetch').mockReturnValue(refreshFetch);
+
+		await service.reconstructFromAgentEntity(makeAgentEntity([]), credentialProvider, 'test');
+
+		const [, , options] = buildFromJsonMock.mock.calls.at(-1) as [
+			unknown,
+			unknown,
+			BuildFromJsonOptions,
+		];
+		expect(options.modelFetch).toBe(refreshFetch);
 	});
 
 	it('forwards the preview marker to workflow tools', async () => {

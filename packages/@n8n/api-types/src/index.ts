@@ -364,6 +364,7 @@ export type {
 	MigrationNotifyResult,
 	MigrationNotifySkipReason,
 	WorkflowMigrationResult,
+	BreakingChangeAssistantAction,
 } from './schemas/breaking-changes.schema';
 
 export {
@@ -727,6 +728,8 @@ export type {
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
+	InstanceAiMigrationReportHandoffContext,
+	InstanceAiAutomatedMigrationOutcome,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifact,
 	InstanceAiThreadArtifactsContext,
