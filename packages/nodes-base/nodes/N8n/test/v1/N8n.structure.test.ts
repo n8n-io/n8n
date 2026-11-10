@@ -1,7 +1,7 @@
-import { auditOperations } from '../AuditDescription';
-import { N8n } from '../N8n.node';
-import { projectOperations } from '../ProjectDescription';
-import { userOperations } from '../UserDescription';
+import { auditOperations } from '../../v1/AuditDescription';
+import { N8n } from '../../N8n.node';
+import { projectOperations } from '../../v1/ProjectDescription';
+import { userOperations } from '../../v1/UserDescription';
 
 function collectUrls(value: unknown): string[] {
 	if (Array.isArray(value)) return value.flatMap(collectUrls);
@@ -25,7 +25,7 @@ describe('n8n Node Structure', () => {
 	});
 
 	it('encodes every dynamic request URL path segment', () => {
-		const dynamicUrls = collectUrls(new N8n().description.properties).filter(
+		const dynamicUrls = collectUrls(new N8n().getNodeType(1).description.properties).filter(
 			(url) => url.includes('$value') || url.includes('$parameter'),
 		);
 
