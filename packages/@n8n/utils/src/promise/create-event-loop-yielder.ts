@@ -1,3 +1,5 @@
+import { sleep } from '../sleep';
+
 /**
  * Returns a function that waits for the next event loop turn when at least
  * `maxBlockMs` have passed since its last wait, so timers and I/O can run.
@@ -12,7 +14,7 @@ export function createEventLoopYielder(maxBlockMs = 50): () => Promise<void> {
 	let lastYieldAt = performance.now();
 	return async () => {
 		if (performance.now() - lastYieldAt >= maxBlockMs) {
-			await new Promise<void>((resolve) => setTimeout(resolve, 0));
+			await sleep(0);
 			lastYieldAt = performance.now();
 		}
 	};

@@ -2,8 +2,8 @@ import { createEventLoopYielder } from './create-event-loop-yielder';
 
 describe('createEventLoopYielder', () => {
 	afterEach(() => {
-		vi.useRealTimers();
 		vi.restoreAllMocks();
+		vi.useRealTimers();
 	});
 
 	it('lets pending callbacks run once the time limit has passed', async () => {
