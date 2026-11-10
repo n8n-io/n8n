@@ -108,8 +108,7 @@ export default class PackageExport extends BaseCommand {
 				'Whether folder exports include archived workflows and project exports include archived workflows and agents (workflows and agents given by id always export)',
 			options: ['true', 'false'] as const,
 			default: 'false',
-			// The last two are the names before agents could be archived.
-			aliases: ['include-archived', 'include-archived-workflows', 'includeArchivedWorkflows'],
+			aliases: ['include-archived'],
 		})(),
 	};
 

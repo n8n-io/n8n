@@ -1088,7 +1088,7 @@ export class McpAgentToolsService {
 					readOnlyHint: false,
 					destructiveHint: true,
 					idempotentHint: true,
-					openWorldHint: true,
+					openWorldHint: false,
 				},
 			},
 			handler: async ({ agentId }) =>

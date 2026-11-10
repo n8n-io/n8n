@@ -359,19 +359,6 @@ describe('N8nPackagesPublicController', () => {
 			);
 		});
 
-		it('treats the deprecated includeArchivedWorkflows as includeArchived', async () => {
-			mockExportStream();
-
-			const caught = await runAndCatch({ workflowIds: ['wf-1'], includeArchivedWorkflows: true }, [
-				'workflow:export',
-			]);
-
-			expect(caught).toBeUndefined();
-			expect(mockService.exportPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ includeArchived: true }),
-			);
-		});
-
 		it('forwards includeArchived', async () => {
 			mockExportStream();
 

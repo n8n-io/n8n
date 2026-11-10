@@ -54,10 +54,6 @@ export class ExportPackageRequestDto extends Z.class(
 			.boolean()
 			.default(false)
 			.openapi(exportPackageRequestFieldDocs.includeArchived),
-		includeArchivedWorkflows: z
-			.boolean()
-			.optional()
-			.openapi(exportPackageRequestFieldDocs.includeArchivedWorkflows),
 	},
 	{ strict: true },
 ) {}

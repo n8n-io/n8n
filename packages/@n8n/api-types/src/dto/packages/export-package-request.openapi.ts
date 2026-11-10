@@ -47,9 +47,4 @@ export const exportPackageRequestFieldDocs = {
 			'Whether folder exports include archived workflows and project exports include archived workflows and agents. When `false` (default) they are left out. When `true` they travel with `isArchived: true` and are archived on import. Workflows listed in `workflowIds` and agents listed in `agentIds` always export, also when archived.',
 		example: false,
 	},
-	includeArchivedWorkflows: {
-		description:
-			'Deprecated. Use `includeArchived`. `true` has the same effect as `includeArchived: true`.',
-		deprecated: true,
-	},
 } satisfies Record<string, ZodOpenAPIMetadata>;

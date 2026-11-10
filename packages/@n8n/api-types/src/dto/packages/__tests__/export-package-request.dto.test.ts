@@ -223,15 +223,6 @@ describe('ExportPackageRequestDto', () => {
 			if (result.success) expect(result.data.includeArchived).toBe(false);
 		});
 
-		it('accepts the deprecated includeArchivedWorkflows name', () => {
-			const result = ExportPackageRequestDto.safeParse({
-				workflowIds: ['wf-1'],
-				includeArchivedWorkflows: true,
-			});
-
-			expect(result.success).toBe(true);
-		});
-
 		it('rejects non-boolean values', () => {
 			const result = ExportPackageRequestDto.safeParse({
 				workflowIds: ['wf-1'],
