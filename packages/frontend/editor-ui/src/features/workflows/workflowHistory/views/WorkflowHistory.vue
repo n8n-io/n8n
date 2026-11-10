@@ -681,6 +681,7 @@ watchEffect(async () => {
 				:evaluated-prune-time-in-hours="workflowHistoryStore.evaluatedPruneTime"
 				:is-list-loading="isListLoading"
 				:published-version-id="publishedWorkflowVersionId"
+				:pending-version-id="pendingVersionId"
 				:is-workflow-diffs-enabled="isWorkflowDiffsEnabled"
 				@action="onAction"
 				@preview="onPreview"

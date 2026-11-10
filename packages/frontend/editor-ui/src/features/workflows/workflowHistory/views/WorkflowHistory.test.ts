@@ -370,14 +370,11 @@ describe('WorkflowHistory', () => {
 					expect(pendingButton).toHaveAttribute('aria-busy', 'true');
 					expect(pendingButton.querySelector('[data-icon="loader"]')).toBeInTheDocument();
 				});
-				const pendingActions = await openListActions(getAllByTestId, 1);
+				const pendingActions = await openListActions(getAllByTestId, 2);
 				for (const action of slowActions) {
 					expect(pendingActions.getByTestId(`action-${action}`)).toHaveAttribute('data-disabled');
 				}
 				await userEvent.keyboard('{Escape}');
-
-				await userEvent.click(getByTestId('action-toggle-button'));
-				expect(spy).toHaveBeenCalledTimes(1);
 
 				finish();
 				await waitFor(() => {
@@ -397,22 +394,24 @@ describe('WorkflowHistory', () => {
 			['Restore version', 'restoreWorkflow', 'restore'],
 			['Download', 'downloadVersion', 'download'],
 		] as const)(
-			'ignores %s from the history list while it is pending',
+			'shows a spinner on an unselected row while %s runs and ignores repeat actions',
 			async (_label, method, action) => {
 				prepareSlowAction();
 				const { spies, finish } = mockPendingActions();
 				const spy = spies[method];
-				const { getAllByTestId, getByTestId, findAllByTestId } = renderPreview({ pinia });
+				const { getAllByTestId, findAllByTestId } = renderPreview({ pinia });
 				await findAllByTestId('workflow-history-list-item');
-				const initialActions = await openListActions(getAllByTestId, 1);
+				const initialActions = await openListActions(getAllByTestId, 2);
 				await userEvent.click(initialActions.getByTestId(`action-${action}`));
 				await waitFor(() => {
 					expect(spy).toHaveBeenCalledTimes(1);
-					expect(getByTestId('action-toggle-button')).toBeDisabled();
-					expect(getByTestId('action-toggle-button')).toHaveAttribute('aria-busy', 'true');
+					const pendingRow = getAllByTestId('workflow-history-list-item')[2];
+					const spinner = within(pendingRow).getByTestId('workflow-history-list-item-pending');
+					expect(spinner).toBeDisabled();
+					expect(spinner).toHaveAttribute('aria-busy', 'true');
 				});
 
-				for (const index of [1, 2]) {
+				for (const index of [1, 3]) {
 					const pendingActions = await openListActions(getAllByTestId, index);
 					for (const pendingAction of slowActions) {
 						const entry = pendingActions.getByTestId(`action-${pendingAction}`);
@@ -430,7 +429,11 @@ describe('WorkflowHistory', () => {
 				}
 
 				finish();
-				await waitFor(() => expect(getByTestId('action-toggle-button')).not.toBeDisabled());
+				await waitFor(() =>
+					expect(
+						within(getAllByTestId('workflow-history-list-item')[2]).getByTestId('action-toggle'),
+					).toBeInTheDocument(),
+				);
 				for (const index of [1, 2]) {
 					const idleActions = await openListActions(getAllByTestId, index);
 					for (const idleAction of slowActions) {

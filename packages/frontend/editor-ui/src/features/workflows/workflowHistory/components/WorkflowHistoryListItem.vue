@@ -32,6 +32,7 @@ const props = withDefaults(
 		isSelected?: boolean;
 		isPublished?: boolean;
 		isGrouped?: boolean;
+		isPending?: boolean;
 		isWorkflowDiffsEnabled?: boolean;
 	}>(),
 	{
@@ -39,6 +40,7 @@ const props = withDefaults(
 		isSelected: false,
 		isPublished: false,
 		isGrouped: false,
+		isPending: false,
 		isWorkflowDiffsEnabled: false,
 	},
 );
@@ -236,7 +238,20 @@ onMounted(() => {
 						@click.stop="onCompareClick"
 					/>
 				</N8nTooltip>
+				<!-- Replaces the menu while an action on this version runs, so the row shows progress. -->
+				<span v-if="props.isPending" :class="$style.actions" @click.stop>
+					<N8nIconButton
+						variant="ghost"
+						icon="ellipsis-12"
+						size="small"
+						icon-size="small"
+						loading
+						:aria-label="i18n.baseText('workflowHistory.content.actions')"
+						data-test-id="workflow-history-list-item-pending"
+					/>
+				</span>
 				<N8nActionToggle
+					v-else
 					:class="$style.actions"
 					:actions="props.actions"
 					placement="bottom-end"
