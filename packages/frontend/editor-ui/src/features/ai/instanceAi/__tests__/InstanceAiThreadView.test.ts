@@ -703,6 +703,91 @@ describe('InstanceAiThreadView', () => {
 				}
 			},
 		);
+
+		it.each(['skill-2', 'workflow-1'])(
+			'reloads a cached skill after an Assistant save while %s is pinned',
+			async (pinnedTabId) => {
+				const { getByRole, getByTestId, skillsStore, field, nameInput, selectTab } =
+					await renderSkillArtifacts();
+				thread.isStreaming = true;
+				await selectTab(pinnedTabId);
+				if (pinnedTabId === 'skill-2') {
+					await fireEvent.update(nameInput(), 'Pinned skill draft');
+				}
+				const fetchCount = skillsStore.fetchSkill.mock.calls.length;
+				skillsStore.fetchSkill.mockResolvedValueOnce({
+					...mock<SkillDetail>(),
+					id: 'skill-1',
+					name: 'Updated skill',
+					canEdit: true,
+					skillHash: 'assistant-saved-hash',
+					skill: {
+						name: 'Updated skill',
+						description: 'Updated description',
+						instructions: 'Updated instructions',
+						references: [{ path: 'references/tone.md', content: 'Updated reference' }],
+					},
+				});
+				thread.messages = [
+					{
+						id: 'assistant-skill-update',
+						role: 'assistant',
+						content: '',
+						createdAt: '2026-04-01T00:00:00.000Z',
+						agentTree: {
+							agentId: 'orchestrator',
+							role: 'orchestrator',
+							status: 'completed',
+							textContent: '',
+							reasoning: '',
+							children: [],
+							timeline: [],
+							toolCalls: [
+								{
+									toolCallId: 'skill-update',
+									toolName: 'skills',
+									args: { action: 'update', skillId: 'skill-1' },
+									isLoading: false,
+									result: { success: true, saved: { id: 'skill-1', created: true } },
+								},
+							],
+						},
+					},
+				];
+				await flushPromises();
+
+				if (pinnedTabId === 'skill-2') {
+					expect(nameInput()).toHaveValue('Pinned skill draft');
+					expect(getByRole('button', { name: 'Save skill' })).toBeEnabled();
+				} else {
+					expect(getByTestId('instance-ai-workflow-preview-stub')).toHaveAttribute(
+						'data-workflow-id',
+						'workflow-1',
+					);
+				}
+				expect(skillsStore.fetchSkill).toHaveBeenCalledTimes(fetchCount);
+
+				thread.isStreaming = false;
+				await selectTab('skill-1');
+
+				expect(skillsStore.fetchSkill).toHaveBeenCalledTimes(fetchCount + 1);
+				expect(skillsStore.fetchSkill).toHaveBeenLastCalledWith('skill-1');
+				expect(nameInput()).toHaveValue('Updated skill');
+				expect(field('agent-skill-instructions-editor')).toHaveValue('Updated instructions');
+				expect(getByRole('button', { name: 'Save skill' })).toBeDisabled();
+				await fireEvent.update(field('agent-skill-instructions-editor'), 'User instructions');
+				await userEvent.click(getByRole('button', { name: 'Save skill' }));
+				await flushPromises();
+
+				expect(skillsStore.saveSkill).toHaveBeenCalledExactlyOnceWith('skill-1', {
+					name: 'Updated skill',
+					description: 'Updated description',
+					instructions: 'User instructions',
+					references: [{ path: 'references/tone.md', content: 'Updated reference' }],
+					baseSkillHash: 'assistant-saved-hash',
+				});
+			},
+		);
 	});
 
 	it('registers an explicit workflow open without a project as unscoped', async () => {

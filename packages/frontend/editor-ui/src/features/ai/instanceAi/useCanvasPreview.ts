@@ -687,9 +687,7 @@ export function useCanvasPreview({
 
 				const targetId = artifactId(latest.value);
 				showAgentArtifact(targetId);
-				if (activeTabId.value === targetId) {
-					refresh(targetId);
-				}
+				refresh(targetId);
 			},
 			{ flush: 'sync' },
 		);
@@ -698,12 +696,15 @@ export function useCanvasPreview({
 	showLatestToolArtifact(
 		getLatestSkillArtifactResult,
 		(result) => result.skillId,
+		// Inactive skill editors stay cached, so record their updates too.
 		(id) => skillRefreshKeys.value.set(id, (skillRefreshKeys.value.get(id) ?? 0) + 1),
 	);
 	showLatestToolArtifact(
 		getLatestAppArtifactResult,
 		(result) => result.appId,
-		() => appRefreshKey.value++,
+		(id) => {
+			if (activeTabId.value === id) appRefreshKey.value++;
+		},
 	);
 
 	// --- Close data table preview if the active table is deleted ---
