@@ -6,7 +6,7 @@ import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
-import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
+import type { SetupTask, SetupTaskId } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
@@ -58,7 +58,7 @@ const props = defineProps<{
 	executionsDescription: string;
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
-	tasks?: SetupTask[];
+	tasks?: Array<SetupTask<SetupTaskId>>;
 	artifactMode?: boolean;
 	chatFirst?: boolean;
 	isPreviewOpen?: boolean;

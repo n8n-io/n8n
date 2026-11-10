@@ -7,7 +7,10 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type { AgentResource } from '../types';
-import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.registry';
+import type {
+	SetupTask,
+	SetupTaskId,
+} from '../components/AgentSetupTasks/agentSetupTasks.registry';
 import AgentSetupTasks from '../components/AgentSetupTasks/AgentSetupTasks.vue';
 
 const track = vi.fn();
@@ -200,7 +203,7 @@ async function mountColumn(
 		canEditAgent: boolean;
 		isPreviewOpen: boolean;
 		agent: AgentResource | null;
-		tasks: SetupTask[];
+		tasks: Array<SetupTask<SetupTaskId>>;
 		hidePreviewButton: boolean;
 	}> = {},
 ) {
@@ -265,7 +268,7 @@ describe('AgentBuilderEditorColumn', () => {
 	});
 
 	it('places setup tasks beside Test Agent and forwards task actions', async () => {
-		const task: SetupTask = {
+		const task: SetupTask<SetupTaskId> = {
 			id: 'add-tool',
 			titleKey: 'agents.builder.setupTasks.addTool',
 			required: false,
