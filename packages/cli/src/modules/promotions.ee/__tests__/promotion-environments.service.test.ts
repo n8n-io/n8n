@@ -190,37 +190,26 @@ describe('PromotionEnvironmentsService', () => {
 		});
 	});
 
-	it('names an HTTPS remote without its query string and fragment', async () => {
-		environmentRepository.updateEnvironment.mockResolvedValue(true);
-		providersService.getEntity.mockResolvedValue({
-			...provider(),
-			id: 'prov2',
-			name: 'Bot user',
-			authType: 'token',
-			config: { schemaVersion: 1 },
-		});
+	it.each([
+		[
+			'an HTTPS',
+			'https://git.example.com/o/r.git?private_token=secret#main',
+			'https://git.example.com/o/r.git',
+		],
+		['an SCP-style', 'git@git.example.com:o/r.git?token=secret', 'git@git.example.com:o/r.git'],
+	])(
+		'names %s remote without its query string and fragment',
+		async (_kind, remoteUrl, repository) => {
+			environmentRepository.updateEnvironment.mockResolvedValue(true);
 
-		await service.update(
-			ENVIRONMENT_ID,
-			{
-				providerId: 'prov2',
-				remote: {
-					schemaVersion: 1,
-					remoteUrl: 'https://git.example.com/o/r.git?private_token=secret#main',
-				},
-			},
-			actor,
-		);
+			await service.update(ENVIRONMENT_ID, { remote: { schemaVersion: 1, remoteUrl } }, actor);
 
-		expect(eventService.emit).toHaveBeenCalledWith(
-			'promotion-environment-updated',
-			expect.objectContaining({
-				providerId: 'prov2',
-				repository: 'https://git.example.com/o/r.git',
-				changedFields: ['remote', 'provider'],
-			}),
-		);
-	});
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-environment-updated',
+				expect.objectContaining({ repository, changedFields: ['remote'] }),
+			);
+		},
+	);
 
 	describe('checkout state', () => {
 		it('reports an environment with no checkout as disconnected', async () => {

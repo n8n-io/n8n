@@ -71,11 +71,8 @@ function invalidatesOpenReviews(current: ReviewTarget, next: ReviewTarget): bool
  */
 function repositoryForEvents(remote: PromotionStoredEnvironmentRemote): string {
 	if ('repositoryPath' in remote) return remote.repositoryPath;
-	if (!URL.canParse(remote.remoteUrl)) return remote.remoteUrl;
-	const url = new URL(remote.remoteUrl);
-	url.search = '';
-	url.hash = '';
-	return url.href;
+	// Cut the string instead of parsing it: SCP-style remotes are not URLs.
+	return remote.remoteUrl.split(/[?#]/, 1)[0];
 }
 
 /**
