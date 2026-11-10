@@ -384,7 +384,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 				:key="row.thread.id"
 				:row="row"
 				:project-id="projectId"
-				:agent-id="agentId"
+				:agent-id="row.thread.agentId"
 				:actions="rowActions(row.thread)"
 				:reasoning-label="reasoningLabels.get(row.thread.id)"
 				:assistant-available="sessionAssistant?.isAvailable.value ?? false"

@@ -1,7 +1,7 @@
 /**
  * Locale is fixed to `en` so the suffixes stay K / M / B in every UI language.
  */
-const compactTokenFormatter = new Intl.NumberFormat('en', {
+export const compactTokenFormatter = new Intl.NumberFormat('en', {
 	notation: 'compact',
 	compactDisplay: 'short',
 	maximumFractionDigits: 1,

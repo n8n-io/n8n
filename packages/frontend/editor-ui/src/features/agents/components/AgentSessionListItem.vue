@@ -286,7 +286,7 @@ function formatDuration(ms: number): string {
 				</N8nTooltip>
 			</div>
 		</RouterLink>
-		<div v-if="row.thread.status !== 'running'" :class="$style.actionGroup">
+		<div :class="$style.actionGroup">
 			<div
 				v-if="assistantAvailable && row.thread.status === 'error'"
 				:class="$style.fixButtonGroup"

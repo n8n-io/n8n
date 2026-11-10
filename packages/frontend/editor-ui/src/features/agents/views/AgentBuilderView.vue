@@ -2122,7 +2122,8 @@ const runConfigWrite: AgentConfigWrite = async (write) => {
 provide(AGENT_SESSION_ASSISTANT_KEY, {
 	isAvailable: computed(() => !isArtifactMode.value && instanceAiReady.value),
 	async handoff(params) {
-		if (params.projectId !== projectId.value || params.agentId !== agentId.value) return false;
+		/** A child session can target a different Agent. The panel guards the current route. */
+		if (params.projectId !== projectId.value) return false;
 		return await handoffToAssistantPanel(
 			buildInstanceAiAgentPreviewHandoffContext(params),
 			params.initialDraft,

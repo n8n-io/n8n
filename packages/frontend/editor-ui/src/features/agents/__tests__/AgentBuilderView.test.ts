@@ -1637,51 +1637,95 @@ describe('AgentBuilderView — preview routing', () => {
 		],
 	};
 
-	it('opens the embedded Assistant for a session handoff without navigation', async () => {
-		handoffMock.mockReturnValueOnce(true);
-		localStorage.setItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1', 'false');
-		const wrapper = await renderView();
-		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
-		/** SAFETY: The editor inherits the builder's Vue providers. */
-		const { provides } = editor.vm.$ as typeof editor.vm.$ & {
-			provides: Record<symbol, unknown>;
-		};
-		/** SAFETY: This key identifies the session Assistant capability supplied by the builder. */
-		const sessionAssistant = provides[AGENT_SESSION_ASSISTANT_KEY as symbol] as {
-			handoff: (params: AgentPreviewHandoffParams) => Promise<boolean>;
-		};
-		const params = {
-			projectId: 'p1',
-			agentId: 'a1',
-			threadId: 'failed-session',
-			agentName: 'Agent One',
-			sessionTitle: 'Failed order lookup',
-			executionId: 'failed-execution',
-			initialDraft: {
-				text: 'Fix this error: Service unavailable',
-				prefillType: 'handoff_agent_change_request',
-			},
-		} satisfies AgentPreviewHandoffParams;
-
-		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
-		expect(await sessionAssistant.handoff(params)).toBe(true);
-		await flushPromises();
-
-		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()).toBe(true);
-		expect(handoffMock).toHaveBeenCalledExactlyOnceWith(
-			{
-				source: 'agent-preview',
-				agentId: 'a1',
+	it.each([
+		{
+			label: 'parent session',
+			targetAgentId: 'a1',
+			targetProjectId: 'p1',
+			staleField: undefined,
+			accepted: true,
+		},
+		{
+			label: 'child session',
+			targetAgentId: 'child-agent',
+			targetProjectId: 'p1',
+			staleField: undefined,
+			accepted: true,
+		},
+		{
+			label: 'another project',
+			targetAgentId: 'child-agent',
+			targetProjectId: 'p2',
+			staleField: undefined,
+			accepted: false,
+		},
+		{
+			label: 'changed Agent route',
+			targetAgentId: 'child-agent',
+			targetProjectId: 'p1',
+			staleField: 'agentId',
+			accepted: false,
+		},
+		{
+			label: 'changed project route',
+			targetAgentId: 'child-agent',
+			targetProjectId: 'p1',
+			staleField: 'projectId',
+			accepted: false,
+		},
+	] as const)(
+		'handles a session handoff for $label',
+		async ({ targetAgentId, targetProjectId, staleField, accepted }) => {
+			handoffMock.mockReturnValueOnce(true);
+			const wrapper = await renderView();
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			/** SAFETY: The editor inherits the builder's Vue providers. */
+			const { provides } = editor.vm.$ as typeof editor.vm.$ & {
+				provides: Record<symbol, unknown>;
+			};
+			/** SAFETY: This key identifies the session Assistant capability supplied by the builder. */
+			const sessionAssistant = provides[AGENT_SESSION_ASSISTANT_KEY as symbol] as {
+				handoff: (params: AgentPreviewHandoffParams) => Promise<boolean>;
+			};
+			const params = {
+				projectId: targetProjectId,
+				agentId: targetAgentId,
 				threadId: 'failed-session',
 				agentName: 'Agent One',
 				sessionTitle: 'Failed order lookup',
 				executionId: 'failed-execution',
-			},
-			params.initialDraft,
-		);
-		expect(routerPush).not.toHaveBeenCalled();
-	});
+				initialDraft: {
+					text: 'Fix this error: Service unavailable',
+					prefillType: 'handoff_agent_change_request',
+				},
+			} satisfies AgentPreviewHandoffParams;
+
+			const handoff = sessionAssistant.handoff(params);
+			if (staleField) routeParams[staleField] = 'changed-route';
+			expect(await handoff).toBe(accepted);
+			await flushPromises();
+
+			if (!accepted) {
+				expect(handoffMock).not.toHaveBeenCalled();
+				return;
+			}
+
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			expect(wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()).toBe(true);
+			expect(handoffMock).toHaveBeenCalledExactlyOnceWith(
+				{
+					source: 'agent-preview',
+					agentId: targetAgentId,
+					threadId: 'failed-session',
+					agentName: 'Agent One',
+					sessionTitle: 'Failed order lookup',
+					executionId: 'failed-execution',
+				},
+				params.initialDraft,
+			);
+			expect(routerPush).not.toHaveBeenCalled();
+		},
+	);
 
 	it.each([
 		{ label: 'without execution context', event: undefined },
