@@ -69,6 +69,7 @@ export type SelfHealingRunInput = {
 };
 
 type Targets = Map<string, WorkflowSuggestionBaseline>;
+type Admission = { baseline: WorkflowSuggestionBaseline } | { refusal: string };
 type CandidateFiles = Map<string, { baseline: WorkflowSuggestionBaseline; filePath: string }>;
 
 export type SelfHealingRunResult = {
@@ -384,22 +385,24 @@ export class SelfHealingAgentService {
 		workflowId: string,
 		targets: Targets,
 		signal: AbortSignal,
-	): Promise<WorkflowSuggestionBaseline | string> {
+	): Promise<Admission> {
 		signal.throwIfAborted();
 		const callerVersionIds = [...targets.values()].map(
 			({ expectedBaseline }) => expectedBaseline.publishedVersionId,
 		);
 		if (targets.size > MAX_SUB_WORKFLOW_TARGETS) {
-			return 'This run already changes the maximum number of sub-workflows.';
+			return { refusal: 'This run has reached the maximum number of sub-workflows.' };
 		}
 		if (!(await this.dependencies.isCalledBy(workflowId, callerVersionIds))) {
-			return 'No published version of a workflow that this run can change calls this workflow.';
+			return {
+				refusal: 'No published version of a workflow that this run can change calls this workflow.',
+			};
 		}
 		if (await this.suggestions.getPendingResultId(workflowId)) {
-			return 'This workflow already has a pending suggestion.';
+			return { refusal: 'This workflow already has a pending suggestion.' };
 		}
 		if (!(await this.configurations.canActOn(user, workflowId))) {
-			return 'The run user cannot change this workflow or read its executions.';
+			return { refusal: 'The run user cannot change this workflow or read its executions.' };
 		}
 		if (
 			!(await this.configurations.hasReviewerWhoCanEditAll({ id: configurationId, projectId }, [
@@ -407,16 +410,20 @@ export class SelfHealingAgentService {
 				workflowId,
 			]))
 		) {
-			return 'No reviewer can edit this workflow and all other workflows of this run.';
+			return { refusal: 'No reviewer can edit this workflow and all other workflows of this run.' };
 		}
 		try {
 			const target = await this.suggestions.captureBaseline(workflowId, user.id);
 			signal.throwIfAborted();
-			if (target.projectId !== projectId) return 'This workflow belongs to a different project.';
+			if (target.projectId !== projectId) {
+				return { refusal: 'This workflow belongs to a different project.' };
+			}
 			targets.set(workflowId, target);
-			return target;
+			return { baseline: target };
 		} catch (error) {
-			if (error instanceof ConflictError || error instanceof ForbiddenError) return error.message;
+			if (error instanceof ConflictError || error instanceof ForbiddenError) {
+				return { refusal: error.message };
+			}
 			throw error;
 		}
 	}
@@ -482,15 +489,18 @@ export class SelfHealingAgentService {
 		const { user } = input;
 		const workflowService = context.workflowService;
 		let queue: Promise<unknown> = Promise.resolve();
-		const admit = async (workflowId: string) => {
-			const target = targets.get(workflowId);
-			if (target) return target;
-			if (!input.includeSubWorkflows) return 'This run can change only the triggering workflow.';
-			const admission = queue.then(
-				async () =>
-					targets.get(workflowId) ??
-					(await this.admitSubWorkflow(input, workflowId, targets, signal)),
-			);
+		const admit = async (workflowId: string): Promise<Admission> => {
+			const baseline = targets.get(workflowId);
+			if (baseline) return { baseline };
+			if (!input.includeSubWorkflows) {
+				return { refusal: 'This run can change only the triggering workflow.' };
+			}
+			const admission = queue.then(async (): Promise<Admission> => {
+				const admitted = targets.get(workflowId);
+				return admitted
+					? { baseline: admitted }
+					: await this.admitSubWorkflow(input, workflowId, targets, signal);
+			});
 			queue = admission.catch(() => undefined);
 			return await admission;
 		};
@@ -499,17 +509,18 @@ export class SelfHealingAgentService {
 		context.assertInThreadProject = async (resource) => {
 			await assertInThreadProject?.(resource);
 			if (resource.kind !== 'workflow') return;
-			const target = await admit(resource.id);
-			if (typeof target === 'string') {
-				throw new UserError(target, { cause: new OutsideThreadProjectError() });
+			const admission = await admit(resource.id);
+			if ('refusal' in admission) {
+				throw new UserError(admission.refusal, { cause: new OutsideThreadProjectError() });
 			}
 		};
 
 		context.workflowService = {
 			...workflowService,
 			get: async (workflowId) => {
-				const target = await admit(workflowId);
-				if (typeof target === 'string') return await workflowService.get(workflowId);
+				const admission = await admit(workflowId);
+				if ('refusal' in admission) return await workflowService.get(workflowId);
+				const target = admission.baseline;
 				await this.suggestions.requireEditor(user.id, workflowId);
 				const detail = await workflowService.get(workflowId);
 
@@ -531,10 +542,12 @@ export class SelfHealingAgentService {
 			},
 
 			getAsWorkflowJSON: async (workflowId, versionId) => {
-				const target = versionId ? targets.get(workflowId) : await admit(workflowId);
-				if (typeof target !== 'object') {
-					return await workflowService.getAsWorkflowJSON(workflowId, versionId);
+				let target = targets.get(workflowId);
+				if (!target && !versionId) {
+					const admission = await admit(workflowId);
+					if ('baseline' in admission) target = admission.baseline;
 				}
+				if (!target) return await workflowService.getAsWorkflowJSON(workflowId, versionId);
 				await this.suggestions.requireEditor(user.id, workflowId);
 				if (versionId && versionId !== target.expectedBaseline.publishedVersionId) {
 					throw new ForbiddenError('Read the published baseline assigned to this investigation.');
@@ -585,7 +598,7 @@ export class SelfHealingAgentService {
 		context: InstanceAiContext;
 		modelId: ModelConfig;
 		metadata: SelfHealingThreadMetadata;
-		admit: (workflowId: string) => Promise<WorkflowSuggestionBaseline | string>;
+		admit: (workflowId: string) => Promise<Admission>;
 		candidateFiles: CandidateFiles;
 		onStreamStart: () => void;
 	}): Promise<StreamRunResult> {
@@ -603,19 +616,20 @@ export class SelfHealingAgentService {
 			abortSignal: signal,
 			verifyCandidate: async (args) => {
 				signal.throwIfAborted();
-				const target = await admit(args.workflowId);
-				if (typeof target === 'string') {
+				const admission = await admit(args.workflowId);
+				if ('refusal' in admission) {
 					return {
 						filePath: args.filePath,
 						validation: {
 							success: false,
 							errors: [
-								`You cannot change this workflow. ${target} Use its source only to understand the failure.`,
+								`You cannot change this workflow. ${admission.refusal} Use its source only to understand the failure.`,
 							],
 						},
 						verification: { status: 'not_run' },
 					};
 				}
+				const target = admission.baseline;
 
 				const result = await this.candidates.verify({
 					...args,

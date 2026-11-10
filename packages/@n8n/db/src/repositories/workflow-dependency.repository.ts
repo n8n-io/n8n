@@ -76,6 +76,17 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
+	async findWorkflowCalls(callerWorkflowIds: string[]) {
+		const rows = await this.find({
+			where: { workflowId: In(callerWorkflowIds), dependencyType: 'workflowCall' },
+			select: ['workflowId', 'dependencyKey'],
+		});
+		return rows.map(({ workflowId, dependencyKey }) => ({
+			callerWorkflowId: workflowId,
+			calledWorkflowId: dependencyKey,
+		}));
+	}
+
 	async findDependenciesForResources(
 		resourceIds: string[],
 		incomingTypes: Array<WorkflowDependency['dependencyType']>,

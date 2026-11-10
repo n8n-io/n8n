@@ -203,7 +203,7 @@ async function fixture(
 	const { user, project, original } = prepared;
 	const url = `/projects/${project.id}/workflows/${original.id}/self-healing-results/${result.id}`;
 	const getDetail = async () => await service.getDetail(user, project.id, original.id, result.id);
-	const [suggestion] = await suggestions.getForResult(result.id);
+	const [suggestion] = await suggestions.getForResult(result.id, {});
 	return { ...prepared, result, suggestionId: suggestion?.id, url, getDetail };
 }
 
@@ -1647,7 +1647,7 @@ describe('grouped completion', () => {
 
 		const result = await completeResult({ investigationId: investigation.id, ...completion });
 
-		const saved = await suggestions.getForResult(result.id);
+		const saved = await suggestions.getForResult(result.id, {});
 		expect(saved.map(({ workflowId }) => workflowId).sort()).toEqual(
 			[original.id, subWorkflow.id].sort(),
 		);
@@ -1731,7 +1731,7 @@ describe('grouped completion', () => {
 
 			const detail = await service.getDetail(user, project.id, original.id, result.id);
 			expect(detail.reviewState).toBe('outdated');
-			expect((await suggestions.getForResult(result.id)).map(({ state }) => state)).toEqual(
+			expect((await suggestions.getForResult(result.id, {})).map(({ state }) => state)).toEqual(
 				subWorkflowOnly ? [] : ['closed'],
 			);
 		},
@@ -1761,7 +1761,7 @@ describe('grouped completion', () => {
 		expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({
 			reviewState: 'outdated',
 		});
-		expect((await suggestions.getForResult(result.id)).map(({ state }) => state)).toEqual(
+		expect((await suggestions.getForResult(result.id, {})).map(({ state }) => state)).toEqual(
 			moveTrigger ? ['closed'] : ['closed', 'closed'],
 		);
 	});
@@ -1782,7 +1782,7 @@ describe('grouped completion', () => {
 		await expect(service.act(user, project.id, original.id, result.id, 'apply')).rejects.toThrow(
 			'This result is no longer available in this project. Refresh the page.',
 		);
-		expect((await suggestions.getForResult(result.id)).map(({ state }) => state)).toEqual([
+		expect((await suggestions.getForResult(result.id, {})).map(({ state }) => state)).toEqual([
 			'pending',
 		]);
 	});
@@ -1865,7 +1865,7 @@ describe('call hierarchy', () => {
 		for (const [index, workflow] of chain.entries()) {
 			await indexCalls(workflow, [chain[index + 1]?.id ?? leaf.id]);
 		}
-		const [suggestion] = await suggestions.getForResult(result.id);
+		const [suggestion] = await suggestions.getForResult(result.id, {});
 		const getDetail = async () => await service.getDetail(user, project.id, original.id, result.id);
 		const unchanged = ({ id, name }: WorkflowEntity) => ({
 			workflowId: id,
@@ -3040,7 +3040,7 @@ describe('configuration lifecycle', () => {
 		expect(await suggestions.findOneBy({ id: second.suggestionId! })).not.toBeNull();
 	});
 
-	it('rolls back suggestion cleanup if configuration deletion fails', async () => {
+	it('keeps the result and its suggestion when the configuration deletion rolls back', async () => {
 		const { result, suggestionId } = await fixture('fix_ready', true);
 		await expect(
 			Container.get(TransactionRunner).run({}, async (ctx) => {

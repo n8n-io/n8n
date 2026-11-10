@@ -105,7 +105,7 @@ export class WorkflowSuggestionActionsService {
 			if (suggestions.some(({ closedReason }) => closedReason === 'outdated')) return 'outdated';
 			if (suggestions.some(({ state }) => state !== 'pending')) return 'already_closed';
 
-			for (const [index, suggestion] of suggestions.entries()) {
+			for (const [index, suggestion] of sortBy(suggestions, 'workflowId').entries()) {
 				const discarded = await this.suggestions.closePending(
 					suggestion,
 					'discarded',
@@ -260,8 +260,21 @@ export class WorkflowSuggestionActionsService {
 		clientId: string | undefined,
 	): Promise<PublicationRequestResult> {
 		const { ordered } = sortSubWorkflowsFirst(saved, ({ workflow }) => workflow);
+		const publishError = await this.publishInOrder(user, ordered, clientId);
+		if (publishError === undefined) return {};
+		if (saved.length === 1) return { publishError };
+
+		const restorationError = await this.restoreInOrder(user, ordered.toReversed(), clientId);
+		return restorationError ? { publishError, restorationError } : { publishError };
+	}
+
+	private async publishInOrder(
+		user: User,
+		members: AppliedMember[],
+		clientId: string | undefined,
+	): Promise<string | undefined> {
 		try {
-			for (const { suggestion, version } of ordered) {
+			for (const { suggestion, version } of members) {
 				await this.requestPublication(
 					user,
 					suggestion,
@@ -270,36 +283,32 @@ export class WorkflowSuggestionActionsService {
 					version.checksum,
 				);
 			}
-			return {};
+			return undefined;
 		} catch (error) {
-			const publishError = ensureError(error).message;
-			if (saved.length === 1) return { publishError };
-
-			for (const { suggestion, version } of ordered.toReversed()) {
-				try {
-					const current = await this.workflowRepository.findByIdInContext(
-						suggestion.workflowId,
-						{},
-					);
-					if (current?.activeVersionId !== version.versionId) continue;
-					await this.requestPublication(
-						user,
-						suggestion,
-						clientId,
-						suggestion.expectedBaseline.publishedVersionId,
-					);
-				} catch (restorationError) {
-					return {
-						publishError,
-						restorationError: {
-							workflowId: suggestion.workflowId,
-							error: ensureError(restorationError).message,
-						},
-					};
-				}
-			}
-			return { publishError };
+			return ensureError(error).message;
 		}
+	}
+
+	private async restoreInOrder(
+		user: User,
+		members: AppliedMember[],
+		clientId: string | undefined,
+	): Promise<PublicationRequestResult['restorationError']> {
+		for (const { suggestion, version } of members) {
+			try {
+				const current = await this.workflowRepository.findByIdInContext(suggestion.workflowId, {});
+				if (current?.activeVersionId !== version.versionId) continue;
+				await this.requestPublication(
+					user,
+					suggestion,
+					clientId,
+					suggestion.expectedBaseline.publishedVersionId,
+				);
+			} catch (error) {
+				return { workflowId: suggestion.workflowId, error: ensureError(error).message };
+			}
+		}
+		return undefined;
 	}
 
 	private async requestPublication(

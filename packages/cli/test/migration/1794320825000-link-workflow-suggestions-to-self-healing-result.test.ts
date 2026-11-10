@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'LinkWorkflowSuggestionsToSelfHealingResult1793691672000';
+const migrationName = 'LinkWorkflowSuggestionsToSelfHealingResult1794320825000';
 const tables = [
 	'self_healing_investigation',
 	'self_healing_result',

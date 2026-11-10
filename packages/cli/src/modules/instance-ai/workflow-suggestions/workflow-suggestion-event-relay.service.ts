@@ -7,6 +7,7 @@ import { WorkflowSuggestionService } from './workflow-suggestion.service';
 
 const SAVE_DEBOUNCE_MS = 30_000;
 const MAX_SAVE_WAIT_MS = 60_000;
+const MAX_DELETED_MEMBER_RESULTS = 1000;
 
 @Service()
 export class WorkflowSuggestionEventRelay {
@@ -56,7 +57,13 @@ export class WorkflowSuggestionEventRelay {
 
 	async beforeWorkflowDeleted(workflowId: string): Promise<void> {
 		const resultId = await this.suggestions.getPendingResultId(workflowId);
-		if (resultId) this.deletedMemberResults.set(workflowId, resultId);
+		this.deletedMemberResults.delete(workflowId);
+		if (!resultId) return;
+		if (this.deletedMemberResults.size >= MAX_DELETED_MEMBER_RESULTS) {
+			const oldest = this.deletedMemberResults.keys().next().value;
+			if (oldest !== undefined) this.deletedMemberResults.delete(oldest);
+		}
+		this.deletedMemberResults.set(workflowId, resultId);
 	}
 
 	async afterWorkflowsDeleted(workflowIds: string[]): Promise<void> {

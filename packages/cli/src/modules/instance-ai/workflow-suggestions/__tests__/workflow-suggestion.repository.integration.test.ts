@@ -106,7 +106,7 @@ describe('open results', () => {
 				const suggestion = await insertPending({});
 				await suggestions.update(suggestion.id, { state: suggestionState });
 			}
-			expect(await results.getOpenResultIds(workflow.id)).toEqual(expected ? [resultId] : []);
+			expect(await results.getOpenResultIds(workflow.id, {})).toEqual(expected ? [resultId] : []);
 			expect(await results.getOpenForWorkflow(workflow.id, project.id)).toEqual(
 				expected ? { id: resultId } : null,
 			);
@@ -122,7 +122,7 @@ describe('open results', () => {
 			await insertPending({}, { ...baseline(), workflowId: child.id });
 			await results.update(resultId, { reviewState });
 			for (const workflowId of [workflow.id, child.id]) {
-				expect(await results.getOpenResultIds(workflowId)).toEqual([]);
+				expect(await results.getOpenResultIds(workflowId, {})).toEqual([]);
 				expect(await results.getOpenForWorkflow(workflowId, project.id)).toBeNull();
 			}
 		},
@@ -132,7 +132,7 @@ describe('open results', () => {
 		await insertPending({});
 		const second = await copyResult();
 		const expected = [resultId, second.id].sort();
-		expect((await results.getOpenResultIds(workflow.id)).sort()).toEqual(expected);
+		expect((await results.getOpenResultIds(workflow.id, {})).sort()).toEqual(expected);
 		expect(expected).toContain((await results.getOpenForWorkflow(workflow.id, project.id))?.id);
 	});
 
@@ -159,7 +159,7 @@ describe('open results', () => {
 			}),
 		).rejects.toThrow('Rollback the result.');
 		for (const workflowId of [workflow.id, child.id]) {
-			expect(await results.getOpenResultIds(workflowId)).toEqual([]);
+			expect(await results.getOpenResultIds(workflowId, {})).toEqual([]);
 			expect(await results.getOpenForWorkflow(workflowId, project.id)).toBeNull();
 		}
 	});
