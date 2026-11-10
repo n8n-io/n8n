@@ -15,8 +15,8 @@ import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connecti
 type StepUpdate = Extract<LifecycleEvent, { stepId: string }>;
 
 /**
- * How a step settled. A completed step may have no outputs: the engine drops
- * them from the event when they are over its wire limit.
+ * How a step settled. A completed step may have no outputs: the channel
+ * sender drops them from the event when the frame is over its size limit.
  */
 type StepOutcome =
 	| { status: 'success'; outputs: INodeExecutionData[][] | undefined }
