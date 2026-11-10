@@ -1229,7 +1229,7 @@ export class QuickJsBridge implements RuntimeBridge {
 				vm.newFunction('__callHostImpl', (msgHandle) => {
 					const rawMsg = vm.dump(msgHandle);
 					try {
-						const result = escapeHostResult(dispatchHostCall(rawMsg, resolver.getData()));
+						const result = escapeHostResult(dispatchHostCall(rawMsg, resolver));
 						return this.hostValueToQuickJSHandle(result);
 					} catch (err) {
 						return this.hostValueToQuickJSHandle(serializeError(err));
