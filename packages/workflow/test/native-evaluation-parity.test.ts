@@ -936,6 +936,33 @@ describe('Expression - fast native evaluation parity', () => {
 		},
 	);
 
+	// CET-672: a Filter node reads an RSS attribute that the XML parser stores
+	// under a `$` key.
+	test('rejects a `$` property read like the engine', () => {
+		const expr = '={{ $json["media:thumbnail"]?.$?.url ?? "" }}';
+		const items = [
+			{
+				json: { 'media:thumbnail': { $: { url: 'https://example.com/a.jpg' } } },
+				pairedItem: { item: 0 },
+			},
+		] as unknown as Array<ReturnType<typeof makeItem>>;
+		const data = runDataFor(items);
+		const capture = (native: boolean) => {
+			try {
+				return { value: evaluate(expr, native, data, items) };
+			} catch (error) {
+				return { error: error as Error };
+			}
+		};
+
+		const viaEngine = capture(false);
+		const viaNative = capture(true);
+
+		expect(viaEngine.error).toBeInstanceOf(ExpressionError);
+		expect(viaNative.error).toBeInstanceOf(ExpressionError);
+		expect(viaNative.error?.message).toBe(viaEngine.error?.message);
+	});
+
 	test('keeps a named array key that is above the largest array index', () => {
 		const expr = "={{ $('Source').first().json['4294967295'] }}";
 		const json = Object.assign([{ role: 'assistant' }], { '4294967295': 'session-1' });
