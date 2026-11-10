@@ -2120,6 +2120,15 @@ describe('NodeCredentials', () => {
 			credentials: {},
 		};
 
+		// Declares resource and operation, so the picker can resolve the node's action.
+		const googleAiNodeTypeWithActions: INodeTypeDescription = {
+			...googleAiNodeType,
+			properties: [
+				{ displayName: 'Resource', name: 'resource', type: 'options', default: 'image' },
+				{ displayName: 'Operation', name: 'operation', type: 'options', default: 'analyze' },
+			],
+		};
+
 		beforeEach(() => {
 			// Enable AI Gateway for this describe block
 			vi.mocked(useAiGateway).mockReturnValue({
@@ -2255,22 +2264,29 @@ describe('NodeCredentials', () => {
 				).not.toBeInTheDocument();
 			});
 
-			it('does not offer n8n credits when the gateway does not support the operation', () => {
-				vi.mocked(useAiGateway).mockReturnValue({
-					...vi.mocked(useAiGateway)(),
-					isActionSupported: vi.fn(() => false),
-				});
-				const imageNode: INodeUi = {
-					...googleAiNode,
-					parameters: { resource: 'image', operation: 'analyze' },
-				};
-				ndvStore.activeNode = imageNode;
+			it.each([
+				['set on the node', { resource: 'image', operation: 'analyze' }],
+				['from node defaults', {}],
+			])(
+				'does not offer n8n credits when the gateway does not support the operation (%s)',
+				(_, parameters) => {
+					vi.mocked(useAiGateway).mockReturnValue({
+						...vi.mocked(useAiGateway)(),
+						isActionSupported: vi.fn(
+							(_type: string, resource?: string, operation?: string) =>
+								!(resource === 'image' && operation === 'analyze'),
+						),
+					});
+					mockedStore(useNodeTypesStore).setNodeTypes([googleAiNodeTypeWithActions]);
+					const imageNode: INodeUi = { ...googleAiNode, parameters };
+					ndvStore.activeNode = imageNode;
 
-				renderComponent({ props: { node: imageNode, overrideCredType: 'googlePalmApi' } });
+					renderComponent({ props: { node: imageNode, overrideCredType: 'googlePalmApi' } });
 
-				const emptyState = screen.getByTestId('node-credentials-empty-state');
-				expect(within(emptyState).queryByRole('combobox')).not.toBeInTheDocument();
-			});
+					const emptyState = screen.getByTestId('node-credentials-empty-state');
+					expect(within(emptyState).queryByRole('combobox')).not.toBeInTheDocument();
+				},
+			);
 
 			it('shows the managed selection in readonly mode', () => {
 				const nodeWithGateway: INodeUi = {
@@ -3230,6 +3246,7 @@ describe('NodeCredentials', () => {
 				fetchError: computed(() => null),
 			});
 			credentialsStore.state.credentials = {};
+			mockedStore(useNodeTypesStore).setNodeTypes([googleAiNodeTypeWithActions]);
 			const nodeWithAction: INodeUi = {
 				...googleAiNode,
 				parameters: { resource: 'chat', operation: 'unsupportedOp' },

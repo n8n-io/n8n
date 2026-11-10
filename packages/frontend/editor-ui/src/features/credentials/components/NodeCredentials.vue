@@ -9,7 +9,11 @@ import type {
 	INodeParameters,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { isMcpAiGatewayAuthentication, resolveSupportedCredentialActivation } from 'n8n-workflow';
+import {
+	isMcpAiGatewayAuthentication,
+	NodeHelpers,
+	resolveSupportedCredentialActivation,
+} from 'n8n-workflow';
 import {
 	computed,
 	inject,
@@ -456,11 +460,22 @@ const isDefaultResolver = computed(() => {
 	return !resolverId || resolverId === SYSTEM_RESOLVER_ID;
 });
 
-// Whether the node's current resource/operation is runnable by the AI gateway.
-// Nodes without an operation selected are treated as supported so gateway
-// auto-selection still works for operation-agnostic nodes.
+// Whether the node's current resource/operation is runnable by the AI gateway,
+// with node defaults applied as the engine does. Nodes without an operation are
+// treated as supported so gateway auto-selection still works for
+// operation-agnostic nodes.
 const isCurrentActionSupported = computed(() => {
-	const params = props.node.parameters;
+	const params =
+		(nodeType.value &&
+			NodeHelpers.getNodeParameters(
+				nodeType.value.properties,
+				props.node.parameters,
+				true,
+				false,
+				props.node,
+				nodeType.value,
+			)) ??
+		props.node.parameters;
 	const operation = params.operation as string | undefined;
 	if (!operation) return true;
 	const resource = params.resource as string | undefined;
