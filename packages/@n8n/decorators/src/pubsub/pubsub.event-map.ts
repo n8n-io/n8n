@@ -450,8 +450,8 @@ export type PubSubCommandMap = {
 
 	/**
 	 * Not a self-send command: the main that handled the request already reacted.
-	 * Each receiver reads the database before it removes anything, so a late or
-	 * duplicate message cannot remove a checkout that is still current.
+	 * Delete and update messages check the stored state before cleanup. Disconnect
+	 * messages always reset the checkout.
 	 */
 	'promotion-environment-changed': {
 		environmentIds: string[];
