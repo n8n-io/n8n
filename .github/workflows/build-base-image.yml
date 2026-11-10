@@ -35,33 +35,81 @@ jobs:
       fail-fast: false
       matrix:
         # One entry per published image. The images of the current Node version
-        # come from their docker-bake.hcl target, which holds the tag and the DHI
-        # ref. The older Node versions set them here: `tag` is the
+        # come from their docker-bake.hcl target, which holds the tag and the
+        # build args. The older Node versions set them here: `tag` is the
         # `n8nio/base:<tag>` tag, `dhi_ref` the DHI base, pinned to a multi-arch
-        # index digest. Change the tag and the digest together.
+        # index digest. Change the tag and the digest together. `input_paths`
+        # are the files besides the bake inputs and `dhi_ref` that change the
+        # image. A change to this workflow alone does not publish: dispatch the
+        # workflow on master for that.
         include:
           - tag: '22'
             dockerfile: docker/images/n8n-base/Dockerfile
             dhi_ref: dhi.io/node:22.23.4-alpine3.24-dev@sha256:6074fc885bbf6a1c707d16189076cd2b9d989095abfc4f3f973dac93455bdae5
+            input_paths: docker/images/n8n-base/Dockerfile
           - tag: '24.22.2'
             dockerfile: docker/images/n8n-base/Dockerfile
             dhi_ref: dhi.io/node:24.22.2-alpine3.24-dev@sha256:e640b13bfdb3befe5820fde98520aba1d81de96ebb5237f1f3a166352924707a
+            input_paths: docker/images/n8n-base/Dockerfile
           - bake_target: base
+            input_paths: docker/images/n8n-base/Dockerfile
           - bake_target: base-debian
+            input_paths: docker/images/n8n-base/Dockerfile.debian,.github/scripts/docker/base-debian-smoke-check.mjs
             # The Docker smoke test builds n8n-debian on the published base, so
             # it does not test a change to this Dockerfile. Check it here.
             smoke_check: .github/scripts/docker/base-debian-smoke-check.mjs
     steps:
+      # Branches do not publish: a pin must point at an image that master built.
+      # See docker/AGENTS.md.
+      - name: Publish from master only
+        if: github.event_name == 'workflow_dispatch' && inputs.push && github.ref != 'refs/heads/master'
+        run: |
+          echo "::error::Publish from master only. Merge the input change, and master publishes the image. See docker/AGENTS.md."
+          exit 1
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # A rebuild moves the tag to a new digest, so build only when an input of
+      # this image changed. A dispatch always builds.
+      - name: Check whether the inputs changed
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          GATE_TARGET: ${{ matrix.bake_target }}
+          GATE_PATHS: ${{ matrix.input_paths }}
+          GATE_DHI_REF: ${{ matrix.dhi_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = workflow_dispatch ] || [ -z "$BASE_COMMIT" ] || [ -z "${BASE_COMMIT//0/}" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --no-tags --depth=1 origin "$BASE_COMMIT"
+          if [ -n "$GATE_TARGET" ]; then
+            node .github/scripts/docker/bake-inputs-changed.mjs --base "$BASE_COMMIT" --targets "$GATE_TARGET" --paths "$GATE_PATHS"
+          else
+            IFS=, read -ra paths <<<"$GATE_PATHS"
+            if git diff --quiet "$BASE_COMMIT" HEAD -- "${paths[@]}" &&
+              git show "$BASE_COMMIT:.github/workflows/build-base-image.yml" | grep -qF "$GATE_DHI_REF"; then
+              echo "No input of this image changed."
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
       - name: Set up QEMU
+        if: steps.gate.outputs.changed == 'true'
         uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
 
       - name: Set up Docker Buildx
+        if: steps.gate.outputs.changed == 'true'
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Resolve build inputs
         id: inputs
+        if: steps.gate.outputs.changed == 'true'
         env:
           # Bake reads an environment variable with the name of a bake variable
           # as an override, even when it is empty. So no name here matches one.
@@ -71,25 +119,30 @@ jobs:
           MATRIX_DHI_REF: ${{ matrix.dhi_ref }}
         run: |
           set -euo pipefail
-          TAG=$MATRIX_TAG DOCKERFILE=$MATRIX_DOCKERFILE DHI_REF=$MATRIX_DHI_REF
+          TAG=$MATRIX_TAG DOCKERFILE=$MATRIX_DOCKERFILE BUILD_ARGS="DHI_REF=$MATRIX_DHI_REF"
           if [ -n "$BAKE_TARGET" ]; then
             plan=$(docker buildx bake -f docker/docker-bake.hcl --print "$BAKE_TARGET")
             target=$(jq -c --arg t "$BAKE_TARGET" '.target[$t]' <<<"$plan")
             DOCKERFILE=$(jq -r '.dockerfile' <<<"$target")
-            DHI_REF=$(jq -r '.args.DHI_REF' <<<"$target")
+            BUILD_ARGS=$(jq -r '.args | to_entries[] | "\(.key)=\(.value)"' <<<"$target")
             TAG=$(jq -r '.tags[0] | sub("^n8nio/base:"; "")' <<<"$target")
           fi
-          for value in "$TAG" "$DOCKERFILE" "$DHI_REF"; do
+          for value in "$TAG" "$DOCKERFILE"; do
             [ -n "$value" ] && [ "$value" != null ] || { echo "::error::Unresolved build input"; exit 1; }
           done
+          grep -qE '^DHI_REF=.+@sha256:' <<<"$BUILD_ARGS" || { echo "::error::No pinned DHI_REF"; exit 1; }
           {
             echo "dockerfile=$DOCKERFILE"
-            echo "dhi_ref=$DHI_REF"
             echo "tag=$TAG"
+            echo "build_args<<BUILD_ARGS_EOF"
+            echo "$BUILD_ARGS"
+            echo "BUILD_ARGS_EOF"
           } >> "$GITHUB_OUTPUT"
-          echo "n8nio/base:$TAG from $DOCKERFILE on $DHI_REF"
+          echo "n8nio/base:$TAG from $DOCKERFILE with:"
+          echo "$BUILD_ARGS"
 
       - name: Login to DHI Registry (for pulling base images)
+        if: steps.gate.outputs.changed == 'true'
         uses: ./.github/actions/docker-registry-login
         with:
           login-ghcr: 'false'
@@ -98,7 +151,7 @@ jobs:
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Login to Docker registries (for pushing)
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
+        if: steps.gate.outputs.changed == 'true' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true))
         uses: ./.github/actions/docker-registry-login
         with:
           login-ghcr: 'true'
@@ -107,15 +160,17 @@ jobs:
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Smoke check
-        if: matrix.smoke_check
+        if: steps.gate.outputs.changed == 'true' && matrix.smoke_check
         env:
           DOCKERFILE: ${{ steps.inputs.outputs.dockerfile }}
-          DHI_REF: ${{ steps.inputs.outputs.dhi_ref }}
+          BUILD_ARGS: ${{ steps.inputs.outputs.build_args }}
           SMOKE_CHECK: ${{ matrix.smoke_check }}
         run: |
           set -euo pipefail
+          args=()
+          while IFS= read -r arg; do args+=(--build-arg "$arg"); done <<<"$BUILD_ARGS"
           for platform in ${PLATFORMS//,/ }; do
-            docker buildx build --platform "$platform" --build-arg "DHI_REF=$DHI_REF" \
+            docker buildx build --platform "$platform" "${args[@]}" \
               -f "$DOCKERFILE" -t base-smoke --load .
             docker run --rm --platform "$platform" --user root --entrypoint node \
               -v "$PWD/$SMOKE_CHECK:/check.mjs:ro" base-smoke /check.mjs
@@ -124,12 +179,12 @@ jobs:
       # The builder starts empty on each run. This step reuses the layers the
       # smoke check built, so it pushes the image that was checked.
       - name: Build and push
+        if: steps.gate.outputs.changed == 'true'
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           context: .
           file: ./${{ steps.inputs.outputs.dockerfile }}
-          build-args: |
-            DHI_REF=${{ steps.inputs.outputs.dhi_ref }}
+          build-args: ${{ steps.inputs.outputs.build_args }}
           platforms: ${{ env.PLATFORMS }}
           provenance: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
