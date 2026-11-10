@@ -733,6 +733,8 @@ describe('InstanceAiThreadView', () => {
 						id: 'assistant-skill-update',
 						role: 'assistant',
 						content: '',
+						reasoning: '',
+						isStreaming: false,
 						createdAt: '2026-04-01T00:00:00.000Z',
 						agentTree: {
 							agentId: 'orchestrator',
