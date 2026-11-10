@@ -11,6 +11,7 @@ import {
 	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	// EOF Experiment cleanup
+	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
@@ -31,7 +32,6 @@ export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	enabled: true,
 	apiHost: 'host',
 	apiKey: 'key',
-	autocapture: false,
 	disableSessionRecording: true,
 	debug: false,
 	proxy: 'proxy',
@@ -219,6 +219,26 @@ describe('Posthog store', () => {
 
 			posthog.reset();
 			expect(posthog.getFeatureFlagPayload('config-form-url')).toBeUndefined();
+		});
+
+		it('enables autocapture when the server-evaluated flag is on', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: true });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ autocapture: true }),
+			);
+		});
+
+		it('keeps autocapture off when the flag is off or flags are not bootstrapped', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: false });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ autocapture: false }),
+			);
 		});
 
 		it('disables client-side flag refetch when flags are bootstrapped', () => {

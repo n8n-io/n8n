@@ -13,6 +13,7 @@ import {
 	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	// EOF Experiment cleanup
+	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
 	EXPERIMENTS_TO_TRACK,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
@@ -293,7 +294,10 @@ export const usePostHog = defineStore('posthog', () => {
 
 		const options: Parameters<typeof window.posthog.init>[1] = {
 			api_host: settingsStore.settings.posthog.proxy,
-			autocapture: config.autocapture,
+			// Needs server-evaluated flags: autocapture is fixed at init, before client-side flags load.
+			autocapture:
+				hasServerFlags &&
+				evaluatedFeatureFlags[ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name] === true,
 			disable_session_recording: config.disableSessionRecording,
 			debug: false, // Enables console logs for debugging reasons
 			session_recording: {
