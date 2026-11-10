@@ -964,7 +964,7 @@ describe('AgentCapabilitiesSection', () => {
 
 	it('does not look up a resolved archived sub-agent again when the config changes', async () => {
 		const archived = makeAgent({ id: 'agent-archived', name: 'Old Agent', isArchived: true });
-		listAgentsPageSpy.mockResolvedValue({ count: 1, data: [archived] });
+		listAgentsPageSpy.mockResolvedValueOnce({ count: 1, data: [archived] });
 		const makeConfig = (instructions: string) => ({
 			name: 'Parent Agent',
 			model: '',
