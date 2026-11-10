@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_5855e2588b8dd0::t_dcf339af2ac959 310
+  s_5855e2588b8dd0::t_c098b13cdc302f 303-304
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_5855e2588b8dd0::t_8c95903ea39c70 304-337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7e3a50a2cb9bcc43d9cd75d26f8f40d47628c778",
+  "prompts": {},
+  "sessions": {
+    "s_5855e2588b8dd0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e96a43-03a7-4174-8b04-03afe378ed45",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

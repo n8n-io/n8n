@@ -1,0 +1,23 @@
+packages/cli/test/integration/promotion-review-inbox.test.ts
+  s_ad4ecfd118187c::t_92b866bd6a978b 800,805-806
+packages/modules/inbox/frontend/src/promotions/PromotionReviewDetail.vue
+  s_ad4ecfd118187c::t_92b866bd6a978b 107-108,121,125-126,139,266,352
+packages/modules/inbox/frontend/src/promotions/PromotionReviewDetail.test.ts
+  s_ad4ecfd118187c::t_92b866bd6a978b 301-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "58279d543cecb7436043b3b41dd349e59aec8579",
+  "prompts": {},
+  "sessions": {
+    "s_ad4ecfd118187c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33f75c98-067e-4a74-a6ac-4222dc0f8ce1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
