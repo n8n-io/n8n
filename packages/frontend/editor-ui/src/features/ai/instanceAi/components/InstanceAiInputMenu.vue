@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
 	N8nDropdownMenu,
 	N8nIcon,
@@ -64,7 +64,17 @@ function trackInputPlusButtonClick() {
 	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON, {});
 }
 
+const isOpen = ref(false);
+
+watch(
+	() => props.disabled,
+	(disabled) => {
+		if (disabled) isOpen.value = false;
+	},
+);
+
 function handleUpdateDropdownModelValue(open: boolean) {
+	isOpen.value = open;
 	if (open) {
 		trackInputPlusButtonClick();
 	}
@@ -74,6 +84,7 @@ function handleUpdateDropdownModelValue(open: boolean) {
 <template>
 	<N8nTooltip :content="tooltip" :content-class="$style.triggerTooltip" placement="top">
 		<N8nDropdownMenu
+			:model-value="isOpen"
 			:items="menuItems"
 			placement="top-start"
 			:disabled="props.disabled"
