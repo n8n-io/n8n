@@ -202,6 +202,28 @@ describe('Init', () => {
 			);
 		});
 
+		it('should show the startup error toast when the login hook cannot load the full settings', async () => {
+			const error = new Error('Settings request failed');
+			settingsStore.getSettings.mockRejectedValue(error);
+			let hookResult: Promise<void> | undefined;
+			usersStore.registerLoginHook.mockImplementation((hook) => {
+				hookResult = hook(mock<CurrentUserResponse>({ id: 'userId' }));
+				hookResult.catch(() => {});
+			});
+
+			await initializeCore();
+
+			await expect(hookResult).rejects.toBe(error);
+			expect(showToast).toHaveBeenCalledTimes(1);
+			expect(showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Error connecting to n8n',
+					type: 'error',
+					duration: 0,
+				}),
+			);
+		});
+
 		it('should initialize authentication hooks', async () => {
 			const registerLoginHookSpy = vi.spyOn(usersStore, 'registerLoginHook');
 			const registerLogoutHookSpy = vi.spyOn(usersStore, 'registerLogoutHook');
