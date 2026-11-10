@@ -111,6 +111,55 @@ export const githubUsesCredentialsMockServer = {
 	status: 'active',
 } satisfies McpRegistryServer;
 
+export const microsoftWorkIqUsesCredentialsMockServer = {
+	name: 'com.microsoft/work-iq-mcp',
+	slug: 'microsoft-work-iq',
+	title: 'Microsoft Work IQ',
+	description:
+		'Work IQ gives agents access to Microsoft 365: read and write mail, calendar, Teams, OneDrive and SharePoint through Microsoft Graph resource paths, ask Microsoft 365 Copilot, and retrieve grounding content. Calls run with the signed-in user’s permissions; tenant policy blocks write operations unless an admin enables them.',
+	tagline: 'Connect to the Microsoft Work IQ MCP Server',
+	version: '1.0.0',
+	updatedAt: '2026-10-26T10:00:00.000Z',
+	icons: [
+		{
+			src: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMyAyMyI+PHBhdGggZmlsbD0iI2YzZjNmMyIgZD0iTTAgMGgyM3YyM0gweiIvPjxwYXRoIGZpbGw9IiNmMzUzMjUiIGQ9Ik0xIDFoMTB2MTBIMXoiLz48cGF0aCBmaWxsPSIjODFiYzA2IiBkPSJNMTIgMWgxMHYxMEgxMnoiLz48cGF0aCBmaWxsPSIjMDVhNmYwIiBkPSJNMSAxMmgxMHYxMEgxeiIvPjxwYXRoIGZpbGw9IiNmZmJhMDgiIGQ9Ik0xMiAxMmgxMHYxMEgxMnoiLz48L3N2Zz4=',
+			mimeType: 'image/svg+xml',
+		},
+	],
+	websiteUrl:
+		'https://learn.microsoft.com/microsoft-365/copilot/extensibility/work-iq/mcp/overview',
+	// Work IQ has no dynamic client registration and only accepts delegated
+	// tokens, so it binds the dedicated Entra credential instead of a
+	// synthesized `oauth2` one.
+	authType: 'usesCredentials',
+	usesCredentials: [
+		{ credentialType: 'microsoftWorkIqOAuth2Api', name: 'Microsoft Entra', value: 'oAuth2' },
+	],
+	remotes: [{ type: 'streamable-http', url: 'https://workiq.svc.cloud.microsoft/mcp' }],
+	tools: [
+		{ name: 'ask', title: 'Ask Microsoft 365 Copilot', annotations: { readOnlyHint: true } },
+		{ name: 'retrieve', title: 'Retrieve grounding content', annotations: { readOnlyHint: true } },
+		{ name: 'list_agents', title: 'List Copilot agents', annotations: { readOnlyHint: true } },
+		{ name: 'search_paths', title: 'Search API paths', annotations: { readOnlyHint: true } },
+		{ name: 'get_schema', title: 'Get API schema', annotations: { readOnlyHint: true } },
+		{ name: 'fetch', title: 'Fetch entities', annotations: { readOnlyHint: true } },
+		{ name: 'fetch_blob', title: 'Fetch file content', annotations: { readOnlyHint: true } },
+		{ name: 'call_function', title: 'Call Graph function', annotations: { readOnlyHint: true } },
+		{ name: 'create_entity', title: 'Create entity', annotations: { readOnlyHint: false } },
+		{ name: 'update_entity', title: 'Update entity', annotations: { readOnlyHint: false } },
+		{
+			name: 'delete_entity',
+			title: 'Delete entity',
+			annotations: { readOnlyHint: false, destructiveHint: true },
+		},
+		{ name: 'do_action', title: 'Run action', annotations: { readOnlyHint: false } },
+	],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+	tags: ['productivity', 'microsoft-365', 'email', 'calendar'],
+} satisfies McpRegistryServer;
+
 export const databricksGenieTemplatedMockServer: McpRegistryServer = {
 	name: 'com.databricks/genie-mcp',
 	slug: 'databricks-genie',

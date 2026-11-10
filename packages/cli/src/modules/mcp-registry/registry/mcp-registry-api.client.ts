@@ -11,6 +11,9 @@ import {
 	parseMcpRegistryServer,
 	type McpRegistryServer,
 } from './mcp-registry.types';
+// TEST-ONLY (ENT-854, do not merge): seeds the Work IQ registry entry until
+// its Strapi row exists, so test deploys surface the server.
+import { microsoftWorkIqUsesCredentialsMockServer } from './mock-servers';
 
 export type McpRegistryServerMetadata = Pick<McpRegistryServer, 'slug' | 'version' | 'updatedAt'>;
 
@@ -46,11 +49,17 @@ export class McpRegistryApiClient {
 				abortSignal: signal,
 			},
 		);
-		return this.parseServers(servers);
+		const parsedServers = this.parseServers(servers);
+		// TEST-ONLY (ENT-854, do not merge): no Strapi row yet for Work IQ.
+		const workIq = this.withSupportedCredentials(microsoftWorkIqUsesCredentialsMockServer);
+		if (workIq && !parsedServers.some((server) => server.slug === workIq.slug)) {
+			parsedServers.push(workIq);
+		}
+		return parsedServers;
 	}
 
 	async fetchServersMetadata(signal?: AbortSignal): Promise<McpRegistryServerMetadata[]> {
-		return await paginatedRequest<McpRegistryServerMetadata>(
+		const metadata = await paginatedRequest<McpRegistryServerMetadata>(
 			this.getUrl(),
 			{
 				version: STRAPI_API_VERSION,
@@ -62,6 +71,16 @@ export class McpRegistryApiClient {
 				abortSignal: signal,
 			},
 		);
+		// TEST-ONLY (ENT-854, do not merge): keep the seeded Work IQ entry from
+		// being treated as removed on refresh.
+		if (!metadata.some((server) => server.slug === microsoftWorkIqUsesCredentialsMockServer.slug)) {
+			metadata.push({
+				slug: microsoftWorkIqUsesCredentialsMockServer.slug,
+				version: microsoftWorkIqUsesCredentialsMockServer.version,
+				updatedAt: microsoftWorkIqUsesCredentialsMockServer.updatedAt,
+			});
+		}
+		return metadata;
 	}
 
 	async fetchServersBySlugs(slugs: string[], signal?: AbortSignal): Promise<McpRegistryServer[]> {

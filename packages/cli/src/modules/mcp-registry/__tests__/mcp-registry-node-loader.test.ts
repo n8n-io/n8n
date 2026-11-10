@@ -21,6 +21,7 @@ import {
 	firecrawlMockServer,
 	gmailDirectExtendMockServer,
 	githubUsesCredentialsMockServer,
+	microsoftWorkIqUsesCredentialsMockServer,
 	notionMockServer,
 	slackExtendingMockServer,
 } from '../registry/mock-servers';
@@ -332,6 +333,39 @@ describe('McpRegistryNodeLoader', () => {
 				connection: {
 					endpointUrl: 'https://api.githubcopilot.com/mcp/',
 					endpointHostname: 'api.githubcopilot.com',
+				},
+			});
+		});
+
+		it('registers Microsoft Work IQ against its dedicated Entra credential', async () => {
+			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['microsoftWorkIqOAuth2Api'],
+			});
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([microsoftWorkIqUsesCredentialsMockServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(1);
+			expect(loader.types.nodes[0]).toMatchObject({
+				name: 'microsoftWorkIq',
+				credentials: [{ name: 'microsoftWorkIqOAuth2Api', required: true }],
+			});
+			expect(loader.types.credentials).toHaveLength(0);
+			const setRegistryRuntime = (
+				baseNode as INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> }
+			).setRegistryRuntime;
+			const runtime = setRegistryRuntime.mock.calls[0][0] as {
+				resolveConnection: (nodeTypeName: string, selector?: string) => unknown;
+			};
+			expect(
+				runtime.resolveConnection('@n8n/mcp-registry.microsoftWorkIq', 'oAuth2'),
+			).toMatchObject({
+				binding: { credentialType: 'microsoftWorkIqOAuth2Api', selector: 'oAuth2' },
+				connection: {
+					endpointUrl: 'https://workiq.svc.cloud.microsoft/mcp',
+					endpointHostname: 'workiq.svc.cloud.microsoft',
+					transport: 'httpStreamable',
 				},
 			});
 		});
