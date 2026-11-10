@@ -118,6 +118,7 @@ import {
 	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
+	AppNamespaceTakenError,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	FolderResolutionError,
@@ -3567,11 +3568,17 @@ export class InstanceAiAdapterService {
 		return {
 			createApp: async ({ name, namespace, visibility, id }) => {
 				const { apps } = await services('app:create');
-				return await apps.createApp(
-					projectId,
-					CreateAppDto.parse({ name, namespace, visibility }),
-					{ id, actor },
-				);
+				try {
+					return await apps.createApp(
+						projectId,
+						CreateAppDto.parse({ name, namespace, visibility }),
+						{ id, actor },
+					);
+				} catch (error) {
+					// The namespace is the only unique field that the user picks.
+					if (error instanceof ConflictError) throw new AppNamespaceTakenError(namespace);
+					throw error;
+				}
 			},
 			listApps: async ({ name }) => {
 				const { apps } = await services('app:list');

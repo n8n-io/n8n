@@ -15,13 +15,13 @@ import {
 	computed,
 	defineComponent,
 	h,
-	nextTick,
 	onBeforeUnmount,
 	onMounted,
 	onUnmounted,
 	provide,
 	ref,
 	watch,
+	type Ref,
 } from 'vue';
 import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
@@ -84,6 +84,7 @@ const props = withDefaults(
 		closable?: boolean;
 		showOpenFullAssistant?: boolean;
 		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
 		/** Runs before a new thread is minted (e.g. flush a pending autosave). */
 		beforeNewThread?: () => Promise<void>;
@@ -99,6 +100,7 @@ const emit = defineEmits<{
 	'update:working': [working: boolean];
 	close: [];
 	'message-sent': [];
+	'content-change': [hasContent: boolean];
 }>();
 
 const slots = defineSlots<{
@@ -184,15 +186,6 @@ const conversationRef = ref<InstanceType<typeof InstanceAiConversation> | null>(
 const agentThreadRef = ref<InstanceType<typeof AssistantAgentPanelThread> | null>(null);
 /** The mounted chat on either runtime. Both expose the same calls. */
 const activeChat = computed(() => conversationRef.value ?? agentThreadRef.value);
-watch(
-	() => props.visible,
-	async (visible, wasVisible) => {
-		if (!visible || wasVisible !== false) return;
-		await nextTick();
-		activeChat.value?.focus();
-	},
-	{ flush: 'post' },
-);
 
 /**
  * A hand-off requested before the conversation for the target thread exists
@@ -413,6 +406,14 @@ const threadIdVerified = ref(!props.threadId);
 const activeThreadId = computed(() => (threadIdVerified.value ? props.threadId : undefined));
 /** The verified thread runs on the Assistant agent, not on the current runtime. */
 const isAgentThread = ref(false);
+/** The credit total of the open thread, from the store of its runtime. */
+const activeThreadCreditsUsed = computed(() => {
+	const threadId = activeThreadId.value;
+	if (!threadId) return undefined;
+	return isAgentThread.value
+		? assistantAgentThreadsStore.threadCreditsUsed(threadId)
+		: store.threadCreditsUsed(threadId);
+});
 
 /** Which runtime runs a thread, and the metadata that tells its subject. */
 interface PanelThread {
@@ -607,8 +608,11 @@ const ThreadScope = defineComponent({
 					subject: props.subject,
 					beforeSend: props.beforeSend,
 					placeholder: props.placeholder,
+					placeholderPreview: props.placeholderPreview,
+					autofocus: props.visible,
 					composerHeight: props.composerHeight,
 					onMessageSent: () => emit('message-sent'),
+					onContentChange: (hasContent: boolean) => emit('content-change', hasContent),
 					onThreadMissing: () => scopeEmit('thread-missing'),
 				},
 				{
@@ -650,6 +654,7 @@ function handleCloseShortcut(event: KeyboardEvent) {
 		<InstanceAiViewHeader
 			:title="currentThreadTitle"
 			:thread-id="activeThreadId"
+			:thread-credits-used="activeThreadCreditsUsed"
 			:thread-list="{ filter: threadFilter, navigate: false, disabled: building }"
 			@select="onThreadSelect"
 			@deleted="onThreadDeleted"
@@ -714,12 +719,15 @@ function handleCloseShortcut(event: KeyboardEvent) {
 				:subject="props.subject"
 				:new-session="panelAgentThreads.get(activeThreadId) === true"
 				:placeholder="props.placeholder"
+				:placeholder-preview="props.placeholderPreview"
+				:visible="props.visible"
 				:composer-height="props.composerHeight"
 				:before-send="props.beforeSend"
 				:class="$style.conversation"
 				@update:building="onBuildingChange"
 				@update:working="emit('update:working', $event)"
 				@message-sent="emit('message-sent')"
+				@content-change="emit('content-change', $event)"
 				@session-created="onAgentSessionCreated"
 			>
 				<template v-if="slots.empty" #empty><slot name="empty" /></template>

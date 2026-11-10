@@ -9,7 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import { AgentConversationStateService } from '../../agent-conversation-state.service';

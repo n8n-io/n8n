@@ -16,6 +16,7 @@ import { Service } from '@n8n/di';
 import {
 	MAX_STEPS,
 	modelConfigId,
+	orchestratorAgentId,
 	patchThread,
 	snapshotAgent,
 	tokenUsageToBuilderUsageItems,
@@ -38,6 +39,7 @@ import type {
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
+import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import {
@@ -130,6 +132,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly agentFactory: AssistantAgentFactory,
 		private readonly tracer: AssistantTurnTracer,
 		private readonly threadTabs: AssistantThreadTabsService,
+		private readonly errorReporter: InstanceAiErrorReporterService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -160,7 +163,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 	/** A setup failure, such as the credit check before the run, gets the turn's error text. */
 	async formatSetupError(user: User, error: unknown): Promise<FormattedTurnError> {
-		return await this.formatTurnError(user, error);
+		return toFormattedTurnError(await this.resolveShownError(user, error));
 	}
 
 	async prepareTurn(turn: SystemAgentTurn<AssistantSandboxLease>): Promise<SystemAgentTurnHandle> {
@@ -172,36 +175,42 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		);
 		const { user } = turn;
 		const { request } = options;
-		const experimentGates = await this.adapterService.resolveExperimentGates(user);
-		const turnFiles = turn.type === 'start' ? turn.attachments : [];
-		const contextAttachments = contextAttachmentsOf(
-			request.attachments,
-			experimentGates.nodeContextEnabled,
-		);
-		// One token manager backs the run and its trace.
-		const proxyRunConfig = await this.turnEnvironment.createProxyRunConfig(user);
-		const trace = await this.tracer.startForTurn(turn, {
-			runId: options.runId,
-			messageGroupId: options.messageGroupId,
-			...(proxyRunConfig.tracingProxyConfig
-				? { proxyConfig: proxyRunConfig.tracingProxyConfig }
-				: {}),
-			fileAttachments: turnFiles,
-			contextAttachments,
-			threadArtifacts: request.threadArtifacts,
-		});
+		// Reports one Sentry event for each error of the turn. `onSettled` ends it.
+		const errorReporting = this.errorReporter.beginRun(options.runId);
+		let trace: AssistantTurnTrace | undefined;
 		try {
+			const experimentGates = await this.adapterService.resolveExperimentGates(user);
+			const turnFiles = turn.type === 'start' ? turn.attachments : [];
+			const contextAttachments = contextAttachmentsOf(
+				request.attachments,
+				experimentGates.nodeContextEnabled,
+			);
+			// One token manager backs the run and its trace.
+			const proxyRunConfig = await this.turnEnvironment.createProxyRunConfig(user);
+			trace = await this.tracer.startForTurn(turn, {
+				runId: options.runId,
+				messageGroupId: options.messageGroupId,
+				...(proxyRunConfig.tracingProxyConfig
+					? { proxyConfig: proxyRunConfig.tracingProxyConfig }
+					: {}),
+				fileAttachments: turnFiles,
+				contextAttachments,
+				threadArtifacts: request.threadArtifacts,
+			});
 			return await this.prepareTracedTurn(turn, options, {
 				trace,
+				errorReporting,
 				experimentGates,
 				contextAttachments,
 				proxyRunConfig,
 			});
 		} catch (error) {
-			await trace?.finish({
-				status: turn.abortSignal.aborted ? 'cancelled' : 'errored',
-				error,
-			});
+			const aborted = turn.abortSignal.aborted;
+			if (!aborted) {
+				this.reportTurnError(error, 'instance-ai-run', turn, options, trace);
+			}
+			this.errorReporter.endRun(options.runId, errorReporting);
+			await trace?.finish({ status: aborted ? 'cancelled' : 'errored', error });
 			throw error;
 		}
 	}
@@ -211,6 +220,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		options: AssistantTurnOptions,
 		setup: {
 			trace: AssistantTurnTrace | undefined;
+			errorReporting: symbol;
 			experimentGates: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>;
 			contextAttachments: InstanceAiResourceAttachment[];
 			proxyRunConfig: AssistantProxyRunConfig;
@@ -218,7 +228,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	): Promise<SystemAgentTurnHandle> {
 		const { user, thread } = turn;
 		const { runId, request } = options;
-		const { trace, experimentGates, contextAttachments, proxyRunConfig } = setup;
+		const { trace, errorReporting, experimentGates, contextAttachments, proxyRunConfig } = setup;
 		const runtime = this.createTurnRuntime(turn, options, trace);
 		const environment = await this.turnEnvironment.create(
 			{
@@ -230,6 +240,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				pushRef: request.pushRef,
 				proxyRunConfig,
 				experimentGates,
+				...(trace ? { tracing: trace.context } : {}),
 			},
 			runtime,
 		);
@@ -284,6 +295,18 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 		let usage: { model: string; usage: TokenUsage } | undefined;
 		let inputAccepted: Promise<void> | undefined;
+		// The model stream reports these errors. Other errors of the turn were thrown.
+		const streamErrors = new Set<unknown>();
+		// `formatError` and the turn report share the credit check of one error.
+		const shownErrors = new Map<unknown, Promise<unknown>>();
+		const shownErrorOf = async (error: unknown) => {
+			let shown = shownErrors.get(error);
+			if (!shown) {
+				shown = this.resolveShownError(user, error);
+				shownErrors.set(error, shown);
+			}
+			return await shown;
+		};
 		return {
 			agent,
 			// The runtime adds the files to the model input as stored references, so the
@@ -304,6 +327,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				: {}),
 			onChunk: (chunk) => {
 				trace?.observeChunk(chunk);
+				if (chunk.type === 'error') streamErrors.add(chunk.error);
 				// The SDK stores the input when it receives it, so the first chunk means it is accepted.
 				if (!inputAccepted && turnInput) {
 					inputAccepted = this.turnInput
@@ -333,12 +357,25 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 						this.emitArchivedWorkflows(turn, thread.id, archived);
 					}
 				} finally {
+					if (outcome.status === 'errored') {
+						const component = streamErrors.has(outcome.error)
+							? 'instance-ai-stream'
+							: 'instance-ai-run';
+						this.reportTurnError(
+							await shownErrorOf(outcome.error),
+							component,
+							turn,
+							options,
+							trace,
+						);
+					}
 					await trace?.finish(outcome, environment.modelId);
+					this.errorReporter.endRun(runId, errorReporting);
 				}
 			},
 			onSideCallUsage: async (report) =>
 				await this.claimSideCallUsage(user, thread.id, runId, report),
-			formatError: async (error) => await this.formatTurnError(user, error),
+			formatError: async (error) => toFormattedTurnError(await shownErrorOf(error)),
 		};
 	}
 
@@ -413,7 +450,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		const attached = attachments?.find(
 			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
 		);
-		if (!attached || attached.projectId !== turn.thread.projectId) return;
+		if (attached?.projectId !== turn.thread.projectId) return;
 		// A patch replaces the metadata, so binding a saved agent drops its pending marker.
 		// `saveThread` merges, and a leftover marker makes a later build adopt this agent.
 		const patched = await patchThread(turn.memory, {
@@ -460,27 +497,52 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	}
 
 	/**
-	 * The text and code that the chat shows for a turn error. A masked stream
-	 * failure is shown as a credit error when the balance is used up, because a
-	 * credit stop at the model call can arrive in that form. A refused file stays
-	 * in the thread history, because the runtime saves the turn input first.
+	 * The error that the turn shows and reports. A masked stream failure becomes
+	 * the credit error when the balance is used up, because a credit stop at the
+	 * model call can arrive in that form. The reporter then keeps it out of Sentry.
 	 */
-	private async formatTurnError(user: User, error: unknown): Promise<FormattedTurnError> {
-		let shown = error;
-		if (isMaskedStreamFailure(error)) {
-			try {
-				await this.turnEnvironment.assertAssistantCreditsAvailable(user);
-			} catch (creditsError) {
-				shown = creditsError;
-			}
+	private async resolveShownError(user: User, error: unknown): Promise<unknown> {
+		if (!isMaskedStreamFailure(error)) return error;
+		try {
+			await this.turnEnvironment.assertAssistantCreditsAvailable(user);
+			return error;
+		} catch (creditsError) {
+			return creditsError;
 		}
-		const code = getUserFacingErrorCode(shown);
-		const message = getUserFacingErrorMessage(
-			shown,
-			undefined,
-			isAttachmentRejectedByProviderError(shown) ? { attachmentRemoved: false } : {},
-		);
-		return { message, ...(code ? { code } : {}) };
+	}
+
+	/**
+	 * Reports a failed turn like the current runtime. The reporter keeps credit
+	 * and stream transport errors out of Sentry.
+	 */
+	private reportTurnError(
+		error: unknown,
+		component: 'instance-ai-stream' | 'instance-ai-run',
+		turn: SystemAgentTurn<AssistantSandboxLease>,
+		options: AssistantTurnOptions,
+		trace: AssistantTurnTrace | undefined,
+	): void {
+		const { runId, messageGroupId } = options;
+		// A failed report must not replace the turn error or skip the cleanup of the turn.
+		try {
+			this.errorReporter.report(error ?? new Error('Assistant turn errored'), {
+				component,
+				...(component === 'instance-ai-stream' ? { providerStream: true } : {}),
+				threadId: turn.thread.id,
+				runId,
+				projectId: turn.thread.projectId,
+				userId: turn.user.id,
+				agentId: orchestratorAgentId(runId),
+				messageGroupId,
+				...(trace ? { tracing: trace.context } : {}),
+			});
+		} catch (reportError) {
+			this.logger.warn('Failed to report the Assistant turn error', {
+				threadId: turn.thread.id,
+				runId,
+				error: reportError,
+			});
+		}
 	}
 
 	/**
@@ -605,6 +667,20 @@ const MEMORY_OPTION_CLAIMED_TASKS: ReadonlySet<SideCallUsageReport['task']> = ne
 	'observer',
 	'reflector',
 ]);
+
+/**
+ * The text and code that the chat shows for a turn error. A refused file stays
+ * in the thread history, because the runtime saves the turn input first.
+ */
+function toFormattedTurnError(shown: unknown): FormattedTurnError {
+	const code = getUserFacingErrorCode(shown);
+	const message = getUserFacingErrorMessage(
+		shown,
+		undefined,
+		isAttachmentRejectedByProviderError(shown) ? { attachmentRemoved: false } : {},
+	);
+	return { message, ...(code ? { code } : {}) };
+}
 
 function modelLabel(modelId: ModelConfig): string {
 	return modelConfigId(modelId) ?? 'unknown';

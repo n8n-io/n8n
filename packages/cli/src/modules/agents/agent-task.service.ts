@@ -3,7 +3,13 @@ import { isValidTimeZone } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { TransactionRunner, type User } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import {
+	OnLeaderStepdown,
+	OnLeaderTakeover,
+	OnPubSubEvent,
+	OnShutdown,
+	type PubSubCommandMap,
+} from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
@@ -11,7 +17,6 @@ import { DateTime } from 'luxon';
 import { InstanceSettings, ScheduledTaskManager, type ScheduledTaskGroup } from 'n8n-core';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 
 import {
 	type AgentMutationTelemetryContext,
