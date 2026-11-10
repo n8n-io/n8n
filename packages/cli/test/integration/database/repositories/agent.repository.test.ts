@@ -1,6 +1,7 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
+import type { GlobalConfig } from '@n8n/config';
 import { TransactionRunner, type User, type WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
@@ -10,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { TagService } from '@/services/tag.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -209,6 +211,8 @@ describe('AgentRepository', () => {
 				mock<AgentSetupCompletionService>(),
 				mock(),
 				definitionService,
+				mock<GlobalConfig>({ tags: { disabled: false } }),
+				mock<TagService>(),
 			);
 			const user = mock<User>({ firstName: 'Test', lastName: 'User' });
 			const id = uuid();

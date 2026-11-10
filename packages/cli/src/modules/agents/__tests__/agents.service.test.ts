@@ -146,7 +146,8 @@ function makeService() {
 	const tagService = mock<TagService>();
 	tagService.sortByRequestOrder.mockImplementation(
 		(tags: TagEntity[], { requestOrder }: { requestOrder: string[] }) =>
-			requestOrder.map((tagId) => tags.find((tag) => tag.id === tagId)),
+			// Tests only look up ids they provided, so every entry resolves.
+			requestOrder.map((tagId) => tags.find((tag) => tag.id === tagId)) as TagEntity[],
 	);
 
 	const service = new AgentsService(
