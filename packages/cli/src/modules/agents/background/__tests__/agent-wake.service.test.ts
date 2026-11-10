@@ -1070,6 +1070,17 @@ describe('AgentWakeService', () => {
 			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		});
 
+		it('stops after three failed wakes that claimed and released the results', async () => {
+			const { service, orchestrator } = setup();
+			failAfterAdmission(orchestrator, new Error('model unavailable'));
+
+			for (let attempt = 0; attempt < MAX_CONSECUTIVE_FAILED_WAKES + 1; attempt++) {
+				await service.attemptWake('thread-1');
+			}
+
+			expect(orchestrator.executeForWake).toHaveBeenCalledTimes(MAX_CONSECUTIVE_FAILED_WAKES);
+		});
+
 		it.each([
 			[false, 'releases the claim when the lease is lost before the agent starts'],
 			[true, 'keeps the claim when the lease is lost after the agent started'],

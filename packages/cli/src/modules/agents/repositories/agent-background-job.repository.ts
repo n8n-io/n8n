@@ -245,7 +245,8 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	async claimForWake(parentThreadId: string, ids: string[], wakeAttemptId: string): Promise<void> {
 		const result = await this.createQueryBuilder()
 			.update()
-			.set({ wakeAttemptId })
+			// Keep updatedAt. The wake failure brake must see the same result version.
+			.set({ wakeAttemptId, updatedAt: () => '"updatedAt"' })
 			.where({ parentThreadId, id: In(ids) })
 			.andWhere('settledAt IS NOT NULL')
 			.andWhere('notifiedAt IS NULL')
@@ -261,7 +262,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		// The thread filter uses the parentThreadId indexes.
 		await this.update(
 			{ parentThreadId, wakeAttemptId, notifiedAt: IsNull() },
-			{ wakeAttemptId: null },
+			{ wakeAttemptId: null, updatedAt: () => '"updatedAt"' },
 		);
 	}
 

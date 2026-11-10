@@ -870,6 +870,21 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(job?.parentResourceId).toHaveLength(255);
 	});
 
+	it('keeps the result version when a wake attempt claims and releases it', async () => {
+		// The wake failure brake keys on updatedAt. A claim must not look like a new result.
+		const parentThreadId = uuid();
+		const id = uuid();
+		await insertJob({ id, parentThreadId });
+		const before = (await repository.findById(id))?.updatedAt;
+		await new Promise((resolve) => setTimeout(resolve, 20));
+
+		const attempt = uuid();
+		await repository.claimForWake(parentThreadId, [id], attempt);
+		expect((await repository.findById(id))?.updatedAt).toEqual(before);
+		await repository.releaseWakeClaim(parentThreadId, attempt);
+		expect((await repository.findById(id))?.updatedAt).toEqual(before);
+	});
+
 	it('links selected results to one wake attempt until they are consumed or released', async () => {
 		const parentThreadId = uuid();
 		const [first, second, late] = [uuid(), uuid(), uuid()];
