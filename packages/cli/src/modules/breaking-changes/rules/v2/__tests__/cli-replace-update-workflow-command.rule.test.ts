@@ -13,7 +13,7 @@ describe('CliActivateAllWorkflowsRule', () => {
 
 			expect(metadata.version).toBe('v2');
 			expect(metadata.title).toBe('CLI command update:workflow replaced');
-			expect(metadata.severity).toBe('low');
+			expect(metadata.impact).toBe('capabilityRemoved');
 		});
 	});
 

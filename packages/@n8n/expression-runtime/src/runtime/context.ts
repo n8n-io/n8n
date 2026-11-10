@@ -8,9 +8,12 @@ import {
 	createDeepLazyProxy,
 	isArrayMetadata,
 	isObjectMetadata,
+	readHostResult,
 	throwIfErrorSentinel,
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
+import { assign, defineProperty } from './intrinsics';
+import { decodeHostValue } from './transfer-codec';
 import { isKeyOf } from './utils';
 import type { BridgeMessage } from '../bridge/bridge-messages';
 
@@ -84,6 +87,40 @@ export interface BridgeCallbacks {
 }
 
 /**
+ * Convert a `$()` argument to the node name the host `$` resolves. An empty name means the previous node.
+ * Return `undefined` for a truthy argument that converts to an empty name, such as `[]`: it names no node.
+ */
+function toNodeName(nodeSelector: unknown): string | undefined {
+	const nodeName = nodeSelector ? String(nodeSelector) : '';
+	return nodeSelector && nodeName === '' ? undefined : nodeName;
+}
+
+/** Return the error the legacy `$` throws for a node name that matches no node. */
+function createNodeNotFoundError(callbacks: BridgeCallbacks, nodeCause: string): ExpressionError {
+	const readHostValue = (key: string) =>
+		decodeHostValue(readHostResult(callbacks.getValueAtPath([key])));
+	return Object.assign(new ExpressionError("Referenced node doesn't exist"), {
+		context: {
+			runIndex: readHostValue('$runIndex'),
+			itemIndex: readHostValue('$itemIndex'),
+			nodeCause,
+			descriptionKey: 'nodeNotFound',
+		},
+	});
+}
+
+/** Return a check that throws when a node does not exist. It asks the host once per node name. */
+function createNodeCheck(callHost: (message: unknown) => unknown): (nodeName: string) => void {
+	const checkedNodeNames = new Set<string>();
+	return (nodeName) => {
+		if (!checkedNodeNames.has(nodeName)) {
+			callHost({ type: 'checkNode', nodeName });
+			checkedNodeNames.add(nodeName);
+		}
+	};
+}
+
+/**
  * Build a fresh, closure-scoped evaluation context.
  *
  * This function creates a context object that contains everything needed to
@@ -106,12 +143,16 @@ export function buildContext(
 	}
 	Settings.defaultZone = timezone ?? 'system';
 
+	// Check the error flag before decoding. Decoded data can hold the flag as user data.
+	const callHost = (message: unknown) =>
+		decodeHostValue(readHostResult(callbacks.callHost(message)));
+
 	const target: Record<string, unknown> = {};
 
 	// __sanitize must be on the context because PrototypeSanitizer generates:
 	// obj[this.__sanitize(expr)] where 'this' is the context (via .call(ctx) wrapping)
 	// Use a non-writable property descriptor so override attempts throw instead of silently succeeding.
-	Object.defineProperty(target, '__sanitize', {
+	defineProperty(target, '__sanitize', {
 		get: () => __sanitize,
 		set: () => {
 			throw new ExpressionError('Cannot override "__sanitize" due to security concerns');
@@ -134,7 +175,7 @@ export function buildContext(
 	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
 	// -------------------------------------------------------------------------
 
-	Object.assign(target, extendedFunctions);
+	assign(target, extendedFunctions);
 
 	// -------------------------------------------------------------------------
 	// Expose globals on target so tournament's "x in this ? this.x : global.x"
@@ -167,6 +208,8 @@ export function buildContext(
 		return createDeepLazyProxy(['$item', String(itemIndex)], undefined, callbacks);
 	};
 
+	const checkNode = createNodeCheck(callHost);
+
 	// $() function for accessing other nodes.
 	//
 	// The returned object is a Proxy whose `get` trap intercepts properties
@@ -187,13 +230,16 @@ export function buildContext(
 	// The `has` trap mirrors the `get` trap for typed-RPC names so that
 	// tournament's `"first" in this.$('Foo')` check resolves true even though
 	// the inner target is empty.
-	target.$ = function (nodeName: string) {
+	target.$ = function (nodeSelector: unknown) {
+		const nodeName = toNodeName(nodeSelector);
+		if (nodeName === undefined) {
+			throw createNodeNotFoundError(callbacks, '');
+		}
+		checkNode(nodeName);
 		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
 		const sendNodeMethod = (type: NodeRpcType) => {
 			return (branchIndex?: number, runIndex?: number) => {
-				const result = callbacks.callHost({ type, nodeName, branchIndex, runIndex });
-				throwIfErrorSentinel(result);
-				return result;
+				return callHost({ type, nodeName, branchIndex, runIndex });
 			};
 		};
 		// Paired-item cluster: `.pairedItem(idx?)`, `.itemMatching(idx)`,
@@ -206,14 +252,10 @@ export function buildContext(
 			type: 'getNodePairedItem' | 'getNodeItemMatching',
 			itemIndex?: number,
 		) => {
-			const result = callbacks.callHost({ type, nodeName, itemIndex });
-			throwIfErrorSentinel(result);
-			return result;
+			return callHost({ type, nodeName, itemIndex });
 		};
 		const sendGetNodeItem = () => {
-			const result = callbacks.callHost({ type: 'getNodeItem', nodeName });
-			throwIfErrorSentinel(result);
-			return result;
+			return callHost({ type: 'getNodeItem', nodeName });
 		};
 		return new Proxy({} as Record<string, unknown>, {
 			get(_emptyTarget, prop) {
@@ -254,9 +296,7 @@ export function buildContext(
 	const lazyInputProxy = createDeepLazyProxy(['$input'], undefined, callbacks);
 	const sendInputMethod = (type: InputRpcType) => {
 		return () => {
-			const result = callbacks.callHost({ type });
-			throwIfErrorSentinel(result);
-			return result;
+			return callHost({ type });
 		};
 	};
 	target.$input = new Proxy({} as Record<string, unknown>, {
@@ -275,9 +315,7 @@ export function buildContext(
 	// args, and the host's `WorkflowDataProxy.$items` applies its own
 	// defaults when fields are undefined.
 	target.$items = (nodeName?: string, outputIndex?: number, runIndex?: number) => {
-		const result = callbacks.callHost({ type: 'getItems', nodeName, outputIndex, runIndex });
-		throwIfErrorSentinel(result);
-		return result;
+		return callHost({ type: 'getItems', nodeName, outputIndex, runIndex });
 	};
 
 	// $fromAI / $fromAi / $fromai — AI-builder placeholder accessor.
@@ -292,15 +330,13 @@ export function buildContext(
 		valueType?: string,
 		defaultValue?: unknown,
 	) => {
-		const result = callbacks.callHost({
+		return callHost({
 			type: 'fromAi',
 			name,
 			description,
 			valueType,
 			defaultValue,
 		});
-		throwIfErrorSentinel(result);
-		return result;
 	};
 	target.$fromAI = sendFromAi;
 	target.$fromAi = sendFromAi;
@@ -311,9 +347,7 @@ export function buildContext(
 	// Under the VM engine this re-enters the bridge on a fresh evaluation;
 	// the legacy engine handles it inline.
 	target.$evaluateExpression = (expression: string, itemIndex?: number) => {
-		const result = callbacks.callHost({ type: 'evaluateExpression', expression, itemIndex });
-		throwIfErrorSentinel(result);
-		return result;
+		return callHost({ type: 'evaluateExpression', expression, itemIndex });
 	};
 
 	// $getPairedItem — walks the paired-item ancestry chain back to the
@@ -326,14 +360,12 @@ export function buildContext(
 		incomingSourceData: unknown,
 		initialPairedItem: unknown,
 	) => {
-		const result = callbacks.callHost({
+		return callHost({
 			type: 'getPairedItem',
 			destinationNodeName,
 			incomingSourceData,
 			initialPairedItem,
 		});
-		throwIfErrorSentinel(result);
-		return result;
 	};
 
 	// -------------------------------------------------------------------------
@@ -379,8 +411,8 @@ export function buildContext(
 			return true;
 		}
 
-		// Primitive or null — store directly
-		target[key] = value;
+		// Decode after the metadata checks. User data can hold the same keys.
+		target[key] = decodeHostValue(value);
 		return true;
 	}
 

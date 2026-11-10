@@ -134,7 +134,9 @@ describe('episodic memory integration', () => {
 		expect(sources.every((source) => source.threadId === setupThreadId)).toBe(true);
 		expect(sources.every((source) => Boolean(source.candidateId))).toBe(true);
 		expect(sources.every((source) => !source.observationId)).toBe(true);
-		await expect(memory.episodic.getPendingCaptureCandidates({ resourceId })).resolves.toEqual([]);
+		await expect(memory.episodic.getPendingCaptureCandidates(scope(resourceId))).resolves.toEqual(
+			[],
+		);
 
 		const result = await generateSuccessfully(
 			recallAgent,
@@ -309,8 +311,9 @@ async function generateSuccessfully(
 	return result;
 }
 
+// The in-memory store scopes by resource only, so any thread id works here.
 function scope(resourceId: string) {
-	return { resourceId };
+	return { resourceId, threadId: 'thread-search' };
 }
 
 async function searchEpisodicEntries(

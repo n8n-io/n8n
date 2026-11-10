@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { stringify, parse } from 'flatted';
 import { DateTime } from 'luxon';
 import type { ExecutionStatus } from 'n8n-workflow';
-import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
+import { createEmptyRunExecutionData, createRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
 import { createExecution } from '@test-integration/db/executions';
 import { createOwner } from '@test-integration/db/users';
@@ -71,6 +71,40 @@ describe('UserRepository', () => {
 			]);
 		});
 
+		test('pages by ID, even when the timestamps disagree', async () => {
+			// The timestamps descend while the IDs ascend, so a timestamp order
+			// would page these rows in the opposite order.
+			const now = DateTime.utc();
+			const workflow = await createWorkflow({}, owner);
+			const first = await createExecution(
+				{ startedAt: now.plus({ minute: 3 }).toJSDate() },
+				workflow,
+			);
+			const second = await createExecution(
+				{ startedAt: now.plus({ minute: 2 }).toJSDate() },
+				workflow,
+			);
+			const third = await createExecution({ startedAt: null }, workflow);
+
+			const page = async (beforeId?: string) =>
+				await executionRepository.findManyByRangeQuery({
+					workflowId: workflow.id,
+					user: owner,
+					kind: 'range',
+					range: { limit: 1, beforeId },
+				});
+
+			// Walk the pages the way the cursor does: the first page has no cursor.
+			const [newest] = await page();
+			expect(newest.id).toBe(third.id);
+
+			const [middle] = await page(newest.id);
+			expect(middle.id).toBe(second.id);
+
+			const [oldest] = await page(middle.id);
+			expect(oldest.id).toBe(first.id);
+		});
+
 		test('exposes `jsonSizeBytes` and `binaryDataSizeBytes` as numbers and `workflowVersionId`', async () => {
 			const workflow = await createWorkflow({}, owner);
 			const execution = await createExecution(
@@ -121,6 +155,111 @@ describe('UserRepository', () => {
 			const row = await executionRepository.findOneBy({ id: execution.id });
 			expect(row?.status).toBe('running');
 			expect(row?.startedAt?.getTime()).toBe(originalStartedAt.getTime());
+		});
+	});
+
+	describe('claimResumeAttempt', () => {
+		test('counts each claim up to the limit, then reports the attempts as used up', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'waiting' }, workflow);
+
+			await expect(
+				executionRepository.claimResumeAttempt(execution.id, 'waiting', 2),
+			).resolves.toMatchObject({ outcome: 'claimed', attempts: 1 });
+			await expect(
+				executionRepository.claimResumeAttempt(execution.id, 'waiting', 2),
+			).resolves.toMatchObject({ outcome: 'claimed', attempts: 2 });
+			await expect(
+				executionRepository.claimResumeAttempt(execution.id, 'waiting', 2),
+			).resolves.toMatchObject({ outcome: 'exhausted', attempts: 2 });
+
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.resumeAttempts).toBe(2);
+			expect(row?.status).toBe('waiting');
+		});
+
+		test('reports a conflict and counts nothing when the execution left the status', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'running' }, workflow);
+
+			await expect(
+				executionRepository.claimResumeAttempt(execution.id, 'waiting', 2),
+			).resolves.toEqual({ outcome: 'conflict' });
+
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.resumeAttempts).toBe(0);
+		});
+	});
+
+	describe('releaseResumeAttempt', () => {
+		test('gives back the attempt that the claim returned', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'waiting' }, workflow);
+			await executionRepository.claimResumeAttempt(execution.id, 'waiting', 2);
+
+			await expect(
+				executionRepository.releaseResumeAttempt(execution.id, 'waiting', 1),
+			).resolves.toBe(true);
+
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.resumeAttempts).toBe(0);
+		});
+
+		test('leaves the count alone when another claim changed it in the meantime', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'waiting' }, workflow);
+			await executionRepository.claimResumeAttempt(execution.id, 'waiting', 3);
+			await executionRepository.claimResumeAttempt(execution.id, 'waiting', 3);
+
+			await expect(
+				executionRepository.releaseResumeAttempt(execution.id, 'waiting', 1),
+			).resolves.toBe(false);
+
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.resumeAttempts).toBe(2);
+		});
+	});
+
+	describe('markAsCrashedFrom', () => {
+		test('crashes a waiting execution and clears its wait time', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution(
+				{ status: 'waiting', waitTill: new Date() },
+				workflow,
+			);
+
+			const crashed = await executionRepository.markAsCrashedFrom(execution.id, 'waiting');
+
+			expect(crashed.map(({ id }) => id)).toEqual([execution.id]);
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('crashed');
+			expect(row?.waitTill).toBeNull();
+		});
+
+		test('leaves an execution alone when it is not in the named status', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'running' }, workflow);
+
+			const crashed = await executionRepository.markAsCrashedFrom(execution.id, 'waiting');
+
+			expect(crashed).toEqual([]);
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('running');
+		});
+
+		test('leaves an execution alone when its attempt count changed since it was read', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'waiting' }, workflow);
+			// The caller read the count as 0, then a claim moved it to 1
+			await executionRepository.claimResumeAttempt(execution.id, 'waiting', 2);
+
+			const crashed = await executionRepository.markAsCrashedFrom(execution.id, 'waiting', {
+				expectedAttempts: 0,
+			});
+
+			expect(crashed).toEqual([]);
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('waiting');
 		});
 	});
 
@@ -201,6 +340,77 @@ describe('UserRepository', () => {
 
 			const rowCount = await executionRepository.count();
 			expect(rowCount).toBe(0);
+		});
+
+		test.each([
+			{
+				statusInDB: 'running' as ExecutionStatus,
+				conditions: { requireStatuses: ['new', 'running', 'unknown'] as ExecutionStatus[] },
+				updateExpected: true,
+			},
+			{
+				statusInDB: 'new' as ExecutionStatus,
+				conditions: { requireStatuses: ['new', 'running', 'unknown'] as ExecutionStatus[] },
+				updateExpected: true,
+			},
+			{
+				statusInDB: 'error' as ExecutionStatus,
+				conditions: { requireStatuses: ['new', 'running', 'unknown'] as ExecutionStatus[] },
+				updateExpected: false,
+			},
+			{
+				statusInDB: 'crashed' as ExecutionStatus,
+				conditions: { requireStatuses: ['new', 'running', 'unknown'] as ExecutionStatus[] },
+				updateExpected: false,
+			},
+		])(
+			'requireStatuses should return $updateExpected when status is "$statusInDB"',
+			async ({ statusInDB, conditions, updateExpected }) => {
+				const workflow = await createWorkflow({}, owner);
+				const executionData = createEmptyRunExecutionData();
+				const execution = await createExecution(
+					{ status: statusInDB, data: stringify(executionData) },
+					workflow,
+				);
+
+				const result = await executionRepository.updateExistingExecution(
+					execution.id,
+					{ status: 'crashed' },
+					conditions,
+				);
+
+				expect(result).toBe(updateExpected);
+				const row = await executionRepository.findOneBy({ id: execution.id });
+				expect(row?.status).toBe(updateExpected ? 'crashed' : statusInDB);
+			},
+		);
+
+		test.each([
+			{
+				requireStatus: 'running' as ExecutionStatus,
+				requireStatuses: ['new'] as ExecutionStatus[],
+			},
+			{ requireStatuses: ['new'] as ExecutionStatus[], requireNotCanceled: true },
+			{ requireStatus: 'running' as ExecutionStatus, requireNotCanceled: true },
+		])('should reject combined status constraints: $0', async (conditions) => {
+			await expect(
+				executionRepository.updateExistingExecution('1', { status: 'crashed' }, conditions),
+			).rejects.toThrow(UnexpectedError);
+		});
+
+		test('ignores requireNotCanceled: false when counting status constraints', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'error' }, workflow);
+
+			const result = await executionRepository.updateExistingExecution(
+				execution.id,
+				{ status: 'crashed' },
+				{ requireStatus: 'error', requireNotCanceled: false },
+			);
+
+			expect(result).toBe(true);
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('crashed');
 		});
 
 		test('requireNotFinished: should update when finished is false', async () => {
@@ -319,6 +529,77 @@ describe('UserRepository', () => {
 			expect(result).toBe(false);
 			const row = await executionRepository.findOne({ where: { id: execution.id } });
 			expect(row?.status).toBe('canceled');
+		});
+	});
+
+	describe('unsaved manual executions', () => {
+		/** A finished manual run that n8n did not save, soft-deleted when it finished. */
+		const createUnsavedManualExecution = async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ mode: 'manual', status: 'error' }, workflow);
+			await executionRepository.softDelete(execution.id);
+			return { workflow, execution };
+		};
+
+		test('finds the execution inside the hard-delete buffer', async () => {
+			const { workflow, execution } = await createUnsavedManualExecution();
+
+			expect(await executionRepository.findUnsavedManualExecution(execution.id)).toMatchObject({
+				id: execution.id,
+				workflowId: workflow.id,
+			});
+			expect(await executionRepository.findSingleExecution(execution.id)).toBeUndefined();
+		});
+
+		test('does not find the execution after the hard-delete buffer', async () => {
+			const { execution } = await createUnsavedManualExecution();
+			await executionRepository.update(
+				{ id: execution.id },
+				{ deletedAt: DateTime.utc().minus({ hours: 2 }).toJSDate() },
+			);
+
+			expect(await executionRepository.findUnsavedManualExecution(execution.id)).toBeNull();
+		});
+
+		test('does not find a kept, an unfinished or a non-manual execution', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const kept = await createExecution({ mode: 'manual', status: 'error' }, workflow);
+			const { execution: unfinished } = await createUnsavedManualExecution();
+			await executionRepository.update({ id: unfinished.id }, { status: 'running' });
+			const { execution: webhook } = await createUnsavedManualExecution();
+			await executionRepository.update({ id: webhook.id }, { mode: 'webhook' });
+
+			expect(await executionRepository.findUnsavedManualExecution(kept.id)).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(unfinished.id)).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(webhook.id)).toBeNull();
+		});
+	});
+
+	describe('findForDeletionByWorkflowId', () => {
+		test('should return live and soft-deleted executions of the workflow, up to the limit', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const otherWorkflow = await createWorkflow({}, owner);
+			const live = await createExecution({ status: 'success' }, workflow);
+			const softDeleted = await createExecution(
+				{ status: 'success', deletedAt: new Date() },
+				workflow,
+			);
+			const onFilesystem = await createExecution({ status: 'success' }, workflow);
+			await executionRepository.update(onFilesystem.id, { storedAt: 'fs' });
+			await createExecution({ status: 'success' }, otherWorkflow);
+
+			const targets = await executionRepository.findForDeletionByWorkflowId(workflow.id, 500);
+
+			expect(targets).toHaveLength(3);
+			expect(targets).toEqual(
+				expect.arrayContaining([
+					{ executionId: live.id, workflowId: workflow.id, storedAt: 'db' },
+					{ executionId: softDeleted.id, workflowId: workflow.id, storedAt: 'db' },
+					{ executionId: onFilesystem.id, workflowId: workflow.id, storedAt: 'fs' },
+				]),
+			);
+			expect(await executionRepository.findForDeletionByWorkflowId(workflow.id, 2)).toHaveLength(2);
+			expect(await executionRepository.findForDeletionByWorkflowId('missing', 500)).toEqual([]);
 		});
 	});
 });

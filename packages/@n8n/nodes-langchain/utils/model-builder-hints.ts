@@ -1,0 +1,3 @@
+// The connected credential determines availability for each new model choice.
+export const MODEL_SELECTION_HINT =
+	'Keep a working or explicitly requested model unless provider evidence shows it is unavailable or unsuitable. When choosing a new model, select a current stable model supported by this node version, the configured API, and the required operation. Use the declared model-list lookup with the connected credential when available. Gateway credits can restrict that list. For a new choice without credentials, use current provider catalog information. Choose a model that fits the task and budget. Copy the exact model ID. Do not rely on node defaults, invent model IDs, or treat an unfamiliar model as invalid.';

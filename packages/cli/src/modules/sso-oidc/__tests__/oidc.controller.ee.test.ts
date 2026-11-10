@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService, UrlService } from '@n8n/backend-services';
 import type { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { GLOBAL_MEMBER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
@@ -7,11 +8,9 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@n8n/errors';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import type { AuthlessRequest } from '@/requests';
-import type { UrlService } from '@/services/url.service';
 
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 
@@ -103,6 +102,48 @@ describe('OidcController', () => {
 			});
 
 			// Verify redirect to home page
+			expect(res.redirect).toHaveBeenCalledWith('/');
+		});
+
+		test('Should redirect to the destination stored in the state after login', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+			oidcService.verifyState.mockReturnValue({
+				state: 'n8n_state:uuid',
+				redirectUrl: '/workflow/abc?tab=1',
+			});
+			oidcService.loginUser.mockResolvedValueOnce({ user });
+
+			await controller.callbackHandler(req, res);
+
+			expect(res.redirect).toHaveBeenCalledWith('/workflow/abc?tab=1');
+		});
+
+		test('Should fall back to the home page when the stored destination is not a local path', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+			oidcService.verifyState.mockReturnValue({
+				state: 'n8n_state:uuid',
+				redirectUrl: '//evil.example/phish',
+			});
+			oidcService.loginUser.mockResolvedValueOnce({ user });
+
+			await controller.callbackHandler(req, res);
+
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
@@ -549,6 +590,34 @@ describe('OidcController', () => {
 			});
 		});
 
+		test('Should carry a safe in-app destination into the login state', async () => {
+			const req = mock<Request>({ query: { redirect: '/workflow/abc?tab=1' } });
+			const res = mock<Response>();
+			oidcService.generateLoginUrl.mockResolvedValueOnce({
+				url: new URL('https://provider.com/auth'),
+				state: 'state_value',
+				nonce: 'nonce_value',
+			});
+
+			await controller.redirectToAuthProvider(req, res);
+
+			expect(oidcService.generateLoginUrl).toHaveBeenCalledWith('/workflow/abc?tab=1');
+		});
+
+		test('Should replace an external destination with the home page', async () => {
+			const req = mock<Request>({ query: { redirect: 'https://evil.example/phish' } });
+			const res = mock<Response>();
+			oidcService.generateLoginUrl.mockResolvedValueOnce({
+				url: new URL('https://provider.com/auth'),
+				state: 'state_value',
+				nonce: 'nonce_value',
+			});
+
+			await controller.redirectToAuthProvider(req, res);
+
+			expect(oidcService.generateLoginUrl).toHaveBeenCalledWith('/');
+		});
+
 		test('Should propagate errors from OIDC service during URL generation', async () => {
 			const req = mock<Request>();
 			const res = mock<Response>();
@@ -566,7 +635,7 @@ describe('OidcController', () => {
 
 	describe('logout', () => {
 		const makeLogoutReq = (cookies: Record<string, string>) =>
-			mock<AuthenticatedRequest>({ cookies });
+			mock<AuthenticatedRequest>({ cookies, user });
 
 		beforeEach(() => {
 			vi.mocked(isOidcCurrentAuthenticationMethod).mockReturnValue(true);
@@ -602,6 +671,8 @@ describe('OidcController', () => {
 			expect(result).toEqual({
 				redirectUrl: 'https://idp.example.com/logout?id_token_hint=raw-id-token',
 			});
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('user-logged-out', { user });
 		});
 
 		test('Should return a null redirect URL when the session was not established through OIDC', async () => {
@@ -615,6 +686,8 @@ describe('OidcController', () => {
 			// The n8n session is still terminated
 			expect(authService.invalidateToken).toHaveBeenCalledWith(req);
 			expect(authService.clearCookie).toHaveBeenCalledWith(res);
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('user-logged-out', { user });
 		});
 
 		test('Should return a null redirect URL when OIDC is no longer the authentication method', async () => {
@@ -662,6 +735,8 @@ describe('OidcController', () => {
 			expect(authService.invalidateToken).toHaveBeenCalledWith(req);
 			expect(authService.clearCookie).toHaveBeenCalledWith(res);
 			expect(logger.warn).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('user-logged-out', { user });
 		});
 	});
 });

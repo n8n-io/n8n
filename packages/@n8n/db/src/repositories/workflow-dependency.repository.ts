@@ -1,12 +1,19 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
+import {
+	DataSource,
+	EntityManager,
+	In,
+	IsNull,
+	LessThan,
+	LessThanOrEqual,
+	Repository,
+	Not,
+} from '@n8n/typeorm';
 
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type { User } from '../entities';
-import { WorkflowDependency, WorkflowEntity } from '../entities';
-
-const INDEX_VERSION_ID = 1;
+import { WorkflowDependency, WorkflowEntity, WORKFLOW_DEPENDENCY_INDEX_VERSION } from '../entities';
 
 /**
  * Which workflows an aggregate over the index may span. The roles come from the caller
@@ -45,7 +52,7 @@ export class WorkflowDependencies {
 			workflowId: this.workflowId,
 			workflowVersionId: this.workflowVersionId,
 			publishedVersionId: this.publishedVersionId,
-			indexVersionId: INDEX_VERSION_ID,
+			indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION,
 		});
 		this.dependencies.push(dep);
 	}
@@ -59,6 +66,35 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {
 		super(WorkflowDependency, dataSource.manager);
+	}
+
+	async findDependenciesForResources(
+		resourceIds: string[],
+		incomingTypes: Array<WorkflowDependency['dependencyType']>,
+		includeOutgoing: boolean,
+	): Promise<Array<Pick<WorkflowDependency, 'workflowId' | 'dependencyType' | 'dependencyKey'>>> {
+		return await this.find({
+			where: [
+				...(includeOutgoing
+					? [
+							{
+								workflowId: In(resourceIds),
+								dependencyType: In([
+									'credentialId',
+									'dataTableId',
+									'errorWorkflow',
+									'workflowCall',
+								]),
+							},
+						]
+					: []),
+				{
+					dependencyKey: In(resourceIds),
+					dependencyType: In(incomingTypes),
+				},
+			],
+			select: ['workflowId', 'dependencyType', 'dependencyKey'],
+		});
 	}
 
 	/**
@@ -203,17 +239,40 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		dependencies: WorkflowDependencies,
 		tx: EntityManager,
 	): Promise<boolean> {
-		const deleteResult = await tx.delete(WorkflowDependency, {
+		// NOTE: this relies on the fact that we only want to track the latest published version or draft dependencies.
+		// If we're updating published dependencies, checking for Not Null works because we don't actually
+		// care about the specific previous published version id.
+		const publishedVersionCondition = dependencies.publishedVersionId ? Not(IsNull()) : IsNull();
+
+		await this.lockWorkflowRow(workflowId, tx);
+
+		// Replace rows from an older workflow version, and rows an older indexer
+		// version wrote for the current workflow version.
+		const outdatedVersionResult = await tx.delete(WorkflowDependency, {
 			workflowId,
 			workflowVersionId: LessThan(dependencies.workflowVersionId),
-			// NOTE: this relies on the fact that we only want to track the latest published version or draft dependencies.
-			// If we're updating published dependencies, checking for Not Null works because we don't actually
-			// care about the specific previous published version id.
-			publishedVersionId: dependencies.publishedVersionId ? Not(IsNull()) : IsNull(),
+			publishedVersionId: publishedVersionCondition,
 		});
+		// The workflow version bound stops a stale request from replacing rows a
+		// newer workflow version wrote before this indexer version deployed.
+		const workflow = await tx.findOne(WorkflowEntity, {
+			select: { id: true, versionCounter: true },
+			where: { id: workflowId },
+		});
+		const isCurrentVersion = workflow?.versionCounter === dependencies.workflowVersionId;
+		const outdatedIndexResult = await tx.delete(WorkflowDependency, {
+			workflowId,
+			...(isCurrentVersion
+				? {}
+				: { workflowVersionId: LessThanOrEqual(dependencies.workflowVersionId) }),
+			indexVersionId: LessThan(WORKFLOW_DEPENDENCY_INDEX_VERSION),
+			publishedVersionId: publishedVersionCondition,
+		});
+		const deletedCount =
+			(outdatedVersionResult.affected ?? 0) + (outdatedIndexResult.affected ?? 0);
 
-		// If we deleted something, the incoming version is newer - proceed with insert
-		if (deleteResult.affected && deleteResult.affected > 0) {
+		// If we deleted something, the incoming rows are newer - proceed with insert
+		if (deletedCount > 0) {
 			// NOTE: we cast to any[] because TypeORM doesn't like the JSON column.
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			await tx.insert(WorkflowDependency, dependencies.dependencies as any[]);
@@ -221,13 +280,10 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		}
 
 		// Nothing was deleted - either no existing data, or existing data is newer/same version
-		// Check if any dependencies exist for this workflow. We lock for update to avoid a race
-		// when two processes try to insert dependencies for the same workflow at the same time.
-		const hasData = await this.acquireLockAndCheckForExistingData(
+		const hasData = await tx.existsBy(WorkflowDependency, {
 			workflowId,
-			dependencies.publishedVersionId,
-			tx,
-		);
+			publishedVersionId: dependencies.publishedVersionId ?? IsNull(),
+		});
 
 		if (!hasData) {
 			// There's no existing data, so we can safely insert the new dependencies.
@@ -268,30 +324,52 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
-	private async acquireLockAndCheckForExistingData(
-		workflowId: string,
-		publishedVersionId: string | null,
-		tx: EntityManager,
-	): Promise<boolean> {
-		// Build where conditions with publishedVersionId filter
-		const whereConditions: Record<string, unknown> = {
-			workflowId,
-			publishedVersionId: publishedVersionId ?? IsNull(),
-		};
+	async removePublishedDependenciesForUnpublishedWorkflow(workflowId: string): Promise<boolean> {
+		return await this.manager.transaction(async (tx) => {
+			await this.lockWorkflowRow(workflowId, tx);
+			const workflow = await tx.findOne(WorkflowEntity, {
+				select: { id: true, activeVersionId: true },
+				where: { id: workflowId },
+			});
+			if (workflow?.activeVersionId) return false;
 
-		if (this.databaseConfig.type === 'sqlite') {
-			// We skip the explicit locking here. SQLite locks the entire database for writes,
-			// so the prepareTransactionForSqlite step ensures no concurrent writes happen.
-			return await tx.existsBy(WorkflowDependency, whereConditions);
-		}
-		// For Postgres we lock on the workflow row, and only then check the dependency table.
-		// This prevents a race between two concurrent updates.
+			const deleteResult = await tx.delete(WorkflowDependency, {
+				workflowId,
+				publishedVersionId: Not(IsNull()),
+			});
+
+			return (deleteResult.affected ?? 0) > 0;
+		});
+	}
+
+	async findUnpublishedWorkflowIdsWithPublishedDependencies(): Promise<string[]> {
+		const rows = await this.createQueryBuilder('dependency')
+			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = dependency.workflowId')
+			.where('dependency.publishedVersionId IS NOT NULL')
+			.andWhere('workflow.activeVersionId IS NULL')
+			.select('dependency.workflowId', 'workflowId')
+			.distinct(true)
+			.getRawMany<{ workflowId: string }>();
+
+		return rows.map((row) => row.workflowId);
+	}
+
+	/**
+	 * Lock the workflow row until the transaction ends. Writers of the same workflow's
+	 * index rows, and writers of its `activeVersionId`, wait for the lock.
+	 *
+	 * Take this lock before you touch any dependency row. A dependency insert checks
+	 * its foreign key against the workflow row, so a writer that holds dependency rows
+	 * and then waits for the workflow row can deadlock with one that does the reverse.
+	 */
+	private async lockWorkflowRow(workflowId: string, tx: EntityManager): Promise<void> {
+		if (this.databaseConfig.type === 'sqlite') return;
+
 		const placeholder = this.databaseConfig.type === 'postgresdb' ? '$1' : '?';
 		const tableName = this.getTableName('workflow_entity');
 		await tx.query(`SELECT id FROM ${tableName} WHERE id = ${placeholder} FOR UPDATE`, [
 			workflowId,
 		]);
-		return await tx.existsBy(WorkflowDependency, whereConditions);
 	}
 
 	private getTableName(name: string): string {

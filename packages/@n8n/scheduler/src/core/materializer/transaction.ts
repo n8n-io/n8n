@@ -13,6 +13,7 @@ export interface NewOccurrence {
 	scheduledFor: Date;
 	runAt: Date;
 	maxAttempts: number;
+	timeoutSeconds: number;
 	/**
 	 * When this occurrence stops being worth running, resolved here so the claim can
 	 * compare one column against the clock instead of joining the schedule and

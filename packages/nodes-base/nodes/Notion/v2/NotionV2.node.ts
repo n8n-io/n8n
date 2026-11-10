@@ -6,7 +6,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError } from 'n8n-workflow';
+import { toPathSegment, jsonParse, NodeApiError } from 'n8n-workflow';
 
 import { loadOptions } from './methods';
 import { versionDescription } from './VersionDescription';
@@ -75,7 +75,7 @@ export class NotionV2 implements INodeType {
 						const block = await notionApiRequest.call(
 							this,
 							'PATCH',
-							`/blocks/${blockId}/children`,
+							`/blocks/${toPathSegment(blockId)}/children`,
 							body,
 						);
 
@@ -109,7 +109,7 @@ export class NotionV2 implements INodeType {
 								this,
 								'results',
 								'GET',
-								`/blocks/${blockId}/children`,
+								`/blocks/${toPathSegment(blockId)}/children`,
 								{},
 							);
 
@@ -122,7 +122,7 @@ export class NotionV2 implements INodeType {
 								this,
 								'results',
 								'GET',
-								`/blocks/${blockId}/children`,
+								`/blocks/${toPathSegment(blockId)}/children`,
 								{},
 								{ page_size: Math.min(limit, 100), limit },
 							);
@@ -178,7 +178,11 @@ export class NotionV2 implements INodeType {
 						const databaseId = extractResourceId(
 							this.getNodeParameter('databaseId', i, '', { extractValue: true }) as string,
 						);
-						responseData = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
+						responseData = await notionApiRequest.call(
+							this,
+							'GET',
+							`/databases/${toPathSegment(databaseId)}`,
+						);
 						if (simple) {
 							responseData = simplifyObjects(responseData, download)[0];
 						}
@@ -320,7 +324,11 @@ export class NotionV2 implements INodeType {
 				const databaseId = this.getNodeParameter('databaseId', 0, '', {
 					extractValue: true,
 				}) as string;
-				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
+				const { properties } = await notionApiRequest.call(
+					this,
+					'GET',
+					`/databases/${toPathSegment(databaseId)}`,
+				);
 				let titleKey = '';
 				for (const key of Object.keys(properties as IDataObject)) {
 					if (properties[key].type === 'title') {
@@ -407,7 +415,11 @@ export class NotionV2 implements INodeType {
 						const pageId = getPageId.call(this, i);
 
 						const simple = this.getNodeParameter('simple', i) as boolean;
-						responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
+						responseData = await notionApiRequest.call(
+							this,
+							'GET',
+							`/pages/${toPathSegment(pageId)}`,
+						);
 						if (simple) {
 							responseData = simplifyObjects(responseData, download);
 						}
@@ -483,7 +495,7 @@ export class NotionV2 implements INodeType {
 								this,
 								'results',
 								'POST',
-								`/databases/${databaseId}/query`,
+								`/databases/${toPathSegment(databaseId)}/query`,
 								body,
 								{},
 							);
@@ -494,7 +506,7 @@ export class NotionV2 implements INodeType {
 								this,
 								'results',
 								'POST',
-								`/databases/${databaseId}/query`,
+								`/databases/${toPathSegment(databaseId)}/query`,
 								body,
 								{ limit },
 							);
@@ -553,7 +565,12 @@ export class NotionV2 implements INodeType {
 							}
 						}
 
-						responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
+						responseData = await notionApiRequest.call(
+							this,
+							'PATCH',
+							`/pages/${toPathSegment(pageId)}`,
+							body,
+						);
 						if (simple) {
 							responseData = simplifyObjects(responseData, false);
 						}
@@ -582,7 +599,11 @@ export class NotionV2 implements INodeType {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
 						const userId = this.getNodeParameter('userId', i) as string;
-						responseData = await notionApiRequest.call(this, 'GET', `/users/${userId}`);
+						responseData = await notionApiRequest.call(
+							this,
+							'GET',
+							`/users/${toPathSegment(userId)}`,
+						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject),
@@ -638,9 +659,14 @@ export class NotionV2 implements INodeType {
 					try {
 						const pageId = getPageId.call(this, i);
 						const simple = this.getNodeParameter('simple', i) as boolean;
-						responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, {
-							archived: true,
-						});
+						responseData = await notionApiRequest.call(
+							this,
+							'PATCH',
+							`/pages/${toPathSegment(pageId)}`,
+							{
+								archived: true,
+							},
+						);
 						if (simple) {
 							responseData = simplifyObjects(responseData, download);
 						}

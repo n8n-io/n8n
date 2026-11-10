@@ -1,5 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
+import {
+	type EventService,
+	JwtService,
+	NodeTypesProxy,
+	RedisClientService,
+	Subscriber,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
@@ -7,9 +14,11 @@ import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BinaryDataConfig, ErrorReporter } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -17,21 +26,21 @@ import type { ConcurrencyControlService } from '@/concurrency/concurrency-contro
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { EventService } from '@/events/event.service';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import type { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { JobProcessor } from '@/scaling/job-processor';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WorkerServer } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
-import { JwtService } from '@/services/jwt.service';
-import { RedisClientService } from '@/services/redis-client.service';
+import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
@@ -39,28 +48,38 @@ import { Worker } from '../worker';
 
 vi.mock('@/crash-journal');
 
+const e2eFlags = vi.hoisted(() => ({ inE2ETests: false }));
+vi.mock('@/constants', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/constants')>()),
+	get inE2ETests() {
+		return e2eFlags.inE2ETests;
+	},
+}));
+
 const dbConnection = mockInstance(DbConnection);
 dbConnection.init.mockResolvedValue(undefined);
 dbConnection.migrate.mockResolvedValue(undefined);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
-deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
-deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
+deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
 
 mockInstance(RedisClientService);
 mockInstance(PubSubRegistry);
 const mockSubscriber = mockInstance(Subscriber);
 mockInstance(WorkerStatusService);
+mockInstance(JobProcessor);
 const mockWorkerServer = mockInstance(WorkerServer);
 mockInstance(LoadNodesAndCredentials);
 const activeExecutions = mockInstance(ActiveExecutions);
 
 // Mocks for services reached by the full `init()` path, as in start.test.ts
 mockInstance(ErrorReporter);
-mockInstance(NodeTypes);
+const nodeTypes = mockInstance(NodeTypes);
 mockInstance(ShutdownService);
 mockInstance(MessageEventBus);
 mockInstance(PostHogClient);
+mockInstance(OtelService);
 mockInstance(TelemetryEventRelay);
 mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
@@ -70,10 +89,12 @@ mockInstance(CommunityPackagesConfig, { enabled: false });
 mockInstance(JwtService);
 mockInstance(BinaryDataConfig);
 mockInstance(TaskRunnerModule);
+const systemTaskRunner = mockInstance(SystemTaskRunner);
 
 describe('Worker', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		e2eFlags.inE2ETests = false;
 	});
 
 	/** Worker with the init steps that go beyond `super.init()` stubbed, as in start.test.ts. */
@@ -192,6 +213,20 @@ describe('Worker', () => {
 			vi.unstubAllEnvs();
 		});
 
+		it('should register node types on the node types proxy before the modules initialize', async () => {
+			const nodeTypesProxy = mockInstance(NodeTypesProxy);
+			const worker = createWorkerForInit();
+
+			await worker.init();
+
+			// @ts-expect-error - Accessing protected property for testing
+			const initModules = worker.moduleRegistry.initModules as Mock;
+			expect(nodeTypesProxy.registerProvider).toHaveBeenCalledWith(nodeTypes);
+			expect(nodeTypesProxy.registerProvider.mock.invocationCallOrder[0]).toBeLessThan(
+				initModules.mock.invocationCallOrder[0],
+			);
+		});
+
 		it.each([
 			{ envValue: '45', expected: 45, case: 'the parsed value' },
 			{ envValue: 'not-a-number', expected: 20, case: 'the queue default when unparseable' },
@@ -229,6 +264,8 @@ describe('Worker', () => {
 				mock<ConcurrencyControlService>(),
 				mock<EventService>(),
 				mock<ExecutionsConfig>({ mode: 'queue' }),
+				mock<InstanceSettings>({ instanceType: 'worker', isWorker: true }),
+				mock<UnsavedManualExecutionService>(),
 			);
 
 			const drainLoopInterval = 500;
@@ -316,6 +353,36 @@ describe('Worker', () => {
 			expect(mockWorkerServer.markAsReady).not.toHaveBeenCalled();
 			// The job processor is registered regardless of whether endpoints are enabled.
 			expect(mockScalingService.setupWorker).toHaveBeenCalledWith(10);
+		});
+
+		it('should initialize WorkerServer for E2E diagnostics when no other endpoints are enabled', async () => {
+			e2eFlags.inE2ETests = true;
+
+			await createWorkerForRun().run();
+
+			expect(mockWorkerServer.init).toHaveBeenCalledWith({
+				health: false,
+				overwrites: false,
+				metrics: false,
+			});
+			expect(mockWorkerServer.markAsReady).toHaveBeenCalled();
+		});
+
+		it('should start the system tasks once the server is up', async () => {
+			Container.get(GlobalConfig).queue.health.active = true;
+
+			await createWorkerForRun().run();
+
+			expect(systemTaskRunner.init).toHaveBeenCalledTimes(1);
+			expect(mockWorkerServer.init.mock.invocationCallOrder[0]).toBeLessThan(
+				systemTaskRunner.init.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should start the system tasks without a server', async () => {
+			await createWorkerForRun().run();
+
+			expect(systemTaskRunner.init).toHaveBeenCalledTimes(1);
 		});
 	});
 });

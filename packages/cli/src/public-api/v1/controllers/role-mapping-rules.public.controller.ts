@@ -8,7 +8,7 @@ import {
 	roleMappingRuleIdParamSchema,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, isPerson } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -27,7 +27,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { RoleMappingRuleResponse } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import {
@@ -130,7 +130,7 @@ export class RoleMappingRulesPublicController {
 			id: roleMappingRuleId,
 			targetIndex: body.targetIndex,
 			userId: req.user.id,
-			userEmail: req.user.email,
+			userEmail: isPerson(req.user) ? req.user.email : undefined,
 		});
 
 		return toRoleMappingRulePublicDto(rule);
@@ -157,7 +157,7 @@ export class RoleMappingRulesPublicController {
 			id: roleMappingRuleId,
 			dto: body,
 			userId: req.user.id,
-			userEmail: req.user.email,
+			userEmail: isPerson(req.user) ? req.user.email : undefined,
 		});
 
 		return toRoleMappingRulePublicDto(rule);
@@ -182,7 +182,7 @@ export class RoleMappingRulesPublicController {
 		const rule = await this.roleMappingRuleService.delete({
 			id: roleMappingRuleId,
 			userId: req.user.id,
-			userEmail: req.user.email,
+			userEmail: isPerson(req.user) ? req.user.email : undefined,
 		});
 
 		return toRoleMappingRulePublicDto(rule);

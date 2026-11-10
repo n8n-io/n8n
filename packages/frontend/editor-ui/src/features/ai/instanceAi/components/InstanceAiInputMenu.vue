@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
 	N8nDropdownMenu,
 	N8nIcon,
@@ -18,7 +18,10 @@ import {
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
 
-const props = withDefaults(defineProps<{ disabled?: boolean }>(), { disabled: false });
+const props = withDefaults(defineProps<{ disabled?: boolean; isStreaming?: boolean }>(), {
+	disabled: false,
+	isStreaming: false,
+});
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -27,6 +30,9 @@ const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems((
 );
 
 const tooltip = computed(() => {
+	if (props.disabled && props.isStreaming) {
+		return i18n.baseText('instanceAi.inputMenu.stopResponse');
+	}
 	const count = disconnectedConnectionCount.value;
 	if (count === 0) return i18n.baseText('instanceAi.inputMenu.open');
 	if (count === 1) return i18n.baseText('instanceAi.inputMenu.connectionNeedsAttention');
@@ -58,7 +64,17 @@ function trackInputPlusButtonClick() {
 	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_ASSISTANT_INPUT_PLUS_BUTTON, {});
 }
 
+const isOpen = ref(false);
+
+watch(
+	() => props.disabled,
+	(disabled) => {
+		if (disabled) isOpen.value = false;
+	},
+);
+
 function handleUpdateDropdownModelValue(open: boolean) {
+	isOpen.value = open;
 	if (open) {
 		trackInputPlusButtonClick();
 	}
@@ -68,6 +84,7 @@ function handleUpdateDropdownModelValue(open: boolean) {
 <template>
 	<N8nTooltip :content="tooltip" :content-class="$style.triggerTooltip" placement="top">
 		<N8nDropdownMenu
+			:model-value="isOpen"
 			:items="menuItems"
 			placement="top-start"
 			:disabled="props.disabled"
@@ -76,21 +93,15 @@ function handleUpdateDropdownModelValue(open: boolean) {
 			@update:model-value="handleUpdateDropdownModelValue"
 		>
 			<template #trigger>
-				<span :class="$style.trigger">
-					<N8nIconButton
-						icon="plus"
-						variant="ghost"
-						size="medium"
-						icon-size="large"
-						:disabled="props.disabled"
-						:aria-label="tooltip"
-					/>
-					<span
-						v-if="disconnectedConnectionCount > 0"
-						:class="$style.triggerStatusDot"
-						aria-hidden="true"
-					/>
-				</span>
+				<N8nIconButton
+					icon="plus"
+					variant="ghost"
+					size="medium"
+					icon-size="large"
+					:disabled="props.disabled"
+					:aria-label="tooltip"
+					:class="[$style.trigger, { [$style.triggerWithStatus]: disconnectedConnectionCount > 0 }]"
+				/>
 			</template>
 
 			<template #item-leading="{ item, ui }">
@@ -152,8 +163,8 @@ function handleUpdateDropdownModelValue(open: boolean) {
 
 <style lang="scss" module>
 .triggerTooltip {
-	max-width: none;
-	white-space: nowrap;
+	max-width: calc(100vw - 2 * var(--spacing--sm));
+	white-space: normal;
 }
 
 .trigger {
@@ -161,10 +172,11 @@ function handleUpdateDropdownModelValue(open: boolean) {
 	display: inline-flex;
 }
 
-.triggerStatusDot {
+.triggerWithStatus::after {
+	content: '';
 	position: absolute;
-	top: 2px;
-	right: 2px;
+	top: var(--spacing--5xs);
+	right: var(--spacing--5xs);
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
 	border-radius: 50%;

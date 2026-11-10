@@ -15,7 +15,8 @@ import {
 	userIdParamSchema,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import type { AuthenticatedRequest, Project, ProjectRelation } from '@n8n/db';
+import type { AuthenticatedRequest, Project, ProjectRelation, User } from '@n8n/db';
+import { accountSummary } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -26,6 +27,7 @@ import {
 	Body,
 	Delete,
 	Get,
+	GlobalScope,
 	Licensed,
 	Param,
 	Patch,
@@ -36,8 +38,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import {
 	encodeNextCursor,
@@ -59,11 +60,14 @@ const toProjectPublicDto = (project: Project): ProjectPublicDto => ({
 	updatedAt: project.updatedAt.toISOString(),
 });
 
+function memberFields(user: User) {
+	// The public schema needs a string email.
+	const { id, email, firstName, lastName } = accountSummary(user);
+	return { id, email: email ?? '', firstName, lastName };
+}
+
 const toProjectMemberPublicDto = (relation: ProjectRelation): ProjectMemberPublicDto => ({
-	id: relation.user.id,
-	email: relation.user.email,
-	firstName: relation.user.firstName,
-	lastName: relation.user.lastName,
+	...memberFields(relation.user),
 	createdAt: relation.user.createdAt.toISOString(),
 	updatedAt: relation.user.updatedAt.toISOString(),
 	role: relation.role?.slug ?? null,
@@ -99,19 +103,28 @@ export class ProjectsPublicController {
 	}
 
 	@Post('/')
+	@GlobalScope('project:create')
 	@Licensed(LICENSE_FEATURES.PROJECT_ROLE_ADMIN)
 	@ApiKeyScope('project:create')
 	@ApiSummary('Create a project')
-	@ApiDescription('Create a project on your instance.')
+	@ApiDescription('Create a team project on your instance.')
 	@ApiTags(tags)
 	@ApiResponse(201, CreatedProjectPublicDto)
+	@ApiErrorResponse(409, {
+		description:
+			'A project with this ID exists already. The request does not change the existing project or its members.',
+	})
 	@ApiErrorResponse(400)
 	async createProject(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body body: CreateProjectPublicDto,
 	): Promise<CreatedProjectPublicDto> {
-		const project = await this.projectService.createTeamProject(req.user, { name: body.name });
+		const project = await this.projectService.createTeamProject(
+			req.user,
+			{ name: body.name, icon: body.icon ?? undefined },
+			{ id: body.id, description: body.description, customTelemetryTags: body.customTelemetryTags },
+		);
 
 		const scopes = await this.projectService.getProjectScopesForUser(req.user, project.id);
 

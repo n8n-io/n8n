@@ -7,7 +7,7 @@ import { Cipher } from 'n8n-core';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { ExternalSecretsModule } from '@/modules/external-secrets.ee/external-secrets.module';
-import { PubSubEventBus } from '@/scaling/pubsub/pubsub.eventbus';
+import { PubSubEventBus } from '@n8n/backend-services';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 
 import {
@@ -111,7 +111,7 @@ describe('External Secrets Event Handling', () => {
 
 			await settingsRepository.save({
 				key: 'feature.externalSecrets',
-				value: cipher.encrypt(settings),
+				value: cipher.encryptWithInstanceKey(settings),
 				loadOnStartup: false,
 			});
 
@@ -143,7 +143,7 @@ describe('External Secrets Event Handling', () => {
 			(config as any).externalSecretsForProjects = true;
 
 			const cipher = Container.get(Cipher);
-			const encryptedSettings = cipher.encrypt(JSON.stringify({}));
+			const encryptedSettings = cipher.encryptWithInstanceKey(JSON.stringify({}));
 
 			const connectionRepository = Container.get(SecretsProviderConnectionRepository);
 			await connectionRepository.save({

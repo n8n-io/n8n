@@ -1,7 +1,60 @@
 import { fileTypeFromBuffer } from 'file-type';
-import { inflateSync } from 'node:zlib';
+import { crc32, inflateSync } from 'node:zlib';
 
 import { buildPdfWithText, evalCanvasPng, synthesizeBinaryFixture } from '../eval-mock-fixtures';
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/** Channels per pixel for each PNG color type (0 gray, 2 RGB, 3 palette, 4 gray+alpha, 6 RGBA). */
+const PNG_CHANNELS: Record<number, number> = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
+
+/**
+ * Check a PNG the way a strict decoder (libpng, GraphicsMagick) does, not only
+ * its magic bytes: every chunk CRC matches, IEND closes the chunk sequence, and
+ * the IDAT stream inflates to exactly the raster IHDR declares.
+ * Returns the offset just past IEND, so callers can check for trailing bytes.
+ */
+function expectDecodablePng(png: Buffer): number {
+	expect(png.subarray(0, 8).equals(PNG_SIGNATURE)).toBe(true);
+
+	let offset = 8;
+	let ihdr: Buffer | undefined;
+	const idat: Buffer[] = [];
+	let sawIend = false;
+	while (offset + 8 <= png.length) {
+		const length = png.readUInt32BE(offset);
+		const type = png.toString('latin1', offset + 4, offset + 8);
+		const dataEnd = offset + 8 + length;
+		expect(dataEnd + 4, `${type} chunk runs past the end of the buffer`).toBeLessThanOrEqual(
+			png.length,
+		);
+		const storedCrc = png.readUInt32BE(dataEnd);
+		expect(storedCrc, `${type} chunk CRC`).toBe(crc32(png.subarray(offset + 4, dataEnd)));
+
+		const data = png.subarray(offset + 8, dataEnd);
+		if (type === 'IHDR') ihdr = data;
+		if (type === 'IDAT') idat.push(data);
+		offset = dataEnd + 4;
+		if (type === 'IEND') {
+			expect(length, 'IEND chunk has no data').toBe(0);
+			sawIend = true;
+			break;
+		}
+	}
+	expect(sawIend, 'IEND chunk present').toBe(true);
+	expect(ihdr).toBeDefined();
+
+	const width = ihdr!.readUInt32BE(0);
+	const height = ihdr!.readUInt32BE(4);
+	const bitDepth = ihdr![8];
+	const channels = PNG_CHANNELS[ihdr![9]] as number | undefined;
+	expect(channels, `IHDR color type ${ihdr![9]} is a known PNG color type`).not.toBeUndefined();
+	expect(ihdr![12], 'IHDR interlace method is 0 (no interlace)').toBe(0);
+	const rowBytes = Math.ceil((width * channels! * bitDepth) / 8);
+	expect(inflateSync(Buffer.concat(idat)).length).toBe(height * (1 + rowBytes));
+
+	return offset;
+}
 
 describe('eval-mock-fixtures', () => {
 	describe('synthesizeBinaryFixture', () => {
@@ -52,6 +105,11 @@ describe('eval-mock-fixtures', () => {
 				},
 			);
 
+			it('should produce an image/png fixture that a strict decoder accepts', () => {
+				const buf = synthesizeBinaryFixture('image/png', 'photo.png');
+				expect(expectDecodablePng(buf)).toBe(buf.length);
+			});
+
 			it('should embed the filename inside SVG fixtures', () => {
 				const buf = synthesizeBinaryFixture('image/svg+xml', 'diagram.svg');
 				const text = buf.toString('utf8');
@@ -74,6 +132,29 @@ describe('eval-mock-fixtures', () => {
 			it('should fall back to a generic plaintext stub for unknown text/* MIMEs', () => {
 				const buf = synthesizeBinaryFixture('text/markdown', 'notes.md');
 				expect(buf.toString('utf8')).toBe('mock file: notes.md\n');
+			});
+		});
+
+		describe('text option', () => {
+			it('should write the text into a PDF', () => {
+				const buf = synthesizeBinaryFixture('application/pdf', 'invoice.pdf', {
+					text: 'Invoice Number: INV-7\nTotal Due: 12.50 EUR',
+				});
+				const pdf = buf.toString('latin1');
+				expect(pdf.startsWith('%PDF')).toBe(true);
+				expect(pdf).toContain('(Invoice Number: INV-7) Tj');
+				expect(pdf).toContain('(Total Due: 12.50 EUR) Tj');
+			});
+
+			it('should use the text as the body of a text MIME', () => {
+				const buf = synthesizeBinaryFixture('text/csv', 'prices.csv', {
+					text: 'sku,price\nA-1,9.99\n',
+				});
+				expect(buf.toString('utf8')).toBe('sku,price\nA-1,9.99\n');
+			});
+
+			it('should keep an explicitly empty text body for a text MIME', () => {
+				expect(synthesizeBinaryFixture('text/plain', 'empty.txt', { text: '' }).length).toBe(0);
 			});
 		});
 
@@ -136,6 +217,11 @@ describe('eval-mock-fixtures', () => {
 				expect(buf.length).toBeGreaterThanOrEqual(1024 * 1024);
 				const sniffed = await fileTypeFromBuffer(buf);
 				expect(sniffed?.mime).toBe('image/png');
+			});
+
+			it('should keep the padded image/png fixture decodable up to IEND', () => {
+				const buf = synthesizeBinaryFixture('image/png', 'big.png', { sizeHint: 'large' });
+				expect(expectDecodablePng(buf)).toBeLessThan(buf.length);
 			});
 
 			it('should NOT pad ZIP fixtures (EOCD-from-end would break)', () => {
@@ -224,6 +310,11 @@ describe('eval-mock-fixtures', () => {
 			expect(raster.length).toBe(512 * 513);
 		});
 
+		it('passes the strict PNG check', () => {
+			const png = evalCanvasPng();
+			expect(expectDecodablePng(png)).toBe(png.length);
+		});
+
 		it('returns the cached buffer on repeat calls', () => {
 			expect(evalCanvasPng()).toBe(evalCanvasPng());
 		});
@@ -251,9 +342,11 @@ describe('eval-mock-fixtures', () => {
 			expect(pdf.slice(startxref, startxref + 4)).toBe('xref');
 		});
 
-		it('replaces non-ASCII characters and skips blank lines', () => {
-			const pdf = buildPdfWithText('café £100\n\n  \nnext').toString('latin1');
-			expect(pdf).toContain('(caf? ?100) Tj');
+		it('keeps WinAnsi characters, replaces others and skips blank lines', () => {
+			const pdf = buildPdfWithText('café £100 10 €\n✓ ok\n\n  \nnext').toString('latin1');
+			expect(pdf).toContain('/Encoding/WinAnsiEncoding');
+			expect(pdf).toContain('(café £100 10 \x80) Tj');
+			expect(pdf).toContain('(? ok) Tj');
 			expect(pdf).toContain('(next) Tj');
 		});
 

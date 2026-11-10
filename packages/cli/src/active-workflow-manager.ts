@@ -3,7 +3,13 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import {
+	OnLeaderStepdown,
+	OnLeaderTakeover,
+	OnPubSubEvent,
+	OnShutdown,
+	PubSubCommandMap,
+} from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import chunk from 'lodash/chunk';
@@ -28,10 +34,10 @@ import {
 	Workflow,
 	WorkflowActivationError,
 	WebhookPathTakenError,
-	UnexpectedError,
 	IsolateError,
 	validateWorkflowHasTriggerLikeNode,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
@@ -40,14 +46,16 @@ import {
 	TRIGGER_COUNT_EXCLUDED_NODES,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
+	WORKFLOW_REACTIVATE_STABLE_PERIOD,
 } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
+import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Publisher } from '@n8n/backend-services';
 import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
@@ -69,9 +77,18 @@ interface QueuedActivation {
 	workflowData: IWorkflowDb;
 }
 
+/** The wait before the last reactivation attempt, so a quick failure continues the backoff. */
+interface RecentReactivation {
+	lastTimeout: number;
+	/** When the activation call returned. Unset while it still runs. */
+	activatedAt?: number;
+}
+
 @Service()
 export class ActiveWorkflowManager {
 	private queuedActivations: Record<WorkflowId, QueuedActivation> = {};
+
+	private readonly recentReactivations = new Map<WorkflowId, RecentReactivation>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -429,6 +446,12 @@ export class ActiveWorkflowManager {
 		const dbWorkflow = await this.workflowRepository.findById(workflowId);
 		if (!dbWorkflow) return;
 
+		// With the default batch size of 1, this is the last line before a crash during registration
+		this.logger.info(`Activating workflow ${formatWorkflow(dbWorkflow)}`, {
+			workflowName: dbWorkflow.name,
+			workflowId: dbWorkflow.id,
+		});
+
 		try {
 			const added = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
 				shouldPublish: false,
@@ -539,7 +562,10 @@ export class ActiveWorkflowManager {
 		workflowId: WorkflowId,
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
-		{ shouldPublish } = { shouldPublish: true },
+		{
+			shouldPublish = true,
+			actor = { kind: 'system', reason: 'activation' },
+		}: { shouldPublish?: boolean; actor?: PolicyActor } = {},
 	) {
 		const added = { webhooks: false, triggersAndPollers: false };
 
@@ -553,21 +579,6 @@ export class ActiveWorkflowManager {
 
 		if (dbWorkflow.isArchived) {
 			this.logger.debug('Cannot publish archived Workflow', { workflowId: dbWorkflow.id });
-			return added;
-		}
-
-		if (this.instanceSettings.isMultiMain && shouldPublish) {
-			if (!dbWorkflow?.activeVersionId) {
-				throw new UnexpectedError('Active version ID not found for workflow', {
-					extra: { workflowId },
-				});
-			}
-
-			void this.publisher.publishCommand({
-				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId, activationMode },
-			});
-
 			return added;
 		}
 
@@ -600,13 +611,26 @@ export class ActiveWorkflowManager {
 
 			// Trigger and poller nodes run code at registration, so this gates startup
 			// and leadership change too, not just the activate button.
-			if (this.policyEnforcementService.hasChecksFor('workflowPublish')) {
-				const project = await this.ownershipService.getWorkflowProjectCached(dbWorkflow.id);
+			await enforceWorkflowPublishPolicy(
+				this.policyEnforcementService,
+				this.ownershipService,
+				{ id: dbWorkflow.id, name: dbWorkflow.name, nodes },
+				actor,
+			);
 
-				await this.policyEnforcementService.enforceWorkflowPublish({
-					workflow: { id: dbWorkflow.id, name: dbWorkflow.name, nodes },
-					projectId: project.id,
+			// This check answers the caller. The leader checks again as `system` before it
+			// registers, so a check that depends on the actor can still refuse there.
+			if (this.instanceSettings.isMultiMain && shouldPublish) {
+				void this.publisher.publishCommand({
+					command: 'add-webhooks-triggers-and-pollers',
+					payload: {
+						workflowId,
+						activeVersionId: dbWorkflow.activeVersion.versionId,
+						activationMode,
+					},
 				});
+
+				return added;
 			}
 
 			workflow = new Workflow({
@@ -633,6 +657,9 @@ export class ActiveWorkflowManager {
 				);
 			}
 
+			// Carries no user: a registration outlives any number of republishes, so
+			// the publishing user is resolved at emit instead, next to the fresh
+			// workflow data the run actually uses.
 			const additionalData = await WorkflowExecuteAdditionalData.getBase({
 				workflowId: workflow.id,
 				workflowSettings: dbWorkflow.settings,
@@ -796,13 +823,14 @@ export class ActiveWorkflowManager {
 
 				await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
 
-				if (dbWorkflow && (activationMode === 'init' || activationMode === 'leadershipChange')) {
+				// A user may have unpublished it before this command arrived.
+				if (dbWorkflow?.activeVersionId) {
 					void this.eventBus.sendAuditEvent({
 						eventName: 'n8n.audit.workflow.deactivated',
 						payload: {
 							workflowId,
 							workflowName: dbWorkflow.name,
-							deactivatedVersionId: dbWorkflow.activeVersionId ?? null,
+							deactivatedVersionId: dbWorkflow.activeVersionId,
 							activationMode,
 							reason: error.name,
 						},
@@ -886,6 +914,10 @@ export class ActiveWorkflowManager {
 				workflowId,
 				workflowName,
 			});
+			const attempt: RecentReactivation = {
+				lastTimeout: own.activation?.lastTimeout ?? WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
+			};
+			this.recentReactivations.set(workflowId, attempt);
 			try {
 				await this.add(workflowId, activationMode, workflowData, { shouldPublish: false });
 			} catch (error) {
@@ -899,6 +931,9 @@ export class ActiveWorkflowManager {
 					// Only our own entry: a newer failure may have replaced it since.
 					if (this.queuedActivations[workflowId] === own.activation) {
 						this.removeQueuedWorkflowActivation(workflowId);
+					}
+					if (this.recentReactivations.get(workflowId) === attempt) {
+						this.recentReactivations.delete(workflowId);
 					}
 
 					return;
@@ -931,6 +966,7 @@ export class ActiveWorkflowManager {
 				queuedActivation.timeout = setTimeout(retryFunction, lastTimeout);
 				return;
 			}
+			if (this.recentReactivations.get(workflowId) === attempt) attempt.activatedAt = Date.now();
 			this.logger.info(`Activation of workflow "${workflowName}" (${workflowId}) was successful!`, {
 				workflowId,
 				workflowName,
@@ -941,13 +977,33 @@ export class ActiveWorkflowManager {
 		// multiple run in parallel
 		this.removeQueuedWorkflowActivation(workflowId);
 
+		const initialTimeout = this.getReactivationTimeout(workflowId);
 		own.activation = {
 			activationMode,
-			lastTimeout: WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
-			timeout: setTimeout(retryFunction, WORKFLOW_REACTIVATE_INITIAL_TIMEOUT),
+			lastTimeout: initialTimeout,
+			timeout: setTimeout(retryFunction, initialTimeout),
 			workflowData,
 		};
 		this.queuedActivations[workflowId] = own.activation;
+	}
+
+	/**
+	 * A trigger that fails again soon after a successful reactivation continues the backoff
+	 * instead of starting over, or a trigger that dies right after it connects is retried
+	 * every second without end. The backoff starts over once the trigger has stayed up for
+	 * `WORKFLOW_REACTIVATE_STABLE_PERIOD` after its activation call returned.
+	 */
+	private getReactivationTimeout(workflowId: WorkflowId) {
+		const recent = this.recentReactivations.get(workflowId);
+		if (!recent) return WORKFLOW_REACTIVATE_INITIAL_TIMEOUT;
+
+		const { activatedAt } = recent;
+		if (activatedAt !== undefined && Date.now() - activatedAt > WORKFLOW_REACTIVATE_STABLE_PERIOD) {
+			this.recentReactivations.delete(workflowId);
+			return WORKFLOW_REACTIVATE_INITIAL_TIMEOUT;
+		}
+
+		return Math.min(recent.lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
 	}
 
 	/**
@@ -967,6 +1023,7 @@ export class ActiveWorkflowManager {
 		for (const workflowId in this.queuedActivations) {
 			this.removeQueuedWorkflowActivation(workflowId);
 		}
+		this.recentReactivations.clear();
 	}
 
 	/**
@@ -1014,6 +1071,7 @@ export class ActiveWorkflowManager {
 		if (this.queuedActivations[workflowId] !== undefined) {
 			this.removeQueuedWorkflowActivation(workflowId);
 		}
+		this.recentReactivations.delete(workflowId);
 
 		// If it is active in memory, it is a non-webhook trigger workflow.
 		await this.removeNonWebhookTriggers(workflowId);
@@ -1024,6 +1082,7 @@ export class ActiveWorkflowManager {
 		workflowId,
 	}: PubSubCommandMap['remove-triggers-and-pollers']) {
 		await this.removeActivationError(workflowId);
+		this.recentReactivations.delete(workflowId);
 		await this.removeNonWebhookTriggers(workflowId);
 
 		await this.workflowPushNotifier.notify(workflowId, {

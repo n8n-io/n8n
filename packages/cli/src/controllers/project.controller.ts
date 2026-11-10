@@ -6,7 +6,7 @@ import {
 	ChangeUserRoleInProject,
 	ListProjectsQueryDto,
 } from '@n8n/api-types';
-import { AuthenticatedRequest } from '@n8n/db';
+import { accountSummary, AuthenticatedRequest, type User } from '@n8n/db';
 import {
 	Get,
 	Post,
@@ -23,9 +23,7 @@ import {
 import { combineScopes, getAuthPrincipalScopes } from '@n8n/permissions';
 import { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectRequest } from '@/requests';
 import {
@@ -33,6 +31,13 @@ import {
 	TeamProjectOverQuotaError,
 	UnlicensedProjectRoleError,
 } from '@/services/project.service.ee';
+
+/** A member as the project lists it. */
+function memberFields(user: User) {
+	// The response type needs strings.
+	const { id, email, firstName, lastName } = accountSummary(user);
+	return { id, email: email ?? '', firstName: firstName ?? '', lastName: lastName ?? '' };
+}
 
 @RestController('/projects')
 export class ProjectController {
@@ -139,12 +144,13 @@ export class ProjectController {
 		_res: Response,
 		@Param('projectId') projectId: string,
 	): Promise<ProjectRequest.ProjectWithRelations> {
-		const [{ id, name, icon, type, description, customTelemetryTags }, relations, rolesManaged] =
-			await Promise.all([
-				this.projectsService.getProject(projectId),
-				this.projectsService.getProjectRelations(projectId),
-				this.provisioningService.isProjectRoleManaged(),
-			]);
+		const project = await this.projectsService.getProject(projectId);
+		const { id, name, icon, type, description, customTelemetryTags } = project;
+		const [relations, rolesManaged, implicitMembers] = await Promise.all([
+			this.projectsService.getProjectRelations(projectId),
+			this.provisioningService.isProjectRoleManaged(),
+			this.projectsService.getImplicitProjectMembers(project),
+		]);
 		const myRelation = relations.find((r) => r.userId === req.user.id);
 
 		return {
@@ -154,12 +160,14 @@ export class ProjectController {
 			type,
 			description,
 			customTelemetryTags,
+			creatorId: project.creatorId ?? null,
 			relations: relations.map((r) => ({
-				id: r.user.id,
-				email: r.user.email,
-				firstName: r.user.firstName,
-				lastName: r.user.lastName,
+				...memberFields(r.user),
 				role: r.role.slug,
+			})),
+			implicitMembers: implicitMembers.map((user) => ({
+				...memberFields(user),
+				globalRole: { slug: user.role.slug, displayName: user.role.displayName },
 			})),
 			scopes: [
 				...combineScopes({

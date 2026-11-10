@@ -4,6 +4,7 @@ import type { DataSource, EntityManager } from '@n8n/typeorm';
 import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { DbLockUnavailableError } from '../db-lock-unavailable.error';
 import { DbLockService } from '../db-lock.service';
 import { TypeOrmTransaction } from '../typeorm-transaction';
 
@@ -185,6 +186,17 @@ describe('DbLockService', () => {
 	});
 
 	describe('withLockContext', () => {
+		it('forwards the lock subkey', async () => {
+			databaseConfig.type = 'postgresdb';
+
+			await service.withLockContext(1001, async () => undefined, { subKey: -12345 });
+
+			expect(mockTx.query).toHaveBeenCalledWith(
+				'SELECT pg_advisory_xact_lock($1, $2)',
+				[1001, -12345],
+			);
+		});
+
 		it('provides an opaque context for the locked transaction', async () => {
 			databaseConfig.type = 'sqlite';
 			const fn = vi.fn().mockResolvedValue('result');
@@ -209,12 +221,13 @@ describe('DbLockService', () => {
 			expect(fn).toHaveBeenCalledWith(mockTx);
 		});
 
-		it('should throw OperationalError when lock is already held', async () => {
+		it('should throw DbLockUnavailableError when lock is already held', async () => {
 			databaseConfig.type = 'postgresdb';
 			const fn = vi.fn();
 			mockTx.query.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: false }]);
 
 			const error = await service.tryWithLock(1001, fn).catch((e: unknown) => e);
+			expect(error).toBeInstanceOf(DbLockUnavailableError);
 			expect(error).toBeInstanceOf(OperationalError);
 			expect((error as OperationalError).message).toMatch(
 				/DbLock 1001 is already held by another process/,
@@ -255,6 +268,36 @@ describe('DbLockService', () => {
 
 			await expect(service.tryWithLock(1006, fn, { subKey: -999 })).rejects.toThrow(
 				/DbLock 1006:-999 is already held/,
+			);
+			expect(fn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('tryWithLockContext', () => {
+		it('provides an opaque context for the locked transaction', async () => {
+			databaseConfig.type = 'postgresdb';
+			mockTx.query.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: true }]);
+			const fn = vi.fn().mockResolvedValue('result');
+
+			const result = await service.tryWithLockContext(1001, fn, { subKey: 7 });
+
+			expect(result).toBe('result');
+			expect(mockTx.query).toHaveBeenCalledWith(
+				'SELECT pg_try_advisory_xact_lock($1, $2)',
+				[1001, 7],
+			);
+			expect(fn).toHaveBeenCalledWith({
+				trx: expect.any(TypeOrmTransaction) as TypeOrmTransaction,
+			});
+		});
+
+		it('throws DbLockUnavailableError without running fn when the lock is held', async () => {
+			databaseConfig.type = 'postgresdb';
+			mockTx.query.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: false }]);
+			const fn = vi.fn();
+
+			await expect(service.tryWithLockContext(1001, fn)).rejects.toBeInstanceOf(
+				DbLockUnavailableError,
 			);
 			expect(fn).not.toHaveBeenCalled();
 		});
@@ -428,9 +471,9 @@ describe('DbLockService', () => {
 			// Wait for fn1 to start (lock is held)
 			await new Promise((r) => setImmediate(r));
 
-			await expect(service.tryWithLock(1001, fn2)).rejects.toThrow(
-				/DbLock 1001 is already held by another process/,
-			);
+			const error = await service.tryWithLock(1001, fn2).catch((e: unknown) => e);
+			expect(error).toBeInstanceOf(DbLockUnavailableError);
+			expect((error as Error).message).toMatch(/DbLock 1001 is already held by another process/);
 			expect(fn2).not.toHaveBeenCalled();
 
 			resolveFirst();

@@ -145,6 +145,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			await execute.call(mockExecuteFunctions, items);
 
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(Buffer), { raw: true });
+			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet1, {});
 		});
 
 		it('should respect readAsString option', async () => {

@@ -1,5 +1,5 @@
 import type { INode, IConnections, INodeTypes } from 'n8n-workflow';
-import { Workflow } from 'n8n-workflow';
+import { isUsableObjectKey, Workflow } from 'n8n-workflow';
 
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 
@@ -63,10 +63,14 @@ function applyRemoveNodeOperation(
 
 	// Copy connections, excluding those from/to removed nodes (using node names)
 	for (const [sourceName, nodeConnections] of Object.entries(workflow.connections)) {
+		if (!isUsableObjectKey(sourceName)) continue;
+
 		if (!nodeNamesToRemove.has(sourceName)) {
 			cleanedConnections[sourceName] = {};
 
 			for (const [connectionType, outputs] of Object.entries(nodeConnections)) {
+				if (!isUsableObjectKey(connectionType)) continue;
+
 				if (Array.isArray(outputs)) {
 					cleanedConnections[sourceName][connectionType] = outputs.map((outputConnections) => {
 						if (Array.isArray(outputConnections)) {
@@ -133,6 +137,36 @@ function applyUpdateNodeOperation(
 }
 
 /**
+ * Keep only the connection types that can be own keys of a plain object.
+ */
+function pickSafeConnectionTypes(nodeConnections: IConnections[string]): IConnections[string] {
+	return Object.fromEntries(
+		Object.entries(nodeConnections).filter(([connectionType]) => isUsableObjectKey(connectionType)),
+	);
+}
+
+/**
+ * Keep only the connection entries whose node-name and connection-type keys can be
+ * own keys of a plain object. Used where a whole connection map arrives from outside
+ * and is stored as-is.
+ */
+function pickSafeConnections(connections: IConnections): IConnections {
+	const safe: IConnections = {};
+
+	for (const [sourceName, nodeConnections] of Object.entries(connections)) {
+		if (!isUsableObjectKey(sourceName)) continue;
+
+		const safeTypes = pickSafeConnectionTypes(nodeConnections);
+
+		if (Object.keys(safeTypes).length > 0) {
+			safe[sourceName] = safeTypes;
+		}
+	}
+
+	return safe;
+}
+
+/**
  * Handle 'setConnections' operation - replace all connections
  */
 function applySetConnectionsOperation(
@@ -143,7 +177,7 @@ function applySetConnectionsOperation(
 
 	return {
 		...workflow,
-		connections: operation.connections,
+		connections: pickSafeConnections(operation.connections),
 	};
 }
 
@@ -160,11 +194,17 @@ function applyMergeConnectionsOperation(
 
 	// Merge connections additively
 	for (const [sourceId, nodeConnections] of Object.entries(operation.connections)) {
+		// A node name that is not usable as an own key of the map cannot take part in a
+		// connection, so drop the entry rather than resolve it against the prototype chain.
+		if (!isUsableObjectKey(sourceId)) continue;
+
 		if (!connections[sourceId]) {
-			connections[sourceId] = nodeConnections;
+			connections[sourceId] = pickSafeConnectionTypes(nodeConnections);
 		} else {
 			// Merge connections for this source node
 			for (const [connectionType, newOutputs] of Object.entries(nodeConnections)) {
+				if (!isUsableObjectKey(connectionType)) continue;
+
 				if (!connections[sourceId][connectionType]) {
 					connections[sourceId][connectionType] = newOutputs;
 				} else {
@@ -220,6 +260,10 @@ function applyRemoveConnectionOperation(
 	if (operation.type !== 'removeConnection') return workflow;
 
 	const { sourceNode, targetNode, connectionType, sourceOutputIndex, targetInputIndex } = operation;
+
+	if (!isUsableObjectKey(sourceNode) || !isUsableObjectKey(connectionType)) {
+		return workflow;
+	}
 
 	const connections = { ...workflow.connections };
 

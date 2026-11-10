@@ -1,17 +1,17 @@
 import type { Folder, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { FolderFinderService } from '@/services/folder-finder.service';
+import { FolderFinderService } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { FolderSerializer } from './folder.serializer';
 import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
+import type { ManifestEntry, WorkflowManifestEntry } from '../../spec/manifest.schema';
+import type { ExportVersionPolicy } from '../../n8n-packages.types';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
-import type { WorkflowExportRequirements } from '../requirements.types';
+import type { ExportRequirements } from '../requirements.types';
 import { WorkflowExporter } from '../workflow/workflow.exporter';
 import type { WorkflowExportResult } from '../workflow/workflow.exporter';
 
@@ -20,7 +20,7 @@ export interface FolderExportRequest {
 	folderIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
-	workflowVersionPolicy: WorkflowVersionPolicy;
+	versionPolicy: ExportVersionPolicy;
 	includeArchivedWorkflows: boolean;
 	/**
 	 * Directory the folder tree is written under. Empty for a top-level folder
@@ -34,15 +34,17 @@ export interface FolderExportRequest {
 	 * exactly as a full export would.
 	 */
 	selectedWorkflowIds?: ReadonlySet<string>;
+	/** With `selectedWorkflowIds`, also export these folders and the folders above them. */
+	selectedFolderIds?: ReadonlySet<string>;
 }
 
 export interface FolderExportResult {
 	/** Folder shells → `manifest.folders[]`. */
 	entries: ManifestEntry[];
 	/** Workflows contained in the exported folders → `manifest.workflows[]`. */
-	workflowEntries: ManifestEntry[];
+	workflowEntries: WorkflowManifestEntry[];
 	/** What the contained workflows need, gathered at the package top level (credentials today). */
-	requirements: WorkflowExportRequirements;
+	requirements: ExportRequirements;
 }
 
 interface FolderWriteContext {
@@ -84,7 +86,12 @@ export class FolderExporter {
 		);
 
 		const foldersToWrite = request.selectedWorkflowIds
-			? this.foldersContaining(request.selectedWorkflowIds, folders, workflowIdsByFolder)
+			? this.foldersContaining(
+					request.selectedWorkflowIds,
+					request.selectedFolderIds ?? new Set(),
+					folders,
+					workflowIdsByFolder,
+				)
 			: undefined;
 
 		const foldersDir = packageDirectory('folders', request.basePrefix);
@@ -96,17 +103,20 @@ export class FolderExporter {
 		});
 	}
 
-	/** Folders that hold a selected workflow, plus their in-set ancestors. */
+	/** The selected folders and the folders that hold a selected workflow, plus their in-set ancestors. */
 	private foldersContaining(
 		selectedWorkflowIds: ReadonlySet<string>,
+		selectedFolderIds: ReadonlySet<string>,
 		folders: Folder[],
 		workflowIdsByFolder: Map<string, string[]>,
 	): Set<string> {
 		const parentById = new Map(folders.map((folder) => [folder.id, folder.parentFolderId]));
 		const result = new Set<string>();
 
-		for (const [folderId, workflowIds] of workflowIdsByFolder) {
-			if (!workflowIds.some((id) => selectedWorkflowIds.has(id))) continue;
+		const holding = [...workflowIdsByFolder]
+			.filter(([, workflowIds]) => workflowIds.some((id) => selectedWorkflowIds.has(id)))
+			.map(([folderId]) => folderId);
+		for (const folderId of [...selectedFolderIds, ...holding]) {
 			for (let current: string | null | undefined = folderId; current; ) {
 				if (result.has(current)) break;
 				result.add(current);
@@ -216,7 +226,7 @@ export class FolderExporter {
 			writer: request.writer,
 			workflowIds: selected,
 			includeTags: request.includeTags,
-			workflowVersionPolicy: request.workflowVersionPolicy,
+			versionPolicy: request.versionPolicy,
 			basePrefix,
 		});
 	}

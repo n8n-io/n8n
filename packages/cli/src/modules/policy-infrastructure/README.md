@@ -8,7 +8,7 @@ The module holds no policy of its own. A policy feature adds a check class and a
 store for its rules. It does not add an enforcement path, an error shape, or an
 audit gap.
 
-Why these six points, why every check must pass, and why a check that does not
+Why these eight points, why every check must pass, and why a check that does not
 answer blocks: read the policy infrastructure RFC in Notion. This README is the
 working reference for writing a check. It does not restate the RFC.
 
@@ -25,7 +25,7 @@ flowchart LR
         save["workflowSave<br/>WorkflowCreationService, WorkflowService,<br/>chat hub, instance AI, public API"]
         publish["workflowPublish<br/>WorkflowService.activateWorkflow,<br/>WorkflowPublicationApplier, ActiveWorkflowManager"]
         start["workflowStart<br/>PolicyLifecycleHandler on<br/>workflowExecuteBefore"]
-        other["workflowTransfer<br/>contentImport<br/>credentialDecrypt"]
+        other["workflowTransfer<br/>credentialSave<br/>credentialTransfer<br/>contentImport<br/>credentialDecrypt"]
     end
 
     subgraph pep["Enforcement point · src/policy (always loaded)"]
@@ -33,7 +33,7 @@ flowchart LR
     end
 
     subgraph module["policy-infrastructure module (default, disable to opt out)"]
-        pds["PolicyDecisionService<br/>deadline per check · all checks must pass<br/>crash or timeout = fail closed<br/>one audit line per veto"]
+        pds["PolicyDecisionService<br/>deadline per check · all checks must pass<br/>crash or timeout = fail closed<br/>one audit line + one log streaming event per veto"]
         registry["PolicyCheckMetadata<br/>registry in @n8n/decorators"]
         checks["@PolicyCheck() classes<br/>onWorkflowSave · onWorkflowPublish · …"]
     end
@@ -90,40 +90,84 @@ request. A check can compare it with `workflow` to judge only what the save adds
 
 ## Enforcement points
 
-| Point | Deadline | Subject the token binds to | Where it fires |
-|---|---|---|---|
-| `workflowSave` | 1000 ms | row id, or node hash for a create | editor, public API, chat hub, instance AI, eval thread restore |
-| `workflowPublish` | 1000 ms | row id | activate, publication applier, activation on startup |
-| `workflowStart` | 250 ms | row id | `workflowExecuteBefore` on main, workers, sub-executions, manual runs |
-| `workflowTransfer` | 1000 ms | row id | move to another project |
-| `contentImport` | 1000 ms | row id | CLI import, source control import, package and git-connection import |
-| `credentialDecrypt` | 250 ms | credential id | credential resolution during a run or a test |
+| Point               | Deadline | Subject the token binds to        | Where it fires                                                        |
+| ------------------- | -------- | --------------------------------- | --------------------------------------------------------------------- |
+| `workflowSave`      | 1000 ms  | row id, or node hash for a create | editor, public API, chat hub, instance AI, eval thread restore        |
+| `workflowPublish`   | 1000 ms  | row id                            | activate, publication applier, activation on startup                  |
+| `workflowStart`     | 250 ms   | row id                            | `workflowExecuteBefore` on main, workers, sub-executions, manual runs |
+| `workflowTransfer`  | 1000 ms  | row id                            | move to another project                                               |
+| `credentialSave`    | 1000 ms  | row id, or type hash for a create | editor, public API, package import stubs, provider connections        |
+| `credentialTransfer` | 1000 ms | row id                            | move to another project                                               |
+| `contentImport`     | 1000 ms  | row id                            | CLI import, source control import, package and git-connection import  |
+| `credentialDecrypt` | 250 ms   | credential id                     | credential resolution during a run or a test                          |
 
 Deadlines are tight on the two points that sit inside a running execution. A
 wedged policy store there pins worker slots instead of failing one request.
+
+A one-off CLI command registers no check unless it calls
+`BaseCommand.initPolicyEnforcement()`. `import:workflow`, `import:credentials`,
+`execute` and `execute-batch` call it.
+
+Known gaps: `import:entities`, `publish:workflow` and `update:workflow` run no
+check. `import:entities` restores the policy tables in the same run, so a check
+against the stored rules would judge the content by the wrong policy. The
+`workflowStart` check still refuses to run a blocked workflow that one of these
+commands wrote.
 
 ## Contexts
 
 Each point hands its check a different context. The types are in
 `@n8n/decorators/src/policy-check/policy-check.ts`.
 
-| Point | Context type | Fields |
-|---|---|---|
-| `workflowSave` | `WorkflowSaveContext` | `workflow`, `storedWorkflow` (`null` for a create), `projectId` |
-| `workflowPublish` | `WorkflowPublishContext` | `workflow`, `projectId` |
-| `workflowStart` | `WorkflowStartContext` | `workflow`, `projectId` |
-| `workflowTransfer` | `WorkflowTransferContext` | `workflow`, `targetProjectId` — the project it moves *into*, whose policy applies |
-| `contentImport` | `ContentImportContext` | `workflow`, `projectId`, `transport` |
+| Point               | Context type               | Fields                                                                                   |
+| ------------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
+| `workflowSave`      | `WorkflowSaveContext`      | `workflow`, `storedWorkflow` (`null` for a create), `projectId`                          |
+| `workflowPublish`   | `WorkflowPublishContext`   | `workflow`, `projectId`                                                                  |
+| `workflowStart`     | `WorkflowStartContext`     | `workflow`, `projectId`                                                                  |
+| `workflowTransfer`  | `WorkflowTransferContext`  | `workflow`, `targetProjectId` — the project it moves _into_, whose policy applies        |
+| `credentialSave`    | `CredentialSaveContext`    | `credential`, `storedCredential` (`null` for a create), `projectId`                      |
+| `credentialTransfer` | `CredentialTransferContext` | `credential`, `targetProjectId` — the project it moves _into_, whose policy applies   |
+| `contentImport`     | `ContentImportContext`     | `workflow`, `projectId`, `transport`                                                     |
 | `credentialDecrypt` | `CredentialDecryptContext` | `credentialType`, `credentialId`, `consumer` (`null` for a credential test), `projectId` |
 
 `workflow` is a `PolicedWorkflow`: `id` (`null` before the first save), `name`,
 `nodes`. Nothing else, so a check cannot start to depend on unrelated fields.
+`credential` is a `PolicedCredential`: `id` (`null` before the first save) and
+`type`. The name and the data never reach a check.
 Every field is `readonly` — a check reads, it never writes.
 
 `transport` is `cli`, `source-control`, `package`, or `git-connection`. Read it
 to hold an unattended sync to a different standard than a hand-run import. The
 host reads it too, to pick its fail posture: a package import refuses the whole
 package, a source-control pull skips and reports the workflow.
+
+## Agents and embedded nodes
+
+An agent has no enforcement point of its own. It goes through the workflow
+points, so every check that reads `nodes` covers agents with no change.
+
+- **An agent is a `PolicedWorkflow` with `artifactKind: 'agent'`.** Its `nodes`
+  are its node tools, one node each, built by `toPolicedNodes` in
+  `src/policy/policed-agent-nodes.ts`. Each node has the type the tool runs as,
+  which is its `…Tool` variant when one exists, and the tool's own parameters.
+  The mapper reads tools through the agent config schema, so a renamed field
+  breaks the build. A tool that fails the schema is still policed by what it
+  names. The token binds to an `agent` subject, and the audit line records
+  `agentId` and `agentName`.
+- **Agent hosts:** config update and create (`workflowSave`), revert
+  (`workflowSave` over the current draft), and publish (`workflowPublish`).
+- **Agent node tools run through `EphemeralNodeExecutor`, not `WorkflowRunner`.**
+  So `workflowExecuteBefore` never fires. Each run path of the executor calls
+  `workflowStart` on the one-node workflow it builds, and returns a refusal as a
+  tool error. Expression evaluation for a workflow tool runs no node, so it is
+  not policed there.
+- **Inline agents.** `PolicyEnforcementService` adds the node tools of an inline
+  agent in a Message an Agent node to the nodes it gives the checks, at every
+  workflow point. An agent tool that is itself a Message an Agent node adds its
+  inline tools the same way, at any depth. The added nodes are for the checks only. The token
+  binds to the host's own subject, and the host does not write the added nodes.
+  An inline agent set by an expression is not expanded; the executor polices its
+  tools when they run.
 
 ## Fail posture
 
@@ -147,8 +191,8 @@ never logs its own — it reports violations and the line follows.
 ```
 warn  Policy blocked workflowSave  {
   "point": "workflowSave", "outcome": "violation", "durationMs": 12,
-  "checkIds": ["node-types"],
-  "violations": [{ "checkId": "node-types", "kind": "node-type-unavailable",
+  "checkIds": ["node-type-availability"],
+  "violations": [{ "checkId": "node-type-availability", "kind": "node-type-unavailable",
                    "subject": "n8n-nodes-base.slack", "subjectType": "nodeType",
                    "scope": "instance", "matchedRuleId": "rule-7" }],
   "policyVersions": [{ "scope": "instance", "version": 4 }],
@@ -160,7 +204,7 @@ warn  Policy blocked workflowSave  {
 - **Both ways of blocking write a line.** A violation gives `outcome: "violation"`.
   A check that threw or overran gives `outcome: "checkFailure"` with `correlationIds`,
   which tie it to the per-check error lines holding the real errors. A `checkFailure`
-  line still carries the `violations` and `policyVersions` the checks that *did* answer
+  line still carries the `violations` and `policyVersions` the checks that _did_ answer
   reported, so a partial run stays diagnosable.
 - **`evaluate*` writes nothing.** Previews must not pollute the trail.
 - **The violation `message` is not on the line.** It is free text saying what the
@@ -170,6 +214,8 @@ warn  Policy blocked workflowSave  {
   row — the seal discards it for the same reason, binding a create to its content. The
   line does not reproduce that content subject: computing it is the enforcement point's
   job, and mirroring it here would let the two drift.
+- **An agent logs `agentId` and `agentName`** instead of the workflow fields, with
+  the same `null` rule for a create.
 - **`warn`, not `info`**, so the line survives an operator quietening logs. It matches
   the `warning` level `PolicyViolationError` already gives itself.
 
@@ -182,8 +228,37 @@ Two logging facts to know before relying on this:
   outside it, unscoped lines included, so no log line is immune. `N8N_LOG_SCOPES=policy`
   is the switch that keeps only these.
 
-Policy *mutation* audit — who changed a policy — is a different surface, owned by the
+Policy _mutation_ audit — who changed a policy — is a different surface, owned by the
 feature that has a policy to mutate, on the existing audit-event infrastructure.
+
+## The log streaming event
+
+The same emit site also sends `n8n.audit.policy.decision.blocked` to log streaming, so a
+SIEM sees every block but one kind (see below). The payload is the audit line plus the actor. It does not depend on
+the log format or on `N8N_LOG_SCOPES`.
+
+- **The host names the actor.** Every `enforce*` call takes a `PolicyActor` as its second
+  argument. Checks never see it. It is a user when the host is a request with an
+  authenticated user. Otherwise it is the system with a reason: `execution`, `cli-import`,
+  `activation`, `publication`, `integration` or `log-streaming`.
+- **A run never names a user.** Not every execution path knows reliably who started the
+  run, so a block inside a run is `execution` and carries the `executionId`. Use the
+  execution to find who started it. This includes manual runs and sub-workflows.
+- **The payload says which.** `actorType` is `user` or `system`. A system actor adds
+  `systemReason` and has `userId: null`.
+- **`userId` always means the accountable human.** A future agent actor adds its own
+  fields and fills `userId` with the user it acts for, so SIEM rules on `userId` keep
+  their meaning.
+- **The user fields are the same on every block.** A host that knows only the user id
+  passes `{ id }`, and the relay reads the rest of the user before it sends the event. The
+  fields are redactable, the same as on every other `n8n.audit.*` event.
+- **A block on a destination credential sends no event.** A webhook destination decrypts
+  its credential on every delivery. If a policy blocks it, the event would go to the same
+  destination and block again. So the relay drops `log-streaming` blocks. The audit line
+  still records them.
+- **Violations have fixed keys.** A field a check left out is `null`, not missing.
+- **Workers and webhook processes send it too.** The log streaming module runs on
+  every instance type, so an event from a worker goes straight to the destinations.
 
 ## The seal
 
@@ -193,11 +268,11 @@ checks that the token exists, was minted for this point, and binds to this
 subject. Only `PolicyEnforcementService` may import the minter; a lint rule
 enforces that.
 
-A second lint rule, `no-unsealed-workflow-entity-write`, flags direct
-`save`/`insert`/`update`/`upsert` calls on `WorkflowEntity` in runtime code. It is
-syntactic. It catches `save({ id, nodes })` and `update(id, { nodes })`, not a
-payload built off-site or an aliased receiver. The runtime check is the enforcing
-half.
+The workflow entity subscriber rejects inserts and node-bearing updates outside
+the repository's scoped write context. Policy-cleared repository methods open
+that context after they validate the matching token. Standalone node execution
+is the documented exception: it opens the context without a save token, then
+enforces the policy before the temporary workflow starts.
 
 ## Add a check
 
@@ -206,11 +281,18 @@ half.
 export class NodeTypePolicyCheck implements RegisteredPolicyCheck {
 	readonly id = 'node-type-availability';
 
-	async onWorkflowSave({ workflow, storedWorkflow, projectId }: WorkflowSaveContext, signal: AbortSignal) {
+	async onWorkflowSave(
+		{ workflow, storedWorkflow, projectId }: WorkflowSaveContext,
+		signal: AbortSignal,
+	) {
 		return { violations: await this.violationsFor(workflow, storedWorkflow, projectId, signal) };
 	}
 }
 ```
+
+The node type availability policy is the first feature built this way. Read
+`../type-availability-policies/` for a working check and its store, and that module's
+README for what it decides at each point.
 
 Rules:
 
@@ -226,14 +308,14 @@ registry is read on every decision, so load order cannot hide a check.
 
 ## Files
 
-| File | Role |
-|---|---|
-| `policy-infrastructure.module.ts` | Registers `PolicyDecisionService` into the enforcement point and loads the lifecycle handler |
-| `policy-decision.service.ts` | Runs the checks with deadlines, combines their results, and emits the audit line |
-| `policy-decision-audit.ts` | The audit line's shape and how it reads a target off each context |
-| `policy-lifecycle-handler.ts` | The `workflowStart` host, one hook for every way an execution starts |
-| `policy-check-failed.error.ts` | The 503 for a check that did not answer |
-| `../../policy/policy-enforcement.service.ts` | The enforcement point the hosts call, always loaded |
-| `../../policy/policy-violation.error.ts` | The 403 that carries `meta.violations` |
-| `../../policy/policy-enforcement-backend.ts` | The interface `PolicyDecisionService` implements and the module registers |
-| `@n8n/decorators/src/policy-check/` | `@PolicyCheck()`, the registry, the contexts, the `PolicyCleared` token |
+| File                                         | Role                                                                                         |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `policy-infrastructure.module.ts`            | Registers `PolicyDecisionService` into the enforcement point and loads the lifecycle handler |
+| `policy-decision.service.ts`                 | Runs the checks with deadlines, combines their results, and emits the audit line and event   |
+| `policy-decision-audit.ts`                   | The audit line's shape and how it reads a target off each context                            |
+| `policy-lifecycle-handler.ts`                | The `workflowStart` host, one hook for every way an execution starts                         |
+| `policy-check-failed.error.ts`               | The 503 for a check that did not answer                                                      |
+| `../../policy/policy-enforcement.service.ts` | The enforcement point the hosts call, always loaded                                          |
+| `../../policy/policy-violation.error.ts`     | The 403 that carries `meta.violations`                                                       |
+| `../../policy/policy-enforcement-backend.ts` | The interface `PolicyDecisionService` implements and the module registers                    |
+| `@n8n/decorators/src/policy-check/`          | `@PolicyCheck()`, the registry, the contexts, the `PolicyCleared` token                      |

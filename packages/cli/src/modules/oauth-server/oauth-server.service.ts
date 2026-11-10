@@ -16,29 +16,26 @@ import type {
 import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-types';
 import { getMcpClientType, MCP_CLIENT_TYPE_FILTER_BUCKETS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService, UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-services/auth';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
-import type { User } from '@n8n/db';
+import { accountSummary, isPerson, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import {
-	ProtectedResourceRegistry,
-	type ProtectedResource,
-} from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { ForbiddenError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
-import { OAuthClient } from './database/entities/oauth-client.entity';
+import type { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
 import { OAuthConsentService } from './oauth-consent.service';
 import { OAuthSessionPayload, OAuthSessionService } from './oauth-session.service';
+import { OAuthGrantService } from './oauth-grant.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
 import { isSameProtectedResource } from './resource-identity';
@@ -124,6 +121,12 @@ function matchesTypeFilter(name: string, type: McpClientTypeFilter): boolean {
 }
 
 /** Sort owners by display name so the "Connected by" dropdown reads naturally. */
+/** The owner of a consent. */
+function ownerSummary(user: User): ConnectedOAuthClientOwner {
+	const { id, email, firstName, lastName } = accountSummary(user);
+	return { id, firstName, lastName, email: email ?? '' };
+}
+
 function sortOwners(owners: ConnectedOAuthClientOwner[]): ConnectedOAuthClientOwner[] {
 	return [...owners].sort((a, b) => {
 		const nameA = [a.firstName, a.lastName].filter(Boolean).join(' ') || a.email;
@@ -155,14 +158,22 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly eventService: EventService,
 		private readonly authService: AuthService,
 		private readonly oauthConsentService: OAuthConsentService,
+		private readonly grantService: OAuthGrantService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
 		return {
 			getClient: async (clientId: string): Promise<OAuthClientInformationFull | undefined> => {
-				const client = await this.oauthClientRepository.findOneBy({ id: clientId });
+				const client = await this.oauthClientRepository.findById(clientId, {});
 				if (!client) {
 					return await this.resolveVirtualClient(clientId);
+				}
+
+				// A persisted first-party row is only an FK placeholder (see `resolveVirtualClient`);
+				// the live resource decides, e.g. after a webhook is switched to bearer-only.
+				if (client.isFirstParty) {
+					const resource = await this.resourceRegistry.getByResourceUrl(clientId);
+					if (!resource?.isFirstParty) return undefined;
 				}
 
 				// Some clients echo back the `scope` they saw on registration and
@@ -191,16 +202,19 @@ export class OAuthServerService implements OAuthServerProvider {
 			): Promise<OAuthClientInformationFull> => {
 				this.validateClientRegistration(client);
 
-				await this.oauthClientRepository.insert({
-					id: client.client_id,
-					name: client.client_name,
-					redirectUris: client.redirect_uris,
-					grantTypes: client.grant_types,
-					clientSecret: client.client_secret ?? null,
-					clientSecretExpiresAt: client.client_secret_expires_at ?? null,
-					tokenEndpointAuthMethod: client.token_endpoint_auth_method ?? 'none',
-					isFirstParty: false,
-				});
+				await this.oauthClientRepository.registerClient(
+					{
+						id: client.client_id,
+						name: client.client_name,
+						redirectUris: client.redirect_uris,
+						grantTypes: client.grant_types,
+						clientSecret: client.client_secret ?? null,
+						clientSecretExpiresAt: client.client_secret_expires_at ?? null,
+						tokenEndpointAuthMethod: client.token_endpoint_auth_method ?? 'none',
+						isFirstParty: false,
+					},
+					{},
+				);
 
 				await this.enforceClientLimit(client.client_id);
 
@@ -211,7 +225,7 @@ export class OAuthServerService implements OAuthServerProvider {
 
 	/** Returns true when the instance is already at or above the registered-client cap. */
 	async isClientLimitReached(): Promise<boolean> {
-		const clientCount = await this.oauthClientRepository.countBy({ isFirstParty: false });
+		const clientCount = await this.oauthClientRepository.countRegistered({});
 		return clientCount >= this.globalConfig.endpoints.mcpMaxRegisteredClients;
 	}
 
@@ -220,7 +234,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		limit: number;
 		atCapacity: boolean;
 	}> {
-		const count = await this.oauthClientRepository.countBy({ isFirstParty: false });
+		const count = await this.oauthClientRepository.countRegistered({});
 		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
 		return { count, limit, atCapacity: count >= limit };
 	}
@@ -234,10 +248,10 @@ export class OAuthServerService implements OAuthServerProvider {
 	 * — matching the response shape of the pre-check guard at the route layer.
 	 */
 	private async enforceClientLimit(clientId: string): Promise<void> {
-		const clientCount = await this.oauthClientRepository.countBy({ isFirstParty: false });
+		const clientCount = await this.oauthClientRepository.countRegistered({});
 		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
 		if (clientCount > limit) {
-			await this.oauthClientRepository.delete({ id: clientId });
+			await this.oauthClientRepository.removeRegistration(clientId, {});
 			this.logger.warn(
 				'OAuth client registration rejected: instance limit reached (post-insert rollback)',
 				{ limit, clientCount },
@@ -260,7 +274,11 @@ export class OAuthServerService implements OAuthServerProvider {
 		// base URL, so a client_id that isn't can never resolve to one. Skip the resolver
 		// sweep + lazy upsert for anything else, so the unauthenticated /authorize path
 		// can't be used to fan out DB lookups on arbitrary client_ids.
-		if (!this.isTriggerResourceClientId(clientId)) {
+		if (
+			clientId.length > MAX_REDIRECT_URI_LENGTH ||
+			(!this.isTriggerResourceClientId(clientId) &&
+				!this.resourceRegistry.matchesVirtualClientUrl(clientId))
+		) {
 			return undefined;
 		}
 
@@ -269,7 +287,13 @@ export class OAuthServerService implements OAuthServerProvider {
 			return undefined;
 		}
 
-		await this.oauthClientRepository.upsert(
+		// The lookup ignores the query string, so without this check each `?x=N` variant adds a new row.
+		const resourceUrls = resource.getResourceUrls?.() ?? [resource.getResourceUrl()];
+		if (!resourceUrls.includes(clientId)) {
+			return undefined;
+		}
+
+		await this.oauthClientRepository.upsertVirtualClient(
 			{
 				id: clientId,
 				name: resource.displayName ?? clientId,
@@ -283,7 +307,7 @@ export class OAuthServerService implements OAuthServerProvider {
 				clientSecretExpiresAt: null,
 				isFirstParty: true,
 			},
-			['id'],
+			{},
 		);
 
 		return {
@@ -464,9 +488,8 @@ export class OAuthServerService implements OAuthServerProvider {
 				return;
 			}
 
-			this.oauthSessionService.createSession(res, sessionPayload);
-
-			res.redirect('/oauth/consent');
+			const flowId = this.oauthSessionService.createSession(res, sessionPayload);
+			res.redirect(`/oauth/consent?flow=${flowId}`);
 		} catch (error) {
 			if (error instanceof InvalidResourceIndicatorError) {
 				this.logger.warn('Rejecting OAuth authorization request with invalid resource', {
@@ -474,7 +497,6 @@ export class OAuthServerService implements OAuthServerProvider {
 					resource: error.resource,
 					expectedResource: error.expectedResource,
 				});
-				this.oauthSessionService.clearSession(res);
 				res.status(400).json({
 					error: 'invalid_target',
 					error_description: 'Invalid resource indicator',
@@ -483,7 +505,6 @@ export class OAuthServerService implements OAuthServerProvider {
 			}
 
 			this.logger.error('Error in authorize method', { error, clientId: client.client_id });
-			this.oauthSessionService.clearSession(res);
 			res.status(500).json({ error: 'server_error', error_description: 'Internal server error' });
 		}
 	}
@@ -535,33 +556,46 @@ export class OAuthServerService implements OAuthServerProvider {
 			throw new InvalidResourceIndicatorError(tokenResource, approvedResource ?? 'none');
 		}
 
-		await this.authorizationCodeService.markAuthorizationCodeAsUsed(authorizationCode);
+		const grantedResource = approvedResource
+			? await this.resourceRegistry.getByResourceUrl(approvedResource)
+			: this.resourceRegistry.getDefaultResource();
 
-		const grantedScopes = authRecord.scope;
+		const tokens = await this.grantService.runForActiveUser(authRecord.userId, async (ctx) => {
+			await this.authorizationCodeService.markAuthorizationCodeAsUsed(authorizationCode, ctx);
 
-		const { accessToken, refreshToken, audience } = this.tokenService.generateTokenPair(
-			authRecord.userId,
-			client.client_id,
-			approvedResource,
-			grantedScopes,
-		);
+			const grantedScopes = authRecord.scope;
 
-		await this.tokenService.saveTokenPair(
-			accessToken,
-			refreshToken,
-			client.client_id,
-			authRecord.userId,
-			grantedScopes,
-			audience,
-		);
+			const { accessToken, refreshToken, audience } = this.tokenService.generateTokenPair(
+				authRecord.userId,
+				client.client_id,
+				approvedResource,
+				grantedScopes,
+			);
 
+			await this.tokenService.saveTokenPair(
+				accessToken,
+				refreshToken,
+				client.client_id,
+				authRecord.userId,
+				grantedScopes,
+				audience,
+				ctx,
+			);
+
+			return {
+				access_token: accessToken,
+				token_type: 'Bearer',
+				expires_in: this.tokenService.getAccessTokenExpirySeconds(),
+				refresh_token: refreshToken,
+				// RFC 6749 §5.1: REQUIRED when the granted scopes differ from the
+				// requested ones — the user picks them on the consent screen.
+				scope: grantedScopes.join(' '),
+			};
+		});
 		// Completion of the authorization-code grant is the point at which the user
 		// has finished the OAuth flow for this client. The authorization server is
 		// shared by every protected resource on the instance (MCP, forms, ...), so
 		// only grants targeting the instance MCP server count as MCP usage.
-		const grantedResource = approvedResource
-			? await this.resourceRegistry.getByResourceUrl(approvedResource)
-			: this.resourceRegistry.getDefaultResource();
 		if (grantedResource?.id === INSTANCE_MCP_RESOURCE_ID) {
 			this.eventService.emit('mcp-oauth-completed', {
 				userId: authRecord.userId,
@@ -570,15 +604,12 @@ export class OAuthServerService implements OAuthServerProvider {
 			});
 		}
 
-		return {
-			access_token: accessToken,
-			token_type: 'Bearer',
-			expires_in: this.tokenService.getAccessTokenExpirySeconds(),
-			refresh_token: refreshToken,
-			// RFC 6749 §5.1: REQUIRED when the granted scopes differ from the
-			// requested ones — the user picks them on the consent screen.
-			scope: grantedScopes.join(' '),
-		};
+		this.logger.debug('OAuth token exchange succeeded', {
+			clientId: client.client_id,
+			userId: authRecord.userId,
+		});
+
+		return tokens;
 	}
 
 	// `resource` (when present) is normalized and validated against the registry here, then
@@ -728,10 +759,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		// not the (client × user) consent set — so filtering and paging stay in SQL.
 		let clientIds: string[] | undefined;
 		if (options.type) {
-			const registered = await this.oauthClientRepository.find({
-				select: { id: true, name: true },
-				where: { isFirstParty: false },
-			});
+			const registered = await this.oauthClientRepository.findRegisteredNames({});
 			clientIds = registered
 				.filter((client) => matchesTypeFilter(client.name, options.type!))
 				.map((client) => client.id);
@@ -761,12 +789,7 @@ export class OAuthServerService implements OAuthServerProvider {
 				scopes: consent.scope,
 				...(listAll
 					? {
-							owner: {
-								id: consent.user.id,
-								firstName: consent.user.firstName ?? null,
-								lastName: consent.user.lastName ?? null,
-								email: consent.user.email,
-							},
+							owner: ownerSummary(consent.user),
 						}
 					: {}),
 			};
@@ -790,8 +813,8 @@ export class OAuthServerService implements OAuthServerProvider {
 	}
 
 	/** Tool names each scope unlocks on this instance, for the clients list UI. */
-	getInstanceScopeTools(): Record<string, string[]> | undefined {
-		return this.resourceRegistry.getDefaultResource()?.getScopeTools?.();
+	async getInstanceScopeTools(): Promise<Record<string, string[]> | undefined> {
+		return await this.resourceRegistry.getDefaultResource()?.getScopeTools?.();
 	}
 
 	/**
@@ -804,9 +827,7 @@ export class OAuthServerService implements OAuthServerProvider {
 	 */
 	async deleteClient(clientId: string, userId: string, revoker?: User): Promise<void> {
 		// First check if the client exists
-		const client = await this.oauthClientRepository.findOne({
-			where: { id: clientId },
-		});
+		const client = await this.oauthClientRepository.findById(clientId, {});
 
 		if (!client) {
 			throw new Error(`OAuth client with ID ${clientId} not found`);
@@ -831,29 +852,15 @@ export class OAuthServerService implements OAuthServerProvider {
 			this.userConsentRepository.delete({ clientId, userId }),
 		]);
 
-		// Garbage-collect the client only when no consents remain. One conditional
-		// delete keeps it atomic: a concurrent authorization for the same client
-		// either commits its consent first (NOT EXISTS keeps the client) or fails
-		// cleanly on the FK instead of being silently cascade-deleted.
-		const consentsTable = this.userConsentRepository.metadata.tableName;
-		const result = await this.oauthClientRepository
-			.createQueryBuilder()
-			.delete()
-			.from(OAuthClient)
-			.where(
-				`id = :clientId AND NOT EXISTS (SELECT 1 FROM ${consentsTable} WHERE "clientId" = :clientId)`,
-				{ clientId },
-			)
-			.execute();
-
-		if (result.affected && result.affected > 0) {
+		if (await this.oauthClientRepository.deleteIfUnused(clientId, {})) {
 			this.logger.info('OAuth client deleted after last consent was revoked', {
 				clientId,
 				clientName: client.name,
 			});
 		}
 
-		if (revoker && revoker.id !== userId) {
+		// Only a person has an email to send to.
+		if (revoker && revoker.id !== userId && isPerson(consent.user)) {
 			this.mailer
 				.notifyMcpClientRevoked({ clientName: client.name, owner: consent.user, revoker })
 				.catch((e) => {

@@ -1,4 +1,4 @@
-import type { AgentDbMessage, MessageContent } from '@n8n/agents';
+import { getCreatedAt, type AgentDbMessage, type MessageContent } from '@n8n/agents';
 import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from '@n8n/api-types';
 
 export function contentPartToDto(part: MessageContent): AgentPersistedMessageContentPart {
@@ -25,10 +25,16 @@ export function contentPartToDto(part: MessageContent): AgentPersistedMessageCon
 
 export function messageToDto(msg: AgentDbMessage): AgentPersistedMessageDto | null {
 	if (!('role' in msg) || !Array.isArray(msg.content)) return null;
+	// Checkpoint state is JSON-parsed, so `createdAt` reaches us as an ISO string
+	// and can be absent in older states, although the type says `Date`.
+	// ponytail: normalise here, because the parse boundary keeps the lie. The
+	// deeper fix is a revive step in `parseSuspendedState` (n8n-checkpoint-storage).
+	const createdAt = getCreatedAt(msg);
 	return {
 		id: msg.id,
 		role: msg.role,
 		content: msg.content.map(contentPartToDto),
+		...(createdAt ? { createdAt: createdAt.toISOString() } : {}),
 	};
 }
 

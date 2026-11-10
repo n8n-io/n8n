@@ -1,16 +1,71 @@
 import { Service } from '@n8n/di';
-import type { ExecutionSnapshot, StartExecutionRequest, StartExecutionResult } from '@n8n/engine';
-import { UserError } from 'n8n-workflow';
+import type {
+	ExecutionSnapshot,
+	ExecutionStatus,
+	FindLatestExecutionRequest,
+	ResolveStepRequest,
+	ResolveStepResponse,
+	ResumeLocateRequest,
+	ResumeTargetResponse,
+	StartExecutionRequest,
+	StartExecutionResult,
+	SearchExecutionsRequest,
+	SearchExecutionsResponse,
+} from '@n8n/engine';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
 
+/** The engine refused the workflow before it saved an execution for it. */
+export class EngineRejectedWorkflowError extends UserError {}
+
+/** The engine did not admit the run, and saved no execution for it. */
+export class EngineDidNotAdmitError extends OperationalError {}
+
 /**
- * Starts and reads executions on the engine 2.0 data plane.
+ * Whether a failed start guarantees that the engine saved no execution. Any
+ * other failure, such as a server error or a lost response, can come after the
+ * save, so a run can exist under the requested id.
+ */
+export const isStartRefusedBeforeSave = (error: unknown): boolean =>
+	error instanceof EngineRejectedWorkflowError || error instanceof EngineDidNotAdmitError;
+
+/**
+ * Outcome of the cancellation request. `cancelled: false` carries the status
+ * the execution had already ended with.
+ */
+export type CancelExecutionOutcome =
+	| { cancelled: true; finishedAt: Date }
+	| { cancelled: false; status: ExecutionStatus };
+
+/**
+ * The data plane's answer to a resume request. Returned, not thrown: each
+ * caller maps the status to its own answer.
+ */
+export type ResumeOutcome<T> =
+	| { ok: true; value: T }
+	| { ok: false; status: number; error: string };
+
+/**
+ * Starts, reads, resumes, and cancels executions on the engine v2 data plane.
  *
  * The control plane always reaches the engine over HTTP, even when the engine
  * runs in the same process, so this stays a network-shaped contract.
  */
 export interface EngineDataPlaneProvider {
+	/** One page of the executions that match `request`. */
+	searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse>;
+
+	/**
+	 * The newest execution matching `request`, with its steps, in one round trip.
+	 * `undefined` when none matches.
+	 */
+	findLatestExecution(request: FindLatestExecutionRequest): Promise<ExecutionSnapshot | undefined>;
+
+	/**
+	 * Throws {@link EngineRejectedWorkflowError} or {@link EngineDidNotAdmitError}
+	 * only when the engine saved no execution.
+	 */
 	startExecution(request: StartExecutionRequest): Promise<StartExecutionResult>;
 
 	/**
@@ -22,6 +77,28 @@ export interface EngineDataPlaneProvider {
 		id: ExecutionIdV2,
 		options?: { includeSteps?: boolean },
 	): Promise<ExecutionSnapshot | undefined>;
+
+	/** `undefined` when the data plane holds no execution under that id. */
+	cancelExecution(id: ExecutionIdV2): Promise<CancelExecutionOutcome | undefined>;
+
+	/**
+	 * Phase one of a resume request: the execution's snapshot with its steps,
+	 * and the one step that accepts the request, or `null` when none does. The
+	 * data plane verifies the token; this plane forwards it unread.
+	 */
+	locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>>;
+
+	/** Phase two: ends the wait of one step with the output of the node's resume method. */
+	resolveStep(
+		stepId: string,
+		request: ResolveStepRequest,
+	): Promise<ResumeOutcome<ResolveStepResponse>>;
+
+	/**
+	 * The step id that an engine v2 approval callback names, or `undefined` for
+	 * any other reference. Does not verify the callback: `locateResume` does.
+	 */
+	readApprovalCallback(reference: string): string | undefined;
 }
 
 /**
@@ -44,10 +121,22 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		return this.provider !== null;
 	}
 
+	async searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse> {
+		if (!this.provider) return { items: [], nextCursor: null, total: 0 };
+		return await this.provider.searchExecutions(request);
+	}
+
+	async findLatestExecution(
+		request: FindLatestExecutionRequest,
+	): Promise<ExecutionSnapshot | undefined> {
+		if (!this.provider) return undefined;
+		return await this.provider.findLatestExecution(request);
+	}
+
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {
 		if (!this.provider) {
 			throw new UserError(
-				'Engine 2.0 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
+				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
 			);
 		}
 
@@ -62,5 +151,34 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		if (!this.provider) return undefined;
 
 		return await this.provider.getExecution(id, options);
+	}
+
+	/** As `getExecution`: no provider, no v2 execution to cancel. */
+	async cancelExecution(id: ExecutionIdV2): Promise<CancelExecutionOutcome | undefined> {
+		if (!this.provider) return undefined;
+
+		return await this.provider.cancelExecution(id);
+	}
+
+	/** As `getExecution`: no provider, no v2 execution that could wait. */
+	async locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>> {
+		if (!this.provider) return { ok: false, status: 404, error: 'not_found' };
+
+		return await this.provider.locateResume(request);
+	}
+
+	/** As `getExecution`: no provider, no v2 execution that could wait. */
+	async resolveStep(
+		stepId: string,
+		request: ResolveStepRequest,
+	): Promise<ResumeOutcome<ResolveStepResponse>> {
+		if (!this.provider) return { ok: false, status: 404, error: 'not_found' };
+
+		return await this.provider.resolveStep(stepId, request);
+	}
+
+	/** No provider, no engine v2 callback. */
+	readApprovalCallback(reference: string): string | undefined {
+		return this.provider?.readApprovalCallback(reference);
 	}
 }

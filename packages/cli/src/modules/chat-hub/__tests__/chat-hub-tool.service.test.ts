@@ -1,13 +1,16 @@
 import type { Logger } from '@n8n/backend-common';
+import type { NodesConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { NodeTypes } from '@/node-types';
+import { NodeTypesProviderMissingError, type NodeTypesProxy } from '@n8n/backend-services';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import type { ChatHubTool } from '../chat-hub-tool.entity';
 import type { ChatHubToolRepository } from '../chat-hub-tool.repository';
@@ -54,7 +57,7 @@ describe('ChatHubToolService', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	const chatToolRepository = mock<ChatHubToolRepository>();
-	const nodeTypes = mock<NodeTypes>();
+	const nodeTypes = mock<NodeTypesProxy>();
 	const mockUser = mock<User>({ id: mockUserId });
 	const mockManager = mock<EntityManager>();
 
@@ -74,7 +77,16 @@ describe('ChatHubToolService', () => {
 			description: { properties: [] },
 		} as unknown as INodeType);
 
-		service = new ChatHubToolService(logger, chatToolRepository, nodeTypes);
+		service = new ChatHubToolService(
+			logger,
+			chatToolRepository,
+			nodeTypes,
+			new DeprecatedNodesValidationService(
+				logger,
+				mock<NodesConfig>({ blockDeprecated: true }),
+				nodeTypes as unknown as NodeTypes,
+			),
+		);
 	});
 
 	describe('getToolsByUserId', () => {
@@ -111,6 +123,42 @@ describe('ChatHubToolService', () => {
 			expect(chatToolRepository.getToolsForSession).toHaveBeenCalledWith(mockSessionId, undefined);
 			expect(result).toEqual(tools.map((t) => t.definition));
 		});
+
+		it('should skip stored tools with unsupported expressions', async () => {
+			const valid = makeTool({
+				definition: { ...mockDefinition, parameters: { url: '={{ $fromAI("url") }}' } },
+			});
+			const invalid = makeTool({
+				definition: {
+					...mockDefinition,
+					parameters: { url: "=$fromAI('url', '{{ $vars.anything }}')" },
+				},
+			});
+			chatToolRepository.getToolsForSession.mockResolvedValue([valid, invalid]);
+
+			const result = await service.getToolDefinitionsForSession(mockSessionId);
+
+			expect(result).toEqual([valid.definition]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipping chat hub tool with unsupported expressions',
+				{ toolId: invalid.id, paths: ['url'] },
+			);
+		});
+	});
+
+	describe('getEnabledToolDefinitions', () => {
+		it('should return definitions of enabled tools and skip invalid ones', async () => {
+			const valid = makeTool();
+			const invalid = makeTool({
+				definition: { ...mockDefinition, parameters: { url: '={{ $vars.anything }}' } },
+			});
+			chatToolRepository.getEnabledByUserId.mockResolvedValue([valid, invalid]);
+
+			const result = await service.getEnabledToolDefinitions(mockUserId);
+
+			expect(chatToolRepository.getEnabledByUserId).toHaveBeenCalledWith(mockUserId, undefined);
+			expect(result).toEqual([valid.definition]);
+		});
 	});
 
 	describe('getToolDefinitionsForAgent', () => {
@@ -123,9 +171,137 @@ describe('ChatHubToolService', () => {
 			expect(chatToolRepository.getToolsForAgent).toHaveBeenCalledWith(mockAgentId, undefined);
 			expect(result).toEqual(tools.map((t) => t.definition));
 		});
+
+		it('should skip stored tools with unsupported expressions', async () => {
+			const invalid = makeTool({
+				definition: { ...mockDefinition, parameters: { url: '={{ $vars.anything }}' } },
+			});
+			chatToolRepository.getToolsForAgent.mockResolvedValue([invalid]);
+
+			const result = await service.getToolDefinitionsForAgent(mockAgentId);
+
+			expect(result).toEqual([]);
+		});
 	});
 
+	describe('setSessionTools', () => {
+		it('should set tools that the user owns', async () => {
+			const tool = makeTool();
+			chatToolRepository.getByIds.mockResolvedValue([tool]);
+
+			await service.setSessionTools(mockSessionId, mockUserId, [tool.id]);
+
+			expect(chatToolRepository.setSessionTools).toHaveBeenCalledWith(
+				mockSessionId,
+				[tool.id],
+				undefined,
+			);
+		});
+
+		it('should not set tools when the user does not own one of them', async () => {
+			chatToolRepository.getByIds.mockResolvedValue([]);
+
+			await expect(service.setSessionTools(mockSessionId, mockUserId, [uuid()])).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(chatToolRepository.setSessionTools).not.toHaveBeenCalled();
+		});
+
+		it('should not set tools when the user owns only some of them', async () => {
+			const ownTool = makeTool();
+			chatToolRepository.getByIds.mockResolvedValue([ownTool]);
+
+			await expect(
+				service.setSessionTools(mockSessionId, mockUserId, [ownTool.id, uuid()]),
+			).rejects.toThrow(NotFoundError);
+			expect(chatToolRepository.setSessionTools).not.toHaveBeenCalled();
+		});
+
+		it('should check and store each tool once when IDs repeat', async () => {
+			const tool = makeTool();
+			chatToolRepository.getByIds.mockResolvedValue([tool]);
+
+			await service.setSessionTools(mockSessionId, mockUserId, [tool.id, tool.id]);
+
+			expect(chatToolRepository.getByIds).toHaveBeenCalledWith([tool.id], mockUserId, undefined);
+			expect(chatToolRepository.setSessionTools).toHaveBeenCalledWith(
+				mockSessionId,
+				[tool.id],
+				undefined,
+			);
+		});
+
+		it('should clear the tools without a lookup when the list is empty', async () => {
+			await service.setSessionTools(mockSessionId, mockUserId, []);
+
+			expect(chatToolRepository.getByIds).not.toHaveBeenCalled();
+			expect(chatToolRepository.setSessionTools).toHaveBeenCalledWith(mockSessionId, [], undefined);
+		});
+	});
+
+	describe('setAgentTools', () => {
+		it('should set tools that the user owns', async () => {
+			const tool = makeTool();
+			chatToolRepository.getByIds.mockResolvedValue([tool]);
+
+			await service.setAgentTools(mockAgentId, mockUserId, [tool.id]);
+
+			expect(chatToolRepository.setAgentTools).toHaveBeenCalledWith(
+				mockAgentId,
+				[tool.id],
+				undefined,
+			);
+		});
+
+		it('should not set tools when the user does not own one of them', async () => {
+			chatToolRepository.getByIds.mockResolvedValue([]);
+
+			await expect(service.setAgentTools(mockAgentId, mockUserId, [uuid()])).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(chatToolRepository.setAgentTools).not.toHaveBeenCalled();
+		});
+	});
+
+	const deprecatedCodeTool: INode = {
+		...mockDefinition,
+		type: '@n8n/n8n-nodes-langchain.code',
+		parameters: { code: { supplyData: { code: 'return 1;' } } },
+	};
+
+	const markCodeNodeDeprecated = () => {
+		nodeTypes.getByNameAndVersion.mockImplementation(
+			(type) =>
+				({
+					description: {
+						properties: [],
+						deprecated: type === deprecatedCodeTool.type ? true : undefined,
+					},
+				}) as unknown as INodeType,
+		);
+	};
+
 	describe('createTool', () => {
+		it('rethrows when no node types provider is registered', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw new NodeTypesProviderMissingError();
+			});
+
+			await expect(service.createTool(mockUser, { definition: mockDefinition })).rejects.toThrow(
+				NodeTypesProviderMissingError,
+			);
+			expect(chatToolRepository.createTool).not.toHaveBeenCalled();
+		});
+
+		it('rejects a tool of a deprecated node type', async () => {
+			markCodeNodeDeprecated();
+
+			await expect(
+				service.createTool(mockUser, { definition: deprecatedCodeTool }),
+			).rejects.toThrow(DeprecatedNodesError);
+			expect(chatToolRepository.createTool).not.toHaveBeenCalled();
+		});
+
 		it('should create a tool from the definition', async () => {
 			const created = makeTool();
 			chatToolRepository.createTool.mockResolvedValue(created);
@@ -289,6 +465,67 @@ describe('ChatHubToolService', () => {
 	});
 
 	describe('updateTool', () => {
+		it('rejects changing a tool of a deprecated node type', async () => {
+			markCodeNodeDeprecated();
+			chatToolRepository.getOneById.mockResolvedValue(makeTool({ definition: deprecatedCodeTool }));
+
+			await expect(
+				service.updateTool('tool-1', mockUser, {
+					definition: { ...deprecatedCodeTool, name: 'Renamed tool' },
+				}),
+			).rejects.toThrow(DeprecatedNodesError);
+			expect(chatToolRepository.updateTool).not.toHaveBeenCalled();
+		});
+
+		it('rejects enabling a stored tool of a deprecated node type', async () => {
+			markCodeNodeDeprecated();
+			chatToolRepository.getOneById.mockResolvedValue(
+				makeTool({ definition: deprecatedCodeTool, enabled: false }),
+			);
+
+			await expect(service.updateTool('tool-1', mockUser, { enabled: true })).rejects.toThrow(
+				DeprecatedNodesError,
+			);
+			expect(chatToolRepository.updateTool).not.toHaveBeenCalled();
+		});
+
+		it('allows disabling a stored tool of a deprecated node type', async () => {
+			markCodeNodeDeprecated();
+			chatToolRepository.getOneById.mockResolvedValue(makeTool({ definition: deprecatedCodeTool }));
+			chatToolRepository.updateTool.mockResolvedValue(makeTool({ enabled: false }));
+
+			await service.updateTool('tool-1', mockUser, { enabled: false });
+
+			expect(chatToolRepository.updateTool).toHaveBeenCalled();
+		});
+
+		it('rejects enabling a stored tool with unsupported expressions', async () => {
+			chatToolRepository.getOneById.mockResolvedValue(
+				makeTool({
+					definition: { ...mockDefinition, parameters: { url: '={{ $vars.anything }}' } },
+					enabled: false,
+				}),
+			);
+
+			await expect(service.updateTool('tool-1', mockUser, { enabled: true })).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(chatToolRepository.updateTool).not.toHaveBeenCalled();
+		});
+
+		it('allows disabling a stored tool with unsupported expressions', async () => {
+			chatToolRepository.getOneById.mockResolvedValue(
+				makeTool({
+					definition: { ...mockDefinition, parameters: { url: '={{ $vars.anything }}' } },
+				}),
+			);
+			chatToolRepository.updateTool.mockResolvedValue(makeTool({ enabled: false }));
+
+			await service.updateTool('tool-1', mockUser, { enabled: false });
+
+			expect(chatToolRepository.updateTool).toHaveBeenCalled();
+		});
+
 		it('should update tool definition and denormalized fields', async () => {
 			const existingTool = makeTool();
 			const updatedDef: INode = { ...mockDefinition, name: 'Updated Tool' };

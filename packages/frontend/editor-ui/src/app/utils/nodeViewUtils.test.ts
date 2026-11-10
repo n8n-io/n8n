@@ -8,9 +8,12 @@ import {
 	getGenericHints,
 	getNewNodePosition,
 	getNodeViewTab,
+	isPastableWorkflowText,
+	readClipboardTextIfGranted,
 	updateViewportToContainNodes,
 	DEFAULT_NODE_SIZE,
 	snapPositionToGrid,
+	snapToGrid,
 	calculateNodeSize,
 	GRID_SIZE,
 	NODE_X_SPACING,
@@ -258,7 +261,13 @@ describe('snapPositionToGrid', () => {
 	it('should snap position to grid', () => {
 		const position: XYPosition = [105, 115];
 		const snappedPosition = snapPositionToGrid(position);
-		expect(snappedPosition).toEqual([112, 128]);
+		expect(snappedPosition).toEqual([112, 112]);
+	});
+
+	it('should snap a negative midpoint to the nearest grid line like snapToGrid', () => {
+		const position: XYPosition = [-24, -24];
+		const snappedPosition = snapPositionToGrid(position);
+		expect(snappedPosition).toEqual([-16, -16]);
 	});
 
 	it('should not change position if already on grid', () => {
@@ -274,6 +283,16 @@ describe('snapPositionToGrid', () => {
 	});
 });
 
+describe('snapToGrid', () => {
+	it('should return 0 and not -0 for a small negative value', () => {
+		expect(snapToGrid(-8)).toBe(0);
+	});
+
+	it('should keep NaN', () => {
+		expect(snapToGrid(Number.NaN)).toBeNaN();
+	});
+});
+
 describe('getNewNodePosition', () => {
 	it('should return the new position when there are no conflicts', () => {
 		const nodes: INodeUi[] = [];
@@ -286,7 +305,7 @@ describe('getNewNodePosition', () => {
 		const nodes: INodeUi[] = [];
 		const newPosition: XYPosition = [105, 115];
 		const result = getNewNodePosition(nodes, newPosition);
-		expect(result).toEqual([112, 128]);
+		expect(result).toEqual([112, 112]);
 	});
 
 	it('should move the position to avoid conflicts', () => {
@@ -294,6 +313,13 @@ describe('getNewNodePosition', () => {
 		const newPosition: XYPosition = [96, 96];
 		const result = getNewNodePosition(nodes, newPosition);
 		expect(result).toEqual([240, 240]);
+	});
+
+	it('should move by at least one grid cell when the offset is smaller than half a cell', () => {
+		const nodes: INodeUi[] = [createTestNode({ id: '1', position: [96, 96], type: SET_NODE_TYPE })];
+		const newPosition: XYPosition = [96, 96];
+		const result = getNewNodePosition(nodes, newPosition, { offset: [7, 7] });
+		expect(result).toEqual([208, 208]);
 	});
 
 	it('should skip nodes in the conflict allowlist', () => {
@@ -696,5 +722,41 @@ describe('horizontal spacing constants', () => {
 	it('should resolve to the canonical 8-dot step (224px on a 16px grid)', () => {
 		expect(NODE_X_SPACING).toBe(GRID_SIZE * 8);
 		expect(HORIZONTAL_NODE_STEP).toBe(224);
+	});
+});
+
+describe('isPastableWorkflowText', () => {
+	it.each([
+		['workflow JSON', JSON.stringify({ nodes: [], connections: {} }), true],
+		['a workflow URL', 'https://example.com/workflow.json', true],
+		['plain text', 'just some text', false],
+		['JSON without nodes and connections', '{}', false],
+		['a JSON string', '"text"', false],
+		['a JSON array', '[1]', false],
+	])('returns %s -> %s', (_label, text, expected) => {
+		expect(isPastableWorkflowText(text)).toBe(expected);
+	});
+});
+
+describe('readClipboardTextIfGranted', () => {
+	afterEach(() => {
+		Reflect.deleteProperty(window.navigator, 'permissions');
+		Reflect.deleteProperty(window.navigator, 'clipboard');
+	});
+
+	it('returns undefined when the browser rejects the permission query', async () => {
+		// Firefox and Safari reject the 'clipboard-read' permission name
+		Object.defineProperty(window.navigator, 'permissions', {
+			value: { query: vi.fn().mockRejectedValue(new TypeError('unsupported')) },
+			configurable: true,
+		});
+		const readText = vi.fn();
+		Object.defineProperty(window.navigator, 'clipboard', {
+			value: { readText },
+			configurable: true,
+		});
+
+		await expect(readClipboardTextIfGranted()).resolves.toBeUndefined();
+		expect(readText).not.toHaveBeenCalled();
 	});
 });

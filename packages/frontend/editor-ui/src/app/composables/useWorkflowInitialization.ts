@@ -37,6 +37,7 @@ import { useNDVStore, disposeNDVStore } from '@/features/ndv/shared/ndv.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { hasNewWorkflowQuery, withoutNewWorkflowQuery } from '@/app/utils/workflowUtils';
 
 export function useWorkflowInitialization() {
 	const route = useRoute();
@@ -175,8 +176,28 @@ export function useWorkflowInitialization() {
 		const currentWorkflowId = workflowId.value;
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
-			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
-			documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value.name, 'IDLE');
+			const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+			currentWorkflowDocumentStore.value = workflowDocumentStore;
+			documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
+
+			// The header derives every permission from the document store scopes.
+			// Without them, the first save turns the whole header read-only
+			// (Publish and Save hidden, actions menu disabled).
+			try {
+				await projectsStore.refreshCurrentProject();
+			} catch (error) {
+				// A stale project is recoverable; a rejection here would leave the
+				// route handler's caller with isLoading stuck on the loading view.
+				console.error('Failed to refresh current project during template import', { error });
+			}
+
+			// Navigation during the refresh can dispose or replace the store.
+			// Only stamp the store this import created.
+			if (currentWorkflowDocumentStore.value === workflowDocumentStore) {
+				const { currentProject, personalProject } = projectsStore;
+				workflowDocumentStore.setHomeProject(currentProject ?? personalProject ?? null);
+				workflowDocumentStore.setScopes(currentProject?.scopes ?? personalProject?.scopes ?? []);
+			}
 		}
 
 		return true;
@@ -346,6 +367,15 @@ export function useWorkflowInitialization() {
 
 	async function initializeWorkspaceForExistingWorkflow(id: string) {
 		try {
+			// Before the load: a route change resets the project navigation.
+			if (hasNewWorkflowQuery(route.query)) {
+				await router.replace({
+					name: route.name,
+					params: route.params,
+					query: withoutNewWorkflowQuery(route.query),
+				});
+			}
+
 			const workflowData = await workflowsListStore.fetchWorkflow(id);
 
 			await openWorkflow(workflowData);
@@ -449,14 +479,6 @@ export function useWorkflowInitialization() {
 				if (!exists && route.meta?.nodeView === true) {
 					await initializeWorkspaceForNewWorkflow();
 					return;
-				} else {
-					await router.replace({
-						...route,
-						query: {
-							...route.query,
-							new: undefined,
-						},
-					});
 				}
 			}
 

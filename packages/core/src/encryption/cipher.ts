@@ -36,26 +36,13 @@ export class Cipher {
 	 * once per object spares a DEK unwrap on every legacy-format write.
 	 */
 	private readonly verifiedLegacyDescriptors = new WeakSet<object>();
+	private readonly cipherAES256GCM = new CipherAes256GCM();
+	private readonly cipherAES256CBC = new CipherAes256CBC();
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
-		private readonly cipherAES256GCM: CipherAes256GCM,
-		private readonly cipherAES256CBC: CipherAes256CBC,
 		private readonly encryptionKeyProxy: EncryptionKeyProxy,
 	) {}
-
-	/** @deprecated Use {@link encryptV2} instead, or {@link encryptWithKey} for an explicit key. */
-	encrypt(data: string | object, customEncryptionKey?: string): string {
-		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
-		const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
-		return this.encryptWithKey(plaintext, key, 'aes-256-cbc');
-	}
-
-	/** @deprecated Use {@link decryptV2} instead, or {@link decryptWithKey} for an explicit key. */
-	decrypt(data: string, customEncryptionKey?: string): string {
-		const key = customEncryptionKey ?? this.instanceSettings.encryptionKey;
-		return this.decryptWithKey(data, key, 'aes-256-cbc');
-	}
 
 	/**
 	 * Encrypts with whatever active key the provider's descriptor names. The
@@ -210,7 +197,7 @@ export class Cipher {
 		return createHash('sha256').update(this.instanceSettings.encryptionKey).digest('hex');
 	}
 
-	encryptWithKey(data: string, key: string, algorithm: CipherAlgorithm): string {
+	private encryptWithKey(data: string, key: string, algorithm: CipherAlgorithm): string {
 		switch (algorithm) {
 			case 'aes-256-cbc':
 				return this.cipherAES256CBC.encrypt(data, key);
@@ -220,7 +207,7 @@ export class Cipher {
 		assertUnreachable(algorithm);
 	}
 
-	decryptWithKey(data: string, key: string, algorithm: CipherAlgorithm): string {
+	private decryptWithKey(data: string, key: string, algorithm: CipherAlgorithm): string {
 		switch (algorithm) {
 			case 'aes-256-cbc':
 				return this.cipherAES256CBC.decrypt(data, key);

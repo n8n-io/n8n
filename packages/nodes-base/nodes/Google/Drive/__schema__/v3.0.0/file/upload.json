@@ -13,6 +13,9 @@
                 "canAddChildren": {
                     "type": "boolean"
                 },
+                "canAddFolderFromAnotherDrive": {
+                    "type": "boolean"
+                },
                 "canAddMyDriveParent": {
                     "type": "boolean"
                 },
@@ -35,6 +38,9 @@
                     "type": "boolean"
                 },
                 "canDelete": {
+                    "type": "boolean"
+                },
+                "canDeleteChildren": {
                     "type": "boolean"
                 },
                 "canDisableInheritedPermissions": {
@@ -67,7 +73,16 @@
                 "canModifyOwnerContentRestriction": {
                     "type": "boolean"
                 },
+                "canMoveChildrenOutOfDrive": {
+                    "type": "boolean"
+                },
+                "canMoveChildrenOutOfTeamDrive": {
+                    "type": "boolean"
+                },
                 "canMoveChildrenWithinDrive": {
+                    "type": "boolean"
+                },
+                "canMoveChildrenWithinTeamDrive": {
                     "type": "boolean"
                 },
                 "canMoveItemIntoTeamDrive": {
@@ -76,13 +91,28 @@
                 "canMoveItemOutOfDrive": {
                     "type": "boolean"
                 },
+                "canMoveItemOutOfTeamDrive": {
+                    "type": "boolean"
+                },
                 "canMoveItemWithinDrive": {
+                    "type": "boolean"
+                },
+                "canMoveItemWithinTeamDrive": {
+                    "type": "boolean"
+                },
+                "canMoveTeamDriveItem": {
+                    "type": "boolean"
+                },
+                "canReadDrive": {
                     "type": "boolean"
                 },
                 "canReadLabels": {
                     "type": "boolean"
                 },
                 "canReadRevisions": {
+                    "type": "boolean"
+                },
+                "canReadTeamDrive": {
                     "type": "boolean"
                 },
                 "canRemoveChildren": {
@@ -104,6 +134,9 @@
                     "type": "boolean"
                 },
                 "canTrash": {
+                    "type": "boolean"
+                },
+                "canTrashChildren": {
                     "type": "boolean"
                 },
                 "canUntrash": {
@@ -169,6 +202,9 @@
                 }
             }
         },
+        "driveId": {
+            "type": "string"
+        },
         "explicitlyTrashed": {
             "type": "boolean"
         },
@@ -177,6 +213,9 @@
         },
         "fullFileExtension": {
             "type": "string"
+        },
+        "hasAugmentedPermissions": {
+            "type": "boolean"
         },
         "hasThumbnail": {
             "type": "boolean"
@@ -365,6 +404,9 @@
         "starred": {
             "type": "boolean"
         },
+        "teamDriveId": {
+            "type": "string"
+        },
         "thumbnailLink": {
             "type": "string"
         },
@@ -393,5 +435,5 @@
             "type": "boolean"
         }
     },
-    "version": 8
+    "version": 9
 }

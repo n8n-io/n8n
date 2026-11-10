@@ -61,6 +61,14 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 	it.each([
 		['create', createParams, 'POST', MEETINGS],
 		['get', byId, 'GET', `${MEETINGS}/${MEETING}`],
+		['createOrGet', { externalId: 'order-4711', options: {} }, 'POST', `${MEETINGS}/createOrGet`],
+		['deleteMeeting', byId, 'DELETE', `${MEETINGS}/${MEETING}`],
+		[
+			'update',
+			{ ...byId, updateFields: { subject: 'Renamed' } },
+			'PATCH',
+			`${MEETINGS}/${MEETING}`,
+		],
 	])(
 		"%s addresses the organizer's meetings instead of /me",
 		async (operation, params, method, path) => {
@@ -124,6 +132,26 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 		);
 		const calledPath = (transport.microsoftApiRequest as Mock).mock.calls[0][1] as string;
 		expect(calledPath).toBe(`/v1.0/me/onlineMeetings/${MEETING}`);
+	});
+
+	it.each([
+		['deleteMeeting', {}, 'DELETE'],
+		['update', { updateFields: { subject: 'Renamed' } }, 'PATCH'],
+	])('%s resolves a join URL against the organizer first', async (operation, params, method) => {
+		(transport.microsoftApiRequest as Mock)
+			.mockResolvedValueOnce({ value: [{ id: MEETING }] })
+			.mockResolvedValueOnce({});
+
+		await run(operation, { ...byUrl, ...params });
+
+		const calls = (transport.microsoftApiRequest as Mock).mock.calls.map((call) => [
+			call[0],
+			call[1],
+		]);
+		expect(calls).toEqual([
+			['GET', MEETINGS],
+			[method, `${MEETINGS}/${MEETING}`],
+		]);
 	});
 
 	describe('a user principal name as the organizer', () => {
@@ -203,6 +231,55 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 
 			expect(thrown).toBeInstanceOf(NodeApiError);
 			expect((thrown as NodeApiError).context.itemIndex).toBe(1);
+		});
+	});
+
+	describe('attendees', () => {
+		const JANE = '11111111-1111-1111-1111-111111111111';
+		const jane = { id: JANE, displayName: 'Jane Smith', userPrincipalName: 'jane@example.com' };
+		const withJane = {
+			...createParams,
+			attendees: { attendee: [{ userId: JANE, role: 'attendee' }] },
+		};
+		const calls = () =>
+			(transport.microsoftApiRequest as Mock).mock.calls.map((call) => [call[0], call[1]]);
+
+		it("resolves each attendee and posts them to the organizer's meetings", async () => {
+			(transport.microsoftApiRequest as Mock)
+				.mockResolvedValueOnce(jane)
+				.mockResolvedValueOnce({ id: MEETING });
+
+			await run('create', withJane);
+
+			expect(calls()).toEqual([
+				['GET', `/v1.0/users/${JANE}`],
+				['POST', MEETINGS],
+			]);
+			expect((transport.microsoftApiRequest as Mock).mock.calls[1][2]).toEqual(
+				expect.objectContaining({
+					participants: {
+						attendees: [
+							{ identity: { user: { id: JANE } }, upn: 'jane@example.com', role: 'attendee' },
+						],
+					},
+				}),
+			);
+		});
+
+		it('resolves the attendees before the organizer principal name', async () => {
+			(transport.microsoftApiRequest as Mock)
+				.mockResolvedValueOnce(jane)
+				.mockResolvedValueOnce({ id: ORGANIZER })
+				.mockResolvedValueOnce({ id: MEETING });
+
+			await run('create', { ...withJane, organizerId: 'alex@contoso.com' });
+
+			expect(calls()).toEqual([
+				['GET', `/v1.0/users/${JANE}`],
+				['GET', '/v1.0/users/alex@contoso.com'],
+				['POST', MEETINGS],
+			]);
+			expect((transport.microsoftApiRequest as Mock).mock.calls[1][3]).toEqual({ $select: 'id' });
 		});
 	});
 

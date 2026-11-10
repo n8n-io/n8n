@@ -85,6 +85,7 @@ describe('Slack recorded integration replay', () => {
 			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: 'hey',
+					author: { id: 'U_USER', name: 'U_USER' },
 					integrationType: 'slack',
 				}),
 			);

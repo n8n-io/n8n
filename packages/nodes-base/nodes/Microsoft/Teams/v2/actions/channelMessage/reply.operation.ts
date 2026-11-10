@@ -2,8 +2,15 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { channelRLC, includeLinkToWorkflowOption, teamRLC } from '../../descriptions';
-import { prepareMessage } from '../../helpers/utils';
+import {
+	channelMentionsField,
+	channelRLC,
+	includeLinkToWorkflowOption,
+	mentionPlacementOption,
+	teamRLC,
+} from '../../descriptions';
+import type { MentionPlacement } from '../../helpers/utils';
+import { prepareMessage, resolveMentions } from '../../helpers/utils';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 import { throwIfChannelMessageSendUnsupported } from './sharedGuard';
 
@@ -49,13 +56,14 @@ const properties: INodeProperties[] = [
 			rows: 2,
 		},
 	},
+	channelMentionsField,
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
 		placeholder: 'Add option',
 		default: {},
-		options: [includeLinkToWorkflowOption],
+		options: [includeLinkToWorkflowOption, mentionPlacementOption],
 	},
 ];
 
@@ -88,7 +96,9 @@ export async function execute(
 	const message = this.getNodeParameter('message', i) as string;
 	// Destructuring default matches `create`: only an unset option falls back to
 	// on, any explicit value keeps its own truthiness.
-	const { includeLinkToWorkflow = true } = this.getNodeParameter('options', i);
+	const { includeLinkToWorkflow = true, mentionPlacement } = this.getNodeParameter('options', i);
+
+	const mentions = await resolveMentions.call(this, i, teamId);
 
 	const body: IDataObject = prepareMessage.call(
 		this,
@@ -96,6 +106,8 @@ export async function execute(
 		contentType,
 		Boolean(includeLinkToWorkflow),
 		instanceId,
+		mentions,
+		(mentionPlacement as MentionPlacement) || 'start',
 	);
 
 	const endpoint = buildTeamsPath.call(this, [

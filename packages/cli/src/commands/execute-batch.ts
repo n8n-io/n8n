@@ -6,7 +6,8 @@ import fs from 'fs';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
 import type { IRun, ITaskData, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import os from 'os';
 import { sep } from 'path';
 import { z } from 'zod';
@@ -191,6 +192,7 @@ export class ExecuteBatch extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async init() {
 		await super.init();
 		await this.initLicense();
+		await this.initPolicyEnforcement();
 		await this.initCommunityPackages();
 		await this.initBinaryDataService();
 		await this.initDataDeduplicationService();
@@ -661,7 +663,7 @@ export class ExecuteBatch extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'cli',
-					startNodes: [{ name: startingNode.name, sourceData: null }],
+					triggerToStartFrom: { name: startingNode.name },
 					workflowData,
 					userId: ExecuteBatch.instanceOwner.id,
 				};
@@ -684,6 +686,7 @@ export class ExecuteBatch extends BaseCommand<z.infer<typeof flagsSchema>> {
 						(Date.parse(data.stoppedAt as unknown as string) -
 							Date.parse(data.startedAt as unknown as string)) /
 						1000;
+					// oxlint-disable-next-line typescript/no-deprecated
 					executionResult.finished = data?.finished !== undefined;
 
 					const resultError = data.data.resultData.error;

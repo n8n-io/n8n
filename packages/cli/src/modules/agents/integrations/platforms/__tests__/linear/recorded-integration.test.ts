@@ -93,6 +93,7 @@ describe('Linear recorded integration replay', () => {
 			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: '@testapp hey',
+					author: { id: 'USER_ALICE', name: 'alice' },
 					integrationType: 'linear',
 				}),
 			);

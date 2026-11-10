@@ -8,7 +8,7 @@
  * 4. Create a pruned production deployment in 'compiled'
  */
 
-import { $, echo, fs, chalk } from 'zx';
+import { $, echo, fs, chalk, YAML } from 'zx';
 import path from 'path';
 import os from 'os';
 
@@ -239,6 +239,59 @@ try {
 	await verifyNoPnpmIntermediateLinks(config.compiledAppDir);
 	await removePnpmDeployFiles(config.compiledAppDir);
 
+	// The napi-rs wrappers list their native bindings as optional dependencies, so
+	// `--no-optional` drops them. They cannot be regular dependencies of a published
+	// package: npm rejects every binding that does not match the host. Add the musl
+	// bindings for both image architectures, because the build host does not always
+	// match the image platform. The wrapper pins the exact version it loads, and the
+	// tarball must match the integrity that pnpm-lock.yaml records for that version.
+	// The bindings go to the top-level node_modules: the wrapper finds them there, and
+	// cdxgen inventories only that level for the release SBOM.
+	echo(chalk.yellow('INFO: Adding musl bindings for @napi-rs/canvas and @napi-rs/image...'));
+	// pnpm-lock.yaml holds two documents: pnpm's own install, then the workspace.
+	const lockfilePackages = Object.assign(
+		{},
+		...YAML.parseAllDocuments(
+			await fs.readFile(path.join(config.rootDir, 'pnpm-lock.yaml'), 'utf8'),
+		).map((doc) => doc.toJS()?.packages),
+	);
+	const virtualStoreDir = path.join(config.compiledAppDir, 'node_modules/.pnpm');
+	const scopeDir = path.join(config.compiledAppDir, 'node_modules/@napi-rs');
+	const bindingTarballDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-napi-bindings-'));
+	for (const name of ['canvas', 'image']) {
+		const entries = (await fs.readdir(virtualStoreDir)).filter((e) =>
+			e.startsWith(`@napi-rs+${name}@`),
+		);
+		// One top-level directory per binding holds one version only.
+		if (entries.length !== 1) {
+			throw new Error(`Expected one @napi-rs/${name} in the closure, found ${entries.length}`);
+		}
+		const { optionalDependencies } = await fs.readJson(
+			path.join(virtualStoreDir, entries[0], 'node_modules/@napi-rs', name, 'package.json'),
+		);
+		for (const arch of ['x64', 'arm64']) {
+			const binding = `@napi-rs/${name}-linux-${arch}-musl`;
+			const version = optionalDependencies[binding];
+			if (!version) throw new Error(`@napi-rs/${name} does not list ${binding}`);
+
+			const expected = lockfilePackages[`${binding}@${version}`]?.resolution?.integrity;
+			if (!expected) throw new Error(`pnpm-lock.yaml has no integrity for ${binding}@${version}`);
+
+			const [{ filename, integrity }] = JSON.parse(
+				(await $`npm pack ${binding}@${version} --pack-destination ${bindingTarballDir} --json`)
+					.stdout,
+			);
+			if (integrity !== expected) {
+				throw new Error(`${binding}@${version} does not match the pnpm-lock.yaml integrity`);
+			}
+			const bindingDir = path.join(scopeDir, `${name}-linux-${arch}-musl`);
+			await fs.ensureDir(bindingDir);
+			await $`tar -xzf ${path.join(bindingTarballDir, filename)} -C ${bindingDir} --strip-components=1`;
+		}
+	}
+	await fs.remove(bindingTarballDir);
+	echo(chalk.green('✅ musl bindings added'));
+
 	// Strip test/example/benchmark dirs shipped inside production deps that lack a
 	// `files` field in their package.json. These are valid runtime deps but their
 	// authors published full source trees; syft inventories the subdirs as phantom
@@ -422,6 +475,11 @@ try {
 		'*agent-browser/bin/*linux-musl*',
 		// The launcher that package.json's `bin` resolves to.
 		'*agent-browser/bin/agent-browser.js',
+		// Edit Image v2 fails without these.
+		'*/@napi-rs/canvas-linux-x64-musl/*.node',
+		'*/@napi-rs/canvas-linux-arm64-musl/*.node',
+		'*/@napi-rs/image-linux-x64-musl/*.node',
+		'*/@napi-rs/image-linux-arm64-musl/*.node',
 	];
 
 	echo(chalk.yellow('INFO: Verifying Runtime assets'));
@@ -529,7 +587,7 @@ try {
 		// `--dir` rather than `--filter`: a filter that matches nothing exits 0, so a renamed or moved
 		// package would report a passing check having run no verifier at all.
 		const verifyProcess =
-			$`cd ${config.rootDir} && pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-closure ${dir}`.nothrow();
+			$`cd ${config.rootDir} && pnpm --dir packages/quality/policy/code-health exec tsx src/cli.ts verify-closure ${dir}`.nothrow();
 		verifyProcess.pipe(process.stdout);
 		const { exitCode } = await verifyProcess;
 		// 0 and 3 are the only codes the verifier itself produces; everything else (tsx failing to load,

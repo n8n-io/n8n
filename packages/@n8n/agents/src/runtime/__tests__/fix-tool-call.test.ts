@@ -3,6 +3,8 @@ import { z } from 'zod';
 
 import type { BuiltTool } from '../../types';
 import { fixToolCall } from '../tools/fix-tool-call';
+import { buildToolMap, findDispatcherForCall } from '../tools/tool-adapter';
+import { CALL_TOOL_TOOL_NAME, ToolCatalog } from '../tools/tool-catalog';
 
 function makeTool(overrides: Partial<BuiltTool> = {}): BuiltTool {
 	return {
@@ -57,6 +59,14 @@ describe('fixToolCall — early-exit guards', () => {
 		const result = await fixToolCall(
 			{ toolCall: makeToolCall(), error: makeNoSuchToolError() },
 			toolMap,
+		);
+		expect(result).toBeNull();
+	});
+
+	it('returns null for AI_NoSuchToolError when the name is not a former tool name', async () => {
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall({ toolName: 'unknown_tool' }), error: makeNoSuchToolError() },
+			new Map([['get_environment', makeTool()]]),
 		);
 		expect(result).toBeNull();
 	});
@@ -190,6 +200,89 @@ describe('fixToolCall — successful repair', () => {
 			toolMap,
 		);
 		expect(result).toMatchObject({ type: 'tool-call', input: '{}' });
+	});
+
+	it('renames a call to a former tool name to the current tool name', async () => {
+		const tool = makeTool({ name: 'workflow_builder_workflows', legacyNames: ['workflows'] });
+		const toolMap = new Map([
+			['workflow_builder_workflows', tool],
+			['workflows', tool],
+		]);
+		const result = await fixToolCall(
+			{
+				toolCall: makeToolCall({ toolName: 'workflows', input: '{"action":"list"}' }),
+				error: makeNoSuchToolError(),
+			},
+			toolMap,
+		);
+		expect(result).toEqual({
+			type: 'tool-call',
+			toolCallId: 'tc-1',
+			toolName: 'workflow_builder_workflows',
+			input: '{"action":"list"}',
+			providerExecuted: false,
+			dynamic: false,
+		});
+	});
+
+	it('repairs a direct call to a deferred tool into a call_tool call', async () => {
+		const catalog = new ToolCatalog([
+			makeTool({ name: 'list_workflows', inputSchema: z.object({}) }),
+		]);
+		const result = await fixToolCall(
+			{
+				toolCall: makeToolCall({ toolName: 'list_workflows', input: '{"limit":5}' }),
+				error: makeNoSuchToolError(),
+			},
+			buildToolMap(catalog.getControllerTools()),
+		);
+		expect(result).toEqual({
+			type: 'tool-call',
+			toolCallId: 'tc-1',
+			toolName: CALL_TOOL_TOOL_NAME,
+			input: JSON.stringify({ tool: 'list_workflows', arguments: { limit: 5 } }),
+			providerExecuted: false,
+			dynamic: false,
+		});
+	});
+
+	it('repairs a deferred tool called by a former name with an action into a call_tool call', async () => {
+		const catalog = new ToolCatalog([
+			makeTool({
+				name: 'list_workflows',
+				inputSchema: z.object({}),
+				legacyActions: { workflows: ['list'] },
+			}),
+		]);
+		const result = await fixToolCall(
+			{
+				toolCall: makeToolCall({
+					toolName: 'workflows',
+					input: '{"action":"list","limit":5}',
+				}),
+				error: makeNoSuchToolError(),
+			},
+			buildToolMap(catalog.getControllerTools()),
+		);
+		expect(result?.toolName).toBe(CALL_TOOL_TOOL_NAME);
+		expect(JSON.parse(result!.input)).toEqual({
+			tool: 'list_workflows',
+			arguments: { limit: 5 },
+		});
+	});
+
+	it('does not change the input of a former-name call when it drops the action', () => {
+		const catalog = new ToolCatalog([
+			makeTool({ name: 'list_workflows', legacyActions: { workflows: ['list'] } }),
+		]);
+		const input = { action: 'list', limit: 5 };
+		const routed = findDispatcherForCall(
+			buildToolMap(catalog.getControllerTools()),
+			'workflows',
+			input,
+		);
+		expect(routed?.input).toEqual({ tool: 'list_workflows', arguments: { limit: 5 } });
+		expect(input).toEqual({ action: 'list', limit: 5 });
 	});
 
 	it('preserves dynamic flag from the original tool call', async () => {

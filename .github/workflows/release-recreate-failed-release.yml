@@ -67,7 +67,7 @@ jobs:
           permission-pull-requests: write # open the release PR
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           token: ${{ steps.generate_token.outputs.token }}
@@ -150,13 +150,14 @@ jobs:
       needs.recreate-release-pr.outputs.pull-request-number != ''
     # inherit, not named secrets: the callee's app credentials live on the
     # `release` environment, which a caller cannot read to forward.
-    uses: ./.github/workflows/util-approve-and-set-automerge.yml # zizmor: ignore[secrets-inherit]
+    uses: n8n-io/github-actions/.github/workflows/approve-and-set-automerge.yml@8fe337080c0386a17ce3c857b61db606c9430f4b
     permissions:
       contents: write
       pull-requests: write
     secrets: inherit
     with:
       pull-request-number: ${{ needs.recreate-release-pr.outputs.pull-request-number }}
+      enable-automerge: true
 
   notify-slack:
     name: Notify Slack
@@ -166,7 +167,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/scripts/slack
           sparse-checkout-cone-mode: false

@@ -5,11 +5,46 @@ import { screen, fireEvent, waitFor } from '@testing-library/vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
-import { mockSimplifiedNodeType } from '../../__tests__/utils';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { mockNodeTypeDescription } from '@/__tests__/mocks';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { mockActionCreateElement, mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
-import { REGULAR_NODE_CREATOR_VIEW, DEBOUNCE_TIME } from '@/app/constants';
+import {
+	AI_CATEGORY_AGENTS,
+	AI_CATEGORY_LANGUAGE_MODELS,
+	AI_CATEGORY_ROOT_NODES,
+	AI_NODE_CREATOR_VIEW,
+	AI_SUBCATEGORY,
+	CORE_NODES_CATEGORY,
+	DEBOUNCE_TIME,
+	FLOWS_CONTROL_SUBCATEGORY,
+	HELPERS_SUBCATEGORY,
+	HITL_SUBCATEGORY,
+	HUMAN_IN_THE_LOOP_CATEGORY,
+	TRANSFORM_DATA_SUBCATEGORY,
+	OTHER_TRIGGER_NODES_SUBCATEGORY,
+	REGULAR_NODE_CREATOR_VIEW,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	CUSTOM_API_CALL_KEY,
+	HTTP_REQUEST_NODE_TYPE,
+	NODE_CREATOR_OPEN_SOURCES,
+	TRIGGER_NODE_CREATOR_VIEW,
+} from '@/app/constants';
 import type { ActionTypeDescription, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestNode } from '@/__tests__/mocks';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useUIStore } from '@/app/stores/ui.store';
+
+const mockEmptyCanvasGroupsEnabled = vi.hoisted(() => ({ value: true }));
+
+vi.mock('@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag', () => ({
+	useEmptyCanvasGroupsFlag: () => mockEmptyCanvasGroupsEnabled,
+}));
 
 vi.mock('@/app/composables/useExternalHooks', () => ({
 	useExternalHooks: () => ({ run: vi.fn().mockResolvedValue(undefined) }),
@@ -44,6 +79,10 @@ function getWrapperComponent(setup: () => void) {
 }
 
 describe('NodesListPanel', () => {
+	beforeEach(() => {
+		mockEmptyCanvasGroupsEnabled.value = true;
+	});
+
 	// Every panel mount schedules a keyboard-navigation refresh via setTimeout.
 	// Drain it while the document still exists — a timer surviving the last test
 	// fires after jsdom teardown and fails the run with an unhandled error.
@@ -71,6 +110,7 @@ describe('NodesListPanel', () => {
 			const { container } = getWrapperComponent(() => {
 				const { setMergeNodes } = useNodeCreatorStore();
 
+				vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 				setMergeNodes([...mockedTriggerNodes, ...mockedRegularNodes]);
 				return {};
 			});
@@ -97,6 +137,19 @@ describe('NodesListPanel', () => {
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
 		});
 
+		it('should hide a listed trigger whose node type is not loaded', async () => {
+			getWrapperComponent(() => {
+				vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockImplementation(
+					(type) => type === SCHEDULE_TRIGGER_NODE_TYPE,
+				);
+				return {};
+			});
+			await nextTick();
+
+			expect(screen.queryByText('On a schedule')).not.toBeInTheDocument();
+			expect(screen.getByText('Trigger manually')).toBeInTheDocument();
+		});
+
 		it('should render regular nodes', async () => {
 			const mockedNodes = [...Array(8).keys()].map(
 				(n) =>
@@ -104,6 +157,20 @@ describe('NodesListPanel', () => {
 						name: `Node ${n}`,
 						displayName: `Node ${n}`,
 						group: ['input'],
+					}) as INodeTypeDescription,
+			);
+			const categorizedNodes = [
+				[CORE_NODES_CATEGORY, TRANSFORM_DATA_SUBCATEGORY],
+				[CORE_NODES_CATEGORY, FLOWS_CONTROL_SUBCATEGORY],
+				[CORE_NODES_CATEGORY, HELPERS_SUBCATEGORY],
+				[HUMAN_IN_THE_LOOP_CATEGORY, HITL_SUBCATEGORY],
+			].map(
+				([category, subcategory]) =>
+					mockSimplifiedNodeType({
+						name: subcategory,
+						displayName: subcategory,
+						group: ['input'],
+						codex: { categories: [category], subcategories: { [category]: [subcategory] } },
 					}) as INodeTypeDescription,
 			);
 
@@ -124,6 +191,7 @@ describe('NodesListPanel', () => {
 				},
 				setup(props) {
 					const { setMergeNodes, setSelectedView } = useNodeCreatorStore();
+					vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 
 					watch(
 						() => props.nodeTypes,
@@ -148,14 +216,24 @@ describe('NodesListPanel', () => {
 			renderComponent({
 				pinia: createPinia(),
 				props: {
-					nodeTypes: mockedNodes,
+					nodeTypes: [...mockedNodes, ...categorizedNodes],
 					selectedView: REGULAR_NODE_CREATOR_VIEW,
 				},
 			});
 
 			await nextTick();
 			expect(screen.getByText('What happens next?')).toBeInTheDocument();
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(6);
+			expect(screen.queryAllByTestId('item-iterator-item').map((item) => item.textContent)).toEqual(
+				[
+					expect.stringContaining('Action in an app'),
+					expect.stringContaining('Data transformation'),
+					expect.stringContaining('Flow'),
+					expect.stringContaining('Core'),
+					expect.stringContaining('Human review'),
+					expect.stringContaining('Add another trigger'),
+					expect.stringContaining('Group'),
+				],
+			);
 
 			screen.getByText('Action in an app').click();
 			await nextTick();
@@ -212,6 +290,20 @@ describe('NodesListPanel', () => {
 
 			expect(screen.queryByTestId('node-creator-search-bar')).toBeInTheDocument();
 		});
+
+		it('should find Group when the workflow has nodes but no trigger', async () => {
+			getWrapperComponent(() => {
+				useWorkflowDocumentStore(createWorkflowDocumentId('')).setNodes([createTestNode()]);
+			});
+			await nextTick();
+
+			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+				target: { value: 'group' },
+			});
+
+			await waitFor(() => expect(screen.getByText('Group')).toBeInTheDocument());
+		});
+
 		it('should not be visible if subcategory contains less than 9 items', async () => {
 			renderComponent();
 			await nextTick();
@@ -274,10 +366,101 @@ describe('NodesListPanel', () => {
 				target: { value: '    Node 1' },
 			});
 
-			await waitFor(() => expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1));
-			expect(screen.queryByText('Node 1')).toBeInTheDocument();
+			await waitFor(() => expect(screen.queryByText('Node 1')).toBeInTheDocument());
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
 
 			expect(screen.getByTestId('node-creator-search-bar')).toHaveValue('Node 1');
+		});
+	});
+
+	describe('Group command visibility', () => {
+		function renderWithConnectionSource({ grouped }: { grouped: boolean }) {
+			return getWrapperComponent(() => {
+				const source = createTestNode({ id: 'source', name: 'Source' });
+				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+				workflowDocumentStore.setNodes([source]);
+				if (grouped) workflowDocumentStore.createGroup([source.id], 'Group 1');
+
+				useUIStore().lastInteractedWithNodeId = source.id;
+				const nodeCreatorStore = useNodeCreatorStore();
+				nodeCreatorStore.openSource = NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT;
+				nodeCreatorStore.setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+			});
+		}
+
+		it('hides Group when adding from a plus inside a group', async () => {
+			renderWithConnectionSource({ grouped: true });
+			await nextTick();
+
+			expect(screen.queryByText('Group')).not.toBeInTheDocument();
+			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+				target: { value: 'group' },
+			});
+			await waitFor(() => expect(screen.queryByText('Group')).not.toBeInTheDocument());
+		});
+
+		it('shows Group when adding from a plus outside a group', async () => {
+			renderWithConnectionSource({ grouped: false });
+			await nextTick();
+
+			expect(screen.getByText('Group')).toBeInTheDocument();
+		});
+
+		it('shows Group from the global node creator despite stale grouped-node state', async () => {
+			getWrapperComponent(() => {
+				const source = createTestNode({ id: 'source', name: 'Source' });
+				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+				workflowDocumentStore.setNodes([source]);
+				workflowDocumentStore.createGroup([source.id], 'Group 1');
+
+				useUIStore().lastInteractedWithNodeId = source.id;
+				const nodeCreatorStore = useNodeCreatorStore();
+				nodeCreatorStore.openSource = NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON;
+				nodeCreatorStore.setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+			});
+			await nextTick();
+
+			expect(screen.getByText('Group')).toBeInTheDocument();
+		});
+
+		it('keeps Group hidden while navigating in replacement mode', async () => {
+			getWrapperComponent(() => {
+				const source = createTestNode({ id: 'source', name: 'Source' });
+				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+				workflowDocumentStore.setNodes([source]);
+
+				const appNode = mockNodeTypeDescription({ name: 'appNode', displayName: 'App Node' });
+				useNodeTypesStore().setNodeTypes([appNode]);
+				const nodeCreatorStore = useNodeCreatorStore();
+				nodeCreatorStore.setMergeNodes([appNode]);
+				nodeCreatorStore.openingContext = 'replacement';
+				nodeCreatorStore.setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+			});
+			await nextTick();
+
+			expect(screen.queryByText('Group')).not.toBeInTheDocument();
+
+			await fireEvent.click(screen.getByText('Action in an app'));
+			await nextTick();
+			await fireEvent.click(document.querySelector('.backButton')!);
+			await waitFor(() => expect(screen.getByTestId('node-creator-search-bar')).toBeVisible());
+			expect(useNodeCreatorStore().openingContext).toBe('replacement');
+			expect(screen.queryByText('Group')).not.toBeInTheDocument();
+		});
+
+		it('clears replacement context when the panel is closed', async () => {
+			const { unmount } = getWrapperComponent(() => {
+				const nodeCreatorStore = useNodeCreatorStore();
+				nodeCreatorStore.openingContext = 'replacement';
+				nodeCreatorStore.setSelectedView(REGULAR_NODE_CREATOR_VIEW);
+			});
+			await nextTick();
+
+			const nodeCreatorStore = useNodeCreatorStore();
+			expect(nodeCreatorStore.openingContext).toBe('replacement');
+
+			unmount();
+			expect(nodeCreatorStore.openingContext).toBeNull();
 		});
 	});
 
@@ -662,6 +845,199 @@ describe('NodesListPanel', () => {
 
 			// Context should still be 'replacement' after search
 			expect(nodeCreatorStore.openingContext).toBe('replacement');
+		});
+	});
+
+	describe('custom API call hint', () => {
+		it.each([
+			[false, true],
+			[true, false],
+		])(
+			'should set hint visibility when HTTP Request unavailable is %s (visible: %s)',
+			async (httpUnavailable, hintVisible) => {
+				getWrapperComponent(() => {
+					vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockImplementation(
+						(type) => httpUnavailable && type === HTTP_REQUEST_NODE_TYPE,
+					);
+					return {};
+				});
+				await nextTick();
+
+				useViewStacks().pushViewStack({
+					title: 'Slack',
+					subcategory: 'Slack',
+					mode: 'actions',
+					hasSearch: true,
+					items: [
+						mockActionCreateElement('Slack'),
+						mockActionCreateElement('Slack', { actionKey: CUSTOM_API_CALL_KEY }),
+					],
+				});
+				await nextTick();
+
+				expect(screen.queryByText(/custom Slack API call/) !== null).toBe(hintVisible);
+			},
+		);
+	});
+
+	describe('entries without nodes', () => {
+		const otherTrigger = mockNodeTypeDescription({
+			name: 'otherTrigger',
+			displayName: 'Other Trigger',
+			group: ['trigger'],
+			codex: {
+				categories: [CORE_NODES_CATEGORY],
+				subcategories: { [CORE_NODES_CATEGORY]: [OTHER_TRIGGER_NODES_SUBCATEGORY] },
+			},
+		});
+		const agent = mockNodeTypeDescription({
+			name: 'agent',
+			displayName: 'Agent',
+			codex: { categories: [AI_SUBCATEGORY], subcategories: { AI: [AI_CATEGORY_AGENTS] } },
+		});
+		const languageModel = mockNodeTypeDescription({
+			name: 'languageModel',
+			displayName: 'Language Model',
+			codex: { categories: [AI_SUBCATEGORY], subcategories: { AI: [AI_CATEGORY_LANGUAGE_MODELS] } },
+		});
+		const unlistedAiNode = mockNodeTypeDescription({
+			name: 'unlistedAiNode',
+			displayName: 'Unlisted AI Node',
+			codex: { categories: [AI_SUBCATEGORY], subcategories: { AI: [AI_CATEGORY_ROOT_NODES] } },
+		});
+
+		function renderView(
+			view: NodeFilterType,
+			nodes: INodeTypeDescription[],
+			restricted: Record<string, 'instance'> = {},
+		) {
+			getWrapperComponent(() => {
+				const { setMergeNodes, setSelectedView } = useNodeCreatorStore();
+				useNodeTypesStore().setNodeTypes(nodes);
+				mockRestrictedNodeTypes(restricted);
+				setMergeNodes(nodes);
+				setSelectedView(view);
+				return {};
+			});
+			return nextTick();
+		}
+
+		it('should not list a subcategory that contains no nodes', async () => {
+			await renderView(TRIGGER_NODE_CREATOR_VIEW, []);
+
+			expect(screen.queryByText('Other ways...')).not.toBeInTheDocument();
+		});
+
+		it('should list a subcategory that contains a node', async () => {
+			await renderView(TRIGGER_NODE_CREATOR_VIEW, [otherTrigger]);
+
+			expect(screen.getByText('Other ways...')).toBeInTheDocument();
+		});
+
+		it('should not list a view whose subcategories contain no nodes', async () => {
+			await renderView(AI_NODE_CREATOR_VIEW, [agent]);
+
+			expect(screen.getByText('Agent')).toBeInTheDocument();
+			expect(screen.queryByText('Other AI Nodes')).not.toBeInTheDocument();
+		});
+
+		it('should not list a view inside a section that contains no nodes', async () => {
+			await renderView(REGULAR_NODE_CREATOR_VIEW, [agent]);
+
+			expect(screen.queryByText('Add another trigger')).not.toBeInTheDocument();
+		});
+
+		it('should list a view inside a section that contains a node', async () => {
+			const trigger = mockSimplifiedNodeType({
+				name: 'otherTrigger',
+				group: ['trigger'],
+				codex: {
+					categories: [CORE_NODES_CATEGORY],
+					subcategories: { [CORE_NODES_CATEGORY]: [OTHER_TRIGGER_NODES_SUBCATEGORY] },
+				},
+			}) as INodeTypeDescription;
+			await renderView(REGULAR_NODE_CREATOR_VIEW, [agent, trigger]);
+
+			expect(screen.getByText('Add another trigger')).toBeInTheDocument();
+		});
+
+		it('should list a view when one of its subcategories contains a node', async () => {
+			await renderView(AI_NODE_CREATOR_VIEW, [agent, languageModel]);
+
+			expect(screen.getByText('Other AI Nodes')).toBeInTheDocument();
+		});
+
+		it('should not count links as content', async () => {
+			await renderView(REGULAR_NODE_CREATOR_VIEW, [unlistedAiNode]);
+
+			expect(screen.getByText('What happens next?')).toBeInTheDocument();
+			expect(screen.queryByText('AI')).not.toBeInTheDocument();
+		});
+
+		it('should not count restricted nodes as content', async () => {
+			await renderView(TRIGGER_NODE_CREATOR_VIEW, [otherTrigger], { otherTrigger: 'instance' });
+
+			expect(screen.queryByText('Other ways...')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('restricted node types', () => {
+		const triggerNodes = [...Array(9).keys()].map(
+			(n) =>
+				mockSimplifiedNodeType({
+					name: `Trigger Node ${n}`,
+					displayName: `Trigger Node ${n}`,
+					group: ['trigger'],
+				}) as INodeTypeDescription,
+		);
+
+		function renderTriggerView() {
+			const { container } = getWrapperComponent(() => {
+				const { setMergeNodes } = useNodeCreatorStore();
+				setMergeNodes([...triggerNodes]);
+				return {};
+			});
+			return container;
+		}
+
+		it('hides a restricted type while browsing', async () => {
+			renderTriggerView();
+			mockRestrictedNodeTypes({ 'Trigger Node 3': 'instance' });
+			await nextTick();
+
+			screen.getByText('On app event').click();
+			await nextTick();
+
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(8);
+			expect(screen.queryByText('Trigger Node 3')).not.toBeInTheDocument();
+		});
+
+		it('shows a restricted type last when searched for', async () => {
+			vi.useFakeTimers();
+			try {
+				renderTriggerView();
+				mockRestrictedNodeTypes({ 'Trigger Node 3': 'instance' });
+				await nextTick();
+
+				screen.getByText('On app event').click();
+				await nextTick();
+
+				await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+					target: { value: 'Trigger Node' },
+				});
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.INPUT.SEARCH + 1);
+				await nextTick();
+
+				const items = screen.getAllByTestId('item-iterator-item');
+				expect(items).toHaveLength(9);
+				expect(items[items.length - 1]).toHaveTextContent('Trigger Node 3');
+				expect(
+					items[items.length - 1].querySelector('[data-test-id="node-creator-restricted-item"]'),
+				).toBeInTheDocument();
+				expect(screen.getAllByTestId('node-creator-restricted-item')).toHaveLength(1);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 });

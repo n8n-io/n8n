@@ -7,13 +7,12 @@ import {
 	OAuthClientResponseDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AuthenticatedRequest } from '@n8n/db';
+import { accountSummary, AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Param, Query, RestController } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import { OAuthServerService } from './oauth-server.service';
 
@@ -63,7 +62,7 @@ export class OAuthClientsController {
 		return {
 			data: clientDtos,
 			count,
-			scopeTools: this.oauthServerService.getInstanceScopeTools(),
+			scopeTools: await this.oauthServerService.getInstanceScopeTools(),
 			totals,
 			owners,
 		};
@@ -103,7 +102,7 @@ export class OAuthClientsController {
 			clientId,
 			userId: req.user.id,
 			targetUserId,
-			userEmail: req.user.email,
+			userEmail: accountSummary(req.user).email ?? undefined,
 		});
 
 		try {

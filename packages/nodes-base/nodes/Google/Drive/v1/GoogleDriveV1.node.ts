@@ -12,6 +12,7 @@ import type { Readable } from 'stream';
 import { v4 as uuid } from 'uuid';
 
 import { oldVersionNotice } from '@utils/descriptions';
+import { escapeBackslashQuotedValue } from '@utils/query-escaping';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 import { driveSearch, fileSearch, folderSearch } from './SearchFunctions';
@@ -2369,7 +2370,9 @@ export class GoogleDriveV1 implements INodeType {
 									} else if (filterOperation === 'isNot') {
 										filterOperation = '!=';
 									}
-									queryFilterFields.push(`name ${filterOperation} '${nameFilter.value}'`);
+									queryFilterFields.push(
+										`name ${filterOperation} '${escapeBackslashQuotedValue(nameFilter.value)}'`,
+									);
 								});
 
 								queryString += queryFilterFields.join(' or ');
@@ -2382,7 +2385,7 @@ export class GoogleDriveV1 implements INodeType {
 									if (mimeTypeFilter.mimeType === 'custom') {
 										mimeType = mimeTypeFilter.customMimeType;
 									}
-									queryFilterFields.push(`mimeType = '${mimeType}'`);
+									queryFilterFields.push(`mimeType = '${escapeBackslashQuotedValue(mimeType)}'`);
 								});
 
 								if (queryFilterFields.length) {

@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import * as sqlite3 from 'sqlite3';
-import * as temp from 'temp';
+import { fileSync, setGracefulCleanup } from 'tmp-promise';
 
 export async function getSqliteDataSource(
 	this: IExecuteFunctions,
@@ -28,10 +28,9 @@ export async function getSqliteDataSource(
 
 	const bufferString = Buffer.from(fileBase64, BINARY_ENCODING);
 
-	// Track and cleanup temp files at exit
-	temp.track();
-
-	const tempDbPath = temp.path({ suffix: '.sqlite' });
+	// Keep the database available until the process exits.
+	setGracefulCleanup();
+	const { name: tempDbPath } = fileSync({ postfix: '.sqlite', discardDescriptor: true });
 	fs.writeFileSync(tempDbPath, bufferString);
 
 	// Initialize a new SQLite database from the temp file

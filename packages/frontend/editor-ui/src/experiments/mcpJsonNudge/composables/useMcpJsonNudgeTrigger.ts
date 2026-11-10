@@ -1,11 +1,12 @@
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
 import { useUIStore } from '@/app/stores/ui.store';
 import { useMcpJsonNudgeEligibility } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility';
 import {
 	MCP_JSON_NUDGE_MODAL_KEY,
 	type McpJsonNudgeSurface,
 } from '@/experiments/mcpJsonNudge/constants';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 export type McpJsonNudgeAction = () => void | Promise<void>;
 
@@ -25,7 +26,12 @@ export function useMcpJsonNudgeTrigger() {
 		// action, so let the new one through untouched.
 		const nudgeAlreadyOpen = uiStore.isModalActiveById[MCP_JSON_NUDGE_MODAL_KEY];
 
-		if (nudgeAlreadyOpen || !eligibility.canShow()) {
+		if (nudgeAlreadyOpen) {
+			await action();
+			return;
+		}
+
+		if (!eligibility.canShow()) {
 			await action();
 			return;
 		}

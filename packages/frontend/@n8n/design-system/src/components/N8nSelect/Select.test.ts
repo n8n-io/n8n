@@ -4,6 +4,7 @@ import { defineComponent, ref } from 'vue';
 
 import N8nSelect from './Select.vue';
 import { removeDynamicAttributes } from '../../utils';
+import { insideDialogBodyKey } from '../N8nDialog/dialogContext';
 import N8nOption from '../N8nOption/Option.vue';
 
 describe('components', () => {
@@ -25,6 +26,45 @@ describe('components', () => {
 			});
 			removeDynamicAttributes(wrapper.container);
 			expect(wrapper.html()).toMatchSnapshot();
+		});
+
+		it('should update and remove ARIA attributes on the native combobox', async () => {
+			const host = defineComponent({
+				components: { N8nSelect },
+				props: { controlAttrs: Object },
+				template: '<N8nSelect id="project" filterable :teleported="false" v-bind="controlAttrs" />',
+			});
+			const { getByRole, rerender } = render(host, {
+				props: {
+					controlAttrs: {
+						'aria-invalid': true,
+						'aria-describedby': 'project-error',
+						'aria-busy': true,
+					},
+				},
+			});
+			const input = getByRole('combobox');
+			expect(input.tagName).toBe('INPUT');
+			await waitFor(() => expect(input).toHaveAttribute('id', 'project'));
+			expect(input).toHaveAttribute('aria-invalid', 'true');
+			expect(input).toHaveAttribute('aria-describedby', 'project-error');
+			expect(input).toHaveAttribute('aria-busy', 'true');
+
+			await rerender({
+				controlAttrs: {
+					'aria-invalid': false,
+					'aria-describedby': 'project-help',
+					'aria-busy': false,
+				},
+			});
+			expect(input).toHaveAttribute('aria-invalid', 'false');
+			expect(input).toHaveAttribute('aria-describedby', 'project-help');
+			expect(input).toHaveAttribute('aria-busy', 'false');
+
+			await rerender({ controlAttrs: { 'aria-invalid': undefined, 'aria-describedby': null } });
+			expect(input).not.toHaveAttribute('aria-invalid');
+			expect(input).not.toHaveAttribute('aria-describedby');
+			expect(input).not.toHaveAttribute('aria-busy');
 		});
 
 		it('should select an option', async () => {
@@ -68,5 +108,42 @@ describe('components', () => {
 
 			expect(textbox).toHaveValue('1');
 		});
+
+		it.each([
+			{ insideDialogBody: true, teleported: false, popperOptions: undefined, position: 'fixed' },
+			{
+				insideDialogBody: false,
+				teleported: false,
+				popperOptions: undefined,
+				position: 'absolute',
+			},
+			{ insideDialogBody: true, teleported: true, popperOptions: undefined, position: 'absolute' },
+			{
+				insideDialogBody: true,
+				teleported: false,
+				popperOptions: { strategy: 'absolute' as const },
+				position: 'absolute',
+			},
+		])(
+			'should position the dropdown as $position when inside dialog body is $insideDialogBody, teleported is $teleported and popperOptions is $popperOptions',
+			async ({ insideDialogBody, teleported, popperOptions, position }) => {
+				const { container } = render(N8nSelect, {
+					props: { teleported, popperOptions },
+					global: {
+						components: { 'n8n-option': N8nOption },
+						provide: { [insideDialogBodyKey]: insideDialogBody },
+					},
+					slots: { default: '<n8n-option value="1" label="1" />' },
+				});
+
+				await userEvent.click(container.querySelector('input')!);
+
+				await waitFor(() =>
+					expect(document.querySelector<HTMLElement>('.el-select__popper')?.style.position).toBe(
+						position,
+					),
+				);
+			},
+		);
 	});
 });

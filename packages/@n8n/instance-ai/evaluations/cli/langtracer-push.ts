@@ -16,6 +16,7 @@ import { LangTracerClient } from '../langtracer/client';
 import { resolveLangTracerConfig } from '../langtracer/config';
 import { comparableDiff, planPush, toUpdatePatch } from '../langtracer/push';
 import { diskCaseToLangTracerCreate } from '../langtracer/to-exported';
+import type { LoadEvalCasesOptions } from '../utils/load-eval-cases';
 
 interface CliArgs {
 	suite: string;
@@ -40,6 +41,10 @@ Selectors (at least one required — no accidental push-all):
   --filter <csv>        Substring match on file slug
   --tier <name>         Cases whose datasets include <name>
   --exclude <csv>       Substring exclude (modifier, not a selector on its own)
+
+Exact slugs and --changed read only the named files, so an unrelated invalid file
+never blocks the push. --filter and --tier report an invalid file they match as a
+warning and skip it.
 
 Options:
   --suite <slug|id>     Target suite (required)
@@ -175,12 +180,22 @@ async function main() {
 		throw new Error(`suite "${args.suite}" not found. Available: ${known || '(none)'}.`);
 	}
 
-	// Select disk cases: loader applies --filter/--exclude, --tier narrows by the
-	// case's datasets (mirrors data/source.ts); then narrow to the exact slugs
-	// from positional args + --changed (if either was given).
+	// Select disk cases: exact slugs (positional + --changed) are read before
+	// loading, so unrelated files are never parsed. --filter/--exclude apply in the
+	// loader by file name; --tier reads each file's datasets, so it parses every
+	// file. Either way an invalid file is reported and skipped rather than failing
+	// the push.
+	const exactSlugs = new Set([...args.slugs, ...(args.changed ? gitChangedSlugs() : [])]);
+	const loadOptions: LoadEvalCasesOptions =
+		exactSlugs.size > 0
+			? { slugs: exactSlugs }
+			: {
+					onInvalid: (file, error) =>
+						console.warn(`⚠ skipped invalid case file ${basename(file)}: ${error.message}`),
+				};
 	const loaded = [
-		...loadWorkflowTestCasesWithFiles(args.filter, args.exclude),
-		...loadAgentEvalTestCasesWithFiles(args.filter, args.exclude),
+		...loadWorkflowTestCasesWithFiles(args.filter, args.exclude, loadOptions),
+		...loadAgentEvalTestCasesWithFiles(args.filter, args.exclude, loadOptions),
 	];
 	const dupes = loaded.filter((c, i) => loaded.findIndex((o) => o.fileSlug === c.fileSlug) !== i);
 	if (dupes.length > 0) {
@@ -190,7 +205,6 @@ async function main() {
 	}
 	const tier = args.tier;
 	const all = tier ? loaded.filter((c) => c.testCase.datasets.includes(tier)) : loaded;
-	const exactSlugs = new Set([...args.slugs, ...(args.changed ? gitChangedSlugs() : [])]);
 	const selected = exactSlugs.size > 0 ? all.filter((c) => exactSlugs.has(c.fileSlug)) : all;
 
 	const missing = [...exactSlugs].filter((s) => !all.some((c) => c.fileSlug === s));

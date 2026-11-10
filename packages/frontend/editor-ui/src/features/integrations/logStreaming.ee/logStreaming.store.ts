@@ -253,13 +253,9 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 		}
 
 		const selectedEvents = getSelectedEvents(destination.id);
-		try {
-			await saveDestinationToDb(rootStore.restApiContext, destination, selectedEvents);
-			updateDestination(destination);
-			return true;
-		} catch {
-			return false;
-		}
+		await saveDestinationToDb(rootStore.restApiContext, destination, selectedEvents);
+		updateDestination(destination);
+		return true;
 	};
 
 	const sendTestMessage = async (

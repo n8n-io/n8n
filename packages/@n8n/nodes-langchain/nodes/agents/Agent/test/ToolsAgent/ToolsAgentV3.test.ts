@@ -58,29 +58,20 @@ function withCommonFields(ctx: MockProxy<IExecuteFunctions>, node: INode): void 
 }
 
 /**
- * Sub-agent execution context — `isExecuteFunctions(this)` returns false.
- *
- * Intentionally does NOT set `getExecuteData`, so the V3 executor takes the
- * inline-resolution branch (delegates to `resolveSubAgentRequest`).
- * The shared top-level `mockContext` defined above gets `getExecuteData`
- * stamped in `beforeEach`; use this helper to deliberately opt out.
+ * Sub-agent execution context, shaped like a real `SupplyDataContext`: it inherits
+ * `getExecuteData` from `BaseExecuteContext` and adds `cloneWith`, which is what
+ * `isExecuteFunctions` discriminates on.
  */
 function mockSubAgentContext(): MockProxy<IExecuteFunctions> {
 	const ctx = mock<IExecuteFunctions>();
 	withCommonFields(ctx, mockNode);
+	Object.assign(ctx, { getExecuteData: vi.fn(), cloneWith: vi.fn() });
 	return ctx;
 }
 
 beforeEach(() => {
 	vi.clearAllMocks();
 	withCommonFields(mockContext, mockNode);
-	// `isExecuteFunctions` checks `'getExecuteData' in context`. vitest-mock-extended
-	// proxies property access but does not register own properties, so the `in`
-	// check is false by default. Stamp `getExecuteData` here so the shared
-	// `mockContext` exercises the top-level (engine-routed) request path;
-	// sub-agent inline resolution is covered by `mockSubAgentContext()` below
-	// and by `resolveSubAgentRequest.test.ts`.
-	mockContext.getExecuteData = vi.fn() as never;
 });
 
 describe('toolsAgentExecute V3 - Execute Function Logic', () => {
@@ -226,7 +217,10 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		]);
 	});
 
-	it('should delegate to resolveSubAgentRequest when running as a sub-agent (no getExecuteData)', async () => {
+	it('should delegate to resolveSubAgentRequest when running as a sub-agent', async () => {
+		// Regression (AI-2788): a nested AgentToolV3 runs on a real `SupplyDataContext`,
+		// which inherits `getExecuteData`. The sub-agent must still resolve its own
+		// EngineRequest instead of handing it to the engine.
 		const subAgentContext = mockSubAgentContext();
 
 		const mockExecutionContext = {
@@ -272,6 +266,8 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 			expect.objectContaining({ runAgentBatch: expect.any(Function) }),
 		);
 		expect(result).toBe(resolvedOutput);
+		// Tracing metadata belongs to the top-level node, not to a sub-agent run.
+		expect(subAgentContext.setMetadata).not.toHaveBeenCalled();
 	});
 
 	it('should return request when batch returns tool call request', async () => {
@@ -568,10 +564,6 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 			if (param === 'options.autoSaveHighlightedData') return false;
 			return defaultValue;
 		});
-		// V3 only emits tracing metadata when invoked from an IExecuteFunctions-shaped
-		// context (detected by the presence of `getExecuteData`).
-		mockContext.getExecuteData.mockReturnValue({} as any);
-
 		vi.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
 		vi.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
 

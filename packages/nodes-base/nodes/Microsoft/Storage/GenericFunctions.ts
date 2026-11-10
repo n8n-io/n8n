@@ -97,7 +97,7 @@ export async function azureStorageApiRequest(
 
 	const options: IHttpRequestOptions = {
 		method,
-		url: url ?? `${credentials.baseUrl}${endpoint}`,
+		url: url ?? `${credentials.baseUrl.replace(/\/+$/, '')}${endpoint}`,
 		headers,
 		body,
 		qs,

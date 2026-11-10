@@ -7,6 +7,7 @@ import {
 	deleteThread,
 	getThreadDetail,
 	listThreads,
+	stopSession,
 } from '../composables/useAgentThreadsApi';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -20,12 +21,13 @@ describe('useAgentThreadsApi', () => {
 		vi.clearAllMocks();
 	});
 
-	it('lists threads from the agent-scoped collection', async () => {
+	it.each([false, true])('lists threads with previewOnly=%s', async (previewOnly) => {
 		const response = { threads: [], nextCursor: null };
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(response);
 
 		const result = await listThreads(restApiContext, 'project-1', 'agent-1', {
 			limit: 20,
+			previewOnly,
 			cursor: 'cursor-1',
 			filters: defaultAgentSessionFilters(),
 		});
@@ -33,7 +35,8 @@ describe('useAgentThreadsApi', () => {
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			restApiContext,
 			'GET',
-			'/projects/project-1/agents/v2/agent-1/threads?limit=20&cursor=cursor-1',
+			'/projects/project-1/agents/v2/agent-1/threads?limit=20&cursor=cursor-1' +
+				(previewOnly ? '&previewOnly=true' : ''),
 		);
 		expect(result).toBe(response);
 	});
@@ -82,6 +85,20 @@ describe('useAgentThreadsApi', () => {
 			'GET',
 			'/projects/project-1/agents/v2/agent-1/threads/agent-1%3Achat%3Abot-1-2%231',
 		);
+	});
+
+	it('stops a session with encoded path segments', async () => {
+		const response = { cancelRequested: true };
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(response);
+
+		const result = await stopSession(restApiContext, 'project/1', 'agent/1', 'chat:thread#1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledExactlyOnceWith(
+			restApiContext,
+			'POST',
+			'/projects/project%2F1/agents/v2/agent%2F1/threads/chat%3Athread%231/stop',
+		);
+		expect(result).toBe(response);
 	});
 
 	it('deletes a thread from the agent-scoped collection', async () => {

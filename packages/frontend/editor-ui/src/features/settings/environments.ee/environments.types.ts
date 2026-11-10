@@ -1,16 +1,24 @@
-export interface EnvironmentVariable {
-	id: string;
-	key: string;
-	value: string;
-	project?: { id: string; name: string } | null;
-}
+import type {
+	CreateEnvironmentVariable,
+	EnvironmentVariable,
+	ResourceEditorDestination,
+} from '@n8n/frontend-module-sdk';
 
-export interface CreateEnvironmentVariable {
-	key: string;
-	value: string;
-	projectId?: string | null;
-}
+export type { CreateEnvironmentVariable, EnvironmentVariable };
 
 export interface UpdateEnvironmentVariable extends CreateEnvironmentVariable {
 	id: string;
 }
+
+export type VariableModalOptions = {
+	notice?: () => string;
+	mode?: 'new' | 'edit';
+	variable?: EnvironmentVariable;
+	projectId?: string | null;
+	initialValues?: Pick<EnvironmentVariable, 'key' | 'value'>;
+	fixedKey?: boolean;
+	destination?: ResourceEditorDestination;
+	onCreate?: (variable: CreateEnvironmentVariable) => Promise<EnvironmentVariable>;
+	allowOnProtectedInstance?: boolean;
+	appendToBody?: boolean;
+};

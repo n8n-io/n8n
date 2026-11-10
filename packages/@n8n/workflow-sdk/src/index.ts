@@ -4,7 +4,9 @@ export type {
 	WorkflowBuilder,
 	WorkflowBuilderStatic,
 	WorkflowBuilderOptions,
+	FromJSONOptions,
 	ToJSONOptions,
+	NodePorts,
 	WorkflowSettings,
 	WorkflowJSON,
 	NodeJSON,
@@ -110,6 +112,7 @@ export {
 	retriever,
 	documentLoader,
 	textSplitter,
+	reranker,
 	fromAi, // Top-level function for $fromAI expressions
 } from './workflow-builder/node-builders/subnode-builders';
 
@@ -154,6 +157,11 @@ export { isPlainObject, getProperty, hasProperty } from './utils/safe-access';
 
 // Validation
 export {
+	containsExpression,
+	isSensitiveHeader,
+	isCredentialFieldName,
+} from './workflow-builder/validation-helpers';
+export {
 	validateWorkflow,
 	ValidationError,
 	ValidationWarning,
@@ -171,6 +179,11 @@ export {
 	type ValidateWorkflowBuilderOptions,
 	type ValidateWorkflowBuilderResult,
 	type CollectedValidationIssue,
+	connectRequiredSubnodeInputs,
+	describeAddedSubnodeConnection,
+	type AddedSubnodeConnection,
+	type ClearedSubnodeInput,
+	type WorkflowForSubnodeWiring,
 } from './validation';
 
 // Code-node source lint — the host re-runs the Python rules with the executing
@@ -257,4 +270,9 @@ export {
 	DEFAULT_NODE_SIZE,
 	NODE_X_SPACING,
 	NODE_Y_SPACING,
+	GROUP_PADDING_X,
+	GROUP_PADDING_Y_TOP,
+	GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED,
 } from './workflow-builder/constants';
+export { getWorkflowNodeDimensions, resolveNodePorts } from './workflow-builder/layout-utils';

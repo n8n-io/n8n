@@ -16,17 +16,21 @@ export type ProjectRoleScope = {
 	[R in ProjectResource]: `${R}:${(typeof PROJECT_CUSTOM_ROLE_OPERATIONS)[R][number]}`;
 }[ProjectResource];
 
+/** Hand-kept display order. A test checks it against `PROJECT_CUSTOM_ROLE_OPERATIONS`. */
 export const SCOPE_TYPES: ProjectResource[] = [
 	'project',
 	'folder',
 	'workflow',
 	'agent',
+	'app',
 	'credential',
 	'execution',
 	'externalSecretsProvider',
 	'externalSecret',
 	'dataTable',
 	'projectVariable',
+	'projectAiPreference',
+	'projectSkill',
 	'sourceControl',
 ];
 

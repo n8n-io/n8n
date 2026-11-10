@@ -1,0 +1,137 @@
+import { mock } from 'vitest-mock-extended';
+
+import type { CredentialsEntity, User } from '@n8n/db';
+
+import type { CredentialsService } from '@/credentials/credentials.service';
+
+import { AgentCredentialLookupService } from '../agent-credential-lookup.service';
+
+const PROJECT_ID = 'project-1';
+const CREDENTIAL_ID = 'cred-1';
+const TYPE = 'microsoftEntraServicePrincipalApi';
+
+describe('AgentCredentialLookupService', () => {
+	let credentialsService: ReturnType<typeof mock<CredentialsService>>;
+	let service: AgentCredentialLookupService;
+
+	beforeEach(() => {
+		credentialsService = mock<CredentialsService>();
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+		credentialsService.decryptForUse.mockResolvedValue({ clientId: 'a-client' });
+		service = new AgentCredentialLookupService(credentialsService);
+	});
+
+	it('finds a credential belonging to the project', async () => {
+		const wanted = mock<CredentialsEntity>({ id: CREDENTIAL_ID, type: TYPE });
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+			mock<CredentialsEntity>({ id: 'another-cred', type: TYPE }),
+			wanted,
+		]);
+
+		expect(await service.decryptForProject(PROJECT_ID, CREDENTIAL_ID, TYPE)).toEqual({
+			clientId: 'a-client',
+		});
+		// Asserted by identity: decrypt is stubbed, so a wrong pick would still
+		// return the expected object.
+		expect(credentialsService.decryptForUse).toHaveBeenCalledWith(
+			wanted,
+			{ kind: 'system', reason: 'integration' },
+			PROJECT_ID,
+		);
+	});
+
+	it('finds a credential shared globally rather than through the project', async () => {
+		const wanted = mock<CredentialsEntity>({ id: CREDENTIAL_ID, type: TYPE });
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([
+			mock<CredentialsEntity>({ id: 'another-cred', type: TYPE }),
+			wanted,
+		]);
+
+		expect(await service.decryptForProject(PROJECT_ID, CREDENTIAL_ID, TYPE)).toEqual({
+			clientId: 'a-client',
+		});
+		expect(credentialsService.decryptForUse).toHaveBeenCalledWith(
+			wanted,
+			{ kind: 'system', reason: 'integration' },
+			PROJECT_ID,
+		);
+	});
+
+	it('returns a policy refusal from the consuming project', async () => {
+		const credential = mock<CredentialsEntity>({ id: CREDENTIAL_ID, type: TYPE });
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([credential]);
+		const refusal = new Error('Credential type is not available');
+		credentialsService.decryptForUse.mockRejectedValue(refusal);
+
+		await expect(service.decryptForProject(PROJECT_ID, CREDENTIAL_ID, TYPE)).rejects.toBe(refusal);
+		expect(credentialsService.decryptForUse).toHaveBeenCalledWith(
+			credential,
+			{ kind: 'system', reason: 'integration' },
+			PROJECT_ID,
+		);
+		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+	});
+
+	it('leaves the global credentials unread when the project already has it', async () => {
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+			mock<CredentialsEntity>({ id: CREDENTIAL_ID, type: TYPE }),
+		]);
+
+		await service.decryptForProject(PROJECT_ID, CREDENTIAL_ID, TYPE);
+
+		// The global query reads every global credential, data column included.
+		expect(credentialsService.findAllGlobalCredentialIds).not.toHaveBeenCalled();
+	});
+
+	it('refuses a credential of another type', async () => {
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+			mock<CredentialsEntity>({ id: CREDENTIAL_ID, type: 'slackApi' }),
+		]);
+
+		expect(await service.decryptForProject(PROJECT_ID, CREDENTIAL_ID, TYPE)).toBeNull();
+		expect(credentialsService.decryptForUse).not.toHaveBeenCalled();
+	});
+
+	it('refuses a credential visible to neither', async () => {
+		expect(await service.decryptForProject(PROJECT_ID, CREDENTIAL_ID, TYPE)).toBeNull();
+		expect(credentialsService.decryptForUse).not.toHaveBeenCalled();
+	});
+
+	describe('decryptForUser', () => {
+		const user = mock<User>();
+
+		beforeEach(() => {
+			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
+				mock<CredentialsEntity>({ id: CREDENTIAL_ID, type: TYPE }),
+			]);
+		});
+
+		it('asks for the credentials the user can use without the personal route', async () => {
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: CREDENTIAL_ID },
+			] as never);
+
+			expect(await service.decryptForUser(user, PROJECT_ID, CREDENTIAL_ID, TYPE)).toEqual({
+				clientId: 'a-client',
+			});
+			expect(credentialsService.decryptForUse).toHaveBeenCalledWith(
+				expect.objectContaining({ id: CREDENTIAL_ID }),
+				{ kind: 'user', user },
+				PROJECT_ID,
+			);
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+				projectId: PROJECT_ID,
+				excludePersonalRoute: true,
+				excludeResolvable: true,
+			});
+		});
+
+		it('refuses a credential that is not in the usable list', async () => {
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([] as never);
+
+			expect(await service.decryptForUser(user, PROJECT_ID, CREDENTIAL_ID, TYPE)).toBeNull();
+			expect(credentialsService.decryptForUse).not.toHaveBeenCalled();
+		});
+	});
+});
