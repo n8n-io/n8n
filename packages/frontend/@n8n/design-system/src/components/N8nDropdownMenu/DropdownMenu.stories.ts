@@ -985,7 +985,7 @@ export const LazyLoadingSubmenu: Story = {
 				{ id: 'shared2', label: 'Design Assets' },
 			];
 
-			// Track loading states - start as true so skeleton shows on first hover
+			// Track loading states - start as true so the spinner shows on first hover
 			const recentFilesLoading = ref(true);
 			const recentFilesChildren = ref([] as typeof allRecentFiles);
 
