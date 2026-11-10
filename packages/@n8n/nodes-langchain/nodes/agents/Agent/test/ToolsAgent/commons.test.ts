@@ -226,6 +226,20 @@ describe('extractBinaryMessages', () => {
 		expect(humanMsg.content[0]).toEqual({ type: 'text', text: 'Attached file: attachment.pdf' });
 	});
 
+	it('should strip control characters from the attached file label', async () => {
+		mockContext.getInputData.mockReturnValue([
+			{
+				json: {},
+				binary: {
+					doc1: { mimeType: 'application/pdf', fileName: 'a\nb.pdf', data: 'samplePdfData' },
+				},
+			},
+		]);
+
+		const humanMsg = await extractBinaryMessages(mockContext, 0, { passthroughBinaryPdfs: true });
+		expect(humanMsg.content[0]).toEqual({ type: 'text', text: 'Attached file: a b.pdf' });
+	});
+
 	it('should produce a valid LangChain standard data content block for PDFs', async () => {
 		// Contract check: the standard `file` block must satisfy isDataContentBlock so
 		// provider converters (Gemini, Anthropic, OpenAI Completions) translate it
@@ -915,6 +929,7 @@ describe('toDocumentName', () => {
 		['.pdf', 'attachment'],
 		['???', 'attachment'],
 		[undefined, 'attachment'],
+		[`${'a'.repeat(250)}.pdf`, 'a'.repeat(200)],
 	])('should map %s to %s', (fileName, expected) => {
 		expect(toDocumentName(fileName)).toBe(expected);
 	});

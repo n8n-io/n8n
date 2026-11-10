@@ -131,6 +131,7 @@ export function toDocumentName(fileName?: string): string {
 	const name = (fileName ?? '')
 		.replace(/\.[^.]*$/, '')
 		.replace(/[^A-Za-z0-9\-()[\]]+/g, ' ')
+		.slice(0, 200) // Bedrock limit
 		.trim();
 	return name || 'attachment';
 }
@@ -249,7 +250,10 @@ export async function extractBinaryMessages(
 				} else if (isPdfFile(data.mimeType)) {
 					// Bedrock rejects a message with a document but no text block, so we label each file.
 					return [
-						{ type: 'text', text: `Attached file: ${data.fileName ?? 'attachment.pdf'}` },
+						{
+							type: 'text',
+							text: `Attached file: ${(data.fileName ?? 'attachment.pdf').replace(/\p{Cc}+/gu, ' ').slice(0, 200)}`,
+						},
 						await processBinaryForAgentPassthrough(ctx, data, 'file', contentFormat),
 					];
 				} else {
