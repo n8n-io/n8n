@@ -52,8 +52,13 @@ export function resolveObservationalMemoryConfig(
 	return {
 		observerThresholdTokens:
 			config.observerThresholdTokens ?? DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
-		reflectorThresholdTokens:
-			config.reflectorThresholdTokens ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+		// With shares, only a set reflector threshold replaces the reflect share.
+		...(config.reflectorThresholdTokens !== undefined || windowShares === undefined
+			? {
+					reflectorThresholdTokens:
+						config.reflectorThresholdTokens ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+				}
+			: {}),
 		renderTokenBudget: config.renderTokenBudget ?? DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 		observationLogTailLimit: config.observationLogTailLimit ?? DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
 		lockTtlMs: config.lockTtlMs ?? DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,

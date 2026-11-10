@@ -86,9 +86,9 @@ export async function readObservationState(
 		order: 'desc',
 	});
 	const hasActiveObservations = observations.length > 0;
-	// Missing memory is not proof that the processed history was empty.
+	// An empty valid batch also moves the cursor, so trust it without notes.
 	return {
-		cursor: hasActiveObservations ? storedCursor : null,
+		cursor: storedCursor,
 		storedCursor,
 		hasActiveObservations,
 	};
@@ -234,10 +234,7 @@ export async function runObservationLogObserver(
 	opts: RunObservationLogObserverOpts,
 ): Promise<RunObservationLogObserverResult> {
 	const { memory, observationScopeId } = opts;
-	const { cursor, storedCursor, hasActiveObservations } = await readObservationState(
-		memory,
-		observationScopeId,
-	);
+	const { cursor, storedCursor } = await readObservationState(memory, observationScopeId);
 	const deltaMessages = await memory.getMessagesForObservationScope(
 		observationScopeId,
 		cursor
@@ -282,7 +279,8 @@ export async function runObservationLogObserver(
 		usage,
 		model,
 	};
-	if (!prepared.entries || (prepared.entries.length === 0 && !hasActiveObservations)) {
+	// A valid `NO_OBSERVATIONS` batch still moves the cursor, so later batches are read.
+	if (!prepared.entries) {
 		return result;
 	}
 

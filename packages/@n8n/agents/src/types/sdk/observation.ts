@@ -17,7 +17,10 @@ export interface ObservationResumeState {
 	resumeFrom: { lastObservedMessageId: string; lastObservedAt: Date } | null;
 	/** The rendered notes as sent at the resume point. The Reflector does not change them. */
 	resumeNotes: string | null;
-	/** Input tokens the provider reported for the last request of the thread. */
+	/**
+	 * Estimated input tokens of the last request of the thread. The estimate
+	 * starts from the provider's last reported count when there is one.
+	 */
 	lastRequestTokens: number | null;
 	/** Model of the last request. A different model has no cached prompt to reuse. */
 	lastModelId: string | null;

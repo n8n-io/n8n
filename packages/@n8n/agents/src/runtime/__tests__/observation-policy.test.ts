@@ -43,6 +43,15 @@ describe('resolveObservationThresholds', () => {
 		});
 	});
 
+	it('uses a set reflector threshold over the reflect share', () => {
+		expect(
+			resolveObservationThresholds(
+				{ windowShares: {}, reflectorThresholdTokens: 50_000, reflect: noopReflect as never },
+				200_000,
+			)?.reflect,
+		).toBe(50_000);
+	});
+
 	it('falls back to fixed thresholds when the window is unknown', () => {
 		const thresholds = resolveObservationThresholds(
 			{ observerThresholdTokens: 30_000, windowShares: {} },
@@ -156,6 +165,12 @@ describe('MemoryBudget', () => {
 			undefined,
 		);
 		expect(capped?.isOverModelWindow(2)).toBe(true);
+	});
+
+	it('caps a fixed threshold at a looked-up model window', () => {
+		const budget = MemoryBudget.resolve({ observerThresholdTokens: 300_000 }, 200_000)!;
+		expect(budget.hardLimit).toBe(200_000);
+		expect(budget.isOverModelWindow(200_000)).toBe(true);
 	});
 
 	it('lets requests up to the memory window through', () => {

@@ -455,8 +455,9 @@ export class AgentMessageList {
 
 	/**
 	 * Messages visible to the LLM: everything after the observation mask
-	 * boundary. The current turn's user request stays visible after a mid-turn
-	 * swap, so the model sees the notes, then the request, then its own steps.
+	 * boundary. Every user input of the current turn stays visible after a
+	 * mid-turn swap, so the model sees the notes, then the request (and any
+	 * follow-ups added during the run), then its own steps.
 	 */
 	llmVisibleMessages(): AgentDbMessage[] {
 		const boundary = this.observationMaskBoundary;

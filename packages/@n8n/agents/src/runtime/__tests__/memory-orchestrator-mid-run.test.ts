@@ -304,14 +304,15 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 				observationLogTailLimit: 20,
 			});
 			const list = new AgentMessageList();
-			list.addInput([userMsg('a short message')]);
+			// Over the soft threshold on message size alone, so a lost estimate shows.
+			list.addInput([userMsg('x'.repeat(750))]);
 
 			await orchestrator.recordModelCallUsage(list, undefined);
 			await orchestrator.recordModelCallUsage(list, usage(0));
 			list.addResponse([assistantMsg('a short reply')]);
 			await orchestrator.maybeObserveMidRun(list, runOptions());
 
-			expect(observe).not.toHaveBeenCalled();
+			await vi.waitFor(() => expect(observe).toHaveBeenCalledTimes(1));
 		});
 	});
 
@@ -541,7 +542,8 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		},
 	);
 
-	it.each(['not a bullet line', 'NO_OBSERVATIONS'])(
+	// A valid NO_OBSERVATIONS advances the cursor, so only malformed output is non-advancing.
+	it.each(['not a bullet line'])(
 		'stops after a non-advancing response and permits another attempt on resume: %s',
 		async (output) => {
 			const store = new InMemoryMemory();
@@ -580,7 +582,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		},
 	);
 
-	it.each(['Not an observation.', 'NO_OBSERVATIONS'])(
+	it.each(['Not an observation.'])(
 		'does not retry a non-advancing in-flight attempt at the hard boundary: %s',
 		async (output) => {
 			const store = new InMemoryMemory();
@@ -604,34 +606,36 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		},
 	);
 
-	it('keeps raw history after empty results and retries only on a new run', async () => {
+	it('moves the cursor past empty results so a new run reads only new messages', async () => {
 		const store = new InMemoryMemory();
-		const observe = vi.fn(async () => await Promise.resolve('NO_OBSERVATIONS'));
+		const inputs: ObservationLogObserverInput[] = [];
+		const observe = vi.fn(async (input: ObservationLogObserverInput) => {
+			inputs.push(input);
+			return await Promise.resolve('NO_OBSERVATIONS');
+		});
 		const { orchestrator, tracker, events } = buildOrchestrator(store, {
 			observerThresholdTokens: 10,
 			observe,
 		});
-		for (const callCount of [1, 2]) {
+		for (const text of ['Thank you for the help.', 'Thanks again.']) {
 			const list = new AgentMessageList();
 			await orchestrator.loadInto(list, runOptions());
-			list.addInput([userMsg('Thank you for the help.')]);
-			await orchestrator.maybeObserveMidRun(list, runOptions());
+			list.addInput([userMsg(text)]);
 			await orchestrator.maybeObserveMidRun(list, runOptions());
 			await orchestrator.saveToMemory(list, runOptions());
 			await tracker.flush();
-			expect(observe).toHaveBeenCalledTimes(callCount);
-			expect(list.llmVisibleMessages()).toEqual(list.messages());
-			expect(await store.getMessagesForObservationScope(THREAD_ID)).toEqual(list.messages());
 			expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toEqual([]);
-			expect(await store.getCursor(THREAD_ID)).toBeNull();
+			expect(await store.getCursor(THREAD_ID)).not.toBeNull();
 		}
+		expect(observe).toHaveBeenCalledTimes(2);
+		expect(inputs[1].deltaMessages).toHaveLength(1);
 		expect(events).toContainEqual(
 			expect.objectContaining({
 				type: 'completed',
 				value: expect.objectContaining({
 					status: 'ran',
 					observationsWritten: 0,
-					cursorAdvanced: false,
+					cursorAdvanced: true,
 					skippedLines: [],
 				}),
 			}),
@@ -778,7 +782,7 @@ describe('MemoryOrchestrator.saveToMemory observer gating', () => {
 		expect(observe).toHaveBeenCalledTimes(2);
 	});
 
-	it.each(['invalid', 'provider', 'empty'] as const)(
+	it.each(['invalid', 'provider'] as const)(
 		'suppresses a queued tail after a non-advancing %s outcome without disabling a newer run',
 		async (outcome) => {
 			const store = new InMemoryMemory();
@@ -805,7 +809,7 @@ describe('MemoryOrchestrator.saveToMemory observer gating', () => {
 			await orchestrator.loadInto(next, runOptions());
 			next.addInput([userMsg('z'.repeat(750))]);
 			const boundary = orchestrator.maybeObserveMidRun(next, runOptions());
-			pending.resolve(outcome === 'empty' ? 'NO_OBSERVATIONS' : 'Not an observation.');
+			pending.resolve('Not an observation.');
 			await boundary;
 			await tracker.flush();
 

@@ -190,6 +190,7 @@ export class InMemoryMemory
 		this.messagesByThread.delete(threadId);
 		this.observationLogByScope.delete(threadId);
 		this.cursorsByScope.delete(threadId);
+		this.resumeStateByScope.delete(threadId);
 		this.locksByScope.delete(threadId);
 		const affectedEntryIds = uniqueStrings(
 			this.episodicMemorySources

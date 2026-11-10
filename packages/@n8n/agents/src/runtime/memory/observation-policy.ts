@@ -119,7 +119,9 @@ function shareThresholds(
 		midRunSoft: at(shares.midRunAt, defaults.midRunAt),
 		midRunHard: at(shares.waitAt, defaults.waitAt),
 		observerBatch: at(shares.batchAt, defaults.batchAt),
-		reflect: config.reflect ? at(shares.reflectAt, defaults.reflectAt) : undefined,
+		reflect: config.reflect
+			? (config.reflectorThresholdTokens ?? at(shares.reflectAt, defaults.reflectAt))
+			: undefined,
 	};
 }
 

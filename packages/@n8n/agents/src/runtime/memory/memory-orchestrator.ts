@@ -425,11 +425,11 @@ export class MemoryOrchestrator {
 	private async lookUpModelWindow(
 		observationalMemory: NonNullable<AgentRuntimeConfig['observationalMemory']>,
 	): Promise<number | undefined> {
+		// Fixed thresholds need the window too, so the hard limit stays under it.
 		const shares = observationalMemory.windowShares;
-		if (!shares) return undefined;
-		if (shares.contextWindowTokens) return shares.contextWindowTokens;
-		const modelId = getCatalogModelId(this.config.model);
+		if (shares?.contextWindowTokens) return shares.contextWindowTokens;
 		try {
+			const modelId = getCatalogModelId(this.config.model);
 			const window = await getModelContextWindow(modelId, this.config.modelFetch);
 			logger.debug('Resolved observation context window', { modelId, window });
 			return window ?? undefined;
@@ -760,7 +760,12 @@ export class MemoryOrchestrator {
 	 */
 	async recordModelCallUsage(list: AgentMessageList, usage: TokenUsage | undefined): Promise<void> {
 		if (!usage || !this.config.observationalMemory?.observe) return;
-		await this.requestSize.record(list, promptSizeOf(usage));
+		try {
+			await this.requestSize.record(list, promptSizeOf(usage));
+		} catch (error) {
+			// A missing measurement only means later checks estimate instead.
+			logger.warn('Failed to record model call usage', { error });
+		}
 	}
 
 	/** Reset per-run observation state on generate and resume entry. */
@@ -951,7 +956,7 @@ export class MemoryOrchestrator {
 	/**
 	 * Queue an Observer task on the scoped task runner, or return `undefined`
 	 * when observation is not configured. The task reads the backlog in batches
-	 * that fit the memory model, up to `maxObserverBatchesPerRun` calls after a
+	 * that fit the memory model, up to `maxObserverBatchesAfterTurn` calls after a
 	 * turn. `unlimited` lifts that cap for callers that must shrink the request.
 	 */
 	private scheduleObserverTask(
