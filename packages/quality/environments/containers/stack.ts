@@ -13,7 +13,7 @@ import {
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import { ResourceTracker, type CleanupReport } from './resource-tracker';
-import { assertEngineSupported } from './services/engine';
+import { assertEngineSupported, createEngineTlsFiles } from './services/engine';
 import type { LoadBalancerResult } from './services/load-balancer';
 import {
 	createN8NInstances,
@@ -179,6 +179,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		engine === 'container'
 			? createHash('sha256').update(`${uniqueProjectName}:engine-auth`).digest('hex')
 			: undefined;
+	// Once per stack, like the secret, so a replaced main still trusts the engine.
+	const engineTlsFiles =
+		engine === 'container' ? createEngineTlsFiles(uniqueProjectName) : undefined;
 
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
@@ -397,6 +400,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				usePostgres,
 				engine,
 				engineAuthSecret,
+				engineTlsFiles,
 				baseUrl: needsLoadBalancer ? undefined : baseUrl,
 				allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 				resourceQuota,
@@ -631,6 +635,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						// workflow that still asks for engine v2 fails far from the cause.
 						engine,
 						engineAuthSecret,
+						engineTlsFiles,
 						// The engine container is not replaced: it keeps running against the
 						// new main.
 						reuseEngine: true,

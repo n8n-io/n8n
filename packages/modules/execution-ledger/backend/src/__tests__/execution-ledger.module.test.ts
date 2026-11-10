@@ -14,4 +14,10 @@ describe('ExecutionLedgerModule', () => {
 	it('registers the ledger entity', async () => {
 		expect(await new ExecutionLedgerModule().entities()).toEqual([ExecutionLedgerEntity]);
 	});
+
+	it('registers the fold system task', async () => {
+		const tasks = await new ExecutionLedgerModule().systemTasks();
+
+		expect(tasks.map((task) => task.name)).toEqual(['ExecutionLedgerFoldTask']);
+	});
 });

@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 
 import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
+import { createArtifactTestRouter } from './artifactTestRouter';
 
 const detail: SkillDetail = {
 	id: 'skill-1',
@@ -46,6 +47,7 @@ function byTestId(container: Element, testId: string): Element | null {
 
 const renderComponent = createComponentRenderer(InstanceAiSkillPreview, {
 	props: { skillId: 'skill-1' },
+	global: { plugins: [createArtifactTestRouter('/n8n/')] },
 });
 
 describe('InstanceAiSkillPreview', () => {
@@ -95,7 +97,7 @@ describe('InstanceAiSkillPreview', () => {
 		expect(store.fetchSkill).toHaveBeenCalledTimes(2);
 	});
 
-	it('opens the skill in the Skills Hub', async () => {
+	it('opens the skill in the Skills Hub with the router base', async () => {
 		const { pinia } = setup();
 		const open = vi.spyOn(window, 'open').mockReturnValue(null);
 		const { container, getByTestId } = renderComponent({ pinia });
@@ -104,7 +106,7 @@ describe('InstanceAiSkillPreview', () => {
 		await userEvent.click(getByTestId('instance-ai-skill-preview-open'));
 
 		expect(open).toHaveBeenCalledWith(
-			'/settings/context/skills?skillId=skill-1',
+			'/n8n/settings/context/skills?skillId=skill-1',
 			'_blank',
 			'noopener',
 		);

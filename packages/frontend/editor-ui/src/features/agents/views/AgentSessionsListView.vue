@@ -741,6 +741,13 @@ async function onFiltersChange(value: AgentSessionFilters) {
 		}
 	}
 
+	// A block td treats `height` as fixed, not as a minimum like a table cell does.
+	// Let the two-line empty state grow instead of being clipped.
+	.wrapper .sessionsTable .lastRow td {
+		height: auto;
+		min-height: var(--height--2xl);
+	}
+
 	.wrapper .sessionsTable .skeletonRow td:not(:first-child) {
 		display: none;
 	}
