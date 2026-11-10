@@ -8,10 +8,14 @@ export function skillSourceHealth(errorReason: string | null): SkillSourceHealth
 		case 'credential_invalid':
 		case 'credential_missing':
 		case 'credential_out_of_scope':
-			return 'credential_expired';
+			return 'credential_issue';
+		case 'not_found':
+			return 'source_unavailable';
+		case 'unreachable':
+			return 'unreachable';
 		case 'rate_limited':
 			return 'delayed';
 		default:
-			return 'unreachable';
+			return 'check_failed';
 	}
 }

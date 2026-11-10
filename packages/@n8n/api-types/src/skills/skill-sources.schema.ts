@@ -220,7 +220,13 @@ export type SkillSourceRepositoryList = {
 };
 
 /** Health of a source, based on its latest check result. */
-export type SkillSourceHealth = 'connected' | 'credential_expired' | 'unreachable' | 'delayed';
+export type SkillSourceHealth =
+	| 'connected'
+	| 'credential_issue'
+	| 'source_unavailable'
+	| 'unreachable'
+	| 'delayed'
+	| 'check_failed';
 
 /** One connected source, for its group row in the skills table. */
 export type SkillSourceListItem = {

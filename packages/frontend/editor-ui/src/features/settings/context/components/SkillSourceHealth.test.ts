@@ -14,19 +14,31 @@ describe('SkillSourceHealth', () => {
 	it.each<{ health: SkillSourceHealth; label: string; description: string }>([
 		{ health: 'connected', label: 'Connected', description: 'Not checked yet.' },
 		{
-			health: 'credential_expired',
+			health: 'credential_issue',
 			label: 'Credential issue',
 			description: "n8n can't use this source's credential.",
 		},
 		{
+			health: 'source_unavailable',
+			label: 'Source unavailable',
+			description:
+				"The repository or branch is missing, or n8n doesn't have access. Your skills keep their last accepted version.",
+		},
+		{
 			health: 'unreachable',
 			label: 'Unreachable',
-			description: "n8n couldn't read this source. Your skills keep their last accepted version.",
+			description: "n8n couldn't reach this source. Your skills keep their last accepted version.",
 		},
 		{
 			health: 'delayed',
 			label: 'Delayed',
 			description: 'GitHub has limited requests. n8n will check again later.',
+		},
+		{
+			health: 'check_failed',
+			label: 'Check failed',
+			description:
+				"n8n couldn't complete the update check. Your skills keep their last accepted version.",
 		},
 	])('shows $health with keyboard-accessible details', async ({ health, label, description }) => {
 		const { getByRole } = render({ props: { source: { health, lastCheckedAt: null } } });
