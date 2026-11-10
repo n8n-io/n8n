@@ -6666,7 +6666,7 @@ describe('getThreadMemory', () => {
 			cursor: { lastObservedMessageId: 'm137', lastObservedAt: '2020-01-01T00:00:00.000Z' },
 		});
 		expect(service.observationRepo.findActiveForThread).toHaveBeenCalledWith('thread-1');
-		expect(service.observationCursorRepo.findForThread).toHaveBeenCalledWith('thread-1');
+		expect(service.observationCursorRepo.findForThread).toHaveBeenCalledWith('thread-1', {});
 	});
 
 	it('returns a null cursor and no rows when the observer never ran', async () => {

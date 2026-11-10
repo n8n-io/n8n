@@ -220,7 +220,7 @@ export class TypeORMObservationLogStore
 	}
 
 	async getCursor(observationScopeId: string): Promise<ObservationCursor | null> {
-		const entity = await this.observationCursorRepo.findOneBy({ observationScopeId });
+		const entity = await this.observationCursorRepo.findForThread(observationScopeId, {});
 
 		if (!entity) return null;
 
@@ -233,17 +233,14 @@ export class TypeORMObservationLogStore
 	}
 
 	async setCursor(cursor: ObservationCursor): Promise<void> {
-		await this.observationCursorRepo.upsert(
+		await this.observationCursorRepo.upsertForThread(
 			{
 				observationScopeId: cursor.observationScopeId,
 				lastObservedMessageId: cursor.lastObservedMessageId,
 				lastObservedAt: cursor.lastObservedAt,
 				updatedAt: cursor.updatedAt,
 			},
-			{
-				conflictPaths: ['observationScopeId'],
-				skipUpdateIfNoValuesChanged: false,
-			},
+			{},
 		);
 	}
 
