@@ -495,14 +495,17 @@ describe('promotion-environment apply-selection command', () => {
 			'proj-1',
 			{ workflowIds: ['wf-1', 'wf-2'] },
 			undefined,
+			undefined,
 		);
 	});
 
-	it('sends the reviewed source built from the three expected flags', async () => {
+	it('sends the reviewed source and the reviewed preview revision', async () => {
+		const revision = 'b'.repeat(64);
 		const { run, applyProjectSelection } = runApplySelection(APPLY_RESULT, {
 			format: 'table',
 			workflow: ['wf-1'],
 			...PINNED_FLAGS,
+			expectedPreviewRevision: revision,
 		});
 
 		await run();
@@ -511,6 +514,7 @@ describe('promotion-environment apply-selection command', () => {
 			'proj-1',
 			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
+			revision,
 		);
 	});
 
@@ -548,6 +552,7 @@ describe('promotion-environment apply-selection command', () => {
 		expect(applyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
 			{ workflowIds: ['wf-1', 'wf-2'], folderIds: ['f-1'] },
+			undefined,
 			undefined,
 		);
 		expect(logToStderr.mock.calls[0][0]).toContain(
@@ -587,6 +592,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
 			undefined,
+			undefined,
 		);
 		expect(exit).toHaveBeenCalledWith(3);
 	});
@@ -619,6 +625,7 @@ describe('promotion-environment apply-selection-continue command', () => {
 			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
 			true,
+			undefined,
 		);
 	});
 });

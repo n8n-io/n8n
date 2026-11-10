@@ -20,7 +20,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { BadRequestError, ConflictError, UnprocessableRequestError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	UnprocessableRequestError,
+} from '@n8n/errors';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
@@ -187,6 +192,49 @@ describe('importPackageSelectionFromDirectory', () => {
 		expect((await findWorkflow('WFA'))?.parentFolder?.id).toBe('ORD');
 		expect((await folders.findOneBy({ id: 'ORD' }))?.parentFolderId).toBe('OPS');
 		expect(await folders.findOneBy({ id: 'ARC' })).toBeNull();
+	});
+
+	it('needs the folders license only when the selection creates a folder, not to reuse one', async () => {
+		licenseMocker.disable('feat:folders');
+		const dir = await packageDir({
+			projects: [{ target: 'projects/p1', project: serializedProject({ id: 'P1', name: 'p1' }) }],
+			folders: [
+				{ target: 'projects/p1/folders/ops', folder: serializedFolder({ id: 'OPS', name: 'ops' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/p1/workflows/wfa',
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa' }),
+				},
+				{
+					target: 'projects/p1/folders/ops/workflows/wfb',
+					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb' }),
+				},
+			],
+		});
+
+		await importSelection(dir, { selectedProjectId: 'P1', selectedWorkflowIds: ['WFA'] });
+		expect(await findWorkflow('WFA')).not.toBeNull();
+
+		await expect(
+			importSelection(dir, { selectedProjectId: 'P1', selectedWorkflowIds: ['WFB'] }),
+		).rejects.toBeInstanceOf(ForbiddenError);
+		expect(await findWorkflow('WFB')).toBeNull();
+		expect(await Container.get(FolderRepository).count()).toBe(0);
+
+		// The folder exists from a time when the instance had the license.
+		licenseMocker.enable('feat:folders');
+		await importSelection(dir, { selectedProjectId: 'P1', selectedWorkflowIds: ['WFB'] });
+		licenseMocker.disable('feat:folders');
+
+		const reimport = await importSelection(dir, {
+			selectedProjectId: 'P1',
+			selectedWorkflowIds: ['WFB'],
+		});
+		expect(reimport.workflows).toEqual([
+			expect.objectContaining({ sourceWorkflowId: 'WFB', status: 'updated' }),
+		]);
+		expect((await findWorkflow('WFB'))?.parentFolder?.id).toBe('OPS');
 	});
 
 	it('is additive: a re-import touches only the selection, never pre-existing target workflows', async () => {

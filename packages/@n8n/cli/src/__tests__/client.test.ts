@@ -173,26 +173,16 @@ describe('N8nClient packages', () => {
 
 		describe('list changes', () => {
 			beforeEach(() => {
-				fetchMock.mockResolvedValue(jsonResponse(200, { commitSha: null, changes: [] }));
+				fetchMock.mockResolvedValue(
+					jsonResponse(200, { commitSha: null, resources: [], dependencies: [] }),
+				);
 			});
 
-			it('sends no query parameters when no options are given', async () => {
+			it('requests the preview of the direction', async () => {
 				await client.listProjectPromotionChanges('proj-1', 'apply');
 
 				expect(requestLines(fetchMock)).toEqual([
 					'GET https://n8n.example.com/api/v1/promotions/projects/proj-1/changes/apply',
-				]);
-			});
-
-			it('sends search, sort, and order as query parameters', async () => {
-				await client.listProjectPromotionChanges('proj-1', 'promote', {
-					search: 'checkout',
-					sort: 'updatedAt',
-					order: 'desc',
-				});
-
-				expect(requestLines(fetchMock)).toEqual([
-					'GET https://n8n.example.com/api/v1/promotions/projects/proj-1/changes/promote?search=checkout&sort=updatedAt&order=desc',
 				]);
 			});
 		});
