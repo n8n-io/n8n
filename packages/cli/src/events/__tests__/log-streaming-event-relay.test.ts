@@ -426,6 +426,28 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `workflow-deactivated-by-system` event without a user', () => {
+			const event: RelayEventMap['workflow-deactivated-by-system'] = {
+				workflowId: 'wf789',
+				workflowName: 'Deactivated Workflow',
+				deactivatedVersionId: 'version-xyz-789',
+				reason: 'memory-guard',
+			};
+
+			eventService.emit('workflow-deactivated-by-system', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.deactivated',
+				payload: {
+					userId: null,
+					workflowId: 'wf789',
+					workflowName: 'Deactivated Workflow',
+					deactivatedVersionId: 'version-xyz-789',
+					reason: 'memory-guard',
+				},
+			});
+		});
+
 		it('should log on `workflow-version-updated` event', () => {
 			const event: RelayEventMap['workflow-version-updated'] = {
 				user: {
@@ -1468,6 +1490,72 @@ describe('LogStreamingEventRelay', () => {
 					publicApi: false,
 					projectId: 'proj789',
 					projectType: 'Personal',
+				},
+			});
+		});
+
+		it('should log on `credentials-data-read` event', () => {
+			const event: RelayEventMap['credentials-data-read'] = {
+				user: {
+					id: 'user808',
+					email: 'reader@example.com',
+					firstName: 'Cred',
+					lastName: 'Reader',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialId: 'cred808',
+				credentialType: 'githubApi',
+				publicApi: false,
+			};
+
+			eventService.emit('credentials-data-read', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.credentials.data.read',
+				payload: {
+					userId: 'user808',
+					_email: 'reader@example.com',
+					_firstName: 'Cred',
+					_lastName: 'Reader',
+					globalRole: GLOBAL_OWNER_ROLE.slug,
+					credentialId: 'cred808',
+					credentialType: 'githubApi',
+					publicApi: false,
+				},
+			});
+		});
+
+		it('should log on `credentials-list-data-read` event', () => {
+			const event: RelayEventMap['credentials-list-data-read'] = {
+				user: {
+					id: 'user809',
+					email: 'reader@example.com',
+					firstName: 'Cred',
+					lastName: 'Reader',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialIds: ['cred1', 'cred2'],
+				credentialCount: 2,
+				chunk: 1,
+				chunkCount: 1,
+				publicApi: false,
+			};
+
+			eventService.emit('credentials-list-data-read', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.credentials.list.data.read',
+				payload: {
+					userId: 'user809',
+					_email: 'reader@example.com',
+					_firstName: 'Cred',
+					_lastName: 'Reader',
+					globalRole: GLOBAL_OWNER_ROLE.slug,
+					credentialIds: ['cred1', 'cred2'],
+					credentialCount: 2,
+					chunk: 1,
+					chunkCount: 1,
+					publicApi: false,
 				},
 			});
 		});

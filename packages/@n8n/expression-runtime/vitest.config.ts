@@ -15,6 +15,7 @@ const ENGINE_AWARE = [
 	'**/typed-rpc.test.ts',
 	'**/host-fn-shadowing.test.ts',
 	'**/lazy-sync-cold-start.test.ts',
+	'**/replaced-builtins.test.ts',
 ];
 
 export default defineConfig({

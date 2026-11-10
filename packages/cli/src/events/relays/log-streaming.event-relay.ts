@@ -91,6 +91,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
+			'workflow-deactivated-by-system': (event) => this.workflowDeactivatedBySystem(event),
 			'workflow-saved': (event) => this.workflowSaved(event),
 			'workflow-version-updated': (event) => this.workflowVersionUpdated(event),
 			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
@@ -118,6 +119,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'email-failed': (event) => this.emailFailed(event),
 			'credentials-created': (event) => this.credentialsCreated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
+			'credentials-data-read': (event) => this.credentialsDataRead(event),
+			'credentials-list-data-read': (event) => this.credentialsListDataRead(event),
 			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
 			'credentials-shared': (event) => this.credentialsShared(event),
 			'credentials-updated': (event) => this.credentialsUpdated(event),
@@ -325,6 +328,24 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName: workflow.name,
 				deactivatedVersionId,
+			},
+		});
+	}
+
+	private workflowDeactivatedBySystem({
+		workflowId,
+		workflowName,
+		deactivatedVersionId,
+		reason,
+	}: RelayEventMap['workflow-deactivated-by-system']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.deactivated',
+			payload: {
+				userId: null,
+				workflowId,
+				workflowName,
+				deactivatedVersionId,
+				reason,
 			},
 		});
 	}
@@ -786,6 +807,34 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.deleted',
 			payload: { ...user, credentialType, credentialId },
+		});
+	}
+
+	@Redactable()
+	private credentialsDataRead({
+		user,
+		credentialType,
+		credentialId,
+		publicApi,
+	}: RelayEventMap['credentials-data-read']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.credentials.data.read',
+			payload: { ...user, credentialType, credentialId, publicApi },
+		});
+	}
+
+	@Redactable()
+	private credentialsListDataRead({
+		user,
+		credentialIds,
+		credentialCount,
+		chunk,
+		chunkCount,
+		publicApi,
+	}: RelayEventMap['credentials-list-data-read']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.credentials.list.data.read',
+			payload: { ...user, credentialIds, credentialCount, chunk, chunkCount, publicApi },
 		});
 	}
 
