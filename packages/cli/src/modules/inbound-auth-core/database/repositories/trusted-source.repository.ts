@@ -1,6 +1,7 @@
 import { DatabaseConfig } from '@n8n/config';
 import {
 	BaseRepository,
+	dbClockNowLiteral,
 	dbClockNowPlusMsLiteral,
 	dbTxNowLiteral,
 	dbTxNowPlusMsLiteral,
@@ -195,7 +196,7 @@ export class TrustedSourceRepository {
 			.update(TrustedSourceEntity)
 			.set({
 				discoveryClaimToken: token,
-				discoveryClaimedAt: () => dbTxNowLiteral(this.isPostgres),
+				discoveryClaimedAt: () => dbClockNowLiteral(this.isPostgres),
 			})
 			.where(
 				`id = :id AND ("discoveryClaimedAt" IS NULL OR "discoveryClaimedAt" < ${staleBefore})`,
