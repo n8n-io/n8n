@@ -179,8 +179,8 @@ describe('QuickJsBridge workflow data', () => {
 		bridge: QuickJsBridge,
 		override: (
 			call: number,
-			build: () => import('quickjs-emscripten').QuickJSHandle,
-		) => import('quickjs-emscripten').QuickJSHandle,
+			build: () => import('quickjs-emscripten-core').QuickJSHandle,
+		) => import('quickjs-emscripten-core').QuickJSHandle,
 	): void {
 		const vm = bridge['vm']!;
 		const newFunction = vm.newFunction.bind(vm);
@@ -191,8 +191,8 @@ describe('QuickJsBridge workflow data', () => {
 
 	/** Makes `handle.dispose()` free the handle and then throw. */
 	function failDispose(
-		handle: import('quickjs-emscripten').QuickJSHandle,
-	): import('quickjs-emscripten').QuickJSHandle {
+		handle: import('quickjs-emscripten-core').QuickJSHandle,
+	): import('quickjs-emscripten-core').QuickJSHandle {
 		const dispose = handle.dispose.bind(handle);
 		handle.dispose = () => {
 			dispose();

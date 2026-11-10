@@ -5,7 +5,7 @@ export { ExpressionEvaluator } from './evaluator/expression-evaluator';
 // so this value re-export does NOT pull in the native binary at import time.
 export { IsolatedVmBridge } from './bridge/isolated-vm-bridge';
 
-// QuickJsBridge lazy-loads quickjs-emscripten internally; importing this
+// QuickJsBridge lazy-loads quickjs-emscripten-core internally; importing this
 // value does NOT pull in the WASM module at import time.
 export { QuickJsBridge } from './bridge/quickjs-bridge';
 
