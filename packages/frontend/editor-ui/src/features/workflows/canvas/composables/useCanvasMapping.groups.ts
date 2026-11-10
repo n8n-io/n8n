@@ -4,7 +4,6 @@ import type {
 	BoundingBox,
 	CanvasConnection,
 	CanvasGroupNode,
-	CanvasNode,
 	CanvasGroupNodeData,
 	GroupExecutionStatus,
 	NodeExecutionSnapshot,
@@ -281,19 +280,12 @@ export function mapGroupsToVueFlowNodes({
 }
 
 /**
- * Moves a sticky that is not in a group below the expanded group layer, so a
- * group paints over a free sticky placed on it. Keeps the overlap order from
- * `useWorkflowDocumentRenderData`. See the stacking contract in
+ * Free stickies drop below expanded groups; group members keep their overlap
+ * z-index from `useWorkflowDocumentRenderData`. See the stacking contract in
  * canvasNodeGroups.constants.ts.
  */
-export function applyStickyGroupLayer(
-	props: Partial<CanvasNode> | undefined,
-	isGroupMember: boolean,
-): Partial<CanvasNode> | undefined {
-	if (isGroupMember || !props) return props;
-	const style = props.style;
-	if (!style || typeof style === 'function' || typeof style.zIndex !== 'number') return props;
-	return { ...props, style: { ...style, zIndex: style.zIndex + FREE_STICKY_Z_INDEX_OFFSET } };
+export function getStickyZIndex(overlapZIndex: number, isGroupMember: boolean): number {
+	return isGroupMember ? overlapZIndex : overlapZIndex + FREE_STICKY_Z_INDEX_OFFSET;
 }
 
 /**

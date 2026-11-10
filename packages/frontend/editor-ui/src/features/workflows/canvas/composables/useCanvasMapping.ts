@@ -17,11 +17,10 @@ import type {
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
 import {
-	applyStickyGroupLayer,
 	buildCollapsedGroupByNodeId,
+	getStickyZIndex,
 	remapCollapsedGroupConnections,
 } from './useCanvasMapping.groups';
-import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import {
 	applyOffset,
 	computeNodeDisplaySize,
@@ -198,6 +197,7 @@ export function useCanvasMapping({
 					({ type: node.type, options: {} } as CanvasNodeData['render']),
 			};
 			const offset = nodeGroupView?.getVisualOffsetForNode(node.id) ?? { x: 0, y: 0 };
+			const stickyStyle = additionalProperties[node.id]?.style;
 
 			return {
 				id: node.id,
@@ -205,9 +205,11 @@ export function useCanvasMapping({
 				type: 'canvas-node',
 				position: applyOffset(node.position, offset),
 				data,
-				...(node.type === STICKY_NODE_TYPE
-					? applyStickyGroupLayer(additionalProperties[node.id], groupMemberIds.value.has(node.id))
-					: additionalProperties[node.id]),
+				...(stickyStyle && {
+					style: {
+						zIndex: getStickyZIndex(stickyStyle.zIndex, groupMemberIds.value.has(node.id)),
+					},
+				}),
 				draggable: node.draggable,
 				hidden: collapsedGroupByNodeId.value.has(node.id) ? true : undefined,
 			};

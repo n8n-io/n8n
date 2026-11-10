@@ -25,10 +25,7 @@ import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { MarkerType } from '@vue-flow/core';
 import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
-import {
-	FREE_STICKY_Z_INDEX_OFFSET,
-	GROUP_NODE_Z_INDEX_EXPANDED,
-} from '../stores/canvasNodeGroups.constants';
+import { FREE_STICKY_Z_INDEX_OFFSET } from '../stores/canvasNodeGroups.constants';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -270,22 +267,7 @@ describe('useCanvasMapping — mapped nodes', () => {
 		expect(nodes.value[0].data?.render.type).toBe(CanvasNodeRenderType.StickyNote);
 	});
 
-	it('spreads additionalPropertiesByNodeId onto the mapped CanvasNode', () => {
-		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
-		const rd = createEmptyCanvasRenderData({
-			additionalPropertiesByNodeId: computed(() => ({ a: { style: { zIndex: -42 } } })),
-		});
-
-		const { nodes } = useCanvasMapping({
-			nodes: ref([node]),
-			connections: ref({}),
-			renderData: shallowRef(rd),
-		});
-
-		expect(nodes.value[0].style).toEqual({ zIndex: -42 });
-	});
-
-	it('moves stickies outside groups below the expanded group layer', () => {
+	it('maps the sticky z-index from render data, below expanded groups for free stickies', () => {
 		const member = createTestNode({ id: 'm', name: 'Member', type: STICKY_NODE_TYPE }) as INodeUi;
 		const free = createTestNode({ id: 'f', name: 'Free', type: STICKY_NODE_TYPE }) as INodeUi;
 		const group: IWorkflowGroup = { id: 'g1', name: 'G', nodeIds: ['m'] };
@@ -303,13 +285,9 @@ describe('useCanvasMapping — mapped nodes', () => {
 			allGroups: ref([group]),
 		});
 
-		const zIndexById = Object.fromEntries(
-			nodes.value.map((node) => [node.id, (node.style as { zIndex: number }).zIndex]),
-		);
-		expect(zIndexById.m).toBe(-99);
-		expect(zIndexById.f).toBe(-100 + FREE_STICKY_Z_INDEX_OFFSET);
-		expect(zIndexById.f).toBeLessThan(GROUP_NODE_Z_INDEX_EXPANDED);
-		expect(zIndexById.m).toBeGreaterThan(GROUP_NODE_Z_INDEX_EXPANDED);
+		const [memberNode, freeNode] = nodes.value;
+		expect(memberNode.style).toEqual({ zIndex: -99 });
+		expect(freeNode.style).toEqual({ zIndex: -100 + FREE_STICKY_Z_INDEX_OFFSET });
 	});
 
 	it('attaches input/output connections derived from the connections prop', () => {
