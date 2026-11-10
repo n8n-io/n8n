@@ -10,8 +10,6 @@ import {
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
@@ -38,6 +36,7 @@ import {
 	FolderFinderService,
 	InstanceWriteAccessService,
 	AiPreferenceService,
+	NodeTypesProxy,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -120,6 +119,7 @@ import {
 	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
+	AppNamespaceTakenError,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	FolderResolutionError,
@@ -163,6 +163,7 @@ import {
 	createRunExecutionData,
 	calculateWorkflowChecksum,
 	isMcpAiGatewayAuthentication,
+	type INodeTypes,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
@@ -221,7 +222,6 @@ import {
 } from '@/node-catalog';
 import { ExecuteNodeService } from '@/node-execution';
 import type { ExecuteNodeResult } from '@/node-execution';
-import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
@@ -284,6 +284,7 @@ import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import { toWorkflowJSON } from './workflow-json';
 import { WorkflowTemplatesService } from './workflow-templates.service';
+import { toUserLike } from '@/utils/to-user-like';
 
 type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
@@ -327,7 +328,7 @@ function resolveDisplayedDefaults(
  * the same way they will. A node type that does not load is not a tool here:
  * the run fails on the missing type either way.
  */
-function isToolNode(nodeTypes: NodeTypes, node: INode): boolean {
+function isToolNode(nodeTypes: INodeTypes, node: INode): boolean {
 	try {
 		const { description } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		return NodeHelpers.isTool(description, node.parameters);
@@ -432,8 +433,6 @@ export interface InstanceAiFeatureFlags {
 	 *  closed with every other gate: `getFeatureFlags` never throws, it
 	 *  returns `{}` on a PostHog outage. */
 	folderExplorationEnabled: boolean;
-	/** Saved AI preferences on every user turn. */
-	aiPreferencesEnabled: boolean;
 	credentialDescriptionsEnabled: boolean;
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
@@ -490,7 +489,7 @@ export class InstanceAiAdapterService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
@@ -586,9 +585,6 @@ export class InstanceAiAdapterService {
 			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
-			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
-			 *  `save_user_preference` tool. */
-			aiPreferencesEnabled?: boolean;
 			assistantSkillsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
@@ -617,7 +613,6 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled,
 			onboardingThread,
 			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
 			assistantSkillsEnabled,
 			modelId,
 			modelFetch,
@@ -699,9 +694,12 @@ export class InstanceAiAdapterService {
 			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
-			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
+			// Absent only in test contexts constructed without DI.
+			...(this.aiPreferenceService
+				? { aiPreferenceService: this.createPreferenceAdapter(user) }
+				: {}),
 			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
-			appService: this.createAppAdapter(user, projectId),
+			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -853,7 +851,6 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
 		};
@@ -1851,7 +1848,7 @@ export class InstanceAiAdapterService {
 				const settings = Container.get(WorkflowEngineDefaults).applyTo({
 					executionOrder: 'v1',
 					...(json.settings ?? {}),
-				} as IWorkflowSettings);
+				});
 				assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
 
 				// Strip redactionPolicy if the user lacks the required scope —
@@ -2623,7 +2620,7 @@ export class InstanceAiAdapterService {
 					targetName: nodeName,
 					mockItems: options?.mockInput ? toExecutionItems(options.mockInput) : undefined,
 					priorRunData,
-					pinnedNodeNames: Object.keys(workflow.pinData ?? {}),
+					pinData: workflow.pinData,
 				});
 
 				// The caller asked to keep the nodes above the target out of the run and
@@ -3548,9 +3545,14 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createAppAdapter(user: User, projectId?: string): InstanceAiAppService | undefined {
+	private createAppAdapter(
+		user: User,
+		projectId?: string,
+		threadId?: string,
+	): InstanceAiAppService | undefined {
 		if (!projectId || !Container.get(ModuleRegistry).isActive('apps')) return undefined;
 		const { assertProjectScope } = this.createProjectScopeHelpers(user, projectId);
+		const actor = { userId: user.id, threadId };
 		const services = async (scope: Scope) => {
 			if (scope === 'app:create' || scope === 'app:update') this.assertInstanceNotReadOnly('apps');
 			await assertProjectScope([scope], projectId);
@@ -3567,11 +3569,17 @@ export class InstanceAiAdapterService {
 		return {
 			createApp: async ({ name, namespace, visibility, id }) => {
 				const { apps } = await services('app:create');
-				return await apps.createApp(
-					projectId,
-					CreateAppDto.parse({ name, namespace, visibility }),
-					{ id },
-				);
+				try {
+					return await apps.createApp(
+						projectId,
+						CreateAppDto.parse({ name, namespace, visibility }),
+						{ id, actor },
+					);
+				} catch (error) {
+					// The namespace is the only unique field that the user picks.
+					if (error instanceof ConflictError) throw new AppNamespaceTakenError(namespace);
+					throw error;
+				}
 			},
 			listApps: async ({ name }) => {
 				const { apps } = await services('app:list');
@@ -3596,7 +3604,7 @@ export class InstanceAiAdapterService {
 			},
 			commit: async (appId, baseVersionId, archive, label) => {
 				const { sources } = await services('app:update');
-				return await sources.commit(projectId, appId, baseVersionId, archive, label);
+				return await sources.commit(projectId, appId, baseVersionId, archive, label, actor);
 			},
 			getBindings: async (appId) => {
 				const { bindings, renderBindingTypes } = await services('app:read');
@@ -4730,13 +4738,7 @@ export class InstanceAiAdapterService {
 
 				// Emit audit event (matches controller behavior)
 				eventService.emit('execution-deleted', {
-					user: {
-						id: user.id,
-						email: user.email,
-						firstName: user.firstName,
-						lastName: user.lastName,
-						role: user.role,
-					},
+					user: toUserLike(user),
 					executionIds: ids,
 					deleteBefore: cutoff,
 				});
@@ -5085,7 +5087,7 @@ function extractNodeErrors(
 export async function extractExecutionResult(
 	execution: IExecutionResponse,
 	includeOutputData = true,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Promise<ExecutionResult> {
 	return (await extractExecutionOutcome(execution, includeOutputData, nodeTypes)).result;
 }
@@ -5172,7 +5174,7 @@ function foldToolExecutorRun(
 export async function extractExecutionOutcome(
 	execution: IExecutionResponse,
 	includeOutputData = true,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 	/**
 	 * Sub-node a step run targeted. The engine ran it through a virtual node, so
 	 * the result has to be told which node the caller actually asked for.
@@ -5483,7 +5485,7 @@ function capItem(item: unknown): unknown {
  */
 function buildExecutionWorkflow(
 	workflowData: IWorkflowBase | undefined,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Workflow | undefined {
 	if (!workflowData || !nodeTypes) return undefined;
 	try {
@@ -5531,7 +5533,7 @@ export async function extractNodeOutput(
 	execution: IExecutionResponse,
 	nodeName: string,
 	options?: { startIndex?: number; maxItems?: number },
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Promise<NodeOutputResult> {
 	const executionId = execution.id;
 	const runData = execution.data?.resultData?.runData;
@@ -5735,7 +5737,7 @@ function getExecutionModeForTrigger(node: INode): WorkflowExecuteMode {
 export async function extractExecutionDebugInfo(
 	execution: IExecutionResponse,
 	includeOutputData = true,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Promise<ExecutionDebugInfo> {
 	const baseResult = await extractExecutionResult(execution, includeOutputData, nodeTypes);
 

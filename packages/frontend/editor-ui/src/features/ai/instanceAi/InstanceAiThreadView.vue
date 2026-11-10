@@ -344,6 +344,7 @@ const activeAgentPreviewSessionId = computed(() => {
 });
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
+provide('showMentionedWorkflow', preview.showMentionedWorkflow);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
@@ -750,7 +751,10 @@ function handleNewThreadClick() {
 				:aria-hidden="isAgentTestDockOpen || undefined"
 				data-test-id="instance-ai-builder-chat-header"
 			>
-				<InstanceAiViewHeader :title="currentThreadTitle">
+				<InstanceAiViewHeader
+					:title="currentThreadTitle"
+					:thread-credits-used="store.threadCreditsUsed(props.threadId)"
+				>
 					<template #status>
 						<N8nText
 							v-if="thread.sseState === 'reconnecting'"

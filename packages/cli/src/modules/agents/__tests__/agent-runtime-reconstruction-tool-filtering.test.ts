@@ -33,6 +33,7 @@ import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-l
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
@@ -52,11 +53,12 @@ import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-
 import type * as IntegrationTools from '../integrations/integration-tools';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { BuildFromJsonOptions, ToolExecutor } from '../json-config/from-json-config';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type * as WorkflowToolFactory from '../tools/workflow-tool-factory';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -172,7 +174,7 @@ function makeService(overrides: {
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
-		mock<AgentFileRepository>(),
+		mock<KnowledgeFileRepository>(),
 		mock<ActiveExecutions>(),
 		workflowRepository,
 		mock<N8NCheckpointStorage>(),
@@ -192,6 +194,7 @@ function makeService(overrides: {
 		credentialsService,
 		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
+		mock<AgentSandboxFilesService>(),
 	);
 
 	return {
@@ -328,6 +331,23 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 				publishedN8nChat: true,
 			}),
 		);
+	});
+
+	it('uses the AI Gateway token refresh fetch of the credential provider for models', async () => {
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+		const credentialProvider = new AgentsCredentialProvider(mock<CredentialsService>(), projectId);
+		const refreshFetch = vi.fn<typeof fetch>();
+		vi.spyOn(credentialProvider, 'createAiGatewayTokenRefreshFetch').mockReturnValue(refreshFetch);
+
+		await service.reconstructFromAgentEntity(makeAgentEntity([]), credentialProvider, 'test');
+
+		const [, , options] = buildFromJsonMock.mock.calls.at(-1) as [
+			unknown,
+			unknown,
+			BuildFromJsonOptions,
+		];
+		expect(options.modelFetch).toBe(refreshFetch);
 	});
 
 	it('forwards the preview marker to workflow tools', async () => {

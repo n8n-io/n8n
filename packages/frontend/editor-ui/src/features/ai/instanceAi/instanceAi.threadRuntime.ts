@@ -67,10 +67,7 @@ import {
 } from './instanceAi.reducer';
 import { createArtifactPreviewMemory } from './artifactPreviewMemory';
 import { getLatestBuildResult } from './canvasPreview.utils';
-import {
-	useResourceRegistry,
-	type TransientWorkflowArtifactReference,
-} from './useResourceRegistry';
+import { useResourceRegistry } from './useResourceRegistry';
 import { buildThreadArtifactsContext, type OpenThreadTab } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
@@ -153,10 +150,10 @@ interface PendingResponseMetric {
 	isFirstUserMessage: boolean;
 	actionSource: InstanceAiThreadSourcePersisted;
 	generation: number;
-	// Context of the message that started the run, repeated on the response event
-	// so outcome cuts by context need no join back to the send event.
+	// Repeat the message context on the response event for outcome analysis.
 	mentionCounts: AssistantMentionCounts;
 	attachmentCount: number;
+	selectedElementCount: number;
 }
 
 /**
@@ -607,15 +604,6 @@ export function createThreadRuntime(
 	function clearPendingWorkflowAttachment(): void {
 		pendingWorkflowAttachment.value = null;
 	}
-	const transientWorkflowReferences = reactive(
-		new Map<string, TransientWorkflowArtifactReference>(),
-	);
-	function upsertTransientWorkflowReference(reference: TransientWorkflowArtifactReference): void {
-		transientWorkflowReferences.set(reference.referenceId, { ...reference });
-	}
-	function removeTransientWorkflowReference(referenceId: string): void {
-		transientWorkflowReferences.delete(referenceId);
-	}
 
 	// Preview state that survives the preview canvas unmounting on a tab switch.
 	// A fresh runtime per thread resets it (INS-611, INS-1192).
@@ -664,7 +652,6 @@ export function createThreadRuntime(
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
 		pendingWorkflowAttachment: () => pendingWorkflowAttachment.value ?? undefined,
-		transientWorkflowReferences: () => [...transientWorkflowReferences.values()],
 		agentBuilderTargets: () =>
 			getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 		appTargets: () => getAppTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
@@ -798,6 +785,7 @@ export function createThreadRuntime(
 				tab_visible: tabVisible,
 				mention_counts: metric.mentionCounts,
 				attachment_count: metric.attachmentCount,
+				selected_element_count: metric.selectedElementCount,
 			});
 		});
 	}
@@ -1372,7 +1360,6 @@ export function createThreadRuntime(
 		activeArtifactId.value = undefined;
 		openTabs.value = undefined;
 		pendingWorkflowAttachment.value = null;
-		transientWorkflowReferences.clear();
 		pendingHandoff.value = null;
 		disarmGenerationStallWatchdog();
 	}
@@ -1541,6 +1528,7 @@ export function createThreadRuntime(
 		actionSource: InstanceAiThreadSourcePersisted,
 		mentionCounts: AssistantMentionCounts,
 		attachmentCount: number,
+		selectedElementCount: number,
 	): void {
 		const isPrefill = authorship.kind === 'prefill';
 		const setupContext =
@@ -1560,6 +1548,7 @@ export function createThreadRuntime(
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
 			mention_counts: mentionCounts,
 			attachment_count: attachmentCount,
+			selected_element_count: selectedElementCount,
 		});
 	}
 
@@ -1657,12 +1646,15 @@ export function createThreadRuntime(
 			seedArtifactOrigins(mentionedWorkflowIds, 'mentioned');
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
 			const attachmentCount = attachments?.length ?? 0;
+			const selectedElementCount =
+				attachments?.filter(({ type }) => type === 'element').length ?? 0;
 			trackUserMessageSent(
 				isFirstMessage,
 				authorship,
 				actionSource,
 				mentionCounts,
 				attachmentCount,
+				selectedElementCount,
 			);
 
 			const runId = await dispatchUserMessage(message, attachments, handoffContext, pushRef);
@@ -1679,6 +1671,7 @@ export function createThreadRuntime(
 				generation: metricGeneration,
 				mentionCounts,
 				attachmentCount,
+				selectedElementCount,
 			});
 			return true;
 		} finally {
@@ -1838,9 +1831,6 @@ export function createThreadRuntime(
 		pendingWorkflowAttachment,
 		setPendingWorkflowAttachment,
 		clearPendingWorkflowAttachment,
-		transientWorkflowReferences,
-		upsertTransientWorkflowReference,
-		removeTransientWorkflowReference,
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,

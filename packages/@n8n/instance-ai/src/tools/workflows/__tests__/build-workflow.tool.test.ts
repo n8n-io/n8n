@@ -2792,6 +2792,25 @@ describe('createBuildWorkflowTool', () => {
 		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
 	});
 
+	it('builds from an absolute path under the fallback workspace root', async () => {
+		const source = 'workflow source from workspace';
+		const { context, filePath } = makeContext({
+			source,
+			overrides: {
+				workspaceRoot: '/home/user/workspace',
+				fallbackWorkspaceRoot: '/home/daytona/workspace',
+			},
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath: `/home/daytona/workspace/${filePath}`,
+			name: 'Daily Weather to Slack',
+		});
+
+		expect(result).toMatchObject({ success: true, filePath, workflowId: 'wf-1' });
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
+	});
+
 	it('returns a recoverable error for absolute paths outside the workspace root', async () => {
 		const { context } = makeContext({
 			overrides: { workspaceRoot: '/home/user/workspace' },
@@ -2882,7 +2901,7 @@ describe('createBuildWorkflowTool', () => {
 		});
 		expect(result.errors?.[0]).toContain('Failed to bind source file');
 		expect(result.remediation?.guidance).toContain(
-			'Call workflow_builder_build_workflow again with the same filePath and omit workflowId',
+			'Run workflow_builder_build_workflow through call_tool again with the same filePath and omit workflowId',
 		);
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();

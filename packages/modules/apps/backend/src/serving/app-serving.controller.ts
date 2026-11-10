@@ -1,7 +1,7 @@
-import { classifyRestError, serializePublicApiError } from '@n8n/backend-services';
+import { classifyRestError, EventService, serializePublicApiError } from '@n8n/backend-services';
 import { createIpRateLimit, Get, Middleware, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UnexpectedError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
@@ -26,6 +26,7 @@ export class AppServingController {
 		private readonly auth: AppAuthService,
 		private readonly hosts: AppHostService,
 		private readonly preview: AppPreviewService,
+		private readonly events: EventService,
 	) {}
 
 	@Middleware()
@@ -51,16 +52,29 @@ export class AppServingController {
 	@Get('/{*path}', { skipAuth: true, ipRateLimit, middlewares: [compression()] })
 	async serve(req: AppRequest, res: Response) {
 		try {
-			const versionId = req.appContext?.versionId;
-			if (!versionId) throw new NotFoundError('App not found.');
+			const context = req.appContext;
+			const versionId = context?.versionId;
+			if (!context || !versionId) throw new NotFoundError('App not found.');
 			const bundle = await this.bundles.get(versionId);
 			const name = this.filePath(req.path);
-			let file = bundle.get(name || 'index.html');
-			if (!file && !path.posix.extname(name) && this.auth.isNavigation(req)) {
-				file = bundle.get('index.html');
+			const index = bundle.get('index.html');
+			let file = name ? bundle.get(name) : index;
+			const isNavigation = this.auth.isNavigation(req);
+			if (!file && !path.posix.extname(name) && isNavigation) {
+				file = index;
 			}
 			if (!file) throw new NotFoundError('App file not found.');
-			const inspected = req.appContext?.preview && file.contentType.startsWith('text/html');
+			if (isNavigation && file === index) {
+				const userId = context.preview ? context.previewUserId : context.security?.subject.id;
+				if (!userId) throw new UnexpectedError('Authenticated app request has no user ID.');
+				this.events.emit('app-opened', {
+					appId: context.app.id,
+					versionId,
+					userId,
+					isPreview: context.preview === true,
+				});
+			}
+			const inspected = context.preview && file.contentType.startsWith('text/html');
 			const body = inspected
 				? Buffer.from(injectInspectorScript(file.body.toString('utf8'), this.preview.editorOrigin))
 				: file.body;
@@ -70,7 +84,7 @@ export class AppServingController {
 				'Content-Type': file.contentType,
 				'X-Content-Type-Options': 'nosniff',
 				'Referrer-Policy': 'same-origin',
-				'Content-Security-Policy': req.appContext?.preview
+				'Content-Security-Policy': context.preview
 					? `${APP_CSP}; frame-ancestors ${this.preview.editorOrigin}`
 					: APP_CSP,
 			});

@@ -522,7 +522,7 @@ describe('License', () => {
 		] as const)(
 			'$hook on a main with isLeader=$isLeader in $mode mode publishes=$publishes',
 			async ({ hook, isLeader, mode, publishes }) => {
-				const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+				const { Publisher } = await import('@n8n/backend-services');
 				const publisher = mockInstance(Publisher, { publishCommand: vi.fn() });
 				license = new License(
 					mockLogger(),

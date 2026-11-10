@@ -32,4 +32,14 @@ describe('buildAssistantTurnTraceInput', () => {
 			messageGroupId: 'mg-1',
 		});
 	});
+
+	it('records a stored file with the same size as its base64 content', () => {
+		expect(
+			buildAssistantTurnTraceInput({
+				message: 'Read this',
+				fileAttachments: [{ mimeType: 'text/plain', sizeBytes: 5 }],
+				contextAttachments: [],
+			}),
+		).toEqual({ message: 'Read this', attachments: [{ mimeType: 'text/plain', size: 8 }] });
+	});
 });
