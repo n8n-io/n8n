@@ -41,11 +41,8 @@ import {
 	User,
 } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
-import {
-	createEmptyRunExecutionData,
-	type IRun,
-	ManualExecutionCancelledError,
-} from 'n8n-workflow';
+import type { IRun } from 'n8n-workflow';
+import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';

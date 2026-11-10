@@ -1,13 +1,13 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import type { NodeTypesProxy, TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
-import {
-	type INode,
-	type INodeCredentialDescription,
-	type INodeTypeDescription,
-	type IWorkflowBase,
-	NodeHelpers,
+import type {
+	INode,
+	INodeTypeDescription,
+	INodeCredentialDescription,
+	IWorkflowBase,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';

@@ -7,12 +7,8 @@ import {
 	inferSchemasFromRunData,
 	type JsonSchema,
 } from '@n8n/workflow-sdk';
-import {
-	type INodeExecutionData,
-	type INodeTypes,
-	isTriggerNode,
-	jsonStringify,
-} from 'n8n-workflow';
+import type { INodeExecutionData, INodeTypes } from 'n8n-workflow';
+import { isTriggerNode, jsonStringify } from 'n8n-workflow';
 import z from 'zod';
 
 import type { ExecutionService } from '@/executions/execution.service';

@@ -1,4 +1,4 @@
-import { TelemetryProxy } from '@n8n/backend-services';
+import { NodeTypesProxy, TelemetryProxy } from '@n8n/backend-services';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	isAbortError,
@@ -52,7 +52,6 @@ import { CredentialTypes } from '@/credential-types';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { NodeTypesProxy } from '@n8n/backend-services';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiGatewayService } from '@/services/ai-gateway.service';

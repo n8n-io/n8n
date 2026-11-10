@@ -1,4 +1,4 @@
-import type { TelemetryProxy } from '@n8n/backend-services';
+import type { NodeTypesProxy, TelemetryProxy } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
@@ -28,7 +28,6 @@ import type { ZodTypeAny } from 'zod';
 import type { CredentialTypes } from '@/credential-types';
 import { ConflictError, LockedError, UserError } from '@n8n/errors';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
