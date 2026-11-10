@@ -350,6 +350,8 @@ export type MarkdownFinding = {
 	match: string;
 	severity: MarkdownFindingSeverity;
 	message: string;
+	/** Set on the mark as `data-finding-id`, so a list of findings can scroll to it. */
+	id?: string;
 };
 
 export const MARKDOWN_FINDING_MARK_CLASS = 'skill-finding-mark';
@@ -357,13 +359,19 @@ export const MARKDOWN_FINDING_NOTE_CLASS = 'skill-finding-note';
 
 const markdownFindingsKey = new PluginKey('markdownFindings');
 
-/** The text of a finding as the editor renders it: markdown marks gone, hidden characters back. */
+/**
+ * The text of a finding as the editor renders it: markdown marks gone, hidden characters back.
+ * The match as the check wrote it comes last, for a text that shows its markers.
+ */
 function findingNeedles(match: string): string[] {
 	const visible = match.replace(/⟦U\+([0-9A-F]{4,6})⟧/gi, (_, hex: string) =>
 		String.fromCodePoint(parseInt(hex, 16)),
 	);
 	const plain = visible.replace(/[*_`~]/g, '');
-	return [...new Set([visible.trim(), plain.trim()])].filter((needle) => needle.length > 0);
+	// A text that shows hidden characters as markers holds the match as the check wrote it.
+	return [...new Set([visible.trim(), plain.trim(), match.trim()])].filter(
+		(needle) => needle.length > 0,
+	);
 }
 
 const CALLOUTS = {
@@ -394,13 +402,15 @@ function destroyNote(node: Node) {
 export type MarkdownFindingsOptions = {
 	/** True to show only the blocks with a finding. The others hide. */
 	getFocus?: () => boolean;
+	/** False to mark the text only, with no callout under the block. Default: true. */
+	showNotes?: boolean;
 };
 
 export const MARKDOWN_FINDING_HIDDEN_CLASS = 'skill-finding-hidden';
 function buildFindingDecorations(
 	doc: ProseMirrorNode,
 	findings: MarkdownFinding[],
-	{ focus }: { focus: boolean },
+	{ focus, showNotes }: { focus: boolean; showNotes: boolean },
 ) {
 	const units = diffUnits(doc);
 	const decorations: Decoration[] = [];
@@ -426,9 +436,11 @@ function buildFindingDecorations(
 			decorations.push(
 				Decoration.inline(from, to, {
 					class: `${MARKDOWN_FINDING_MARK_CLASS} ${MARKDOWN_FINDING_MARK_CLASS}--${finding.severity}`,
+					...(finding.id ? { 'data-finding-id': finding.id } : {}),
 				}),
 			);
 		}
+		if (!showNotes) return;
 		// The note goes under the block: inside a list item, so the list stays whole.
 		const end = unit.pos + unit.node.nodeSize;
 		decorations.push(
@@ -453,15 +465,16 @@ function buildFindingDecorations(
 	}
 
 	// A finding whose text is not in the editor, such as one in the raw markdown, goes on top.
-	unplaced.forEach((finding, index) => {
-		decorations.push(
-			Decoration.widget(0, () => noteOf(finding), {
-				side: -1,
-				key: `finding-top-${index}-${finding.message}`,
-				destroy: destroyNote,
-			}),
-		);
-	});
+	if (showNotes)
+		unplaced.forEach((finding, index) => {
+			decorations.push(
+				Decoration.widget(0, () => noteOf(finding), {
+					side: -1,
+					key: `finding-top-${index}-${finding.message}`,
+					destroy: destroyNote,
+				}),
+			);
+		});
 
 	return DecorationSet.create(doc, decorations);
 }
@@ -473,7 +486,7 @@ function buildFindingDecorations(
 export function attachMarkdownFindings(
 	editor: Editor,
 	getFindings: () => MarkdownFinding[],
-	{ getFocus = () => false }: MarkdownFindingsOptions = {},
+	{ getFocus = () => false, showNotes = true }: MarkdownFindingsOptions = {},
 ) {
 	editor.registerPlugin(
 		new Plugin({
@@ -491,7 +504,7 @@ export function attachMarkdownFindings(
 					const findings = getFindings();
 					const focus = getFocus();
 					return findings.length > 0 || focus
-						? buildFindingDecorations(state.doc, findings, { focus })
+						? buildFindingDecorations(state.doc, findings, { focus, showNotes })
 						: null;
 				},
 			},

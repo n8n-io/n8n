@@ -1,11 +1,25 @@
 import { DocsContainer } from '@storybook/addon-docs/blocks';
 import { createElement, useEffect, useLayoutEffect, useState, type ComponentProps } from 'react';
 import { GLOBALS_UPDATED, SET_GLOBALS } from 'storybook/internal/core-events';
-import { themes } from 'storybook/theming';
+import { create } from 'storybook/theming';
 
 import { applyN8nTheme, resolveN8nTheme, type N8nTheme } from './applyN8nTheme';
 
 type DocsContainerProps = ComponentProps<typeof DocsContainer>;
+
+/**
+ * The Storybook themes, with the n8n fonts. The default themes use Nunito Sans. The preview
+ * loads Geist with the design system styles, so the docs can use the font tokens.
+ */
+const fonts = {
+	fontBase: 'var(--font-family)',
+	fontCode: 'var(--font-family--monospace)',
+};
+
+const docsThemes = {
+	light: create({ base: 'light', ...fonts }),
+	dark: create({ base: 'dark', ...fonts }),
+};
 
 function themeFromGlobals(globals: unknown): N8nTheme | undefined {
 	if (typeof globals !== 'object' || globals === null || !('theme' in globals)) {
@@ -75,6 +89,6 @@ export const ThemedDocsContainer = (props: DocsContainerProps) => {
 
 	return createElement(DocsContainer, {
 		...props,
-		theme: themeName === 'dark' ? themes.dark : themes.light,
+		theme: docsThemes[themeName],
 	});
 };

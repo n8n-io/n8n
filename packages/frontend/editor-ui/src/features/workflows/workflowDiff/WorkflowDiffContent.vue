@@ -6,12 +6,15 @@ import WorkflowDiffPanels from './WorkflowDiffPanels.vue';
 import SyncedWorkflowCanvas from './SyncedWorkflowCanvas.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
 import NodeDiff from './NodeDiff.vue';
+import NodeFieldDiff from './NodeFieldDiff.vue';
 import HighlightedEdge from './HighlightedEdge.vue';
 import Node from '@/features/workflows/canvas/components/elements/nodes/CanvasNode.vue';
 import { useI18n } from '@n8n/i18n';
 import { computed, useCssModule } from 'vue';
 import { N8nHeading } from '@n8n/design-system';
 import { NodeDiffStatus } from 'n8n-workflow';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const props = defineProps<{
 	sourceNodes: CanvasNode[];
@@ -26,6 +29,8 @@ const props = defineProps<{
 	targetExists: boolean;
 	selectedNode?: INodeUi;
 	nodeDiffs: { oldString: string; newString: string };
+	/** Prototype: the selected node on both sides. With it, the aside panel shows the fields. */
+	nodePair?: { before?: INodeUi; after?: INodeUi };
 	isSourceWorkflowNew: boolean;
 	applyLayout?: boolean;
 	nodesDiff: Map<string, { status: NodeDiffStatus; node: INodeUi }>;
@@ -40,6 +45,18 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const $style = useCssModule();
+const nodeTypesStore = useNodeTypesStore();
+const credentialsStore = useCredentialsStore();
+
+const selectedNodeType = computed(() =>
+	props.selectedNode
+		? nodeTypesStore.getNodeType(props.selectedNode.type, props.selectedNode.typeVersion)
+		: null,
+);
+
+function credentialLabel(type: string) {
+	return credentialsStore.getCredentialTypeByName(type)?.displayName ?? type;
+}
 
 // Vue Flow shares one store for each id across the page.
 const sourceCanvasId = computed(() =>
@@ -145,7 +162,14 @@ function getEdgeStatusClass(id: string) {
 
 		<WorkflowDiffAside v-if="selectedNode" :node="selectedNode" @close="emit('closeAside')">
 			<template #default="{ outputFormat }">
-				<NodeDiff v-bind="nodeDiffs" :output-format="outputFormat" />
+				<NodeFieldDiff
+					v-if="nodePair"
+					:before="nodePair.before"
+					:after="nodePair.after"
+					:node-type="selectedNodeType"
+					:credential-label="credentialLabel"
+				/>
+				<NodeDiff v-else v-bind="nodeDiffs" :output-format="outputFormat" />
 			</template>
 		</WorkflowDiffAside>
 	</div>

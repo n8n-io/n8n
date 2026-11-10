@@ -48,7 +48,9 @@ const emit = defineEmits<{
 				@click="emit('close')"
 			></N8nIconButton>
 		</div>
-		<slot v-bind="{ outputFormat }" />
+		<div :class="$style.asideBody">
+			<slot v-bind="{ outputFormat }" />
+		</div>
 	</N8nResizeWrapper>
 </template>
 
@@ -68,6 +70,12 @@ const emit = defineEmits<{
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--2xs);
+}
+
+.asideBody {
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
 }
 
 .nodeTitle {

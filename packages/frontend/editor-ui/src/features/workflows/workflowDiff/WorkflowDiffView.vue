@@ -110,6 +110,7 @@ const {
 	setActiveTab,
 	selectedNode,
 	nodeDiffs,
+	selectedNodePair,
 	changesCount,
 	isSourceWorkflowNew,
 	setSelectedDetailId,
@@ -314,6 +315,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 					:target-exists="!!targetWorkflow"
 					:selected-node="selectedNode"
 					:node-diffs="nodeDiffs"
+					:node-pair="selectedNodePair"
 					:is-source-workflow-new="isSourceWorkflowNew"
 					:apply-layout="tidyUp"
 					:nodes-diff="nodesDiff"

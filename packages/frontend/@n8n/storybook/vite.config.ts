@@ -4,12 +4,18 @@ import icons from 'unplugin-icons/vite';
 import svgLoader from 'vite-svg-loader';
 import path from 'path';
 import { lucideIconsPlugin } from '../design-system/src/icons/lucide/vite';
+import { editorUiAliases } from '../../editor-ui/vite/aliases.mjs';
+import { nodePopularityPlugin } from '../../editor-ui/vite/vite-plugin-node-popularity.mjs';
+
+const editorUiDir = path.resolve(__dirname, '../../editor-ui');
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
 	plugins: [
 		vue(),
 		lucideIconsPlugin(),
+		// Stories of editor-ui components can load the node creator, which imports this module.
+		nodePopularityPlugin(),
 		icons({
 			compiler: 'vue3',
 			autoInstall: true,
@@ -85,6 +91,16 @@ export default defineConfig({
 				find: /^@n8n\/utils\/(.*)$/,
 				replacement: path.resolve(__dirname, '../../../@n8n/utils/src/$1'),
 			},
+			// Stories of editor-ui components load the app graph, such as `n8n-workflow`. They need
+			// the same aliases and shims as the editor build.
+			...editorUiAliases(editorUiDir, path.resolve(__dirname, '../../..')),
+			{ find: /^node:fs$/, replacement: path.resolve(editorUiDir, 'vite/node-fs-shim.ts') },
 		],
 	},
-});
+	define: {
+		BASE_PATH: "'/'",
+		// Node polyfills in the app graph read `process.env` when they load. The dev server does
+		// not replace it, so it gets an empty object, as in the editor dev config.
+		...(command === 'serve' ? { 'process.env': {} } : {}),
+	},
+}));

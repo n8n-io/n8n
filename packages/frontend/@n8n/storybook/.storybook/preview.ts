@@ -70,7 +70,15 @@ export const parameters = {
 	options: {
 		storySort: {
 			method: 'alphabetical',
-			order: ['Style Guide', 'Core', 'Areas', 'Experimental'],
+			order: [
+				'Style Guide',
+				'Core',
+				'Areas',
+				'Experimental',
+				// Prototype: the skill review comparison opens on its overview.
+				'Prototypes',
+				['Skill review', ['Overview', '*']],
+			],
 			includeNames: false,
 		},
 	},

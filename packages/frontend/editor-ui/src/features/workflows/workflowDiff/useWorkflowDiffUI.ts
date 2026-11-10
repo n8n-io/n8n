@@ -22,6 +22,30 @@ export interface UseWorkflowDiffUIOptions {
 	onTabChange?: (tab: 'nodes' | 'connectors' | 'settings') => void;
 }
 
+/** A node as the JSON view of the aside panel shows it: no position, and code as lines. */
+export function nodeDiffJson(node?: INodeUi): string {
+	return (
+		JSON.stringify(
+			node,
+			(key: string, value: unknown) => {
+				if (key === 'position') {
+					return undefined;
+				}
+
+				if (
+					(key === 'jsCode' || (key === 'content' && node?.type === STICKY_NODE_TYPE)) &&
+					typeof value === 'string'
+				) {
+					return value.split('\n');
+				}
+
+				return value;
+			},
+			2,
+		) ?? ''
+	);
+}
+
 export function useWorkflowDiffUI(options: UseWorkflowDiffUIOptions) {
 	const {
 		sourceWorkflow,
@@ -193,27 +217,18 @@ export function useWorkflowDiffUI(options: UseWorkflowDiffUIOptions) {
 			(node) => node.id === selectedDetailId.value,
 		);
 
-		function replacer(key: string, value: unknown, nodeType?: string) {
-			if (key === 'position') {
-				return undefined;
-			}
-
-			if (
-				(key === 'jsCode' || (key === 'content' && nodeType === STICKY_NODE_TYPE)) &&
-				typeof value === 'string'
-			) {
-				return value.split('\n');
-			}
-
-			return value;
-		}
-
-		const withNodeType = (type?: string) => (key: string, value: unknown) =>
-			replacer(key, value, type);
-
 		return {
-			oldString: JSON.stringify(sourceNode, withNodeType(sourceNode?.type), 2) ?? '',
-			newString: JSON.stringify(targetNode, withNodeType(targetNode?.type), 2) ?? '',
+			oldString: nodeDiffJson(sourceNode),
+			newString: nodeDiffJson(targetNode),
+		};
+	});
+
+	// The selected node on both sides, for the field view of the aside panel.
+	const selectedNodePair = computed(() => {
+		if (!selectedDetailId.value) return undefined;
+		return {
+			before: sourceWorkflow.value?.nodes.find((node) => node.id === selectedDetailId.value),
+			after: targetWorkflow.value?.nodes.find((node) => node.id === selectedDetailId.value),
 		};
 	});
 
@@ -242,6 +257,7 @@ export function useWorkflowDiffUI(options: UseWorkflowDiffUIOptions) {
 		setActiveTab,
 		selectedNode,
 		nodeDiffs,
+		selectedNodePair,
 		changesCount,
 		isSourceWorkflowNew,
 		setSelectedDetailId,
