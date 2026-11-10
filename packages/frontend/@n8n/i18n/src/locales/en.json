@@ -5832,7 +5832,6 @@
 	"workflowSettings.sections.access": "Access",
 	"workflowSettings.sections.executionData": "Execution data",
 	"workflowSettings.sections.insights": "Insights",
-	"workflowSettings.sections.observability": "Observability",
 	"workflowSettings.callerIds": "IDs of workflows that can call this one",
 	"workflowSettings.callerIds.placeholder": "e.g. 14, 18",
 	"workflowSettings.callerPolicy": "This workflow can be called by",

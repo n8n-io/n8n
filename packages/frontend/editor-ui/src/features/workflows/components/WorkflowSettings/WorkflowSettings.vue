@@ -154,9 +154,6 @@ const filteredTimezones = computed(() => {
 const onTimezoneFilter = (query: string) => {
 	timezoneQuery.value = query;
 };
-const onTimezoneVisibleChange = (visible: boolean) => {
-	if (!visible) timezoneQuery.value = '';
-};
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
 const workflows = ref<IWorkflowShortResponse[]>([]);
 const credentialResolverSelectRef = ref<InstanceType<typeof N8nSelect> | null>(null);
@@ -1235,7 +1232,6 @@ onBeforeUnmount(() => {
 									:disabled="readOnlyEnv || !workflowPermissions.update"
 									:limit-popper-width="true"
 									data-test-id="workflow-settings-timezone"
-									@visible-change="onTimezoneVisibleChange"
 								>
 									<N8nOption
 										v-for="timezone of filteredTimezones"
@@ -1867,15 +1863,8 @@ onBeforeUnmount(() => {
 								</div>
 							</template>
 						</N8nSettingsRow>
-					</N8nSettingsRowGroup>
-				</N8nSettingsSection>
-
-				<N8nSettingsSection
-					v-if="settingsStore.isOtelCustomSpanAttributesEnabled"
-					:title="i18n.baseText('workflowSettings.sections.observability')"
-				>
-					<N8nSettingsRowGroup>
 						<WorkflowCustomTelemetryTags
+							v-if="settingsStore.isOtelCustomSpanAttributesEnabled"
 							v-model="workflowSettings.customTelemetryTags"
 							:is-read-only="isWorkflowSettingsReadOnly"
 							:save-tags="saveCustomTelemetryTags"
