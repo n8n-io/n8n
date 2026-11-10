@@ -145,7 +145,7 @@ export class ScalingService {
 		const { McpServer, QueuedExecutionStrategy, RedisSessionStore } = await import(
 			'@n8n/n8n-nodes-langchain/mcp/core'
 		);
-		const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+		const { Publisher } = await import('@n8n/backend-services');
 
 		const publisher = Container.get(Publisher);
 

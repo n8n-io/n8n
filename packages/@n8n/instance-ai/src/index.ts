@@ -812,6 +812,8 @@ export type {
 	AgentSessionSummary,
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
+	InstanceAiStoredFile,
+	InstanceAiStoredFileReader,
 	InstanceAiSkillService,
 	BrowserUseState,
 } from './types';

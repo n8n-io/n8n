@@ -44,8 +44,9 @@ import {
 	takeAttachedDynamicCredentialsUsage,
 	escalateSubWorkflowRedaction,
 	takeAttachedSubWorkflowRedaction,
-	shouldRedactConsoleOutput,
+	isExecutionOutputRedacted,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
+	AI_EVENT_REDACTED_MESSAGE,
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -387,22 +388,13 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	}
 
 	/**
-	 * Console output never passes through the execution-data redaction pipeline,
-	 * so the push/stdout sinks gate on this before emitting. Fails closed: an
-	 * error while resolving the policy redacts rather than emits.
+	 * Console output and AI event payloads never pass through the execution-data
+	 * redaction pipeline, so the push, stdout and log-streaming sinks gate on this
+	 * before emitting. Fails closed: an error while resolving the policy redacts
+	 * rather than emits.
 	 */
 	isConsoleOutputRedacted(): boolean {
-		try {
-			const runtimeData = this.runExecutionData.executionData?.runtimeData;
-			return shouldRedactConsoleOutput(
-				runtimeData?.redaction,
-				this.workflow.settings,
-				this.mode,
-				runtimeData?.subWorkflowRedaction,
-			);
-		} catch {
-			return true;
-		}
+		return isExecutionOutputRedacted(this.runExecutionData, this.workflow.settings, this.mode);
 	}
 
 	/**
@@ -458,7 +450,9 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			workflowName: this.workflow.name ?? 'Unnamed workflow',
 			nodeType: this.node.type,
 			workflowId: this.workflow.id ?? 'unsaved-workflow',
-			msg,
+			// The payload holds prompts, completions and tool I/O, which the
+			// log-streaming sink would otherwise carry unredacted.
+			msg: this.isConsoleOutputRedacted() ? AI_EVENT_REDACTED_MESSAGE : msg,
 		});
 	}
 

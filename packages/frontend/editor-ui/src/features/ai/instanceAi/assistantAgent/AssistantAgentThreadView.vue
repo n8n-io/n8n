@@ -69,7 +69,7 @@ import {
 	saveAssistantAgentThreadTabs,
 } from './assistantAgentTabs.api';
 import {
-	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
+	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	ASSISTANT_AGENT_ID,
 	ASSISTANT_AGENT_PROJECT_ID,
 	ASSISTANT_AGENT_THREAD_ID,
@@ -558,7 +558,7 @@ function removeStagedNodes(chipId: string): void {
 						:continue-session-id="props.threadId"
 						:new-session="isNewSession"
 						:agent-config="agentConfig"
-						:attachment-capabilities="ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES"
+						:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 						agent-status="production"
 						:connected-triggers="[]"
 						channel="system"
