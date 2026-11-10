@@ -136,12 +136,14 @@ export function buildNodePreviews(
 	resultData: Record<string, unknown> | undefined,
 	maxChars: number,
 	simulatedNodeNames?: ReadonlySet<string>,
+	simulatedMaxChars = maxChars,
 ): VerificationNodePreview[] {
 	if (!resultData) return [];
 
 	return Object.entries(resultData).map(([nodeName, nodeOutput]) => {
 		const serialized = stringifyForToolOutput(nodeOutput);
-		const preview = previewValue(nodeOutput, maxChars);
+		const limit = simulatedNodeNames?.has(nodeName) ? simulatedMaxChars : maxChars;
+		const preview = previewValue(nodeOutput, limit);
 		const outputs = countOutputBranchItems(nodeOutput);
 		return {
 			nodeName,
@@ -223,6 +225,169 @@ export function buildEmptyOutputNote(
 		'Then tell the user what you repaired. If they match, do not change a node that you did ' +
 		'not build. Tell the user that it outputs no fields.'
 	);
+}
+
+const CODE_NODE_TYPES = new Set(['n8n-nodes-base.code', 'n8n-nodes-base.function']);
+const JSON_PATH_REF = /\$json((?:\s*\.\s*[A-Za-z_$][\w$]*|\s*\[\s*(?:'[^']*'|"[^"]*"|\d+)\s*\])+)/g;
+const PATH_SEGMENT = /\.\s*([A-Za-z_$][\w$]*)|\[\s*(?:'([^']*)'|"([^"]*)"|(\d+))\s*\]/g;
+const MAX_MISSING_FIELDS = 10;
+
+/** Expression strings (`=...`) anywhere in a node's parameters. */
+function expressionStrings(value: unknown, out: string[] = []): string[] {
+	if (typeof value === 'string') {
+		if (value.startsWith('=')) out.push(value);
+	} else if (Array.isArray(value)) {
+		for (const child of value) expressionStrings(child, out);
+	} else if (isRecord(value)) {
+		for (const child of Object.values(value)) expressionStrings(child, out);
+	}
+	return out;
+}
+
+function parsePath(segments: string): string[] {
+	const path: string[] = [];
+	for (const match of segments.matchAll(PATH_SEGMENT)) {
+		path.push(match[1] ?? match[2] ?? match[3] ?? match[4] ?? '');
+	}
+	return path;
+}
+
+/** Items to check a field against: every item when complete, else the first-item preview. */
+function sampleItems(nodeOutput: unknown): Array<Record<string, unknown>> | undefined {
+	const items = completeItems(nodeOutput);
+	if (items) return items.filter(isRecord);
+	const output = outputForInspection(nodeOutput);
+	if (isRecord(output) && isRecord(output._firstItemPreview)) return [output._firstItemPreview];
+	return undefined;
+}
+
+/**
+ * Walks `path` through `item`. Returns undefined when the path resolves, or the
+ * value where the walk stopped and the missing segment.
+ */
+function findMissingSegment(
+	item: unknown,
+	path: string[],
+): { at: Record<string, unknown>; segment: string; resolved: string[] } | undefined {
+	let current: unknown = item;
+	for (let index = 0; index < path.length; index++) {
+		const segment = path[index];
+		if (Array.isArray(current)) {
+			current = current[Number(segment)];
+			continue;
+		}
+		if (!isRecord(current)) return undefined; // Primitive or null: not a key mismatch.
+		if (!(segment in current)) return { at: current, segment, resolved: path.slice(0, index) };
+		current = current[segment];
+	}
+	return undefined;
+}
+
+const normalizeKey = (key: string) => key.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function describeMissingField(
+	at: Record<string, unknown>,
+	segment: string,
+	fromFixture: boolean,
+): string {
+	const keys = Object.keys(at);
+	const wanted = normalizeKey(segment);
+	const close = keys.filter((key) => {
+		const normalized = normalizeKey(key);
+		return (
+			normalized === wanted ||
+			(normalized.length >= 3 && (normalized.includes(wanted) || wanted.includes(normalized)))
+		);
+	});
+	const arrayHolders = keys.filter((key) => {
+		const value = at[key];
+		return Array.isArray(value) && value.some((entry) => isRecord(entry) && segment in entry);
+	});
+	const parts = [`input keys: ${keys.slice(0, 15).join(', ') || '(none)'}`];
+	if (close.length > 0) parts.push(`close match: ${close.join(', ')}`);
+	// A fixture's shape is a guess, so a restructuring hint would change the
+	// workflow to fit the guess instead of the real node.
+	if (arrayHolders.length > 0 && !fromFixture) {
+		parts.push(
+			`\`${segment}\` is on each entry of the array in ${arrayHolders.join(', ')}: ` +
+				'split that array into items (Split Out) before this node',
+		);
+	}
+	return parts.join('; ');
+}
+
+/**
+ * A `$json.x` that names a field the input does not have resolves to empty, and
+ * the run still ends green. This is how a guessed input contract (wrong field
+ * names, wrong case, an unsplit array) passed verification. Compares each
+ * `$json` path in a reached node's expressions with the items its main parent
+ * produced, and names the fields that no input item has.
+ * Code nodes are skipped: their item access is not an expression.
+ * Simulated nodes are skipped: their output is a fixture, and the resolved
+ * parameter check covers their inputs.
+ * A miss whose input came from a simulated parent is reported apart: the
+ * fixture can have the wrong shape while the expression is right.
+ */
+export function buildMissingFieldNote(
+	resultData: Record<string, unknown> | undefined,
+	workflow: Pick<WorkflowJSON, 'nodes' | 'connections'> | undefined,
+	simulatedNodeNames: ReadonlySet<string>,
+): string | undefined {
+	if (!resultData || !workflow?.connections) return undefined;
+	const byDestination = mapConnectionsByDestination(toEngineConnections(workflow.connections));
+	const findings: string[] = [];
+	const fixtureFindings: string[] = [];
+
+	for (const node of workflow.nodes ?? []) {
+		if (findings.length + fixtureFindings.length >= MAX_MISSING_FIELDS) break;
+		const nodeName = node.name;
+		if (typeof nodeName !== 'string' || !(nodeName in resultData)) continue;
+		if (simulatedNodeNames.has(nodeName) || CODE_NODE_TYPES.has(node.type)) continue;
+		const parents = getParentNodes(byDestination, nodeName, NodeConnectionTypes.Main, 1);
+		if (parents.length !== 1) continue; // Merge-style inputs: `$json` depends on the input index.
+		const inputItems = sampleItems(resultData[parents[0]]);
+		if (!inputItems || inputItems.length === 0) continue;
+		const fromFixture = simulatedNodeNames.has(parents[0]);
+
+		const reported = new Set<string>();
+		for (const expression of expressionStrings(node.parameters)) {
+			for (const match of expression.matchAll(JSON_PATH_REF)) {
+				const path = parsePath(match[1]);
+				const key = path.join('.');
+				if (path.length === 0 || reported.has(key)) continue;
+				const misses = inputItems.map((item) => findMissingSegment(item, path));
+				const firstMiss = misses[0];
+				if (!firstMiss || misses.some((miss) => miss === undefined)) continue;
+				reported.add(key);
+				const where =
+					firstMiss.resolved.length > 0 ? ` in \`${firstMiss.resolved.join('.')}\`` : '';
+				(fromFixture ? fixtureFindings : findings).push(
+					`${nodeName} reads \`$json.${key}\`, but no item from ${parents[0]} has ` +
+						`\`${firstMiss.segment}\`${where} (${describeMissingField(firstMiss.at, firstMiss.segment, fromFixture)})`,
+				);
+			}
+		}
+	}
+
+	const notes: string[] = [];
+	if (findings.length > 0) {
+		notes.push(
+			`Field check: ${findings.join('; ')}. These expressions resolved to empty, so this run does ` +
+				'not prove those steps. Use the field names the input really has. If the input comes from an ' +
+				'outside system and its field names or tool names are not in the request, ask the user for ' +
+				'them or test with a real payload. Do not guess them.',
+		);
+	}
+	if (fixtureFindings.length > 0) {
+		notes.push(
+			`Fixture field check: ${fixtureFindings.join('; ')}. The input came from simulated output, ` +
+				'which can have the wrong shape. These expressions resolved to empty, so this run does not ' +
+				'prove those steps. If the real node outputs the field you read, keep the expression and ' +
+				'verify again with a `fixtureOverrides` entry in the real output shape. Change the workflow ' +
+				'only when the real node does not output that field.',
+		);
+	}
+	return notes.length > 0 ? notes.join(' ') : undefined;
 }
 
 export function countProducedOutputRows(
