@@ -1,4 +1,5 @@
 import type { BuiltTool } from '@n8n/agents';
+import { zodSchema } from 'ai';
 import { z } from 'zod';
 
 import { createToolRegistry } from '../../tool-registry';
@@ -50,6 +51,13 @@ function getOutputSchema<TSchema extends z.ZodTypeAny = z.ZodTypeAny>(
 	const schema = tools.get(name)?.outputSchema;
 	if (!(schema instanceof z.ZodType)) throw new Error(`Missing Zod output schema for ${name}`);
 	return schema as TSchema;
+}
+
+/** A flattened union can be wrapped in its required-field check. */
+function flattenedObject(schema: z.ZodTypeAny): z.ZodObject<z.ZodRawShape> {
+	const inner = schema instanceof z.ZodEffects ? schema.innerType() : schema;
+	if (!(inner instanceof z.ZodObject)) throw new Error('Expected a flattened object schema');
+	return inner as z.ZodObject<z.ZodRawShape>;
 }
 
 describe('sanitizeMcpToolSchemas', () => {
@@ -540,7 +548,7 @@ describe('sanitizeMcpToolSchemas', () => {
 				}),
 			]);
 
-			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const result = flattenedObject(sanitizeZodType(union));
 			const nameField = result.shape.name;
 
 			expect(nameField.description).toBe('For "create": Table name. For "rename": Column name');
@@ -604,7 +612,7 @@ describe('sanitizeMcpToolSchemas', () => {
 				}),
 			]);
 
-			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const result = flattenedObject(sanitizeZodType(union));
 			const actionField = result.shape.action;
 
 			expect(actionField.description).toBe('"list": List all items | "get": Get item by ID');
@@ -620,7 +628,7 @@ describe('sanitizeMcpToolSchemas', () => {
 				}),
 			]);
 
-			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const result = flattenedObject(sanitizeZodType(union));
 			const actionField = result.shape.action;
 
 			expect(actionField.description).toBe('"list": List all items | "ping"');
@@ -633,7 +641,7 @@ describe('sanitizeMcpToolSchemas', () => {
 				z.object({ action: z.literal('delete'), id: sharedId }),
 			]);
 
-			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const result = flattenedObject(sanitizeZodType(union));
 			const idField = result.shape.id as z.ZodOptional<z.ZodTypeAny>;
 
 			// Original description is preserved (no combined override)
@@ -655,12 +663,12 @@ describe('sanitizeMcpToolSchemas', () => {
 				z.object({ action: z.literal('describe'), nodeType: z.string().describe('Node type ID') }),
 			]);
 
-			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const result = flattenedObject(sanitizeZodType(union));
 
 			expect(result.shape.nodeIds.description).toBe(
-				'For "type-definition": Node IDs to get definitions for',
+				'Required for "type-definition": Node IDs to get definitions for',
 			);
-			expect(result.shape.nodeType.description).toBe('For "describe": Node type ID');
+			expect(result.shape.nodeType.description).toBe('Required for "describe": Node type ID');
 		});
 
 		it('should annotate fields shared by a subset of variants with all their actions', () => {
@@ -674,10 +682,10 @@ describe('sanitizeMcpToolSchemas', () => {
 				z.object({ action: z.literal('explore-resources'), nodeType: shared }),
 			]);
 
-			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const result = flattenedObject(sanitizeZodType(union));
 
 			expect(result.shape.nodeType.description).toBe(
-				'For "describe", "explore-resources": Node type ID',
+				'Required for "describe", "explore-resources": Node type ID',
 			);
 		});
 
@@ -692,9 +700,9 @@ describe('sanitizeMcpToolSchemas', () => {
 				z.object({ action: z.literal('archive'), workflowId: shared }),
 			]);
 
-			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const result = flattenedObject(sanitizeZodType(union));
 
-			expect(result.shape.workflowId.description).toBe('Not for "list": Workflow ID');
+			expect(result.shape.workflowId.description).toBe('Required, not for "list": Workflow ID');
 		});
 
 		it('should name the excluded actions for a mostly shared field without a description', () => {
@@ -704,18 +712,18 @@ describe('sanitizeMcpToolSchemas', () => {
 				z.object({ action: z.literal('delete'), id: z.string() }),
 			]);
 
-			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const result = flattenedObject(sanitizeZodType(union));
 
-			expect(result.shape.id.description).toBe('Not for "list"');
+			expect(result.shape.id.description).toBe('Required, not for "list"');
 		});
 
 		it('should annotate subset-only fields without a description using "Only for" hint', () => {
 			const union = z.discriminatedUnion('action', [
 				z.object({ action: z.literal('list') }),
-				z.object({ action: z.literal('get'), id: z.string() }),
+				z.object({ action: z.literal('get'), id: z.string().optional() }),
 			]);
 
-			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const result = flattenedObject(sanitizeZodType(union));
 
 			expect(result.shape.id.description).toBe('Only for "get"');
 		});
@@ -732,7 +740,7 @@ describe('sanitizeMcpToolSchemas', () => {
 				}),
 			]);
 
-			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const result = flattenedObject(sanitizeZodType(union));
 			const nameField = result.shape.name;
 
 			expect(nameField.description).toBe('For "create": Table name. For "rename": Column name');
@@ -750,12 +758,125 @@ describe('sanitizeMcpToolSchemas', () => {
 				}),
 			]);
 
-			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const result = flattenedObject(sanitizeZodType(union));
 
 			expect(result.shape.limit).toBeInstanceOf(z.ZodOptional);
 			expect(result.shape.id).toBeInstanceOf(z.ZodOptional);
 			// action is required (not optional)
 			expect(result.shape.action).not.toBeInstanceOf(z.ZodOptional);
+		});
+
+		it('should keep a field required when every action requires it', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({ action: z.literal('get'), id: z.string().describe('Item ID') }),
+				z.object({ action: z.literal('delete'), id: z.string().describe('Item ID') }),
+			]);
+
+			const result = flattenedObject(sanitizeZodType(union, true));
+
+			expect(result.shape.id).not.toBeInstanceOf(z.ZodOptional);
+			expect(result.shape.id.description).toBe('Item ID');
+		});
+
+		it('should name only the requiring actions when the field is optional elsewhere', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({ action: z.literal('list'), query: z.string().optional().describe('Filter') }),
+				z.object({ action: z.literal('search'), query: z.string().describe('Filter') }),
+				z.object({ action: z.literal('get') }),
+			]);
+
+			const result = flattenedObject(sanitizeZodType(union, true));
+
+			expect(result.shape.query.description).toBe(
+				'Required for "search", optional for "list": Filter',
+			);
+		});
+
+		it('should mark required actions when merging conflicting descriptions', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({ action: z.literal('create'), name: z.string().describe('Table name') }),
+				z.object({
+					action: z.literal('rename'),
+					name: z.string().optional().describe('Column name'),
+				}),
+			]);
+
+			const result = flattenedObject(sanitizeZodType(union));
+
+			expect(result.shape.name.description).toBe(
+				'For "create" (required): Table name. For "rename": Column name',
+			);
+		});
+
+		it('should treat a nullable field as optional', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({ action: z.literal('filter'), value: z.string().nullable() }),
+				z.object({ action: z.literal('list') }),
+			]);
+
+			const schema = sanitizeInputSchema(union);
+
+			expect(schema.safeParse({ action: 'filter' }).success).toBe(true);
+			expect(flattenedObject(schema).shape.value.description).toBe('Only for "filter"');
+		});
+	});
+
+	describe('per-action required fields', () => {
+		const union = z.discriminatedUnion('action', [
+			z.object({
+				action: z.literal('web-search'),
+				query: z.string().describe('Search query'),
+				maxResults: z.number().optional().describe('Maximum results'),
+			}),
+			z.object({
+				action: z.literal('fetch-url'),
+				url: z.string().url().describe('URL to fetch'),
+			}),
+		]);
+
+		it('should reject a call that leaves out a field its action requires', () => {
+			const result = sanitizeInputSchema(union).safeParse({ action: 'web-search' });
+
+			expect(result.success).toBe(false);
+			expect(result.error?.issues).toEqual([
+				expect.objectContaining({
+					path: ['query'],
+					message: '"query" is required when action is "web-search"',
+				}),
+			]);
+		});
+
+		it('should not require fields of another action', () => {
+			const schema = sanitizeInputSchema(union);
+
+			expect(schema.safeParse({ action: 'web-search', query: 'n8n' }).success).toBe(true);
+			expect(schema.safeParse({ action: 'fetch-url', url: 'https://n8n.io' }).success).toBe(true);
+		});
+
+		it('should report the full path for a nested union', () => {
+			const schema = sanitizeInputSchema(z.object({ operation: union }));
+
+			const result = schema.safeParse({ operation: { action: 'fetch-url' } });
+
+			expect(result.error?.issues).toEqual([
+				expect.objectContaining({
+					path: ['operation', 'url'],
+					message: '"url" is required when action is "fetch-url"',
+				}),
+			]);
+		});
+
+		it('should send the flattened object to the provider without the check', () => {
+			const { jsonSchema } = zodSchema(sanitizeInputSchema(union));
+
+			expect(jsonSchema).toMatchObject({
+				type: 'object',
+				required: ['action'],
+				properties: {
+					query: { type: 'string', description: 'Required for "web-search": Search query' },
+					url: { type: 'string', description: 'Required for "fetch-url": URL to fetch' },
+				},
+			});
 		});
 	});
 	describe('server-supplied descriptions', () => {
