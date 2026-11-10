@@ -43,6 +43,9 @@
       "gen-ai": [
         "dist/esm/gen-ai/index.d.ts"
       ],
+      "guardrails": [
+        "dist/esm/guardrails/index.d.ts"
+      ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
       ],
@@ -116,6 +119,11 @@
       "types": "./dist/esm/gen-ai/index.d.ts",
       "import": "./dist/esm/gen-ai/index.js",
       "require": "./dist/cjs/gen-ai/index.js"
+    },
+    "./guardrails": {
+      "types": "./dist/esm/guardrails/index.d.ts",
+      "import": "./dist/esm/guardrails/index.js",
+      "require": "./dist/cjs/guardrails/index.js"
     },
     "./web-search": {
       "types": "./dist/esm/web-search/index.d.ts",

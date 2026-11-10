@@ -31,12 +31,12 @@ function detectUrls(text: string): string[] {
 
 	// Pattern 1: URLs with schemes (highest priority)
 	const schemePatterns = [
-		/https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi,
-		/ftp:\/\/[^\s<>"{}|\\^`\[\]]+/gi,
-		/data:[^\s<>"{}|\\^`\[\]]+/gi,
-		/javascript:[^\s<>"{}|\\^`\[\]]+/gi,
-		/vbscript:[^\s<>"{}|\\^`\[\]]+/gi,
-		/mailto:[^\s<>"{}|\\^`\[\]]+/gi,
+		/https?:\/\/[^\s<>"{}|\\^`[\]]+/gi,
+		/ftp:\/\/[^\s<>"{}|\\^`[\]]+/gi,
+		/data:[^\s<>"{}|\\^`[\]]+/gi,
+		/javascript:[^\s<>"{}|\\^`[\]]+/gi,
+		/vbscript:[^\s<>"{}|\\^`[\]]+/gi,
+		/mailto:[^\s<>"{}|\\^`[\]]+/gi,
 	];
 
 	const schemeUrls = new Set<string>();
@@ -216,7 +216,7 @@ function isUrlAllowed(parsedUrl: URL, allowList: string[], allowSubdomains: bool
 				}
 			} catch (error) {
 				throw new Error(
-					`Invalid URL in allow list: "${entry}" - ${error instanceof Error ? error.message : error}`,
+					`Invalid URL in allow list: "${entry}" - ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
 			continue;
@@ -255,7 +255,7 @@ function isUrlAllowed(parsedUrl: URL, allowList: string[], allowSubdomains: bool
 			// Only log if it looks like it was intended to be an IP but failed parsing
 			if (/^\d+\.\d+/.test(entry)) {
 				console.warn(
-					`Warning: Malformed IP address in allow list: "${entry}" - ${error instanceof Error ? error.message : error}`,
+					`Warning: Malformed IP address in allow list: "${entry}" - ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
 		}
