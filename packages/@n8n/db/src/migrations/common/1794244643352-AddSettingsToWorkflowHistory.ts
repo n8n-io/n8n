@@ -35,11 +35,10 @@ export class AddSettingsToWorkflowHistory1794244643352 implements ReversibleMigr
 	}
 
 	/**
-	 * Copies the workflow's engine to its draft, active and published versions.
-	 * An empty object falls back to the draft's engine, so without a pin a draft
-	 * engine change would also change the live version. The backend runs every
-	 * value except `v2` on v1, so those get an explicit `v1`. Older versions keep
-	 * `{}`: a publish writes their settings before they go live again.
+	 * Copies the workflow's engine to its draft, active and published versions,
+	 * so a workflow on v2 stays on v2. The backend runs every value except `v2`
+	 * on v1, so those get an explicit `v1`. Older versions keep `{}`, which runs
+	 * on v1.
 	 */
 	private async backfillEngineOfLiveVersions({ escape, runQuery, isSqlite }: MigrationContext) {
 		const history = escape.tableName('workflow_history');
