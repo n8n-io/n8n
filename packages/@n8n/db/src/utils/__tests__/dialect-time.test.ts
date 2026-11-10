@@ -91,7 +91,7 @@ describe('dbClockNowLiteral', () => {
 
 describe('dbClockNowPlusMsLiteral', () => {
 	it('offsets the statement clock by whole milliseconds on postgres', () => {
-		expect(dbClockNowPlusMsLiteral(true, 1500)).toBe(
+		expect(dbClockNowPlusMsLiteral(true, 1500.4)).toBe(
 			"clock_timestamp()::timestamptz(3) + (1500 || ' milliseconds')::interval",
 		);
 	});

@@ -4,6 +4,7 @@ import type { ScheduledJob as ScheduledJobEntity, ScheduledTask } from '@n8n/db'
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
+import { sleep } from '@n8n/utils/sleep';
 
 import { selfOwned } from './shared/job-factory';
 
@@ -1218,6 +1219,49 @@ describe('ScheduledTaskRepository executor methods', () => {
 				expect(row.leaseExpiresAt!.getTime()).toBeGreaterThan(dbNow.getTime());
 			});
 
+			it.skipIf(!isPostgres)(
+				'reclaims a renewed lease that runs out while the reclaim waits on the row lock',
+				async () => {
+					const task = await createExpiredRunning({ leaseEpoch: 1, attempts: 0 });
+					const taskTable = dataSource.driver.escape(taskRepository.metadata.tableName);
+					const holder = dataSource.createQueryRunner();
+					await holder.connect();
+					await holder.startTransaction();
+					let reclaim: Promise<number> | undefined;
+
+					try {
+						await holder.query(
+							`UPDATE ${taskTable} SET "leaseExpiresAt" = clock_timestamp() + interval '1 second' WHERE "id" = $1`,
+							[task.id],
+						);
+						reclaim = taskRepository.reclaimExpired(
+							{ id: task.id, claimedEpoch: 1 },
+							30_000,
+							'lease expired',
+						);
+						await expect
+							.poll(async () => {
+								const [row] = await holder.query<Array<{ blocked: boolean }>>(
+									`SELECT EXISTS (
+										SELECT 1 FROM pg_stat_activity
+										WHERE pg_backend_pid() = ANY(pg_blocking_pids(pid))
+									) AS blocked`,
+								);
+								return row.blocked;
+							})
+							.toBe(true);
+						await sleep(1500);
+						await holder.commitTransaction();
+					} finally {
+						if (holder.isTransactionActive) await holder.rollbackTransaction();
+						await holder.release();
+					}
+
+					expect(await reclaim).toBe(1);
+					expect((await reload(task.id)).status).toBe('pending');
+				},
+			);
+
 			it('makes a later renewal by the previous owner a no-op', async () => {
 				const task = await createExpiredRunning({ leaseEpoch: 1, attempts: 0 });
 
@@ -1722,6 +1766,19 @@ describe('ScheduledTaskRepository executor methods', () => {
 			const task = await createTask({ runAt, missedAfter });
 
 			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+
+			expect((await reload(task.id)).missedAfter!.getTime()).toBe(missedAfter.getTime());
+		});
+
+		it('leaves a row whose deadline passed within a long transaction alone', async () => {
+			const dbNow = await taskRepository.readDbTime();
+			const missedAfter = new Date(dbNow.getTime() + 1000);
+			const task = await createTask({ runAt: past(), missedAfter });
+
+			await dataSource.transaction(async (manager) => {
+				await sleep(1500);
+				await taskRepository.updateMissedAfterForJobs(manager, [job.id], 90);
+			});
 
 			expect((await reload(task.id)).missedAfter!.getTime()).toBe(missedAfter.getTime());
 		});
