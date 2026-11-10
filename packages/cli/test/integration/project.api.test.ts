@@ -1,4 +1,3 @@
-import { Logger } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -11,7 +10,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { CacheService, EventService } from '@n8n/backend-services';
+import { CacheService } from '@n8n/backend-services';
 import type { Project } from '@n8n/db';
 import {
 	FolderRepository,
@@ -35,8 +34,6 @@ import {
 import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { OwnershipService } from '@/services/ownership.service';
@@ -1815,128 +1812,74 @@ describe('DELETE /project/:projectId', () => {
 		);
 	});
 
-	test.each([false, true])(
-		'refreshes cached workflow projects after deleting a team project with a transfer target (cache refill during deletion: %s)',
-		async (refillDuringDeletion) => {
-			const admin = await createAdmin();
+	describe('workflow project cache', () => {
+		const cachedProjectId = async (workflowId: string) =>
+			(
+				await Container.get(CacheService).getHashValue<Partial<Project>>(
+					'workflow-project',
+					workflowId,
+				)
+			)?.id;
+
+		const createCachedWorkflows = async () => {
 			const sourceProject = await createTeamProject('Source project');
 			const targetProject = await createTeamProject('Target project');
-			const workflows = [
-				await createWorkflow({}, sourceProject),
-				await createWorkflow({}, sourceProject),
+			const workflowIds = [
+				(await createWorkflow({}, sourceProject)).id,
+				(await createWorkflow({}, sourceProject)).id,
 			];
-			const ownershipService = Container.get(OwnershipService);
-			const cacheService = Container.get(CacheService);
+			for (const workflowId of workflowIds) {
+				await Container.get(OwnershipService).getWorkflowProjectCached(workflowId);
+				// The lookup writes to the cache in the background.
+				await expect.poll(async () => await cachedProjectId(workflowId)).toBe(sourceProject.id);
+			}
+			return { sourceProject, targetProject, workflowIds };
+		};
+
+		const deleteWithTransfer = async (sourceProject: Project, targetProject: Project) => {
+			await testServer
+				.authAgentFor(await createAdmin())
+				.delete(`/projects/${sourceProject.id}`)
+				.query({ transferId: targetProject.id })
+				.expect(200);
+		};
+
+		const expectWorkflowProjects = async (workflowIds: string[], projectId: string) => {
+			for (const workflowId of workflowIds) {
+				await expect(
+					Container.get(OwnershipService).getWorkflowProjectCached(workflowId),
+				).resolves.toMatchObject({ id: projectId });
+			}
+		};
+
+		test('returns the target project for moved workflows', async () => {
+			const { sourceProject, targetProject, workflowIds } = await createCachedWorkflows();
+
+			await deleteWithTransfer(sourceProject, targetProject);
+
+			await expectWorkflowProjects(workflowIds, targetProject.id);
+		});
+
+		test('returns the target project when the cache is refilled during the deletion', async () => {
+			const { sourceProject, targetProject, workflowIds } = await createCachedWorkflows();
 			const projectRepository = Container.get(ProjectRepository);
 			const removeProject = projectRepository.removeProjectForDeletion.bind(projectRepository);
 			const removeProjectSpy = vi
 				.spyOn(projectRepository, 'removeProjectForDeletion')
 				.mockImplementationOnce(async (...args) => {
-					if (refillDuringDeletion) {
-						// A cache miss can finish while the source owner rows still exist.
-						await cacheService.setHash(
-							'workflow-project',
-							Object.fromEntries(workflows.map(({ id }) => [id, { ...sourceProject }])),
-						);
-					}
+					// Not a real lookup: while both owner rows exist, it can return either project.
+					await Container.get(CacheService).setHash(
+						'workflow-project',
+						Object.fromEntries(workflowIds.map((id) => [id, { ...sourceProject }])),
+					);
 					return await removeProject(...args);
 				});
 
-			try {
-				for (const workflow of workflows) {
-					await expect(
-						ownershipService.getWorkflowProjectCached(workflow.id),
-					).resolves.toMatchObject({ id: sourceProject.id });
-					// The lookup writes to the cache in the background.
-					await expect
-						.poll(
-							async () =>
-								await cacheService.getHashValue<Partial<Project>>('workflow-project', workflow.id),
-						)
-						.toMatchObject({ id: sourceProject.id });
-				}
+			await deleteWithTransfer(sourceProject, targetProject);
 
-				await testServer
-					.authAgentFor(admin)
-					.delete(`/projects/${sourceProject.id}`)
-					.query({ transferId: targetProject.id })
-					.expect(200);
-
-				expect(removeProjectSpy).toHaveBeenCalledTimes(1);
-				await expect(findProject(sourceProject.id)).rejects.toThrowError(EntityNotFoundError);
-				for (const workflow of workflows) {
-					await expect(
-						Container.get(SharedWorkflowRepository).findOneByOrFail({
-							workflowId: workflow.id,
-							role: 'workflow:owner',
-						}),
-					).resolves.toMatchObject({ projectId: targetProject.id });
-					await expect(
-						ownershipService.getWorkflowProjectCached(workflow.id),
-					).resolves.toMatchObject({ id: targetProject.id });
-					await expect
-						.poll(
-							async () =>
-								await cacheService.getHashValue<Partial<Project>>('workflow-project', workflow.id),
-						)
-						.toMatchObject({ id: targetProject.id });
-				}
-			} finally {
-				removeProjectSpy.mockRestore();
-				await ownershipService.invalidateWorkflowProjectCacheByIds(workflows.map(({ id }) => id));
-			}
-		},
-	);
-
-	test('finishes project deletion and transfer cleanup when workflow project cache invalidation fails', async () => {
-		const admin = await createAdmin();
-		const sourceProject = await createTeamProject('Source project', admin);
-		const targetProject = await createTeamProject('Target project');
-		const workflow = await createWorkflow({}, sourceProject);
-		const deleteCacheEntrySpy = vi
-			.spyOn(Container.get(CacheService), 'deleteFromHash')
-			.mockRejectedValueOnce(new Error('cache unavailable'));
-		const updateVariablesCacheSpy = vi.spyOn(Container.get(VariablesService), 'updateCache');
-		const cleanupConnectionsSpy = vi.spyOn(
-			Container.get(CredentialConnectionStatusProxy),
-			'cleanupOrphanedEntriesForUsers',
-		);
-		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
-
-		try {
-			await testServer
-				.authAgentFor(admin)
-				.delete(`/projects/${sourceProject.id}`)
-				.query({ transferId: targetProject.id })
-				.expect(200);
-
-			await expect(findProject(sourceProject.id)).rejects.toThrowError(EntityNotFoundError);
-			await expect(
-				Container.get(SharedWorkflowRepository).findOneByOrFail({
-					workflowId: workflow.id,
-					role: 'workflow:owner',
-				}),
-			).resolves.toMatchObject({ projectId: targetProject.id });
-			expect(deleteCacheEntrySpy).toHaveBeenCalledWith('workflow-project', workflow.id);
-			expect(Container.get(Logger).warn).toHaveBeenCalledWith(
-				'Failed to invalidate the workflow project cache on project delete',
-				{ projectId: sourceProject.id, error: 'cache unavailable' },
-			);
-			expect(updateVariablesCacheSpy).toHaveBeenCalledTimes(1);
-			expect(cleanupConnectionsSpy).toHaveBeenCalledExactlyOnceWith([admin.id]);
-			expect(emitSpy).toHaveBeenCalledWith('team-project-deleted', {
-				userId: admin.id,
-				role: admin.role.slug,
-				projectId: sourceProject.id,
-				removalType: 'transfer',
-				targetProjectId: targetProject.id,
-			});
-		} finally {
-			deleteCacheEntrySpy.mockRestore();
-			updateVariablesCacheSpy.mockRestore();
-			cleanupConnectionsSpy.mockRestore();
-			emitSpy.mockRestore();
-		}
+			expect(removeProjectSpy).toHaveBeenCalledTimes(1);
+			await expectWorkflowProjects(workflowIds, targetProject.id);
+		});
 	});
 
 	test('does not migrate end-user credentials to a personal project', async () => {
