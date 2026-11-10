@@ -42,6 +42,12 @@ Rules:
   input of the pinned image, so its tag stays on the pinned digest.
 - `RUNTIME_IMAGE` is an input of `n8nio/node-pc`. So the pin PR of a new base
   is also the inputs PR of `node-pc`, and the `-pc` images need a third PR.
+- Master compares each push with the commit before it. If the publish run of
+  an inputs PR fails, re-run that run. A later push does not publish it again.
+- A change to a publish workflow alone builds on the PR, but master does not
+  publish. To publish it, dispatch the workflow on master with `push` enabled.
+  Use the same dispatch to rebuild an image without an input change, for
+  example to get patched OS packages. Then pin the new digest.
 
 ### Example: a new Node version
 

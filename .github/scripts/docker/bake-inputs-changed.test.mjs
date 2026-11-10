@@ -27,6 +27,20 @@ describe('changedTargets', () => {
 		assert.deepEqual(changedTargets(before, after), ['base']);
 	});
 
+	it('reports a changed Dockerfile', () => {
+		const before = bakeInputs(plan({}), ['base']);
+		const after = bakeInputs(plan({}, { dockerfile: 'docker/images/n8n-base/Dockerfile.debian' }), [
+			'base',
+		]);
+		assert.deepEqual(changedTargets(before, after), ['base']);
+	});
+
+	it('reports a changed stage', () => {
+		const before = bakeInputs(plan({}, { target: 'runtime' }), ['base']);
+		const after = bakeInputs(plan({}, { target: 'dev' }), ['base']);
+		assert.deepEqual(changedTargets(before, after), ['base']);
+	});
+
 	it('reports a target that the base commit does not have', () => {
 		const before = bakeInputs({ target: {} }, ['base']);
 		const after = bakeInputs(plan({}), ['base']);

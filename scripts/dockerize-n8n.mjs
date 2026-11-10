@@ -234,7 +234,7 @@ async function buildWithPodman(platform) {
 				['PYTHON_IMAGE', debianPythonImage],
 				['PYTHON_VERSION', pythonVersion(debianPythonImage)],
 				alpineImage,
-				['DISTROLESS_IMAGE', await bakeVariable('DISTROLESS_IMAGE')],
+				['DISTROLESS_BASE_IMAGE', await bakeVariable('DISTROLESS_BASE_IMAGE')],
 			],
 		});
 	}

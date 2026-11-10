@@ -40,8 +40,9 @@ jobs:
         # `n8nio/base:<tag>` tag, `dhi_ref` the DHI base, pinned to a multi-arch
         # index digest. Change the tag and the digest together. `input_paths`
         # are the files besides the bake inputs and `dhi_ref` that change the
-        # image. A change to this workflow alone does not publish: dispatch the
-        # workflow on master for that.
+        # image. A change to this workflow or the smoke check builds on a PR,
+        # but does not publish from master: dispatch the workflow on master for
+        # that.
         include:
           - tag: '22'
             dockerfile: docker/images/n8n-base/Dockerfile
@@ -54,7 +55,7 @@ jobs:
           - bake_target: base
             input_paths: docker/images/n8n-base/Dockerfile
           - bake_target: base-debian
-            input_paths: docker/images/n8n-base/Dockerfile.debian,.github/scripts/docker/base-debian-smoke-check.mjs
+            input_paths: docker/images/n8n-base/Dockerfile.debian
             # The Docker smoke test builds n8n-debian on the published base, so
             # it does not test a change to this Dockerfile. Check it here.
             smoke_check: .github/scripts/docker/base-debian-smoke-check.mjs
@@ -69,8 +70,9 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # A rebuild moves the tag to a new digest, so build only when an input of
-      # this image changed. A dispatch always builds.
+      # A rebuild moves the tag to a new digest, so master builds only when an
+      # input of this image changed. A PR also builds when it changes how the
+      # image is built or checked. A dispatch always builds.
       - name: Check whether the inputs changed
         id: gate
         env:
@@ -79,12 +81,14 @@ jobs:
           GATE_TARGET: ${{ matrix.bake_target }}
           GATE_PATHS: ${{ matrix.input_paths }}
           GATE_DHI_REF: ${{ matrix.dhi_ref }}
+          PR_PATHS: .github/workflows/build-base-image.yml${{ matrix.smoke_check && format(',{0}', matrix.smoke_check) || '' }}
         run: |
           set -euo pipefail
           if [ "$EVENT" = workflow_dispatch ] || [ -z "$BASE_COMMIT" ] || [ -z "${BASE_COMMIT//0/}" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          if [ "$EVENT" = pull_request ]; then GATE_PATHS="$GATE_PATHS,$PR_PATHS"; fi
           git fetch --no-tags --depth=1 origin "$BASE_COMMIT"
           if [ -n "$GATE_TARGET" ]; then
             node .github/scripts/docker/bake-inputs-changed.mjs --base "$BASE_COMMIT" --targets "$GATE_TARGET" --paths "$GATE_PATHS"

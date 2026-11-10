@@ -21,7 +21,7 @@ ARG NODE_IMAGE
 ARG PYTHON_IMAGE
 ARG PYTHON_VERSION
 ARG ALPINE_IMAGE
-ARG DISTROLESS_IMAGE
+ARG DISTROLESS_BASE_IMAGE
 ARG PNPM_VERSION=12.4.2
 
 
@@ -208,7 +208,7 @@ RUN mkdir -p /runtime/home/runner && \
 # - nonroot user (UID 65532)
 # - NO shell, NO package manager, NO system utilities
 # ==============================================================================
-FROM ${DISTROLESS_IMAGE} AS runtime
+FROM ${DISTROLESS_BASE_IMAGE} AS runtime
 ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
 

@@ -56,7 +56,7 @@ variable "PYTHON_IMAGE" {
 variable "DEBIAN_PYTHON_IMAGE" {
   default = "python:3.13.18-slim-trixie@sha256:ae14d4ce8771606477a81446e7ef429edd6762305fc50c84507c1041fa8285d1"
 }
-variable "DISTROLESS_IMAGE" {
+variable "DISTROLESS_BASE_IMAGE" {
   default = "gcr.io/distroless/cc-debian13:latest@sha256:e1f5543d45a2cd7c02a5b43dda5f0ff30729b4832113759d01ed39b0b152cddb"
 }
 
@@ -165,17 +165,18 @@ target "runners-debian" {
   }
 }
 
-# Every stage is on Debian 13, the release of the distroless runtime.
+# Every stage that supplies runtime files is on Debian 13, the release of the
+# distroless runtime.
 target "runners-distroless" {
   inherits   = ["_app"]
   dockerfile = "docker/images/runners/Dockerfile.distroless"
   tags       = tags(RUNNERS_DISTROLESS_TAGS, "${RUNNERS_IMAGE_BASE_NAME}:${IMAGE_TAG}-distroless")
   args = {
-    NODE_IMAGE       = DEBIAN_BUILDER_IMAGE
-    PYTHON_IMAGE     = DEBIAN_PYTHON_IMAGE
-    PYTHON_VERSION   = python_version(DEBIAN_PYTHON_IMAGE)
-    ALPINE_IMAGE     = ALPINE_IMAGE
-    DISTROLESS_IMAGE = DISTROLESS_IMAGE
+    NODE_IMAGE            = DEBIAN_BUILDER_IMAGE
+    PYTHON_IMAGE          = DEBIAN_PYTHON_IMAGE
+    PYTHON_VERSION        = python_version(DEBIAN_PYTHON_IMAGE)
+    ALPINE_IMAGE          = ALPINE_IMAGE
+    DISTROLESS_BASE_IMAGE = DISTROLESS_BASE_IMAGE
   }
 }
 

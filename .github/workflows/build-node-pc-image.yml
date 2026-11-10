@@ -28,8 +28,9 @@ on:
 
 jobs:
   # docker-bake.hcl holds the inputs (node-pc targets). A rebuild compiles Node
-  # and moves the tags to new digests, so it runs only when an input changed. A
-  # change to this workflow alone does not publish: dispatch it on master.
+  # and moves the tags to new digests, so master builds only when an input
+  # changed. A PR also builds when it changes this workflow, but master does not
+  # publish for that: dispatch the workflow on master.
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -58,9 +59,11 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          paths=docker/images/node-pc/Dockerfile
+          if [ "$EVENT" = pull_request ]; then paths="$paths,.github/workflows/build-node-pc-image.yml"; fi
           git fetch --no-tags --depth=1 origin "$BASE_COMMIT"
           node .github/scripts/docker/bake-inputs-changed.mjs --base "$BASE_COMMIT" \
-            --targets node-pc,node-pc-dev --paths docker/images/node-pc/Dockerfile
+            --targets node-pc,node-pc-dev --paths "$paths"
 
       - name: Read the build args from docker-bake.hcl
         id: resolve
@@ -158,17 +161,19 @@ jobs:
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Create multi-arch manifests
+        env:
+          NODE_VERSION: ${{ needs.prepare.outputs.node_version }}
         run: |
           for REPO in \
             "${{ secrets.DOCKER_USERNAME }}/node-pc" \
             "ghcr.io/${{ github.repository_owner }}/node-pc" \
           ; do
             for DEV in "" "-dev"; do
-              AMD64="$REPO:${{ needs.prepare.outputs.node_version }}-${{ github.sha }}$DEV-amd64"
-              ARM64="$REPO:${{ needs.prepare.outputs.node_version }}-${{ github.sha }}$DEV-arm64"
+              AMD64="$REPO:$NODE_VERSION-${{ github.sha }}$DEV-amd64"
+              ARM64="$REPO:$NODE_VERSION-${{ github.sha }}$DEV-arm64"
               for TAG in \
-                "$REPO:${{ needs.prepare.outputs.node_version }}$DEV" \
-                "$REPO:${{ needs.prepare.outputs.node_version }}-${{ github.sha }}$DEV" \
+                "$REPO:$NODE_VERSION$DEV" \
+                "$REPO:$NODE_VERSION-${{ github.sha }}$DEV" \
               ; do
                 echo "Creating manifest $TAG"
                 docker buildx imagetools create --tag "$TAG" "$AMD64" "$ARM64"
