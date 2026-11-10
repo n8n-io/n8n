@@ -107,14 +107,17 @@ export class PromotionEnvironmentsService {
 
 		const environment = await mapPromotionConflicts(
 			async () =>
-				await this.environmentRepository.insertEnvironment({
-					name: input.name,
-					scope: input.scope,
-					providerId: input.providerId,
-					remote,
-					direction: input.direction,
-					settings,
-				}),
+				await this.environmentRepository.insertEnvironment(
+					{
+						name: input.name,
+						scope: input.scope,
+						providerId: input.providerId,
+						remote,
+						direction: input.direction,
+						settings,
+					},
+					{},
+				),
 		);
 
 		this.eventService.emit('promotion-environment-created', {
@@ -141,11 +144,14 @@ export class PromotionEnvironmentsService {
 
 	/** Leaves out environments whose stored settings this version cannot read. */
 	async list(offset: number, limit: number, filter: PromotionEnvironmentFilter) {
-		const { data, count } = await this.environmentRepository.listEnvironments({
-			offset,
-			limit,
-			filter,
-		});
+		const { data, count } = await this.environmentRepository.listEnvironments(
+			{
+				offset,
+				limit,
+				filter,
+			},
+			{},
+		);
 		return {
 			count,
 			data: data.flatMap((environment) => {
@@ -311,7 +317,7 @@ export class PromotionEnvironmentsService {
 	}
 
 	async getEntity(id: string): Promise<PromotionEnvironment> {
-		const environment = await this.environmentRepository.findByIdWithProvider(id);
+		const environment = await this.environmentRepository.findByIdWithProvider(id, {});
 		if (!environment) throw new NotFoundError('Promotion environment not found');
 		return environment;
 	}

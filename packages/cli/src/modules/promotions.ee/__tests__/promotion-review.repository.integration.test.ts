@@ -2,11 +2,13 @@ import { testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 
 import type { InboxSourceBoundary } from '../../inbox/inbox-source.registry';
+import { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionReviewRepository } from '../database/repositories/promotion-review.repository';
@@ -14,6 +16,7 @@ import { PromotionRunRepository } from '../database/repositories/promotion-run.r
 
 let providerRepository: PromotionProviderRepository;
 let environmentRepository: PromotionEnvironmentRepository;
+let environmentRows: Repository<PromotionEnvironment>;
 let runRepository: PromotionRunRepository;
 let reviewRepository: PromotionReviewRepository;
 let owner: User;
@@ -26,6 +29,7 @@ beforeAll(async () => {
 
 	providerRepository = Container.get(PromotionProviderRepository);
 	environmentRepository = Container.get(PromotionEnvironmentRepository);
+	environmentRows = Container.get(DataSource).getRepository(PromotionEnvironment);
 	runRepository = Container.get(PromotionRunRepository);
 	reviewRepository = Container.get(PromotionReviewRepository);
 });
@@ -38,7 +42,7 @@ beforeEach(async () => {
 	// Runs point at reviews and environments, so delete the runs first.
 	await runRepository.delete({});
 	await reviewRepository.delete({});
-	await environmentRepository.delete({});
+	await environmentRows.delete({});
 	await providerRepository.delete({});
 	await testDb.truncate(['User']);
 	owner = await createOwner();
@@ -51,14 +55,17 @@ beforeEach(async () => {
 		auth: 'encrypted-repo',
 	});
 	providerId = provider.id;
-	const environment = await environmentRepository.insertEnvironment({
-		name: 'repo',
-		scope: 'instance',
-		providerId: provider.id,
-		remote: { schemaVersion: 1, remoteUrl: 'https://example.com/org/repo.git' },
-		direction: 'promote',
-		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
-	});
+	const environment = await environmentRepository.insertEnvironment(
+		{
+			name: 'repo',
+			scope: 'instance',
+			providerId: provider.id,
+			remote: { schemaVersion: 1, remoteUrl: 'https://example.com/org/repo.git' },
+			direction: 'promote',
+			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
+		},
+		{},
+	);
 	environmentId = environment.id;
 });
 
@@ -154,7 +161,7 @@ describe('PromotionReviewRepository', () => {
 			{ approvedById: member.id, approvedAt: new Date() },
 		);
 
-		await environmentRepository.delete({ id: environmentId });
+		await environmentRows.delete({ id: environmentId });
 		await Container.get(UserRepository).delete({ id: member.id });
 
 		const found = await reviewRepository.findByIdWithRelations(review.id);
@@ -310,14 +317,17 @@ describe('PromotionReviewRepository', () => {
 
 	it('allows the same remote id on another environment', async () => {
 		await insertReview({ remoteReviewId: '7!1' });
-		const other = await environmentRepository.insertEnvironment({
-			name: 'other',
-			scope: 'projects',
-			providerId,
-			remote: { schemaVersion: 1, remoteUrl: 'https://example.com/org/other.git' },
-			direction: 'promote',
-			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
-		});
+		const other = await environmentRepository.insertEnvironment(
+			{
+				name: 'other',
+				scope: 'projects',
+				providerId,
+				remote: { schemaVersion: 1, remoteUrl: 'https://example.com/org/other.git' },
+				direction: 'promote',
+				settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
+			},
+			{},
+		);
 
 		const review = await reviewRepository.insertReview({
 			id: uuidv7(),

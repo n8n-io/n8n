@@ -3,10 +3,12 @@ import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_ADMIN_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import nock from 'nock';
 import type { MockInstance } from 'vitest';
 import { v7 as uuidv7 } from 'uuid';
 
+import { PromotionEnvironment } from '@/modules/promotions.ee/database/entities/promotion-environment.entity';
 import { PromotionEnvironmentRepository } from '@/modules/promotions.ee/database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '@/modules/promotions.ee/database/repositories/promotion-provider.repository';
 import { PromotionReviewRepository } from '@/modules/promotions.ee/database/repositories/promotion-review.repository';
@@ -133,6 +135,7 @@ describe('Promotion reviews in the Inbox', () => {
 	let owner: User;
 	let environmentId: string;
 	let reviewRepository: PromotionReviewRepository;
+	let environmentRows: Repository<PromotionEnvironment>;
 
 	async function insertReview(iid: number, over: { environmentId?: string } = {}) {
 		const reviewEnvironmentId = over.environmentId ?? environmentId;
@@ -164,15 +167,18 @@ describe('Promotion reviews in the Inbox', () => {
 	) {
 		// Provider validation has separate API tests. Inbox tests need stored fixtures.
 		const created = await insertTokenProvider(provider);
-		const environment = await Container.get(PromotionEnvironmentRepository).insertEnvironment({
-			name: target.name,
-			scope: target.scope,
-			providerId: created.id,
-			// Stored like the API stores it: a repository path for a Git host.
-			remote: storePromotionRemote(created, { schemaVersion: 1, remoteUrl: target.remoteUrl }),
-			direction: 'promote',
-			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
-		});
+		const environment = await Container.get(PromotionEnvironmentRepository).insertEnvironment(
+			{
+				name: target.name,
+				scope: target.scope,
+				providerId: created.id,
+				// Stored like the API stores it: a repository path for a Git host.
+				remote: storePromotionRemote(created, { schemaVersion: 1, remoteUrl: target.remoteUrl }),
+				direction: 'promote',
+				settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
+			},
+			{},
+		);
 		return environment.id;
 	}
 
@@ -199,6 +205,7 @@ describe('Promotion reviews in the Inbox', () => {
 		(await reviewRepository.findOneByOrFail({ id: reviewId })).approvedById;
 
 	beforeAll(async () => {
+		environmentRows = Container.get(DataSource).getRepository(PromotionEnvironment);
 		Container.get(SourceControlPreferencesService).sourceControlPreferences = {
 			environmentsVersion: 'v2',
 		};
@@ -216,7 +223,7 @@ describe('Promotion reviews in the Inbox', () => {
 		emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 		await Container.get(PromotionRunRepository).delete({});
 		await reviewRepository.delete({});
-		await Container.get(PromotionEnvironmentRepository).delete({});
+		await environmentRows.delete({});
 		await Container.get(PromotionProviderRepository).delete({});
 		await testDb.truncate(['User']);
 		owner = await createOwner();
@@ -362,7 +369,7 @@ describe('Promotion reviews in the Inbox', () => {
 		const plainGit = await insertReview(9, { environmentId: await createGitEnvironment('Plain') });
 		const deletedEnvironmentId = await createGitEnvironment('Deleted');
 		const deleted = await insertReview(10, { environmentId: deletedEnvironmentId });
-		await Container.get(PromotionEnvironmentRepository).delete({ id: deletedEnvironmentId });
+		await environmentRows.delete({ id: deletedEnvironmentId });
 		gitlab({
 			1: { state: 'opened' },
 			2: { state: 'opened', detailed_merge_status: 'requested_changes' },

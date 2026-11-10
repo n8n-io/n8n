@@ -33,7 +33,7 @@ export class PromotionEnvironmentResolver {
 		environmentId: string,
 		direction?: PromotionDirection,
 	): Promise<PromotionOperationInput> {
-		const environment = await this.environmentRepository.findByIdWithProvider(environmentId);
+		const environment = await this.environmentRepository.findByIdWithProvider(environmentId, {});
 		if (!environment) throw new NotFoundError('Promotion environment not found');
 		return this.toOperationInput(environment, direction);
 	}
@@ -55,7 +55,8 @@ export class PromotionEnvironmentResolver {
 
 		const link = await this.linkRepository.findForProject(projectId, direction);
 		const environment =
-			link?.environment ?? (await this.environmentRepository.findInstanceEnvironment(direction));
+			link?.environment ??
+			(await this.environmentRepository.findInstanceEnvironment(direction, {}));
 		if (!environment) {
 			throw new NotFoundError(
 				`No ${direction} promotion environment is configured for this instance`,

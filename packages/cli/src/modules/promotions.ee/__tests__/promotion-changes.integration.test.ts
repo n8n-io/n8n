@@ -24,6 +24,7 @@ import {
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdtempSync } from 'node:fs';
 import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -53,7 +54,7 @@ import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
-import type { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
+import { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
@@ -86,15 +87,17 @@ const server = setupTestServer({
 let remoteRoot: string;
 let remoteFolder: string;
 let sourceFixture: ReturnType<typeof createSourceFixture> | undefined;
+let environmentRows: Repository<PromotionEnvironment>;
 
 beforeAll(async () => {
 	await createFixtureGit().raw(['init', '--bare', '--initial-branch=main', emptyRemoteSeed]);
+	environmentRows = Container.get(DataSource).getRepository(PromotionEnvironment);
 });
 
 beforeEach(async () => {
 	await Container.get(PromotionEnvironmentProjectRepository).delete({});
 	await Container.get(AgentRepository).delete({});
-	await Container.get(PromotionEnvironmentRepository).delete({});
+	await environmentRows.delete({});
 	await Container.get(PromotionProviderRepository).delete({});
 	await testDb.truncate([
 		'WorkflowTagMapping',
@@ -135,18 +138,21 @@ async function createInstanceEnvironments(directions: PromotionDirection[] = ['p
 }
 
 async function addEnvironment(providerId: string, direction: PromotionDirection) {
-	const environment = await Container.get(PromotionEnvironmentRepository).insertEnvironment({
-		name: 'Preview',
-		scope: 'instance',
-		providerId,
-		remote: { schemaVersion: 1, remoteUrl: remoteFolder },
-		...(direction === 'promote'
-			? {
-					direction,
-					settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
-				}
-			: { direction, settings: { schemaVersion: 1, branchName: 'main' } }),
-	});
+	const environment = await Container.get(PromotionEnvironmentRepository).insertEnvironment(
+		{
+			name: 'Preview',
+			scope: 'instance',
+			providerId,
+			remote: { schemaVersion: 1, remoteUrl: remoteFolder },
+			...(direction === 'promote'
+				? {
+						direction,
+						settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+					}
+				: { direction, settings: { schemaVersion: 1, branchName: 'main' } }),
+		},
+		{},
+	);
 	await Container.get(PromotionsService).clone(environment.id, { id: 'clone-actor' } as User);
 	return environment;
 }
@@ -197,14 +203,17 @@ it("previews against the project's environment, not the instance one", async () 
 	const linked = await createTeamProject('Linked', owner);
 	const other = await createTeamProject('Other', owner);
 	const instance = await createInstanceEnvironments();
-	const projectPromote = await Container.get(PromotionEnvironmentRepository).insertEnvironment({
-		name: 'Project',
-		scope: 'projects',
-		providerId: instance.promote.providerId,
-		remote: { schemaVersion: 1, remoteUrl: remoteFolder },
-		direction: 'promote',
-		settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
-	});
+	const projectPromote = await Container.get(PromotionEnvironmentRepository).insertEnvironment(
+		{
+			name: 'Project',
+			scope: 'projects',
+			providerId: instance.promote.providerId,
+			remote: { schemaVersion: 1, remoteUrl: remoteFolder },
+			direction: 'promote',
+			settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
+		},
+		{},
+	);
 	await Container.get(PromotionEnvironmentProjectRepository).linkProject(
 		linked.id,
 		projectPromote.id,

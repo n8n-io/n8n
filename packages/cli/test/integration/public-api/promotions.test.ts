@@ -7,6 +7,7 @@ import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, ProjectRepository, TransactionRunner, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import { onTestFinished } from 'vitest';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { Cipher } from 'n8n-core';
@@ -15,6 +16,7 @@ import { randomUUID } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@n8n/errors';
+import { PromotionEnvironment } from '@/modules/promotions.ee/database/entities/promotion-environment.entity';
 import { PromotionEnvironmentProjectRepository } from '@/modules/promotions.ee/database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '@/modules/promotions.ee/database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '@/modules/promotions.ee/database/repositories/promotion-provider.repository';
@@ -41,6 +43,7 @@ describe('Promotions in Public API', () => {
 		modules: ['promotions'],
 	});
 	let owner: User;
+	let environmentRows: Repository<PromotionEnvironment>;
 
 	type Agent = ReturnType<typeof testServer.publicApiAgentFor>;
 
@@ -83,13 +86,14 @@ describe('Promotions in Public API', () => {
 
 	beforeAll(async () => {
 		await testDb.init();
+		environmentRows = Container.get(DataSource).getRepository(PromotionEnvironment);
 	});
 
 	beforeEach(async () => {
 		testServer.license.reset();
 		// Delete children before parents to satisfy the foreign keys.
 		await Container.get(PromotionEnvironmentProjectRepository).delete({});
-		await Container.get(PromotionEnvironmentRepository).delete({});
+		await environmentRows.delete({});
 		await Container.get(PromotionProviderRepository).delete({});
 		owner = await createOwnerWithApiKey();
 	});
@@ -162,7 +166,7 @@ describe('Promotions in Public API', () => {
 
 		const deleteResponse = await agent.delete(`/promotions/environments/${id}`);
 		expect(deleteResponse.status).toBe(204);
-		expect(await Container.get(PromotionEnvironmentRepository).findOneBy({ id })).toBeNull();
+		expect(await environmentRows.findOneBy({ id })).toBeNull();
 		// The provider outlives its environment.
 		expect(
 			await Container.get(PromotionProviderRepository).findOneBy({ id: providerId }),
@@ -1043,7 +1047,7 @@ describe('Promotions in Public API', () => {
 				expect(JSON.stringify(response.body)).not.toContain(payload.auth.password);
 				expect(decrypt).toHaveBeenCalledTimes(1);
 				expect(await Container.get(PromotionProviderRepository).findById(id)).toEqual(stored);
-				expect(await Container.get(PromotionEnvironmentRepository).count()).toBe(0);
+				expect(await environmentRows.count()).toBe(0);
 				api.done();
 			} finally {
 				decrypt.mockRestore();
@@ -1539,7 +1543,7 @@ describe('Promotions in Public API', () => {
 			const repository = Container.get(PromotionEnvironmentRepository);
 			const storedRemote = { schemaVersion: 1, repositoryPath: project.path_with_namespace };
 			const remote = { ...storedRemote, remoteUrl: project.http_url_to_repo };
-			expect((await repository.findByIdWithProvider(id))?.remote).toEqual(storedRemote);
+			expect((await repository.findByIdWithProvider(id, {}))?.remote).toEqual(storedRemote);
 			const original = await agent.get(root);
 			expect(original.body.remote).toEqual(remote);
 			const listed = await agent.get('/promotions/environments').query({ providerId });
@@ -1568,7 +1572,7 @@ describe('Promotions in Public API', () => {
 			});
 			expect(after.body.settings).toEqual(original.body.settings);
 			expect((await agent.get(`${root}/projects`)).body.projectIds).toEqual([team.id]);
-			expect((await repository.findByIdWithProvider(id))?.remote).toEqual(storedRemote);
+			expect((await repository.findByIdWithProvider(id, {}))?.remote).toEqual(storedRemote);
 			expect(
 				(await Container.get(PromotionEnvironmentResolver).resolveForEnvironment(id)).remote,
 			).toEqual(expected);
@@ -1584,7 +1588,7 @@ describe('Promotions in Public API', () => {
 			expect(updated.status).toBe(200);
 			expect(updated.body.remote).toEqual({ ...remote, repositoryPath: 'platform/next' });
 			expect(
-				(await Container.get(PromotionEnvironmentRepository).findByIdWithProvider(id))?.remote,
+				(await Container.get(PromotionEnvironmentRepository).findByIdWithProvider(id, {}))?.remote,
 			).toEqual({ schemaVersion: 1, repositoryPath: 'platform/next' });
 			for (const remoteUrl of [
 				'',
@@ -1623,7 +1627,7 @@ describe('Promotions in Public API', () => {
 			expect(plain.status).toBe(200);
 			expect(plain.body.remote).toEqual(remote);
 			expect(
-				(await Container.get(PromotionEnvironmentRepository).findByIdWithProvider(id))?.remote,
+				(await Container.get(PromotionEnvironmentRepository).findByIdWithProvider(id, {}))?.remote,
 			).toEqual(remote);
 		});
 
@@ -1661,9 +1665,9 @@ describe('Promotions in Public API', () => {
 				(await Container.get(PromotionEnvironmentResolver).resolveForEnvironment(id)).remote,
 			).toEqual(remote);
 			expect((await agent.put(root).send({ name: 'Legacy rename' })).status).toBe(200);
-			expect((await repository.findByIdWithProvider(id))?.remote).toEqual(remote);
+			expect((await repository.findByIdWithProvider(id, {}))?.remote).toEqual(remote);
 			expect((await agent.put(root).send({ remote })).status).toBe(200);
-			expect((await repository.findByIdWithProvider(id))?.remote).toEqual({
+			expect((await repository.findByIdWithProvider(id, {}))?.remote).toEqual({
 				schemaVersion: 1,
 				repositoryPath: project.path_with_namespace,
 			});
@@ -1713,13 +1717,13 @@ describe('Promotions in Public API', () => {
 						.put(root)
 						.send({ name: 'Winning settings', providerId: plainProviderId });
 					expect(winner.status, JSON.stringify(winner.body)).toBe(200);
-					const stored = await repository.findByIdWithProvider(id);
+					const stored = await repository.findByIdWithProvider(id, {});
 					expect(stored?.remote).toEqual(winner.body.remote);
 					resume.resolve();
 					const stale = await pending;
 					expect(stale.status, JSON.stringify(stale.body)).toBe(409);
 					expect(stale.body.message).toContain('Reload');
-					expect(await repository.findByIdWithProvider(id)).toEqual(stored);
+					expect(await repository.findByIdWithProvider(id, {})).toEqual(stored);
 					const read = await agent.get(root);
 					expect(read.status).toBe(200);
 					expect(read.body).toEqual(winner.body);
@@ -1968,7 +1972,7 @@ describe('Promotions in Public API', () => {
 			});
 
 		expect(response.status).toBe(404);
-		expect(await Container.get(PromotionEnvironmentRepository).count()).toBe(0);
+		expect(await environmentRows.count()).toBe(0);
 	});
 
 	it('rejects a second instance environment for the same direction', async () => {
@@ -1989,7 +1993,7 @@ describe('Promotions in Public API', () => {
 		});
 
 		expect(response.status).toBe(409);
-		expect(await Container.get(PromotionEnvironmentRepository).count()).toBe(1);
+		expect(await environmentRows.count()).toBe(1);
 	});
 
 	it('stores nothing when the remote URL does not suit the provider', async () => {
@@ -2006,7 +2010,7 @@ describe('Promotions in Public API', () => {
 		});
 
 		expect(response.status).toBe(400);
-		expect(await Container.get(PromotionEnvironmentRepository).count()).toBe(0);
+		expect(await environmentRows.count()).toBe(0);
 	});
 
 	it.each([{ direction: 'promote' }, { scope: 'projects' }])(
@@ -2042,7 +2046,7 @@ describe('Promotions in Public API', () => {
 		});
 
 		expect(response.status).toBe(400);
-		expect(await Container.get(PromotionEnvironmentRepository).count()).toBe(0);
+		expect(await environmentRows.count()).toBe(0);
 	});
 
 	it('checks updated settings against the stored direction', async () => {
