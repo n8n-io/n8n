@@ -140,7 +140,7 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 		nodeName: z.string().describe('Name of the existing node to update.'),
 		path: z
 			.string()
-			.min(2)
+			.min(1)
 			.describe(
 				'JSON Pointer (RFC 6901) path, e.g. "/options/systemMessage" or "/assignments/assignments/0/value". Numeric segments index into an existing array element only — to add or remove elements, set the whole array (or its parent) instead. Prefer over `updateNodeParameters` for a single nested key — the payload stays small regardless of the rest of the parameters object.',
 			),
@@ -473,10 +473,6 @@ const toJsonPointer = (path: string): string | null => {
  * A numeric segment indexes an array (must reference an existing element) or keys an object — see `setAtPointer`.
  */
 const parseJsonPointer = (path: string): string[] | 'malformed' | 'unsafe' => {
-	if (!path.startsWith('/')) {
-		return 'malformed';
-	}
-
 	const tail = path.slice(1);
 	if (tail.length === 0) {
 		return 'malformed';
@@ -506,6 +502,20 @@ const parseJsonPointer = (path: string): string[] | 'malformed' | 'unsafe' => {
 		segments.push(seg);
 	}
 	return segments;
+};
+
+export const resolveParameterPath = (
+	path: string,
+	params: Record<string, unknown>,
+): string[] | 'malformed' | 'unsafe' => {
+	const pointer = toJsonPointer(path);
+	const segments = pointer ? parseJsonPointer(pointer) : 'malformed';
+	const hasParametersPrefix =
+		Array.isArray(segments) &&
+		segments.length > 1 &&
+		segments[0] === 'parameters' &&
+		!Object.hasOwn(params, 'parameters');
+	return hasParametersPrefix ? segments.slice(1) : segments;
 };
 
 const isArrayIndexSegment = (segment: string): boolean => /^(0|[1-9]\d*)$/.test(segment);
@@ -796,8 +806,8 @@ const handleSetNodeParameter: OpHandler<'setNodeParameter'> = (op, ctx) => {
 		return `node '${op.nodeName}' not found`;
 	}
 
-	const pointer = toJsonPointer(op.path);
-	const segments = pointer ? parseJsonPointer(pointer) : 'malformed';
+	const params = (node.parameters ?? {}) as Record<string, unknown>;
+	const segments = resolveParameterPath(op.path, params);
 	if (segments === 'malformed') {
 		return `path '${op.path}' is not a valid JSON Pointer. Use a JSON Pointer that starts with "/", such as "/jsCode" or "/options/timeout"`;
 	}
@@ -805,14 +815,7 @@ const handleSetNodeParameter: OpHandler<'setNodeParameter'> = (op, ctx) => {
 		return `path '${op.path}' contains an unsafe segment`;
 	}
 
-	const params = (node.parameters ?? {}) as Record<string, unknown>;
-	const hasParametersPrefix =
-		segments.length > 1 && segments[0] === 'parameters' && !Object.hasOwn(params, 'parameters');
-	const setError = setAtPointer(
-		params,
-		hasParametersPrefix ? segments.slice(1) : segments,
-		op.value,
-	);
+	const setError = setAtPointer(params, segments, op.value);
 	if (setError) {
 		return setError;
 	}

@@ -210,6 +210,16 @@ describe('applyOperations', () => {
 			});
 		});
 
+		test('schema accepts a one-character key without a leading slash', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setNodeParameter',
+				nodeName: 'B',
+				path: 'n',
+				value: 2,
+			});
+			expect(parsed.success).toBe(true);
+		});
+
 		test('accepts a slash-separated path without a leading slash', () => {
 			const wf = baseWorkflow();
 			wf.nodes[1].parameters = { assignments: { assignments: [{ name: 'a', value: 1 }] } };
@@ -242,18 +252,34 @@ describe('applyOperations', () => {
 			},
 		);
 
-		test('keeps a leading parameters segment when the node has a parameters key', () => {
+		test('removes a leading parameters segment before a nested path', () => {
 			const wf = baseWorkflow();
-			wf.nodes[1].parameters = { parameters: { url: 'https://old' } };
+			wf.nodes[1].parameters = { options: { mode: 'manual' } };
 			const result = applyOperations(wf, [
-				{ type: 'setNodeParameter', nodeName: 'B', path: '/parameters/url', value: 'https://new' },
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/parameters/options/timeout', value: 60 },
 			]);
 			expect(result.success).toBe(true);
 			if (!result.success) return;
 			expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
-				parameters: { url: 'https://new' },
+				options: { mode: 'manual', timeout: 60 },
 			});
 		});
+
+		test.each(['parameters.url', 'parameters/url', '/parameters/url'])(
+			'keeps the leading parameters segment in %s when the node has a parameters key',
+			(path) => {
+				const wf = baseWorkflow();
+				wf.nodes[1].parameters = { parameters: { url: 'https://old' } };
+				const result = applyOperations(wf, [
+					{ type: 'setNodeParameter', nodeName: 'B', path, value: 'https://new' },
+				]);
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
+					parameters: { url: 'https://new' },
+				});
+			},
+		);
 
 		test.each(['options.timeout', 'parameters.options.timeout', 'parameters.options/timeout'])(
 			'rejects the dotted path %s with the JSON Pointer format',

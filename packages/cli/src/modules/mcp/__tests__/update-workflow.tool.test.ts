@@ -3746,47 +3746,55 @@ describe('update-workflow MCP tool', () => {
 				expect(workflowService.update).toHaveBeenCalled();
 			});
 
-			test('accepts a predefined credential configured via setNodeParameter earlier in the same batch', async () => {
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([
-					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
-				]);
-				findWorkflowMock.mockResolvedValue(
-					Object.assign(buildExistingWorkflow(), {
-						nodes: [
-							makeNode({
-								id: 'h',
-								name: 'HTTP Request',
-								type: 'n8n-nodes-base.httpRequest',
-								typeVersion: 4,
-								parameters: {},
-							}),
+			test.each([
+				'/nodeCredentialType',
+				'nodeCredentialType',
+				'parameters.nodeCredentialType',
+				'/parameters/nodeCredentialType',
+			])(
+				'accepts a predefined credential configured via setNodeParameter path %s earlier in the same batch',
+				async (path) => {
+					(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([
+						{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+					]);
+					findWorkflowMock.mockResolvedValue(
+						Object.assign(buildExistingWorkflow(), {
+							nodes: [
+								makeNode({
+									id: 'h',
+									name: 'HTTP Request',
+									type: 'n8n-nodes-base.httpRequest',
+									typeVersion: 4,
+									parameters: {},
+								}),
+							],
+							connections: {},
+						}),
+					);
+
+					const result = await callHandler({
+						workflowId: 'wf-1',
+						operations: [
+							{
+								type: 'setNodeParameter',
+								nodeName: 'HTTP Request',
+								path,
+								value: 'githubApi',
+							},
+							{
+								type: 'setNodeCredential',
+								nodeName: 'HTTP Request',
+								credentialKey: 'githubApi',
+								credentialId: 'cred-github',
+								credentialName: 'My GitHub',
+							},
 						],
-						connections: {},
-					}),
-				);
+					});
 
-				const result = await callHandler({
-					workflowId: 'wf-1',
-					operations: [
-						{
-							type: 'setNodeParameter',
-							nodeName: 'HTTP Request',
-							path: '/nodeCredentialType',
-							value: 'githubApi',
-						},
-						{
-							type: 'setNodeCredential',
-							nodeName: 'HTTP Request',
-							credentialKey: 'githubApi',
-							credentialId: 'cred-github',
-							credentialName: 'My GitHub',
-						},
-					],
-				});
-
-				expect(result.isError).toBeUndefined();
-				expect(workflowService.update).toHaveBeenCalled();
-			});
+					expect(result.isError).toBeUndefined();
+					expect(workflowService.update).toHaveBeenCalled();
+				},
+			);
 
 			test('rejects a dynamic credential key on a node that does not declare a credential selector', async () => {
 				// A Set node carries nodeCredentialType but exposes no credentialsSelect

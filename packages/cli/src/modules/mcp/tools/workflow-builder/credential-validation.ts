@@ -6,7 +6,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
 import type { NodeTypes } from '@/node-types';
 
-import type { PartialUpdateOperation } from './workflow-operations';
+import { resolveParameterPath, type PartialUpdateOperation } from './workflow-operations';
 
 export interface CredentialValidationFailure {
 	ok: false;
@@ -337,8 +337,12 @@ export async function validateCredentialReferences(
 			// Only the top-level auth selectors decide which credential a node
 			// accepts (see nodeAcceptsCredentialKey); other paths don't affect it.
 			const meta = nameToNodeMeta.get(op.nodeName);
-			if (meta && (op.path === '/nodeCredentialType' || op.path === '/genericAuthType')) {
-				meta.parameters = { ...(meta.parameters ?? {}), [op.path.slice(1)]: op.value };
+			if (!meta) continue;
+			const parameters = meta.parameters ?? {};
+			const segments = resolveParameterPath(op.path, parameters);
+			const selector = Array.isArray(segments) && segments.length === 1 ? segments[0] : undefined;
+			if (selector === 'nodeCredentialType' || selector === 'genericAuthType') {
+				meta.parameters = { ...parameters, [selector]: op.value };
 			}
 		} else if (op.type === 'setNodeCredential') {
 			const meta = nameToNodeMeta.get(op.nodeName);

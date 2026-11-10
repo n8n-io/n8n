@@ -172,7 +172,7 @@ const operationInputSchema = z
 		replace: z.boolean().optional().describe('For updateNodeParameters; default false.'),
 		path: z
 			.string()
-			.min(2)
+			.min(1)
 			.optional()
 			.describe('For setNodeParameter; JSON Pointer path, e.g. "/jsCode" or "/options/timeout".'),
 		value: z.unknown().optional().describe('For setNodeParameter.'),
