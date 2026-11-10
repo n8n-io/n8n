@@ -1,12 +1,16 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import type { HookedMethod } from './catalogue';
 import { HOOKED_METHODS, olderThan } from './catalogue';
 import { FILES } from './spec';
 import { PLAYWRIGHT_DIR, SPEC_DIR } from '../cli/manifest';
+import { LEADER_HOOKS } from '../multi-main';
 
 const specDir = join(PLAYWRIGHT_DIR, SPEC_DIR);
 const methodRef = /file: FILES\.(\w+),\s*target: '([^']*)',\s*method: '(\w+)'/g;
+const refOf = (ref: HookedMethod) => `${ref.file} ${ref.target}.${ref.method}`;
+const listed = new Set(HOOKED_METHODS.map(refOf));
 
 describe('HOOKED_METHODS', () => {
 	it('lists every method a spec hooks', () => {
@@ -18,9 +22,12 @@ describe('HOOKED_METHODS', () => {
 				used.add(`${FILES[key as keyof typeof FILES]} ${target}.${method}`);
 			}
 		}
-		const listed = new Set(HOOKED_METHODS.map((ref) => `${ref.file} ${ref.target}.${ref.method}`));
 		expect([...used].filter((ref) => !listed.has(ref))).toEqual([]);
 		expect(used.size).toBeGreaterThan(0);
+	});
+
+	it('lists every method the leader hooks use', () => {
+		expect(LEADER_HOOKS.map(refOf).filter((ref) => !listed.has(ref))).toEqual([]);
 	});
 });
 
