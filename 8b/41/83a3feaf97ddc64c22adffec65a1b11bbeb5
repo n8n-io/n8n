@@ -1,0 +1,42 @@
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_3577b5c5c8d1c1::t_c31c1b0ea6ca8c 498,515,554,593,626
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_3577b5c5c8d1c1::t_1dec71385359e6 243-244,259-276,344-347
+packages/@n8n/cli/docs/commands/promotions.md
+  s_3577b5c5c8d1c1::t_5fd67bb33fff22 311-312,316,319-320,322-356,416,472,488-490,495-496,508,520-521,524,543-547
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_3577b5c5c8d1c1::t_dd00336792b67a 176-178,181
+packages/@n8n/cli/src/client.ts
+  s_3577b5c5c8d1c1::t_3303cef5a9d80b 9,161-162,164,478-479,500,506,515,521
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_3577b5c5c8d1c1::t_6ff5f75fe45d4a 43,54-64,132,136,142-143
+packages/@n8n/cli/src/commands/promotion-environment/list-changes.ts
+  s_3577b5c5c8d1c1::t_2cf8f083f05c75 1,5,7-8,12,16,31,36-37,39-40,42-46,50-83
+  s_3577b5c5c8d1c1::t_6464f17861ef9b 41
+packages/@n8n/cli/src/__tests__/promotion-command-wiring.test.ts
+  s_3577b5c5c8d1c1::t_dd00336792b67a 148
+packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
+  s_3577b5c5c8d1c1::t_dd00336792b67a 4,21,24-36,38-43,45-62,66-89,92,103,105,113-114,118-119,122-123,127-128,131-132,136-137,140-141,145,148-157,161
+packages/@n8n/cli/src/commands/promotion-environment/expected-source.ts
+  s_3577b5c5c8d1c1::t_6ff5f75fe45d4a 58-74
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_3577b5c5c8d1c1::t_6ff5f75fe45d4a 4-8,13,33,53-58
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_3577b5c5c8d1c1::t_6ff5f75fe45d4a 4-8,13,36,47-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8b4183a3feaf97ddc64c22adffec65a1b11bbeb5",
+  "prompts": {},
+  "sessions": {
+    "s_3577b5c5c8d1c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9385f1cb-01a1-4804-b347-ae01a2d5700b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
