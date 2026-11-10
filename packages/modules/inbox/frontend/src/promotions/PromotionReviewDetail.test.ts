@@ -298,6 +298,23 @@ describe('close', () => {
 		expect(closePromotionReview).not.toHaveBeenCalled();
 	});
 
+	it('closes the review the user confirmed, even after the selected row changes', async () => {
+		vi.mocked(closePromotionReview).mockResolvedValue(
+			item({ state: 'closed', reviewState: 'closed' }),
+		);
+		const { getByRole, getByTestId, rerender } = renderComponent({
+			props: { item: item(), onItemChange },
+		});
+
+		await userEvent.click(getByTestId('inbox-promotion-review-close'));
+		await rerender({ item: item({ id: 'rev-2' }), onItemChange });
+		await userEvent.click(
+			within(getByRole('dialog')).getByRole('button', { name: 'Close review' }),
+		);
+
+		expect(closePromotionReview).toHaveBeenCalledWith(expect.anything(), 'rev-1');
+	});
+
 	it('closes the review and reports the new state', async () => {
 		vi.mocked(closePromotionReview).mockResolvedValue(
 			item({ state: 'closed', reviewState: 'closed', updatedAt: '2026-02-01T00:00:00.000Z' }),

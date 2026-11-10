@@ -104,7 +104,8 @@ const approveDescribedBy = computed(() => {
 });
 
 const canClose = computed(() => rbacStore.hasScope('promotions:approveReviews'));
-const closeConfirmOpen = ref(false);
+/** The review the user confirms. A later change of the selected row does not change it. */
+const pendingClose = ref<{ id: string } | null>(null);
 const closing = ref(false);
 // The buttons stay still while the changes load. Without a Changes tab, nothing reports a state,
 // so a review without an environment must not wait for one.
@@ -117,12 +118,12 @@ const closeDisabled = computed(
 // Close does not call GitLab to end the merge request, but it reads GitLab first.
 // The dialog stays open until the request ends.
 function dismissClose() {
-	if (!closing.value) closeConfirmOpen.value = false;
+	if (!closing.value) pendingClose.value = null;
 }
 
 async function onClose() {
-	if (closing.value) return;
-	const { id } = props.item;
+	if (!pendingClose.value || closing.value) return;
+	const { id } = pendingClose.value;
 	// The Inbox can reconcile this result after the viewer selects another item.
 	const onItemChange = props.onItemChange;
 	closing.value = true;
@@ -135,7 +136,7 @@ async function onClose() {
 		onItemChange({ type: 'promotion_review', id });
 	} finally {
 		closing.value = false;
-		closeConfirmOpen.value = false;
+		pendingClose.value = null;
 	}
 }
 
@@ -262,7 +263,7 @@ async function onApprove() {
 					:disabled="closeDisabled"
 					:loading="closing"
 					data-test-id="inbox-promotion-review-close"
-					@click="closeConfirmOpen = true"
+					@click="pendingClose = { id: item.id }"
 				>
 					{{ i18n.baseText('inbox.promotionReview.close.button') }}
 				</N8nButton>
@@ -348,7 +349,7 @@ async function onApprove() {
 			</N8nDialogFooter>
 		</N8nDialog>
 		<N8nDialog
-			:open="closeConfirmOpen"
+			:open="!!pendingClose"
 			size="small"
 			:show-close-button="false"
 			:close-on-overlay-click="!closing"

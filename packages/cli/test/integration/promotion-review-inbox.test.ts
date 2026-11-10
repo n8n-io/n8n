@@ -797,11 +797,13 @@ describe('Promotion reviews in the Inbox', () => {
 			const withoutHost = await insertReview(2, {
 				environmentId: await createGitEnvironment('git'),
 			});
-			gitlab({});
+			const hostCalls = gitlab({});
 			const admin = await createAdmin();
 
 			expect((await close(admin, missing)).status).toBe(200);
 			expect((await close(admin, withoutHost)).status).toBe(200);
+			// A review without a GitLab environment never reaches the host.
+			expect(hostCalls).toEqual([1]);
 			expect(await stateOf(missing)).toBe('closed');
 			expect(await stateOf(withoutHost)).toBe('closed');
 		});
