@@ -15,7 +15,7 @@ import { BaseCommand } from './base-command';
 @Command({
 	name: 'engine',
 	description:
-		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to report to and to resolve credentials from.',
+		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis to send execution responses and lifecycle events over.',
 })
 export class Engine extends BaseCommand {
 	// The data plane has no control plane database. Its own database is the
@@ -37,7 +37,13 @@ export class Engine extends BaseCommand {
 		// crash path reports through it.
 		this.errorReporter = Container.get(ErrorReporter);
 		assertControlPlaneIsolated(process.env);
-		assertRemoteControlPlane(Container.get(EngineConfig));
+		const engineConfig = Container.get(EngineConfig);
+		assertRemoteControlPlane(engineConfig);
+		const { EngineTlsMaterial } = await import('@/modules/engine-v2/engine-tls-material.js');
+		Container.get(EngineTlsMaterial).assertSecureTransport(
+			{ N8N_ENGINE_CONTROL_PLANE_BASE_URL: engineConfig.controlPlaneBaseUrl },
+			this.logger,
+		);
 
 		this.logger.info('Starting engine v2 data plane...');
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
