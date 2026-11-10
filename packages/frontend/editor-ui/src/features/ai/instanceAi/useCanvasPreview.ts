@@ -2,6 +2,7 @@ import { computed, ref, watch } from 'vue';
 import type { InstanceAiAgentNode, InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
@@ -70,6 +71,7 @@ export function useCanvasPreview({
 	tabsStorage,
 }: UseCanvasPreviewOptions) {
 	const recentWorkflowsStore = useRecentWorkflowsStore();
+	const skillsStore = useSkillsStore();
 
 	// --- Tab state ---
 	const activeTabId = ref<string>();
@@ -666,7 +668,7 @@ export function useCanvasPreview({
 	function showLatestToolArtifact<T extends { toolCallId: string }>(
 		getLatest: (node: InstanceAiAgentNode) => T | undefined,
 		artifactId: (result: T) => string,
-		refresh: (id: string) => void,
+		refresh: (id: string, result: T) => void,
 	) {
 		const latest = computed(() => {
 			for (let i = thread.messages.length - 1; i >= 0; i--) {
@@ -687,7 +689,7 @@ export function useCanvasPreview({
 
 				const targetId = artifactId(latest.value);
 				showAgentArtifact(targetId);
-				refresh(targetId);
+				refresh(targetId, latest.value);
 			},
 			{ flush: 'sync' },
 		);
@@ -696,8 +698,11 @@ export function useCanvasPreview({
 	showLatestToolArtifact(
 		getLatestSkillArtifactResult,
 		(result) => result.skillId,
-		// Inactive skill editors stay cached, so record their updates too.
-		(id) => skillRefreshKeys.value.set(id, (skillRefreshKeys.value.get(id) ?? 0) + 1),
+		(id, result) => {
+			if (result.name) skillsStore.updateSkillName(id, result.name);
+			// Inactive skill editors stay cached, so record their updates too.
+			skillRefreshKeys.value.set(id, (skillRefreshKeys.value.get(id) ?? 0) + 1);
+		},
 	);
 	showLatestToolArtifact(
 		getLatestAppArtifactResult,

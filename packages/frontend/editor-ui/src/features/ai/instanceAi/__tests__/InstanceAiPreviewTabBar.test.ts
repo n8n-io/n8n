@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, reactive } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { TabsRoot } from 'reka-ui';
 import { readFileSync } from 'node:fs';
+import { mock } from 'vitest-mock-extended';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
-import type { ArtifactTab } from '../useCanvasPreview';
+import { useCanvasPreview, type ArtifactTab } from '../useCanvasPreview';
+import type { ArtifactThread } from '../artifactThread';
 import { HOVER_DELAY } from '@/app/constants/durations';
 import { useSkillsStore } from '@/features/settings/context/skills.store';
 import { createArtifactTestRouter } from './artifactTestRouter';
@@ -525,6 +527,71 @@ describe('InstanceAiPreviewTabBar', () => {
 			await vi.waitFor(() => expect(mockSearchWorkflows).toHaveBeenCalledTimes(2));
 
 			expect(container.querySelector('[data-tab-id="wf-1"]')).toHaveTextContent('Renamed Workflow');
+		});
+
+		it('shows an Assistant skill rename while another artifact stays pinned', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const skillsStore = useSkillsStore();
+			skillsStore.skillNames.set(skillTab.id, skillTab.name);
+			const thread = reactive<ArtifactThread>({
+				...mock<ArtifactThread>(),
+				id: 'thread-1',
+				messages: [],
+				producedArtifacts: new Map([
+					[skillTab.id, skillTab],
+					[workflowTab.id, workflowTab],
+				]),
+				resourceNameIndex: new Map(),
+				isStreaming: true,
+				isHydratingThread: false,
+			});
+			const preview = useCanvasPreview({ thread, threadId: () => thread.id });
+			preview.selectTab(skillTab.id);
+			preview.selectTab(workflowTab.id);
+			const { container, rerender, getByRole } = renderComponent({
+				pinia,
+				props: { tabs: preview.openTabs.value, activeTabId: preview.activeTabId.value },
+			});
+			await hoverTab(container, skillTab.id);
+			expect(getHoverCard()).toHaveTextContent(skillTab.name);
+
+			thread.producedArtifacts.set(skillTab.id, { ...skillTab, name: 'Updated brand voice' });
+			thread.messages.push({
+				id: 'assistant-rename',
+				role: 'assistant',
+				content: '',
+				createdAt: '2026-11-10T00:00:00.000Z',
+				agentTree: {
+					agentId: 'orchestrator',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					children: [],
+					timeline: [],
+					toolCalls: [
+						{
+							toolCallId: 'skill-rename',
+							toolName: 'skills',
+							args: { action: 'update', skillId: skillTab.id },
+							isLoading: false,
+							result: {
+								success: true,
+								saved: { id: skillTab.id, name: 'Updated brand voice', created: true },
+							},
+						},
+					],
+				},
+			});
+			await rerender({ tabs: preview.openTabs.value, activeTabId: preview.activeTabId.value });
+
+			expect(preview.activeTabId.value).toBe(workflowTab.id);
+			expect(getByRole('tab', { name: 'Updated brand voice' })).toHaveAttribute(
+				'data-state',
+				'inactive',
+			);
+			expect(getByRole('button', { name: 'Close Updated brand voice' })).toBeInTheDocument();
+			expect(getHoverCard()).toHaveTextContent('Updated brand voice');
 		});
 
 		it('shows the current name from the tab details instead of a stale tab name', async () => {

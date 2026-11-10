@@ -195,6 +195,30 @@ describe('useSkillsStore', () => {
 			expect(store.skillNames.get('skill-1')).toBe('brand-tone');
 		});
 
+		it.each(['read', 'save'])(
+			'keeps an Assistant rename when an earlier %s answers last',
+			async (operation) => {
+				const response = deferred<SkillDetail | SkillSaveResponse>();
+				const store = useSkillsStore();
+				getSkill.mockReturnValueOnce(response.promise);
+				saveSkill.mockReturnValueOnce(response.promise);
+				store.skillNames.set('skill-1', 'brand-voice');
+				store.skillNames.set('skill-2', 'other-skill');
+				const pending =
+					operation === 'read'
+						? store.fetchSkill('skill-1')
+						: store.saveSkill('skill-1', { baseSkillHash: 'hash-1' });
+
+				store.updateSkillName('skill-1', 'assistant-rename');
+				expect(store.skillNames.get('skill-1')).toBe('assistant-rename');
+				response.settle(operation === 'read' ? detail('brand-voice') : savedAs('brand-voice'));
+				await pending;
+
+				expect(store.skillNames.get('skill-1')).toBe('assistant-rename');
+				expect(store.skillNames.get('skill-2')).toBe('other-skill');
+			},
+		);
+
 		it('keeps the newest read when two reads answer out of order', async () => {
 			const older = deferred<SkillDetail>();
 			const newer = deferred<SkillDetail>();
