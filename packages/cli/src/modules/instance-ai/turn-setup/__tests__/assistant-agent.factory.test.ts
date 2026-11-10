@@ -150,7 +150,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			windowShares: {},
 			logPlacement: 'message',
 			failurePolicy: 'retry',
-			maxObserverBatchesPerRun: 5,
+			maxObserverBatchesAfterTurn: 5,
 			reflectionMode: 'afterObserve',
 			historyRecall: true,
 		});
@@ -184,7 +184,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		).observationalMemory;
 		expect(observerThresholdTokens).toBe(1_000);
 		expect(policy?.windowShares).toBeUndefined();
-		expect(policy?.maxObserverBatchesPerRun).toBeUndefined();
+		expect(policy?.maxObserverBatchesAfterTurn).toBe(0);
 	});
 
 	it('claims converted usage under the orchestrator dedupe key, and skips claiming when usage is zero', async () => {

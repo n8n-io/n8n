@@ -2006,7 +2006,7 @@ export interface InstanceAiMemoryConfig {
 			| 'windowShares'
 			| 'logPlacement'
 			| 'failurePolicy'
-			| 'maxObserverBatchesPerRun'
+			| 'maxObserverBatchesAfterTurn'
 			| 'reflectionMode'
 			| 'historyRecall'
 		>;
