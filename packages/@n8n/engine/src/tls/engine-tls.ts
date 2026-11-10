@@ -189,9 +189,9 @@ export function watchEngineTls(
 
 		if (!next || isSameTls(next, loaded)) return;
 
-		loaded = next;
 		try {
 			onReload(next);
+			loaded = next;
 			logger.info('Reloaded the engine TLS certificate');
 		} catch (error) {
 			logger.error('Could not apply the reloaded engine TLS certificate', { error });

@@ -17,8 +17,15 @@ interface Generation {
 export class ReloadingHttpRequestClient implements HttpRequestClient {
 	private current: Generation;
 
-	constructor(private readonly build: () => HttpRequestClient) {
+	private readonly unsubscribe: () => void;
+
+	/** `subscribe` registers `reload` and returns a function that removes it again on `close()`. */
+	constructor(
+		private readonly build: () => HttpRequestClient,
+		subscribe: (reload: () => void) => () => void,
+	) {
 		this.current = this.newGeneration();
+		this.unsubscribe = subscribe(() => this.reload());
 	}
 
 	request<T = IN8nHttpResponse | Readable>(
@@ -55,6 +62,7 @@ export class ReloadingHttpRequestClient implements HttpRequestClient {
 	}
 
 	close(): void {
+		this.unsubscribe();
 		this.current.client.close();
 	}
 

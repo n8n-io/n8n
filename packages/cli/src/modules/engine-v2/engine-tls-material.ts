@@ -50,7 +50,17 @@ export class EngineTlsMaterial {
 			tls,
 			(next) => {
 				this.loaded = { tls: next };
-				for (const listener of this.listeners) listener(next);
+				const errors: unknown[] = [];
+				for (const listener of this.listeners) {
+					try {
+						listener(next);
+					} catch (error) {
+						errors.push(error);
+					}
+				}
+				if (errors.length > 0) {
+					throw new AggregateError(errors, 'Some engine TLS reload listeners failed');
+				}
 			},
 			logger,
 		);
@@ -74,8 +84,9 @@ export class EngineTlsMaterial {
 	reloadingClient(build: (tls: EngineTls | undefined) => HttpRequestClient): HttpRequestClient {
 		if (!this.tls) return build(undefined);
 
-		const client = new ReloadingHttpRequestClient(() => build(this.tls));
-		this.onReload(() => client.reload());
-		return client;
+		return new ReloadingHttpRequestClient(
+			() => build(this.tls),
+			(reload) => this.onReload(reload),
+		);
 	}
 }

@@ -6,15 +6,20 @@ import { ReloadingHttpRequestClient } from '../reloading-http-request-client';
 describe('ReloadingHttpRequestClient', () => {
 	let built: HttpRequestClient[];
 	let client: ReloadingHttpRequestClient;
+	const unsubscribe = vi.fn();
 
 	beforeEach(() => {
 		built = [];
-		client = new ReloadingHttpRequestClient(() => {
-			const next = mock<HttpRequestClient>();
-			next.request.mockResolvedValue(`from client ${built.length}`);
-			built.push(next);
-			return next;
-		});
+		unsubscribe.mockReset();
+		client = new ReloadingHttpRequestClient(
+			() => {
+				const next = mock<HttpRequestClient>();
+				next.request.mockResolvedValue(`from client ${built.length}`);
+				built.push(next);
+				return next;
+			},
+			() => unsubscribe,
+		);
 	});
 
 	it('sends requests through the newest client', async () => {
@@ -66,5 +71,6 @@ describe('ReloadingHttpRequestClient', () => {
 		client.close();
 
 		expect(built[1].close).toHaveBeenCalledOnce();
+		expect(unsubscribe).toHaveBeenCalledOnce();
 	});
 });

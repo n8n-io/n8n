@@ -95,6 +95,30 @@ describe('EngineTlsMaterial', () => {
 		expect(clients[1].request).toHaveBeenCalledExactlyOnceWith({ url: '/after-reload' });
 	});
 
+	it('notifies every listener and then throws when one listener fails', () => {
+		startWithTls(tlsOf('old'));
+		const failure = new Error('apply failed');
+		const after = vi.fn();
+		material.onReload(() => {
+			throw failure;
+		});
+		material.onReload(after);
+
+		expect(() => reloadWith(tlsOf('new'))).toThrow(expect.objectContaining({ errors: [failure] }));
+		expect(after).toHaveBeenCalledExactlyOnceWith(tlsOf('new'));
+	});
+
+	it('stops rebuilding a client once it is closed', () => {
+		startWithTls(tlsOf('old'));
+		const build = vi.fn(() => mock<HttpRequestClient>());
+		const client = material.reloadingClient(build);
+
+		client.close();
+		reloadWith(tlsOf('new'));
+
+		expect(build).toHaveBeenCalledOnce();
+	});
+
 	it('closes the file watcher when it stops watching', () => {
 		startWithTls(tlsOf('old'));
 

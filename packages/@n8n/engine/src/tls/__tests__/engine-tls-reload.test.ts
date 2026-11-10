@@ -180,6 +180,19 @@ describe('engine TLS reload', () => {
 			expect(onReload).not.toHaveBeenCalled();
 		});
 
+		it('applies the same files again after applying them failed', async () => {
+			onReload.mockImplementationOnce(() => {
+				throw new Error('apply failed');
+			});
+			publish('renewedServer');
+			await vi.waitFor(() => expect(logger.error).toHaveBeenCalledOnce());
+
+			publish('renewedServer');
+
+			await vi.waitFor(() => expect(onReload).toHaveBeenCalledTimes(2));
+			expect(onReload).toHaveBeenLastCalledWith(tlsOf('renewedServer'));
+		});
+
 		it('does not reload when another file in the directory changes', async () => {
 			writeFileSync(join(mountDir, 'unrelated.txt'), 'x');
 			publish('server');
