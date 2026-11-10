@@ -14,6 +14,7 @@ import {
 	jsonSchemaTypeToDefaultValue,
 	jsonSchemaTypeToFieldType,
 	mapCapabilityError,
+	MCP_LIST_DEADLINE_MS,
 	MCP_MAX_LIST_PAGES,
 } from '../utils';
 
@@ -368,7 +369,7 @@ describe('utils', () => {
 			expect(client.listResources).toHaveBeenCalledTimes(2);
 		});
 
-		it('returns a truncated result and unique items when a continuation cursor repeats', async () => {
+		it('stops and truncates before appending a page fetched with a repeated cursor', async () => {
 			const client = mockDeep<Client>();
 			client.listResources
 				.mockResolvedValueOnce({
@@ -387,8 +388,31 @@ describe('utils', () => {
 			const result = await getAllResources(client, {}, node, 0);
 
 			expect(result.truncated).toBe(true);
-			expect(result.items.map((resource) => resource.name)).toEqual(['a', 'b', 'c']);
+			expect(result.items.map((resource) => resource.name)).toEqual(['a', 'b']);
 			expect(client.listResources).toHaveBeenCalledTimes(3);
+		});
+
+		it('returns a truncated result when the overall deadline passes', async () => {
+			const client = mockDeep<Client>();
+			const now = vi.spyOn(Date, 'now');
+			let clock = 0;
+			now.mockImplementation(() => clock);
+			client.listResources.mockImplementation(async () => {
+				clock += MCP_LIST_DEADLINE_MS + 1;
+				return {
+					resources: [{ uri: 'mem://a', name: 'a' }],
+					nextCursor: 'c1',
+				};
+			});
+
+			try {
+				const result = await getAllResources(client, {}, node, 0);
+
+				expect(result).toEqual({ items: [{ uri: 'mem://a', name: 'a' }], truncated: true });
+				expect(client.listResources).toHaveBeenCalledTimes(1);
+			} finally {
+				now.mockRestore();
+			}
 		});
 
 		it('throws a NodeOperationError before calling the server when the signal is already aborted', async () => {

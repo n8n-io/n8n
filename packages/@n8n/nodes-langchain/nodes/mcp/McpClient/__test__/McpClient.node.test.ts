@@ -1,5 +1,6 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { returnJsonArray } from 'n8n-core';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -39,6 +40,7 @@ describe('McpClient', () => {
 			parameters: {},
 		});
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctions.helpers.returnJsonArray.mockImplementation(returnJsonArray);
 		connectMcpClientForCredential.mockResolvedValue({
 			ok: true,
 			result: client,
@@ -107,7 +109,7 @@ describe('McpClient', () => {
 		expect(client.callTool).toHaveBeenCalledWith(
 			{ name: 'get_weather', arguments: { location: 'Berlin' } },
 			undefined,
-			{ timeout: 10000 },
+			{ signal: undefined, timeout: 10000 },
 		);
 	});
 
@@ -138,7 +140,7 @@ describe('McpClient', () => {
 		expect(client.callTool).toHaveBeenCalledWith(
 			{ name: 'get_weather', arguments: { location: 'Berlin' } },
 			undefined,
-			{ timeout: 10000 },
+			{ signal: undefined, timeout: 10000 },
 		);
 	});
 
@@ -764,7 +766,7 @@ describe('McpClient', () => {
 			expect(client.callTool).toHaveBeenCalledWith(
 				{ name: 'get_weather', arguments: { location: 'Berlin' } },
 				undefined,
-				{ timeout: 10000 },
+				{ signal: undefined, timeout: 10000 },
 			);
 			expect(result).toEqual([
 				[
@@ -804,14 +806,7 @@ describe('McpClient', () => {
 
 			const result = await runV12({ operation: 'listResources' });
 
-			expect(result).toEqual([
-				[
-					{
-						json: { resources: [{ uri: 'mem://a', name: 'a' }] },
-						pairedItem: { item: 0 },
-					},
-				],
-			]);
+			expect(result).toEqual([[{ json: { uri: 'mem://a', name: 'a' }, pairedItem: { item: 0 } }]]);
 			expect(client.close).toHaveBeenCalledTimes(1);
 		});
 
@@ -823,14 +818,7 @@ describe('McpClient', () => {
 			const result = await runV12({ operation: 'listResourceTemplates' });
 
 			expect(result).toEqual([
-				[
-					{
-						json: {
-							resourceTemplates: [{ uriTemplate: 'mem://{id}', name: 'templates' }],
-						},
-						pairedItem: { item: 0 },
-					},
-				],
+				[{ json: { uriTemplate: 'mem://{id}', name: 'templates' }, pairedItem: { item: 0 } }],
 			]);
 			expect(client.close).toHaveBeenCalledTimes(1);
 		});
@@ -843,12 +831,7 @@ describe('McpClient', () => {
 			const result = await runV12({ operation: 'listPrompts' });
 
 			expect(result).toEqual([
-				[
-					{
-						json: { prompts: [{ name: 'p', description: 'A prompt' }] },
-						pairedItem: { item: 0 },
-					},
-				],
+				[{ json: { name: 'p', description: 'A prompt' }, pairedItem: { item: 0 } }],
 			]);
 			expect(client.close).toHaveBeenCalledTimes(1);
 		});
@@ -987,14 +970,7 @@ describe('McpClient', () => {
 
 			const result = await runV12({ operation: 'listResources' });
 
-			expect(result).toEqual([
-				[
-					{
-						json: { resources: [{ uri: 'mem://a', name: 'a' }] },
-						pairedItem: { item: 0 },
-					},
-				],
-			]);
+			expect(result).toEqual([[{ json: { uri: 'mem://a', name: 'a' }, pairedItem: { item: 0 } }]]);
 			expect(client.getServerCapabilities).not.toHaveBeenCalled();
 		});
 
@@ -1003,7 +979,7 @@ describe('McpClient', () => {
 
 			const result = await runV12({ operation: 'listResources' });
 
-			expect(result).toEqual([[{ json: { resources: [] }, pairedItem: { item: 0 } }]]);
+			expect(result).toEqual([[]]);
 		});
 
 		it('aggregates multiple pages', async () => {
@@ -1020,15 +996,8 @@ describe('McpClient', () => {
 
 			expect(result).toEqual([
 				[
-					{
-						json: {
-							resources: [
-								{ uri: 'mem://a', name: 'a' },
-								{ uri: 'mem://b', name: 'b' },
-							],
-						},
-						pairedItem: { item: 0 },
-					},
+					{ json: { uri: 'mem://a', name: 'a' }, pairedItem: { item: 0 } },
+					{ json: { uri: 'mem://b', name: 'b' }, pairedItem: { item: 0 } },
 				],
 			]);
 			expect(client.listResources).toHaveBeenNthCalledWith(
@@ -1046,24 +1015,38 @@ describe('McpClient', () => {
 		it('stops at 100 pages and returns a truncated result instead of throwing', async () => {
 			client.listResources.mockImplementation(async (params) => {
 				const page = params?.cursor === undefined ? 0 : Number(params.cursor);
-				return { resources: [], nextCursor: String(page + 1) };
+				return {
+					resources: [{ uri: `mem://${page}`, name: `r${page}` }],
+					nextCursor: String(page + 1),
+				};
+			});
+
+			const result = await runV12({ operation: 'listResources' });
+
+			const items = result?.[0] ?? [];
+			expect(items).toHaveLength(100);
+			expect(items[0]).toEqual({
+				json: { uri: 'mem://0', name: 'r0', truncated: true },
+				pairedItem: { item: 0 },
+			});
+			expect(client.listResources).toHaveBeenCalledTimes(100);
+		});
+
+		it('stops on a repeated cursor and returns a truncated result', async () => {
+			client.listResources.mockResolvedValue({
+				resources: [{ uri: 'mem://a', name: 'a' }],
+				nextCursor: 'c',
 			});
 
 			const result = await runV12({ operation: 'listResources' });
 
 			expect(result).toEqual([
-				[{ json: { resources: [], truncated: true }, pairedItem: { item: 0 } }],
-			]);
-			expect(client.listResources).toHaveBeenCalledTimes(100);
-		});
-
-		it('stops on a repeated cursor and returns a truncated result', async () => {
-			client.listResources.mockResolvedValue({ resources: [], nextCursor: 'c' });
-
-			const result = await runV12({ operation: 'listResources' });
-
-			expect(result).toEqual([
-				[{ json: { resources: [], truncated: true }, pairedItem: { item: 0 } }],
+				[
+					{
+						json: { uri: 'mem://a', name: 'a', truncated: true },
+						pairedItem: { item: 0 },
+					},
+				],
 			]);
 			expect(client.listResources).toHaveBeenCalledTimes(2);
 		});
@@ -1474,13 +1457,46 @@ describe('McpClient', () => {
 			expect(client.close).toHaveBeenCalledTimes(1);
 		});
 
-		it('returns an empty result and closes the client when listing resources fails', async () => {
-			client.listResources.mockRejectedValue(new Error('listResources failed'));
+		it('returns only the resources that match the filter', async () => {
+			client.listResources.mockResolvedValue({
+				resources: [
+					{ uri: 'mem://alpha', name: 'Alpha' },
+					{ uri: 'mem://beta', name: 'Beta' },
+					{ uri: 'mem://gamma', name: 'Gamma' },
+				],
+			});
+
+			const result = await getResources.call(mockLoadOptions(), 'beta');
+
+			expect(result.results).toEqual([{ name: 'Beta', value: 'mem://beta' }]);
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns an empty result when the server does not support resources', async () => {
+			client.listResources.mockRejectedValue(
+				new McpError(ErrorCode.MethodNotFound, 'Method not found'),
+			);
 
 			const result = await getResources.call(mockLoadOptions());
 
 			expect(result).toEqual({ results: [] });
 			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('surfaces other resource list errors and closes the client', async () => {
+			client.listResources.mockRejectedValue(new Error('listResources failed'));
+
+			await expect(getResources.call(mockLoadOptions())).rejects.toThrow('listResources failed');
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('throws a mapped error when the connection for resources fails', async () => {
+			const error = { type: 'auth' as const, error: new Error('unauthorized') };
+			connectMcpClientForCredential.mockResolvedValueOnce({ ok: false, error });
+
+			await expect(getResources.call(mockLoadOptions())).rejects.toThrow('Authentication failed');
+			expect(mapToNodeOperationError).toHaveBeenCalledWith(expect.anything(), error);
+			expect(client.listResources).not.toHaveBeenCalled();
 		});
 
 		it('lists prompts and closes the client', async () => {
@@ -1497,13 +1513,31 @@ describe('McpClient', () => {
 			expect(client.close).toHaveBeenCalledTimes(1);
 		});
 
-		it('returns an empty result and closes the client when listing prompts fails', async () => {
-			client.listPrompts.mockRejectedValue(new Error('listPrompts failed'));
+		it('returns an empty result when the server does not support prompts', async () => {
+			client.listPrompts.mockRejectedValue(
+				new McpError(ErrorCode.MethodNotFound, 'Method not found'),
+			);
 
 			const result = await getPrompts.call(mockLoadOptions());
 
 			expect(result).toEqual({ results: [] });
 			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('surfaces other prompt list errors and closes the client', async () => {
+			client.listPrompts.mockRejectedValue(new Error('listPrompts failed'));
+
+			await expect(getPrompts.call(mockLoadOptions())).rejects.toThrow('listPrompts failed');
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('throws a mapped error when the connection for prompts fails', async () => {
+			const error = { type: 'auth' as const, error: new Error('unauthorized') };
+			connectMcpClientForCredential.mockResolvedValueOnce({ ok: false, error });
+
+			await expect(getPrompts.call(mockLoadOptions())).rejects.toThrow('Authentication failed');
+			expect(mapToNodeOperationError).toHaveBeenCalledWith(expect.anything(), error);
+			expect(client.listPrompts).not.toHaveBeenCalled();
 		});
 	});
 });

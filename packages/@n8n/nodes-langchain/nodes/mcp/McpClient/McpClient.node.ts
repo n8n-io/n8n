@@ -657,7 +657,6 @@ export class McpClient implements INodeType {
 		}
 
 		try {
-			const inputMode = this.getNodeParameter('inputMode', 0, 'manual') as 'manual' | 'json';
 			const items = this.getInputData();
 			const returnData: INodeExecutionData[] = [];
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -675,6 +674,10 @@ export class McpClient implements INodeType {
 
 					switch (operation) {
 						case 'executeTool': {
+							// Read inside the case: inputMode is hidden for the v1.2 list operations.
+							const inputMode = this.getNodeParameter('inputMode', itemIndex, 'manual') as
+								| 'manual'
+								| 'json';
 							const tool = this.getNodeParameter('tool.value', itemIndex) as string;
 							let parameters: IDataObject = {};
 							if (inputMode === 'manual') {
@@ -689,9 +692,7 @@ export class McpClient implements INodeType {
 									arguments: parameters,
 								},
 								undefined,
-								{
-									timeout: requestOptions.timeout,
-								},
+								requestOptions,
 							)) as CallToolResult;
 
 							if (node.typeVersion >= 1.1 && result.isError) {
@@ -758,10 +759,15 @@ export class McpClient implements INodeType {
 								throw mapCapabilityError(node, itemIndex, 'resources', 'resources/list', error);
 							});
 
-							returnData.push({
-								json: { resources, ...(truncated && { truncated: true }) },
-								pairedItem: { item: itemIndex },
-							});
+							const items = truncated
+								? resources.map((resource) => ({ ...resource, truncated: true }))
+								: resources;
+							returnData.push(
+								...this.helpers.returnJsonArray(items).map((item) => ({
+									...item,
+									pairedItem: { item: itemIndex },
+								})),
+							);
 							break;
 						}
 						case 'listResourceTemplates': {
@@ -780,10 +786,15 @@ export class McpClient implements INodeType {
 								);
 							});
 
-							returnData.push({
-								json: { resourceTemplates, ...(truncated && { truncated: true }) },
-								pairedItem: { item: itemIndex },
-							});
+							const items = truncated
+								? resourceTemplates.map((template) => ({ ...template, truncated: true }))
+								: resourceTemplates;
+							returnData.push(
+								...this.helpers.returnJsonArray(items).map((item) => ({
+									...item,
+									pairedItem: { item: itemIndex },
+								})),
+							);
 							break;
 						}
 						case 'listPrompts': {
@@ -796,10 +807,15 @@ export class McpClient implements INodeType {
 								throw mapCapabilityError(node, itemIndex, 'prompts', 'prompts/list', error);
 							});
 
-							returnData.push({
-								json: { prompts, ...(truncated && { truncated: true }) },
-								pairedItem: { item: itemIndex },
-							});
+							const items = truncated
+								? prompts.map((prompt) => ({ ...prompt, truncated: true }))
+								: prompts;
+							returnData.push(
+								...this.helpers.returnJsonArray(items).map((item) => ({
+									...item,
+									pairedItem: { item: itemIndex },
+								})),
+							);
 							break;
 						}
 						case 'readResource': {

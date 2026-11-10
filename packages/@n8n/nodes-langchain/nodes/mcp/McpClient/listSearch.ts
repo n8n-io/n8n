@@ -1,3 +1,4 @@
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
@@ -89,11 +90,16 @@ export async function getResources(
 			paginationToken: result.nextCursor,
 		};
 	} catch (error) {
-		// The picker must stay usable on servers that do not expose resources.
-		this.logger?.debug?.('MCP Client: Failed to list resources for the picker', {
-			error: error instanceof Error ? error.message : String(error),
-		});
-		return { results: [] };
+		// A server without the resources capability answers with method-not-found.
+		// Every other failure (auth, timeout, connection) must reach the UI.
+		if (error instanceof McpError && error.code === Number(ErrorCode.MethodNotFound)) {
+			this.logger?.debug?.('MCP Client: Server does not support resources', {
+				error: error.message,
+			});
+			return { results: [] };
+		}
+
+		throw error instanceof Error ? error : new Error(String(error));
 	} finally {
 		await client.result.close();
 	}
@@ -141,11 +147,16 @@ export async function getPrompts(
 			paginationToken: result.nextCursor,
 		};
 	} catch (error) {
-		// The picker must stay usable on servers that do not expose prompts.
-		this.logger?.debug?.('MCP Client: Failed to list prompts for the picker', {
-			error: error instanceof Error ? error.message : String(error),
-		});
-		return { results: [] };
+		// A server without the prompts capability answers with method-not-found.
+		// Every other failure (auth, timeout, connection) must reach the UI.
+		if (error instanceof McpError && error.code === Number(ErrorCode.MethodNotFound)) {
+			this.logger?.debug?.('MCP Client: Server does not support prompts', {
+				error: error.message,
+			});
+			return { results: [] };
+		}
+
+		throw error instanceof Error ? error : new Error(String(error));
 	} finally {
 		await client.result.close();
 	}

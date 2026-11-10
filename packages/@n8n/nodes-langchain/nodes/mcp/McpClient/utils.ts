@@ -287,6 +287,9 @@ export function convertJsonSchemaToResourceMapperFields(
 
 export const MCP_MAX_LIST_PAGES = 100;
 
+/** Overall budget for one list operation, so a slow server cannot stack 100 timeouts. */
+export const MCP_LIST_DEADLINE_MS = 300_000;
+
 type ListPage<T> = {
 	items: T[];
 	nextCursor?: string;
@@ -313,24 +316,36 @@ async function getAllPages<T>(
 	let cursor: string | undefined;
 	let pages = 0;
 	const items: T[] = [];
+	const deadline = Date.now() + MCP_LIST_DEADLINE_MS;
 
 	while (true) {
 		if (options.signal?.aborted) {
 			throw new NodeOperationError(node, 'Execution was cancelled', { itemIndex });
 		}
 
+		if (Date.now() > deadline) {
+			return { items, truncated: true };
+		}
+
 		const page = await listPage(cursor);
-		items.push(...page.items);
 		pages += 1;
 
 		const nextCursor = page.nextCursor;
+
+		// Check the cursor before appending, so a c1 -> c2 -> c1 cycle does not
+		// append the items of a page that was already fetched.
+		if (nextCursor && seenCursors.has(nextCursor)) {
+			return { items, truncated: true };
+		}
+
+		items.push(...page.items);
+
 		if (!nextCursor) {
 			return { items, truncated: false };
 		}
 
-		// Stop on a seen cursor or at the page cap. Return the data we have
-		// instead of discarding it.
-		if (seenCursors.has(nextCursor) || pages >= MCP_MAX_LIST_PAGES) {
+		// Stop at the page cap. Return the data we have instead of discarding it.
+		if (pages >= MCP_MAX_LIST_PAGES) {
 			return { items, truncated: true };
 		}
 
