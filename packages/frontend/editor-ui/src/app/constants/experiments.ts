@@ -166,7 +166,7 @@ export const MCP_DISCOVERY_EXPERIMENT = createExperiment('123_surface_mcp_to_cla
 // EOF Experiment cleanup
 
 export const ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT = createExperiment(
-	'127_enable_posthog_autocapture',
+	'139_enable_posthog_autocapture',
 );
 
 export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
