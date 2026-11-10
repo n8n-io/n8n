@@ -8,6 +8,7 @@ import {
 	type CredentialsRepository,
 	type DbConnection,
 	type IWorkflowDb,
+	type Project,
 	type ProjectRelationRepository,
 	type SharedWorkflowRepository,
 	type User,
@@ -349,7 +350,13 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('memory guard events', () => {
-		it('should track on `memory-guard-execution-stopped` event and send it at once', () => {
+		it('should track on `memory-guard-execution-stopped` event with the workflow owner and send it at once', async () => {
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(
+				mock<Project>({ id: 'project123', type: 'personal' }),
+			);
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(
+				mock<User>({ id: 'user123' }),
+			);
 			const event: RelayEventMap['memory-guard-execution-stopped'] = {
 				executionId: 'execution123',
 				workflowId: 'workflow123',
@@ -365,10 +372,12 @@ describe('TelemetryEventRelay', () => {
 			};
 
 			eventService.emit('memory-guard-execution-stopped', event);
+			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION,
 				{
+					user_id: 'user123',
 					workflow_id: 'workflow123',
 					execution_mode: 'webhook',
 					reason: 'critical',
@@ -382,6 +391,32 @@ describe('TelemetryEventRelay', () => {
 				},
 			);
 			expect(telemetry.flushQueue).toHaveBeenCalled();
+		});
+
+		it('should track on `memory-guard-execution-stopped` event with the instance owner for a team project', async () => {
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(
+				mock<Project>({ id: 'project123', type: 'team' }),
+			);
+
+			eventService.emit('memory-guard-execution-stopped', {
+				executionId: 'execution123',
+				workflowId: 'workflow123',
+				mode: 'webhook',
+				reason: 'threshold',
+				runningNodeType: undefined,
+				largestDataNodeType: undefined,
+				estimatedBytes: 300,
+				memoryUsedBytes: 960,
+				memoryLimitBytes: 1000,
+				freedMemory: false,
+				workflowDeactivationStarted: false,
+			});
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION,
+				expect.objectContaining({ user_id: 'owner123', workflow_id: 'workflow123' }),
+			);
 		});
 	});
 

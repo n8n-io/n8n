@@ -388,7 +388,8 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 			'runner-disconnected': (event) => this.runnerDisconnected(event),
-			'memory-guard-execution-stopped': (event) => this.memoryGuardExecutionStopped(event),
+			'memory-guard-execution-stopped': async (event) =>
+				await this.memoryGuardExecutionStopped(event),
 			'trusted-source-created': (event) => this.trustedSourceCreated(event),
 			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
 			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
@@ -2289,6 +2290,20 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	/** Owner of the workflow's personal project, else the instance owner. */
+	private async getWorkflowOwnerId(workflowId: string) {
+		try {
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+			if (project.type === 'personal') {
+				const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
+				if (owner) return owner.id;
+			}
+		} catch {
+			// The workflow may be deleted by now.
+		}
+		return await this.getInstanceOwnerId();
+	}
+
 	/** Owner user ID once setup is complete, `undefined` while only the placeholder owner row exists. */
 	private async getInstanceOwnerId() {
 		if (!(await this.ownershipService.hasInstanceOwner())) return undefined;
@@ -2382,8 +2397,11 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED, { reason, mode });
 	}
 
-	private memoryGuardExecutionStopped(event: RelayEventMap['memory-guard-execution-stopped']) {
+	private async memoryGuardExecutionStopped(
+		event: RelayEventMap['memory-guard-execution-stopped'],
+	) {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION, {
+			user_id: await this.getWorkflowOwnerId(event.workflowId),
 			workflow_id: event.workflowId,
 			execution_mode: event.mode,
 			reason: event.reason,
