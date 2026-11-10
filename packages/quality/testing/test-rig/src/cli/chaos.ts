@@ -30,10 +30,13 @@ async function main() {
 		console.log(
 			`\nshrinking: ${args.repeats} runs per candidate, ${args.minFailures} failures to keep it`,
 		);
+		const violated = new Set(result.violations.map((v) => v.invariant));
 		const shrunk = await shrink(
 			schedule,
 			async (candidate) =>
-				(await chaosRun({ ...options, outDir: undefined }, candidate)).violations.length > 0,
+				(await chaosRun({ ...options, outDir: undefined }, candidate)).violations.some((v) =>
+					violated.has(v.invariant),
+				),
 			{
 				repeats: args.repeats,
 				minFailures: args.minFailures,
