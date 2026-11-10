@@ -255,6 +255,57 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toHaveLength(2);
 	});
 
+	describe('with measured request size', () => {
+		const usage = (promptTokens: number) => ({
+			promptTokens,
+			completionTokens: 0,
+			totalTokens: promptTokens,
+		});
+
+		it('blocks for observation when the measured request crosses the hard threshold', async () => {
+			const store = new InMemoryMemory();
+			const observe = vi.fn(
+				async () => await Promise.resolve('* IMPORTANT (14:31) Large prompt observed.'),
+			);
+			const { orchestrator } = buildOrchestrator(store, {
+				observerThresholdTokens: 1_000,
+				observe,
+				observationLogTailLimit: 20,
+			});
+			const list = new AgentMessageList();
+			list.addInput([userMsg('a short message')]);
+
+			// The system prompt and tools make the real request far larger than its messages.
+			await orchestrator.recordModelCallUsage(list, usage(5_000));
+			list.addResponse([assistantMsg('a short reply')]);
+			await orchestrator.maybeObserveMidRun(list, runOptions());
+
+			expect(observe).toHaveBeenCalledTimes(1);
+			expect(list.forLlm('base').messages).toEqual([
+				{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+			]);
+		});
+
+		it('keeps the message estimate when the call reports no usage', async () => {
+			const store = new InMemoryMemory();
+			const observe = vi.fn(async () => await Promise.resolve('* IMPORTANT (14:31) Unused.'));
+			const { orchestrator } = buildOrchestrator(store, {
+				observerThresholdTokens: 1_000,
+				observe,
+				observationLogTailLimit: 20,
+			});
+			const list = new AgentMessageList();
+			list.addInput([userMsg('a short message')]);
+
+			await orchestrator.recordModelCallUsage(list, undefined);
+			await orchestrator.recordModelCallUsage(list, usage(0));
+			list.addResponse([assistantMsg('a short reply')]);
+			await orchestrator.maybeObserveMidRun(list, runOptions());
+
+			expect(observe).not.toHaveBeenCalled();
+		});
+	});
+
 	// With the character-count token counter, a 750-char message is inside the
 	// soft band [700, 1000), and two such messages cross the hard threshold.
 

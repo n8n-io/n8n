@@ -51,6 +51,7 @@ import type {
 import type { AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
+import { promptSizeOf } from '../loop/prompt-size-usage';
 import { computeSideCallCost } from '../loop/side-call-cost';
 import type { AgentMessageList } from '../model/message-list';
 import { getPromptCacheRetentionMs } from '../model/prompt-cache';
@@ -63,6 +64,7 @@ import {
 	type MemorySpanAttributes,
 	type RuntimeTelemetry,
 } from '../telemetry/runtime-telemetry';
+import { RequestSizeTracker } from './request-size-tracker';
 import { sanitizeOffloadedToolResultsForMemory } from './tool-result-memory';
 
 const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
@@ -187,6 +189,9 @@ export class MemoryOrchestrator {
 	private visibleTokenEstimates = new Map<string, number>();
 
 	private visibleTokenEstimateTotal = 0;
+
+	/** Size of the next model request, from the provider's reported usage. */
+	private readonly requestSize = new RequestSizeTracker();
 
 	/** In-flight background mid-run observer task; `result` set on settlement. */
 	private midRunObserverTask: MidRunObserverTask | undefined;
@@ -625,16 +630,17 @@ export class MemoryOrchestrator {
 	}
 
 	/**
-	 * Mid-run observation, called at clean loop boundaries. When the visible
-	 * window's estimated model-facing token size crosses a soft threshold
-	 * (`MID_RUN_SOFT_THRESHOLD_RATIO` x `observerThresholdTokens`), persist the
+	 * Mid-run observation, called at clean loop boundaries. The size compared
+	 * against the thresholds is the next request's: the input tokens the last
+	 * model call reported plus the estimate of messages added since (see
+	 * `RequestSizeTracker`). When it crosses the soft threshold, persist the
 	 * turn-so-far (the Observer reads from the store) and start the Observer as
 	 * a background task without blocking the loop. A later boundary activates
 	 * the settled result cheaply: mask the observed messages out of the LLM
 	 * window and refresh the injected observation log — no LLM call. Only when
-	 * the budget reaches the hard threshold (`observerThresholdTokens`) does the
-	 * loop block: it joins the in-flight task, or falls back to a synchronous
-	 * Observer run. Best-effort: a skipped (lock held) or failed observer run —
+	 * the budget reaches the hard limit (the hard threshold, capped at the
+	 * context window) does the loop block: it joins the in-flight task, or
+	 * falls back to a synchronous Observer run. Best-effort: a skipped (lock held) or failed observer run —
 	 * or any failure in the surrounding store reads and token counting — leaves
 	 * the window untouched and never fails the run. A failed attempt or a response
 	 * that does not advance the cursor disables observation until the next run.
@@ -659,6 +665,16 @@ export class MemoryOrchestrator {
 		}
 	}
 
+	/**
+	 * Record the input size the provider reported for a model call. Call it
+	 * before the response joins the list, so the visible estimate matches what
+	 * the call sent.
+	 */
+	async recordModelCallUsage(list: AgentMessageList, usage: TokenUsage | undefined): Promise<void> {
+		if (!usage || !this.config.observationalMemory?.observe) return;
+		this.requestSize.record(promptSizeOf(usage), await this.estimateVisibleBudget(list));
+	}
+
 	/** Reset per-run observation state on generate and resume entry. */
 	private resetRunState(): void {
 		this.midRunObserverTask = undefined;
@@ -666,6 +682,8 @@ export class MemoryOrchestrator {
 		this.lastPersistedTurnKeyset = undefined;
 		this.visibleTokenEstimates.clear();
 		this.visibleTokenEstimateTotal = 0;
+		// Keep the overhead: the next run sends the same system prompt and tools.
+		this.requestSize.invalidate();
 		this.cursorAdvancedThisRun = false;
 		this.observerAttempts = 0;
 		this.knownCursor = undefined;
@@ -693,7 +711,7 @@ export class MemoryOrchestrator {
 		if (!observationalMemory?.observe) return;
 		const thresholds = await this.resolveThresholds();
 		if (!thresholds) return;
-		const observerThresholdTokens = thresholds.midRunHard;
+		const hardLimit = this.hardLimit(thresholds);
 
 		// Phase 1: activate a settled background result first — cheap, resets
 		// the budget for the threshold checks below.
@@ -707,18 +725,18 @@ export class MemoryOrchestrator {
 
 		if (this.observerRun.disabled) return;
 
-		const budget = await this.estimateVisibleBudget(list);
+		const budget = await this.estimateRequestTokens(list);
 		if (budget < thresholds.midRunSoft) return;
 
 		const telemetry = this.runtimeTelemetry.resolve(options);
 
 		// Phase 2: hard threshold — the window must not grow past it. Join the
 		// in-flight task if any. Observe again only if the run is still enabled.
-		if (budget >= observerThresholdTokens) {
-			logger.debug('Mid-run observation hit the hard threshold', {
+		if (budget >= hardLimit) {
+			logger.debug('Mid-run observation hit the hard limit', {
 				threadId: options.persistence.threadId,
 				budget,
-				observerThresholdTokens,
+				hardLimit,
 				observerInFlight: Boolean(this.midRunObserverTask),
 			});
 			if (this.midRunObserverTask) {
@@ -726,7 +744,7 @@ export class MemoryOrchestrator {
 				this.midRunObserverTask = undefined;
 				if (this.noteMidRunObserverResult(result)) {
 					await this.activateObservations(list, options.persistence);
-					if ((await this.estimateVisibleBudget(list)) < observerThresholdTokens) return;
+					if ((await this.estimateRequestTokens(list)) < hardLimit) return;
 				}
 			}
 			if (this.observerRun.disabled) return;
@@ -741,6 +759,7 @@ export class MemoryOrchestrator {
 			const result = await handle.done;
 			if (!this.noteMidRunObserverResult(result)) return;
 			await this.activateObservations(list, options.persistence);
+			await this.warnIfOverWindow(list, options.persistence.threadId);
 			return;
 		}
 
@@ -760,6 +779,36 @@ export class MemoryOrchestrator {
 			entry.result = result;
 		});
 		this.midRunObserverTask = entry;
+	}
+
+	/**
+	 * The size at which the loop blocks for observation. Fixed thresholds can
+	 * be set above the model's window, so the window caps the limit.
+	 */
+	private hardLimit(thresholds: ObservationThresholds): number {
+		return this.contextWindow
+			? Math.min(thresholds.midRunHard, this.contextWindow)
+			: thresholds.midRunHard;
+	}
+
+	/**
+	 * Observation cannot shrink the request further, so the provider is likely
+	 * to reject it. Log it to explain the failure that follows.
+	 */
+	private async warnIfOverWindow(list: AgentMessageList, threadId: string): Promise<void> {
+		if (!this.contextWindow) return;
+		const requestTokens = await this.estimateRequestTokens(list);
+		if (requestTokens < this.contextWindow) return;
+		logger.warn('Request is still over the context window after observation', {
+			threadId,
+			requestTokens,
+			contextWindow: this.contextWindow,
+		});
+	}
+
+	/** Estimated tokens of the next model request; see `RequestSizeTracker`. */
+	private async estimateRequestTokens(list: AgentMessageList): Promise<number> {
+		return this.requestSize.estimate(await this.estimateVisibleBudget(list));
 	}
 
 	/**
@@ -800,6 +849,7 @@ export class MemoryOrchestrator {
 		this.knownCursor = cursor;
 		list.maskObservedMessages(cursor);
 		this.pruneVisibleTokenEstimates(list);
+		this.requestSize.invalidate();
 		await this.setListObservationLogMemory(list, persistence);
 	}
 
