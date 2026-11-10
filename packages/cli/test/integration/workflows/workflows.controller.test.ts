@@ -1148,10 +1148,10 @@ describe('GET /workflows/:workflowId', () => {
 			testServer.license.enable('feat:sharing');
 		});
 
-		test.each([true, false])(
+		test.each(['enabled', 'disabled'])(
 			'should return homeProject and no shared relation when sharing license is %s',
-			async (sharingEnabled) => {
-				if (sharingEnabled) testServer.license.enable('feat:sharing');
+			async (sharingLicense) => {
+				if (sharingLicense === 'enabled') testServer.license.enable('feat:sharing');
 				else testServer.license.disable('feat:sharing');
 
 				const ownerProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
