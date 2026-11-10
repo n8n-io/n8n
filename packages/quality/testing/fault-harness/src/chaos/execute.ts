@@ -4,6 +4,7 @@ export interface AppliedFault extends ScheduledFault {
 	startedMs: number;
 	endedMs: number;
 	error?: string;
+	hit?: boolean;
 }
 
 export interface Clock {
@@ -17,7 +18,7 @@ export interface Clock {
  */
 export async function runSchedule(
 	schedule: ScheduledFault[],
-	apply: (fault: Fault) => Promise<void>,
+	apply: (fault: Fault) => Promise<Pick<AppliedFault, 'hit'> | undefined>,
 	clock: Clock,
 ): Promise<AppliedFault[]> {
 	const start = clock.now();
@@ -28,7 +29,7 @@ export async function runSchedule(
 		const startedMs = clock.now() - start;
 		running.push(
 			apply(entry.fault).then(
-				() => ({ ...entry, startedMs, endedMs: clock.now() - start }),
+				(outcome) => ({ ...entry, ...outcome, startedMs, endedMs: clock.now() - start }),
 				(error: unknown) => ({
 					...entry,
 					startedMs,

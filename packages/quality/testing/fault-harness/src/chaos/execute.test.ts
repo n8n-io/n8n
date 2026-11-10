@@ -54,4 +54,23 @@ describe('runSchedule', () => {
 			[500, 500, 500],
 		]);
 	});
+
+	it('records whether a fault was hit', async () => {
+		const clock = timerClock();
+		const applied = await clock.drive(
+			runSchedule(
+				[
+					{ atMs: 0, fault: { kind: 'kill', target: 'worker-1' } },
+					{
+						atMs: 10,
+						fault: { kind: 'hook', target: 'worker-2', point: 'p', forMs: 5 },
+					},
+				],
+				async (fault: Fault) =>
+					await Promise.resolve(fault.kind === 'hook' ? { hit: false } : undefined),
+				clock,
+			),
+		);
+		expect(applied.map((a) => a.hit)).toEqual([undefined, false]);
+	});
 });

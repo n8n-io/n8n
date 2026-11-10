@@ -25,6 +25,8 @@ async function main(): Promise<number> {
 	const failedFaults = result.applied.filter((f) => f.error);
 	for (const a of failedFaults)
 		console.log(`  fault failed: ${describeFault(a.fault)}: ${a.error}`);
+	for (const a of result.applied.filter((f) => f.hit === false))
+		console.log(`  hook fault never hit: ${describeFault(a.fault)}`);
 
 	if (result.violations.length && args.shrink) {
 		console.log(
