@@ -119,8 +119,6 @@
 	function hit(hook, ctx) {
 		const detail = details(hook, ctx);
 		const hitAt = Date.now();
-		if (hook.kind !== 'observe')
-			fs.writeFileSync(file(hook.point, 'hit'), JSON.stringify({ hitAt, ...detail }));
 		log('hit', hook.point, detail);
 		return hitAt;
 	}
