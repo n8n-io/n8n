@@ -590,6 +590,27 @@ describe('useContextMenu', () => {
 				expect(pasteDisabled(actions)).toBe(false);
 			});
 
+			it('ignores a clipboard result that arrives after the menu was reopened', async () => {
+				let resolveRead: (text: string) => void = () => {};
+				mockClipboard('granted', '');
+				vi.mocked(navigator.clipboard.readText)
+					.mockImplementationOnce(
+						async () => await new Promise<string>((resolve) => (resolveRead = resolve)),
+					)
+					.mockImplementationOnce(async () => await new Promise<string>(() => {}));
+				const { open, close, actions } = useContextMenu();
+
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+				close();
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+				// Let both permission checks finish so both reads have started
+				await vi.waitFor(() => expect(navigator.clipboard.readText).toHaveBeenCalledTimes(2));
+				resolveRead('just some text');
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				expect(pasteDisabled(actions)).toBe(false);
+			});
+
 			it('keeps paste enabled and does not read the clipboard without permission', async () => {
 				mockClipboard('prompt', 'just some text');
 				const { open, actions } = useContextMenu();

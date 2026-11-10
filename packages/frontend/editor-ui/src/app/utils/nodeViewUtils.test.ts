@@ -9,6 +9,7 @@ import {
 	getNewNodePosition,
 	getNodeViewTab,
 	isPastableWorkflowText,
+	readClipboardTextIfGranted,
 	updateViewportToContainNodes,
 	DEFAULT_NODE_SIZE,
 	snapPositionToGrid,
@@ -734,5 +735,28 @@ describe('isPastableWorkflowText', () => {
 		['a JSON array', '[1]', false],
 	])('returns %s -> %s', (_label, text, expected) => {
 		expect(isPastableWorkflowText(text)).toBe(expected);
+	});
+});
+
+describe('readClipboardTextIfGranted', () => {
+	afterEach(() => {
+		Reflect.deleteProperty(window.navigator, 'permissions');
+		Reflect.deleteProperty(window.navigator, 'clipboard');
+	});
+
+	it('returns undefined when the browser rejects the permission query', async () => {
+		// Firefox and Safari reject the 'clipboard-read' permission name
+		Object.defineProperty(window.navigator, 'permissions', {
+			value: { query: vi.fn().mockRejectedValue(new TypeError('unsupported')) },
+			configurable: true,
+		});
+		const readText = vi.fn();
+		Object.defineProperty(window.navigator, 'clipboard', {
+			value: { readText },
+			configurable: true,
+		});
+
+		await expect(readClipboardTextIfGranted()).resolves.toBeUndefined();
+		expect(readText).not.toHaveBeenCalled();
 	});
 });
