@@ -477,6 +477,83 @@ describe('VaultProvider', () => {
 		});
 	});
 
+	describe.each(['1', '2'])('cache refresh with KV v%s', (version) => {
+		const listPath = version === '2' ? '/v1/secret/metadata/' : '/v1/secret/';
+		const dataPath = version === '2' ? '/v1/secret/data/' : '/v1/secret/';
+
+		function secretResponse(password: string) {
+			return version === '2' ? kvV2SecretResponse({ password }) : { data: { password } };
+		}
+
+		// LIGO-1412: A failed refresh must keep secrets from the last successful refresh.
+		it.each([
+			{ operation: 'mount LIST', failedPath: listPath },
+			{ operation: 'folder LIST', failedPath: `${listPath}team/` },
+			{ operation: 'secret GET', failedPath: `${dataPath}team/app` },
+		])('should keep cached secrets when $operation returns HTTP 503', async ({ failedPath }) => {
+			const { provider } = await initProvider(
+				[
+					{ method: 'GET', pathname: listPath, body: { data: { keys: ['team/'] } } },
+					{
+						method: 'GET',
+						pathname: `${listPath}team/`,
+						body: { data: { keys: ['app'] } },
+					},
+					{
+						method: 'GET',
+						pathname: `${dataPath}team/app`,
+						body: secretResponse('cached-password'),
+					},
+					{
+						method: 'GET',
+						pathname: failedPath,
+						status: 503,
+						body: { errors: ['Service unavailable'] },
+					},
+				],
+				vaultSettingsWithKvPath('secret/', version),
+			);
+			const expectedSecrets = { team: { app: { password: 'cached-password' } } };
+
+			await provider.update();
+
+			expect(provider.getSecret('secret')).toEqual(expectedSecrets);
+			expect(provider.hasSecret('secret')).toBe(true);
+			expect(provider.getSecretNames()).toEqual(['secret.team.app.password']);
+
+			await provider.update();
+
+			expect(provider.getSecret('secret')).toEqual(expectedSecrets);
+			expect(provider.hasSecret('secret')).toBe(true);
+			expect(provider.getSecretNames()).toEqual(['secret.team.app.password']);
+		});
+
+		it('should replace changed secrets and remove keys absent from a successful LIST', async () => {
+			const { provider } = await initProvider(
+				[
+					{ method: 'GET', pathname: listPath, body: { data: { keys: ['app', 'removed'] } } },
+					{ method: 'GET', pathname: listPath, body: { data: { keys: ['app'] } } },
+					{ method: 'GET', pathname: `${dataPath}app`, body: secretResponse('cached-password') },
+					{ method: 'GET', pathname: `${dataPath}app`, body: secretResponse('updated-password') },
+					{ method: 'GET', pathname: `${dataPath}removed`, body: secretResponse('old-password') },
+				],
+				vaultSettingsWithKvPath('secret/', version),
+			);
+
+			await provider.update();
+
+			expect(provider.getSecret('secret')).toEqual({
+				app: { password: 'cached-password' },
+				removed: { password: 'old-password' },
+			});
+
+			await provider.update();
+
+			expect(provider.getSecret('secret')).toEqual({ app: { password: 'updated-password' } });
+			expect(provider.getSecretNames()).toEqual(['secret.app.password']);
+		});
+	});
+
 	describe.each(['1', '2'])('secret discovery with KV v%s', (version) => {
 		async function loadSecret(data: Record<string, unknown>) {
 			const { provider } = await initProvider([
