@@ -88,7 +88,7 @@ Use Cases:
 - Time-based routing (morning vs afternoon processing)
 - Multi-path conditional execution
 
-### n8n Data Tables (n8n-nodes-base.n8nTables)
+### n8n Data Tables (n8n-nodes-base.dataTable)
 
 Purpose: Store scheduling state and pending tasks
 

@@ -29,7 +29,7 @@ For small static HTML (< 50 lines), you may inline as an array of quoted strings
 ## Data injection patterns
 
 - **Static page (no server data):** embed HTML directly, no placeholder needed.
-- **Dynamic data:** put \`<script id="__data" type="application/json">__DATA_PLACEHOLDER__</script>\` in the HTML. At runtime the Code node replaces \`__DATA_PLACEHOLDER__\` with base64-encoded JSON. Client-side: \`JSON.parse(atob(document.getElementById('__data').textContent))\`.
+- **Dynamic data:** put \`<script id="__data" type="application/json">__DATA_PLACEHOLDER__</script>\` in the HTML. At runtime the Code node replaces \`__DATA_PLACEHOLDER__\` with base64-encoded JSON. Client-side, decode the bytes as UTF-8 (\`atob\` alone garbles non-ASCII text): \`JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(document.getElementById('__data').textContent), (c) => c.charCodeAt(0))))\`.
 - Do not place bare \`{{ $json... }}\` expressions inside an HTML string parameter — they won't be evaluated.
 
 ## Multi-route SPA (dashboard with API endpoints)
@@ -73,7 +73,9 @@ Use \`respondToWebhook\` with \`respondWith: "text"\`, put the HTML in \`respons
   <script>
     function app() {
       return {
-        items: JSON.parse(atob(document.getElementById('__data').textContent)),
+        items: JSON.parse(new TextDecoder().decode(
+          Uint8Array.from(atob(document.getElementById('__data').textContent), (c) => c.charCodeAt(0))
+        )),
         newTitle: '',
         async toggle(item) {
           await fetch('/webhook/app/items/toggle', {
