@@ -63,7 +63,7 @@ export function noRepeatedEffects({ effects }: RunRecord): Violation[] {
 		: [];
 }
 
-/** Every successful execution wrote exactly one effect. */
+/** Every successful execution wrote at least one effect. */
 export function everySuccessHasItsEffect({ executions, effects }: RunRecord): Violation[] {
 	const written = new Set(effects.map((e) => e.executionId));
 	const without = Object.entries(executions)
