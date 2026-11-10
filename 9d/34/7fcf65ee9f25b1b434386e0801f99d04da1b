@@ -1,0 +1,19 @@
+packages/quality/policy/code-health/src/single-instance/verify-npm-install.ts
+  s_000b132788c5c9::t_1a5c51c07f8bea 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d347fcf65ee9f25b1b434386e0801f99d04da1b",
+  "prompts": {},
+  "sessions": {
+    "s_000b132788c5c9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e3b7f8ce3ffeuvlNZa4ts1y4jU",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
