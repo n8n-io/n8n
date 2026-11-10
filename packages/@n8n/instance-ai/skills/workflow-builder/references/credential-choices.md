@@ -5,10 +5,9 @@ description: >-
   credential, before you choose HTTP Request authentication, or when the user
   explicitly asks for a new credential instead of an existing one. Also load
   before you ask the user any credential or auth-type question during setup.
-recommended_tools:
-  - list_credentials
-  - search_credential_types
-  - setup_workflow
+recommended_tool_groups:
+  - credentials
+  - workflows
 ---
 
 # Credential Choices

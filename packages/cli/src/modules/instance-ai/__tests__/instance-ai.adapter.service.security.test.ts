@@ -242,7 +242,7 @@ describe('exploreResources — credential ownership check', () => {
 
 		const ctx = service.createContext(person);
 		await expect(ctx.nodeService.exploreResources!(baseParams)).rejects.toThrow(
-			'Credential cred-123 not found or not accessible',
+			'Credential cred-123 has type "someOtherType", not "googleSheetsOAuth2Api"',
 		);
 
 		expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
@@ -332,7 +332,7 @@ describe('exploreResources — eval-seeded credential', () => {
 
 		await expect(
 			ctx.nodeService.exploreResources!({ ...baseParams, credentialType: 'slackApi' }),
-		).rejects.toThrow('Credential cred-123 not found or not accessible');
+		).rejects.toThrow('Credential cred-123 has type "googleSheetsOAuth2Api", not "slackApi"');
 		expectNoProviderCall();
 	});
 

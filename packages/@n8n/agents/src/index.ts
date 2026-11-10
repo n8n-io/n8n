@@ -101,6 +101,8 @@ export type {
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
 	NativeToolDeferralConfig,
+	ToolDeferralConfig,
+	ToolDeferralMode,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,

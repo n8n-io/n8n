@@ -3,8 +3,8 @@ name: trigger-url-sharing
 description: >-
   Load before you share a Webhook, Form or Chat Trigger URL with the user, or
   tell them how to reach a built workflow from outside n8n.
-recommended_tools:
-  - get_workflow
+recommended_tool_groups:
+  - workflows
 ---
 
 # Trigger URL Sharing

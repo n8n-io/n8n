@@ -4,22 +4,9 @@ description: >-
   Load after a direct workflow_builder_build_workflow succeeds, or when the
   message contains workflow-verification-follow-up or workflow-setup-required.
   One-off builds use one-off-operations instead.
-recommended_tools:
-  - ask_user
-  - workflow_builder_verify_built_workflow
-  - get_workflow
-  - get_workflow_as_code
-  - setup_workflow
-  - validate_workflow
-  - publish_workflow
-  - workflow_builder_build_workflow
-  - list_executions
-  - get_execution
-  - run_workflow
-  - run_workflow_step
-  - debug_execution
-  - get_execution_node_output
-  - get_resolved_node_parameters
+recommended_tool_groups:
+  - workflows
+  - executions
 ---
 
 # Post-Build Flow
@@ -96,7 +83,7 @@ error-workflow opt-in. Then the final claim.
 8. If testing has not been offered or completed, ask whether the user wants to
    test. Skip this when verification proved the workflow end-to-end with full
    coverage.
-9. Only call `publish_workflow` when the user explicitly asks
+9. Only run `publish_workflow` through `call_tool` when the user explicitly asks
    to publish, and load the `publishing` reference first.
 10. After a direct new primary workflow is successfully published, load `error-workflows` and follow its
     error workflow follow-up.

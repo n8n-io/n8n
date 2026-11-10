@@ -11,32 +11,6 @@ description: >-
   writes Data Tables, load data-table-manager first. Do a one-time request (no
   repeat or trigger words) now, without asking whether to repeat it; for one
   node, load one-off-operations and use execute_node.
-recommended_tools:
-  - read_file
-  - write_file
-  - edit_file
-  - execute_command
-  - workflow_builder_build_workflow
-  - list_workflows
-  - get_workflow_as_code
-  - setup_workflow
-  - search_nodes
-  - get_node_types
-  - get_node_parameter_options
-  - execute_node
-  - list_data_tables
-  - get_data_table_schema
-  - query_data_table
-  - create_data_table
-  - list_credentials
-  - search_credential_types
-  - setup_credentials
-  - test_credential
-  - workflow_builder_verify_built_workflow
-  - list_executions
-  - get_execution
-  - run_workflow
-  - debug_execution
 ---
 
 # Workflow Builder
@@ -61,9 +35,12 @@ workspace source file and the `workflow_builder_build_workflow` tool
   `filePath` (no `workflowId` needed; the build remembers it). Never re-emit the
   whole source, and do not fetch the same unchanged workflow again.
 
-When the needed node types are already obvious from the request, call
-`search_nodes` or `get_node_types` in the same response as the `load_skill`
-call for this skill. Each extra sequential turn resends the whole context.
+When the needed node types are already obvious from the request, make one
+`find_tools` call for every tool catalog tool the build will need (for example
+`search_nodes`, `get_node_types`, `workflow_builder_build_workflow`,
+`workflow_builder_verify_built_workflow`) in the same response as the
+`load_skill` call for this skill. Each extra sequential turn resends the whole
+context.
 
 ## Process
 

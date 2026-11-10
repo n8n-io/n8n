@@ -1791,7 +1791,7 @@ describe('InstanceAiThreadView', () => {
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 	});
 
-	it('swaps the chat input for the floating panel when a generic approval is pending', () => {
+	it('hides the chat input behind the floating panel when a generic approval is pending', () => {
 		thread.pendingConfirmations = [
 			{
 				messageId: 'msg-floating',
@@ -1807,13 +1807,13 @@ describe('InstanceAiThreadView', () => {
 			},
 		] as unknown as ThreadRuntime['pendingConfirmations'];
 
-		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		expect(getByTestId('instance-ai-confirmation-panel-floating')).toBeTruthy();
-		expect(queryByTestId('instance-ai-input-stub')).toBeNull();
+		expect(getByTestId('instance-ai-input-stub')).not.toBeVisible();
 	});
 
-	it('swaps the chat input for the floating panel when questions are pending', () => {
+	it('hides the chat input behind the floating panel when questions are pending', () => {
 		thread.pendingConfirmations = [
 			{
 				messageId: 'msg-questions',
@@ -1835,10 +1835,10 @@ describe('InstanceAiThreadView', () => {
 			},
 		] as unknown as ThreadRuntime['pendingConfirmations'];
 
-		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		expect(getByTestId('instance-ai-confirmation-panel-floating')).toBeTruthy();
-		expect(queryByTestId('instance-ai-input-stub')).toBeNull();
+		expect(getByTestId('instance-ai-input-stub')).not.toBeVisible();
 	});
 
 	it('connects the route thread when navigating to a known thread', async () => {

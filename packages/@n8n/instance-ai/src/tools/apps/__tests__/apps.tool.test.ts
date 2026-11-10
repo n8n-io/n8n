@@ -9,6 +9,7 @@ import {
 import { mock } from 'vitest-mock-extended';
 
 import { executeTool, parseToolInput } from '../../../__tests__/tool-test-utils';
+import { AppNamespaceTakenError } from '../../../errors/app-namespace-taken.error';
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiAppService, InstanceAiContext } from '../../../types';
 import { createAppsTool } from '../apps.tool';
@@ -324,6 +325,47 @@ describe('apps tool', () => {
 
 		expect(result).toEqual({ approved: true, blueprint, error: 'Database unavailable' });
 		expect(appService.createApp).not.toHaveBeenCalled();
+	});
+
+	it('shows the edited blueprint again with a namespace error when the namespace is taken', async () => {
+		const { tool, appService, thread, onArtifactChanged } = setup();
+		appService.createApp.mockRejectedValue(new AppNamespaceTakenError('taken-name'));
+		const blueprint = {
+			...BLUEPRINT,
+			namespace: 'taken-name',
+			additionalInstructions: 'Use compact cards.',
+		};
+		const suspend = vi.fn(async (payload: unknown) => await Promise.resolve(payload));
+
+		await executeTool(tool, createInput(), {
+			resumeData: { approved: true, blueprint },
+			suspend,
+		});
+
+		expect(suspend).toHaveBeenCalledWith({
+			requestId: expect.any(String),
+			message: 'Review the blueprint for Todos',
+			severity: 'info',
+			inputType: 'app-blueprint',
+			appBlueprint: blueprint,
+			appBlueprintErrors: { namespace: 'taken' },
+		});
+		expect(thread.metadata).toEqual({});
+		expect(onArtifactChanged).not.toHaveBeenCalled();
+	});
+
+	it('returns other create failures to the model', async () => {
+		const { tool, appService } = setup();
+		appService.createApp.mockRejectedValue(new Error('Database unavailable'));
+		const suspend = vi.fn();
+
+		const result = await executeTool(tool, createInput(), {
+			resumeData: { approved: true, blueprint: BLUEPRINT },
+			suspend,
+		});
+
+		expect(result).toEqual({ approved: true, blueprint: BLUEPRINT, error: 'Database unavailable' });
+		expect(suspend).not.toHaveBeenCalled();
 	});
 
 	it('keeps an open app folder, binds it to the thread and preserves uncommitted edits', async () => {
