@@ -517,7 +517,7 @@ describe('createBuildWorkflowTool', () => {
 
 			expect(result.success).toBe(false);
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
-			expect(result.errors?.join(' ')).toContain('move-workflow-to-folder');
+			expect(result.errors?.join(' ')).toContain('move_workflow_to_folder');
 		});
 
 		it.each(['', ' ', '/'])(
@@ -639,7 +639,7 @@ describe('createBuildWorkflowTool', () => {
 			'never offer publishing as an alternative to the live test',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
-			'A user-run execution counts only after `workflow_builder_executions(action="list")`',
+			'A user-run execution counts only after `list_executions`',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
 			'Do not replace the error-workflow opt-in with a generic add-anything',
@@ -2788,6 +2788,25 @@ describe('createBuildWorkflowTool', () => {
 		});
 
 		// Normalized to the workspace-relative path throughout (binding + output).
+		expect(result).toMatchObject({ success: true, filePath, workflowId: 'wf-1' });
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
+	});
+
+	it('builds from an absolute path under the fallback workspace root', async () => {
+		const source = 'workflow source from workspace';
+		const { context, filePath } = makeContext({
+			source,
+			overrides: {
+				workspaceRoot: '/home/user/workspace',
+				fallbackWorkspaceRoot: '/home/daytona/workspace',
+			},
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath: `/home/daytona/workspace/${filePath}`,
+			name: 'Daily Weather to Slack',
+		});
+
 		expect(result).toMatchObject({ success: true, filePath, workflowId: 'wf-1' });
 		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
 	});

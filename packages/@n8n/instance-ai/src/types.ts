@@ -20,6 +20,8 @@ import type {
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
+	AppBinding,
+	AppBindingsResponse,
 	AppBuildResponse,
 	AppListResponse,
 	AppResponse,
@@ -1296,7 +1298,12 @@ export interface InstanceAiDataTableService {
 }
 
 export interface InstanceAiAppService {
-	createApp(input: { name: string; namespace: string; id?: string }): Promise<AppResponse>;
+	createApp(input: {
+		name: string;
+		namespace: string;
+		visibility?: AppResponse['visibility'];
+		id?: string;
+	}): Promise<AppResponse>;
 	listApps(query: { name?: string }): Promise<AppListResponse>;
 	getApp(appId: string): Promise<AppResponse>;
 	findApp(appId: string): Promise<AppResponse | undefined>;
@@ -1308,6 +1315,16 @@ export interface InstanceAiAppService {
 		archive: Buffer,
 		label: string | null,
 	): Promise<AppBuildResponse>;
+	/** The bindings of the draft version, with the TypeScript declarations that describe them. */
+	getBindings(appId: string): Promise<AppBindingsResponse & { types: string }>;
+	/** Saves the full binding list as a new version on top of `baseVersionId`. */
+	setBindings(
+		appId: string,
+		baseVersionId: string | null,
+		bindings: AppBinding[],
+	): Promise<AppBindingsResponse & { types: string }>;
+	/** The `@n8n/app-sdk` package of this instance as a gzip tar archive. */
+	exportSdk(): Promise<Buffer>;
 }
 
 // ── Evaluation configs (config-based evals) ──────────────────────────────────
@@ -1669,6 +1686,20 @@ export interface InstanceAiAgentContextReader {
 	lookup(input: AgentContextLookup): Promise<Record<string, unknown>>;
 }
 
+/** A stored file of the thread, as `parse-file` reads it. */
+export interface InstanceAiStoredFile {
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
+	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
+	readContent(): Promise<Buffer | undefined>;
+}
+
+export interface InstanceAiStoredFileReader {
+	/** Gives `undefined` when the thread has no such file. */
+	read(fileId: string): Promise<InstanceAiStoredFile | undefined>;
+}
+
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 /** An artifact that a tool created or changed. Tools pass the name when they know it. */
@@ -1843,10 +1874,16 @@ export interface InstanceAiContext {
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
 	 * File attachments from the current user message. Runtime-only — not
-	 * persisted. Used to register `parse-file` and supply data to the parser.
+	 * persisted. The current-message `parse-file` reads them by index.
 	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
 	currentUserAttachments?: InstanceAiFileAttachment[];
+	/**
+	 * Reads stored files of the thread by id. When it is set, `parse-file` takes
+	 * a `fileId` and is registered on every turn, so the tool list stays stable
+	 * and files from earlier messages stay readable.
+	 */
+	storedFiles?: InstanceAiStoredFileReader;
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
 	/** Optional telemetry sink for domain tools. */
@@ -1857,6 +1894,11 @@ export interface InstanceAiContext {
 	 *  accept absolute file paths under the root by normalizing them to
 	 *  workspace-relative. */
 	workspaceRoot?: string;
+	/**
+	 * Second root that the tools accept in absolute paths. Older Daytona sandboxes keep their files
+	 * there and link `workspaceRoot` to it, so tool output can name either root.
+	 */
+	fallbackWorkspaceRoot?: string;
 	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */
@@ -2220,7 +2262,6 @@ export interface OrchestrationContext {
 	mcpTools?: InstanceAiToolRegistry;
 	/** Skills that the agent can load. */
 	skills?: RuntimeSkillSource;
-	skillAvailabilityNotice?: string;
 	/** Add loaded Hub content to UI events without changing agent memory. */
 	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */

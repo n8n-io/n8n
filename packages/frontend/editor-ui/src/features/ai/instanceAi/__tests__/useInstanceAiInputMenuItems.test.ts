@@ -10,7 +10,6 @@ import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
 const {
 	browserUseTelemetry,
 	ensureBrowserConnected,
-	featureFlags,
 	ignorePendingConnectResult,
 	mcpStore,
 	mcpTelemetry,
@@ -20,7 +19,6 @@ const {
 } = vi.hoisted(() => ({
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
 	ensureBrowserConnected: vi.fn(),
-	featureFlags: { preferences: false },
 	ignorePendingConnectResult: vi.fn(),
 	mcpStore: {
 		connections: [] as Array<Record<string, unknown>>,
@@ -55,10 +53,6 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('vue-router', () => ({
 	useRouter: () => router,
-}));
-
-vi.mock('@/features/settings/context/context.utils', () => ({
-	isContextPreferencesEnabled: () => featureFlags.preferences,
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -122,7 +116,6 @@ const mcpStatusCases: Array<{
 describe('useInstanceAiInputMenuItems', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		featureFlags.preferences = false;
 		mcpStore.connections = [];
 		settingsStore.isMcpAvailable = true;
 		settingsStore.isBrowserUseAvailable = true;
@@ -135,7 +128,7 @@ describe('useInstanceAiInputMenuItems', () => {
 
 		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 
-		expect(menuItems.value.map(({ id }) => id)).toEqual(['attach-files']);
+		expect(menuItems.value.map(({ id }) => id)).toEqual(['attach-files', 'preferences']);
 		expect(mcpStore.fetchConnectionsLazy).not.toHaveBeenCalled();
 	});
 	it('fetches MCP connections when MCP becomes available', async () => {
@@ -243,15 +236,7 @@ describe('useInstanceAiInputMenuItems', () => {
 	});
 
 	describe('the preferences item', () => {
-		it('hides the item while the context preferences flag is off', () => {
-			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
-
-			expect(findItem(menuItems.value, 'preferences')).toBeUndefined();
-		});
-
 		it('is a plain item, with no nested list of applied preferences', () => {
-			featureFlags.preferences = true;
-
 			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 			const item = findItem(menuItems.value, 'preferences');
 
@@ -261,7 +246,6 @@ describe('useInstanceAiInputMenuItems', () => {
 		});
 
 		it('opens the Context preferences settings page in a new tab', async () => {
-			featureFlags.preferences = true;
 			const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
 
 			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());

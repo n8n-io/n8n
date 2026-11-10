@@ -6,7 +6,7 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useResourceRegistry } from '../useResourceRegistry';
-import type { ResourceEntry, TransientWorkflowArtifactReference } from '../useResourceRegistry';
+import type { ResourceEntry } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -53,8 +53,8 @@ function setup(
 	pendingWorkflowAttachment?: () =>
 		| { type: 'workflow'; id: string; name?: string; executionId?: string }
 		| undefined,
-	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
 	agentBuilderTargets?: () => Array<{ agentId: string; projectId: string; name?: string }>,
+	appTargets?: () => Array<{ appId: string; projectId: string; name?: string }>,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const {
@@ -63,16 +63,14 @@ function setup(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
-	} = useResourceRegistry(
-		() => messages.value,
+	} = useResourceRegistry(() => messages.value, {
 		workflowNameLookup,
-		undefined,
 		agentBuilderTarget,
 		pendingAgentTarget,
 		pendingWorkflowAttachment,
-		transientWorkflowReferences,
 		agentBuilderTargets,
-	);
+		appTargets,
+	});
 	return {
 		messages,
 		producedArtifacts,
@@ -88,6 +86,29 @@ function setup(
 // ---------------------------------------------------------------------------
 
 describe('useResourceRegistry', () => {
+	test('registers an App linked in thread metadata as a preview artifact', async () => {
+		const appTargets = ref([
+			{ appId: '019a4012-272c-7313-91af-5c94a3d819a9', projectId: 'project-1', name: 'Portal' },
+		]);
+		const { producedArtifacts, linkableResourceNameIndex } = setup(
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			() => appTargets.value,
+		);
+		await nextTick();
+
+		expect(producedArtifacts.get(appTargets.value[0].appId)).toEqual({
+			type: 'app',
+			id: appTargets.value[0].appId,
+			name: 'Portal',
+			projectId: 'project-1',
+		});
+		expect(linkableResourceNameIndex.has('portal')).toBe(false);
+	});
+
 	describe('producedArtifacts — workflow registration', () => {
 		test('registers workflow with workflowName from result', async () => {
 			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
@@ -336,30 +357,6 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
-		test('keeps transient workflow references produced but not linkable', async () => {
-			const transient = ref<TransientWorkflowArtifactReference[]>([
-				{
-					referenceId: 'draft-1',
-					workflowId: 'wf-1',
-					workflowName: 'Orders',
-				},
-			]);
-			const { producedArtifacts, linkableResourceNameIndex } = setup(
-				() => 'Canonical Orders',
-				undefined,
-				undefined,
-				undefined,
-				() => transient.value,
-			);
-			await nextTick();
-
-			expect(producedArtifacts.get('wf-1')?.name).toBe('Canonical Orders');
-			expect(linkableResourceNameIndex.has('canonical orders')).toBe(false);
-
-			transient.value = [];
-			await nextTick();
-			expect(producedArtifacts.has('wf-1')).toBe(false);
-		});
 		test('keeps a pending new-agent attachment produced but not linkable', async () => {
 			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
@@ -829,7 +826,6 @@ describe('useResourceRegistry', () => {
 				undefined,
 				undefined,
 				undefined,
-				undefined,
 				() => [{ agentId: 'agent-1', projectId: 'project-1' }],
 			);
 
@@ -1013,7 +1009,6 @@ describe('useResourceRegistry', () => {
 			const { messages, producedArtifacts } = setup(
 				undefined,
 				() => ({ agentId: 'agent-2', projectId: 'project-1', name: 'Second Agent' }),
-				undefined,
 				undefined,
 				undefined,
 				() => [
@@ -1226,6 +1221,40 @@ describe('useResourceRegistry', () => {
 
 			expect(producedArtifacts.get('app-1')).toEqual({ type: 'app', ...app });
 			expect(producedArtifacts.has('app-2')).toBe(false);
+		});
+
+		test('keeps the latest app name from a tool result over thread metadata', async () => {
+			const appTargets = ref([{ appId: 'app-1', projectId: 'project-1', name: 'Old name' }]);
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => appTargets.value,
+			);
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'apps',
+								args: { action: 'commit', appId: 'app-1' },
+								result: {
+									app: { id: 'app-1', name: 'New name', projectId: 'project-1' },
+									versionId: 'v1',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')?.name).toBe('New name');
+			expect(resourceNameIndex.get('new name')?.id).toBe('app-1');
+			expect(linkableResourceNameIndex.get('new name')?.id).toBe('app-1');
+			expect(resourceNameIndex.has('old name')).toBe(false);
 		});
 	});
 
@@ -1553,9 +1582,14 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
-		test.each(['schema', 'query'] as const)(
-			'registers data table from data-tables %s result with resolved metadata',
-			async (action) => {
+		test.each([
+			{ toolName: 'data_tables', action: 'schema' },
+			{ toolName: 'data_tables', action: 'query' },
+			{ toolName: 'get_data_table_schema', action: 'schema' },
+			{ toolName: 'query_data_table', action: 'query' },
+		] as const)(
+			'registers data table from $toolName $action result with resolved metadata',
+			async ({ toolName, action }) => {
 				const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 				messages.value = [
@@ -1563,8 +1597,11 @@ describe('useResourceRegistry', () => {
 						agentTree: makeAgentNode({
 							toolCalls: [
 								makeToolCall({
-									toolName: 'data_tables',
-									args: { action, dataTableId: 'Signups' },
+									toolName,
+									args:
+										toolName === 'data_tables'
+											? { action, dataTableId: 'Signups' }
+											: { dataTableId: 'Signups' },
 									result: {
 										dataTableId: 'dt-signups',
 										dataTableName: 'Signups',
@@ -1702,11 +1739,9 @@ describe('useResourceRegistry', () => {
 		test('field-level changes notify field readers, and removed fields are swept', async () => {
 			const messages = ref<InstanceAiMessage[]>([]);
 			const archived = ref<ReadonlySet<string>>(new Set());
-			const { producedArtifacts } = useResourceRegistry(
-				() => messages.value,
-				undefined,
-				() => archived.value,
-			);
+			const { producedArtifacts } = useResourceRegistry(() => messages.value, {
+				archivedWorkflowIds: () => archived.value,
+			});
 			messages.value = [
 				makeMessage({
 					agentTree: makeAgentNode({
@@ -1763,17 +1798,19 @@ describe('useResourceRegistry', () => {
 			});
 
 		test('records how each artifact entered: built, attached, or mentioned', async () => {
-			const transient = ref<TransientWorkflowArtifactReference[]>([
-				{ referenceId: 'ref-1', workflowId: 'wf-mentioned', workflowName: 'Leads' },
-			]);
-			const { messages, producedArtifactOrigins } = setup(
+			const { messages, producedArtifactOrigins, seedArtifactOrigins } = setup(
 				undefined,
 				undefined,
 				undefined,
 				() => ({ type: 'workflow', id: 'wf-handoff', name: 'Canvas' }),
-				() => transient.value,
 			);
-			messages.value = [attachMessage('wf-attached'), buildMessage('wf-built')];
+			// A mention is a message attachment on the wire; the send seeds its origin first.
+			seedArtifactOrigins(['wf-mentioned'], 'mentioned');
+			messages.value = [
+				attachMessage('wf-attached'),
+				buildMessage('wf-built'),
+				attachMessage('wf-mentioned'),
+			];
 			await nextTick();
 
 			expect(Object.fromEntries(producedArtifactOrigins)).toEqual({
@@ -1861,24 +1898,14 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifactOrigins.get('wf-1')).toBe('attached');
 		});
 
-		test('keeps a mention as mentioned once its send turns it into a message attachment', async () => {
-			const transient = ref<TransientWorkflowArtifactReference[]>([
-				{ referenceId: 'ref-1', workflowId: 'wf-1', workflowName: 'Orders' },
-			]);
-			const { messages, producedArtifactOrigins } = setup(
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				() => transient.value,
-			);
+		test('keeps a mention as mentioned when the agent later edits the workflow', async () => {
+			const { messages, producedArtifactOrigins, seedArtifactOrigins } = setup();
+			seedArtifactOrigins(['wf-1'], 'mentioned');
+			messages.value = [attachMessage('wf-1')];
 			await nextTick();
 			expect(producedArtifactOrigins.get('wf-1')).toBe('mentioned');
 
-			// The optimistic message lands first; the reference is released after.
-			messages.value = [attachMessage('wf-1')];
-			await nextTick();
-			transient.value = [];
+			messages.value = [...messages.value, buildMessage('wf-1')];
 			await nextTick();
 
 			expect(producedArtifactOrigins.get('wf-1')).toBe('mentioned');
@@ -1908,19 +1935,14 @@ describe('useResourceRegistry', () => {
 		});
 
 		test('forgets the origin of an artifact that leaves the thread', async () => {
-			const transient = ref<TransientWorkflowArtifactReference[]>([
-				{ referenceId: 'ref-1', workflowId: 'wf-1', workflowName: 'Orders' },
-			]);
-			const { producedArtifactOrigins } = setup(
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				() => transient.value,
-			);
+			const { messages, producedArtifactOrigins, seedArtifactOrigins } = setup();
+			seedArtifactOrigins(['wf-1'], 'mentioned');
+			messages.value = [attachMessage('wf-1')];
 			await nextTick();
+			expect(producedArtifactOrigins.get('wf-1')).toBe('mentioned');
 
-			transient.value = [];
+			// A refused send rolls its optimistic message back.
+			messages.value = [];
 			await nextTick();
 
 			expect(producedArtifactOrigins.has('wf-1')).toBe(false);

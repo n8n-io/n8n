@@ -1,9 +1,7 @@
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { StateAdapter } from 'chat';
-
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 
 import { AgentChatSubscriptionStateAdapter } from './agent-chat-subscription-state.adapter';
 import { AgentChangePublisher } from '../agent-change-publisher.service';
@@ -47,7 +45,7 @@ export class AgentChatSubscriptionStateService {
 		agentId: string,
 		integration: AgentIntegrationConfig,
 	): Promise<void> {
-		await this.repository.deleteForConnection(agentChannelRef(agentId, integration));
+		await this.repository.deleteForConnection(agentChannelRef(agentId, integration), {});
 	}
 
 	@OnPubSubEvent('agent-chat-subscription-changed', { instanceType: 'main' })

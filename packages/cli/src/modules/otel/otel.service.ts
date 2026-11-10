@@ -3,7 +3,6 @@ import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { latestWins } from '@n8n/utils/promise/latest-wins';
 import { raceAbort } from '@n8n/utils/race-abort';
-import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
 	BasicTracerProvider,
@@ -13,9 +12,10 @@ import {
 } from '@opentelemetry/sdk-trace-base';
 import { ParentBasedSampler, TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { ExecutionIdentitySpanProcessor } from './execution-identity';
+import { OtelConfigureHook } from './otel-configure-hook';
 import {
 	OtelExporterFactory,
 	type ExportField,
@@ -25,11 +25,13 @@ import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import type { OtelConfig } from './otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
-import { mergeResourceAttributes } from './otel-span-exporter';
+import { withResourceAttributes } from './otel-span-exporter';
 
 import { N8N_VERSION } from '@/constants';
+import { ExternalHooks } from '@/external-hooks';
 import { OtelSdk } from '@/observability/otel-sdk';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
+import { outboundPropagatorFromEnv } from '@/observability/outbound-propagator';
 import {
 	TRACING_OFF,
 	type ShutdownErrors,
@@ -62,6 +64,8 @@ const stripEmptyResolutionNote = (message: string) =>
 
 @Service()
 export class OtelService {
+	private readonly outbound = outboundPropagatorFromEnv();
+
 	private activeExport?: ActiveExport;
 
 	private isShutDown = false;
@@ -74,10 +78,32 @@ export class OtelService {
 		private readonly otelSdk: OtelSdk,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly publisher: Publisher,
+		private readonly externalHooks: ExternalHooks,
+		private readonly configureHook: OtelConfigureHook,
 	) {}
 
 	async init(): Promise<void> {
+		this.warnUnknownPropagators();
+
+		try {
+			await this.externalHooks.run('otel.configure', [this.configureHook.api]);
+		} catch (error) {
+			this.configureHook.clear();
+			this.logger.warn('The otel.configure external hook failed, so n8n starts without it', {
+				error: getErrorMessage(error),
+			});
+		}
 		await this.applySavedSettings();
+	}
+
+	private warnUnknownPropagators(): void {
+		const unknown = this.outbound.unknownNames;
+		if (unknown.length === 0) return;
+
+		this.logger.warn(
+			'Ignored a propagator in OTEL_PROPAGATORS that n8n does not carry. n8n writes the W3C trace context and baggage only.',
+			{ unknown },
+		);
 	}
 
 	readonly applySavedSettings = latestWins(async () => {
@@ -211,9 +237,7 @@ export class OtelService {
 			sampler: new ParentBasedSampler({
 				root: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
 			}),
-			propagator: settings.injectOutbound
-				? new W3CTraceContextPropagator()
-				: TRACING_OFF.propagator,
+			propagator: settings.injectOutbound ? this.outbound.propagator : TRACING_OFF.propagator,
 		};
 	}
 
@@ -237,9 +261,10 @@ export class OtelService {
 		settings: ExportSettings,
 	): Promise<SpanProcessor[] | undefined> {
 		try {
-			const exporter = mergeResourceAttributes(
+			const exporter = withResourceAttributes(
 				await this.exporterFactory.createTraceExporter(settings),
 				this.resourceAttributes(settings.exporterServiceName),
+				(spanAttributes) => this.configureHook.mapResourceAttributes(spanAttributes),
 			);
 			return [new ExecutionIdentitySpanProcessor(), new BatchSpanProcessor(exporter)];
 		} catch (error) {

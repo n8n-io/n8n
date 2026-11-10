@@ -1,7 +1,12 @@
 import type { PromotionResource } from '@n8n/api-types';
 import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import {
+	GLOBAL_OWNER_ROLE,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
@@ -15,7 +20,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { buildWorkflowReferencingCredential } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { saveCredential } from '@test-integration/db/credentials';
-import { createOwner } from '@test-integration/db/users';
+import { createOwner, createUserShell } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
@@ -397,6 +402,30 @@ describe('when the host dropped the commits of a finished review', () => {
 		});
 	}, 60_000);
 
+	it('names the token user when the n8n approver has no name and no email', async () => {
+		const { review, headSha, baseSha } = await promoteAndLose();
+		const approver = await createUserShell(GLOBAL_OWNER_ROLE);
+		await Container.get(PromotionReviewRepository).update(review.reviewId, {
+			approvedById: approver.id,
+			approvedAt: new Date('2026-10-03T09:00:00.000Z'),
+			lastStateChangeAt: new Date('2026-10-20T09:00:00.000Z'),
+		});
+		finishOnHost(review.iid, {
+			state: 'merged',
+			merge_user: { name: 'Ada Lovelace' },
+			diff_refs: { base_sha: baseSha, head_sha: headSha },
+		});
+
+		const changes = await changesOf(review.reviewId);
+
+		expect(changes.outcome).toEqual({
+			state: 'merged',
+			at: null,
+			by: 'Ada Lovelace',
+			webUrl: hostMergeRequests.get(review.iid)?.web_url,
+		});
+	}, 60_000);
+
 	it('states when the review was closed', async () => {
 		const { review, headSha, baseSha } = await promoteAndLose();
 		finishOnHost(review.iid, {
@@ -416,6 +445,79 @@ describe('when the host dropped the commits of a finished review', () => {
 			webUrl: hostMergeRequests.get(review.iid)?.web_url,
 		});
 	}, 60_000);
+
+	it('keeps the close of n8n when the host still has the review open, and after the host merges it', async () => {
+		const { review, headSha, baseSha } = await promoteAndLose();
+		await Container.get(PromotionReviewRepository).update(review.reviewId, {
+			state: 'closed',
+			lastStateChangeAt: new Date('2026-10-05T10:00:00.000Z'),
+		});
+		const mergeRequest = hostMergeRequests.get(review.iid);
+		if (!mergeRequest) throw new Error(`Unknown merge request ${review.iid}`);
+		hostMergeRequests.set(review.iid, {
+			...mergeRequest,
+			diff_refs: { base_sha: baseSha, head_sha: headSha },
+		});
+		const closedByN8n = {
+			state: 'closed',
+			at: '2026-10-05T10:00:00.000Z',
+			by: 'n8n',
+			webUrl: mergeRequest.web_url,
+		};
+
+		expect(await changesOf(review.reviewId)).toEqual({
+			baselineCommitSha: baseSha,
+			headCommitSha: headSha,
+			resources: [],
+			dependencies: [],
+			warnings: ['commitsUnavailable'],
+			outcome: closedByN8n,
+		});
+
+		finishOnHost(review.iid, {
+			state: 'merged',
+			merged_at: '2026-10-06T10:00:00.000Z',
+			merge_user: { name: 'Ada Lovelace' },
+			diff_refs: { base_sha: baseSha, head_sha: headSha },
+		});
+
+		expect((await changesOf(review.reviewId)).outcome).toEqual(closedByN8n);
+	}, 60_000);
+
+	it.each([
+		{
+			state: 'closed' as const,
+			host: { closed_at: '2026-10-04T10:00:00.000Z', closed_by: { name: 'Grace Hopper' } },
+			by: 'Grace Hopper',
+		},
+		{
+			state: 'merged' as const,
+			host: { merged_at: '2026-10-04T10:00:00.000Z', merge_user: { name: 'Ada Lovelace' } },
+			by: 'Ada Lovelace',
+		},
+	])(
+		'names the host user when the host $state the review before n8n closed it',
+		async ({ state, host, by }) => {
+			const { review, headSha, baseSha } = await promoteAndLose();
+			await Container.get(PromotionReviewRepository).update(review.reviewId, {
+				state: 'closed',
+				lastStateChangeAt: new Date('2026-10-05T10:00:00.000Z'),
+			});
+			finishOnHost(review.iid, {
+				state,
+				...host,
+				diff_refs: { base_sha: baseSha, head_sha: headSha },
+			});
+
+			expect((await changesOf(review.reviewId)).outcome).toEqual({
+				state,
+				at: '2026-10-04T10:00:00.000Z',
+				by,
+				webUrl: hostMergeRequests.get(review.iid)?.web_url,
+			});
+		},
+		60_000,
+	);
 
 	it('still fails for an open review, which has no outcome to show', async () => {
 		const { review } = await promoteAndLose();

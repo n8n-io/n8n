@@ -11,6 +11,7 @@ import {
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
 	AiPreferenceService,
+	CredentialsFinderService,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -45,7 +46,7 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { SkillService, SkillsGate } from '@/modules/skills';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
 	EMPTY_INSTANCE_CONTEXT_TEXT,
@@ -81,9 +82,6 @@ const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
-	// On by default so the drift guards below cover `get_user_preferences`. Its own
-	// registration tests set it explicitly either way.
-	aiPreferencesEnabled: true,
 	credentialDescriptionsEnabled: true,
 	...overrides,
 });
@@ -201,6 +199,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(WorkflowService),
 			mockInstance(UrlService),
 			mockInstance(CredentialsService),
+			mockInstance(CredentialsFinderService),
 			mockInstance(ActiveExecutions),
 			mockInstance(GlobalConfig, {
 				endpoints: {
@@ -619,22 +618,10 @@ describe('McpService scope enforcement', () => {
 	});
 
 	describe('get_user_preferences registration', () => {
-		it('registers the tool when the preferences flag is on', async () => {
-			const server = await buildService().getServer(
-				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: true }),
-			);
+		it('registers the tool', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags());
 
 			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
-		});
-
-		it('does not register the tool when the preferences flag is off', async () => {
-			const server = await buildService().getServer(
-				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: false }),
-			);
-
-			expect(getRegisteredToolNames(server)).not.toContain('get_user_preferences');
 		});
 
 		// Preferences cover Agents, data tables and folders too, none of which are
@@ -642,7 +629,7 @@ describe('McpService scope enforcement', () => {
 		it('registers the tool with the builder disabled', async () => {
 			const server = await buildService({ builderEnabled: false }).getServer(
 				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+				mcpFeatureFlags(),
 			);
 
 			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
@@ -664,28 +651,16 @@ describe('McpService scope enforcement', () => {
 	describe('preference write tools registration', () => {
 		const WRITE_TOOLS = ['save_user_preference', 'update_user_preference', 'undo_user_preference'];
 
-		it('registers the three write tools when the preferences flag is on', async () => {
-			const server = await buildService().getServer(
-				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: true }),
-			);
+		it('registers the three write tools', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags());
 
 			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);
-		});
-
-		it('registers none of them when the preferences flag is off', async () => {
-			const server = await buildService().getServer(
-				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: false }),
-			);
-
-			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).not.toContain(name);
 		});
 
 		it('registers them with the builder disabled, like the read tool', async () => {
 			const server = await buildService({ builderEnabled: false }).getServer(
 				user,
-				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+				mcpFeatureFlags(),
 			);
 
 			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);

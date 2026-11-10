@@ -38,7 +38,7 @@ These local tools stay eager when they are attached:
 - `read_plan`
 - `update_plan`
 - `close_plan`
-- `resume_background_jobs`
+- `background_jobs`
 
 Planning and Continue must not depend on tool discovery. Their schemas stay
 in model context when the tools are attached. The existing feature flags and
@@ -67,7 +67,7 @@ each child's selected model. There is no feature flag or Agent Builder setting.
 
 ### `read_binary_data`
 
-- Purpose: Reads a file by its fileId. The tool checks that the thread can read the file and that its bytes are still in storage. Other types than images, PDFs and text return an error.
+- Purpose: Reads a file by its fileId, or by `sandbox:<path>` for a file of `outputs/`. The tool checks that the thread can read the file and that its bytes are still in storage. Other types than images, PDFs and text return an error.
   - Images and PDFs go to the model as file parts. The model must support the type: PNG, JPEG, GIF and WebP for images. The limit is the chat attachment size (10 MB). The file stays attached in later model calls, under the same budget as user files. A file outside the budget shows the text `[File "<name>" (fileId: <id>) is not attached now.]`.
   - The tool description tells the model to read a file that is not attached now again, and not to read a file that is already attached.
   - Text files (up to 200 KB) go into the tool result as text, one time. The tool result size guard applies to them, and later model calls do not load them again.
@@ -100,6 +100,16 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 | `workspace_list_processes` | Lists the processes that run in the sandbox. |
 | `workspace_kill_process` | Stops a process in the sandbox. |
 
+### `import_files`
+
+- Purpose: Copies conversation files by fileId into `inputs/` of the workspace. The tool checks that the thread can read each file. Paths must stay in `inputs/`. One call copies up to `N8N_AGENTS_FILES_MAX_IMPORT_MB`.
+- Attach condition: The same as the workspace tools, and the instance flag `137_agent_sandbox_files` is on. The runtime attaches it next to them, and adds the instructions about `outputs/`, `sandbox:<path>` references and `import_files` to the workspace instructions.
+- Source: [`tools/import-files.tool.ts`](./tools/import-files.tool.ts).
+
+### Sandbox output files
+
+Files in `outputs/` become conversation files with source `sandbox`. A turn that used a workspace tool stores the new files when it ends, and a sub-agent stores them before it returns its files. Where a tool takes a fileId, the model can also give `sandbox:<path>` to store one file of `outputs/` at once. When the instance flag `137_agent_sandbox_files` is off, n8n stores no sandbox files and rejects `sandbox:<path>`. Source: [`agent-sandbox-files.service.ts`](./agent-sandbox-files.service.ts).
+
 ### Knowledge retrieval tools
 
 - Purpose: `find_file` finds uploaded knowledge files by filename pattern. `search_text` searches the file contents with a regex. `read_file` reads one file.
@@ -121,7 +131,7 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 
 ### `delegate_subagent`
 
-- Purpose: Delegates a task to a configured sub-agent or to an inline copy of the agent. Foreground is the default. It waits for the child result. When background tasks are on, `mode: "background"` starts a detached job and returns a receipt.
+- Purpose: Delegates a task to a configured sub-agent or to an inline copy of the agent. The input requires `subAgentId`, `taskName` and `goal`. Foreground is the default. It waits for the child result. When background tasks are on, `mode: "background"` starts a detached job and returns a receipt.
 - Attach condition: Top-level agent.
 - Background mode requires `AgentsConfig.backgroundTasksEnabled` and a caller that permits background tasks. The runtime omits the mode input when background tasks are off.
 - Source: [`sub-agents/delegate-sub-agent-tool.ts`](./sub-agents/delegate-sub-agent-tool.ts).
@@ -203,27 +213,31 @@ It preserves chat messages, executions, background jobs, job outcomes, and unrel
 It does not convert old plans. New plans use format 2, including plans in existing conversations.
 Use a coordinated restart for this development upgrade. Restart completion remains best effort.
 
-## Background job tools
+## `background_jobs`
 
 Attach condition: Top-level agent and background tasks on. Background tasks are on when `AgentsConfig.backgroundTasksEnabled` is set and the caller does not pass `allowBackgroundTasks: false`. Scheduled and manually started task runs pass `false`. Human-in-the-loop resume support does not change this condition. It only controls whether workflow tools move waiting workflows to the background.
 
 Source: [`background/background-job-tools.ts`](./background/background-job-tools.ts).
 
-| Tool | Purpose |
+One tool covers all background job operations. The `action` input selects the operation:
+
+| Action | Purpose |
 | --- | --- |
-| `check_background_jobs` | Lists the background jobs of the conversation with their status and results. |
-| `cancel_background_job` | Cancels a running background job by its job id. |
-| `resume_background_jobs` | Resumes selected stopped plan tasks, or the latest stop group outside a plan. |
+| `check` | Lists the background jobs of the conversation with their status, results and output files. `jobIds` limits the list. |
+| `cancel` | Cancels a running background job. `jobId` is required. |
+| `resume` | Resumes selected stopped plan tasks, or the latest stop group outside a plan. |
+
+Do not add a separate tool for a new background job operation. Add an action to this tool.
 
 Use `delegate_subagent` with `mode: "background"` to start a background sub-agent.
-In Agent Preview, pass `planTask: { planId, planTaskId }` for work in an active plan.
+Pass `planTask: { planId, planTaskId }` for work in an active plan. This applies to every run that has the plan tools.
 The host checks the leaf task and its prerequisites before dispatch.
 Children inherit this link from host metadata. They cannot change it through tool input.
 Waiting workflow jobs retain the same link. Foreground workflows do not get background job rows.
 
-To continue a plan, pass `planId` to `resume_background_jobs`.
-Pass `taskIds` to continue only those tasks. A group selects its unfinished children.
-An empty `taskIds` list is invalid. Omit it to select the whole plan.
+To continue a plan, call `background_jobs` with `action: "resume"` and `planId`.
+Pass `planTaskIds` to continue only those tasks. A group selects its unfinished children.
+An empty `planTaskIds` list is invalid. Omit it to select the whole plan.
 The tool does not resume prerequisites or approve pending tools.
 It reports blocked tasks, failed resumes, and workflows that need a new execution.
 Stop sets unfinished parent-run tasks to `paused`. Continue restores selected tasks to `pending`

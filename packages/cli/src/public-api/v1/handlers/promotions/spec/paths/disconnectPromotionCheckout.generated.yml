@@ -1,8 +1,11 @@
 operationId: disconnectPromotionCheckout
 tags:
   - Promotions
-summary: Remove an environment's local checkout
-description: Removes the local checkout and keeps the environment, its credentials, and the trusted SSH host keys.
+summary: "Beta: Remove an environment's local checkout"
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Removes the local checkout and keeps the environment, its credentials, and the trusted SSH host keys.
 x-required-scope: promotions:connect
 parameters:
   - schema:
@@ -25,5 +28,7 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

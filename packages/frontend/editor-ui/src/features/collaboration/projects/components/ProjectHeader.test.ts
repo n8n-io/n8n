@@ -18,11 +18,14 @@ import { waitFor, within } from '@testing-library/vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useUIStore } from '@/app/stores/ui.store';
+import { computed } from 'vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 
 const mockPush = vi.fn();
+const createAppMock = vi.fn();
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
 	const params = {};
@@ -70,6 +73,7 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="action-workflow" @click="$emit('action', 'workflow')">Workflow</button>
 			<button data-test-id="action-dataTable" @click="$emit('action', 'dataTable')">Data Table</button>
 			<button data-test-id="action-agent" @click="$emit('action', 'agent')">Agent</button>
+			<button data-test-id="action-app" @click="$emit('action', 'app')">App</button>
 			<div data-test-id="add-resource-actions" >
 				<button v-for="action in $props.actions" :key="action.value" :data-test-id="'menu-' + action.value"></button>
 			</div>
@@ -113,6 +117,12 @@ describe('ProjectHeader', () => {
 			overview: {},
 			project: {},
 		};
+		capabilityRegistry.clear();
+		capabilityRegistry.provide(capabilities.createAppAssistantHandoff, () => ({
+			available: computed(() => true),
+			openApp: vi.fn(),
+			createApp: createAppMock,
+		}));
 	});
 
 	afterEach(() => {
@@ -683,6 +693,20 @@ describe('ProjectHeader', () => {
 	});
 
 	describe('mainButton prop', () => {
+		it('creates an app when app is the main action', async () => {
+			settingsStore.isAppsEnabled = true;
+			const project = createTestProject({ scopes: ['app:create'] });
+			projectsStore.currentProject = project;
+			projectsStore.personalProject = project;
+			const { getByTestId } = renderComponent({ props: { mainButton: 'app' } });
+
+			await userEvent.click(getByTestId('add-resource-app'));
+
+			const appId = createAppMock.mock.calls.at(-1)?.[0]?.appId;
+			expect(appId).toEqual(expect.any(String));
+			expect(createAppMock).toHaveBeenCalledWith({ projectId: project.id, appId });
+		});
+
 		it('should render workflow button as main by default', () => {
 			const project = createTestProject({
 				scopes: ['workflow:create'],

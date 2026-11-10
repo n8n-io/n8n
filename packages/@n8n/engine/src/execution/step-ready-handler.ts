@@ -12,7 +12,7 @@ import {
 	type GraphNode,
 	type WorkflowLoop,
 } from '../graph';
-import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
 import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
@@ -23,6 +23,7 @@ import {
 	isSettledStatus,
 	hasResumeCondition,
 	type ResumeCause,
+	type SubExecutionResumeCause,
 	type StepError,
 	type StepKey,
 	type StepKeyId,
@@ -35,6 +36,24 @@ import { InvalidParentLinkError, type StartExecutionService } from './start-exec
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
+
+/** A resume that emits outputs the engine already holds, so no node code runs. */
+type ReplayCause = Exclude<ResumeCause, SubExecutionResumeCause>;
+
+/**
+ * How a step produces its result. A replay emits recorded outputs. A batch pass
+ * the engine runs itself. A run goes through an executor: a first run, or a
+ * sub-execution resume, which runs the node again with the outcome.
+ */
+type Dispatch =
+	| { kind: 'replay'; cause: ReplayCause }
+	| { kind: 'batch' }
+	| {
+			kind: 'run';
+			executor: IStepExecutor;
+			inputs: StepSlots;
+			subExecutionResult?: SubExecutionResumeCause;
+	  };
 
 /**
  * Handles the `step:ready` step event: claims the step (`queued -> running`),
@@ -56,7 +75,7 @@ export class StepReadyHandler {
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly dependencies: ExternalDependencies,
-		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly startExecution: StartExecutionService,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
@@ -73,13 +92,6 @@ export class StepReadyHandler {
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
 
-		// The engine runs a batch step itself, and a resume emits outputs that
-		// already exist, so neither needs an executor. Looking one up for either
-		// would fail a step that this worker can serve: a resume is announced to
-		// every worker, including one that carries no shim.
-		const executor =
-			node.type === 'batch' || step.resumeCause !== null ? undefined : this.executorFor(step, node);
-
 		if (!isLiveExecutionStatus(execution.status)) {
 			// The execution ended after this step was announced, or after it was
 			// claimed. Settle the row here, where both facts are known, so no
@@ -90,21 +102,15 @@ export class StepReadyHandler {
 		}
 
 		// This worker won the claim, so it is the one that announces the start.
-		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
+		const lifecycleEventPublisher = this.lifecycleEventPublisherFactory.create(execution);
+		lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
-		// A resume emits outputs that already exist. The node does not run again,
-		// so it has no inputs to gather. Every other dispatch gathers.
-		//
-		// The gather stays outside the `try` below on purpose. Its errors are the
-		// engine's own bookkeeping, not the node's, so they leave the step
-		// `running` instead of recording it failed. In the future one of these
-		// resolves that:
+		// Decided outside the `try` below on purpose. Its errors are the engine's
+		// own bookkeeping, not the node's, so they leave the step `running`
+		// instead of recording it failed. In the future one of these resolves that:
 		// - Reconciliation (CAT-2938) taking over the step and retrying it for transient errors
 		// - Internal consistency checks (CAT-3930) detecting a misconfigured graph and failing the execution
-		const dispatch: { kind: 'resume'; cause: ResumeCause } | { kind: 'run'; inputs: StepSlots } =
-			step.resumeCause
-				? { kind: 'resume', cause: step.resumeCause }
-				: { kind: 'run', inputs: await this.gatherInputs(execution, step) };
+		const dispatch = await this.dispatchFor(step, node, execution);
 
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
@@ -115,12 +121,12 @@ export class StepReadyHandler {
 			| { kind: 'error'; error: unknown };
 		try {
 			let result: StepExecutionResult;
-			if (dispatch.kind === 'resume') {
-				result = { outputs: resumedOutputs(step, dispatch.cause) };
-			} else if (executor) {
-				result = await this.runStep(step, execution, node, dispatch.inputs, executor);
-			} else {
+			if (dispatch.kind === 'replay') {
+				result = { outputs: recordedOutputs(step, dispatch.cause) };
+			} else if (dispatch.kind === 'batch') {
 				result = { outputs: await this.runBatchNode(step, execution, node) };
+			} else {
+				result = await this.runStep(step, execution, node, dispatch);
 			}
 			if (result.wait) {
 				run = { kind: 'wait', wait: result.wait };
@@ -174,7 +180,7 @@ export class StepReadyHandler {
 
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.
-		this.lifecycleEventPublisher.publish(
+		lifecycleEventPublisher.publish(
 			run.kind === 'outputs'
 				? { type: 'step:completed', ...stepEventFields(step, node), outputs: run.outputs }
 				: { type: 'step:failed', ...stepEventFields(step, node) },
@@ -212,7 +218,9 @@ export class StepReadyHandler {
 
 		const failed = await this.stepStore.failWaitingStep(step.id, toStepError(started.error));
 		if (!failed) return;
-		this.lifecycleEventPublisher.publish({ type: 'step:failed', ...stepEventFields(step, node) });
+		this.lifecycleEventPublisherFactory
+			.create(execution)
+			.publish({ type: 'step:failed', ...stepEventFields(step, node) });
 		await this.orchestrationQueue.publish({
 			type: 'step:settled',
 			executionId: event.executionId,
@@ -230,7 +238,7 @@ export class StepReadyHandler {
 		if (
 			started.kind === 'error' &&
 			started.error instanceof InvalidParentLinkError &&
-			started.error.reason === 'execution-ended'
+			started.error.reason === 'execution-not-live'
 		) {
 			return { kind: 'parent-ended' };
 		}
@@ -264,12 +272,30 @@ export class StepReadyHandler {
 		}
 	}
 
+	/** How the step produces its result. */
+	private async dispatchFor(
+		step: StepRecord,
+		node: GraphNode,
+		execution: ExecutionRecord,
+	): Promise<Dispatch> {
+		const { resumeCause } = step;
+		if (resumeCause !== null && resumeCause.kind !== 'subExecution') {
+			return { kind: 'replay', cause: resumeCause };
+		}
+		if (node.type === 'batch') return { kind: 'batch' };
+		return {
+			kind: 'run',
+			executor: this.executorFor(step, node),
+			inputs: await this.gatherInputs(execution, step),
+			...(resumeCause ? { subExecutionResult: resumeCause } : {}),
+		};
+	}
+
 	private async runStep(
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-		inputs: StepSlots,
-		executor: IStepExecutor,
+		{ executor, inputs, subExecutionResult }: Extract<Dispatch, { kind: 'run' }>,
 	): Promise<StepExecutionResult> {
 		// The slots are stored without inspection: which ones fired is the
 		// settlement handler's concern. A declaration is not opaque in the same
@@ -279,6 +305,9 @@ export class StepReadyHandler {
 		const result = await executor.execute({
 			node,
 			inputs,
+			// If we're resuming from a sub-execution, we pass in the result so the
+			// executor can use it to answer the sub-workflow call.
+			...(subExecutionResult ? { resume: subExecutionResult } : {}),
 			context: {
 				executionId: execution.id,
 				stepId: step.id,
@@ -488,15 +517,14 @@ function toStepError(error: unknown): StepError {
 }
 
 /**
- * The outputs a resume emits. No node code runs on a resume: a request's
- * outputs were produced where the request arrived, and a deadline's were
- * captured when the step suspended.
+ * The outputs a replay emits. A request's were produced where the request
+ * arrived, and a deadline's were captured when the step suspended.
  *
  * `WaitDeclaration` pairs a deadline with its outputs, so an absent one means
  * the row disagrees with the contract — and a row is a write from outside the
  * type system.
  */
-function resumedOutputs(step: StepRecord, cause: ResumeCause): StepSlots {
+function recordedOutputs(step: StepRecord, cause: ReplayCause): StepSlots {
 	if (cause.kind === 'request') return cause.outputs;
 
 	const outputs = step.waitDeclaration?.outputsAtDeadline;

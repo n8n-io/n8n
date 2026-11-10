@@ -5,7 +5,7 @@ import { OutboundHttp, SsrfProtectionService, type DnsResolver } from '@n8n/back
 import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { GLOBAL_MEMBER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, ProjectRepository, TransactionRunner, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { onTestFinished } from 'vitest';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -27,6 +27,7 @@ import { PromotionsGitService } from '@/modules/promotions.ee/promotions-git.ser
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
 import {
 	createAdminWithApiKey,
+	createMember,
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
 } from '@test-integration/db/users';
@@ -189,11 +190,13 @@ describe('Promotions in Public API', () => {
 	});
 
 	it('rejects a malformed environment id', async () => {
-		const response = await testServer
-			.publicApiAgentFor(owner)
-			.get('/promotions/environments/not-a-uuid');
+		const agent = testServer.publicApiAgentFor(owner);
 
-		expect(response.status).toBe(400);
+		const environment = await agent.get('/promotions/environments/not-a-uuid');
+		const missingProjects = await agent.get('/promotions/environments/not-a-uuid/missing-projects');
+
+		expect(environment.status).toBe(400);
+		expect(missingProjects.status).toBe(400);
 	});
 
 	describe('GitLab provider validation', () => {
@@ -1631,9 +1634,12 @@ describe('Promotions in Public API', () => {
 				schemaVersion: 1 as const,
 				remoteUrl: 'https://other.example.com/platform/workflows.git',
 			};
-			await Container.get(PromotionEnvironmentRepository).updateEnvironment(id, providerId, {
-				remote,
-			});
+			await Container.get(PromotionEnvironmentRepository).updateEnvironment(
+				id,
+				providerId,
+				{ remote },
+				{},
+			);
 			await expect(
 				Container.get(PromotionEnvironmentResolver).resolveForEnvironment(id),
 			).rejects.toThrow('Select the repository again');
@@ -1647,7 +1653,7 @@ describe('Promotions in Public API', () => {
 			const id = await selectedEnvironment(providerId);
 			const repository = Container.get(PromotionEnvironmentRepository);
 			const remote = { schemaVersion: 1 as const, remoteUrl: project.http_url_to_repo };
-			await repository.updateEnvironment(id, providerId, { remote });
+			await repository.updateEnvironment(id, providerId, { remote }, {});
 			const agent = testServer.publicApiAgentFor(owner);
 			const root = `/promotions/environments/${id}`;
 			expect((await agent.get(root)).body.remote).toEqual(remote);
@@ -1671,16 +1677,17 @@ describe('Promotions in Public API', () => {
 				const agent = testServer.publicApiAgentFor(owner);
 				const plainProviderId = await createProvider(agent);
 				const repository = Container.get(PromotionEnvironmentRepository);
-				const updateEnvironment = repository.updateEnvironment.bind(repository);
+				// Pause before the write transaction opens. SQLite runs one write transaction at a
+				// time, so a pause inside it would also hold back the winning update.
+				const transactions = Container.get(TransactionRunner);
+				const run = transactions.run.bind(transactions);
 				const paused = createDeferredPromise();
 				const resume = createDeferredPromise();
-				const write = vi
-					.spyOn(repository, 'updateEnvironment')
-					.mockImplementationOnce(async (...args) => {
-						paused.resolve();
-						await resume.promise;
-						return await updateEnvironment(...args);
-					});
+				const write = vi.spyOn(transactions, 'run').mockImplementationOnce(async (...args) => {
+					paused.resolve();
+					await resume.promise;
+					return await run(...args);
+				});
 				const root = `/promotions/environments/${id}`;
 				const changes =
 					field === 'remote'
@@ -1739,9 +1746,13 @@ describe('Promotions in Public API', () => {
 
 		const list = await agent.get('/promotions/environments');
 		const apply = await agent.post(`/promotions/environments/${randomUUID()}/apply`);
+		const missingProjects = await agent.get(
+			`/promotions/environments/${randomUUID()}/missing-projects`,
+		);
 
 		expect(list.status).toBe(403);
 		expect(apply.status).toBe(403);
+		expect(missingProjects.status).toBe(403);
 	});
 
 	it('rejects every request when the feature is not licensed', async () => {
@@ -2286,11 +2297,16 @@ describe('Promotions in Public API', () => {
 	});
 
 	describe('change preview', () => {
-		it('checks the scope of the requested direction and forwards the query', async () => {
-			const source = { environmentId: 'env1', branchName: 'main' };
-			const getChanges = vi
-				.spyOn(Container.get(PromotionChangeService), 'getChanges')
-				.mockResolvedValue({ commitSha: 'a'.repeat(40), source, changes: [] });
+		it('checks the scope of the requested direction, for the preview and its details', async () => {
+			const preview = {
+				commitSha: 'a'.repeat(40),
+				source: { environmentId: 'env1', branchName: 'main' },
+				resources: [],
+				dependencies: [],
+			};
+			const getPreview = vi
+				.spyOn(Container.get(PromotionChangeService), 'getPreview')
+				.mockResolvedValue(preview);
 			try {
 				const pushOnly = testServer.publicApiAgentFor(
 					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
@@ -2301,32 +2317,34 @@ describe('Promotions in Public API', () => {
 
 				const promote = await pushOnly.get('/promotions/projects/proj1/changes/promote');
 				expect(promote.status, JSON.stringify(promote.body)).toBe(200);
-				expect(promote.body).toEqual({ commitSha: 'a'.repeat(40), source, changes: [] });
-				expect(getChanges).toHaveBeenLastCalledWith(
+				expect(promote.body).toEqual(preview);
+				expect(getPreview).toHaveBeenLastCalledWith(
 					expect.objectContaining({ id: expect.any(String) }),
 					'proj1',
 					'promote',
-					expect.anything(),
 				);
 
 				expect((await pushOnly.get('/promotions/projects/proj1/changes/apply')).status).toBe(403);
 				expect((await pullOnly.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
+				// A key for one direction cannot read the content of the other direction either.
+				const details = await pushOnly
+					.post('/promotions/projects/proj1/changes/apply/details')
+					.send({ commitSha: null, keys: ['workflow:wf1'] });
+				expect(details.status).toBe(403);
+				// The UI session of a member has no promotion scope, so it sees no preview.
+				const member = testServer.publicApiAgentWithCookie(await createMember());
+				expect((await member.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
 
-				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply?search=order');
+				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply');
 				expect(apply.status, JSON.stringify(apply.body)).toBe(200);
-				expect(getChanges).toHaveBeenLastCalledWith(
-					expect.anything(),
-					'proj1',
-					'apply',
-					expect.objectContaining({ search: 'order' }),
-				);
+				expect(getPreview).toHaveBeenLastCalledWith(expect.anything(), 'proj1', 'apply');
 
 				expect((await pullOnly.get('/promotions/projects/proj1/changes/sideways')).status).toBe(
 					404,
 				);
-				expect(getChanges).toHaveBeenCalledTimes(2);
+				expect(getPreview).toHaveBeenCalledTimes(2);
 			} finally {
-				getChanges.mockRestore();
+				getPreview.mockRestore();
 			}
 		});
 
@@ -2391,12 +2409,12 @@ describe('Promotions in Public API', () => {
 			}
 		});
 
-		it('rejects an empty selection with 400', async () => {
+		it('rejects a selection with a duplicate workflow id with 400', async () => {
 			const project = await createTeamProject('Team project', owner);
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post(`/promotions/projects/${project.id}/promote`)
-				.send({ workflowIds: [] });
+				.send({ workflowIds: ['w1', 'w1'] });
 			expect(response.status).toBe(400);
 		});
 
@@ -2413,9 +2431,11 @@ describe('Promotions in Public API', () => {
 					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
 				);
 
-				const first = await withVars
-					.post(`/promotions/projects/${project.id}/promote`)
-					.send({ workflowIds: ['w1', 'w2'], commitMessage: 'Promote checkout flow' });
+				const first = await withVars.post(`/promotions/projects/${project.id}/promote`).send({
+					workflowIds: ['w1', 'w2'],
+					folderIds: ['f1'],
+					commitMessage: 'Promote checkout flow',
+				});
 				expect(first.status, JSON.stringify(first.body)).toBe(200);
 				expect(first.body).toEqual(promoteResult);
 				expect(promote).toHaveBeenLastCalledWith(
@@ -2423,6 +2443,7 @@ describe('Promotions in Public API', () => {
 					expect.objectContaining({ id: expect.any(String) }),
 					expect.objectContaining({
 						workflowIds: ['w1', 'w2'],
+						folderIds: ['f1'],
 						commitMessage: 'Promote checkout flow',
 						canExportVariableValues: true,
 					}),
@@ -2456,6 +2477,7 @@ describe('Promotions in Public API', () => {
 	describe('selective apply', () => {
 		const selectionBody = {
 			workflowIds: ['w1', 'w2'],
+			folderIds: ['f1'],
 			expectedSource: { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) },
 		};
 
@@ -2501,10 +2523,7 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it.each([
-			{ selection: 'an empty', workflowIds: [] },
-			{ selection: 'a duplicate', workflowIds: ['w1', 'w1'] },
-		])(
+		it.each([{ selection: 'a duplicate', workflowIds: ['w1', 'w1'] }])(
 			'rejects $selection selection before calling either Apply service',
 			async ({ workflowIds }) => {
 				const service = Container.get(PromotionsService);
@@ -2523,10 +2542,9 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it('requires workflowIds and a supported source on Continue', async () => {
+		it('requires a supported source and no unknown fields on Continue', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			for (const body of [
-				{ expectedSource: selectionBody.expectedSource }, // no workflowIds
 				{ workflowIds: ['w1'] }, // no expectedSource
 				{ ...selectionBody, force: true }, // unexpected field
 				{

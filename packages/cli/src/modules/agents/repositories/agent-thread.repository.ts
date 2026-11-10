@@ -1,7 +1,7 @@
 import { BaseRepository, TransactionRunner } from '@n8n/db';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, Like } from '@n8n/typeorm';
+import { DataSource, In, Like } from '@n8n/typeorm';
 
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
 
@@ -23,6 +23,14 @@ export class AgentThreadRepository extends BaseRepository<AgentThreadEntity> {
 			where: { id: Like(`${prefix}%`) },
 		});
 		return threads.map(({ id }) => id).filter((id) => id.startsWith(prefix));
+	}
+
+	/** The id and raw metadata of each of the given threads that exists. */
+	async findMetadataByIds(
+		ids: string[],
+	): Promise<Array<Pick<AgentThreadEntity, 'id' | 'metadata'>>> {
+		if (ids.length === 0) return [];
+		return await this.find({ select: { id: true, metadata: true }, where: { id: In(ids) } });
 	}
 
 	/**

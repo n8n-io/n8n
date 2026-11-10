@@ -77,11 +77,18 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.addSelect('execution.caller_context', 'callerContext')
 			.addSelect('execution.response_expectation', 'responseExpectation')
 			.addSelect(parentLinkSql('execution'), 'parent')
+			.addSelect('execution.lifecycle_event_subscription', 'lifecycleEventSubscription')
 			.addSelect('execution.finished_at', 'finishedAt')
 			.where('execution.id = :id', { id })
 			.getRawOne();
 		if (!row) throw new ExecutionNotFoundError(id);
 		return row;
+	}
+
+	async loadExecutionStatus(id: string): Promise<ExecutionStatus> {
+		const row = await this.repo.findOne({ select: { status: true }, where: { id } });
+		if (!row) throw new ExecutionNotFoundError(id);
+		return row.status;
 	}
 
 	async transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean> {

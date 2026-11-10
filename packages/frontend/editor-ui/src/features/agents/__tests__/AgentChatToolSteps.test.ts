@@ -77,9 +77,9 @@ vi.mock('@n8n/design-system', () => ({
 vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	ContactAdminModal: {
-		props: ['open', 'nodeTypeName', 'kind', 'audience'],
+		props: ['open', 'typeName', 'kind', 'audience'],
 		template:
-			'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ nodeTypeName }}</div>',
+			'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ typeName }}</div>',
 	},
 }));
 
@@ -1007,6 +1007,32 @@ describe('AgentChatToolSteps — output files', () => {
 		]);
 	});
 
+	it('does not render the reply files of n8n Chat below the step', () => {
+		const toolCall: ToolCall = {
+			tool: 'chat_action',
+			toolCallId: 'tc-respond',
+			state: TOOL_CALL_STATE.DONE,
+			output: {
+				ok: true,
+				files: [{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
+			},
+		};
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls: [toolCall], projectId: 'p1', agentId: 'a1' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-test-id="tool-output-files"]').exists()).toBe(false);
+	});
+
 	it('renders the files of a tool output in a group of tool steps', () => {
 		const toolCalls: ToolCall[] = [
 			{
@@ -1044,5 +1070,35 @@ describe('AgentChatToolSteps — output files', () => {
 		expect(JSON.parse(lists[0].text())).toEqual([
 			{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 },
 		]);
+	});
+
+	it('renders the files that a delegated sub-agent returned below the delegate step', () => {
+		const file = { fileId: 'f-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 9 };
+		const wrapper = mount(AgentChatToolSteps, {
+			props: {
+				toolCalls: [
+					{
+						tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+						toolCallId: 'tc-delegate',
+						state: TOOL_CALL_STATE.DONE,
+						input: { subAgentId: 'inline', taskName: 'draw_chart' },
+						output: { status: 'completed', answer: 'Done', files: [file] },
+					},
+				],
+				projectId: 'p1',
+				agentId: 'a1',
+			},
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(JSON.parse(wrapper.get('[data-test-id="tool-output-files"]').text())).toEqual([file]);
 	});
 });

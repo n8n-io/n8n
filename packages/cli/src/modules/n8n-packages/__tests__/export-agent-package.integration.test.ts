@@ -4,6 +4,7 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
+import { DataSource } from '@n8n/typeorm';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -14,6 +15,7 @@ import { AgentSkillDependency } from '@/modules/agents/entities/agent-skill-depe
 import { AgentVersionSkillDependency } from '@/modules/agents/entities/agent-version-skill-dependency.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -26,7 +28,9 @@ import {
 	readSkillTables,
 	toSkillContent,
 } from '@/modules/skills/testing';
+import type { CredentialTypes } from '@/credential-types';
 import type { NodeTypes } from '@/node-types';
+import { saveCredential } from '@test-integration/db/credentials';
 import { createOwner } from '@test-integration/db/users';
 
 import { N8nPackageParser } from '../engine/n8n-package-parser';
@@ -36,6 +40,8 @@ import { DirectoryPackageReader } from '../io/directory/directory-package-reader
 import { DirectoryPackageWriter } from '../io/directory/directory-package-writer';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
+import { CapturingWriter } from '../io/__tests__/utils/capturing-writer';
+import { N8nPackagesService } from '../n8n-packages.service';
 import { PackageImportConfig } from '../n8n-packages.config';
 import { ExportVersionPolicy } from '../n8n-packages.types';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
@@ -45,7 +51,12 @@ import { SkillExporter } from '../entities/skill/skill.exporter';
 import { looseAgentsFixture } from './fixtures/agent-package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
 
-const parser = new N8nPackageParser(mock<Logger>(), mock<NodeTypes>(), mock<WorkflowSerializer>());
+const parser = new N8nPackageParser(
+	mock<Logger>(),
+	mock<NodeTypes>(),
+	mock<WorkflowSerializer>(),
+	mock<CredentialTypes>(),
+);
 const limits = new PackageImportConfig();
 const sources: Array<{ agent: Agent; draft: SerializedAgent; published: SerializedAgent }> = [];
 let project: Project;
@@ -61,7 +72,9 @@ async function readSourceRecords() {
 	const { manager } = agentRepository;
 	return await Promise.all([
 		agentRepository.find({ order: { id: 'ASC' } }),
-		historyRepository.find({ order: { versionId: 'ASC' } }),
+		Container.get(DataSource)
+			.getRepository(AgentHistory)
+			.find({ order: { versionId: 'ASC' } }),
 		taskRepository.find({ order: { id: 'ASC' } }),
 		taskSnapshotRepository.find({ order: { versionId: 'ASC', taskId: 'ASC' } }),
 		// The skill rows of the agents, so an export that changes them fails too.
@@ -74,7 +87,7 @@ async function readSourceRecords() {
 }
 
 beforeAll(async () => {
-	await testModules.loadModules(['skills', 'agents']);
+	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
 	await testDb.init();
 	registerSkillUsage();
 	agentRepository = Container.get(AgentRepository);
@@ -137,13 +150,16 @@ beforeAll(async () => {
 				...task,
 			})),
 		);
-		const history = await historyRepository.saveVersion({
-			versionId: `${agent.id}_published`,
-			agentId: agent.id,
-			schema: fromAgentDocument(published.config).config,
-			tools: published.tools,
-			publishedBy: 'Package test',
-		});
+		const history = await historyRepository.saveVersion(
+			{
+				versionId: `${agent.id}_published`,
+				agentId: agent.id,
+				schema: fromAgentDocument(published.config).config,
+				tools: published.tools,
+				publishedBy: 'Package test',
+			},
+			{},
+		);
 		await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [{ skillId }]);
 		await Container.get(AgentSkillRepository).insertPins([
 			{ agentVersionId: history.versionId, skillId, skillVersionId: publishedSkillVersionId },
@@ -246,7 +262,7 @@ it.each([
 		expect(parsed).toHaveLength(2);
 		for (const [index, source] of sources.entries()) {
 			const { id, ...content } = source[selected];
-			const integrations = [{ type: 'slack', credentialId: 'current-slack' }];
+			const integrations = [{ type: 'slack', credentialId: '' }];
 			if (selected === 'published') integrations.push({ type: 'n8n_chat', credentialId: '' });
 			expect(parsed[index]).toEqual({
 				...content,
@@ -301,4 +317,44 @@ it('rejects a stale draft through the definition service', async () => {
 	await expect(exporter.prepare({ ...agent, revision: agent.revision - 1 })).rejects.toThrow(
 		ConflictError,
 	);
+});
+
+it('exports channels without credential IDs and requires no channel-only credential', async () => {
+	const model = await saveCredential(
+		{ name: 'Model', type: 'openAiApi', data: { apiKey: 'key' } },
+		{ project, role: 'credential:owner' },
+	);
+	const slack = await saveCredential(
+		{ name: 'Slack', type: 'slackApi', data: { accessToken: 'token' } },
+		{ project, role: 'credential:owner' },
+	);
+	const config = AgentJsonConfigSchema.parse({
+		name: 'Channels',
+		model: 'openai/gpt-4o',
+		credential: model.id,
+		instructions: '',
+	});
+	const agent = await agentRepository.save({
+		id: 'channels_agent',
+		name: 'Channels',
+		projectId: project.id,
+		schema: fromAgentDocument(config).config,
+		integrations: [{ type: 'slack', credentialId: slack.id }],
+		versionId: 'channels_draft',
+	});
+	const writer = new CapturingWriter();
+
+	const { manifest } = await Container.get(N8nPackagesService).exportPackageToWriter(
+		{ user: owner, agentIds: [agent.id] },
+		writer,
+	);
+
+	expect(manifest.requirements?.credentials?.map(({ id }) => id)).toEqual([model.id]);
+	expect(manifest.credentials?.map(({ id }) => id)).toEqual([model.id]);
+	expect(writer.files.filter(({ path }) => path.endsWith('/credential.json'))).toHaveLength(1);
+	const content = serializedAgentSchema.parse(
+		JSON.parse(writer.files.find(({ path }) => path.endsWith('/agent.json'))!.content),
+	);
+	expect(content.config?.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
+	await agentRepository.delete(agent.id);
 });

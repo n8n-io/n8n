@@ -1,4 +1,9 @@
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import {
+	DataTableNotFoundError,
+	DataTableProxyService,
+	DataTableValidationError,
+} from '@n8n/backend-module-data-table';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type {
@@ -9,9 +14,6 @@ import type {
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 import type { OwnershipService } from '@/services/ownership.service';
 
 import type { DataTableCall, DataTableCallRequest } from '../engine-data-tables.contract';

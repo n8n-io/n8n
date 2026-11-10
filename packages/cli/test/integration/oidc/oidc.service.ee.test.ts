@@ -22,7 +22,6 @@ import {
 	RoleMappingRuleRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 import type * as mocked_oidc_client from 'openid-client';
 // Assigned in beforeAll rather than top-level await (tsconfig module forbids TLA).
 let real_odic_client: typeof import('openid-client');
@@ -30,7 +29,7 @@ beforeAll(async () => {
 	real_odic_client = await vi.importActual<typeof import('openid-client')>('openid-client');
 });
 
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import { License } from '@/license';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';

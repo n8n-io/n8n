@@ -610,6 +610,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	/** The workspace attached with {@link workspace}, if any. */
+	getWorkspace(): Workspace | undefined {
+		return this.workspaceInstance;
+	}
+
 	/**
 	 * Add an MCP client as a tool source for this agent.
 	 * Tools from all servers in the client become available to the agent.
@@ -1128,7 +1133,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let instructions = this.instructionsText;
 		if (this.skillSource) {
-			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
+			const dynamicIds = new Set(this.skillSource.dynamicCatalog?.skillIds);
+			instructions = appendSkillCatalogToInstructions(instructions, {
+				...this.skillSource.registry,
+				skills: this.skillSource.registry.skills.filter(
+					(skill) =>
+						!dynamicIds.has(skill.id) &&
+						(!skill.parents || skill.parents.some((parentId) => !dynamicIds.has(parentId))),
+				),
+			});
 		}
 		if (this.workspaceInstance) {
 			const wsInstructions = this.workspaceInstance.getInstructions();
