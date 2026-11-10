@@ -173,6 +173,34 @@ describe('toV1RunExecutionData', () => {
 		expect(data.resultData.lastNodeExecuted).toBe('Set');
 	});
 
+	it('rebuilds the structured error the editor renders from the step details', () => {
+		const data = toV1RunExecutionData(graph, [
+			step({
+				id: 'step-2',
+				nodeId: 's',
+				status: 'failed',
+				outputs: null,
+				error: {
+					name: 'NodeApiError',
+					message: 'Too many requests',
+					details: {
+						description: 'Wait and try again',
+						httpCode: '429',
+						context: { itemIndex: 3 },
+					},
+				},
+			}),
+		]);
+
+		expect(data.resultData.runData.Set[0].error).toMatchObject({
+			name: 'NodeApiError',
+			message: 'Too many requests',
+			description: 'Wait and try again',
+			httpCode: '429',
+			context: { itemIndex: 3 },
+		});
+	});
+
 	it('reports the last step as the last node executed when nothing failed', () => {
 		const data = toV1RunExecutionData(graph, [step(), step({ id: 'step-2', nodeId: 's' })]);
 

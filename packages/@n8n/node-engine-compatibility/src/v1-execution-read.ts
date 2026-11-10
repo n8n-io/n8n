@@ -21,10 +21,11 @@ import type {
 	ISourceData,
 	ITaskData,
 } from 'n8n-workflow';
-import { createRunExecutionData, WorkflowOperationError } from 'n8n-workflow';
+import { createRunExecutionData } from 'n8n-workflow';
 
 import { MAIN_CONNECTION_TYPE } from './constants';
 import { fromStepInputs } from './io';
+import { fromV1ErrorDetails } from './v1-error-details';
 import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './v1-run-data';
 
 /**
@@ -197,12 +198,7 @@ function toRunData(runs: StepRun[]): IRunData {
 	return runData;
 }
 
-/**
- * The data plane holds nothing v1-shaped, so this rebuilds the minimum. Only
- * `name` is worth restoring: `ExecutionBaseError.toJSON` drops `stack`.
- */
+/** `stack` is not restored: `ExecutionBaseError.toJSON` drops it anyway. */
 function toV1Error(error: StepError): ExecutionError {
-	const v1Error = new WorkflowOperationError(error.message);
-	v1Error.name = error.name;
-	return v1Error;
+	return fromV1ErrorDetails(error.name, error.message, error.details);
 }

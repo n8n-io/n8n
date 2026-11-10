@@ -127,7 +127,13 @@ export type {
 	WorkQueue,
 } from './queue';
 
-export { ExecutionNotFoundError, InvalidParentLinkError, StepNotFoundError } from './execution';
+export {
+	attachStepErrorDetails,
+	ExecutionNotFoundError,
+	InvalidParentLinkError,
+	StepNotFoundError,
+	stepErrorDetails,
+} from './execution';
 export type {
 	CallerContext,
 	SubExecutionOutcome,

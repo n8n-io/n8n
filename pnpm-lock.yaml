@@ -3665,6 +3665,9 @@ importers:
       '@n8n/engine':
         specifier: workspace:*
         version: link:../engine
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       n8n-core:
         specifier: workspace:*
         version: link:../../core

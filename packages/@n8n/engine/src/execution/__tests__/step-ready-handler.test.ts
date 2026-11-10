@@ -18,6 +18,7 @@ import {
 } from '../execution.types';
 import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
 import { InvalidParentLinkError, type StartExecutionService } from '../start-execution.service';
+import { attachStepErrorDetails } from '../step-error-details';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
@@ -697,6 +698,28 @@ describe('StepReadyHandler', () => {
 			type: 'step:settled',
 			executionId: 'exec-1',
 			stepId: 'step-a',
+		});
+	});
+
+	it('records the details an executor hands over with its error', async () => {
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const executor: IStepExecutor = {
+			execute: vi
+				.fn()
+				.mockRejectedValue(attachStepErrorDetails(new RangeError('too many items'), { limit: 10 })),
+		};
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.failStep).toHaveBeenCalledWith('step-a', {
+			name: 'RangeError',
+			message: 'too many items',
+			stack: expect.stringContaining('RangeError: too many items') as string,
+			details: { limit: 10 },
 		});
 	});
 

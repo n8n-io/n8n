@@ -33,6 +33,7 @@ import {
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
+import { stepErrorDetails } from './step-error-details';
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
@@ -511,7 +512,13 @@ function stepEventFields(step: StepRecord, node: GraphNode) {
 
 function toStepError(error: unknown): StepError {
 	if (error instanceof Error) {
-		return { name: error.name, message: error.message, stack: error.stack };
+		const details = stepErrorDetails(error);
+		return {
+			name: error.name,
+			message: error.message,
+			stack: error.stack,
+			...(details === undefined ? {} : { details }),
+		};
 	}
 	return { name: 'Error', message: String(error) };
 }
