@@ -1289,6 +1289,53 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return executions.map((execution) => this.toSummary(execution));
 	}
 
+	/**
+	 * Executions that a data search must look into, newest first by ID. The rows hold
+	 * only what the search needs to find and to size the stored data of each execution.
+	 */
+	async findSearchCandidates(
+		query: ExecutionSummaries.RangeQuery,
+	): Promise<ExecutionSummaries.SearchCandidate[]> {
+		const rows = await this.toQueryBuilder(query)
+			.addSelect('execution.storedAt AS "storedAt"')
+			.getRawMany<{
+				id: number | string;
+				workflowId: string;
+				storedAt: ExecutionDataStorageLocation;
+				jsonSizeBytes: number | string;
+				createdAt: Date | string;
+				startedAt: Date | string | null;
+			}>();
+
+		return rows.map((row) => {
+			const { id, jsonSizeBytes, startedAt, createdAt } = this.toSummary({ ...row });
+			return {
+				id,
+				workflowId: row.workflowId,
+				storedAt: row.storedAt,
+				jsonSizeBytes: jsonSizeBytes ?? 0,
+				startedAt: new Date(startedAt ?? createdAt).toISOString(),
+			};
+		});
+	}
+
+	/** Summaries of the executions with the given IDs that satisfy `query`, newest first by ID. */
+	async findSummariesByIds(
+		query: ExecutionSummaries.RangeQuery,
+		ids: string[],
+	): Promise<ExecutionSummary[]> {
+		if (ids.length === 0) return [];
+
+		const rawExecutionsWithTags = await this.toQueryBuilderWithAnnotations(
+			{ ...query, range: { limit: ids.length }, order: undefined },
+			{ executionIds: ids },
+		).getRawMany();
+
+		return this.reduceExecutionsWithAnnotations(rawExecutionsWithTags).map((execution) =>
+			this.toSummary(execution),
+		);
+	}
+
 	// @tech_debt: These transformations should not be needed
 	private toSummary(execution: {
 		id: number | string;
@@ -1377,7 +1424,10 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}
 	}
 
-	private toQueryBuilder(query: ExecutionSummaries.Query) {
+	private toQueryBuilder(
+		query: ExecutionSummaries.Query,
+		options: { executionIds?: string[] } = {},
+	) {
 		const {
 			user,
 			sharingOptions,
@@ -1438,6 +1488,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			qb.addOrderBy('execution.id', 'DESC');
 		}
 
+		if (options.executionIds) {
+			qb.andWhere('execution.id IN (:...executionIds)', { executionIds: options.executionIds });
+		}
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
 		if (query.mode) qb.andWhere('execution.mode = :filterMode', { filterMode: query.mode });
 		if (workflowId) qb.andWhere({ workflowId });
@@ -1517,12 +1570,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	 *  this is intended, as we are working with raw query.
 	 *  The duplicates are reduced in the *reduceExecutionsWithAnnotations* method.
 	 */
-	private toQueryBuilderWithAnnotations(query: ExecutionSummaries.Query) {
+	private toQueryBuilderWithAnnotations(
+		query: ExecutionSummaries.Query,
+		options: { executionIds?: string[] } = {},
+	) {
 		const annotationFields = Object.keys(this.annotationFields).map(
 			(key) => `annotation.${key} AS "annotation_${key}"`,
 		);
 
-		const subQuery = this.toQueryBuilder(query).addSelect(annotationFields);
+		const subQuery = this.toQueryBuilder(query, options).addSelect(annotationFields);
 
 		// Ensure the join with annotations is made only once
 		// It might be already present as an inner join if the query includes filter by annotation tags

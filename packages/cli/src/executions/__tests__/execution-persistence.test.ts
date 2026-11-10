@@ -1838,6 +1838,64 @@ describe('ExecutionPersistence', () => {
 		});
 	});
 
+	describe('findIdsWithDataContaining', () => {
+		const wf = 'wf-1';
+		const executionPersistence = createPersistenceService('fs');
+
+		const ref = (executionId: string, storedAt: 'db' | 'fs' | 's3') => ({
+			workflowId: wf,
+			executionId,
+			storedAt,
+		});
+
+		const bundle = (data: string) => ({
+			data,
+			workflowData: { id: wf, name: 's', nodes: [], connections: {}, settings: undefined },
+			workflowVersionId: 'v',
+			version: 1 as const,
+		});
+
+		beforeEach(() => {
+			dbStore.findIdsContaining.mockReset().mockResolvedValue([]);
+			jsonStore.readMany.mockReset().mockResolvedValue(new Map());
+		});
+
+		it('lets the database compare the data of db executions and reads the others', async () => {
+			const fragments = [{ text: 'eng-123', ignoreAsciiCase: true }];
+			dbStore.findIdsContaining.mockResolvedValue(['2']);
+
+			const ids = await executionPersistence.findIdsWithDataContaining(
+				[ref('1', 'db'), ref('2', 'db'), ref('3', 'fs'), ref('4', 's3')],
+				fragments,
+			);
+
+			expect(dbStore.findIdsContaining).toHaveBeenCalledWith(['1', '2'], fragments);
+			expect(jsonStore.readMany).toHaveBeenCalledWith([ref('3', 'fs'), ref('4', 's3')]);
+			expect(ids).toEqual(new Set(['2']));
+		});
+
+		it('compares blob data as the database does: all fragments, case as each one states', async () => {
+			jsonStore.readMany.mockResolvedValue(
+				new Map([
+					['1', bundle('[{"Webhook":"1"},"See ENG-123 (a+b)"]')],
+					['2', bundle('[{"webhook":"1"},"See ENG-123 (a+b)"]')],
+					['3', bundle('[{"Webhook":"1"},"See ENG-123 aab"]')],
+				]),
+			);
+
+			const ids = await executionPersistence.findIdsWithDataContaining(
+				[ref('1', 'fs'), ref('2', 'fs'), ref('3', 'fs'), ref('4', 'fs')],
+				[
+					{ text: '"Webhook":', ignoreAsciiCase: false },
+					{ text: 'eng-123 (a+b)', ignoreAsciiCase: true },
+				],
+			);
+
+			// 2 has the node name in another case, 3 lacks the text, 4 has no bundle.
+			expect(ids).toEqual(new Set(['1']));
+		});
+	});
+
 	describe('findManyInWorkflows', () => {
 		const wf = 'wf-1';
 		const where = { workflowId: wf };

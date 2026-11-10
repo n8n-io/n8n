@@ -19,6 +19,7 @@ import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import chunk from 'lodash/chunk';
+import escapeRegExp from 'lodash/escapeRegExp';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 import { createEmptyRunExecutionData, migrateRunExecutionData } from 'n8n-workflow';
@@ -32,6 +33,7 @@ import {
 	isExecutionDataPayload,
 	type BlobStorageLocation,
 	type BundleWorkflowSnapshot,
+	type DataFragment,
 	type ExecutionDataPayload,
 	type ExecutionRef,
 	toWorkflowSnapshot,
@@ -614,6 +616,37 @@ export class ExecutionPersistence {
 			includeAnnotation,
 			maxDataSizeBytes,
 		});
+	}
+
+	/**
+	 * IDs of the given executions whose stored run data contains all the fragments. This
+	 * is a coarse filter on the stored text: it also sees data that a reader is not
+	 * permitted to see, so the caller must examine each hit after redaction.
+	 * - In `db` mode, the database compares the text and returns only the IDs.
+	 * - In blob modes (`fs`, `s3`, `az`), we read each bundle and compare it here.
+	 */
+	async findIdsWithDataContaining(
+		executions: Array<ExecutionRef & { storedAt: ExecutionDataStorageLocation }>,
+		fragments: DataFragment[],
+	): Promise<Set<string>> {
+		const [dbIds, bundles] = await Promise.all([
+			this.dbStore.findIdsContaining(
+				executions.filter((e) => e.storedAt === 'db').map((e) => e.executionId),
+				fragments,
+			),
+			this.jsonStore.readMany(this.toBlobRefs(executions)),
+		]);
+
+		// The `i` flag folds more letters than A to Z, which is harmless for a coarse filter.
+		const patterns = fragments.map(
+			({ text, ignoreAsciiCase }) => new RegExp(escapeRegExp(text), ignoreAsciiCase ? 'i' : ''),
+		);
+		const ids = new Set(dbIds);
+		for (const [id, bundle] of bundles) {
+			if (patterns.every((pattern) => pattern.test(bundle.data))) ids.add(id);
+		}
+
+		return ids;
 	}
 
 	/** Statuses of the given executions in one read; ids that no longer exist are absent. */

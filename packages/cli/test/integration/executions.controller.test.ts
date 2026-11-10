@@ -209,6 +209,172 @@ describe('GET /executions', () => {
 	});
 });
 
+describe('GET /executions/search', () => {
+	const runData = (nodes: Record<string, object>) =>
+		stringify({
+			version: 1,
+			resultData: {
+				runData: Object.fromEntries(
+					Object.entries(nodes).map(([name, json]) => [
+						name,
+						[
+							{
+								startTime: 0,
+								executionIndex: 0,
+								executionTime: 1,
+								executionStatus: 'success',
+								source: [],
+								data: { main: [[{ json }]] },
+							},
+						],
+					]),
+				),
+			},
+		});
+
+	const search = async (user: User, query: Record<string, string>) =>
+		await testServer.authAgentFor(user).get('/executions/search').query(query);
+
+	beforeEach(() => {
+		testServer.license.enable('feat:advancedExecutionFilters');
+	});
+
+	test('finds executions by text in the data of a node, newest first', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const older = await createExecution(
+			{ data: runData({ Webhook: { body: { url: 'https://linear.app/acme/issue/ENG-123' } } }) },
+			workflow,
+		);
+		await createExecution({ data: runData({ Webhook: { body: { url: 'other' } } }) }, workflow);
+		const newer = await createExecution(
+			{ data: runData({ Webhook: {}, Code: { 'Issue "Key"': 'eng-123' } }) },
+			workflow,
+		);
+
+		const response = await search(owner, { text: 'ENG-123' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({
+			nextCursor: null,
+			searchedCount: 3,
+			results: [
+				{
+					id: newer.id,
+					workflowName: workflow.name,
+					scopes: expect.arrayContaining(['workflow:read']),
+					match: {
+						nodeName: 'Code',
+						source: 'output',
+						path: '["Issue \\"Key\\""]',
+						snippet: { before: '', match: 'eng-123', after: '' },
+					},
+				},
+				{
+					id: older.id,
+					match: {
+						nodeName: 'Webhook',
+						path: 'body.url',
+						snippet: { before: 'https://linear.app/acme/issue/', match: 'ENG-123', after: '' },
+					},
+				},
+			],
+		});
+		expect(response.body.data.results).toHaveLength(2);
+	});
+
+	test('finds text with characters that the stored JSON escapes', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution(
+			{ data: runData({ Code: { note: 'She said "50% off"\nC:\\temp' } }) },
+			workflow,
+		);
+
+		const quoted = await search(owner, { text: 'said "50% OFF"' });
+		const backslash = await search(owner, { text: 'c:\\temp' });
+
+		expect(quoted.body.data.results.map((r: { id: string }) => r.id)).toEqual([execution.id]);
+		expect(backslash.body.data.results.map((r: { id: string }) => r.id)).toEqual([execution.id]);
+	});
+
+	test('finds executions that ran a node, and text in that node only', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const ranSlack = await createExecution(
+			{ data: runData({ Webhook: { text: 'hello' }, Slack: { ok: true } }) },
+			workflow,
+		);
+		// A field with the name of the node is not a node that ran.
+		await createExecution({ data: runData({ Webhook: { Slack: 'hello' } }) }, workflow);
+
+		const byNode = await search(owner, { nodeName: 'Slack' });
+		const byNodeAndText = await search(owner, { nodeName: 'Slack', text: 'hello' });
+
+		expect(byNode.body.data.results).toMatchObject([
+			{ id: ranSlack.id, match: { nodeName: 'Slack' } },
+		]);
+		expect(byNodeAndText.body.data.results).toEqual([]);
+		expect(byNodeAndText.body.data.searchedCount).toBe(2);
+	});
+
+	test('applies the filters of the list', async () => {
+		const [first, second] = await Promise.all([
+			createWorkflow({}, owner),
+			createWorkflow({}, owner),
+		]);
+		const data = runData({ Webhook: { key: 'ENG-123' } });
+		const wanted = await createExecution({ data, status: 'error' }, first);
+		await createExecution({ data, status: 'success' }, first);
+		await createExecution({ data, status: 'error' }, second);
+
+		const response = await search(owner, {
+			text: 'ENG-123',
+			filter: JSON.stringify({ workflowId: first.id, status: ['error'] }),
+		});
+
+		expect(response.body.data.results.map((r: { id: string }) => r.id)).toEqual([wanted.id]);
+		expect(response.body.data.searchedCount).toBe(1);
+	});
+
+	test('continues below the cursor', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const data = runData({ Webhook: { key: 'ENG-123' } });
+		const executions = [];
+		for (let i = 0; i < 3; i++) executions.push(await createExecution({ data }, workflow));
+		const [oldest, middle, newest] = executions.map((e) => e.id);
+
+		const first = await search(owner, { text: 'ENG-123', limit: '2' });
+		const second = await search(owner, {
+			text: 'ENG-123',
+			limit: '2',
+			cursor: first.body.data.nextCursor,
+		});
+
+		expect(first.body.data.results.map((r: { id: string }) => r.id)).toEqual([newest, middle]);
+		expect(first.body.data.nextCursor).toEqual(expect.any(String));
+		expect(second.body.data.results.map((r: { id: string }) => r.id)).toEqual([oldest]);
+		expect(second.body.data.nextCursor).toBeNull();
+	});
+
+	test('does not search executions that the user cannot read', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createExecution({ data: runData({ Webhook: { key: 'ENG-123' } }) }, workflow);
+
+		const response = await search(member, { text: 'ENG-123' });
+
+		expect(response.body.data).toMatchObject({ results: [], searchedCount: 0 });
+	});
+
+	test('rejects a search without text and node, and text that is too short', async () => {
+		expect((await search(owner, {})).statusCode).toBe(400);
+		expect((await search(owner, { text: 'ab' })).statusCode).toBe(400);
+	});
+
+	test('requires the advanced execution filters licence', async () => {
+		testServer.license.disable('feat:advancedExecutionFilters');
+
+		expect((await search(owner, { text: 'ENG-123' })).statusCode).toBe(403);
+	});
+});
+
 describe('GET /executions/:id', () => {
 	test('project viewers can view executions for workflows in the project', async () => {
 		const teamProject = await createTeamProject();

@@ -643,6 +643,11 @@ export { DeleteExecutionsDto } from './executions/delete-executions.dto';
 export { GetExecutionQueryDto } from './executions/get-execution-query.dto';
 export { ListExecutionsQueryDto } from './executions/list-executions-query.dto';
 export {
+	SearchExecutionsQueryDto,
+	EXECUTION_SEARCH_TEXT_MIN_LENGTH,
+	EXECUTION_SEARCH_TEXT_MAX_LENGTH,
+} from './executions/search-executions-query.dto';
+export {
 	ExecutionPublicDto,
 	DeletedExecutionPublicDto,
 	ExecutionListPublicDto,

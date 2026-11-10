@@ -160,6 +160,35 @@ describe('WorkflowExecutionsCard', () => {
 		},
 	);
 
+	test('shows why a search found the execution', async () => {
+		const props: ComponentProps<typeof WorkflowExecutionsCard> = {
+			execution: {
+				id: '1',
+				mode: 'webhook',
+				status: 'success',
+				createdAt: new Date('2024-09-27T12:00:00Z'),
+				startedAt: new Date('2024-09-27T12:30:00Z'),
+				workflowId: 'test-workflow-id',
+			} as ExecutionSummary,
+			workflowPermissions: { execute: true },
+			match: {
+				nodeName: 'Webhook',
+				nodeId: 'node-1',
+				source: 'output',
+				path: 'body.url',
+				snippet: { before: 'issue/', match: 'ENG-123', after: '' },
+			},
+		};
+
+		const { getByTestId, queryByTestId, rerender } = renderComponent({ props });
+
+		expect(getByTestId('execution-search-match')).toHaveTextContent('Webhook › body.url');
+		expect(getByTestId('execution-search-match')).toHaveTextContent('issue/ENG-123');
+
+		await rerender({ match: undefined });
+		expect(queryByTestId('execution-search-match')).not.toBeInTheDocument();
+	});
+
 	test('aligns the retry menu and explains both retry options', async () => {
 		const { getByTestId, findByRole, getByText, emitted } = renderComponent({
 			props: {

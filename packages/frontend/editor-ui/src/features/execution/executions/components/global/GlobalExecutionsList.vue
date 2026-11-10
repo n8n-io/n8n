@@ -14,10 +14,16 @@ import { useIntersectionObserver } from '@vueuse/core';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch, type ComponentPublicInstance } from 'vue';
 import { useExecutionsStore } from '../../executions.store';
-import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../executions.types';
+import type {
+	ExecutionFilterType,
+	ExecutionSearchCriteria,
+	ExecutionSummaryWithScopes,
+} from '../../executions.types';
 import { executionRetryMessage } from '../../executions.utils';
 import ConcurrentExecutionsHeader from '../ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '../ExecutionsFilter.vue';
+import ExecutionsSearch from '../ExecutionsSearch.vue';
+import ExecutionsSearchStatus from '../ExecutionsSearchStatus.vue';
 import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 
@@ -39,6 +45,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'update:filters': [value: ExecutionFilterType];
+	'update:search': [value: ExecutionSearchCriteria];
 	'execution:stop': [];
 }>();
 
@@ -64,6 +71,10 @@ const isInitialLoad = ref(true);
 const message = useMessage();
 const toast = useToast();
 
+// "All existing" means all executions that satisfy the filters. The delete endpoint
+// does not know the search, so in search mode that would delete more than the matches.
+const canSelectAllExisting = computed(() => !executionsStore.isSearchActive);
+
 const selectedCount = computed(() => {
 	if (allExistingSelected.value) {
 		return props.total;
@@ -84,6 +95,28 @@ const workflows = computed<IWorkflowDb[]>(() => {
 
 const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
+);
+
+// A node name identifies a node in one workflow only, so the search offers nodes
+// when the filter selects one workflow.
+const searchNodeNames = ref<string[]>([]);
+watch(
+	() => props.filters.workflowId,
+	async (workflowId) => {
+		searchNodeNames.value = [];
+		if (!workflowId || workflowId === 'all' || !isAnnotationEnabled.value) return;
+
+		try {
+			const workflow = await workflowsListStore.fetchWorkflow(workflowId);
+			if (props.filters.workflowId !== workflowId) return;
+			searchNodeNames.value = workflow.nodes
+				.map((node) => node.name)
+				.sort((a, b) => a.localeCompare(b));
+		} catch (error) {
+			toast.showError(error, i18n.baseText('executionsSearch.error.loadNodes'));
+		}
+	},
+	{ immediate: true },
 );
 
 // In 'queue' mode concurrency control is applied per worker and returning a global count
@@ -139,7 +172,8 @@ function toggleSelectExecution(execution: ExecutionSummary) {
 		};
 	}
 	allVisibleSelected.value = Object.keys(selectedItems.value).length === props.executions.length;
-	allExistingSelected.value = Object.keys(selectedItems.value).length === props.total;
+	allExistingSelected.value =
+		canSelectAllExisting.value && Object.keys(selectedItems.value).length === props.total;
 }
 
 async function handleDeleteSelected() {
@@ -170,7 +204,7 @@ async function handleDeleteSelected() {
 	try {
 		await executionsStore.deleteExecutions({
 			filters: executionsStore.executionsFilters,
-			...(allExistingSelected.value
+			...(allExistingSelected.value && canSelectAllExisting.value
 				? { deleteBefore: new Date() }
 				: {
 						ids: Object.keys(selectedItems.value),
@@ -197,6 +231,11 @@ function handleClearSelection() {
 
 async function onFilterChanged(filters: ExecutionFilterType) {
 	emit('update:filters', filters);
+	handleClearSelection();
+}
+
+function onSearchChanged(search: ExecutionSearchCriteria) {
+	emit('update:search', search);
 	handleClearSelection();
 }
 
@@ -365,6 +404,12 @@ const goToUpgrade = () => {
 				v-model="autoRefresh"
 				data-test-id="execution-auto-refresh-checkbox"
 				:label="i18n.baseText('executionsList.autoRefresh')"
+				:disabled="executionsStore.isSearchActive"
+				:title="
+					executionsStore.isSearchActive
+						? i18n.baseText('executionsSearch.autoRefreshPaused')
+						: undefined
+				"
 				@update:model-value="onAutoRefreshToggle"
 			/>
 			<div :class="$style.execHeaderRight">
@@ -377,11 +422,17 @@ const goToUpgrade = () => {
 				/>
 			</div>
 		</div>
+		<ExecutionsSearch
+			:class="$style.execSearch"
+			:search="executionsStore.search"
+			:node-names="searchNodeNames"
+			@update:search="onSearchChanged"
+		/>
 		<div :class="$style.execList">
 			<div :class="$style.execTable">
 				<N8nTableBase>
 					<thead>
-						<tr v-if="allVisibleSelected && total > 0">
+						<tr v-if="allVisibleSelected && total > 0 && canSelectAllExisting">
 							<th style="width: 50px">
 								<N8nCheckbox
 									:model-value="allExistingSelected"
@@ -438,6 +489,7 @@ const goToUpgrade = () => {
 							:selected="selectedItems[execution.id] || allExistingSelected"
 							:concurrency-cap="settingsStore.concurrency"
 							:is-cloud-deployment="settingsStore.isCloudDeployment"
+							:match="executionsStore.searchMatchesById[execution.id]"
 							data-test-id="global-execution-list-item"
 							@stop="stopExecution"
 							@delete="deleteExecution"
@@ -455,7 +507,8 @@ const goToUpgrade = () => {
 						</template>
 						<tr>
 							<td colspan="9" style="text-align: center">
-								<template v-if="!executions.length">
+								<ExecutionsSearchStatus v-if="executionsStore.isSearchActive" />
+								<template v-else-if="!executions.length">
 									<span data-test-id="execution-list-empty">
 										{{ i18n.baseText('executionsList.empty') }}
 									</span>
@@ -514,6 +567,10 @@ const goToUpgrade = () => {
 	display: flex;
 	align-items: center;
 	justify-content: flex-start;
+	margin-bottom: var(--spacing--sm);
+}
+
+.execSearch {
 	margin-bottom: var(--spacing--sm);
 }
 

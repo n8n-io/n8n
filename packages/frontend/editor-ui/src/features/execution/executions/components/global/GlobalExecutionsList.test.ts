@@ -28,6 +28,10 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: vi.fn().mockResolvedValue('confirm') }),
+}));
+
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
@@ -231,6 +235,84 @@ describe('GlobalExecutionsList', () => {
 
 		expect(queryAllByText(/Retry of/).length).toBe(retryOf.length);
 		expect(queryAllByText(/Success retry/).length).toBe(retrySuccessId.length);
+	});
+
+	describe('search', () => {
+		const searchProps = () => ({
+			executions: executionsData[0].results as ExecutionSummaryWithScopes[],
+			// In search mode the total is the number of matches that are loaded.
+			total: executionsData[0].results.length,
+			filters: {} as ExecutionFilterType,
+		});
+
+		it('emits the search of the user', async () => {
+			const { getByTestId, emitted } = renderComponent({ props: searchProps() });
+			await waitAllPromises();
+
+			await userEvent.type(getByTestId('executions-search-input'), 'ENG-123{Enter}');
+
+			expect(emitted('update:search')).toEqual([[{ text: 'ENG-123', nodeName: '' }]]);
+		});
+
+		it('shows the search coverage in place of "load more", and the reason for each match', async () => {
+			const executionsStore = mockedStore(useExecutionsStore);
+			executionsStore.isSearchActive = true;
+			executionsStore.hasMoreExecutions = true;
+			executionsStore.searchMatchesById = {
+				[executionsData[0].results[0].id]: { nodeName: 'Webhook' },
+			};
+
+			const { getByTestId, getAllByTestId, queryByTestId } = renderComponent({
+				props: searchProps(),
+			});
+			await waitAllPromises();
+
+			expect(getByTestId('executions-search-status')).toBeInTheDocument();
+			expect(queryByTestId('load-more-button')).not.toBeInTheDocument();
+			expect(getAllByTestId('execution-search-match')).toHaveLength(1);
+			expect(getByTestId('execution-auto-refresh-checkbox')).toBeDisabled();
+		});
+
+		it('deletes only the selected matches, and never all executions of the filters', async () => {
+			const executionsStore = mockedStore(useExecutionsStore);
+			executionsStore.isSearchActive = true;
+
+			const { getByTestId, getAllByTestId, queryByTestId } = renderComponent({
+				props: searchProps(),
+			});
+			await waitAllPromises();
+
+			// To select the last row one by one makes the selection equal to the total.
+			// Outside a search that means "all existing", which deletes by filter.
+			await userEvent.click(getByTestId('select-visible-executions-checkbox'));
+			await userEvent.click(getAllByTestId('select-execution-checkbox')[0]);
+			await userEvent.click(getAllByTestId('select-execution-checkbox')[0]);
+			await retry(() => expect(getByTestId('selected-items-info').textContent).toContain(10));
+			expect(queryByTestId('select-all-executions-checkbox')).not.toBeInTheDocument();
+
+			await userEvent.click(getByTestId('delete-selected-button'));
+			await waitAllPromises();
+
+			expect(executionsStore.deleteExecutions).toHaveBeenCalledTimes(1);
+			const [payload] = executionsStore.deleteExecutions.mock.calls[0];
+			expect(payload).not.toHaveProperty('deleteBefore');
+			expect(payload.ids?.sort()).toEqual(executionsData[0].results.map((e) => e.id).sort());
+		});
+
+		it('still deletes all executions of the filters when there is no search', async () => {
+			const executionsStore = mockedStore(useExecutionsStore);
+			executionsStore.isSearchActive = false;
+
+			const { getByTestId } = renderComponent({ props: searchProps() });
+			await waitAllPromises();
+
+			await userEvent.click(getByTestId('select-visible-executions-checkbox'));
+			await userEvent.click(await waitFor(() => getByTestId('select-all-executions-checkbox')));
+			await userEvent.click(getByTestId('delete-selected-button'));
+			await waitAllPromises();
+
+			expect(executionsStore.deleteExecutions.mock.calls[0][0]).toHaveProperty('deleteBefore');
+		});
 	});
 
 	it('should render concurrent executions header if the feature is enabled', async () => {
