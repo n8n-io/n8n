@@ -16,6 +16,7 @@ import {
 } from '../../__tests__/createThreadComponentRenderer';
 import InstanceAiConversation from '../InstanceAiConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
+import { useAssistantCreditsStore } from '../../assistantCredits.store';
 import {
 	getPendingWorkflowAttachment,
 	stashPendingAgentAttachment,
@@ -262,8 +263,9 @@ describe('InstanceAiConversation', () => {
 	});
 
 	it('blocks the composer and keeps the out-of-credits notice when credits are gone', () => {
-		store.isOutOfCredits = true;
-		store.isLowCredits = true;
+		const creditsStore = mockedStore(useAssistantCreditsStore);
+		creditsStore.isOutOfCredits = true;
+		creditsStore.isLowCredits = true;
 
 		const wrapper = mountConversation();
 
