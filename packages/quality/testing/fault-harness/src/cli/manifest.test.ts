@@ -14,6 +14,10 @@ describe('manifest', () => {
 		).toBe(true);
 	});
 
+	it('accepts a variant with no image', () => {
+		expect(scenarioSchema.safeParse({ ...valid, after: null }).success).toBe(true);
+	});
+
 	it.each([
 		['an issue id that is not a ticket', { ...valid, issue: 'cat-1' }],
 		['a spec that is not a spec file', { ...valid, spec: 'a.ts' }],
