@@ -13,7 +13,21 @@ import {
 
 const TEXT_LINE_HEIGHT_RATIO = 1.2;
 
-let fontRegistrationSequence = 0;
+// Each registration maps all system fonts again and removal never unmaps them.
+const registeredFontFamilies = new Map<string, string>();
+
+async function getFontFamily(fontPath: string): Promise<string> {
+	const registeredFamily = registeredFontFamilies.get(fontPath);
+	if (registeredFamily) return registeredFamily;
+
+	const { GlobalFonts } = await import('@napi-rs/canvas');
+	const family = `n8n-edit-image-${registeredFontFamilies.size}-${pathParse(fontPath).name}`;
+	if (!GlobalFonts.registerFromPath(fontPath, family)) {
+		throw new UserError('The selected font could not be loaded.');
+	}
+	registeredFontFamilies.set(fontPath, family);
+	return family;
+}
 
 function wrapText(text: string, lineLength: number): string[] {
 	const lines: string[] = [];
@@ -84,54 +98,47 @@ export async function execute(
 		throw new UserError('The selected font is not available. Select a font from the options.');
 	}
 
-	const { GlobalFonts } = await import('@napi-rs/canvas');
-	const family = `n8n-edit-image-${fontRegistrationSequence++}-${pathParse(font).name}`;
-	const fontKey = GlobalFonts.registerFromPath(font, family);
-	if (!fontKey) throw new UserError('The selected font could not be loaded.');
+	const family = await getFontFamily(font);
 
-	try {
-		const context = canvas.getContext('2d');
-		const fontSize = getNumber(operation, 'fontSize');
-		const positionX = getNumber(operation, 'positionX');
-		const positionY = getNumber(operation, 'positionY');
-		const horizontalAlignment =
-			typeof operation.horizontalAlignment === 'string' ? operation.horizontalAlignment : 'west';
-		const verticalAlignment =
-			typeof operation.verticalAlignment === 'string' ? operation.verticalAlignment : 'north';
-		const lines = wrapText(getString(operation, 'text'), getNumber(operation, 'lineLength'));
-		// GraphicsMagick uses approximately 1.2 em between text baselines.
-		const lineHeight = fontSize * TEXT_LINE_HEIGHT_RATIO;
+	const context = canvas.getContext('2d');
+	const fontSize = getNumber(operation, 'fontSize');
+	const positionX = getNumber(operation, 'positionX');
+	const positionY = getNumber(operation, 'positionY');
+	const horizontalAlignment =
+		typeof operation.horizontalAlignment === 'string' ? operation.horizontalAlignment : 'west';
+	const verticalAlignment =
+		typeof operation.verticalAlignment === 'string' ? operation.verticalAlignment : 'north';
+	const lines = wrapText(getString(operation, 'text'), getNumber(operation, 'lineLength'));
+	// GraphicsMagick uses approximately 1.2 em between text baselines.
+	const lineHeight = fontSize * TEXT_LINE_HEIGHT_RATIO;
 
-		context.font = `${fontSize}px "${family}"`;
-		context.fillStyle = toCanvasColor(getString(operation, 'fontColor'));
-		context.textAlign = getCanvasTextAlign(horizontalAlignment);
-		context.textBaseline = 'alphabetic';
+	context.font = `${fontSize}px "${family}"`;
+	context.fillStyle = toCanvasColor(getString(operation, 'fontColor'));
+	context.textAlign = getCanvasTextAlign(horizontalAlignment);
+	context.textBaseline = 'alphabetic';
 
-		const x = getTextX(horizontalAlignment, canvas.width, positionX);
-		const metrics = lines.map((line) => context.measureText(line));
-		const measuredAscent = Math.max(
-			...metrics.map((lineMetrics) => lineMetrics.actualBoundingBoxAscent),
-		);
-		const ascent = measuredAscent || fontSize;
-		const descent = Math.max(
-			0,
-			...metrics.map((lineMetrics) => lineMetrics.actualBoundingBoxDescent),
-		);
-		const textHeight = ascent + descent + Math.max(0, lines.length - 1) * lineHeight;
-		const y = getTextBaselineY({
-			alignment: verticalAlignment,
-			canvasHeight: canvas.height,
-			positionY,
-			textHeight,
-			ascent,
-			lineCount: lines.length,
-			lineHeight,
-		});
+	const x = getTextX(horizontalAlignment, canvas.width, positionX);
+	const metrics = lines.map((line) => context.measureText(line));
+	const measuredAscent = Math.max(
+		...metrics.map((lineMetrics) => lineMetrics.actualBoundingBoxAscent),
+	);
+	const ascent = measuredAscent || fontSize;
+	const descent = Math.max(
+		0,
+		...metrics.map((lineMetrics) => lineMetrics.actualBoundingBoxDescent),
+	);
+	const textHeight = ascent + descent + Math.max(0, lines.length - 1) * lineHeight;
+	const y = getTextBaselineY({
+		alignment: verticalAlignment,
+		canvasHeight: canvas.height,
+		positionY,
+		textHeight,
+		ascent,
+		lineCount: lines.length,
+		lineHeight,
+	});
 
-		lines.forEach((line, index) => context.fillText(line, x, y + index * lineHeight));
-	} finally {
-		GlobalFonts.remove(fontKey);
-	}
+	lines.forEach((line, index) => context.fillText(line, x, y + index * lineHeight));
 
 	return canvas;
 }
