@@ -10,6 +10,9 @@ import { expect, it, vi } from 'vitest';
 import { computed, nextTick } from 'vue';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { ExecutionSummary } from 'n8n-workflow';
+import userEvent from '@testing-library/user-event';
+import type { IWorkflowDb } from '@/Interface';
+import { useExecutionsStore } from '../../executions.store';
 
 const observe = vi.fn();
 const disconnect = vi.fn();
@@ -106,6 +109,61 @@ describe('WorkflowExecutionsSidebar', () => {
 		});
 
 		expect(getByTestId('concurrent-executions-header')).toBeVisible();
+	});
+
+	describe('search', () => {
+		const workflow = {
+			id: 'test-workflow-id',
+			nodes: [{ name: 'Webhook' }, { name: 'Slack' }],
+		} as unknown as IWorkflowDb;
+
+		afterEach(() => {
+			mockedStore(useExecutionsStore).isSearchActive = false;
+		});
+
+		it('emits the search of the user', async () => {
+			const { getByTestId, emitted } = renderComponent({
+				props: { loading: false, loadingMore: false, hasMore: false, executions: [], workflow },
+			});
+
+			await userEvent.type(getByTestId('executions-search-input'), 'ENG-123{Enter}');
+
+			expect(emitted('searchUpdated')).toEqual([[{ text: 'ENG-123', nodeName: '' }]]);
+		});
+
+		it('does not search further on scroll: the user asks for each continuation', async () => {
+			const executionsStore = mockedStore(useExecutionsStore);
+			executionsStore.isSearchActive = true;
+			executionsStore.searchMatchesById = { 'exec-0': { nodeName: 'Webhook' } };
+
+			const { getByTestId, getAllByTestId, queryByTestId } = renderComponent({
+				props: {
+					loading: false,
+					loadingMore: false,
+					hasMore: true,
+					executions: buildExecutions(20),
+					workflow,
+				},
+			});
+			await nextTick();
+
+			expect(queryByTestId('executions-load-more-sentinel')).toBeNull();
+			expect(observe).not.toHaveBeenCalled();
+			expect(getByTestId('executions-search-status')).toBeInTheDocument();
+			expect(getAllByTestId('execution-search-match')).toHaveLength(1);
+			expect(getByTestId('auto-refresh-checkbox')).toBeDisabled();
+		});
+
+		it('shows what the search covered when it has no matches', async () => {
+			mockedStore(useExecutionsStore).isSearchActive = true;
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { loading: false, loadingMore: false, hasMore: false, executions: [], workflow },
+			});
+
+			expect(queryByTestId('execution-list-empty')).toBeNull();
+			expect(getByTestId('executions-search-status')).toBeInTheDocument();
+		});
 	});
 
 	describe('infinite scroll sentinel', () => {

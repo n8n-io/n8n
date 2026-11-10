@@ -3,7 +3,7 @@ import WorkflowExecutionsSidebar from './WorkflowExecutionsSidebar.vue';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { MAIN_HEADER_TABS } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
-import type { ExecutionFilterType } from '../../executions.types';
+import type { ExecutionFilterType, ExecutionSearchCriteria } from '../../executions.types';
 import { getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { computed } from 'vue';
@@ -32,6 +32,7 @@ const emit = defineEmits<{
 	'execution:retry': [value: { id: string; loadWorkflow: boolean }];
 	'update:auto-refresh': [value: boolean];
 	'update:filters': [value: ExecutionFilterType];
+	'update:search': [value: ExecutionSearchCriteria];
 	'load-more': [];
 	reload: [];
 }>();
@@ -92,6 +93,7 @@ onBeforeRouteLeave(async (to, _, next) => {
 			@update:auto-refresh="emit('update:auto-refresh', $event)"
 			@reload-executions="emit('reload')"
 			@filter-updated="emit('update:filters', $event)"
+			@search-updated="emit('update:search', $event)"
 			@load-more="emit('load-more')"
 			@retry-execution="onRetryExecution"
 		/>

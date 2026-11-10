@@ -2,7 +2,11 @@ import { vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 
 import type { SerializedCursor } from '@n8n/api-types';
-import type { ExecutionSummaryWithScopes, IExecutionsListResponse } from './executions.types';
+import type {
+	ExecutionSummaryWithScopes,
+	IExecutionsListResponse,
+	IExecutionsSearchResponse,
+} from './executions.types';
 import { useExecutionsStore } from './executions.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
@@ -275,6 +279,247 @@ describe('executions.store', () => {
 			expect(data.results).toHaveLength(5);
 			expect(executionsStore.executions).toHaveLength(2);
 			expect(executionsStore.nextCursor).toBe('older');
+		});
+	});
+
+	describe('search', () => {
+		const step = (
+			ids: string[],
+			overrides: Partial<IExecutionsSearchResponse> = {},
+		): IExecutionsSearchResponse => ({
+			results: ids.map((id) => ({
+				...({ id, workflowId: 'wf-1', scopes: [] } as unknown as ExecutionSummaryWithScopes),
+				match: { nodeName: 'Webhook', path: 'body.url' },
+			})),
+			nextCursor: cursor(`after-${ids.at(-1) ?? 'none'}`),
+			searchedCount: 100,
+			searchedBackTo: '2026-01-02T00:00:00.000Z',
+			...overrides,
+		});
+
+		const mockStep = (...args: Parameters<typeof step>) =>
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce(step(...args));
+
+		const requests = () =>
+			vi.mocked(makeRestApiRequest).mock.calls.map(([, , url, params]) => [url, params]);
+
+		beforeEach(() => {
+			executionsStore.setSearch({ text: 'ENG-123', nodeName: 'Webhook' });
+		});
+
+		it('is active when there is text or a node', () => {
+			expect(executionsStore.isSearchActive).toBe(true);
+
+			executionsStore.setSearch({ text: '', nodeName: 'Webhook' });
+			expect(executionsStore.isSearchActive).toBe(true);
+
+			executionsStore.setSearch({ text: '', nodeName: '' });
+			expect(executionsStore.isSearchActive).toBe(false);
+		});
+
+		it('searches with the filters and the criteria, and keeps the reason for each match', async () => {
+			mockStep(['9', '8'], { nextCursor: null });
+
+			await executionsStore.fetchExecutions({ workflowId: 'wf-1' });
+
+			expect(requests()).toEqual([
+				[
+					'/executions/search',
+					{
+						filter: { workflowId: 'wf-1' },
+						cursor: undefined,
+						limit: 10,
+						text: 'ENG-123',
+						nodeName: 'Webhook',
+					},
+				],
+			]);
+			expect(executionsStore.executions.map((e) => e.id).sort()).toEqual(['8', '9']);
+			expect(executionsStore.searchMatchesById['9']).toEqual({
+				nodeName: 'Webhook',
+				path: 'body.url',
+			});
+			expect(executionsStore.executionsById['9']).not.toHaveProperty('match');
+			expect(executionsStore).toMatchObject({
+				searchedCount: 100,
+				searchedBackTo: '2026-01-02T00:00:00.000Z',
+				hasMoreExecutions: false,
+				executionsCount: 2,
+			});
+		});
+
+		it('leaves out the criteria that are not set', async () => {
+			executionsStore.setSearch({ text: '', nodeName: 'Webhook' });
+			mockStep([], { nextCursor: null });
+
+			await executionsStore.fetchExecutions({});
+
+			expect(requests()[0][1]).toEqual({
+				filter: {},
+				cursor: undefined,
+				limit: 10,
+				nodeName: 'Webhook',
+			});
+		});
+
+		it('continues with the cursor until it has a page of matches', async () => {
+			executionsStore.itemsPerPage = 3;
+			mockStep(['9']);
+			mockStep([], { searchedBackTo: null });
+			mockStep(['7', '6']);
+
+			await executionsStore.fetchExecutions({});
+
+			expect(requests().map(([, params]) => (params as { cursor?: string }).cursor)).toEqual([
+				undefined,
+				'after-9',
+				'after-none',
+			]);
+			expect(executionsStore).toMatchObject({
+				searchedCount: 300,
+				// A step that searched nothing does not move the covered range.
+				searchedBackTo: '2026-01-02T00:00:00.000Z',
+				hasMoreExecutions: true,
+				nextCursor: 'after-6',
+			});
+		});
+
+		it('stops after five steps without a page of matches, and continues on request', async () => {
+			for (let i = 0; i < 6; i++) mockStep([]);
+
+			await executionsStore.fetchExecutions({});
+
+			expect(makeRestApiRequest).toHaveBeenCalledTimes(5);
+			expect(executionsStore).toMatchObject({ searchedCount: 500, hasMoreExecutions: true });
+
+			mockStep(['3'], { nextCursor: null });
+			await executionsStore.loadMoreExecutions({});
+
+			expect(makeRestApiRequest).toHaveBeenCalledTimes(7);
+			expect(executionsStore).toMatchObject({ searchedCount: 700, hasMoreExecutions: false });
+		});
+
+		it('does not search again after the end of the history', async () => {
+			mockStep(['9'], { nextCursor: null });
+			await executionsStore.fetchExecutions({});
+
+			await executionsStore.loadMoreExecutions({});
+
+			expect(makeRestApiRequest).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not refresh: the rows are not the latest executions', async () => {
+			mockStep(['9'], { nextCursor: null });
+			await executionsStore.fetchExecutions({});
+
+			await executionsStore.refreshExecutions({});
+
+			expect(makeRestApiRequest).toHaveBeenCalledTimes(1);
+			expect(executionsStore.searchedCount).toBe(100);
+		});
+
+		it('starts again when the first step failed', async () => {
+			vi.mocked(makeRestApiRequest).mockRejectedValueOnce(new Error('too busy'));
+			await expect(executionsStore.fetchExecutions({})).rejects.toThrow('too busy');
+			expect(executionsStore.loading).toBe(false);
+
+			mockStep(['9'], { nextCursor: null });
+			await executionsStore.loadMoreExecutions({});
+
+			expect(requests()[1][1]).toMatchObject({ cursor: undefined });
+			expect(executionsStore.executions.map((e) => e.id)).toEqual(['9']);
+		});
+
+		it('keeps the position when a later step fails', async () => {
+			executionsStore.itemsPerPage = 3;
+			mockStep(['9']);
+			vi.mocked(makeRestApiRequest).mockRejectedValueOnce(new Error('too busy'));
+			await expect(executionsStore.fetchExecutions({})).rejects.toThrow('too busy');
+
+			mockStep(['8'], { nextCursor: null });
+			await executionsStore.loadMoreExecutions({});
+
+			expect(requests()[2][1]).toMatchObject({ cursor: 'after-9' });
+			expect(executionsStore.executions.map((e) => e.id).sort()).toEqual(['8', '9']);
+			expect(executionsStore.searchedCount).toBe(200);
+		});
+
+		it('ignores a second load of the same search while one is in flight', async () => {
+			let resolveStep = (_: IExecutionsSearchResponse) => {};
+			vi.mocked(makeRestApiRequest).mockImplementationOnce(
+				async () => await new Promise((resolve) => (resolveStep = resolve)),
+			);
+
+			const first = executionsStore.fetchExecutions({});
+			await executionsStore.loadMoreExecutions({});
+			resolveStep(step(['9'], { nextCursor: null }));
+			await first;
+
+			expect(makeRestApiRequest).toHaveBeenCalledTimes(1);
+			expect(executionsStore.searchedCount).toBe(100);
+		});
+
+		it('discards the rows of a search that changed while a step was in flight', async () => {
+			let resolveStale = (_: IExecutionsSearchResponse) => {};
+			vi.mocked(makeRestApiRequest).mockImplementationOnce(
+				async () => await new Promise((resolve) => (resolveStale = resolve)),
+			);
+			const stale = executionsStore.fetchExecutions({});
+
+			executionsStore.resetData();
+			executionsStore.setSearch({ text: 'other', nodeName: '' });
+			mockStep(['5'], { nextCursor: null });
+			await executionsStore.fetchExecutions({});
+
+			resolveStale(step(['9', '8']));
+			await stale;
+
+			expect(executionsStore.executions.map((e) => e.id)).toEqual(['5']);
+			expect(executionsStore.searchedCount).toBe(100);
+		});
+
+		it('replaces the list rows when a search starts, and the matches when it ends', async () => {
+			executionsStore.setSearch({ text: '', nodeName: '' });
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
+				nextCursor: null,
+				count: 1,
+				estimated: false,
+				concurrentExecutionsCount: 0,
+				results: [{ id: '1', scopes: [] }],
+			});
+			await executionsStore.fetchExecutions({});
+
+			executionsStore.setSearch({ text: 'ENG-123', nodeName: '' });
+			mockStep(['9'], { nextCursor: null });
+			await executionsStore.fetchExecutions({});
+			expect(executionsStore.executions.map((e) => e.id)).toEqual(['9']);
+
+			executionsStore.setSearch({ text: '', nodeName: '' });
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
+				nextCursor: null,
+				count: 1,
+				estimated: false,
+				concurrentExecutionsCount: 0,
+				results: [{ id: '1', scopes: [] }],
+			});
+			await executionsStore.fetchExecutions({});
+
+			expect(executionsStore.executions.map((e) => e.id)).toEqual(['1']);
+			expect(executionsStore.searchMatchesById).toEqual({});
+			expect(executionsStore.searchedCount).toBe(0);
+		});
+
+		it('saves and restores the search with the filters, and reset clears it', () => {
+			executionsStore.saveFilters('workflow:1');
+
+			executionsStore.reset();
+			expect(executionsStore.search).toEqual({ text: '', nodeName: '' });
+
+			executionsStore.restoreFilters('workflow:1');
+			expect(executionsStore.search).toEqual({ text: 'ENG-123', nodeName: 'Webhook' });
+
+			executionsStore.restoreFilters('workflow:2');
+			expect(executionsStore.search).toEqual({ text: '', nodeName: '' });
 		});
 	});
 

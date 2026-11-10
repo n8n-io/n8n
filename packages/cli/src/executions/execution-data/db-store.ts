@@ -4,7 +4,12 @@ import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 
 import { MissingExecutionDataError } from './missing-execution-data.error';
-import type { ExecutionRef, ExecutionDataPayload, BundleWorkflowSnapshot } from './types';
+import type {
+	ExecutionRef,
+	ExecutionDataPayload,
+	BundleWorkflowSnapshot,
+	DataFragment,
+} from './types';
 
 // Max number of ids per IN-clause. Conservative, as some databases cap near 1000.
 const MAX_READ_BATCH_SIZE = 900;
@@ -100,6 +105,11 @@ export class DbStore {
 		if (!row || row.size === null) return null;
 
 		return Number(row.size);
+	}
+
+	/** IDs of the given executions whose run data contains all the fragments, compared in the database. */
+	async findIdsContaining(executionIds: string[], fragments: DataFragment[]): Promise<string[]> {
+		return await this.repository.findIdsContaining(executionIds, fragments);
 	}
 
 	async readMany(refs: ExecutionRef[]) {

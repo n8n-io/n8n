@@ -20,6 +20,7 @@ import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import type {
 	ExecutionFilterType,
+	ExecutionSearchCriteria,
 	ExecutionPreviewNodeSchema,
 	ExecutionPreviewOutputSchema,
 	ExecutionPreviewSchemaField,
@@ -63,6 +64,10 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		vote: 'all',
 		workflowVersionId: 'all',
 	};
+}
+
+export function getDefaultExecutionSearch(): ExecutionSearchCriteria {
+	return { text: '', nodeName: '' };
 }
 
 export const executionFilterToQueryFilter = (

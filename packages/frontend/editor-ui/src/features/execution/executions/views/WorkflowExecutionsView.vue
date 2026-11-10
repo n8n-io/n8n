@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import WorkflowExecutionsList from '../components/workflow/WorkflowExecutionsList.vue';
 import { useExecutionsStore } from '../executions.store';
 import { useI18n } from '@n8n/i18n';
-import type { ExecutionFilterType } from '../executions.types';
+import type { ExecutionFilterType, ExecutionSearchCriteria } from '../executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
@@ -198,10 +198,28 @@ async function onRefreshData() {
 }
 
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
+	await applyFiltersAndSearch(newFilters, executionsStore.search);
+}
+
+async function onUpdateSearch(newSearch: ExecutionSearchCriteria) {
+	await applyFiltersAndSearch(executionsStore.filters, newSearch);
+}
+
+async function applyFiltersAndSearch(
+	newFilters: ExecutionFilterType,
+	newSearch: ExecutionSearchCriteria,
+) {
 	executionsStore.reset();
 	executionsStore.setFilters(newFilters);
+	executionsStore.setSearch(newSearch);
 	executionsStore.saveFilters(filtersKey.value);
-	await executionsStore.initialize(workflowId.value);
+	try {
+		await executionsStore.initialize(workflowId.value);
+	} catch (error) {
+		// Without a search this is the list request, which had no error message before.
+		if (!executionsStore.isSearchActive) throw error;
+		toast.showError(error, i18n.baseText('executionsSearch.error.title'));
+	}
 }
 
 async function onExecutionStop(id?: string) {
@@ -345,6 +363,7 @@ async function loadMore(): Promise<void> {
 		@execution:delete="onExecutionDelete"
 		@execution:retry="onExecutionRetry"
 		@update:filters="onUpdateFilters"
+		@update:search="onUpdateSearch"
 		@update:auto-refresh="onAutoRefreshToggle"
 		@load-more="onLoadMore"
 		@reload="onRefreshData"

@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import type { Scope } from '@n8n/permissions';
-import type { ExecutionListPagination } from '@n8n/api-types';
+import type { ExecutionListPagination, ExecutionSearchPage } from '@n8n/api-types';
 
 export type ExecutionFilterMetadata = {
 	key: string;
@@ -91,6 +91,14 @@ export interface IExecutionsListResponse extends ExecutionListPagination {
 	estimated: boolean;
 	concurrentExecutionsCount: number;
 }
+
+/** A search through the data of the executed nodes. An empty string means "not set". */
+export type ExecutionSearchCriteria = {
+	text: string;
+	nodeName: string;
+};
+
+export type IExecutionsSearchResponse = ExecutionSearchPage<ExecutionSummaryWithScopes>;
 
 export interface IExecutionsCurrentSummaryExtended {
 	id: string;

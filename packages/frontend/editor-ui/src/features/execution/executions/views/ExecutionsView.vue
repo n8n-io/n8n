@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ExecutionFilterType } from '../executions.types';
+import type { ExecutionFilterType, ExecutionSearchCriteria } from '../executions.types';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import GlobalExecutionsList from '../components/global/GlobalExecutionsList.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -131,10 +131,32 @@ async function onRefreshData() {
 }
 
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
+	const { search, filters: oldFilters } = executionsStore;
+	// A node belongs to one workflow, so another workflow cannot keep the node of the search.
+	const isSameWorkflow = newFilters.workflowId === oldFilters.workflowId;
+
+	await applyFiltersAndSearch(newFilters, isSameWorkflow ? search : { ...search, nodeName: '' });
+}
+
+async function onUpdateSearch(newSearch: ExecutionSearchCriteria) {
+	await applyFiltersAndSearch(executionsStore.filters, newSearch);
+}
+
+async function applyFiltersAndSearch(
+	newFilters: ExecutionFilterType,
+	newSearch: ExecutionSearchCriteria,
+) {
 	executionsStore.reset();
 	executionsStore.setFilters(newFilters);
+	executionsStore.setSearch(newSearch);
 	executionsStore.saveFilters(filtersKey.value);
-	await executionsStore.initialize();
+	try {
+		await executionsStore.initialize();
+	} catch (error) {
+		// Without a search this is the list request, which had no error message before.
+		if (!executionsStore.isSearchActive) throw error;
+		toast.showError(error, i18n.baseText('executionsSearch.error.title'));
+	}
 }
 
 async function onExecutionStop() {
@@ -177,6 +199,7 @@ async function onExecutionStop() {
 		:concurrent-total="concurrentExecutionsCount"
 		@execution:stop="onExecutionStop"
 		@update:filters="onUpdateFilters"
+		@update:search="onUpdateSearch"
 	>
 		<ProjectHeader>
 			<InsightsSummary

@@ -1,10 +1,12 @@
-import { DeleteExecutionsDto } from '@n8n/api-types';
+import { DeleteExecutionsDto, SearchExecutionsQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, ExecutionSummaries, User } from '@n8n/db';
+import type { ExecutionSummary } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import type { ExecutionCursor } from '@/executions/execution-cursor';
 import type { ExecutionListService } from '@/executions/execution-list.service';
+import type { ExecutionSearchService } from '@/executions/execution-search.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ExecutionsController } from '@/executions/executions.controller';
@@ -16,6 +18,7 @@ describe('ExecutionsController', () => {
 	const executionService = mock<ExecutionService>();
 	const executionListService = mock<ExecutionListService>();
 	const workflowSharingService = mock<WorkflowSharingService>();
+	const executionSearchService = mock<ExecutionSearchService>();
 
 	const executionsController = new ExecutionsController(
 		executionService,
@@ -23,6 +26,7 @@ describe('ExecutionsController', () => {
 		workflowSharingService,
 		mock(),
 		executionListService,
+		executionSearchService,
 	);
 
 	beforeEach(() => {
@@ -133,6 +137,59 @@ describe('ExecutionsController', () => {
 				expect(executionListService.addScopes).toHaveBeenCalledWith(user, []);
 			},
 		);
+	});
+
+	describe('search', () => {
+		const rangeQuery: ExecutionSummaries.RangeQuery = { kind: 'range', range: { limit: 20 } };
+		const user = mock<User>({ id: 'member' });
+		const sharingOptions = { scopes: ['execution:read' as const] };
+
+		it('searches as the user with the filters and cursor, and adds scopes to the results', async () => {
+			const cursor: ExecutionCursor = {
+				version: 1,
+				v1: { id: '10', timestamp: '2026-09-07T12:00:00.000Z' },
+			};
+			const req = mock<ExecutionRequest.GetMany>({ rangeQuery: { ...rangeQuery }, user, cursor });
+			const criteria = SearchExecutionsQueryDto.parse({ text: 'ENG-123', nodeName: 'Webhook' });
+			const result = {
+				...mock<ExecutionSummary>({ id: '7', workflowId: 'wf-1' }),
+				match: { nodeName: 'Webhook' },
+			};
+			executionListService.buildSharingOptions.mockResolvedValue(sharingOptions);
+			executionListService.addScopes.mockImplementation(async (_, summaries) => {
+				for (const summary of summaries) summary.scopes = ['workflow:read'];
+			});
+			executionSearchService.search.mockResolvedValue({
+				results: [result],
+				nextCursor: null,
+				searchedCount: 3,
+				searchedBackTo: '2026-09-07T11:00:00.000Z',
+			});
+
+			const page = await executionsController.search(req, mock(), criteria);
+
+			expect(executionListService.buildSharingOptions).toHaveBeenCalledWith('execution:read');
+			expect(executionSearchService.search).toHaveBeenCalledWith(
+				expect.objectContaining({ user, sharingOptions }),
+				criteria,
+				cursor,
+			);
+			expect(page).toMatchObject({
+				results: [{ id: '7', match: { nodeName: 'Webhook' }, scopes: ['workflow:read'] }],
+				nextCursor: null,
+				searchedCount: 3,
+				searchedBackTo: '2026-09-07T11:00:00.000Z',
+			});
+		});
+
+		it('should 400 when there is no text and no node', async () => {
+			const req = mock<ExecutionRequest.GetMany>({ rangeQuery: { ...rangeQuery }, user });
+
+			await expect(
+				executionsController.search(req, mock(), SearchExecutionsQueryDto.parse({})),
+			).rejects.toThrow(BadRequestError);
+			expect(executionSearchService.search).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('stop', () => {

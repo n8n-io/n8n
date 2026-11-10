@@ -48,6 +48,13 @@ export function isExecutionDataPayload(x: BundleWorkflowSnapshot): x is Executio
 	return 'data' in x && typeof x.data === 'string';
 }
 
+/**
+ * Text to find in stored run data, in the form that the stored JSON has it. A fragment
+ * with `ignoreAsciiCase` is in lower case and matches without regard to the case of the
+ * letters A to Z.
+ */
+export type DataFragment = { text: string; ignoreAsciiCase: boolean };
+
 /** The workflow-snapshot part of a payload, without the run data. */
 export type BundleWorkflowSnapshot = {
 	workflowData: WorkflowSnapshot;

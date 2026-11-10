@@ -4,11 +4,13 @@ import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '../../composables/useExecutionHelpers';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import ExecutionSearchMatch from '../ExecutionSearchMatch.vue';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
+import type { ExecutionSearchMatch as ExecutionSearchMatchData } from '@n8n/api-types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
@@ -25,6 +27,8 @@ const props = defineProps<{
 	highlight?: boolean;
 	showGap?: boolean;
 	workflowPermissions: PermissionsRecord['workflow'];
+	/** Why a search found this execution. The card then opens the node that matched. */
+	match?: ExecutionSearchMatchData;
 }>();
 
 const emit = defineEmits<{
@@ -88,7 +92,11 @@ function onRetryMenuItemSelect(action: string): void {
 			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { workflowId: workflowId, executionId: execution.id },
+				params: {
+					workflowId: workflowId,
+					executionId: execution.id,
+					...(match?.nodeId ? { nodeId: match.nodeId } : {}),
+				},
 				query: route.query,
 			}"
 			:data-test-execution-status="executionUIDetails.name"
@@ -151,6 +159,7 @@ function onRetryMenuItemSelect(action: string): void {
 						{{ locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</N8nText>
 				</div>
+				<ExecutionSearchMatch v-if="match" :match="match" stacked />
 				<div v-if="isAnnotationEnabled" :class="$style.annotation">
 					<div v-if="execution.annotation?.vote" :class="$style.ratingIcon">
 						<N8nIcon v-if="execution.annotation.vote == 'up'" :class="$style.up" icon="thumbs-up" />

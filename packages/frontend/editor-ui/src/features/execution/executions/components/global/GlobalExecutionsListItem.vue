@@ -1,10 +1,12 @@
 <script lang="ts" setup>
+import ExecutionSearchMatch from '../ExecutionSearchMatch.vue';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import GlobalExecutionsListItemQueuedTooltip from './GlobalExecutionsListItemQueuedTooltip.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
+import type { ExecutionSearchMatch as ExecutionSearchMatchData } from '@n8n/api-types';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { checkExhaustive } from '@/app/utils/typeGuards';
 import type { DropdownMenuItemProps, IconColor } from '@n8n/design-system';
@@ -42,11 +44,14 @@ const props = withDefaults(
 		executionPermissions?: PermissionsRecord['execution'];
 		concurrencyCap: number;
 		isCloudDeployment?: boolean;
+		/** Why a search found this execution. The link then opens the node that matched. */
+		match?: ExecutionSearchMatchData;
 	}>(),
 	{
 		selected: false,
 		workflowName: '',
 		executionPermissions: () => ({}),
+		match: undefined,
 	},
 );
 
@@ -234,7 +239,11 @@ async function handleActionItemClick(commandData: Command) {
 				<RouterLink
 					:to="{
 						name: VIEWS.EXECUTION_PREVIEW,
-						params: { workflowId: execution.workflowId, executionId: execution.id },
+						params: {
+							workflowId: execution.workflowId,
+							executionId: execution.id,
+							...(match?.nodeId ? { nodeId: match.nodeId } : {}),
+						},
 					}"
 					:class="$style.workflowName"
 					target="_blank"
@@ -242,6 +251,7 @@ async function handleActionItemClick(commandData: Command) {
 					{{ execution.workflowName || workflowName }}
 				</RouterLink>
 			</N8nTooltip>
+			<ExecutionSearchMatch v-if="match" :match="match" :class="$style.match" />
 		</td>
 		<td data-test-id="execution-status">
 			<GlobalExecutionsListItemQueuedTooltip
@@ -384,6 +394,11 @@ tr.dangerBg {
 	color: var(--color--text--shade-1);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
+	max-width: 450px;
+}
+
+.match {
+	// The same width limit as the workflow name above it.
 	max-width: 450px;
 }
 </style>

@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nLink, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	modalName: string;
-	data: { title: string; footerButtonAction: () => void };
+	data: { title: string; content?: string; footerButtonAction: () => void };
 }>();
 
 const i18n = useI18n();
@@ -15,7 +15,7 @@ const i18n = useI18n();
 	<Modal width="500px" :title="props.data.title" :name="props.modalName">
 		<template #content>
 			<N8nText>
-				{{ i18n.baseText('executionsList.debug.paywall.content') }}
+				{{ props.data.content ?? i18n.baseText('executionsList.debug.paywall.content') }}
 				<br />
 				<br />
 				{{ i18n.baseText('executionsList.debug.paywall.subContent') }}

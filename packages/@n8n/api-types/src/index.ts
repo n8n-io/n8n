@@ -1016,6 +1016,10 @@ export type {
 	ExecutionListPaginationQuery,
 	SerializedCursor,
 } from './dto/executions/execution-list-pagination';
+export type {
+	ExecutionSearchMatch,
+	ExecutionSearchPage,
+} from './dto/executions/execution-search';
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
 
 export type * from './workflow-suggestions';

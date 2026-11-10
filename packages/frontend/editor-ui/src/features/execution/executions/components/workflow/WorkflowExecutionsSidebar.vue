@@ -6,11 +6,13 @@ import { useRoute, useRouter } from 'vue-router';
 import WorkflowExecutionsCard from './WorkflowExecutionsCard.vue';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import ExecutionsFilter from '../ExecutionsFilter.vue';
+import ExecutionsSearch from '../ExecutionsSearch.vue';
+import ExecutionsSearchStatus from '../ExecutionsSearchStatus.vue';
 import { VIEWS } from '@/app/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useExecutionsStore } from '../../executions.store';
 import type { IWorkflowDb } from '@/Interface';
-import type { ExecutionFilterType } from '../../executions.types';
+import type { ExecutionFilterType, ExecutionSearchCriteria } from '../../executions.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
@@ -36,6 +38,7 @@ const emit = defineEmits<{
 	retryExecution: [payload: { execution: ExecutionSummary; command: string }];
 	loadMore: [amount: number];
 	filterUpdated: [filter: ExecutionFilterType];
+	searchUpdated: [search: ExecutionSearchCriteria];
 	'update:autoRefresh': [boolean];
 	'execution:stopMany': [];
 }>();
@@ -77,6 +80,10 @@ watch(
 );
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
+
+const searchNodeNames = computed(() =>
+	(props.workflow?.nodes ?? []).map((node) => node.name).sort((a, b) => a.localeCompare(b)),
+);
 
 // In 'queue' mode concurrency control is applied per worker and returning a global count
 // of concurrent executions would not be meaningful/helpful.
@@ -140,6 +147,13 @@ function onFilterChanged(filter: ExecutionFilterType) {
 	emit('filterUpdated', filter);
 }
 
+function onSearchChanged(search: ExecutionSearchCriteria) {
+	autoScrollDeps.value.activeExecutionSet = false;
+	autoScrollDeps.value.cardsMounted = false;
+	autoScrollDeps.value.scroll = true;
+	emit('searchUpdated', search);
+}
+
 function onAutoRefreshChange(enabled: boolean) {
 	emit('update:autoRefresh', enabled);
 }
@@ -192,6 +206,12 @@ const goToUpgrade = () => {
 				v-model="executionsStore.autoRefresh"
 				data-test-id="auto-refresh-checkbox"
 				:label="i18n.baseText('executionsList.autoRefresh')"
+				:disabled="executionsStore.isSearchActive"
+				:title="
+					executionsStore.isSearchActive
+						? i18n.baseText('executionsSearch.autoRefreshPaused')
+						: undefined
+				"
 				@update:model-value="onAutoRefreshChange"
 			/>
 			<ExecutionsFilter
@@ -202,6 +222,13 @@ const goToUpgrade = () => {
 				@filter-changed="onFilterChanged"
 			/>
 		</div>
+		<ExecutionsSearch
+			:class="$style.search"
+			:search="executionsStore.search"
+			:node-names="searchNodeNames"
+			layout="column"
+			@update:search="onSearchChanged"
+		/>
 		<div
 			ref="executionListRef"
 			:class="$style.executionList"
@@ -211,7 +238,7 @@ const goToUpgrade = () => {
 				<N8nLoading variant="rect" />
 			</div>
 			<div
-				v-if="!loading && executions.length === 0"
+				v-if="!loading && executions.length === 0 && !executionsStore.isSearchActive"
 				:class="$style.noResultsContainer"
 				data-test-id="execution-list-empty"
 			>
@@ -235,13 +262,15 @@ const goToUpgrade = () => {
 					:ref="(el) => addCurrentWorkflowExecutionsCardRef(el, execution.id)"
 					:execution="execution"
 					:workflow-permissions="workflowPermissions"
+					:match="executionsStore.searchMatchesById[execution.id]"
 					:data-test-id="`execution-details-${execution.id}`"
 					@retry-execution="onRetryExecution"
 					@mounted="onItemMounted"
 				/>
 			</TransitionGroup>
+			<ExecutionsSearchStatus v-if="executionsStore.isSearchActive" :class="$style.searchStatus" />
 			<div
-				v-if="executions.length && hasMore"
+				v-else-if="executions.length && hasMore"
 				ref="loadMoreSentinel"
 				:class="$style.loadMoreSentinel"
 				aria-hidden="true"
@@ -282,6 +311,15 @@ const goToUpgrade = () => {
 	align-items: center;
 	justify-content: space-between;
 	padding-top: var(--spacing--sm);
+	padding-right: var(--spacing--md);
+}
+
+.search {
+	padding-top: var(--spacing--sm);
+	padding-right: var(--spacing--md);
+}
+
+.searchStatus {
 	padding-right: var(--spacing--md);
 }
 

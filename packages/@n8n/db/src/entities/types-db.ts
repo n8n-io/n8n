@@ -260,6 +260,17 @@ export namespace ExecutionSummaries {
 	};
 
 	export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
+
+	/** An execution that a data search must look into. */
+	export type SearchCandidate = {
+		id: string;
+		workflowId: string;
+		storedAt: ExecutionDataStorageLocation;
+		/** `0` when the size is unknown. */
+		jsonSizeBytes: number;
+		/** ISO time when the execution started, or when n8n created it if it did not start. */
+		startedAt: string;
+	};
 }
 
 export namespace ListQueryDb {

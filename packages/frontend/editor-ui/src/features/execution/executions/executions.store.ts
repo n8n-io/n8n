@@ -8,16 +8,22 @@ import type {
 	ExecutionStatus,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import type { ExecutionRedactionQueryDto, SerializedCursor } from '@n8n/api-types';
+import type {
+	ExecutionRedactionQueryDto,
+	ExecutionSearchMatch,
+	SerializedCursor,
+} from '@n8n/api-types';
 import { compareExecutionListItems } from '@n8n/api-types';
 import type {
 	ExecutionFilterType,
+	ExecutionSearchCriteria,
 	ExecutionsQueryFilter,
 	ExecutionSummaryWithScopes,
 	IExecutionDeleteFilter,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
+	IExecutionsSearchResponse,
 	IExecutionsStopData,
 } from './executions.types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -26,9 +32,16 @@ import {
 	unflattenExecutionData,
 	executionFilterToQueryFilter,
 	getDefaultExecutionFilters,
+	getDefaultExecutionSearch,
 } from './executions.utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+
+/**
+ * The number of search steps that one load makes when it finds less than a page of
+ * matches. Each step uses a few seconds of database time, so the user decides to go on.
+ */
+const MAX_SEARCH_STEPS_PER_LOAD = 5;
 
 export const useExecutionsStore = defineStore('executions', () => {
 	const rootStore = useRootStore();
@@ -42,7 +55,16 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const activeExecution = ref<ExecutionSummary | null>(null);
 
 	const filters = ref<ExecutionFilterType>(getDefaultExecutionFilters());
-	const savedFilters: Record<string, ExecutionFilterType> = {};
+	const search = ref<ExecutionSearchCriteria>(getDefaultExecutionSearch());
+	const savedFilters: Record<
+		string,
+		{ filters: ExecutionFilterType; search: ExecutionSearchCriteria }
+	> = {};
+	/** In search mode the list holds the executions that match, and not the latest ones. */
+	const isSearchActive = computed(() => search.value.text !== '' || search.value.nodeName !== '');
+	const searchMatchesById = ref<Record<string, ExecutionSearchMatch>>({});
+	const searchedCount = ref(0);
+	const searchedBackTo = ref<string | null>(null);
 	const executionsFilters = computed<ExecutionsQueryFilter>(() => {
 		const filter = executionFilterToQueryFilter(filters.value);
 
@@ -66,6 +88,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const nextCursor = ref<SerializedCursor | null>(null);
 	let loadedPages = 0;
 	let activeFilterKey: string | undefined;
+	let activeSearchLoad: symbol | undefined;
 	const concurrentExecutionsCount = ref(0);
 	const executions = computed(() => {
 		const data = Object.values(executionsById.value);
@@ -151,12 +174,19 @@ export const useExecutionsStore = defineStore('executions', () => {
 		filters.value = value;
 	}
 
+	function setSearch(value: ExecutionSearchCriteria) {
+		search.value = { ...value };
+	}
+
+	/** Save the filters and the search together. A search is always within the filters. */
 	function saveFilters(key: string) {
-		savedFilters[key] = cloneDeep(filters.value);
+		savedFilters[key] = { filters: cloneDeep(filters.value), search: { ...search.value } };
 	}
 
 	function restoreFilters(key: string) {
-		filters.value = cloneDeep(savedFilters[key] ?? getDefaultExecutionFilters());
+		const saved = savedFilters[key];
+		filters.value = cloneDeep(saved?.filters ?? getDefaultExecutionFilters());
+		search.value = { ...(saved?.search ?? getDefaultExecutionSearch()) };
 	}
 
 	async function initialize(workflowId?: string) {
@@ -183,17 +213,110 @@ export const useExecutionsStore = defineStore('executions', () => {
 	 */
 	type PageToLoad = 'first' | 'more' | 'refresh';
 
+	/** One time-limited step of a search, straight from the server. Leaves the loaded list alone. */
+	async function fetchSearchStep(
+		filter: ExecutionsQueryFilter,
+		criteria: ExecutionSearchCriteria,
+		cursor?: SerializedCursor,
+	) {
+		return await makeRestApiRequest<IExecutionsSearchResponse>(
+			rootStore.restApiContext,
+			'GET',
+			'/executions/search',
+			{
+				filter,
+				cursor,
+				limit: itemsPerPage.value,
+				...(criteria.text ? { text: criteria.text } : {}),
+				...(criteria.nodeName ? { nodeName: criteria.nodeName } : {}),
+			},
+		);
+	}
+
+	function resetLoadedData() {
+		executionsById.value = {};
+		currentExecutionsById.value = {};
+		searchMatchesById.value = {};
+		searchedCount.value = 0;
+		searchedBackTo.value = null;
+		nextCursor.value = null;
+		loadedPages = 0;
+	}
+
+	/**
+	 * Search further back until there is a page of new matches, the history ends, or
+	 * the step limit is reached. A search has no `refresh`: its rows are not the latest
+	 * executions, and to search again from the top would discard the position.
+	 */
+	async function loadSearchPage(filter: ExecutionsQueryFilter, page: PageToLoad) {
+		const criteria = { ...search.value };
+		const searchKey = JSON.stringify([filter, criteria]);
+
+		// Two loads of one search would read the same position twice.
+		if (activeSearchLoad && activeFilterKey === searchKey) return;
+
+		if (activeFilterKey !== searchKey) page = 'first';
+		if (page === 'refresh') return;
+		if (page === 'more' && !nextCursor.value) {
+			if (!hasMoreExecutions.value) return; // the search reached the end
+			page = 'first'; // the first step failed, so there is no position to continue from
+		}
+		if (page === 'first') {
+			resetLoadedData();
+			executionsCount.value = 0;
+			hasMoreExecutions.value = true;
+			activeFilterKey = searchKey;
+		}
+
+		const load = Symbol('searchLoad');
+		activeSearchLoad = load;
+		loading.value = true;
+		try {
+			let cursor = page === 'more' ? nextCursor.value : null;
+			let found = 0;
+
+			for (let step = 0; step < MAX_SEARCH_STEPS_PER_LOAD; step++) {
+				const data = await fetchSearchStep(filter, criteria, cursor ?? undefined);
+
+				// The search changed while the request was in flight, so its rows are stale.
+				if (activeSearchLoad !== load || activeFilterKey !== searchKey) return;
+
+				for (const { match, ...execution } of data.results) {
+					addExecution(execution);
+					searchMatchesById.value[execution.id] = match;
+				}
+				found += data.results.length;
+				cursor = data.nextCursor;
+
+				searchedCount.value += data.searchedCount;
+				searchedBackTo.value = data.searchedBackTo ?? searchedBackTo.value;
+				nextCursor.value = cursor;
+				hasMoreExecutions.value = cursor !== null;
+				// The total is unknown until the search ends, so count what is found.
+				executionsCount.value = Object.keys(executionsById.value).length;
+
+				if (!cursor || found >= itemsPerPage.value) break;
+			}
+		} finally {
+			if (activeSearchLoad === load) activeSearchLoad = undefined;
+			loading.value = false;
+			initialLoadComplete.value = true;
+		}
+	}
+
 	async function loadExecutionsPage(filter: ExecutionsQueryFilter, page: PageToLoad) {
+		if (isSearchActive.value) {
+			await loadSearchPage(filter, page);
+			return undefined;
+		}
+
 		// `executionFilterToQueryFilter` writes the keys in a fixed order, so equal
 		// filters stringify the same way. A stable stringify is not necessary.
 		const filterKey = JSON.stringify(filter);
 
 		// A different filter invalidates every loaded page, and every cursor into them.
 		if (activeFilterKey !== filterKey) {
-			executionsById.value = {};
-			currentExecutionsById.value = {};
-			nextCursor.value = null;
-			loadedPages = 0;
+			resetLoadedData();
 			activeFilterKey = filterKey;
 			page = 'first';
 		}
@@ -393,19 +516,18 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	function resetData() {
-		executionsById.value = {};
-		currentExecutionsById.value = {};
+		resetLoadedData();
 		executionsCount.value = 0;
 		concurrentExecutionsCount.value = 0;
 		hasMoreExecutions.value = true;
-		nextCursor.value = null;
-		loadedPages = 0;
 		activeFilterKey = undefined;
+		activeSearchLoad = undefined;
 	}
 
 	function reset() {
 		itemsPerPage.value = 10;
 		filters.value = getDefaultExecutionFilters();
+		search.value = getDefaultExecutionSearch();
 		autoRefresh.value = true;
 		initialLoadComplete.value = false;
 		resetData();
@@ -438,6 +560,12 @@ export const useExecutionsStore = defineStore('executions', () => {
 		initialize,
 		filters,
 		setFilters,
+		search,
+		setSearch,
+		isSearchActive,
+		searchMatchesById,
+		searchedCount,
+		searchedBackTo,
 		saveFilters,
 		restoreFilters,
 		executionsFilters,

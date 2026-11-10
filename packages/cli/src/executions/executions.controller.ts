@@ -1,6 +1,10 @@
-import { DeleteExecutionsDto, ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
+import {
+	DeleteExecutionsDto,
+	ExecutionRedactionQueryDtoSchema,
+	SearchExecutionsQueryDto,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest, User, ExecutionSummaries } from '@n8n/db';
-import { Body, Get, Patch, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Licensed, Patch, Post, Query, RestController } from '@n8n/decorators';
 import type { Scope } from '@n8n/permissions';
 import type { Response } from 'express';
 
@@ -11,6 +15,7 @@ import { WorkflowSharingService } from '@n8n/backend-services';
 
 import { isExecutionIdV2 } from './execution-id';
 import { ExecutionListService } from './execution-list.service';
+import { ExecutionSearchService } from './execution-search.service';
 import { ExecutionService } from './execution.service';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { ExecutionRequest } from './execution.types';
@@ -25,6 +30,7 @@ export class ExecutionsController {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly license: License,
 		private readonly executionListService: ExecutionListService,
+		private readonly executionSearchService: ExecutionSearchService,
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User, scopes: Scope[]) {
@@ -56,6 +62,35 @@ export class ExecutionsController {
 			...executions,
 			concurrentExecutionsCount,
 		};
+	}
+
+	/**
+	 * One time-limited step of a search through the stored execution data. The editor
+	 * calls this again with `nextCursor` to search further back.
+	 */
+	@Licensed('feat:advancedExecutionFilters')
+	@Get('/search', { middlewares: [parseRangeQuery] })
+	async search(
+		req: ExecutionRequest.GetMany,
+		_res: Response,
+		@Query criteria: SearchExecutionsQueryDto,
+	) {
+		if (criteria.text === undefined && criteria.nodeName === undefined) {
+			throw new BadRequestError('Enter text or select a node to search for');
+		}
+
+		const { rangeQuery: query, cursor } = req;
+
+		query.user = req.user;
+		query.sharingOptions = await this.executionListService.buildSharingOptions('execution:read');
+
+		const page = await this.executionSearchService.search(query, criteria, cursor);
+		const results: Array<(typeof page.results)[number] & { scopes: Scope[] }> = page.results.map(
+			(result) => ({ ...result, scopes: [] }),
+		);
+		await this.executionListService.addScopes(req.user, results);
+
+		return { ...page, results };
 	}
 
 	@Get('/versions/:workflowId')
