@@ -31,10 +31,10 @@ beforeAll(async () => {
 	await testDb.init();
 
 	// Runtime tool validation needs node types. This suite does not run CLI startup.
+	const nodeType = mock<INodeType>();
+	nodeType.description = mock<INodeTypeDescription>({ properties: [] });
 	const nodeTypes = mock<INodeTypes>();
-	nodeTypes.getByNameAndVersion.mockReturnValue(
-		mock<INodeType>({ description: mock<INodeTypeDescription>({ properties: [] }) }),
-	);
+	nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 	Container.get(NodeTypesProxy).registerProvider(nodeTypes);
 });
 
