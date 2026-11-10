@@ -21,7 +21,7 @@ The rig builds on the stacks from the `n8n-containers` package. It adds a small 
 
 `RigStack.start` starts a stack with the hooks it declares. The stack has a REST client (`rig.api`), a Postgres probe (`rig.db`) and a Redis probe (`rig.redis`). The `scale` option divides the Bull lock, lock renewal and stall timeouts and the graceful shutdown window, so a test that waits for a stalled job takes seconds rather than minutes. It must be 1 or more, and `env` can override any single value. The `workflows` helpers build simple workflows: `chain(name, nodes)` connects the nodes in order, with `nodes.webhook` and `nodes.code`.
 
-Single-main stacks always start with an empty licence, so a licence in your shell cannot change their results.
+Single-main stacks start with an empty licence, so a licence in your shell cannot change their results. A licence that the test sets in `env` still applies.
 
 ### Hook specs
 
