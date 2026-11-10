@@ -635,7 +635,7 @@ describe('OidcController', () => {
 
 	describe('logout', () => {
 		const makeLogoutReq = (cookies: Record<string, string>) =>
-			mock<AuthenticatedRequest>({ cookies, user });
+			mock<AuthenticatedRequest>({ cookies, user: person });
 
 		beforeEach(() => {
 			vi.mocked(isOidcCurrentAuthenticationMethod).mockReturnValue(true);
@@ -672,7 +672,7 @@ describe('OidcController', () => {
 				redirectUrl: 'https://idp.example.com/logout?id_token_hint=raw-id-token',
 			});
 			expect(eventService.emit).toHaveBeenCalledTimes(1);
-			expect(eventService.emit).toHaveBeenCalledWith('user-logged-out', { user });
+			expect(eventService.emit).toHaveBeenCalledWith('user-logged-out', { user: person });
 		});
 
 		test('Should return a null redirect URL when the session was not established through OIDC', async () => {
@@ -687,7 +687,7 @@ describe('OidcController', () => {
 			expect(authService.invalidateToken).toHaveBeenCalledWith(req);
 			expect(authService.clearCookie).toHaveBeenCalledWith(res);
 			expect(eventService.emit).toHaveBeenCalledTimes(1);
-			expect(eventService.emit).toHaveBeenCalledWith('user-logged-out', { user });
+			expect(eventService.emit).toHaveBeenCalledWith('user-logged-out', { user: person });
 		});
 
 		test('Should return a null redirect URL when OIDC is no longer the authentication method', async () => {
@@ -736,7 +736,7 @@ describe('OidcController', () => {
 			expect(authService.clearCookie).toHaveBeenCalledWith(res);
 			expect(logger.warn).toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledTimes(1);
-			expect(eventService.emit).toHaveBeenCalledWith('user-logged-out', { user });
+			expect(eventService.emit).toHaveBeenCalledWith('user-logged-out', { user: person });
 		});
 	});
 });
