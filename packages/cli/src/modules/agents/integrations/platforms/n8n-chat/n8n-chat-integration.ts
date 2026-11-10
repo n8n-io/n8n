@@ -75,7 +75,7 @@ export class N8nChatIntegration extends AgentChatIntegration {
 
 	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond']);
 
-	// The chat shows stored files and loads no bytes. `AgentOutboundFiles.check` still applies the channel cap.
+	// The chat shows stored files and loads no bytes, so it needs no size cap beyond the storage limit.
 	readonly fileUploadLimits = { maxFiles: 10, maxFileBytes: Number.MAX_SAFE_INTEGER };
 
 	readonly actionToolGuidance = [

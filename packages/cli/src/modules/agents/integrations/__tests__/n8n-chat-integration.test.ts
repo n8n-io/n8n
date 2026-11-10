@@ -14,6 +14,7 @@ import type {
 import { N8nChatIntegration } from '../platforms/n8n-chat/n8n-chat-integration';
 import { AgentOutboundFiles } from '../agent-outbound-files.service';
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 import type { AgentChatAttachment } from '../../entities/agent-chat-attachment.entity';
 
 const makeContext = (): IntegrationMessageContext => ({
@@ -296,7 +297,9 @@ describe('internal integration dispatch', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
-			new AgentOutboundFiles(attachmentService, registry),
+			new AgentOutboundFiles(attachmentService, registry, {
+				resolveFileRefs: async (refs: string[]) => refs,
+			} as unknown as AgentSandboxFilesService),
 		);
 		const fileScope = { projectId: 'project-1', threadId: 'thread-1' };
 		const respondWithFile = {
