@@ -144,6 +144,10 @@ describe('applyEngineEnv', () => {
 			expect(containerEnv().N8N_STORAGE_PATH).toBe(ENGINE_SHARED_STORAGE_PATH);
 		});
 
+		test('pins the filesystem mode, since queue mode defaults to the database', () => {
+			expect(containerEnv().N8N_DEFAULT_BINARY_DATA_MODE).toBe('filesystem');
+		});
+
 		test('drops a caller storage path, since the planes must share one and the two variables must not differ', () => {
 			const env: Record<string, string> = {
 				...postgresEnv,

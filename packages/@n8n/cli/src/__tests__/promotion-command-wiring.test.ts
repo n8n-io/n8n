@@ -145,7 +145,7 @@ const CASES: WiringCase[] = [
 		commandClass: PromotionEnvironmentListChanges,
 		args: { projectId: 'proj-1', direction: 'promote' },
 		method: 'listProjectPromotionChanges',
-		callArgs: ['proj-1', 'promote', {}],
+		callArgs: ['proj-1', 'promote'],
 	},
 	{
 		title: 'promotion-environment add-project',

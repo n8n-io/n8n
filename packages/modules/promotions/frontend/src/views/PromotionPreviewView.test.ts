@@ -333,6 +333,7 @@ describe('PromotionPreviewView', () => {
 		await promote(getByTestId);
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
+			folderIds: [],
 		});
 	});
 
@@ -516,7 +517,6 @@ describe('PromotionPreviewView', () => {
 		const blocked = () =>
 			billingPreview({
 				resources: [],
-				changes: [],
 				blocker: { code: 'reviewOpen', reviewId: 'review-1' },
 			});
 
@@ -592,6 +592,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
+			folderIds: [],
 		});
 		expect(showMessage).toHaveBeenCalledWith({
 			title: 'Changes promoted',
@@ -627,6 +628,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
+			folderIds: [],
 		});
 	});
 
@@ -640,6 +642,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
+			folderIds: [],
 			commitMessage: 'Route leads by region',
 		});
 	});
@@ -745,10 +748,40 @@ describe('PromotionPreviewView', () => {
 		expect(api.applyProjectSelection).toHaveBeenCalledTimes(1);
 		expect(api.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w4'],
+			folderIds: [],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 		});
 		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
+	});
+
+	it('should report only the folder and project changes after an Apply that changes no workflow', async () => {
+		confirm.mockResolvedValue('confirm');
+		const { counts } = applied;
+		vi.mocked(api.applyProjectSelection).mockResolvedValue({
+			...applied,
+			counts: {
+				...counts,
+				projects: { ...counts.projects, updated: 1 },
+				folders: { ...counts.folders, created: 1 },
+				workflows: {
+					...counts.workflows,
+					created: 0,
+					updated: 0,
+					publishing: { ...counts.workflows.publishing, blocked: 0, failed: 0 },
+				},
+			},
+		});
+
+		const { getByTestId } = await renderApply();
+		await userEvent.click(getByTestId('promotion-preview-submit'));
+		await waitAllPromises();
+
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Changes applied',
+			message: 'Created: 1 folder. Updated the project name and details.',
+			type: 'success',
+		});
 	});
 
 	it('should confirm a data table change only when the selection imports it, and keep the selection when the branch moves', async () => {
@@ -777,6 +810,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w3', 'w4'],
+			folderIds: [],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 		});
@@ -791,6 +825,7 @@ describe('PromotionPreviewView', () => {
 
 		expect(api.continueApplyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
+			folderIds: [],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 			confirmDestructiveChanges: true,

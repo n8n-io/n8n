@@ -24,7 +24,7 @@ export class KnowledgeFile extends WithTimestampsAndStringId {
 
 	/**
 	 * Where the file bytes live: 'db' (the `binary_data` table) or a blob-storage
-	 * backend ('fs', 's3', 'az'). Bytes are resolved via AgentKnowledgeFileStore.
+	 * backend ('fs', 's3', 'az'). Bytes are resolved via KnowledgeFileStore.
 	 */
 	@Column({ type: 'varchar', length: 2, nullable: false, default: 'db' })
 	storedAt: ExecutionDataStorageLocation;

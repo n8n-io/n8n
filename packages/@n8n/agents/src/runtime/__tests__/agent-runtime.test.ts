@@ -12043,6 +12043,71 @@ describe('AgentRuntime — MCP tool provenance', () => {
 	});
 });
 
+describe('AgentRuntime — tool calls reported with a stop finish reason', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	const toolCall = { toolCallId: 'tc-1', toolName: 'lookup', args: { value: 'a' } };
+
+	it('runs the tool and calls the model again when generating', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ found: true }));
+		const { runtime } = createRuntimeWithTools([makeMockTool('lookup', handler)], 1);
+		generateText
+			.mockResolvedValueOnce({ ...makeGenerateWithToolCalls([toolCall]), finishReason: 'stop' })
+			.mockResolvedValueOnce(makeGenerateSuccess('Found it'));
+
+		const result = await runtime.generate('look it up');
+
+		expect(handler).toHaveBeenCalledWith({ value: 'a' });
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+		expect(result.toolCalls).toEqual([expect.objectContaining({ tool: 'lookup' })]);
+	});
+
+	it('runs the tool and calls the model again when streaming', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ found: true }));
+		const { runtime } = createRuntimeWithTools([makeMockTool('lookup', handler)], 1);
+		streamText
+			.mockReturnValueOnce({
+				...makeStreamWithToolCalls([toolCall]),
+				finishReason: Promise.resolve('stop'),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Found it'));
+
+		const chunks = await collectChunks((await runtime.stream('look it up')).stream);
+
+		expect(handler).toHaveBeenCalledWith({ value: 'a' });
+		expect(streamText).toHaveBeenCalledTimes(2);
+		expect(chunks).toContainEqual(
+			expect.objectContaining({ type: 'tool-result', toolCallId: 'tc-1' }),
+		);
+		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
+	});
+
+	it('ends the run when every call ran on the provider', async () => {
+		generateText.mockResolvedValueOnce({
+			...makeGenerateWithToolCall('tc-provider', 'openai.web_search', { query: 'n8n' }),
+			finishReason: 'stop',
+			toolCalls: [
+				{
+					toolCallId: 'tc-provider',
+					toolName: 'openai.web_search',
+					input: { query: 'n8n' },
+					providerExecuted: true,
+				},
+			],
+		});
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('search');
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(result.finishReason).toBe('stop');
+	});
+});
+
 describe('AgentRuntime — tools that end the turn', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
