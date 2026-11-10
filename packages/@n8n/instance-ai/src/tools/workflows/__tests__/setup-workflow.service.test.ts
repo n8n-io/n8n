@@ -607,6 +607,23 @@ describe('buildSetupRequests', () => {
 		expect(result[0].node.credentials?.slackApi).toBeUndefined();
 	});
 
+	it('does not auto-apply Gateway credits when the gateway rejects the node itself', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+		const getAiGatewayNodeRejection = vi.fn().mockResolvedValue('message.delete not supported');
+		Object.assign(context.credentialService, {
+			isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+			getAiGatewayNodeRejection,
+		});
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		expect(getAiGatewayNodeRejection).toHaveBeenCalledWith(node, 'slackApi');
+		// The card asks for the user's own credential instead.
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials?.slackApi).toBeUndefined();
+	});
+
 	it('prefers a stored credential over n8n Connect when the user already has one', async () => {
 		(context.credentialService.list as Mock).mockResolvedValue([
 			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },

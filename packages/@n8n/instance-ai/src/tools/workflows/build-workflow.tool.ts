@@ -1696,19 +1696,17 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						resolvedCredentialsByNode: hasResolvedCredentials
 							? mockResult.resolvedCredentialsByNode
 							: undefined,
-						credentialResolutionNote:
-							hasResolvedCredentials || heldForNewCredentialTypes.length > 0
-								? buildCredentialResolutionNote(
-										mockResult.resolvedCredentialsByNode,
-										heldForNewCredentialTypes,
-										{
-											n8nCreditsDepleted: await isN8nCreditsWalletDepleted(
-												context,
-												mockResult.resolvedCredentialsByNode,
-											),
-										},
-									)
-								: undefined,
+						credentialResolutionNote: buildCredentialResolutionNote(
+							mockResult.resolvedCredentialsByNode,
+							heldForNewCredentialTypes,
+							{
+								n8nCreditsDepleted: await isN8nCreditsWalletDepleted(
+									context,
+									mockResult.resolvedCredentialsByNode,
+								),
+								gatewayRejectionsByNode: mockResult.gatewayRejectionsByNode,
+							},
+						),
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,

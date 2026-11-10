@@ -223,6 +223,7 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
+import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import { FolderService } from '@/services/folder.service';
@@ -2998,6 +2999,7 @@ export class InstanceAiAdapterService {
 			credentialsFinderService,
 			loadNodesAndCredentials,
 			aiGatewayService,
+			nodeTypes,
 		} = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 		const { assertCredentialInBoundProject } = this.createProjectScopeHelpers(user, boundProjectId);
@@ -3413,6 +3415,34 @@ export class InstanceAiAdapterService {
 				// type check is a best-effort validation, not a security gate.
 				const config = await getGatewayConfig();
 				return config?.credentialTypes.includes(credType) ?? false;
+			},
+
+			async getAiGatewayNodeRejection(node, credType) {
+				const config = await getGatewayConfig();
+				if (!config?.credentialTypes.includes(credType)) return undefined;
+				const parameters = (node.parameters ?? {}) as INodeParameters;
+				// The engine applies node defaults before it runs this check, so a node
+				// that relies on its default action is judged by that action.
+				let resolvedParameters: INodeParameters | undefined;
+				try {
+					const { description } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+					resolvedParameters = resolveDisplayedDefaults(
+						description.properties,
+						parameters,
+						node.type,
+						node.typeVersion,
+						description,
+					);
+				} catch {
+					// Unknown node type: the engine also keeps the raw parameters.
+				}
+				const result = checkAiGatewayEligibility(
+					{ type: node.type, typeVersion: node.typeVersion, parameters },
+					credType,
+					config,
+					resolvedParameters,
+				);
+				return result.eligible ? undefined : (result.details ?? result.reason);
 			},
 
 			async getAiGatewayWallet(): Promise<{ balance: number } | null> {
