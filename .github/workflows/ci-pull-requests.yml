@@ -314,6 +314,9 @@ jobs:
             pnpm-lock.yaml
             package.json
 
+      - name: Check dependency policy
+        run: pnpm check:dependencies
+
       - name: Run format check
         run: pnpm format:check
 

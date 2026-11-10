@@ -51,7 +51,7 @@
     "inquirer": "^7.0.1",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "replace-in-file": "^6.0.0",
+    "replace-in-file": "^8.3.0",
     "tmp-promise": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
