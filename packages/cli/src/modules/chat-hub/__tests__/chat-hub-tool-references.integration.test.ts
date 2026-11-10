@@ -1,9 +1,11 @@
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import { BinaryDataService } from 'n8n-core';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeType, INodeTypeDescription, INodeTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { saveCredential } from '@test-integration/db/credentials';
 import { createMember } from '@test-integration/db/users';
@@ -27,6 +29,13 @@ mockInstance(ChatHubCredentialsService);
 beforeAll(async () => {
 	await testModules.loadModules(['chat-hub']);
 	await testDb.init();
+
+	// Runtime tool validation needs node types. This suite does not run CLI startup.
+	const nodeTypes = mock<INodeTypes>();
+	nodeTypes.getByNameAndVersion.mockReturnValue(
+		mock<INodeType>({ description: mock<INodeTypeDescription>({ properties: [] }) }),
+	);
+	Container.get(NodeTypesProxy).registerProvider(nodeTypes);
 });
 
 beforeEach(async () => {
