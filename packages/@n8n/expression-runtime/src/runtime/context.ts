@@ -86,6 +86,40 @@ export interface BridgeCallbacks {
 }
 
 /**
+ * Convert a `$()` argument to the node name the host `$` resolves. An empty name means the previous node.
+ * Return `undefined` for a truthy argument that converts to an empty name, such as `[]`: it names no node.
+ */
+function toNodeName(nodeSelector: unknown): string | undefined {
+	const nodeName = nodeSelector ? String(nodeSelector) : '';
+	return nodeSelector && nodeName === '' ? undefined : nodeName;
+}
+
+/** Return the error the legacy `$` throws for a node name that matches no node. */
+function createNodeNotFoundError(callbacks: BridgeCallbacks, nodeCause: string): ExpressionError {
+	const readHostValue = (key: string) =>
+		decodeHostValue(readHostResult(callbacks.getValueAtPath([key])));
+	return Object.assign(new ExpressionError("Referenced node doesn't exist"), {
+		context: {
+			runIndex: readHostValue('$runIndex'),
+			itemIndex: readHostValue('$itemIndex'),
+			nodeCause,
+			descriptionKey: 'nodeNotFound',
+		},
+	});
+}
+
+/** Return a check that throws when a node does not exist. It asks the host once per node name. */
+function createNodeCheck(callHost: (message: unknown) => unknown): (nodeName: string) => void {
+	const checkedNodeNames = new Set<string>();
+	return (nodeName) => {
+		if (!checkedNodeNames.has(nodeName)) {
+			callHost({ type: 'checkNode', nodeName });
+			checkedNodeNames.add(nodeName);
+		}
+	};
+}
+
+/**
  * Build a fresh, closure-scoped evaluation context.
  *
  * This function creates a context object that contains everything needed to
@@ -173,6 +207,8 @@ export function buildContext(
 		return createDeepLazyProxy(['$item', String(itemIndex)], undefined, callbacks);
 	};
 
+	const checkNode = createNodeCheck(callHost);
+
 	// $() function for accessing other nodes.
 	//
 	// The returned object is a Proxy whose `get` trap intercepts properties
@@ -193,7 +229,12 @@ export function buildContext(
 	// The `has` trap mirrors the `get` trap for typed-RPC names so that
 	// tournament's `"first" in this.$('Foo')` check resolves true even though
 	// the inner target is empty.
-	target.$ = function (nodeName: string) {
+	target.$ = function (nodeSelector: unknown) {
+		const nodeName = toNodeName(nodeSelector);
+		if (nodeName === undefined) {
+			throw createNodeNotFoundError(callbacks, '');
+		}
+		checkNode(nodeName);
 		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
 		const sendNodeMethod = (type: NodeRpcType) => {
 			return (branchIndex?: number, runIndex?: number) => {
