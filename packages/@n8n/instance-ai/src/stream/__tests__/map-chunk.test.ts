@@ -647,6 +647,36 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps the field errors of a reopened app blueprint', () => {
+		const appBlueprint = {
+			name: 'Planner',
+			namespace: 'planner',
+			visibility: 'project',
+			description: 'Plan weekly tasks.',
+			theme: 'both',
+		};
+
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'apps',
+				input: { action: 'create', blueprint: appBlueprint },
+				suspendPayload: {
+					requestId: 'request-2',
+					severity: 'info',
+					message: 'Review the app blueprint',
+					inputType: 'app-blueprint',
+					appBlueprint,
+					appBlueprintErrors: { namespace: 'taken' },
+				},
+			}),
+		).toMatchObject({
+			type: 'confirmation-request',
+			payload: { appBlueprint, appBlueprintErrors: { namespace: 'taken' } },
+		});
+	});
+
 	it('maps confirmations with an mcpConnectRequest payload', () => {
 		expect(
 			map({

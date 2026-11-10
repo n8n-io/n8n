@@ -5,7 +5,6 @@ export type {
 	ResolveStepRequest,
 	ResolveStepResponse,
 	ResumeLocateRequest,
-	ResumeTargetRequest,
 	ResumeTargetResponse,
 } from './api.types';
 export type {
