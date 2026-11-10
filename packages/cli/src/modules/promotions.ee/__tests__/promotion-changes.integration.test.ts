@@ -839,7 +839,7 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 });
 
 describe('resources in the preview', () => {
-	it('lists a renamed nested folder with the workflows that carry the rename, unchanged themselves', async () => {
+	it('lists a renamed folder and a new empty folder, which users can promote on their own', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Reports', owner);
 		const reports = await createFolder(project, { name: 'Reports' });
@@ -851,22 +851,28 @@ describe('resources in the preview', () => {
 		const environments = await createInstanceEnvironments();
 		await exportPreviewBaseline(environments.promote, owner);
 		await Container.get(FolderRepository).update(weekly.id, { name: 'Monthly' });
+		const drafts = await createFolder(project, { name: 'Drafts', parentFolder: reports });
 
 		const { body } = await server
 			.authAgentFor(owner)
 			.get(`/promotions/${project.id}/changes/promote`)
 			.expect(200);
 
-		// Promote writes a folder rename only together with a selected workflow inside the folder.
 		expect(body.data.resources).toEqual([
 			expect.objectContaining({ key: `project:${project.id}`, change: 'unchanged' }),
+			expect.objectContaining({
+				key: `folder:${drafts.id}`,
+				parentKey: `folder:${reports.id}`,
+				change: 'added',
+				selectable: true,
+			}),
 			expect.objectContaining({
 				key: `folder:${weekly.id}`,
 				name: 'Monthly',
 				previousName: 'Weekly',
 				parentKey: `folder:${reports.id}`,
 				change: 'modified',
-				selectable: false,
+				selectable: true,
 			}),
 			expect.objectContaining({
 				key: `folder:${reports.id}`,

@@ -80,7 +80,7 @@ describe('usePromotionChangeCount', () => {
 	});
 
 	it.each([
-		{ direction: 'promote' as const, expected: 1 },
+		{ direction: 'promote' as const, expected: 2 },
 		{ direction: 'apply' as const, expected: 2 },
 	])('should count changes included by $direction', async ({ direction, expected }) => {
 		const { changeCount, loading } = usePromotionChangeCount(
@@ -90,7 +90,9 @@ describe('usePromotionChangeCount', () => {
 		);
 		expect(loading.value).toBe(true);
 		const result = preview(1);
-		result.resources.push(resource({ key: 'folder:empty', name: 'Empty folder', change: 'added' }));
+		result.resources.push(
+			resource({ key: 'folder:empty', name: 'Empty folder', change: 'added', selectable: true }),
+		);
 
 		pending[0].resolve(result);
 		await waitAllPromises();
