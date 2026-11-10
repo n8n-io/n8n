@@ -370,7 +370,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			return meta?.n8nFilesToMount ?? [];
 		});
 
-		// The n8n containers and the engine share one binary data store, so a
+		// The main and the engine container share one binary data store, so a
 		// file one plane stores is read by the other. Deleted with the stack.
 		let binaryDataHostDir: string | undefined;
 		if (engine === 'container') {

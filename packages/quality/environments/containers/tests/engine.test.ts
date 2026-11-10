@@ -144,6 +144,10 @@ describe('applyEngineEnv', () => {
 			expect(containerEnv().N8N_STORAGE_PATH).toBe(ENGINE_SHARED_STORAGE_PATH);
 		});
 
+		test('pins the filesystem mode, since queue mode defaults to the database', () => {
+			expect(containerEnv().N8N_DEFAULT_BINARY_DATA_MODE).toBe('filesystem');
+		});
+
 		test('drops a caller storage path, since the planes must share one and the two variables must not differ', () => {
 			const env: Record<string, string> = {
 				...postgresEnv,
@@ -186,24 +190,12 @@ describe('applyEngineEnv', () => {
 		);
 	});
 
-	test('rejects queue mode for the in-process engine', () => {
+	test('rejects queue mode', () => {
 		const env = { ...postgresEnv };
 
 		expect(() =>
-			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: true, projectName }),
+			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: true, ...engineOptions }),
 		).toThrow(/queue mode/);
-	});
-
-	test('accepts queue mode for a container engine', () => {
-		const env = { ...postgresEnv };
-
-		applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: true, ...engineOptions });
-
-		expect(env).toMatchObject({
-			N8N_ENABLED_MODULES: 'engine-v2',
-			N8N_ENGINE_MODE: 'remote',
-			N8N_DEFAULT_BINARY_DATA_MODE: 'filesystem',
-		});
 	});
 
 	test('rejects a stack without a main, since the engine would be started as one', () => {
@@ -211,14 +203,6 @@ describe('applyEngineEnv', () => {
 
 		expect(() =>
 			applyEngineEnv(env, { engine: 'container', mains: 0, isQueueMode: false, ...engineOptions }),
-		).toThrow(/exactly one main/);
-	});
-
-	test('rejects more than one main', () => {
-		const env = { ...postgresEnv };
-
-		expect(() =>
-			applyEngineEnv(env, { engine: 'container', mains: 2, isQueueMode: true, ...engineOptions }),
 		).toThrow(/exactly one main/);
 	});
 });

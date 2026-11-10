@@ -450,7 +450,6 @@ export async function createN8NInstances(
 		registerContainer,
 		startupDeadline,
 		image,
-		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 	};
@@ -464,7 +463,6 @@ export async function createN8NInstances(
 		registerContainer,
 		startupDeadline,
 		image,
-		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 	};
