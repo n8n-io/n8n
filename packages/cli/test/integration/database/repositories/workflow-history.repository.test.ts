@@ -8,6 +8,7 @@ import {
 	WorkflowHistoryRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequestRepository,
+	WorkflowRepository,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -42,8 +43,8 @@ describe('WorkflowHistoryRepository', () => {
 			'WorkflowReviewRequest',
 			'WorkflowPublishedVersion',
 			'WorkflowPublishHistory',
-			'WorkflowHistory',
 			'WorkflowEntity',
+			'WorkflowHistory',
 			'Project',
 			'User',
 		]);
@@ -444,7 +445,11 @@ describe('WorkflowHistoryRepository', () => {
 			await createWorkflowHistory(workflow, undefined, undefined, { createdAt: tenDaysAgo });
 
 			const repository = Container.get(WorkflowHistoryRepository);
-			await repository.deleteEarlierThanExceptCurrentAndActive(oneDayAgo);
+			await repository.deleteEarlierThanExceptCurrentAndActive(
+				oneDayAgo,
+				false,
+				new AbortController().signal,
+			);
 
 			const remainingIds = (await repository.find()).map((r) => r.versionId);
 			expect(remainingIds).toContain(vCurrent);
@@ -502,7 +507,11 @@ describe('WorkflowHistoryRepository', () => {
 			const repository = Container.get(WorkflowHistoryRepository);
 
 			// Must not throw SQLITE_CONSTRAINT: FOREIGN KEY constraint failed
-			await repository.deleteEarlierThanExceptCurrentAndActive(oneDayAgo);
+			await repository.deleteEarlierThanExceptCurrentAndActive(
+				oneDayAgo,
+				false,
+				new AbortController().signal,
+			);
 
 			const remainingIds = (await repository.find()).map((r) => r.versionId);
 			expect(remainingIds).toContain(vPublished); // preserved: referenced as published
@@ -583,7 +592,11 @@ describe('WorkflowHistoryRepository', () => {
 			const repository = Container.get(WorkflowHistoryRepository);
 
 			// preserveNamedVersions = false: the name on the pins must not save them here
-			await repository.deleteEarlierThanExceptCurrentAndActive(oneDayAgo, false);
+			await repository.deleteEarlierThanExceptCurrentAndActive(
+				oneDayAgo,
+				false,
+				new AbortController().signal,
+			);
 
 			const remainingIds = (await repository.find()).map((r) => r.versionId);
 			expect(remainingIds).toContain(vOpenPinned); // preserved: pinned by an open review
@@ -592,6 +605,189 @@ describe('WorkflowHistoryRepository', () => {
 			// The pin was nulled by the FK, not left dangling
 			const closedLinkRows = await linkRepository.findByRequestId(closedRequest.id, {});
 			expect(closedLinkRows[0]?.workflowVersionId).toBeNull();
+		});
+
+		describe('in batches', () => {
+			type PruneSelect = {
+				findPrunableVersionIds: (
+					date: Date,
+					preserveNamedVersions: boolean,
+					after: string | undefined,
+				) => Promise<string[]>;
+			};
+
+			const OLD = new Date(Date.now() - 10 * 86_400_000);
+			const PRUNE_BEFORE = new Date(Date.now() - 86_400_000);
+			let PRUNABLE_COUNT: number;
+
+			beforeAll(() => {
+				PRUNABLE_COUNT = 2 * Container.get(WorkflowHistoryRepository).pruneBatchSize;
+			});
+
+			afterEach(() => {
+				vi.restoreAllMocks();
+			});
+
+			const spyOnPruneSelect = (
+				wrap: (ids: string[], after: string | undefined) => string[],
+			): void => {
+				const repository = Container.get(WorkflowHistoryRepository);
+				const select = repository as unknown as PruneSelect;
+				const original = select.findPrunableVersionIds.bind(repository);
+				vi.spyOn(select, 'findPrunableVersionIds').mockImplementation(
+					async (date, preserveNamedVersions, after) =>
+						wrap(await original(date, preserveNamedVersions, after), after),
+				);
+			};
+
+			const insertOldVersions = async (workflowId: string, count: number): Promise<string[]> => {
+				const repository = Container.get(WorkflowHistoryRepository);
+				const versionIds = Array.from({ length: count }, () => uuid());
+				await repository.insert(
+					versionIds.map((versionId) =>
+						repository.create({
+							workflowId,
+							versionId,
+							nodes: [testNode1],
+							connections: {},
+							authors: 'Test User',
+							autosaved: false,
+							createdAt: OLD,
+						}),
+					),
+				);
+				return versionIds;
+			};
+
+			const remainingIds = async (): Promise<string[]> => {
+				const rows = await Container.get(WorkflowHistoryRepository).find({
+					select: { versionId: true },
+				});
+				return rows.map((row) => row.versionId).sort();
+			};
+
+			const pinInOpenReview = async (workflowId: string, versionId: string): Promise<void> => {
+				const project = await createTeamProject('Reviews Project');
+				const request = await Container.get(WorkflowReviewRequestRepository).createRequest(
+					{ projectId: project.id, title: 'Open review', createdById: null },
+					{},
+				);
+				await Container.get(WorkflowReviewRequestWorkflowRepository).createWorkflowRow(
+					{ workflowReviewRequestId: request.id, workflowId, workflowVersionId: versionId },
+					{},
+				);
+			};
+
+			it('should delete every prunable version across several batches and keep the protected ones', async () => {
+				const repository = Container.get(WorkflowHistoryRepository);
+				const vCurrent = uuid();
+				const vRecent = uuid();
+				const workflow = await createWorkflow({ versionId: vCurrent, nodes: [testNode1] });
+				await createWorkflowHistory(workflow, undefined, undefined, { createdAt: OLD });
+				await createWorkflowHistory({ ...workflow, versionId: vRecent });
+				const [vActive, vPublished, vPinned, vNamed] = await insertOldVersions(workflow.id, 4);
+				await Container.get(WorkflowRepository).update(workflow.id, { activeVersionId: vActive });
+				await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+					workflow.id,
+					vPublished,
+				);
+				await pinInOpenReview(workflow.id, vPinned);
+				await repository.update({ versionId: vNamed }, { name: 'Named version' });
+				await insertOldVersions(workflow.id, PRUNABLE_COUNT);
+				const KEPT_IDS = [vCurrent, vRecent, vActive, vPublished, vPinned, vNamed].sort();
+
+				await repository.deleteEarlierThanExceptCurrentAndActive(
+					PRUNE_BEFORE,
+					true,
+					new AbortController().signal,
+				);
+
+				expect(await remainingIds()).toEqual(KEPT_IDS);
+			});
+
+			it('should delete nothing when no version is prunable', async () => {
+				const workflow = await createWorkflow({ versionId: uuid(), nodes: [testNode1] });
+				await createWorkflowHistory(workflow, undefined, undefined, { createdAt: OLD });
+				await createWorkflowHistory({ ...workflow, versionId: uuid() });
+				const SEEDED_IDS = await remainingIds();
+
+				await Container.get(WorkflowHistoryRepository).deleteEarlierThanExceptCurrentAndActive(
+					PRUNE_BEFORE,
+					false,
+					new AbortController().signal,
+				);
+
+				expect(await remainingIds()).toEqual(SEEDED_IDS);
+			});
+
+			it('should delete nothing when the signal is already aborted', async () => {
+				const workflow = await createWorkflow({ versionId: uuid(), nodes: [testNode1] });
+				await insertOldVersions(workflow.id, 3);
+				const SEEDED_IDS = await remainingIds();
+
+				await Container.get(WorkflowHistoryRepository).deleteEarlierThanExceptCurrentAndActive(
+					PRUNE_BEFORE,
+					false,
+					AbortSignal.abort(),
+				);
+
+				expect(await remainingIds()).toEqual(SEEDED_IDS);
+			});
+
+			it('should stop before the next batch when the signal aborts during a run', async () => {
+				const workflow = await createWorkflow({ versionId: uuid(), nodes: [testNode1] });
+				const prunable = new Set(await insertOldVersions(workflow.id, PRUNABLE_COUNT));
+				const { signal } = new AbortController();
+				let reads = 0;
+				Object.defineProperty(signal, 'aborted', { get: () => reads++ >= 2 });
+
+				await Container.get(WorkflowHistoryRepository).deleteEarlierThanExceptCurrentAndActive(
+					PRUNE_BEFORE,
+					false,
+					signal,
+				);
+
+				const remainingPrunable = (await remainingIds()).filter((id) => prunable.has(id)).length;
+				expect(remainingPrunable).toBeGreaterThan(0);
+				expect(remainingPrunable).toBeLessThan(PRUNABLE_COUNT);
+			});
+
+			it('should keep a version that became protected after the select', async () => {
+				const vCurrent = uuid();
+				const workflow = await createWorkflow({ versionId: vCurrent, nodes: [testNode1] });
+				await createWorkflowHistory(workflow, undefined, undefined, { createdAt: OLD });
+				await insertOldVersions(workflow.id, 1);
+				spyOnPruneSelect((ids) => [...ids, vCurrent]);
+
+				await Container.get(WorkflowHistoryRepository).deleteEarlierThanExceptCurrentAndActive(
+					PRUNE_BEFORE,
+					false,
+					new AbortController().signal,
+				);
+
+				expect(await remainingIds()).toEqual([vCurrent]);
+			});
+
+			it('should read each batch after the last ID of the previous batch', async () => {
+				const workflow = await createWorkflow({ versionId: uuid(), nodes: [testNode1] });
+				await insertOldVersions(workflow.id, PRUNABLE_COUNT);
+				const batches: Array<{ after: string | undefined; ids: string[] }> = [];
+				spyOnPruneSelect((ids, after) => {
+					batches.push({ after, ids });
+					return ids;
+				});
+
+				await Container.get(WorkflowHistoryRepository).deleteEarlierThanExceptCurrentAndActive(
+					PRUNE_BEFORE,
+					false,
+					new AbortController().signal,
+				);
+
+				expect(batches.map(({ after }) => after)).toEqual([
+					undefined,
+					...batches.slice(0, -1).map(({ ids }) => ids.at(-1)),
+				]);
+			});
 		});
 	});
 
