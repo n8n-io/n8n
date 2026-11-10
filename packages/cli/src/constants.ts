@@ -129,6 +129,9 @@ export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
+/** The longest time that an editor page request waits for the settings to embed. */
+export const EMBEDDED_SETTINGS_TIMEOUT_MS = Time.seconds.toMilliseconds;
+
 export const TEST_WEBHOOK_TIMEOUT = 2 * Time.minutes.toMilliseconds;
 
 export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * Time.seconds.toMilliseconds;

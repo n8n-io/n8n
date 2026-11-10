@@ -13,7 +13,7 @@ import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
-import { AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME, EMBEDDED_SETTINGS_TIMEOUT_MS } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -520,6 +520,22 @@ describe('Server static assets', () => {
 					const { statusCode, body } = await getPage();
 
 					expect(statusCode).toBe(200);
+					expect(body).toContain('<body></body>');
+					expect(body).not.toContain(EMBEDDED_SETTINGS_GLOBAL);
+					expect(logger.warn).toHaveBeenCalledTimes(1);
+				},
+			);
+
+			test.runIf(mount === 'with a frontend service')(
+				'serves the page without settings when they are not built in time',
+				async () => {
+					frontendService.getPublicSettings.mockReturnValue(new Promise(() => {}));
+
+					const start = Date.now();
+					const { statusCode, body } = await getPage();
+
+					expect(statusCode).toBe(200);
+					expect(Date.now() - start).toBeGreaterThanOrEqual(EMBEDDED_SETTINGS_TIMEOUT_MS - 50);
 					expect(body).toContain('<body></body>');
 					expect(body).not.toContain(EMBEDDED_SETTINGS_GLOBAL);
 					expect(logger.warn).toHaveBeenCalledTimes(1);

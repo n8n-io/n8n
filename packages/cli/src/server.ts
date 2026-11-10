@@ -5,16 +5,18 @@ import { SecurityConfig } from '@n8n/config';
 import { EMBEDDED_SETTINGS_GLOBAL, HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { withTimeout } from '@n8n/utils/promise/with-timeout';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess, readFile } from 'fs/promises';
 import helmet from 'helmet';
 import { InstanceSettings } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import { AuthService } from '@/auth/auth.service';
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, EMBEDDED_SETTINGS_TIMEOUT_MS, inE2ETests } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -487,10 +489,15 @@ export class Server extends AbstractServer {
 			};
 
 			// Public settings only: the page handler runs no auth middleware. If they cannot
-			// be built, the page is served without them and the editor fetches them instead.
+			// be built in time, the page is served without them and the editor fetches them
+			// instead. The time limit keeps a slow database from delaying the page.
 			const embeddedSettingsScript = async (nonce: string) => {
 				try {
-					const settings = await frontendService.getPublicSettings(false);
+					const settings = await withTimeout(
+						frontendService.getPublicSettings(false),
+						EMBEDDED_SETTINGS_TIMEOUT_MS,
+						() => new OperationalError('Building the embedded settings timed out'),
+					);
 					return `<script nonce="${nonce}">window.${EMBEDDED_SETTINGS_GLOBAL} = ${toScriptSafeJson(settings)};</script>`;
 				} catch (error) {
 					this.logger.warn('Could not embed settings in the editor page', { error });
