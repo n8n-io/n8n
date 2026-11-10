@@ -85,7 +85,7 @@ describe('Skill source checks', () => {
 		await db().delete(SkillSourceConnection, {});
 		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
 		// The rate limit budget lives in memory on the service, so one test's limit stays there.
-		(Reflect.get(sync(), 'retryAt') as Map<string, number>).clear();
+		(Reflect.get(sync(), 'backoff') as Map<string, unknown>).clear();
 		github.start();
 		github.push('acme/skills', FILES);
 	});
@@ -93,6 +93,7 @@ describe('Skill source checks', () => {
 	afterEach(() => {
 		github.stop();
 		vi.restoreAllMocks();
+		vi.useRealTimers();
 	});
 
 	/** Imports every skill of the repository into the team, and answers their ids by name. */
@@ -415,14 +416,54 @@ describe('Skill source checks', () => {
 			await importAll();
 			github.failWith = { status: 429, headers: { 'retry-after': '600' } };
 			await sync().checkAll();
-			const retryAt = Reflect.get(sync(), 'retryAt') as Map<string, number>;
-			const until = retryAt.get('public:github');
+			const backoff = Reflect.get(sync(), 'backoff') as Map<string, unknown>;
+			const until = backoff.get('public:github');
 
 			await sync().checkAll();
 			await sync().checkAll();
 
-			expect(retryAt.get('public:github')).toBe(until);
+			expect(backoff.get('public:github')).toBe(until);
 		});
+
+		it.each([false, true])(
+			'backs off repeated limits and resets after success (changed: %s)',
+			async (changed) => {
+				const { sourceId } = await importAll();
+				vi.spyOn(Math, 'random').mockReturnValue(0);
+				vi.useFakeTimers({ toFake: ['Date'] });
+				const start = Date.now();
+				github.failWith = { status: 429, headers: { 'retry-after': '1' } };
+				const requests = () => github.requests.refs;
+
+				await sync().checkAll();
+				const first = requests();
+				vi.setSystemTime(start + 59_999);
+				await sync().checkAll();
+				expect(requests()).toBe(first);
+
+				vi.setSystemTime(start + 60_000);
+				await sync().checkAll();
+				expect(requests()).toBe(first + 1);
+				vi.setSystemTime(start + 179_999);
+				await sync().checkAll();
+				expect(requests()).toBe(first + 1);
+
+				github.failWith = undefined;
+				if (changed) pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+				vi.setSystemTime(start + 180_000);
+				await sync().checkAll();
+				expect(requests()).toBe(first + 2);
+				expect(await sourceOf(sourceId)).toMatchObject({ lastErrorReason: null });
+
+				github.failWith = 429;
+				await sync().checkAll();
+				expect(requests()).toBe(first + 3);
+				github.failWith = undefined;
+				vi.setSystemTime(start + 240_000);
+				await sync().checkAll();
+				expect(requests()).toBe(first + 4);
+			},
+		);
 
 		it('keeps the check time of a source that waits, so it goes first next time', async () => {
 			const { sourceId } = await importAll();
