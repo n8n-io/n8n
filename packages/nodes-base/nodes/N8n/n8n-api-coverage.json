@@ -218,7 +218,8 @@
 			"status": "gap"
 		},
 		"GET /users/{userId}": {
-			"status": "gap"
+			"status": "covered",
+			"nodeOperation": "user:get"
 		},
 		"DELETE /users/{userId}": {
 			"status": "gap"
@@ -290,6 +291,12 @@
 			"status": "gap"
 		},
 		"POST /promotions/environments/{promotionEnvironmentId}/promote": {
+			"status": "gap"
+		},
+		"GET /promotions/projects/{projectId}/changes/{direction}": {
+			"status": "gap"
+		},
+		"POST /promotions/projects/{projectId}/changes/{direction}/details": {
 			"status": "gap"
 		},
 		"POST /promotions/projects/{projectId}/promote": {

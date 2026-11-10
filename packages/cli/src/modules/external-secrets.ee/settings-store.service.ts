@@ -1,7 +1,8 @@
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { EXTERNAL_SECRETS_DB_KEY } from './constants';
 import type { ExternalSecretsSettings, SecretsProviderSettings } from './types';

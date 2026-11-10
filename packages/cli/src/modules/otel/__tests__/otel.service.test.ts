@@ -6,15 +6,17 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import type { OtelConfigureHook } from '../otel-configure-hook';
 import { OtelExporterFactory } from '../otel-exporter.factory';
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
 import type { OtelConfig } from '../otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from '../otel.constants';
 import { OtelService } from '../otel.service';
 
+import type { ExternalHooks } from '@/external-hooks';
 import type { OtelSdk } from '@/observability/otel-sdk';
-import { OUTBOUND_HEADERS_PROPAGATOR, TRACING_OFF } from '@/observability/swappable-pipeline';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { TRACING_OFF } from '@/observability/swappable-pipeline';
+import type { Publisher } from '@n8n/backend-services';
 
 // The connectivity-check fetch, obtained via outboundHttp.transport().asCustomFetch().
 // checkEndpointReachability ignores the response and only catches network errors.
@@ -190,6 +192,8 @@ describe('OtelService', () => {
 	let exporterFactory: OtelExporterFactory;
 	let moduleRegistry: ReturnType<typeof mock<ModuleRegistry>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
+	let externalHooks: ReturnType<typeof mock<ExternalHooks>>;
+	let configureHook: ReturnType<typeof mock<OtelConfigureHook>>;
 	let service: OtelService;
 
 	const createService = (sdk: OtelSdk) =>
@@ -201,6 +205,8 @@ describe('OtelService', () => {
 			sdk,
 			moduleRegistry,
 			publisher,
+			externalHooks,
+			configureHook,
 		);
 
 	beforeEach(() => {
@@ -219,6 +225,8 @@ describe('OtelService', () => {
 		moduleRegistry = mock<ModuleRegistry>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
+		externalHooks = mock<ExternalHooks>();
+		configureHook = mock<OtelConfigureHook>();
 		service = createService(otelSdk);
 	});
 	afterEach(() => vi.restoreAllMocks());
@@ -273,6 +281,21 @@ describe('OtelService', () => {
 			expect(OTLPTraceExporter).not.toHaveBeenCalled();
 			expect(fetchMock).not.toHaveBeenCalled();
 			expect(stoppedSdk.apply).not.toHaveBeenCalled();
+		});
+
+		it('logs a warning and still finishes startup when the otel.configure hook throws', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+			externalHooks.run.mockRejectedValue(new Error('hook file is broken'));
+
+			await service.init();
+			await flushPromises();
+
+			expect(configureHook.clear).toHaveBeenCalledTimes(1);
+			expect(otelSdk.apply).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'The otel.configure external hook failed, so n8n starts without it',
+				{ error: 'hook file is broken' },
+			);
 		});
 
 		it('logs connectivity failure and still finishes startup', async () => {
@@ -565,8 +588,53 @@ describe('OtelService', () => {
 			await service.applySavedSettings();
 			const withoutHeaders = otelSdk.apply.mock.lastCall?.[0].propagator;
 
-			expect(withHeaders).toBe(OUTBOUND_HEADERS_PROPAGATOR);
+			expect(withHeaders.fields()).toEqual(['traceparent', 'tracestate', 'baggage']);
 			expect(withoutHeaders).toBe(TRACING_OFF.propagator);
+		});
+
+		describe('when OTEL_PROPAGATORS is set', () => {
+			afterEach(() => delete process.env.OTEL_PROPAGATORS);
+
+			const propagatorFor = async (names: string, injectOutbound: boolean) => {
+				process.env.OTEL_PROPAGATORS = names;
+				otelSettingsService.loadSettings.mockResolvedValue({ ...enabledSettings, injectOutbound });
+				await createService(otelSdk).init();
+				return otelSdk.apply.mock.lastCall?.[0].propagator;
+			};
+
+			it('sends no header while the switch is off', async () => {
+				const propagator = await propagatorFor('tracecontext,baggage', false);
+
+				expect(propagator).toBe(TRACING_OFF.propagator);
+			});
+
+			it('holds back the headers it leaves out while the switch is on', async () => {
+				const propagator = await propagatorFor('tracecontext', true);
+
+				expect(propagator?.fields()).toEqual(['traceparent', 'tracestate']);
+			});
+
+			it('sends no header for none while the switch is on', async () => {
+				const propagator = await propagatorFor('none', true);
+
+				expect(propagator?.fields()).toEqual([]);
+			});
+
+			it('warns once about a name n8n does not carry, and not again on a reload', async () => {
+				process.env.OTEL_PROPAGATORS = 'tracecontext,b3';
+				otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+				const started = createService(otelSdk);
+
+				await started.init();
+				await started.applySavedSettings();
+
+				const warnings = logger.warn.mock.calls.filter(([message]) =>
+					message.includes('OTEL_PROPAGATORS'),
+				);
+				expect(warnings).toEqual([
+					[expect.stringContaining('OTEL_PROPAGATORS'), { unknown: ['b3'] }],
+				]);
+			});
 		});
 
 		it('probes the endpoint only when a save builds a new exporter', async () => {

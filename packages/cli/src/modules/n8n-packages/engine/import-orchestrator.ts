@@ -112,10 +112,13 @@ import {
 	assertArchiveTransitionsAllowed,
 	assertCredentialUpdatesAllowed,
 	assertDataTableWritesAllowed,
+	assertFolderWritesAllowed,
+	assertWorkflowRemovalsAllowed,
 	assertSharedSkillWritesAllowed,
 	assertTagWritesAllowed,
 	assertVariableWritesAllowed,
 	assertPackageImportApiKeyScopes,
+	assertWorkflowPublishingAllowed,
 } from './import-gates';
 import { identifyRequirements } from './import-result';
 
@@ -141,11 +144,6 @@ export interface ImportOrchestrationInput {
 	explicitDeleteWorkflowIds?: string[];
 	/** Treat the project root as a workflow location (project packages, which set the layout). */
 	checkRootPlacement: boolean;
-	/**
-	 * Under `layoutConflictPolicy=follow-package`, the folders a move may touch. A selection moves only the
-	 * folders that hold a selected workflow, so unselected content stays where it is. Omitted means all.
-	 */
-	movableFolderIds?: ReadonlySet<string>;
 }
 
 /**
@@ -229,6 +227,9 @@ export class ImportOrchestrator {
 			options.apiKeyScopes,
 			plans.map((plan) => plan.workflowPlan),
 		);
+		for (const { workflowPlan } of plans) {
+			assertWorkflowPublishingAllowed(options.apiKeyScopes, workflowPlan);
+		}
 		const creations = plans.flatMap((plan) => plan.variablePlan.creations);
 		const overwrites = plans.flatMap((plan) => plan.variablePlan.overwrites);
 
@@ -241,6 +242,11 @@ export class ImportOrchestrator {
 		assertDataTableWritesAllowed(
 			options.apiKeyScopes,
 			plans.map((plan) => plan.dataTablePlan),
+		);
+		assertFolderWritesAllowed(this.licenseState, options.apiKeyScopes, plans);
+		assertWorkflowRemovalsAllowed(
+			options.apiKeyScopes,
+			plans.map((plan) => plan.removalPlan),
 		);
 		if (
 			plans.some(
@@ -466,7 +472,6 @@ export class ImportOrchestrator {
 			...context,
 			folderConflictPolicy: options.folderConflictPolicy,
 			layoutConflictPolicy: options.layoutConflictPolicy,
-			movableFolderIds: input.movableFolderIds,
 		};
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
@@ -780,7 +785,10 @@ function scopeAgentRequirements(
 	};
 }
 
-/** Imported channels never use package credentials, so a channel reference alone requires none. */
+/**
+ * Imported channels never use package credentials, so a channel reference alone requires none.
+ * Exports write channels without credential IDs, but older packages still carry them.
+ */
 function withoutChannelOnlyConsumers<
 	T extends { id: string; usedBy: PackageRequirementConsumer[] },
 >(requirements: T[] | undefined, agents: AgentPlanItem[]): T[] | undefined {

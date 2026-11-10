@@ -12,12 +12,10 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { orderBySubWorkflowDependencies } from './sub-workflow-ordering';
 import type { PersistedWorkflowOutcome, PersistedWorkflowPlanItem } from './workflow-import.types';
-import { decideWorkflowPublishingAction } from './workflow-publishing-policy';
 import {
 	WorkflowPublishingPolicy,
 	type PublishingAction,
 	type WorkflowPublishingBlockedReason,
-	type WorkflowPublishingContext,
 	type WorkflowPublishingOutcome,
 } from './workflow-publishing-policy.types';
 import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
@@ -65,7 +63,6 @@ export class WorkflowPublisher {
 	async applyToPackage({
 		user,
 		persisted,
-		policy,
 		subWorkflowRequirements,
 	}: PackagePublishingRequest): Promise<PackagePublishingResults> {
 		const results = new Map<string, WorkflowPublishingResult>();
@@ -74,13 +71,12 @@ export class WorkflowPublisher {
 		for (const outcome of orderBySubWorkflowDependencies(persisted, subWorkflowRequirements)) {
 			if (outcome.status === 'skipped') continue;
 
-			const webhookKeys = this.webhookKeysOnPublish(outcome, policy);
+			const webhookKeys = this.webhookKeysOnPublish(outcome);
 
 			const result = await this.apply(
 				user,
 				outcome.item,
 				outcome.workflow,
-				policy,
 				outcome.blockedFromPublish,
 				webhookKeys.some((key) => claimedPaths.has(key)),
 			);
@@ -109,14 +105,10 @@ export class WorkflowPublisher {
 	 */
 	private webhookKeysOnPublish(
 		outcome: Extract<PersistedWorkflowOutcome, { status: 'created' | 'updated' }>,
-		policy: WorkflowPublishingPolicy,
 	): string[] {
 		if (outcome.blockedFromPublish) return [];
 
-		const action = decideWorkflowPublishingAction(
-			policy,
-			toPublishingContext(outcome.item, outcome.workflow),
-		);
+		const action = outcome.item.publishingAction;
 		if (action !== 'publish') return [];
 
 		return this.webhookService.getStaticWebhookKeys(outcome.workflow.nodes);
@@ -166,11 +158,10 @@ export class WorkflowPublisher {
 		user: User,
 		item: PersistedWorkflowPlanItem,
 		workflow: WorkflowEntity,
-		policy: WorkflowPublishingPolicy,
 		blockedReason?: WorkflowPublishingBlockedReason,
 		webhookContested = false,
 	): Promise<WorkflowPublishingResult> {
-		const action = decideWorkflowPublishingAction(policy, toPublishingContext(item, workflow));
+		const action = item.publishingAction;
 
 		if (action === 'noop') {
 			return { workflow, publishing: { state: 'unchanged' } };
@@ -226,16 +217,4 @@ export class WorkflowPublisher {
 		});
 		return { workflow, publishing: { state: 'failed', error } };
 	}
-}
-
-function toPublishingContext(
-	item: PersistedWorkflowPlanItem,
-	workflow: WorkflowEntity,
-): WorkflowPublishingContext {
-	return {
-		status: item.action === 'create' ? 'created' : 'updated',
-		sourcePublished: item.sourcePublished,
-		currentlyPublished: !!workflow.activeVersionId,
-		isArchived: workflow.isArchived,
-	};
 }

@@ -6,8 +6,7 @@ import type { InstanceAiEventBus, StoredEvent } from '@n8n/instance-ai';
 import { InstanceSettings } from 'n8n-core';
 import { EventEmitter } from 'node:events';
 
-import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { MAX_PUBSUB_PAYLOAD_BYTES, Publisher } from '@n8n/backend-services';
 
 import { DurableEventLog, type DrainedEvent } from './durable-event-log';
 

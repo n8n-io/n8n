@@ -21,13 +21,7 @@ import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import {
-	jsonParse,
-	MANAGED_VERSION_KEY,
-	OperationalError,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { jsonParse, MANAGED_VERSION_KEY } from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -35,7 +29,14 @@ import {
 } from '@/constants';
 import { AuthService } from '@/auth/auth.service';
 import { CredentialsHelper } from '@/credentials-helper';
-import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
+import {
+	AuthError,
+	BadRequestError,
+	NotFoundError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import type { OAuthRequest } from '@/requests';
 import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
@@ -1224,6 +1225,7 @@ export class OauthService {
 				toUpdate,
 				toDelete,
 				discoveredScopes,
+				this.getDeclaredScope(credential.type),
 			);
 		}
 
@@ -1281,6 +1283,14 @@ export class OauthService {
 		return returnUri.toString();
 	}
 
+	private getDeclaredScope(type: string): string | undefined {
+		if (!this.credentialsHelper.supportsDynamicClientRegistration(type)) return undefined;
+		const scope = this.credentialsHelper
+			.getCredentialsProperties(type)
+			.find((property) => property.name === 'scope')?.default;
+		return typeof scope === 'string' && scope ? scope : undefined;
+	}
+
 	/**
 	 * Registers n8n as a client of the authorization server. Uses a client ID metadata
 	 * document (CIMD) when possible, else dynamic client registration (DCR).
@@ -1291,6 +1301,7 @@ export class OauthService {
 		toUpdate: ICredentialDataDecryptedObject,
 		toDelete: string[],
 		discoveredResourceScopes?: string[],
+		declaredScope?: string,
 	): Promise<OAuthAuthorizationServerMetadata> {
 		// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
 		const dcrAuthorizationServerUrl = authorizationServerUrl ?? oauthCredentials.serverUrl;
@@ -1373,7 +1384,9 @@ export class OauthService {
 		const effectiveScopes = discoveredResourceScopes?.length
 			? withOfflineAccess(discoveredResourceScopes, scopes_supported)
 			: scopes_supported;
-		const scope = effectiveScopes?.length ? effectiveScopes.join(' ') : undefined;
+		// A credential type's own scope is what its nodes need. `scopes_supported` can be far broader.
+		const scope =
+			declaredScope ?? (effectiveScopes?.length ? effectiveScopes.join(' ') : undefined);
 		if (scope) {
 			oauthCredentials.scope = scope;
 			toUpdate.scope = scope;
@@ -1396,7 +1409,7 @@ export class OauthService {
 
 		if (!registration_endpoint) {
 			throw new BadRequestError(
-				'The OAuth2 server does not support automatic client registration. Turn off "Register Client Automatically" and enter a client ID.',
+				'The OAuth2 server does not support automatic client registration. Enter the client ID of your own OAuth app instead.',
 			);
 		}
 
@@ -1420,7 +1433,8 @@ export class OauthService {
 			response_types: ['code'],
 			client_name: 'n8n',
 			client_uri: 'https://n8n.io/',
-			scope,
+			// RFC 7591 separates scopes with spaces; credential types may use commas.
+			scope: scope?.split(/[\s,]+/).join(' '),
 			...(oauthCredentials.jweEnabled === true
 				? await this.oauthJweServiceProxy.getDcrJweFields(oauthCredentials.inlineJwks === true)
 				: {}),

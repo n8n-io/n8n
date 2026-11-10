@@ -5,7 +5,8 @@ import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
 import { rm as fsRm } from 'fs/promises';
 import { Cipher, InstanceSettings } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { readFile, writeFile } from 'node:fs/promises';
 import * as path from 'path';
 
@@ -329,7 +330,7 @@ export class SourceControlPreferencesService {
 	 */
 	private async broadcastReloadSourceControlConfiguration(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			const { Publisher } = await import('@n8n/backend-services');
 			await Container.get(Publisher).publishCommand({ command: 'reload-source-control-config' });
 			this.logger.debug('Broadcasting source control configuration reload to other main instances');
 		}

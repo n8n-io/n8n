@@ -1,7 +1,8 @@
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { PromotionCacheDescriptor } from './promotions.types';
@@ -26,12 +27,7 @@ export class PromotionWorkingDirectoryService {
 		if (!SAFE_ID.test(environmentId)) {
 			throw new UnexpectedError('Promotion environment ID is not a generated ID');
 		}
-		const rootFolder = path.join(
-			this.instanceSettings.n8nFolder,
-			'promotions',
-			'environments',
-			environmentId,
-		);
+		const rootFolder = path.join(this.environmentsFolder(), environmentId);
 		return {
 			rootFolder,
 			repositoryFolder: path.join(rootFolder, 'repository'),
@@ -61,14 +57,16 @@ export class PromotionWorkingDirectoryService {
 
 	/**
 	 * Whether the checkout on this machine was cloned from the configuration we just
-	 * resolved. Catches a remote or branch change made by another process, which
-	 * could not invalidate this machine's cache.
+	 * resolved. Catches a remote, branch, or provider change made by another process,
+	 * which could not invalidate this machine's cache. A descriptor without a provider
+	 * does not match.
 	 */
 	async matchesDescriptor(expected: PromotionCacheDescriptor): Promise<boolean> {
 		const stored = await this.readDescriptor(expected.environmentId);
 		if (!stored) return false;
 		return (
 			stored.schemaVersion === expected.schemaVersion &&
+			stored.providerId === expected.providerId &&
 			stored.remoteUrl === expected.remoteUrl &&
 			stored.checkoutBranchName === expected.checkoutBranchName
 		);
@@ -93,5 +91,21 @@ export class PromotionWorkingDirectoryService {
 	/** Removes everything for an environment, host keys included. */
 	async purge(environmentId: string): Promise<void> {
 		await rm(this.paths(environmentId).rootFolder, { recursive: true, force: true });
+	}
+
+	async listEnvironmentIds(): Promise<string[]> {
+		try {
+			const entries = await readdir(this.environmentsFolder(), { withFileTypes: true });
+			return entries
+				.filter((entry) => entry.isDirectory() && SAFE_ID.test(entry.name))
+				.map((entry) => entry.name);
+		} catch (error) {
+			if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return [];
+			throw error;
+		}
+	}
+
+	private environmentsFolder() {
+		return path.join(this.instanceSettings.n8nFolder, 'promotions', 'environments');
 	}
 }

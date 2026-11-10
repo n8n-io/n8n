@@ -6,12 +6,12 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ErrorReporter, Span, Tracing } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import {
-	UserError,
 	WebhookPathTakenError,
 	WorkflowActivationError,
 	WorkflowDeactivationError,
 	WorkflowExpression,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';

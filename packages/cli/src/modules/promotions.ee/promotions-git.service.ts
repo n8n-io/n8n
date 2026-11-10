@@ -4,7 +4,6 @@ import { Service } from '@n8n/di';
 import { chmod, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { UnexpectedError } from 'n8n-workflow';
 import pLimit from 'p-limit';
 import {
 	CheckRepoActions,
@@ -15,7 +14,7 @@ import {
 	type SimpleGitOptions,
 } from 'simple-git';
 
-import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
+import { BadRequestError, ServiceUnavailableError, UnexpectedError } from '@n8n/errors';
 
 import {
 	GIT_COMMAND_STALL_TIMEOUT_MS,
@@ -288,9 +287,7 @@ export class PromotionsGitService {
 									).trim()
 								: undefined;
 							try {
-								// Scope staging to the package while including removed entities.
-								await git.add(['--all', '--', stagePathspec]);
-								await git.commit(commitMessage);
+								await this.commitPackage(git, stagePathspec, commitMessage);
 								const commitSha = (await git.revparse(['HEAD'])).trim();
 
 								if (force) {
@@ -383,6 +380,17 @@ export class PromotionsGitService {
 		}
 	}
 
+	/** Stages the package, including removed files, and commits it. */
+	private async commitPackage(git: SimpleGit, stagePathspec: string, commitMessage: string) {
+		await git.add(['--all', '--', stagePathspec]);
+		// `git commit` fails when nothing is staged. Report that as a user error, not a Git failure.
+		const staged = await git.diff(['--cached', '--name-only', '--', stagePathspec]);
+		if (!staged.trim()) {
+			throw new BadRequestError('Nothing to promote. The branch already matches the selection.');
+		}
+		await git.commit(commitMessage);
+	}
+
 	/** Push one commit to a new branch and restore the local base branch. */
 	private async commitAndPushToTargetBranch(
 		git: SimpleGit,
@@ -408,8 +416,7 @@ export class PromotionsGitService {
 		}
 
 		try {
-			await git.add(['--all', '--', stagePathspec]);
-			await git.commit(commitMessage);
+			await this.commitPackage(git, stagePathspec, commitMessage);
 			const commitSha = (await git.revparse(['HEAD'])).trim();
 			await git.push('origin', `HEAD:refs/heads/${targetBranchName}`);
 			return { commitSha };
