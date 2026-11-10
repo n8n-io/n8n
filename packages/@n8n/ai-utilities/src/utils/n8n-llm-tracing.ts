@@ -6,7 +6,7 @@ import type {
 	SerializedNotImplemented,
 	SerializedSecret,
 } from '@langchain/core/load/serializable';
-import type { BaseMessage } from '@langchain/core/messages';
+import { isBaseMessage, type BaseMessage } from '@langchain/core/messages';
 import type { Generation, LLMResult } from '@langchain/core/outputs';
 import type { IDataObject, ISupplyDataFunctions, ITaskMetadata, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
@@ -149,7 +149,14 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async estimateTokensFromGeneration(generations: LLMResult['generations']) {
-		const messages = generations.flatMap((gen) => gen.map((g) => g.text));
+		const messages = generations.flatMap((gen) =>
+			gen.map((generation) => {
+				if (generation.text) return generation.text;
+
+				const message = 'message' in generation ? generation.message : undefined;
+				return isBaseMessage(message) ? message.text : generation.text;
+			}),
+		);
 		return await this.estimateTokensFromStringList(messages);
 	}
 
@@ -162,8 +169,6 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		// The fallback should never happen since handleLLMStart should always set the run details
 		// but just in case, we set the index to the length of the runsMap
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
-
-		output.generations = output.generations.map((gen) => gen.map(toRunDataGeneration));
 
 		const tokenUsageEstimate = {
 			completionTokens: 0,
@@ -181,6 +186,9 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			tokenUsageEstimate.totalTokens =
 				tokenUsageEstimate.completionTokens + this.promptTokensEstimate;
 		}
+
+		output.generations = output.generations.map((gen) => gen.map(toRunDataGeneration));
+
 		const response: {
 			response: { generations: LLMResult['generations'] };
 			tokenUsageEstimate?: typeof tokenUsageEstimate;
