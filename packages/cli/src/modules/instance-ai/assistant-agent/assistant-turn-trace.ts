@@ -3,7 +3,6 @@ import {
 	ASSISTANT_TRACE_EVENT,
 	type AssistantTracePayload,
 	type InstanceAiEvent,
-	type InstanceAiFileAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
@@ -45,7 +44,10 @@ import {
 	buildSuspensionTraceMetadata,
 	buildSuspensionTraceOutputs,
 } from '../tracing/suspension-trace';
-import { buildAssistantTurnTraceInput } from '../turn-setup/assistant-turn-trace-input';
+import {
+	buildAssistantTurnTraceInput,
+	type TraceFileAttachment,
+} from '../turn-setup/assistant-turn-trace-input';
 
 /** Checkpoint host metadata key that carries the trace of a turn to its resume. */
 const ASSISTANT_TRACE_METADATA_KEY = 'assistantTrace';
@@ -152,7 +154,7 @@ export interface AssistantTraceTurnSetup {
 	/** The chat message group of the turn. */
 	messageGroupId: string;
 	proxyConfig?: ServiceProxyConfig;
-	fileAttachments: InstanceAiFileAttachment[];
+	fileAttachments: TraceFileAttachment[];
 	contextAttachments: InstanceAiResourceAttachment[];
 	threadArtifacts?: InstanceAiThreadArtifactsContext;
 }

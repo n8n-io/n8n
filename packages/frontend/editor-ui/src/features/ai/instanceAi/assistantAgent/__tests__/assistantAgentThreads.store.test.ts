@@ -1,4 +1,4 @@
-import type { SystemAgentThreadSummary } from '@n8n/api-types';
+import type { SystemAgentThreadSummary, SystemAgentThreadsResponse } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -6,8 +6,10 @@ import {
 	deleteSystemAgentThread,
 	getSystemAgentThread,
 	listSystemAgentThreads,
+	renameSystemAgentThread,
 } from '@/features/agents/composables/useAgentApi';
 
+import { fetchAssistantAgentThreadCredits } from '../assistantAgentTabs.api';
 import { knownAssistantThreadRuntime } from '../assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgentThreads.store';
 
@@ -15,6 +17,11 @@ vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	listSystemAgentThreads: vi.fn(),
 	getSystemAgentThread: vi.fn(),
 	deleteSystemAgentThread: vi.fn(),
+	renameSystemAgentThread: vi.fn(),
+}));
+
+vi.mock('../assistantAgentTabs.api', () => ({
+	fetchAssistantAgentThreadCredits: vi.fn(),
 }));
 
 const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
@@ -39,7 +46,50 @@ describe('useAssistantAgentThreadsStore', () => {
 		vi.mocked(listSystemAgentThreads).mockReset();
 		vi.mocked(getSystemAgentThread).mockReset();
 		vi.mocked(deleteSystemAgentThread).mockReset();
+		vi.mocked(renameSystemAgentThread).mockReset();
+		vi.mocked(fetchAssistantAgentThreadCredits).mockReset();
 		showError.mockReset();
+	});
+
+	describe('thread credits', () => {
+		it('loads the stored credit total of a thread', async () => {
+			vi.mocked(fetchAssistantAgentThreadCredits).mockResolvedValue({ creditsUsed: 2.5 });
+			const store = useAssistantAgentThreadsStore();
+
+			await store.loadThreadCredits('t1');
+
+			expect(fetchAssistantAgentThreadCredits).toHaveBeenCalledWith(expect.anything(), 't1');
+			expect(store.threadCreditsUsed('t1')).toBe(2.5);
+		});
+
+		it('keeps a pushed total that a slower load would make older', async () => {
+			let resolve: (value: { creditsUsed: number }) => void = () => {};
+			vi.mocked(fetchAssistantAgentThreadCredits).mockReturnValue(
+				new Promise((r) => {
+					resolve = r;
+				}),
+			);
+			const store = useAssistantAgentThreadsStore();
+
+			const load = store.loadThreadCredits('t1');
+			store.setThreadCreditsUsed('t1', 3);
+			resolve({ creditsUsed: 2 });
+			await load;
+
+			expect(store.threadCreditsUsed('t1')).toBe(3);
+			store.setThreadCreditsUsed('t1', 4.5);
+			expect(store.threadCreditsUsed('t1')).toBe(4.5);
+		});
+
+		it('drops the total of a deleted thread', async () => {
+			vi.mocked(deleteSystemAgentThread).mockResolvedValue(undefined);
+			const store = useAssistantAgentThreadsStore();
+			store.setThreadCreditsUsed('t1', 2);
+
+			await store.deleteThread(thread('t1', '2026-01-02T00:00:00.000Z'));
+
+			expect(store.threadCreditsUsed('t1')).toBeUndefined();
+		});
 	});
 
 	it('loads the recent threads newest first, and remembers them as Assistant agent threads', async () => {
@@ -67,6 +117,73 @@ describe('useAssistantAgentThreadsStore', () => {
 			kind: 'assistant-agent',
 			projectId: 'project-opened-old',
 		});
+	});
+
+	it('renames a thread and keeps the new title over a response that the rename overtook', async () => {
+		let finishList!: (response: SystemAgentThreadsResponse) => void;
+		const page = { data: [thread('a', '2026-01-02T00:00:00.000Z')], nextCursor: null };
+		vi.mocked(listSystemAgentThreads)
+			.mockResolvedValueOnce(page)
+			.mockReturnValueOnce(
+				new Promise((resolve) => {
+					finishList = resolve;
+				}),
+			);
+		const store = useAssistantAgentThreadsStore();
+		await store.fetchRecent();
+
+		// The list request starts before the rename and answers after it, with the old title.
+		const staleFetch = store.fetchRecent();
+		await store.renameThread('a', 'Invoices');
+		finishList(page);
+		await staleFetch;
+
+		expect(renameSystemAgentThread).toHaveBeenCalledWith(
+			expect.anything(),
+			'assistant',
+			'a',
+			'Invoices',
+		);
+		expect(store.threadsById.get('a')?.title).toBe('Invoices');
+	});
+
+	it('restores the old title and rethrows when the rename fails', async () => {
+		vi.mocked(listSystemAgentThreads).mockResolvedValue({
+			data: [thread('a', '2026-01-02T00:00:00.000Z')],
+			nextCursor: null,
+		});
+		vi.mocked(renameSystemAgentThread).mockRejectedValue(new Error('Request failed'));
+		const store = useAssistantAgentThreadsStore();
+		await store.fetchRecent();
+
+		await expect(store.renameThread('a', 'Invoices')).rejects.toThrow('Request failed');
+
+		expect(store.threadsById.get('a')?.title).toBe('Chat a');
+	});
+
+	it('keeps the title of a later rename when an earlier rename fails', async () => {
+		vi.mocked(listSystemAgentThreads).mockResolvedValue({
+			data: [thread('a', '2026-01-02T00:00:00.000Z')],
+			nextCursor: null,
+		});
+		let failFirst: (error: Error) => void = () => {};
+		vi.mocked(renameSystemAgentThread)
+			.mockImplementationOnce(
+				async () =>
+					await new Promise<void>((_resolve, reject) => {
+						failFirst = reject;
+					}),
+			)
+			.mockResolvedValueOnce();
+		const store = useAssistantAgentThreadsStore();
+		await store.fetchRecent();
+
+		const first = store.renameThread('a', 'Invoices');
+		await store.renameThread('a', 'Receipts');
+		failFirst(new Error('Request failed'));
+		await expect(first).rejects.toThrow('Request failed');
+
+		expect(store.threadsById.get('a')?.title).toBe('Receipts');
 	});
 
 	it('deletes a thread and keeps it out of the lists', async () => {

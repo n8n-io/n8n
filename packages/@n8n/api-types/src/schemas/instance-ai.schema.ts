@@ -6,6 +6,13 @@ import { z } from 'zod';
 import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { assistantArtifactTypeSchema } from './assistant-thread-tabs.schema';
+import {
+	appNameSchema,
+	appNamespaceSchema,
+	appPreviewElementSchema,
+	appVisibilitySchema,
+} from './app.schema';
+import { MAX_APP_BINDINGS } from './app-binding.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -27,13 +34,13 @@ import { Z } from '../zod-class';
 // ---------------------------------------------------------------------------
 
 /**
- * Sentinel value returned by `GET /instance-ai/credits` when the AI service
+ * Sentinel value returned by `GET /assistant/credits` when the AI service
  * proxy is disabled (credits are not metered). Consumers should treat this as "unlimited".
  */
 export const UNLIMITED_CREDITS = -1;
 
 /**
- * The instance's n8n Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
+ * The instance's n8n Assistant credit standing, as reported by `GET /assistant/credits`, by the
  * `updateInstanceAiCredits` push and by the internal callers that pass it around.
  *
  * `creditsQuota` is {@link UNLIMITED_CREDITS} when the AI service proxy is disabled.
@@ -838,8 +845,48 @@ export const confirmationInputTypeSchema = z.enum([
 	'questions',
 	'resource-decision',
 	'continue',
+	'app-blueprint',
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
+
+const appBlueprintBindingBaseSchema = z.object({
+	kind: z.enum(['workflow', 'dataTable', 'agent']),
+	name: z.string().trim().min(1).max(128),
+	description: z.string().trim().min(1).max(500),
+});
+
+const appBlueprintBindingSchema = z.discriminatedUnion('status', [
+	appBlueprintBindingBaseSchema
+		.extend({
+			status: z.literal('existing'),
+			resourceId: z.string().min(1).max(36),
+		})
+		.strict(),
+	appBlueprintBindingBaseSchema.extend({ status: z.literal('new') }).strict(),
+]);
+
+export const appBlueprintSchema = z.object({
+	name: appNameSchema,
+	namespace: appNamespaceSchema,
+	visibility: appVisibilitySchema,
+	description: z.string().trim().min(1).max(500),
+	theme: z.enum(['light', 'dark', 'both']),
+	bindings: z.array(appBlueprintBindingSchema).max(MAX_APP_BINDINGS).optional(),
+	additionalInstructions: z.string().trim().min(1).max(2000).optional(),
+});
+export type AppBlueprint = z.infer<typeof appBlueprintSchema>;
+
+export const appBlueprintResumeSchema = z.object({
+	approved: z.boolean(),
+	blueprint: appBlueprintSchema,
+});
+export type AppBlueprintResume = z.infer<typeof appBlueprintResumeSchema>;
+
+/** Field problems that reopen the blueprint card instead of creating the app. */
+export const appBlueprintErrorsSchema = z.object({
+	namespace: z.enum(['taken']).optional(),
+});
+export type AppBlueprintErrors = z.infer<typeof appBlueprintErrorsSchema>;
 
 export const instanceAiTargetApprovalSchema = z.object({
 	toolName: z.string(),
@@ -924,7 +971,8 @@ export const confirmationRequestPayloadSchema = z.object({
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
 				'questions shows structured Q&A wizard, ' +
 				'resource-decision shows 5-option gateway permission dialog, ' +
-				'continue shows a single primary button (used by pause-for-user)',
+				'continue shows a single primary button (used by pause-for-user), ' +
+				'app-blueprint shows the editable app proposal card',
 		),
 	questions: z
 		.array(instanceAiQuestionSchema)
@@ -973,6 +1021,12 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'When present, renders the "waiting for a test request" card with the armed test URLs',
 		),
+	appBlueprint: appBlueprintSchema
+		.optional()
+		.describe('Proposed app for the editable blueprint card (inputType=app-blueprint)'),
+	appBlueprintErrors: appBlueprintErrorsSchema
+		.optional()
+		.describe('Field errors from a rejected blueprint, shown on the reopened card'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -1001,6 +1055,7 @@ export function isDisplayableConfirmationRequest(
 	if (payload.channelConfig) return true;
 	if (payload.mcpConnectRequest) return true;
 	if (payload.testListener) return true;
+	if (payload.appBlueprint) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -1012,6 +1067,8 @@ export function isDisplayableConfirmationRequest(
 			return hasItems(payload.questions);
 		case 'resource-decision':
 			return payload.resourceDecision !== undefined;
+		case 'app-blueprint':
+			return payload.appBlueprint !== undefined;
 		default:
 			return assertNever(inputType);
 	}
@@ -1525,6 +1582,7 @@ export const INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY = 'instanceAiPendingApp
 export const instanceAiAppTargetSchema = z.object({
 	appId: z.string().uuid(),
 	projectId: z.string().min(1),
+	name: z.string().max(255).optional(),
 });
 export type InstanceAiAppTarget = z.infer<typeof instanceAiAppTargetSchema>;
 
@@ -1566,11 +1624,18 @@ export const instanceAiNodesAttachmentSchema = z.object({
 });
 export type InstanceAiNodesAttachment = z.infer<typeof instanceAiNodesAttachmentSchema>;
 
+export const instanceAiElementAttachmentSchema = appPreviewElementSchema.extend({
+	type: z.literal('element'),
+	appId: z.string().min(1).max(64),
+});
+export type InstanceAiElementAttachment = z.infer<typeof instanceAiElementAttachmentSchema>;
+
 /** A resource reference attachable to a message (as opposed to a binary file). */
 export const instanceAiResourceAttachmentSchema = z.discriminatedUnion('type', [
 	instanceAiWorkflowAttachmentSchema,
 	instanceAiAgentAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 ]);
 export type InstanceAiResourceAttachment = z.infer<typeof instanceAiResourceAttachmentSchema>;
 
@@ -1728,6 +1793,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `credential_edit` — credential setup help from the credential edit modal
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
+ * - `app_builder_page` — Instance AI hand-off from the app builder
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `self_healing_result` — continue from a saved Assistant report in the Inbox
  * - `assistant_page` — first message typed on the Instance AI empty/home page
@@ -1749,6 +1815,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
+	'app_builder_page',
 	'agent_preview',
 	'self_healing_result',
 	'assistant_page',
@@ -2603,17 +2670,6 @@ export type InstanceAiVerificationResponse =
 			/** Sanitized underlying error message, safe to show to the user. */
 			error?: string;
 	  };
-
-// ---------------------------------------------------------------------------
-// User preferences — per-user, self-service
-// ---------------------------------------------------------------------------
-
-export interface InstanceAiUserPreferencesResponse {
-	credentialId: string | null;
-	credentialType: string | null;
-	credentialName: string | null;
-	modelName: string;
-}
 
 export interface InstanceAiProviderConnection {
 	id: string;

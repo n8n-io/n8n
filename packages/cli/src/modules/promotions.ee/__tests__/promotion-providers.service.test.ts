@@ -143,6 +143,7 @@ describe('PromotionProvidersService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-created', {
 				user: actor,
 				providerId: 'prov1',
+				providerName: 'Bot user',
 				providerType: 'git',
 				authType: 'token',
 				outcome: 'success',
@@ -224,8 +225,10 @@ describe('PromotionProvidersService', () => {
 			expect(changes.auth).toBe('enc:{"schemaVersion":1,"privateKey":"PRIV"}');
 		});
 
-		it('emits the fields the request sent, never their values', async () => {
-			providerRepository.findById.mockResolvedValue(sshProvider());
+		it('emits the changed field names and the updated provider name', async () => {
+			providerRepository.findById
+				.mockResolvedValueOnce(sshProvider())
+				.mockResolvedValueOnce({ ...sshProvider(), name: 'renamed' });
 
 			await service.update(
 				'prov1',
@@ -236,7 +239,9 @@ describe('PromotionProvidersService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-updated', {
 				user: actor,
 				providerId: 'prov1',
+				providerName: 'renamed',
 				providerType: 'git',
+				authType: 'ssh-key',
 				changedFields: ['name', 'auth'],
 				outcome: 'success',
 				durationMs: expect.any(Number),
@@ -290,16 +295,23 @@ describe('PromotionProvidersService', () => {
 
 	describe('delete', () => {
 		it('emits an event after it deletes an unused provider', async () => {
-			providerRepository.findById.mockResolvedValue(sshProvider());
+			providerRepository.findById.mockResolvedValue({
+				...tokenProvider(),
+				type: 'gitlab',
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+			});
 			environmentRepository.countByProviderId.mockResolvedValue(0);
 			providerRepository.deleteProvider.mockResolvedValue(true);
 
-			await service.delete('prov1', actor);
+			await service.delete('prov2', actor);
 
 			expect(eventService.emit).toHaveBeenCalledWith('promotion-provider-deleted', {
 				user: actor,
-				providerId: 'prov1',
-				providerType: 'git',
+				providerId: 'prov2',
+				providerName: 'Bot user',
+				providerType: 'gitlab',
+				authType: 'token',
+				hostBaseUrl: 'https://gitlab.example.com',
 			});
 		});
 

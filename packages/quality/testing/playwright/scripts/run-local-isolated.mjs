@@ -93,6 +93,8 @@ const callerTestEnv = (() => {
 const n8nEnv = {
 	...process.env,
 	E2E_TESTS: 'true',
+	// E2E mode reports the Enterprise plan, where the n8n Assistant is off by default.
+	N8N_INSTANCE_AI_ENABLED: 'true',
 	N8N_PORT: port,
 	N8N_RUNNERS_BROKER_PORT: brokerPort,
 	N8N_USER_FOLDER: userFolder,

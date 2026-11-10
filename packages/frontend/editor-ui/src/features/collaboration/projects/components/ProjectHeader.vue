@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
@@ -28,7 +28,7 @@ import {
 } from '@n8n/frontend-constants/self-healing';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
-import PromotionPreviewBadges from '@/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue';
+import { loadPromotionPreviewBadges } from '@n8n/frontend-module-promotions';
 
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
@@ -36,6 +36,10 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { useCreateApp } from '@n8n/frontend-module-apps';
+
+// Lazy, so the badges and their preview code stay out of the boot chunk.
+const PromotionPreviewBadges = defineAsyncComponent(loadPromotionPreviewBadges);
 
 const route = useRoute();
 const router = useRouter();
@@ -46,6 +50,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const { createAgent } = useCreateAgent();
+const { createApp } = useCreateApp();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 
@@ -186,6 +191,7 @@ const ACTION_TYPES = {
 	DATA_TABLE: 'dataTable',
 	VARIABLE: 'variable',
 	AGENT: 'agent',
+	APP: 'app',
 	SELF_HEALING: 'selfHealing',
 } as const satisfies Record<string, SlotProjectHeaderMainButton | 'folder'>;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
@@ -238,6 +244,19 @@ const createAgentButton = computed(() => ({
 	disabled: !canCreateAgent.value,
 }));
 
+const canCreateApp = computed(
+	() =>
+		settingsStore.isAppsEnabled &&
+		!sourceControlStore.preferences.branchReadOnly &&
+		Boolean(getResourcePermissions(homeProject.value?.scopes).app?.create),
+);
+const createAppButton = computed(() => ({
+	value: ACTION_TYPES.APP,
+	label: i18n.baseText('projects.header.create.app'),
+	size: 'mini' as const,
+	disabled: !canCreateApp.value,
+}));
+
 const createSelfHealingButton = computed(() => ({
 	value: ACTION_TYPES.SELF_HEALING,
 	label: i18n.baseText('selfHealing.config.create'),
@@ -248,6 +267,9 @@ const createSelfHealingButton = computed(() => ({
 
 const selectedMainButtonType = computed(() => {
 	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isAgentsEnabled) {
+		return ACTION_TYPES.WORKFLOW;
+	}
+	if (props.mainButton === ACTION_TYPES.APP && !settingsStore.isAppsEnabled) {
 		return ACTION_TYPES.WORKFLOW;
 	}
 	return props.mainButton ?? ACTION_TYPES.WORKFLOW;
@@ -265,6 +287,8 @@ const mainButtonConfig = computed(() => {
 			return createSelfHealingButton.value;
 		case ACTION_TYPES.AGENT:
 			return createAgentButton.value;
+		case ACTION_TYPES.APP:
+			return createAppButton.value;
 		case ACTION_TYPES.WORKFLOW:
 		default:
 			return createWorkflowButton.value;
@@ -338,6 +362,14 @@ const menu = computed(() => {
 			value: ACTION_TYPES.AGENT,
 			label: i18n.baseText('projects.header.create.agent'),
 			disabled: !canCreateAgent.value,
+		});
+	}
+
+	if (settingsStore.isAppsEnabled && selectedMainButtonType.value !== ACTION_TYPES.APP) {
+		items.push({
+			value: ACTION_TYPES.APP,
+			label: i18n.baseText('projects.header.create.app'),
+			disabled: !canCreateApp.value,
 		});
 	}
 
@@ -427,6 +459,9 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	},
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
 		createAgent(source, projectId);
+	},
+	[ACTION_TYPES.APP]: (projectId) => {
+		createApp(projectId);
 	},
 } as const;
 

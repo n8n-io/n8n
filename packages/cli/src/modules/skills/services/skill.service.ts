@@ -22,9 +22,16 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
-import { TransactionRunner, UserRepository, type OperationContext, type User } from '@n8n/db';
+import {
+	accountSummary,
+	TransactionRunner,
+	UserRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import type { SkillFrontmatter, SkillVersion } from '../database/entities/skill-version.entity';
@@ -225,7 +232,20 @@ export class SkillService {
 		) {
 			return null;
 		}
-		return toMcpSkillContent(row);
+		const content = toMcpSkillContent(row);
+		// The origin is only for telemetry: a failed lookup must not break the read.
+		const synced = await this.sourceRepository.findSyncedFrom(skillId).catch((error: unknown) => {
+			this.logger.warn('Could not find the source of a synced skill', {
+				skillId,
+				error: ensureError(error).message,
+			});
+			return null;
+		});
+		if (!synced) return content;
+		return {
+			...content,
+			origin: { provider: synced.type, access: synced.credentialId ? 'credential' : 'public' },
+		};
 	}
 
 	async get(user: User, skillId: string): Promise<SkillDetail> {
@@ -856,17 +876,7 @@ export class SkillService {
 		const ids = [...new Set(userIds)];
 		if (ids.length === 0) return new Map();
 		const users = await this.userRepository.findManyByIds(ids);
-		return new Map(
-			users.map((creator) => [
-				creator.id,
-				{
-					id: creator.id,
-					email: creator.email ?? null,
-					firstName: creator.firstName ?? null,
-					lastName: creator.lastName ?? null,
-				},
-			]),
-		);
+		return new Map(users.map((creator) => [creator.id, accountSummary(creator)]));
 	}
 }
 

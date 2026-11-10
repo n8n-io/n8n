@@ -1,3 +1,4 @@
+import { settleAbandonedToolCallsInMemory } from '@n8n/agents';
 import type { Message, ScopedMemoryTaskEvent } from '@n8n/agents';
 import {
 	mcpConnectRequestSchema,
@@ -9,6 +10,7 @@ import {
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
@@ -26,10 +28,10 @@ import {
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, Publisher } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
 	SELF_HEALING_PROFILE_VERSION,
@@ -62,6 +64,7 @@ import {
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
+	createThreadApprovalContext,
 	orchestratorAgentId,
 	type ConfirmationData,
 	type DomainAccessTracker,
@@ -92,15 +95,18 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ForbiddenError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { AiService } from '@/services/ai.service';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
@@ -207,6 +213,19 @@ function isTelemetryConfigurableAgent(
 		agent !== null &&
 		typeof Reflect.get(agent, 'telemetry') === 'function'
 	);
+}
+
+/** Log fields for a completed memory task, e.g. `{ outcome: 'skipped', reason: 'pending-tool-call' }`. */
+function describeMemoryTaskOutcome(value: unknown): { outcome?: string; reason?: string } {
+	if (!isRecord(value) || typeof value.status !== 'string') return {};
+	return {
+		outcome: value.status,
+		...(typeof value.reason === 'string' ? { reason: value.reason } : {}),
+	};
+}
+
+function toTelemetryInputType(inputType: string): string {
+	return inputType === 'app-blueprint' ? 'app_blueprint' : inputType;
 }
 
 const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
@@ -832,13 +851,7 @@ export class InstanceAiService {
 				pendingCount: pendingTasks.length,
 				...(event.type === 'skipped' ? { reason: event.reason } : {}),
 				...(event.type === 'failed' ? { error: getErrorMessage(event.error) } : {}),
-				...(event.type === 'completed' &&
-				event.value &&
-				typeof event.value === 'object' &&
-				'status' in event.value &&
-				typeof event.value.status === 'string'
-					? { outcome: event.value.status }
-					: {}),
+				...(event.type === 'completed' ? describeMemoryTaskOutcome(event.value) : {}),
 			};
 			this.logger.info(`Observational memory task ${event.type}`, logContext);
 		};
@@ -853,12 +866,16 @@ export class InstanceAiService {
 		threadId: string,
 		runId: string,
 		signal: AbortSignal,
+		context: InstanceAiContext | undefined,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
 		}
+		const approvalContext = context && createThreadApprovalContext(context);
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
+			// Lets the SDK approval gate read and save "Always allow" grants of the thread.
+			...(approvalContext ? { approvalContext } : {}),
 			abortSignal: signal,
 			// Recover token usage from raw provider events so a stopped/errored run
 			// is still billed for the tokens consumed before the stop.
@@ -891,12 +908,16 @@ export class InstanceAiService {
 		agentRunId: string,
 		toolCallId: string,
 		signal: AbortSignal,
+		context: InstanceAiContext | undefined,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
 		}
+		const approvalContext = context && createThreadApprovalContext(context);
 		return {
 			runId: agentRunId,
+			// Mirrors the stream options: a decision on an SDK approval card can save a grant.
+			...(approvalContext ? { approvalContext } : {}),
 			toolCallId,
 			abortSignal: signal,
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
@@ -1296,12 +1317,29 @@ export class InstanceAiService {
 					...(suspended.modelId !== undefined ? { modelId: suspended.modelId } : {}),
 					promptVersion: suspended.orchestrationContext?.promptConfiguration?.version,
 				});
+				void this.settleCancelledSuspension(threadId, suspended.user.id);
 			} else {
 				void this.finalizeCancelledSuspendedRun(suspended, reason);
 			}
 		}
 
 		void this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
+	}
+
+	/**
+	 * A cancelled suspension never resumes, but its tool call stays `pending` in stored
+	 * history. The Observer does not observe past a stored pending call, so persist the
+	 * settled form to keep compaction running for the thread.
+	 */
+	private async settleCancelledSuspension(threadId: string, resourceId: string): Promise<void> {
+		try {
+			await settleAbandonedToolCallsInMemory(this.agentMemory, { threadId, resourceId });
+		} catch (error) {
+			this.logger.warn('Failed to settle the tool call of a cancelled suspended run', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	/** Send a correction message to a running background task. */
@@ -2395,10 +2433,15 @@ export class InstanceAiService {
 			(attachment): attachment is InstanceAiNodesAttachment => attachment.type === 'nodes',
 		);
 
+		const elementAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiElementAttachment => attachment.type === 'element',
+		);
+
 		return [
 			...workflowAttachments,
 			...agentAttachments,
 			...(nodeContextEnabled ? nodeAttachments : []),
+			...elementAttachments,
 		];
 	}
 
@@ -2731,7 +2774,13 @@ export class InstanceAiService {
 				tracing,
 			);
 
-			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
+			const streamOptions = this.buildOrchestratorAgentStreamOptions(
+				user,
+				threadId,
+				runId,
+				signal,
+				environment.context,
+			);
 
 			streamReached = true;
 			await this.turnInput.onInputAccepted(environment, turnInputRuntime, turnInput, {
@@ -3840,6 +3889,7 @@ export class InstanceAiService {
 					opts.agentRunId,
 					opts.toolCallId,
 					opts.signal,
+					opts.orchestrationContext?.domainContext,
 				),
 				onResumeClaimed,
 			};
@@ -4594,7 +4644,7 @@ export class InstanceAiService {
 			?.servers;
 		let type: string;
 		if (inputType) {
-			type = inputType;
+			type = toTelemetryInputType(inputType);
 		} else if (Array.isArray(payload.setupRequests) && payload.setupRequests.length > 0) {
 			type = 'setup';
 		} else if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0) {
@@ -4665,6 +4715,8 @@ export class InstanceAiService {
 		suspended: SuspendedRunState<User>,
 		reason = 'user_cancelled',
 	): Promise<void> {
+		// Covers the stop button and the confirmation timeout of the liveness service.
+		void this.settleCancelledSuspension(suspended.threadId, suspended.user.id);
 		const runTimeout =
 			reason === INSTANCE_AI_RUN_TIMEOUT_REASON
 				? this.liveness.consumeRunTimeout(suspended.runId)

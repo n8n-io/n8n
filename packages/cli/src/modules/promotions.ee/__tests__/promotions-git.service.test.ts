@@ -19,6 +19,7 @@ const { mockGit, simpleGitMock, GitError, GitPluginError } = vi.hoisted(() => {
 		push: vi.fn(),
 		fetch: vi.fn(),
 		raw: vi.fn(),
+		diff: vi.fn(),
 		revparse: vi.fn(),
 		checkIsRepo: vi.fn(),
 		listRemote: vi.fn(),
@@ -360,6 +361,7 @@ describe('PromotionsGitService (git operations)', () => {
 		beforeEach(() => {
 			mockGit.revparse.mockResolvedValue('abc123\n');
 			mockGit.raw.mockResolvedValue('');
+			mockGit.diff.mockResolvedValue('n8n/manifest.json\n');
 		});
 
 		it('pushes to a new branch and restores the local base branch', async () => {

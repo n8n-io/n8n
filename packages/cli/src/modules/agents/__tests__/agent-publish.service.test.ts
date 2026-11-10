@@ -15,6 +15,7 @@ import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 import type { Telemetry } from '@/telemetry';
 
 import { runInBuilderTelemetrySession } from '../builder/builder-telemetry-session';
@@ -32,7 +33,7 @@ import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -104,7 +105,7 @@ function makeTaskSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTask
 	} as AgentTaskSnapshot;
 }
 
-function makeService() {
+function makeService({ isKnowledgeActive = true } = {}) {
 	const agentRepository = mock<AgentRepository>();
 	const agentHistoryRepository = mock<AgentHistoryRepository>();
 	const publishHistory = mock<AgentPublishHistoryRepository>();
@@ -126,7 +127,7 @@ function makeService() {
 	agentTaskRepository.replaceForAgent.mockResolvedValue(false);
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
 	const agentPolicyService = mock<AgentPolicyService>();
-	const agentFileRepository = mock<AgentFileRepository>();
+	const agentFileRepository = mock<KnowledgeFileRepository>();
 	agentFileRepository.getKnowledgeTotals.mockResolvedValue({ fileCount: 0, totalBytes: 0 });
 
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
@@ -155,8 +156,9 @@ function makeService() {
 	Container.set(AgentTaskService, taskService);
 
 	const skillRefs = createAgentSkillRefsService();
+	const logger = mockLogger();
 	const service = new AgentPublishService(
-		mockLogger(),
+		logger,
 		agentRepository,
 		agentHistoryRepository,
 		runtimeCacheService,
@@ -189,11 +191,13 @@ function makeService() {
 		skillRefs,
 		agentFileRepository,
 		publishHistory,
+		makeKnowledgeAvailabilityService({ isKnowledgeActive }),
 	);
 
 	return {
 		publishHistory,
 		service,
+		logger,
 		agentFileRepository,
 		skillRefs,
 		agentPolicyService,
@@ -883,7 +887,7 @@ describe('AgentPublishService', () => {
 		expect(result).toStrictEqual({ agent });
 		expect(Object.hasOwn(result, 'draftValidation')).toBe(false);
 		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledTimes(1);
-		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith('v1', agentId);
+		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith('v1', agentId, {});
 		expect(agent.activeVersionId).toBe('v1');
 		expect(agent.activeVersion).toBe(target);
 		expect(agent.integrations).toEqual([{ type: 'n8n_chat', credentialId: '' }]);
@@ -944,13 +948,34 @@ describe('AgentPublishService', () => {
 
 			await service.publishAgent(agentId, projectId, user, { by, trigger: 'explicit' });
 
-			expect(agentFileRepository.getKnowledgeTotals).toHaveBeenCalledWith(agentId);
+			expect(agentFileRepository.getKnowledgeTotals).toHaveBeenCalledWith(agentId, {});
 			expect(telemetry.track).toHaveBeenCalledWith(
 				publishedEvent,
 				expect.objectContaining({ knowledge_file_count: 3, knowledge_total_bytes: 4096 }),
 			);
 		},
 	);
+
+	it('publishes and sends the event without knowledge totals when the knowledge module is inactive', async () => {
+		const { service, agentRepository, agentFileRepository, telemetry, logger } = makeService({
+			isKnowledgeActive: false,
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+		await service.publishAgent(agentId, projectId, user, byUser);
+
+		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalled();
+		expect(agentFileRepository.getKnowledgeTotals).not.toHaveBeenCalled();
+		expect(logger.warn).not.toHaveBeenCalled();
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT,
+			expect.not.objectContaining({ knowledge_file_count: expect.anything() }),
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT,
+			expect.not.objectContaining({ knowledge_total_bytes: expect.anything() }),
+		);
+	});
 
 	it('publishes and sends the event without knowledge totals when the totals read fails', async () => {
 		const { service, agentRepository, agentFileRepository, telemetry } = makeService();
@@ -1226,6 +1251,7 @@ describe('AgentPublishService', () => {
 		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith(
 			'old-version',
 			agentId,
+			{},
 		);
 		expect(result.version).toBe(version);
 		expect(result.definition).toEqual({
@@ -1590,9 +1616,12 @@ describe('AgentPublishService', () => {
 					name: null,
 				},
 			);
-			expect(agentHistoryRepository.updateMetadata).toHaveBeenCalledWith(agentId, versionId, {
-				name: null,
-			});
+			expect(agentHistoryRepository.updateMetadata).toHaveBeenCalledWith(
+				agentId,
+				versionId,
+				{ name: null },
+				{},
+			);
 			expect(publishHistory.record).not.toHaveBeenCalled();
 			expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
 		});

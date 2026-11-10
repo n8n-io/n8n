@@ -33,8 +33,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	ManualExecutionCancelledError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	WorkflowOperationError,
 	createEmptyRunExecutionData,
@@ -46,7 +44,14 @@ import { ConcurrencyControlService } from '@/concurrency/concurrency-control.ser
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	InternalServerError,
+	NotFoundError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
@@ -64,6 +69,7 @@ import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
 import { ExecutionPersistence } from './execution-persistence';
 
 import type { ExecutionRequest, RetriedExecution, StopResult } from './execution.types';
+import { toUserLike } from '@/utils/to-user-like';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -383,13 +389,7 @@ export class ExecutionService {
 		);
 
 		this.eventService.emit('workflow-executed', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
 			executionId: retriedExecutionId,
@@ -463,13 +463,7 @@ export class ExecutionService {
 		});
 
 		this.eventService.emit('execution-deleted', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			executionIds: ids ?? [],
 			deleteBefore,
 		});
@@ -533,16 +527,8 @@ export class ExecutionService {
 		return true;
 	}
 
-	/**
-	 * All executions still enqueued (`new`), plus the ids of those whose data could not be
-	 * read - those can never run, so the caller has to take them out of `new` itself.
-	 */
-	async findAllEnqueuedExecutions() {
-		return await this.executionPersistence.findMultipleExecutionsWithUnreadable({
-			select: ['id', 'mode'],
-			where: { status: 'new' },
-			order: { id: 'ASC' },
-		});
+	async findEnqueuedExecutionIds() {
+		return await this.executionRepository.findEnqueuedIds();
 	}
 
 	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {

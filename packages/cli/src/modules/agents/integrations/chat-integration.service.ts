@@ -7,17 +7,21 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { OnLeaderStepdown, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import {
+	OnLeaderStepdown,
+	OnPubSubEvent,
+	OnShutdown,
+	type PubSubCommandMap,
+} from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 
 import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { UrlService } from '@n8n/backend-services';
 
 import { AgentChatBridge } from './agent-chat-bridge';

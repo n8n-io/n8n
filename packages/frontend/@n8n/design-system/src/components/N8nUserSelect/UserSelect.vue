@@ -103,6 +103,8 @@ const onFocus = () => emit('focus');
 
 const selectedUser = computed(() => props.users.find((user) => user.id === props.modelValue));
 
+const showSelectedAvatar = computed(() => props.showAvatar && !!selectedUser.value);
+
 // A user can have only a full name. The avatar then takes its initials from it.
 const avatarNames = computed(() => {
 	const user = selectedUser.value;
@@ -134,13 +136,13 @@ const getLabel = (user: IUser) => {
 		:size="size"
 		:remote="remote"
 		:loading="loading"
-		:class="{ [$style.withAvatar]: showAvatar, [$style.borderless]: borderless }"
+		:class="{ [$style.withAvatar]: showSelectedAvatar, [$style.borderless]: borderless }"
 		@blur="onBlur"
 		@focus="onFocus"
 	>
-		<template v-if="showAvatar || $slots.prefix" #prefix>
+		<template v-if="showSelectedAvatar || $slots.prefix" #prefix>
 			<N8nAvatar
-				v-if="showAvatar"
+				v-if="showSelectedAvatar"
 				size="xsmall"
 				:first-name="avatarNames.firstName"
 				:last-name="avatarNames.lastName"

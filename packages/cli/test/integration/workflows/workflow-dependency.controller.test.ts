@@ -100,13 +100,16 @@ async function seedIndexedAgent(
 	await agentRepo.save(agent);
 
 	const publishedVersionId = randomUUID();
-	await agentHistoryRepo.saveVersion({
-		versionId: publishedVersionId,
-		agentId: agent.id,
-		schema: agent.schema,
-		tools: agent.tools,
-		publishedBy: user,
-	});
+	await agentHistoryRepo.saveVersion(
+		{
+			versionId: publishedVersionId,
+			agentId: agent.id,
+			schema: agent.schema,
+			tools: agent.tools,
+			publishedBy: user,
+		},
+		{},
+	);
 	agent.activeVersionId = publishedVersionId;
 	await agentRepo.save(agent);
 	await agentDepRepo.refreshForAgent(agent.id, {});

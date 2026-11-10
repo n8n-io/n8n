@@ -22,6 +22,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
+import { DataSource } from '@n8n/typeorm';
 import { Credentials } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -31,6 +32,7 @@ import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { TeamsIntegration } from '@/modules/agents/integrations/platforms/teams/teams-integration';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { NodeTypes } from '@/node-types';
@@ -157,7 +159,9 @@ async function records() {
 		Container.get(CredentialsRepository).find({ order: { id: 'ASC' } }),
 		Container.get(WorkflowRepository).find({ order: { id: 'ASC' } }),
 		Container.get(ProjectRepository).find({ order: { id: 'ASC' } }),
-		Container.get(AgentHistoryRepository).find({ order: { versionId: 'ASC' } }),
+		Container.get(DataSource)
+			.getRepository(AgentHistory)
+			.find({ order: { versionId: 'ASC' } }),
 	]);
 }
 
@@ -697,14 +701,62 @@ it.each([
 	expect((await planner.plan(request)).blockingIssues).toEqual([]);
 });
 
+it('plans a copy of a skill whose ID belongs to another scope', async () => {
+	await createSkill({
+		id: 'skill_shared',
+		projectId: null,
+		content: toSkillContent({ name: 'Other', description: 'Other.', instructions: 'Other.' }),
+	});
+	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
+	request.options.conflictPolicy = 'fail';
+	request.skills = [sharedSkill('skill_shared', 'project')];
+	const before = await findLatestSkillVersion('skill_shared');
+	const plan = await planner.plan(request);
+	expect(plan.blockingIssues).toEqual([]);
+	const writes = plan.agentPlan?.skills?.shared ?? [];
+	expect(writes).toEqual([
+		expect.objectContaining({
+			skill: expect.objectContaining({ id: expect.not.stringMatching('skill_shared') }),
+			target: { projectId: project.id },
+		}),
+	]);
+	expect(plan.agentPlan?.items[0].config?.skills).toEqual([
+		{ type: 'skill', id: writes[0].skill.id },
+	]);
+	expect(await findLatestSkillVersion('skill_shared')).toEqual(before);
+	await deleteSkill('skill_shared');
+});
+
+it('reports a skill when other scopes own its ID and the ID of its copy', async () => {
+	const content = (name: string) =>
+		toSkillContent({ name, description: 'Other.', instructions: 'Other.' });
+	await createSkill({ id: 'skill_shared', projectId: null, content: content('Other') });
+	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
+	request.skills = [sharedSkill('skill_shared', 'project')];
+	// The first plan gives the ID of the copy.
+	const copyId = (await planner.plan(request)).agentPlan?.skills?.shared[0].skill.id ?? '';
+	expect(copyId).not.toBe('');
+	await createSkill({ id: copyId, projectId: otherProject.id, content: content('Copy owner') });
+	const plan = await planner.plan(request);
+	expect(plan.blockingIssues).toEqual([
+		expect.objectContaining({
+			type: 'agent-invalid',
+			sourceAgentId: 'source',
+			path: 'skills.skill_shared',
+			message: expect.stringContaining('already belongs to another'),
+		}),
+	]);
+	await deleteSkill('skill_shared');
+	await deleteSkill(copyId);
+});
+
 it.each([
-	['a skill ID in another scope', 'skill_shared', 'Other', 'already belongs to another'],
 	['another skill with the same name', 'skill_other', 'REVIEW', 'already named "Review"'],
 	['changed content under fail', 'skill_shared', 'Review', 'already exists with different content'],
 ] as const)('reports %s in the preview', async (_case, existingId, existingName, message) => {
 	await createSkill({
 		id: existingId,
-		projectId: _case === 'a skill ID in another scope' ? null : project.id,
+		projectId: project.id,
 		content: toSkillContent({ name: existingName, description: 'Other.', instructions: 'Other.' }),
 	});
 	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
@@ -911,13 +963,16 @@ it.each(['create', 'update', 'publish', 'unpublish'] as const)(
 				projectId: project.id,
 			});
 			if (action === 'unpublish') {
-				await Container.get(AgentHistoryRepository).saveVersion({
-					agentId: 'source',
-					versionId: 'published',
-					schema: null,
-					tools: {},
-					publishedBy: 'Test',
-				});
+				await Container.get(AgentHistoryRepository).saveVersion(
+					{
+						agentId: 'source',
+						versionId: 'published',
+						schema: null,
+						tools: {},
+						publishedBy: 'Test',
+					},
+					{},
+				);
 				await agents.update('source', { activeVersionId: 'published' });
 			}
 		}

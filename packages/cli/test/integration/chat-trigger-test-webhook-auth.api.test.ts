@@ -171,7 +171,10 @@ describe('chat trigger test webhooks', () => {
 		const workflow = await createChatWorkflow(trigger);
 
 		const listening = await startListening(workflow.id);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({
+			waitingForWebhook: true,
+			formTestUrls: [],
+		});
 
 		const url = `/${webhookTestEndpoint}/${trigger.webhookId}/chat`;
 
@@ -211,7 +214,10 @@ describe('chat trigger test webhooks', () => {
 		const workflow = await createChatWorkflow(trigger);
 
 		const listening = await startListening(workflow.id);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({
+			waitingForWebhook: true,
+			formTestUrls: [],
+		});
 
 		await webhookAgent
 			.post(`/${webhookTestEndpoint}/${trigger.webhookId}/chat`)
@@ -232,7 +238,10 @@ describe('chat trigger test webhooks', () => {
 		const workflow = await createChatWorkflow(trigger);
 
 		const listening = await startListening(workflow.id);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({
+			waitingForWebhook: true,
+			formTestUrls: [],
+		});
 
 		await webhookAgent
 			.post(`/${webhookTestEndpoint}/${trigger.webhookId}/chat`)
@@ -258,7 +267,10 @@ describe('chat trigger test webhooks', () => {
 		const chatSessionId = randomUUID().replace(/-/g, '');
 
 		const listening = await startListening(workflow.id, chatSessionId);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({
+			waitingForWebhook: true,
+			formTestUrls: [],
+		});
 
 		const response = await webhookAgent
 			.post(`/${webhookTestEndpoint}/${workflow.id}/${chatSessionId}`)
