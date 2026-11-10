@@ -97,9 +97,10 @@ const toScriptSafeJson = (value: unknown) =>
 		(char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`,
 	);
 
+/** Inserts `markup` before `</head>`. Returns `html` unchanged when it has no `</head>`. */
 const insertBeforeHeadEnd = (html: string, markup: string) => {
 	const headEnd = html.indexOf('</head>');
-	return markup && headEnd !== -1 ? html.slice(0, headEnd) + markup + html.slice(headEnd) : html;
+	return headEnd !== -1 ? html.slice(0, headEnd) + markup + html.slice(headEnd) : html;
 };
 
 @Service()
@@ -501,7 +502,7 @@ export class Server extends AbstractServer {
 					return `<script nonce="${nonce}">window.${EMBEDDED_SETTINGS_GLOBAL} = ${toScriptSafeJson(settings)};</script>`;
 				} catch (error) {
 					this.logger.warn('Could not embed settings in the editor page', { error });
-					return '';
+					return undefined;
 				}
 			};
 
@@ -535,7 +536,10 @@ export class Server extends AbstractServer {
 					const nonce = res.locals.cspNonce;
 					const settingsScript = await embeddedSettingsScript(nonce);
 					securityHeadersMiddleware(req, res, () => {
-						res.type('html').send(insertBeforeHeadEnd(template.join(nonce), settingsScript));
+						const page = template.join(nonce);
+						res
+							.type('html')
+							.send(settingsScript ? insertBeforeHeadEnd(page, settingsScript) : page);
 					});
 				} else {
 					next();
