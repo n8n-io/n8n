@@ -616,13 +616,13 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	skill.skill.references = [];
 	first.tasks[`${first.id}_task`].objective = 'Promoted task objective';
 	const promoted = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
-	// The project skill save raises the revision of the Agent, and the Agent save once more.
+	// The project skill save leaves the Agent unchanged. Only the Agent save raises the revision.
 	expect(await agents.findById(initial.id)).toMatchObject({
 		versionId: promoted.versionId,
-		revision: initial.revision + 2,
+		revision: initial.revision + 1,
 	});
-	// The project skill save captures a version of the Agent that follows it.
-	expect(await history.count()).toBe(3);
+	// The skill save captures no Agent version. The Agent save captures one.
+	expect(await history.count()).toBe(2);
 	expect(
 		await Container.get(AgentTaskSnapshotRepository).findByVersionId(promoted.versionId!),
 	).toMatchObject([{ taskId: task.id, objective: 'Promoted task objective' }]);
