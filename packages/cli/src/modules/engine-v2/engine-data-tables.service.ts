@@ -1,6 +1,5 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 
 import {
 	DataTableNotFoundError,
@@ -8,7 +7,7 @@ import {
 	dataTableNotFoundInProject,
 	isAllowedNode,
 } from '@n8n/backend-module-data-table';
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { OwnershipService } from '@/services/ownership.service';
 
 import type {

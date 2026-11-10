@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch, type Component, type Ref } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -20,7 +20,6 @@ import { useAssistantMentionAttachments } from '@/features/ai/assistant-at-menti
 import { useAssistantMentionAvailability } from '@/features/ai/assistant-at-mentions/composables/useAssistantMentionAvailability';
 import { useAssistantAtMentionsTelemetry } from '@/features/ai/assistant-at-mentions/assistantAtMentions.telemetry';
 import type {
-	AssistantMentionArtifactReference,
 	AssistantMentionCounts,
 	AssistantMentionSelection,
 	WorkflowArtifactReference,
@@ -99,6 +98,7 @@ const props = withDefaults(
 		placeholderKey?: BaseTextKey;
 		/** Already-translated base placeholder; wins over `placeholderKey`. Never used as a prefill. */
 		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		previewPromptKey?: BaseTextKey | null;
@@ -116,6 +116,8 @@ const props = withDefaults(
 		isOutOfCredits?: boolean;
 		/** Undefined keeps the default "+" menu; a string replaces it with a plain attach button restricted to those MIME types (`''` hides attaching). */
 		attachOnlyMimeTypes?: string;
+		/** Restricts the accepted file types, as an `accept` string, and keeps the "+" menu. `attachOnlyMimeTypes` wins when both are set. */
+		acceptedMimeTypes?: string;
 	}>(),
 	{
 		isStreaming: false,
@@ -144,26 +146,21 @@ const emit = defineEmits<{
 	// false when the user has already typed something newer, so the caller can
 	// tell whether the draft was recovered. It also restores the pre-fill the
 	// draft came from, so a retry stays attributed to the surface that wrote it.
+	// `mentionedWorkflowIds` lists the workflows the mentions point at, in the
+	// order they were picked: the mentions reach the thread only as attachments.
 	submit: [
 		message: string,
 		attachments: InstanceAiAttachment[] | undefined,
 		restoreDraft: () => boolean,
 		authorship: InstanceAiMessageAuthorship,
 		responseStartedAtEpochMs: number,
-		acceptDraft: () => void,
 		mentionCounts: AssistantMentionCounts,
 		mentionedWorkflowIds: readonly string[],
 	];
 	stop: [];
 	'dismiss-context-chip': [];
 	'workflow-preview': [workflowFile: string | null];
-	'mention-reference-added': [reference: AssistantMentionArtifactReference];
-	'mention-reference-removed': [referenceId: string];
-	'mention-workflow-open': [workflowId: string];
-	// Experiment cleanup: remove with instanceAiSplitEmptyState.
-	// Fires when the composer goes between empty and non-empty so the split
-	// empty state can pause its cycling placeholders only once the user types
-	// (auto-focus on mount must NOT pause the cycle).
+	// Placeholder previews pause for draft content.
 	'content-change': [hasContent: boolean];
 }>();
 
@@ -325,8 +322,7 @@ const attachedEncodedBytes = computed(() =>
 	attachedFiles.value.reduce((sum, file) => sum + base64EncodedSize(file.size), 0),
 );
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-// Experiment cleanup: remove with instanceAiSplitEmptyState.
-watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
+watch(isComposerDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
@@ -376,14 +372,16 @@ const mentionAttachments = useAssistantMentionAttachments({
 	resources: attachedResources,
 	projectId: () => props.mentionProjectId,
 	reservedAttachmentCount: () => props.reservedAttachmentCount,
-	onReferenceAdded: (reference) => emit('mention-reference-added', reference),
-	onReferenceRemoved: (referenceId) => emit('mention-reference-removed', referenceId),
 	onMentionRemoved: mentionTelemetry.trackMentionRemoved,
 	onCleared: () => mentions.close(false, 'unavailable'),
 });
 
+/**
+ * A pick only stages the mention as a draft attachment. The mentioned workflow
+ * gets its tab with the message it rides on, once that message is sent, so
+ * picking it does not move the thread's tabs or preview around.
+ */
 async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
-	// Read before the pick stages anything: a workflow mention opens its own tab.
 	const existingArtifact = props.mentionArtifacts.find(
 		(artifact) => artifact.id === selection.item.workflowId,
 	);
@@ -404,8 +402,7 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 			i18n.baseText('instanceAi.nodeContext.truncated.title'),
 		);
 	}
-	emit('mention-workflow-open', selection.item.workflowId);
-	await mentions.replaceActiveRange(selection.item.label);
+	await mentions.clearActiveRange();
 }
 
 const canSubmit = computed(() =>
@@ -455,6 +452,15 @@ const placeholder = computed(() => {
 	return props.placeholder ?? i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
 });
 
+const canPreviewPlaceholder = computed(
+	() =>
+		!isGatedBySetup.value &&
+		!props.previewPromptKey &&
+		!previewPrompt.value &&
+		!props.amendContext &&
+		!props.contextualSuggestion,
+);
+
 watch(
 	[shouldTrackVisibleSuggestions, resolvedSuggestionCatalogVersion, () => props.currentThreadId],
 	([shouldTrackSuggestions, suggestionCatalogVersion, threadId]) => {
@@ -486,7 +492,6 @@ function emitSubmittedMessage(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs: number,
-	acceptDraft: () => void,
 	mentionCounts: AssistantMentionCounts,
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
@@ -498,7 +503,6 @@ function emitSubmittedMessage(
 		restoreDraft,
 		authorship,
 		responseStartedAtEpochMs,
-		acceptDraft,
 		mentionCounts,
 		mentionedWorkflowIds,
 	);
@@ -579,7 +583,7 @@ function submitComposerMessage(
 	draftSnapshot?: {
 		files: File[];
 		resources: InstanceAiResourceAttachment[];
-		mentionReferenceIds: readonly string[];
+		mentionRecordIds: readonly string[];
 		mentionCounts: AssistantMentionCounts;
 		mentionedWorkflowIds: readonly string[];
 	},
@@ -595,18 +599,17 @@ function submitComposerMessage(
 	const mentionCounts = draftSnapshot?.mentionCounts ?? mentionAttachments.snapshotCounts();
 	const mentionedWorkflowIds =
 		draftSnapshot?.mentionedWorkflowIds ?? mentionAttachments.snapshotMentionedWorkflowIds();
-	const mentionSubmission = mentionAttachments.detachSubmission(draftSnapshot?.mentionReferenceIds);
+	const restoreMentions = mentionAttachments.detachSubmission(draftSnapshot?.mentionRecordIds);
 	emitSubmittedMessage(
 		message,
 		attachments,
 		() => {
 			const restored = restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill);
-			mentionSubmission.restore();
+			restoreMentions();
 			return restored;
 		},
 		resolveAuthorship(message, prefill),
 		responseStartedAtEpochMs,
-		mentionSubmission.accept,
 		mentionCounts,
 		mentionedWorkflowIds,
 	);
@@ -642,7 +645,7 @@ async function handleSubmit() {
 
 	const submittedFiles = [...attachedFiles.value];
 	const submittedResources = [...attachedResources.value];
-	const mentionReferenceIds = mentionAttachments.snapshotSubmission();
+	const mentionRecordIds = mentionAttachments.snapshotSubmission();
 	const mentionCounts = mentionAttachments.snapshotCounts();
 	const mentionedWorkflowIds = mentionAttachments.snapshotMentionedWorkflowIds();
 	isPreparingSubmission.value = true;
@@ -669,7 +672,7 @@ async function handleSubmit() {
 		{
 			files: submittedFiles,
 			resources: submittedResources,
-			mentionReferenceIds,
+			mentionRecordIds,
 			mentionCounts,
 			mentionedWorkflowIds,
 		},
@@ -687,6 +690,9 @@ watch(
 		const consumed = instanceAiStore.consumePendingAttachments();
 		for (const attachment of consumed) {
 			if (attachment.type === 'file') continue;
+			if (attachment.type === 'element') {
+				attachedResources.value = attachedResources.value.filter((a) => a.type !== 'element');
+			}
 			if (attachment.type === 'nodes') {
 				const existing = attachedResources.value.find(
 					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
@@ -703,6 +709,17 @@ watch(
 	},
 	{ deep: true, immediate: true },
 );
+
+watch(
+	() => {
+		const element = attachedResources.value.find((a) => a.type === 'element');
+		return element?.type === 'element' ? element.appId : null;
+	},
+	(appId) => instanceAiStore.setComposerElementAppId(appId),
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => instanceAiStore.setComposerElementAppId(null));
 
 function handleStop() {
 	mentions.close();
@@ -873,6 +890,7 @@ const resizable = computed(() => {
 			:model-value="inputText"
 			:class="$style.inputWrapper"
 			:placeholder="placeholder"
+			:placeholder-preview="canPreviewPlaceholder ? props.placeholderPreview : undefined"
 			:is-streaming="props.isStreaming"
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup || isPreparingSubmission || props.isOutOfCredits"
@@ -883,7 +901,8 @@ const resizable = computed(() => {
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
 			:show-attach="showAttach"
-			:accepted-mime-types="props.attachOnlyMimeTypes"
+			:show-attach-button="props.attachOnlyMimeTypes !== undefined"
+			:accepted-mime-types="props.attachOnlyMimeTypes ?? props.acceptedMimeTypes"
 			:attached-encoded-bytes="attachedEncodedBytes"
 			@update:model-value="mentions.handleTextChange"
 			@submit="handleSubmit"

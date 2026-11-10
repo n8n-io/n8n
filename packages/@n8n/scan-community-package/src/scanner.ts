@@ -47,6 +47,20 @@ const errorMessage = (error: unknown) => (error instanceof Error ? error.message
 
 const field = (value: unknown, key: string): unknown => (isRecord(value) ? value[key] : undefined);
 
+export const EXIT_CODES = {
+	/** The package passed all checks. */
+	SCAN_SUCCEEDED: 0,
+	/** The scan could not finish. Matches Node.js, which exits with 1 on an uncaught exception. */
+	INTERNAL_ERROR: 1,
+	/** The scan finished and the package failed a check. */
+	SCAN_FAILED: 2,
+} as const;
+
+export const getExitCode = (result: AnalysisResult) => {
+	if (result.passed) return EXIT_CODES.SCAN_SUCCEEDED;
+	return result.error === undefined ? EXIT_CODES.SCAN_FAILED : EXIT_CODES.INTERNAL_ERROR;
+};
+
 /**
  * Checks if the given childPath is contained within the parentPath. Resolves
  * the paths before comparing them, so that relative paths are also supported.
@@ -107,6 +121,9 @@ export const resolvePackage = (
 	}
 };
 
+export const formatPackageSpec = (packageName: string, version: string | null): string =>
+	version ? `${packageName}@${version}` : packageName;
+
 /**
  * Picks the exact version to scan: the latest one without a spec, the highest
  * match for a range, and otherwise the version a dist-tag points to.
@@ -122,7 +139,7 @@ export const resolveVersion = (metadata: PackageMetadata, version: string | null
 		}
 		case isRange: {
 			const match = semver.maxSatisfying(Object.keys(metadata.versions), version);
-			if (!match) throw new Error(`No version found matching ${version}`);
+			if (!match) throw new Error(`No version found matching "${version}"`);
 			return match;
 		}
 		default:
@@ -213,6 +230,17 @@ export const parseSourceRepo = (
 // A source fetch failure fails the scan outright, so bound the requests —
 // a stalled connection must not hang the gate.
 const SOURCE_FETCH_TIMEOUT_MS = 30_000;
+
+// Request timeout and rate limiting are on our side, not on the package author
+const TRANSIENT_CLIENT_ERRORS = new Set([408, 429]);
+
+export const isSourceUnavailable = (error: unknown): boolean => {
+	if (!axios.isAxiosError(error)) return false;
+	const status = error.response?.status;
+	return (
+		status !== undefined && status >= 400 && status < 500 && !TRANSIENT_CLIENT_ERRORS.has(status)
+	);
+};
 
 const fetchSourceInfo = async (packageName: string, version: string) => {
 	const { data } = await axios.get<{ attestations?: Attestation[] }>(
@@ -415,7 +443,7 @@ export const analyzePackageByName = async (
 		const exactVersion = resolveVersion(packageMetadata, version);
 		const label = `${packageName}@${exactVersion}`;
 
-		stdout.write(`Checking provenance for ${label}...`);
+		stdout.write(`Checking provenance for "${label}"...`);
 		const provenanceResult = checkPackageProvenance(packageMetadata, exactVersion);
 		if (stdout.isTTY) {
 			stdout.clearLine(0);
@@ -423,7 +451,7 @@ export const analyzePackageByName = async (
 		}
 
 		if (!provenanceResult.passed) {
-			stdout.write(`❌ Provenance check failed for ${label} \n`);
+			stdout.write(`❌ Provenance check failed for "${label}" \n`);
 
 			return {
 				packageName,
@@ -432,7 +460,7 @@ export const analyzePackageByName = async (
 			};
 		}
 
-		stdout.write(`✅ Provenance check passed for ${label} \n`);
+		stdout.write(`✅ Provenance check passed for "${label}" \n`);
 
 		// Lint the source the provenance attestation points at: the
 		// node/credential rules are written for `.ts` sources and mostly no-op
@@ -440,7 +468,7 @@ export const analyzePackageByName = async (
 		// in the tarball. An unreachable source is a hard failure — falling
 		// back to a tarball-only scan would silently reintroduce that blind
 		// spot.
-		stdout.write(`Fetching source for ${label}...`);
+		stdout.write(`Fetching source for "${label}"...`);
 		let sourceDir: string | null = null;
 		let sourceInfo: SourceRepo | null = null;
 		let sourceError: unknown = null;
@@ -461,7 +489,17 @@ export const analyzePackageByName = async (
 			const reason = sourceError
 				? errorMessage(sourceError)
 				: 'unsupported or unlocatable source repository';
-			stdout.write(`❌ Could not fetch source for ${label} \n`);
+			stdout.write(`❌ Could not fetch source for "${label}" \n`);
+
+			if (sourceError && !isSourceUnavailable(sourceError)) {
+				return {
+					packageName,
+					version: exactVersion,
+					passed: false,
+					message: `Analysis failed: could not fetch the attested source repository (${reason})`,
+					error: sourceError,
+				};
+			}
 
 			return {
 				packageName,
@@ -473,18 +511,18 @@ export const analyzePackageByName = async (
 
 		const shortCommit = sourceInfo.gitCommit.slice(0, 7);
 		stdout.write(
-			`✅ Fetched source from github.com/${sourceInfo.owner}/${sourceInfo.repo}@${shortCommit} \n`,
+			`✅ Fetched source from "github.com/${sourceInfo.owner}/${sourceInfo.repo}@${shortCommit}" \n`,
 		);
 
-		stdout.write(`Downloading ${label}...`);
+		stdout.write(`Downloading "${label}"...`);
 		const packageDir = await downloadAndExtractPackage(packageName, exactVersion);
 		if (stdout.isTTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
-		stdout.write(`✅ Downloaded ${label} \n`);
+		stdout.write(`✅ Downloaded "${label}" \n`);
 
-		stdout.write(`Analyzing ${label}...`);
+		stdout.write(`Analyzing "${label}"...`);
 		// The source checkout gets the full rule set on real `.ts` sources.
 		// The shipped artifact must stay scanned too: provenance pins the
 		// source commit, not the build output — a build step can emit anything
@@ -494,7 +532,7 @@ export const analyzePackageByName = async (
 		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
 		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
 		const failures = [sourceResult, distResult].filter((r) => !r.passed);
-		const [firstFailure] = failures;
+		const firstFailure = failures.find((r) => r.error !== undefined) ?? failures[0];
 		const analysisResult: AnalysisResult = firstFailure
 			? {
 					passed: false,
@@ -504,13 +542,18 @@ export const analyzePackageByName = async (
 							.map((r) => r.details)
 							.filter(Boolean)
 							.join('\n') || undefined,
+					error: firstFailure.error,
 				}
 			: { passed: true };
 		if (stdout.isTTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
-		stdout.write(`✅ Analyzed ${label} \n`);
+		stdout.write(
+			firstFailure?.error === undefined
+				? `✅ Analyzed "${label}" \n`
+				: `❌ Could not analyze "${label}" \n`,
+		);
 
 		return {
 			packageName,
@@ -518,12 +561,13 @@ export const analyzePackageByName = async (
 			...analysisResult,
 		};
 	} catch (error: unknown) {
-		console.error(`Failed to analyze ${packageName}@${version}:`, error);
+		console.error(`Failed to analyze "${formatPackageSpec(packageName, version)}":`, error);
 		return {
 			packageName,
 			version,
 			passed: false,
 			message: `Analysis failed: ${errorMessage(error)}`,
+			error,
 		};
 	}
 };

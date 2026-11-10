@@ -1,3 +1,4 @@
+import type { TransactionRunner } from '@n8n/db';
 import { InviteUsersRequestDto } from '@n8n/api-types';
 import { type EventService, UrlService, type RoleService, JwtService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -71,6 +72,8 @@ describe('UserService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const personRepository = mock<PersonRepository>();
 	const scimSwitchReader = mock<ScimSwitchReader>();
+	const transactions = mock<TransactionRunner>();
+	transactions.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	const userService = new UserService(
 		mock(),
 		userRepository,
@@ -90,6 +93,7 @@ describe('UserService', () => {
 		sharedWorkflowRepository,
 		personRepository,
 		scimSwitchReader,
+		transactions,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -828,13 +832,13 @@ describe('UserService', () => {
 	});
 
 	describe('getUsersAndCount', () => {
-		it('returns paginated users and the unfiltered total count', async () => {
+		it('returns a page of persons and the total count of persons', async () => {
 			const users = [
 				Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE }),
 				Object.assign(new User(), { id: uuid(), role: GLOBAL_OWNER_ROLE }),
 			];
 			userRepository.findManyByIds.mockResolvedValue(users);
-			userRepository.count.mockResolvedValue(10);
+			userRepository.countAccounts.mockResolvedValue(10);
 
 			const ids = [users[0].id];
 			const { users: result, count } = await userService.getUsersAndCount({
@@ -847,16 +851,17 @@ describe('UserService', () => {
 				includeRole: true,
 				offset: 0,
 				limit: 2,
+				kind: 'person',
 			});
-			expect(userRepository.count).toHaveBeenCalled();
+			expect(userRepository.countAccounts).toHaveBeenCalledWith({ kind: 'person' });
 			expect(count).toBe(10);
 			expect(result).toEqual(users);
 		});
 
-		it('lists all users when no ids are given', async () => {
+		it('lists all persons when no ids are given', async () => {
 			const users = [Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE })];
 			userRepository.findMany.mockResolvedValue(users);
-			userRepository.count.mockResolvedValue(1);
+			userRepository.countAccounts.mockResolvedValue(1);
 
 			const { users: result, count } = await userService.getUsersAndCount({
 				limit: 10,
@@ -867,7 +872,9 @@ describe('UserService', () => {
 				includeRole: true,
 				offset: 0,
 				limit: 10,
+				kind: 'person',
 			});
+			expect(userRepository.countAccounts).toHaveBeenCalledWith({ kind: 'person' });
 			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
 			expect(count).toBe(1);
 			expect(result).toEqual(users);
@@ -1051,13 +1058,22 @@ describe('UserService', () => {
 			).rejects.toThrow(violation);
 
 			expect(ownershipTransferService.transferAllResources).not.toHaveBeenCalled();
-			expect(manager.transaction).not.toHaveBeenCalled();
+			expect(transactions.run).not.toHaveBeenCalled();
 		});
 
 		it('skips the policy check when the user is deleted without a transferee', async () => {
 			await userService.deleteUser(actor, userToDelete.id);
 
 			expect(ownershipTransferService.enforceTransferPolicy).not.toHaveBeenCalled();
+		});
+
+		it('does not delete the account or emit events when module finalization fails', async () => {
+			const error = new Error('Marker cleanup failed');
+			ownershipTransferService.finalizeUserDeletion.mockRejectedValueOnce(error);
+			await expect(userService.deleteUser(actor, userToDelete.id)).rejects.toThrow(error);
+			expect(userRepository.deleteAccount).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(externalHooks.run).not.toHaveBeenCalled();
 		});
 
 		it.each([
@@ -1073,7 +1089,7 @@ describe('UserService', () => {
 				).toHaveBeenCalledExactlyOnceWith([userToDelete.id]);
 				expect(
 					ownershipTransferService.deleteUserOwnedModuleResources.mock.invocationCallOrder[0],
-				).toBeLessThan(manager.transaction.mock.invocationCallOrder[0]);
+				).toBeLessThan(transactions.run.mock.invocationCallOrder[0]);
 			},
 		);
 
@@ -1142,7 +1158,7 @@ describe('UserService', () => {
 
 				await expect(result).rejects.toThrow(ForbiddenError);
 				await expect(result).rejects.toThrow('Instance owner cannot be deleted.');
-				expect(manager.transaction).not.toHaveBeenCalled();
+				expect(transactions.run).not.toHaveBeenCalled();
 			});
 		});
 	});

@@ -2,9 +2,15 @@ import type { Message } from '@n8n/agents';
 import type { AgentChatQueueResponse, AgentMessageAuthor } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
-import { ConflictError, BadRequestError, NotFoundError } from '@n8n/errors';
+import {
+	ConflictError,
+	BadRequestError,
+	NotFoundError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
@@ -243,7 +249,10 @@ export class AgentMessageQueueService {
 	}
 
 	/** Call after authorizing session access. Clear future turns before aborting the current turn. */
-	async prepareSessionStop(threadId: string): Promise<{
+	async prepareSessionStop(
+		threadId: string,
+		options: { preserveInput?: boolean } = {},
+	): Promise<{
 		executionIds: string[];
 		queueIds: string[];
 		attachmentIds: string[];
@@ -259,7 +268,7 @@ export class AgentMessageQueueService {
 				attachmentIds.push(
 					...readInboundUserMessage(item.message.content).attachments.map(({ id }) => id),
 				);
-				await this.messages.clearPendingInput(item.messageId, ctx);
+				if (!options.preserveInput) await this.messages.clearPendingInput(item.messageId, ctx);
 			}
 			return {
 				executionIds: running.map(({ id }) => id),

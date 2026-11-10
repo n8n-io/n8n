@@ -3,6 +3,11 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { OTLPTraceExporter as OTLPGrpcTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import type http from 'node:http';
+import type https from 'node:https';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -15,14 +20,33 @@ import { OtelService } from '../otel.service';
 
 import type { ExternalHooks } from '@/external-hooks';
 import type { OtelSdk } from '@/observability/otel-sdk';
-import { OUTBOUND_HEADERS_PROPAGATOR, TRACING_OFF } from '@/observability/swappable-pipeline';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { TRACING_OFF } from '@/observability/swappable-pipeline';
+import type { Publisher } from '@n8n/backend-services';
 
-// The connectivity-check fetch, obtained via outboundHttp.transport().asCustomFetch().
-// checkEndpointReachability ignores the response and only catches network errors.
-const fetchMock = vi.fn();
+// The startup check's HEAD request. The check ignores the response and only catches network errors.
+const { probeMock } = vi.hoisted(() => ({ probeMock: vi.fn() }));
+vi.mock('node:http', async (importOriginal) => {
+	const { EventEmitter } = await import('node:events');
+	return {
+		...(await importOriginal<typeof http>()),
+		request: (url: string, options: unknown, onResponse: (response: object) => void) => {
+			const req = Object.assign(new EventEmitter(), {
+				end: () => {
+					(probeMock(url, options) as Promise<unknown>).then(
+						() => onResponse({ resume: () => {} }),
+						(error: unknown) => req.emit('error', error),
+					);
+				},
+			});
+			return req;
+		},
+	};
+});
+
+const getNodeAgentMock = vi.fn();
+type AgentFactory = (protocol: string) => Promise<unknown>;
 const outboundHttp = {
-	transport: () => ({ asCustomFetch: () => fetchMock }),
+	transport: () => ({ getNodeAgent: getNodeAgentMock }),
 } as unknown as OutboundHttp;
 
 const {
@@ -215,7 +239,11 @@ describe('OtelService', () => {
 		otelSettingsService = mock<OtelSettingsService>();
 		instanceSettings = mock<InstanceSettings>({ instanceId: 'inst-1', instanceType: 'main' });
 		logger = mock<Logger>();
-		fetchMock.mockResolvedValue({ ok: true });
+		probeMock.mockResolvedValue(undefined);
+		getNodeAgentMock.mockReturnValue({
+			httpAgent: mock<http.Agent>(),
+			httpsAgent: mock<https.Agent>(),
+		});
 		waitForReady.mockImplementation((_deadline: number, callback: (error?: Error) => void) =>
 			callback(),
 		);
@@ -279,7 +307,7 @@ describe('OtelService', () => {
 
 			expect(otelSettingsService.loadSettings).toHaveBeenCalledTimes(1);
 			expect(OTLPTraceExporter).not.toHaveBeenCalled();
-			expect(fetchMock).not.toHaveBeenCalled();
+			expect(probeMock).not.toHaveBeenCalled();
 			expect(stoppedSdk.apply).not.toHaveBeenCalled();
 		});
 
@@ -300,7 +328,7 @@ describe('OtelService', () => {
 
 		it('logs connectivity failure and still finishes startup', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			fetchMock.mockRejectedValue(new Error('connect ECONNREFUSED'));
+			probeMock.mockRejectedValue(new Error('connect ECONNREFUSED'));
 
 			await service.init();
 			await flushPromises();
@@ -367,7 +395,7 @@ describe('OtelService', () => {
 			const [deadline] = waitForReady.mock.calls[0] as [number];
 			expect(deadline).toBeGreaterThanOrEqual(startedAt + 2_000);
 			expect(deadline).toBeLessThanOrEqual(Date.now() + 2_000);
-			expect(fetchMock).not.toHaveBeenCalled();
+			expect(probeMock).not.toHaveBeenCalled();
 			expect(clientClose).toHaveBeenCalledTimes(1);
 			expect(logger.error).not.toHaveBeenCalled();
 		});
@@ -588,8 +616,53 @@ describe('OtelService', () => {
 			await service.applySavedSettings();
 			const withoutHeaders = otelSdk.apply.mock.lastCall?.[0].propagator;
 
-			expect(withHeaders).toBe(OUTBOUND_HEADERS_PROPAGATOR);
+			expect(withHeaders.fields()).toEqual(['traceparent', 'tracestate', 'baggage']);
 			expect(withoutHeaders).toBe(TRACING_OFF.propagator);
+		});
+
+		describe('when OTEL_PROPAGATORS is set', () => {
+			afterEach(() => delete process.env.OTEL_PROPAGATORS);
+
+			const propagatorFor = async (names: string, injectOutbound: boolean) => {
+				process.env.OTEL_PROPAGATORS = names;
+				otelSettingsService.loadSettings.mockResolvedValue({ ...enabledSettings, injectOutbound });
+				await createService(otelSdk).init();
+				return otelSdk.apply.mock.lastCall?.[0].propagator;
+			};
+
+			it('sends no header while the switch is off', async () => {
+				const propagator = await propagatorFor('tracecontext,baggage', false);
+
+				expect(propagator).toBe(TRACING_OFF.propagator);
+			});
+
+			it('holds back the headers it leaves out while the switch is on', async () => {
+				const propagator = await propagatorFor('tracecontext', true);
+
+				expect(propagator?.fields()).toEqual(['traceparent', 'tracestate']);
+			});
+
+			it('sends no header for none while the switch is on', async () => {
+				const propagator = await propagatorFor('none', true);
+
+				expect(propagator?.fields()).toEqual([]);
+			});
+
+			it('warns once about a name n8n does not carry, and not again on a reload', async () => {
+				process.env.OTEL_PROPAGATORS = 'tracecontext,b3';
+				otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+				const started = createService(otelSdk);
+
+				await started.init();
+				await started.applySavedSettings();
+
+				const warnings = logger.warn.mock.calls.filter(([message]) =>
+					message.includes('OTEL_PROPAGATORS'),
+				);
+				expect(warnings).toEqual([
+					[expect.stringContaining('OTEL_PROPAGATORS'), { unknown: ['b3'] }],
+				]);
+			});
 		});
 
 		it('probes the endpoint only when a save builds a new exporter', async () => {
@@ -603,10 +676,24 @@ describe('OtelService', () => {
 			await service.applySavedSettings();
 			await flushPromises();
 
-			expect(fetchMock).toHaveBeenCalledTimes(2);
-			expect(fetchMock).toHaveBeenLastCalledWith(
+			expect(probeMock).toHaveBeenCalledTimes(2);
+			expect(probeMock).toHaveBeenLastCalledWith(
 				'http://new-collector:4318/v1/traces',
 				expect.anything(),
+			);
+		});
+
+		it('probes through the agent that the exporter uses, so a passing check means exports can pass', async () => {
+			const httpAgent = mock<http.Agent>();
+			getNodeAgentMock.mockReturnValue({ httpAgent, httpsAgent: mock<https.Agent>() });
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+
+			await service.init();
+			await flushPromises();
+
+			expect(probeMock).toHaveBeenCalledWith(
+				'http://localhost:4318/v1/traces',
+				expect.objectContaining({ method: 'HEAD', agent: httpAgent }),
 			);
 		});
 	});
@@ -625,7 +712,7 @@ describe('OtelService', () => {
 			await expect(service.init()).resolves.not.toThrow();
 
 			expect(otelSdk.apply).toHaveBeenCalledWith(TRACING_OFF);
-			expect(fetchMock).not.toHaveBeenCalled();
+			expect(probeMock).not.toHaveBeenCalled();
 			expect(logger.error).toHaveBeenCalledTimes(1);
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to start OpenTelemetry tracing, so tracing stays off',
@@ -713,7 +800,7 @@ describe('OtelService', () => {
 		it('does not log a second failure for the same exporter', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			let rejectFn!: () => void;
-			fetchMock.mockImplementation(
+			probeMock.mockImplementation(
 				async () =>
 					await new Promise<never>((_, reject) => {
 						rejectFn = () => reject(new Error('ECONNREFUSED'));
@@ -730,7 +817,7 @@ describe('OtelService', () => {
 
 		it('discards a probe of the previous exporter and still logs the current failure', async () => {
 			const rejectProbes: Array<(error: Error) => void> = [];
-			fetchMock.mockImplementation(
+			probeMock.mockImplementation(
 				async () => await new Promise<never>((_, reject) => rejectProbes.push(reject)),
 			);
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
@@ -759,7 +846,7 @@ describe('OtelService', () => {
 
 		it('discards a probe that fails while the service is shutting down', async () => {
 			let rejectProbe!: (error: Error) => void;
-			fetchMock.mockImplementation(
+			probeMock.mockImplementation(
 				async () => await new Promise<never>((_, reject) => (rejectProbe = reject)),
 			);
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
@@ -774,7 +861,7 @@ describe('OtelService', () => {
 
 		it('logs string errors that are not Error instances', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			fetchMock.mockRejectedValue('string-error');
+			probeMock.mockRejectedValue('string-error');
 
 			await service.init();
 			await flushPromises();
@@ -862,6 +949,86 @@ describe('OtelService', () => {
 				url: 'https://collector.example.com/v1/traces',
 				headers: { auth: 'token' },
 				timeoutMillis: 3_000,
+				httpAgentOptions: expect.any(Function),
+			});
+		});
+
+		describe('export agents', () => {
+			const agents = { httpAgent: mock<http.Agent>(), httpsAgent: mock<https.Agent>() };
+			let dir: string;
+
+			const exportAgentFactory = async () => {
+				await service.sendTestTrace(connection);
+				return vi.mocked(OTLPTraceExporter).mock.calls[0][0]?.httpAgentOptions as AgentFactory;
+			};
+
+			const writeTempFile = async (name: string) => {
+				await writeFile(join(dir, name), name);
+				return join(dir, name);
+			};
+
+			beforeEach(async () => {
+				getNodeAgentMock.mockReturnValue(agents);
+				dir = await mkdtemp(join(tmpdir(), 'otel-tls-'));
+			});
+
+			afterEach(async () => {
+				vi.unstubAllEnvs();
+				await rm(dir, { recursive: true });
+			});
+
+			it('exports through the outbound transport agents, so the proxy environment variables apply', async () => {
+				const agentFor = await exportAgentFactory();
+
+				expect(await agentFor('http:')).toBe(agents.httpAgent);
+				expect(await agentFor('https:')).toBe(agents.httpsAgent);
+			});
+
+			it('gives the https agent the certificate files, preferring a non-blank TRACES variable', async () => {
+				vi.stubEnv('OTEL_EXPORTER_OTLP_CERTIFICATE', '/does/not/exist');
+				vi.stubEnv('OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE', await writeTempFile('ca'));
+				vi.stubEnv('OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE', await writeTempFile('cert'));
+				vi.stubEnv('OTEL_EXPORTER_OTLP_TRACES_CLIENT_KEY', ' ');
+				vi.stubEnv('OTEL_EXPORTER_OTLP_CLIENT_KEY', await writeTempFile('key'));
+
+				await (await exportAgentFactory())('https:');
+
+				expect(getNodeAgentMock).toHaveBeenCalledWith({
+					keepAlive: true,
+					ca: Buffer.from('ca'),
+					cert: Buffer.from('cert'),
+					key: Buffer.from('key'),
+				});
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('exports without a certificate file it cannot read, and logs a warning', async () => {
+				vi.stubEnv('OTEL_EXPORTER_OTLP_CERTIFICATE', '/does/not/exist');
+
+				const agent = await (await exportAgentFactory())('https:');
+
+				expect(agent).toBe(agents.httpsAgent);
+				expect(getNodeAgentMock).toHaveBeenCalledWith({
+					keepAlive: true,
+					ca: undefined,
+					cert: undefined,
+					key: undefined,
+				});
+				expect(logger.warn).toHaveBeenCalledTimes(1);
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('/does/not/exist'),
+					expect.anything(),
+				);
+			});
+
+			it('reads no certificate files for an http endpoint', async () => {
+				vi.stubEnv('OTEL_EXPORTER_OTLP_CERTIFICATE', '/does/not/exist');
+
+				const agent = await (await exportAgentFactory())('http:');
+
+				expect(agent).toBe(agents.httpAgent);
+				expect(getNodeAgentMock).toHaveBeenCalledWith({ keepAlive: true });
+				expect(logger.warn).not.toHaveBeenCalled();
 			});
 		});
 

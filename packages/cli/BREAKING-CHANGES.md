@@ -30,6 +30,29 @@ The CLI rejects the old workflow-specific flag names, including their camelCase 
 Selection imports accept `--conflict-policy` and `--id-policy`.
 There are no compatibility aliases or per-kind policy overrides.
 
+Package imports now check the `workflow:activate` and `workflow:deactivate` API key scopes.
+An import that publishes or republishes a workflow requires `workflow:activate`.
+This includes a republish under the default `preserve-published-state` policy.
+It also includes the fixed `match-source` policy of selection imports.
+An import that unpublishes a workflow requires `workflow:deactivate`.
+An import that archives a published workflow requires only `workflow:delete`.
+If your pipeline imports packages that publish or unpublish workflows, add these scopes to its API key.
+
+## Promotions (preview)
+
+The change preview endpoint `GET /api/v1/promotions/projects/{projectId}/changes/{direction}` no longer returns `changes`.
+Read `resources` instead.
+Each resource has a `type`, `id`, `change` and `selectable` field.
+The `change` values are `added`, `modified`, `archived`, `deleted` and `unchanged`.
+They replace the old `status` values.
+A renamed resource has the change `modified` and a `previousName`.
+A moved resource has the change `modified` and a `previousParentKey`.
+The endpoint no longer accepts the `search`, `sort` and `order` query parameters.
+
+The CLI `promotion-environment list-changes` command shows the changed resources of all types.
+It no longer accepts `--search`, `--sort` and `--order`.
+It needs an n8n instance with this change.
+
 # 2.0.0
 
 ### What changed?
