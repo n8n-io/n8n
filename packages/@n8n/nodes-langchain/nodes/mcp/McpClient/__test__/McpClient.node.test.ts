@@ -1032,11 +1032,16 @@ describe('McpClient', () => {
 			expect(client.listResources).toHaveBeenCalledTimes(100);
 		});
 
-		it('stops on a repeated cursor and returns a truncated result', async () => {
-			client.listResources.mockResolvedValue({
-				resources: [{ uri: 'mem://a', name: 'a' }],
-				nextCursor: 'c',
-			});
+		it('stops after collecting the page whose continuation cursor repeats', async () => {
+			client.listResources
+				.mockResolvedValueOnce({
+					resources: [{ uri: 'mem://a', name: 'a' }],
+					nextCursor: 'c',
+				})
+				.mockResolvedValueOnce({
+					resources: [{ uri: 'mem://b', name: 'b' }],
+					nextCursor: 'c',
+				});
 
 			const result = await runV12({ operation: 'listResources' });
 
@@ -1044,6 +1049,10 @@ describe('McpClient', () => {
 				[
 					{
 						json: { uri: 'mem://a', name: 'a', truncated: true },
+						pairedItem: { item: 0 },
+					},
+					{
+						json: { uri: 'mem://b', name: 'b', truncated: true },
 						pairedItem: { item: 0 },
 					},
 				],

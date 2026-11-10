@@ -1,5 +1,9 @@
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
-import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type ILoadOptionsFunctions,
+	type INodeListSearchResult,
+} from 'n8n-workflow';
 
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import { connectMcpClientForCredential, mapToNodeOperationError } from '../shared/utils';
@@ -99,7 +103,11 @@ export async function getResources(
 			return { results: [] };
 		}
 
-		throw error instanceof Error ? error : new Error(String(error));
+		throw error instanceof Error
+			? error
+			: new NodeOperationError(node, 'Failed to list resources from the MCP server', {
+					description: String(error),
+				});
 	} finally {
 		await client.result.close();
 	}
@@ -156,7 +164,11 @@ export async function getPrompts(
 			return { results: [] };
 		}
 
-		throw error instanceof Error ? error : new Error(String(error));
+		throw error instanceof Error
+			? error
+			: new NodeOperationError(node, 'Failed to list prompts from the MCP server', {
+					description: String(error),
+				});
 	} finally {
 		await client.result.close();
 	}

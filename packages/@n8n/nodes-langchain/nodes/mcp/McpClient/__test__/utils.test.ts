@@ -369,7 +369,7 @@ describe('utils', () => {
 			expect(client.listResources).toHaveBeenCalledTimes(2);
 		});
 
-		it('stops and truncates before appending a page fetched with a repeated cursor', async () => {
+		it('stops after collecting the page whose continuation cursor repeats', async () => {
 			const client = mockDeep<Client>();
 			client.listResources
 				.mockResolvedValueOnce({
@@ -388,7 +388,7 @@ describe('utils', () => {
 			const result = await getAllResources(client, {}, node, 0);
 
 			expect(result.truncated).toBe(true);
-			expect(result.items.map((resource) => resource.name)).toEqual(['a', 'b']);
+			expect(result.items.map((resource) => resource.name)).toEqual(['a', 'b', 'c']);
 			expect(client.listResources).toHaveBeenCalledTimes(3);
 		});
 
@@ -410,6 +410,31 @@ describe('utils', () => {
 
 				expect(result).toEqual({ items: [{ uri: 'mem://a', name: 'a' }], truncated: true });
 				expect(client.listResources).toHaveBeenCalledTimes(1);
+			} finally {
+				now.mockRestore();
+			}
+		});
+
+		it('returns the collected items when a page request fails at the deadline', async () => {
+			const client = mockDeep<Client>();
+			const now = vi.spyOn(Date, 'now');
+			let clock = 0;
+			now.mockImplementation(() => clock);
+			client.listResources
+				.mockResolvedValueOnce({
+					resources: [{ uri: 'mem://a', name: 'a' }],
+					nextCursor: 'c1',
+				})
+				.mockImplementationOnce(async () => {
+					clock += MCP_LIST_DEADLINE_MS;
+					throw new McpError(ErrorCode.RequestTimeout, 'Request timed out');
+				});
+
+			try {
+				const result = await getAllResources(client, {}, node, 0);
+
+				expect(result).toEqual({ items: [{ uri: 'mem://a', name: 'a' }], truncated: true });
+				expect(client.listResources).toHaveBeenCalledTimes(2);
 			} finally {
 				now.mockRestore();
 			}
@@ -451,7 +476,11 @@ describe('utils', () => {
 				],
 				truncated: false,
 			});
-			expect(client.listResourceTemplates).toHaveBeenNthCalledWith(2, { cursor: 'c1' }, {});
+			expect(client.listResourceTemplates).toHaveBeenNthCalledWith(
+				2,
+				{ cursor: 'c1' },
+				expect.objectContaining({ timeout: expect.any(Number) }),
+			);
 		});
 	});
 
@@ -475,8 +504,16 @@ describe('utils', () => {
 				items: [{ name: 'first' }, { name: 'second' }],
 				truncated: false,
 			});
-			expect(client.listPrompts).toHaveBeenNthCalledWith(1, { cursor: undefined }, {});
-			expect(client.listPrompts).toHaveBeenNthCalledWith(2, { cursor: 'c1' }, {});
+			expect(client.listPrompts).toHaveBeenNthCalledWith(
+				1,
+				{ cursor: undefined },
+				expect.objectContaining({ timeout: expect.any(Number) }),
+			);
+			expect(client.listPrompts).toHaveBeenNthCalledWith(
+				2,
+				{ cursor: 'c1' },
+				expect.objectContaining({ timeout: expect.any(Number) }),
+			);
 		});
 	});
 

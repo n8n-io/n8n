@@ -310,7 +310,7 @@ async function getAllPages<T>(
 	options: RequestOptions,
 	node: INode,
 	itemIndex: number,
-	listPage: (cursor: string | undefined) => Promise<ListPage<T>>,
+	listPage: (cursor: string | undefined, options: RequestOptions) => Promise<ListPage<T>>,
 ): Promise<ListAllResult<T>> {
 	const seenCursors = new Set<string>();
 	let cursor: string | undefined;
@@ -323,29 +323,42 @@ async function getAllPages<T>(
 			throw new NodeOperationError(node, 'Execution was cancelled', { itemIndex });
 		}
 
-		if (Date.now() > deadline) {
+		const remaining = deadline - Date.now();
+		if (remaining <= 0) {
 			return { items, truncated: true };
 		}
 
-		const page = await listPage(cursor);
+		// Cap the request at the remaining budget so one slow page cannot run
+		// past the deadline.
+		const pageOptions: RequestOptions = {
+			...options,
+			timeout: options.timeout === undefined ? remaining : Math.min(options.timeout, remaining),
+		};
+
+		let page: ListPage<T>;
+		try {
+			page = await listPage(cursor, pageOptions);
+		} catch (error) {
+			// The capped request can fail once the deadline is reached. Return the
+			// data we have instead of an error.
+			if (Date.now() >= deadline) {
+				return { items, truncated: true };
+			}
+			throw error;
+		}
+
 		pages += 1;
-
-		const nextCursor = page.nextCursor;
-
-		// Check the cursor before appending, so a c1 -> c2 -> c1 cycle does not
-		// append the items of a page that was already fetched.
-		if (nextCursor && seenCursors.has(nextCursor)) {
-			return { items, truncated: true };
-		}
-
 		items.push(...page.items);
 
+		const nextCursor = page.nextCursor;
 		if (!nextCursor) {
 			return { items, truncated: false };
 		}
 
-		// Stop at the page cap. Return the data we have instead of discarding it.
-		if (pages >= MCP_MAX_LIST_PAGES) {
+		// Stop when the server repeats a cursor. The page above is the first
+		// response for that cursor, so keep its items. Also stop at the page cap
+		// and return the data we have instead of discarding it.
+		if (seenCursors.has(nextCursor) || pages >= MCP_MAX_LIST_PAGES) {
 			return { items, truncated: true };
 		}
 
@@ -369,8 +382,8 @@ export async function getAllResources(
 	node: INode,
 	itemIndex: number,
 ): Promise<ListAllResult<McpResource>> {
-	return await getAllPages(options, node, itemIndex, async (cursor) => {
-		const { resources, nextCursor } = await client.listResources({ cursor }, options);
+	return await getAllPages(options, node, itemIndex, async (cursor, pageOptions) => {
+		const { resources, nextCursor } = await client.listResources({ cursor }, pageOptions);
 		return { items: resources, nextCursor };
 	});
 }
@@ -390,10 +403,10 @@ export async function getAllResourceTemplates(
 	node: INode,
 	itemIndex: number,
 ): Promise<ListAllResult<McpResourceTemplate>> {
-	return await getAllPages(options, node, itemIndex, async (cursor) => {
+	return await getAllPages(options, node, itemIndex, async (cursor, pageOptions) => {
 		const { resourceTemplates, nextCursor } = await client.listResourceTemplates(
 			{ cursor },
-			options,
+			pageOptions,
 		);
 		return { items: resourceTemplates, nextCursor };
 	});
@@ -414,8 +427,8 @@ export async function getAllPrompts(
 	node: INode,
 	itemIndex: number,
 ): Promise<ListAllResult<McpPrompt>> {
-	return await getAllPages(options, node, itemIndex, async (cursor) => {
-		const { prompts, nextCursor } = await client.listPrompts({ cursor }, options);
+	return await getAllPages(options, node, itemIndex, async (cursor, pageOptions) => {
+		const { prompts, nextCursor } = await client.listPrompts({ cursor }, pageOptions);
 		return { items: prompts, nextCursor };
 	});
 }
