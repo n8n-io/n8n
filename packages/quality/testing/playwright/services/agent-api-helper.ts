@@ -93,7 +93,12 @@ export class AgentApiHelper {
 		const archived = await this.api.request.post(
 			`/rest/projects/${projectId}/agents/v2/${agentId}/archive`,
 		);
-		if (!archived.ok()) throw new TestError(`Failed to archive agent: ${await archived.text()}`);
+		if (!archived.ok()) {
+			const body = await archived.text();
+			// A cleanup retry can find the agent archived already.
+			const alreadyArchived = archived.status() === 400 && body.includes('already archived');
+			if (!alreadyArchived) throw new TestError(`Failed to archive agent: ${body}`);
+		}
 		const response = await this.api.request.delete(
 			`/rest/projects/${projectId}/agents/v2/${agentId}`,
 		);
