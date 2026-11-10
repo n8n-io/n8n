@@ -222,13 +222,20 @@ let subAgentNamesRequest = 0;
 
 async function ensureSubAgentNamesLoaded() {
 	const request = ++subAgentNamesRequest;
-	let agents = await ensureProjectAgentsLoaded();
-	const loadedIds = new Set(agents.map((agent) => agent.id));
-	if (selectedSubAgentIds.value.some((agentId) => !loadedIds.has(agentId))) {
-		agents = await refreshProjectAgents();
-	}
-	const archived = await fetchArchivedSubAgents(agents);
+	const agents = await ensureProjectAgentsLoaded();
+	const known = knownArchivedSubAgents();
+	const knownIds = new Set([...agents, ...known].map((agent) => agent.id));
+	const isResolved = selectedSubAgentIds.value.every((agentId) => knownIds.has(agentId));
+	let archived = known;
+	if (!isResolved) archived = await fetchArchivedSubAgents(await refreshProjectAgents());
 	if (request === subAgentNamesRequest) archivedSubAgents.value = archived;
+}
+
+// A resolved archived sub-agent needs no new lookup while it stays selected in this project.
+function knownArchivedSubAgents() {
+	return archivedSubAgents.value.filter(
+		(agent) => agent.projectId === props.projectId && selectedSubAgentIdSet.value.has(agent.id),
+	);
 }
 
 // The project list hides archived agents. Load the selected sub-agents that it does not contain.

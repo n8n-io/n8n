@@ -41,6 +41,8 @@ export function useAgentResourcesLocator(
 	// Bumped on every reset (mount/search) so an older in-flight request that
 	// resolves late can't clobber a newer query's results.
 	let loadGeneration = 0;
+	// Bumped on every agent refresh. A late response for an older selection must not replace the archived selection.
+	let refreshGeneration = 0;
 
 	const hasMoreAgentsToLoad = computed(() => totalCount.value > agentsResources.value.length);
 
@@ -145,10 +147,14 @@ export function useAgentResourcesLocator(
 	// can be healed. Returns null on failure so callers keep the existing value.
 	async function refreshAgentName(id: string): Promise<string | null> {
 		if (!projectId.value) return null;
+		const generation = ++refreshGeneration;
 		try {
 			const agent = await getAgent(rootStore.restApiContext, projectId.value, id);
 			const option = agentToResourceMapper(agent);
-			archivedSelection.value = option.isArchived ? option : null;
+			// A newer refresh owns the archived selection.
+			if (generation === refreshGeneration) {
+				archivedSelection.value = option.isArchived ? option : null;
+			}
 			return option.name;
 		} catch {
 			return null;

@@ -962,6 +962,27 @@ describe('AgentCapabilitiesSection', () => {
 		);
 	});
 
+	it('does not look up a resolved archived sub-agent again when the config changes', async () => {
+		const archived = makeAgent({ id: 'agent-archived', name: 'Old Agent', isArchived: true });
+		listAgentsPageSpy.mockResolvedValue({ count: 1, data: [archived] });
+		const makeConfig = (instructions: string) => ({
+			name: 'Parent Agent',
+			model: '',
+			instructions,
+			tools: [],
+			subAgents: { agents: [{ agentId: archived.id }] },
+		});
+
+		const wrapper = mountSection([], {}, makeConfig(''), [], []);
+		await flushPromises();
+		await wrapper.setProps({ config: makeConfig('Changed') });
+		await flushPromises();
+
+		expect(listAgentsPageSpy).toHaveBeenCalledOnce();
+		expect(refreshProjectAgentsSpy).toHaveBeenCalledOnce();
+		expect(wrapper.text()).toContain('Old Agent');
+	});
+
 	it('keeps the archived sub-agents of the latest selection when an older lookup resolves last', async () => {
 		const first = makeAgent({ id: 'agent-first', name: 'First Agent', isArchived: true });
 		const second = makeAgent({ id: 'agent-second', name: 'Second Agent', isArchived: true });
