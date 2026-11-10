@@ -3058,7 +3058,13 @@ describe('McpAgentToolsService', () => {
 				agentId: 'agent-1',
 			});
 
-			expect(agentPublishService.archiveAgent).toHaveBeenCalledWith('agent-1', 'project-1', user);
+			expect(agentPublishService.archiveAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				user,
+				undefined,
+				'mcp',
+			);
 			expect(result.structuredContent).toEqual({ ok: true, archived: true, agentId: 'agent-1' });
 		});
 
