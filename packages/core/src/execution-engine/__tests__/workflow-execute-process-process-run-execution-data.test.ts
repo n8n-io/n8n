@@ -1,13 +1,17 @@
 import type {
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
+	EngineRequest,
 	EngineResponse,
 	WorkflowExecuteMode,
+	IExecuteData,
 	IExecuteFunctions,
 	IPairedItemData,
 	INodeExecutionData,
 	INodeType,
+	IRun,
 	IRunExecutionData,
+	ITaskData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -27,6 +31,7 @@ vi.mock('../execution-context', async (importActual) => {
 });
 
 import { establishExecutionContext } from '../execution-context';
+import { makeEngineResponse } from '../requests-response';
 import { DirectedGraph } from '../partial-execution-utils';
 import {
 	types,
@@ -361,6 +366,176 @@ describe('processRunExecutionData', () => {
 			{ name: 'nodeExecuteAfter', node: 'agent' },
 			{ name: 'workflowExecuteAfter' },
 		]);
+	});
+
+	describe('agent resumes with tool results', () => {
+		// Regression test for GH #43381: under executionOrder "v0" the resumed agent
+		// used to pop before its tools ran and read their run-data placeholders as
+		// empty observations.
+		const toolOutput = { foo: 1, query: 'test input', toolCallId: 'action_1' };
+
+		const buildAgentRequestingTool = () =>
+			modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'tool',
+							input: { query: 'test input' },
+							type: 'ai_tool',
+							id: 'action_1',
+							metadata: {},
+						},
+					],
+					metadata: {},
+				})
+				.return((response) => [[{ json: { result: 'agent completed', response } }]])
+				.done();
+
+		const buildWorkflow = (executionOrder: 'v0' | 'v1') => {
+			const agentNodeType = buildAgentRequestingTool();
+			const trigger = createNodeData({ name: 'trigger', type: types.passThrough });
+			const agent = createNodeData({ name: 'agent', type: 'agent' });
+			const tool = createNodeData({ name: 'tool', type: types.passThrough });
+
+			const nodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				agent: { type: agentNodeType, sourcePath: '' },
+			});
+
+			return new DirectedGraph()
+				.addNodes(trigger, agent, tool)
+				.addConnections(
+					{ from: trigger, to: agent },
+					{ from: tool, to: agent, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+		};
+
+		const runAgentWithTool = async (executionOrder: 'v0' | 'v1') => {
+			const workflowInstance = buildWorkflow(executionOrder);
+			const trigger = workflowInstance.getNode('trigger')!;
+			const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: trigger.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [{ data: taskDataConnection, node: trigger, source: null }],
+				},
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+			const result = await workflowExecute.processRunExecutionData(workflowInstance);
+			return { result };
+		};
+
+		const getResumedResponse = (result: IRun) => {
+			const agentRuns = result.data.resultData.runData.agent;
+			const resumedRun = agentRuns[agentRuns.length - 1];
+			return resumedRun.data?.main?.[0]?.[0]?.json.response as EngineResponse | undefined;
+		};
+
+		const expectHooksRunAgentResumeAfterTool = () => {
+			expect(
+				(runHook.mock.calls as Array<[string, unknown[]]>).map((hook) => ({
+					name: hook[0],
+					node: typeof hook[1][0] === 'string' ? hook[1][0] : undefined,
+				})),
+			).toEqual([
+				{ name: 'workflowExecuteBefore' },
+				{ name: 'nodeExecuteBefore', node: 'trigger' },
+				{ name: 'nodeExecuteAfter', node: 'trigger' },
+				{ name: 'nodeExecuteBefore', node: 'agent' },
+				{ name: 'nodeExecuteBefore', node: 'tool' },
+				{ name: 'nodeExecuteAfter', node: 'tool' },
+				{ name: 'nodeExecuteAfter', node: 'agent' },
+				{ name: 'workflowExecuteAfter' },
+			]);
+		};
+
+		test('delivers the tool output to the resumed agent under the legacy execution order', async () => {
+			// ACT
+			const { result } = await runAgentWithTool('v0');
+
+			// ASSERT
+			// The agent must resume only after its tools have run, not before them.
+			expectHooksRunAgentResumeAfterTool();
+
+			const response = getResumedResponse(result);
+			expect(response?.actionResponses).toHaveLength(1);
+			expect(response?.actionResponses[0].data.data?.ai_tool?.[0]?.[0]?.json).toEqual(toolOutput);
+		});
+
+		test('delivers the tool output to the resumed agent under v1, unchanged', async () => {
+			// ACT
+			const { result } = await runAgentWithTool('v1');
+
+			// ASSERT
+			expectHooksRunAgentResumeAfterTool();
+
+			const response = getResumedResponse(result);
+			expect(response?.actionResponses).toHaveLength(1);
+			expect(response?.actionResponses[0].data.data?.ai_tool?.[0]?.[0]?.json).toEqual(toolOutput);
+		});
+	});
+
+	test('collectSubNodeResults skips run-data slots that have no result data yet', () => {
+		// ARRANGE
+		// `initializeNodeRunData` pre-creates a run slot per requested tool before it
+		// runs, carrying only the input override. The collector must not surface such
+		// a slot as an (empty) action response to the resuming agent (GH #43381).
+		const completedTool = toITaskData(
+			[{ data: { result: 'real tool output' }, nodeConnectionType: NodeConnectionTypes.AiTool }],
+			{ startTime: 1, executionTime: 5, executionIndex: 1 },
+		);
+		const pendingToolSlot = {
+			// Placeholder as created by `initializeNodeRunData`, without `data`.
+			inputOverride: { ai_tool: [[{ json: { query: 'test input' } }]] },
+			source: [{ previousNode: 'agent', previousNodeOutput: 0, previousNodeRun: 0 }],
+			executionIndex: 0,
+			executionTime: 0,
+			startTime: 0,
+		} as unknown as ITaskData;
+
+		const executionData = createRunExecutionData({
+			resultData: { runData: { tool: [completedTool, pendingToolSlot] } },
+		});
+		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+		const action = {
+			actionType: 'ExecutionNodeAction',
+			nodeName: 'tool',
+			input: {},
+			type: 'ai_tool',
+			id: 'tool_call_1',
+			metadata: {},
+		} as EngineRequest['actions'][number];
+		const agentExecutionData = {
+			metadata: {
+				subNodeExecutionData: {
+					actions: [
+						{ action, nodeName: 'tool', runIndex: 0 }, // tool already ran
+						{ action, nodeName: 'tool', runIndex: 1 }, // tool not yet run
+					],
+					metadata: { some: 'metadata' },
+				},
+			},
+		} as IExecuteData;
+
+		const engineResponse = makeEngineResponse();
+
+		// ACT
+		(
+			workflowExecute as unknown as {
+				collectSubNodeResults: (executionData: IExecuteData, results: EngineResponse) => void;
+			}
+		).collectSubNodeResults(agentExecutionData, engineResponse);
+
+		// ASSERT
+		expect(engineResponse.actionResponses).toHaveLength(1);
+		expect(engineResponse.actionResponses[0].data.data?.ai_tool?.[0]?.[0]?.json).toEqual({
+			result: 'real tool output',
+		});
+		expect(engineResponse.metadata).toEqual({ some: 'metadata' });
 	});
 
 	describe('runExecutionData.waitTill', () => {

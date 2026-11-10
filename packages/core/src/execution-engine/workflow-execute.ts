@@ -2071,9 +2071,14 @@ export class WorkflowExecute {
 		subNodeExecutionResults.metadata = subNodeExecutionData.metadata;
 		for (const subNode of subNodeExecutionData.actions) {
 			const nodeRunData = this.runExecutionData.resultData.runData[subNode.nodeName];
-			if (nodeRunData?.[subNode.runIndex]) {
+			const slot = nodeRunData?.[subNode.runIndex];
+			// A slot is pre-created before the sub-node runs, carrying only the input
+			// override. Skip it unless the sub-node actually executed and reported
+			// data, otherwise the resuming node would read the placeholder as an
+			// empty result.
+			if (slot?.data) {
 				subNodeExecutionResults.actionResponses.push({
-					data: nodeRunData[subNode.runIndex],
+					data: slot,
 					action: subNode.action,
 				});
 			}

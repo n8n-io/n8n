@@ -546,7 +546,7 @@ describe('handleRequests', () => {
 		]);
 	});
 
-	test('keeps request order for the legacy execution order, which enqueues with push', () => {
+	test('appends the resuming node last for the legacy execution order, which enqueues with push', () => {
 		// ARRANGE
 		const toolA = createNodeData({ name: 'Tool A', type: types.passThrough });
 		const toolB = createNodeData({ name: 'Tool B', type: types.passThrough });
@@ -585,10 +585,14 @@ describe('handleRequests', () => {
 		});
 
 		// ASSERT
+		// The legacy (v0) execution order enqueues with `push` and drains FIFO, so
+		// the resuming node must be appended after the tools. Prepending it would
+		// make the agent pop before its tools ran and read their run-data
+		// placeholders as empty observations (GH #43381).
 		expect(result.nodesToBeExecuted.map((n) => n.inputConnectionData.node)).toEqual([
-			'AI Agent',
 			'Tool A',
 			'Tool B',
+			'AI Agent',
 		]);
 	});
 

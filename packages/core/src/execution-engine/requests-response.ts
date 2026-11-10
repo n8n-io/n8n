@@ -273,8 +273,13 @@ export function handleRequest({
 		nodesToBeExecuted.reverse();
 	}
 
-	// 4. add current node back to the bottom of the stack
-	nodesToBeExecuted.unshift({
+	// 4. add current node back so it resumes after its requested nodes. Under v1
+	// `addNodeToBeExecuted` enqueues with `unshift` and the stack drains from the
+	// front (LIFO), so the resuming node must go in front of the tools; under v0
+	// it enqueues with `push` and the stack drains FIFO, so it must go last.
+	// Otherwise the resuming node pops before its tools have run and reads
+	// placeholder run data as empty results.
+	const resumedNodeEntry = {
 		inputConnectionData: result.connectionData,
 		parentOutputIndex: 0,
 		parentNode: result.parentNode,
@@ -282,7 +287,12 @@ export function handleRequest({
 		runIndex,
 		nodeRunIndex: runIndex,
 		metadata: { nodeWasResumed: true, subNodeExecutionData, ...result.metadata },
-	});
+	};
+	if (workflow.settings.executionOrder === 'v1') {
+		nodesToBeExecuted.unshift(resumedNodeEntry);
+	} else {
+		nodesToBeExecuted.push(resumedNodeEntry);
+	}
 
 	return { nodesToBeExecuted };
 }
