@@ -701,14 +701,39 @@ it.each([
 	expect((await planner.plan(request)).blockingIssues).toEqual([]);
 });
 
+it('plans a copy of a skill whose ID belongs to another scope', async () => {
+	await createSkill({
+		id: 'skill_shared',
+		projectId: null,
+		content: toSkillContent({ name: 'Other', description: 'Other.', instructions: 'Other.' }),
+	});
+	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
+	request.options.conflictPolicy = 'fail';
+	request.skills = [sharedSkill('skill_shared', 'project')];
+	const before = await findLatestSkillVersion('skill_shared');
+	const plan = await planner.plan(request);
+	expect(plan.blockingIssues).toEqual([]);
+	const writes = plan.agentPlan?.skills?.shared ?? [];
+	expect(writes).toEqual([
+		expect.objectContaining({
+			skill: expect.objectContaining({ id: expect.not.stringMatching('skill_shared') }),
+			target: { projectId: project.id },
+		}),
+	]);
+	expect(plan.agentPlan?.items[0].config?.skills).toEqual([
+		{ type: 'skill', id: writes[0].skill.id },
+	]);
+	expect(await findLatestSkillVersion('skill_shared')).toEqual(before);
+	await deleteSkill('skill_shared');
+});
+
 it.each([
-	['a skill ID in another scope', 'skill_shared', 'Other', 'already belongs to another'],
 	['another skill with the same name', 'skill_other', 'REVIEW', 'already named "Review"'],
 	['changed content under fail', 'skill_shared', 'Review', 'already exists with different content'],
 ] as const)('reports %s in the preview', async (_case, existingId, existingName, message) => {
 	await createSkill({
 		id: existingId,
-		projectId: _case === 'a skill ID in another scope' ? null : project.id,
+		projectId: project.id,
 		content: toSkillContent({ name: existingName, description: 'Other.', instructions: 'Other.' }),
 	});
 	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
