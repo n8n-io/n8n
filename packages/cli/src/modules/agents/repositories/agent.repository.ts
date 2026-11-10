@@ -631,12 +631,14 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return agents.filter(isProjectAgent);
 	}
 
-	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
-		if (agentIds.length === 0) return;
-		await this.update(
-			{ id: In(agentIds), scope: projectScope },
+	/** Skips archived agents. Returns the number of agents that the update changed. */
+	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<number> {
+		if (agentIds.length === 0) return 0;
+		const result = await this.update(
+			{ id: In(agentIds), scope: projectScope, isArchived: false },
 			{ availableInMCP, revision: () => 'revision + 1' },
 		);
+		return result.affected ?? 0;
 	}
 
 	/**
@@ -813,11 +815,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 	/**
 	 * Sets the archive state of an unpublished agent. Advances the publication
 	 * revision so a publication that started before the change loses its fence.
-	 * Returns false when the agent is published.
+	 * Returns false when the agent is published or already has this archive state.
 	 */
 	async setArchived(id: string, isArchived: boolean): Promise<boolean> {
 		const result = await this.update(
-			{ id, scope: projectScope, activeVersionId: IsNull() },
+			{ id, scope: projectScope, activeVersionId: IsNull(), isArchived: !isArchived },
 			{ isArchived, publicationRevision: () => '"publicationRevision" + 1' },
 		);
 		return (result.affected ?? 0) > 0;

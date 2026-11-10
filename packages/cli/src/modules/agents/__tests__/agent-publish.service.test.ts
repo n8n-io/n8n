@@ -1754,12 +1754,16 @@ describe('AgentPublishService', () => {
 			makeAgent({ activeVersionId: versionId, publicationRevision: 2 }),
 		);
 
-		await service.archiveAgent(agentId, projectId, user);
+		await service.archiveAgent(agentId, projectId, user, undefined, 'mcp');
 
 		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalledWith(agentId, 2, null, ctx, {
 			archive: true,
 		});
 		expect(agentRepository.setArchived).not.toHaveBeenCalled();
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.MCP_UNPUBLISHED_AGENT,
+			expect.objectContaining({ agent_id: agentId }),
+		);
 		expect(eventService.emit).toHaveBeenCalledWith('agent-archived', { user, agentId, projectId });
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_ARCHIVED_AGENT, {
 			agent_id: agentId,
@@ -1767,6 +1771,27 @@ describe('AgentPublishService', () => {
 			user_id: user.id,
 			event_version: '1',
 		});
+	});
+
+	it('reports the archive when a step after the archive write fails', async () => {
+		const { service, agentRepository, chatIntegrationService, eventService, telemetry } =
+			makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				activeVersionId: versionId,
+				integrations: [{ type: 'slack', credentialId: 'credential-1' }],
+			}),
+		);
+		const error = new Error('disconnect failed');
+		chatIntegrationService.disconnectChannel.mockRejectedValue(error);
+
+		await expect(service.archiveAgent(agentId, projectId, user)).rejects.toBe(error);
+
+		expect(eventService.emit).toHaveBeenCalledWith('agent-archived', { user, agentId, projectId });
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_ARCHIVED_AGENT,
+			expect.objectContaining({ agent_id: agentId }),
+		);
 	});
 
 	it('archives an agent that is unpublished during the archive', async () => {
