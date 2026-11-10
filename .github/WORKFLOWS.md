@@ -443,6 +443,9 @@ release-publish.yml
 release-publish-post-release.yml
     └──────────────────────────▶  util-publish-api-schema.yml  (when the stable tag moves)
 
+release-setup-trusted-publishing.yml
+    └──────────────────────────▶  release-publish-new-package.yml  (once per unpublished package)
+
 test-sbom-nightly.yml
     └──────────────────────────▶  sbom-validation-callable.yml
 
@@ -795,6 +798,7 @@ Scripts in `.github/scripts/`:
 | `prepare-rerelease.mjs`       | Bump root + cli for a re-release | `release-recreate-failed-release.yml` |
 | `trim-fe-packageJson.js`      | Strip frontend devDeps     | `release-publish.yml`   |
 | `ensure-provenance-fields.mjs`| Add license/author fields  | `release-publish.yml`   |
+| `detect-new-packages.mjs`     | Find unpublished workspace packages | `release-publish.yml`, `release-setup-trusted-publishing.yml` |
 
 ### Docker Scripts
 
