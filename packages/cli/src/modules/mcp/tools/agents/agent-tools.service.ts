@@ -1098,7 +1098,7 @@ export class McpAgentToolsService {
 				await this.run(user, 'archive_agent', { agentId }, async () => {
 					const { projectId } = await this.resolveAgent(user, agentId);
 					await this.assertScope(user, projectId, 'agent:delete');
-					await this.agentPublishService.archiveAgent(agentId, projectId, user);
+					await this.agentPublishService.archiveAgent(agentId, projectId, user, undefined, 'mcp');
 					return { ok: true, archived: true, agentId };
 				}),
 		};
