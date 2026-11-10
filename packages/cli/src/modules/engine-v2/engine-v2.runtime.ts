@@ -204,13 +204,12 @@ export class EngineV2Runtime {
 		this.server = await new Promise<Server>((resolve, reject) => {
 			assert(this.engine, 'Engine v2 cannot start without an engine runtime');
 
-			const listener = createEngineHttpServer(this.engine.app, tls).listen(port, host);
+			const server = createEngineHttpServer(this.engine.app, tls);
+			this.stopTlsReload = this.tlsMaterial.onReload((next) => setEngineServerTls(server, next));
+			const listener = server.listen(port, host);
 			listener.once('listening', () => resolve(listener));
 			listener.once('error', reject);
 		});
-
-		const server = this.server;
-		this.stopTlsReload = this.tlsMaterial.onReload((next) => setEngineServerTls(server, next));
 
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
@@ -243,9 +242,10 @@ export class EngineV2Runtime {
 	}
 
 	private async closeServer(): Promise<void> {
+		this.stopTlsReload?.();
+		this.stopTlsReload = undefined;
 		if (!this.server) return;
 
-		this.stopTlsReload?.();
 		await new Promise<void>((resolve, reject) => {
 			this.server!.close((error) => (error ? reject(error) : resolve()));
 		});

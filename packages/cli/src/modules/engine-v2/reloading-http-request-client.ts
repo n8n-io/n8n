@@ -17,6 +17,9 @@ interface Generation {
 export class ReloadingHttpRequestClient implements HttpRequestClient {
 	private current: Generation;
 
+	/** Old clients that still run requests. */
+	private readonly retired = new Set<Generation>();
+
 	private readonly unsubscribe: () => void;
 
 	/** `subscribe` registers `reload` and returns a function that removes it again on `close()`. */
@@ -58,12 +61,15 @@ export class ReloadingHttpRequestClient implements HttpRequestClient {
 		const old = this.current;
 		this.current = this.newGeneration();
 		old.retired = true;
+		this.retired.add(old);
 		this.closeIfDone(old);
 	}
 
 	close(): void {
 		this.unsubscribe();
 		this.current.client.close();
+		for (const generation of this.retired) generation.client.close();
+		this.retired.clear();
 	}
 
 	private newGeneration(): Generation {
@@ -71,6 +77,9 @@ export class ReloadingHttpRequestClient implements HttpRequestClient {
 	}
 
 	private closeIfDone(generation: Generation): void {
-		if (generation.retired && generation.running === 0) generation.client.close();
+		if (generation.retired && generation.running === 0) {
+			this.retired.delete(generation);
+			generation.client.close();
+		}
 	}
 }

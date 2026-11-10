@@ -66,6 +66,17 @@ describe('ReloadingHttpRequestClient', () => {
 		expect(built[0].close).toHaveBeenCalledOnce();
 	});
 
+	it('closes the old clients that still run requests when closed', () => {
+		vi.mocked(built[0].request).mockReturnValueOnce(new Promise(() => {}));
+		void client.request({ url: '/never-settles' });
+		client.reload();
+
+		client.close();
+
+		expect(built[0].close).toHaveBeenCalledOnce();
+		expect(built[1].close).toHaveBeenCalledOnce();
+	});
+
 	it('closes the current client when closed', () => {
 		client.reload();
 		client.close();
