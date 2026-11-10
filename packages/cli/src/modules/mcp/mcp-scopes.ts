@@ -79,6 +79,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	'agent:write': [
 		'create_agent',
 		'mutate_agent',
+		'move_agent',
 		'revert_agent',
 		'archive_agent',
 		'verify_agent_mcp_server',

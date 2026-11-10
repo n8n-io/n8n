@@ -33,8 +33,8 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 		favorites.value.filter((f) => f.resourceType === 'agent').map((f) => f.resourceId),
 	);
 
-	async function fetchFavorites() {
-		if (initialized.value) return;
+	async function fetchFavorites(force = false) {
+		if (initialized.value && !force) return;
 		const currentPushRef = rootStore.restApiContext.pushRef;
 		const result = await favoritesApi.getFavorites(rootStore.restApiContext);
 		// Avoid theoretical session issues by asserting we still have the same pushRef

@@ -87,6 +87,14 @@ export function removeProjectAgentFromListCache(projectId: string, agentId: stri
 	entry.list.value = current.filter((agent) => agent.id !== agentId);
 }
 
+export function invalidateProjectAgentsListCache(projectId: string) {
+	const entry = caches.get(projectId);
+
+	if (entry) {
+		entry.list.value = null;
+	}
+}
+
 /** Test-only escape hatch — drops the module-level cache between specs. */
 export function __clearProjectAgentsListCacheForTests() {
 	caches.clear();

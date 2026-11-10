@@ -48,6 +48,7 @@ describe('create-folder MCP tool', () => {
 		await tool.handler(
 			{
 				projectId: args.projectId,
+				resourceType: 'workflow',
 				name: args.name,
 				parentFolderId: args.parentFolderId as string,
 			},
@@ -74,7 +75,7 @@ describe('create-folder MCP tool', () => {
 			'folder:create',
 		]);
 		expect(mocks.folderService.createFolder).toHaveBeenCalledWith(
-			{ name: 'Marketing', parentFolderId: undefined },
+			{ name: 'Marketing', parentFolderId: undefined, resourceType: 'workflow' },
 			'proj-1',
 		);
 		expect(result.isError).toBeUndefined();
@@ -96,7 +97,7 @@ describe('create-folder MCP tool', () => {
 		});
 
 		expect(mocks.folderService.createFolder).toHaveBeenCalledWith(
-			{ name: 'Marketing', parentFolderId: undefined },
+			{ name: 'Marketing', parentFolderId: undefined, resourceType: 'workflow' },
 			'proj-1',
 		);
 		expect(result.isError).toBeUndefined();
@@ -115,7 +116,7 @@ describe('create-folder MCP tool', () => {
 		});
 
 		expect(mocks.folderService.createFolder).toHaveBeenCalledWith(
-			{ name: 'Campaigns', parentFolderId: 'folder-1' },
+			{ name: 'Campaigns', parentFolderId: 'folder-1', resourceType: 'workflow' },
 			'proj-1',
 		);
 		expect(result.structuredContent).toEqual({

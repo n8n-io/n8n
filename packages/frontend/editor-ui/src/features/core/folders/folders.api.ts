@@ -7,16 +7,19 @@ import type {
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
+import type { FolderResourceType } from '@n8n/api-types';
 
 export async function createFolder(
 	context: IRestApiContext,
 	projectId: string,
 	name: string,
 	parentFolderId?: string,
+	resourceType: FolderResourceType = 'workflow',
 ): Promise<FolderCreateResponse> {
 	return await makeRestApiRequest(context, 'POST', `/projects/${projectId}/folders`, {
 		name,
 		parentFolderId,
+		resourceType,
 	});
 }
 
@@ -61,10 +64,12 @@ export async function getProjectFolders(
 		skip?: number;
 		take?: number;
 		sortBy?: string;
+		resourceType?: FolderResourceType;
 	},
 	filter?: {
 		excludeFolderIdAndDescendants?: string;
 		name?: string;
+		parentFolderId?: string;
 	},
 	select?: string[],
 ): Promise<{ data: ChangeLocationSearchResponseItem[]; count: number }> {
@@ -112,11 +117,11 @@ export async function getFolderContent(
 	context: IRestApiContext,
 	projectId: string,
 	folderId: string,
-): Promise<{ totalSubFolders: number; totalWorkflows: number }> {
-	const res = await getFullApiResponse<{ totalSubFolders: number; totalWorkflows: number }>(
-		context,
-		'GET',
-		`/projects/${projectId}/folders/${folderId}/content`,
-	);
+): Promise<{ totalSubFolders: number; totalWorkflows: number; totalAgents: number }> {
+	const res = await getFullApiResponse<{
+		totalSubFolders: number;
+		totalWorkflows: number;
+		totalAgents: number;
+	}>(context, 'GET', `/projects/${projectId}/folders/${folderId}/content`);
 	return res.data;
 }

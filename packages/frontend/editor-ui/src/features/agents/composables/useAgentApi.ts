@@ -132,6 +132,8 @@ export type ListAgentsOptions = {
 		ids?: string[];
 		availableInMCP?: boolean;
 		includeArchived?: boolean;
+		parentFolderId?: string | null;
+		includeDescendants?: boolean;
 	};
 };
 
@@ -313,6 +315,7 @@ export const createAgent = async (
 	 *  `skills` to seed a full agent in a duplicate operation). */
 	options: {
 		id?: string;
+		parentFolderId?: string | null;
 		config?: AgentJsonConfig;
 		schema?: AgentJsonConfig;
 		tools?: Record<string, CustomToolEntry>;
@@ -325,6 +328,7 @@ export const createAgent = async (
 		`/projects/${projectId}/agents/v2`,
 		{
 			name,
+			...(options.parentFolderId !== undefined ? { parentFolderId: options.parentFolderId } : {}),
 			...(options.config ? { config: options.config } : {}),
 			...(options.id ? { id: options.id } : {}),
 			...(options.schema ? { schema: options.schema } : {}),
@@ -355,9 +359,21 @@ export const duplicateAgent = async (
 		integration.type === 'n8n_chat' ? integration : { ...integration, credentialId: '' },
 	);
 	return await createAgent(context, projectId, name, {
+		parentFolderId: agent.parentFolderId,
 		schema: { ...rest, name, integrations: draftIntegrations },
 		tools: agent.tools,
 		skills: agent.skills,
+	});
+};
+
+export const moveAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	parentFolderId: string | null,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/agents/v2/${agentId}/move`, {
+		parentFolderId,
 	});
 };
 

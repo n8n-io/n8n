@@ -7,7 +7,7 @@ import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { Project } from '../projects.types';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 import type { FavoriteResourceType } from '@/app/api/favorites';
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
+import { AGENT_BUILDER_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
 
 export type FavoriteGroupItem = {
 	menuItem: IMenuItem;
@@ -87,8 +87,16 @@ export function useFavoriteNavItems() {
 					icon: 'folder' as IMenuItem['icon'],
 					route: {
 						to: {
-							name: VIEWS.PROJECTS_FOLDERS,
-							params: { projectId: f.resourceProjectId, folderId: f.resourceId },
+							...(f.folderResourceType === 'agent'
+								? {
+										name: PROJECT_AGENTS,
+										params: { projectId: f.resourceProjectId },
+										query: { folderId: f.resourceId },
+									}
+								: {
+										name: VIEWS.PROJECTS_FOLDERS,
+										params: { projectId: f.resourceProjectId, folderId: f.resourceId },
+									}),
 						},
 					},
 				},

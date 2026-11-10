@@ -55,6 +55,10 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ isFoldersFeatureEnabled: false }),
+}));
+
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest', pushRef: 'push-ref' } }),
 }));

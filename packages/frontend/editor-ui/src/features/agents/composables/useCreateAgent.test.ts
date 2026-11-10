@@ -5,11 +5,17 @@ import { useCreateAgent } from './useCreateAgent';
 const mocks = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	trackClickedNewAgent: vi.fn(),
+	folderId: undefined as string | undefined,
 }));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({ push: mocks.routerPush }),
+	useRoute: () => ({
+		name: 'ProjectAgents',
+		params: { projectId: 'project-1' },
+		query: { folderId: mocks.folderId },
+	}),
 }));
 
 vi.mock('./useAgentTelemetry', () => ({
@@ -17,6 +23,26 @@ vi.mock('./useAgentTelemetry', () => ({
 }));
 
 describe('useCreateAgent', () => {
+	it('starts at root when the target project differs from the current folder project', () => {
+		mocks.folderId = 'folder-1';
+
+		useCreateAgent().createAgent('button', 'project-2');
+
+		expect(mocks.routerPush.mock.lastCall?.[0]).not.toHaveProperty('query');
+		mocks.folderId = undefined;
+	});
+
+	it('keeps the current folder when opening a new Agent', () => {
+		mocks.folderId = 'folder-1';
+
+		useCreateAgent().createAgent('button', 'project-1');
+
+		expect(mocks.routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({ query: { folderId: 'folder-1' } }),
+		);
+		mocks.folderId = undefined;
+	});
+
 	it('mints an id, tracks the click, and pushes the builder route for it', () => {
 		const { createAgent } = useCreateAgent();
 

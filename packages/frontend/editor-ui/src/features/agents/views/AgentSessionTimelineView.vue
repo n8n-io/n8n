@@ -4,12 +4,13 @@ import { useClipboard } from '@n8n/composables/useClipboard';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionStop } from '../composables/useAgentSessionStop';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import {
 	AGENT_BUILDER_VIEW,
+	PROJECT_AGENTS,
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 } from '@/features/agents/constants';
@@ -26,6 +27,9 @@ import {
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { getAgent } from '../composables/useAgentApi';
+import { useAgentFolderBreadcrumb } from '../composables/useAgentFolderBreadcrumb';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import {
 	increasedBudgetConfig,
@@ -166,7 +170,7 @@ const sessionTitle = computed(() => {
 const { projectName, projectIcon } = useAgentProjectBreadcrumb(projectId);
 
 const projectRoute = computed<RouteLocationRaw>(() => ({
-	name: VIEWS.PROJECTS_WORKFLOWS,
+	name: PROJECT_AGENTS,
 	params: { projectId: projectId.value },
 }));
 
@@ -175,12 +179,39 @@ const agentRoute = computed<RouteLocationRaw>(() => ({
 	params: { projectId: projectId.value, agentId: agentId.value },
 }));
 
+const parentFolderId = ref<string | null>(null);
+const rootStore = useRootStore();
+const folderBreadcrumbs = useAgentFolderBreadcrumb(projectId, parentFolderId);
+
+watch(
+	[projectId, agentId],
+	async ([project, agent], _, onCleanup) => {
+		let current = true;
+		onCleanup(() => {
+			current = false;
+		});
+		parentFolderId.value = null;
+
+		try {
+			const resource = await getAgent(rootStore.restApiContext, project, agent);
+
+			if (current) {
+				parentFolderId.value = resource.parentFolderId ?? null;
+			}
+		} catch {
+			// The session can remain readable after its Agent is deleted.
+		}
+	},
+	{ immediate: true },
+);
+
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: projectId.value,
 		label: projectName.value ?? i18n.baseText('agents.builder.header.projectFallback'),
 		href: router.resolve(projectRoute.value).href,
 	},
+	...folderBreadcrumbs.value,
 	{
 		id: agentId.value,
 		label: thread.value?.agentName ?? '…',
@@ -292,6 +323,12 @@ function onBreadcrumbSelect(item: PathItem) {
 		void router.push(projectRoute.value);
 	} else if (item.id === agentId.value) {
 		void router.push(agentRoute.value);
+	} else {
+		void router.push({
+			name: PROJECT_AGENTS,
+			params: { projectId: projectId.value },
+			query: { folderId: item.id },
+		});
 	}
 }
 

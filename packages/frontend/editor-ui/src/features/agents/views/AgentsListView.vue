@@ -33,6 +33,9 @@ import { AGENT_BUILDER_VIEW, AGENT_DUPLICATE_MODAL_KEY, NEW_SESSION_PARAM } from
 import AgentCard from '../components/AgentCard.vue';
 import AgentsListIntro from '../components/AgentsListIntro.vue';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import AgentFolderBrowser from '../components/AgentFolderBrowser.vue';
+import AgentFolderDialog, { type AgentFolderAction } from '../components/AgentFolderDialog.vue';
 
 function isAgentResource(value: unknown): value is AgentResource {
 	return typeof value === 'object' && value !== null && 'id' in value;
@@ -51,6 +54,14 @@ const documentTitle = useDocumentTitle();
 const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const folderBrowser = ref<InstanceType<typeof AgentFolderBrowser>>();
+const folderCount = ref(0);
+const moveAction = ref<AgentFolderAction | null>(null);
+const moveProjectId = ref('');
+const folderId = computed(() =>
+	typeof route.query.folderId === 'string' ? route.query.folderId : null,
+);
 const projectsStore = useProjectsStore();
 const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
@@ -94,6 +105,7 @@ watch(
 	() =>
 		!loading.value &&
 		allAgents.value.length === 0 &&
+		folderCount.value === 0 &&
 		!filters.value.search &&
 		templatesVariant.value !== undefined,
 	(surfaceVisible) => {
@@ -111,17 +123,28 @@ const sortFns = {
 };
 
 function buildListFilter() {
+	const folderFilter = filters.value.search
+		? projectId.value && folderId.value
+			? { parentFolderId: folderId.value, includeDescendants: true }
+			: {}
+		: projectId.value && settingsStore.isFoldersFeatureEnabled
+			? { parentFolderId: folderId.value }
+			: {};
 	const filter = {
+		...folderFilter,
 		...(filters.value.search ? { query: filters.value.search } : {}),
 		...(filters.value.showArchived === true ? { includeArchived: true } : {}),
 	};
 	return Object.keys(filter).length > 0 ? filter : undefined;
 }
 
+let fetchGeneration = 0;
+
 async function fetchAgents() {
+	const requestGeneration = ++fetchGeneration;
 	const shouldDelayLoading = allAgents.value.length > 0;
 	const delayedLoading = debounce(() => {
-		loading.value = true;
+		if (requestGeneration === fetchGeneration) loading.value = true;
 	}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 	if (shouldDelayLoading) {
@@ -140,11 +163,15 @@ async function fetchAgents() {
 		const { count, data } = projectId.value
 			? await listAgentsPage(rootStore.restApiContext, projectId.value, fetchOptions)
 			: await listAgentsPageGlobal(rootStore.restApiContext, fetchOptions);
+		if (requestGeneration !== fetchGeneration) {
+			return;
+		}
+
 		allAgents.value = data;
 		totalAgents.value = count;
 	} finally {
 		delayedLoading.cancel();
-		loading.value = false;
+		if (requestGeneration === fetchGeneration) loading.value = false;
 	}
 }
 
@@ -216,6 +243,21 @@ function onAgentPublished(updated: AgentResource) {
 	allAgents.value = allAgents.value.map((a) => (a.id === updated.id ? updated : a));
 	void fetchAgents();
 }
+
+function openMove(agent: AgentResource) {
+	moveProjectId.value = agent.projectId;
+	moveAction.value = { mode: 'moveAgent', id: agent.id, parentFolderId: agent.parentFolderId };
+}
+
+function foldersChanged() {
+	void folderBrowser.value?.refresh();
+	void fetchAgents();
+}
+
+watch(folderId, () => {
+	currentPage.value = 1;
+	void fetchAgents();
+});
 
 function onAgentUnpublished(updated: AgentResource) {
 	allAgents.value = allAgents.value.map((a) => (a.id === updated.id ? updated : a));
@@ -318,54 +360,65 @@ onMounted(async () => {
 </script>
 
 <template>
-	<ResourcesListLayout
-		v-model:filters="filters"
-		resource-key="agents"
-		type="list-paginated"
-		:resources="allAgents"
-		:initialize="fetchAgents"
-		:loading="false"
-		:resources-refreshing="loading"
-		:disabled="false"
-		:sort-fns="sortFns"
-		:sort-options="['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc']"
-		:type-props="{ itemSize: 80 }"
-		:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
-		:total-items="totalAgents"
-		:dont-perform-sorting-and-filtering="true"
-		:shareable="false"
-		:ui-config="{ searchEnabled: true, showFiltersDropdown: true, sortEnabled: true }"
-		:display-name="(agent: AgentResource) => agent.name"
-		tab-key="agents"
-		@update:search="onSearchUpdated"
-		@update:pagination-and-sort="setPaginationAndSort"
-	>
-		<template #header>
-			<ProjectHeader main-button="agent">
-				<InsightsSummary
-					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
-					:loading="insightsStore.weeklySummary.isLoading"
-					:summary="insightsStore.weeklySummary.state"
-					time-range="week"
+	<div style="display: contents">
+		<ResourcesListLayout
+			v-model:filters="filters"
+			resource-key="agents"
+			type="list-paginated"
+			:resources="allAgents"
+			:initialize="fetchAgents"
+			:loading="false"
+			:resources-refreshing="loading"
+			:disabled="false"
+			:sort-fns="sortFns"
+			:sort-options="['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc']"
+			:type-props="{ itemSize: 80 }"
+			:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
+			:total-items="totalAgents"
+			:dont-perform-sorting-and-filtering="true"
+			:shareable="false"
+			:ui-config="{ searchEnabled: true, showFiltersDropdown: true, sortEnabled: true }"
+			:display-name="(agent: AgentResource) => agent.name"
+			tab-key="agents"
+			@update:search="onSearchUpdated"
+			@update:pagination-and-sort="setPaginationAndSort"
+		>
+			<template #header>
+				<ProjectHeader main-button="agent">
+					<InsightsSummary
+						v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
+						:loading="insightsStore.weeklySummary.isLoading"
+						:summary="insightsStore.weeklySummary.state"
+						time-range="week"
+					/>
+				</ProjectHeader>
+				<AgentFolderBrowser
+					v-if="projectId && settingsStore.isFoldersFeatureEnabled"
+					ref="folderBrowser"
+					:project-id="projectId"
+					:folder-id="folderId"
+					:search="filters.search"
+					:sort-by="currentSort"
+					@changed="foldersChanged"
+					@count="folderCount = $event"
 				/>
-			</ProjectHeader>
-		</template>
+			</template>
 
-		<template #empty>
-			<AgentsListIntro
-				v-if="showTemplatesIntro"
-				:disabled="!canCreateAgent"
-				@create-blank="onCreateBlank"
-				@submit="onCreateFromPrompt"
-				@select="onCreateFromTemplate"
-			/>
-			<ResourcesListEmptyState
-				v-else
-				resource-key="agents"
-				:button-disabled="!canCreateAgent"
-				@click:button="onCreateAgentClick"
-			/>
-		</template>
+			<template #empty>
+				<AgentsListIntro
+					v-if="showTemplatesIntro && folderCount === 0"
+					:disabled="!canCreateAgent"
+					@create-blank="onCreateBlank"
+					@submit="onCreateFromPrompt"
+					@select="onCreateFromTemplate"
+				/>
+				<ResourcesListEmptyState
+					v-else-if="folderCount === 0"
+					resource-key="agents"
+					:button-disabled="!canCreateAgent"
+					@click:button="onCreateAgentClick"
+				/>
+			</template>
 
 		<template #filters="{ setKeyValue }">
 			<N8nCheckbox
@@ -376,21 +429,36 @@ onMounted(async () => {
 			/>
 		</template>
 
-		<template #item="{ item: data }">
-			<AgentCard
-				v-if="isAgentResource(data)"
-				class="mb-2xs"
-				:agent="data"
-				:project-id="data.projectId"
-				@select="onSelectAgent(data.id, data.projectId)"
-				@new-chat="onNewAgentChat"
-				@published="onAgentPublished"
-				@unpublished="onAgentUnpublished"
-				@deleted="onAgentDeleted"
-				@archived="onAgentArchived"
-				@unarchived="onAgentUnpublished"
-				@duplicate="onAgentDuplicate"
-			/>
-		</template>
-	</ResourcesListLayout>
+			<template #item="{ item: data }">
+				<div
+					v-if="isAgentResource(data)"
+					:draggable="Boolean(projectId && settingsStore.isFoldersFeatureEnabled)"
+					@dragstart="folderBrowser?.startAgentDrag(data.id)"
+					@dragend="folderBrowser?.endDrag()"
+				>
+					<AgentCard
+						class="mb-2xs"
+						:agent="data"
+						:show-folder-path="Boolean(filters.search)"
+						:project-id="data.projectId"
+						@select="onSelectAgent(data.id, data.projectId)"
+						@new-chat="onNewAgentChat"
+						@published="onAgentPublished"
+						@unpublished="onAgentUnpublished"
+						@deleted="onAgentDeleted"
+						@archived="onAgentArchived"
+						@unarchived="onAgentUnpublished"
+						@duplicate="onAgentDuplicate"
+						@move="openMove(data)"
+					/>
+				</div>
+			</template>
+		</ResourcesListLayout>
+		<AgentFolderDialog
+			:project-id="moveProjectId"
+			:action="moveAction"
+			@close="moveAction = null"
+			@saved="foldersChanged"
+		/>
+	</div>
 </template>

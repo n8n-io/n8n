@@ -1,4 +1,10 @@
-import { folderIdSchema, folderNameSchema } from '@n8n/api-types';
+import {
+	folderIdSchema,
+	folderNameSchema,
+	folderResourceTypeSchema,
+	type FolderResourceType,
+} from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
@@ -13,6 +19,9 @@ import { createFailHandler, describeFolderError } from './folder-error.utils';
 import { folderOutputSchema } from './schemas';
 
 const inputSchema = {
+	resourceType: folderResourceTypeSchema
+		.default('workflow')
+		.describe('The resource tree for the folder'),
 	projectId: z
 		.string()
 		.describe(
@@ -50,10 +59,12 @@ export const createCreateFolderTool = (
 		projectId,
 		name,
 		parentFolderId,
+		resourceType = 'workflow',
 	}: {
 		projectId: string;
 		name: string;
 		parentFolderId?: string;
+		resourceType?: FolderResourceType;
 	}) => {
 		const parent = parentFolderId === PROJECT_ROOT ? undefined : parentFolderId;
 
@@ -70,7 +81,21 @@ export const createCreateFolderTool = (
 				return fail('Project not found or access denied');
 			}
 
-			const folder = await folderService.createFolder({ name, parentFolderId: parent }, projectId);
+			const folder = await folderService.createFolder(
+				{ name, parentFolderId: parent, resourceType },
+				projectId,
+			);
+
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.RESOURCE_FOLDER_CHANGED, {
+				user_id: user.id,
+				project_id: projectId,
+				resource_type: folder.resourceType,
+				action: 'created',
+				source: 'mcp',
+				folder_id: folder.id,
+				target_folder_id: folder.parentFolderId ?? null,
+				folder_count: 1,
+			});
 
 			telemetryPayload.results = { success: true, data: { folderId: folder.id } };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
@@ -78,6 +103,7 @@ export const createCreateFolderTool = (
 			const output = {
 				id: folder.id,
 				name: folder.name,
+				resourceType: folder.resourceType,
 				parentFolderId: folder.parentFolder?.id ?? null,
 			};
 			return {

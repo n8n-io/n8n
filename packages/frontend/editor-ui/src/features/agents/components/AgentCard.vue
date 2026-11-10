@@ -32,6 +32,7 @@ import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionTo
 const props = defineProps<{
 	agent: AgentResource;
 	projectId: string;
+	showFolderPath?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -43,6 +44,7 @@ const emit = defineEmits<{
 	unarchived: [agent: AgentResource];
 	'new-chat': [agentId: string, projectId: string];
 	duplicate: [agentId: string];
+	move: [agentId: string];
 }>();
 
 const locale = useI18n();
@@ -116,6 +118,10 @@ const actions = computed(() => {
 
 	const items: ActionToggleItem[] = [];
 
+	if (canUpdate.value && settingsStore.isFoldersFeatureEnabled) {
+		items.push({ value: 'move', label: locale.baseText('agents.folders.move') });
+	}
+
 	items.push({
 		...favoriteAction.value,
 		divided: !isPublished.value ? !canPublish.value : !canUnpublish.value,
@@ -186,6 +192,12 @@ async function deleteArchivedAgent() {
 }
 
 async function onAction(action: string) {
+	if (action === 'move') {
+		emit('move', props.agent.id);
+
+		return;
+	}
+
 	if (action === 'archive') {
 		const updated = await archive(props.agent);
 		if (updated) emit('archived', updated);
@@ -250,6 +262,9 @@ async function toggleMCPAccess(enabled: boolean) {
 				</N8nBadge>
 			</N8nText>
 		</template>
+		<N8nText v-if="showFolderPath && agent.folderPath?.length" size="small" color="text-light">{{
+			agent.folderPath.join(' / ')
+		}}</N8nText>
 		<div :class="$style.cardDescription">
 			<span>
 				{{ locale.baseText('agents.list.updated') }}
