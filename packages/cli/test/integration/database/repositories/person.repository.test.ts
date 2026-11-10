@@ -192,9 +192,11 @@ describe('PersonRepository', () => {
 			const person = await createMember();
 			await createServiceAccount();
 
-			const [users, count] = await personRepository
-				.buildUserListQuery({ filter: {}, take: 10, skip: 0 })
-				.getManyAndCount();
+			const { users, count } = await personRepository.listUsers({
+				filter: {},
+				take: 10,
+				skip: 0,
+			});
 
 			expect(users.map((u) => u.id)).toEqual([person.id]);
 			expect(count).toBe(1);

@@ -9,7 +9,7 @@ import {
 	type EligibleAccountsQuery,
 	UserRepository,
 } from './user.repository';
-import { Person } from '../entities';
+import { Person, type User } from '../entities';
 import type { IPersonalizationSurveyAnswers } from '../entities/types-db';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
@@ -39,9 +39,15 @@ export class PersonRepository {
 		this.table = new PersonTable(dataSource, transactionRunner);
 	}
 
-	/** The users list query, limited to persons. */
-	buildUserListQuery(listQueryOptions?: UsersListFilterDto, roleSlugs?: string[]) {
-		return this.userRepository.buildUserQuery(listQueryOptions, roleSlugs, 'person');
+	/** One page of the users list and its total count, limited to persons. */
+	async listUsers(
+		listQueryOptions: UsersListFilterDto,
+		roleSlugs?: string[],
+	): Promise<{ users: User[]; count: number }> {
+		const [users, count] = await this.userRepository
+			.buildUserQuery(listQueryOptions, roleSlugs, 'person')
+			.getManyAndCount();
+		return { users, count };
 	}
 
 	/** The status counts of the users list, limited to persons. */

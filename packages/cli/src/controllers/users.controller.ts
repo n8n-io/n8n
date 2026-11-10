@@ -105,9 +105,8 @@ export class UsersController {
 
 		const scope = listQueryOptions.filter?.scope;
 		const roleSlugs = scope ? await this.roleService.rolesWithScope('global', scope) : undefined;
-		const userQuery = this.personRepository.buildUserListQuery(listQueryOptions, roleSlugs);
-		const [[users, count], statusCounts] = await Promise.all([
-			userQuery.getManyAndCount(),
+		const [{ users, count }, statusCounts] = await Promise.all([
+			this.personRepository.listUsers(listQueryOptions, roleSlugs),
 			includeStatusCounts
 				? this.personRepository.countUserListStatuses(filter, roleSlugs)
 				: undefined,
