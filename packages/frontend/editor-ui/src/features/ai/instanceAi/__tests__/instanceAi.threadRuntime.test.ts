@@ -3786,6 +3786,7 @@ describe('createThreadRuntime - older history pages', () => {
 			threadId,
 			messages: [message('u2', 'user', 'g2'), message('a2', 'assistant', 'g2')],
 			nextCursor: 'cursor-1',
+			nextEventId: 0,
 		});
 		await runtime.loadHistoricalMessages();
 		return runtime;
@@ -3811,6 +3812,7 @@ describe('createThreadRuntime - older history pages', () => {
 				message('a2-older-copy', 'assistant', 'g2'),
 				message('u2', 'user'),
 			],
+			nextEventId: 0,
 		});
 		await runtime.loadOlderMessages();
 
@@ -3840,7 +3842,12 @@ describe('createThreadRuntime - older history pages', () => {
 		const first = runtime.loadOlderMessages();
 		const second = runtime.loadOlderMessages();
 		runtime.resetState();
-		resolveOlder({ threadId, messages: [message('u1', 'user')], nextCursor: 'cursor-0' });
+		resolveOlder({
+			threadId,
+			messages: [message('u1', 'user')],
+			nextCursor: 'cursor-0',
+			nextEventId: 0,
+		});
 		await Promise.all([first, second]);
 
 		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
@@ -3855,7 +3862,11 @@ describe('createThreadRuntime - older history pages', () => {
 		await expect(runtime.loadOlderMessages()).rejects.toThrow('fetch failed');
 		expect(runtime.hasOlderMessages).toBe(true);
 
-		mockFetchThreadMessages.mockResolvedValueOnce({ threadId, messages: [message('u1', 'user')] });
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [message('u1', 'user')],
+			nextEventId: 0,
+		});
 		await runtime.loadOlderMessages();
 		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'u2', 'a2']);
 	});
