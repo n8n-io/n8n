@@ -128,7 +128,6 @@ export function isAuthorizationResponseIssuerValid(
 	return iss === flowState.issuer;
 }
 
-/** What `registerClient` found out, for telemetry. It fills the fields as it learns them. */
 type ClientRegistrationResult = Pick<
 	RelayEventMap['oauth-client-registered'],
 	'method' | 'serverSupportsCimd' | 'serverSupportsDcr'
@@ -1418,12 +1417,8 @@ export class OauthService {
 		const clientMetadataUrl = this.selectClientMetadataUrl(metadata, oauthCredentials);
 		registration.serverSupportsCimd = metadata.client_id_metadata_document_supported === true;
 		registration.serverSupportsDcr = registration_endpoint !== undefined;
-		registration.method = clientMetadataUrl
-			? 'cimd'
-			: registration_endpoint
-				? 'dcr'
-				: 'none_available';
 		if (clientMetadataUrl) {
+			registration.method = 'cimd';
 			// With CIMD the metadata document URL is the client ID, so no registration request is sent.
 			this.applyDcrManagedFields(oauthCredentials, toUpdate, toDelete, {
 				authUrl: authorization_endpoint,
@@ -1438,10 +1433,12 @@ export class OauthService {
 		}
 
 		if (!registration_endpoint) {
+			registration.method = 'none_available';
 			throw new BadRequestError(
 				'The OAuth2 server does not support automatic client registration. Enter the client ID of your own OAuth app instead.',
 			);
 		}
+		registration.method = 'dcr';
 
 		const { grantType, authentication, usePkce } = this.selectGrantTypeAndAuthenticationMethod(
 			metadata.grant_types_supported ?? ['authorization_code', 'implicit'],
