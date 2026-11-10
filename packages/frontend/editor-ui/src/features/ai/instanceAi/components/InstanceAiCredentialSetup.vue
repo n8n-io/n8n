@@ -9,6 +9,7 @@ import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import { toOverrideCredentials } from '@/features/credentials/credentials.utils';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
@@ -373,19 +374,11 @@ const hasExistingCredentials = computed(() => {
 const dropdownCredentials = computed<ICredentialsResponse[] | undefined>(() => {
 	const req = currentRequest.value;
 	if (!req?.existingCredentials?.length) return undefined;
-	return req.existingCredentials.map((c) => {
-		const stored = credentialsStore.getCredentialById(c.id);
-		return stored && stored.type === req.credentialType
-			? stored
-			: {
-					id: c.id,
-					name: c.name,
-					type: req.credentialType,
-					isManaged: false,
-					createdAt: '',
-					updatedAt: '',
-				};
-	});
+	return toOverrideCredentials(
+		req.existingCredentials,
+		req.credentialType,
+		credentialsStore.getCredentialById,
+	);
 });
 
 function hasEasySetup(credentialType: string): boolean {

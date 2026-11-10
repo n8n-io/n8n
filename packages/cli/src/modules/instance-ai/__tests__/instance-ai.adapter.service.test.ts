@@ -6473,6 +6473,32 @@ describe('createExecutionAdapter run()', () => {
 		);
 	});
 
+	it('refuses a run the user cannot make through their own access, before it starts', async () => {
+		const node = { id: 'n1', name: 'Send', type: 'n8n-nodes-base.slack', typeVersion: 1 };
+		const { adapter, mockWorkflowRunner, mockExecutionPersistence } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [node],
+		});
+		const checker = mock<CredentialsPermissionChecker>();
+		checker.checkForUser.mockRejectedValue(
+			new UserError('Node "Send" uses the credential "Bot", which you cannot use'),
+		);
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === CredentialsPermissionChecker
+				? checker
+				: mockExecutionPersistence) as typeof Container.get);
+
+		await expect(adapter.run('wf-1')).resolves.toEqual({
+			executionId: '',
+			status: 'error',
+			error: 'Node "Send" uses the credential "Bot", which you cannot use',
+		});
+		expect(checker.checkForUser).toHaveBeenCalledWith('user-1', [node], {
+			ignoreGlobalUseScope: true,
+		});
+		expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+
 	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {
 		const original = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
@@ -6717,6 +6743,26 @@ describe('createExecutionAdapter runStep()', () => {
 		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
 
 		await expect(runStep('wf-1', 'Nope', undefined)).rejects.toThrow('has no node named "Nope"');
+		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	it('refuses a step the user cannot run through their own access, before it starts', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow);
+		const checker = mock<CredentialsPermissionChecker>();
+		checker.checkForUser.mockRejectedValue(
+			new UserError('Node "Send" uses the credential "Bot", which you cannot use'),
+		);
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === CredentialsPermissionChecker
+				? checker
+				: harness.mockExecutionPersistence) as typeof Container.get);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await expect(runStep('wf-1', 'Send', undefined)).resolves.toMatchObject({
+			executionId: '',
+			status: 'error',
+			error: 'Node "Send" uses the credential "Bot", which you cannot use',
+		});
 		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
 	});
 

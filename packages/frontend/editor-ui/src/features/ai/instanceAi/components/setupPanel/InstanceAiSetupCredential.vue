@@ -689,6 +689,7 @@ onScopeDispose(() => {
 				:workflow-id="workflowId"
 				:credential-setup-hint="item.setupHint"
 				:credentials-field-label="i18n.baseText('instanceAi.setupPanel.credential')"
+				:credentials="usableCredentials"
 				standalone
 				for-assistant
 				hide-issues

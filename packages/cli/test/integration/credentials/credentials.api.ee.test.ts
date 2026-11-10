@@ -470,7 +470,6 @@ describe('GET /credentials/for-workflow', () => {
 
 				const response = await authOwnerAgent.get('/credentials/for-workflow').query({
 					[queryParam]: queryParam === 'projectId' ? ownerPersonalProject.id : ownerWorkflow.id,
-					forAgent: 'true',
 					forAssistant: 'true',
 				});
 

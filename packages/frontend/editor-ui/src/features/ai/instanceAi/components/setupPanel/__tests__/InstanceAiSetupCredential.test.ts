@@ -145,7 +145,7 @@ const InputStub = defineComponent({
 	},
 });
 const ExistingCredentialStub = defineComponent({
-	props: ['workflowId', 'projectId', 'overrideCredType'],
+	props: ['workflowId', 'projectId', 'overrideCredType', 'credentials'],
 	emits: ['credentialSelected'],
 	setup(props, { emit }) {
 		return () =>
@@ -154,6 +154,9 @@ const ExistingCredentialStub = defineComponent({
 				{
 					'data-workflow-id': props.workflowId,
 					'data-project-id': props.projectId,
+					'data-credential-ids': (props.credentials as Array<{ id: string }> | undefined)
+						?.map(({ id }) => id)
+						.join(','),
 					onClick: () =>
 						emit('credentialSelected', {
 							properties: {
@@ -1119,6 +1122,8 @@ describe('InstanceAiSetupCredential', () => {
 			const picker = rendered.getByRole('button', { name: 'Select existing connection' });
 			expect(picker).toHaveAttribute('data-project-id', 'workflow-project');
 			expect(picker).toHaveAttribute('data-workflow-id', 'wf');
+			// The scoped list, not the shared slice that another scope's fetch may replace.
+			expect(picker).toHaveAttribute('data-credential-ids', credential.id);
 			await fireEvent.click(picker);
 			expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0][1]).toBe('existing');
 			expect(store.createNewCredential).not.toHaveBeenCalled();

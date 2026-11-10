@@ -188,7 +188,11 @@ import {
 	getExecutionRedaction,
 	loadExecutionForViewer,
 } from '@/executions/execution-viewer-reader';
-import { type CredentialRefusal, findCredentialRefusal } from '@/executions/pre-execution-checks';
+import {
+	type CredentialRefusal,
+	findCredentialRefusal,
+	findOwnAccessCredentialRefusal,
+} from '@/executions/pre-execution-checks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
@@ -2359,6 +2363,8 @@ export class InstanceAiAdapterService {
 					: workflow.connections;
 
 				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
+				const refusedRun = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
+				if (refusedRun) return refusedRun;
 
 				// Force-save AI-initiated executions so that follow-up
 				// `executions(list/get/debug)` calls can read the result, regardless of
@@ -2847,6 +2853,8 @@ export class InstanceAiAdapterService {
 				};
 
 				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
+				const refusedRun = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
+				if (refusedRun) return describe(refusedRun);
 
 				try {
 					const executionId = await workflowRunner.run(runData);
@@ -5096,7 +5104,7 @@ function withCredentialRefusal<T extends ExecutionResult>(
 ): { result: T; telemetryError?: string } {
 	const { result } = outcome;
 	if (!refusal || result.status !== 'error') return outcome;
-	const message = [refusal.message, refusal.description].filter(Boolean).join('. ');
+	const message = refusalMessage(refusal);
 	return {
 		result: {
 			...result,
@@ -5107,6 +5115,24 @@ function withCredentialRefusal<T extends ExecutionResult>(
 		},
 		telemetryError: refusal.message,
 	};
+}
+
+function refusalMessage(refusal: CredentialRefusal) {
+	return [refusal.message, refusal.description].filter(Boolean).join('. ');
+}
+
+/**
+ * The project check lets an Owner or Admin use any personal credential in their
+ * personal project, but redaction would hide the result of such a run. So a run
+ * that needs a credential the user cannot use through their own access never
+ * starts, and has no execution.
+ */
+async function refuseWithoutOwnAccess(
+	nodes: INode[],
+	userId: string,
+): Promise<ExecutionResult | undefined> {
+	const refusal = await findOwnAccessCredentialRefusal(nodes, userId);
+	return refusal && { executionId: '', status: 'error', error: refusalMessage(refusal) };
 }
 
 /** Output branches of a run that a non-main connection carried. */
