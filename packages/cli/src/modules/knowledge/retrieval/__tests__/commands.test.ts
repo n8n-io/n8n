@@ -1,3 +1,4 @@
+import { getKnowledgePaths } from '../../files/storage-naming';
 import {
 	buildMirrorFinalizeCommand,
 	buildReadKnowledgeCommand,
@@ -7,12 +8,8 @@ import {
 	parseReadKnowledgeOutput,
 	parseRipgrepCountOutput,
 	parseRipgrepOutput,
-} from '../agent-knowledge-commands';
-import { getAgentKnowledgePaths } from '../agent-knowledge-storage';
-import {
-	searchKnowledgeInputSchema,
-	type AgentKnowledgeFileReference,
-} from '../agent-knowledge-retrieval';
+} from '../commands';
+import { searchKnowledgeInputSchema, type AgentKnowledgeFileReference } from '../retrieval-schemas';
 
 const mobyDickFile: AgentKnowledgeFileReference = {
 	file: 'moby-dick.txt',
@@ -27,7 +24,7 @@ const mobyDickFile: AgentKnowledgeFileReference = {
 
 const filesByPath = new Map([[mobyDickFile.file, mobyDickFile]]);
 const bearerSecret = 'Authorization: Bearer abc.def-ghi_jkl/mno=012345678901234567890123456789';
-const knowledgePaths = getAgentKnowledgePaths('daytona');
+const knowledgePaths = getKnowledgePaths('daytona');
 
 function rgEvent(
 	type: 'match' | 'context',

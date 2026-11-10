@@ -882,6 +882,12 @@ export const appBlueprintResumeSchema = z.object({
 });
 export type AppBlueprintResume = z.infer<typeof appBlueprintResumeSchema>;
 
+/** Field problems that reopen the blueprint card instead of creating the app. */
+export const appBlueprintErrorsSchema = z.object({
+	namespace: z.enum(['taken']).optional(),
+});
+export type AppBlueprintErrors = z.infer<typeof appBlueprintErrorsSchema>;
+
 export const instanceAiTargetApprovalSchema = z.object({
 	toolName: z.string(),
 	displayName: z.string().optional(),
@@ -1018,6 +1024,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	appBlueprint: appBlueprintSchema
 		.optional()
 		.describe('Proposed app for the editable blueprint card (inputType=app-blueprint)'),
+	appBlueprintErrors: appBlueprintErrorsSchema
+		.optional()
+		.describe('Field errors from a rejected blueprint, shown on the reopened card'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 

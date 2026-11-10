@@ -2,6 +2,7 @@ import { redactText } from '@n8n/utils/redaction/redact-text';
 import { Buffer } from 'node:buffer';
 import { z } from 'zod';
 
+import { assertKnowledgePathSegment, type KnowledgePaths } from '../files/storage-naming';
 import {
 	DEFAULT_SEARCH_TEXT_LIMIT,
 	MAX_OPERATION_OUTPUT_CHARS,
@@ -15,8 +16,7 @@ import {
 	type ReadKnowledgeRequest,
 	type SearchKnowledgeMatch,
 	type SearchKnowledgeRequest,
-} from './agent-knowledge-retrieval';
-import { assertKnowledgePathSegment, type AgentKnowledgePaths } from './agent-knowledge-storage';
+} from './retrieval-schemas';
 
 const COMMAND_TIMEOUT_SECONDS = 20;
 export const MIRROR_SYNC_TIMEOUT_SECONDS = 120;
@@ -540,10 +540,7 @@ function buildAwkPipeline(command: string, script: string): string {
 	].join('; ');
 }
 
-export function buildScopedKnowledgeShellCommand(
-	command: string,
-	paths: AgentKnowledgePaths,
-): string {
+export function buildScopedKnowledgeShellCommand(command: string, paths: KnowledgePaths): string {
 	const scopedCommand = [
 		`[ -d ${quoteShellArg(paths.filesDir)} ] || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
 		`cd ${quoteShellArg(paths.filesDir)} || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
@@ -562,7 +559,7 @@ export function buildMirrorFinalizeCommand(
 	toCopy: string[],
 	toDelete: string[],
 	manifestFiles: Array<Pick<AgentKnowledgeFileReference, 'file' | 'fileId'>>,
-	paths: AgentKnowledgePaths,
+	paths: KnowledgePaths,
 	stagingId: string,
 ): string {
 	for (const name of [...toCopy, ...toDelete, ...manifestFiles.map((file) => file.file)]) {

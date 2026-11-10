@@ -2105,7 +2105,7 @@ export class SourceControlImportService {
 
 		for (const workflow of workflows) {
 			if (workflow.activeVersionId !== null) {
-				await this.workflowService.deactivateWorkflowAsSystem(workflow.id);
+				await this.workflowService.deactivateWorkflowAsSystem(workflow.id, 'source-control-pull');
 			}
 			await this.waitForUnpublishToSettle(workflow.id);
 			await this.executionPersistence.hardDeleteByWorkflowId(workflow.id);
