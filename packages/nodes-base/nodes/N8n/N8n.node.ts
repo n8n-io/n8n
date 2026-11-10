@@ -4,6 +4,7 @@ import { auditFields, auditOperations } from './AuditDescription';
 import { credentialFields, credentialOperations } from './CredentialDescription';
 import { executionFields, executionOperations } from './ExecutionDescription';
 import { projectFields, projectOperations } from './ProjectDescription';
+import { userFields, userOperations } from './UserDescription';
 import { workflowFields, workflowOperations } from './WorkflowDescription';
 import { searchWorkflows } from './WorkflowLocator';
 
@@ -17,7 +18,6 @@ export class N8n implements INodeType {
 		displayName: 'n8n',
 		name: 'n8n',
 		icon: 'node:n8n',
-		iconColor: 'pink-red',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -65,6 +65,10 @@ export class N8n implements INodeType {
 						value: 'project',
 					},
 					{
+						name: 'User',
+						value: 'user',
+					},
+					{
 						name: 'Workflow',
 						value: 'workflow',
 					},
@@ -83,6 +87,9 @@ export class N8n implements INodeType {
 
 			...projectOperations,
 			...projectFields,
+
+			...userOperations,
+			...userFields,
 
 			...workflowOperations,
 			...workflowFields,

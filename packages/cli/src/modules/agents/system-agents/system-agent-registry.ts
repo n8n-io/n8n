@@ -1,11 +1,11 @@
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { SystemAgentProvider } from './system-agent.types';
 
 /**
  * Holds the code-defined instance agents. A module registers its provider at
- * init through `SystemAgentExecutionService.register`. With no provider, every
+ * init through `SystemAgentRegistrationService.register`. With no provider, every
  * system-agent hook in the Agents runtime is inert.
  */
 @Service()

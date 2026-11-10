@@ -1,36 +1,37 @@
 <script setup lang="ts">
-import type { WorkflowReviewVersionSnapshot } from '@n8n/api-types';
-import type { SlotWorkflowDiffProps } from '@n8n/frontend-module-sdk';
-import { deepCopy } from 'n8n-workflow';
-import { computed, markRaw } from 'vue';
+import type { SlotWorkflowDiffProps, SlotWorkflowDiffSnapshot } from '@n8n/frontend-module-sdk';
+import { computed } from 'vue';
 
 import type { IWorkflowDb } from '@/Interface';
 
 import WorkflowDiffView from './WorkflowDiffView.vue';
+import { toDiffWorkflow } from './workflowDiff.utils';
 
 const props = defineProps<SlotWorkflowDiffProps>();
 
-function toWorkflow(snapshot: WorkflowReviewVersionSnapshot | undefined): IWorkflowDb | undefined {
+function toWorkflow(
+	snapshot: SlotWorkflowDiffSnapshot | undefined,
+	side: 'source' | 'target',
+): IWorkflowDb | undefined {
 	if (!snapshot) return undefined;
-	return markRaw(
-		deepCopy({
-			id: props.workflowId,
-			name: props.workflowName,
-			active: false,
-			isArchived: false,
-			createdAt: snapshot.createdAt,
-			updatedAt: snapshot.createdAt,
-			versionId: snapshot.versionId,
-			activeVersionId: null,
-			nodes: snapshot.nodes,
-			connections: snapshot.connections,
-			nodeGroups: snapshot.nodeGroups,
-		}),
-	);
+	return toDiffWorkflow({
+		id: props.workflowId,
+		name: snapshot.workflowName ?? props.workflowName,
+		// Graph-only snapshots still need separate canvas document identities.
+		versionId: snapshot.versionId ?? side,
+		createdAt: snapshot.createdAt,
+		nodes: snapshot.nodes,
+		connections: snapshot.connections,
+		nodeGroups: snapshot.nodeGroups,
+		settings: snapshot.settings,
+		// The diff compares tags in order, but the tags of a workflow have no order.
+		tags: snapshot.tags && [...snapshot.tags].sort((a, b) => a.name.localeCompare(b.name)),
+		isArchived: snapshot.isArchived,
+	});
 }
 
-const sourceWorkflow = computed(() => toWorkflow(props.sourceSnapshot));
-const targetWorkflow = computed(() => toWorkflow(props.targetSnapshot));
+const sourceWorkflow = computed(() => toWorkflow(props.sourceSnapshot, 'source'));
+const targetWorkflow = computed(() => toWorkflow(props.targetSnapshot, 'target'));
 </script>
 
 <template>
@@ -40,6 +41,7 @@ const targetWorkflow = computed(() => toWorkflow(props.targetSnapshot));
 		:source-label="sourceLabel"
 		:target-label="targetLabel"
 		:show-fullscreen-button="showFullscreenButton"
+		:require-canvas-focus="requireCanvasFocus"
 		:canvas-id-prefix="canvasIdPrefix"
 		:hide-title="hideTitle"
 	>
@@ -47,6 +49,9 @@ const targetWorkflow = computed(() => toWorkflow(props.targetSnapshot));
 		<template v-if="$slots.targetLabel" #targetLabel><slot name="targetLabel" /></template>
 		<template v-if="$slots.sourceEmptyText" #sourceEmptyText
 			><slot name="sourceEmptyText"
+		/></template>
+		<template v-if="$slots.targetEmptyText" #targetEmptyText
+			><slot name="targetEmptyText"
 		/></template>
 	</WorkflowDiffView>
 </template>

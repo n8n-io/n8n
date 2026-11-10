@@ -7,7 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment, Message, Thread } from 'chat';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { AgentRepository } from '../../../repositories/agent.repository';
 import { createAdapterLogger } from '../../adapter-logger';
@@ -154,8 +154,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'teams';
 
-	/** Hidden from the catalog and the add-trigger UI until the setup stepper ships. */
-	readonly internal = true;
+	readonly internal = false;
 
 	readonly singleConnectionPerAgent = true;
 
@@ -305,6 +304,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 			chat: params.chat,
 			query: params.query,
 			input: params.input,
+			abortSignal: params.abortSignal,
 		});
 	}
 
@@ -328,6 +328,11 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	buildOriginDraft(input: OriginInput, decoded: DecodedThread) {
 		return buildTeamsOriginDraft(input, decoded);
+	}
+
+	/** Episodic memory stays off until this channel defines its ownership policy. */
+	resolveEpisodicScope() {
+		return null;
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {

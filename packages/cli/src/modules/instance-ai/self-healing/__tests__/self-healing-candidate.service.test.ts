@@ -266,6 +266,16 @@ describe('SelfHealingCandidateService', () => {
 		expect(suggestions.createSuggestion).not.toHaveBeenCalled();
 	});
 
+	it('passes the context model transport to simulation planning', async () => {
+		const plan = vi.spyOn(instanceAi, 'planVerificationSimulation');
+		const modelFetch = vi.fn();
+		input.context.modelFetch = modelFetch;
+
+		await service.verify(input);
+
+		expect(plan).toHaveBeenCalledWith(expect.objectContaining({ modelFetch }));
+	});
+
 	it('cleans up the temporary workflow when verification throws', async () => {
 		executionService.run.mockRejectedValue(new Error('Execution failed'));
 

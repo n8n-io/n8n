@@ -90,6 +90,20 @@ export class AgentChatMessageContextBridge {
 		}
 	}
 
+	async resolveSentMessage(threadId: string, messageId: string): Promise<SessionBinding | null> {
+		if (!this.messageContextStore) return null;
+		try {
+			return await this.messageContextStore.resolveSentMessage(threadId, messageId);
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to resolve the session of a sent message', {
+				agentId: this.agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+	}
+
 	/**
 	 * Clears a task-run binding on `threadId` (see {@link resolveSession}), so
 	 * a fresh session actually starts fresh instead of the next message being
@@ -115,6 +129,7 @@ function toIntegrationMessageSubject(
 	const author = toIntegrationSubjectPerson(subject.author);
 	const labels = subject.labels?.filter((label) => typeof label === 'string');
 	const projectId = isRecord(subject.raw) ? subject.raw.projectId : undefined;
+	const teamId = isRecord(subject.raw) ? subject.raw.teamId : undefined;
 
 	return {
 		type: subject.type,
@@ -124,6 +139,7 @@ function toIntegrationMessageSubject(
 		...(typeof subject.url === 'string' ? { url: subject.url } : {}),
 		...(typeof subject.status === 'string' ? { status: subject.status } : {}),
 		...(typeof projectId === 'string' ? { projectId } : {}),
+		...(typeof teamId === 'string' ? { teamId } : {}),
 		...(labels && labels.length > 0 ? { labels } : {}),
 		...(assignee ? { assignee } : {}),
 		...(author ? { author } : {}),

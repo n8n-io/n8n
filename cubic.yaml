@@ -79,7 +79,7 @@ reviews:
 
     ## Don't repeat what CI already fails on
 
-    `pnpm lint`, `pnpm typecheck`, Poutine, Zizmor and `@n8n/code-health` run on
+    `pnpm lint`, `pnpm typecheck`, Poutine and `@n8n/code-health` run on
     every PR. A defect one of them fails the build for is not a finding; the
     author sees it first. Rule files name the exemptions. Report what static
     analysis cannot see.

@@ -1,16 +1,17 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
-import type { Project, User, UserRepository } from '@n8n/db';
+import type { Person, PersonRepository, Project, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
+import type { CredentialTypes } from '@/credential-types';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, UserError } from '@n8n/errors';
 import type { License } from '@/license';
+import { parseMcpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@n8n/backend-services';
@@ -53,10 +54,11 @@ function makeService({
 	aiGatewayEnabled = true,
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
-	userRepository = mock<UserRepository>({ findOneBy: vi.fn().mockResolvedValue(null) }),
+	personRepository = mock<PersonRepository>({ findById: vi.fn().mockResolvedValue(null) }),
 	urlService = mock<UrlService>({
 		getInstanceBaseUrl: vi.fn().mockReturnValue(INSTANCE_BASE_URL),
 	}),
+	credentialTypes = mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(true) }),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
@@ -76,9 +78,10 @@ function makeService({
 		licenseState,
 		instanceSettings,
 		ownershipService,
-		userRepository,
+		personRepository,
 		urlService,
 		outboundHttp,
+		credentialTypes,
 	);
 }
 
@@ -317,16 +320,16 @@ describe('AiGatewayService', () => {
 			expect(body.instanceUrl).toBe(INSTANCE_BASE_URL);
 		});
 
-		it('includes userEmail and userName in token body when user exists', async () => {
-			const userRepository = mock<UserRepository>({
-				findOneBy: vi
+		it('includes userEmail and userName in token body when the user is a person', async () => {
+			const personRepository = mock<PersonRepository>({
+				findById: vi
 					.fn()
 					.mockResolvedValue(
-						mock<User>({ email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith' }),
+						mock<Person>({ email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith' }),
 					),
 			});
 			mockConfigThenToken();
-			const service = makeService({ userRepository });
+			const service = makeService({ personRepository });
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
@@ -345,15 +348,15 @@ describe('AiGatewayService', () => {
 		});
 
 		it('omits userName from token body when user has no first or last name', async () => {
-			const userRepository = mock<UserRepository>({
-				findOneBy: vi
+			const personRepository = mock<PersonRepository>({
+				findById: vi
 					.fn()
 					.mockResolvedValue(
-						mock<User>({ email: 'alice@example.com', firstName: '', lastName: '' }),
+						mock<Person>({ email: 'alice@example.com', firstName: '', lastName: '' }),
 					),
 			});
 			mockConfigThenToken();
-			const service = makeService({ userRepository });
+			const service = makeService({ personRepository });
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
@@ -362,9 +365,9 @@ describe('AiGatewayService', () => {
 			expect(body.userName).toBeUndefined();
 		});
 
-		it('omits userEmail and userName from token body when user is not found', async () => {
+		it('omits userEmail and userName from token body when the user is not found or is a service account', async () => {
 			mockConfigThenToken();
-			const service = makeService(); // userRepository returns null by default
+			const service = makeService(); // personRepository returns null by default
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
@@ -828,6 +831,235 @@ describe('AiGatewayService', () => {
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
 			).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('sendProviderRequest()', () => {
+		const providerRequest = {
+			provider: 'browserbaseBrowserUse',
+			authHeaderKey: 'X-BB-API-Key',
+			method: 'POST' as const,
+			path: '/v1/sessions',
+			body: { keepAlive: false },
+			userId: USER_ID,
+			attribution: { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task/1' },
+		};
+		const PROVIDER_URL = `${BASE_URL}/v1/gateway/exec/instance-ai/thread-1%7Ctask%2F1/browserbaseBrowserUse/v1/sessions`;
+
+		/** The token request succeeds, then the provider request gets `response`. */
+		function mockTokenThen(response: { statusCode: number; body: unknown }) {
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'user-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(response);
+		}
+
+		it("sends the user's token to the provider through the instance-ai exec context URL", async () => {
+			mockTokenThen(ok({ id: 'sess-1' }));
+
+			const body = await makeService().sendProviderRequest(providerRequest);
+
+			expect(body).toEqual({ id: 'sess-1' });
+			expect(requestMock).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({
+					url: `${BASE_URL}/v1/gateway/credentials`,
+					headers: expect.objectContaining({ 'x-user-id': USER_ID }),
+				}),
+			);
+			expect(requestMock).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					method: 'POST',
+					url: PROVIDER_URL,
+					headers: { 'X-BB-API-Key': 'user-jwt' },
+					body: { keepAlive: false },
+					json: true,
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it('sends the timeout with the token request and the provider request', async () => {
+			mockTokenThen(ok({ id: 'sess-1' }));
+
+			await makeService().sendProviderRequest({ ...providerRequest, timeoutMs: 30_000 });
+
+			expect(requestMock).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ url: `${BASE_URL}/v1/gateway/credentials`, timeout: 30_000 }),
+			);
+			expect(requestMock).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ url: PROVIDER_URL, timeout: 30_000 }),
+			);
+		});
+
+		it('sends no timeout with either request when none is given', async () => {
+			mockTokenThen(ok({ id: 'sess-1' }));
+
+			await makeService().sendProviderRequest(providerRequest);
+
+			for (const [options] of requestMock.mock.calls) {
+				expect(options).not.toHaveProperty('timeout');
+			}
+			expect(requestMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('throws a UserError with the status code for a failed response', async () => {
+			mockTokenThen(fail(503));
+
+			const result = makeService().sendProviderRequest(providerRequest);
+
+			await expect(result).rejects.toThrow(UserError);
+			await expect(result).rejects.toThrow('Gateway credits request failed: HTTP 503');
+		});
+
+		it('throws the error that mapErrorResponse gives for a failed response', async () => {
+			mockTokenThen({ statusCode: 402, body: { reason: 'no credits' } });
+			const mapErrorResponse = vi.fn(() => new Error('mapped'));
+
+			await expect(
+				makeService().sendProviderRequest({ ...providerRequest, mapErrorResponse }),
+			).rejects.toThrow('mapped');
+			expect(mapErrorResponse).toHaveBeenCalledWith({
+				statusCode: 402,
+				body: { reason: 'no credits' },
+			});
+		});
+
+		it.each(['', 'browserbase/../credentials', 'browserbase?x=1'])(
+			'refuses the provider name "%s" without sending a request',
+			async (provider) => {
+				await expect(
+					makeService().sendProviderRequest({ ...providerRequest, provider }),
+				).rejects.toThrow('Invalid gateway provider name');
+				expect(requestMock).not.toHaveBeenCalled();
+			},
+		);
+
+		it('throws when gateway credits are not enabled', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			await expect(service.sendProviderRequest(providerRequest)).rejects.toThrow(
+				'Gateway credits are not enabled on this instance',
+			);
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('fetchAiGatewayMcpServers()', () => {
+		it('maps each AI Gateway MCP server to a valid registry row', async () => {
+			requestMock.mockResolvedValueOnce(
+				ok({
+					servers: [
+						{
+							slug: 'firecrawl',
+							name: 'com.n8n/n8n-connect-firecrawl-mcp',
+							title: 'Firecrawl',
+							description: 'Read the web',
+							tagline: 'Read the web with Gateway credits',
+							version: '1.0.0',
+							updatedAt: '2026-09-17T10:00:00.000Z',
+							websiteUrl: 'https://firecrawl.dev',
+							icons: [
+								{ src: 'https://firecrawl.dev/icon.svg', mimeType: 'image/x-unknown' },
+								{ src: 'https://firecrawl.dev/dark.png', mimeType: 'image/png', theme: 'dark' },
+							],
+							tags: ['web'],
+							tools: [
+								{ name: 'firecrawl_scrape', title: 'Scrape', readOnlyHint: true },
+								{ name: 'firecrawl_crawl', readOnlyHint: false },
+								{ name: 'firecrawl_map' },
+							],
+						},
+					],
+				}),
+			);
+
+			const [row] = await makeService().fetchAiGatewayMcpServers();
+
+			expect(parseMcpRegistryServer(row)).toEqual(row);
+			expect(row).toMatchObject({
+				slug: 'n8n-connect-firecrawl',
+				authType: '__aiGatewayManaged',
+				remotes: [{ type: 'streamable-http', url: `${BASE_URL}/v1/gateway/mcp/firecrawl` }],
+				requiredCapabilities: ['n8n-connect'],
+				isOfficial: false,
+				websiteUrl: 'https://firecrawl.dev',
+				tags: ['web'],
+			});
+			// An icon keeps a MIME type the registry accepts, and drops one it does not.
+			expect(row.icons).toEqual([
+				{ src: 'https://firecrawl.dev/icon.svg' },
+				{ src: 'https://firecrawl.dev/dark.png', mimeType: 'image/png', theme: 'dark' },
+			]);
+			expect(row.tools).toEqual([
+				{ name: 'firecrawl_scrape', title: 'Scrape', annotations: { readOnlyHint: true } },
+				{ name: 'firecrawl_crawl', annotations: { readOnlyHint: false } },
+				{ name: 'firecrawl_map' },
+			]);
+		});
+
+		it.each([
+			{ case: 'does not match the contract', response: ok({ servers: [{ slug: 'firecrawl' }] }) },
+			{ case: 'has a non-2xx status', response: fail(502) },
+		])('rejects a response that $case', async ({ response }) => {
+			requestMock.mockResolvedValueOnce(response);
+
+			await expect(makeService().fetchAiGatewayMcpServers()).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('getSyntheticCredential() for an MCP server', () => {
+		const credentialType = 'n8nConnectFirecrawlMcpAiGatewayApi';
+		const mcpNode = {
+			type: '@n8n/mcp-registry.n8nConnectFirecrawl',
+			typeVersion: 1,
+			parameters: {},
+		};
+
+		it.each([
+			{ case: 'a registry MCP node', node: mcpNode },
+			{ case: 'a call without a node (agent or discovery)', node: undefined },
+		])('mints a token pinned to the AI Gateway host for $case', async ({ node }) => {
+			requestMock.mockResolvedValueOnce(ok({ token: 'mcp-jwt', expiresIn: 3600 }));
+
+			const result = await makeService().getSyntheticCredential({
+				credentialType,
+				userId: USER_ID,
+				node,
+			});
+
+			expect(result).toEqual({
+				token: 'mcp-jwt',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'gateway.test',
+			});
+			// The MCP path never reads the node-credits config.
+			expect(requestMock).toHaveBeenCalledTimes(1);
+			expect(requestMock).toHaveBeenCalledWith(
+				expect.objectContaining({ url: `${BASE_URL}/v1/gateway/credentials` }),
+			);
+		});
+
+		it.each([
+			{
+				case: 'a credential type that no listed server has',
+				credentialTypes: mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(false) }),
+				node: mcpNode,
+			},
+			{
+				case: 'a node that can request any credential type',
+				credentialTypes: undefined,
+				node: { type: 'n8n-nodes-base.httpRequest', typeVersion: 4.5, parameters: {} },
+			},
+		])('refuses $case', async ({ credentialTypes, node }) => {
+			const service = makeService(credentialTypes ? { credentialTypes } : {});
+
+			await expect(
+				service.getSyntheticCredential({ credentialType, userId: USER_ID, node }),
+			).rejects.toThrow(UserError);
+			expect(requestMock).not.toHaveBeenCalled();
 		});
 	});
 

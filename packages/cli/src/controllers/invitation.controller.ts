@@ -2,8 +2,7 @@ import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-type
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
-import type { User } from '@n8n/db';
-import { UserRepository, AuthenticatedRequest } from '@n8n/db';
+import { UserRepository, AuthenticatedRequest, PersonRepository } from '@n8n/db';
 import { Post, GlobalScope, RestController, Body } from '@n8n/decorators';
 import { Response } from 'express';
 
@@ -25,6 +24,7 @@ export class InvitationController {
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly postHog: PostHogClient,
 		private readonly eventService: EventService,
 	) {}
@@ -55,12 +55,21 @@ export class InvitationController {
 		req: AuthlessRequest,
 		res: Response,
 	): Promise<Awaited<ReturnType<UserService['toPublic']>>> {
-		const users = await this.userRepository.find({
-			where: [{ id: inviterId }, { id: inviteeId }],
-			relations: ['role'],
-		});
+		if (inviterId === inviteeId) {
+			this.logger.debug(
+				'Request to fill out a user shell failed because the inviter and the invitee are the same',
+				{ inviterId, inviteeId },
+			);
+			throw new BadRequestError('Invalid payload or URL');
+		}
 
-		if (users.length !== 2) {
+		// Only a person can be invited. The inviter can be any account.
+		const [inviter, invitee] = await Promise.all([
+			this.userRepository.findByIdWithRole(inviterId),
+			this.personRepository.findByIdWithRole(inviteeId),
+		]);
+
+		if (!inviter || !invitee) {
 			this.logger.debug(
 				'Request to fill out a user shell failed because the inviter ID and/or invitee ID were not found in database',
 				{
@@ -70,8 +79,6 @@ export class InvitationController {
 			);
 			throw new BadRequestError('Invalid payload or URL');
 		}
-
-		const invitee = users.find((user) => user.id === inviteeId) as User;
 
 		if (invitee.password) {
 			this.logger.debug(
@@ -85,12 +92,12 @@ export class InvitationController {
 		invitee.lastName = lastName;
 		invitee.password = await this.passwordUtility.hash(password);
 
-		const updatedUser = await this.userRepository.save(invitee, { transaction: false });
+		const updatedPerson = await this.personRepository.save(invitee);
 
-		this.authService.issueCookie(res, updatedUser, false, req.browserId);
+		this.authService.issueCookie(res, updatedPerson, false, req.browserId);
 
 		this.eventService.emit('user-signed-up', {
-			user: updatedUser,
+			user: updatedPerson,
 			userType: 'email',
 			wasDisabledLdapUser: false,
 		});
@@ -100,7 +107,7 @@ export class InvitationController {
 		await this.externalHooks.run('user.profile.update', [invitee.email, publicInvitee]);
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
-		return await this.userService.toPublic(updatedUser, {
+		return await this.userService.toPublic(updatedPerson, {
 			posthog: this.postHog,
 			withScopes: true,
 		});

@@ -25,6 +25,15 @@ describe('AgentChatMessageContextBridge.resolveSubject', () => {
 		});
 	});
 
+	it('keeps the team ID the platform reports on the subject', async () => {
+		await expect(bridge.resolveSubject(subjectOf({ teamId: 'team-1' }))).resolves.toEqual({
+			type: 'issue',
+			id: 'ENG-1',
+			title: 'Fix it',
+			teamId: 'team-1',
+		});
+	});
+
 	it('leaves the project ID out when the platform reports none', async () => {
 		await expect(bridge.resolveSubject(subjectOf({}))).resolves.toEqual({
 			type: 'issue',

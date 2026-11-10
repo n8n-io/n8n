@@ -329,8 +329,9 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 									<N8nIconButton
 										:class="['action-toggle', $style['actions-menu']]"
 										variant="ghost"
-										icon="ellipsis-vertical"
-										size="medium"
+										icon="ellipsis-12"
+										size="small"
+										icon-size="medium"
 										role="button"
 										:aria-controls="dropdownId"
 									/>

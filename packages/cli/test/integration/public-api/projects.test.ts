@@ -27,6 +27,7 @@ import {
 	createAdmin,
 	createMember,
 	createUserShell,
+	createServiceAccountWithProject,
 } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -791,6 +792,43 @@ describe('Projects in Public API', () => {
 			expect(viewerRow.role).toBe('project:viewer');
 			const editorRow = response.body.data.find((m: { id: string }) => m.id === member2.id);
 			expect(editorRow.role).toBe('project:editor');
+		});
+
+		it('if licensed, should return a service account member with its name and an empty email', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			testServer.license.enable('feat:projectRole:editor');
+			const owner = await createOwnerWithApiKey();
+			const project = await createTeamProject('shared-project', owner);
+			const serviceAccount = await createServiceAccountWithProject(
+				GLOBAL_MEMBER_ROLE,
+				'Deploy bot',
+			);
+			await linkUserToProject(serviceAccount, project, 'project:editor');
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/projects/${project.id}/users`);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			expect(response.body.data).toContainEqual({
+				id: serviceAccount.id,
+				email: '',
+				firstName: 'Deploy bot',
+				lastName: null,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+				role: 'project:editor',
+			});
 		});
 
 		it('if licensed, should respect limit and cursor for pagination', async () => {

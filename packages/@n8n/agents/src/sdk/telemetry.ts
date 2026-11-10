@@ -2,6 +2,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Tracer } from '@opentelemetry/api';
 import type { Telemetry as AiSdkTelemetry } from 'ai';
 
+import { ensureContextManager } from './context-manager';
 import { createMetadataEnrichedTracer } from './metadata-enriched-tracer';
 import type {
 	AttributeValue,
@@ -14,7 +15,10 @@ type RedactFn = (data: Record<string, unknown>) => Record<string, unknown>;
 type ExecuteHookKey = 'executeLanguageModelCall' | 'executeTool';
 // Future on* hooks are wrapped automatically; other SDK members must be classified explicitly.
 type RedactableTelemetry = AiSdkTelemetry &
-	Record<Exclude<keyof AiSdkTelemetry, `on${string}` | ExecuteHookKey>, never>;
+	Record<
+		Exclude<keyof AiSdkTelemetry, `on${string}` | `experimental_on${string}` | ExecuteHookKey>,
+		never
+	>;
 type UnknownMethod = (this: unknown, ...args: unknown[]) => unknown;
 
 const EXECUTION_CONTROL_FIELDS: Record<ExecuteHookKey, string[]> = {
@@ -68,7 +72,11 @@ function isExecuteHookKey(property: PropertyKey): property is ExecuteHookKey {
 }
 
 function isTelemetryHook(property: PropertyKey): boolean {
-	return (typeof property === 'string' && property.startsWith('on')) || isExecuteHookKey(property);
+	return (
+		(typeof property === 'string' &&
+			(property.startsWith('on') || property.startsWith('experimental_on'))) ||
+		isExecuteHookKey(property)
+	);
 }
 
 function isMethod(value: unknown): value is UnknownMethod {
@@ -164,6 +172,7 @@ async function createOtlpTracer(endpoint: string): Promise<{
 		SimpleSpanProcessor: new (exporter: unknown) => unknown;
 	};
 
+	await ensureContextManager();
 	const exporter = new OTLPTraceExporter({ url: endpoint });
 	const provider = new NodeTracerProvider({
 		spanProcessors: [new SimpleSpanProcessor(exporter)],

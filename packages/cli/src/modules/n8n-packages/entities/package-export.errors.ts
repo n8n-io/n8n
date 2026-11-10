@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /** A requested entity exists but the caller has no access to it. */
 export class PackageEntityAccessDeniedError extends UserError {}

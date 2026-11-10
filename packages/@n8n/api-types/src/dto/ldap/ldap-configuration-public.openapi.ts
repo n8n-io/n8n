@@ -84,6 +84,11 @@ export const ldapConfigurationFieldDocs = {
 			'Whether to enforce that email addresses are unique across LDAP users. When true, if two users have the same email, only the first will be imported.',
 		example: true,
 	},
+	linkExistingAccountsByEmail: {
+		description:
+			'Whether an LDAP user may be linked to an existing n8n account that has the same email. When false, login and synchronization skip such users. Optional on PUT; the stored value is kept when omitted.',
+		example: true,
+	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const ldapConfigurationUpdateFieldDocs = {

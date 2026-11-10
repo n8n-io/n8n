@@ -4,17 +4,15 @@
 
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	getExecutionCallAction,
+	isFormerDataTablesTool,
 	REMOVED_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
-import {
-	DATA_TABLES_TOOL_ID,
-	DOMAIN_TOOL_IDS,
-	EVAL_CONFIG_TOOL_ID,
-	ORCHESTRATION_TOOL_IDS,
-} from '../../src/tools/tool-ids';
+import { DOMAIN_TOOL_IDS, EVAL_CONFIG_TOOL_ID } from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
 	ArtifactRef,
@@ -394,8 +392,6 @@ export function buildMetrics(events: CapturedEvent[], startTime: number): Instan
 // Per-turn conversation metrics
 // ---------------------------------------------------------------------------
 
-const PLAN_RECOVERY_TOOL_NAMES = new Set<string>([ORCHESTRATION_TOOL_IDS.CREATE_TASKS]);
-
 export function buildConversationMetrics(events: CapturedEvent[]): ConversationMetrics {
 	const turns = splitEventsIntoTurns(events);
 	const perTurn: TurnCounter[] = [];
@@ -425,10 +421,6 @@ export function buildConversationMetrics(events: CapturedEvent[]): ConversationM
 			switch (event.type) {
 				case 'tool-call': {
 					counter.toolCallCount++;
-					const toolName = getString(payload, 'toolName');
-					if (toolName && PLAN_RECOVERY_TOOL_NAMES.has(resolveBuilderToolName(toolName))) {
-						planRecoveryPositions.push(j);
-					}
 					break;
 				}
 				case 'tool-error': {
@@ -610,7 +602,7 @@ function extractResourceIds(
 
 	if (
 		toolName === EXECUTION_TOOL_LEGACY ||
-		(toolName === DOMAIN_TOOL_IDS.EXECUTIONS && action === 'run')
+		getExecutionCallAction(toolName, action) === 'run'
 	) {
 		const id = extractIdFromResult(result, 'executionId', 'id');
 		if (id) executionIds.push(id);
@@ -623,7 +615,10 @@ function extractResourceIds(
 
 	// create-only: other actions (e.g. schema) return ids of EXISTING tables,
 	// and tracking those would let cleanup delete tables the agent only inspected.
-	if (toolName === DATA_TABLES_TOOL_ID && action === 'create') {
+	if (
+		toolName === SHARED_BUILDER_TOOL_NAMES.CREATE_DATA_TABLE ||
+		(isFormerDataTablesTool(toolName) && action === 'create')
+	) {
 		const record = toResultRecord(result);
 		const table = record ? getRecord(record, 'table') : undefined;
 		const id = table ? extractIdFromRecord(table, ['id']) : undefined;

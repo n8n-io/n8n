@@ -2,9 +2,9 @@ import type { AgentFileDto } from '@n8n/api-types';
 import { getPromptWorkspaceRoot, type SandboxProvider } from '@n8n/agents/sandbox';
 import path from 'node:path';
 
-import { BadRequestError } from '@n8n/errors';
+import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
 
-import type { AgentFile } from './entities/agent-file.entity';
+import { AgentKnowledgeUploadError } from './agent-knowledge-upload.error';
 
 export interface AgentKnowledgePaths {
 	filesDir: string;
@@ -56,7 +56,10 @@ function sanitizeStorageFileName(originalName: string): string {
 	// `path.basename` passes through `.`, `..`, and empty names, which would
 	// resolve outside the scoped knowledge files directory when joined.
 	if (!sanitized || sanitized === '.' || sanitized === '..') {
-		throw new BadRequestError(`Invalid knowledge file name "${originalName}"`);
+		throw new AgentKnowledgeUploadError(
+			`Invalid knowledge file name "${originalName}"`,
+			'invalid_file_name',
+		);
 	}
 	return sanitized;
 }
@@ -71,7 +74,7 @@ export function storageFileNameForOriginalFileName(originalFileName: string): st
 	return sanitizedName;
 }
 
-export function toAgentFileDto(file: AgentFile): AgentFileDto {
+export function toAgentFileDto(file: KnowledgeFile): AgentFileDto {
 	return {
 		id: file.id,
 		agentId: file.agentId,

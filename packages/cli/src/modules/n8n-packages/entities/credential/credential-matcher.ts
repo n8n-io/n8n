@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import { hasGlobalScope } from '@n8n/permissions';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -15,6 +16,8 @@ export interface CredentialMatcherContext {
 	projectId: string;
 	user: User;
 	credentialBindings?: ImportBindingMap;
+	/** Leave out the user's own personal credentials that only the personal route makes usable. */
+	excludePersonalRoute?: boolean;
 }
 
 /** A credential the importing user can use in the target project, as returned by `CredentialsService`. */
@@ -36,6 +39,8 @@ export interface ResolvedCredentialMatch {
 }
 
 export abstract class CredentialMatcher {
+	protected matchesById = false;
+
 	constructor(
 		protected readonly credentialTypes: CredentialTypes,
 		protected readonly credentialsService: CredentialsService,
@@ -46,20 +51,12 @@ export abstract class CredentialMatcher {
 		context: CredentialMatcherContext,
 	): Promise<CredentialResolution> {
 		const orphanFailures = orphanBindingFailures(context.credentialBindings, requirements);
-		const { known, unknownTypeFailures } = partitionByKnownType(requirements, this.credentialTypes);
-		const { bound, unbound } = partitionByExplicitBinding(known, context.credentialBindings);
-
-		const usableCredentials =
-			known.length === 0
-				? []
-				: await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(context.user, {
-						projectId: context.projectId,
-					});
-		const usableTypesById = new Map(usableCredentials.map((c) => [c.id, c.type]));
-
-		const boundLocated = resolveExplicitBindings(bound, usableTypesById);
-		const resolvedLocated = this.resolve(unbound, usableCredentials, context);
-		const located = new Map([...boundLocated, ...resolvedLocated]);
+		const { known, unknownTypeFailures } = partitionByKnownType(
+			requirements,
+			this.credentialTypes,
+			(reference) => this.matchesById || context.credentialBindings?.has(reference.id) === true,
+		);
+		const located = await this.locateRequirements(known, context);
 
 		const successes: ImportBindingMap = new Map();
 		const notFoundFailures: CredentialResolutionFailure[] = [];
@@ -71,7 +68,7 @@ export abstract class CredentialMatcher {
 				notFoundFailures.push(
 					createNotFoundFailure(reference, context.credentialBindings?.get(reference.id)),
 				);
-			} else if (match.targetType !== reference.type) {
+			} else if (reference.type !== undefined && match.targetType !== reference.type) {
 				typeMismatchFailures.push(createTypeMismatchFailure(reference, match));
 			} else {
 				successes.set(reference.id, match.targetId);
@@ -83,10 +80,68 @@ export abstract class CredentialMatcher {
 			failures: [
 				...orphanFailures,
 				...unknownTypeFailures,
-				...notFoundFailures,
+				...(await this.withNotFoundReasons(notFoundFailures, context.user)),
 				...typeMismatchFailures,
 			],
 		};
+	}
+
+	private async locateRequirements(
+		requirements: PackageCredentialRequirement[],
+		context: CredentialMatcherContext,
+	): Promise<Map<string, ResolvedCredentialMatch>> {
+		const located = new Map<string, ResolvedCredentialMatch>();
+
+		for (const usedByAgent of [false, true]) {
+			const references = requirements.filter(
+				(reference) => reference.usedBy.some(({ kind }) => kind === 'agent') === usedByAgent,
+			);
+			if (references.length === 0) continue;
+
+			const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+				context.user,
+				{
+					projectId: context.projectId,
+					excludePersonalRoute: usedByAgent || context.excludePersonalRoute === true,
+				},
+			);
+			const usableTypesById = new Map(
+				usableCredentials.map((credential) => [credential.id, credential.type]),
+			);
+			const { bound, unbound } = partitionByExplicitBinding(references, context.credentialBindings);
+			const boundLocated = resolveExplicitBindings(bound, usableTypesById);
+			const resolvedLocated = this.resolve(unbound, usableCredentials, context);
+
+			for (const [sourceId, match] of [...boundLocated, ...resolvedLocated]) {
+				located.set(sourceId, match);
+			}
+		}
+
+		return located;
+	}
+
+	/**
+	 * Adds the reason to each `not_found` failure whose credential the matcher looked up by id.
+	 * Only a user who can read all credentials gets reasons.
+	 */
+	private async withNotFoundReasons(
+		failures: CredentialResolutionFailure[],
+		user: User,
+	): Promise<CredentialResolutionFailure[]> {
+		const lookupId = ({ sourceId, targetId }: CredentialResolutionFailure) =>
+			targetId ?? (this.matchesById ? sourceId : undefined);
+		const ids = [...new Set(failures.flatMap((failure) => lookupId(failure) ?? []))];
+		if (ids.length === 0 || !hasGlobalScope(user, 'credential:read')) return failures;
+
+		const usageScopes = await this.credentialsService.findUsageScopes(ids);
+		return failures.map((failure): CredentialResolutionFailure => {
+			const id = lookupId(failure);
+			if (id === undefined) return failure;
+			const usageScope = usageScopes.get(id);
+			if (usageScope === undefined) return { ...failure, reason: 'not-on-instance' };
+			if (usageScope !== 'project') return { ...failure, reason: 'incompatible-usage-scope' };
+			return { ...failure, reason: 'access-required' };
+		});
 	}
 
 	/**
@@ -141,6 +196,7 @@ function resolveExplicitBindings(
 function partitionByKnownType(
 	requirements: PackageCredentialRequirement[] | undefined,
 	credentialTypes: CredentialTypes,
+	canMatchUntyped: (reference: PackageCredentialRequirement) => boolean,
 ): {
 	known: PackageCredentialRequirement[];
 	unknownTypeFailures: CredentialResolutionFailure[];
@@ -149,7 +205,15 @@ function partitionByKnownType(
 	const unknownTypeFailures: CredentialResolutionFailure[] = [];
 
 	for (const reference of requirements ?? []) {
-		if (reference.type !== undefined && credentialTypes.recognizes(reference.type)) {
+		const untypedAgentReference =
+			reference.type === undefined &&
+			reference.usedBy.length > 0 &&
+			reference.usedBy.every(({ kind }) => kind === 'agent') &&
+			canMatchUntyped(reference);
+		if (
+			untypedAgentReference ||
+			(reference.type !== undefined && credentialTypes.recognizes(reference.type))
+		) {
 			known.push(reference);
 		} else {
 			unknownTypeFailures.push(createFailure(reference, 'unknown_type'));

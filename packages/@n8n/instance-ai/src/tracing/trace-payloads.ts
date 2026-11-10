@@ -4,6 +4,12 @@ import {
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
+import {
+	DATA_TABLE_TOOL_NAMES,
+	EXECUTION_TOOL_NAMES,
+	getDataTableToolAction,
+	getExecutionCallAction,
+} from '@n8n/api-types';
 import type { InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
@@ -1120,10 +1126,17 @@ function unprefixedToolName(name: string): string {
 }
 
 function classifyToolCategory(name: string): string {
-	if (name === DOMAIN_TOOL_IDS.DATA_TABLES) return 'data-table';
-	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
-	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
-	if (name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) return 'planning';
+	if (DATA_TABLE_TOOL_NAMES.includes(name)) return 'data-table';
+	if (
+		name === DOMAIN_TOOL_IDS.NODES ||
+		name === DOMAIN_TOOL_IDS.SEARCH_NODES ||
+		name === DOMAIN_TOOL_IDS.GET_NODE_TYPES ||
+		name === DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS ||
+		name === DOMAIN_TOOL_IDS.EXECUTE_NODE ||
+		name === 'materialize-node-type'
+	)
+		return 'node';
+	if (EXECUTION_TOOL_NAMES.includes(name)) return 'execution';
 	const baseName = unprefixedToolName(name);
 	if (baseName.includes('credential')) return 'credential';
 	if (baseName.includes('browser')) return 'browser';
@@ -1132,16 +1145,24 @@ function classifyToolCategory(name: string): string {
 		return 'workflow';
 	}
 	if (baseName.includes('research')) return 'research';
-	if (baseName.includes('plan')) return 'planning';
 	if (baseName.startsWith('workspace_')) return 'workspace';
 	if (baseName.includes('file') || baseName.includes('filesystem')) return 'filesystem';
 	return 'other';
 }
 
 function classifyToolSideEffect(name: string): string {
-	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execute';
 	if (name === DOMAIN_TOOL_IDS.ASK_USER) return 'none';
 	const baseName = unprefixedToolName(name);
+	// Only run, run-step and stop change execution state; the other execution tools read.
+	const executionAction = getExecutionCallAction(baseName);
+	if (executionAction) {
+		return ['run', 'run-step', 'stop'].includes(executionAction) ? 'execute' : 'read';
+	}
+	// Names like `insert_data_table_rows` match no keyword below, so classify by action.
+	const dataTableAction = getDataTableToolAction(baseName);
+	if (dataTableAction) {
+		return ['list', 'schema', 'query'].includes(dataTableAction) ? 'read' : 'write';
+	}
 	if (baseName.includes('browser')) return 'browser';
 	if (baseName.includes('research')) return 'network';
 	if (baseName.includes('execute') || baseName.includes('run')) {

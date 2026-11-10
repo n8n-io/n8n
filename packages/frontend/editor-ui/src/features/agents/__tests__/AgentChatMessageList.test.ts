@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_STANDALONE_KEY } from '../components/agentBuilderInjectionKeys';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
@@ -48,6 +49,7 @@ vi.mock('@n8n/design-system', () => ({
 		</div>`,
 	},
 	N8nIcon: { template: '<i />' },
+	N8nLink: { props: ['to', 'theme', 'size', 'underline'], template: '<a :href="to"><slot /></a>' },
 	N8nIconButton: {
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ icon }}</button>',
 		props: ['icon', 'variant', 'size'],
@@ -74,8 +76,10 @@ vi.mock('@n8n/design-system', () => ({
 
 vi.mock('@/features/agents/components/AgentMarkdownChunk.vue', () => ({
 	default: {
+		name: 'AgentMarkdownChunk',
 		template: '<div data-testid="markdown-chunk">{{ source }}</div>',
-		props: ['source'],
+		props: ['source', 'canOpenBuild'],
+		emits: ['open-build'],
 	},
 }));
 
@@ -117,6 +121,7 @@ vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
 
 vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
 	default: {
+		name: 'InteractiveCardStub',
 		template:
 			'<div data-testid="interactive-card-stub" :data-tool-call-id="payload.toolCallId" :data-run-id="payload.runId || \'\'" />',
 		props: ['payload'],
@@ -146,6 +151,362 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	it('shows the summary after a parent completes the plan', async () => {
+		const complete = {
+			...planMessage(planView({ document: { title: 'Research', items: [planTask(1, 'done')] } }), {
+				tool: 'update_plan',
+			}),
+			executionId: 'parent',
+			status: 'streaming' as const,
+		};
+
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [complete], messagingState: 'receiving', taskTraceRoute: '/trace' },
+		});
+
+		expect(wrapper.get('[data-testid="agent-chat-task-summary"]').text()).toContain(
+			'agents.chat.tasks.summary.preparing',
+		);
+
+		await wrapper.setProps({
+			messages: [
+				{ ...complete, status: 'success' },
+				{
+					id: 'reply',
+					executionId: 'parent',
+					role: 'assistant',
+					content: 'Found 12 unresolved threads.',
+					status: 'streaming',
+				},
+			],
+		});
+
+		expect(wrapper.findAll('[data-testid="agent-chat-task-summary"]')).toHaveLength(1);
+		expect(wrapper.get('[data-testid="agent-chat-task-summary"]').text()).toContain(
+			'Found 12 unresolved threads.',
+		);
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
+
+		wrapper.unmount();
+	});
+
+	it('replaces the final summary status with text and keeps its trace link in history', async () => {
+		const message: ChatMessage = {
+			id: 'final:assistant',
+			executionId: 'final',
+			role: 'assistant',
+			status: 'streaming',
+			content: '',
+			backgroundJobSignal: {
+				isFinal: true,
+				tasks: [{ id: 'job', title: 'Research', kind: 'subagent', status: 'completed' }],
+			},
+		};
+
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [message], messagingState: 'receiving', taskTraceRoute: '/trace' },
+		});
+		const summary = () => wrapper.get('[data-testid="agent-chat-task-summary"]');
+
+		expect(summary().get('[role="status"]').text()).toBe('agents.chat.tasks.summary.preparing');
+		expect(summary().get('a').attributes('href')).toBe('/trace');
+		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentTypingIndicator' }).exists()).toBe(false);
+
+		await wrapper.setProps({ messages: [{ ...message, content: 'Found 12 unresolved threads.' }] });
+
+		expect(summary().find('[role="status"]').exists()).toBe(false);
+		expect(summary().text()).toContain('Found 12 unresolved threads.');
+
+		const saved = {
+			...message,
+			status: 'success' as const,
+			content: 'Found 12 unresolved threads.',
+		};
+		await wrapper.setProps({
+			messages: [saved, { id: 'later', role: 'user', content: 'Thank you' }],
+			messagingState: 'idle',
+		});
+
+		expect(summary().get('a').attributes('href')).toBe('/trace');
+
+		wrapper.unmount();
+
+		const reloaded = mount(AgentChatMessageList, {
+			props: { messages: [saved], messagingState: 'idle', taskTraceRoute: '/trace' },
+		});
+
+		expect(reloaded.get('[data-testid="agent-chat-task-summary"]').text()).toContain(saved.content);
+		expect(reloaded.find('a[href="/trace"]').exists()).toBe(true);
+
+		reloaded.unmount();
+	});
+
+	it('removes the final-summary link when the result turn starts another job, including on reload', async () => {
+		const message: ChatMessage = {
+			id: 'results',
+			executionId: 'wake',
+			role: 'assistant',
+			content: '',
+			status: 'streaming',
+			backgroundJobSignal: {
+				isFinal: true,
+				tasks: [{ id: 'job', title: 'Rubric', kind: 'subagent', status: 'completed' }],
+			},
+		};
+
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [message], messagingState: 'receiving', taskTraceRoute: '/trace' },
+		});
+
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
+
+		const progress: ChatMessage = {
+			...message,
+			status: 'success',
+			content: 'Started the segment research.',
+			toolCalls: [
+				{
+					tool: 'delegate_subagent',
+					toolCallId: 'next',
+					state: 'done',
+					output: { jobId: 'next-job', status: 'started' },
+				},
+			],
+		};
+		await wrapper.setProps({ messages: [progress], messagingState: 'idle' });
+
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-chat-task-summary"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain(progress.content);
+
+		wrapper.unmount();
+
+		const reloaded = mount(AgentChatMessageList, {
+			props: { messages: [progress], messagingState: 'idle', taskTraceRoute: '/trace' },
+		});
+
+		expect(reloaded.find('a[href="/trace"]').exists()).toBe(false);
+		expect(reloaded.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(true);
+
+		reloaded.unmount();
+	});
+
+	it('shows an inline summary before the result turn starts without a second loading indicator', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [],
+				messagingState: 'waitingFirstChunk',
+				preparingSummary: true,
+				taskTraceRoute: '/trace',
+			},
+		});
+
+		expect(wrapper.get('[data-testid="agent-chat-task-summary"]').text()).toContain(
+			'agents.chat.tasks.summary.preparing',
+		);
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentTypingIndicator' }).exists()).toBe(false);
+
+		wrapper.unmount();
+	});
+
+	it('shows the summary fallback when the results are not summarized in time', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [],
+				messagingState: 'idle',
+				summaryMissing: true,
+				taskTraceRoute: '/trace',
+			},
+		});
+
+		expect(wrapper.find('[role="status"]').exists()).toBe(false);
+		expect(wrapper.get('[data-testid="agent-chat-task-summary"]').text()).toContain(
+			'agents.chat.tasks.summary.empty',
+		);
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
+
+		wrapper.unmount();
+	});
+
+	it.each(['tool run', 'message'] as const)(
+		'keeps preparing feedback between a completed %s and the summary stream',
+		async (kind) => {
+			const message: ChatMessage =
+				kind === 'tool run'
+					? planMessage(
+							planView({ document: { title: 'Research', items: [planTask(1, 'done')] } }),
+							{ tool: 'update_plan' },
+						)
+					: {
+							id: 'final',
+							role: 'assistant',
+							content: '',
+							status: 'success',
+							backgroundJobSignal: { isFinal: true, tasks: [] },
+						};
+
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [message],
+					messagingState: 'waitingFirstChunk',
+					preparingSummary: true,
+					taskTraceRoute: '/trace',
+				},
+			});
+
+			expect(wrapper.findAll('[data-testid="agent-chat-task-summary"]')).toHaveLength(1);
+			expect(wrapper.get('[role="status"]').text()).toBe('agents.chat.tasks.summary.preparing');
+			expect(wrapper.text()).not.toContain('agents.chat.tasks.summary.empty');
+
+			await wrapper.setProps({ preparingSummary: false, messagingState: 'idle' });
+
+			expect(wrapper.find('[role="status"]').exists()).toBe(false);
+			expect(wrapper.text()).toContain('agents.chat.tasks.summary.empty');
+
+			wrapper.unmount();
+		},
+	);
+
+	it('keeps an empty final reply with trace access after the run ends', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'final',
+						role: 'assistant',
+						content: '',
+						status: 'error',
+						backgroundJobSignal: { isFinal: true, tasks: [] },
+					},
+				],
+				messagingState: 'idle',
+				taskTraceRoute: '/trace',
+			},
+		});
+
+		expect(wrapper.get('[data-testid="agent-chat-task-summary"]').text()).toContain(
+			'agents.chat.tasks.summary.empty',
+		);
+		expect(wrapper.find('[role="status"]').exists()).toBe(false);
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
+
+		wrapper.unmount();
+	});
+
+	it('keeps each Stop reply and trace link before later messages', async () => {
+		const stopped: ChatMessage = {
+			id: 'stop-1',
+			role: 'assistant',
+			content: 'I stopped reading the channel. You can continue.',
+			stopReport: true,
+			executionId: 'report-1',
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [stopped], messagingState: 'idle', taskTraceRoute: '/trace' },
+		});
+		await wrapper.setProps({
+			messages: [
+				stopped,
+				{ id: 'continue', role: 'user', content: 'Continue reading.' },
+				{ ...stopped, id: 'stop-2', executionId: 'report-2', content: 'I stopped again.' },
+			],
+		});
+
+		expect(wrapper.findAll('[data-testid="agent-chat-stop-reply"]')).toHaveLength(2);
+		expect(wrapper.findAll('a[href="/trace"]')).toHaveLength(2);
+		expect(wrapper.text()).toMatch(
+			/I stopped reading[\s\S]*Continue reading[\s\S]*I stopped again/,
+		);
+
+		wrapper.unmount();
+	});
+
+	it('shows a saved fallback for an empty Stop reply without a loading indicator', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [{ id: 'stopped', role: 'assistant', content: '', stopReport: true }],
+				messagingState: 'idle',
+			},
+		});
+
+		expect(wrapper.get('[data-testid="agent-chat-stop-reply"]').text()).toContain(
+			'agents.chat.tasks.inline.reportFailed',
+		);
+		expect(wrapper.findComponent({ name: 'AgentTypingIndicator' }).exists()).toBe(false);
+		expect(wrapper.find('a').exists()).toBe(false);
+
+		wrapper.unmount();
+	});
+
+	it('renders the status after the messages inside the transcript', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [{ id: 'reply', role: 'assistant', content: 'Research is in progress.' }],
+				messagingState: 'idle',
+			},
+			slots: { status: '<div role="status">Stopping all tasks…</div>' },
+		});
+
+		expect(wrapper.element.lastElementChild?.contains(wrapper.get('[role="status"]').element)).toBe(
+			true,
+		);
+		expect(wrapper.text()).toMatch(/Research is in progress\.[\s\S]*Stopping all tasks…/);
+
+		wrapper.unmount();
+	});
+
+	it.each([true, false])(
+		'follows a resized status only when near the bottom: %s',
+		async (nearBottom) => {
+			let resizeStatus: (() => void) | undefined;
+			vi.stubGlobal(
+				'ResizeObserver',
+				class {
+					constructor(onResize: () => void) {
+						resizeStatus = onResize;
+					}
+
+					observe() {}
+
+					disconnect() {}
+				},
+			);
+			vi.stubGlobal('requestAnimationFrame', (onFrame: FrameRequestCallback) => {
+				onFrame(0);
+
+				return 0;
+			});
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages: [], messagingState: 'idle' },
+				slots: { status: '<div role="status">Stopping all tasks…</div>' },
+			});
+
+			try {
+				await flushPromises();
+				const scroller = wrapper.element as HTMLElement;
+				Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 500 });
+				Object.defineProperty(scroller, 'clientHeight', { value: 100 });
+				scroller.scrollTop = nearBottom ? 400 : 0;
+				await wrapper.trigger('scroll');
+
+				Object.defineProperty(scroller, 'scrollHeight', { value: 600 });
+
+				expect(resizeStatus).toBeDefined();
+
+				resizeStatus?.();
+				await flushPromises();
+
+				expect(scroller.scrollTop).toBe(nearBottom ? 600 : 0);
+			} finally {
+				wrapper.unmount();
+				vi.unstubAllGlobals();
+			}
+		},
+	);
+
 	const emptyAnswerError =
 		'The model finished without returning an answer. Try again or use another model.';
 	const streamStallError =
@@ -220,6 +581,29 @@ describe('AgentChatMessageList', () => {
 		expect(callouts[0].find('[data-testid="agent-chat-retry"]').exists()).toBe(false);
 		expect(callouts[1].find('[data-testid="agent-chat-retry"]').exists()).toBe(true);
 		wrapper.unmount();
+	});
+
+	it('renders nothing for host events without a host renderer', () => {
+		const user: ChatMessage = { id: 'u1', role: 'user', content: 'Hi', status: 'success' };
+		const reply: ChatMessage = { id: 'a1', role: 'assistant', content: 'Done', status: 'success' };
+		const hostEvents = [{ id: 'h1', name: 'test.unknown', payload: { n: 1 } }];
+		const render = (messages: ChatMessage[]) => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages, messagingState: 'idle' },
+			});
+			const html = wrapper.html();
+			wrapper.unmount();
+			return html;
+		};
+
+		expect(render([user, { ...reply, hostEvents }])).toBe(render([user, reply]));
+		expect(
+			render([
+				user,
+				{ id: 'a2', role: 'assistant', content: '', status: 'success', hostEvents },
+				reply,
+			]),
+		).toBe(render([user, reply]));
 	});
 
 	it('keeps the budget notice and action when the plan progress call is hidden', async () => {
@@ -359,6 +743,29 @@ describe('AgentChatMessageList', () => {
 		wrapper.unmount();
 	});
 
+	it('hides empty saved result events and keeps the acknowledgement text', async () => {
+		const message: ChatMessage = {
+			id: 'stop:assistant',
+			executionId: 'stop',
+			role: 'assistant',
+			content: '',
+			backgroundJobSignal: { tasks: [] },
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [message], messagingState: 'idle' },
+		});
+
+		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="markdown-chunk"]').exists()).toBe(false);
+
+		await wrapper.setProps({ messages: [{ ...message, content: 'The plan is stopped.' }] });
+
+		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(false);
+		expect(wrapper.get('[data-testid="markdown-chunk"]').text()).toBe('The plan is stopped.');
+
+		wrapper.unmount();
+	});
+
 	it('keeps signal expansion and order when the response gains tools and text', async () => {
 		const message: ChatMessage = {
 			id: 'wake:assistant',
@@ -407,6 +814,39 @@ describe('AgentChatMessageList', () => {
 			content: 'Please update your instructions to always answer in German',
 			status: 'success',
 		} satisfies ChatMessage;
+
+		it.each([true, false])('handles an Agent-authored Build link (edit: %s)', async (edit) => {
+			const wrapper = mount(AgentChatMessageList, {
+				global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: true } },
+				props: {
+					messages: [
+						changeRequest,
+						{
+							id: 'reply-1',
+							role: 'assistant',
+							content: '[Open Build](#agent-build)',
+							status: 'success',
+						},
+						{ id: 'user-2', role: 'user', content: 'A later request', status: 'success' },
+					],
+					messagingState: 'idle',
+					agentId: 'agent-1',
+					sessionId: 'thread-1',
+					canSendToAssistant: true,
+				},
+			});
+			const markdown = wrapper.getComponent({ name: 'AgentMarkdownChunk' });
+			expect(markdown.props('canOpenBuild')).toBe(true);
+			markdown.vm.$emit('open-build', edit);
+			if (edit)
+				expect(wrapper.emitted('sendToAssistant')).toEqual([
+					[{ changeRequest: changeRequest.content }],
+				]);
+			else expect(wrapper.emitted('openBuild')).toEqual([[]]);
+			await wrapper.setProps({ canSendToAssistant: false });
+			markdown.vm.$emit('open-build', edit);
+			expect(wrapper.emitted(edit ? 'sendToAssistant' : 'openBuild')).toHaveLength(1);
+		});
 
 		it('offers the assistant hand-off for a change request in the preview', async () => {
 			const wrapper = mount(AgentChatMessageList, {
@@ -1130,6 +1570,40 @@ describe('AgentChatMessageList', () => {
 		).toBeTruthy();
 	});
 
+	it('resumes an open card with the callback that the card passes for an accepted answer', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-open-card',
+						role: 'assistant',
+						content: '',
+						interactives: [
+							{
+								toolName: 'chat_action',
+								toolCallId: 'tc-open',
+								runId: 'run-open',
+								input: { card: { components: [{ type: 'section', text: 'Continue?' }] } },
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+		const onAccepted = vi.fn();
+
+		const card = wrapper.findComponent({ name: 'InteractiveCardStub' });
+		card.vm.$emit('submit', { answer: 'yes' }, onAccepted);
+		card.vm.$emit('submit', { answer: 'no' });
+
+		expect(wrapper.emitted('resume')).toEqual([
+			[{ runId: 'run-open', toolCallId: 'tc-open', resumeData: { answer: 'yes' } }, onAccepted],
+			[{ runId: 'run-open', toolCallId: 'tc-open', resumeData: { answer: 'no' } }, undefined],
+		]);
+	});
+
 	it('renders multiple n8n chat cards from one assistant message', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
@@ -1769,6 +2243,50 @@ describe('AgentChatMessageList', () => {
 			expect(steps.exists()).toBe(true);
 			expect(content?.firstElementChild?.getAttribute('data-placement')).toBe('start');
 			expect(renderOrder(wrapper)).toEqual(['start:s', 'text']);
+			wrapper.unmount();
+		});
+
+		it('renders thinking events in the thinking block, before the reasoning', () => {
+			const wrapper = mountList([
+				assistantMessage([hostEvent(TEST_HOST_EVENT.THINKING, 'context')], {
+					thinkingSegments: [{ id: 'reasoning-1', content: 'Plan the reply.' }],
+				}),
+			]);
+
+			const block = wrapper.find('[data-test-id="shared-thinking-block"]');
+			const children = block
+				.findAll('[data-testid="agent-chat-host-event"], [data-test-id="shared-reasoning-block"]')
+				.map((element) => element.attributes('data-placement') ?? 'reasoning');
+			expect(children).toEqual(['thinking', 'reasoning']);
+			expect(renderOrder(wrapper)).toEqual(['text', 'thinking:context']);
+			wrapper.unmount();
+		});
+
+		it('renders thinking events in the thinking block of a tool run', () => {
+			const wrapper = mountList([
+				assistantMessage([hostEvent(TEST_HOST_EVENT.THINKING, 'context')], {
+					content: '',
+					toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+					thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a tool.' }],
+				}),
+				{ id: 'assistant-2', role: 'assistant', content: 'Found it', status: 'success' },
+			]);
+
+			const block = wrapper.find('[data-test-id="shared-thinking-block"]');
+			expect(block.find('[data-testid="agent-chat-host-event"]').attributes('data-placement')).toBe(
+				'thinking',
+			);
+			expect(renderOrder(wrapper)).toEqual(['text', 'thinking:context']);
+			wrapper.unmount();
+		});
+
+		it('renders thinking events at the start when the message has no thinking block', () => {
+			const wrapper = mountList([
+				assistantMessage([hostEvent(TEST_HOST_EVENT.THINKING, 'context')]),
+			]);
+
+			expect(wrapper.find('[data-test-id="shared-thinking-block"]').exists()).toBe(false);
+			expect(renderOrder(wrapper)).toEqual(['start:context', 'text']);
 			wrapper.unmount();
 		});
 

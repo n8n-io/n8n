@@ -22,7 +22,8 @@ export type DataTableResolutionFailureKind =
 	| 'name-conflict'
 	| 'schema-incompatible'
 	| 'module-disabled'
-	| 'permission-denied';
+	| 'permission-denied'
+	| 'column-id-conflict';
 
 export type DataTableColumnTypeMismatch = {
 	column: string;
@@ -51,6 +52,8 @@ export type DataTableResolutionFailure = {
 	conflictingTableId?: string;
 	/** For a rename `name-conflict`: the matched table's current name. */
 	currentName?: string;
+	/** For `column-id-conflict`: the package column whose id another table already uses. */
+	column?: { id: string; name: string };
 };
 
 export function createFailure(
@@ -114,6 +117,8 @@ export interface DataTableImportPlan {
 	updates: DataTableUpdate[];
 	/** Matched tables that differ only in column ids or column positions. Applied like updates, but counted as matched. */
 	columnAlignments: SerializedDataTable[];
+	/** Package ids of the matched tables that the import uses as they are. */
+	matched: string[];
 	failures: DataTableResolutionFailure[];
 	/** Requirements resolved to an existing compatible table, used as-is. Carried for telemetry. */
 	matchedCount: number;

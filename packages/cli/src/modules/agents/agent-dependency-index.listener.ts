@@ -30,7 +30,8 @@ export class AgentDependencyIndexListener {
 				await this.indexService.remove(agentId);
 			});
 		});
-		this.eventService.on('credentials-updated', async ({ credentialId }) => {
+		this.eventService.on('credentials-updated', async ({ credentialId, descriptionOnly }) => {
+			if (descriptionOnly) return;
 			await this.run('invalidate dependent agent runtimes', async () => {
 				await this.indexService.invalidateRuntimesForCredential(credentialId);
 			});

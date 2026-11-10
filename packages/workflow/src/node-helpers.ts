@@ -298,7 +298,7 @@ export function getNodeFeatures(
 	return features;
 }
 
-const getPropertyValues = (
+export const getPropertyValues = (
 	nodeValues: INodeParameters | ICredentialDataDecryptedObject,
 	propertyName: string,
 	node: Pick<INode, 'typeVersion'> | null,
@@ -2198,6 +2198,29 @@ export function getSubworkflowId(node: {
 		return node.parameters.workflowId.value as string;
 	}
 	return;
+}
+
+/** Read a database workflow reference without evaluating expressions. */
+export function getStaticSubworkflowId(node: {
+	type: string;
+	parameters: Record<string, unknown>;
+}): string | undefined {
+	if (!isNodeWithWorkflowSelector(node)) return undefined;
+	const { source = 'database' } = node.parameters;
+	if (source !== 'database') return undefined;
+	const value = getSubworkflowId(node) ?? node.parameters.workflowId;
+	if (typeof value !== 'string') return undefined;
+	const trimmed = value.trim();
+	return trimmed === '' || trimmed.startsWith('=') ? undefined : trimmed;
+}
+
+export function setStaticSubworkflowId(
+	node: { parameters: Record<string, unknown> },
+	workflowId: string,
+): void {
+	const stored = node.parameters.workflowId;
+	if (isResourceLocatorValue(stored)) stored.value = workflowId;
+	else node.parameters.workflowId = workflowId;
 }
 
 /**

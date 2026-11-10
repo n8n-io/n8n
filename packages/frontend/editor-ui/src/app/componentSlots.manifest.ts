@@ -1,4 +1,5 @@
 import { componentRegistry } from '@n8n/frontend-module-sdk';
+import { loadPromotionReviewChanges } from '@n8n/frontend-module-promotions';
 import { defineAsyncComponent } from 'vue';
 
 /**
@@ -18,9 +19,47 @@ export const registerComponentSlots = () => {
 	);
 
 	componentRegistry.register(
+		'workflow-diff-placeholder',
+		defineAsyncComponent(
+			async () => await import('@/features/workflows/workflowDiff/WorkflowDiffPlaceholder.vue'),
+		),
+	);
+
+	componentRegistry.register(
+		'code-diff',
+		defineAsyncComponent(
+			async () => await import('@/features/workflows/workflowDiff/NodeDiff.vue'),
+		),
+	);
+
+	componentRegistry.register('promotion-changes', defineAsyncComponent(loadPromotionReviewChanges));
+
+	componentRegistry.register(
 		'project-filter',
 		defineAsyncComponent(
 			async () => await import('@/features/collaboration/projects/components/ProjectFilter.vue'),
+		),
+	);
+
+	componentRegistry.register(
+		'project-header',
+		defineAsyncComponent(
+			async () => await import('@/features/collaboration/projects/components/ProjectHeader.vue'),
+		),
+	);
+
+	componentRegistry.register(
+		'insights-summary',
+		defineAsyncComponent(
+			async () =>
+				await import('@/features/collaboration/projects/components/InsightsSummarySlot.vue'),
+		),
+	);
+
+	componentRegistry.register(
+		'resources-list-layout',
+		defineAsyncComponent(
+			async () => await import('@/app/components/layouts/ResourcesListLayout.vue'),
 		),
 	);
 };

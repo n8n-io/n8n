@@ -4,16 +4,11 @@ import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
 import type { NodeIconSource, ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
-import {
-	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
-	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
-} from '../constants';
+import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
-import { useInstanceAiComputerUseTelemetry } from '../instanceAiComputerUse.telemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useBrowserUseConnection } from './useBrowserUseConnection';
 import { useMcpServerConnect } from './useMcpServerConnect';
@@ -35,7 +30,6 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	const { ignorePendingConnectResult } = useMcpServerConnect();
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
 	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
-	const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
 
 	void settingsStore.fetch();
 	watch(
@@ -47,16 +41,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	);
 
 	// The store owns this, so the + menu and the message payload cannot disagree.
-	const isComputerUseAvailable = computed(() => settingsStore.isComputerUseAvailable);
 	const isBrowserUseAvailable = computed(() => settingsStore.isBrowserUseAvailable);
-	async function openComputerSetup() {
-		if (settingsStore.isLocalGatewayDisabled) {
-			await settingsStore.persistLocalGatewayPreference(false);
-		}
-
-		computerUseTelemetry.trackModalOpened(settingsStore.isGatewayConnected, 'input_menu');
-		uiStore.openModal(INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY);
-	}
 
 	function openToolsModal() {
 		mcpTelemetry.trackToolsListOpened('input_menu');
@@ -137,12 +122,6 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 		let count = 0;
 		if (settingsStore.isMcpAvailable) {
 			count += mcpStore.connections.filter(({ status }) => status === 'disconnected').length;
-		}
-		if (
-			isComputerUseAvailable.value &&
-			settingsStore.computerUseConnectionStatus === 'disconnected'
-		) {
-			count++;
 		}
 		if (
 			isBrowserUseAvailable.value &&
@@ -244,21 +223,6 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			});
 		}
 
-		if (isComputerUseAvailable.value) {
-			items.push(
-				createConnectionItem({
-					id: 'computer',
-					status: settingsStore.computerUseConnectionStatus,
-					icon: 'laptop',
-					connectLabel: i18n.baseText('instanceAi.inputMenu.computer.connect'),
-					connectedLabel: i18n.baseText('instanceAi.inputMenu.computer.connected'),
-					connectedTitle: settingsStore.gatewayHostIdentifier ?? undefined,
-					connect: openComputerSetup,
-					disconnect: settingsStore.disconnectComputerUse,
-				}),
-			);
-		}
-
 		if (isBrowserUseAvailable.value) {
 			items.push(
 				createConnectionItem({
@@ -281,15 +245,13 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			);
 		}
 
-		if (isContextPreferencesEnabled()) {
-			items.push({
-				id: 'preferences',
-				label: i18n.baseText('instanceAi.inputMenu.preferences.label'),
-				icon: { type: 'icon', value: 'brain' },
-				divided: true,
-				data: { action: openPreferenceSettings },
-			});
-		}
+		items.push({
+			id: 'preferences',
+			label: i18n.baseText('instanceAi.inputMenu.preferences.label'),
+			icon: { type: 'icon', value: 'brain' },
+			divided: true,
+			data: { action: openPreferenceSettings },
+		});
 
 		return items;
 	});

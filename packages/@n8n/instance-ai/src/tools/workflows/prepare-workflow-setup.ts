@@ -61,6 +61,7 @@ async function prepare(
 	}
 	const filePath = normalizeWorkflowSourceFilePath(input.filePath, {
 		workspaceRoot: context.workspaceRoot,
+		fallbackWorkspaceRoot: context.fallbackWorkspaceRoot,
 	});
 	let binding = await getWorkflowSourceFileBinding(context, filePath, { requirePersistence: true });
 	if (input.workflowId && binding?.workflowId && input.workflowId !== binding.workflowId) {
@@ -85,6 +86,7 @@ async function prepare(
 	};
 	let analyzedRequests: Awaited<ReturnType<typeof analyzeWorkflow>> | undefined;
 	if (workflowId) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: workflowId });
 		// Validate access before publishing a workflow-scoped announcement.
 		const saved = await context.workflowService.get(workflowId);
 		if (!binding?.setupPending) {
