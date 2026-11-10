@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { InstanceAiAgentNode, InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
@@ -208,7 +208,10 @@ export function useCanvasPreview({
 	});
 
 	const dataTableRefreshKey = ref(0);
-	const skillRefreshKey = ref(0);
+	const skillRefreshKeys = ref(new Map<string, number>());
+	const skillRefreshKey = computed(
+		() => skillRefreshKeys.value.get(activeSkillId.value ?? '') ?? 0,
+	);
 	const appRefreshKey = ref(0);
 
 	const isPreviewVisible = computed(
@@ -663,7 +666,7 @@ export function useCanvasPreview({
 	function showLatestToolArtifact<T extends { toolCallId: string }>(
 		getLatest: (node: InstanceAiAgentNode) => T | undefined,
 		artifactId: (result: T) => string,
-		refreshKey: Ref<number>,
+		refresh: (id: string) => void,
 	) {
 		const latest = computed(() => {
 			for (let i = thread.messages.length - 1; i >= 0; i--) {
@@ -685,15 +688,23 @@ export function useCanvasPreview({
 				const targetId = artifactId(latest.value);
 				showAgentArtifact(targetId);
 				if (activeTabId.value === targetId) {
-					refreshKey.value++;
+					refresh(targetId);
 				}
 			},
 			{ flush: 'sync' },
 		);
 	}
 
-	showLatestToolArtifact(getLatestSkillArtifactResult, (result) => result.skillId, skillRefreshKey);
-	showLatestToolArtifact(getLatestAppArtifactResult, (result) => result.appId, appRefreshKey);
+	showLatestToolArtifact(
+		getLatestSkillArtifactResult,
+		(result) => result.skillId,
+		(id) => skillRefreshKeys.value.set(id, (skillRefreshKeys.value.get(id) ?? 0) + 1),
+	);
+	showLatestToolArtifact(
+		getLatestAppArtifactResult,
+		(result) => result.appId,
+		() => appRefreshKey.value++,
+	);
 
 	// --- Close data table preview if the active table is deleted ---
 

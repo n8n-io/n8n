@@ -1351,6 +1351,30 @@ describe('useCanvasPreview', () => {
 			expect(ctx.skillRefreshKey.value).toBe(initialKey + 2);
 		});
 
+		test('keeps refresh keys specific to the skill the assistant saved', async () => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+			registerSkill(ctx.thread, 'skill-2', 'Other skill');
+			ctx.openSkillPreview('skill-1');
+			const initialKey = ctx.skillRefreshKey.value;
+
+			ctx.thread.messages = [
+				skillsCall(
+					'tc-update-other-skill',
+					{ action: 'update', skillId: 'skill-2' },
+					{ success: true, saved: { id: 'skill-2', name: 'Other skill', created: true } },
+				),
+			];
+			await nextTick();
+			expect(ctx.activeSkillId.value).toBe('skill-2');
+			expect(ctx.skillRefreshKey.value).toBe(initialKey + 1);
+
+			ctx.openSkillPreview('skill-1');
+			expect(ctx.skillRefreshKey.value).toBe(initialKey);
+			ctx.openSkillPreview('skill-2');
+			expect(ctx.skillRefreshKey.value).toBe(initialKey + 1);
+		});
+
 		test.each([
 			['list', { action: 'list' }, { count: 1, skills: [{ id: 'skill-1', name: 'Brand voice' }] }],
 			['get', { action: 'get', skillId: 'skill-1' }, { id: 'skill-1', name: 'Brand voice' }],
