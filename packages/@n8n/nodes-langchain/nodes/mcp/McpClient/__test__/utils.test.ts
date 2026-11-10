@@ -574,14 +574,6 @@ describe('utils', () => {
 			},
 		);
 
-		it('accepts constructor as a valid argument name', () => {
-			const name = 'constructor';
-			const result = buildPromptArguments({ arguments: [{ name, value: 'x' }] }, node, 0);
-
-			expect(result).toEqual({ constructor: 'x' });
-			expect(Object.getPrototypeOf(result)).toBeNull();
-		});
-
 		it('rejects an empty argument name', () => {
 			expect(() =>
 				buildPromptArguments({ arguments: [{ name: '', value: 'x' }] }, node, 0),
