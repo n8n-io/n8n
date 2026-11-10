@@ -21,6 +21,7 @@ import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-v
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
+import { toUserLike } from '@/utils/to-user-like';
 
 type WorkflowHistoryVersionInput = {
 	user: User | string;
@@ -299,13 +300,7 @@ export class WorkflowHistoryService {
 
 		if (updateData.name !== undefined || updateData.description !== undefined) {
 			this.eventService.emit('workflow-version-updated', {
-				user: {
-					id: user.id,
-					email: user.email,
-					firstName: user.firstName,
-					lastName: user.lastName,
-					role: user.role,
-				},
+				user: toUserLike(user),
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 				versionId,

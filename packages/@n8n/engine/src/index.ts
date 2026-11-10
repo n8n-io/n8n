@@ -34,7 +34,6 @@ export type {
 	ResolveStepRequest,
 	ResolveStepResponse,
 	ResumeLocateRequest,
-	ResumeTargetRequest,
 	ResumeTargetResponse,
 } from './server';
 
@@ -56,6 +55,7 @@ export type {
 export {
 	createResponseEmitter,
 	EXECUTION_CHANNEL_TOPICS,
+	MAX_FRAME_BYTES,
 	executionResponseSchema,
 	noopExecutionResponseSender,
 	noopResponseEmitter,

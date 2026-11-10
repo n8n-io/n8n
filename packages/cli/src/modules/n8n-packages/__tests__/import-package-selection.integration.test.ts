@@ -7,7 +7,12 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { ProjectRepository, WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
+import {
+	FolderRepository,
+	ProjectRepository,
+	WorkflowHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -26,6 +31,7 @@ import { OverwriteDeletionPolicy } from '../n8n-packages.types';
 import type { ImportSelection, ImportSelectionRequest } from '../n8n-packages.types';
 import {
 	buildEntityPackageDirectory,
+	serializedFolder,
 	serializedProject,
 	serializedWorkflow,
 	subWorkflowRefOf,
@@ -147,6 +153,40 @@ describe('importPackageSelectionFromDirectory', () => {
 		expect(await findWorkflow('WFA')).not.toBeNull();
 		expect(await findWorkflow('WFB')).toBeNull();
 		expect(await findProject('P1')).not.toBeNull();
+	});
+
+	it('creates only the folders above a selected workflow, not the other folders of the package', async () => {
+		const dir = await packageDir({
+			projects: [{ target: 'projects/p1', project: serializedProject({ id: 'P1', name: 'p1' }) }],
+			folders: [
+				{ target: 'projects/p1/folders/ops', folder: serializedFolder({ id: 'OPS', name: 'ops' }) },
+				{
+					target: 'projects/p1/folders/ops/orders',
+					folder: serializedFolder({ id: 'ORD', name: 'orders', parentFolderId: 'OPS' }),
+				},
+				{
+					target: 'projects/p1/folders/archive',
+					folder: serializedFolder({ id: 'ARC', name: 'archive' }),
+				},
+			],
+			workflows: [
+				{
+					target: 'projects/p1/folders/ops/orders/workflows/wfa',
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa' }),
+				},
+				{
+					target: 'projects/p1/folders/archive/workflows/wfb',
+					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb' }),
+				},
+			],
+		});
+
+		await importSelection(dir, { selectedProjectId: 'P1', selectedWorkflowIds: ['WFA'] });
+
+		const folders = Container.get(FolderRepository);
+		expect((await findWorkflow('WFA'))?.parentFolder?.id).toBe('ORD');
+		expect((await folders.findOneBy({ id: 'ORD' }))?.parentFolderId).toBe('OPS');
+		expect(await folders.findOneBy({ id: 'ARC' })).toBeNull();
 	});
 
 	it('is additive: a re-import touches only the selection, never pre-existing target workflows', async () => {
