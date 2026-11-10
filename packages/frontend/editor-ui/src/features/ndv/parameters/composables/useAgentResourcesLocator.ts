@@ -14,6 +14,7 @@ export interface AgentResourceOption {
 	name: string;
 	value: string;
 	personalisation: AgentJsonConfig['personalisation'] | null;
+	isArchived?: boolean;
 }
 
 /**
@@ -35,6 +36,8 @@ export function useAgentResourcesLocator(
 	const currentPage = ref(0);
 	const totalCount = ref(0);
 	const nameCache = new Map<string, string>();
+	// The list call hides archived agents. Keep the selected one so the picker can show it.
+	const archivedSelection = ref<AgentResourceOption | null>(null);
 	// Bumped on every reset (mount/search) so an older in-flight request that
 	// resolves late can't clobber a newer query's results.
 	let loadGeneration = 0;
@@ -50,7 +53,12 @@ export function useAgentResourcesLocator(
 	function agentToResourceMapper(agent: AgentResource): AgentResourceOption {
 		const name = constructName(agent);
 		nameCache.set(agent.id, name);
-		return { name, value: agent.id, personalisation: agent.schema?.personalisation ?? null };
+		return {
+			name,
+			value: agent.id,
+			personalisation: agent.schema?.personalisation ?? null,
+			...(agent.isArchived ? { isArchived: true } : {}),
+		};
 	}
 
 	function getAgentName(id: string): string {
@@ -139,7 +147,9 @@ export function useAgentResourcesLocator(
 		if (!projectId.value) return null;
 		try {
 			const agent = await getAgent(rootStore.restApiContext, projectId.value, id);
-			return agentToResourceMapper(agent).name;
+			const option = agentToResourceMapper(agent);
+			archivedSelection.value = option.isArchived ? option : null;
+			return option.name;
 		} catch {
 			return null;
 		}
@@ -157,6 +167,7 @@ export function useAgentResourcesLocator(
 
 	return {
 		agentsResources,
+		archivedSelection,
 		isLoadingResources,
 		loadError,
 		hasMoreAgentsToLoad,
