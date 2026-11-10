@@ -259,7 +259,7 @@ async function onAction(actionId: string, thread: AgentExecutionThread) {
 		if (thread.status !== 'running') return;
 		const targetProjectId = projectId.value;
 		const targetAgentId = agentId.value;
-		if (await stopSession(thread.id)) {
+		if (await stopSession(thread.id, thread.agentId)) {
 			await sessionsStore.refreshThreads(targetProjectId, targetAgentId);
 		}
 		return;
@@ -280,6 +280,8 @@ async function onAction(actionId: string, thread: AgentExecutionThread) {
 
 	if (actionId !== 'delete') return;
 
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	const confirmed = await openAgentConfirmationModal({
 		title: i18n.baseText('agentSessions.deleteConfirm.headline'),
 		description: i18n.baseText('agentSessions.deleteConfirm.message'),
@@ -291,7 +293,8 @@ async function onAction(actionId: string, thread: AgentExecutionThread) {
 	if (confirmed !== MODAL_CONFIRM) return;
 
 	try {
-		await sessionsStore.deleteThread(projectId.value, agentId.value, thread.id);
+		await sessionsStore.deleteThread(targetProjectId, thread.agentId, thread.id);
+		await sessionsStore.refreshThreads(targetProjectId, targetAgentId);
 		toast.showMessage({
 			title: i18n.baseText('agentSessions.showMessage.deleted'),
 			type: 'success',
