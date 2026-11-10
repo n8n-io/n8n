@@ -1,4 +1,5 @@
 import { HOOKED_METHODS, observeHookedMethods, olderThan } from './catalogue';
+import { CHAOS_HOOKS } from '../chaos/run';
 import { LEADER_HOOKS } from '../multi-main';
 
 const refOf = (ref: { file: string; target: string; method: string }) =>
@@ -8,6 +9,10 @@ const listed = new Set(HOOKED_METHODS.map(refOf));
 describe('HOOKED_METHODS', () => {
 	it('lists every method the leader hooks use', () => {
 		expect(LEADER_HOOKS.map(refOf).filter((ref) => !listed.has(ref))).toEqual([]);
+	});
+
+	it('lists every method the chaos hooks use', () => {
+		expect(CHAOS_HOOKS.map(refOf).filter((ref) => !listed.has(ref))).toEqual([]);
 	});
 
 	it('leaves engine methods out of the install check, which runs without engine v2', () => {
