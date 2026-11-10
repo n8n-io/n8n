@@ -1,6 +1,7 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin, Logger, safeJoinPath } from '@n8n/backend-common';
-import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
+import type { TagEntity, User, WorkflowTagMapping } from '@n8n/db';
+import { isPerson } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { containsExpression } from '@n8n/utils/string/contains-expression';
 import { accessSync, constants as fsConstants, mkdirSync } from 'fs';
@@ -22,6 +23,8 @@ import { License } from '@/license';
 import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/promotions.ee/promotions-git.utils';
 
 import {
+	SOURCE_CONTROL_DEFAULT_EMAIL,
+	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
@@ -458,4 +461,19 @@ function hasSynchableCredentialDataChanged(
 	const sanitizedData1 = sanitizeCredentialData(data1);
 	const sanitizedData2 = sanitizeCredentialData(data2);
 	return !isEqual(sanitizedData1, sanitizedData2);
+}
+
+/**
+ * The git author of a commit by this account. A service account, and a person
+ * without a full profile, get the defaults, so the commit cannot fail on an empty git identity.
+ */
+export function gitAuthor(user: User): { name: string; email: string } {
+	if (isPerson(user)) {
+		const { firstName, lastName, email } = user;
+		return {
+			name: firstName && lastName ? `${firstName} ${lastName}` : SOURCE_CONTROL_DEFAULT_NAME,
+			email: email || SOURCE_CONTROL_DEFAULT_EMAIL,
+		};
+	}
+	return { name: SOURCE_CONTROL_DEFAULT_NAME, email: SOURCE_CONTROL_DEFAULT_EMAIL };
 }

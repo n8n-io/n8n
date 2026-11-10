@@ -79,6 +79,7 @@ export const eventNamesAudit = [
 	'n8n.audit.user.login.success',
 	'n8n.audit.user.login.failed',
 	'n8n.audit.user.login.emailConflict',
+	'n8n.audit.user.logout',
 	'n8n.audit.user.signedup',
 	'n8n.audit.user.updated',
 	'n8n.audit.user.deleted',

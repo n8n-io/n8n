@@ -282,6 +282,7 @@ import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import { toWorkflowJSON } from './workflow-json';
 import { WorkflowTemplatesService } from './workflow-templates.service';
+import { toUserLike } from '@/utils/to-user-like';
 
 type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
@@ -4729,13 +4730,7 @@ export class InstanceAiAdapterService {
 
 				// Emit audit event (matches controller behavior)
 				eventService.emit('execution-deleted', {
-					user: {
-						id: user.id,
-						email: user.email,
-						firstName: user.firstName,
-						lastName: user.lastName,
-						role: user.role,
-					},
+					user: toUserLike(user),
 					executionIds: ids,
 					deleteBefore: cutoff,
 				});

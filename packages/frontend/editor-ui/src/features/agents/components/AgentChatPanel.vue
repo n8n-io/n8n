@@ -11,6 +11,7 @@ import {
 	onBeforeUnmount,
 	useTemplateRef,
 	nextTick,
+	type Ref,
 } from 'vue';
 import {
 	N8nAiActivityStepGroup,
@@ -26,6 +27,7 @@ import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
 	type AgentChatQueueItem,
+	type AgentSessionFile,
 	type AgentBuilderOpenSuspension,
 	type AgentSseEvent,
 	type ProviderAttachmentCapabilities,
@@ -36,8 +38,11 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 	getProviderAttachmentCapabilities,
 	acceptedMimeTypesFromCapabilities,
+	AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+	AGENT_SANDBOX_FILES_FLAG,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useToast } from '@n8n/composables/useToast';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -66,6 +71,7 @@ import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
 import AgentChatTaskStopNotice from './AgentChatTaskStopNotice.vue';
+import SessionFilesList from './SessionFilesList.vue';
 import { isRetryableChatError } from '../utils/errors';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import {
@@ -89,13 +95,18 @@ import {
 } from '../utils/budget-config';
 import { TIME } from '@/app/constants/durations';
 import { useAgentChatTaskControls } from '../composables/useAgentChatTaskControls';
-import { getChatAttachmentUrl, type AgentChatChannel } from '../composables/useAgentApi';
+import {
+	getChatAttachmentUrl,
+	getSessionFiles,
+	type AgentChatChannel,
+} from '../composables/useAgentApi';
 import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
-import ApprovalCard from './interactive/ApprovalCard.vue';
+import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
 
 const props = withDefaults(
 	defineProps<{
 		visible?: boolean;
+		autofocus?: boolean;
 		projectId: string;
 		agentId: string;
 		mode?: 'panel' | 'inline';
@@ -141,6 +152,7 @@ const props = withDefaults(
 		 * question card and for a non-empty queue still take priority.
 		 */
 		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
 		/**
 		 * Shows the attach button of the composer. A host that opens the file
@@ -181,6 +193,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
+	'content-change': [hasContent: boolean];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
@@ -704,8 +717,38 @@ const backgroundJobStopButton =
 const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 
 function focusInput(options?: FocusOptions) {
-	chatInput.value?.focus(options);
+	if (props.visible) chatInput.value?.focus(options);
 }
+
+let forceFocusPending = true;
+watch(
+	[chatInput, () => props.autofocus, () => props.visible],
+	async ([input, autofocus, visible], [, previousAutofocus, wasVisible], onCleanup) => {
+		if (!autofocus || !visible) {
+			forceFocusPending = false;
+			return;
+		}
+		if (!previousAutofocus || !wasVisible) forceFocusPending = true;
+		if (!input) return;
+		let cancelled = false;
+		onCleanup(() => {
+			cancelled = true;
+		});
+		await nextTick();
+		if (cancelled || !props.autofocus || !props.visible || chatInput.value !== input) return;
+		const activeElement = document.activeElement;
+		if (
+			!forceFocusPending &&
+			activeElement instanceof HTMLElement &&
+			activeElement !== document.body &&
+			activeElement !== document.documentElement
+		) {
+			return;
+		}
+		forceFocusPending = false;
+		focusInput();
+	},
+);
 
 watch(
 	[
@@ -762,15 +805,19 @@ const attachmentCapabilities = computed(() => {
 	const provider = props.agentConfig?.model?.split('/')[0];
 	return provider ? getProviderAttachmentCapabilities(provider) : undefined;
 });
-const showAttach = computed(() => {
-	if (props.acceptedMimeTypes !== undefined) return props.acceptedMimeTypes.length > 0;
-	const capabilities = attachmentCapabilities.value;
-	return !!capabilities && (capabilities.image || capabilities.pdf || capabilities.audio);
-});
+// Data files work with every model, so the attach button shows unless the host turns uploads off.
+const showAttach = computed(() =>
+	props.acceptedMimeTypes !== undefined ? props.acceptedMimeTypes.length > 0 : true,
+);
 const acceptedMimeTypes = computed(() => {
 	if (props.acceptedMimeTypes !== undefined) return props.acceptedMimeTypes;
 	const capabilities = attachmentCapabilities.value;
-	return capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : undefined;
+	return [
+		capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : '',
+		AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+	]
+		.filter(Boolean)
+		.join(',');
 });
 
 function handleFilesSelected(files: File[]) {
@@ -790,7 +837,7 @@ function handleFilesSelected(files: File[]) {
 			!isFileAcceptedByAccept(
 				file.name,
 				resolveFileMimeType(file.name, file.type),
-				acceptedMimeTypes.value ?? '',
+				acceptedMimeTypes.value,
 			)
 		) {
 			toast.showMessage({
@@ -930,9 +977,15 @@ const hasOpenSuspension = computed(
 			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
 		) ?? false,
 );
+// Cap stops block Send: only a saved cap change resolves them. A credits stop
+// does not — the wallet tops up outside this flow, and polling it would add a
+// wallet read the gateway already does on the retry. Send again: a topped-up
+// wallet runs, an empty one stops again with a fresh notice.
 const hasBudgetStop = computed(() =>
 	messages.value.some((message) =>
-		message.budgetNotices?.some((notice) => isBudgetStopCode(notice.code)),
+		message.budgetNotices?.some(
+			(notice) => notice.code !== 'budget.credits' && isBudgetStopCode(notice.code),
+		),
 	),
 );
 const canIncreaseBudget = computed(() => props.increaseBudget !== undefined);
@@ -1212,6 +1265,9 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		const onAccepted = (queueId?: string) => {
 			accepted = true;
 			if (!isCurrentTarget()) return;
+			// The retry is the wallet re-check: drop the stale credits stop. A
+			// wallet still empty stops this run with a fresh notice.
+			clearBudgetNotices(new Set(['budget.credits']));
 			emit('message-accepted', { text, files, clientContext });
 			if (installedPreview && firstMessagePreview.value === installedPreview) {
 				previewQueueId.value = queueId;
@@ -1350,6 +1406,8 @@ function isDirty(): boolean {
 	return hasDraft.value || composerAttachments.value.length > 0;
 }
 
+watch(isDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
+
 /** Puts text into the composer without sending it. */
 function setDraft(text: string) {
 	inputText.value = text;
@@ -1411,6 +1469,75 @@ function addComposerAttachment(
 function removeComposerAttachment(id: string) {
 	composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
 }
+
+// Session files: the preview chat and n8n Chat have the list route.
+const sessionFilesChannel = computed(() =>
+	props.channel === 'chat' || props.channel === 'n8n-chat' ? props.channel : undefined,
+);
+const posthog = usePostHog();
+const showSessionFilesToggle = computed(
+	() =>
+		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true &&
+		sessionFilesChannel.value !== undefined &&
+		Boolean(props.continueSessionId),
+);
+const sessionFilesOpen = ref(false);
+const sessionFiles = ref<AgentSessionFile[]>([]);
+const sessionFilesLoading = ref(false);
+const sessionFilesError = ref(false);
+
+function sessionFileHref(fileId: string) {
+	return getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		fileId,
+		props.channel,
+		props.continueSessionId,
+	);
+}
+
+async function loadSessionFiles() {
+	const threadId = props.continueSessionId;
+	const channel = sessionFilesChannel.value;
+	if (!threadId || !channel) return;
+	sessionFilesLoading.value = true;
+	sessionFilesError.value = false;
+	try {
+		const { files } = await getSessionFiles(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			threadId,
+			channel,
+		);
+		if (props.continueSessionId === threadId) sessionFiles.value = files;
+	} catch {
+		// A response for a previous session must not change the state of the open one.
+		if (props.continueSessionId === threadId) sessionFilesError.value = true;
+	} finally {
+		if (props.continueSessionId === threadId) sessionFilesLoading.value = false;
+	}
+}
+
+async function toggleSessionFiles() {
+	sessionFilesOpen.value = !sessionFilesOpen.value;
+	if (sessionFilesOpen.value) await loadSessionFiles();
+}
+
+// A turn stores its sandbox files before it ends, so reload when the stream stops.
+watch(isStreaming, async (streaming) => {
+	if (!streaming && sessionFilesOpen.value) await loadSessionFiles();
+});
+watch(
+	() => props.continueSessionId,
+	() => {
+		sessionFilesOpen.value = false;
+		sessionFiles.value = [];
+		sessionFilesError.value = false;
+		sessionFilesLoading.value = false;
+	},
+);
 
 defineExpose({
 	focusInput,
@@ -1571,6 +1698,13 @@ onBeforeUnmount(() => {
 
 		<div :class="$style.inputArea">
 			<slot name="above-input" />
+			<SessionFilesList
+				v-if="sessionFilesOpen"
+				:files="sessionFiles"
+				:file-href="sessionFileHref"
+				:loading="sessionFilesLoading"
+				:error="sessionFilesError"
+			/>
 			<div
 				v-if="showBackgroundJobs"
 				ref="backgroundJobCard"
@@ -1677,7 +1811,7 @@ onBeforeUnmount(() => {
 					@stop="stopTasks"
 				/>
 				<div ref="approvalCards" :class="$style.approvalCards" data-testid="agent-chat-approvals">
-					<ApprovalCard
+					<ToolApprovalCard
 						v-if="pendingApproval"
 						:key="pendingApproval.toolCallId"
 						:input="pendingApproval.input"
@@ -1691,7 +1825,7 @@ onBeforeUnmount(() => {
 							})
 						"
 					/>
-					<ApprovalCard
+					<ToolApprovalCard
 						v-else-if="backgroundApproval"
 						:key="`${backgroundApproval.id}:${backgroundApproval.approval.toolCallId}`"
 						:input="backgroundApproval.input"
@@ -1710,6 +1844,11 @@ onBeforeUnmount(() => {
 					v-model="inputText"
 					:block-canvas-shortcuts="false"
 					:placeholder="chatPlaceholder"
+					:placeholder-preview="
+						!hasOpenInteractiveQuestion && queuedMessages.length === 0
+							? props.placeholderPreview
+							: undefined
+					"
 					:composer-height="composerHeight"
 					:is-streaming="false"
 					:show-stop-button="showStop"
@@ -1811,6 +1950,21 @@ onBeforeUnmount(() => {
 								:aria-label="locale.baseText('chatInputBase.button.attach')"
 								data-test-id="chat-input-attach-button"
 								@click.stop="chatInput?.openFilePicker()"
+							/>
+						</N8nTooltip>
+						<N8nTooltip
+							v-if="showSessionFilesToggle"
+							:content="locale.baseText('agents.chat.sessionFiles.title')"
+							placement="top"
+						>
+							<N8nIconButton
+								variant="ghost"
+								:icon="sessionFilesOpen ? 'folder-open' : 'folder'"
+								icon-size="large"
+								:aria-label="locale.baseText('agents.chat.sessionFiles.title')"
+								:aria-expanded="sessionFilesOpen"
+								data-test-id="agent-session-files-toggle"
+								@click.stop="toggleSessionFiles"
 							/>
 						</N8nTooltip>
 						<slot name="footer-start" :disabled="isComposerBlocked" />

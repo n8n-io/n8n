@@ -10,7 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import type { EventDestinationsRepository } from '../database/repositories/event-destination.repository';
 import { messageEventBusDestinationFromDb } from '../destinations/message-event-bus-destination-from-db';

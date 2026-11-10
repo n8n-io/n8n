@@ -22,7 +22,6 @@ import {
 import { Equal, In, IsNull, MoreThan, type FindOptionsWhere } from '@n8n/typeorm';
 
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
-import { InstanceAiObservationLock } from '../entities/instance-ai-observation-lock.entity';
 import { InstanceAiObservation } from '../entities/instance-ai-observation.entity';
 import type { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
 import type { InstanceAiObservationCursorRepository } from '../repositories/instance-ai-observation-cursor.repository';
@@ -256,43 +255,33 @@ export class TypeORMObservationLogStore
 		const now = new Date();
 		const heldUntil = new Date(now.getTime() + opts.ttlMs);
 
-		const updateResult = await this.observationLockRepo
-			.createQueryBuilder()
-			.update(InstanceAiObservationLock)
-			.set({ taskKind, holderId: opts.holderId, heldUntil })
-			.where('"observationScopeId" = :observationScopeId')
-			.andWhere('"taskKind" = :taskKind')
-			.andWhere('("holderId" = :holderId OR "heldUntil" <= :now)')
-			.setParameters({
-				observationScopeId,
-				taskKind,
-				holderId: opts.holderId,
-				now,
-			})
-			.execute();
+		const updated = await this.observationLockRepo.updateIfAvailable(
+			observationScopeId,
+			taskKind,
+			opts.holderId,
+			heldUntil,
+			now,
+			{},
+		);
 
-		if ((updateResult.affected ?? 0) > 0) {
+		if (updated) {
 			return { observationScopeId, taskKind, holderId: opts.holderId, heldUntil };
 		}
 
-		await this.observationLockRepo
-			.createQueryBuilder()
-			.insert()
-			.into(InstanceAiObservationLock)
-			.values({
-				observationScopeId,
-				taskKind,
-				holderId: opts.holderId,
-				heldUntil,
-			})
-			.orIgnore()
-			.execute();
-
-		const claimed = await this.observationLockRepo.findOneBy({
+		await this.observationLockRepo.insertIfAbsent(
 			observationScopeId,
 			taskKind,
-			holderId: opts.holderId,
-		});
+			opts.holderId,
+			heldUntil,
+			{},
+		);
+
+		const claimed = await this.observationLockRepo.findByScopeKindAndHolder(
+			observationScopeId,
+			taskKind,
+			opts.holderId,
+			{},
+		);
 
 		if (!claimed) return null;
 
@@ -300,10 +289,11 @@ export class TypeORMObservationLogStore
 	}
 
 	async releaseObservationLogTaskLock(handle: ObservationLogTaskLockHandle): Promise<void> {
-		await this.observationLockRepo.delete({
-			observationScopeId: handle.observationScopeId,
-			taskKind: handle.taskKind,
-			holderId: handle.holderId,
-		});
+		await this.observationLockRepo.deleteByScopeKindAndHolder(
+			handle.observationScopeId,
+			handle.taskKind,
+			handle.holderId,
+			{},
+		);
 	}
 }

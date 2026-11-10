@@ -4027,6 +4027,24 @@ describe('TelemetryEventRelay', () => {
 			},
 		);
 
+		it('should track on `user-logged-out` event', () => {
+			const event: RelayEventMap['user-logged-out'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+			};
+
+			eventService.emit('user-logged-out', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_LOGGED_OUT, {
+				user_id: 'user123',
+			});
+		});
+
 		it('should track on `user-submitted-personalization-survey` event', () => {
 			const event: RelayEventMap['user-submitted-personalization-survey'] = {
 				userId: 'user123',
@@ -4793,6 +4811,31 @@ describe('TelemetryEventRelay', () => {
 				expectedProperties,
 			);
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(expectedProperties);
+		});
+
+		it('should add the personal credentials count to workflow execution telemetry', async () => {
+			const runData = {
+				finished: true,
+				status: 'success',
+				mode: 'trigger',
+				data: { resultData: { runData: {} } },
+			} as unknown as IRun;
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+				telemetryMetadata: { personalCredentialsCount: 2 },
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ execution_source: 'user', personal_credentials_count: 2 }),
+			);
 		});
 
 		it('should call telemetry.track when manual node execution finished', async () => {

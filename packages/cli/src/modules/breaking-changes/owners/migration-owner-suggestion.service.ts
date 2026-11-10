@@ -1,4 +1,5 @@
 import {
+	accountFullName,
 	ActivityEventRepository,
 	ProjectRelationRepository,
 	SharedWorkflowRepository,
@@ -80,7 +81,8 @@ export class MigrationOwnerSuggestionService {
 		for (const user of all) {
 			if (!canOwnFindings(user)) continue;
 			byId.set(user.id, user);
-			const name = `${user.firstName} ${user.lastName}`;
+			// Workflow history records a person by first and last name, a service account by its name.
+			const name = accountFullName(user);
 			idsByName.set(name, [...(idsByName.get(name) ?? []), user.id]);
 		}
 		return { byId, idsByName };
