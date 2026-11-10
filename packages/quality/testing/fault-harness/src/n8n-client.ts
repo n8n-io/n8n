@@ -44,18 +44,11 @@ export class N8nClient {
 		if (res.status !== 200) throw new Error(`login failed: ${res.status}`);
 	}
 
-	/**
-	 * Creates a workflow and returns its id. Activates it unless `activate` is false;
-	 * with 'try', an activation the version refuses is ignored.
-	 */
-	async createWorkflow(
-		workflow: Record<string, unknown>,
-		options: { activate?: boolean | 'try' } = {},
-	) {
+	/** Creates and activates a workflow and returns its id; with `activate: 'try'`, an activation the version refuses is ignored. */
+	async createWorkflow(workflow: Record<string, unknown>, options: { activate?: 'try' } = {}) {
 		const created = await this.request('POST', '/rest/workflows', workflow);
 		if (created.status !== 200) throw new Error(`create workflow: ${JSON.stringify(created.body)}`);
 		const { id, versionId } = (created.body as { data: { id: string; versionId: string } }).data;
-		if (options.activate === false) return id;
 		let res = await this.request('POST', `/rest/workflows/${id}/activate`, { versionId });
 		if (res.status === 404 || res.status === 405) {
 			res = await this.request('PATCH', `/rest/workflows/${id}`, { active: true, versionId });
