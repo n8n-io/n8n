@@ -97,11 +97,22 @@ describe('cacheAware history', () => {
 	});
 
 	it('swaps to the log after the cache expires', async () => {
-		const list = await load(await seedObservedThread(10 * 60_000), {
+		const list = await load(await seedObservedThread(2 * 60 * 60_000), {
 			historyMode: 'cacheAware',
 		});
 		expect(list.llmVisibleMessages().map((m) => m.id)).toEqual(['m3']);
 		expect(list.observationLogMemory).toContain('invoice report');
+	});
+
+	it('uses the provider cache retention when cacheTtlMs is unset', async () => {
+		// Anthropic keeps the cache for 1 hour by default, so 10 minutes is still warm.
+		const warm = await load(await seedObservedThread(10 * 60_000), { historyMode: 'cacheAware' });
+		expect(warm.llmVisibleMessages().map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+		const cold = await load(await seedObservedThread(10 * 60_000), {
+			historyMode: 'cacheAware',
+			cacheTtlMs: 5 * 60_000,
+		});
+		expect(cold.llmVisibleMessages().map((m) => m.id)).toEqual(['m3']);
 	});
 
 	it('swaps when the full history is over the hard limit', async () => {

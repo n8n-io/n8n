@@ -1,9 +1,20 @@
+import { isRecord } from '@n8n/utils/is-record';
+
 import { filterLlmMessages } from '../../sdk/message';
 import { stripHydratedFileData, type AgentDbMessage } from '../../types/sdk/message';
 
+/** Drop inline file bytes: base64 in a tool output is not model-facing text. */
+function omitFileData(_key: string, value: unknown): unknown {
+	if (isRecord(value) && value.type === 'file' && 'data' in value) {
+		const { data: _data, ...rest } = value;
+		return rest;
+	}
+	return value;
+}
+
 function stringifySafe(value: unknown): string {
 	try {
-		return JSON.stringify(value) ?? '';
+		return JSON.stringify(value, omitFileData) ?? '';
 	} catch {
 		return '';
 	}

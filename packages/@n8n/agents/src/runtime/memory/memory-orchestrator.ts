@@ -30,7 +30,7 @@ import {
 } from './observation-policy';
 import { getModelContextWindow } from '../../sdk/catalog';
 import { getCreatedAt } from '../../sdk/message';
-import { getCatalogModelId } from '../../utils/model';
+import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import type {
 	AgentExecutionCounter,
 	BuiltMemory,
@@ -53,6 +53,7 @@ import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sd
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import { computeSideCallCost } from '../loop/side-call-cost';
 import type { AgentMessageList } from '../model/message-list';
+import { getPromptCacheRetentionMs } from '../model/prompt-cache';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 import type { BackgroundTaskTracker } from '../state/background-task-tracker';
 import type { AgentEventBus } from '../state/event-bus';
@@ -332,6 +333,10 @@ export class MemoryOrchestrator {
 			lastActivityAt: latestActivityAt(all),
 			fullHistoryTokens,
 			thresholds,
+			defaultCacheTtlMs: getPromptCacheRetentionMs(
+				this.config.promptCaching,
+				getModelIdString(this.config.model),
+			),
 		});
 		logger.debug('Observation history replay decided', { threadId, ...decision });
 		if (decision.kind === 'full') return { messages: all, includeLog: false };
@@ -788,16 +793,18 @@ export class MemoryOrchestrator {
 			const { cursor } = await readObservationState(memory, persistence.threadId);
 			this.knownCursor = cursor ?? undefined;
 			list.observationLogPlacement = observationalMemory.logPlacement ?? 'system';
-			if (
-				cursor &&
-				thresholds &&
-				(await this.estimateVisibleBudget(list)) >= thresholds.replayLimit
-			) {
+			if (!cursor || !thresholds) return;
+			if ((await this.estimateVisibleBudget(list)) >= thresholds.replayLimit) {
 				await this.activateObservations(list, persistence);
+			} else {
+				// The full window already holds the observed messages, so the log
+				// loaded by `prepareResumeMemory` would duplicate them.
+				list.observationLogMemory = undefined;
 			}
 			return;
 		}
 		const { cursor } = await readObservationState(memory, persistence.threadId);
+		this.knownCursor = cursor ?? undefined;
 		if (!cursor) return;
 		list.maskObservedMessages(cursor);
 	}
@@ -827,7 +834,6 @@ export class MemoryOrchestrator {
 			return undefined;
 		}
 		if (!hasObserverBatchBudget(observationalMemory, this.observerAttempts)) return undefined;
-		this.observerAttempts++;
 		const onFailure = () => {
 			if (shouldDisableAfterFailure(observationalMemory, this.observerAttempts)) {
 				run.disabled = true;
@@ -840,6 +846,12 @@ export class MemoryOrchestrator {
 			{ ...scope, taskKind: 'observer' },
 			async () => {
 				if (run.disabled) return { status: 'skipped', reason: 'run-disabled' };
+				// Count the batch only once the lock is held: a lock-held skip never
+				// reaches this callback and must not use up the run's budget.
+				if (!hasObserverBatchBudget(observationalMemory, this.observerAttempts)) {
+					return { status: 'skipped', reason: 'run-disabled' };
+				}
+				this.observerAttempts++;
 				const result = await runObservationLogObserver({
 					memory,
 					...scope,
@@ -951,12 +963,22 @@ export class MemoryOrchestrator {
 				});
 			if (observationalMemory.reflectionMode !== 'afterObserve') {
 				void scheduleReflector();
-			} else if (observerHandle) {
-				// Reflect only when this turn added observations; otherwise the log is
-				// unchanged. Chained, so the end of the turn never waits on the Observer.
-				void observerHandle.done.then(async (result) => {
-					if (didAdvanceCursor(result)) await scheduleReflector();
-				});
+			} else {
+				// Reflect only when this run added observations; otherwise the log is
+				// unchanged. A mid-run Observer counts too, even when the tail Observer
+				// does not advance. Chained, so the end of the turn never waits on it.
+				const advancedMidRun = this.cursorAdvancedThisRun;
+				const pending = [midRunTask?.handle, observerHandle].filter(
+					(handle): handle is ScopedMemoryTaskHandle<RunObservationLogObserverResult> =>
+						handle !== undefined,
+				);
+				if (advancedMidRun || pending.length > 0) {
+					void Promise.all(pending.map(async (handle) => await handle.done)).then(
+						async (results) => {
+							if (advancedMidRun || results.some(didAdvanceCursor)) await scheduleReflector();
+						},
+					);
+				}
 			}
 		}
 	}

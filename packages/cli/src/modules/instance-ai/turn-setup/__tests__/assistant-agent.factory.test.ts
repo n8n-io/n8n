@@ -41,13 +41,15 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 				observerThresholdTokens: number;
 				model?: ModelConfig;
 				onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void>;
+				policy?: Record<string, unknown>;
 			};
 			titleGeneration?: { model?: ModelConfig; sync?: boolean };
 		};
 		instanceAiConfig: Pick<
 			InstanceAiConfig,
 			'observerMessageTokens' | 'reflectorObservationTokens'
-		>;
+		> &
+			Partial<InstanceAiConfig>;
 		creditService: { claimRunUsage: Mock };
 		logger: { warn: Mock };
 	};
@@ -127,6 +129,51 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			1_000,
 		).observationalMemory;
 		expect(observerThresholdTokens).toBe(1_000);
+	});
+
+	it('passes the configured memory policy to the observational memory options', () => {
+		const service = buildService();
+		Object.assign(service.instanceAiConfig, {
+			observationWindowShares: true,
+			observationHistoryMode: 'cacheAware',
+			observationLogPlacement: 'message',
+			observationFailurePolicy: 'retry',
+			observerMaxBatches: 5,
+			reflectionMode: 'afterObserve',
+			historyRecall: true,
+		});
+		const { policy } = service.createAgentMemoryOptions(
+			{ id: 'user-1' } as User,
+			'thread-1',
+			'run-1',
+		).observationalMemory;
+		expect(policy).toEqual({
+			windowShares: {},
+			historyMode: 'cacheAware',
+			logPlacement: 'message',
+			failurePolicy: 'retry',
+			maxObserverBatchesPerRun: 5,
+			reflectionMode: 'afterObserve',
+			historyRecall: true,
+		});
+	});
+
+	it('keeps the eval threshold override when window shares are on', () => {
+		const service = buildService();
+		Object.assign(service.instanceAiConfig, {
+			observationWindowShares: true,
+			observerMaxBatches: 0,
+		});
+		const { policy, observerThresholdTokens } = service.createAgentMemoryOptions(
+			{ id: 'user-1' } as User,
+			'thread-1',
+			'run-1',
+			undefined,
+			1_000,
+		).observationalMemory;
+		expect(observerThresholdTokens).toBe(1_000);
+		expect(policy?.windowShares).toBeUndefined();
+		expect(policy?.maxObserverBatchesPerRun).toBeUndefined();
 	});
 
 	it('claims converted usage under the orchestrator dedupe key, and skips claiming when usage is zero', async () => {

@@ -61,6 +61,12 @@ describe('resolveObservationThresholds', () => {
 			resolveObservationThresholds({ observerThresholdTokens: 30_000 }, undefined)?.replayLimit,
 		).toBe(30_000);
 	});
+
+	it('caps the replay limit at the window share when the fixed threshold is larger', () => {
+		expect(
+			resolveObservationThresholds({ observerThresholdTokens: 150_000 }, 100_000)?.replayLimit,
+		).toBe(90_000);
+	});
 });
 
 describe('decideHistoryReplay', () => {
@@ -127,6 +133,26 @@ describe('decideHistoryReplay', () => {
 				thresholds: resolveObservationThresholds({ observerThresholdTokens: 4_000 }, 1_000_000)!,
 			}),
 		).toEqual({ kind: 'full' });
+	});
+
+	it('uses the provider cache retention when cacheTtlMs is unset', () => {
+		const input = {
+			config: { historyMode: 'cacheAware' as const },
+			now,
+			lastActivityAt: now - 30 * 60_000,
+			fullHistoryTokens: 500,
+			thresholds,
+		};
+		expect(decideHistoryReplay({ ...input, defaultCacheTtlMs: 60 * 60_000 })).toEqual({
+			kind: 'full',
+		});
+		expect(
+			decideHistoryReplay({
+				...input,
+				config: { ...input.config, cacheTtlMs: 5 * 60_000 },
+				defaultCacheTtlMs: 60 * 60_000,
+			}),
+		).toEqual({ kind: 'sinceCursor', reason: 'cache-cold' });
 	});
 });
 

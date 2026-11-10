@@ -46,10 +46,24 @@ type ReadHistoryOutput = z.infer<typeof ReadHistoryOutputSchema>;
  */
 export function excerpt(text: string, needle?: string) {
 	if (text.length <= MAX_TEXT_CHARS) return { text, offset: 0, truncated: false };
-	const at = needle ? text.toLowerCase().indexOf(needle) : -1;
+	const at = needle ? indexOfIgnoreCase(text, needle) : -1;
 	const offset =
 		at < 0 ? 0 : Math.max(0, Math.min(at - MAX_TEXT_CHARS / 2, text.length - MAX_TEXT_CHARS));
 	return { text: text.slice(offset, offset + MAX_TEXT_CHARS), offset, truncated: true };
+}
+
+/**
+ * Index of `needle` (already lowercased) in the original `text`. Lowercasing can
+ * change the string length (e.g. 'İ'), so an index into the folded string is
+ * not always an index into `text`.
+ */
+function indexOfIgnoreCase(text: string, needle: string): number {
+	const folded = text.toLowerCase();
+	if (folded.length === text.length) return folded.indexOf(needle);
+	for (let i = 0; i < text.length; i++) {
+		if (text.slice(i).toLowerCase().startsWith(needle)) return i;
+	}
+	return -1;
 }
 
 const INSTRUCTION =
@@ -69,13 +83,19 @@ export function createReadHistoryTool(opts: {
 		.output(ReadHistoryOutputSchema)
 		.handler(async ({ query, before, limit }): Promise<ReadHistoryOutput> => {
 			const beforeDate = before ? new Date(before) : undefined;
+			if (beforeDate && isNaN(beforeDate.getTime())) {
+				throw new Error(`read_history: "before" is not a valid ISO timestamp: ${before}`);
+			}
+			const needle = query?.trim().toLowerCase() || undefined;
+			const max = limit ?? DEFAULT_RESULTS;
+			// Without a query only the latest `max` messages are returned, so load only those.
+			// Empty messages (no model-facing text) can make the result shorter than `max`.
 			const all = await opts.memory.getMessages(opts.persistence.threadId, {
 				resourceId: opts.persistence.resourceId,
-				...(beforeDate && !isNaN(beforeDate.getTime()) ? { before: beforeDate } : {}),
+				...(beforeDate ? { before: beforeDate } : {}),
+				...(needle ? {} : { limit: max }),
 			});
-			const needle = query?.trim().toLowerCase();
 			const matches: ReadHistoryOutput['messages'] = [];
-			const max = limit ?? DEFAULT_RESULTS;
 			// Newest first, so the agent sees the most relevant context before paging.
 			for (let i = all.length - 1; i >= 0 && matches.length < max; i--) {
 				const message = all[i];

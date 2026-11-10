@@ -66,10 +66,11 @@ export function resolveObservationThresholds(
 		midRunSoft: Math.max(1, Math.floor(observer * FIXED_MID_RUN_SOFT_RATIO)),
 		midRunHard: observer,
 		// Fixed thresholds observe at `observer`, so a limit equal to it would
-		// never replay full history. Use the window when it is known.
+		// never replay full history. Use the window when it is known; it also
+		// caps the limit, so a large `observer` cannot overfill the context.
 		replayLimit:
 			window !== undefined && window > 0
-				? Math.max(observer, Math.floor(window * DEFAULT_WINDOW_SHARES.waitAt))
+				? Math.max(1, Math.floor(window * DEFAULT_WINDOW_SHARES.waitAt))
 				: observer,
 		reflect: config.reflectorThresholdTokens,
 		source: 'fixed',
@@ -91,13 +92,15 @@ export function decideHistoryReplay(input: {
 	lastActivityAt: number | undefined;
 	fullHistoryTokens: number;
 	thresholds: ObservationThresholds;
+	/** Provider cache retention for the model, used when `cacheTtlMs` is unset. */
+	defaultCacheTtlMs?: number;
 }): HistoryReplay {
 	const { config, now, lastActivityAt, fullHistoryTokens, thresholds } = input;
 	if (config.historyMode !== 'cacheAware') return { kind: 'sinceCursor', reason: 'masked-mode' };
 	if (fullHistoryTokens >= thresholds.replayLimit) {
 		return { kind: 'sinceCursor', reason: 'over-limit' };
 	}
-	const ttl = config.cacheTtlMs ?? DEFAULT_OBSERVATION_CACHE_TTL_MS;
+	const ttl = config.cacheTtlMs ?? input.defaultCacheTtlMs ?? DEFAULT_OBSERVATION_CACHE_TTL_MS;
 	if (lastActivityAt === undefined || now - lastActivityAt > ttl) {
 		return { kind: 'sinceCursor', reason: 'cache-cold' };
 	}

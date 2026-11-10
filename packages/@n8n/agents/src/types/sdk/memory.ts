@@ -448,11 +448,16 @@ export interface ObservationalMemoryConfig {
 	 * `masked` (default) replays only messages after the observation cursor on
 	 * every turn. `cacheAware` replays the full history while the provider
 	 * prompt cache is warm, and switches to the log plus recent messages only
-	 * when the thread was idle longer than `cacheTtlMs` or the history is over
-	 * the hard limit.
+	 * when the thread was idle longer than `cacheTtlMs` or the full history
+	 * reaches the `waitAt` share of the context window (or
+	 * `observerThresholdTokens` when the window is unknown).
 	 */
 	historyMode?: ObservationHistoryMode;
-	/** Prompt-cache lifetime used by `cacheAware` history. Default 5 minutes. */
+	/**
+	 * Prompt-cache lifetime used by `cacheAware` history. Defaults to the
+	 * provider cache retention from `promptCaching` (for example 1 hour for
+	 * Anthropic, 24 hours for OpenAI).
+	 */
 	cacheTtlMs?: number;
 	/**
 	 * `system` (default) renders the observation log into the system prompt.
