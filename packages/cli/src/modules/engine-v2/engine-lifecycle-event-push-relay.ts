@@ -72,8 +72,6 @@ export class EngineLifecycleEventPushRelay {
 			case 'step:started':
 				return this.onStepStarted(update, session);
 			case 'step:completed':
-				// Without outputs the editor shows the node as done but empty until
-				// CAP-69 lets it fetch the data on demand.
 				return this.onStepSettled(update, session, {
 					status: 'success',
 					outputs: update.outputs && fromStepInputs(update.outputs),
