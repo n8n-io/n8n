@@ -18,10 +18,12 @@ const {
 	ignorePendingConnectResult,
 	mcpStore,
 	mcpTelemetry,
+	projectsStore,
 	rootStore,
 	router,
 	settingsStore,
 	uiStore,
+	usersStore,
 } = vi.hoisted(() => ({
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
 	ensureBrowserConnected: vi.fn(),
@@ -36,6 +38,14 @@ const {
 	mcpTelemetry: {
 		trackToolsListOpened: vi.fn(),
 		trackSettingsOpened: vi.fn(),
+	},
+	projectsStore: {
+		personalProject: null as { id: string } | null,
+		myProjects: [] as Array<{
+			id: string;
+			type: 'personal' | 'team';
+			scopes: Array<'projectSkill:create'>;
+		}>,
 	},
 	rootStore: { restApiContext: { baseUrl: '/rest', pushRef: '' } },
 	router: {
@@ -54,6 +64,7 @@ const {
 		openModal: vi.fn(),
 		openModalWithData: vi.fn(),
 	},
+	usersStore: { currentUser: { globalScopes: [] as Array<'skill:create'> } },
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -76,8 +87,17 @@ vi.mock('@/experiments/assistantSkills/useAssistantSkillsExperiment', () => ({
 	useAssistantSkillsExperiment: () => ({ isEnabled: ref(featureFlags.assistantSkills) }),
 }));
 
-vi.mock('@/features/settings/context/context.utils', () => ({
+vi.mock('@/features/settings/context/context.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/settings/context/context.utils')>()),
 	isContextSkillsEnabled: () => featureFlags.skills,
+}));
+
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => projectsStore,
+}));
+
+vi.mock('@n8n/stores/users.store', () => ({
+	useUsersStore: () => usersStore,
 }));
 
 vi.mock('@/features/settings/context/skills.api', () => ({ getSkills }));
@@ -153,6 +173,9 @@ describe('useInstanceAiInputMenuItems', () => {
 		vi.clearAllMocks();
 		featureFlags.assistantSkills = false;
 		featureFlags.skills = true;
+		projectsStore.personalProject = null;
+		projectsStore.myProjects = [];
+		usersStore.currentUser.globalScopes = ['skill:create'];
 		getSkills.mockResolvedValue({ data: [], count: 0 });
 		mcpStore.connections = [];
 		settingsStore.isMcpAvailable = true;
@@ -359,6 +382,38 @@ describe('useInstanceAiInputMenuItems', () => {
 		});
 
 		it.each([
+			{ scope: 'none', canCreate: false },
+			{ scope: 'instance', canCreate: true },
+			{ scope: 'personal', canCreate: true },
+			{ scope: 'team', canCreate: true },
+		])('checks skill-create permission for the $scope scope', async ({ scope, canCreate }) => {
+			usersStore.currentUser.globalScopes = scope === 'instance' ? ['skill:create'] : [];
+			projectsStore.personalProject = { id: 'personal-1' };
+			projectsStore.myProjects = [
+				{
+					id: 'personal-1',
+					type: 'personal',
+					scopes: scope === 'personal' ? ['projectSkill:create'] : [],
+				},
+				{
+					id: 'team-1',
+					type: 'team',
+					scopes: scope === 'team' ? ['projectSkill:create'] : [],
+				},
+			];
+			getSkills.mockResolvedValue({ data: [makeSkill('s1', 'Skill')], count: 1 });
+			const { menuItems, refreshSkills } = useInstanceAiInputMenuItems(
+				vi.fn(),
+				'read-only-project',
+			);
+			await refreshSkills();
+
+			expect(Boolean(findItem(menuItems.value, 'create-skill'))).toBe(canCreate);
+			expect(findItem(menuItems.value, 'manage-skills')?.data?.action).toBeTypeOf('function');
+			expect(findItem(menuItems.value, 'skill-s1')?.data?.action).toBeTypeOf('function');
+		});
+
+		it.each([
 			{ id: 'skill-s1', query: { skillId: 's1' }, href: '/settings/context/skills?skillId=s1' },
 			{ id: 'manage-skills', query: {}, href: '/settings/context/skills' },
 			{
@@ -375,7 +430,7 @@ describe('useInstanceAiInputMenuItems', () => {
 			await findItem(menuItems.value, id)?.data?.action?.();
 
 			expect(router.resolve).toHaveBeenCalledWith({ name: 'SettingsContextSkills', query });
-			expect(openSpy).toHaveBeenCalledWith(href, '_blank');
+			expect(openSpy).toHaveBeenCalledWith(href, '_blank', 'noopener');
 			expect(router.push).not.toHaveBeenCalled();
 			openSpy.mockRestore();
 		});

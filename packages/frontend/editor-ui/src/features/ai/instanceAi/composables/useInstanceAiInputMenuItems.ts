@@ -8,7 +8,12 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
-import { isContextSkillsEnabled } from '@/features/settings/context/context.utils';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import {
+	canWriteInstanceSkillScope,
+	canWriteProjectSkillScope,
+	isContextSkillsEnabled,
+} from '@/features/settings/context/context.utils';
 import { getSkills } from '@/features/settings/context/skills.api';
 import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
 import type { NodeIconSource, ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
@@ -34,6 +39,7 @@ export function useInstanceAiInputMenuItems(
 	const i18n = useI18n();
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
+	const projectsStore = useProjectsStore();
 	const router = useRouter();
 	const settingsStore = useInstanceAiSettingsStore();
 	const mcpStore = useInstanceAiMcpStore();
@@ -42,6 +48,14 @@ export function useInstanceAiInputMenuItems(
 	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 	const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
 	const shouldShowSkills = computed(() => assistantSkillsEnabled.value && isContextSkillsEnabled());
+	const canCreateSkill = computed(
+		() =>
+			canWriteInstanceSkillScope() ||
+			canWriteProjectSkillScope(projectsStore.personalProject?.id) ||
+			projectsStore.myProjects.some(
+				(project) => project.type === 'team' && canWriteProjectSkillScope(project.id),
+			),
+	);
 	const skills = ref<SkillListItem[]>([]);
 	const skillsLoadState = ref<'loading' | 'loaded' | 'error'>('loading');
 	const { next: nextSkillsLoad } = useLatestFetch();
@@ -85,7 +99,11 @@ export function useInstanceAiInputMenuItems(
 	}
 
 	function openSkillSettings(query: { skillId?: string; create?: string } = {}) {
-		window.open(router.resolve({ name: VIEWS.SETTINGS_CONTEXT_SKILLS, query }).href, '_blank');
+		window.open(
+			router.resolve({ name: VIEWS.SETTINGS_CONTEXT_SKILLS, query }).href,
+			'_blank',
+			'noopener',
+		);
 	}
 
 	const skillMenuItems = computed<InputMenuItem[]>(() => {
@@ -133,20 +151,20 @@ export function useInstanceAiInputMenuItems(
 			}
 		}
 
-		children.push(
-			{
-				id: 'manage-skills',
-				label: i18n.baseText('instanceAi.inputMenu.skills.manage'),
-				divided: true,
-				data: { action: () => openSkillSettings() },
-			},
-			{
+		children.push({
+			id: 'manage-skills',
+			label: i18n.baseText('instanceAi.inputMenu.skills.manage'),
+			divided: true,
+			data: { action: () => openSkillSettings() },
+		});
+		if (canCreateSkill.value) {
+			children.push({
 				id: 'create-skill',
 				label: i18n.baseText('instanceAi.inputMenu.skills.create'),
 				icon: { type: 'icon', value: 'plus' },
 				data: { action: () => openSkillSettings({ create: 'true' }) },
-			},
-		);
+			});
+		}
 		return children;
 	});
 
