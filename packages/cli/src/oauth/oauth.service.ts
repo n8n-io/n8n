@@ -1242,7 +1242,6 @@ export class OauthService {
 		return returnUri.toString();
 	}
 
-	/** The scope that a credential type with Automatic OAuth mode declares for its nodes. */
 	private getDeclaredScope(type: string): string | undefined {
 		if (!this.credentialsHelper.supportsDynamicClientRegistration(type)) return undefined;
 		const scope = this.credentialsHelper
