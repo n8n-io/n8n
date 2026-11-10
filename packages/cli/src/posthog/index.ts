@@ -1,5 +1,6 @@
 import {
 	AGENT_EVALS_FLAG,
+	AGENT_SANDBOX_FILES_FLAG,
 	ASSISTANT_SKILLS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
@@ -28,7 +29,11 @@ import type { AllFlagsOptions, FeatureFlagEvaluations, PostHog } from 'posthog-n
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-const EDITOR_INSTANCE_FLAGS = [CREDENTIAL_DESCRIPTIONS_FLAG, ASSISTANT_SKILLS_FLAG];
+const EDITOR_INSTANCE_FLAGS = [
+	CREDENTIAL_DESCRIPTIONS_FLAG,
+	ASSISTANT_SKILLS_FLAG,
+	AGENT_SANDBOX_FILES_FLAG,
+];
 
 const SESSION_ID_MAX_LENGTH = 1000;
 
@@ -205,8 +210,9 @@ export class PostHogClient {
 			...overridden,
 			featureFlags: {
 				...overridden.featureFlags,
-				[CREDENTIAL_DESCRIPTIONS_FLAG]: instanceFlags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
-				[ASSISTANT_SKILLS_FLAG]: instanceFlags[ASSISTANT_SKILLS_FLAG] === true,
+				...Object.fromEntries(
+					EDITOR_INSTANCE_FLAGS.map((flag) => [flag, instanceFlags[flag] === true]),
+				),
 			},
 		};
 	}

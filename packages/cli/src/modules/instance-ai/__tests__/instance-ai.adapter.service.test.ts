@@ -87,9 +87,6 @@ import {
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
-	CONTEXT_PREFERENCES_CONTROL_VARIANT,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -7831,7 +7828,6 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	};
 
 	it('resolves per-user gates with one user flag fetch', async () => {
@@ -7848,7 +7844,6 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: true,
 			nodeContextEnabled: true,
 			folderExplorationEnabled: true,
-			aiPreferencesEnabled: true,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -7944,7 +7939,6 @@ describe('resolveExperimentGates', () => {
 			[CANVAS_NODE_CONTEXT_FLAG]: false,
 			[AI_ASSISTANT_AT_MENTIONS_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: 'control',
-			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -7958,7 +7952,6 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
-			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -7995,16 +7988,6 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
-	// The preferences flag is multivariate too, so a boolean `true` must not
-	// open the gate.
-	it('does not open the AI preferences gate on a boolean true', async () => {
-		stubContainer({ ...allEnabled, [CONTEXT_PREFERENCES_FLAG]: true });
-
-		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
-			aiPreferencesEnabled: false,
-		});
-	});
-
 	it('fails experiment gates closed when no flags resolve', async () => {
 		stubContainer({});
 
@@ -8018,7 +8001,6 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
-			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8038,7 +8020,6 @@ describe('resolveExperimentGates', () => {
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
-			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8589,15 +8570,9 @@ describe('createContext: aiPreferenceService', () => {
 		return { service, aiPreferenceService, logger, telemetry };
 	}
 
-	it('is absent when the preferences gate is closed', () => {
+	it('is always present', () => {
 		const { service } = buildService();
 		const context = service.createContext(user, { threadId: 't1' });
-		expect(context.aiPreferenceService).toBeUndefined();
-	});
-
-	it('is present when the gate is open', () => {
-		const { service } = buildService();
-		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
 		expect(context.aiPreferenceService).toBeDefined();
 	});
 
@@ -8609,7 +8584,7 @@ describe('createContext: aiPreferenceService', () => {
 			userId: 'user-1',
 			projectId: null,
 		} as never);
-		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+		const context = service.createContext(user, { threadId: 't1' });
 
 		const result = await context.aiPreferenceService!.create({
 			content: 'Keep replies short.',
@@ -8653,7 +8628,7 @@ describe('createContext: aiPreferenceService', () => {
 		async (error, expected) => {
 			const { service, aiPreferenceService, logger } = buildService();
 			aiPreferenceService.create.mockRejectedValue(error);
-			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+			const context = service.createContext(user, { threadId: 't1' });
 
 			const result = await context.aiPreferenceService!.create({ content: 'x', scope: 'user' });
 
@@ -8667,7 +8642,7 @@ describe('createContext: aiPreferenceService', () => {
 		async (error) => {
 			const { service, aiPreferenceService, logger } = buildService();
 			aiPreferenceService.create.mockRejectedValue(error);
-			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+			const context = service.createContext(user, { threadId: 't1' });
 
 			const result = await context.aiPreferenceService!.create({ content: 'x', scope: 'user' });
 
@@ -8695,7 +8670,7 @@ describe('createContext: aiPreferenceService', () => {
 		telemetry.track.mockImplementation(() => {
 			throw new Error('telemetry down');
 		});
-		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+		const context = service.createContext(user, { threadId: 't1' });
 
 		const result = await context.aiPreferenceService!.create({
 			content: 'Keep replies short.',
@@ -8715,7 +8690,7 @@ describe('createContext: aiPreferenceService', () => {
 			id: 'pref-1',
 			content: 'Keep replies short.',
 		} as never);
-		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+		const context = service.createContext(user, { threadId: 't1' });
 
 		await context.aiPreferenceService!.create({ content: 'Keep replies short.', scope: 'user' });
 
@@ -8758,7 +8733,7 @@ describe('createContext: aiPreferenceService', () => {
 	it('fires write_rejected with the mapped reason, and nothing else, on a refused write', async () => {
 		const { service, aiPreferenceService, telemetry } = buildService();
 		aiPreferenceService.create.mockRejectedValue(new ConflictError('dup'));
-		const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+		const context = service.createContext(user, { threadId: 't1' });
 
 		await context.aiPreferenceService!.create({ content: 'Keep replies short.', scope: 'user' });
 
@@ -8779,7 +8754,7 @@ describe('createContext: aiPreferenceService', () => {
 		'recordRejection(%s) fires write_rejected directly, without calling create',
 		(reason) => {
 			const { service, aiPreferenceService, telemetry } = buildService();
-			const context = service.createContext(user, { threadId: 't1', aiPreferencesEnabled: true });
+			const context = service.createContext(user, { threadId: 't1' });
 
 			context.aiPreferenceService!.recordRejection(reason, 19, 'user');
 

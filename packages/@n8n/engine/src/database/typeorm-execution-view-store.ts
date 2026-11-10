@@ -86,7 +86,14 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		query: ExecutionListFilter,
 	): T {
 		if (query.workflowIds !== 'all') {
-			qb.andWhere(`${alias}.workflow_id = ANY(:workflowIds)`, { workflowIds: query.workflowIds });
+			// Plain equality for one id: the planner drops an equal leading column
+			// and pages from `(workflow_id, created_at, id)` in order. `= ANY` is
+			// not an equality to it, and forces a sort even for one element.
+			if (query.workflowIds.length === 1) {
+				qb.andWhere(`${alias}.workflow_id = :workflowId`, { workflowId: query.workflowIds[0] });
+			} else {
+				qb.andWhere(`${alias}.workflow_id = ANY(:workflowIds)`, { workflowIds: query.workflowIds });
+			}
 		}
 		if (query.status) qb.andWhere(`${alias}.status = ANY(:statuses)`, { statuses: query.status });
 		if (query.hostMode) {

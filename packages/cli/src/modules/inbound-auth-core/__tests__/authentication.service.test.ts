@@ -57,6 +57,7 @@ function source(overrides: SourceOverrides = {}): TrustedSource {
 				authentication: { type: 'oauth2' },
 				surfaces,
 			}),
+			{ managedBy: 'admin' },
 		),
 		metadata: {
 			version: 1,

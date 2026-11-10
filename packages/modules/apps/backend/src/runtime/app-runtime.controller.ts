@@ -25,6 +25,7 @@ import {
 	Post,
 	RootLevelController,
 } from '@n8n/decorators';
+import { principalFromUser } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { Principal } from '@n8n/permissions';
@@ -365,16 +366,9 @@ export class AppRuntimeController {
 			);
 		}
 		const { app, versionId, user } = admitted;
-		return {
-			app,
-			versionId,
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName ?? undefined,
-				lastName: user.lastName ?? undefined,
-			},
-		};
+		// A service account has no email or name.
+		const { id, email, firstName, lastName } = principalFromUser(user);
+		return { app, versionId, user: { id, email, firstName, lastName } };
 	}
 
 	private interacted(req: AppRuntimeRequest, interactionType: AppInteractionType) {

@@ -71,7 +71,6 @@ const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
-	aiPreferencesEnabled: false,
 	...overrides,
 });
 

@@ -309,7 +309,7 @@ export class OAuthSigningKeyService {
 	 */
 	private async broadcastReloadSigningKeysCommand(): Promise<void> {
 		try {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			const { Publisher } = await import('@n8n/backend-services');
 			await Container.get(Publisher).publishCommand({ command: 'reload-oauth-signing-keys' });
 		} catch (error) {
 			// The key is already stored. The other processes read it when their list expires.

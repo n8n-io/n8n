@@ -11,8 +11,8 @@ import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
 import { EngineV2Module } from '../engine-v2.module';
 import { EngineV2Runtime } from '../engine-v2.runtime';
-import { ExecutionChannelReceiver } from '../response-channel/in-memory-execution-response-receiver';
-import type { RedisChannelSubscriber } from '../response-channel/redis-execution-response-receiver';
+import { ExecutionChannelReceiver } from '../execution-channel/execution-channel-receiver';
+import type { RedisChannelSubscriber } from '../execution-channel/redis-execution-channel-subscriber';
 
 describe('EngineV2Module', () => {
 	let module: EngineV2Module;
