@@ -80,6 +80,16 @@ describe('app scaffold package validation', () => {
 		expect(() => checkBuildSource(files)).not.toThrow();
 	});
 
+	it.each(['.npmrc', 'node_modules/package.json', 'dist/index.js'])(
+		'rejects the prohibited source entry %s',
+		(name) => {
+			const files = appScaffold();
+			files.set(name, Buffer.from(''));
+
+			expect(() => checkBuildSource(files)).toThrow(AppBuildError);
+		},
+	);
+
 	it.each(['5.0.0-beta.1', '5.0.0+build.1'])(
 		'accepts the exact dependency version %s',
 		(version) => {

@@ -15,6 +15,7 @@ const packageLock = JSON.stringify(lockfile, null, 2) + '\n';
 
 const DEPENDENCY_FIELDS = new Set(['dependencies', 'devDependencies']);
 const NPM_REGISTRY = 'https://registry.npmjs.org/';
+const PROHIBITED_SOURCE_ENTRIES = new Set(['.npmrc', 'node_modules', 'dist']);
 
 export function createAppScaffold(): AppFiles {
 	return new Map(
@@ -78,8 +79,9 @@ function isSupportedLockEntry(entry: unknown): boolean {
 
 export function checkBuildSource(files: AppFiles): string {
 	for (const name of files.keys()) {
-		if (['node_modules', 'dist'].includes(name.split('/')[0])) {
-			throw new AppBuildError('source', 'App source cannot contain node_modules or dist.');
+		const rootEntry = name.split('/')[0];
+		if (rootEntry && PROHIBITED_SOURCE_ENTRIES.has(rootEntry)) {
+			throw new AppBuildError('source', `App source cannot contain ${rootEntry}.`);
 		}
 	}
 	try {
