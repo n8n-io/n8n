@@ -39,7 +39,7 @@ export const exportPackageRequestFieldDocs = {
 	},
 	credentialExportPolicy: {
 		description:
-			'Whether expression values from credential data are bundled into the package. `expression-values-only` includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`); literal values never travel either way. `no-values` keeps credential data out of the package entirely, so each credential file carries only its id, name and type.',
+			'Whether expression values from credential data are bundled into the package. `expression-values-only` includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`). A literal value travels only when it decides whether another credential field shows (a toggle or an auth type, for example) and an exported expression sits in that field. No other literal value travels. `no-values` keeps credential data out of the package entirely, so each credential file carries only its id, name and type.',
 		example: 'expression-values-only' as const,
 	},
 	includeArchivedWorkflows: {

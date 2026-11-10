@@ -136,6 +136,10 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.optional()
 				.describe("Set only when the scope is 'project'. Workflows the user selected"),
+			selected_folder_count: z
+				.number()
+				.optional()
+				.describe("Set only when the scope is 'project'. Folders the user selected"),
 			opened_review: z
 				.boolean()
 				.optional()
@@ -168,6 +172,14 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.optional()
 				.describe("Set when the outcome is 'applied'"),
+			folders_changed: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'applied'. Folders created, updated and removed"),
+			projects_changed: z
+				.number()
+				.optional()
+				.describe("Set when the outcome is 'applied'. Projects created, updated and deleted"),
 		}),
 	},
 	USER_OPENED_PROMOTION_MERGE_REQUEST: {

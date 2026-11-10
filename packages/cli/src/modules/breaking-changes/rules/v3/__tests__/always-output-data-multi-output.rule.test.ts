@@ -3,7 +3,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 
 import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
 import { AlwaysOutputDataMultiOutputRule } from '../always-output-data-multi-output.rule';
@@ -23,7 +23,7 @@ const NODE_TYPE_OUTPUTS: Record<string, INodeTypeDescription['outputs']> = {
 	'n8n-nodes-awesome-package.router': [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 };
 
-const nodeTypes = mock<NodeTypes>();
+const nodeTypes = mock<NodeTypesProxy>();
 nodeTypes.getByNameAndVersion.mockImplementation((type) => {
 	const outputs = NODE_TYPE_OUTPUTS[type];
 	if (outputs === undefined) throw new UnexpectedError('Unknown node type');

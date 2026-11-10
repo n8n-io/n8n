@@ -426,6 +426,28 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `workflow-deactivated-by-system` event without a user', () => {
+			const event: RelayEventMap['workflow-deactivated-by-system'] = {
+				workflowId: 'wf789',
+				workflowName: 'Deactivated Workflow',
+				deactivatedVersionId: 'version-xyz-789',
+				reason: 'memory-guard',
+			};
+
+			eventService.emit('workflow-deactivated-by-system', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.deactivated',
+				payload: {
+					userId: null,
+					workflowId: 'wf789',
+					workflowName: 'Deactivated Workflow',
+					deactivatedVersionId: 'version-xyz-789',
+					reason: 'memory-guard',
+				},
+			});
+		});
+
 		it('should log on `workflow-version-updated` event', () => {
 			const event: RelayEventMap['workflow-version-updated'] = {
 				user: {
@@ -1101,6 +1123,31 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `user-logged-out` event', () => {
+			const event: RelayEventMap['user-logged-out'] = {
+				user: {
+					id: 'user405',
+					email: 'loggedout@example.com',
+					firstName: 'Logged',
+					lastName: 'Out',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+			};
+
+			eventService.emit('user-logged-out', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.logout',
+				payload: {
+					userId: 'user405',
+					_email: 'loggedout@example.com',
+					_firstName: 'Logged',
+					_lastName: 'Out',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
 		it('should log on `user-mfa-enabled` event', () => {
 			const event: RelayEventMap['user-mfa-enabled'] = {
 				user: {
@@ -1443,6 +1490,72 @@ describe('LogStreamingEventRelay', () => {
 					publicApi: false,
 					projectId: 'proj789',
 					projectType: 'Personal',
+				},
+			});
+		});
+
+		it('should log on `credentials-data-read` event', () => {
+			const event: RelayEventMap['credentials-data-read'] = {
+				user: {
+					id: 'user808',
+					email: 'reader@example.com',
+					firstName: 'Cred',
+					lastName: 'Reader',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialId: 'cred808',
+				credentialType: 'githubApi',
+				publicApi: false,
+			};
+
+			eventService.emit('credentials-data-read', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.credentials.data.read',
+				payload: {
+					userId: 'user808',
+					_email: 'reader@example.com',
+					_firstName: 'Cred',
+					_lastName: 'Reader',
+					globalRole: GLOBAL_OWNER_ROLE.slug,
+					credentialId: 'cred808',
+					credentialType: 'githubApi',
+					publicApi: false,
+				},
+			});
+		});
+
+		it('should log on `credentials-list-data-read` event', () => {
+			const event: RelayEventMap['credentials-list-data-read'] = {
+				user: {
+					id: 'user809',
+					email: 'reader@example.com',
+					firstName: 'Cred',
+					lastName: 'Reader',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialIds: ['cred1', 'cred2'],
+				credentialCount: 2,
+				chunk: 1,
+				chunkCount: 1,
+				publicApi: false,
+			};
+
+			eventService.emit('credentials-list-data-read', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.credentials.list.data.read',
+				payload: {
+					userId: 'user809',
+					_email: 'reader@example.com',
+					_firstName: 'Cred',
+					_lastName: 'Reader',
+					globalRole: GLOBAL_OWNER_ROLE.slug,
+					credentialIds: ['cred1', 'cred2'],
+					credentialCount: 2,
+					chunk: 1,
+					chunkCount: 1,
+					publicApi: false,
 				},
 			});
 		});
@@ -3825,5 +3938,117 @@ describe('LogStreamingEventRelay', () => {
 				});
 			},
 		);
+	});
+
+	describe('promotion events', () => {
+		const user = () => ({
+			id: 'user-1',
+			email: 'admin@n8n.io',
+			firstName: 'Ad',
+			lastName: 'Min',
+			role: { slug: 'global:admin' },
+		});
+		const redactedUser = {
+			userId: 'user-1',
+			_email: 'admin@n8n.io',
+			_firstName: 'Ad',
+			_lastName: 'Min',
+			globalRole: 'global:admin',
+		};
+		const provider = {
+			providerId: 'prov-1',
+			providerName: 'GitLab bot',
+			providerType: 'gitlab',
+			authType: 'token',
+			hostBaseUrl: 'https://gitlab.example.com',
+		} as const;
+		const environment = {
+			environmentId: 'env-1',
+			environmentName: 'Production',
+			providerId: 'prov-1',
+			providerName: 'GitLab bot',
+			repository: 'acme/workflows',
+			direction: 'promote',
+			environmentScope: 'instance',
+		} as const;
+
+		it('should log provider and environment changes without telemetry-only fields', () => {
+			eventService.emit('promotion-provider-created', {
+				user: user(),
+				...provider,
+				outcome: 'success',
+				durationMs: 300,
+			});
+			eventService.emit('promotion-provider-updated', {
+				user: user(),
+				...provider,
+				changedFields: ['auth', 'config'],
+				outcome: 'success',
+				durationMs: 120,
+			});
+			eventService.emit('promotion-provider-deleted', { user: user(), ...provider });
+			eventService.emit('promotion-environment-created', {
+				user: user(),
+				...environment,
+				providerType: 'gitlab',
+				createBranchOnPromotion: true,
+			});
+			eventService.emit('promotion-environment-updated', {
+				user: user(),
+				...environment,
+				changedFields: ['provider'],
+			});
+			eventService.emit('promotion-environment-deleted', { user: user(), ...environment });
+
+			expect(vi.mocked(eventBus.sendAuditEvent).mock.calls.map(([event]) => event)).toEqual([
+				{
+					eventName: 'n8n.audit.promotions.provider.created',
+					payload: { ...redactedUser, ...provider },
+				},
+				{
+					eventName: 'n8n.audit.promotions.provider.updated',
+					payload: { ...redactedUser, ...provider, changedFields: ['auth', 'config'] },
+				},
+				{
+					eventName: 'n8n.audit.promotions.provider.deleted',
+					payload: { ...redactedUser, ...provider },
+				},
+				{
+					eventName: 'n8n.audit.promotions.environment.created',
+					payload: { ...redactedUser, ...environment },
+				},
+				{
+					eventName: 'n8n.audit.promotions.environment.updated',
+					payload: { ...redactedUser, ...environment, changedFields: ['provider'] },
+				},
+				{
+					eventName: 'n8n.audit.promotions.environment.deleted',
+					payload: { ...redactedUser, ...environment },
+				},
+			]);
+		});
+
+		it('should not log a provider create or update that failed', () => {
+			eventService.emit('promotion-provider-created', {
+				user: user(),
+				providerType: 'gitlab',
+				authType: 'token',
+				outcome: 'failed',
+				failureKind: 'user',
+				durationMs: 300,
+			});
+			eventService.emit('promotion-provider-updated', {
+				user: user(),
+				providerId: 'prov-1',
+				providerType: 'gitlab',
+				authType: 'token',
+				changedFields: ['auth'],
+				outcome: 'failed',
+				failureKind: 'user',
+				durationMs: 120,
+			});
+
+			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
+		});
 	});
 });
