@@ -49,6 +49,15 @@ export class ConvertApi implements ICredentialType {
 			ignoreHttpStatusErrors: true,
 		},
 		rules: [
+			// The API answers a wrong or missing token with HTTP 401 and Code 4011
+			{
+				type: 'responseSuccessBody',
+				properties: {
+					key: 'Code',
+					value: 4011,
+					message: 'Invalid API token.',
+				},
+			},
 			{
 				type: 'responseSuccessBody',
 				properties: {
