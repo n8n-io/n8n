@@ -115,8 +115,9 @@ export const importPackageRequestFieldDocs = {
 			"those details with the package's; a detail the package omits is left as it is, not " +
 			'cleared. `fail` rejects the import before anything is written, with one `project-conflict` ' +
 			'issue per existing project. A package project id belonging to a personal project, or to ' +
-			'a team project the caller cannot update, always rejects the import. Ignored for workflow ' +
-			'packages.',
+			'a team project the caller cannot update, always rejects the import. A new project needs ' +
+			'the `project:create` scope. `overwrite` needs `project:update` only when it changes a ' +
+			'detail. Ignored for workflow packages.',
 	},
 	folderConflictPolicy: {
 		description:
@@ -133,7 +134,9 @@ export const importPackageRequestFieldDocs = {
 			'import. `overwrite` is project-packages-only, needs the `workflow:delete` and ' +
 			'`folder:delete` scopes, is rejected against a `projectConflictPolicy` other than ' +
 			'`overwrite`, and blocks up front if the caller cannot delete something it would remove. ' +
-			'Folders need the `folder:create` scope and a folders-enabled licence.',
+			'A project package needs the `folder:create` scope and a folders-enabled license only ' +
+			'when the import creates a folder. A workflow package with folders always needs ' +
+			'`folder:create`, `folder:update` and that license.',
 	},
 	overwriteDeletionPolicy: {
 		description:

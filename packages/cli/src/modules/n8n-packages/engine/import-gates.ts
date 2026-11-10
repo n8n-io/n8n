@@ -6,6 +6,8 @@ import { ForbiddenError } from '@n8n/errors';
 import { plannedCredentialUpdates } from '../entities/credential/credential-conflict-policy';
 import type { CredentialImportPlan } from '../entities/credential/credential.types';
 import type { DataTableImportPlan } from '../entities/data-table/data-table.types';
+import type { FolderImportPlan } from '../entities/folder/folder-import.types';
+import type { ProjectPlanItem } from '../entities/project/project-import.types';
 import type { SkillImportPlan } from '../entities/skill/skill-import.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
 import type {
@@ -56,6 +58,45 @@ export function assertVariableWritesAllowed(options: {
 	}
 	if (hasCreations) assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:create']);
 	if (hasOverwrites) assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:update']);
+}
+
+/**
+ * A project that the import keeps as it is needs no project scope, even when the import writes
+ * workflows into it.
+ */
+export function assertProjectWritesAllowed(
+	apiKeyScopes: string[] | undefined,
+	items: Array<Pick<ProjectPlanItem, 'action'>>,
+): void {
+	if (items.some((item) => item.action === 'create')) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['project:create']);
+	}
+	if (items.some((item) => item.action === 'update')) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['project:update']);
+	}
+}
+
+/**
+ * A workflow can go into a folder that already exists without the folders licence, as elsewhere
+ * in n8n. Only creating, moving or renaming a folder needs the licence and a folder scope.
+ */
+export function assertFolderWritesAllowed(
+	licenseState: LicenseState,
+	apiKeyScopes: string[] | undefined,
+	folderPlans: Array<Pick<FolderImportPlan, 'items'>>,
+): void {
+	const items = folderPlans.flatMap((plan) => plan.items);
+	const hasCreations = items.some((item) => item.action === 'create');
+	const hasUpdates = items.some((item) => item.action === 'update');
+	if (!hasCreations && !hasUpdates) return;
+
+	if (!licenseState.isLicensed('feat:folders')) {
+		throw new ForbiddenError(
+			'Your license does not allow folders. Importing a package that creates or changes folders requires a license that supports folders.',
+		);
+	}
+	if (hasCreations) assertPackageImportApiKeyScopes(apiKeyScopes, ['folder:create']);
+	if (hasUpdates) assertPackageImportApiKeyScopes(apiKeyScopes, ['folder:update']);
 }
 
 /**

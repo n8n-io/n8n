@@ -52,7 +52,12 @@ export const IMPORT_DESCRIPTION =
 	'Credential and dependency references are resolved before writes. Request bindings support ' +
 	'credential overrides only. Agent and workflow identities are matched automatically.\n\n' +
 	'Agent packages require `agent:import` and `agent:read`. Workflow packages require ' +
-	'`workflow:import`. Mixed packages require both import grants. Planned Agent actions also ' +
+	'`workflow:import`. Mixed packages require both import grants. A project package requires ' +
+	'`project:create` when it creates a project, and `project:update` when ' +
+	'`projectConflictPolicy=overwrite` changes the details of an existing project. It requires ' +
+	'`folder:create` and a license that supports folders only when it creates a folder. A ' +
+	'workflow package with folders always requires `folder:create`, `folder:update` and that ' +
+	'license. Planned Agent actions also ' +
 	'require `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish`. Skipped Agents ' +
 	'do not require write grants. Creating a project or instance skill requires `skill:create`, ' +
 	'and saving a new version of one requires `skill:update`. ' +
@@ -113,6 +118,10 @@ export const IMPORT_SELECTION_DESCRIPTION =
 	'here; only `conflictPolicy`, `idPolicy`, and `overwriteDeletionPolicy` ' +
 	'are configurable. Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default ' +
 	'16). The caller is authorised through the `workflow:import` scope. ' +
+	'The API key also needs `project:create` when the selected project does not exist. The ' +
+	'import never changes an existing project, so it never needs `project:update`. It needs ' +
+	'`folder:create` and a license that supports folders only when it creates a folder that ' +
+	'holds a selected workflow. ' +
 	'Packages that contain Agents are rejected before writes. Use the ordinary import endpoint ' +
 	'for selected-Agent exports. `conflictPolicy` replaces `workflowConflictPolicy`, and ' +
 	'`idPolicy` replaces `workflowIdPolicy`. The old fields are rejected. ' +
