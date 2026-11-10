@@ -18,12 +18,12 @@ import {
 	getCredentialTypeRestriction,
 	SCOPE_LABEL_KEY,
 	useTypeAvailabilityPoliciesStore,
-	type ContactAudience,
 	type RestrictedTypeKind,
 	type TypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import type { ICredentialType } from 'n8n-workflow';
 import CredentialTypeRestrictedMarker from './CredentialTypeRestrictedMarker.vue';
+import { useContactAdminDialog } from '../composables/useContactAdminDialog';
 import { useCredentialTypeUsability } from '../composables/useCredentialTypeUsability';
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
@@ -41,13 +41,11 @@ const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const { getCredentialTypeUsability } = useCredentialTypeUsability();
 
-const isContactAdminOpen = ref(false);
-// The dialog keeps showing this copy while it fades out, so it stays set after the close.
-const contactAdmin = ref<{ subject: string; kind: RestrictedTypeKind; audience: ContactAudience }>({
-	subject: '',
-	kind: 'credential',
-	audience: 'instance',
-});
+const {
+	isOpen: isContactAdminOpen,
+	state: contactAdmin,
+	request: requestContactAdmin,
+} = useContactAdminDialog(() => selectRef.value?.blur());
 // The select mounts every option while closed, so the row popovers mount on the first open only.
 const hasListOpened = ref(false);
 
@@ -164,13 +162,6 @@ const selectableCredentialTypes = computed(() => {
 	);
 });
 
-function requestContactAdmin(restricted: RestrictedRow, audience: ContactAudience) {
-	// The dialog opens on top of the page, so the list must not stay open behind it.
-	selectRef.value?.blur();
-	contactAdmin.value = { subject: restricted.contactSubject, kind: restricted.kind, audience };
-	isContactAdminOpen.value = true;
-}
-
 function filterCredentials(query: string) {
 	searchQuery.value = query;
 }
@@ -269,7 +260,10 @@ function openCredentialType() {
 									:kind="restricted.kind"
 									:scope-label="restricted.popoverScopeLabel"
 									:description="restricted.description"
-									@contact-admin="(audience) => requestContactAdmin(restricted, audience)"
+									@contact-admin="
+										(audience) =>
+											requestContactAdmin(restricted.contactSubject, audience, restricted.kind)
+									"
 								/>
 							</span>
 						</div>

@@ -79,9 +79,9 @@ import CredentialTypeRestrictedMarker from './CredentialTypeRestrictedMarker.vue
 import {
 	ContactAdminModal,
 	getCredentialTypeRestriction,
-	type ContactAudience,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useContactAdminDialog } from '../composables/useContactAdminDialog';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 
 import {
@@ -250,26 +250,29 @@ const canCreateCredentials = computed(
 		).credential.create,
 );
 
+const typeRestrictions = computed(() => {
+	const restrictions: Record<string, CredentialTypeAvailability> = {};
+	for (const { type } of credentialTypesNodeDescriptionDisplayed.value) {
+		const restriction = getCredentialTypeRestriction(type.name);
+		if (restriction) restrictions[type.name] = restriction;
+	}
+	return restrictions;
+});
+
 function canCreateCredentialType(credentialType: string): boolean {
-	return !!canCreateCredentials.value && !getCredentialTypeRestriction(credentialType);
+	return !!canCreateCredentials.value && !typeRestrictions.value[credentialType];
 }
 
-const isContactAdminOpen = ref(false);
-// The dialog keeps showing this copy while it fades out, so it stays set after the close.
-const contactAdmin = ref<{ subject: string; audience: ContactAudience }>({
-	subject: '',
-	audience: 'instance',
+const {
+	isOpen: isContactAdminOpen,
+	state: contactAdmin,
+	request: requestContactAdmin,
+} = useContactAdminDialog(() => {
+	for (const select of selectRefs.value) select?.blur();
 });
 // The select mounts every option while closed, so the row popovers mount on the first open only.
 // They stay mounted: the select closes on the release in a popover, before its click arrives.
 const openedCredentialSelectTypes = ref(new Set<string>());
-
-function requestContactAdmin(subject: string, audience: ContactAudience) {
-	// The dialog opens on top of the page, so the list must not stay open behind it.
-	for (const select of selectRefs.value) select?.blur();
-	contactAdmin.value = { subject, audience };
-	isContactAdminOpen.value = true;
-}
 
 /** By slot, the restriction of the selected credential's type, which can differ from the slot's in a mixed list. */
 const selectedTypeRestrictions = computed(() => {
@@ -1780,10 +1783,10 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						{{ entryPlaceholder(type.name) }}
 					</span>
 					<CredentialTypeRestrictedMarker
-						v-if="getCredentialTypeRestriction(type.name)"
+						v-if="typeRestrictions[type.name]"
 						placement="field"
 						:name="credentialTypeNames[type.name]"
-						:restriction="getCredentialTypeRestriction(type.name)!"
+						:restriction="typeRestrictions[type.name]"
 						data-test-id="node-credentials-type-restricted"
 						@contact-admin="
 							(audience) => requestContactAdmin(credentialTypeNames[type.name], audience)
@@ -1983,7 +1986,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									<N8nIcon size="large" icon="plus" :class="$style.optionIcon" />
 									{{ NEW_CREDENTIALS_TEXT }}
 									<N8nIcon
-										v-if="getCredentialTypeRestriction(type.name)"
+										v-if="typeRestrictions[type.name]"
 										icon="lock"
 										size="xsmall"
 										:class="$style.newCredentialLock"

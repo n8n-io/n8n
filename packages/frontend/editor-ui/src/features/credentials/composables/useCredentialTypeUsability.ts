@@ -9,7 +9,6 @@ import { HTTP_REQUEST_NODE_TYPE, type ICredentialType } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '../credentials.store';
 
-/** The parents that HTTP Request lists in its predefined credential type parameter. */
 const HTTP_REQUEST_PARENT_TYPES = ['oAuth2Api', 'oAuth1Api'];
 
 export type CredentialTypeUsability =
