@@ -40,7 +40,7 @@ import {
 } from './git-hosts/gitlab-merge-request.client';
 import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
-import { observePromotion } from './promotion-telemetry';
+import { observePromotion, type ClosedHostStatus } from './promotion-telemetry';
 import { approvalNote } from './promotion-review.utils';
 import type { PromotionReviewCloseReason } from './promotions.types';
 
@@ -187,6 +187,85 @@ export class PromotionReviewInboxService {
 					durationMs: observed.durationMs,
 				}),
 		);
+	}
+
+	/**
+	 * Closes a review in n8n only. The merge request stays open on the host. The host is read
+	 * first, so a merge request that already ended is recorded and not closed over. A host that
+	 * cannot answer for good does not block the close, because that is the reason to close.
+	 */
+	async close(user: User, reviewId: string): Promise<InboxPromotionReviewItem> {
+		if (!this.isEnabled()) throw new ForbiddenError("Promotion reviews aren't enabled.");
+		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
+		if (!review) throw new NotFoundError('Promotion review not found.');
+
+		// Stays null when the close fails before n8n asks the host.
+		let hostStatus: ClosedHostStatus | null = null;
+		return await observePromotion(
+			async () => await this.closeReview(review, (status) => (hostStatus = status)),
+			(observed) =>
+				this.eventService.emit('promotion-review-closed', {
+					user,
+					reviewId: review.id,
+					environmentId: review.environmentId,
+					reviewType: review.type,
+					reviewAgeMs: Date.now() - review.createdAt.getTime(),
+					hostStatus,
+					outcome: observed.ok ? 'closed' : 'failed',
+					...(!observed.ok && { failureKind: observed.failureKind }),
+					durationMs: observed.durationMs,
+				}),
+		);
+	}
+
+	private async closeReview(
+		review: PromotionReview,
+		onHostStatus: (status: ClosedHostStatus) => void,
+	): Promise<InboxPromotionReviewItem> {
+		if (review.state === 'merged' || review.state === 'closed') {
+			throw new ConflictError(`This promotion review is already ${review.state}.`);
+		}
+
+		const run = (await this.newestRuns([review])).get(review.id);
+		let view: RemoteView = failed('no_connection');
+		try {
+			const host = await this.readMergeRequest(review, run);
+			if (host) view = { mergeRequest: host.mergeRequest, remoteError: null };
+		} catch (error) {
+			view = failed(remoteErrorOf(error));
+		}
+		const { mergeRequest, remoteError } = view;
+
+		if (mergeRequest) {
+			await this.applyHostState(review, mergeRequest);
+			const hostState = toReviewState(mergeRequest);
+			onHostStatus(hostState);
+			if (hostState === 'merged' || hostState === 'closed') {
+				throw new ConflictError(
+					`The merge request is already ${hostState} on GitLab. Reload the Inbox.`,
+				);
+			}
+		} else if (remoteError) {
+			onHostStatus(remoteError);
+			if (remoteError === 'unreachable') {
+				throw new ServiceUnavailableError("GitLab didn't answer. Try again.");
+			}
+		}
+
+		const at = new Date();
+		const staleBefore = new Date(at.getTime() - APPROVAL_CLAIM_TTL_MS);
+		if (!(await this.reviewRepository.closeByUser(review.id, at, staleBefore))) {
+			const current = await this.reviewRepository.findByIdWithRelations(review.id);
+			if (current?.state === 'merged' || current?.state === 'closed') {
+				throw new ConflictError(`This promotion review is already ${current.state}.`);
+			}
+			throw new ConflictError(
+				'Someone is approving this promotion review. Wait for the approval to finish, then reload the Inbox.',
+			);
+		}
+		review.state = 'closed';
+		review.lastStateChangeAt = at;
+		return toItem(review, run, view);
 	}
 
 	private async approveReview(

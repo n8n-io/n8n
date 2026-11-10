@@ -379,6 +379,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'promotion-applied': (event) => this.promotionApplied(event),
 			'promotion-merge-request-opened': (event) => this.promotionMergeRequestOpened(event),
 			'promotion-review-approved': (event) => this.promotionReviewApproved(event),
+			'promotion-review-closed': (event) => this.promotionReviewClosed(event),
 			'custom-role-created': (event) => this.customRoleCreated(event),
 			'custom-role-updated': (event) => this.customRoleUpdated(event),
 			'custom-role-deleted': (event) => this.customRoleDeleted(event),
@@ -3147,6 +3148,30 @@ export class TelemetryEventRelay extends EventRelay {
 			environment_id: environmentId,
 			review_type: reviewType,
 			review_age_ms: reviewAgeMs,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+		});
+	}
+
+	private promotionReviewClosed({
+		user,
+		reviewId,
+		environmentId,
+		reviewType,
+		reviewAgeMs,
+		hostStatus,
+		outcome,
+		failureKind,
+		durationMs,
+	}: RelayEventMap['promotion-review-closed']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CLOSED_PROMOTION_REVIEW, {
+			user_id: user.id,
+			promotion_review_id: reviewId,
+			environment_id: environmentId,
+			review_type: reviewType,
+			review_age_ms: reviewAgeMs,
+			host_status: hostStatus,
 			outcome,
 			failure_kind: failureKind,
 			duration_ms: durationMs,

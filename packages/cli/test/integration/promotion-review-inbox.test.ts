@@ -691,4 +691,138 @@ describe('Promotion reviews in the Inbox', () => {
 			expect(await approvedById(live)).toBe(other.id);
 		});
 	});
+
+	describe('close', () => {
+		const close = async (user: User, reviewId: string) =>
+			await testServer.authAgentFor(user).post(`/promotions/reviews/${reviewId}/close`);
+
+		const stateOf = async (reviewId: string) =>
+			(await reviewRepository.findOneByOrFail({ id: reviewId })).state;
+
+		it('closes a review in n8n only, and a later Inbox sync does not open it again', async () => {
+			const reviewId = await insertReview(1);
+			// GitLab keeps answering that the merge request is open.
+			gitlab({ 1: { state: 'opened' } });
+			const writes = gitlabWrites(1);
+			const admin = await createAdmin();
+
+			const response = await close(admin, reviewId);
+
+			expect(response.status, JSON.stringify(response.body)).toBe(200);
+			expect(response.body.data).toMatchObject({
+				id: reviewId,
+				state: 'closed',
+				reviewState: 'closed',
+			});
+			expect(writes).toEqual([]);
+
+			// The list and the counters sync every open review with the host. A closed one is not open.
+			const closed = (await inbox(admin, { state: 'closed' })).body.data;
+			expect(closed.data).toEqual([
+				expect.objectContaining({ id: reviewId, reviewState: 'closed' }),
+			]);
+			expect((await inbox(admin, { state: 'open' })).body.data.data).toEqual([]);
+			expect(await stateOf(reviewId)).toBe('closed');
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-closed',
+				expect.objectContaining({
+					reviewId,
+					reviewType: 'gitlab',
+					hostStatus: 'open',
+					outcome: 'closed',
+					durationMs: expect.any(Number),
+				}),
+			);
+		});
+
+		it('closes a review on which a reviewer requested changes', async () => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: { state: 'opened', detailed_merge_status: 'requested_changes' } });
+
+			expect((await close(await createAdmin(), reviewId)).status).toBe(200);
+			expect(await stateOf(reviewId)).toBe('closed');
+		});
+
+		it('refuses a member and answers 404 for an unknown review', async () => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: { state: 'opened' } });
+
+			expect((await close(await createMember(), reviewId)).status).toBe(403);
+			expect(await stateOf(reviewId)).toBe('open');
+			expect((await close(await createAdmin(), uuidv7())).status).toBe(404);
+		});
+
+		it.each(['merged', 'closed'] as const)(
+			'records a merge request that already %s on GitLab, and refuses the close',
+			async (state) => {
+				const reviewId = await insertReview(1);
+				gitlab({ 1: { state } });
+
+				const response = await close(await createAdmin(), reviewId);
+
+				expect(response.status).toBe(409);
+				expect(await stateOf(reviewId)).toBe(state);
+			},
+		);
+
+		it('refuses a review that is already closed in n8n', async () => {
+			const reviewId = await insertReview(1);
+			await reviewRepository.update({ id: reviewId }, { state: 'closed' });
+
+			expect((await close(await createAdmin(), reviewId)).status).toBe(409);
+			// n8n never asked GitLab, so the event names no host status.
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-closed',
+				expect.objectContaining({ hostStatus: null, outcome: 'failed', failureKind: 'user' }),
+			);
+		});
+
+		it('keeps the review open and asks to try again when GitLab does not answer', async () => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: 503 });
+
+			const response = await close(await createAdmin(), reviewId);
+
+			expect(response.status).toBe(503);
+			expect(response.body.message).toContain('Try again');
+			expect(await stateOf(reviewId)).toBe('open');
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-closed',
+				expect.objectContaining({ hostStatus: 'unreachable', outcome: 'failed' }),
+			);
+		});
+
+		it('closes a review that GitLab cannot find, or whose environment no longer uses GitLab', async () => {
+			const missing = await insertReview(1);
+			const withoutHost = await insertReview(2, {
+				environmentId: await createGitEnvironment('git'),
+			});
+			gitlab({});
+			const admin = await createAdmin();
+
+			expect((await close(admin, missing)).status).toBe(200);
+			expect((await close(admin, withoutHost)).status).toBe(200);
+			expect(await stateOf(missing)).toBe('closed');
+			expect(await stateOf(withoutHost)).toBe('closed');
+		});
+
+		it('refuses a review with a live approval claim, and closes one with an old claim', async () => {
+			const live = await insertReview(1);
+			const stale = await insertReview(2);
+			const approver = await createAdmin();
+			const claimedAgo = async (reviewId: string, ms: number) =>
+				await reviewRepository.update(
+					{ id: reviewId },
+					{ approvedById: approver.id, approvedAt: new Date(Date.now() - ms) },
+				);
+			await claimedAgo(live, 30_000);
+			await claimedAgo(stale, 3 * 60_000);
+			gitlab({ 1: { state: 'opened' }, 2: { state: 'opened' } });
+			const admin = await createAdmin();
+
+			expect((await close(admin, live)).status).toBe(409);
+			expect(await stateOf(live)).toBe('open');
+			expect((await close(admin, stale)).status).toBe(200);
+		});
+	});
 });

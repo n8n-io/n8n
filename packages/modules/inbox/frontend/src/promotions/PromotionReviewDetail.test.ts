@@ -5,12 +5,13 @@ import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { defineComponent } from 'vue';
 import { onTestFinished } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import PromotionReviewDetail from './PromotionReviewDetail.vue';
-import { approvePromotionReview } from './promotionReviews.api';
+import { approvePromotionReview, closePromotionReview } from './promotionReviews.api';
 
 vi.mock('./promotionReviews.api');
 vi.mock('@n8n/composables/useToast', () => ({ useToast: vi.fn() }));
@@ -257,5 +258,100 @@ it('reloads the changes when GitLab reports new commits, then approves the new h
 
 	expect(approvePromotionReview).toHaveBeenCalledWith(expect.anything(), 'rev-1', {
 		headCommitSha: newHead,
+	});
+});
+
+describe('close', () => {
+	const closeInDialog = async ({ getByRole, getByTestId }: ReturnType<typeof renderComponent>) => {
+		await userEvent.click(getByTestId('inbox-promotion-review-close'));
+		await userEvent.click(
+			within(getByRole('dialog')).getByRole('button', { name: 'Close review' }),
+		);
+	};
+
+	beforeEach(() => {
+		vi.mocked(useRBACStore().hasScope).mockReturnValue(true);
+	});
+
+	it('hides Close from a user without the approve scope', () => {
+		vi.mocked(useRBACStore().hasScope).mockReturnValue(false);
+		const { queryByTestId } = renderComponent({ props: { item: item(), onItemChange } });
+
+		expect(queryByTestId('inbox-promotion-review-close')).not.toBeInTheDocument();
+	});
+
+	it('hides Close on a review that already ended', () => {
+		const { queryByTestId } = renderComponent({
+			props: { item: item({ state: 'closed', reviewState: 'closed' }), onItemChange },
+		});
+
+		expect(queryByTestId('inbox-promotion-review-close')).not.toBeInTheDocument();
+	});
+
+	it('warns that the merge request stays open on GitLab, and closes nothing on Cancel', async () => {
+		const { getByRole, getByTestId } = renderComponent({ props: { item: item(), onItemChange } });
+
+		await userEvent.click(getByTestId('inbox-promotion-review-close'));
+		expect(within(getByRole('dialog')).getByText(/stays open on GitLab/)).toBeInTheDocument();
+		await userEvent.click(within(getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+
+		expect(closePromotionReview).not.toHaveBeenCalled();
+	});
+
+	it('closes the review and reports the new state', async () => {
+		vi.mocked(closePromotionReview).mockResolvedValue(
+			item({ state: 'closed', reviewState: 'closed', updatedAt: '2026-02-01T00:00:00.000Z' }),
+		);
+		const rendered = renderComponent({ props: { item: item(), onItemChange } });
+
+		await closeInDialog(rendered);
+
+		expect(closePromotionReview).toHaveBeenCalledWith(expect.anything(), 'rev-1');
+		await waitFor(() =>
+			expect(onItemChange).toHaveBeenCalledWith({
+				type: 'promotion_review',
+				id: 'rev-1',
+				state: 'closed',
+				updatedAt: '2026-02-01T00:00:00.000Z',
+			}),
+		);
+	});
+
+	it('shows the error and reloads the list when the close fails', async () => {
+		const error = new Error('GitLab did not answer. Try again.');
+		vi.mocked(closePromotionReview).mockRejectedValue(error);
+		const rendered = renderComponent({ props: { item: item(), onItemChange } });
+
+		await closeInDialog(rendered);
+
+		await waitFor(() => expect(showError).toHaveBeenCalledWith(error, "Couldn't close review"));
+		expect(onItemChange).toHaveBeenCalledWith({ type: 'promotion_review', id: 'rev-1' });
+	});
+
+	it.each([
+		['changes are requested', { reviewState: 'changes_requested' as const }],
+		['the merge request has conflicts', { hasConflicts: true }],
+		['GitLab is unreachable', { remoteError: 'unreachable' as const }],
+		['GitLab cannot find the merge request', { remoteError: 'not_found' as const }],
+		['the GitLab settings fail', { remoteError: 'auth' as const }],
+	])('keeps Close enabled when %s', async (_case, props) => {
+		const { getByTestId } = renderComponent({ props: { item: item(props), onItemChange } });
+
+		await waitFor(() => expect(getByTestId('inbox-promotion-review-close')).toBeEnabled());
+	});
+
+	it('enables Close at once on a review without an environment, which has no Changes tab', () => {
+		const { getByTestId } = renderComponent({
+			props: { item: item({ remoteError: 'no_connection' }), onItemChange },
+		});
+
+		expect(getByTestId('inbox-promotion-review-close')).toBeEnabled();
+	});
+
+	it('disables Close while the changes load', () => {
+		shownChanges = { status: 'loading' };
+		const { getByTestId } = renderComponent({ props: { item: item(), onItemChange } });
+
+		expect(getByTestId('inbox-promotion-review-close')).toBeDisabled();
 	});
 });
