@@ -1,5 +1,10 @@
 import type { LicenseState } from '@n8n/backend-common';
-import type { AuthenticatedRequest } from '@n8n/db';
+import {
+	GLOBAL_OWNER_ROLE,
+	ServiceAccount,
+	ServiceAccountDetails,
+	type AuthenticatedRequest,
+} from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
@@ -231,6 +236,70 @@ describe('RoleMappingRuleController', () => {
 				id: ruleId,
 				userId: req.user.id,
 				userEmail: req.user.email,
+			});
+		});
+	});
+
+	describe('when the acting account is a service account', () => {
+		const ruleId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+		const serviceAccount = Object.assign(new ServiceAccount(), {
+			id: 'sa-1',
+			role: GLOBAL_OWNER_ROLE,
+			details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+		});
+		const req = mock<AuthenticatedRequest>({ user: serviceAccount });
+		const res = mock<Response>();
+		const rule: RoleMappingRuleResponse = {
+			id: ruleId,
+			expression: 'true',
+			role: 'global:admin',
+			type: 'instance',
+			order: 0,
+			projectIds: [],
+			createdAt: '2025-01-01T00:00:00.000Z',
+			updatedAt: '2025-01-01T00:00:00.000Z',
+		};
+
+		beforeEach(() => {
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+		});
+
+		it('passes the service account id and no email when moving a rule', async () => {
+			roleMappingRuleService.move.mockResolvedValue(rule);
+
+			await controller.move(req, res, { targetIndex: 2 }, ruleId);
+
+			expect(roleMappingRuleService.move).toHaveBeenCalledWith({
+				id: ruleId,
+				targetIndex: 2,
+				userId: 'sa-1',
+				userEmail: undefined,
+			});
+		});
+
+		it('passes the service account id and no email when updating a rule', async () => {
+			roleMappingRuleService.patch.mockResolvedValue(rule);
+			const patchBody = { expression: 'claims.updated === true' };
+
+			await controller.patch(req, res, patchBody, ruleId);
+
+			expect(roleMappingRuleService.patch).toHaveBeenCalledWith({
+				id: ruleId,
+				dto: patchBody,
+				userId: 'sa-1',
+				userEmail: undefined,
+			});
+		});
+
+		it('passes the service account id and no email when deleting a rule', async () => {
+			roleMappingRuleService.delete.mockResolvedValue(rule);
+
+			await controller.delete(req, res, ruleId);
+
+			expect(roleMappingRuleService.delete).toHaveBeenCalledWith({
+				id: ruleId,
+				userId: 'sa-1',
+				userEmail: undefined,
 			});
 		});
 	});

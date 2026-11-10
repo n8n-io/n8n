@@ -5,6 +5,7 @@ import {
 	JwtService,
 	RedisClientService,
 	PostHogClient,
+	Subscriber,
 } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
@@ -35,7 +36,6 @@ import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { JobProcessor } from '@/scaling/job-processor';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WorkerServer } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';

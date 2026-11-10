@@ -106,6 +106,36 @@ describe('AssistantAgentPanelThread', () => {
 		clearPendingHandoffContext('thread-1');
 	});
 
+	it('passes the preview ref to the composer without reading its frames', async () => {
+		const placeholderPreview = ref<string | undefined>('Build');
+		const Host = defineComponent({
+			setup: () => () =>
+				h(AssistantAgentPanelThread, {
+					threadId: 'thread-1',
+					subject,
+					newSession: true,
+					placeholderPreview,
+				}),
+		});
+		const wrapper = mount(Host);
+		await flushPromises();
+		expect(panelProps.current['placeholder-preview']).toBe(placeholderPreview);
+		placeholderPreview.value = 'Build me an agent';
+		await flushPromises();
+		expect(panelProps.current['placeholder-preview']).toBe(placeholderPreview);
+		wrapper.unmount();
+	});
+
+	it('passes visibility and draft changes between the builder and the chat', async () => {
+		const wrapper = await render();
+		expect(panelProps.current.autofocus).toBe('');
+		await wrapper.setProps({ visible: false });
+		expect(panelProps.current.visible).toBe(false);
+		const onContentChange = panelProps.current.onContentChange as (hasContent: boolean) => void;
+		onContentChange(true);
+		expect(wrapper.emitted('content-change')).toEqual([[true]]);
+	});
+
 	it('opens a new thread of the Assistant agent on the system channel', async () => {
 		await render();
 

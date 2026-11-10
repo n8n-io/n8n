@@ -72,11 +72,7 @@ import {
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
-import {
-	areAgentToolsAvailable,
-	arePreferenceToolsEnabled,
-	isCommunityNodeInstallAvailable,
-} from './mcp-tool-availability';
+import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
 	McpAuthContext,
@@ -170,8 +166,6 @@ export type McpFeatureFlags = {
 	mcpApps: McpAppsResolution;
 	/** Enables context tools, the context resource, and the context instructions. */
 	instanceContextEnabled: boolean;
-	/** The `get_user_preferences` tool. */
-	aiPreferencesEnabled: boolean;
 	skillsExtensionEnabled?: boolean;
 };
 
@@ -313,7 +307,6 @@ export class McpService {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
-			aiPreferencesEnabled: arePreferenceToolsEnabled(flags),
 			skillsExtensionEnabled: flags[MCP_SKILLS_EXTENSION_FLAG] === true,
 		};
 	}
@@ -528,8 +521,7 @@ export class McpService {
 		// Gates the sentence only; registration below goes through `registerIfAllowed` like every
 		// other tool. No RBAC check: a user's own preferences need no scope.
 		const userPreferencesInstructionsEnabled =
-			featureFlags.aiPreferencesEnabled &&
-			(allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
+			allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true;
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
@@ -837,34 +829,30 @@ export class McpService {
 
 		// Not builder-gated: preferences apply to Agents, data tables and folders as well as
 		// workflows, so a caller without the builder still has changes to apply them to.
-		if (featureFlags.aiPreferencesEnabled) {
-			registerIfAllowed(
-				createGetUserPreferencesTool(user, this.aiPreferenceService, this.telemetry),
-			);
-			// The write path. Gated by `aiPreference:write` at registration; the service applies the
-			// same rules as the settings area, and `source` is fixed to `mcp` inside the tools.
-			registerIfAllowed(
-				createSaveUserPreferenceTool(
-					user,
-					this.aiPreferenceService,
-					this.telemetry,
-					this.urlService,
-					this.logger,
-				),
-			);
-			registerIfAllowed(
-				createUpdateUserPreferenceTool(
-					user,
-					this.aiPreferenceService,
-					this.telemetry,
-					this.urlService,
-					this.logger,
-				),
-			);
-			registerIfAllowed(
-				createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
-			);
-		}
+		registerIfAllowed(createGetUserPreferencesTool(user, this.aiPreferenceService, this.telemetry));
+		// The write path. Gated by `aiPreference:write` at registration; the service applies the
+		// same rules as the settings area, and `source` is fixed to `mcp` inside the tools.
+		registerIfAllowed(
+			createSaveUserPreferenceTool(
+				user,
+				this.aiPreferenceService,
+				this.telemetry,
+				this.urlService,
+				this.logger,
+			),
+		);
+		registerIfAllowed(
+			createUpdateUserPreferenceTool(
+				user,
+				this.aiPreferenceService,
+				this.telemetry,
+				this.urlService,
+				this.logger,
+			),
+		);
+		registerIfAllowed(
+			createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
+		);
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {

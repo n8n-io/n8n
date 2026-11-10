@@ -1,6 +1,10 @@
 import { createScopedWorkspace } from '@n8n/agents';
 import type { Workspace } from '@n8n/agents';
-import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
+import {
+	DAYTONA_WORKSPACE_ROOT,
+	getWorkspaceRoot,
+	PORTABLE_WORKSPACE_ROOT,
+} from '@n8n/agents/sandbox';
 import { applyBranchReadOnlyOverrides, buildProxyHeaders } from '@n8n/api-types';
 import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
@@ -87,7 +91,6 @@ export interface AssistantTurnEnvironment {
 	memoryModelId: ModelConfig | undefined;
 	orchestrationContext: OrchestrationContext;
 	conversationHistory: ScopedConversationHistory | undefined;
-	aiPreferencesEnabled: boolean;
 	instanceContextEnabled: boolean;
 	nodeUsageEnabled: boolean;
 	skillScope: InstanceAiSkillScope;
@@ -279,7 +282,6 @@ export class AssistantTurnEnvironmentFactory {
 			setupPanelVariant,
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
 			assistantSkillsEnabled,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
@@ -330,7 +332,6 @@ export class AssistantTurnEnvironmentFactory {
 			folderExplorationEnabled,
 			onboardingThread,
 			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
 			assistantSkillsEnabled,
 			modelId,
 			modelFetch: this.modelService.getModelFetch(),
@@ -442,6 +443,7 @@ export class AssistantTurnEnvironmentFactory {
 		const sandboxStatus = this.settingsService.getSandboxStatus();
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
+		let fallbackWorkspaceRoot: string | undefined;
 
 		if (sandboxStatus.workflowBuilderAvailable) {
 			const sandboxConfig = await this.instanceAiErrorReporter.withBoundary(
@@ -451,7 +453,11 @@ export class AssistantTurnEnvironmentFactory {
 			);
 
 			if (sandboxConfig.enabled) {
-				workspaceRoot = getPromptWorkspaceRoot(sandboxConfig.provider);
+				// The same text for every provider keeps the prompt independent of the provider.
+				// Older Daytona sandboxes link this root to the Daytona root, so the tools also
+				// accept paths under the Daytona root.
+				workspaceRoot = PORTABLE_WORKSPACE_ROOT;
+				fallbackWorkspaceRoot = DAYTONA_WORKSPACE_ROOT;
 
 				const scopeWorkspaceForAgent = async (
 					workspace: Workspace | undefined,
@@ -492,6 +498,7 @@ export class AssistantTurnEnvironmentFactory {
 
 		context.workspace = runtimeWorkspace;
 		context.workspaceRoot = workspaceRoot;
+		context.fallbackWorkspaceRoot = fallbackWorkspaceRoot;
 		context.threadId = threadId;
 		context.threadMemory = memory;
 		// Tool-emitted telemetry is an open-ended property bag (search queries,
@@ -574,7 +581,6 @@ export class AssistantTurnEnvironmentFactory {
 			memoryModelId,
 			orchestrationContext,
 			conversationHistory,
-			aiPreferencesEnabled,
 			// Reuse the gate results so a rollout change cannot split this turn.
 			instanceContextEnabled,
 			nodeUsageEnabled,

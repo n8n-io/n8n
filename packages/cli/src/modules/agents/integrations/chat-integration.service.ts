@@ -12,6 +12,7 @@ import {
 	OnLeaderStepdown,
 	OnPubSubEvent,
 	OnShutdown,
+	type PubSubCommandMap,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -21,7 +22,6 @@ import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { UrlService } from '@n8n/backend-services';
 
 import { AgentChatBridge } from './agent-chat-bridge';

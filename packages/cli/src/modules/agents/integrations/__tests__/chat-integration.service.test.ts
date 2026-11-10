@@ -10,8 +10,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { StateAdapter } from 'chat';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { UrlService, Publisher } from '@n8n/backend-services';
 
 import { AgentChangePublisher } from '../../agent-change-publisher.service';
 import { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';

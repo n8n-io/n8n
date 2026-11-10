@@ -268,22 +268,11 @@ function onOpenAutoFocus(event: Event) {
 					</slot>
 				</N8nDialogFooter>
 			</div>
-			<Transition
-				:enter-active-class="$style.sidePanelMotion"
-				:leave-active-class="$style.sidePanelMotion"
-				:enter-from-class="$style.sidePanelHidden"
-				:leave-to-class="$style.sidePanelHidden"
-			>
-				<aside
-					v-if="$slots.sidePanel"
-					:class="$style.sidePanel"
-					data-testid="agent-modal-side-panel"
-				>
-					<div :class="$style.sidePanelScroll">
-						<slot name="sidePanel" />
-					</div>
-				</aside>
-			</Transition>
+			<aside v-if="$slots.sidePanel" :class="$style.sidePanel" data-testid="agent-modal-side-panel">
+				<div :class="$style.sidePanelScroll">
+					<slot name="sidePanel" />
+				</div>
+			</aside>
 		</div>
 	</N8nDialog>
 </template>
@@ -454,26 +443,7 @@ function onOpenAutoFocus(event: Event) {
 	border-left: var(--border);
 }
 
-/* The panel slides in from the right: its width grows while the content fades in. */
-.sidePanelMotion {
-	transition:
-		width var(--duration--base) var(--easing--ease-out),
-		opacity var(--duration--base) var(--easing--ease-out);
-}
-
-.sidePanelHidden {
-	width: 0;
-	opacity: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.sidePanelMotion {
-		transition: none;
-	}
-}
-
-/* The panel takes the height of the body and the footer, and a long panel scrolls. Its content
-   keeps the full width, so nothing wraps again while the panel slides. */
+/* The panel takes the height of the body and the footer, and a long panel scrolls. */
 .sidePanelScroll {
 	position: absolute;
 	inset: 0 0 0 auto;

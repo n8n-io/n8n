@@ -7,7 +7,16 @@ import { type EventService, type UrlService, type PostHogClient } from '@n8n/bac
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { TransactionRunner, type User, type OperationContext } from '@n8n/db';
+import type { TransactionRunner } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	Person,
+	ServiceAccount,
+	ServiceAccountDetails,
+	type User,
+	type OperationContext,
+} from '@n8n/db';
 import type { Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -20,9 +29,10 @@ import { UserManagementMailer } from '@/user-management/email';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
+import type { UserConsent } from '../database/entities/oauth-user-consent.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
-import { OAuthGrantRepository } from '../database/repositories/oauth-grant.repository';
+import type { OAuthGrantRepository } from '../database/repositories/oauth-grant.repository';
 import { OAuthGrantService } from '../oauth-grant.service';
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
 import { OAuthConsentService } from '../oauth-consent.service';
@@ -133,7 +143,7 @@ describe('OAuthServerService', () => {
 					clientSecretExpiresAt: null,
 				} as OAuthClient;
 
-				oauthClientRepository.findOneBy.mockResolvedValue(client);
+				oauthClientRepository.findById.mockResolvedValue(client);
 
 				const result = await service.clientsStore.getClient('client-123');
 
@@ -161,7 +171,7 @@ describe('OAuthServerService', () => {
 					clientSecretExpiresAt: 1234567890,
 				} as OAuthClient;
 
-				oauthClientRepository.findOneBy.mockResolvedValue(client);
+				oauthClientRepository.findById.mockResolvedValue(client);
 
 				const result = await service.clientsStore.getClient('client-123');
 
@@ -172,7 +182,7 @@ describe('OAuthServerService', () => {
 			});
 
 			it('should return undefined when client not found', async () => {
-				oauthClientRepository.findOneBy.mockResolvedValue(null);
+				oauthClientRepository.findById.mockResolvedValue(null);
 
 				const result = await service.clientsStore.getClient('nonexistent');
 
@@ -243,11 +253,11 @@ describe('OAuthServerService', () => {
 			});
 
 			it('lazily upserts and returns a virtual client on a DB miss for a first-party resource', async () => {
-				oauthClientRepository.findOneBy.mockResolvedValue(null);
+				oauthClientRepository.findById.mockResolvedValue(null);
 
 				const result = await firstPartyService.clientsStore.getClient(FIRST_PARTY_URL);
 
-				expect(oauthClientRepository.upsert).toHaveBeenCalledWith(
+				expect(oauthClientRepository.upsertVirtualClient).toHaveBeenCalledWith(
 					{
 						id: FIRST_PARTY_URL,
 						name: 'My Form',
@@ -260,7 +270,7 @@ describe('OAuthServerService', () => {
 						clientSecretExpiresAt: null,
 						isFirstParty: true,
 					},
-					['id'],
+					{},
 				);
 				expect(result).toEqual({
 					client_id: FIRST_PARTY_URL,
@@ -275,11 +285,11 @@ describe('OAuthServerService', () => {
 			});
 
 			it('lazily upserts and returns a virtual client for a chat trigger resource URL', async () => {
-				oauthClientRepository.findOneBy.mockResolvedValue(null);
+				oauthClientRepository.findById.mockResolvedValue(null);
 
 				const result = await firstPartyService.clientsStore.getClient(CHAT_FIRST_PARTY_URL);
 
-				expect(oauthClientRepository.upsert).toHaveBeenCalledWith(
+				expect(oauthClientRepository.upsertVirtualClient).toHaveBeenCalledWith(
 					{
 						id: CHAT_FIRST_PARTY_URL,
 						name: 'My Chat',
@@ -290,7 +300,7 @@ describe('OAuthServerService', () => {
 						clientSecretExpiresAt: null,
 						isFirstParty: true,
 					},
-					['id'],
+					{},
 				);
 				expect(result).toMatchObject({
 					client_id: CHAT_FIRST_PARTY_URL,
@@ -302,16 +312,16 @@ describe('OAuthServerService', () => {
 			// The persisted row is only an FK placeholder; the live resource decides. Covers
 			// a webhook switched to bearer-only after its virtual client was already created.
 			it('returns undefined for a persisted first-party row whose resource is no longer first-party', async () => {
-				oauthClientRepository.findOneBy.mockResolvedValue(firstPartyRow(NON_FIRST_PARTY_URL));
+				oauthClientRepository.findById.mockResolvedValue(firstPartyRow(NON_FIRST_PARTY_URL));
 
 				const result = await firstPartyService.clientsStore.getClient(NON_FIRST_PARTY_URL);
 
 				expect(result).toBeUndefined();
-				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+				expect(oauthClientRepository.upsertVirtualClient).not.toHaveBeenCalled();
 			});
 
 			it('returns a persisted first-party row while its resource is still first-party', async () => {
-				oauthClientRepository.findOneBy.mockResolvedValue(firstPartyRow(FIRST_PARTY_URL));
+				oauthClientRepository.findById.mockResolvedValue(firstPartyRow(FIRST_PARTY_URL));
 
 				const result = await firstPartyService.clientsStore.getClient(FIRST_PARTY_URL);
 
@@ -367,51 +377,51 @@ describe('OAuthServerService', () => {
 			])(
 				'returns undefined and does not upsert when the client_id is the resource URL with %s',
 				async (_, clientId) => {
-					oauthClientRepository.findOneBy.mockResolvedValue(null);
+					oauthClientRepository.findById.mockResolvedValue(null);
 
 					const result =
 						await buildServiceWithQueryIgnoringResolver().clientsStore.getClient(clientId);
 
 					expect(result).toBeUndefined();
-					expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+					expect(oauthClientRepository.upsertVirtualClient).not.toHaveBeenCalled();
 				},
 			);
 
 			it('upserts the virtual client when the client_id is the canonical resource URL', async () => {
-				oauthClientRepository.findOneBy.mockResolvedValue(null);
+				oauthClientRepository.findById.mockResolvedValue(null);
 
 				const result =
 					await buildServiceWithQueryIgnoringResolver().clientsStore.getClient(FIRST_PARTY_URL);
 
 				expect(result).toMatchObject({ client_id: FIRST_PARTY_URL });
-				expect(oauthClientRepository.upsert).toHaveBeenCalledWith(
+				expect(oauthClientRepository.upsertVirtualClient).toHaveBeenCalledWith(
 					expect.objectContaining({ id: FIRST_PARTY_URL, redirectUris: [FIRST_PARTY_URL] }),
-					['id'],
+					{},
 				);
 			});
 
 			it('returns undefined and does not upsert when the resolved resource is not first-party', async () => {
-				oauthClientRepository.findOneBy.mockResolvedValue(null);
+				oauthClientRepository.findById.mockResolvedValue(null);
 
 				const result = await firstPartyService.clientsStore.getClient(NON_FIRST_PARTY_URL);
 
 				expect(result).toBeUndefined();
-				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+				expect(oauthClientRepository.upsertVirtualClient).not.toHaveBeenCalled();
 			});
 
 			it('returns undefined and does not upsert when no resource resolves', async () => {
-				oauthClientRepository.findOneBy.mockResolvedValue(null);
+				oauthClientRepository.findById.mockResolvedValue(null);
 
 				const result = await firstPartyService.clientsStore.getClient(
 					'https://n8n.example.com/form/unknown',
 				);
 
 				expect(result).toBeUndefined();
-				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+				expect(oauthClientRepository.upsertVirtualClient).not.toHaveBeenCalled();
 			});
 
 			it('short-circuits without consulting the resolver registry for a non-webhook client_id', async () => {
-				oauthClientRepository.findOneBy.mockResolvedValue(null);
+				oauthClientRepository.findById.mockResolvedValue(null);
 				const registry = new ProtectedResourceRegistry(mock<Logger>());
 				const getByResourceUrl = vi.spyOn(registry, 'getByResourceUrl');
 				const svc = new OAuthServerService(
@@ -435,25 +445,25 @@ describe('OAuthServerService', () => {
 
 				expect(result).toBeUndefined();
 				expect(getByResourceUrl).not.toHaveBeenCalled();
-				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+				expect(oauthClientRepository.upsertVirtualClient).not.toHaveBeenCalled();
 			});
 		});
 
 		describe('registered-client cap excludes first-party clients', () => {
 			it('counts only non-first-party clients for the limit check', async () => {
-				oauthClientRepository.countBy.mockResolvedValue(0);
+				oauthClientRepository.countRegistered.mockResolvedValue(0);
 
 				await service.isClientLimitReached();
 
-				expect(oauthClientRepository.countBy).toHaveBeenCalledWith({ isFirstParty: false });
+				expect(oauthClientRepository.countRegistered).toHaveBeenCalledWith({});
 			});
 
 			it('counts only non-first-party clients for the instance stats', async () => {
-				oauthClientRepository.countBy.mockResolvedValue(0);
+				oauthClientRepository.countRegistered.mockResolvedValue(0);
 
 				await service.getInstanceClientStats();
 
-				expect(oauthClientRepository.countBy).toHaveBeenCalledWith({ isFirstParty: false });
+				expect(oauthClientRepository.countRegistered).toHaveBeenCalledWith({});
 			});
 		});
 
@@ -471,20 +481,23 @@ describe('OAuthServerService', () => {
 					tos_uri: undefined,
 				};
 
-				oauthClientRepository.insert.mockResolvedValue({} as any);
+				oauthClientRepository.registerClient.mockResolvedValue(undefined);
 
 				const result = await service.clientsStore.registerClient!(clientInfo);
 
-				expect(oauthClientRepository.insert).toHaveBeenCalledWith({
-					id: 'new-client-123',
-					name: 'New Client',
-					redirectUris: ['https://example.com/callback'],
-					grantTypes: ['authorization_code', 'refresh_token'],
-					clientSecret: null,
-					clientSecretExpiresAt: null,
-					tokenEndpointAuthMethod: 'none',
-					isFirstParty: false,
-				});
+				expect(oauthClientRepository.registerClient).toHaveBeenCalledWith(
+					{
+						id: 'new-client-123',
+						name: 'New Client',
+						redirectUris: ['https://example.com/callback'],
+						grantTypes: ['authorization_code', 'refresh_token'],
+						clientSecret: null,
+						clientSecretExpiresAt: null,
+						tokenEndpointAuthMethod: 'none',
+						isFirstParty: false,
+					},
+					{},
+				);
 				expect(result).toEqual(clientInfo);
 			});
 
@@ -503,20 +516,23 @@ describe('OAuthServerService', () => {
 					tos_uri: undefined,
 				};
 
-				oauthClientRepository.insert.mockResolvedValue({} as any);
+				oauthClientRepository.registerClient.mockResolvedValue(undefined);
 
 				await service.clientsStore.registerClient!(clientInfo);
 
-				expect(oauthClientRepository.insert).toHaveBeenCalledWith({
-					id: 'new-client-123',
-					name: 'New Client',
-					redirectUris: ['https://example.com/callback'],
-					grantTypes: ['authorization_code'],
-					clientSecret: 'secret-123',
-					clientSecretExpiresAt: 1234567890,
-					tokenEndpointAuthMethod: 'client_secret_post',
-					isFirstParty: false,
-				});
+				expect(oauthClientRepository.registerClient).toHaveBeenCalledWith(
+					{
+						id: 'new-client-123',
+						name: 'New Client',
+						redirectUris: ['https://example.com/callback'],
+						grantTypes: ['authorization_code'],
+						clientSecret: 'secret-123',
+						clientSecretExpiresAt: 1234567890,
+						tokenEndpointAuthMethod: 'client_secret_post',
+						isFirstParty: false,
+					},
+					{},
+				);
 			});
 
 			it('should handle save errors gracefully', async () => {
@@ -533,7 +549,7 @@ describe('OAuthServerService', () => {
 				};
 
 				const error = new Error('Database error');
-				oauthClientRepository.insert.mockRejectedValue(error);
+				oauthClientRepository.registerClient.mockRejectedValue(error);
 
 				await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
 					'Database error',
@@ -554,7 +570,7 @@ describe('OAuthServerService', () => {
 				};
 
 				beforeEach(() => {
-					oauthClientRepository.insert.mockResolvedValue({} as any);
+					oauthClientRepository.registerClient.mockResolvedValue(undefined);
 				});
 
 				it('accepts a client_name at the maximum length', async () => {
@@ -791,7 +807,7 @@ describe('OAuthServerService', () => {
 			beforeEach(() => {
 				getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
 				authService.getCookieToken.mockReturnValue('valid-cookie');
-				authService.authenticateUserByCookie.mockResolvedValue(mock<User>({ id: 'user-1' }));
+				authService.authenticateUserByCookie.mockResolvedValue(mock<Person>({ id: 'user-1' }));
 			});
 
 			it('mints a code and skips the consent screen when a grant is reused', async () => {
@@ -1676,34 +1692,56 @@ describe('OAuthServerService', () => {
 		});
 	});
 
-	describe('deleteClient', () => {
-		// The GC step deletes the client through a single conditional query
-		// (`DELETE ... WHERE id = :clientId AND NOT EXISTS (<remaining consents>)`),
-		// so both repositories are driven via query builders rather than the
-		// repository `delete()` shortcut. `affected` decides whether the client
-		// row was actually removed.
-		const mockGarbageCollect = (affected: number) => {
-			(userConsentRepository as any).metadata = { tableName: 'oauth_user_consents' };
-			const execute = vi.fn().mockResolvedValue({ affected });
-			(oauthClientRepository.createQueryBuilder as unknown as Mock).mockReturnValue({
-				delete: () => ({ from: () => ({ where: () => ({ execute }) }) }),
-			});
-			return execute;
-		};
+	const serviceAccount = Object.assign(new ServiceAccount(), {
+		id: 'sa-1',
+		role: GLOBAL_MEMBER_ROLE,
+		details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+	});
 
+	describe('getAllClients', () => {
+		it('shows a service account owner by its name and with an empty email', async () => {
+			const manager = Object.assign(new Person(), { id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+			userConsentRepository.findConnectedClients.mockResolvedValue({
+				rows: [
+					{
+						userId: 'sa-1',
+						clientId: 'client-123',
+						grantedAt: 1000,
+						scope: [],
+						client: { id: 'client-123', name: 'Test Client' },
+						user: serviceAccount,
+					} as unknown as UserConsent,
+				],
+				total: 1,
+			});
+			userConsentRepository.findConsentOwners.mockResolvedValue([]);
+			userConsentRepository.countConnectedConsents.mockResolvedValue(1);
+
+			const result = await service.getAllClients(manager, { ownership: 'all' });
+
+			expect(result.clients[0].owner).toEqual({
+				id: 'sa-1',
+				firstName: 'Deploy bot',
+				lastName: null,
+				email: '',
+			});
+		});
+	});
+
+	describe('deleteClient', () => {
 		it("should revoke only the user's grant and keep the client while other consents remain", async () => {
 			const client = {
 				id: 'client-123',
 				name: 'Test Client',
 			} as OAuthClient;
 
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 			userConsentRepository.findOne.mockResolvedValue({
 				userId: 'user-456',
 				clientId: 'client-123',
 				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
 			} as any);
-			const execute = mockGarbageCollect(0);
+			oauthClientRepository.deleteIfUnused.mockResolvedValue(false);
 
 			await service.deleteClient('client-123', 'user-456');
 
@@ -1716,7 +1754,11 @@ describe('OAuthServerService', () => {
 				clientId: 'client-123',
 				userId: 'user-456',
 			});
-			expect(execute).toHaveBeenCalled();
+			expect(oauthClientRepository.deleteIfUnused).toHaveBeenCalledWith('client-123', {});
+			expect(logger.info).not.toHaveBeenCalledWith(
+				'OAuth client deleted after last consent was revoked',
+				expect.anything(),
+			);
 		});
 
 		it('should garbage-collect the client when the last consent is revoked', async () => {
@@ -1725,13 +1767,13 @@ describe('OAuthServerService', () => {
 				name: 'Test Client',
 			} as OAuthClient;
 
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 			userConsentRepository.findOne.mockResolvedValue({
 				userId: 'user-456',
 				clientId: 'client-123',
 				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
 			} as any);
-			const execute = mockGarbageCollect(1);
+			oauthClientRepository.deleteIfUnused.mockResolvedValue(true);
 
 			await service.deleteClient('client-123', 'user-456');
 
@@ -1739,7 +1781,11 @@ describe('OAuthServerService', () => {
 				clientId: 'client-123',
 				userId: 'user-456',
 			});
-			expect(execute).toHaveBeenCalled();
+			expect(oauthClientRepository.deleteIfUnused).toHaveBeenCalledWith('client-123', {});
+			expect(logger.info).toHaveBeenCalledWith(
+				'OAuth client deleted after last consent was revoked',
+				{ clientId: 'client-123', clientName: 'Test Client' },
+			);
 		});
 
 		it('should notify the grant owner by email when someone else revokes their client', async () => {
@@ -1748,11 +1794,16 @@ describe('OAuthServerService', () => {
 				name: 'Test Client',
 			} as OAuthClient;
 
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			const owner = Object.assign(new Person(), {
+				id: 'user-456',
+				email: 'owner@n8n.io',
+				firstName: 'Owner',
+			});
+			oauthClientRepository.findById.mockResolvedValue(client);
 			userConsentRepository.findOne.mockResolvedValue({
 				userId: 'user-456',
 				clientId: 'client-123',
-				user: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+				user: owner,
 			} as any);
 			userConsentRepository.countBy.mockResolvedValue(1);
 			mailer.notifyMcpClientRevoked.mockResolvedValue({ emailSent: true });
@@ -1762,7 +1813,7 @@ describe('OAuthServerService', () => {
 
 			expect(mailer.notifyMcpClientRevoked).toHaveBeenCalledWith({
 				clientName: 'Test Client',
-				owner: { id: 'user-456', email: 'owner@n8n.io', firstName: 'Owner' },
+				owner,
 				revoker,
 			});
 		});
@@ -1773,7 +1824,7 @@ describe('OAuthServerService', () => {
 				name: 'Test Client',
 			} as OAuthClient;
 
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 			userConsentRepository.findOne.mockResolvedValue({
 				userId: 'user-456',
 				clientId: 'client-123',
@@ -1787,14 +1838,39 @@ describe('OAuthServerService', () => {
 			expect(mailer.notifyMcpClientRevoked).not.toHaveBeenCalled();
 		});
 
+		it('should not send an email when the grant owner is a service account', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findById.mockResolvedValue(client);
+			userConsentRepository.findOne.mockResolvedValue({
+				userId: 'sa-1',
+				clientId: 'client-123',
+				user: serviceAccount,
+			} as unknown as UserConsent);
+			userConsentRepository.countBy.mockResolvedValue(1);
+			oauthClientRepository.deleteIfUnused.mockResolvedValue(false);
+
+			const revoker = Object.assign(new Person(), { id: 'admin-1', email: 'admin@n8n.io' });
+			await service.deleteClient('client-123', 'sa-1', revoker);
+
+			expect(userConsentRepository.delete).toHaveBeenCalledWith({
+				clientId: 'client-123',
+				userId: 'sa-1',
+			});
+			expect(mailer.notifyMcpClientRevoked).not.toHaveBeenCalled();
+		});
+
 		it('should throw when client does not exist', async () => {
-			oauthClientRepository.findOne.mockResolvedValue(null);
+			oauthClientRepository.findById.mockResolvedValue(null);
 
 			await expect(service.deleteClient('nonexistent', 'user-456')).rejects.toThrow(
 				'OAuth client with ID nonexistent not found',
 			);
 
-			expect(oauthClientRepository.delete).not.toHaveBeenCalled();
+			expect(oauthClientRepository.deleteIfUnused).not.toHaveBeenCalled();
 		});
 
 		it('should throw when user has no consent for the client', async () => {
@@ -1803,14 +1879,14 @@ describe('OAuthServerService', () => {
 				name: 'Test Client',
 			} as OAuthClient;
 
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 			userConsentRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.deleteClient('client-123', 'other-user')).rejects.toThrow(
 				'OAuth client with ID client-123 not found',
 			);
 
-			expect(oauthClientRepository.delete).not.toHaveBeenCalled();
+			expect(oauthClientRepository.deleteIfUnused).not.toHaveBeenCalled();
 		});
 	});
 
