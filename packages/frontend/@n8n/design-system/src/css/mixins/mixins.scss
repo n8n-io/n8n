@@ -93,8 +93,8 @@ $E: null;
 }
 
 // Bottom fade while [data-scroll-mask-bottom] is set.
-// useScrollMask sets that attribute while more content sits below the viewport,
-// so the last row stays solid when the user is at the end of the list.
+// useScrollMask sets that attribute from VueUse useScroll while more content
+// sits below the viewport, so the last row stays solid at the end of the list.
 @mixin scroll-mask-when-bottom($size: var(--spacing--sm)) {
 	scroll-padding-bottom: $size;
 

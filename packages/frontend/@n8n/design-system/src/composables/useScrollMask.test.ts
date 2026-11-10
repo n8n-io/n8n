@@ -81,16 +81,16 @@ describe('useScrollMask', () => {
 		expect(scrollMaskAttrs.value).toEqual({});
 	});
 
-	it('reads the element from a component instance', async () => {
+	it('measures an element that appears later', async () => {
+		const { container, canScrollDown } = await mountMask(null);
+		expect(canScrollDown.value).toBe(false);
+
 		const element = document.createElement('div');
 		setScrollMetrics(element, { scrollHeight: 200, clientHeight: 100, scrollTop: 0 });
-		const container = ref<{ $el: HTMLElement } | null>(null);
-		const mask = scope.run(() => useScrollMask(container))!;
-
-		container.value = { $el: element };
+		container.value = element;
 		await nextTick();
 
-		expect(mask.canScrollDown.value).toBe(true);
+		expect(canScrollDown.value).toBe(true);
 	});
 
 	it('updates when the list content grows', async () => {
