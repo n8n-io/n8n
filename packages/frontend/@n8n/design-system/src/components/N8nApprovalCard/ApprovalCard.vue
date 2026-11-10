@@ -323,6 +323,7 @@ function onKeydown(event: KeyboardEvent) {
 
 <style lang="scss" module>
 @use '../../css/mixins/motion';
+@use '../../css/mixins/utils';
 
 .card {
 	width: 100%;
@@ -479,8 +480,6 @@ function onKeydown(event: KeyboardEvent) {
 .label {
 	flex: 1;
 	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	@include utils.utils-ellipsis;
 }
 </style>
