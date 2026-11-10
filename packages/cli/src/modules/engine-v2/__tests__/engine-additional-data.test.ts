@@ -101,13 +101,12 @@ describe('EngineAdditionalDataBuilder', () => {
 		expect(() => build().variables.someName).toThrow(UnimplementedError);
 	});
 
-	it.each([
-		['spread', () => ({ ...build().variables })],
-		['keys', () => Object.keys(build().variables)],
-		['membership', () => 'someName' in build().variables],
-		['descriptor', () => Object.getOwnPropertyDescriptor(build().variables, 'someName')],
-	])('fails on $vars %s instead of looking empty', (_operation, access) => {
-		expect(access).toThrow(UnimplementedError);
+	it('enumerates $vars as empty, so the task broker can serialize the data for a runner', () => {
+		const { variables } = build();
+
+		expect(Object.keys(variables)).toEqual([]);
+		expect({ ...variables }).toEqual({});
+		expect(JSON.stringify(variables)).toBe('{}');
 	});
 
 	it('attaches the SSRF bridge when protection is enabled', () => {

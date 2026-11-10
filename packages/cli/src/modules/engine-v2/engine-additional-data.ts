@@ -24,18 +24,22 @@ function unimplemented(feature: string) {
  * `$vars` that fails on first read. Variables live in the control plane
  * database, and an empty object would turn `$vars.x` into a silent `undefined`
  * inside a request or a parameter.
+ *
+ * Only a read of a named variable fails. Enumeration finds nothing, so the
+ * task broker can serialize the additional data for a runner: a Code node
+ * reads `$vars` through that copy, where it is empty, as it is on a v1
+ * instance without variables.
  */
-const unimplementedVariablesAccess = (): never => {
-	throw new UnimplementedError('Variables ($vars) are not supported on Engine v2 yet');
-};
-
 const unimplementedVariables: IWorkflowExecuteAdditionalData['variables'] = new Proxy(
 	{},
 	{
-		get: unimplementedVariablesAccess,
-		ownKeys: unimplementedVariablesAccess,
-		has: unimplementedVariablesAccess,
-		getOwnPropertyDescriptor: unimplementedVariablesAccess,
+		get: (target, property) => {
+			// Serializers and inspectors probe these before they read anything.
+			if (typeof property === 'symbol' || property in target || property === 'toJSON') {
+				return Reflect.get(target, property);
+			}
+			throw new UnimplementedError('Variables ($vars) are not supported on Engine v2 yet');
+		},
 	},
 );
 
