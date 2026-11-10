@@ -59,7 +59,8 @@ export function loadEngineTls(files: EngineTlsFiles): EngineTls | undefined {
 
 	try {
 		createSecureContext(tls);
-		// `createSecureContext` accepts an empty or non-PEM CA without an error.
+		// Parses the first certificate in the CA file and throws if there is none, which
+		// `createSecureContext` does not check. It does not verify the certificate itself.
 		new X509Certificate(tls.ca);
 	} catch (error) {
 		throw new UserError(`${ALL_ENV_NAMES} are not a valid certificate, key and CA`, {
