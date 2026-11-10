@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  s_52865540ba8762::t_c9f31b43351b98 514
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  s_52865540ba8762::t_0820394af4538e 200,208-212
+  s_52865540ba8762::t_649db6991ce811 21
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.test.ts
+  s_52865540ba8762::t_cbd0cc08844530 11
+  s_52865540ba8762::t_71fb81f199db4a 17
+  s_52865540ba8762::t_8993a5cf8916b4 573-584
+  s_52865540ba8762::t_5b3eca20ca5581 548
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.test.ts
+  s_52865540ba8762::t_a5370a8c4c606c 270
+  s_52865540ba8762::t_5af355385ffe6c 28
+  s_52865540ba8762::t_38c133fc83cdb5 288-290
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.ts
+  s_52865540ba8762::t_8cc59282f986a4 283-284,287-288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1dbba382b2730f39962ffc3d1a5fc76762a06c04",
+  "prompts": {},
+  "sessions": {
+    "s_52865540ba8762": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e8b1e8f-7b23-48ea-8c3d-a35ddd92698f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

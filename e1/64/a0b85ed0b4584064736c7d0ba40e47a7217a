@@ -1,0 +1,61 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_ff9334633918b4::t_35371e03347f1d 1040-1045
+  s_ff9334633918b4::t_d6a1d55231ff41 998,1434-1482
+  s_ff9334633918b4::t_f20891ff8d8123 1483,4258,4272
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_ff9334633918b4::t_4d1392b1d78fe9 271,471,914-915,976,1082,1269-1270,1323-1324,1351-1352
+  s_ff9334633918b4::t_d5b65e3499ae65 1590,1592-1629
+  s_32901a907f7a0f::t_a9ea98d4a09541 1313-1315
+  s_32901a907f7a0f::t_2250ab08948995 1325-1336
+  h_9b272a633435fb 1134,1136-1138
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_ff9334633918b4::t_ea9474ae7248fb 2006-2008,2010-2012,2020,2041-2043,2045-2046,2054,2307
+  s_ff9334633918b4::t_762a76fddb5854 950,953-1002,1008-1009,1011-1015,1018,1030-1043,1305-1306,1308,1311-1321,2004,2021-2027,2030,2055-2061,2306,2309-2316,2908,2911-2919
+  s_ff9334633918b4::t_2208b03c55d3f3 3542-3672
+  s_32901a907f7a0f::t_c90804a4134833 2372-2463
+  h_9b272a633435fb 1046,1049-1060
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_32901a907f7a0f::t_8821c6df8b4146 1152-1164,1167-1169,1171-1191,1194-1200
+  s_c465b850cfb0cb::t_0ce649dac53af5 1166,1193
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_32901a907f7a0f::t_0274d6b33cc3c2 754-848
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_32901a907f7a0f::t_e670781ae2209b 861-892,915
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e164a0b85ed0b4584064736c7d0ba40e47a7217a",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_32901a907f7a0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26176e8e-4c70-4d5a-b1be-29afcd68b425",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c465b850cfb0cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70004df1-718f-4e3b-8c11-caba08123f81",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_ff9334633918b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "547070a0-523b-4dad-92af-96b0774d1e0f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
