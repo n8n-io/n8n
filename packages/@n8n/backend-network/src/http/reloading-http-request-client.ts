@@ -1,6 +1,7 @@
-import type { HttpRequestClient, TypedHttpFullResponse } from '@n8n/backend-network';
-import type { IHttpRequestOptions, IN8nHttpResponse } from 'n8n-workflow';
+import { UnexpectedError, type IHttpRequestOptions, type IN8nHttpResponse } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
+
+import type { HttpRequestClient, TypedHttpFullResponse } from './outbound-http';
 
 interface Generation {
 	client: HttpRequestClient;
@@ -51,10 +52,9 @@ export class ReloadingHttpRequestClient implements HttpRequestClient {
 		}
 	}
 
-	// oxlint-disable-next-line typescript/no-deprecated
-	async requestLegacy(...args: Parameters<HttpRequestClient['requestLegacy']>): Promise<unknown> {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await this.current.client.requestLegacy(...args);
+	/** Not supported: a legacy request could outlive the client that a reload closes. */
+	async requestLegacy(): Promise<unknown> {
+		throw new UnexpectedError('ReloadingHttpRequestClient does not support requestLegacy()');
 	}
 
 	reload(): void {

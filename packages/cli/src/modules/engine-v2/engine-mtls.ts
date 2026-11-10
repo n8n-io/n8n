@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import {
 	OutboundHttp,
+	ReloadingHttpRequestClient,
 	type HttpRequestClient,
 	type HttpRequestClientOptions,
 } from '@n8n/backend-network';
@@ -13,8 +14,6 @@ import {
 	type EngineTlsSource,
 } from '@n8n/engine';
 import type { RequestListener, Server } from 'node:http';
-
-import { ReloadingHttpRequestClient } from './reloading-http-request-client';
 
 /**
  * Mutual TLS between the control plane and the engine. Gives out the servers

@@ -1,6 +1,7 @@
-import type { HttpRequestClient } from '@n8n/backend-network';
+import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { HttpRequestClient } from '../outbound-http';
 import { ReloadingHttpRequestClient } from '../reloading-http-request-client';
 
 describe('ReloadingHttpRequestClient', () => {
@@ -75,6 +76,15 @@ describe('ReloadingHttpRequestClient', () => {
 
 		expect(built[0].close).toHaveBeenCalledOnce();
 		expect(built[1].close).toHaveBeenCalledOnce();
+	});
+
+	it('refuses legacy requests, which it cannot track', async () => {
+		const asClient: HttpRequestClient = client;
+
+		// oxlint-disable-next-line typescript/no-deprecated
+		await expect(asClient.requestLegacy({ url: '/a' })).rejects.toThrow(UnexpectedError);
+		// oxlint-disable-next-line typescript/no-deprecated
+		expect(built[0].requestLegacy).not.toHaveBeenCalled();
 	});
 
 	it('closes the current client when closed', () => {
