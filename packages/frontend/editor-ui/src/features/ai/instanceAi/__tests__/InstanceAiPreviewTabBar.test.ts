@@ -560,6 +560,8 @@ describe('InstanceAiPreviewTabBar', () => {
 				id: 'assistant-rename',
 				role: 'assistant',
 				content: '',
+				reasoning: '',
+				isStreaming: false,
 				createdAt: '2026-11-10T00:00:00.000Z',
 				agentTree: {
 					agentId: 'orchestrator',
