@@ -5,6 +5,7 @@ import { getCreatedAt } from '../../sdk/message';
 import { Tool } from '../../sdk/tool';
 import type { BuiltMemory } from '../../types';
 import type { AgentPersistenceOptions } from '../../types/sdk/agent';
+import type { AgentDbMessage } from '../../types/sdk/message';
 
 export const READ_HISTORY_TOOL_NAME = 'read_history';
 
@@ -21,6 +22,12 @@ const ReadHistoryInputSchema = z.object({
 		.string()
 		.optional()
 		.describe('ISO timestamp. Return only messages created before it, to page back.'),
+	beforeId: z
+		.string()
+		.optional()
+		.describe(
+			"Id of the oldest message you already have. Pass it with `before` (that message's createdAt) so messages with the same timestamp are not skipped.",
+		),
 	limit: z.number().int().min(1).max(MAX_RESULTS).optional(),
 });
 
@@ -57,13 +64,37 @@ export function excerpt(text: string, needle?: string) {
  * change the string length (e.g. 'İ'), so an index into the folded string is
  * not always an index into `text`.
  */
-function indexOfIgnoreCase(text: string, needle: string): number {
+export function indexOfIgnoreCase(text: string, needle: string): number {
 	const folded = text.toLowerCase();
 	if (folded.length === text.length) return folded.indexOf(needle);
-	for (let i = 0; i < text.length; i++) {
-		if (text.slice(i).toLowerCase().startsWith(needle)) return i;
+	// Fold one code point at a time and map each folded position back to its
+	// original position, so the search stays linear in the text length.
+	let mapped = '';
+	const origin: number[] = [];
+	let i = 0;
+	for (const char of text) {
+		const lower = char.toLowerCase();
+		mapped += lower;
+		for (let k = 0; k < lower.length; k++) origin.push(i);
+		i += char.length;
 	}
-	return -1;
+	const at = mapped.indexOf(needle);
+	return at < 0 ? -1 : origin[at];
+}
+
+/**
+ * Keep messages older than the `(createdAt, id)` cursor. Messages that share
+ * the cursor timestamp keep storage order, so drop the cursor message and
+ * every message after it. Without the cursor message, fall back to `< before`.
+ */
+function cutAtCursor(messages: AgentDbMessage[], before: Date, beforeId: string): AgentDbMessage[] {
+	const cursorAt = messages.findIndex((message) => message.id === beforeId);
+	if (cursorAt >= 0) return messages.slice(0, cursorAt);
+	const limit = before.getTime();
+	return messages.filter((message) => {
+		const createdAt = getCreatedAt(message)?.getTime();
+		return createdAt === undefined || createdAt < limit;
+	});
 }
 
 const INSTRUCTION =
@@ -81,20 +112,26 @@ export function createReadHistoryTool(opts: {
 		.systemInstruction(INSTRUCTION)
 		.input(ReadHistoryInputSchema)
 		.output(ReadHistoryOutputSchema)
-		.handler(async ({ query, before, limit }): Promise<ReadHistoryOutput> => {
+		.handler(async ({ query, before, beforeId, limit }): Promise<ReadHistoryOutput> => {
 			const beforeDate = before ? new Date(before) : undefined;
 			if (beforeDate && isNaN(beforeDate.getTime())) {
 				throw new Error(`read_history: "before" is not a valid ISO timestamp: ${before}`);
 			}
 			const needle = query?.trim().toLowerCase() || undefined;
 			const max = limit ?? DEFAULT_RESULTS;
-			// Without a query only the latest `max` messages are returned, so load only those.
-			// Empty messages (no model-facing text) can make the result shorter than `max`.
-			const all = await opts.memory.getMessages(opts.persistence.threadId, {
+			// Storage filters on `createdAt < before` only. With `beforeId`, load up to
+			// and including the cursor timestamp, then cut at the cursor message so
+			// older messages with the same timestamp are kept.
+			const cursor = beforeDate && beforeId ? { before: beforeDate, id: beforeId } : undefined;
+			const loadBefore = cursor ? new Date(cursor.before.getTime() + 1) : beforeDate;
+			// Without a query or id cursor only the latest `max` messages are returned,
+			// so load only those. Empty messages (no model-facing text) can make the result shorter than `max`.
+			const loaded = await opts.memory.getMessages(opts.persistence.threadId, {
 				resourceId: opts.persistence.resourceId,
-				...(beforeDate ? { before: beforeDate } : {}),
-				...(needle ? {} : { limit: max }),
+				...(loadBefore ? { before: loadBefore } : {}),
+				...(needle || cursor ? {} : { limit: max }),
 			});
+			const all = cursor ? cutAtCursor(loaded, cursor.before, cursor.id) : loaded;
 			const matches: ReadHistoryOutput['messages'] = [];
 			// Newest first, so the agent sees the most relevant context before paging.
 			for (let i = all.length - 1; i >= 0 && matches.length < max; i--) {

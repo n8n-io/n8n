@@ -118,7 +118,8 @@ describe('cacheAware history', () => {
 	it('swaps when the full history is over the hard limit', async () => {
 		const list = await load(await seedObservedThread(60_000), {
 			historyMode: 'cacheAware',
-			observerThresholdTokens: 2,
+			// Without a window the limit is twice the observer threshold.
+			observerThresholdTokens: 1,
 		});
 		expect(list.llmVisibleMessages().map((m) => m.id)).toEqual(['m3']);
 	});

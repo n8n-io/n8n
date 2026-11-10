@@ -23,7 +23,7 @@ export type { SerializedMessageList };
  * never added to the list, persisted, or serialized.
  */
 export const OBSERVATION_CONTINUATION_REMINDER =
-	'<system-reminder>Earlier conversation was reviewed for memory. Use the observation log in your system prompt if one is present. Continue the task from the available context. Do not repeat completed work. Do not mention this memory processing to the user.</system-reminder>';
+	'<system-reminder>Earlier conversation was reviewed for memory. Use the observation log if one is present. Continue the task from the available context. Do not repeat completed work. Do not mention this memory processing to the user.</system-reminder>';
 
 export type LlmContext = {
 	system: SystemModelMessage | SystemModelMessage[];

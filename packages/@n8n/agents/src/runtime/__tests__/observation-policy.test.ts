@@ -56,10 +56,10 @@ describe('resolveObservationThresholds', () => {
 		).toBe(20_000);
 	});
 
-	it('keeps the replay limit at the observer threshold when the window is unknown', () => {
+	it('leaves headroom above the observer threshold when the window is unknown', () => {
 		expect(
 			resolveObservationThresholds({ observerThresholdTokens: 30_000 }, undefined)?.replayLimit,
-		).toBe(30_000);
+		).toBe(60_000);
 	});
 
 	it('caps the replay limit at the window share when the fixed threshold is larger', () => {
@@ -115,7 +115,7 @@ describe('decideHistoryReplay', () => {
 				config: { historyMode: 'cacheAware' },
 				now,
 				lastActivityAt: now,
-				fullHistoryTokens: 1_000,
+				fullHistoryTokens: 2_000,
 				thresholds,
 			}),
 		).toEqual({ kind: 'sinceCursor', reason: 'over-limit' });

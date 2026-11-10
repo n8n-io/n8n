@@ -2,6 +2,8 @@ import type { ObservationalMemoryConfig } from '../../types';
 
 /** Fraction of the fixed observer threshold at which mid-run observation starts in the background. */
 export const FIXED_MID_RUN_SOFT_RATIO = 0.7;
+/** Replay limit as a multiple of the fixed observer threshold when the window is unknown. */
+export const FIXED_REPLAY_LIMIT_RATIO = 2;
 export const DEFAULT_OBSERVATION_CACHE_TTL_MS = 5 * 60_000;
 
 export const DEFAULT_WINDOW_SHARES = {
@@ -68,10 +70,11 @@ export function resolveObservationThresholds(
 		// Fixed thresholds observe at `observer`, so a limit equal to it would
 		// never replay full history. Use the window when it is known; it also
 		// caps the limit, so a large `observer` cannot overfill the context.
+		// Without a window, allow one more observer interval of headroom.
 		replayLimit:
 			window !== undefined && window > 0
 				? Math.max(1, Math.floor(window * DEFAULT_WINDOW_SHARES.waitAt))
-				: observer,
+				: observer * FIXED_REPLAY_LIMIT_RATIO,
 		reflect: config.reflectorThresholdTokens,
 		source: 'fixed',
 	};

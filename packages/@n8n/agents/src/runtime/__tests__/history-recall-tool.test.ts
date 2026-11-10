@@ -1,4 +1,4 @@
-import { createReadHistoryTool, excerpt } from '../memory/history-recall-tool';
+import { createReadHistoryTool, excerpt, indexOfIgnoreCase } from '../memory/history-recall-tool';
 import { messageToText } from '../memory/message-text';
 import type { BuiltMemory } from '../../types';
 import type { AgentDbMessage } from '../../types/sdk/message';
@@ -36,6 +36,11 @@ describe('read_history excerpt', () => {
 		expect(result.text).toContain('NEEDLE');
 		expect(result.offset).toBe(8_000 - 2_000);
 	});
+
+	it('maps folded matches back to the original index', () => {
+		expect(indexOfIgnoreCase('İİabcNEEDLE', 'needle')).toBe(5);
+		expect(indexOfIgnoreCase('İİabc', 'needle')).toBe(-1);
+	});
 });
 
 describe('read_history tool', () => {
@@ -69,6 +74,24 @@ describe('read_history tool', () => {
 		const { run, getMessages } = buildTool([message('m1', 'hello', 1)]);
 		await run({ limit: 3 });
 		expect(getMessages).toHaveBeenCalledWith('t-1', { resourceId: 'r-1', limit: 3 });
+	});
+
+	it('keeps older messages that share the cursor timestamp', async () => {
+		const { run, getMessages } = buildTool([
+			message('m1', 'one', 1),
+			message('m2', 'two', 2),
+			message('m3', 'three', 2),
+			message('m4', 'four', 2),
+		]);
+		const before = new Date(Date.UTC(2026, 10, 10, 12, 2));
+		const result = (await run({ before: before.toISOString(), beforeId: 'm3' })) as {
+			messages: Array<{ id: string }>;
+		};
+		expect(getMessages).toHaveBeenCalledWith('t-1', {
+			resourceId: 'r-1',
+			before: new Date(before.getTime() + 1),
+		});
+		expect(result.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
 	});
 
 	it('loads the full thread when it searches', async () => {
