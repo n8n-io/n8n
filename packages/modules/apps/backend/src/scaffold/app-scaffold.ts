@@ -13,7 +13,26 @@ import { AppBuildError } from '../build/app-build.types';
 const packageJson = JSON.stringify(manifest, null, 2) + '\n';
 const packageLock = JSON.stringify(lockfile, null, 2) + '\n';
 
-const DEPENDENCY_FIELDS = new Set(['dependencies', 'devDependencies']);
+const PACKAGE_FIELDS = new Set([
+	'name',
+	'version',
+	'private',
+	'type',
+	'engines',
+	'scripts',
+	'dependencies',
+	'devDependencies',
+	'description',
+	'keywords',
+	'homepage',
+	'bugs',
+	'license',
+	'author',
+	'contributors',
+	'funding',
+	'repository',
+]);
+const BUILD_SCRIPTS = { build: 'vite build' };
 const NPM_REGISTRY = 'https://registry.npmjs.org/';
 const PROHIBITED_SOURCE_ENTRIES = new Set(['.npmrc', 'node_modules', 'dist']);
 
@@ -36,8 +55,25 @@ export function createAppScaffold(): AppFiles {
 	);
 }
 
-function withoutDependencies(value: Record<string, unknown>) {
-	return Object.fromEntries(Object.entries(value).filter(([key]) => !DEPENDENCY_FIELDS.has(key)));
+function checkPackageMetadata(value: Record<string, unknown>) {
+	if (Object.keys(value).some((key) => !PACKAGE_FIELDS.has(key))) {
+		throw new Error('Package contains an unsupported field.');
+	}
+	if (
+		typeof value.name !== 'string' ||
+		value.name.length === 0 ||
+		typeof value.version !== 'string' ||
+		valid(value.version) === null
+	) {
+		throw new Error('Invalid package name or version.');
+	}
+	if (
+		value.private !== true ||
+		value.type !== 'module' ||
+		!isDeepStrictEqual(value.scripts, BUILD_SCRIPTS)
+	) {
+		throw new Error('Changed package build configuration.');
+	}
 }
 
 function dependencyMap(value: unknown): Record<string, string> {
@@ -90,9 +126,7 @@ export function checkBuildSource(files: AppFiles): string {
 			files.get('package-lock.json')?.toString('utf8') ?? 'null',
 		);
 		if (!isRecord(packageJson) || !isRecord(packageLock)) throw new Error('Invalid package files.');
-		if (!isDeepStrictEqual(withoutDependencies(packageJson), withoutDependencies(manifest))) {
-			throw new Error('Changed package metadata.');
-		}
+		checkPackageMetadata(packageJson);
 
 		const dependencies = dependencyMap(packageJson.dependencies);
 		const devDependencies = dependencyMap(packageJson.devDependencies);

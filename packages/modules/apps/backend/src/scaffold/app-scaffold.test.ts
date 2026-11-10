@@ -7,18 +7,25 @@ type MutableAppFiles = Map<string, Buffer>;
 type PackageJson = {
 	name: string;
 	version: string;
+	private: boolean;
+	type: string;
+	engines: Record<string, string>;
 	scripts: Record<string, string>;
 	dependencies: Record<string, string>;
 	devDependencies: Record<string, string>;
+	author?: { name: string; email: string };
+	workspaces?: string[];
 };
 
 type LockEntry = {
+	name?: string;
 	version?: string;
 	resolved?: string;
 	integrity?: string;
 	inBundle?: boolean;
 	dependencies?: Record<string, string>;
 	devDependencies?: Record<string, string>;
+	engines?: Record<string, string>;
 };
 
 type PackageLock = {
@@ -68,6 +75,23 @@ describe('app scaffold package validation', () => {
 		addDependency(files);
 
 		expect(checkBuildSource(files)).not.toBe(scaffoldKey);
+	});
+
+	it('accepts package metadata and an older engine declaration', () => {
+		const files = appScaffold();
+		const packageJson = readJson<PackageJson>(files, 'package.json');
+		const packageLock = readJson<PackageLock>(files, 'package-lock.json');
+		packageJson.name = 'custom-app';
+		packageJson.version = '2.0.0';
+		packageJson.author = { name: 'App Developer', email: 'developer@example.com' };
+		packageJson.engines.node = '>=22';
+		packageLock.packages[''].name = packageJson.name;
+		packageLock.packages[''].version = packageJson.version;
+		packageLock.packages[''].engines = packageJson.engines;
+		writeJson(files, 'package.json', packageJson);
+		writeJson(files, 'package-lock.json', packageLock);
+
+		expect(() => checkBuildSource(files)).not.toThrow();
 	});
 
 	it('accepts a public npm dependency with SHA-1 integrity', () => {
@@ -171,6 +195,15 @@ describe('app scaffold package validation', () => {
 		const files = appScaffold();
 		const packageJson = readJson<PackageJson>(files, 'package.json');
 		packageJson.scripts.build = 'custom-build';
+		writeJson(files, 'package.json', packageJson);
+
+		expect(() => checkBuildSource(files)).toThrow(AppBuildError);
+	});
+
+	it('rejects package fields that can change dependency installation', () => {
+		const files = appScaffold();
+		const packageJson = readJson<PackageJson>(files, 'package.json');
+		packageJson.workspaces = ['packages/*'];
 		writeJson(files, 'package.json', packageJson);
 
 		expect(() => checkBuildSource(files)).toThrow(AppBuildError);
