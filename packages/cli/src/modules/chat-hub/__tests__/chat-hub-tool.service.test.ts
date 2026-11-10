@@ -487,6 +487,33 @@ describe('ChatHubToolService', () => {
 			expect(chatToolRepository.updateTool).toHaveBeenCalled();
 		});
 
+		it('rejects enabling a stored tool with unsupported expressions', async () => {
+			chatToolRepository.getOneById.mockResolvedValue(
+				makeTool({
+					definition: { ...mockDefinition, parameters: { url: '={{ $vars.anything }}' } },
+					enabled: false,
+				}),
+			);
+
+			await expect(service.updateTool('tool-1', mockUser, { enabled: true })).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(chatToolRepository.updateTool).not.toHaveBeenCalled();
+		});
+
+		it('allows disabling a stored tool with unsupported expressions', async () => {
+			chatToolRepository.getOneById.mockResolvedValue(
+				makeTool({
+					definition: { ...mockDefinition, parameters: { url: '={{ $vars.anything }}' } },
+				}),
+			);
+			chatToolRepository.updateTool.mockResolvedValue(makeTool({ enabled: false }));
+
+			await service.updateTool('tool-1', mockUser, { enabled: false });
+
+			expect(chatToolRepository.updateTool).toHaveBeenCalled();
+		});
+
 		it('should update tool definition and denormalized fields', async () => {
 			const existingTool = makeTool();
 			const updatedDef: INode = { ...mockDefinition, name: 'Updated Tool' };

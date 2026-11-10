@@ -52,8 +52,8 @@ export class ChatHubToolService {
 
 	/**
 	 * Skips stored tools that do not pass the current expression rules. Tools saved
-	 * before a rule change are otherwise run as stored. Editing a skipped tool
-	 * validates it again.
+	 * before a rule change are otherwise run as stored. Editing or enabling a skipped
+	 * tool validates it again.
 	 */
 	private toRunnableDefinitions(tools: ChatHubTool[]): INode[] {
 		return tools
@@ -185,9 +185,9 @@ export class ChatHubToolService {
 			}
 			if (updates.enabled !== undefined) {
 				if (updates.enabled) {
-					this.deprecatedNodesValidationService.validateOnCreate([
-						updates.definition ?? existingTool.definition,
-					]);
+					const definition = updates.definition ?? existingTool.definition;
+					this.validateToolExpressions(definition);
+					this.deprecatedNodesValidationService.validateOnCreate([definition]);
 				}
 				updateData.enabled = updates.enabled;
 			}
