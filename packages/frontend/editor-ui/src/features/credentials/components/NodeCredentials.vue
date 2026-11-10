@@ -997,6 +997,8 @@ function showAiGatewaySelector(credentialType: string): boolean {
 	if (AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type)) return false;
 	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
 	if (isAiGatewayManagedCredentials(credentialType)) return true;
+	// The gateway rejects this resource/operation when the workflow runs.
+	if (!isCurrentActionSupported.value) return false;
 	// Shown type supported → toggle directly; otherwise fall back to a sibling.
 	if (aiGateway.isCredentialTypeSupported(credentialType)) return true;
 	return resolveGatewayActivation(credentialType) !== undefined;

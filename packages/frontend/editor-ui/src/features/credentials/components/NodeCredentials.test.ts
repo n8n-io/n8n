@@ -2255,6 +2255,23 @@ describe('NodeCredentials', () => {
 				).not.toBeInTheDocument();
 			});
 
+			it('does not offer n8n credits when the gateway does not support the operation', () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					...vi.mocked(useAiGateway)(),
+					isActionSupported: vi.fn(() => false),
+				});
+				const imageNode: INodeUi = {
+					...googleAiNode,
+					parameters: { resource: 'image', operation: 'analyze' },
+				};
+				ndvStore.activeNode = imageNode;
+
+				renderComponent({ props: { node: imageNode, overrideCredType: 'googlePalmApi' } });
+
+				const emptyState = screen.getByTestId('node-credentials-empty-state');
+				expect(within(emptyState).queryByRole('combobox')).not.toBeInTheDocument();
+			});
+
 			it('shows the managed selection in readonly mode', () => {
 				const nodeWithGateway: INodeUi = {
 					...googleAiNode,
