@@ -25,8 +25,8 @@ function runsPython(params: Record<string, unknown>): boolean {
  * Runs the Code-node Python rules over a compiled workflow at build time, so a node
  * the runner will reject is reported before the user ever executes it (INS-1222).
  *
- * The same rules also run in the sandbox via `workflow-sdk validate`; this is the
- * host-side pass, which sees the workflow after it compiles.
+ * The sandbox build drops these lint findings, so this host-side pass, which sees
+ * the workflow after it compiles, is the only place they are reported.
  *
  * Informational: a disallowed import is a run-time failure, not a malformed
  * workflow, so it should reach the agent without blocking the save.

@@ -384,7 +384,7 @@ overall goal.
   initial build when only pending setup remains. It shows the setup cards one
   after the other: questions, then credentials, then channels. Never call it
   together with another interactive tool.
-- `setup_credentials(target: "agent")`: make one call for all required
+- `setup_credentials(target: "agent")`, run through `call_tool`: make one call for all required
   node-tool, MCP-server, and fallback web-search credential slots. Pass every
   type in one `credentials` array to show them on one card. The result `credentials` maps
   each type to `{ id, name }`. Never call it during an initial
@@ -584,21 +584,24 @@ Verify:
 
 ## Example flows
 
+Each `agent_builder_*`, `setup_credentials`, `search_nodes` and
+`get_node_types` step below runs through `call_tool`.
+
 ### New Agent: "Build me an Agent teammates can @mention in Slack to triage messages"
 
-1. `agent_builder_select_agent({ agentRef: "slack-triage", name: "Slack triage" })`.
+1. `call_tool` → `agent_builder_select_agent({ agentRef: "slack-triage", name: "Slack triage" })`.
 2. In one response, in parallel: `agent-context({ type: "config" })`,
    `load_skill` for `agent-builder-config` and
    `agent-builder-external-services`, and
    `agent-context({ type: "integrations" })`.
 3. If a model and credential are already set, keep them. Otherwise call
-   `agent_builder_resolve_llm({})` once, silently. If it reports missing
+   `call_tool` → `agent_builder_resolve_llm({})` once, silently. If it reports missing
    credentials, add the model choice to the pending setup.
-4. `agent_builder_write_config(...)` with the `configHash` from step 2, the name
+4. `call_tool` → `agent_builder_write_config(...)` with the `configHash` from step 2, the name
    and instructions, the Slack type in `integrations` with `credentialId: ""`,
    and the model and credential only if `agent_builder_resolve_llm` resolved
    them, or `model: ""` and no `credential` while the model choice is pending.
-5. `agent_builder_finish_setup({ channels: [{ integrationType: "slack" }] })`.
+5. `call_tool` → `agent_builder_finish_setup({ channels: [{ integrationType: "slack" }] })`.
    Add `questions: [<model choice>]` only if the model choice is pending. For a
    model answer, run `agent_builder_resolve_llm` through `call_tool`, then
    `agent_builder_patch_config(...)` with the returned `configHash`, replacing
@@ -608,19 +611,19 @@ Verify:
 
 ### Change the existing model
 
-1. `agent_builder_select_agent({})`.
+1. `call_tool` → `agent_builder_select_agent({})`.
 2. `ask_user({ ... })` for the new model choice, then
-   `agent_builder_resolve_llm({ provider, model })`.
+   `call_tool` → `agent_builder_resolve_llm({ provider, model })`.
 3. `agent-context({ type: "config" })`.
-4. `agent_builder_patch_config(...)` replacing `/model` and `/credential`.
+4. `call_tool` → `agent_builder_patch_config(...)` replacing `/model` and `/credential`.
 
 ### Add an n8n node tool to an existing Agent
 
 1. Load `agent-builder-node-tools`, then run `search_nodes` through `call_tool` with `scope: "agent_tool"`
    and `get_node_types`.
-2. `setup_credentials(target: "agent")` for every required slot.
+2. `call_tool` → `setup_credentials(target: "agent")` for every required slot.
 3. `agent-context({ type: "config" })`.
-4. `agent_builder_patch_config(...)` adding the node tool to `/tools/-`. If the
+4. `call_tool` → `agent_builder_patch_config(...)` adding the node tool to `/tools/-`. If the
    user skipped a credential, omit only that slot, keep the tool, and end with
    a one-line checklist item to connect the credential later. Do not report it
    as a failure.
@@ -637,19 +640,19 @@ include the credential in the trailing `agent_builder_finish_setup` call.
 3. Select one entry from `results[]`. If more than one candidate remains, ask
    with `ask_user` using their titles and descriptions.
    Never choose by array order. If the user dismisses the question, stop.
-4. `setup_credentials({ target: "agent", credentials: [{ credentialType: "<selected.credentialType>", reason: "Connect Notion MCP" }] })`.
+4. `call_tool` → `setup_credentials({ target: "agent", credentials: [{ credentialType: "<selected.credentialType>", reason: "Connect Notion MCP" }] })`.
 5. Run `agent_builder_verify_mcp_server` through `call_tool` with the connection fields from the
    selected entry and the returned `credentials["<selected.credentialType>"].id`
    as `credential`.
 6. Confirm the verified tools cover the requested capability.
 7. `agent-context({ type: "config" })`.
-8. `agent_builder_patch_config(...)` adding a new `/mcpServers/-` entry,
+8. `call_tool` → `agent_builder_patch_config(...)` adding a new `/mcpServers/-` entry,
    including `metadata.nodeTypeName` from the selected entry when present.
 
 ### Publish: "Publish it" or "Make it live"
 
 1. Finish pending config mutations.
-2. `agent_builder_publish_agent()`.
+2. `call_tool` → `agent_builder_publish_agent()`.
 3. If it fails because a workflow is not published, name the workflows the user
    must publish first and stop. Do not retry.
 4. After a successful publish, confirm that the Agent is live. Do not send the

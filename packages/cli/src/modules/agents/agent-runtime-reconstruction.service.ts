@@ -22,7 +22,6 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_TASK_DIFFICULTIES,
-	buildProxyHeaders,
 	isCredentialAgentIntegration,
 	type AgentIntegrationConfig,
 	type BudgetGuardrailConfig,
@@ -44,7 +43,6 @@ import { UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -54,7 +52,7 @@ import { OauthService } from '@/oauth/oauth.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
-import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { createProxyEmbeddingProviderOptions } from '@/utils/ai-proxy-embedding-options';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
@@ -966,34 +964,14 @@ export class AgentRuntimeReconstructionService {
 		ownerId: string,
 	): Promise<ManagedEmbeddingProviderOptions | null> {
 		if (!this.aiService.isProxyEnabled()) return null;
-		// TODO: switch to n8n connect endpoints, don't use ai-proxy endpoints
 		const client = await this.aiService.getClient();
-		const baseURL = client.getApiProxyBaseUrl().replace(/\/$/, '') + '/openai/';
-		const tokenManager = new ProxyTokenManager(async () => {
-			return await client.getBuilderApiProxyToken({ id: ownerId }, { userMessageId: nanoid() });
+		return createProxyEmbeddingProviderOptions({
+			proxyBaseUrl: client.getApiProxyBaseUrl(),
+			feature: 'agent-builder',
+			fetchToken: async () =>
+				await client.getBuilderApiProxyToken({ id: ownerId }, { userMessageId: nanoid() }),
+			outboundHttp: this.outboundHttp,
 		});
-		const proxyManagedFetch = createAiProxyFetch(this.outboundHttp);
-
-		return {
-			baseURL,
-			apiKey: 'proxy-managed',
-			fetch: async (
-				input: Parameters<typeof globalThis.fetch>[0],
-				init?: Parameters<typeof globalThis.fetch>[1],
-			) => {
-				const headers = new Headers(init?.headers);
-				const auth = await tokenManager.getAuthHeaders();
-				for (const [key, value] of Object.entries(auth)) {
-					headers.set(key, value);
-				}
-				for (const [key, value] of Object.entries(
-					buildProxyHeaders({ feature: 'agent-builder', n8nVersion: N8N_VERSION }),
-				)) {
-					headers.set(key, value);
-				}
-				return await proxyManagedFetch(input, { ...init, headers });
-			},
-		};
 	}
 	private makeToolResolver(
 		runIdentity: ToolRunIdentity,

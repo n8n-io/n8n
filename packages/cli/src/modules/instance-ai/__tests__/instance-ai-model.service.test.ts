@@ -23,6 +23,12 @@ vi.mock('@/utils/ai-proxy-language-model', () => ({
 	createProxyLanguageModel: (...args: unknown[]) => createProxyLanguageModel(...args),
 }));
 
+const createEmbeddingModel = vi.hoisted(() => vi.fn((id: string) => ({ embeddingId: id })));
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	createEmbeddingModel: (...args: [string]) => createEmbeddingModel(...args),
+}));
+
 const createAnthropic = vi.hoisted(() => vi.fn());
 vi.mock('@ai-sdk/anthropic', () => ({
 	createAnthropic: (...args: unknown[]) => createAnthropic(...args),
@@ -441,6 +447,84 @@ describe('InstanceAiModelService', () => {
 			await expect(
 				service.resolveMemoryModelConfig(fakeUser, proxyMainModel, {}),
 			).resolves.toBeUndefined();
+		});
+	});
+
+	describe('resolveEmbeddingModel', () => {
+		const originalKey = process.env.OPENAI_API_KEY;
+		const endpoint = (id: `${string}/${string}`) => ({
+			kind: 'endpoint' as const,
+			id,
+			url: 'https://llm.example.com/v1',
+			apiKey: 'cred-key',
+		});
+
+		beforeEach(() => {
+			delete process.env.OPENAI_API_KEY;
+			aiService.isProxyEnabled.mockReturnValue(false);
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
+		});
+
+		afterEach(() => {
+			if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+			else process.env.OPENAI_API_KEY = originalKey;
+		});
+
+		it('uses the AI service proxy when it is enabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+			aiService.getClient.mockResolvedValue(createClient() as never);
+
+			await expect(service.resolveEmbeddingModel(fakeUser)).resolves.toBeDefined();
+
+			expect(createEmbeddingModel).toHaveBeenCalledWith(
+				'openai/text-embedding-3-small',
+				expect.objectContaining({ baseURL: 'https://proxy.base/openai/', apiKey: 'proxy-managed' }),
+			);
+			expect(settingsService.resolveModelConfig).not.toHaveBeenCalled();
+		});
+
+		it.each(['openai/gpt-x', 'custom/my-model'] as const)(
+			'uses the key and url of a %s main-model credential',
+			async (id) => {
+				process.env.OPENAI_API_KEY = 'env-key';
+				settingsService.resolveModelConfig.mockResolvedValue(endpoint(id) as never);
+
+				await service.resolveEmbeddingModel(fakeUser);
+
+				expect(createEmbeddingModel).toHaveBeenCalledWith(
+					'openai/text-embedding-3-small',
+					expect.objectContaining({ apiKey: 'cred-key', baseURL: 'https://llm.example.com/v1' }),
+				);
+			},
+		);
+
+		it('falls back to OPENAI_API_KEY for another provider', async () => {
+			process.env.OPENAI_API_KEY = 'env-key';
+			settingsService.resolveModelConfig.mockResolvedValue(endpoint('anthropic/claude-x') as never);
+
+			await service.resolveEmbeddingModel(fakeUser);
+
+			expect(createEmbeddingModel).toHaveBeenCalledWith(
+				'openai/text-embedding-3-small',
+				expect.objectContaining({ apiKey: 'env-key', baseURL: undefined }),
+			);
+		});
+
+		it('returns undefined when no key is available', async () => {
+			settingsService.resolveModelConfig.mockResolvedValue('anthropic/claude-x' as never);
+
+			await expect(service.resolveEmbeddingModel(fakeUser)).resolves.toBeUndefined();
+			expect(createEmbeddingModel).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined and logs a warning when resolution fails', async () => {
+			settingsService.resolveModelConfig.mockRejectedValue(new Error('boom'));
+
+			await expect(service.resolveEmbeddingModel(fakeUser)).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to resolve the Instance AI embedding model',
+				{ error: 'boom' },
+			);
 		});
 	});
 });

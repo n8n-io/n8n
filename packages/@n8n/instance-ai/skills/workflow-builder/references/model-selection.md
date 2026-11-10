@@ -39,7 +39,7 @@ Only when YOU must choose an unspecified model, obtain a credential model list,
 an explicit named recommendation in the node's `@builderHint`, or current catalog
 evidence. A node's `@default` and generic advice to "prefer stable models" are not
 recommendations. **Unspecified model plus no credential and no named hint means
-call `search_models` before writing the workflow.** Do not substitute a remembered ID.
+run `search_models` through `call_tool` before writing the workflow.** Do not substitute a remembered ID.
 
 ## Choose the source
 
@@ -56,7 +56,7 @@ call `search_models` before writing the workflow.** Do not substitute a remember
    node's `@builderHint` when it fits the task and serving provider. Generic
    advice such as "prefer stable models" does not name a candidate. Do not treat
    `@default` as a builder-hint recommendation.
-4. If there is no suitable explicit hint, call `search_models` with the serving
+4. If there is no suitable explicit hint, run `search_models` through `call_tool` with the serving
    provider before choosing an ID. Choosing a model while building a workflow
    is preliminary selection too. Reuse relevant results already retrieved for
    this task; do not repeat discovery for every node.
@@ -66,7 +66,7 @@ maker or family. Do not search for a remembered model ID and treat its presence
 as proof that it is current. Compare current candidates before choosing one.
 
 Keep the requested serving provider and model maker. For Claude through OpenRouter,
-call `search_models({ provider: "openrouter", query: "claude" })`. For OpenAI through
+run `search_models` through `call_tool` with `{ provider: "openrouter", query: "claude" }`. For OpenAI through
 OpenRouter, use `query: "openai"`. The query filters model IDs and names before
 selecting the ten most recent matches, so other makers do not fill the results.
 Use an exact returned ID in the `anthropic/` or `openai/` namespace. Do not construct
@@ -85,7 +85,7 @@ a paid credential to get a newer model.
 
 ## Diagnose availability
 
-Do not call `search_models` to diagnose an existing model error. Catalog recency
+Do not run `search_models` to diagnose an existing model error. Catalog recency
 and catalog absence do not justify a repair. Keep the model unchanged while
 collecting the actual failure evidence; a failed lookup is not permission to guess.
 

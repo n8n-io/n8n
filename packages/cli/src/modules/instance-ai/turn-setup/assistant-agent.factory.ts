@@ -16,6 +16,7 @@ import {
 	type McpServerConfig,
 	type ModelConfig,
 	type InstanceAiTraceContext,
+	type GotchaRetrievalTrace,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { ErrorReporter } from 'n8n-core';
@@ -106,6 +107,23 @@ export class AssistantAgentFactory {
 		await this._mcpClientManager?.disconnect();
 	}
 
+	private async createGotchaRetrieval(user: User, runId: string) {
+		// Without an embedding model, gotcha retrieval falls back to BM25.
+		const embeddingModel = await this.modelService.resolveEmbeddingModel(user);
+		return {
+			embeddingModel,
+			onRetrieval: ({ method, matches, nearMisses }: GotchaRetrievalTrace) => {
+				if (matches.length === 0 && nearMisses.length === 0) return;
+				this.logger.debug('Instance AI gotcha retrieval', {
+					runId,
+					method,
+					matches,
+					nearMisses,
+				});
+			},
+		};
+	}
+
 	async createAgent(
 		environment: AssistantTurnEnvironment,
 		runtime: AssistantAgentRuntime,
@@ -144,6 +162,7 @@ export class AssistantAgentFactory {
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 			modelFetch: this.modelService.getLabeledModelFetch({ runId, threadId }),
 			requestLabels: this.instanceAiConfig.modelRequestLabels,
+			gotchaRetrieval: await this.createGotchaRetrieval(user, runId),
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing
 		// here (rather than at each call site) covers the foreground run and both
