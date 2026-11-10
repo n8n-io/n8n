@@ -1,0 +1,19 @@
+packages/cli/src/push/__tests__/push-routing.test.ts
+  s_014a2ed06d5ddc::t_0919e974894d7d 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c3f50f01a37a047ce1b2d7d80bb306267142653",
+  "prompts": {},
+  "sessions": {
+    "s_014a2ed06d5ddc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e3b7e6395ffeLyyNW4JgoMRChK",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
