@@ -24,7 +24,11 @@ import type { INodeUi } from '@/Interface';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { MarkerType } from '@vue-flow/core';
 import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
-import { NO_OP_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import {
+	FREE_STICKY_Z_INDEX_OFFSET,
+	GROUP_NODE_Z_INDEX_EXPANDED,
+} from '../stores/canvasNodeGroups.constants';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -279,6 +283,33 @@ describe('useCanvasMapping — mapped nodes', () => {
 		});
 
 		expect(nodes.value[0].style).toEqual({ zIndex: -42 });
+	});
+
+	it('moves stickies outside groups below the expanded group layer', () => {
+		const member = createTestNode({ id: 'm', name: 'Member', type: STICKY_NODE_TYPE }) as INodeUi;
+		const free = createTestNode({ id: 'f', name: 'Free', type: STICKY_NODE_TYPE }) as INodeUi;
+		const group: IWorkflowGroup = { id: 'g1', name: 'G', nodeIds: ['m'] };
+		const rd = createEmptyCanvasRenderData({
+			additionalPropertiesByNodeId: computed(() => ({
+				m: { style: { zIndex: -99 } },
+				f: { style: { zIndex: -100 } },
+			})),
+		});
+
+		const { nodes } = useCanvasMapping({
+			nodes: ref([member, free]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+			allGroups: ref([group]),
+		});
+
+		const zIndexById = Object.fromEntries(
+			nodes.value.map((node) => [node.id, (node.style as { zIndex: number }).zIndex]),
+		);
+		expect(zIndexById.m).toBe(-99);
+		expect(zIndexById.f).toBe(-100 + FREE_STICKY_Z_INDEX_OFFSET);
+		expect(zIndexById.f).toBeLessThan(GROUP_NODE_Z_INDEX_EXPANDED);
+		expect(zIndexById.m).toBeGreaterThan(GROUP_NODE_Z_INDEX_EXPANDED);
 	});
 
 	it('attaches input/output connections derived from the connections prop', () => {
