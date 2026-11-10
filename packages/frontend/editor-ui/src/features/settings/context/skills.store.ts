@@ -67,9 +67,25 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.getNewSkillName(rootStore.restApiContext, query);
 	}
 
+	// Only the newest read or save of a skill sets its name, so a slow earlier read cannot
+	// bring back the name from before a rename.
+	const latestNameRequest = new Map<string, number>();
+	let nameRequests = 0;
+
+	function startNameRequest(id: string): number {
+		const request = ++nameRequests;
+		latestNameRequest.set(id, request);
+		return request;
+	}
+
+	function setSkillName(id: string, request: number, name: string) {
+		if (latestNameRequest.get(id) === request) skillNames.value.set(id, name);
+	}
+
 	async function fetchSkill(id: string): Promise<SkillDetail> {
+		const request = startNameRequest(id);
 		const detail = await api.getSkill(rootStore.restApiContext, id);
-		skillNames.value.set(id, detail.name);
+		setSkillName(id, request, detail.name);
 		return detail;
 	}
 
@@ -78,8 +94,9 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	}
 
 	async function saveSkill(id: string, payload: SaveSkillDto): Promise<SkillSaveResponse> {
+		const request = startNameRequest(id);
 		const saved = await api.saveSkill(rootStore.restApiContext, id, payload);
-		skillNames.value.set(id, saved.skill.name);
+		setSkillName(id, request, saved.skill.name);
 		return saved;
 	}
 

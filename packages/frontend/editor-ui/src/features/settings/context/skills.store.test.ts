@@ -1,4 +1,9 @@
-import type { SkillListItem, SkillListResponse } from '@n8n/api-types';
+import type {
+	SkillDetail,
+	SkillListItem,
+	SkillListResponse,
+	SkillSaveResponse,
+} from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -13,8 +18,12 @@ const discoverSource = vi.fn();
 const connectSource = vi.fn();
 const sourceCredentials = vi.fn();
 const sourceRepositories = vi.fn();
+const getSkill = vi.fn();
+const saveSkill = vi.fn();
 
 vi.mock('./skills.api', () => ({
+	getSkill: async (...args: unknown[]) => await getSkill(...args),
+	saveSkill: async (...args: unknown[]) => await saveSkill(...args),
 	getSkills: async (...args: unknown[]) => await list(...args),
 	getSkillCreators: async (...args: unknown[]) => await creators(...args),
 	getSkillAgents: async (...args: unknown[]) => await agents(...args),
@@ -150,5 +159,56 @@ describe('useSkillsStore', () => {
 		expect(await store.fetchAgents({ search: 'sup', take: 5 })).toEqual([bot]);
 		expect(agents).toHaveBeenCalledWith(useRootStore().restApiContext, { search: 'sup', take: 5 });
 		expect(list).not.toHaveBeenCalled();
+	});
+
+	describe('skillNames', () => {
+		const detail = (name: string) => ({ id: 'skill-1', name }) as SkillDetail;
+		const savedAs = (name: string) => ({ skill: { name } }) as SkillSaveResponse;
+
+		beforeEach(() => {
+			getSkill.mockReset();
+			saveSkill.mockReset();
+		});
+
+		it('keeps the name of a read and of a save', async () => {
+			const store = useSkillsStore();
+			getSkill.mockResolvedValueOnce(detail('brand-voice'));
+			saveSkill.mockResolvedValueOnce(savedAs('brand-tone'));
+
+			await store.fetchSkill('skill-1');
+			expect(store.skillNames.get('skill-1')).toBe('brand-voice');
+			await store.saveSkill('skill-1', {});
+			expect(store.skillNames.get('skill-1')).toBe('brand-tone');
+		});
+
+		it('keeps the saved name when a read that started earlier answers last', async () => {
+			const read = deferred<SkillDetail>();
+			getSkill.mockReturnValueOnce(read.promise);
+			saveSkill.mockResolvedValueOnce(savedAs('brand-tone'));
+			const store = useSkillsStore();
+
+			const reading = store.fetchSkill('skill-1');
+			await store.saveSkill('skill-1', {});
+			read.settle(detail('brand-voice'));
+			await reading;
+
+			expect(store.skillNames.get('skill-1')).toBe('brand-tone');
+		});
+
+		it('keeps the newest read when two reads answer out of order', async () => {
+			const older = deferred<SkillDetail>();
+			const newer = deferred<SkillDetail>();
+			getSkill.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
+			const store = useSkillsStore();
+
+			const first = store.fetchSkill('skill-1');
+			const second = store.fetchSkill('skill-1');
+			newer.settle(detail('brand-tone'));
+			await second;
+			older.settle(detail('brand-voice'));
+			await first;
+
+			expect(store.skillNames.get('skill-1')).toBe('brand-tone');
+		});
 	});
 });
