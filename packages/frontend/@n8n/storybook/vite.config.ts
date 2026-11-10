@@ -95,6 +95,8 @@ export default defineConfig(({ command }) => ({
 			// the same aliases and shims as the editor build.
 			...editorUiAliases(editorUiDir, path.resolve(__dirname, '../../..')),
 			{ find: /^node:fs$/, replacement: path.resolve(editorUiDir, 'vite/node-fs-shim.ts') },
+			// Editor components load files from the editor's public folder, such as `/static/x.gif`.
+			{ find: /^\/static\/(.*)$/, replacement: path.resolve(editorUiDir, 'public/static/$1') },
 		],
 	},
 	define: {
