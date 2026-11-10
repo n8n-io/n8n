@@ -190,12 +190,21 @@ async function bakeVariable(name) {
 	return match[1];
 }
 
+/** The bake file's python_version(): python:3.13.18-slim-trixie@sha256:... -> 3.13 */
+function pythonVersion(image) {
+	const match = image.match(/^python:(\d+\.\d+)/);
+	if (!match) throw new Error(`Cannot read a Python version from ${image}`);
+	return match[1];
+}
+
 /**
  * Podman has no bake. A podman-only host also has no buildx to resolve the bake
- * plan, so this list repeats the targets and their pins.
+ * plan, so this list repeats the targets and their args. Keep it in step with
+ * the bake targets of the same names.
  */
 async function buildWithPodman(platform) {
 	const builderImage = await bakeVariable('BUILDER_IMAGE');
+	const alpineImage = ['ALPINE_IMAGE', await bakeVariable('ALPINE_IMAGE')];
 	const podmanTargets = [
 		{
 			dockerfile: 'docker/images/n8n/Dockerfile',
@@ -208,14 +217,25 @@ async function buildWithPodman(platform) {
 		{
 			dockerfile: 'docker/images/runners/Dockerfile',
 			tag: `${runnersImageBaseName}:${imageTag}`,
-			args: [['NODE_IMAGE', builderImage]],
+			args: [
+				['NODE_IMAGE', builderImage],
+				['PYTHON_IMAGE', await bakeVariable('PYTHON_IMAGE')],
+				alpineImage,
+			],
 		},
 	];
 	if (withDistroless) {
+		const debianPythonImage = await bakeVariable('DEBIAN_PYTHON_IMAGE');
 		podmanTargets.push({
 			dockerfile: 'docker/images/runners/Dockerfile.distroless',
 			tag: `${runnersImageBaseName}:${imageTag}-distroless`,
-			args: [['NODE_VERSION', await bakeVariable('NODE_VERSION')]],
+			args: [
+				['NODE_IMAGE', await bakeVariable('DEBIAN_BUILDER_IMAGE')],
+				['PYTHON_IMAGE', debianPythonImage],
+				['PYTHON_VERSION', pythonVersion(debianPythonImage)],
+				alpineImage,
+				['DISTROLESS_IMAGE', await bakeVariable('DISTROLESS_IMAGE')],
+			],
 		});
 	}
 
