@@ -198,6 +198,7 @@ defineExpose({ inputRef });
 		<N8nSwitch
 			:id="name"
 			size="large"
+			:aria-label="label"
 			:disabled="disabled"
 			:model-value="modelValue as SwitchModelValuePropType"
 			@update:model-value="onUpdateModelValue"
