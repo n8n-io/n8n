@@ -23,6 +23,7 @@ vi.mock('@/app/stores/workflowExecutionState.store', async (importOriginal) => {
 });
 
 const V2_ID = '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b';
+const OTHER_V2_ID = '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7c';
 const V1_ID = '123';
 
 const trimmedData = { main: [[{ json: { __isTrimmedManualExecutionDataItem: true } }]] };
@@ -200,6 +201,60 @@ describe('useTrimmedRunDataFill', () => {
 
 		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY);
 		expect(fetchExecutionDataById).not.toHaveBeenCalled();
+	});
+
+	it('restarts the delay when the active execution changes to another engine v2 execution', async () => {
+		setUpExecution(V2_ID, { NodeA: [taskData(trimmedData)] });
+		startFill();
+
+		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY - 1);
+		setUpExecution(OTHER_V2_ID, { NodeA: [taskData(trimmedData)] });
+		await nextTick();
+
+		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY - 1);
+		expect(fetchExecutionDataById).not.toHaveBeenCalled();
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(fetchExecutionDataById).toHaveBeenCalledTimes(1);
+		expect(fetchExecutionDataById).toHaveBeenCalledWith(OTHER_V2_ID);
+	});
+
+	it('cancels the pending delay when the active execution changes to a numeric ID', async () => {
+		setUpExecution(V2_ID, { NodeA: [taskData(trimmedData)] });
+		startFill();
+
+		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+		setUpExecution(V1_ID, { NodeA: [taskData(trimmedData)] });
+		await nextTick();
+		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 4);
+		setUpExecution(V2_ID, { NodeA: [taskData(trimmedData)] });
+		await nextTick();
+
+		// The first delay would end here if the switch had not cancelled it.
+		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+		expect(fetchExecutionDataById).not.toHaveBeenCalled();
+
+		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+		expect(fetchExecutionDataById).toHaveBeenCalledTimes(1);
+	});
+
+	it('cancels the pending delay when the active execution reaches a terminal state', async () => {
+		setUpExecution(V2_ID, { NodeA: [taskData(trimmedData)] });
+		startFill();
+
+		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+		setUpExecution(V2_ID, { NodeA: [taskData(trimmedData)] }, 'error');
+		await nextTick();
+		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 4);
+		setUpExecution(V2_ID, { NodeA: [taskData(trimmedData)] });
+		await nextTick();
+
+		// The first delay would end here if the terminal state had not cancelled it.
+		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+		expect(fetchExecutionDataById).not.toHaveBeenCalled();
+
+		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+		expect(fetchExecutionDataById).toHaveBeenCalledTimes(1);
 	});
 
 	it('fetches nothing for a panel with a workflowExecution prop', async () => {

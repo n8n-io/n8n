@@ -83,15 +83,18 @@ export function useTrimmedRunDataFill(options: {
 		}
 	}
 
+	// The execution ID is a source too: a new run restarts the delay, and a run
+	// that ends or is not on engine v2 cancels it.
 	watch(
 		[
 			() => toValue(options.nodeName),
 			() => toValue(options.runIndex),
 			() => toValue(options.isTrimmed),
+			getFillableExecutionId,
 		],
-		() => {
+		([, , isTrimmed, executionId]) => {
 			cancelDelay();
-			if (toValue(options.isTrimmed) && getFillableExecutionId() !== undefined) {
+			if (isTrimmed && executionId !== undefined) {
 				delayTimeout = setTimeout(() => {
 					void fill();
 				}, TRIMMED_RUN_DATA_FILL_DELAY);

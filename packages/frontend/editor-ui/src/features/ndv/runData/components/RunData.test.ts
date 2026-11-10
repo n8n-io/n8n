@@ -1668,6 +1668,71 @@ describe('RunData', () => {
 			expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
 		});
 
+		it('shows the schema in the input panel when an older run of a parent is trimmed and its latest run has data', async () => {
+			const { queryByTestId, findByTestId } = render({
+				displayMode: 'schema',
+				paneType: 'input',
+				defaultRunItems: [{ json: { value: 'live' } }],
+				otherNodeRuns: [trimmedRun, { ...trimmedRun, data: { main: [[{ json: { value: 1 } }]] } }],
+				executionStatus: 'running',
+				inputNodes: [
+					{ name: 'Test Node', indicies: [], depth: 1 },
+					{ name: 'Other Node', indicies: [], depth: 2 },
+				],
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(await findByTestId('run-data-schema-node')).toBeInTheDocument();
+		});
+
+		it('shows the loading state in the input panel when the latest run of a parent is trimmed', () => {
+			const { getByTestId } = render({
+				displayMode: 'schema',
+				paneType: 'input',
+				defaultRunItems: [{ json: { value: 'live' } }],
+				otherNodeRuns: [{ ...trimmedRun, data: { main: [[{ json: { value: 1 } }]] } }, trimmedRun],
+				executionStatus: 'running',
+				inputNodes: [
+					{ name: 'Test Node', indicies: [], depth: 1 },
+					{ name: 'Other Node', indicies: [], depth: 2 },
+				],
+			});
+
+			expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
+		it('judges a parent with two outputs on the run its connected output shows', () => {
+			// The latest run is trimmed on output 0 and has no items on output 1, so
+			// the schema shows the older run for output 1.
+			const latestRun = {
+				...trimmedRun,
+				data: { main: [trimmedRun.data.main[0], []] },
+			};
+			const olderRun = {
+				...trimmedRun,
+				data: { main: [[{ json: { value: 0 } }], [{ json: { value: 1 } }]] },
+			};
+			const renderWithIndexes = (indicies: number[]) =>
+				render({
+					displayMode: 'schema',
+					paneType: 'input',
+					defaultRunItems: [{ json: { value: 'live' } }],
+					otherNodeRuns: [olderRun, latestRun],
+					executionStatus: 'running',
+					inputNodes: [
+						{ name: 'Test Node', indicies: [], depth: 1 },
+						{ name: 'Other Node', indicies, depth: 2 },
+					],
+				});
+
+			const connectedToOutput1 = renderWithIndexes([1]);
+			expect(connectedToOutput1.queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			connectedToOutput1.unmount();
+
+			const connectedToOutput0 = renderWithIndexes([0]);
+			expect(connectedToOutput0.getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
 		describe('fill from the execution', () => {
 			const V2_ID = '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b';
 			const fetchedItems = [{ json: { value: 'fetched' } }, { json: { value: 'fetched 2' } }];

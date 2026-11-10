@@ -424,35 +424,71 @@ describe('executionData.store', () => {
 		});
 
 		it('adds no error key for a successful fetched run and drops a stale one', () => {
-			const store = setUpLiveRuns({
-				NodeA: [liveRun(), liveRun({ executionIndex: 4, error: { message: 'Stale' } })],
-			});
+			const store = setUpLiveRuns({ NodeA: [liveRun({ error: { message: 'Stale' } })] });
 
-			store.fillTrimmedNodeRunData('NodeA', [fetchedRun(), fetchedRun()]);
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun()]);
 
-			const runs = store.execution?.data?.resultData.runData.NodeA;
-			expect(Object.hasOwn(runs?.[0] ?? {}, 'error')).toBe(false);
-			expect(Object.hasOwn(runs?.[1] ?? {}, 'error')).toBe(false);
+			const run = store.execution?.data?.resultData.runData.NodeA[0];
+			expect(run?.data).toEqual(fullData);
+			expect(Object.hasOwn(run ?? {}, 'error')).toBe(false);
 		});
 
-		it('leaves the run as it was when the fetched run is missing', () => {
-			const store = setUpLiveRuns({ NodeA: [liveRun(), liveRun({ executionIndex: 4 })] });
+		it('copies only the error when the fetched run failed without output', () => {
+			const store = setUpLiveRuns({ NodeA: [liveRun()] });
+			const error = { message: 'Failed' };
+
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun({ data: undefined, error })]);
+
+			const run = store.execution?.data?.resultData.runData.NodeA[0];
+			expect(run?.error).toEqual(error);
+			expect(run?.data).toBeUndefined();
+		});
+
+		it('leaves the run as it was when the fetched run is missing or has no output', () => {
+			const store = setUpLiveRuns({ NodeA: [liveRun()] });
 			const onChange = vi.fn();
-
-			store.fillTrimmedNodeRunData('NodeA', [fetchedRun()]);
-			store.fillTrimmedNodeRunData('NodeB', [fetchedRun()]);
-			store.fillTrimmedNodeRunData('NodeA', undefined);
-
-			const runs = store.execution?.data?.resultData.runData.NodeA;
-			expect(runs?.[0].data).toEqual(fullData);
-			expect(runs?.[1]).toStrictEqual(liveRun({ executionIndex: 4 }));
-			expect(store.execution?.data?.resultData.runData.NodeB).toBeUndefined();
-
-			// Only the first call filled a run.
 			store.onExecutionDataChange(onChange);
-			store.fillTrimmedNodeRunData('NodeA', [fetchedRun()]);
-			store.fillTrimmedNodeRunData('NodeB', [fetchedRun()]);
+
 			store.fillTrimmedNodeRunData('NodeA', undefined);
+			store.fillTrimmedNodeRunData('NodeA', []);
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun({ data: undefined })]);
+			store.fillTrimmedNodeRunData('NodeB', [fetchedRun()]);
+
+			expect(store.execution?.data?.resultData.runData.NodeA[0]).toStrictEqual(liveRun());
+			expect(store.execution?.data?.resultData.runData.NodeB).toBeUndefined();
+			expect(onChange).not.toHaveBeenCalled();
+		});
+
+		it('leaves a node with two live runs as it was, even when the fetched runs hold data', () => {
+			// Two parallel runs of one node that finished out of order: the live
+			// runs are in completion order, the fetched runs in iteration order.
+			const liveRuns = [liveRun({ executionIndex: 5 }), liveRun({ executionIndex: 4 })];
+			const store = setUpLiveRuns({ NodeA: liveRuns });
+			const onChange = vi.fn();
+			store.onExecutionDataChange(onChange);
+			const otherData = { main: [[{ json: { value: 2 } }]] };
+
+			store.fillTrimmedNodeRunData('NodeA', [
+				fetchedRun({ executionIndex: 4 }),
+				fetchedRun({ executionIndex: 5, data: otherData }),
+			]);
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun()]);
+
+			expect(store.execution?.data?.resultData.runData.NodeA).toStrictEqual([
+				liveRun({ executionIndex: 5 }),
+				liveRun({ executionIndex: 4 }),
+			]);
+			expect(onChange).not.toHaveBeenCalled();
+		});
+
+		it('leaves a node with one live run and two fetched runs as it was', () => {
+			const store = setUpLiveRuns({ NodeA: [liveRun()] });
+			const onChange = vi.fn();
+			store.onExecutionDataChange(onChange);
+
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun(), fetchedRun({ executionIndex: 1 })]);
+
+			expect(store.execution?.data?.resultData.runData.NodeA[0]).toStrictEqual(liveRun());
 			expect(onChange).not.toHaveBeenCalled();
 		});
 	});
