@@ -66,6 +66,7 @@ import {
 	assert,
 	calculateWorkflowChecksum,
 	compareWorkflowSettings,
+	pickVersionedSettings,
 	versionedSettingsEqual,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -964,12 +965,15 @@ export class WorkflowService {
 	) {
 		if (!this.workflowVersionedSettings.isEnabled()) return;
 
-		const versionSettings =
+		const storedSettings =
 			restoredVersionSettings ??
 			(restoredFromVersionId
 				? await this.workflowHistoryService.findVersionSettings(workflow.id, restoredFromVersionId)
 				: undefined);
-		if (!versionSettings) return;
+		if (!storedSettings) return;
+
+		// A version saved before history stored settings has no engine, so it restores v1.
+		const versionSettings = pickVersionedSettings(storedSettings);
 
 		// Leave the settings unset when the restore keeps the current values.
 		const restored = applyVersionedSettings(workflow.settings, versionSettings);

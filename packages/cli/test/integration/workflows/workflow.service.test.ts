@@ -1972,7 +1972,7 @@ describe('version-scoped settings on save', () => {
 			expect(await versionSettings(updated.versionId)).toEqual({ engineType: 'v1' });
 		});
 
-		test('keeps the engine when the restored version was saved before history stored settings', async () => {
+		test('restores v1 from a version saved before history stored settings', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v2' } }, owner);
 			const oldVersion = await createWorkflowHistoryItem(workflow.id, { settings: {} });
@@ -1983,8 +1983,8 @@ describe('version-scoped settings on save', () => {
 			});
 
 			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
-			expect(saved.settings?.engineType).toBe('v2');
-			expect(await versionSettings(updated.versionId)).toEqual({ engineType: 'v2' });
+			expect(saved.settings?.engineType).toBe('v1');
+			expect(await versionSettings(updated.versionId)).toEqual({ engineType: 'v1' });
 		});
 
 		test('does not change the settings on a restore that keeps the engine', async () => {
