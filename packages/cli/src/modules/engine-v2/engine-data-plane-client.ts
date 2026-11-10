@@ -33,6 +33,8 @@ import {
 	type ResumeOutcome,
 } from '@/services/engine-data-plane-proxy.service';
 
+import { EngineTlsMaterial } from './engine-tls-material';
+
 /** Must match the engine's `ExecutionStatus`. */
 const notCancellableDetailsSchema = z.object({
 	status: z.enum(['queued', 'running', 'waiting', 'completed', 'failed', 'cancelled']),
@@ -54,7 +56,9 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		private readonly engineConfig: EngineConfig,
 		outboundHttp: OutboundHttp,
 		private readonly instanceSettings: InstanceSettings,
+		tlsMaterial: EngineTlsMaterial,
 	) {
+		const { tls } = tlsMaterial;
 		this.http = outboundHttp.requests({
 			// Fixed, n8n-controlled host.
 			useDefaultSsrfPolicy: 'unsafe',
@@ -68,6 +72,8 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 			headers: () => ({
 				authorization: `Bearer ${mintIdentityToken(this.engineConfig.authSecret, this.caller())}`,
 			}),
+			// Explicit, so a global NODE_TLS_REJECT_UNAUTHORIZED=0 cannot turn off the peer check.
+			...(tls && { connectionPool: { agentOptions: { ...tls, rejectUnauthorized: true } } }),
 		});
 	}
 

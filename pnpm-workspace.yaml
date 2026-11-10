@@ -131,8 +131,8 @@ catalog:
   # Must satisfy openai's ">=5.4.0 <6" optional peer: an unmet range gives openai a second peer
   # context, which splits @langchain/core into two physical copies.
   '@smithy/signature-v4': 5.7.2
-  '@stryker-mutator/core': 10.0.0
-  '@stryker-mutator/vitest-runner': 10.0.0
+  '@stryker-mutator/core': 10.1.1
+  '@stryker-mutator/vitest-runner': 10.1.1
   '@supabase/supabase-js': 2.112.3
   '@testcontainers/k3s': ^11.13.0
   '@testcontainers/kafka': ^11.13.0
@@ -245,6 +245,7 @@ catalog:
   markdown-it: ^13.0.2
   markdown-it-link-attributes: ^4.0.1
   mime-types: 3.0.2
+  mocha: ^11.8.0
   moment-timezone: 0.5.48
   mqtt-packet: 9.0.0
   ms: 2.1.3
@@ -421,7 +422,14 @@ overrides:
   katex: 0.18.2
   body-parser: 2.3.0
   glob@10: 10.5.0
-  glob@7: 7.2.3
+  # These consumers use the same APIs in the maintained releases.
+  js-beautify@<1.15.4: 1.15.4
+  module-lookup-amd@9.0.5: 9.1.3
+  '@codemirror/buildhelper>mocha': 'catalog:'
+  # YAMLJS uses only glob.sync() in its two CLI commands.
+  'yamljs@0.3.0>glob': 10.5.0
+  # Preserve SQLite's prebuilt install and update its source-build fallback.
+  'sqlite3@5.1.7>node-gyp': 12.4.0
   jws@3: 3.2.2
   jws@4: 4.0.1
   qs: 'catalog:'

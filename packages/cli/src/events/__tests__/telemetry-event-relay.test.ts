@@ -4813,6 +4813,31 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(expectedProperties);
 		});
 
+		it('should add the personal credentials count to workflow execution telemetry', async () => {
+			const runData = {
+				finished: true,
+				status: 'success',
+				mode: 'trigger',
+				data: { resultData: { runData: {} } },
+			} as unknown as IRun;
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+				telemetryMetadata: { personalCredentialsCount: 2 },
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ execution_source: 'user', personal_credentials_count: 2 }),
+			);
+		});
+
 		it('should call telemetry.track when manual node execution finished', async () => {
 			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
 			credentialsRepository.findOneBy.mockResolvedValue(
@@ -5578,7 +5603,11 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-environment-created', {
 				user,
 				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'Deploy key',
 				providerType: 'git',
+				repository: 'git@github.com:o/r.git',
 				direction: 'promote',
 				environmentScope: 'instance',
 				createBranchOnPromotion: true,
@@ -5606,6 +5635,7 @@ describe('TelemetryEventRelay', () => {
 				user,
 				providerId: 'prov-1',
 				providerType: 'gitlab',
+				authType: 'token',
 				changedFields: ['name', 'auth'],
 				outcome: 'success',
 				durationMs: 120,
@@ -5633,7 +5663,9 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-provider-deleted', {
 				user,
 				providerId: 'prov-1',
+				providerName: 'Deploy key',
 				providerType: 'git',
+				authType: 'ssh-key',
 			});
 
 			const payload = { user_id: 'user123', provider_id: 'prov-1', provider_type: 'git' };
@@ -5650,7 +5682,12 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-environment-updated', {
 				user,
 				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'Deploy key',
+				repository: 'git@github.com:o/r.git',
 				direction: 'apply',
+				environmentScope: 'instance',
 				changedFields: ['provider', 'settings'],
 			});
 
@@ -5673,6 +5710,10 @@ describe('TelemetryEventRelay', () => {
 			eventService.emit('promotion-environment-deleted', {
 				user,
 				environmentId: 'env-1',
+				environmentName: 'Production',
+				providerId: 'prov-1',
+				providerName: 'Deploy key',
+				repository: 'git@github.com:o/r.git',
 				direction: 'promote',
 				environmentScope: 'projects',
 			});

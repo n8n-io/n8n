@@ -16,6 +16,7 @@ import {
 	type McpServerConfig,
 	type ModelConfig,
 	type InstanceAiTraceContext,
+	type OrchestrationContext,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { ErrorReporter } from 'n8n-core';
@@ -174,7 +175,7 @@ export class AssistantAgentFactory {
 				},
 			});
 		}
-		this.subscribeToAgentErrors(agent, threadId, runId);
+		this.subscribeToAgentErrors(agent, environment.orchestrationContext);
 		return agent;
 	}
 
@@ -324,7 +325,7 @@ export class AssistantAgentFactory {
 	 * the `source`-tagged events — the main agentic-loop errors (no source) already
 	 * reach Sentry via the errored run/stream result.
 	 */
-	private subscribeToAgentErrors(agent: InstanceAgent, threadId: string, runId: string): void {
+	private subscribeToAgentErrors(agent: InstanceAgent, context: OrchestrationContext): void {
 		agent.on(AgentEvent.Error, (event: AgentEventData) => {
 			if (event.type !== AgentEvent.Error) return;
 			if (!event.source) return;
@@ -332,8 +333,11 @@ export class AssistantAgentFactory {
 			this.instanceAiErrorReporter.report(event.error, {
 				component: `instance-ai-${event.source}`,
 				...(severity ? { severity } : {}),
-				threadId,
-				runId,
+				threadId: context.threadId,
+				runId: context.runId,
+				userId: context.userId,
+				...(context.messageGroupId ? { messageGroupId: context.messageGroupId } : {}),
+				...(context.tracing ? { tracing: context.tracing } : {}),
 			});
 		});
 	}
