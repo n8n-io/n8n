@@ -15,7 +15,6 @@ import type {
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
-	N8nAssistantIcon,
 	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
@@ -1255,7 +1254,7 @@ watch(
 							"
 						>
 							<template #icon>
-								<N8nAssistantIcon size="small" />
+								<N8nIcon icon="n8n-assistant" size="small" />
 							</template>
 						</N8nButton>
 					</N8nTooltip>
