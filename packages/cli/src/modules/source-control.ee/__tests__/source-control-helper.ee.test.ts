@@ -6,7 +6,6 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
-import type { License } from '@/license';
 import {
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_SSH_FOLDER,
@@ -174,12 +173,10 @@ const pullResult: SourceControlledFile[] = [
 	},
 ];
 
-const license = mock<License>();
 const sourceControlPreferencesService = mock<SourceControlPreferencesService>();
 
 beforeAll(async () => {
 	vi.resetAllMocks();
-	license.isSourceControlLicensed.mockReturnValue(true);
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchName: 'main',
 		connected: true,

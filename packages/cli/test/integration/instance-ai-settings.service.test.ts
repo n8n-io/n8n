@@ -1,4 +1,6 @@
+import { LicenseState, type LicenseProvider } from '@n8n/backend-common';
 import { getPersonalProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
 	CredentialsRepository,
@@ -32,6 +34,8 @@ describe('InstanceAiSettingsService (integration)', () => {
 	let settingsRepository: SettingsRepository;
 	let threadRepository: InstanceAiThreadRepository;
 	let owner: User;
+	let previousLicenseProvider: LicenseProvider | null;
+	let previousModelConfig: { model: string; modelApiKey: string; modelUrl: string };
 
 	const modelUpdate = {
 		modelConnection: { type: 'openAiApi', data: { apiKey: 'test-key' } },
@@ -41,9 +45,22 @@ describe('InstanceAiSettingsService (integration)', () => {
 	beforeAll(async () => {
 		await testModules.loadModules(['instance-ai']);
 		await testDb.init();
+		const licenseState = Container.get(LicenseState);
+		previousLicenseProvider = licenseState.licenseProvider;
+		licenseState.setLicenseProvider(Container.get(License));
+		const aiConfig = Container.get(GlobalConfig).instanceAi;
+		previousModelConfig = {
+			model: aiConfig.model,
+			modelApiKey: aiConfig.modelApiKey,
+			modelUrl: aiConfig.modelUrl,
+		};
+		aiConfig.model = 'custom/test';
+		aiConfig.modelApiKey = '';
+		aiConfig.modelUrl = '';
+		vi.stubEnv('N8N_INSTANCE_AI_MODEL', '');
 		await initCredentialsTypes();
 
-		// The instance-ai module is not booted here; register its credential uses directly.
+		// Register the credential uses without the module's post-initialization hooks.
 		const broker = Container.get(InstanceCredentialBroker);
 		broker.registerUse(INSTANCE_AI_MODEL_CREDENTIAL_POLICY);
 		broker.registerUse(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY);
@@ -65,6 +82,9 @@ describe('InstanceAiSettingsService (integration)', () => {
 	});
 
 	afterAll(async () => {
+		Container.get(LicenseState).licenseProvider = previousLicenseProvider;
+		Object.assign(Container.get(GlobalConfig).instanceAi, previousModelConfig);
+		vi.unstubAllEnvs();
 		await testDb.terminate();
 	});
 

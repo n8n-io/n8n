@@ -31,6 +31,7 @@ const flagsSchema = z.object({
 export class SecurityAudit extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async init() {
 		await super.init();
+		await this.initLicense();
 
 		// risk reporters read execution data, which may be stored on S3 or Azure Blob
 		try {

@@ -3,7 +3,7 @@ import type {
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 } from '@n8n/api-types';
-import type { Logger } from '@n8n/backend-common';
+import type { LicenseState, Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { AiAssistantClient, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -28,6 +28,7 @@ describe('AiService', () => {
 	const user = mock<IUser>({ id: 'user123' });
 	const client = mock<AiAssistantClient>();
 	const license = mock<License>();
+	const licenseState = mock<LicenseState>();
 	const globalConfig = mock<GlobalConfig>({
 		logging: { level: 'info' },
 		aiAssistant: { baseUrl },
@@ -41,7 +42,14 @@ describe('AiService', () => {
 		(AiAssistantClient as Mock).mockImplementation(function () {
 			return client;
 		});
-		aiService = new AiService(license, globalConfig, instanceSettings, logger, errorReporter);
+		aiService = new AiService(
+			license,
+			globalConfig,
+			instanceSettings,
+			logger,
+			errorReporter,
+			licenseState,
+		);
 	});
 
 	afterEach(() => {
@@ -50,7 +58,7 @@ describe('AiService', () => {
 
 	describe('init', () => {
 		it('should not initialize client if AI assistant is not enabled', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(false);
+			licenseState.isAiAssistantLicensed.mockReturnValue(false);
 
 			await aiService.init();
 
@@ -58,7 +66,7 @@ describe('AiService', () => {
 		});
 
 		it('should initialize client when AI assistant is enabled', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(true);
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 			license.loadCertStr.mockResolvedValue('mock-license-cert');
 			license.getConsumerId.mockReturnValue('mock-consumer-id');
 
@@ -79,7 +87,7 @@ describe('AiService', () => {
 		const payload = mock<AiChatRequestDto>();
 
 		it('should call client chat method after initialization', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(true);
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 			const clientResponse = mock<Response>();
 			client.chat.mockResolvedValue(clientResponse);
 
@@ -90,7 +98,7 @@ describe('AiService', () => {
 		});
 
 		it('should throw error if client is not initialized', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(false);
+			licenseState.isAiAssistantLicensed.mockReturnValue(false);
 
 			await expect(aiService.chat(payload, user)).rejects.toThrow(
 				'AI Assistant client not initialized',
@@ -102,7 +110,7 @@ describe('AiService', () => {
 		const payload = mock<AiApplySuggestionRequestDto>();
 
 		it('should call client applySuggestion', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(true);
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 			const clientResponse = mock<AiAssistantSDK.ApplySuggestionResponse>();
 			client.applySuggestion.mockResolvedValue(clientResponse);
 
@@ -113,7 +121,7 @@ describe('AiService', () => {
 		});
 
 		it('should throw error if client is not initialized', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(false);
+			licenseState.isAiAssistantLicensed.mockReturnValue(false);
 
 			await expect(aiService.applySuggestion(payload, user)).rejects.toThrow(
 				'AI Assistant client not initialized',
@@ -123,7 +131,7 @@ describe('AiService', () => {
 
 	describe('license certificate refresh', () => {
 		it('should register for license certificate updates on init', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(true);
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 			license.loadCertStr.mockResolvedValue('mock-license-cert');
 			license.getConsumerId.mockReturnValue('mock-consumer-id');
 
@@ -133,7 +141,7 @@ describe('AiService', () => {
 		});
 
 		it('should update client license cert when callback is invoked', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(true);
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 			license.loadCertStr.mockResolvedValue('mock-license-cert');
 			license.getConsumerId.mockReturnValue('mock-consumer-id');
 
@@ -155,7 +163,7 @@ describe('AiService', () => {
 		});
 
 		it('should not register for license updates when AI assistant is disabled', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(false);
+			licenseState.isAiAssistantLicensed.mockReturnValue(false);
 
 			await aiService.init();
 
@@ -167,7 +175,7 @@ describe('AiService', () => {
 		const payload = mock<AiAskRequestDto>();
 
 		it('should call client askAi method after initialization', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(true);
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 			const clientResponse = mock<AiAssistantSDK.AskAiResponsePayload>();
 			client.askAi.mockResolvedValue(clientResponse);
 
@@ -178,7 +186,7 @@ describe('AiService', () => {
 		});
 
 		it('should throw error if client is not initialized', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(false);
+			licenseState.isAiAssistantLicensed.mockReturnValue(false);
 
 			await expect(aiService.askAi(payload, user)).rejects.toThrow(
 				'AI Assistant client not initialized',
@@ -188,19 +196,19 @@ describe('AiService', () => {
 
 	describe('isProxyEnabled', () => {
 		it('should return true when license enabled and base URL configured', () => {
-			license.isAiAssistantEnabled.mockReturnValue(true);
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 
 			expect(aiService.isProxyEnabled()).toBe(true);
 		});
 
 		it('should return false when license not enabled', () => {
-			license.isAiAssistantEnabled.mockReturnValue(false);
+			licenseState.isAiAssistantLicensed.mockReturnValue(false);
 
 			expect(aiService.isProxyEnabled()).toBe(false);
 		});
 
 		it('should return false when base URL is empty', () => {
-			license.isAiAssistantEnabled.mockReturnValue(true);
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 			const configWithoutUrl = mock<GlobalConfig>({
 				logging: { level: 'info' },
 				aiAssistant: { baseUrl: '' },
@@ -211,6 +219,7 @@ describe('AiService', () => {
 				instanceSettings,
 				logger,
 				errorReporter,
+				licenseState,
 			);
 
 			expect(serviceNoUrl.isProxyEnabled()).toBe(false);
@@ -219,7 +228,7 @@ describe('AiService', () => {
 
 	describe('getClient', () => {
 		it('should return initialized client when license is enabled', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(true);
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 			license.loadCertStr.mockResolvedValue('cert');
 			license.getConsumerId.mockReturnValue('consumer-1');
 
@@ -229,13 +238,13 @@ describe('AiService', () => {
 		});
 
 		it('should throw when client cannot be initialized', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(false);
+			licenseState.isAiAssistantLicensed.mockReturnValue(false);
 
 			await expect(aiService.getClient()).rejects.toThrow('AI Assistant client not initialized');
 		});
 
 		it('should only initialize once on repeated calls', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(true);
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 			license.loadCertStr.mockResolvedValue('cert');
 			license.getConsumerId.mockReturnValue('consumer-1');
 
@@ -250,7 +259,7 @@ describe('AiService', () => {
 		const credits = mock<AiAssistantSDK.AiCreditResponsePayload>();
 
 		beforeEach(() => {
-			license.isAiAssistantEnabled.mockReturnValue(true);
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 		});
 
 		afterEach(() => {

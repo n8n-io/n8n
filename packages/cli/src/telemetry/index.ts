@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { InstanceRegistryProxyService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -144,6 +144,7 @@ export class Telemetry {
 		private readonly globalConfig: GlobalConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	// PostHog groupIdentify only accepts flat objects with string or number values, function sanitizes objects to match that format.
@@ -261,7 +262,7 @@ export class Telemetry {
 		// License info
 		const pulsePacket = {
 			plan_name_current: this.license.getPlanName(),
-			quota: this.license.getTriggerLimit(),
+			quota: this.licenseState.getMaxActiveWorkflows(),
 			usage: await this.workflowRepository.getActiveTriggerCount(),
 			role_count: await Container.get(UserRepository).countUsersByRole('person'),
 			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),

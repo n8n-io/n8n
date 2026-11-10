@@ -1,6 +1,6 @@
 import type { Workspace, WorkspaceFilesystem } from '@n8n/agents';
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
-import type { Logger } from '@n8n/backend-common';
+import type { LicenseState, Logger } from '@n8n/backend-common';
 import type { InstanceWriteAccessService } from '@n8n/backend-services';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { ConflictError, ForbiddenError } from '@n8n/errors';
@@ -8,7 +8,6 @@ import type { InstanceAiContext, InstanceAiExecutionService } from '@n8n/instanc
 import * as instanceAi from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
-import type { License } from '@/license';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import type { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
@@ -68,7 +67,7 @@ describe('SelfHealingCandidateService', () => {
 	const temporaryWorkflows = mock<SelfHealingTemporaryWorkflowService>();
 	const logger = mock<Logger>();
 	const enterpriseWorkflows = mock<EnterpriseWorkflowService>();
-	const license = mock<License>();
+	const license = mock<LicenseState>();
 	const writeAccess = mock<InstanceWriteAccessService>();
 	const executionService = mock<InstanceAiExecutionService>();
 	const filesystem = mock<WorkspaceFilesystem>();
@@ -87,7 +86,7 @@ describe('SelfHealingCandidateService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		writeAccess.isReadOnly.mockReturnValue(false);
-		license.isSharingEnabled.mockReturnValue(false);
+		license.isSharingLicensed.mockReturnValue(false);
 		enterpriseWorkflows.preventTampering.mockImplementation(async (workflow) => workflow);
 		source = candidateSource('Repaired process');
 		filesystem.readFile.mockImplementation(async () => source);
@@ -156,7 +155,7 @@ describe('SelfHealingCandidateService', () => {
 	);
 
 	it.each([false, true])('validates unchanged preparation with sharing=%s', async (sharing) => {
-		license.isSharingEnabled.mockReturnValue(sharing);
+		license.isSharingLicensed.mockReturnValue(sharing);
 		const result = await service.verify({ ...input, validationOnly: true });
 
 		expect(result).toMatchObject({
@@ -167,12 +166,21 @@ describe('SelfHealingCandidateService', () => {
 		});
 		expect(temporaryWorkflows.create).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
+		if (sharing) {
+			expect(enterpriseWorkflows.preventTampering).toHaveBeenCalledWith(
+				expect.anything(),
+				baseline.workflowId,
+				user,
+			);
+		} else {
+			expect(enterpriseWorkflows.preventTampering).not.toHaveBeenCalled();
+		}
 	});
 
 	it.each(['verify', 'compile'] as const)(
 		'rejects restored node settings during %s',
 		async (method) => {
-			license.isSharingEnabled.mockReturnValue(true);
+			license.isSharingLicensed.mockReturnValue(true);
 			const edited = structuredClone(baseline.original);
 			edited.nodes[1].parameters = { value: 'edited' };
 			source = JSON.stringify(edited);
@@ -202,7 +210,7 @@ describe('SelfHealingCandidateService', () => {
 	);
 
 	it('stops before verification when the builder credential checks reject the candidate', async () => {
-		license.isSharingEnabled.mockReturnValue(true);
+		license.isSharingLicensed.mockReturnValue(true);
 		enterpriseWorkflows.preventTampering.mockRejectedValueOnce(
 			new Error('The workflow credentials are unavailable.'),
 		);

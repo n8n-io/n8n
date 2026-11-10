@@ -1,5 +1,5 @@
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,7 +19,6 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import isEqual from 'lodash/isEqual';
 import { calculateWorkflowChecksum, STICKY_NODE_TYPE } from 'n8n-workflow';
 
-import { License } from '@/license';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
@@ -44,7 +43,7 @@ export class SelfHealingCandidateService {
 		private readonly temporaryWorkflows: SelfHealingTemporaryWorkflowService,
 		private readonly logger: Logger,
 		private readonly enterpriseWorkflows: EnterpriseWorkflowService,
-		private readonly license: License,
+		private readonly license: LicenseState,
 		private readonly writeAccess: InstanceWriteAccessService,
 	) {}
 
@@ -56,8 +55,7 @@ export class SelfHealingCandidateService {
 		if (!compiled.success) return compiled;
 
 		// Reject restored edits so verification and the suggestion use the same graph.
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (this.license.isSharingEnabled()) {
+		if (this.license.isSharingLicensed()) {
 			const nodes = structuredClone(compiled.workflow.nodes);
 			compiled.workflow = await this.enterpriseWorkflows.preventTampering(
 				compiled.workflow,

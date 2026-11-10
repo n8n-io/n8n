@@ -1,17 +1,22 @@
+import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT, LICENSE_QUOTAS } from '@n8n/constants';
 import { Container } from '@n8n/di';
 
-import { License } from '@/license';
+function getLicensePruneTime() {
+	return (
+		Container.get(LicenseState).getValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ??
+		DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT
+	);
+}
 
 export function getWorkflowHistoryLicensePruneTime() {
-	// oxlint-disable-next-line typescript/no-deprecated
-	return Container.get(License).getWorkflowHistoryPruneLimit();
+	return getLicensePruneTime();
 }
 
 // Time in hours
 export function getWorkflowHistoryPruneTime(): number {
-	// oxlint-disable-next-line typescript/no-deprecated
-	const licenseTime = Container.get(License).getWorkflowHistoryPruneLimit();
+	const licenseTime = getLicensePruneTime();
 	const configTime = Container.get(GlobalConfig).workflowHistory.pruneTime;
 
 	// License is infinite and config time is infinite

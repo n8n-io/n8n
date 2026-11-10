@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import type { LicenseState, Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
@@ -11,7 +11,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
-import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@n8n/backend-services';
 
@@ -44,7 +43,7 @@ const oneMinorAboveSupported = `${supportedMajor}.${supportedMinor + 1}`;
  * left, which only a real `existsSync` can prove did not happen.
  */
 describe('CommunityPackagesService install rollback (real filesystem)', () => {
-	const license = mock<License>();
+	const license = mock<LicenseState>();
 	const config = mock<CommunityPackagesConfig>({
 		enabled: true,
 		preventLoading: false,

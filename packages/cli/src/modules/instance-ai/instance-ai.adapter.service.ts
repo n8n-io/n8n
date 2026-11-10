@@ -1219,6 +1219,7 @@ export class InstanceAiAdapterService {
 			enterpriseWorkflowService,
 			executionRepository,
 			license,
+			licenseState,
 			telemetry,
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			eventService,
@@ -1930,8 +1931,7 @@ export class InstanceAiAdapterService {
 
 					// Enforce credential tamper protection — same guard as the
 					// REST controller (workflows.controller PATCH /:workflowId).
-					// oxlint-disable-next-line typescript/no-deprecated
-					if (license.isSharingEnabled()) {
+					if (licenseState?.isSharingLicensed() ?? license.isLicensed('feat:sharing')) {
 						updateData = await enterpriseWorkflowService.preventTampering(
 							updateData,
 							saved.id,
@@ -2051,8 +2051,7 @@ export class InstanceAiAdapterService {
 				try {
 					// Enforce credential tamper protection — same guard as the
 					// REST controller (workflows.controller PATCH /:workflowId).
-					// oxlint-disable-next-line typescript/no-deprecated
-					if (license.isSharingEnabled()) {
+					if (licenseState?.isSharingLicensed() ?? license.isLicensed('feat:sharing')) {
 						updateData = await enterpriseWorkflowService.preventTampering(
 							updateData,
 							workflowId,

@@ -3,9 +3,9 @@ import {
 	ForgotPasswordRequestDto,
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { Time } from '@n8n/constants';
+import { Time, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { GLOBAL_OWNER_ROLE, PersonRepository } from '@n8n/db';
 import {
 	Body,
@@ -29,7 +29,6 @@ import {
 	UnprocessableRequestError,
 } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { createJitterMiddleware } from '@/middlewares';
 import { AuthlessRequest } from '@/requests';
@@ -50,7 +49,7 @@ export class PasswordResetController {
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly mfaService: MfaService,
-		private readonly license: License,
+		private readonly license: LicenseState,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly personRepository: PersonRepository,
 		private readonly eventService: EventService,
@@ -93,8 +92,10 @@ export class PasswordResetController {
 				return;
 			}
 
-			// oxlint-disable-next-line typescript/no-deprecated
-			if (person.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
+			if (
+				person.role.slug !== GLOBAL_OWNER_ROLE.slug &&
+				this.license.getMaxUsers() !== UNLIMITED_LICENSE_QUOTA
+			) {
 				this.logger.debug(
 					'Request to send password reset email failed because the user limit was reached',
 				);
@@ -126,8 +127,7 @@ export class PasswordResetController {
 				return;
 			}
 
-			// oxlint-disable-next-line typescript/no-deprecated
-			if (this.license.isLdapEnabled() && ldapIdentity) {
+			if (this.license.isLdapLicensed() && ldapIdentity) {
 				throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 			}
 
@@ -183,8 +183,10 @@ export class PasswordResetController {
 		const person = await this.authService.resolvePasswordResetToken(token);
 		if (!person) throw new NotFoundError('');
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (person.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
+		if (
+			person.role.slug !== GLOBAL_OWNER_ROLE.slug &&
+			this.license.getMaxUsers() !== UNLIMITED_LICENSE_QUOTA
+		) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
 				{ userId: person.id },

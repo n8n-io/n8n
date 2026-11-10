@@ -1,8 +1,10 @@
 import type { TransactionRunner } from '@n8n/db';
 import { InviteUsersRequestDto } from '@n8n/api-types';
+import type { LicenseState } from '@n8n/backend-common';
 import { type EventService, UrlService, type RoleService, JwtService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
 	Project,
 	GLOBAL_ADMIN_ROLE,
@@ -27,7 +29,6 @@ import { mock } from 'vitest-mock-extended';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ExternalHooks } from '@/external-hooks';
-import type { License } from '@/license';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { INVITE_ROLE_MANAGED_MESSAGE, UserService } from '@/services/user.service';
 import type { ScimSwitchReader } from '@/sso.ee/scim-switch-reader';
@@ -63,7 +64,7 @@ describe('UserService', () => {
 	const publicApiKeyService = mock<PublicApiKeyService>();
 	const projectService = mock<ProjectService>();
 	const eventService = mock<EventService>();
-	const license = mock<License>();
+	const license = mock<LicenseState>();
 	const externalHooks = mock<ExternalHooks>();
 	const jwtService = mockInstance(JwtService, {
 		sign: vi.fn().mockReturnValue('mock-jwt-token'),
@@ -890,8 +891,8 @@ describe('UserService', () => {
 
 		beforeEach(() => {
 			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			license.getMaxUsers.mockReturnValue(UNLIMITED_LICENSE_QUOTA);
 			vi.spyOn(ssoHelpers, 'isSamlOrOidcLoginEnabled').mockReturnValue(false);
-			license.isWithinUsersLimit.mockReturnValue(true);
 			license.isAdvancedPermissionsLicensed.mockReturnValue(true);
 			ownershipService.hasInstanceOwner.mockResolvedValue(true);
 		});
@@ -944,7 +945,7 @@ describe('UserService', () => {
 		});
 
 		it('throws a ForbiddenError if the user limit quota has been reached', async () => {
-			license.isWithinUsersLimit.mockReturnValue(false);
+			license.getMaxUsers.mockReturnValue(5);
 
 			await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(ForbiddenError);
 			await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(

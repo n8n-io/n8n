@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -13,8 +14,6 @@ import { PublicApiControllerRegistry } from './public-api-controller.registry';
 import { PublicApiRateLimitSettingsService } from './public-api-rate-limit-settings.service';
 import { stripGitBookParentTags } from './swagger-spec';
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
-
-import { License } from '@/license';
 
 import './v1/controllers';
 
@@ -220,5 +219,9 @@ export const loadPublicApiVersions = async (
  * must keep working even when token-based access is disabled.
  */
 export function isApiKeyAuthEnabled(): boolean {
-	return !Container.get(GlobalConfig).publicApi.disabled && !Container.get(License).isAPIDisabled();
+	const licenseState = Container.get(LicenseState);
+	return (
+		!Container.get(GlobalConfig).publicApi.disabled &&
+		(!licenseState.licenseProvider || !licenseState.isAPIDisabled())
+	);
 }

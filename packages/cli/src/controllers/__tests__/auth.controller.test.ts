@@ -1,7 +1,8 @@
 import type { LoginRequestDto } from '@n8n/api-types';
 import { ResolveSignupTokenQueryDto, SSO_LOGIN_REQUIRED_ERROR_CODE } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { PersonRepository, UserRepository } from '@n8n/db';
@@ -16,7 +17,6 @@ import type { EmailAuthHandler } from '@/auth/handlers/email.auth-handler';
 import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError, BadRequestError, ForbiddenError } from '@n8n/errors';
-import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
 import { PostHogClient } from '@/posthog';
@@ -35,7 +35,7 @@ describe('AuthController', () => {
 	mockInstance(UserRepository);
 	mockInstance(PersonRepository);
 	mockInstance(PostHogClient);
-	mockInstance(License);
+	mockInstance(LicenseState);
 	const ldapService = mockInstance(LdapService);
 	const authHandlerRegistry = mockInstance(AuthHandlerRegistry);
 	const emailAuthHandler = mock<EmailAuthHandler>();
@@ -231,7 +231,7 @@ describe('AuthController', () => {
 		const mfaService: MfaService = mockInstance(MfaService);
 		const authService: AuthService = mockInstance(AuthService);
 		const userService: UserService = mockInstance(UserService);
-		const license: License = mockInstance(License);
+		const license: LicenseState = mockInstance(LicenseState);
 		const userRepository: UserRepository = mockInstance(UserRepository);
 		const personRepository: PersonRepository = mockInstance(PersonRepository);
 		const postHog: PostHogClient = mockInstance(PostHogClient);
@@ -273,7 +273,7 @@ describe('AuthController', () => {
 		it('throws a BadRequestError if the inviter and the invitee are the same', async () => {
 			vi.mocked(personRepository.findByIdWithRole).mockClear();
 			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.mocked(license.getMaxUsers).mockReturnValue(UNLIMITED_LICENSE_QUOTA);
 			const id = uuidv4();
 			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId: id,
@@ -336,7 +336,7 @@ describe('AuthController', () => {
 				inviterId: uuidv4(),
 				inviteeId: id,
 			});
-			vi.mocked(license.isWithinUsersLimit).mockReturnValue(false);
+			vi.mocked(license.getMaxUsers).mockReturnValue(5);
 
 			const promise = authController.resolveSignupToken(req, res, payload);
 			await expect(promise).rejects.toThrow(ForbiddenError);
@@ -374,7 +374,7 @@ describe('AuthController', () => {
 				inviterId: uuidv4(),
 				inviteeId: id,
 			});
-			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.mocked(license.getMaxUsers).mockReturnValue(UNLIMITED_LICENSE_QUOTA);
 			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(null);
 			vi.mocked(personRepository.findByIdWithRole).mockResolvedValue(null);
 
@@ -414,7 +414,7 @@ describe('AuthController', () => {
 				inviterId: uuidv4(),
 				inviteeId: id,
 			});
-			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.mocked(license.getMaxUsers).mockReturnValue(UNLIMITED_LICENSE_QUOTA);
 			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(
 				mock<User>({
 					id,
@@ -466,7 +466,7 @@ describe('AuthController', () => {
 				inviterId: uuidv4(),
 				inviteeId: id,
 			});
-			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.mocked(license.getMaxUsers).mockReturnValue(UNLIMITED_LICENSE_QUOTA);
 			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(
 				mock<User>({
 					id,
@@ -518,7 +518,7 @@ describe('AuthController', () => {
 				inviterId: uuidv4(),
 				inviteeId: id,
 			});
-			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.mocked(license.getMaxUsers).mockReturnValue(UNLIMITED_LICENSE_QUOTA);
 			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(
 				mock<User>({
 					id,
@@ -578,7 +578,7 @@ describe('AuthController', () => {
 				inviterId,
 				inviteeId,
 			});
-			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.mocked(license.getMaxUsers).mockReturnValue(UNLIMITED_LICENSE_QUOTA);
 			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(
 				mock<User>({
 					id: inviterId,
