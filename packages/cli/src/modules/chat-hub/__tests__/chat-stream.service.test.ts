@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ChatStreamStateService } from '@/modules/chat-hub/chat-stream-state.service';
 import { ChatStreamService } from '@/modules/chat-hub/chat-stream.service';
 import type { Push } from '@/push';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 describe('ChatStreamService', () => {
 	const logger = mock<Logger>();

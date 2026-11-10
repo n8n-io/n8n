@@ -9,6 +9,8 @@ import { nanoid } from 'nanoid';
 
 import { BadRequestError, NotFoundError, OperationalError } from '@n8n/errors';
 
+import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
+
 import {
 	buildMirrorFinalizeCommand,
 	buildReadKnowledgeCommand,
@@ -50,7 +52,6 @@ import {
 	sanitizeSandboxErrorDetail,
 } from './agent-sandbox-runtime.service';
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
-import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
 const GLOB_MATCH_TIMEOUT_MS = 250;
@@ -126,7 +127,7 @@ export class AgentKnowledgeMirrorService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
-		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
 		private readonly projectDeletion: AgentProjectDeletionRepository,

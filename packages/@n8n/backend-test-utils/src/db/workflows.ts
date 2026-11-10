@@ -1,5 +1,8 @@
 import type { SharedWorkflow, IWorkflowDb, WorkflowPublishHistory, WorkflowHistory } from '@n8n/db';
 import {
+	accountFullName,
+	isPerson,
+	isServiceAccount,
 	Project,
 	User,
 	ProjectRepository,
@@ -274,18 +277,22 @@ export const getWorkflowById = async (id: string) =>
  * @param withPublishHistory publish history to create (optional)
  * @param autosaved whether this is an autosave (optional)
  */
+/** The author name that workflow history records: a service account by its name, a person by first and last name. */
+function historyAuthor(user: User): string {
+	if (isServiceAccount(user)) return accountFullName(user);
+	if (isPerson(user) && user.firstName && user.lastName) {
+		return `${user.firstName} ${user.lastName}`;
+	}
+	return 'Test User';
+}
+
 export async function createWorkflowHistory(
 	workflow: IWorkflowDb,
 	userOrProject?: User | Project,
 	withPublishHistory?: Partial<WorkflowPublishHistory>,
 	overrides: Partial<WorkflowHistory> = {},
 ): Promise<void> {
-	const authors =
-		userOrProject instanceof User
-			? userOrProject.firstName && userOrProject.lastName
-				? `${userOrProject.firstName} ${userOrProject.lastName}`
-				: 'Test User'
-			: 'Test User';
+	const authors = userOrProject instanceof User ? historyAuthor(userOrProject) : 'Test User';
 
 	const repo = Container.get(WorkflowHistoryRepository);
 	await repo.insert(

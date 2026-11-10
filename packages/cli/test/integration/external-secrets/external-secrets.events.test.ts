@@ -7,7 +7,7 @@ import { Cipher } from 'n8n-core';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { ExternalSecretsModule } from '@/modules/external-secrets.ee/external-secrets.module';
-import { PubSubEventBus } from '@/scaling/pubsub/pubsub.eventbus';
+import { PubSubEventBus } from '@n8n/backend-services';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 
 import {

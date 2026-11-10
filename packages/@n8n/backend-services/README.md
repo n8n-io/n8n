@@ -31,6 +31,9 @@ and infrastructure services that need the persistence layer or that only
 - `UrlService`: instance and webhook URLs.
 - `CacheService`: application cache access.
 - `RedisClientService`: shared Redis connections and support code.
+- `Publisher` and `Subscriber`: the scaling-mode pubsub channels. The command
+  payload types (`PubSubCommandMap`) live in `@n8n/decorators`, next to
+  `@OnPubSubEvent`.
 
 The next PRs move `ProtectedResourceRegistry`, `RoleService`, the finder services
 and the scope checks here, one area at a time.

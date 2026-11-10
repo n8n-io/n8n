@@ -1,10 +1,4 @@
-import {
-	CONTEXT_PREFERENCES_CONTROL_VARIANT,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
-	INSTANCE_ACTIVITY_CONTEXT_FLAG,
-	CREDENTIAL_DESCRIPTIONS_FLAG,
-} from '@n8n/api-types';
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import type { PostHogClient } from '@/posthog';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
@@ -57,9 +51,7 @@ describe('McpProtectedResource', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
-		postHogClient.getFeatureFlags.mockResolvedValue({
-			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
-		});
+		postHogClient.getFeatureFlags.mockResolvedValue({});
 		mcpConfig.baseUrl = '';
 		moduleRegistry.isActive.mockReturnValue(true);
 		vi.mocked(moduleRegistry.settings.get).mockReturnValue(undefined);
@@ -442,66 +434,23 @@ describe('McpProtectedResource', () => {
 				hasGlobalScope.mockReturnValue(true);
 			});
 
-			it('offers both preference scopes to a user in the experiment arm', async () => {
+			it('offers both preference scopes without a flag read', async () => {
 				const scopes = await resource.getGrantableScopes(user);
 
 				expect(scopes).toContain('aiPreference:read');
 				expect(scopes).toContain('aiPreference:write');
-				expect(postHogClient.getFeatureFlags).toHaveBeenCalledWith(user);
+				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
 			});
 
-			it('withholds both preference scopes from a user in the control arm', async () => {
-				// The control arm must not learn the feature exists from the consent
-				// screen, and the tools never register for them, so a tick here would
-				// only record a dead grant.
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
-				});
-
-				const scopes = await resource.getGrantableScopes(user);
-
-				expect(scopes).not.toContain('aiPreference:read');
-				expect(scopes).not.toContain('aiPreference:write');
-				expect(scopes).toEqual(resource.scopes.filter((s) => !s.startsWith('aiPreference:')));
-			});
-
-			it('withholds the preference scopes when the flag is not the variant string', async () => {
-				postHogClient.getFeatureFlags.mockResolvedValue({ [CONTEXT_PREFERENCES_FLAG]: true });
-
-				const scopes = await resource.getGrantableScopes(user);
-
-				expect(scopes).not.toContain('aiPreference:read');
-				expect(scopes).not.toContain('aiPreference:write');
-			});
-
-			it('withholds the preference scopes when the flags cannot be read', async () => {
-				// Registration treats an unreadable flag as off; consent must not
-				// offer a scope the server will then refuse to honour.
-				postHogClient.getFeatureFlags.mockRejectedValue(new Error('Flags unavailable'));
-
-				const scopes = await resource.getGrantableScopes(user);
-
-				expect(scopes).not.toContain('aiPreference:read');
-				expect(scopes).not.toContain('aiPreference:write');
-				expect(scopes).toContain('workflow:read');
-			});
-
-			it('narrows the preference and install scopes independently', async () => {
+			it('keeps the preference scopes when the install scope is narrowed', async () => {
 				hasGlobalScope.mockReturnValue(false);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
-				});
 
 				const scopes = await resource.getGrantableScopes(user);
 
-				expect(scopes).toEqual(
-					resource.scopes.filter(
-						(s) => s !== 'communityPackage:install' && !s.startsWith('aiPreference:'),
-					),
-				);
+				expect(scopes).toEqual(resource.scopes.filter((s) => s !== 'communityPackage:install'));
 			});
 
-			it('still advertises the preference scopes in discovery, which is unauthenticated', () => {
+			it('advertises the preference scopes in discovery, which is unauthenticated', () => {
 				expect(resource.scopes).toContain('aiPreference:read');
 				expect(resource.scopes).toContain('aiPreference:write');
 			});

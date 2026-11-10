@@ -508,6 +508,20 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Release PR verification
+
+When the selected ref contains `packages/quality/policy/code-health`,
+`release-create-pr.yml` verifies the npm-install dependency graph for all publishable
+packages before it creates a release PR. It resolves the selected ref once.
+Verification, release preparation, and the release base branch use
+that commit SHA, even if the selected branch advances. Verification runs in blocking
+mode. A failure stops PR creation and auto-merge setup. This gate also
+applies to patch, minor, and experimental releases that call this workflow.
+
+For older release refs without the verifier package, the verification job emits a
+notice and skips dependency verification, even in blocking mode. Release PR creation
+can continue without that check.
+
 ### Standalone prereleases
 
 Set `prerelease: true` on `release-create-pr.yml` to publish a bare SemVer as a
