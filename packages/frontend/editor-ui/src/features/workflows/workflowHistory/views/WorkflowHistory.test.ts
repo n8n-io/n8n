@@ -399,7 +399,7 @@ describe('WorkflowHistory', () => {
 				prepareSlowAction();
 				const { spies, finish } = mockPendingActions();
 				const spy = spies[method];
-				const { getAllByTestId, findAllByTestId } = renderPreview({ pinia });
+				const { getAllByTestId, findAllByTestId, queryByTestId } = renderPreview({ pinia });
 				await findAllByTestId('workflow-history-list-item');
 				const initialActions = await openListActions(getAllByTestId, 2);
 				await userEvent.click(initialActions.getByTestId(`action-${action}`));
@@ -429,10 +429,9 @@ describe('WorkflowHistory', () => {
 				}
 
 				finish();
+				// Restore adds rows to the top of the list, so check every row, not one index.
 				await waitFor(() =>
-					expect(
-						within(getAllByTestId('workflow-history-list-item')[2]).getByTestId('action-toggle'),
-					).toBeInTheDocument(),
+					expect(queryByTestId('workflow-history-list-item-pending')).not.toBeInTheDocument(),
 				);
 				for (const index of [1, 2]) {
 					const idleActions = await openListActions(getAllByTestId, index);
