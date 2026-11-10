@@ -13,7 +13,7 @@ import {
 	type ProjectRepository,
 	ProjectRelation,
 } from '@n8n/db';
-import type { EntityManager } from '@n8n/typeorm';
+import { Not, type EntityManager } from '@n8n/typeorm';
 import { type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -668,6 +668,22 @@ describe('ProvisioningService', () => {
 			);
 		});
 
+		it('should not change access for a malformed claim with no valid project to role mappings', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = [{}, 'missing-project:viewer'];
+			projectRepository.find.mockResolvedValueOnce([]);
+			roleRepository.find.mockResolvedValue([
+				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
+			]);
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
+			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(projectService.addUser).not.toHaveBeenCalled();
+		});
+
 		it('should do nothing if the project does not exist', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = ['non-existent-project:viewer'];
@@ -777,6 +793,10 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
+			expect(projectRepository.find).toHaveBeenNthCalledWith(2, {
+				where: { type: Not('personal'), projectRelations: { userId } },
+				relations: ['projectRelations'],
+			});
 			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
 				projectId: 'team-project',
 				userId,

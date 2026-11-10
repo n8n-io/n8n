@@ -275,6 +275,11 @@ export class ProvisioningService {
 		}
 
 		if (validProjectToRoleMappings.length === 0) {
+			// A malformed claim should not be treated as an authoritative
+			// "no project roles" signal.
+			if (hasInvalidEntryType) {
+				return;
+			}
 			this.logger.warn(
 				'No valid project to role mappings found. Removing existing project access.',
 				{ userId, projectRoleMap },
