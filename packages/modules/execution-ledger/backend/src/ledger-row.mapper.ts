@@ -13,12 +13,21 @@ export function toStartedRow(
 	eventId: string,
 ): NewExecutionLedgerRow {
 	return {
-		...toCommonColumns(facts, projectId, eventId),
+		executionId: facts.executionId,
+		occurredAt: facts.occurredAt,
+		entityType: 'workflow',
+		entityName: truncateByCharacter(facts.workflowName, EXECUTION_LEDGER_ENTITY_NAME_MAX_LENGTH),
+		entityId: facts.workflowId,
+		projectId,
+		mode: facts.mode,
+		source: facts.source ?? 'none',
 		event: 'started',
 		outcome: 'none',
 		blockedBy: 'none',
 		runtimeMs: 0,
 		timeSavedMin: 0,
+		origin: 'v1',
+		eventId,
 	};
 }
 
@@ -28,7 +37,7 @@ export function toEndedRow(
 	eventId: string,
 ): NewExecutionLedgerRow {
 	return {
-		...toCommonColumns(facts, projectId, eventId),
+		...toStartedRow(facts, projectId, eventId),
 		event: 'ended',
 		outcome: facts.outcome,
 		blockedBy: facts.outcome === 'blocked' ? facts.blockedBy : 'none',
@@ -37,32 +46,9 @@ export function toEndedRow(
 	};
 }
 
-type CommonColumns = Omit<
-	NewExecutionLedgerRow,
-	'event' | 'outcome' | 'blockedBy' | 'runtimeMs' | 'timeSavedMin'
->;
-
-function toCommonColumns(
-	facts: ExecutionLedgerStartedFacts,
-	projectId: string,
-	eventId: string,
-): CommonColumns {
-	return {
-		executionId: facts.executionId,
-		occurredAt: facts.occurredAt,
-		entityType: 'workflow',
-		entityName: truncateByCharacter(facts.workflowName, EXECUTION_LEDGER_ENTITY_NAME_MAX_LENGTH),
-		entityId: facts.workflowId,
-		projectId,
-		mode: facts.mode,
-		source: facts.source ?? 'none',
-		origin: 'v1',
-		eventId,
-	};
-}
-
 /** Postgres counts characters, and `String.slice` can split a surrogate pair. */
 function truncateByCharacter(value: string, maxLength: number) {
+	if (value.length <= maxLength) return value;
 	const characters = Array.from(value);
 	return characters.length <= maxLength ? value : characters.slice(0, maxLength).join('');
 }

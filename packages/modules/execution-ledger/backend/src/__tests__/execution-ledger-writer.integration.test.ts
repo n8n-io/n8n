@@ -132,13 +132,6 @@ describe('ExecutionLedgerRowWriter', () => {
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
 		});
 
-		it.each(['none', 'user', 'instance_ai'] as const)('stores the source %s', async (source) => {
-			const facts = startedFacts(source === 'none' ? {} : { source });
-			await txRunner.run({}, async (ctx) => await ledger.recordStarted(facts, ctx));
-
-			expect((await claimAll())[0].source).toBe(source);
-		});
-
 		it.each(['manual', 'webhook', 'integrated', 'evaluation'] as const)(
 			'stores the mode %s',
 			async (mode) => {

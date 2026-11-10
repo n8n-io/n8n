@@ -51,7 +51,7 @@ export class ExecutionLedgerRowWriter implements ExecutionLedgerWriter {
 	 */
 	private async findProjectId(workflowId: string, ctx: OperationContext) {
 		if (ctx.trx) {
-			return (await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId, ctx))?.id;
+			return await this.sharedWorkflowRepository.getWorkflowOwningProjectId(workflowId, ctx);
 		}
 
 		try {
