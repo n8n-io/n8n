@@ -102,7 +102,7 @@ const outputSchema = {
 		.array(nodeResultSchema)
 		.optional()
 		.describe(
-			'The nodes that ran, in execution order. Absent when you cannot read executions of this workflow',
+			'The nodes that ran, in execution order. Absent when you cannot read executions of this workflow, or when n8n does not save manual executions',
 		),
 	truncated: z
 		.boolean()
@@ -317,6 +317,10 @@ export async function testWorkflow(
 
 	// Redaction can hide the refusal reason in the saved execution, so get it up front.
 	const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
+	const canReadExecution =
+		executionReadGranted &&
+		(await workflowFinderService.findWorkflowHeadForUser(workflowId, user, ['execution:read'])) !==
+			null;
 
 	const executionId = await workflowRunner.run(runData);
 
@@ -336,10 +340,6 @@ export async function testWorkflow(
 		timeoutSeconds * Time.seconds.toMilliseconds,
 	);
 	const hasError = data.status === 'error' || data.data.resultData?.error;
-	const canReadExecution =
-		executionReadGranted &&
-		(await workflowFinderService.findWorkflowHeadForUser(workflowId, user, ['execution:read'])) !==
-			null;
 	const viewedResultData =
 		hasError || canReadExecution
 			? await loadResultDataForViewer(executionId, user, logger)

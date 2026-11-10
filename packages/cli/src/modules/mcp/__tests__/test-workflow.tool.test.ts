@@ -744,10 +744,11 @@ describe('test-workflow MCP tool', () => {
 	});
 
 	describe('node results', () => {
-		const runTestWorkflow = async (
-			status: 'success' | 'error',
-			{ executionReadGranted = true, canReadExecutions = true } = {},
-		) => {
+		beforeEach(() => {
+			(workflowFinderService.findWorkflowHeadForUser as Mock).mockResolvedValue({});
+		});
+
+		const runTestWorkflow = async (status: 'success' | 'error', executionReadGranted = true) => {
 			const workflow = createWorkflow({
 				settings: { availableInMCP: true },
 				nodes: [
@@ -763,9 +764,6 @@ describe('test-workflow MCP tool', () => {
 				],
 			});
 			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
-			(workflowFinderService.findWorkflowHeadForUser as Mock).mockResolvedValue(
-				canReadExecutions ? workflow : null,
-			);
 			(workflowRunner.run as Mock).mockResolvedValue('exec-1');
 			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
 				status,
@@ -900,7 +898,7 @@ describe('test-workflow MCP tool', () => {
 		test('omits node results when the token does not grant execution read', async () => {
 			mockViewedExecution({ error: { message: 'failed' } });
 
-			const result = await runTestWorkflow('error', { executionReadGranted: false });
+			const result = await runTestWorkflow('error', false);
 
 			expect(result).toEqual({ executionId: 'exec-1', status: 'error', error: 'failed' });
 			expect(workflowFinderService.findWorkflowHeadForUser).not.toHaveBeenCalled();
@@ -908,10 +906,19 @@ describe('test-workflow MCP tool', () => {
 
 		test('omits node results when the user cannot read executions of the workflow', async () => {
 			mockViewedExecution({ error: { message: 'failed' } });
+			(workflowFinderService.findWorkflowHeadForUser as Mock).mockResolvedValue(null);
 
-			const result = await runTestWorkflow('error', { canReadExecutions: false });
+			const result = await runTestWorkflow('error');
 
 			expect(result).toEqual({ executionId: 'exec-1', status: 'error', error: 'failed' });
+		});
+
+		test('checks execution read access before it starts the run', async () => {
+			const lookupError = new Error('database unavailable');
+			(workflowFinderService.findWorkflowHeadForUser as Mock).mockRejectedValue(lookupError);
+
+			await expect(runTestWorkflow('success')).rejects.toThrow(lookupError);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		test('omits node results when the execution cannot be loaded for the user', async () => {
