@@ -482,18 +482,17 @@ describe('McpProtectedResource', () => {
 				expect(scopes).toContain('breakingChanges:migrate');
 			});
 
-			// Registration checks the same permission, so the write scope would be a dead grant.
-			it('offers only the read scope to a user who cannot run the fixes', async () => {
+			it('offers both to a user who can read the report, as the REST routes do', async () => {
 				denyGlobalScopes('breakingChanges:migrate');
 
 				const scopes = await resource.getGrantableScopes(user);
 
-				expect(scopes).toEqual(resource.scopes.filter((s) => s !== 'breakingChanges:migrate'));
-				expect(hasGlobalScope).toHaveBeenCalledWith(user, 'breakingChanges:migrate');
+				expect(scopes).toContain('breakingChanges:list');
+				expect(scopes).toContain('breakingChanges:migrate');
 			});
 
 			it('offers neither to a user who cannot read the report', async () => {
-				denyGlobalScopes('breakingChanges:list', 'breakingChanges:migrate');
+				denyGlobalScopes('breakingChanges:list');
 
 				const scopes = await resource.getGrantableScopes(user);
 

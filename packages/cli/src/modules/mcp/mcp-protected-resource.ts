@@ -24,7 +24,6 @@ import {
 } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
-	canChangeMigrationReport,
 	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
 	isMigrationReportAvailable,
@@ -188,9 +187,9 @@ export class McpProtectedResource implements ProtectedResource {
 	 * re-checking one of its conditions: the screen pre-checks every offered
 	 * scope on first consent, so a scope offered here is a scope granted.
 	 *
-	 * `breakingChanges:list` and `breakingChanges:migrate` are each dropped for a
-	 * user whose role lacks the permission of the same name, for the first reason:
-	 * registration checks the same permission, so the grant could do nothing more.
+	 * `breakingChanges:list` and `breakingChanges:migrate` are dropped for a user
+	 * whose role cannot read the migration report, for the first reason:
+	 * registration checks the same permission, so the grant could do nothing.
 	 */
 	async getGrantableScopes(user: ResourceUser): Promise<string[]> {
 		const { CommunityPackagesConfig } = await import(
@@ -204,13 +203,11 @@ export class McpProtectedResource implements ProtectedResource {
 			user,
 		);
 		const migrationReportReadable = canReadMigrationReport(this.moduleRegistry, user);
-		const migrationReportChangeable = canChangeMigrationReport(this.moduleRegistry, user);
 
 		return this.scopes.filter(
 			(scope) =>
 				(installAvailable || scope !== 'communityPackage:install') &&
-				(migrationReportReadable || scope !== 'breakingChanges:list') &&
-				(migrationReportChangeable || scope !== 'breakingChanges:migrate'),
+				(migrationReportReadable || !MIGRATION_REPORT_SCOPES.has(scope)),
 		);
 	}
 

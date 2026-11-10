@@ -17,19 +17,10 @@ export function isMigrationReportAvailable(moduleRegistry: ModuleRegistry): bool
 }
 
 /**
- * Whether the migration report fix and status tools register for this caller. The REST
- * routes for both need the same permission.
+ * Whether the migration report tools register for this caller. The REST routes need the
+ * same permission. A fix or a status also needs edit access to the workflow, which each
+ * tool checks.
  */
-export function canChangeMigrationReport(
-	moduleRegistry: ModuleRegistry,
-	user: AuthPrincipal,
-): boolean {
-	return (
-		isMigrationReportAvailable(moduleRegistry) && hasGlobalScope(user, 'breakingChanges:migrate')
-	);
-}
-
-/** Whether the migration report read tools register for this caller. */
 export function canReadMigrationReport(
 	moduleRegistry: ModuleRegistry,
 	user: AuthPrincipal,

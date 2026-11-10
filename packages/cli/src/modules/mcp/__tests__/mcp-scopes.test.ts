@@ -841,17 +841,14 @@ describe('McpService scope enforcement', () => {
 			expect(getInstructions(server)).toContain('get_migration_report');
 		});
 
-		// A member reads the report scoped to the workflows they can edit, but the built-in fixes
-		// and the statuses need `breakingChanges:migrate`, which only owners and admins hold.
-		it('registers only the read tools for a member', async () => {
+		it('registers all four for a member, as the REST routes allow', async () => {
 			const server = await buildService({ breakingChangesActive: true }).getServer(
 				user,
 				mcpFeatureFlags(),
 			);
 
 			const registered = getRegisteredToolNames(server);
-			for (const name of READ_TOOLS) expect(registered).toContain(name);
-			for (const name of WRITE_TOOLS) expect(registered).not.toContain(name);
+			for (const name of [...READ_TOOLS, ...WRITE_TOOLS]) expect(registered).toContain(name);
 		});
 
 		it('registers none for a user who cannot read the report', async () => {
@@ -910,16 +907,28 @@ describe('McpService scope enforcement', () => {
 			expect(getRegisteredToolNames(server)).toEqual(new Set(READ_TOOLS));
 		});
 
-		// A grant can outlive the role it was made under, so the role is checked on every request.
-		it('registers only the read tools for a member who holds the write scope', async () => {
+		it('registers only the read tools for a member whose grant holds only the read scope', async () => {
 			const server = await buildService({ breakingChangesActive: true }).getServer(
 				user,
+				mcpFeatureFlags(),
+				undefined,
+				{ grantedScopes: ['breakingChanges:list'] },
+			);
+
+			expect(getRegisteredToolNames(server)).toEqual(new Set(READ_TOOLS));
+		});
+
+		// A grant can outlive the role it was made under, so the role is checked on every request.
+		it('registers none for a user who cannot read the report and holds the write scope', async () => {
+			const server = await buildService({ breakingChangesActive: true }).getServer(
+				chatUser,
 				mcpFeatureFlags(),
 				undefined,
 				{ grantedScopes: ['breakingChanges:migrate'] },
 			);
 
-			expect(getRegisteredToolNames(server)).toEqual(new Set(READ_TOOLS));
+			const registered = getRegisteredToolNames(server);
+			for (const name of MIGRATION_REPORT_TOOLS) expect(registered).not.toContain(name);
 		});
 
 		it('registers them with the builder disabled', async () => {

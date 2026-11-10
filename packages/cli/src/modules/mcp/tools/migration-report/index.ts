@@ -3,7 +3,6 @@ import { Logger } from '@n8n/backend-common';
 import { UrlService } from '@n8n/backend-services';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BreakingChangeMigrationService } from '@/modules/breaking-changes/breaking-changes.migration.service';
@@ -44,9 +43,7 @@ const resolveDeps = (targetVersion: BreakingChangeVersion): MigrationReportToolD
 
 /**
  * Registers the migration report tools for a user who may read the report, and returns
- * the reader update_workflow uses to report the findings of the workflow it saved. The
- * built-in fixes and finding statuses need `breakingChanges:migrate`, so only owners and
- * admins get those two.
+ * the reader update_workflow uses to report the findings of the workflow it saved.
  */
 export function registerMigrationReportTools(
 	registerTool: RegisterToolFn,
@@ -58,10 +55,8 @@ export function registerMigrationReportTools(
 	registerTool(createGetMigrationReportTool(user, deps));
 	registerTool(createGetMigrationFindingsTool(user, deps));
 
-	if (hasGlobalScope(user, 'breakingChanges:migrate')) {
-		registerTool(createMigrateWorkflowTool(user, deps));
-		registerTool(createSetMigrationFindingStatusTool(user, deps));
-	}
+	registerTool(createMigrateWorkflowTool(user, deps));
+	registerTool(createSetMigrationFindingStatusTool(user, deps));
 
 	return async (workflowId) => await readWorkflowMigrationFindings(deps, workflowId);
 }

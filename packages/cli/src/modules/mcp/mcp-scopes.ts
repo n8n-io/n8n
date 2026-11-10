@@ -131,8 +131,8 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
 		MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
 	],
-	// The migration report scopes reuse the role permissions of the same name, so a token can
-	// only do what the role can. Registration still checks the role: a grant can outlive one.
+	// Both migration report scopes need the `breakingChanges:list` role permission, as the REST
+	// routes do. Registration still checks the role: a grant can outlive one.
 	'breakingChanges:list': [
 		MCP_GET_MIGRATION_REPORT_TOOL_NAME,
 		MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
