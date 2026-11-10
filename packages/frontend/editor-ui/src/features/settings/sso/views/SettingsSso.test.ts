@@ -10,6 +10,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import type { Scope } from '@n8n/permissions';
 
 const renderView = createComponentRenderer(SettingsSso);
 
@@ -906,7 +907,7 @@ describe('SettingsSso View', () => {
 			checkEnvFeatureFlag.mockImplementation((flag: string) => flag === 'SCIM' && optIn);
 			const rbacStore = mockedStore(useRBACStore);
 			rbacStore.hasScope.mockImplementation(
-				(scope: string) => scope === 'scim:manage' && canManage,
+				(scope: Scope | Scope[]) => scope === 'scim:manage' && canManage,
 			);
 		};
 
