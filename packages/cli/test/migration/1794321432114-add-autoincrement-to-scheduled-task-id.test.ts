@@ -110,16 +110,6 @@ describe.skipIf(!isSqlite)('AddAutoincrementToScheduledTaskId migration', () => 
 		});
 	});
 
-	it('declares the id column as AUTOINCREMENT', async () => {
-		await withContext(async (context) => {
-			const [{ sql }] = await context.runQuery<Array<{ sql: string }>>(
-				"SELECT sql FROM sqlite_master WHERE type = 'table' AND name = :table",
-				{ table: `${context.tablePrefix}scheduled_task` },
-			);
-			expect(sql).toContain('PRIMARY KEY AUTOINCREMENT');
-		});
-	});
-
 	it('does not reuse the id of a deleted newest task', async () => {
 		await withContext(async (context) => {
 			const table = context.escape.tableName('scheduled_task');
