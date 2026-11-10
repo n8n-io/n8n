@@ -110,9 +110,14 @@ describe('EngineControlPlaneServer', () => {
 		});
 
 		it('does not read the request body before it authenticates the caller', async () => {
-			const response = await postResolve('not json');
+			// Malformed JSON: a parser that ran first would fail on it, not return a 401.
+			const response = await request(baseUrl)
+				.post('/internal/credentials/resolve')
+				.set('Content-Type', 'application/json')
+				.send('not json');
 
 			expect(response.status).toBe(401);
+			expect(credentialsController.resolveCredential).not.toHaveBeenCalled();
 		});
 
 		it('hands an authenticated request with its parsed body to the controller', async () => {
