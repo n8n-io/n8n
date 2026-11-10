@@ -159,8 +159,9 @@ export function checkBuildSource(files: AppFiles): string {
 		}
 
 		return createHash('sha256')
-			.update(JSON.stringify(packageJson))
-			.update(JSON.stringify(packageLock))
+			.update(JSON.stringify(dependencies))
+			.update(JSON.stringify(devDependencies))
+			.update(JSON.stringify(Object.entries(packageLock.packages).filter(([path]) => path !== '')))
 			.digest('hex');
 	} catch (error) {
 		throw new AppBuildError(

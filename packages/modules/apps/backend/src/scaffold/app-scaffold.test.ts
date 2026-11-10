@@ -77,8 +77,19 @@ describe('app scaffold package validation', () => {
 		expect(checkBuildSource(files)).not.toBe(scaffoldKey);
 	});
 
+	it('keeps the dependency key when package metadata changes', () => {
+		const files = appScaffold();
+		const dependencyKey = checkBuildSource(files);
+		const packageJson = readJson<PackageJson>(files, 'package.json');
+		packageJson.author = { name: 'App Developer', email: 'developer@example.com' };
+		writeJson(files, 'package.json', packageJson);
+
+		expect(checkBuildSource(files)).toBe(dependencyKey);
+	});
+
 	it('accepts package metadata and an older engine declaration', () => {
 		const files = appScaffold();
+		const dependencyKey = checkBuildSource(files);
 		const packageJson = readJson<PackageJson>(files, 'package.json');
 		const packageLock = readJson<PackageLock>(files, 'package-lock.json');
 		packageJson.name = 'custom-app';
@@ -91,7 +102,7 @@ describe('app scaffold package validation', () => {
 		writeJson(files, 'package.json', packageJson);
 		writeJson(files, 'package-lock.json', packageLock);
 
-		expect(() => checkBuildSource(files)).not.toThrow();
+		expect(checkBuildSource(files)).toBe(dependencyKey);
 	});
 
 	it('accepts a public npm dependency with SHA-1 integrity', () => {
