@@ -92,24 +92,7 @@ const outputSchema = {
 	note: z.string().optional(),
 } satisfies z.ZodRawShape;
 
-type GetMigrationFindingsParams = {
-	ruleId?: string;
-	workflowId?: string;
-	limit?: number;
-};
-
-type RuleFindings = ReturnType<typeof toRuleOutput> & {
-	totalWorkflows: number;
-	workflows: z.infer<typeof workflowEntrySchema>[];
-	truncated?: true;
-};
-
-type Output = {
-	reportUrl: string;
-	rules: RuleFindings[];
-	incomplete?: true;
-	note?: string;
-};
+type Output = z.infer<z.ZodObject<typeof outputSchema>>;
 
 export const createGetMigrationFindingsTool = (
 	user: User,
@@ -139,18 +122,12 @@ export const createGetMigrationFindingsTool = (
 		);
 		const shown = findings.slice(0, limit);
 
-		const workflowsWithSettings = await deps.workflowRepository.findByIds(
+		const availableInMcp = await deps.workflowRepository.findMcpAvailabilityByIds(
 			shown.map((finding) => finding.id),
-			{ fields: ['settings'] },
-		);
-		const availableInMcp = new Set(
-			workflowsWithSettings
-				.filter((workflow) => workflow.settings?.availableInMCP === true)
-				.map((workflow) => workflow.id),
 		);
 
 		const workflows = shown.map((finding) => {
-			const available = availableInMcp.has(finding.id);
+			const available = availableInMcp.get(finding.id) === true;
 			return {
 				workflowId: finding.id,
 				name: finding.name,
@@ -184,10 +161,10 @@ export const createGetMigrationFindingsTool = (
 					...toRuleOutput(detail, workflowRuleResolution(deps.ruleRegistry, ruleId)),
 					totalWorkflows: findings.length,
 					workflows,
-					...(findings.length > shown.length ? { truncated: true as const } : {}),
+					...(findings.length > shown.length ? { truncated: true } : {}),
 				},
 			],
-			...(complete ? {} : { incomplete: true as const }),
+			...(complete ? {} : { incomplete: true }),
 			...(notes.length > 0 ? { note: notes.join(' ') } : {}),
 		};
 	};
@@ -260,7 +237,7 @@ export const createGetMigrationFindingsTool = (
 				openWorldHint: false,
 			},
 		},
-		handler: async ({ ruleId, workflowId, limit = DEFAULT_LIMIT }: GetMigrationFindingsParams) => {
+		handler: async ({ ruleId, workflowId, limit = DEFAULT_LIMIT }) => {
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
 				user_id: user.id,
 				tool_name: MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,

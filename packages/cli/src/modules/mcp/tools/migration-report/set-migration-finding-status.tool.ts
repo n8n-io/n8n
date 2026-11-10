@@ -1,7 +1,4 @@
-import {
-	migrationFindingTriageStatusSchema,
-	type MigrationFindingTriageStatus,
-} from '@n8n/api-types';
+import { migrationFindingTriageStatusSchema } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import z from 'zod';
 
@@ -22,24 +19,18 @@ const inputSchema = {
 		.min(1)
 		.describe(`The ruleId of a workflow rule, from ${MCP_GET_MIGRATION_FINDINGS_TOOL_NAME}`),
 	workflowId: z.string().min(1).describe('The ID of a workflow the rule flags'),
-	status: z
-		.enum(migrationFindingTriageStatusSchema.options)
-		.describe('wont_fix: the user accepts the change for this workflow. open: undo that.'),
+	status: migrationFindingTriageStatusSchema.describe(
+		'wont_fix: the user accepts the change for this workflow. open: undo that.',
+	),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
 	success: z.boolean(),
 	ruleId: z.string(),
 	workflowId: z.string(),
-	status: z.enum(migrationFindingTriageStatusSchema.options).optional(),
+	status: migrationFindingTriageStatusSchema.optional(),
 	error: z.string().optional(),
 } satisfies z.ZodRawShape;
-
-type SetMigrationFindingStatusParams = {
-	ruleId: string;
-	workflowId: string;
-	status: MigrationFindingTriageStatus;
-};
 
 export const createSetMigrationFindingStatusTool = (
 	user: User,
@@ -62,7 +53,7 @@ export const createSetMigrationFindingStatusTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ ruleId, workflowId, status }: SetMigrationFindingStatusParams) => {
+	handler: async ({ ruleId, workflowId, status }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME,

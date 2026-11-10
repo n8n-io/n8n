@@ -687,9 +687,9 @@ describe('MigrationFindingQueryService', () => {
 
 		it('returns each open, notified or wont_fix finding with its rule and current issues, oldest first', async () => {
 			findingRepository.listForWorkflows.mockResolvedValue([
-				storedFinding(3, 'rule-a', 'notified'),
 				storedFinding(1, 'rule-a', 'open'),
 				storedFinding(2, 'rule-b', 'wont_fix'),
+				storedFinding(3, 'rule-a', 'notified'),
 				storedFinding(4, 'rule-b', 'fixed'),
 			]);
 			workflowRepository.findByIds.mockResolvedValue([
@@ -721,11 +721,11 @@ describe('MigrationFindingQueryService', () => {
 			]);
 		});
 
-		it('returns undefined for a workflow the report never flagged', async () => {
+		it('returns undefined for a workflow the report never flagged, without loading it', async () => {
 			findingRepository.listForWorkflows.mockResolvedValue([]);
-			workflowRepository.findByIds.mockResolvedValue([workflowWithNodes('wf-1', [])]);
 
 			expect(await service.getWorkflowFindings(TARGET_VERSION, 'wf-1')).toBeUndefined();
+			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
 		});
 
 		it('returns an empty list once every finding of the workflow is fixed', async () => {

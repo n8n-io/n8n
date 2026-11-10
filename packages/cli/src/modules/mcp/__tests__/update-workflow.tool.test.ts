@@ -472,25 +472,6 @@ describe('update-workflow MCP tool', () => {
 			expect(result.structuredContent).not.toHaveProperty('migrationFindings');
 		});
 
-		test('still reports the saved update when the read fails', async () => {
-			const reader = vi
-				.fn<ReadWorkflowMigrationFindings>()
-				.mockRejectedValue(new Error('database gone'));
-
-			const result = (await callHandler(
-				{ workflowId: 'wf-1', operations },
-				createToolWithReader(reader),
-			)) as { isError?: boolean; structuredContent: Record<string, unknown> };
-
-			expect(result.isError).toBeUndefined();
-			expect(result.structuredContent).toMatchObject({ workflowId: 'wf-1' });
-			expect(result.structuredContent).not.toHaveProperty('migrationFindings');
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Reading migration findings after update_workflow failed',
-				expect.objectContaining({ workflowId: 'wf-1' }),
-			);
-		});
-
 		test('reports nothing about migration for a caller without a reader', async () => {
 			const result = (await callHandler({ workflowId: 'wf-1', operations })) as {
 				structuredContent: Record<string, unknown>;

@@ -1385,18 +1385,8 @@ export const createUpdateWorkflowTool = (
 						: undefined,
 				};
 
-				if (options.readMigrationFindings) {
-					// The save already succeeded, so a failed read leaves the field out.
-					try {
-						const migrationFindings = await options.readMigrationFindings(updatedWorkflow.id);
-						if (migrationFindings) output.migrationFindings = migrationFindings;
-					} catch (error) {
-						logger.warn('Reading migration findings after update_workflow failed', {
-							workflowId: updatedWorkflow.id,
-							error,
-						});
-					}
-				}
+				const migrationFindings = await options.readMigrationFindings?.(updatedWorkflow.id);
+				if (migrationFindings) output.migrationFindings = migrationFindings;
 
 				try {
 					if (autoAssignOutcomes.length > 0) {

@@ -356,10 +356,12 @@ describe('get_migration_findings', () => {
 			const deps = makeDeps();
 			withRules(deps, workflowRule('removed-node'));
 			deps.queryService.getRuleFindings.mockResolvedValue(ruleDetail());
-			deps.workflowRepository.findByIds.mockResolvedValue([
-				mcpWorkflow('wf-1', true),
-				mcpWorkflow('wf-2', false),
-			]);
+			deps.workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(
+				new Map([
+					['wf-1', true],
+					['wf-2', false],
+				]),
+			);
 
 			const result = await createGetMigrationFindingsTool(owner, deps).handler({
 				ruleId: 'removed-node',
@@ -369,9 +371,10 @@ describe('get_migration_findings', () => {
 			expect(deps.queryService.getRuleFindings).toHaveBeenCalledWith('v3', 'removed-node', {
 				kind: 'instance',
 			});
-			expect(deps.workflowRepository.findByIds).toHaveBeenCalledWith(['wf-2', 'wf-1'], {
-				fields: ['settings'],
-			});
+			expect(deps.workflowRepository.findMcpAvailabilityByIds).toHaveBeenCalledWith([
+				'wf-2',
+				'wf-1',
+			]);
 
 			const output = result.structuredContent as Output;
 			expect(output.reportUrl).toBe(`${BASE_URL}/settings/migration-report/removed-node`);
@@ -408,10 +411,12 @@ describe('get_migration_findings', () => {
 			withRules(deps, workflowRule('removed-node'));
 			deps.syncService.syncIfStale.mockResolvedValue(false);
 			deps.queryService.getRuleFindings.mockResolvedValue(ruleDetail());
-			deps.workflowRepository.findByIds.mockResolvedValue([
-				mcpWorkflow('wf-1', true),
-				mcpWorkflow('wf-2', true),
-			]);
+			deps.workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(
+				new Map([
+					['wf-1', true],
+					['wf-2', true],
+				]),
+			);
 
 			const result = await createGetMigrationFindingsTool(owner, deps).handler({
 				ruleId: 'removed-node',
@@ -428,7 +433,7 @@ describe('get_migration_findings', () => {
 			const deps = makeDeps();
 			withRules(deps, workflowRule('removed-node'));
 			deps.queryService.getRuleFindings.mockResolvedValue(ruleDetail());
-			deps.workflowRepository.findByIds.mockResolvedValue([mcpWorkflow('wf-2', true)]);
+			deps.workflowRepository.findMcpAvailabilityByIds.mockResolvedValue(new Map([['wf-2', true]]));
 
 			const result = await createGetMigrationFindingsTool(owner, deps).handler({
 				ruleId: 'removed-node',
@@ -589,14 +594,24 @@ describe('readWorkflowMigrationFindings', () => {
 		expect(deps.syncService.syncWorkflow).not.toHaveBeenCalled();
 	});
 
-	it('throws instead of reporting stale findings when the re-check failed', async () => {
+	it('reports nothing instead of stale findings when the re-check failed', async () => {
 		const deps = makeDeps();
 		deps.syncService.awaitWorkflowSync.mockResolvedValue(false);
 
-		await expect(readWorkflowMigrationFindings(deps, 'wf-1')).rejects.toThrow(
-			'Could not re-check the workflow',
-		);
+		expect(await readWorkflowMigrationFindings(deps, 'wf-1')).toBeUndefined();
 		expect(deps.queryService.getWorkflowFindings).not.toHaveBeenCalled();
+		expect(deps.logger.warn).toHaveBeenCalled();
+	});
+
+	it('reports nothing when the read fails', async () => {
+		const deps = makeDeps();
+		deps.queryService.getWorkflowFindings.mockRejectedValue(new Error('database gone'));
+
+		expect(await readWorkflowMigrationFindings(deps, 'wf-1')).toBeUndefined();
+		expect(deps.logger.warn).toHaveBeenCalledWith(
+			'Reading the migration findings of the saved workflow failed',
+			expect.objectContaining({ workflowId: 'wf-1' }),
+		);
 	});
 
 	it('reports an empty list once every finding of the workflow is fixed', async () => {

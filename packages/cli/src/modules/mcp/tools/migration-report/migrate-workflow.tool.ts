@@ -56,11 +56,6 @@ const outputSchema = {
 	nodeName: z.string().optional(),
 } satisfies z.ZodRawShape;
 
-type MigrateWorkflowParams = {
-	ruleId: string;
-	workflowId: string;
-};
-
 export const createMigrateWorkflowTool = (
 	user: User,
 	deps: MigrationReportToolDeps,
@@ -83,7 +78,7 @@ export const createMigrateWorkflowTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ ruleId, workflowId }: MigrateWorkflowParams) => {
+	handler: async ({ ruleId, workflowId }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_MIGRATE_WORKFLOW_TOOL_NAME,
@@ -107,17 +102,7 @@ export const createMigrateWorkflowTool = (
 
 			void deps.collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 
-			// The fix is saved at this point, so a failed read leaves the field out rather than
-			// reporting the migration as failed.
-			const migrationFindings = await readWorkflowMigrationFindings(deps, workflowId).catch(
-				(error: unknown) => {
-					deps.logger.warn('Reading migration findings after a migration failed', {
-						workflowId,
-						error,
-					});
-					return undefined;
-				},
-			);
+			const migrationFindings = await readWorkflowMigrationFindings(deps, workflowId);
 
 			const output = {
 				success: true,

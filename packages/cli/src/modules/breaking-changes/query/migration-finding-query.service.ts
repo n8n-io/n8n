@@ -222,15 +222,15 @@ export class MigrationFindingQueryService {
 		targetVersion: BreakingChangeVersion,
 		workflowId: string,
 	): Promise<WorkflowFinding[] | undefined> {
-		const [rows, [workflow]] = await Promise.all([
-			this.findingRepository.listForWorkflows(targetVersion, [workflowId], {}),
-			this.workflowRepository.findByIds([workflowId], { fields: WORKFLOW_FIELDS }),
-		]);
+		const rows = await this.findingRepository.listForWorkflows(targetVersion, [workflowId], {});
 		if (rows.length === 0) return undefined;
+		const [workflow] = await this.workflowRepository.findByIds([workflowId], {
+			fields: WORKFLOW_FIELDS,
+		});
 		if (!workflow) return [];
 
 		const result: WorkflowFinding[] = [];
-		for (const finding of rows.sort((a, b) => a.id - b.id)) {
+		for (const finding of rows) {
 			const status = migrationFindingListedStatusSchema.safeParse(finding.status);
 			const rule = this.ruleRegistry.getRule(finding.ruleId);
 			if (!status.success || !rule || !isWorkflowLevelRule(rule)) continue;

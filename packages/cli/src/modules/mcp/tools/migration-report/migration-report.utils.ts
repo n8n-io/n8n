@@ -8,7 +8,6 @@ import {
 import type { Logger } from '@n8n/backend-common';
 import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowRepository } from '@n8n/db';
-import { OperationalError } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -143,33 +142,44 @@ export type ReadWorkflowMigrationFindings = (
 export async function readWorkflowMigrationFindings(
 	deps: Pick<
 		MigrationReportToolDeps,
-		'targetVersion' | 'syncService' | 'queryService' | 'ruleRegistry'
+		'targetVersion' | 'syncService' | 'queryService' | 'ruleRegistry' | 'logger'
 	>,
 	workflowId: string,
 ): Promise<WorkflowMigrationFindings | undefined> {
-	// Joins the re-check that the save listener queued instead of running the rules again.
-	// A failed re-check leaves the table stale, so it must not be reported as current.
-	if (!(await deps.syncService.awaitWorkflowSync(workflowId))) {
-		throw new OperationalError('Could not re-check the workflow against the migration report');
-	}
-	const findings = await deps.queryService.getWorkflowFindings(deps.targetVersion, workflowId);
-	if (!findings) return undefined;
+	try {
+		// Joins the re-check that the save listener queued instead of running the rules again.
+		// A failed re-check leaves the table stale, so it must not be reported as current.
+		if (!(await deps.syncService.awaitWorkflowSync(workflowId))) {
+			deps.logger.warn('Could not re-check the saved workflow against the migration report', {
+				workflowId,
+			});
+			return undefined;
+		}
+		const findings = await deps.queryService.getWorkflowFindings(deps.targetVersion, workflowId);
+		if (!findings) return undefined;
 
-	// A notification does not resolve a finding, so a notified one is still open.
-	const open = findings.filter((finding) => finding.status !== 'wont_fix');
-	return {
-		targetVersion: deps.targetVersion,
-		openFindings: open
-			.map((finding) => ({
-				ruleId: finding.ruleId,
-				title: finding.ruleTitle,
-				impact: finding.ruleImpact,
-				resolution: workflowRuleResolution(deps.ruleRegistry, finding.ruleId),
-				issues: finding.issues,
-			}))
-			.sort(byImpact),
-		wontFixFindings: findings.length - open.length,
-	};
+		// A notification does not resolve a finding, so a notified one is still open.
+		const open = findings.filter((finding) => finding.status !== 'wont_fix');
+		return {
+			targetVersion: deps.targetVersion,
+			openFindings: open
+				.map((finding) => ({
+					ruleId: finding.ruleId,
+					title: finding.ruleTitle,
+					impact: finding.ruleImpact,
+					resolution: workflowRuleResolution(deps.ruleRegistry, finding.ruleId),
+					issues: finding.issues,
+				}))
+				.sort(byImpact),
+			wontFixFindings: findings.length - open.length,
+		};
+	} catch (error) {
+		deps.logger.warn('Reading the migration findings of the saved workflow failed', {
+			workflowId,
+			error,
+		});
+		return undefined;
+	}
 }
 
 /** Set on report reads whose sync was partial: the table can miss findings until the next sync. */
