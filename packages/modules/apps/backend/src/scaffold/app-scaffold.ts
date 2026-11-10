@@ -34,7 +34,12 @@ const PACKAGE_FIELDS = new Set([
 ]);
 const BUILD_SCRIPTS = { build: 'vite build' };
 const NPM_REGISTRY = 'https://registry.npmjs.org/';
-const PROHIBITED_SOURCE_ENTRIES = new Set(['.npmrc', 'node_modules', 'dist']);
+const PROHIBITED_SOURCE_ENTRIES = new Set([
+	'.npmrc',
+	'npm-shrinkwrap.json',
+	'node_modules',
+	'dist',
+]);
 
 export function createAppScaffold(): AppFiles {
 	return new Map(

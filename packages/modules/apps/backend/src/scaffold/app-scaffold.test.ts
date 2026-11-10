@@ -104,7 +104,7 @@ describe('app scaffold package validation', () => {
 		expect(() => checkBuildSource(files)).not.toThrow();
 	});
 
-	it.each(['.npmrc', 'node_modules/package.json', 'dist/index.js'])(
+	it.each(['.npmrc', 'npm-shrinkwrap.json', 'node_modules/package.json', 'dist/index.js'])(
 		'rejects the prohibited source entry %s',
 		(name) => {
 			const files = appScaffold();
