@@ -12,8 +12,14 @@ import {
 	type Ref,
 } from 'vue';
 import { storeToRefs } from 'pinia';
-import { N8nChatMessage, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useScroll } from '@vueuse/core';
+import {
+	N8nChatMessage,
+	N8nIconButton,
+	N8nScrollArea,
+	N8nSpinner,
+	N8nText,
+} from '@n8n/design-system';
+import { useInfiniteScroll, useScroll } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
@@ -418,9 +424,11 @@ const scrollContainerRef = computed(
 		(scrollableRef.value?.closest('[data-reka-scroll-area-viewport]') as HTMLElement | null) ??
 		null,
 );
+/** Distance from the top, in px, at which older history starts to load. */
+const OLDER_MESSAGES_DISTANCE = 200;
 const { arrivedState } = useScroll(scrollContainerRef, {
 	throttle: 100,
-	offset: { bottom: 100 },
+	offset: { top: OLDER_MESSAGES_DISTANCE, bottom: 100 },
 });
 const userScrolledUp = ref(false);
 
@@ -428,6 +436,43 @@ watch(
 	() => arrivedState.bottom,
 	(atBottom) => {
 		userScrolledUp.value = !atBottom;
+	},
+);
+
+// Stops a failed load from retrying in a loop. Leaving the top area allows a new try.
+const loadOlderFailed = ref(false);
+watch(
+	() => arrivedState.top,
+	(nearTop) => {
+		if (!nearTop) loadOlderFailed.value = false;
+	},
+);
+const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
+	scrollContainerRef,
+	async () => {
+		const container = scrollContainerRef.value;
+		if (!container) return;
+		const { scrollTop, scrollHeight } = container;
+		try {
+			await thread.loadOlderMessages();
+		} catch (error) {
+			loadOlderFailed.value = true;
+			toast.showError(error, i18n.baseText('instanceAi.thread.loadOlderError'));
+			return;
+		}
+		await nextTick();
+		// Prepended messages push the content down. Keep the messages the user reads in place.
+		container.scrollTop = scrollTop + container.scrollHeight - scrollHeight;
+	},
+	{
+		direction: 'top',
+		distance: OLDER_MESSAGES_DISTANCE,
+		// Wait until the user scrolls up: on mount the view is at the top before it scrolls to the bottom.
+		// A thread too short to scroll still fills itself.
+		canLoadMore: (el) =>
+			thread.hasOlderMessages &&
+			!loadOlderFailed.value &&
+			(userScrolledUp.value || (el !== null && el.scrollHeight <= el.clientHeight)),
 	},
 );
 
@@ -880,6 +925,12 @@ defineExpose({
 
 <template>
 	<div :class="$style.chatContent">
+		<!-- Floats over the messages, so the content does not move when it disappears. -->
+		<N8nSpinner
+			v-if="isLoadingOlderMessages"
+			:class="$style.olderMessagesSpinner"
+			data-test-id="instance-ai-older-messages-loading"
+		/>
 		<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
 			<div
 				ref="scrollable"
@@ -1076,6 +1127,14 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	position: relative;
+}
+
+.olderMessagesSpinner {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 1;
 }
 
 .scrollArea {

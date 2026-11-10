@@ -3763,3 +3763,100 @@ describe('createThreadRuntime - follow-up run after a reconnect', () => {
 		expect(runtime.isAwaitingConfirmation).toBe(true);
 	});
 });
+
+describe('createThreadRuntime - older history pages', () => {
+	const threadId = 'thread-older';
+	const message = (
+		id: string,
+		role: 'user' | 'assistant',
+		messageGroupId?: string,
+	): ThreadRuntime['messages'][number] => ({
+		id,
+		role,
+		messageGroupId,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		content: id,
+		reasoning: '',
+		isStreaming: false,
+	});
+
+	async function hydratedRuntime() {
+		const runtime = createRuntimeRegistry().getOrCreateRuntime(threadId);
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [message('u2', 'user', 'g2'), message('a2', 'assistant', 'g2')],
+			nextCursor: 'cursor-1',
+		});
+		await runtime.loadHistoricalMessages();
+		return runtime;
+	}
+
+	beforeEach(() => {
+		setupRuntimePinia();
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	test('prepends older pages until the thread start and skips messages it already has', async () => {
+		const runtime = await hydratedRuntime();
+		expect(runtime.hasOlderMessages).toBe(true);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [
+				message('u1', 'user', 'g1'),
+				message('a1', 'assistant', 'g1'),
+				message('a2-older-copy', 'assistant', 'g2'),
+				message('u2', 'user'),
+			],
+		});
+		await runtime.loadOlderMessages();
+
+		expect(mockFetchThreadMessages).toHaveBeenLastCalledWith(
+			expect.anything(),
+			threadId,
+			100,
+			undefined,
+			'cursor-1',
+		);
+		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'a1', 'u2', 'a2']);
+		expect(runtime.hasOlderMessages).toBe(false);
+
+		await runtime.loadOlderMessages();
+		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
+	});
+
+	test('shares one request between concurrent calls and drops a page that returns after a reset', async () => {
+		const runtime = await hydratedRuntime();
+		let resolveOlder!: (value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void;
+		mockFetchThreadMessages.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveOlder = resolve;
+			}),
+		);
+
+		const first = runtime.loadOlderMessages();
+		const second = runtime.loadOlderMessages();
+		runtime.resetState();
+		resolveOlder({ threadId, messages: [message('u1', 'user')], nextCursor: 'cursor-0' });
+		await Promise.all([first, second]);
+
+		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
+		expect(runtime.messages).toEqual([]);
+		expect(runtime.hasOlderMessages).toBe(false);
+	});
+
+	test('rethrows a failed request and keeps the cursor for a retry', async () => {
+		const runtime = await hydratedRuntime();
+		mockFetchThreadMessages.mockRejectedValueOnce(new Error('fetch failed'));
+
+		await expect(runtime.loadOlderMessages()).rejects.toThrow('fetch failed');
+		expect(runtime.hasOlderMessages).toBe(true);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({ threadId, messages: [message('u1', 'user')] });
+		await runtime.loadOlderMessages();
+		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'u2', 'a2']);
+	});
+});
