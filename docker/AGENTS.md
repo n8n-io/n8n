@@ -18,10 +18,17 @@ Read this before you change `docker/docker-bake.hcl` or a Dockerfile in
 n8n publishes `n8nio/base` and `n8nio/node-pc`, and the n8n images pin them.
 
 1. **Inputs PR.** Change the inputs of the image. CI builds the image on the
-   PR, but does not publish it. On merge, master publishes it as `<version>`
-   and `<version>-<merge commit>`.
-2. **Pin PR.** Pin the digest of `<version>-<merge commit>` in the bake file.
-   To read it: `docker buildx imagetools inspect n8nio/base:<version>-<commit>`.
+   PR, but does not publish it. On merge, master publishes it with a tag that
+   ends in the full merge commit SHA.
+2. **Pin PR.** Pin the digest of that tag in the bake file. Read it with
+   `docker buildx imagetools inspect <image>:<tag>`.
+
+| Pin | Tag to read |
+|---|---|
+| `RUNTIME_IMAGE` | `n8nio/base:<version>-<commit>` |
+| `DEBIAN_RUNTIME_IMAGE` | `n8nio/base:<version>-debian-<commit>` |
+| `PC_RUNTIME_IMAGE` | `n8nio/node-pc:<version>-<commit>` |
+| `PC_BUILDER_IMAGE` | `n8nio/node-pc:<version>-<commit>-dev` |
 
 | Image | Inputs (PR 1) | Pins (PR 2) |
 |---|---|---|
