@@ -39,7 +39,6 @@ vi.mock('@/app/stores/favorites.store', () => ({
 	useFavoritesStore: () => ({ isFavorite: () => false, fetchFavorites: mocks.fetchFavorites }),
 }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError: vi.fn() }) }));
-vi.mock('@n8n/i18n', () => ({ useI18n: () => ({ baseText: (key: string) => key }) }));
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: mocks.push }),
 	useRoute: () => ({ query: {} }),
@@ -68,7 +67,15 @@ vi.mock('@n8n/design-system', () => ({
 beforeEach(() => {
 	vi.resetAllMocks();
 	mocks.getProjectFolders.mockResolvedValue({
-		data: [{ id: 'child', name: 'Triage', path: ['Support', 'Triage'], agentCount: 2 }],
+		data: [
+			{
+				id: 'child',
+				name: 'Triage',
+				path: ['Support', 'Triage'],
+				agentCount: 2,
+				subFolderCount: 0,
+			},
+		],
 		count: 1,
 	});
 	mocks.getFolderPath.mockResolvedValue([{ id: 'parent', name: 'Support', children: [] }]);
@@ -99,8 +106,38 @@ describe('AgentFolderBrowser', () => {
 			params: { projectId: 'project' },
 			query: { folderId: 'child' },
 		});
-		expect(wrapper.text()).toContain('agents.folders.agentCount');
+		expect(wrapper.text()).toContain('2 Agents');
 	});
+
+	it.each([
+		{ agentCount: 0, subFolderCount: 0, agents: null, folders: null },
+		{ agentCount: 0, subFolderCount: 1, agents: null, folders: '1 Folder' },
+		{ agentCount: 1, subFolderCount: 0, agents: '1 Agent', folders: null },
+		{ agentCount: 2, subFolderCount: 3, agents: '2 Agents', folders: '3 Folders' },
+	])(
+		'shows direct contents like workflow folders: $agentCount Agents and $subFolderCount folders',
+		async ({ agentCount, subFolderCount, agents, folders }) => {
+			mocks.getProjectFolders.mockResolvedValue({
+				data: [{ id: 'sales', name: 'Sales', path: ['Sales'], agentCount, subFolderCount }],
+				count: 1,
+			});
+			const wrapper = render();
+			await flushPromises();
+			const agentCounter = wrapper.find('[data-testid="agent-folder-agent-count"]');
+			const folderCounter = wrapper.find('[data-testid="agent-folder-folder-count"]');
+
+			expect(agentCounter.exists()).toBe(agents !== null);
+			expect(folderCounter.exists()).toBe(folders !== null);
+
+			if (agents !== null) {
+				expect(agentCounter.text()).toBe(agents);
+			}
+
+			if (folders !== null) {
+				expect(folderCounter.text()).toBe(folders);
+			}
+		},
+	);
 
 	it('moves a dragged Agent to root through the native breadcrumb drop', async () => {
 		const wrapper = render();

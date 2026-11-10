@@ -266,13 +266,34 @@ defineExpose({
 					<N8nText tag="h2" size="small" bold>{{ folder.name }}</N8nText>
 				</div>
 			</template>
-			<N8nText size="small" color="text-light">
-				{{
-					i18n.baseText('agents.folders.agentCount', {
-						interpolate: { count: folder.agentCount ?? 0 },
-					})
-				}}
-			</N8nText>
+			<div :class="$style.counts">
+				<N8nText
+					v-if="(folder.agentCount ?? 0) > 0"
+					:class="$style.counter"
+					size="small"
+					color="text-light"
+					data-testid="agent-folder-agent-count"
+				>
+					{{
+						i18n.baseText('agents.folders.agentCount', {
+							interpolate: { count: folder.agentCount ?? 0 },
+						})
+					}}
+				</N8nText>
+				<N8nText
+					v-if="folder.subFolderCount > 0"
+					:class="$style.counter"
+					size="small"
+					color="text-light"
+					data-testid="agent-folder-folder-count"
+				>
+					{{
+						i18n.baseText('generic.folderCount', {
+							interpolate: { count: folder.subFolderCount },
+						})
+					}}
+				</N8nText>
+			</div>
 			<N8nText v-if="search" size="small" color="text-light">{{ folder.path.join(' / ') }}</N8nText>
 			<template #append
 				><N8nActionToggle
@@ -308,6 +329,15 @@ defineExpose({
 
 .folder {
 	cursor: pointer;
+}
+
+.counts {
+	display: flex;
+}
+
+.counter + .counter::before {
+	content: '|';
+	margin: 0 var(--spacing--4xs);
 }
 
 .name {
