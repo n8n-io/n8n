@@ -13,7 +13,7 @@ import type {
 } from 'n8n-workflow';
 import { createRunExecutionData, UnexpectedError, Workflow } from 'n8n-workflow';
 import nock from 'nock';
-import { readFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, mkdtempSync, existsSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect } from 'vitest';
@@ -92,7 +92,7 @@ export class NodeTestHarness {
 
 	@Memoized
 	get temporaryDir() {
-		const dir = mkdtempSync(path.join(tmpdir(), 'n8n-'));
+		const dir = mkdtempSync(path.join(realpathSync(tmpdir()), 'n8n-'));
 		afterAll(() => rmSync(dir, { recursive: true }));
 		return dir;
 	}
