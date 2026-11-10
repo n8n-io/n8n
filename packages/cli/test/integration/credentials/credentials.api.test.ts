@@ -108,6 +108,20 @@ type GetAllResponse = { body: { data: ListQueryDb.Credentials.WithOwnedByAndShar
 // GET /credentials - fetch all credentials
 // ----------------------------------------
 describe('GET /credentials', () => {
+	test('should ignore null optional filters', async () => {
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.get('/credentials')
+			.query({ filter: JSON.stringify({ name: null, type: null }) })
+			.expect(200);
+
+		expect(response.body.data).toEqual([expect.objectContaining({ id: credential.id })]);
+	});
+
 	test('should return all creds for owner', async () => {
 		const [{ id: savedOwnerCredentialId }, { id: savedMemberCredentialId }] = await Promise.all([
 			saveCredential(randomCredentialPayload(), { user: owner, role: 'credential:owner' }),

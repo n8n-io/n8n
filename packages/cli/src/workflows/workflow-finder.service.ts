@@ -3,9 +3,9 @@ import type {
 	SharedWorkflow,
 	User,
 	WorkflowEntity,
-	ListQuery,
 	PublishHistoryScope,
 	OperationContext,
+	WorkflowListQueryOptions,
 } from '@n8n/db';
 import {
 	SharedWorkflowRepository,
@@ -471,8 +471,7 @@ export class WorkflowFinderService {
 			? [folderId, ...(await this.folderRepository.getAllFolderIdsInHierarchy(folderId, projectId))]
 			: undefined;
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		const select: NonNullable<ListQuery.Options['select']> = {
+		const select: WorkflowListQueryOptions['select'] = {
 			id: true,
 			name: true,
 			active: true,
@@ -488,7 +487,7 @@ export class WorkflowFinderService {
 			meta: true,
 			versionId: true,
 			triggerCount: true,
-			// ListQuery select keys: `ownedBy` = share rows + project relation (nested);
+			// `ownedBy` loads share rows and their projects.
 			// `shared` = share rows only without project relation.
 			...(includeProjects ? { ownedBy: true } : { shared: true }),
 			...(includeActiveVersion && { activeVersion: true }),

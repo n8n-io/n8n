@@ -2,11 +2,10 @@ import {
 	CREDENTIAL_DESCRIPTION_PREVIEW_MAX_LENGTH,
 	getCredentialDescriptionPreview,
 } from '@n8n/ai-utilities/credential-description';
-import type { ListQueryDb, ScopesField, User } from '@n8n/db';
+import type { CredentialsListQueryOptions, ListQueryDb, ScopesField, User } from '@n8n/db';
 import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { ListQuery } from '@/requests';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
@@ -200,13 +199,13 @@ export async function listCredentials(
 ): Promise<ListCredentialsResult> {
 	const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
 
-	const filter: ListQuery.Options['filter'] = {
+	const filter: CredentialsListQueryOptions['filter'] = {
 		...(query ? { name: query } : {}),
 		...(type ? { type } : {}),
 		...(projectId ? { projectId } : {}),
 	};
 
-	const listQueryOptions: ListQuery.Options = {
+	const listQueryOptions: CredentialsListQueryOptions = {
 		take: safeLimit,
 		...(Object.keys(filter ?? {}).length ? { filter } : {}),
 	};

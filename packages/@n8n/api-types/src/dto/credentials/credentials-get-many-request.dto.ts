@@ -2,8 +2,10 @@ import z from 'zod';
 
 import { booleanFromString } from '../../schemas/boolean-from-string';
 import { Z } from '../../zod-class';
+import { credentialsListQuerySchema } from '../list-query.dto';
 
 export class CredentialsGetManyRequestQuery extends Z.class({
+	...credentialsListQuerySchema,
 	/**
 	 * Adds the `scopes` field to each credential which includes all scopes the
 	 * requesting user has in relation to the credential, e.g.

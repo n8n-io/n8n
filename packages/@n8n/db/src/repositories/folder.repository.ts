@@ -4,12 +4,41 @@ import { DataSource, In, Repository } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { Folder, FolderTagMapping, TagEntity } from '../entities';
-import type { FolderWithWorkflowAndSubFolderCountAndPath, ListQuery } from '../entities/types-db';
+import type { FolderWithWorkflowAndSubFolderCountAndPath } from '../entities/types-db';
 import { chunkIds } from '../utils/chunk-ids';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 
-// oxlint-disable-next-line typescript/no-deprecated
-type FolderListQueryOptions = ListQuery.Options;
+export type FolderListFilter = {
+	folderIds?: string[];
+	projectId?: string;
+	name?: string;
+	parentFolderId?: string;
+	tags?: string[];
+	isArchived?: boolean;
+	excludeFolderIdAndDescendants?: string;
+};
+
+export type FolderListQueryOptions = {
+	filter?: FolderListFilter;
+	select?: Partial<
+		Record<
+			| 'id'
+			| 'name'
+			| 'createdAt'
+			| 'updatedAt'
+			| 'project'
+			| 'tags'
+			| 'parentFolder'
+			| 'workflowCount'
+			| 'subFolderCount'
+			| 'path',
+			true
+		>
+	>;
+	skip?: number;
+	take?: number;
+	sortBy?: string;
+};
 
 @Service()
 export class FolderRepository extends Repository<Folder> {

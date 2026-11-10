@@ -7,8 +7,6 @@ import type {
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { INode, IConnections, IWorkflowSettings } from 'n8n-workflow';
 
-import type { ListQuery } from '@/requests';
-
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
 		id: string; // deleted if sent
@@ -42,20 +40,6 @@ export declare namespace WorkflowRequest {
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
 	type Get = AuthenticatedRequest<{ workflowId: string }>;
-
-	type GetMany = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		ListQuery.Params & {
-			includeScopes?: string;
-			includeFolders?: string;
-			onlySharedWithMe?: string;
-			availableInMCP?: string;
-		}
-	> & {
-		listQueryOptions: ListQuery.Options;
-	};
 
 	type Update = AuthenticatedRequest<
 		{ workflowId: string },

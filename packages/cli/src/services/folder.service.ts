@@ -3,6 +3,7 @@ import { EventService } from '@n8n/backend-services';
 import type {
 	FolderWithWorkflowAndSubFolderCount,
 	FolderWithWorkflowAndSubFolderCountAndPath,
+	FolderListQueryOptions,
 	User,
 } from '@n8n/db';
 import { Folder, FolderTagMappingRepository, FolderRepository, WorkflowRepository } from '@n8n/db';
@@ -12,7 +13,6 @@ import { PROJECT_ROOT } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 export interface SimpleFolderNode {
@@ -326,7 +326,7 @@ export class FolderService {
 
 	async getManyAndCount(
 		projectId: string,
-		options: ListQuery.Options,
+		options: FolderListQueryOptions,
 	): Promise<[FolderWithWorkflowAndSubFolderCountAndPath[], number]> {
 		options.filter = { ...options.filter, projectId, isArchived: false };
 		// eslint-disable-next-line prefer-const

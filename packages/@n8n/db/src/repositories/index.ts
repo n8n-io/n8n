@@ -28,6 +28,8 @@ export {
 	CredentialsRepository,
 	CredentialIdConflictError,
 	type CredentialSharingRelation,
+	type CredentialsListFilter,
+	type CredentialsListQueryOptions,
 } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
 export {
@@ -53,7 +55,11 @@ export {
 	type ResumeAttemptClaim,
 	type UpdateExecutionConditions,
 } from './execution.repository';
-export { FolderRepository } from './folder.repository';
+export {
+	FolderRepository,
+	type FolderListFilter,
+	type FolderListQueryOptions,
+} from './folder.repository';
 export { FolderAccessRepository } from './folder-access.repository';
 export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';
@@ -110,6 +116,8 @@ export {
 	WorkflowRepository,
 	agentToolReferenceWhere,
 	type WorkflowIdsQuery,
+	type WorkflowListFilter,
+	type WorkflowListQueryOptions,
 } from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
 export { WorkflowPublicationRetryStateRepository } from './workflow-publication-retry-state.repository';

@@ -15,10 +15,9 @@ import type {
 } from '../mcp.types';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import type { ListQuery } from '@/requests';
 import type { FolderFinderService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowService } from '@/workflows/workflow.service';
+import type { WorkflowListOptions, WorkflowService } from '@/workflows/workflow.service';
 import { describeFolderError } from './folder-error.utils';
 import { createLimitSchema, tagSchema, toTagSummary } from './schemas';
 
@@ -267,7 +266,7 @@ export async function searchWorkflows(
 			? {}
 			: await resolveFolderFilter(folderFinderService, folderId, includeSubfolders);
 
-	const options: ListQuery.Options = {
+	const options: WorkflowListOptions = {
 		take: safeLimit,
 		sortBy,
 		filter: {
