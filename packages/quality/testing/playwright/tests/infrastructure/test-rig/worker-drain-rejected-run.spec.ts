@@ -57,10 +57,13 @@ test(
 			const point = hook([worker], 'run-reject');
 			await s.step('armed', async () => await point.arm());
 			const hit = point.waitHit(30_000);
+			const errored = waitForLog([worker], 'Worker errored while running execution ', 30_000);
 			await s.step('webhook', async () => await rig.api.webhook(path));
 			const executionId = String((await hit).detail.executionId);
 			s.mark('hit', executionId);
-			await waitForLog([worker], `Worker errored while running execution ${executionId} `, 30_000);
+			expect((await errored).line).toContain(
+				`Worker errored while running execution ${executionId} `,
+			);
 			s.mark('run-rejected');
 
 			const sigtermAt = await signal(worker, 'SIGTERM');
