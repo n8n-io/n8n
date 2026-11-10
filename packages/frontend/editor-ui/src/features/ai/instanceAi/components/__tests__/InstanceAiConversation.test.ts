@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, nextTick, provide, reactive } from 'vue';
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -11,10 +11,12 @@ import {
 	createThreadComponentRenderer,
 	defaultModuleSettings,
 	InstanceAiInputStub,
+	inputFocusSpy,
 	makeThread,
 } from '../../__tests__/createThreadComponentRenderer';
 import InstanceAiConversation from '../InstanceAiConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
+import { useAssistantCreditsStore } from '../../assistantCredits.store';
 import {
 	getPendingWorkflowAttachment,
 	stashPendingAgentAttachment,
@@ -96,7 +98,7 @@ describe('InstanceAiConversation', () => {
 	// assertions mount a small host directly with `@vue/test-utils` and read the
 	// child wrapper's own `emitted()`.
 	function mountConversation(
-		props: { mentionsEnabled?: boolean } = {},
+		props: { mentionsEnabled?: boolean; autofocus?: boolean } = {},
 		showMentionedWorkflow = vi.fn(),
 	) {
 		const Host = defineComponent({
@@ -106,7 +108,11 @@ describe('InstanceAiConversation', () => {
 				return () => h(InstanceAiConversation, props);
 			},
 		});
-		return mount(Host, { global: { stubs: { InstanceAiInput: InstanceAiInputStub } } });
+		return mount(Host, {
+			global: {
+				stubs: { InstanceAiInput: InstanceAiInputStub, InstanceAiConfirmationPanel: true },
+			},
+		});
 	}
 
 	/**
@@ -134,9 +140,132 @@ describe('InstanceAiConversation', () => {
 		return { restoreDraft };
 	}
 
+	it('focuses the embedded composer on load when another control has focus', async () => {
+		const button = document.createElement('button');
+		document.body.append(button);
+		button.focus();
+		const wrapper = mountConversation({ autofocus: true });
+		await nextTick();
+		await nextTick();
+		expect(inputFocusSpy).toHaveBeenCalled();
+		wrapper.unmount();
+		button.remove();
+	});
+
+	it('focuses the composer when its panel becomes visible', async () => {
+		const props = reactive({ autofocus: false });
+		const wrapper = mountConversation(props);
+		const externalInput = document.createElement('input');
+		document.body.append(externalInput);
+		externalInput.focus();
+		await nextTick();
+		expect(inputFocusSpy).not.toHaveBeenCalled();
+		props.autofocus = true;
+		await nextTick();
+		await nextTick();
+		expect(inputFocusSpy).toHaveBeenCalled();
+		wrapper.unmount();
+		externalInput.remove();
+	});
+
+	it.each([true, false])(
+		'only focuses a remounted composer when focus is idle (idle: %s)',
+		async (focusIsIdle) => {
+			const wrapper = mountConversation({ autofocus: true });
+			const externalInput = document.createElement('input');
+			document.body.append(externalInput);
+			try {
+				await flushPromises();
+				thread.pendingConfirmations = [
+					{
+						messageId: 'approval-message',
+						agentNode: {
+							agentId: 'agent-1',
+							role: 'orchestrator',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							toolCalls: [],
+							children: [],
+							timeline: [],
+						},
+						toolCall: {
+							toolCallId: 'approval-tool',
+							toolName: 'run_workflow',
+							args: {},
+							isLoading: true,
+							confirmationStatus: 'pending',
+							confirmation: { requestId: 'approval-1', severity: 'info', message: 'Run?' },
+						},
+					},
+				];
+				await nextTick();
+				expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(false);
+				externalInput.focus();
+				if (focusIsIdle) externalInput.blur();
+				inputFocusSpy.mockClear();
+
+				thread.pendingConfirmations = [];
+				await nextTick();
+				await nextTick();
+
+				expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(true);
+				expect(inputFocusSpy).toHaveBeenCalledTimes(focusIsIdle ? 1 : 0);
+				if (!focusIsIdle) expect(document.activeElement).toBe(externalInput);
+			} finally {
+				wrapper.unmount();
+				externalInput.remove();
+			}
+		},
+	);
+
+	it('keeps external focus when a greeting ends and remounts the composer', async () => {
+		vi.useFakeTimers();
+		const wrapper = mountConversation({ autofocus: true });
+		const externalInput = document.createElement('input');
+		document.body.append(externalInput);
+		try {
+			await flushPromises();
+			store.isOnboardingChromeHidden.mockReturnValue(true);
+			thread.messages = [
+				{
+					id: 'greeting',
+					role: 'assistant',
+					content: 'Hi there',
+					reasoning: '',
+					isStreaming: false,
+					createdAt: '2026-04-01T00:00:00.000Z',
+				},
+			];
+			await nextTick();
+			expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(false);
+			externalInput.focus();
+			inputFocusSpy.mockClear();
+
+			await vi.advanceTimersByTimeAsync(5000);
+
+			expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(true);
+			expect(inputFocusSpy).not.toHaveBeenCalled();
+			expect(document.activeElement).toBe(externalInput);
+		} finally {
+			wrapper.unmount();
+			externalInput.remove();
+		}
+	});
+
+	it('forwards draft content changes to the embedded host', () => {
+		const wrapper = mountConversation();
+		wrapper.findComponent(InstanceAiInputStub).vm.$emit('content-change', true);
+		expect(wrapper.findComponent(InstanceAiConversation).emitted('content-change')).toEqual([
+			[true],
+		]);
+		wrapper.unmount();
+	});
+
 	it('blocks the composer and keeps the out-of-credits notice when credits are gone', () => {
-		store.isOutOfCredits = true;
-		store.isLowCredits = true;
+		const creditsStore = mockedStore(useAssistantCreditsStore);
+		creditsStore.isOutOfCredits = true;
+		creditsStore.isLowCredits = true;
 
 		const wrapper = mountConversation();
 

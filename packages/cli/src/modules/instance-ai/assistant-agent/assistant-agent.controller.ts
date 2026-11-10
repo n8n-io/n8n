@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Param, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { AssistantThreadCreditsService } from './assistant-thread-credits.service';
 import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
 
 /**
@@ -17,7 +18,20 @@ import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
  */
 @RestController('/assistant')
 export class AssistantAgentController {
-	constructor(private readonly threadTabs: AssistantThreadTabsService) {}
+	constructor(
+		private readonly threadTabs: AssistantThreadTabsService,
+		private readonly threadCredits: AssistantThreadCreditsService,
+	) {}
+
+	@Get('/threads/:threadId/credits')
+	@GlobalScope('instanceAi:message')
+	async getThreadCredits(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<{ creditsUsed: number | null }> {
+		return { creditsUsed: (await this.threadCredits.getTotal(req.user, threadId)) ?? null };
+	}
 
 	@Get('/threads/:threadId/tabs')
 	@GlobalScope('instanceAi:message')

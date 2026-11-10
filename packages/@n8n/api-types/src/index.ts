@@ -701,7 +701,6 @@ export type {
 	InstanceAiEnvManagedFields,
 	InstanceAiVerificationFailure,
 	InstanceAiVerificationResponse,
-	InstanceAiUserPreferencesResponse,
 	InstanceAiProviderConnection,
 	InstanceAiSandboxProvider,
 	InstanceAiConnectionUpdate,

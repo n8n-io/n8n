@@ -800,7 +800,9 @@ describe('run', () => {
 		try {
 			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined);
 			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
-			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
 			vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
 			const enqueueExecution = vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
 
@@ -824,13 +826,74 @@ describe('run', () => {
 		}
 	});
 
+	it('carries the personal credentials count from the credential check to telemetry', async () => {
+		globalConfig.executions.mode = 'queue';
+		try {
+			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined);
+			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 2,
+			});
+			vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
+			vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
+
+			const data: IWorkflowExecutionDataProcess = {
+				executionMode: 'trigger',
+				workflowData: mock<IWorkflowExecutionDataProcess['workflowData']>({
+					id: 'workflow-id',
+					nodes: [],
+					staticData: {},
+				}),
+				telemetryMetadata: { mockDataSources: ['trigger_input'] },
+			};
+
+			await runner.run(data, true);
+
+			expect(data.telemetryMetadata).toEqual({
+				mockDataSources: ['trigger_input'],
+				personalCredentialsCount: 2,
+			});
+		} finally {
+			globalConfig.executions.mode = 'regular';
+		}
+	});
+
+	it('replaces the personal credentials count of an earlier run', async () => {
+		globalConfig.executions.mode = 'queue';
+		try {
+			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined);
+			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
+			vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
+			vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
+
+			const data: IWorkflowExecutionDataProcess = {
+				executionMode: 'trigger',
+				workflowData: mock<IWorkflowExecutionDataProcess['workflowData']>({
+					id: 'workflow-id',
+					nodes: [],
+					staticData: {},
+				}),
+				telemetryMetadata: { personalCredentialsCount: 2 },
+			};
+
+			await runner.run(data, true);
+
+			expect(data.telemetryMetadata).toEqual({ personalCredentialsCount: 0 });
+		} finally {
+			globalConfig.executions.mode = 'regular';
+		}
+	});
+
 	it('uses recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom with data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
 			new PCancelable(() => {
@@ -870,7 +933,7 @@ describe('run', () => {
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
 			new PCancelable(() => {
@@ -907,7 +970,7 @@ describe('run', () => {
 		const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 		vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
 			new PCancelable(() => mock<IRun>()),
 		);
@@ -933,7 +996,9 @@ describe('run', () => {
 			const activeExecutions = Container.get(ActiveExecutions);
 			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 				mock<IWorkflowExecuteAdditionalData>(),
 			);
@@ -1036,7 +1101,9 @@ describe('run', () => {
 			const activeExecutions = Container.get(ActiveExecutions);
 			const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
 			vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
 				new PCancelable(() => mock<IRun>()),
 			);
@@ -1066,7 +1133,7 @@ describe('run', () => {
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 		vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
 			new PCancelable(() => {
 				return mock<IRun>();
@@ -1123,7 +1190,9 @@ describe('run', () => {
 			const activeExecutions = Container.get(ActiveExecutions);
 			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
 			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
 				new PCancelable(() => mock<IRun>()),
 			);
@@ -1184,7 +1253,9 @@ describe('run', () => {
 			const error = new Error('boom');
 			const activeExecutions = Container.get(ActiveExecutions);
 			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
 			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockImplementationOnce(() => {
 				throw error;
 			});
@@ -1606,7 +1677,7 @@ describe('workflow timeout with startedAt', () => {
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
@@ -1661,7 +1732,7 @@ describe('workflow timeout with startedAt', () => {
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
@@ -1707,7 +1778,7 @@ describe('workflow timeout with startedAt', () => {
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
@@ -1752,7 +1823,7 @@ describe('workflow timeout with startedAt', () => {
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		const mockStopExecution = vi.spyOn(activeExecutions, 'stopExecution');
 
@@ -1885,7 +1956,7 @@ describe('pre-persist context establishment', () => {
 		capturedAddData = undefined;
 
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValue();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValue({ personalCredentialsCount: 0 });
 
 		establishSpy = vi
 			.spyOn(core, 'establishExecutionContext')
@@ -2180,7 +2251,7 @@ describe('streaming functionality', () => {
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
 		vi.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(new Promise(() => {}));
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce({ personalCredentialsCount: 0 });
 
 		const mockResponse = mock<StreamingResponse>({ writableEnded: false });
 		const mockSetInterval = vi.spyOn(global, 'setInterval');

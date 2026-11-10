@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentPromptInspiration } from '../composables/useAgentPromptInspiration';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import {
 	ref,
@@ -3479,6 +3480,21 @@ function onSwitchAgent(nextAgentId: string) {
 	});
 }
 
+const builderPromptHasContent = ref(false);
+const templatePrompts = computed(() =>
+	AGENT_TEMPLATES.map((template) => locale.baseText(template.placeholderKey)),
+);
+const promptInspiration = useAgentPromptInspiration({
+	prompts: templatePrompts,
+	enabled: () =>
+		showAgentIntro.value &&
+		showAiPanel.value &&
+		(!inlineTestChat.value || !isPreviewDockOpen.value) &&
+		!(compactChatLayout.value && showConfiguration.value) &&
+		!hasSentBuilderMessage.value &&
+		!builderPromptHasContent.value,
+});
+
 useKeybindings({
 	ctrl_j: {
 		disabled: function isAiPanelShortcutDisabled() {
@@ -3662,6 +3678,8 @@ useKeybindings({
 								: undefined
 						"
 						@message-sent="hasSentBuilderMessage = true"
+						:placeholder-preview="promptInspiration.placeholder"
+						@content-change="builderPromptHasContent = $event"
 						:key="agentId"
 						:subject="instanceAiEmbedSubject"
 						:launch="instanceAiEmbedLaunch"
