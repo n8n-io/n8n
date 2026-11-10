@@ -432,7 +432,7 @@ describe('EngineV2Runtime', () => {
 		it('serves the engine API over mutual TLS when TLS is on', async () => {
 			const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
 
-			await newRuntime(undefined, {}, tls).init(responseSender());
+			await newRuntime(undefined, {}, tls).init(senders());
 
 			expect(mocks.createEngineHttpServer).toHaveBeenCalledWith(mocks.engine.app, tls);
 		});
