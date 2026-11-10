@@ -39,12 +39,17 @@ export class ExecutionLedger {
 		return this.writer !== undefined;
 	}
 
-	/** Inserts in the transaction of the execution row, so a failed insert rolls the run back. */
-	async recordStarted(facts: ExecutionLedgerStartedFacts, ctx: OperationContext): Promise<void> {
-		if (!this.writer) return;
+	/**
+	 * Inserts in the transaction of the execution row, so a failed insert rolls the run back.
+	 * Returns whether the row was written, so callers write no `ended` row for an unrecorded run.
+	 */
+	async recordStarted(facts: ExecutionLedgerStartedFacts, ctx: OperationContext): Promise<boolean> {
+		if (!this.writer) return false;
 		assertTransaction(ctx);
 
-		this.reportUnrecorded(await this.writer.writeStarted(facts, ctx), facts);
+		const result = await this.writer.writeStarted(facts, ctx);
+		this.reportUnrecorded(result, facts);
+		return result.recorded;
 	}
 
 	async recordEndedInTransaction(

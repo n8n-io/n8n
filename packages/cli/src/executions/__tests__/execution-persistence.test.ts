@@ -1,7 +1,7 @@
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, ExecutionLedger } from '@n8n/backend-services';
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
 	ExecutionEntity,
@@ -34,6 +34,7 @@ describe('ExecutionPersistence', () => {
 	const dbStore = mock<DbStore>();
 	const errorReporter = mock<ErrorReporter>();
 	const eventService = mock<EventService>();
+	const executionLedger = mock<ExecutionLedger>({ isEnabled: false });
 	const executionsConfig = mock<ExecutionsConfig>({
 		pruneData: true,
 		pruneDataHardDeleteBuffer: 1,
@@ -79,11 +80,16 @@ describe('ExecutionPersistence', () => {
 	const createMockTx = (tx: EntityManager) =>
 		vi.fn().mockImplementation(async <T>(cb: (em: EntityManager) => Promise<T>) => await cb(tx));
 
+	const txCtx: OperationContext = { trx: mock<Transaction>() };
+
 	const createMockRunInTransaction = (tx: EntityManager) =>
 		vi
 			.fn()
 			.mockImplementation(
-				async <T>(_ctx: OperationContext, cb: (em: EntityManager) => Promise<T>) => await cb(tx),
+				async <T>(
+					_ctx: OperationContext,
+					cb: (em: EntityManager, ctx: OperationContext) => Promise<T>,
+				) => await cb(tx, txCtx),
 			) as unknown as typeof executionRepository.runInTransaction;
 
 	const createPersistenceService = (
@@ -100,6 +106,7 @@ describe('ExecutionPersistence', () => {
 			mock<DatabaseConfig>({ type: dbType }),
 			errorReporter,
 			eventService,
+			executionLedger,
 		);
 
 	describe('create', () => {
@@ -528,6 +535,105 @@ describe('ExecutionPersistence', () => {
 
 				expect(mockTx.findOne).not.toHaveBeenCalled();
 				expect(jsonStore.delete).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('execution ledger', () => {
+			const persistence = createPersistenceService('db');
+			const blocked = {
+				outcome: 'blocked',
+				blockedBy: 'startFailed',
+				runtimeMs: 0,
+				timeSavedMin: 0,
+			};
+			let mockTx: ReturnType<typeof createMockTransaction>;
+
+			beforeEach(() => {
+				Object.assign(executionLedger, { isEnabled: true });
+				executionLedger.recordStarted.mockResolvedValue(true);
+				mockTx = createMockTransaction();
+				executionRepository.runInTransaction = createMockRunInTransaction(mockTx);
+			});
+
+			afterAll(() => {
+				Object.assign(executionLedger, { isEnabled: false });
+			});
+
+			it('writes the started row in the transaction of the execution row', async () => {
+				await persistence.create(createPayload, {}, { source: 'instance_ai' });
+
+				expect(executionLedger.recordStarted).toHaveBeenCalledExactlyOnceWith(
+					{
+						executionId: 'exec-1',
+						workflowId: 'workflow-123',
+						workflowName: 'Test Workflow',
+						mode: 'manual',
+						source: 'instance_ai',
+						occurredAt: expect.any(Date),
+					},
+					txCtx,
+				);
+				expect(executionLedger.recordEndedInTransaction).not.toHaveBeenCalled();
+			});
+
+			it('rolls the execution back when the ledger insert fails', async () => {
+				executionLedger.recordStarted.mockRejectedValue(new Error('insert failed'));
+
+				await expect(persistence.create(createPayload)).rejects.toThrow('insert failed');
+			});
+
+			it('writes a blocked ended row for a row created finished', async () => {
+				const stoppedAt = new Date('2026-11-10T10:00:00Z');
+
+				await persistence.create({ ...createPayload, status: 'error', stoppedAt });
+
+				expect(executionLedger.recordEndedInTransaction).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ executionId: 'exec-1', ...blocked, occurredAt: stoppedAt }),
+					txCtx,
+				);
+			});
+
+			it('writes no ended row when the started row was not recorded', async () => {
+				executionLedger.recordStarted.mockResolvedValue(false);
+
+				await persistence.create({ ...createPayload, status: 'error' });
+
+				expect(executionLedger.recordEndedInTransaction).not.toHaveBeenCalled();
+			});
+
+			it('writes no row for an imported execution', async () => {
+				await persistence.create({ ...createPayload, status: 'error' }, {}, { skipLedger: true });
+
+				expect(executionLedger.recordStarted).not.toHaveBeenCalled();
+				expect(executionLedger.recordEndedInTransaction).not.toHaveBeenCalled();
+			});
+
+			it('writes a blocked ended row for a reclaimed tombstone', async () => {
+				mockTx.findOne.mockResolvedValue({
+					id: 'exec-old',
+					workflowId: 'workflow-123',
+					storedAt: 'db',
+					mode: 'trigger',
+				} as unknown as ExecutionEntity);
+
+				await persistence.create({ ...createPayload, deduplicationKey: 'wf-1:node-1:1' });
+
+				expect(executionLedger.recordEndedInTransaction).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ executionId: 'exec-old', mode: 'trigger', ...blocked }),
+					txCtx,
+				);
+				expect(executionLedger.recordStarted).toHaveBeenCalledWith(
+					expect.objectContaining({ executionId: 'exec-1' }),
+					txCtx,
+				);
+			});
+
+			it('builds no facts when the module is off', async () => {
+				Object.assign(executionLedger, { isEnabled: false });
+
+				await persistence.create({ ...createPayload, status: 'error' });
+
+				expect(executionLedger.recordStarted).not.toHaveBeenCalled();
 			});
 		});
 	});

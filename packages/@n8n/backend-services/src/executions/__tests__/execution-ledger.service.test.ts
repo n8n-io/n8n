@@ -40,7 +40,7 @@ describe('ExecutionLedger', () => {
 
 	describe('without a writer', () => {
 		it('does nothing', async () => {
-			await ledger.recordStarted(startedFacts, {});
+			await expect(ledger.recordStarted(startedFacts, {})).resolves.toBe(false);
 			await ledger.recordEndedInTransaction(endedFacts, {});
 			await ledger.recordEnded(endedFacts);
 
@@ -64,7 +64,7 @@ describe('ExecutionLedger', () => {
 		beforeEach(() => ledger.setImplementation(writer));
 
 		it('passes the context to the writer', async () => {
-			await ledger.recordStarted(startedFacts, txCtx);
+			await expect(ledger.recordStarted(startedFacts, txCtx)).resolves.toBe(true);
 			await ledger.recordEndedInTransaction(endedFacts, txCtx);
 
 			expect(writer.writeStarted).toHaveBeenCalledWith(startedFacts, txCtx);
@@ -90,7 +90,7 @@ describe('ExecutionLedger', () => {
 		it('logs and reports a workflow without an owner project', async () => {
 			writer.writeStarted.mockResolvedValue({ recorded: false, reason: 'noOwnerProject' });
 
-			await ledger.recordStarted(startedFacts, txCtx);
+			await expect(ledger.recordStarted(startedFacts, txCtx)).resolves.toBe(false);
 
 			expect(logger.error).toHaveBeenCalledExactlyOnceWith(
 				'Execution exec-1 of workflow wf-1 is not in the execution ledger: the workflow has no owner project',

@@ -113,7 +113,11 @@ export class ActiveExecutions {
 					fullExecutionData.workflowId = workflowId;
 				}
 
-				executionId = await this.executionPersistence.create(fullExecutionData);
+				executionId = await this.executionPersistence.create(
+					fullExecutionData,
+					{},
+					{ source: executionData.source },
+				);
 				assert(executionId);
 				await this.unsavedManualExecutionService.recordStarter(executionId, executionData);
 
