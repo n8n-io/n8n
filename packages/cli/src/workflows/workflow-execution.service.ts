@@ -4,7 +4,7 @@ import {
 	EventService,
 	InstanceWriteAccessService,
 	WorkflowPublishedDataService,
-	WorkflowVersionedSettings,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
@@ -79,7 +79,7 @@ export class WorkflowExecutionService {
 		private readonly pollCursorService: PollCursorService,
 		private readonly executionCrashService: ExecutionCrashService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
-		private readonly workflowVersionedSettings: WorkflowVersionedSettings,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
 	) {}
 
 	async runWorkflow(

@@ -9,7 +9,7 @@ import {
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { WorkflowVersionedSettings } from './workflow-versioned-settings.service';
+import { WorkflowVersionedSettingsService } from './workflow-versioned-settings.service';
 import { CacheService } from '../services/cache/cache.service';
 
 export type { PublishedWorkflowDataForExecution };
@@ -29,7 +29,7 @@ export class WorkflowPublishedDataService {
 		private readonly logger: Logger,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly cacheService: CacheService,
-		private readonly workflowVersionedSettings: WorkflowVersionedSettings,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
 	) {
 		this.logger = this.logger.scoped('poll-trigger');
 	}

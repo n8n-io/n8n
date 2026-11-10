@@ -4,7 +4,7 @@ import {
 	type EventService,
 	type WorkflowSharingService,
 	type Publisher,
-	WorkflowVersionedSettings,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
@@ -78,7 +78,7 @@ describe('ActiveWorkflowManager', () => {
 	const ownershipService = mock<OwnershipService>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 	const workflowPublisherService = mock<WorkflowPublisherService>();
-	const workflowVersionedSettings = new WorkflowVersionedSettings(mock());
+	const workflowVersionedSettings = new WorkflowVersionedSettingsService(mock());
 
 	beforeEach(() => {
 		vi.clearAllMocks();

@@ -1,7 +1,7 @@
 import type { ChatHubConversationModel, ChatProviderSettingsDto } from '@n8n/api-types';
 import type { PolicyCleared } from '@n8n/decorators';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { WorkflowVersionedSettings } from '@n8n/backend-services';
+import { WorkflowVersionedSettingsService } from '@n8n/backend-services';
 import type { Project, WorkflowRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Cipher, BinaryDataService } from 'n8n-core';
@@ -44,7 +44,7 @@ describe('ChatHubWorkflowService', () => {
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const deprecatedNodesValidationService = mock<DeprecatedNodesValidationService>();
 	const moduleRegistry = mock<ModuleRegistry>();
-	const workflowVersionedSettings = new WorkflowVersionedSettings(moduleRegistry);
+	const workflowVersionedSettings = new WorkflowVersionedSettingsService(moduleRegistry);
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
 	let service: ChatHubWorkflowService;

@@ -1,11 +1,11 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
-import { WorkflowVersionedSettings } from '../workflow-versioned-settings.service';
+import { WorkflowVersionedSettingsService } from '../workflow-versioned-settings.service';
 
-describe('WorkflowVersionedSettings', () => {
+describe('WorkflowVersionedSettingsService', () => {
 	const moduleRegistry = mock<ModuleRegistry>();
-	const service = new WorkflowVersionedSettings(moduleRegistry);
+	const service = new WorkflowVersionedSettingsService(moduleRegistry);
 
 	const draftSettings = { engineType: 'v2', timezone: 'Europe/Berlin' } as const;
 

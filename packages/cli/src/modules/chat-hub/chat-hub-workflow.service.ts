@@ -8,7 +8,7 @@ import {
 	isChatHubToolTypeAllowed,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { WorkflowVersionedSettings } from '@n8n/backend-services';
+import { WorkflowVersionedSettingsService } from '@n8n/backend-services';
 import {
 	DEFAULT_CONTEXT_WINDOW_LENGTH,
 	EMBEDDINGS_NODE_TYPE_MAP,
@@ -99,7 +99,7 @@ export class ChatHubWorkflowService {
 		private readonly cipher: Cipher,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
-		private readonly workflowVersionedSettings: WorkflowVersionedSettings,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}

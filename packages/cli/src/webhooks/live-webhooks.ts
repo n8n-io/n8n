@@ -19,7 +19,10 @@ import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowPublishedDataService, WorkflowVersionedSettings } from '@n8n/backend-services';
+import {
+	WorkflowPublishedDataService,
+	WorkflowVersionedSettingsService,
+} from '@n8n/backend-services';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -51,7 +54,7 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly expressionEngineConfig: ExpressionEngineConfig,
 		private readonly workflowPublisherService: WorkflowPublisherService,
-		private readonly workflowVersionedSettings: WorkflowVersionedSettings,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
 	) {}
 
 	async getWebhookMethods(path: string) {

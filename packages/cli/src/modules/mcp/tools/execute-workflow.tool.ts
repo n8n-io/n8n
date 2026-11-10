@@ -43,7 +43,7 @@ import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import {
 	type WorkflowPublishedDataService,
-	WorkflowVersionedSettings,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 
 export { type FoundWorkflow };
@@ -239,7 +239,7 @@ const getVersionDataForExecution = async (
 		};
 	}
 
-	const workflowVersionedSettings = Container.get(WorkflowVersionedSettings);
+	const workflowVersionedSettings = Container.get(WorkflowVersionedSettingsService);
 
 	// Behind the flag, the workflow_published_version mapping is the source of
 	// truth — consult it directly rather than gating on activeVersionId. This

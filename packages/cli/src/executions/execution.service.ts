@@ -4,7 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import {
 	EventService,
 	ExecutionRedactionServiceProxy,
-	WorkflowVersionedSettings,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -142,7 +142,7 @@ export class ExecutionService {
 		private readonly ownershipService: OwnershipService,
 		private readonly engineV2ExecutionReader: EngineV2ExecutionReader,
 		private readonly engineDataPlane: EngineDataPlaneProxyService,
-		private readonly workflowVersionedSettings: WorkflowVersionedSettings,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
 	) {}
 
 	/**

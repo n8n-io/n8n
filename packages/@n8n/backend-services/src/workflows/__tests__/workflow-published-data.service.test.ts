@@ -8,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '../../services/cache/cache.service';
 import { WorkflowPublishedDataService } from '../workflow-published-data.service';
-import { WorkflowVersionedSettings } from '../workflow-versioned-settings.service';
+import { WorkflowVersionedSettingsService } from '../workflow-versioned-settings.service';
 
 describe('WorkflowPublishedDataService', () => {
 	const logger = mock<Logger>();
@@ -27,7 +27,7 @@ describe('WorkflowPublishedDataService', () => {
 			logger,
 			workflowPublishedVersionRepository,
 			cacheService,
-			new WorkflowVersionedSettings(moduleRegistry),
+			new WorkflowVersionedSettingsService(moduleRegistry),
 		);
 	});
 

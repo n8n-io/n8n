@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import {
 	type WorkflowPublishedDataService,
-	WorkflowVersionedSettings,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 
 import { CallableWorkflowLoader } from '../callable-workflow-loader.service';
@@ -36,7 +36,7 @@ function makeService({ useWorkflowPublicationService = false, engineV2ModuleActi
 		workflowRepository,
 		{ useWorkflowPublicationService } as WorkflowsConfig,
 		workflowPublishedDataService,
-		new WorkflowVersionedSettings(moduleRegistry),
+		new WorkflowVersionedSettingsService(moduleRegistry),
 	);
 
 	return { service, workflowRepository, workflowPublishedDataService };

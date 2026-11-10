@@ -35,7 +35,7 @@ import type { WebhookRequest } from '@/webhooks/webhook.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
 	type WorkflowPublishedDataService,
-	WorkflowVersionedSettings,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -77,7 +77,7 @@ describe('LiveWebhooks', () => {
 			workflowPublishedDataService,
 			expressionEngineConfig,
 			workflowPublisherService,
-			new WorkflowVersionedSettings(moduleRegistry),
+			new WorkflowVersionedSettingsService(moduleRegistry),
 		);
 
 		// Mock WorkflowExecuteAdditionalData.getBase to avoid DI issues
