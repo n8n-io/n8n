@@ -108,10 +108,7 @@ function parseNodeName(node: AstNode | namedTypes.MemberExpression['property']):
 function parseLegacyNodeName(node: namedTypes.MemberExpression): string | null {
 	if (node.computed === true) return parseNodeName(node.property);
 
-	const { property } = node;
-	if (property.type !== 'Identifier' || !isSafeObjectProperty(property.name)) return null;
-
-	return property.name;
+	return parseStaticKey(node.property);
 }
 
 // `$('Name')`, `$input` or `$node['Name']` in object/receiver position, or
