@@ -12,6 +12,7 @@ import {
 	throwIfErrorSentinel,
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
+import { assign, defineProperty } from './intrinsics';
 import { decodeHostValue } from './transfer-codec';
 import { isKeyOf } from './utils';
 import type { BridgeMessage } from '../bridge/bridge-messages';
@@ -151,7 +152,7 @@ export function buildContext(
 	// __sanitize must be on the context because PrototypeSanitizer generates:
 	// obj[this.__sanitize(expr)] where 'this' is the context (via .call(ctx) wrapping)
 	// Use a non-writable property descriptor so override attempts throw instead of silently succeeding.
-	Object.defineProperty(target, '__sanitize', {
+	defineProperty(target, '__sanitize', {
 		get: () => __sanitize,
 		set: () => {
 			throw new ExpressionError('Cannot override "__sanitize" due to security concerns');
@@ -174,7 +175,7 @@ export function buildContext(
 	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
 	// -------------------------------------------------------------------------
 
-	Object.assign(target, extendedFunctions);
+	assign(target, extendedFunctions);
 
 	// -------------------------------------------------------------------------
 	// Expose globals on target so tournament's "x in this ? this.x : global.x"
