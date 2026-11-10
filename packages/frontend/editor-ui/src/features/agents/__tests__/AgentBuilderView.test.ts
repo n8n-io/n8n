@@ -1004,7 +1004,7 @@ function resetViewMocks() {
 // Load the view after the shared mocks exist. Module loading must finish before
 // tests start, so a cold transform cannot outlive a test and mount in the next one.
 const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
-const { AGENT_SESSION_ASSISTANT_KEY } = await import('../views/AgentSessionsListView.vue');
+const { AGENT_SESSION_ASSISTANT_KEY } = await import('../components/agentBuilderInjectionKeys');
 
 describe('AgentBuilderView — preview routing', () => {
 	beforeEach(() => {
