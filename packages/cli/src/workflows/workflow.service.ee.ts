@@ -186,10 +186,10 @@ export class EnterpriseWorkflowService {
 	): WorkflowWithSharingsMetaDataAndCredentials {
 		const workflowWithMetaData = this.ownershipService.addOwnedByAndSharedWith(workflow);
 
-		const { shared: _shared, ...combinedWorkflows } = { ...workflow, ...workflowWithMetaData };
+		const { shared: _shared, ...workflowWithoutShared } = { ...workflow, ...workflowWithMetaData };
 
 		return {
-			...combinedWorkflows,
+			...workflowWithoutShared,
 			usedCredentials: workflow.usedCredentials ?? [],
 		};
 	}
