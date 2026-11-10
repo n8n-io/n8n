@@ -4813,6 +4813,31 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(expectedProperties);
 		});
 
+		it('should add the personal credentials count to workflow execution telemetry', async () => {
+			const runData = {
+				finished: true,
+				status: 'success',
+				mode: 'trigger',
+				data: { resultData: { runData: {} } },
+			} as unknown as IRun;
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+				telemetryMetadata: { personalCredentialsCount: 2 },
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ execution_source: 'user', personal_credentials_count: 2 }),
+			);
+		});
+
 		it('should call telemetry.track when manual node execution finished', async () => {
 			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
 			credentialsRepository.findOneBy.mockResolvedValue(
