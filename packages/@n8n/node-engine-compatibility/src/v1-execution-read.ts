@@ -17,6 +17,7 @@ import type {
 import type {
 	ExecutionError,
 	ExecutionStatus,
+	IPinData,
 	IRunData,
 	ISourceData,
 	ITaskData,
@@ -68,7 +69,12 @@ interface Lineage {
 	lastIterationByNodeId: Map<string, number>;
 }
 
-export function toV1RunExecutionData(graph: WorkflowGraph, steps: StepDetail[]) {
+/** @param pinData The pin data the run used. The canvas marks those nodes as pinned, not as executed. */
+export function toV1RunExecutionData(
+	graph: WorkflowGraph,
+	steps: StepDetail[],
+	pinData?: IPinData,
+) {
 	const runs = toStepRuns(graph, steps);
 
 	// By settle time, not by creation order: parallel branches settle
@@ -80,6 +86,7 @@ export function toV1RunExecutionData(graph: WorkflowGraph, steps: StepDetail[]) 
 	return createRunExecutionData({
 		resultData: {
 			runData: toRunData(runs),
+			pinData,
 			error: failed?.taskData.error,
 			lastNodeExecuted: (failed ?? bySettleTime.at(-1))?.nodeName,
 		},
