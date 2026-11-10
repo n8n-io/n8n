@@ -4,7 +4,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, OnPubSubEvent, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 import { AgentsSettingsService } from './agents-settings.service';
 

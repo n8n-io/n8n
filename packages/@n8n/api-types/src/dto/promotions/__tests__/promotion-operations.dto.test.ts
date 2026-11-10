@@ -100,8 +100,9 @@ describe.each([
 	const workflowIds = ['workflow1', 'workflow2'];
 	const expectedSource = { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) };
 
-	it('rejects an empty workflow list', () => {
-		expect(dto.safeParse({ workflowIds: [], expectedSource }).success).toBe(false);
+	it('accepts a selection without workflows, and an empty one that applies only the project', () => {
+		expect(dto.safeParse({ folderIds: ['folder1'], expectedSource }).success).toBe(true);
+		expect(dto.safeParse({ expectedSource }).success).toBe(true);
 	});
 
 	it('rejects a workflow list with duplicate ids', () => {

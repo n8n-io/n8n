@@ -1,0 +1,101 @@
+import {
+	ALLOWED_AGENT_FILE_EXTENSIONS,
+	MAX_AGENT_FILE_SIZE_BYTES,
+	MAX_AGENT_FILES_PER_UPLOAD,
+} from '@n8n/api-types';
+import { Service } from '@n8n/di';
+import type { RequestHandler } from 'express';
+import multer from 'multer';
+import { unlink } from 'node:fs/promises';
+import path from 'node:path';
+
+import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
+
+const allowedKnowledgeFileExtensions = new Set<string>(ALLOWED_AGENT_FILE_EXTENSIONS);
+
+export function isAllowedKnowledgeFile(file: Pick<Express.Multer.File, 'originalname'>) {
+	const extension = path.extname(file.originalname).toLowerCase();
+
+	return allowedKnowledgeFileExtensions.has(extension);
+}
+
+/**
+ * Multer's `array(field, maxCount)` reuses the field-name check to also
+ * enforce maxCount: exceeding it throws the same 'LIMIT_UNEXPECTED_FILE'
+ * error (message "Unexpected field") as sending an actually-mismatched field
+ * name, which is meaningless to users. Map known codes to messages that
+ * describe what to actually do.
+ */
+export function describeMulterError(error: multer.MulterError): string {
+	switch (error.code) {
+		case 'LIMIT_UNEXPECTED_FILE':
+			return `You can upload at most ${MAX_AGENT_FILES_PER_UPLOAD} files at a time`;
+		case 'LIMIT_FILE_SIZE':
+			return `Files must be ${MAX_AGENT_FILE_SIZE_BYTES / (1024 * 1024)} MB or smaller`;
+		default:
+			return error.message;
+	}
+}
+
+/** The multer codes that `describeMulterError` explains. Other codes have no fixed reason. */
+export function multerFailureReason(
+	error: multer.MulterError,
+	filesFieldName: string,
+): KnowledgeUploadFailureReason | undefined {
+	switch (error.code) {
+		case 'LIMIT_UNEXPECTED_FILE':
+			// Multer uses this code for a file part with another field name too.
+			return error.field === filesFieldName ? 'too_many_files' : undefined;
+		case 'LIMIT_FILE_SIZE':
+			return 'file_size';
+		default:
+			return undefined;
+	}
+}
+
+/**
+ * Best-effort removal of multer's on-disk temp files. The upload handler hands
+ * successful uploads to KnowledgeFileService (which cleans up its own temp
+ * files), but early bail-outs (knowledge base disabled, upload error, no files)
+ * return before that, so the caller calls this to avoid leaking temp files.
+ */
+export async function cleanupUploadedTempFiles(files: Express.Multer.File[]) {
+	await Promise.all(
+		files.map(async (file) => {
+			if (!file.path) return;
+			await unlink(file.path).catch(() => {});
+		}),
+	);
+}
+
+@Service()
+export class KnowledgeUploadMiddleware {
+	private readonly upload: multer.Multer = multer({
+		storage: multer.diskStorage({}),
+		limits: { fileSize: MAX_AGENT_FILE_SIZE_BYTES },
+		fileFilter: (_req, file, done) => {
+			if (!isAllowedKnowledgeFile(file)) {
+				done(
+					new KnowledgeUploadError(
+						'Only CSV, PDF, Markdown, and TXT files are allowed',
+						'file_type',
+					),
+				);
+				return;
+			}
+
+			done(null, true);
+		},
+	});
+
+	array(fieldName: string): RequestHandler {
+		return (req, res, next) => {
+			void this.upload.array(fieldName, MAX_AGENT_FILES_PER_UPLOAD)(req, res, (error) => {
+				if (error) {
+					(req as typeof req & { fileUploadError?: Error }).fileUploadError = error as Error;
+				}
+				next();
+			});
+		};
+	}
+}

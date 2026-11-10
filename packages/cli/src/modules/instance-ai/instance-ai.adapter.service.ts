@@ -10,8 +10,6 @@ import {
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
@@ -120,6 +118,7 @@ import {
 	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
+	AppNamespaceTakenError,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	FolderResolutionError,
@@ -284,6 +283,7 @@ import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import { toWorkflowJSON } from './workflow-json';
 import { WorkflowTemplatesService } from './workflow-templates.service';
+import { toUserLike } from '@/utils/to-user-like';
 
 type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
@@ -432,8 +432,6 @@ export interface InstanceAiFeatureFlags {
 	 *  closed with every other gate: `getFeatureFlags` never throws, it
 	 *  returns `{}` on a PostHog outage. */
 	folderExplorationEnabled: boolean;
-	/** Saved AI preferences on every user turn. */
-	aiPreferencesEnabled: boolean;
 	credentialDescriptionsEnabled: boolean;
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
@@ -586,9 +584,6 @@ export class InstanceAiAdapterService {
 			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
-			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
-			 *  `save_user_preference` tool. */
-			aiPreferencesEnabled?: boolean;
 			assistantSkillsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
@@ -617,7 +612,6 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled,
 			onboardingThread,
 			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
 			assistantSkillsEnabled,
 			modelId,
 			modelFetch,
@@ -699,7 +693,10 @@ export class InstanceAiAdapterService {
 			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
-			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
+			// Absent only in test contexts constructed without DI.
+			...(this.aiPreferenceService
+				? { aiPreferenceService: this.createPreferenceAdapter(user) }
+				: {}),
 			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
 			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
@@ -853,7 +850,6 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
 		};
@@ -2623,7 +2619,7 @@ export class InstanceAiAdapterService {
 					targetName: nodeName,
 					mockItems: options?.mockInput ? toExecutionItems(options.mockInput) : undefined,
 					priorRunData,
-					pinnedNodeNames: Object.keys(workflow.pinData ?? {}),
+					pinData: workflow.pinData,
 				});
 
 				// The caller asked to keep the nodes above the target out of the run and
@@ -3572,11 +3568,17 @@ export class InstanceAiAdapterService {
 		return {
 			createApp: async ({ name, namespace, visibility, id }) => {
 				const { apps } = await services('app:create');
-				return await apps.createApp(
-					projectId,
-					CreateAppDto.parse({ name, namespace, visibility }),
-					{ id, actor },
-				);
+				try {
+					return await apps.createApp(
+						projectId,
+						CreateAppDto.parse({ name, namespace, visibility }),
+						{ id, actor },
+					);
+				} catch (error) {
+					// The namespace is the only unique field that the user picks.
+					if (error instanceof ConflictError) throw new AppNamespaceTakenError(namespace);
+					throw error;
+				}
 			},
 			listApps: async ({ name }) => {
 				const { apps } = await services('app:list');
@@ -4735,13 +4737,7 @@ export class InstanceAiAdapterService {
 
 				// Emit audit event (matches controller behavior)
 				eventService.emit('execution-deleted', {
-					user: {
-						id: user.id,
-						email: user.email,
-						firstName: user.firstName,
-						lastName: user.lastName,
-						role: user.role,
-					},
+					user: toUserLike(user),
 					executionIds: ids,
 					deleteBefore: cutoff,
 				});
