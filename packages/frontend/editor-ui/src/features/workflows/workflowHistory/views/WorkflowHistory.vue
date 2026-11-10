@@ -463,22 +463,7 @@ const nameWorkflowVersion = async (id: WorkflowVersionId, data: WorkflowHistoryA
 	});
 };
 
-const showActionError = (action: WorkflowHistoryAction['action'], error: unknown) => {
-	toast.showError(
-		error,
-		i18n.baseText('workflowHistory.action.error.title', {
-			interpolate: {
-				action: i18n.baseText(`workflowHistory.item.actions.${action}`).toLowerCase(),
-			},
-		}),
-	);
-};
-
-const runSlowAction = async (
-	action: WorkflowHistoryAction['action'],
-	id: WorkflowVersionId,
-	run: () => Promise<void>,
-) => {
+const runSlowAction = async (id: WorkflowVersionId, run: () => Promise<void>) => {
 	if (pendingVersionId.value) {
 		return;
 	}
@@ -486,8 +471,6 @@ const runSlowAction = async (
 	pendingVersionId.value = id;
 	try {
 		await run();
-	} catch (error) {
-		showActionError(action, error);
 	} finally {
 		pendingVersionId.value = null;
 	}
@@ -501,19 +484,19 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 				sendTelemetry('User opened version in new tab');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
-				await runSlowAction('download', id, async () => {
+				await runSlowAction(id, async () => {
 					await workflowHistoryStore.downloadVersion(workflowId.value, id, data);
 					sendTelemetry('User downloaded version');
 				});
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.CLONE:
-				await runSlowAction('clone', id, async () => {
+				await runSlowAction(id, async () => {
 					await cloneWorkflowVersion(id, data);
 					sendTelemetry('User cloned version');
 				});
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
-				await runSlowAction('restore', id, async () => {
+				await runSlowAction(id, async () => {
 					await restoreWorkflowVersion(id);
 					sendTelemetry('User restored version');
 				});
@@ -529,7 +512,14 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 				break;
 		}
 	} catch (error) {
-		showActionError(action, error);
+		toast.showError(
+			error,
+			i18n.baseText('workflowHistory.action.error.title', {
+				interpolate: {
+					action: i18n.baseText(`workflowHistory.item.actions.${action}`).toLowerCase(),
+				},
+			}),
+		);
 	}
 };
 
