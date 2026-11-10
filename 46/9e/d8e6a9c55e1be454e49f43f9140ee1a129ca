@@ -1,0 +1,28 @@
+packages/workflow/src/expression.ts
+  s_dd23c6cc4ad568::t_fc3d6717505887 94,115-120
+  s_dd23c6cc4ad568::t_8b8267a882da40 105,121-129
+  s_dd23c6cc4ad568::t_2543d81ac109e5 5,103-104,106-107
+packages/frontend/editor-ui/vite/expression-runtime-stub.ts
+  s_dd23c6cc4ad568::t_a5ad3db68963bf 22
+packages/workflow/test/expression-shadow.test.ts
+  s_dd23c6cc4ad568::t_8b8267a882da40 173-177
+  s_dd23c6cc4ad568::t_ac5bd19307e32c 4-5,160,162-165,182-186
+  s_dd23c6cc4ad568::t_bb70b2b3c9f9fc 168-172
+  s_dd23c6cc4ad568::t_97b2a9ad3a7e56 161,166-167,178-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "469ed8e6a9c55e1be454e49f43f9140ee1a129ca",
+  "prompts": {},
+  "sessions": {
+    "s_dd23c6cc4ad568": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "576581d2-be4c-4741-b4b2-16fcde604c73",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
