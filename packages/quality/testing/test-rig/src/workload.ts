@@ -2,7 +2,7 @@ import { sleep } from '@n8n/utils/sleep';
 import { nanoid } from 'nanoid';
 
 import type { RunRecord } from './invariants';
-import { FINAL_STATUSES, lines } from './probes';
+import { FINAL_STATUSES, lines, quote } from './probes';
 import type { RigStack } from './stack';
 import { chain, nodes, webhookPath } from './workflows';
 
@@ -109,6 +109,21 @@ export class Workload {
 		return await this.rig.db.statusesOf(this.workflowId);
 	}
 
+	async executionsByRequest(requestIds: string[]): Promise<Record<string, string[]>> {
+		const byRequest: Record<string, string[]> = {};
+		if (requestIds.length === 0) return byRequest;
+		const rows = lines(
+			await this.rig.db.sql(
+				`select r.id, d."executionId" from unnest(array[${requestIds.map(quote).join(',')}]) as r(id) join execution_data d on strpos(d.data, '"' || r.id || '"') > 0 join execution_entity e on e.id = d."executionId" where e."workflowId" = ${quote(this.workflowId)} order by d."executionId"`,
+			),
+		);
+		for (const row of rows) {
+			const [requestId, executionId] = row.split('|');
+			(byRequest[requestId] ??= []).push(executionId);
+		}
+		return byRequest;
+	}
+
 	/** Waits until every execution is final and the queue is empty, or the timeout passes, then reads the run. */
 	async record(requests: WorkloadRequest[], settleTimeoutMs: number): Promise<RunRecord> {
 		const deadline = Date.now() + settleTimeoutMs;
@@ -122,7 +137,18 @@ export class Workload {
 					(FINAL_STATUSES as readonly string[]).includes(status),
 				);
 			if (settled || Date.now() > deadline) {
-				return { requests, executions, effects: await this.effects(), bull: { wait, active } };
+				const effects = await this.effects();
+				const done = new Set(effects.map((e) => e.requestId));
+				const lost = requests
+					.filter((r) => r.status === 200 && !done.has(r.requestId))
+					.map((r) => r.requestId);
+				return {
+					requests,
+					executions,
+					effects,
+					executionsByRequest: await this.executionsByRequest(lost),
+					bull: { wait, active },
+				};
 			}
 			await sleep(500);
 		}

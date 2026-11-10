@@ -19,6 +19,7 @@ const healthy: RunRecord = {
 		{ requestId: 'a', executionId: '1' },
 		{ requestId: 'b', executionId: '2' },
 	],
+	executionsByRequest: {},
 	bull: { wait: [], active: [] },
 };
 
@@ -33,36 +34,43 @@ describe('workload invariants', () => {
 		).toEqual([{ invariant: 'every execution finished', detail: { 2: 'running' } }]);
 	});
 
-	it('flag an accepted request with no effect and no failed execution', () => {
+	it('flag an accepted request with no effect and no execution', () => {
 		const lost = { ...healthy, effects: [healthy.effects[0]], executions: { 1: 'success' } };
 		expect(noAcceptedRequestLost(lost)).toEqual([
-			{
-				invariant: 'no accepted request lost',
-				detail: { missing: ['b'], unsuccessfulExecutions: 0 },
-			},
+			{ invariant: 'no accepted request lost', detail: { missing: ['b'] } },
 		]);
 	});
 
-	it('accept a missing effect that a failed execution accounts for', () => {
+	it('accept a missing effect that a failed execution of the same request accounts for', () => {
 		const failed = {
 			...healthy,
 			effects: [healthy.effects[0]],
 			executions: { 1: 'success', 2: 'crashed' },
+			executionsByRequest: { b: ['2'] },
 		};
 		expect(noAcceptedRequestLost(failed)).toEqual([]);
 	});
 
-	it('flag a missing effect when the failed execution wrote its own effect', () => {
-		const failedAfterEffect = {
+	it('flag a missing effect when only another request has a failed execution', () => {
+		const masked = {
 			...healthy,
 			effects: [healthy.effects[0]],
-			executions: { 1: 'crashed' },
+			executions: { 1: 'success', 3: 'error' },
+			executionsByRequest: {},
 		};
-		expect(noAcceptedRequestLost(failedAfterEffect)).toEqual([
-			{
-				invariant: 'no accepted request lost',
-				detail: { missing: ['b'], unsuccessfulExecutions: 0 },
-			},
+		expect(noAcceptedRequestLost(masked)).toEqual([
+			{ invariant: 'no accepted request lost', detail: { missing: ['b'] } },
+		]);
+	});
+
+	it('flag a missing effect when the execution of the request succeeded', () => {
+		const succeeded = {
+			...healthy,
+			effects: [healthy.effects[0]],
+			executionsByRequest: { b: ['2'] },
+		};
+		expect(noAcceptedRequestLost(succeeded)).toEqual([
+			{ invariant: 'no accepted request lost', detail: { missing: ['b'] } },
 		]);
 	});
 
