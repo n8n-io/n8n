@@ -60,7 +60,7 @@ describe('agent_builder_resolve_llm tool', () => {
 		expect(result).toEqual({
 			ok: true,
 			provider: 'openai',
-			model: 'gpt-5.6-terra',
+			model: 'gpt-6.1-terra',
 			credentialId: 'c1',
 			credentialName: 'My OpenAI',
 		});
@@ -421,7 +421,7 @@ describe('agent_builder_resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'anthropic',
-				model: 'claude-sonnet-5',
+				model: 'claude-sonnet-5-5',
 				credentialId: 'c2',
 				credentialName: 'My Anthropic',
 				autoPicked: true,
@@ -565,7 +565,7 @@ describe('agent_builder_resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'anthropic',
-				model: 'claude-sonnet-5',
+				model: 'claude-sonnet-5-5',
 				credentialId: 'c1',
 				credentialName: 'My Anthropic',
 			});
