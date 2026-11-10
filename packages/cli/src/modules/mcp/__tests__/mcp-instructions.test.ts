@@ -109,9 +109,9 @@ describe('getMcpInstructions', () => {
 		});
 
 		// Claude Code keeps only the first 2048 characters of the instructions, so a pointer
-		// below that line never arrives. This is what the ordering
-		// test above is really protecting; assert it directly so a new section inserted above
-		// the pointer fails here rather than silently in a client.
+		// below that line never arrives. This is what the ordering test above is really
+		// protecting; assert it directly so a new section inserted above the pointer fails here
+		// rather than silently in a client.
 		test('lands inside the 2048-character budget a client may truncate to', () => {
 			const instructions = getMcpInstructions({
 				isBuilderEnabled: true,
