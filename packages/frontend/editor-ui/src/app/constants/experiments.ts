@@ -164,9 +164,6 @@ export const ASSISTANT_SKILLS_EXPERIMENT = createExperiment(ASSISTANT_SKILLS_FLA
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 export const MCP_DISCOVERY_EXPERIMENT = createExperiment('123_surface_mcp_to_claude_trial_users');
 // EOF Experiment cleanup
-export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
-	'119_surface_assistant_on_workflow_error',
-);
 
 export const WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT = createExperiment(
 	'124_workflow_previews_above_assistant',
@@ -272,7 +269,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	// EOF Experiment cleanup
 	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
 	ASSISTANT_SKILLS_EXPERIMENT.name,
-	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
 	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT.name,
 	AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.name,
 	AGENTS_N8N_CHAT_EXPERIMENT.name,

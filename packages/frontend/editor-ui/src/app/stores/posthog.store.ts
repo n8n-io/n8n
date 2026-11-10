@@ -15,16 +15,12 @@ import {
 	// EOF Experiment cleanup
 	EXPERIMENTS_TO_TRACK,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
-	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
 // Experiment cleanup (133_agent_builder_experiment_cohort)
 import {
 	getAgentBuilderExperimentEnrollment,
 	isAgentBuilderExperiment,
 } from '@/experiments/agentBuilder/enrollment';
-// EOF Experiment cleanup
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
-import { CLOUD_ONLY } from '@/experiments/surfaceAssistantOnWorkflowError/cloudOnly';
 // EOF Experiment cleanup
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
@@ -198,15 +194,6 @@ export const usePostHog = defineStore('posthog', () => {
 				?.name !== name
 		)
 			return;
-		// EOF Experiment cleanup
-		// Experiment cleanup (119_surface_assistant_on_workflow_error)
-		if (
-			CLOUD_ONLY &&
-			name === SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name &&
-			!settingsStore.isCloudDeployment
-		) {
-			return;
-		}
 		// EOF Experiment cleanup
 
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)

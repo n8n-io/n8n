@@ -1,5 +1,5 @@
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
 import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import userEvent from '@testing-library/user-event';
@@ -8,13 +8,11 @@ import { nextTick } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { INSTANCE_AI_SETTINGS_VIEW } from '@/features/ai/instanceAi/constants';
 import {
-	resetSurfaceAssistantOnWorkflowError,
-	useSurfaceAssistantOnWorkflowError,
+	resetWorkflowErrorNudge,
+	useWorkflowErrorNudge,
 	WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS,
-} from '../composables/useSurfaceAssistantOnWorkflowError';
+} from '../composables/useWorkflowErrorNudge';
 import WorkflowErrorNudge from './WorkflowErrorNudge.vue';
 
 const track = vi.fn();
@@ -29,15 +27,15 @@ vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoffCapability', (
 
 const WORKFLOW_ID = 'wf-1';
 
-const push = vi.fn();
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push }),
+	useRouter: () => ({ push: vi.fn() }),
 	useRoute: () => ({ params: { workflowId: WORKFLOW_ID }, query: {} }),
 }));
 
+const canMessageInstanceAi = vi.fn(() => true);
 vi.mock('@/features/ai/instanceAi/instanceAiPermissions', () => ({
 	canManageInstanceAi: () => true,
-	canMessageInstanceAi: () => true,
+	canMessageInstanceAi: () => canMessageInstanceAi(),
 }));
 
 const renderComponent = createComponentRenderer(WorkflowErrorNudge);
@@ -47,7 +45,7 @@ const EXECUTION_ID = 'exec-1';
 let appRoot: HTMLElement | undefined;
 let unmount: (() => void) | undefined;
 
-async function showCta(assistantEnabled = true, workflowId = WORKFLOW_ID) {
+async function showCta(workflowId = WORKFLOW_ID) {
 	appRoot = document.createElement('div');
 	appRoot.id = 'n8n-app';
 	appRoot.innerHTML =
@@ -55,20 +53,18 @@ async function showCta(assistantEnabled = true, workflowId = WORKFLOW_ID) {
 		'<div class="el-notification content-toast" style="bottom: 72px"><div class="el-notification__group"></div></div>';
 	document.body.append(appRoot);
 
-	unmount = renderComponent({ pinia: createTestingPinia() }).unmount;
-
-	const posthogStore = mockedStore(usePostHog);
-	posthogStore.isVariantEnabled.mockReturnValue(true);
-	posthogStore.getVariant.mockReturnValue('variant');
+	const pinia = createTestingPinia();
+	setActivePinia(pinia);
 	const settingsStore = mockedStore(useSettingsStore);
-	settingsStore.isCloudDeployment = true;
 	settingsStore.isModuleActive.mockReturnValue(true);
 	settingsStore.moduleSettings = {
-		'instance-ai': { enabled: assistantEnabled, setupCompleted: true },
+		'instance-ai': { enabled: true, setupCompleted: true },
 	} as typeof settingsStore.moduleSettings;
 
+	unmount = renderComponent({ pinia }).unmount;
+
 	vi.useFakeTimers();
-	useSurfaceAssistantOnWorkflowError().triggerOnWorkflowError(EXECUTION_ID, workflowId);
+	useWorkflowErrorNudge().triggerOnWorkflowError(EXECUTION_ID, workflowId);
 	await vi.advanceTimersByTimeAsync(WORKFLOW_ERROR_NUDGE_SHOW_DELAY_MS);
 	await nextTick();
 	vi.useRealTimers();
@@ -77,18 +73,19 @@ async function showCta(assistantEnabled = true, workflowId = WORKFLOW_ID) {
 	if (!(group instanceof HTMLElement)) {
 		throw new Error('Error toast group was not found');
 	}
-	return within(group);
+	return { group: within(group), settingsStore };
 }
 
-async function showCtaButton(assistantEnabled = true) {
-	const group = await showCta(assistantEnabled);
+async function showCtaButton() {
+	const { group } = await showCta();
 	return group.getByTestId('workflow-error-nudge-action');
 }
 
 describe('WorkflowErrorNudge', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		resetSurfaceAssistantOnWorkflowError();
+		canMessageInstanceAi.mockReturnValue(true);
+		resetWorkflowErrorNudge();
 	});
 
 	afterEach(() => {
@@ -96,7 +93,7 @@ describe('WorkflowErrorNudge', () => {
 		unmount = undefined;
 		appRoot?.remove();
 		appRoot = undefined;
-		resetSurfaceAssistantOnWorkflowError();
+		resetWorkflowErrorNudge();
 		vi.useRealTimers();
 	});
 
@@ -107,9 +104,7 @@ describe('WorkflowErrorNudge', () => {
 		expect(button.closest('.el-notification.content-toast')).toBe(appRoot?.firstElementChild);
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_VIEWED_FIX_WITH_ASSISTANT_NUDGE,
-			expect.objectContaining({
-				variant: 'variant',
-			}),
+			{},
 		);
 	});
 
@@ -133,47 +128,34 @@ describe('WorkflowErrorNudge', () => {
 	});
 
 	it('does not inject the button when the error belongs to another workflow', async () => {
-		const group = await showCta(true, 'other-workflow');
+		const { group } = await showCta('other-workflow');
 
 		expect(group.queryByTestId('workflow-error-nudge-action')).toBeNull();
 		expect(track).not.toHaveBeenCalled();
 	});
 
-	it('opens the assistant and sends telemetry when Assistant is enabled', async () => {
-		const button = await showCtaButton(true);
+	it('opens the Assistant when the button is clicked', async () => {
+		const button = await showCtaButton();
 
 		await userEvent.click(button);
 
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_ERROR_TOAST_FIX_WITH_ASSISTANT,
-			expect.objectContaining({ assistant_enabled: true }),
+			{},
 		);
 		expect(openWorkflow).toHaveBeenCalledWith('workflow_error_nudge');
-		expect(push).not.toHaveBeenCalled();
 	});
 
-	it('reports the arm the nudge was shown under, even if the flag changes before the click', async () => {
-		const button = await showCtaButton(true);
-		mockedStore(usePostHog).getVariant.mockReturnValue('control');
+	it('removes the button when Assistant stops being ready', async () => {
+		const { group, settingsStore } = await showCta();
 
-		await userEvent.click(button);
+		expect(group.getByTestId('workflow-error-nudge-action')).toBeTruthy();
 
-		expect(track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_ERROR_TOAST_FIX_WITH_ASSISTANT,
-			expect.objectContaining({ variant: 'variant' }),
-		);
-	});
+		settingsStore.moduleSettings = {
+			'instance-ai': { enabled: false, setupCompleted: true },
+		} as typeof settingsStore.moduleSettings;
+		await nextTick();
 
-	it('opens Assistant settings and sends telemetry when Assistant is disabled', async () => {
-		const button = await showCtaButton(false);
-
-		await userEvent.click(button);
-
-		expect(track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_ERROR_TOAST_FIX_WITH_ASSISTANT,
-			expect.objectContaining({ assistant_enabled: false }),
-		);
-		expect(push).toHaveBeenCalledWith({ name: INSTANCE_AI_SETTINGS_VIEW });
-		expect(openWorkflow).not.toHaveBeenCalled();
+		expect(group.queryByTestId('workflow-error-nudge-action')).toBeNull();
 	});
 });

@@ -406,31 +406,47 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description: 'The user clicked the plus button in the n8n Assistant input.',
 		properties: z.object({}),
 	},
-	// Experiment cleanup (119_surface_assistant_on_workflow_error)
 	USER_VIEWED_FIX_WITH_ASSISTANT_NUDGE: {
 		name: 'User viewed fix with Assistant nudge',
 		description:
 			'The Fix with Assistant button was shown inside a workflow error toast. Fires once for each toast that receives the button.',
 		properties: z.object({
-			variant: z.enum(['control', 'variant']),
-			'$feature/119_surface_assistant_on_workflow_error': z.enum(['control', 'variant']),
+			variant: z
+				.enum(['control', 'variant'])
+				.optional()
+				.meta({ deprecated: true })
+				.describe('Deprecated: the experiment arm. No longer emitted.'),
+			'$feature/119_surface_assistant_on_workflow_error': z
+				.enum(['control', 'variant'])
+				.optional()
+				.meta({ deprecated: true })
+				.describe('Deprecated: PostHog experiment exposure. No longer emitted.'),
 		}),
 	},
 	USER_CLICKED_ERROR_TOAST_FIX_WITH_ASSISTANT: {
 		name: 'User clicked fix with Assistant CTA on error toast',
 		description:
-			'The user clicked the Fix with Assistant button on a workflow error toast. assistant_enabled records whether n8n Assistant was enabled at click time. Enabled opens the Assistant. Disabled opens Assistant settings.',
+			'The user clicked the Fix with Assistant button on a workflow error toast. The click opens n8n Assistant on the failed workflow.',
 		properties: z.object({
 			assistant_enabled: z
 				.boolean()
+				.optional()
+				.meta({ deprecated: true })
 				.describe(
-					'Whether n8n Assistant was enabled. True opens the Assistant. False opens Assistant settings.',
+					'Deprecated: whether n8n Assistant was enabled at click time. No longer emitted. The nudge only renders when Assistant is ready.',
 				),
-			variant: z.enum(['control', 'variant']),
-			'$feature/119_surface_assistant_on_workflow_error': z.enum(['control', 'variant']),
+			variant: z
+				.enum(['control', 'variant'])
+				.optional()
+				.meta({ deprecated: true })
+				.describe('Deprecated: the experiment arm. No longer emitted.'),
+			'$feature/119_surface_assistant_on_workflow_error': z
+				.enum(['control', 'variant'])
+				.optional()
+				.meta({ deprecated: true })
+				.describe('Deprecated: PostHog experiment exposure. No longer emitted.'),
 		}),
 	},
-	// EOF Experiment cleanup
 	TOOLS_LIST_OPENED: {
 		name: 'Instance AI tools list opened',
 		description: 'The user opened the n8n Assistant tools connection modal.',

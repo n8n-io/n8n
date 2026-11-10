@@ -1841,7 +1841,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'canvas_action_button',
 	'canvas_choice_prompt',
 	'node_error_view',
-	'workflow_error_nudge', // Experiment cleanup (119_surface_assistant_on_workflow_error)
+	'workflow_error_nudge',
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
