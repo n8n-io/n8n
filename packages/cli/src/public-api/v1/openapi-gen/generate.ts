@@ -23,9 +23,11 @@ const YAML_OPTS = { aliasDuplicateObjects: false, singleQuote: true, lineWidth: 
 // the envelope (see `assembleSpec`).
 export const DECORATOR_ROOT_FILENAME = 'openapi.decorator-routes.generated.yml';
 
+const N8N_VERSION_EXTENSION = 'x-n8n-version';
+
 /** The subset of an OpenAPI document this module reads or assembles. Everything else passes through. */
 export interface OpenApiDocument {
-	info?: { version?: string; [key: string]: unknown };
+	info?: Record<string, unknown>;
 	paths?: Record<string, Record<string, unknown>>;
 	components?: Record<string, Record<string, unknown>>;
 	[key: string]: unknown;
@@ -243,9 +245,9 @@ export function assembleSpec(
 	}
 
 	// Ensure the envelope does not set a version that the build would silently replace.
-	if (envelope.info?.version !== undefined) {
+	if (envelope.info?.[N8N_VERSION_EXTENSION] !== undefined) {
 		throw new UnexpectedError(
-			'openapi.yml still declares info.version. The build sets it from the n8n version in package.json.',
+			`openapi.yml still declares ${N8N_VERSION_EXTENSION}. The build sets it from the n8n version in package.json.`,
 		);
 	}
 
@@ -274,7 +276,7 @@ export function assembleSpec(
 		components[section] = { ...target, ...items };
 	}
 
-	const info = { ...envelope.info, version: n8nVersion };
+	const info = { ...envelope.info, [N8N_VERSION_EXTENSION]: n8nVersion };
 
 	return { ...envelope, info, paths: generatedPaths, components };
 }

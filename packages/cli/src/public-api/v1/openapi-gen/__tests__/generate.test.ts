@@ -78,7 +78,7 @@ describe('assembleSpec', () => {
 	it('assembles the spec from the envelope, the generated document and the n8n version', () => {
 		const envelope: OpenApiDocument = {
 			openapi: '3.0.0',
-			info: { title: 'n8n Public API', description: 'n8n Public API' },
+			info: { title: 'n8n Public API', version: '1.1.1' },
 			security: [{ ApiKeyAuth: [] }],
 			tags: [{ name: 'Tags' }],
 			paths: {},
@@ -93,7 +93,7 @@ describe('assembleSpec', () => {
 
 		expect(assembled).toEqual({
 			openapi: '3.0.0',
-			info: { title: 'n8n Public API', description: 'n8n Public API', version: n8nVersion },
+			info: { title: 'n8n Public API', version: '1.1.1', 'x-n8n-version': n8nVersion },
 			security: [{ ApiKeyAuth: [] }],
 			tags: [{ name: 'Tags' }],
 			paths: { '/tags': { get: { operationId: 'getTags' } } },
@@ -102,7 +102,7 @@ describe('assembleSpec', () => {
 				securitySchemes: { ApiKeyAuth: { type: 'apiKey', in: 'header' } },
 			},
 		});
-		expect(envelope.info).not.toHaveProperty('version');
+		expect(envelope.info).not.toHaveProperty('x-n8n-version');
 	});
 
 	it('throws when the envelope and the generated document define the same component', () => {
@@ -131,15 +131,17 @@ describe('assembleSpec', () => {
 		);
 	});
 
-	it('throws when the envelope declares info.version', () => {
-		const envelope: OpenApiDocument = { info: { title: 'n8n Public API', version: '1.1.1' } };
+	it('throws when the envelope declares x-n8n-version', () => {
+		const envelope: OpenApiDocument = {
+			info: { title: 'n8n Public API', 'x-n8n-version': '1.0.0' },
+		};
 		const generated: OpenApiDocument = {
 			paths: { '/tags': { get: { operationId: 'getTags' } } },
 		};
 
 		expect(() => assembleSpec(envelope, generated, n8nVersion)).toThrow(UnexpectedError);
 		expect(() => assembleSpec(envelope, generated, n8nVersion)).toThrow(
-			/still declares info\.version/,
+			/still declares x-n8n-version/,
 		);
 	});
 
