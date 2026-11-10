@@ -1,0 +1,169 @@
+docs/generated/sqlite-schema/agent_plan_history.md
+  ai_agent 64
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  ai_agent 11,19,63,71,95
+docs/generated/postgres-schema/public.user.md
+  ai_agent 184,187
+docs/generated/sqlite-schema/agents_threads.md
+  ai_agent 9,19,53,71,84,97,106,114,123
+docs/generated/postgres-schema/public.agents_messages.md
+  ai_agent 16,64,84,99,105
+docs/generated/postgres-schema/public.agent_plan.md
+  ai_agent 13,56,61,71,100,103
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 9,19,29,81,91,131,158
+docs/generated/sqlite-schema/agent_file_grants.md
+  ai_agent 9,20,48,56,64
+packages/cli/src/modules/agents/entities/agent-observation-cursor.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 4-5,12
+docs/generated/sqlite-schema/agents_memory_entries.md
+  ai_agent 105
+docs/generated/sqlite-schema/project.md
+  ai_agent 123,131,140,143
+packages/cli/src/modules/agents/entities/agent-chat-subscription.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 6-7,38
+docs/generated/postgres-schema/public.agents_resources.md
+  ai_agent 69
+docs/generated/sqlite-schema/agent_plan.md
+  ai_agent 9,24,61,66,76,105,108
+docs/generated/postgres-schema/public.agent_file_grants.md
+  ai_agent 9,39,47,55
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  ai_agent 9,26,74,107,131,141
+docs/generated/postgres-schema/public.agent_message_queue.md
+  ai_agent 15,66,93,109,119,122
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  ai_agent 9,22,55,78
+packages/cli/src/modules/agents/entities/agent-plan.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 16-17
+  ai_agent 27-31
+docs/generated/sqlite-schema/README.md
+  ai_agent 492,502,523,545,553,561,658,677,680,696,733,743,802,861,882,895,904,912,921,937
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 19-20,44
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  ai_agent 15,70,103,127,137
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 8,18,79,89,129,156
+docs/generated/postgres-schema/public.project.md
+  ai_agent 117,125,134,137
+docs/generated/sqlite-schema/agent_budget_spend.md
+  ai_agent 9,19,45
+docs/generated/sqlite-schema/agents_resources.md
+  ai_agent 78
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  ai_agent 11,51,75
+docs/generated/sqlite-schema/agent_thread_grants.md
+  ai_agent 9,20,48,57,60
+docs/generated/postgres-schema/public.agent_thread_grants.md
+  ai_agent 9,39,48,51
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  ai_agent 11,46
+docs/generated/sqlite-schema/agent_execution_message_links.md
+  ai_agent 82,98
+docs/generated/postgres-schema/public.agent_budget_spend.md
+  ai_agent 8,37
+packages/cli/src/modules/agents/entities/agent-memory-entry-candidate.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 5-6,20
+packages/cli/src/modules/agents/entities/agent-memory-entry-source.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 4-5,29
+docs/generated/sqlite-schema/agent_history.md
+  ai_agent 114,117
+docs/generated/postgres-schema/public.agents.md
+  ai_agent 116,126,159,167,175,210,213,304,325,333,341,350
+docs/generated/postgres-schema/public.agents_threads.md
+  ai_agent 8,45,63,76,89,98,106,115
+docs/generated/sqlite-schema/user.md
+  ai_agent 188,191
+packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 9-10,69
+packages/cli/src/modules/agents/entities/agent-file-grant.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 6-7,22
+packages/cli/src/modules/agents/entities/agent-thread-grant.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 6-7,14
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 11-12,70,90
+docs/generated/postgres-schema/README.md
+  ai_agent 278,506,516,537,559,567,575,672,691,694,710,747,757,816,875,896,909,918,926,935,951
+docs/generated/postgres-schema/public.agent_execution.md
+  ai_agent 30,100,108,118,149,158,161
+docs/generated/sqlite-schema/agents_observations.md
+  ai_agent 9,22,69,104,109
+packages/cli/src/modules/agents/entities/agent-message.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 8-9,27
+packages/cli/src/modules/agents/integrations/__tests__/thread-id-length.test.ts
+  s_51dcd2efc480ee::t_f8808e8f3ec4ba 1,3-5,8-15,17-30,36,39-43
+  s_51dcd2efc480ee::t_8801a2765c65d4 2,6-7,16,31-35,37-38
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  ai_agent 11,48,71
+docs/generated/sqlite-schema/agents_observation_locks.md
+  ai_agent 9,22,58,82
+packages/cli/src/modules/agents/entities/agent-chat-attachment.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 6-7,40,44
+packages/@n8n/db/src/migrations/common/1794241634816-WidenAgentThreadIdColumns.ts
+  s_51dcd2efc480ee::t_40716d6bd4933d 85,88
+  ai_agent 86-87
+  s_51dcd2efc480ee::t_ccf94c83f672aa 3-42,44-84,89-101,104-107
+  s_51dcd2efc480ee::t_5e2adc9c40fbc5 1-2,43,102-103,108-109
+packages/cli/src/modules/agents/entities/agent-budget-spend.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 4-5,12
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  ai_agent 9,29,79,110,129,135
+packages/cli/src/modules/agents/entities/agent-observation-lock.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 5-6,13
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  ai_agent 9,22,55
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  ai_agent 18,80,111,130,136
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-subscription.constraint.integration.test.ts
+  s_51dcd2efc480ee::t_8801a2765c65d4 1,65-77
+packages/cli/src/modules/agents/entities/agent-observation.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 5-6,17
+packages/cli/test/migration/1794241634816-widen-agent-thread-id-columns.test.ts
+  s_51dcd2efc480ee::t_7672b9be7550d7 1-72,74-75,78-80,83-159
+  s_51dcd2efc480ee::t_d93c33fe97bd5e 73,76-77,81-82
+docs/generated/postgres-schema/public.agents_observations.md
+  ai_agent 11,66,101,106
+docs/generated/postgres-schema/public.agent_plan_history.md
+  ai_agent 56
+docs/generated/sqlite-schema/agent_execution.md
+  ai_agent 9,41,104,112,122,153,162,165
+docs/generated/sqlite-schema/agent_execution_threads.md
+  ai_agent 9,23,26,81,84,139,154,164,170
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  ai_agent 12,15,81,84,139,154,164,170
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  ai_agent 9,22,30,64,72,96
+docs/generated/sqlite-schema/agent_message_queue.md
+  ai_agent 9,26,69,96,112,122,125
+packages/cli/src/modules/agents/integrations/types.ts
+  s_51dcd2efc480ee::t_5abf7e518c723f 6-11
+docs/generated/sqlite-schema/agents.md
+  ai_agent 117,127,160,168,176,211,214,305,326,334,342,351
+docs/generated/postgres-schema/public.agent_execution_message_links.md
+  ai_agent 74,90
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  ai_agent 102
+docs/generated/postgres-schema/public.agent_history.md
+  ai_agent 107,110
+docs/generated/sqlite-schema/agents_messages.md
+  ai_agent 9,27,69,89,104,110
+packages/cli/src/modules/agents/entities/agent-message-queue.entity.ts
+  s_51dcd2efc480ee::t_3f334115117ece 18-19,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8eeded3d097aed5d9eae6c4913a08a2d8f8169b4",
+  "prompts": {},
+  "sessions": {
+    "s_51dcd2efc480ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19dcd04b-f32a-4763-a21f-aa5e1af1f844",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

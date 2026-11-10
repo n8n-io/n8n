@@ -1,0 +1,58 @@
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_32cf4ded5e02f1::t_7a86304840031e 60
+  s_32cf4ded5e02f1::t_e14b76a762424b 58,61-62
+  s_32cf4ded5e02f1::t_6b05e559042005 59
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_32cf4ded5e02f1::t_c029872e7a6587 197
+  s_32cf4ded5e02f1::t_1e42f50342c4de 23-28,198-223
+  s_32cf4ded5e02f1::t_889af6cda994a9 224-237
+  s_32cf4ded5e02f1::t_cb8b0cc2f4b1cf 238-239
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_32cf4ded5e02f1::t_c9acf3c119a714 245-249
+  s_32cf4ded5e02f1::t_5c347c31022599 115
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_32cf4ded5e02f1::t_6aa218944581ef 137-139
+  s_32cf4ded5e02f1::t_430f3c1be0fb24 118-120
+packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
+  s_32cf4ded5e02f1::t_fc55f75e822b2f 674,681
+  s_32cf4ded5e02f1::t_8f3f7e72b31ad5 684-686
+  s_32cf4ded5e02f1::t_078e8bfbdf48b2 11-18,30,506,630-649,656-669,690-749
+  s_32cf4ded5e02f1::t_e771a4ca73fc95 650-655
+  s_32cf4ded5e02f1::t_30550938712386 670-673,675-680,682-683,687-689,750
+  s_32cf4ded5e02f1::t_50e6ba79fb446e 751
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_32cf4ded5e02f1::t_1868e32ec179cd 63-94,96-101
+  s_32cf4ded5e02f1::t_42239b0df986a3 95
+  s_32cf4ded5e02f1::t_5c906aedb1b7cf 9-10
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_32cf4ded5e02f1::t_e32edabaa067ae 264,277-307,600,610-613
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_32cf4ded5e02f1::t_d2698171bdb7b9 121-124
+  s_32cf4ded5e02f1::t_203867a0c92eb1 55-60
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_32cf4ded5e02f1::t_2ccdf18c393383 37
+  s_32cf4ded5e02f1::t_7e93f9592e41ed 129
+  s_32cf4ded5e02f1::t_6f074c1de8076e 4
+packages/@n8n/cli/docs/commands/package.md
+  s_32cf4ded5e02f1::t_ea39be2535813b 98,116-118,277-278,281
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_32cf4ded5e02f1::t_7e0b17e70b07c6 14,105,112
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  s_32cf4ded5e02f1::t_465c89eb01484c 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "182fef7c81a98c240504e0e4aca74934013d2c7f",
+  "prompts": {},
+  "sessions": {
+    "s_32cf4ded5e02f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5f409d2-12bb-4de4-839b-731564e9331b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

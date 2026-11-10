@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/MicrosoftTeamTrigger.test.ts
+  s_193904670b8016::t_acccc5015c8b78 545,554-555
+  s_193904670b8016::t_c55160b2f29f2f 727,730-739
+  s_193904670b8016::t_9f4ef6882c3444 179,185-261
+  s_193904670b8016::t_9849819b9c8d11 117-136,138-146,156,161-165
+  s_193904670b8016::t_4fd6cb69470da4 262
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils-trigger.ts
+  s_193904670b8016::t_4e938908833f6e 379-386,396
+  s_193904670b8016::t_d2996d7930c198 425-433,440-441
+  s_193904670b8016::t_9aaa21263d3925 108-151
+  s_193904670b8016::t_f98737409822c8 315-316,328-332,342-348,358
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/utiles-trigger.test.ts
+  s_193904670b8016::t_927ec16e5c737c 1156,1166,1170
+  s_193904670b8016::t_df84a39094c7db 1388-1639
+packages/nodes-base/nodes/Microsoft/Teams/MicrosoftTeamsTrigger.node.ts
+  s_193904670b8016::t_c8967d52d5bc9e 416
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1daa111bf022a8c57ef21886d47fbfb4f6419d7",
+  "prompts": {},
+  "sessions": {
+    "s_193904670b8016": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25b90e1f-ab68-4cd0-a410-ca11dfcd2c31",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

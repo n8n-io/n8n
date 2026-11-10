@@ -1,0 +1,19 @@
+packages/modules/promotions/frontend/README.md
+  s_f3039407b71bd6::t_79d7dd4fc6abc1 30-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "89d445214d25175089e3ee33526933e00a8697f4",
+  "prompts": {},
+  "sessions": {
+    "s_f3039407b71bd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d1d42e2-0ae1-44cd-9118-b0182793683b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

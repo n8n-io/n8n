@@ -1,0 +1,47 @@
+packages/cli/test/integration/database/repositories/workflow-history.repository.test.ts
+  s_11556d3276b9c3::t_7f819210922b5b 611-618,621-641
+  s_11556d3276b9c3::t_f4c4f7a5478959 47
+  s_11556d3276b9c3::t_273ed91d428272 11
+  s_11556d3276b9c3::t_3595b0bb544399 722-753
+  s_11556d3276b9c3::t_3dd1e9017d0a98 754-790
+  s_11556d3276b9c3::t_5240834770b882 448-452
+  s_11556d3276b9c3::t_f8ca6c915657d1 595-599,609-610,619-620,642-721
+  s_11556d3276b9c3::t_7e5b54c17d0d5e 510-514
+  s_11556d3276b9c3::t_e1ad3aaa61b346 791
+packages/@n8n/db/src/repositories/workflow-history.repository.ts
+  s_11556d3276b9c3::t_56dbbd9c5a9062 21-23
+  s_11556d3276b9c3::t_3ff512c0820fc3 159
+  s_11556d3276b9c3::t_29bae43a1a65ee 3
+  s_11556d3276b9c3::t_09901c1e14a8b5 134-136,138-154,156-158,160-188
+  s_11556d3276b9c3::t_e1cf2699e0bab0 155
+  s_11556d3276b9c3::t_5d80d547b8c81a 225-230,233
+packages/cli/src/workflows/workflow-history/workflow-history-manager.ts
+  s_11556d3276b9c3::t_ad610c98cd3046 16
+  s_11556d3276b9c3::t_1afd492f437493 28
+packages/cli/src/services/pruning/__tests__/workflow-history-pruning.task.test.ts
+  s_11556d3276b9c3::t_b8814c7b46dba7 49
+  s_11556d3276b9c3::t_29b6593ed77690 44-45,47-48
+packages/cli/src/services/pruning/workflow-history-pruning.task.ts
+  s_11556d3276b9c3::t_c1eedeedc6f60d 35-36
+  s_11556d3276b9c3::t_e670132a29e3af 18
+packages/cli/test/integration/workflow-history-manager.test.ts
+  s_11556d3276b9c3::t_6db15ae1a97bd0 118,151,182,213,266
+  s_11556d3276b9c3::t_e91dacc41205f7 66-74
+  s_11556d3276b9c3::t_194e57f2b836e4 237-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "33d51a20a3e57b75eb19f2beadf69038d57569ce",
+  "prompts": {},
+  "sessions": {
+    "s_11556d3276b9c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a51ecc0-aade-48b4-a168-45cad688ea5c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
