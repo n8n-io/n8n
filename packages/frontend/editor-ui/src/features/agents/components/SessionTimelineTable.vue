@@ -5,7 +5,7 @@ import type { AgentChatResumeDto, AgentJsonConfig, AgentThreadMemoryDto } from '
 import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
 import SessionTimelineRow from './SessionTimelineRow.vue';
-import ApprovalCard from './interactive/ApprovalCard.vue';
+import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
 import type { TimelineItem } from '../session-timeline.types';
 import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 import { filteredTimelineItemIndexes, timelineItemKey } from '../session-timeline.utils';
@@ -332,9 +332,13 @@ onBeforeUnmount(() => {
 						@click.stop
 						@keydown.stop
 					>
-						<ApprovalCard
+						<ToolApprovalCard
 							:input="props.approval"
+							:agent-name="props.agentName"
+							:tools="props.tools"
 							:disabled="props.approvalDisabled"
+							:auto-focus="false"
+							:use-key-shortcuts="false"
 							@submit="emit('approve', $event)"
 						/>
 					</div>
@@ -404,9 +408,13 @@ onBeforeUnmount(() => {
 						@click.stop
 						@keydown.stop
 					>
-						<ApprovalCard
+						<ToolApprovalCard
 							:input="props.approval"
+							:agent-name="props.agentName"
+							:tools="props.tools"
 							:disabled="props.approvalDisabled"
+							:auto-focus="false"
+							:use-key-shortcuts="false"
 							@submit="emit('approve', $event)"
 						/>
 					</div>
