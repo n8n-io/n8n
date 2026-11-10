@@ -8,7 +8,7 @@ import type { Response } from 'express';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@n8n/errors';
-import type { ListQuery } from '@/requests';
+import type { WorkflowListOptions } from '@/workflows/workflow.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { UpdateAllowedRedirectUrisDto } from '../dto/update-allowed-redirect-uris.dto';
@@ -71,7 +71,7 @@ const createRes = () => {
 
 const createListQueryReq = (user: User) => createReq({}, { user });
 
-const createListQuery = (options: ListQuery.Options = {}) =>
+const createListQuery = (options: WorkflowListOptions = {}) =>
 	McpWorkflowsListQueryDto.parse({
 		...options,
 		filter: options.filter ? JSON.stringify(options.filter) : undefined,

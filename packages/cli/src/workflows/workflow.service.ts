@@ -24,6 +24,8 @@ import type {
 	WorkflowHistory,
 	OperationContext,
 	WorkflowIdsQuery,
+	WorkflowListFilter,
+	WorkflowListQueryOptions,
 } from '@n8n/db';
 import {
 	isStringArray,
@@ -94,7 +96,6 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
@@ -124,6 +125,10 @@ export type GetManyOptions = {
 	/** Attach the list publication badge; only the workflow list UI wants this. */
 	includePublicationStatus?: boolean;
 	requiredScopes?: Scope[];
+};
+
+export type WorkflowListOptions = Omit<WorkflowListQueryOptions, 'filter'> & {
+	filter?: WorkflowListFilter & { executionBlockedBy?: WorkflowExecutionBlockCause[] };
 };
 
 type WorkflowUpdateOptions = {
@@ -270,7 +275,7 @@ export class WorkflowService {
 
 	async getMany(
 		user: User,
-		options?: ListQuery.Options,
+		options?: WorkflowListOptions,
 		{
 			includeScopes = false,
 			includeFolders = false,
@@ -287,7 +292,7 @@ export class WorkflowService {
 
 		if (options?.filter?.projectId) {
 			const project = await this.projectRepository.findOneBy({
-				id: options.filter.projectId as string,
+				id: options.filter.projectId,
 			});
 			if (!project) {
 				return { workflows: [], count: 0 };
@@ -436,7 +441,7 @@ export class WorkflowService {
 	}
 
 	private async resolveRestrictedWorkflowIds(
-		options?: ListQuery.Options,
+		options?: WorkflowListOptions,
 	): Promise<WorkflowIdsQuery | null | undefined> {
 		const executionBlockedBy = options?.filter?.executionBlockedBy;
 		if (
@@ -484,7 +489,7 @@ export class WorkflowService {
 
 	private async processSharedWorkflows(
 		workflows: ListQueryDb.Workflow.WithSharing[],
-		options?: ListQuery.Options,
+		options?: WorkflowListOptions,
 	) {
 		const projectId = options?.filter?.projectId;
 

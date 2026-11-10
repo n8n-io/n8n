@@ -17,7 +17,7 @@ import { PROJECT_ROOT, UnexpectedError, UserError, type IWorkflowSettings } from
 
 import type { ActivityProjectScope } from './activity-event.repository';
 import { BaseRepository } from './base-repository';
-import { FolderRepository } from './folder.repository';
+import { FolderRepository, type FolderListQueryOptions } from './folder.repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { runWorkflowContentWrite } from './workflow-content-write-context';
 import {
@@ -41,9 +41,25 @@ import { TimedQuery } from '../utils/timed-query';
 
 export type WorkflowIdsQuery = { query: string; parameters: Record<string, unknown> };
 
-type WorkflowListQueryOptions = {
-	filter?: Record<string, unknown>;
-	select?: Record<string, true>;
+export type WorkflowListFilter = {
+	ids?: string[];
+	name?: string;
+	query?: string;
+	active?: boolean;
+	isArchived?: boolean;
+	tags?: string[];
+	projectId?: string;
+	parentFolderId?: string;
+	parentFolderIds?: string[];
+	folderIds?: string[];
+	availableInMCP?: boolean;
+	nodeTypes?: string[];
+	triggerNodeTypes?: string[];
+};
+
+export type WorkflowListQueryOptions = {
+	filter?: WorkflowListFilter;
+	select?: Partial<Record<keyof WorkflowEntity | 'ownedBy', true>>;
 	skip?: number;
 	take?: number;
 	sortBy?: string;
@@ -831,12 +847,14 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		} as const;
 
 		// Transform `query` => `name` for folder repository
-		const folderFilter = options.filter ? { ...options.filter } : undefined;
-		if (folderFilter?.query) {
-			folderFilter.name = folderFilter.query;
+		const folderFilter: FolderListQueryOptions['filter'] = options.filter
+			? { ...options.filter }
+			: undefined;
+		if (folderFilter && options.filter?.query) {
+			folderFilter.name = options.filter.query;
 		}
 
-		const folderQueryParameters: WorkflowListQueryOptions = {
+		const folderQueryParameters: FolderListQueryOptions = {
 			select: commonFields,
 			filter: folderFilter,
 		};
@@ -1203,12 +1221,14 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		} as const;
 
 		// Transform `query` => `name` for folder repository
-		const folderFilter = options.filter ? { ...options.filter } : undefined;
-		if (folderFilter?.query) {
-			folderFilter.name = folderFilter.query;
+		const folderFilter: FolderListQueryOptions['filter'] = options.filter
+			? { ...options.filter }
+			: undefined;
+		if (folderFilter && options.filter?.query) {
+			folderFilter.name = options.filter.query;
 		}
 
-		const folderQueryParameters: WorkflowListQueryOptions = {
+		const folderQueryParameters: FolderListQueryOptions = {
 			select: commonFields,
 			filter: folderFilter,
 		};
@@ -1425,7 +1445,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				: options.filter;
 
 		this.applyFilters(qb, filtersToApply);
-		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
+		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes);
 		this.applyWorkflowIdsInFilter(qb, options.workflowIdsIn);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
@@ -1560,7 +1580,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const qb = this.createBaseQuery(workflowIds);
 
 		this.applyFilters(qb, options.filter);
-		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
+		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes);
 		this.applyWorkflowIdsInFilter(qb, options.workflowIdsIn);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
@@ -1875,7 +1895,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applySelect(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		select?: Record<string, boolean>,
+		select?: WorkflowListQueryOptions['select'],
 	): void {
 		if (!select) {
 			// Instead of selecting id first and then adding more fields,
@@ -1916,7 +1936,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyRelations(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		select?: Record<string, boolean>,
+		select?: WorkflowListQueryOptions['select'],
 	): void {
 		const areTagsEnabled = !this.globalConfig.tags.disabled;
 		const isDefaultSelect = select === undefined;

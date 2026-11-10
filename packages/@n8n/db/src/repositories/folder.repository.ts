@@ -8,9 +8,33 @@ import type { FolderWithWorkflowAndSubFolderCountAndPath } from '../entities/typ
 import { chunkIds } from '../utils/chunk-ids';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 
-type FolderListQueryOptions = {
-	filter?: Record<string, unknown>;
-	select?: Record<string, true>;
+export type FolderListFilter = {
+	folderIds?: string[];
+	projectId?: string;
+	name?: string;
+	parentFolderId?: string;
+	tags?: string[];
+	isArchived?: boolean;
+	excludeFolderIdAndDescendants?: string;
+};
+
+export type FolderListQueryOptions = {
+	filter?: FolderListFilter;
+	select?: Partial<
+		Record<
+			| 'id'
+			| 'name'
+			| 'createdAt'
+			| 'updatedAt'
+			| 'project'
+			| 'tags'
+			| 'parentFolder'
+			| 'workflowCount'
+			| 'subFolderCount'
+			| 'path',
+			true
+		>
+	>;
 	skip?: number;
 	take?: number;
 	sortBy?: string;

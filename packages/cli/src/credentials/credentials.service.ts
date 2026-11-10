@@ -24,7 +24,7 @@ import type {
 	ICredentialsDb,
 	ScopesField,
 	OperationContext,
-	CredentialSharingRelation,
+	CredentialsListQueryOptions,
 	ProjectRelation,
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
@@ -74,7 +74,7 @@ import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import type { CredentialRequest, ListQuery } from '@/requests';
+import type { CredentialRequest } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -155,9 +155,7 @@ type PrepareUpdateDataOptions = {
 };
 
 type GetManyOptions = {
-	listQueryOptions?: ListQuery.Options & {
-		relations?: CredentialSharingRelation[];
-	};
+	listQueryOptions?: CredentialsListQueryOptions;
 	includeScopes?: boolean;
 	includeData?: boolean;
 	onlySharedWithMe?: boolean;
@@ -208,7 +206,7 @@ type InstanceCredentialHookPayload = ICredentialsDb &
 	>;
 
 type GetManyCredentialsOptions = {
-	listQueryOptions: ListQuery.Options;
+	listQueryOptions: CredentialsListQueryOptions;
 	includeGlobal: boolean;
 	includeData: boolean;
 	onlySharedWithMe: boolean;
@@ -454,7 +452,7 @@ export class CredentialsService {
 		// Check if filtering by personal project
 		if (listQueryOptions.filter?.projectId) {
 			const project = await this.projectRepository.findOneBy({
-				id: listQueryOptions.filter.projectId as string,
+				id: listQueryOptions.filter.projectId,
 			});
 			if (!project) {
 				return { credentials: [], count: 0 };
@@ -507,7 +505,9 @@ export class CredentialsService {
 		);
 	}
 
-	private async applyPersonalProjectFilter(listQueryOptions: ListQuery.Options): Promise<void> {
+	private async applyPersonalProjectFilter(
+		listQueryOptions: CredentialsListQueryOptions,
+	): Promise<void> {
 		const projectId =
 			typeof listQueryOptions.filter?.projectId === 'string'
 				? listQueryOptions.filter.projectId
@@ -536,7 +536,7 @@ export class CredentialsService {
 		isDefaultSelect: boolean,
 		includeScopes: boolean,
 		includeData: boolean,
-		listQueryOptions: ListQuery.Options,
+		listQueryOptions: CredentialsListQueryOptions,
 		onlySharedWithMe: boolean,
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
 		await this.credentialDescriptions.stripIfDisabled(credentials);
@@ -569,7 +569,7 @@ export class CredentialsService {
 
 	private async populateSharedRelations(
 		credentials: CredentialsEntity[],
-		listQueryOptions: ListQuery.Options,
+		listQueryOptions: CredentialsListQueryOptions,
 		onlySharedWithMe: boolean,
 	): Promise<CredentialsEntity[]> {
 		const needsRelations =

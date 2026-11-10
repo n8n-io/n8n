@@ -1,5 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { CredentialSharingRelation } from '@n8n/db';
+import type { CredentialSharingRelation, CredentialsListQueryOptions } from '@n8n/db';
 import {
 	CredentialsRepository,
 	SharedCredentials,
@@ -47,6 +47,45 @@ describe('CredentialsRepository', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	it('combines typed credential filters with selection, sorting, and pagination', async () => {
+		const { createMember } = await import('../../shared/db/users.js');
+		const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
+		const { createCredentials } = await import('../../shared/db/credentials.js');
+		const member = await createMember();
+		const project = await createTeamProject('list-project');
+		await linkUserToProject(member, project, 'project:editor');
+		const credentials = await Promise.all([
+			createCredentials({ name: 'Test Alpha', type: 'googleApi', data: '' }),
+			createCredentials({ name: 'Test Beta', type: 'googleApi', data: '' }),
+			createCredentials({ name: 'Other', type: 'googleApi', data: '' }),
+			createCredentials({ name: 'Test Slack', type: 'slackApi', data: '' }),
+		]);
+		await shareCredentialsToProject(credentials, project.id, 'credential:owner');
+		const repository = Container.get(CredentialsRepository);
+		const options: CredentialsListQueryOptions = {
+			filter: {
+				name: 'Test',
+				type: 'google',
+				projectId: project.id,
+				withRole: 'credential:owner',
+				user: { id: member.id },
+			},
+			select: { name: true },
+			sortBy: 'name:asc',
+			skip: 1,
+			take: 1,
+		};
+
+		for (let run = 0; run < 2; run++) {
+			const [rows, count] = await repository.findManyAndCount(options);
+			expect(count).toBe(2);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({ id: credentials[1].id, name: 'Test Beta' });
+			expect(rows[0].data).toBeUndefined();
+			expect(rows[0].shared).toBeUndefined();
+		}
 	});
 
 	describe('getManyAndCountWithSharingSubquery', () => {
@@ -258,7 +297,7 @@ describe('CredentialsRepository', () => {
 			const result = await credentialsRepository.getManyAndCountWithSharingSubquery(
 				owner,
 				{ isPersonalProject: true, personalProjectOwnerId: owner.id },
-				{ filter: { projectId: personalProject.id, type: 'google', data: '' } },
+				{ filter: { projectId: personalProject.id, type: 'google' } },
 			);
 
 			// ASSERT

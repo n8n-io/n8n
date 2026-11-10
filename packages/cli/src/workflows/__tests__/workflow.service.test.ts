@@ -66,7 +66,7 @@ import type { WorkflowPublicationStatusService } from '@/workflows/publication/w
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
 
-import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowService, type WorkflowListOptions } from '@/workflows/workflow.service';
 import { ALL_RULES_RELAXED, NO_RULES_RELAXED } from './node-group-rules.test-data';
 
 vi.mock('@/permissions.ee/check-access');
@@ -421,7 +421,9 @@ describe('WorkflowService', () => {
 		});
 
 		describe('restricted node filter', () => {
-			const restrictedNodeFilter = { filter: { executionBlockedBy: ['restrictedNode'] } };
+			const restrictedNodeFilter: WorkflowListOptions = {
+				filter: { executionBlockedBy: ['restrictedNode'] },
+			};
 
 			test('keeps the folders when no node type is restricted', async () => {
 				restrictedNodeTypesProviderMock.findRestrictedWorkflowIds.mockResolvedValue(null);

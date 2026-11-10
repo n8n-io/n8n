@@ -35,6 +35,50 @@ describe('list query DTOs', () => {
 		expect(WorkflowListQueryDto.safeParse({ sortBy: 'id:asc' }).success).toBe(false);
 	});
 
+	it('accepts up to 50 unique workflow IDs', () => {
+		const ids = Array.from({ length: 50 }, (_, index) => `workflow-${index}`);
+		expect(WorkflowListQueryDto.parse({ filter: JSON.stringify({ ids }) }).filter).toEqual({ ids });
+	});
+
+	it.each([
+		{ ids: Array.from({ length: 51 }, (_, index) => `workflow-${index}`) },
+		{ ids: ['workflow-1', 'workflow-1'] },
+	])('rejects invalid workflow ID lists', ({ ids }) => {
+		expect(WorkflowListQueryDto.safeParse({ filter: JSON.stringify({ ids }) }).success).toBe(false);
+	});
+
+	it.each([
+		{ select: '["name"' },
+		{ select: '"name"' },
+		{ select: '[1]' },
+		{ take: '3.2' },
+		{ take: '3', skip: '3.2' },
+		{ sortBy: 'name' },
+		{ sortBy: 'name:invalid' },
+	])('rejects malformed list options: %j', (query) => {
+		expect(WorkflowListQueryDto.safeParse(query).success).toBe(false);
+	});
+
+	it('omits empty and unsupported selections', () => {
+		expect(WorkflowListQueryDto.parse({ select: '[]' }).select).toBeUndefined();
+		expect(WorkflowListQueryDto.parse({ select: '["ignored"]' }).select).toBeUndefined();
+	});
+
+	it.each([WorkflowListQueryDto, McpWorkflowsListQueryDto, TestRunsListQueryDto])(
+		'ignores unused callable-workflow filter fields',
+		(Dto) => {
+			expect(
+				Dto.parse({
+					filter: JSON.stringify({
+						query: 'workflow',
+						includeCallableSubworkflows: true,
+						parentWorkflowId: 'parent-1',
+					}),
+				}).filter,
+			).toEqual({ query: 'workflow' });
+		},
+	);
+
 	it('ignores null optional workflow filters', () => {
 		expect(
 			WorkflowListQueryDto.parse({

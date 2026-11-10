@@ -33,8 +33,6 @@ const workflowFilter = z.object({
 		.array(z.enum(WORKFLOW_EXECUTION_BLOCK_CAUSES))
 		.refine((causes) => new Set(causes).size === causes.length)
 		.optional(),
-	includeCallableSubworkflows: z.boolean().optional(),
-	parentWorkflowId: z.string().optional(),
 });
 
 const credentialFilter = z.object({
@@ -47,7 +45,7 @@ function parsedFilter<T extends z.ZodTypeAny>(schema: T) {
 	return z
 		.string()
 		.optional()
-		.transform((value, ctx) => {
+		.transform<z.infer<T> | undefined>((value, ctx) => {
 			if (!value) return undefined;
 			let parsed: unknown;
 			try {

@@ -52,9 +52,22 @@ export type CredentialSharingRelation =
 // every shared project would multiply the joined rows by the project sizes.
 const DEFAULT_CREDENTIAL_RELATIONS: CredentialSharingRelation[] = ['shared', 'shared.project'];
 
-type CredentialsListQueryOptions = {
-	filter?: Record<string, unknown>;
-	select?: Record<string, true>;
+export type CredentialsListFilter = {
+	name?: string;
+	type?: string;
+	projectId?: string;
+	withRole?: string;
+	user?: Pick<User, 'id'>;
+	shared?: {
+		projectId?: string;
+		role?: string;
+		project?: { projectRelations: { userId: string } };
+	};
+};
+
+export type CredentialsListQueryOptions = {
+	filter?: CredentialsListFilter;
+	select?: Partial<Record<keyof CredentialsEntity, true>>;
 	skip?: number;
 	take?: number;
 	sortBy?: string;
@@ -445,19 +458,19 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			} as FindManyOptions<CredentialsEntity>;
 		}
 
+		this.handleSharedFilters(listQueryOptions);
 		const { filter, select, take, skip, sortBy } = listQueryOptions;
+		const where: FindOptionsWhere<CredentialsEntity> = filter ? { ...filter } : {};
 
 		if (typeof filter?.name === 'string' && filter?.name !== '') {
-			filter.name = ILike(`%${filter.name}%`);
+			where.name = ILike(`%${filter.name}%`);
 		}
 
 		if (typeof filter?.type === 'string' && filter?.type !== '') {
-			filter.type = Like(`%${filter.type}%`);
+			where.type = Like(`%${filter.type}%`);
 		}
 
-		this.handleSharedFilters(listQueryOptions);
-
-		if (filter) findManyOptions.where = filter;
+		if (filter) findManyOptions.where = where;
 		if (select) findManyOptions.select = select;
 		if (take) findManyOptions.take = take;
 		if (skip) findManyOptions.skip = skip;

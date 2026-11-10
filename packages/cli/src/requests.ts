@@ -15,7 +15,6 @@ import type {
 	ProjectRole,
 	Scope,
 } from '@n8n/permissions';
-import type { Request } from 'express';
 import type {
 	ICredentialDataDecryptedObject,
 	INodeCredentialTestRequest,
@@ -30,34 +29,13 @@ export type AuthlessRequest<
 	RequestQuery = {},
 > = APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>;
 
-export namespace ListQuery {
-	export type Request = AuthenticatedRequest<{}, {}, {}, Params> & {
-		listQueryOptions?: Options;
-	};
-
-	export type Params = {
-		filter?: string;
-		skip?: string;
-		take?: string;
-		select?: string;
-		sortBy?: string;
-	};
-
-	export type Options = {
-		filter?: Record<string, unknown>;
-		select?: Record<string, true>;
-		skip?: number;
-		take?: number;
-		sortBy?: string;
-	};
-}
-
-export function appendListQueryOptions(req: Request, options: ListQuery.Options) {
-	const listReq = req as ListQuery.Request;
-	listReq.listQueryOptions = { ...listReq.listQueryOptions, ...options };
-}
-
-export function listQueryOptionsFromQuery(query: ListQuery.Options): ListQuery.Options {
+export function listQueryOptionsFromQuery<Filter extends object, Select extends object>(query: {
+	filter?: Filter;
+	select?: Select;
+	skip?: number;
+	take?: number;
+	sortBy?: string;
+}) {
 	const { filter, select, skip, take, sortBy } = query;
 	if (skip !== undefined && take === undefined) {
 		throw new BadRequestError('Please specify `take` when using `skip`');
@@ -265,8 +243,7 @@ export declare namespace WorkflowHistoryRequest {
 	type GetList = AuthenticatedRequest<
 		{ workflowId: string },
 		Array<Omit<WorkflowHistory, 'nodes' | 'connections' | 'nodeGroups'>>,
-		{},
-		ListQuery.Options
+		{}
 	>;
 	type GetVersion = AuthenticatedRequest<
 		{ workflowId: string; versionId: string },
