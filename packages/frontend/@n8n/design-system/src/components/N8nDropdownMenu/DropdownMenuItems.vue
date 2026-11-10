@@ -115,10 +115,6 @@ const $style = useCssModule();
 	height: var(--spacing--xl);
 }
 
-.loading-item div:first-child {
-	margin-top: 0;
-}
-
 .empty-state {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	color: var(--color--text--tint-1);

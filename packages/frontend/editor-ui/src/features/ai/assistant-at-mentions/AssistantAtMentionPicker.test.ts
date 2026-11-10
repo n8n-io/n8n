@@ -171,7 +171,7 @@ describe('AssistantAtMentionPicker', () => {
 		expect(queryByText('No recent workflows')).toBeNull();
 	});
 
-	it('renders ten skeleton rows while workflows load', async () => {
+	it('shows a spinner while workflows load', async () => {
 		setActivePinia(createTestingPinia());
 		const { useRecentWorkflowsStore } = await import('@/app/stores/recentWorkflows.store');
 		const { useWorkflowsListStore } = await import('@/app/stores/workflowsList.store');
@@ -182,7 +182,8 @@ describe('AssistantAtMentionPicker', () => {
 			props: { modelValue: true, query: '', projectId: 'project-1' },
 		});
 
-		await waitFor(() => expect(document.querySelectorAll('.n8n-loading')).toHaveLength(10));
+		await waitFor(() => expect(document.querySelector('.n8n-spinner')).toBeVisible());
+		expect(document.querySelectorAll('.n8n-loading')).toHaveLength(0);
 		expect(document.body).not.toHaveTextContent('Loading workflows');
 		response.resolve([]);
 	});

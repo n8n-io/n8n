@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nBadge from '../N8nBadge/Badge.vue';
 import N8nButton from '../N8nButton/Button.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
-import N8nSpinner from '../N8nSpinner/Spinner.vue';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 import { useDropdownSearch } from './composables/useDropdownSearch';
 import type { DropdownMenuExposed, DropdownMenuItemProps } from './DropdownMenu.types';
@@ -333,174 +332,6 @@ export const WithCustomLeadingSlot: Story = {
 			{ id: 'desktop', label: 'Desktop alerts' },
 			{ id: 'email', label: 'Email digests', divided: true },
 		] as Array<DropdownMenuItemProps<string>>,
-	},
-};
-
-const firstNodes: Array<DropdownMenuItemProps<string>> = [
-	{ id: 'validate', label: 'Validate order' },
-	{ id: 'fulfillment', label: 'Fulfillment' },
-];
-
-const laterNodes: Array<DropdownMenuItemProps<string>> = [
-	{ id: 'shipment', label: 'Create shipment' },
-	{ id: 'notify', label: 'Notify customer' },
-	{ id: 'refund', label: 'Refund payment' },
-	{ id: 'archive', label: 'Archive order' },
-];
-
-const FIRST_RESULTS_MS = 1000;
-
-const SPINNER_ITEM_ID = 'loading-spinner';
-
-type SubmenuLoad = 'ready' | 'skeletons' | 'spinner';
-
-function ordersMenu(
-	children: Array<DropdownMenuItemProps<string>> | undefined,
-	loading: boolean,
-	loadingItemCount = 6,
-): Array<DropdownMenuItemProps<string>> {
-	return [
-		{
-			id: 'orders',
-			label: 'Orders',
-			selectable: true,
-			...(loading ? { loading: true, loadingItemCount } : { children }),
-		},
-	];
-}
-
-function allNodes(): Array<DropdownMenuItemProps<string>> {
-	return [...firstNodes, ...laterNodes];
-}
-
-function useArrivingSubmenu(load: SubmenuLoad) {
-	const items = ref<Array<DropdownMenuItemProps<string>>>(idleItems(load));
-	const timers: Array<ReturnType<typeof setTimeout>> = [];
-	let playing = false;
-
-	function clearTimers(): void {
-		for (const timer of timers) clearTimeout(timer);
-		timers.length = 0;
-	}
-
-	function finish(nextItems: Array<DropdownMenuItemProps<string>>): void {
-		items.value = nextItems;
-		playing = false;
-	}
-
-	function start(): void {
-		clearTimers();
-		playing = true;
-		if (load === 'skeletons') {
-			items.value = ordersMenu(undefined, true);
-			timers.push(
-				setTimeout(() => {
-					finish(ordersMenu(allNodes(), false));
-				}, FIRST_RESULTS_MS),
-			);
-			return;
-		}
-		if (load === 'spinner') {
-			items.value = ordersMenu([{ id: SPINNER_ITEM_ID, label: 'Loading', disabled: true }], false);
-			timers.push(
-				setTimeout(() => {
-					finish(ordersMenu(allNodes(), false));
-				}, FIRST_RESULTS_MS),
-			);
-			return;
-		}
-		items.value = ordersMenu(firstNodes, false);
-		timers.push(
-			setTimeout(() => {
-				finish(ordersMenu(allNodes(), false));
-			}, FIRST_RESULTS_MS),
-		);
-	}
-
-	function onSubmenuToggle(itemId: string, open: boolean): void {
-		if (itemId !== 'orders' || !open || playing) return;
-		start();
-	}
-
-	onBeforeUnmount(clearTimers);
-
-	return { items, onSubmenuToggle };
-}
-
-function idleItems(load: SubmenuLoad): Array<DropdownMenuItemProps<string>> {
-	if (load === 'skeletons') return ordersMenu(undefined, true);
-	if (load === 'spinner') {
-		return ordersMenu([{ id: SPINNER_ITEM_ID, label: 'Loading', disabled: true }], false);
-	}
-	return ordersMenu(firstNodes, false);
-}
-
-export const LoadingComparison: Story = {
-	render: () => ({
-		components: { DropdownMenu, N8nSpinner },
-		setup() {
-			const ready = useArrivingSubmenu('ready');
-			const skeletons = useArrivingSubmenu('skeletons');
-			const spinner = useArrivingSubmenu('spinner');
-
-			return {
-				readyItems: ready.items,
-				skeletonItems: skeletons.items,
-				spinnerItems: spinner.items,
-				onReadySubmenu: ready.onSubmenuToggle,
-				onSkeletonSubmenu: skeletons.onSubmenuToggle,
-				onSpinnerSubmenu: spinner.onSubmenuToggle,
-				spinnerItemId: SPINNER_ITEM_ID,
-			};
-		},
-		template: `
-		<div style="display: flex; flex-wrap: wrap; gap: var(--spacing--xl); align-items: flex-start;">
-			<div style="display: flex; flex-direction: column; gap: var(--spacing--2xs); max-width: 22rem;">
-				<p style="margin: 0; color: var(--color--text--tint-1);">
-					Ready rows. Open Orders. The first nodes show immediately. More nodes appear after 1 second.
-				</p>
-				<DropdownMenu
-					:items="readyItems"
-					placement="bottom-start"
-					@submenu:toggle="onReadySubmenu"
-				/>
-			</div>
-			<div style="display: flex; flex-direction: column; gap: var(--spacing--2xs); max-width: 22rem;">
-				<p style="margin: 0; color: var(--color--text--tint-1);">
-					Skeleton rows. Open Orders. Skeletons stay until every node arrives together.
-				</p>
-				<DropdownMenu
-					:items="skeletonItems"
-					placement="bottom-start"
-					@submenu:toggle="onSkeletonSubmenu"
-				/>
-			</div>
-			<div style="display: flex; flex-direction: column; gap: var(--spacing--2xs); max-width: 22rem;">
-				<p style="margin: 0; color: var(--color--text--tint-1);">
-					Spinner. Open Orders. A spinner shows until the nodes arrive.
-				</p>
-				<DropdownMenu
-					:items="spinnerItems"
-					placement="bottom-start"
-					@submenu:toggle="onSpinnerSubmenu"
-				>
-					<template #item-label="{ item, ui }">
-						<span
-							v-if="item.id === spinnerItemId"
-							:class="ui.class"
-							style="display: flex; justify-content: center; width: 100%;"
-						>
-							<N8nSpinner size="small" />
-						</span>
-						<span v-else :class="ui.class">{{ item.label }}</span>
-					</template>
-				</DropdownMenu>
-			</div>
-		</div>
-		`,
-	}),
-	args: {
-		items: [] as Array<DropdownMenuItemProps<string>>,
 	},
 };
 
