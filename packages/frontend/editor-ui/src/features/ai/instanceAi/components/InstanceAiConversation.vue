@@ -452,7 +452,7 @@ const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
 	async () => {
 		const container = scrollContainerRef.value;
 		if (!container) return;
-		const { scrollTop, scrollHeight } = container;
+		const { scrollHeight } = container;
 		try {
 			await thread.loadOlderMessages();
 		} catch (error) {
@@ -462,7 +462,8 @@ const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
 		}
 		await nextTick();
 		// Prepended messages push the content down. Keep the messages the user reads in place.
-		container.scrollTop = scrollTop + container.scrollHeight - scrollHeight;
+		// Add only the height change: the user can scroll while the page loads.
+		container.scrollTop += container.scrollHeight - scrollHeight;
 	},
 	{
 		direction: 'top',

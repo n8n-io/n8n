@@ -51,10 +51,21 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
 
-vi.mock('@vueuse/core', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@vueuse/core')>()),
-	useScroll: () => ({ arrivedState: { bottom: true } }),
-}));
+// jsdom has no layout, so the top-of-list trigger cannot fire. Keep its load callback to call it directly.
+const infiniteScroll = vi.hoisted(() => ({ load: undefined as (() => Promise<void>) | undefined }));
+
+vi.mock('@vueuse/core', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@vueuse/core')>();
+	const { ref } = await import('vue');
+	return {
+		...actual,
+		useScroll: () => ({ arrivedState: { bottom: true } }),
+		useInfiniteScroll: (_el: unknown, load: () => Promise<void>) => {
+			infiniteScroll.load = load;
+			return { isLoading: ref(false), reset: () => {} };
+		},
+	};
+});
 
 describe('InstanceAiConversation', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
@@ -345,6 +356,31 @@ describe('InstanceAiConversation', () => {
 		);
 		const { getByText } = renderer();
 		expect(getByText('Hello')).toBeInTheDocument();
+	});
+
+	it('keeps the visible messages in place when older messages load above them', async () => {
+		let contentHeight = 1000;
+		thread.loadOlderMessages = vi.fn(async () => {
+			contentHeight = 1600;
+		});
+		const wrapper = mountConversation();
+		const viewport = wrapper.find('[data-reka-scroll-area-viewport]').element;
+		let scrollTop = 50;
+		Object.defineProperty(viewport, 'scrollHeight', { get: () => contentHeight });
+		Object.defineProperty(viewport, 'scrollTop', {
+			get: () => scrollTop,
+			set: (value: number) => {
+				scrollTop = value;
+			},
+		});
+
+		const loading = infiniteScroll.load?.();
+		// The user scrolls while the page loads.
+		scrollTop = 20;
+		await loading;
+
+		expect(thread.loadOlderMessages).toHaveBeenCalledOnce();
+		expect(scrollTop).toBe(620);
 	});
 
 	it('renders the above-input and inline-offers slots', () => {
