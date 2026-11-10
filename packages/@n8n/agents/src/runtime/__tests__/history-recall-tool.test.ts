@@ -41,6 +41,14 @@ describe('read_history excerpt', () => {
 		expect(indexOfIgnoreCase('İİabcNEEDLE', 'needle')).toBe(5);
 		expect(indexOfIgnoreCase('İİabc', 'needle')).toBe(-1);
 	});
+
+	// Whole-string lowercasing turns a final 'Σ' into 'ς', not 'σ'.
+	it('keeps contextual casing when lowercasing changes the length', () => {
+		const text = 'İabc ΟΣ';
+		const needle = 'ΟΣ'.toLowerCase();
+		expect(text.toLowerCase().includes(needle)).toBe(true);
+		expect(indexOfIgnoreCase(text, needle)).toBe(5);
+	});
 });
 
 describe('read_history tool', () => {
@@ -87,11 +95,31 @@ describe('read_history tool', () => {
 		const result = (await run({ before: before.toISOString(), beforeId: 'm3' })) as {
 			messages: Array<{ id: string }>;
 		};
+		expect(getMessages).toHaveBeenCalledTimes(1);
 		expect(getMessages).toHaveBeenCalledWith('t-1', {
 			resourceId: 'r-1',
 			before: new Date(before.getTime() + 1),
+			limit: 30,
 		});
 		expect(result.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
+	});
+
+	it('loads the whole prefix when the cursor is not in a full window', async () => {
+		const many = Array.from({ length: 30 }, (_, i) => message(`n${i}`, 'same', 2));
+		const { run, getMessages } = buildTool(many);
+		const before = new Date(Date.UTC(2026, 10, 10, 12, 2));
+		await run({ before: before.toISOString(), beforeId: 'missing' });
+		expect(getMessages).toHaveBeenCalledTimes(2);
+		expect(getMessages).toHaveBeenLastCalledWith('t-1', {
+			resourceId: 'r-1',
+			before: new Date(before.getTime() + 1),
+		});
+	});
+
+	it('rejects beforeId without before', async () => {
+		const { run, getMessages } = buildTool([]);
+		await expect(run({ beforeId: 'm1' })).rejects.toThrow('needs "before"');
+		expect(getMessages).not.toHaveBeenCalled();
 	});
 
 	it('loads the full thread when it searches', async () => {

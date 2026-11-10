@@ -12,6 +12,8 @@ export const READ_HISTORY_TOOL_NAME = 'read_history';
 const MAX_RESULTS = 50;
 const DEFAULT_RESULTS = 10;
 const MAX_TEXT_CHARS = 4_000;
+/** Extra rows loaded when paging by id, for messages that share the cursor timestamp. */
+const CURSOR_OVERFLOW = 20;
 
 const ReadHistoryInputSchema = z.object({
 	query: z
@@ -67,19 +69,19 @@ export function excerpt(text: string, needle?: string) {
 export function indexOfIgnoreCase(text: string, needle: string): number {
 	const folded = text.toLowerCase();
 	if (folded.length === text.length) return folded.indexOf(needle);
-	// Fold one code point at a time and map each folded position back to its
-	// original position, so the search stays linear in the text length.
-	let mapped = '';
+	// Search the whole-string fold, so contextual casing (e.g. final sigma) matches
+	// the handler's filter. Map each folded position back to its original position
+	// in one pass: per code point, the folded length is the same as in context.
+	const at = folded.indexOf(needle);
+	if (at < 0) return -1;
 	const origin: number[] = [];
 	let i = 0;
 	for (const char of text) {
-		const lower = char.toLowerCase();
-		mapped += lower;
-		for (let k = 0; k < lower.length; k++) origin.push(i);
+		const length = char.toLowerCase().length;
+		for (let k = 0; k < length; k++) origin.push(i);
 		i += char.length;
 	}
-	const at = mapped.indexOf(needle);
-	return at < 0 ? -1 : origin[at];
+	return origin[at] ?? -1;
 }
 
 /**
@@ -117,6 +119,9 @@ export function createReadHistoryTool(opts: {
 			if (beforeDate && isNaN(beforeDate.getTime())) {
 				throw new Error(`read_history: "before" is not a valid ISO timestamp: ${before}`);
 			}
+			if (beforeId && !beforeDate) {
+				throw new Error('read_history: "beforeId" needs "before" (the createdAt of that message)');
+			}
 			const needle = query?.trim().toLowerCase() || undefined;
 			const max = limit ?? DEFAULT_RESULTS;
 			// Storage filters on `createdAt < before` only. With `beforeId`, load up to
@@ -124,14 +129,29 @@ export function createReadHistoryTool(opts: {
 			// older messages with the same timestamp are kept.
 			const cursor = beforeDate && beforeId ? { before: beforeDate, id: beforeId } : undefined;
 			const loadBefore = cursor ? new Date(cursor.before.getTime() + 1) : beforeDate;
-			// Without a query or id cursor only the latest `max` messages are returned,
-			// so load only those. Empty messages (no model-facing text) can make the result shorter than `max`.
-			const loaded = await opts.memory.getMessages(opts.persistence.threadId, {
-				resourceId: opts.persistence.resourceId,
-				...(loadBefore ? { before: loadBefore } : {}),
-				...(needle || cursor ? {} : { limit: max }),
-			});
-			const all = cursor ? cutAtCursor(loaded, cursor.before, cursor.id) : loaded;
+			// Without a query only the latest `max` messages are returned, so load only
+			// those. With an id cursor, also load a small overflow for messages that share
+			// the cursor timestamp. Empty messages (no model-facing text) can make the
+			// result shorter than `max`.
+			const load = async (bounded: boolean) =>
+				await opts.memory.getMessages(opts.persistence.threadId, {
+					resourceId: opts.persistence.resourceId,
+					...(loadBefore ? { before: loadBefore } : {}),
+					...(bounded ? { limit: cursor ? max + CURSOR_OVERFLOW : max } : {}),
+				});
+			const bounded = !needle;
+			const loaded = await load(bounded);
+			let all = cursor ? cutAtCursor(loaded, cursor.before, cursor.id) : loaded;
+			// Too many messages share the cursor timestamp for the window: the cursor
+			// is missing or too few older messages are left. Load the whole prefix.
+			if (
+				cursor &&
+				bounded &&
+				loaded.length >= max + CURSOR_OVERFLOW &&
+				(all.length < max || !loaded.some((message) => message.id === cursor.id))
+			) {
+				all = cutAtCursor(await load(false), cursor.before, cursor.id);
+			}
 			const matches: ReadHistoryOutput['messages'] = [];
 			// Newest first, so the agent sees the most relevant context before paging.
 			for (let i = all.length - 1; i >= 0 && matches.length < max; i--) {
