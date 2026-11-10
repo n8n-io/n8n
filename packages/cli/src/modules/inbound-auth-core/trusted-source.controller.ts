@@ -174,8 +174,7 @@ export class TrustedSourceController {
 	@Delete('/:id')
 	@GlobalScope('trustedSource:delete')
 	async delete(req: AuthenticatedRequest, _res: Response, @Param('id') id: string) {
-		const source = await this.require(id);
-		await this.store.delete(id);
+		const source = await this.store.delete(id);
 		this.eventService.emit('trusted-source-deleted', {
 			user: req.user,
 			sourceId: source.id,

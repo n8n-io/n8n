@@ -41,19 +41,13 @@ export type ResourceEntry = {
 	pending?: boolean;
 };
 
-export interface TransientWorkflowArtifactReference {
-	referenceId: string;
-	workflowId: string;
-	workflowName: string;
-	projectId?: string;
-}
-
 /**
  * How a produced artifact first entered the thread: the agent built or edited
  * it (`built`), the agent read it in a lookup that opens a tab (`fetched`), a
  * message or the editor hand-off attached it (`attached`), or the user
- * mentioned it from the composer (`mentioned`). Telemetry only; the panel does
- * not show it.
+ * mentioned it from the composer (`mentioned`). A mention reaches the thread
+ * as a message attachment, so `sendMessage` seeds `mentioned` before the
+ * message lands. Telemetry only; the panel does not show it.
  */
 export type ArtifactOrigin = 'built' | 'fetched' | 'attached' | 'mentioned';
 
@@ -608,25 +602,6 @@ function enrichAppsFromTargets(col: Collections, targets: readonly InstanceAiApp
 	}
 }
 
-function enrichWorkflowsFromTransientReferences(
-	col: Collections,
-	references: readonly TransientWorkflowArtifactReference[],
-): void {
-	for (const reference of references) {
-		if (col.produced.has(reference.workflowId)) continue;
-		recordProduced(
-			col,
-			{
-				type: 'workflow',
-				id: reference.workflowId,
-				name: reference.workflowName,
-				...(reference.projectId ? { projectId: reference.projectId } : {}),
-			},
-			{ linkable: false },
-		);
-	}
-}
-
 /**
  * Surface a new-agent artifact the user opened but has not configured yet, so
  * the panel can show it before any agent row exists.
@@ -670,7 +645,6 @@ export interface ResourceRegistrySources {
 	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined;
 	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined;
 	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined;
-	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[];
 	agentBuilderTargets?: () => AgentBuilderTargetMetadata[];
 	appTargets?: () => readonly InstanceAiAppTarget[];
 }
@@ -693,9 +667,10 @@ export interface ResourceRegistrySources {
  *
  * - `producedArtifactOrigins` (keyed by resource id) — how each produced
  *   artifact first entered the thread. Sticky for the life of this registry:
- *   a mention keeps `mentioned` after its send turns it into a plain message
- *   attachment. A reload has only the messages, so an earlier mention then
- *   reads as `attached`.
+ *   the `mentioned` origin that `seedArtifactOrigins` plants before a send
+ *   survives the message attachment that then carries the mention, which
+ *   would read as `attached`. A reload has only the messages, so an earlier
+ *   mention then reads as `attached`.
  */
 export function useResourceRegistry(
 	messages: () => InstanceAiMessage[],
@@ -705,7 +680,6 @@ export function useResourceRegistry(
 		agentBuilderTarget,
 		pendingAgentTarget,
 		pendingWorkflowAttachment,
-		transientWorkflowReferences,
 		agentBuilderTargets,
 		appTargets,
 	}: ResourceRegistrySources = {},
@@ -752,8 +726,6 @@ export function useResourceRegistry(
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
 			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
 			enrichAppsFromTargets(col, appTargets?.() ?? []);
-			col.intake = 'mentioned';
-			enrichWorkflowsFromTransientReferences(col, transientWorkflowReferences?.() ?? []);
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);
@@ -797,8 +769,8 @@ export function useResourceRegistry(
 /**
  * Forget artifacts that left the thread and adopt the origin of new ones. An
  * artifact already known keeps its origin, whatever this pass derived: the
- * transient reference a mention created vanishes on send while the message
- * attachment that replaces it would read as `attached`.
+ * `mentioned` origin seeded before a send stays, while the message attachment
+ * that carries the mention would read as `attached`.
  */
 function reconcileOrigins(
 	target: Map<string, ArtifactOrigin>,
