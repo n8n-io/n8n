@@ -17,7 +17,7 @@ variable "BUILDER_IMAGE" {
   default = "node:26.13.0-alpine3.24@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216"
 }
 variable "RUNTIME_IMAGE" {
-  default = "n8nio/base:26.13.0@sha256:ad63e5559bd12eb97a8702d64662d7baebeba07cb1362bb304f771edea7104c6"
+  default = "n8nio/base:26.13.0@sha256:f4db5ffdbde188b568911640907797830033f2af2eb06b700a2c252bde960695"
 }
 
 variable "DEBIAN_DHI_REF" {
@@ -32,10 +32,10 @@ variable "DEBIAN_RUNTIME_IMAGE" {
 
 # build-node-pc-image.yml publishes these.
 variable "PC_BUILDER_IMAGE" {
-  default = "n8nio/node-pc:26.12.1-dev@sha256:8993967928b6167703f05f28a95f82543974357dcfd4160281cf352490d208ca"
+  default = "n8nio/node-pc:26.13.0-dev@sha256:05a717732c5499d22e39221e3e34f348a310bb03b3864a46a06ed7a7fad42cfc"
 }
 variable "PC_RUNTIME_IMAGE" {
-  default = "n8nio/node-pc:26.12.1@sha256:15afd63862b7cbc828537b7481f0c58a6e504765b62e7f55a226ad052068f77c"
+  default = "n8nio/node-pc:26.13.0@sha256:04d0ff20910be5ceb7cc78010318f4197e120d8806ef6e93162691ea1c70813d"
 }
 
 variable "N8N_VERSION" { default = "snapshot" }

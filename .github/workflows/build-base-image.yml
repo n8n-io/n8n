@@ -42,10 +42,10 @@ jobs:
         include:
           - tag: '22'
             dockerfile: docker/images/n8n-base/Dockerfile
-            dhi_ref: dhi.io/node:22.23.4-alpine3.24-dev@sha256:a2c4778492ad46fd6f362d8d93e21c0543d0009db7f934d5eb9f9ccb77eafdcb
-          - tag: '24.22.1'
+            dhi_ref: dhi.io/node:22.23.4-alpine3.24-dev@sha256:6074fc885bbf6a1c707d16189076cd2b9d989095abfc4f3f973dac93455bdae5
+          - tag: '24.22.2'
             dockerfile: docker/images/n8n-base/Dockerfile
-            dhi_ref: dhi.io/node:24.22.1-alpine3.24-dev@sha256:7b851ff65d774343caf89450555663caef54dbd8f673658a615d256883973337
+            dhi_ref: dhi.io/node:24.22.2-alpine3.24-dev@sha256:e640b13bfdb3befe5820fde98520aba1d81de96ebb5237f1f3a166352924707a
           - bake_target: base
           - bake_target: base-debian
             # The Docker smoke test builds n8n-debian on the published base, so
