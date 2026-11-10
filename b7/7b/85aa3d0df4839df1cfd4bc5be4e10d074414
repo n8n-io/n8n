@@ -1,0 +1,343 @@
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 18,126-128,427-429
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.mentions.stories.css
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-93
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 97-98
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 3,61-66,84-97
+  s_e12ff58ab2f30a::t_e50a0673b4d9e9 98
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ArtifactCard.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 9,12,63-66
+packages/cli/src/modules/promotions.ee/__tests__/promotion-checkout-cleanup.service.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-173,175-235,237-258,260-420,422-472,474-633
+  s_e12ff58ab2f30a::t_a4adff49b100fc 174,236,259,421,473
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.stories.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 3,6,370,375-385,392-394,396-398,400,405,408-492,494-522,524,528,532-533,535-551,553-564,567,570-576,578-588,591-599,603-615,617-625,627-628,631-648,655,657-658,663,667,689,696-716,724-725,733,736,742-767,773,789
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 21,24,52-55,68,76-86
+  s_e12ff58ab2f30a::t_b2dbf0efa8893b 87
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 424
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 20,56,119,235-236
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/replyFiles.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 24-31,33-35,41,54
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 973-996
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 49,213-216,249-264,424-425,526-529
+packages/nodes-base/credentials/PipedriveOAuth2Api.credentials.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 12-13,15-20
+packages/quality/environments/containers/services/n8n.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 88-89,264-265,268-269,274,423,437,480
+packages/cli/src/commands/__tests__/engine.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 6,17,63-69,92,94,178-192
+  s_e12ff58ab2f30a::t_f9e26b2fa4fe44 193
+packages/cli/src/commands/engine.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 40-46
+packages/@n8n/engine/src/tls/index.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-2
+packages/@n8n/instance-ai/src/tools/workflows/workflow-node-diff.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 131-143,274-278
+  s_e12ff58ab2f30a::t_9b5550e0359338 279-280
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 18,31,152-153
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 29,36,39,104,144,154,183-189,238,311-328,822-823,832
+  s_e12ff58ab2f30a::t_a2285e267a93af 824-831,833
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 27,477
+packages/cli/src/credentials-helper.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 395-399,764,768,771
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/AssistantAtMentionPicker.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 158,169,174,185-186,235-236,442,453-454
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 19,40,93,220-225,286,389-394,399-406
+  s_e12ff58ab2f30a::t_aa64692df0f786 407-408
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-transport.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 11,14,23-26,41-45,74-86
+  s_e12ff58ab2f30a::t_d1b9461715d28e 87
+packages/quality/environments/containers/helpers/utils.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 51,66-67
+packages/cli/src/oauth/oauth.service.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 99-105,115-129,542-551,1219-1220,1222,1228,1249-1256,1286-1293,1304-1305,1315-1317,1321-1324,1326,1328,1330,1334-1335,1342,1347-1356,1366,1387-1389,1407,1412,1425-1426,1428-1430,1436-1437,1470,1855-1859,1862,1864-1865,1868
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 744-750
+packages/quality/efficiency/scale/benchmark/scripts/n8n-setups/engine-v2/docker-compose.yml
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 57-58,92-93,147-148
+packages/cli/src/modules/engine-v2/engine-tls-material.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-26
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1025-1069
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.stories.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 3,63-116,132,171,197,221,251,315,405,484,514,576,629,694,759,773-849,913,997,1187,1217,1250,1267
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.utils.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 61-70
+packages/@n8n/backend-services/src/pubsub/__tests__/publisher.service.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 182
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 9,33,72,199,204,211
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1497-1562
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 78,102,206,209-215,225,228
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/setupPanel/InstanceAiSetupCredential.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 199-205
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-server.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 2,4,7-10,15,19,40,43,50-56,208-297
+  s_e12ff58ab2f30a::t_8c552a88ca5324 298-299
+packages/cli/src/controllers/oauth/oauth2-credential.controller.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 18-22,89-94,113-127
+  s_e12ff58ab2f30a::t_9a1178f0f2afff 128
+packages/quality/environments/containers/tests/engine.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1,7,10,14,116-128,254,257-267,353-391
+  s_e12ff58ab2f30a::t_6dd2a1a2325115 392
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiArtifactsPanel.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 12,44,634-650
+  s_e12ff58ab2f30a::t_13bebcfaef0fb0 651
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialModeSelector.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 15,73-92,95,129-132,141-142,147,149,157,163-167
+packages/@n8n/agents/src/runtime/memory/tool-result-memory.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 9-11,13-15,18,20-30,39-40,43,45,63,68-70,74-76,86-87
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 2,38-41,62-76,78,93-111
+packages/@n8n/engine/src/serve.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 10,27-30,46-47
+packages/@n8n/permissions/src/constants.ee.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 126
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiResourceChip.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 53,130-131
+packages/frontend/editor-ui/src/experiments/agentsListEmptyStateTemplates/useAgentsListEmptyStateTemplatesExperiment.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 5-19,23-30,32-33,36-41
+packages/@n8n/engine/src/tls/engine-tls.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-135
+packages/cli/src/controllers/oauth/oauth2-dynamic-client-registration.schema.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 4-5
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 2685-2780
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/composables/useAssistantAtMentions.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 46-47,156,158,161,171,173-174,177-272,276,278-280,382,402
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 9,33,94,98,170-340
+  s_e12ff58ab2f30a::t_377b82f8fbcf3d 341
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 23,54-55,57,86,91,108,147-151,154,428-437
+packages/@n8n/permissions/src/roles/__tests__/workflow-settings-scope.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-40
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiInput.attachments.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 466,472,551
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiSkillPreview.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 10,25,67
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 58,169-170,172
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 4-5,101-161
+  s_e12ff58ab2f30a::t_b99a490ec108a7 162
+packages/cli/src/events/maps/relay.event-map.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 594-618
+packages/workflow/src/interfaces.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 465-466
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 9,12-16,237-326
+  s_e12ff58ab2f30a::t_01fd54ffeaef3c 327
+packages/quality/environments/containers/stack.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 16,182-184,403,638
+packages/quality/testing/playwright/services/api-helper.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 32,112,145
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 6-10,26-47,49,242-246,310,331,398,679-680,685-698,715,803,820,849,864,952-1031
+packages/quality/testing/playwright/tests/infrastructure/promotions/checkout-cleanup-multi-main.spec.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-162
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environment.repository.integration.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 5,116-125,127-131,133-152,154-157
+  s_e12ff58ab2f30a::t_0c41391cfd34fb 30-64,104-109,126,132,153
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 119,153-154,159
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.utils.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 32-34
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 586-639
+packages/@n8n/backend-services/src/pubsub/pubsub.constants.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 73
+packages/frontend/@n8n/stores/src/rbac.store.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 70
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 7,472-482
+  s_e12ff58ab2f30a::t_f57878f797c77d 483-484
+packages/cli/test/integration/credentials/credentials.api.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 12,112-148,2028-2060
+pnpm-workspace.yaml
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 423
+packages/cli/src/modules/promotions.ee/promotions.types.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 101
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 36-37,59,61,75-76
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.module.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 12,21-28,49,51,154-160,175-199
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 213
+packages/frontend/editor-ui/src/features/credentials/credentials.utils.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 11-15,206-224
+  s_e12ff58ab2f30a::t_58b8777aea61fa 225-226
+packages/cli/src/controllers/oauth/__tests__/oauth2-credential.controller.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 179,198,202,214-269,323-331,333,347-406,695-703,705,926-934,936,1161-1169,1171
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/artifactTestRouter.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-50
+packages/cli/test/integration/credentials/credentials.api.ee.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 23,665-705
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1,6,14,20,51,96,107-113,133-156,229-347,406,430,460,482,488,492-497,504,511-530
+  s_e12ff58ab2f30a::t_3f0c0915ce6757 531-533
+packages/frontend/editor-ui/src/features/credentials/credentials.utils.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 67-71
+packages/@n8n/permissions/src/utilities/__tests__/get-resource-permissions.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 63,205
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 757-759
+packages/@n8n/decorators/src/pubsub/pubsub.event-map.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 449-463
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 31-33,41-45
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 78,160,218,1501
+packages/cli/src/modules/engine-v2/engine-control-plane-transport.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 8-9,22,27,39-40
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.attachments.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 3,171-238
+  s_e12ff58ab2f30a::t_47302c7a479ca0 239
+packages/quality/environments/containers/services/engine.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 15-20,47-99,215-216,224,261,268-269
+packages/@n8n/engine/src/index.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 6-8
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 177-180
+packages/quality/testing/playwright/tests/e2e/credentials/crud.spec.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 118-120
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 17-18,107-108,173-176,203,207-211,518,522-526,532-580,582
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.utils.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 60
+packages/cli/src/modules/otel/otel-exporter.factory.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 5-6,10-11,44-83,162-173
+packages/quality/testing/playwright/tests/e2e/instance-ai/instance-ai-mentions.spec.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 84
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-node-diff.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 547-645
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 16
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 122-123,813-839
+  s_e12ff58ab2f30a::t_b728749e280ed7 840
+packages/@n8n/node-cli/src/template/templates/shared/default/.agents/nodes.md
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 84-101
+packages/cli/src/modules/agents/integrations/integration-tool-factory.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 66
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 470-512
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 12,103-106,396-414
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 14,356-360,367,376,388,390
+packages/quality/environments/containers/helpers/tls-certs.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-108
+packages/frontend/editor-ui/src/experiments/agentsListEmptyStateTemplates/useAgentsListEmptyStateTemplatesExperiment.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1,11-13,16-20,25-34,37-45,47-57,60-81,83
+packages/cli/src/modules/promotions.ee/promotions.module.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 18-23
+packages/nodes-base/credentials/TodoistOAuth2Api.credentials.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 12-13,15-20
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 114
+packages/cli/src/credentials/credentials.controller.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 55-57,115-137,194-205
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1274
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/artifactLinks.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-93
+packages/cli/src/modules/promotions.ee/promotion-working-directory.service.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 5,30,60-62,69,95-110
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-environment.repository.ts
+  s_e12ff58ab2f30a::t_52a5b40b0af45b 108,110-112,116-119,121-123
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 9-10,109,113-115,120,124-128
+packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 32,55,189-190,213
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 7,1593-1684
+  s_e12ff58ab2f30a::t_b18a8ec18b7249 1685-1686
+packages/quality/testing/playwright/services/promotions-api-helper.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-88
+packages/cli/src/modules/promotions.ee/__tests__/promotion-providers.service.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 13-14,24-25,33,35,76,302-368
+  s_e12ff58ab2f30a::t_853078e687b2cc 369-370
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 405
+packages/frontend/editor-ui/src/features/ai/instanceAi/artifactLinks.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-109
+packages/@n8n/backend-services/src/pubsub/pubsub.types.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 102,162-163
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 360-361
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiResourceChip.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 45-51
+packages/cli/src/modules/promotions.ee/promotions-git.utils.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 108,115
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiSkillPreview.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 9,50,100,109
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 7,196,451-455,544-547
+  s_e12ff58ab2f30a::t_7ca131cc374e10 548-549
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/NodesAttachmentChips.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 313-321,331,348,359
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 6,22,58
+packages/cli/src/modules/engine-v2/engine-control-plane-server.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 4,6,16,40,56-57,83-85
+packages/@n8n/config/src/configs/engine.config.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 107-139
+packages/cli/src/modules/agents/integrations/__tests__/n8n-chat-integration.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1,10,328-416
+  s_e12ff58ab2f30a::t_4bd6c6bb6eef3f 417
+packages/@n8n/engine/src/tls/__tests__/engine-tls.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-214
+packages/@n8n/node-cli/src/template/templates/shared/default/AGENTS.md
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 32-33
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/composables/useAssistantAtMentions.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 33-48,150-152,192-195,197-200,206-215,236,280
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/AssistantMentionBreadcrumbs.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 3,29-31,47-48,60-61,82-84,92-99
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 37,1241-1282,2625,2633,2660-2661,2693-2694,2727,2760,2796,2851,2857,3077-3162,3189,3247,3303,3356,3416,3483,3553,3664,3734,3811,3884,3959,4029,4130,4193,4255,4419,4425,4546,4552,4703-4705,4747-4831,5287,5293,5541,5605,5775,5841,5847,5864
+packages/cli/src/modules/promotions.ee/promotion-checkout-cleanup.service.ts
+  s_e12ff58ab2f30a::t_916e93012b9a2e 59-62
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1-58,63-79,81-118,120-132,134-214
+  s_e12ff58ab2f30a::t_43bb2134aa8c52 80,119,133
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1436-1569
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 1392-1393
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatMarkdown.vue
+  s_e12ff58ab2f30a::t_d5b3bc27fc6c54 2,28-31,68
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_e12ff58ab2f30a::t_c0715cccded16d 225
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  s_e12ff58ab2f30a::t_8ee2dad28ca618 8
+pnpm-lock.yaml
+  s_e12ff58ab2f30a::t_cbd1a6c433b9e5 1010,17352-17353,17905-17908,34516,34519,35086-35087,36594,36626
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b77b85aa3d0df4839df1cfd4bc5be4e10d074414",
+  "prompts": {},
+  "sessions": {
+    "s_e12ff58ab2f30a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "adb9970a-3bf7-4554-9c90-5cf9e454e91f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
