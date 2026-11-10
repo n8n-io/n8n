@@ -108,16 +108,19 @@ const needsFallbackTitle = computed(() => !!props.ariaLabel);
 const needsFallbackDescription = computed(() => !!props.ariaDescription);
 
 /**
- * Handles outside interaction events to prevent Reka UI from closing the dialog
- * when interacting with Element Plus teleported elements (dropdowns, selects, overlays).
- * These elements are teleported to body as siblings of the dialog, so Reka UI's
- * DismissableLayer detects clicks on them as "outside" clicks.
+ * Portaled UI that belongs to a control inside the dialog.
+ * It is mounted outside the dialog, so a click on it looks like an outside click.
  *
- * TODO: Remove once Element Plus components are migrated to Reka UI, and replace with a simple emit.
+ * Element Plus dropdowns teleport to the body. CodeMirror suggestion tooltips
+ * mount in `#cm-tooltip-container`.
+ *
+ * TODO: Drop the Element Plus selectors once those components use Reka UI.
  */
+const PORTALED_INTERACTIVE_SELECTOR = '.el-popper, .el-select-dropdown, .el-overlay, .cm-tooltip';
+
 function handleInteractOutside(e: Event) {
-	const target = e.target as HTMLElement | null;
-	if (target?.closest('.el-popper, .el-select-dropdown, .el-overlay')) {
+	const target = e.target instanceof Element ? e.target : null;
+	if (target?.closest(PORTALED_INTERACTIVE_SELECTOR)) {
 		e.preventDefault();
 	}
 	if (!props.closeOnOverlayClick) {
@@ -338,10 +341,12 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 </style>
 
 <style lang="scss">
-/* Workaround: reka-ui DismissableLayer sets pointer-events: none on body,
-   which breaks Element Plus poppers teleported to body.
-   TODO: Remove once Element Plus components are migrated to Reka UI. */
-.el-popper {
+/* A modal dialog sets pointer-events: none on the body.
+   Portaled content outside the dialog must opt back in, or a click passes through it.
+   That closes a CodeMirror suggestion list without applying the selected value,
+   and the list cannot scroll. */
+.el-popper,
+.cm-tooltip {
 	pointer-events: auto;
 }
 </style>
