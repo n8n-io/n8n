@@ -1,0 +1,48 @@
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_8217ec594177c1::t_7ad29ba75ac73e 63
+packages/cli/src/modules/promotions.ee/promotion-checkout-cleanup.service.ts
+  s_8217ec594177c1::t_7ad29ba75ac73e 17,19,49,54,68,99,105,107,116,194,198-199,204
+  s_8217ec594177c1::t_0bf5397a0954cb 100-103
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_8217ec594177c1::t_409831de353d0b 452,458-459
+  s_8217ec594177c1::t_7ad29ba75ac73e 456
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_8217ec594177c1::t_7ad29ba75ac73e 100,161
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
+  s_8217ec594177c1::t_c858cf511b0c5c 152-153,261-262
+packages/cli/src/scaling/constants.ts
+  s_8217ec594177c1::t_7ad29ba75ac73e 75
+packages/cli/src/modules/promotions.ee/__tests__/promotion-checkout-cleanup.service.test.ts
+  s_8217ec594177c1::t_7ad29ba75ac73e 253-255,262,267,272,277,286-287,297,299,316,375,381,391,393,430,435,437,439,531,533,541,545,547,557,559,564,570,572,578,580-581,590,592
+  s_8217ec594177c1::t_0bf5397a0954cb 404-407,421-424
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_8217ec594177c1::t_c858cf511b0c5c 315-316
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_8217ec594177c1::t_7ad29ba75ac73e 183
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_1cc9f84b4de73c::t_aab41c64da2502 405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a406b959d7dcad871bba8f83184409e83f727a6e",
+  "prompts": {},
+  "sessions": {
+    "s_1cc9f84b4de73c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc697cd2-c0b9-498f-859b-e697e1cc7987",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_8217ec594177c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "feefa8a7-1ee5-413d-819a-b7569f3647ca",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

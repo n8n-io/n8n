@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.test.ts
+  s_f9831d8f0ed93e::t_8e1494f5465f43 432,434
+  s_f9831d8f0ed93e::t_4224eda347c019 402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2162c61d2df6cf4838e013c11247c76d79ae1d8d",
+  "prompts": {},
+  "sessions": {
+    "s_f9831d8f0ed93e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a83f255-a230-4236-9460-cfd7fca88ac2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

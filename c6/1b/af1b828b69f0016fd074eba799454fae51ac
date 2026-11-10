@@ -1,0 +1,25 @@
+packages/@n8n/backend-network/src/http/binary-string.ts
+  s_da935c2e88b2f9::t_f4d38eafa447bd 2
+  s_da935c2e88b2f9::t_344518d8303569 21-27
+packages/cli/src/middlewares/body-parser.ts
+  s_da935c2e88b2f9::t_c79b7afcb82a26 37-39
+packages/cli/src/middlewares/__tests__/body-parser.test.ts
+  s_da935c2e88b2f9::t_c79b7afcb82a26 158-163
+  s_da935c2e88b2f9::t_bd399bd5e14339 144-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c61baf1b828b69f0016fd074eba799454fae51ac",
+  "prompts": {},
+  "sessions": {
+    "s_da935c2e88b2f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "253cdf66-e2cf-4ec1-b01a-6ba86738e54d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
