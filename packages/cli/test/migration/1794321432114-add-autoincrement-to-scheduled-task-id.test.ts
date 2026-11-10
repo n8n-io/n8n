@@ -144,11 +144,33 @@ describe.skipIf(!isSqlite)('AddAutoincrementToScheduledTaskId migration', () => 
 		});
 	});
 
-	it('keeps the ids and data of existing tasks on rollback', async () => {
+	it('keeps the ids and data of existing tasks on rollback and reuses ids again', async () => {
 		const before = await withContext(readTasks);
 
 		await undoLastSingleMigration();
 
-		expect(await withContext(readTasks)).toEqual(before);
+		await withContext(async (context) => {
+			expect(await readTasks(context)).toEqual(before);
+
+			const table = context.escape.tableName('scheduled_task');
+			const id = context.escape.columnName('id');
+			const [{ maxId }] = await context.runQuery<Array<{ maxId: number }>>(
+				`SELECT MAX(${id}) AS "maxId" FROM ${table}`,
+			);
+			await context.runQuery(`DELETE FROM ${table} WHERE ${id} = :maxId`, { maxId });
+
+			await insertTask(context, {
+				jobId,
+				taskType: 'test',
+				scheduledFor: '2026-01-01 00:04:00.000',
+				runAt: '2026-01-01 00:04:00.000',
+				createdAt: '2026-01-01 00:04:00.000',
+			});
+
+			const [{ newId }] = await context.runQuery<Array<{ newId: number }>>(
+				`SELECT MAX(${id}) AS "newId" FROM ${table}`,
+			);
+			expect(newId).toBeLessThanOrEqual(maxId);
+		});
 	});
 });
