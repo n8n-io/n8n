@@ -292,6 +292,42 @@ describe('Skill Sync with credentials', () => {
 			expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
 		});
 
+		it('refreshes an expired OAuth2 token before it reads a private repository', async () => {
+			const expired = await saveCredential(
+				{
+					name: 'Expiring OAuth',
+					type: 'githubOAuth2Api',
+					data: {
+						clientId: 'client-id',
+						clientSecret: 'client-secret',
+						oauthTokenData: {
+							access_token: 'ghu_expired',
+							refresh_token: 'ghr_first',
+							token_type: 'bearer',
+							expires_in: 28800,
+							n8n_expires_at: String(Date.now() - 1000),
+						},
+					},
+				},
+				{ project: team, role: 'credential:owner' },
+			);
+			const exchange = nock('https://github.com').post('/login/oauth/access_token').reply(200, {
+				access_token: TOKEN,
+				refresh_token: 'ghr_second',
+				token_type: 'bearer',
+				expires_in: 28800,
+			});
+
+			const { data } = await post<SkillSourceDiscovery>(editor, '/skill-sources/discover', {
+				url: PRIVATE,
+				...scope(),
+				credentialId: expired.id,
+			});
+
+			expect(exchange.isDone()).toBe(true);
+			expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
+		});
+
 		it('imports from a private repository and stores the credential on the source', async () => {
 			const body = { url: PRIVATE, ...scope(), credentialId: teamCredential.id };
 			const { data: discovery } = await post<SkillSourceDiscovery>(

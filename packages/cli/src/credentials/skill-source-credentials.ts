@@ -10,10 +10,12 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { isRecord } from '@n8n/utils/is-record';
 import type { ICredentialDataDecryptedObject, IHttpRequestHelper } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialsService } from './credentials.service';
+import { OauthService } from '@/oauth/oauth.service';
 import {
 	SkillSourceCredentials,
 	SkillSourceCredentialsProxy,
@@ -23,6 +25,8 @@ import {
 
 /** The most a GitHub App token mint may take, as the GitHub client limits its own requests. */
 const TOKEN_TIMEOUT_MS = 30_000;
+/** An OAuth2 token that expires within this time is refreshed before use. */
+const OAUTH2_EXPIRY_MARGIN_MS = 60_000;
 
 /**
  * The credentials that a skill source may use, with the rules of the credential select of a
@@ -42,6 +46,7 @@ export class CliSkillSourceCredentials extends SkillSourceCredentials {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly oauthService: OauthService,
 	) {
 		super();
 	}
@@ -88,8 +93,13 @@ export class CliSkillSourceCredentials extends SkillSourceCredentials {
 			? (await this.acceptedInProject(credential, projectId)) && projectId
 			: (await this.adminOwners([credentialId])).get(credentialId);
 		if (!decryptIn) return null;
-		const data = await this.decrypt(credential, { projectId: decryptIn, userId: user?.id });
+		let data = await this.decrypt(credential, { projectId: decryptIn, userId: user?.id });
 		check?.({ id: credential.id, type: credential.type, data });
+		if (oauth2TokenExpiresSoon(data)) {
+			// The shared refresh saves the new token, so the next decrypt reads it.
+			await this.oauthService.refreshOAuth2CredentialById(credential.id, decryptIn);
+			data = await this.decrypt(credential, { projectId: decryptIn, userId: user?.id });
+		}
 		return {
 			id: credential.id,
 			type: credential.type,
@@ -162,6 +172,17 @@ export class CliSkillSourceCredentials extends SkillSourceCredentials {
 		const fresh = await this.credentialsHelper.runPreAuthentication(helper, data, type);
 		return fresh ? { ...data, ...fresh } : data;
 	}
+}
+
+/**
+ * An OAuth2 token with a refresh token and a stored expiry that is near, such as the 8-hour
+ * tokens of a GitHub OAuth App. A token without an expiry does not expire.
+ */
+function oauth2TokenExpiresSoon(data: ICredentialDataDecryptedObject): boolean {
+	const tokenData = data.oauthTokenData;
+	if (!isRecord(tokenData) || typeof tokenData.refresh_token !== 'string') return false;
+	const expiresAt = Number(tokenData.n8n_expires_at);
+	return Number.isFinite(expiresAt) && expiresAt <= Date.now() + OAUTH2_EXPIRY_MARGIN_MS;
 }
 
 /**
