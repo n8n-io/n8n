@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_69f4cc3b345b0a::t_72b8a7ec775f6c 361-385
+  s_69f4cc3b345b0a::t_90732b2dd4a619 54-68
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_69f4cc3b345b0a::t_ceb2537f549708 455
+  s_69f4cc3b345b0a::t_4a993388536d78 465-466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0f01e5c85b7ff3a724e1b13b41e201c40b4e7fd",
+  "prompts": {},
+  "sessions": {
+    "s_69f4cc3b345b0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a393806-9b92-44b9-b788-dffc75be88c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
