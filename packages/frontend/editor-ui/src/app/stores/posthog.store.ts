@@ -37,6 +37,7 @@ const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 const AUTOCAPTURE_IGNORED_ATTRIBUTES = [
 	'title',
 	'alt',
+	'aria-label',
 	'data-node-name',
 	'data-source-node-name',
 	'data-target-node-name',
