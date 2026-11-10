@@ -584,6 +584,16 @@ describe('AgentsBuilderToolsService', () => {
 			);
 		});
 
+		it('agent_builder_patch_config requires a configHash, because a patch needs an existing config', () => {
+			const patchSchema = getJsonTool(makeService().service, BUILDER_TOOLS.PATCH_CONFIG)
+				.inputSchema as ZodTypeAny;
+			const ops = [{ op: 'replace', path: '/instructions', value: 'Changed.' }];
+
+			expect(patchSchema.safeParse({ operations: ops, baseConfigHash: null }).success).toBe(false);
+			expect(patchSchema.safeParse({ operations: ops, baseConfigHash: '' }).success).toBe(false);
+			expect(JSON.stringify(zodToJsonSchema(patchSchema))).not.toContain('null');
+		});
+
 		it('agent_builder_write_config input schema maps the legacy json key to config', () => {
 			const { service } = makeService();
 			const tool = getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG);

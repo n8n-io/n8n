@@ -1081,14 +1081,15 @@ export class AgentsBuilderToolsService {
 					operations: z
 						.preprocess(parseJsonStringInput, z.array(jsonPatchOperationSchema))
 						.describe('RFC 6902 operations'),
-					baseConfigHash: z.string().nullable().describe(BASE_CONFIG_HASH_FIELD_DESCRIPTION),
+					// No null: a patch needs an existing config, so it always has a hash.
+					baseConfigHash: z
+						.string()
+						.min(1)
+						.describe('configHash of your latest config read or write'),
 				}),
 			)
 			.handler(
-				async ({
-					operations,
-					baseConfigHash,
-				}: { operations: unknown; baseConfigHash: string | null }) =>
+				async ({ operations, baseConfigHash }: { operations: unknown; baseConfigHash: string }) =>
 					await this.patchBuilderConfig(
 						agentId,
 						projectId,
@@ -1655,7 +1656,7 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		user: User,
 		operations: unknown,
-		baseConfigHash: string | null,
+		baseConfigHash: string,
 		track: BuilderTrackFn,
 	) {
 		const editorLock = await this.getEditorLockFailure(agentId);
