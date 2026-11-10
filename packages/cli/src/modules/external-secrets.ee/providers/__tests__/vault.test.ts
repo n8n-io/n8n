@@ -635,6 +635,106 @@ describe('VaultProvider', () => {
 			expect(provider.getSecretNames()).toEqual(['secret.app.password', 'secret.added.password']);
 		});
 
+		describe('entry kind changes', () => {
+			afterEach(() => {
+				nock.cleanAll();
+			});
+
+			it.each(['', 'team/'])(
+				'should drop a cached folder when it becomes an unreadable secret under %j',
+				async (subPath) => {
+					const provider = new VaultProvider(logger);
+					await provider.init(vaultSettingsWithKvPath('secret/', version, subPath));
+					const vault = nock(VAULT_BASE_URL)
+						.get(`${listPath}${subPath}`)
+						.query({ list: true })
+						.reply(200, { data: { keys: ['app/'] } })
+						.get(`${listPath}${subPath}app/`)
+						.query({ list: true })
+						.reply(200, { data: { keys: ['db'] } })
+						.get(`${dataPath}${subPath}app/db`)
+						.reply(200, secretResponse('cached-password'))
+						.get(`${listPath}${subPath}`)
+						.query({ list: true })
+						.times(3)
+						.reply(200, { data: { keys: ['app'] } })
+						.get(`${dataPath}${subPath}app`)
+						.twice()
+						.reply(503, { errors: ['Service unavailable'] })
+						.get(`${dataPath}${subPath}app`)
+						.reply(200, secretResponse('updated-password'));
+					const secretPath = [...subPath.split('/').filter(Boolean), 'app'];
+
+					await provider.update();
+					expect(get(provider.getSecret('secret'), secretPath)).toEqual({
+						db: { password: 'cached-password' },
+					});
+
+					for (let refresh = 0; refresh < 2; refresh++) {
+						await provider.update();
+						expect(get(provider.getSecret('secret'), secretPath)).toBeUndefined();
+						expect(provider.getSecretNames()).toEqual([]);
+					}
+
+					await provider.update();
+					expect(get(provider.getSecret('secret'), secretPath)).toEqual({
+						password: 'updated-password',
+					});
+					expect(provider.getSecretNames()).toEqual([
+						['secret', ...secretPath, 'password'].join('.'),
+					]);
+					expect(vault.isDone()).toBe(true);
+				},
+			);
+
+			it.each(['', 'team/'])(
+				'should drop a cached secret when it becomes an unreadable folder under %j',
+				async (subPath) => {
+					const provider = new VaultProvider(logger);
+					await provider.init(vaultSettingsWithKvPath('secret/', version, subPath));
+					const previousData = { db: { password: 'cached-password' } };
+					const vault = nock(VAULT_BASE_URL)
+						.get(`${listPath}${subPath}`)
+						.query({ list: true })
+						.reply(200, { data: { keys: ['app'] } })
+						.get(`${dataPath}${subPath}app`)
+						.reply(200, version === '2' ? kvV2SecretResponse(previousData) : { data: previousData })
+						.get(`${listPath}${subPath}`)
+						.query({ list: true })
+						.times(3)
+						.reply(200, { data: { keys: ['app/'] } })
+						.get(`${listPath}${subPath}app/`)
+						.query({ list: true })
+						.twice()
+						.reply(503, { errors: ['Service unavailable'] })
+						.get(`${listPath}${subPath}app/`)
+						.query({ list: true })
+						.reply(200, { data: { keys: ['db'] } })
+						.get(`${dataPath}${subPath}app/db`)
+						.reply(200, secretResponse('updated-password'));
+					const secretPath = [...subPath.split('/').filter(Boolean), 'app'];
+
+					await provider.update();
+					expect(get(provider.getSecret('secret'), secretPath)).toEqual(previousData);
+
+					for (let refresh = 0; refresh < 2; refresh++) {
+						await provider.update();
+						expect(get(provider.getSecret('secret'), secretPath)).toBeUndefined();
+						expect(provider.getSecretNames()).toEqual([]);
+					}
+
+					await provider.update();
+					expect(get(provider.getSecret('secret'), secretPath)).toEqual({
+						db: { password: 'updated-password' },
+					});
+					expect(provider.getSecretNames()).toEqual([
+						['secret', ...secretPath, 'db', 'password'].join('.'),
+					]);
+					expect(vault.isDone()).toBe(true);
+				},
+			);
+		});
+
 		describe('LIST response handling', () => {
 			afterEach(() => {
 				nock.cleanAll();

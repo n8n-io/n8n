@@ -305,6 +305,9 @@ export class VaultProvider extends SecretsProvider {
 
 	private cachedSecrets: Record<string, IDataObject> = {};
 
+	// Secret payloads can contain nested objects, so track folders separately.
+	private readonly cachedFolders = new WeakSet<IDataObject>();
+
 	private settings: VaultSettings;
 
 	#currentToken: string | null = null;
@@ -558,7 +561,9 @@ export class VaultProvider extends SecretsProvider {
 				isHttpRequestError(error) &&
 				isEmptyKvListResponse(error.response?.status, error.response?.data)
 			) {
-				return {};
+				const emptyFolder = {};
+				this.cachedFolders.add(emptyFolder);
+				return emptyFolder;
 			}
 			const errorContext = buildHttpProviderErrorContext(error);
 			this.logger.warn('Vault provider failed to list KV secrets', {
@@ -582,7 +587,9 @@ export class VaultProvider extends SecretsProvider {
 								mount,
 								path + key,
 								limit,
-								isCachedSecretData(previousFolder) ? previousFolder : null,
+								isCachedSecretData(previousFolder) && this.cachedFolders.has(previousFolder)
+									? previousFolder
+									: null,
 							);
 							return folder === null ? null : [folderKey, folder];
 						}
@@ -612,7 +619,9 @@ export class VaultProvider extends SecretsProvider {
 								...errorContext,
 							});
 							const previousSecret = previousSecrets?.[key];
-							return isCachedSecretData(previousSecret) ? [key, previousSecret] : null;
+							return isCachedSecretData(previousSecret) && !this.cachedFolders.has(previousSecret)
+								? [key, previousSecret]
+								: null;
 						}
 					}),
 				)
@@ -624,6 +633,7 @@ export class VaultProvider extends SecretsProvider {
 				})
 				.filter((v): v is [string, IDataObject] => v !== null),
 		);
+		this.cachedFolders.add(data);
 		this.logger.debug(`Vault provider retrieved kv secrets from ${mountPath}${path}`);
 		return data;
 	}
