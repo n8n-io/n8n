@@ -1,0 +1,847 @@
+packages/modules/insights/backend/src/__tests__/insights-by-period.repository.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 775-793
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/artifactThread.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 12-14,16-21,67,125-149
+  s_30a99d1f05d609::t_25dbe1224331b5 150
+packages/frontend/editor-ui/src/app/api/workflows.ee.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-5,28,39
+packages/modules/data-table/backend/src/data-table-file-cleanup.task.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-29
+packages/cli/test/integration/data-table/data-table-uploads.controller.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 2-490
+  s_30a99d1f05d609::t_86739ceb408733 1
+packages/cli/src/modules/mcp/__tests__/data-table/rename-data-table-column.tool.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+packages/modules/data-table/backend/src/__tests__/data-table-ddl.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-401
+packages/cli/src/external-hooks.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 26,97
+  s_30a99d1f05d609::t_936e8e53940440 98
+packages/modules/data-table/backend/vitest.config.postgres.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-13
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 17
+packages/cli/src/modules/workflow-index/__tests__/workflow-dependency-query.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 10
+packages/modules/data-table/backend/src/data-table-aggregate.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-52
+packages/modules/type-availability-policies/frontend/src/components/ContactAdminModal.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 13,25,32,34-35,38-39,52-55,57-62,87-90,92,98,116-117,139
+packages/@n8n/telemetry/src/events/agents.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 82-86
+packages/quality/testing/janitor/src/cli/arg-parser.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 19-20,90-91
+packages/quality/testing/playwright/scripts/impact-map.md
+  s_30a99d1f05d609::t_2404e1a01fc6e8 37-40,137-138,142-156,166
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 5,7,34,38-40,48-58,60,75,77-78,104-114,116-155,171,203,216-221,224-231,234,262,272,284-329,384-385,558-567,636-637
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersTable.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 46-47,159
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 2648-2674
+packages/cli/src/modules/mcp/__tests__/get-workflow-details.webhook-credentials.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-176
+packages/quality/testing/janitor/src/core/read-lockfile-impact.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-96
+packages/modules/data-table/backend/src/__tests__/data-table-touch-updated-at.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-410
+packages/quality/testing/playwright/scripts/backend-coverage-resolver.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 60-112
+packages/cli/src/modules/mcp/__tests__/get-workflow-details.parent-folder.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 14,30,58
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 29,57,141,200,408,1487,1548,1629
+packages/frontend/editor-ui/src/app/components/WorkflowVersionForm.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 29-36
+packages/modules/data-table/backend/src/errors/data-table-system-column-name-conflict.error.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-9
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 47-57
+packages/cli/src/services/project.service.ee.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 116
+packages/modules/apps/backend/src/serving/__tests__/app-host.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 13-14,23,26,123,125-126,132-143,167,206,228-230
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_30a99d1f05d609::t_2404e1a01fc6e8 378-379,387-399,2880-2881,2886,2894-2918,6167
+packages/modules/data-table/backend/src/__tests__/sql-utils.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-417
+packages/cli/src/modules/n8n-packages/__tests__/export-stable-targets.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,20-21,85
+packages/cli/src/modules/agents/__tests__/agent-run-tracing.service.otel.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 8,63
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.stories.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 60-86,148-193
+packages/cli/src/modules/workflow-index/workflow-dependency-query.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 20
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-matching-mode.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+.agents/skills/protect-endpoints/SKILL.md
+  s_30a99d1f05d609::t_2404e1a01fc6e8 139
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 51
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 618-649
+packages/modules/data-table/backend/src/errors/data-table-validation.error.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-9
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.node-usage.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 62-63
+packages/modules/data-table/backend/src/multer-upload-middleware.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-157
+packages/modules/type-availability-policies/frontend/src/composables/useCloseOnEscape.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-67
+packages/modules/data-table/backend/src/data-table-events.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-10
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 97,118-123,142-150
+.github/workflows/test-db-reusable.yml
+  s_30a99d1f05d609::t_2404e1a01fc6e8 24-28,50-54
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1965-1966,9333-9338,9345
+packages/quality/testing/janitor/src/core/test-run.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-155
+packages/cli/src/modules/mcp/mcp.typeguards.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1062,1082-1093,1120,1123-1128,1154,1162,1184,1230-1240
+  s_30a99d1f05d609::t_4ad6e4eb3116c9 1241
+packages/cli/src/modules/source-control.ee/__tests__/source-control-export.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 26
+packages/modules/type-availability-policies/frontend/src/composables/useNodeTypeRestriction.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 95-96,98-103,137-142,172-176
+packages/cli/src/modules/otel/__tests__/otel.service.provider.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 22,31,127-128,155-156,165-166,219-222,439-495
+  s_30a99d1f05d609::t_197822ce5fc0e2 496
+packages/quality/testing/playwright/coverage-options.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 153-159
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 3-11,22,45,70,321-326,432-440
+  s_30a99d1f05d609::t_6afc218e3d4d8e 441
+packages/quality/testing/janitor/src/core/scope-analyzer.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 205-227
+packages/nodes-base/nodes/N8n/test/node/N8n.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 22-31
+packages/modules/data-table/backend/src/data-table.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-1221
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-bound-project-writes.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,23-24,55
+packages/cli/src/modules/instance-ai/__tests__/assistant.controller.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-198
+packages/@n8n/api-types/src/dto/instance-ai/__tests__/instance-ai-confirm-request.dto.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 124-138
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 2-7,9,26,238-245,292-297
+  s_30a99d1f05d609::t_82894fd476b046 298-301
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 30,317,350-371,400-405,479,492-498,555-565,602-613,621
+packages/modules/data-table/backend/test/setup-test-folder.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-19
+packages/quality/testing/playwright/pages/InstanceAiPage.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 84
+packages/cli/src/credentials/credential-descriptions.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 19-26
+packages/modules/type-availability-policies/frontend/src/transfer-preview/useTransferPreview.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-209
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/AppBlueprintCard.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-95
+packages/cli/src/modules/agents/agent-knowledge-mirror.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 377
+packages/modules/data-table/backend/src/testing.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+packages/quality/testing/test-impact/src/index.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 10
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 202,209,213
+packages/modules/insights/backend/src/insights-by-period.repository.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 159-160,169-170,180-181,183-187,191-193
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantConfirmationCard.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 28,44,91,339-347
+  s_30a99d1f05d609::t_203978ad1ac9ff 348
+packages/modules/data-table/backend/src/data-table-file-cleanup.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-128
+packages/modules/data-table/backend/src/__tests__/csv-column-limit.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-100
+packages/@n8n/engine/src/auth/__tests__/resume-token.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 6-14,18,20-21,23-36,47-52,54-59,62-63,66,69,81,85,87,90,94,96-97,101-110,116-205
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 488-514
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 152,438-446,543,1720,2484,2629,2943,3121,3312,3419,3529
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_30a99d1f05d609::t_2404e1a01fc6e8 221-222
+packages/quality/testing/playwright/services/api-helper.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 577,582,588,591
+packages/@n8n/engine/src/execution/__tests__/resume-request.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 3-7,31-44,56,64-70,73,91,152-157,195-201,213-346,423-466
+  s_30a99d1f05d609::t_6f9f69f4bfd75a 467
+packages/cli/src/services/export.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 8
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 31-35,38,377-378,401-429,445,447,465,467,472-473,494-495,572,574,707-709,713,724-732,782-783,802,804,827,829,846
+packages/cli/src/modules/modules.manifest.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 9
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 413
+packages/modules/data-table/backend/src/types.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-26
+packages/@n8n/engine/src/auth/index.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 17-25
+packages/frontend/editor-ui/src/features/core/folders/folders.store.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 7,207-224
+  s_30a99d1f05d609::t_7a934d3c5361fc 225-227
+packages/modules/data-table/backend/src/data-table-rows.repository.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-767
+packages/@n8n/instance-ai/src/skills/__tests__/skills.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 153-165
+packages/cli/src/modules/mcp/tools/data-table/get-data-table-rows.tool.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 9
+scripts/licenses/pipeline.test.mjs
+  s_30a99d1f05d609::t_2404e1a01fc6e8 8-10,195-243
+  s_30a99d1f05d609::t_579dd264a7e898 244
+packages/@n8n/instance-ai/src/types.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1299-1304
+packages/modules/type-availability-policies/frontend/src/transfer-preview/RestrictedTypesDialog.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-309
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationKinds.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 24,30
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 39-40,167,179
+packages/modules/data-table/backend/src/data-table.repository.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-453
+packages/modules/data-table/backend/src/csv-column-limit.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-94
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1100
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 19,44,256,607
+packages/cli/test/integration/users.data-table.api.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 5
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 130,134
+packages/modules/data-table/backend/oxlint.config.mts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-8
+packages/@n8n/engine/src/auth/resume-token.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-2,7,12,28-47,51-52,54-71,82-84,86-176,178-185
+packages/cli/src/modules/mcp/tools/data-table/create-data-table.tool.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4
+OWNERS
+  s_30a99d1f05d609::t_2404e1a01fc6e8 135-136
+packages/cli/src/credentials/credentials.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1204-1206,1208-1209,1262
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 20-21
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 5-6
+packages/cli/src/modules/otel/otel-span-exporter.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 3,7-9,11-12,14-16,19-20,25-44
+packages/cli/test/integration/data-table/data-table-column-rename.controller.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-350
+packages/modules/data-table/backend/package.json
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-90
+packages/cli/src/modules/promotions.ee/local-package-entities.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 2
+packages/modules/data-table/backend/src/__tests__/csv-parser.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-310
+pnpm-workspace.yaml
+  s_30a99d1f05d609::t_2404e1a01fc6e8 39-41,71
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 46-52
+packages/modules/data-table/backend/src/__tests__/pair-columns.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-128
+packages/modules/type-availability-policies/frontend/src/index.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 36-41
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore.service.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,17-19,33
+packages/nodes-base/nodes/N8n/test/User.operation.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-50
+packages/modules/data-table/backend/src/data-table.controller.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-488
+packages/cli/package.json
+  s_30a99d1f05d609::t_2404e1a01fc6e8 166
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAppBlueprint.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-55
+packages/quality/testing/janitor/src/core/scope-analyzer.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 11,60-63,81-89,93-99
+  s_30a99d1f05d609::t_4ca571db70d1a8 100
+.github/scripts/db-test-matrix.mjs
+  s_30a99d1f05d609::t_2404e1a01fc6e8 22-27,102,111,127,139-140,142,144-152,156-159,165,186-189
+  s_30a99d1f05d609::t_69411d2da06115 21
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 49
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 9,31,37,842,846-861,945-946,995-997,1026,1038-1039
+packages/quality/testing/test-impact/src/lockfile-impact.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-92
+packages/modules/data-table/backend/src/errors/data-table-access-denied.error.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-9
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 656-670,691,694
+packages/quality/testing/janitor/README.md
+  s_30a99d1f05d609::t_2404e1a01fc6e8 234-256,313-316
+packages/cli/test/integration/database/repositories/agent-file.repository.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 2,4,8,12,15-16,24-25,33,53,55,58,63,66-176,182,191,205-208,219
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-artifact-names.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+.github/workflows/test-evals-instance-ai.yml
+  s_30a99d1f05d609::t_2404e1a01fc6e8 530-536
+packages/modules/data-table/backend/src/__tests__/data-table-csv-import.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-320
+packages/modules/apps/backend/src/__tests__/apps.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 30
+packages/modules/data-table/backend/src/__tests__/data-table.module.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-12
+packages/cli/src/modules/mcp/tools/data-table/search-data-tables.tool.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 5
+scripts/licenses/license-overrides.json
+  s_30a99d1f05d609::t_2404e1a01fc6e8 31-46
+packages/modules/type-availability-policies/frontend/src/type-availability-policies.api.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4-5,7,41-74
+packages/@n8n/engine/src/index.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 12,15-16,20,36
+packages/cli/src/modules/mcp/__tests__/data-table/get-data-table-rows.tool.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 3
+packages/modules/data-table/backend/src/__tests__/data-table.service.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-3788
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.liveRunState.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 101
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 7,90,134,171,211
+packages/modules/data-table/backend/src/errors/data-table-column-not-found.error.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-7
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 55
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 37-38
+packages/modules/data-table/backend/src/persistence/data-table-ddl.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-122
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/utiles-trigger.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,15-16,22,24-25,64-67,75-77,79,86-88,98-101,109,111,118-120,135,251-254,256-290,386-389,573-591,620,648,653-654,656-659,661-665,669-670,680-688,690-697,717-728,730-733,735,738-746,748,750-762,765-766,768,770-773,775-778,780,782-787,790-796,798-804,806-807,810-815,819-823,825-827,829,832-840,842,844-849,852-853,855,857,861-862,864-865,867-883,885-888,890-897,899-903,906-935,938,940-943,946-951,953-958,961-968,970-975,977-980,983-990,992-997,999-1001,1003-1030,1033-1051,1055-1063,1066-1070,1072-1078,1080-1084,1086-1097,1099-1104,1106-1110,1112-1123,1125-1336,1338-1339,1341-1406,1410-1452,1454,1456-1569,1571-1675,1677,1679-1717,1719-1733,1736-1740,1742-1775,1777-1790,1793-1820,1822-1846,1849-1858,1865-1866,1868-1881,1883-1983,1987-1998,2000-2003,2005-2010,2012-2039,2041-2111,2118-2123,2129-2184,2186-2197,2199-2216,2218-2247,2251-2254,2256-2333
+  s_30a99d1f05d609::t_f66e8442debec5 774
+  s_30a99d1f05d609::t_adeaef59f5d18c 2-9,666-668,679,705-707
+  s_30a99d1f05d609::t_f792cf32bcea6c 788-789,816-818,1031-1032,1064-1065,1337,1340,1867,2011,2040,2185
+  s_30a99d1f05d609::t_86739ceb408733 1407-1409,1859-1864,2112-2117
+  s_30a99d1f05d609::t_da9973fd76ac1c 1570,1678,2124-2128
+  s_30a99d1f05d609::t_6a5a4bab270a54 673-678
+.github/scripts/db-test-matrix.test.mjs
+  s_30a99d1f05d609::t_2404e1a01fc6e8 212-244
+packages/quality/testing/test-impact/src/lockfile-impact.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-198
+packages/cli/src/modules/mcp/tools/data-table/add-data-table-rows.tool.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 6
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 570,588,602,616
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderModal.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 40-47,88-89,235-236,251,258,306,313-317,426-443,510-522
+packages/modules/apps/backend/src/auth/__tests__/app-protected-resource.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 33
+packages/@n8n/api-types/src/index.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 455-456,610-611
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 648-658,683-691
+packages/cli/src/modules/otel/__tests__/otel.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 9,16,195-196,208-209,228-229,286-298
+  s_30a99d1f05d609::t_e4fff4f446504a 299-300
+packages/modules/type-availability-policies/frontend/src/components/ContactAdminModal.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 3,117-183,376-422
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module-init.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 78
+packages/cli/src/events/maps/relay.event-map.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+packages/cli/src/workflows/workflow.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 11,210,330-332,338
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 7
+packages/frontend/editor-ui/src/app/composables/useUnpublishedByMoveToast.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-200
+packages/cli/src/modules/instance-ai/eval/__tests__/execution.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 23
+packages/cli/src/modules/otel/README.md
+  s_30a99d1f05d609::t_2404e1a01fc6e8 36,58-61,140-176
+  s_30a99d1f05d609::t_c342292a49d246 177
+packages/nodes-base/nodes/N8n/test/node/user.get.workflow.json
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-107
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,49-54,77-81
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-artifact-names.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-8,10,12,58-106,112
+packages/cli/src/evaluation.ee/__tests__/evaluation-dataset.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 11
+packages/modules/data-table/backend/src/__tests__/data-table-aggregate.service.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-268
+packages/modules/data-table/backend/src/__tests__/data-table-column.repository.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-258
+packages/modules/data-table/backend/src/data-table-column.repository.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-297
+packages/cli/src/modules/__tests__/data-table-lifecycle.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-54
+packages/modules/type-availability-policies/frontend/src/type-availability-policies.constants.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 99-103,111,120
+packages/cli/src/modules/n8n-packages/__tests__/export-git-blob-parity.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,13-14,47
+packages/modules/data-table/backend/src/data-table.module.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-69
+packages/cli/src/modules/source-control.ee/source-control-export.service.ee.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 22
+packages/@n8n/instance-ai/src/runtime/confirmation-payload.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 2,54,90-94,137
+packages/quality/testing/janitor/src/core/import-scopes.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-183
+packages/modules/type-availability-policies/frontend/src/transfer-preview/TransferPolicyWarning.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-253
+packages/quality/testing/playwright/scripts/emit-spec-backend-lcovs.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-3,8-9,99-129
+  s_30a99d1f05d609::t_d9178684adb58e 130-131
+packages/cli/test/integration/data-table/data-table.controller.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-28,30-5053
+  s_30a99d1f05d609::t_adeaef59f5d18c 29
+packages/cli/src/modules/agents/agent-knowledge-snapshot.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 36-39
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 54-59
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 18,25-37,43,51,54,62,93,116,122,127,129,301-302,306-307,548-643,985-1131
+packages/modules/data-table/backend/src/__tests__/data-table-filters.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-2788
+packages/cli/src/modules/otel/otel.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 18,28,31,79-80,84-91,250,253
+packages/@n8n/engine/src/server/create-engine-server.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 12,28-29,52-55
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 66,76,102,255-256
+  s_30a99d1f05d609::t_da31c8b12ec5c5 257
+packages/modules/data-table/backend/src/data-table-uploads.controller.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-65
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 12,16,23-26,29,874,890-923,927
+  s_30a99d1f05d609::t_9dd9bc5eee807d 924-926,928-929
+packages/modules/data-table/backend/src/__tests__/data-table-file-cleanup.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-252
+packages/cli/src/modules/mcp/__tests__/data-table/delete-data-table-column.tool.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+packages/modules/data-table/backend/src/csv-parser.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-317
+packages/modules/data-table/backend/test/setup-postgres.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-9
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 55-56,122
+packages/frontend/@n8n/design-system/src/components/N8nUserInfo/UserInfo.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 38-43,53-56,59-61,63,65,76,82,90,96-98,100-101,104-108
+packages/modules/type-availability-policies/frontend/src/transfer-preview/useTransferPreview.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-95
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AppBlueprintCard.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-241
+packages/modules/data-table/backend/src/data-table-permissions.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-15
+packages/quality/policy/code-health/src/rules/typeorm-persistence-boundary.rule.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 31,33
+packages/quality/testing/test-impact/src/line-scope.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 121-128,130-136,138-140,146,153,177-181,187
+packages/cli/src/controllers/e2e-coverage-windows.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-53
+packages/cli/src/modules/mcp/__tests__/webhook-utils.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 2,4,29-30,34-42,99,119,139,155,172,194,200-203,206,212-213,220,232,236,241-242,250,274,296,315,341,358,373,388,401,434,451,476,509
+packages/cli/src/permissions.ee/check-access.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 173
+packages/quality/testing/janitor/src/core/import-scopes.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-104
+packages/modules/data-table/backend/src/errors/data-table-not-found.error.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-7
+packages/cli/src/modules/mcp/__tests__/install-community-node.registration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 11,24,111
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiWorkflowPreviewExecution.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 18,255
+packages/cli/src/modules/instance-ai/eval/data-table-rows.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 14
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 234-358
+packages/modules/data-table/backend/src/__tests__/data-table-size.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-449
+packages/modules/data-table/backend/src/data-table-aggregate.controller.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-28
+packages/cli/src/modules/mcp/tools/data-table/add-data-table-column.tool.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4
+packages/frontend/editor-ui/src/app/components/PolicyViolationTypeIcon.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-31
+packages/frontend/editor-ui/src/features/shared/promotions/useEnvironmentsVersionSwitch.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 58-62
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,4,198-234
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.exporter.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 6
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePopover.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4,14,38-39,106-110,176,190
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectMoveResourceModal.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 33-39,69,128-138,274-286
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPlan.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 33-34
+packages/modules/data-table/backend/src/__tests__/data-table-file-cleanup.task.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-48
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiAppBlueprint.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-47
+packages/@n8n/engine/src/server/__tests__/resume-requests.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 10-14,40-48,116-118,161-166,226-331,381-403,437,458-461
+  s_30a99d1f05d609::t_b487799ff3b17e 462
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils-trigger.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 28-41,63-75,77-105,108-109,113,115,118,127,129,132,162-194,208-483,490-500,503-507,512,519-523,529,537,545,553,556-558,565,572-585,589,591,599-617,622-628,630-632,634,638-654,657-658,667,670-673
+packages/quality/testing/janitor/src/core/affected-packages-analyzer.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 189-210
+packages/nodes-base/nodes/N8n/UserDescription.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-99
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/forbiddenHints.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 31-34,99-119,121
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 295
+packages/modules/data-table/backend/src/errors/data-table-file-upload.error.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-9
+packages/cli/src/modules/mcp/__tests__/data-table/create-data-table.tool.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+packages/cli/src/services/__tests__/import.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 15
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantAgentThreads.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4,39-44
+  s_30a99d1f05d609::t_8c1c5b455f0d34 45
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.serializer.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 8
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 23,44
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 14,49,205
+packages/frontend/editor-ui/src/features/shared/promotions/useEnvironmentsVersionSwitch.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 10-13,24-26,49-56
+packages/modules/data-table/backend/tsconfig.json
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-17
+packages/modules/data-table/backend/src/data-table.entity.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-31
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 75-76
+packages/cli/tsconfig.json
+  s_30a99d1f05d609::t_2404e1a01fc6e8 27
+packages/frontend/editor-ui/src/app/components/RepublishFailureList.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-49
+packages/modules/data-table/backend/src/index.ts
+  s_30a99d1f05d609::t_ad1666aeb11a74 1,6
+  s_30a99d1f05d609::t_2404e1a01fc6e8 2-5,7-22
+packages/cli/src/modules/mcp/__tests__/data-table-validation.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,7-8,17
+packages/modules/data-table/backend/src/errors/data-table-column-name-conflict.error.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-12
+packages/quality/efficiency/scale/benchmark/scenarios/binary-data/binary-data.script.js
+  s_30a99d1f05d609::t_2404e1a01fc6e8 29
+packages/modules/data-table/backend/src/utils/pair-columns.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-70
+packages/@n8n/instance-ai/src/runtime/__tests__/confirmation-payload.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 3,170-185,220
+packages/cli/src/modules/mcp/tools/workflow-builder/data-table-validation.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 5
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 6-8,40-44,382-420
+  s_30a99d1f05d609::t_63fd72757d5e4d 421
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionEnvironmentView.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 36,321
+packages/nodes-base/nodes/N8n/test/N8n.structure.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4,20
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4303,4309-4318,4320
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.serializer.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.settings.api.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 17,24,30,36,42,49,56,63
+packages/modules/apps/backend/src/serving/app-host.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 28,43,56-59,62
+packages/cli/src/modules/agents/repositories/agent-file.repository.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,3,7-12,20-24,27-28,36-65,68-69,72-73,80,87-89
+packages/modules/data-table/backend/tsconfig.build.json
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-10
+packages/modules/data-table/backend/src/data-table-size-validator.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-105
+packages/cli/src/services/import.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 27-28,32-33
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePopover.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 46-58
+packages/cli/src/public-api/v1/controllers/data-tables.public.controller.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 50-62
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderModal.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,20-24,44-71,186,1122-1331
+  s_30a99d1f05d609::t_795e4a8d955e8b 1332
+packages/quality/testing/janitor/src/core/affected-packages-analyzer.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 14,113-115,225-229,260-263
+  s_30a99d1f05d609::t_711c2bc87a2807 264
+packages/quality/testing/test-impact/src/line-scope.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4,138,141-143,147-149,153,156-161,173-177,181,220,229-287
+  s_30a99d1f05d609::t_b26ab1c6ffa778 288
+packages/cli/src/evaluation.ee/evaluation-dataset.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 29-30
+packages/@n8n/engine/src/server/routes/resume-requests.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 10,22-29,42,56-80,96-99,103-134
+  s_30a99d1f05d609::t_2215bf8b88d085 135-136
+packages/modules/type-availability-policies/frontend/src/transfer-preview/RestrictedTypesDialog.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-284
+packages/frontend/editor-ui/src/features/agents/composables/agentTelemetry.utils.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 21
+packages/modules/data-table/backend/src/register-favorite-resolver.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-19
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-case-generation.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 13-18
+packages/@n8n/instance-ai/skills/app-builder/SKILL.md
+  s_30a99d1f05d609::t_2404e1a01fc6e8 27,42-54,59-67,74,78,81,100-101
+packages/cli/test/integration/environments/source-control.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,26,250
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 43,150
+packages/cli/test/integration/data-table/data-table-aggregate.controller.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-434
+packages/quality/testing/janitor/src/cli/help.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 222-223,227-228,233-238
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 7-13
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,24,88
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-data-tables.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,16-17,32
+packages/quality/testing/janitor/src/core/read-lockfile-impact.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-94
+packages/cli/src/modules/mcp/__tests__/data-table/add-data-table-column.tool.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+packages/cli/src/modules/mcp/tools/data-table/rename-data-table.tool.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4
+packages/@n8n/instance-ai/src/tools/apps/apps.tool.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 2-8,30,35,48,86-91,93-98,104,111-116,118,157,176,192-197,200-210,214,216-247
+packages/cli/src/modules/source-control.ee/source-control-scoped.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 15
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 66,73,1711-1713
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 11,301
+packages/nodes-base/nodes/Microsoft/Teams/MicrosoftTeamsTrigger.node.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 14,16-17,20,25-28,363-364,366-367,369-386,389-390,392-400,404-422,425-427,441-453,456,458,463,466-471,474,476-483,485-492,507-508,513-516,518-536,554
+packages/cli/src/modules/mcp/__tests__/data-table/add-data-table-rows.tool.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+packages/modules/data-table/backend/src/utils/sql-utils.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-383
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 57
+packages/modules/data-table/backend/src/__tests__/data-table.service.test.ts
+  s_30a99d1f05d609::t_86739ceb408733 672-675
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-671,676-1101
+packages/quality/testing/janitor/src/core/read-line-scopes.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 14,17-18,22,47-51,75-135,150-151
+packages/quality/testing/janitor/src/core/test-scoped-runner.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 16,79
+turbo.json
+  s_30a99d1f05d609::t_2404e1a01fc6e8 94,106,115-128,132
+packages/cli/src/modules/mcp/__tests__/data-table/rename-data-table.tool.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 30,32,50,52,88-93,102,248-272,328-329,414-416,457-461,463,467,477,481,484,489-498,531,547-551,553,559-564,591-592,612,634-647,670,687-695,699,703-735,804,820-825
+  s_30a99d1f05d609::t_3dedcee43c6f7f 826
+packages/quality/testing/janitor/src/core/test-run.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-213
+packages/cli/src/modules/__tests__/data-table-package.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-35
+packages/cli/src/modules/otel/otel-configure-hook.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-78
+packages/@n8n/nodes-langchain/nodes/agents/Agent/V1/AgentV1.node.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 329,344-352
+  s_30a99d1f05d609::t_ee0067381bb042 353-355
+packages/@n8n/instance-ai/src/tools/apps/__tests__/apps.tool.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,7,63-79,114-173,180,182-183,187,190-191,203,205,210,220-244,250-255,260,267,276,288,299,301,303,307-308,310,316-324,397,399,402,404,470-473
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 6-7,28-31,47-49,57-61,78,95,97,756-897
+  s_30a99d1f05d609::t_9566a70ccd3b9a 898
+packages/modules/data-table/backend/src/__tests__/data-table-proxy.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-50
+packages/modules/data-table/backend/src/data-table-csv-import.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-203
+.agents/skills/testmax-n8n-ai/scripts/prepare.py
+  s_30a99d1f05d609::t_2404e1a01fc6e8 71
+packages/cli/src/modules/mcp/__tests__/data-table/search-data-tables.tool.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1
+packages/modules/data-table/backend/src/data-table-column.entity.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-24
+packages/quality/testing/playwright/fixtures/backend-v8-coverage.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 6-12,26,28-30,73-82,91,93,107,121-135
+packages/cli/src/modules/mcp/__tests__/get-workflow-details.tool.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 9,27,51,91,158,189,214,268,300,328,363,404,441,468,495,527,580,608,631
+packages/modules/data-table/backend/src/__tests__/data-table-size-validator.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-262
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 2173-2280
+packages/cli/src/modules/engine-v2/__tests__/engine-data-tables.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 2-6
+packages/cli/test/integration/data-table/data-table-csv.controller.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-578
+packages/@n8n/engine/src/server/index.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 7
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPlan.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 6,29,38,173-185
+  s_30a99d1f05d609::t_d3c308ca15e7ed 186
+packages/modules/data-table/backend/src/__tests__/fixtures/users.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-18
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1632-1644,1660-1662
+.github/workflows/ci-pull-requests.yml
+  s_30a99d1f05d609::t_2404e1a01fc6e8 47,272-273,279-280,287,289-295,333-335,533
+packages/frontend/editor-ui/src/app/composables/useUnpublishedByMoveToast.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-81
+packages/quality/testing/playwright/scripts/run-coverage-shard.mjs
+  s_30a99d1f05d609::t_2404e1a01fc6e8 54-55
+packages/modules/insights/backend/src/__tests__/insights-compaction.service.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 3,32-33,924-1021
+  s_30a99d1f05d609::t_4656a7b4aab7b8 1022
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 41
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/MicrosoftTeamTrigger.test.ts
+  s_30a99d1f05d609::t_f66e8442debec5 1376
+  s_30a99d1f05d609::t_f792cf32bcea6c 366,368,495,498,603,605
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-7,9,17-19,44-86,90-95,99-102,105-114,116-127,129,132-139,141,143,145-148,150-177,179,181-193,195-199,265-292,294-295,297,299,301-309,313-318,320,322,324,326-332,334-335,337-348,351-365,367,369-429,431-432,434-443,445-446,448-461,464,466-474,477-489,491-492,494,496-497,499-501,504-511,513-516,520-525,527,529,531,533-536,538-541,543,546-556,560-569,571-584,587-589,592-597,599-600,602,604,606-607,610,612-619,622-625,627-633,636-644,647-656,659-667,673-684,686,688-691,693,697,710,714,716,718,731-830,835-846,849,851-852,855-856,858-859,863-865,868,871-872,876,879-883,886,888-889,893,897-898,900,903,906,909-911,914-918,921,924,926-929,931,934,937-975,977-992,1088-1099,1101-1121,1124,1126-1158,1199-1200,1364-1374,1377,1381,1404-1407,1409,1445-1486
+  s_30a99d1f05d609::t_adeaef59f5d18c 8,10,87-89,96-98,115
+  s_30a99d1f05d609::t_de2c726eeae752 1487
+packages/cli/src/modules/instance-ai/assistant.controller.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-166
+packages/quality/testing/janitor/src/cli.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 51-57,679-695,698,706,709-710,715-753,758,764-765,780,786-787,932-941
+packages/frontend/editor-ui/src/features/core/folders/folders.store.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,236-237,248
+packages/cli/src/evaluation.ee/evaluation-config-validator.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 18
+packages/modules/data-table/backend/src/data-table.types.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-13
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-scoped-reads.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,33
+packages/modules/type-availability-policies/frontend/src/transfer-preview/TransferPolicyWarning.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-144
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-compat.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4
+packages/modules/type-availability-policies/frontend/src/composables/useCloseOnEscape.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-25
+packages/@n8n/engine/src/execution/resume-request.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 3,6-12,15-31,46-51,70-88,97,117,120-139,143-150,153,156-200,202,208-210,212,215-221,251,255
+packages/cli/src/modules/mcp/tools/webhook-utils.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,9,79,118,198,212,229,261-266,315,328-333,337-342,350,352,354-356,359-364,368-382,389,391-398
+packages/@n8n/agents/src/runtime/__tests__/model-token-counter.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 34,37-39
+packages/cli/src/modules/otel/__tests__/otel.service.grpc-deps.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 7,12,62-63
+packages/cli/vitest.config.base.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 15-26
+packages/modules/data-table/backend/src/__tests__/data-table-read-only-transaction.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-70
+packages/quality/testing/playwright/scripts/emit-shard-coverage.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 10-12,26,28,44-45,47,54-55
+packages/cli/src/modules/mcp/tools/data-table/rename-data-table-column.tool.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4
+packages/cli/src/controllers/__tests__/e2e-coverage-windows.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-89
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 200-201,3557,3559-3563
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 16-19,243-245,344,394
+packages/frontend/editor-ui/src/features/agents/__tests__/agentTelemetry.utils.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 46,49
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1407-1410,1496-1497,1531-1532,1534,1542
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 30
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_30a99d1f05d609::t_2404e1a01fc6e8 128,130,960-964,971
+packages/cli/src/modules/instance-ai/eval/__tests__/data-table-rows.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,6-7,12
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,15-23,53
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantArtifactThread.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,27-28,47-51,59,66
+packages/@n8n/engine/src/execution/index.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 54-59
+packages/cli/src/modules/mcp/tools/data-table/delete-data-table-column.tool.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4
+packages/@n8n/engine/src/server/api.types.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 99-115
+  s_30a99d1f05d609::t_d19b18912af4cf 98
+.agents/skills/testmax-assistant-ui/scripts/common.py
+  s_30a99d1f05d609::t_2404e1a01fc6e8 167,171
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 16,63-68
+packages/modules/data-table/backend/src/test-utils/data-table.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-14
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-confirm-request.dto.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 4,104-107,120
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.constants.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 5-8
+packages/modules/data-table/backend/src/__tests__/data-table-proxy.service.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-821
+packages/quality/testing/janitor/src/core/read-line-scopes.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 86-93
+packages/quality/testing/test-impact/src/impact-map.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 303-337,341-342,349,397-400,413-420,448,452-455,457-460,483
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 117,124,134,139,149,163-164,215-226,255-257,289
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_30a99d1f05d609::t_2404e1a01fc6e8 18
+.github/workflows/test-unit-reusable.yml
+  s_30a99d1f05d609::t_2404e1a01fc6e8 36-51,68-69,107-108,110,159,214,263,310,359
+packages/cli/src/controllers/e2e.controller.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 38-39,409-412,417,420-421,424-427,431,433-436
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.liveRunState.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 151-167
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 31,303,305,311-314
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 12
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationTelemetry.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 107-119
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectMoveResourceModal.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,19-22,30-51,72,397-398,436-513
+  s_30a99d1f05d609::t_6ee29b221330a1 514
+packages/modules/data-table/backend/src/errors/data-table-name-conflict.error.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-9
+packages/cli/AGENTS.md
+  s_30a99d1f05d609::t_2404e1a01fc6e8 31
+packages/frontend/@n8n/design-system/src/composables/useHorizontalScrollEdges.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-32
+packages/modules/data-table/backend/vitest.config.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-23
+packages/modules/data-table/backend/src/__tests__/multer-upload-middleware.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-292
+packages/cli/src/evaluation.ee/__tests__/evaluation-config-validator.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 8-11
+packages/cli/test/integration/shared/db/data-tables.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 7-11
+packages/nodes-base/nodes/N8n/N8n.node.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 7,67-70,91-92
+  s_30a99d1f05d609::t_670744513ab80d 93
+packages/cli/src/modules/engine-v2/engine-data-tables.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 6,10-11
+packages/cli/src/modules/mcp/__tests__/data-table/get-data-table-rows.integration.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1,6-7,14
+packages/quality/testing/playwright/scripts/emit-spec-backend-lcovs.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 11-12,18,21,25,27,30,33,40-45,61-62
+packages/modules/data-table/backend/src/data-table-proxy.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 1-365
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 947
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 316-317,620-625,629-633
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_30a99d1f05d609::t_2404e1a01fc6e8 35
+pnpm-lock.yaml
+  s_30a99d1f05d609::t_e06cbd27537d6e 207-208,1256,2807,4799-4801,7243-7342,9539-9544,9561-9566,9575-9578,25550-25555,25582-25590,25599-25602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "855d8f3b22065e475cd0baba5ba59a51b79250d7",
+  "prompts": {},
+  "sessions": {
+    "s_30a99d1f05d609": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e63ae85a8ffehBLF4rHTzzGH4B",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

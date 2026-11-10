@@ -1,0 +1,26 @@
+packages/cli/src/telemetry/index.ts
+  s_f1a804119197eb::t_3a4153793ae8b3 560
+  s_f1a804119197eb::t_5ef5b1e11105b8 72
+  s_f1a804119197eb::t_bac71f9290aa7c 286
+  s_f1a804119197eb::t_178f4efba96051 563
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_f1a804119197eb::t_d1c9afa295e93d 1642
+  s_f1a804119197eb::t_ca003887f1eb42 1110
+  s_f1a804119197eb::t_380c8ebf2fc3b8 1184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51cc2071e595b39ccd8dfe7d14f35417d50c2809",
+  "prompts": {},
+  "sessions": {
+    "s_f1a804119197eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df616428-5500-4fc2-8350-ef5e605e2487",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

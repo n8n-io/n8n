@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalRouteSelect.vue
+  s_dfe3f914c8bb46::t_976444067a5a46 3,20,22-45,49-50,66-67
+  s_dfe3f914c8bb46::t_56ce93f75658c2 69,72,76
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_976444067a5a46 31,49-50
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_0f49de816e3bf2 501-502
+  s_dfe3f914c8bb46::t_976444067a5a46 494-497
+  s_dfe3f914c8bb46::t_7cf66c916e6c06 499-500
+  s_dfe3f914c8bb46::t_86dcc984aae039 498
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentApprovalRouteSelect.test.ts
+  s_dfe3f914c8bb46::t_5da49676301a4f 1,3,5,7-113,115-124,127-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0359fc15ee153d51be0aab309ffe77e48de3e683",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

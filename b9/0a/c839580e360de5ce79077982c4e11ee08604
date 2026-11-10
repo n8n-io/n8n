@@ -1,0 +1,32 @@
+packages/workflow/test/native-evaluation-parity.test.ts
+  s_2a512efce24140::t_6945d1052de794 922-938
+packages/@n8n/expression-runtime/src/runtime/__tests__/lazy-proxy.test.ts
+  s_fa03864a9c533b::t_072c3aaf062a4c 189-196
+  s_fa03864a9c533b::t_08d575e6429e46 245-247
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  s_fa03864a9c533b::t_79d7f82aea4f38 338-340,343-344
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b90ac839580e360de5ce79077982c4e11ee08604",
+  "prompts": {},
+  "sessions": {
+    "s_2a512efce24140": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f86a88b-090a-4f94-8295-7f4643828485",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_fa03864a9c533b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1b3b75d-7d99-4716-aa2a-a0cbce20ac70",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
