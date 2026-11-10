@@ -72,7 +72,8 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 			headers: () => ({
 				authorization: `Bearer ${mintIdentityToken(this.engineConfig.authSecret, this.caller())}`,
 			}),
-			...(tls && { connectionPool: { agentOptions: tls } }),
+			// Explicit, so a global NODE_TLS_REJECT_UNAUTHORIZED=0 cannot turn off the peer check.
+			...(tls && { connectionPool: { agentOptions: { ...tls, rejectUnauthorized: true } } }),
 		});
 	}
 

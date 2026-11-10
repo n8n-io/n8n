@@ -72,10 +72,12 @@ describe('EngineControlPlaneTransport', () => {
 			expect(clientOptions?.baseURL).toBe('https://cp.internal:8443');
 		});
 
-		it('presents the client certificate and trusts only the engine CA when TLS is on', () => {
+		it('presents the client certificate and verifies the control plane against the engine CA alone when TLS is on', () => {
 			newTransport({}, { tls }).forScope('lifecycle-events:write');
 
-			expect(clientOptions?.connectionPool).toEqual({ agentOptions: tls });
+			expect(clientOptions?.connectionPool).toEqual({
+				agentOptions: { ...tls, rejectUnauthorized: true },
+			});
 		});
 
 		it('uses no connection pool over plain HTTP', () => {

@@ -296,6 +296,38 @@ describe('EngineControlPlaneServer', () => {
 			expect(pushRelay.relay).toHaveBeenCalledExactlyOnceWith(events);
 		});
 
+		it('refuses a control plane certificate from another CA even with NODE_TLS_REJECT_UNAUTHORIZED=0', async () => {
+			const otherDir = mkdtempSync(join(tmpdir(), 'engine-cp-tls-other-'));
+			try {
+				const other = generateTlsCerts(otherDir, { cp: loopback });
+				await server.stop();
+				await startServer({
+					cert: readFileSync(other.leaves.cp.certFile),
+					key: readFileSync(other.leaves.cp.keyFile),
+					ca: readFileSync(certs.caFile),
+				});
+				vi.stubEnv('NODE_TLS_REJECT_UNAUTHORIZED', '0');
+				const transport = new EngineControlPlaneTransport(
+					engineConfig({ controlPlaneBaseUrl: `https://127.0.0.1:${server.port}` }),
+					Container.get(OutboundHttp),
+					{ tls: { ...leaf('dp'), ca: readFileSync(certs.caFile) } } as EngineTlsMaterial,
+				);
+
+				await expect(
+					transport.forScope('lifecycle-events:write').request({
+						url: '/internal/status-callback',
+						method: 'POST',
+						body: { events },
+						json: true,
+					}),
+				).rejects.toThrow(/certificate/);
+				expect(pushRelay.relay).not.toHaveBeenCalled();
+			} finally {
+				vi.unstubAllEnvs();
+				rmSync(otherDir, { recursive: true, force: true });
+			}
+		});
+
 		it('rejects a valid token without a client certificate', async () => {
 			const response = await postAs();
 

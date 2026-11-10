@@ -73,10 +73,12 @@ describe('EngineDataPlaneClient', () => {
 		client = newClient();
 	});
 
-	it('presents the client certificate and trusts only the engine CA when TLS is on', () => {
+	it('presents the client certificate and verifies the engine against the engine CA alone when TLS is on', () => {
 		newClient({}, { tls });
 
-		expect(clientOptions?.connectionPool).toEqual({ agentOptions: tls });
+		expect(clientOptions?.connectionPool).toEqual({
+			agentOptions: { ...tls, rejectUnauthorized: true },
+		});
 	});
 
 	it('uses no connection pool over plain HTTP', () => {
