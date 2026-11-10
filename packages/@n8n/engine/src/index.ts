@@ -41,8 +41,6 @@ export type {
 export {
 	LIFECYCLE_EVENT_SUBSCRIPTION_KINDS,
 	MAX_LIFECYCLE_EVENTS_PER_BATCH,
-	MAX_LIFECYCLE_EVENT_BATCH_BYTES,
-	MAX_STEP_COMPLETED_OUTPUTS_BYTES,
 	lifecycleEventBatchSchema,
 	lifecycleEventSchema,
 	lifecycleEventSubscriptionSchema,

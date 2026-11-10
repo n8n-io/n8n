@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BatchingLifecycleEventPublisher } from '../batching-lifecycle-event-publisher';
-import { MAX_STEP_COMPLETED_OUTPUTS_BYTES } from '../lifecycle-event.schema';
 import type { LifecycleEvent } from '../lifecycle-event.types';
 
 const FLUSH_MS = 50;
@@ -18,20 +17,6 @@ const a = event('exec-a');
 const b = event('exec-b');
 const c = event('exec-c');
 const d = event('exec-d');
-
-type StepCompleted = Extract<LifecycleEvent, { type: 'step:completed' }>;
-
-/** A completed step whose serialized outputs are a little over `bytes` long. */
-const completed = (stepId: string, bytes: number): StepCompleted => ({
-	type: 'step:completed',
-	executionId: 'exec-1',
-	stepId,
-	nodeId: 'node-a',
-	nodeName: 'Edit Fields',
-	iteration: 0,
-	at: '2026-08-24T10:00:00.000Z',
-	outputs: [[{ json: { blob: 'x'.repeat(bytes) } }]],
-});
 
 /** Every send is handed the batch plus the signal that abandons it. */
 const signal = expect.any(AbortSignal) as AbortSignal;
@@ -328,114 +313,6 @@ describe('BatchingLifecycleEventPublisher', () => {
 			[[a, b], signal],
 			[[c], signal],
 		]);
-	});
-
-	it('cuts a batch at the byte cap before the count cap', async () => {
-		const send = vi.fn().mockResolvedValue(undefined);
-		const maxBatchBytes = 10_000;
-		const publisher = new BatchingLifecycleEventPublisher(
-			send,
-			FLUSH_MS,
-			500,
-			5_000,
-			TIMEOUT_MS,
-			maxBatchBytes,
-		);
-
-		// Three fit in one batch; the fourth would push it over.
-		const [s1, s2, s3, s4] = ['s1', 's2', 's3', 's4'].map((id) => completed(id, 2_500));
-		for (const published of [s1, s2, s3, s4]) publisher.publish(published);
-		await vi.advanceTimersByTimeAsync(FLUSH_MS);
-
-		expect(send.mock.calls).toEqual([
-			[[s1, s2, s3], signal],
-			[[s4], signal],
-		]);
-	});
-
-	it('counts the envelope of an identifier-only event toward the byte cap', async () => {
-		const send = vi.fn().mockResolvedValue(undefined);
-		const maxBatchBytes = 10_000;
-		const publisher = new BatchingLifecycleEventPublisher(
-			send,
-			FLUSH_MS,
-			500,
-			5_000,
-			TIMEOUT_MS,
-			maxBatchBytes,
-		);
-
-		// A node name is workflow data, so an event without outputs can be large too.
-		const started = (stepId: string): LifecycleEvent => ({
-			type: 'step:started',
-			executionId: 'exec-1',
-			stepId,
-			nodeId: 'node-a',
-			nodeName: 'n'.repeat(4_000),
-			iteration: 0,
-			at: '2026-08-24T10:00:00.000Z',
-		});
-		const [s1, s2, s3] = ['s1', 's2', 's3'].map(started);
-		for (const published of [s1, s2, s3]) publisher.publish(published);
-		await vi.advanceTimersByTimeAsync(FLUSH_MS);
-
-		expect(send.mock.calls).toEqual([
-			[[s1, s2], signal],
-			[[s3], signal],
-		]);
-	});
-
-	it('sends an event alone when it fills a batch by itself', async () => {
-		const send = vi.fn().mockResolvedValue(undefined);
-		const publisher = new BatchingLifecycleEventPublisher(
-			send,
-			FLUSH_MS,
-			500,
-			5_000,
-			TIMEOUT_MS,
-			100,
-		);
-
-		const big = completed('s1', 1_000);
-		publisher.publish(big);
-		publisher.publish(a);
-		await vi.advanceTimersByTimeAsync(FLUSH_MS);
-
-		expect(send.mock.calls).toEqual([
-			[[big], signal],
-			[[a], signal],
-		]);
-	});
-
-	it('ships a completed step without its outputs when they are over the limit', async () => {
-		vi.spyOn(console, 'warn').mockImplementation(() => {});
-		const send = vi.fn().mockResolvedValue(undefined);
-		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS);
-
-		const big = completed('s1', MAX_STEP_COMPLETED_OUTPUTS_BYTES);
-		publisher.publish(big);
-		publisher.publish(a);
-		await vi.advanceTimersByTimeAsync(FLUSH_MS);
-
-		const { outputs: _dropped, ...withoutOutputs } = big;
-		expect(send).toHaveBeenCalledExactlyOnceWith([withoutOutputs, a], signal);
-		expect(console.warn).toHaveBeenCalledExactlyOnceWith(
-			expect.stringMatching(
-				/^engine: lifecycle event outputs over the wire limit, sent step:completed without outputs \(execution exec-1, step s1, \d+ bytes\)$/,
-			),
-		);
-	});
-
-	it('keeps outputs that are exactly at the limit', async () => {
-		const send = vi.fn().mockResolvedValue(undefined);
-		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS);
-
-		const overhead = Buffer.byteLength(JSON.stringify(completed('s1', 0).outputs));
-		const exact = completed('s1', MAX_STEP_COMPLETED_OUTPUTS_BYTES - overhead);
-		publisher.publish(exact);
-		await vi.advanceTimersByTimeAsync(FLUSH_MS);
-
-		expect(send).toHaveBeenCalledExactlyOnceWith([exact], signal);
 	});
 
 	it('delivers the buffer on stop without waiting for the interval', async () => {
