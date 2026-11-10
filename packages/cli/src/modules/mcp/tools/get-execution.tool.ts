@@ -5,9 +5,11 @@ import { formatRedactedError } from '@n8n/instance-ai/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type {
 	ExecutionStatus,
+	INode,
 	IPinData,
 	IRunData,
 	IRunExecutionData,
+	ITaskData,
 	ITaskDataConnections,
 } from 'n8n-workflow';
 import { jsonStringify, replaceCircularReferences } from 'n8n-workflow';
@@ -252,7 +254,7 @@ export const createGetExecutionTool = (
 async function findFailureSummary(executionId: string, user: User): Promise<ExecutionFailure> {
 	try {
 		const execution = await loadExecutionForViewer(executionId, user);
-		return execution && toFailureSummary(execution.data.resultData);
+		return execution && toFailureSummary(execution.data.resultData, execution.workflowData.nodes);
 	} catch (error) {
 		Container.get(Logger).warn('MCP get_workflow_execution could not load the failure summary', {
 			executionId,
@@ -262,21 +264,48 @@ async function findFailureSummary(executionId: string, user: User): Promise<Exec
 	}
 }
 
-function findFailedNodeName({ runData, lastNodeExecuted }: IRunExecutionData['resultData']) {
-	const lastRunStatus = (nodeName: string) => runData?.[nodeName]?.at(-1)?.executionStatus;
-	const isFailed = (status?: ExecutionStatus) =>
-		status !== undefined && FAILED_EXECUTION_STATUSES.includes(status);
-
-	if (lastNodeExecuted) {
-		const status = lastRunStatus(lastNodeExecuted);
-		if (status === undefined || isFailed(status)) return lastNodeExecuted;
-	}
-	return Object.keys(runData ?? {}).find((nodeName) => isFailed(lastRunStatus(nodeName)));
+function continuesOnError(node: INode) {
+	return (
+		node.continueOnFail === true ||
+		node.onError === 'continueRegularOutput' ||
+		node.onError === 'continueErrorOutput'
+	);
 }
 
-function toFailureSummary(resultData: IRunExecutionData['resultData']): ExecutionFailure {
+function isFailedRun(run: ITaskData) {
+	return (
+		run.error !== undefined ||
+		run.redactedError !== undefined ||
+		(run.executionStatus !== undefined && FAILED_EXECUTION_STATUSES.includes(run.executionStatus))
+	);
+}
+
+function findFailedNodeName(
+	{ runData = {}, lastNodeExecuted }: IRunExecutionData['resultData'],
+	nodes: INode[],
+) {
+	const nodeNamesThatContinueOnError = new Set(
+		nodes.filter(continuesOnError).map((node) => node.name),
+	);
+	const hasFailed = (nodeName: string) => {
+		const lastRun = runData[nodeName]?.at(-1);
+		return (
+			lastRun !== undefined && !nodeNamesThatContinueOnError.has(nodeName) && isFailedRun(lastRun)
+		);
+	};
+
+	if (lastNodeExecuted && (!runData[lastNodeExecuted] || hasFailed(lastNodeExecuted))) {
+		return lastNodeExecuted;
+	}
+	return Object.keys(runData).find(hasFailed);
+}
+
+function toFailureSummary(
+	resultData: IRunExecutionData['resultData'],
+	nodes: INode[],
+): ExecutionFailure {
 	const { error, redactedError } = resultData;
-	const failedNodeName = findFailedNodeName(resultData);
+	const failedNodeName = findFailedNodeName(resultData, nodes);
 	const nodeName = failedNodeName ? { nodeName: failedNodeName } : {};
 	if (redactedError) return { ...nodeName, message: formatRedactedError(redactedError) };
 	if (!error) return undefined;

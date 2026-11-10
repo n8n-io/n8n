@@ -5,6 +5,7 @@ import {
 	createEmptyRunExecutionData,
 	jsonParse,
 	type ExecutionStatus,
+	type INode,
 	type IRunExecutionData,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -922,7 +923,7 @@ describe('get-execution MCP tool', () => {
 				data.resultData.runData = { Trigger: task('success'), 'HTTP Request': task(status) };
 				data.resultData.lastNodeExecuted = 'HTTP Request';
 				data.resultData.error = error as unknown as IRunExecutionData['resultData']['error'];
-				return { ...metadata(status), data };
+				return { ...metadata(status), data, workflowData: { nodes: [] as INode[] } };
 			};
 
 			const callTool = async (includeData?: boolean) => {
@@ -1033,6 +1034,42 @@ describe('get-execution MCP tool', () => {
 					nodeName: 'HTTP Request',
 					message: 'Workflow did crash',
 				});
+			});
+
+			test('skips a failed node that continues on error when it looks for the failed node', async () => {
+				const execution = failedExecution('crashed', { message: 'Workflow did crash' });
+				execution.data.resultData.runData = {
+					Trigger: task('success'),
+					Fallback: task('error'),
+					'HTTP Request': task('crashed'),
+				};
+				execution.data.resultData.lastNodeExecuted = 'Trigger';
+				execution.workflowData.nodes = [
+					{ name: 'Fallback', onError: 'continueRegularOutput' } as INode,
+				];
+				mockStoredExecution(execution);
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({
+					nodeName: 'HTTP Request',
+					message: 'Workflow did crash',
+				});
+			});
+
+			test('finds the failed node by its run error when the runs have no status', async () => {
+				const execution = failedExecution('error', { message: 'Failed' });
+				const run = { startTime: 0, executionIndex: 0, executionTime: 0, source: [] };
+				execution.data.resultData.runData = {
+					Trigger: [run],
+					'HTTP Request': [{ ...run, error: { message: 'Failed' } as never }],
+				};
+				execution.data.resultData.lastNodeExecuted = 'Trigger';
+				mockStoredExecution(execution);
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({ nodeName: 'HTTP Request', message: 'Failed' });
 			});
 
 			test('omits the node name when no node failed', async () => {
