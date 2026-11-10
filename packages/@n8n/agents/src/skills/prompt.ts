@@ -64,6 +64,7 @@ ${catalog}
 When deciding whether to load a skill:
 - Match the user's request against the skill name and description.
 - If one skill clearly matches, call load_skill once with \`{ "skillId": "<id>" }\`, then follow the returned instructions.
+- If several skills clearly match, load them all in the same response: one load_skill call for each skill, not one call per turn.
 - If a loaded skill references a supporting file, call load_skill with \`{ "skillId": "<id>", "filePath": "<relative path>" }\`.${
 		hasReferences
 			? `

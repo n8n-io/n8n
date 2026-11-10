@@ -10,6 +10,7 @@ import type { ModelCost } from '../../sdk/catalog';
 import type { RuntimeSkillSource } from '../../skills/types';
 import type { WorkspaceFilesystem } from '../../workspace';
 import type {
+	AgentMessage,
 	BuiltFileStore,
 	BuiltMemory,
 	BuiltProviderTool,
@@ -29,11 +30,40 @@ import type {
 	ModelConfig,
 	NativeToolDeferralConfig,
 	PromptCachingConfig,
+	ToolDeferralConfig,
 } from '../sdk/agent';
 
 export interface VolatileInstructionsContext {
 	persistence?: AgentPersistenceOptions;
 }
+
+/** A piece of guidance that a context note provider wants the model to see now. */
+export interface ContextNote {
+	/**
+	 * Stable id. The runtime skips a note whose id is already in the visible
+	 * conversation. Observation masking can hide a sent note, so it can be sent again.
+	 */
+	id: string;
+	content: string;
+}
+
+export interface ContextNoteRequest {
+	/** Messages the model sees, oldest first, before this model call. */
+	messages: readonly AgentMessage[];
+	/** Skills that are active for this run. */
+	activeSkillIds: readonly string[];
+	/** Ids of the notes that the conversation already contains. */
+	sentNoteIds: ReadonlySet<string>;
+	persistence?: AgentPersistenceOptions;
+	abortSignal?: AbortSignal;
+}
+
+/**
+ * Supplies notes before each model call. The runtime saves the notes in the
+ * conversation as a `<system-reminder>`, after the earlier messages, so the
+ * prompt cache stays valid. A provider failure skips its notes for that call.
+ */
+export type ContextNoteProvider = (request: ContextNoteRequest) => Promise<ContextNote[]>;
 
 export type VolatileInstructionsProvider = (
 	context: VolatileInstructionsContext,
@@ -62,6 +92,13 @@ export interface AgentRuntimeConfig {
 	/** Starts preparing the agent's workspace. Called for tools with `requiresWorkspace`. */
 	prewarmWorkspace?: () => void;
 	nativeToolDeferral?: NativeToolDeferralConfig;
+	/** How `deferredTools` reach the model. Default: provider tool search, else the catalog. */
+	toolDeferral?: ToolDeferralConfig;
+	/** Catalog mode: the namespace each deferred tool is listed under, by tool name. */
+	deferredToolNamespaces?: Record<string, string>;
+	/** Catalog mode: one line on what each namespace holds, by namespace. */
+	deferredToolNamespaceDescriptions?: Record<string, string>;
+	/** Catalog mode: the most tools a `find_tools` query returns. */
 	toolSearch?: {
 		topK?: number;
 	};
@@ -106,4 +143,6 @@ export interface AgentRuntimeConfig {
 	mcpConnectionFailures?: McpConnectionFailedEvent[];
 	/** The runtime loads these host instructions before each model call but does not save them. */
 	volatileInstructionsProvider?: VolatileInstructionsProvider;
+	/** The runtime asks these providers for notes before each model call. */
+	contextNoteProviders?: ContextNoteProvider[];
 }

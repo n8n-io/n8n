@@ -336,6 +336,21 @@ export interface NativeToolDeferralConfig {
 	eagerToolNames: readonly string[];
 }
 
+/**
+ * How the runtime exposes tools added with `.deferredTool()`.
+ *
+ * - `provider` (default): the provider's own tool search (Anthropic, OpenAI).
+ *   When the model or endpoint does not support it, the runtime uses `catalog`.
+ * - `catalog`: the prompt lists deferred tool names by namespace. The model
+ *   reads schemas with `find_tools` and runs a tool with `call_tool`. The tool
+ *   list never changes, so the prompt cache stays valid.
+ */
+export type ToolDeferralMode = 'provider' | 'catalog';
+
+export interface ToolDeferralConfig {
+	mode: ToolDeferralMode;
+}
+
 export interface AnthropicPromptCachingConfig {
 	/**
 	 * Cache breakpoint residency. Default `'1h'`: agent workloads pause (HITL,

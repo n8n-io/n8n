@@ -9,7 +9,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "You are testing deferred tool discovery with approval. When asked to delete a temporary file, first call search_tools, then call load_tool with the exact returned tool name, then call delete_temp_file. Do not skip the tool."
+					"text": "<built_in_rules>\n- <tool_catalog_rules>\nMost of your tools are not in your toolset. The \"Tool catalog\" section in the conversation lists them by namespace, with their names only, not their arguments. When that section changes, a newer one replaces it.\n- To use one, get its input schema with find_tools, then run it with call_tool. Do this even when you know the name, and even when a skill names the tool.\n- Skills and instructions often name a catalog tool directly, such as \"call `some_tool` with the IDs\". Read that as call_tool with tool \"some_tool\" and those arguments. Never emit a tool call whose name is a catalog tool.\n- Look up every tool the task will need in one find_tools call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.\n- When you do not know a tool's name, search by query or list a namespace.\n</tool_catalog_rules>\n</built_in_rules>\n\nYou are testing deferred tool discovery with approval. When asked to delete a temporary file, first call find_tools, then call call_tool with delete_temp_file. Do not skip the tool."
 				}
 			],
 			"messages": [
@@ -18,42 +18,64 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Use deferred tools to delete /tmp/deferred-tool-test.txt. Search for the tool, load it, and call it with that exact path."
+							"text": "<context>\n# Tool catalog\n- tools: delete_temp_file\n</context>"
+						},
+						{
+							"type": "text",
+							"text": "Use deferred tools to delete /tmp/deferred-tool-test.txt. Find the tool and call it with that exact path."
 						}
 					]
 				}
 			],
 			"tools": [
 				{
-					"name": "search_tools",
-					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"name": "find_tools",
+					"description": "Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.\n- tools: the full description and input schema of each named tool.\n- namespace alone: every tool in that namespace, briefly.\n- query, optionally with namespace: the tools that best match the keywords, best first.\n- pattern, optionally with namespace: tools whose name or description matches the regular expression.\nA lookup that returns 5 tools or fewer includes their full schemas.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
+							"namespace": {
+								"type": "string",
+								"description": "A namespace, as the tool catalog lists it"
+							},
+							"tools": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Tool names to get in full, with their input schemas. Name every tool you will need in one lookup."
+							},
 							"query": {
 								"type": "string",
-								"minLength": 1,
-								"description": "Keywords describing the capability or integration you need"
+								"description": "Keywords for what you want to do, matched against names and descriptions"
+							},
+							"pattern": {
+								"type": "string",
+								"description": "Regular expression matched against tool names and descriptions"
 							}
 						},
-						"required": ["query"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				},
 				{
-					"name": "load_tool",
-					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"name": "call_tool",
+					"description": "Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
-							"toolName": {
+							"tool": {
 								"type": "string",
 								"minLength": 1,
-								"description": "Exact tool name returned by search_tools"
+								"description": "The tool's name, as the tool catalog lists it"
+							},
+							"arguments": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings."
 							}
 						},
-						"required": ["toolName"],
+						"required": ["tool"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -64,324 +86,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01U8ixXKGJnyA6CJP5xUDYPN\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll help you delete that file using deferred tools. Let me start by searching for the appropriate tool.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01UG2oYn3s526Qpfv2Y5cwrm\",\"name\":\"search_tools\",\"input\":{\"query\":\"delete temporary file\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":822,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":78,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
-		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:18Z",
-			"anthropic-ratelimit-output-tokens-limit": "2000000",
-			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:19Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:16Z",
-			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:18Z",
-			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a154f7be1ab13ec1-VIE",
-			"connection": "keep-alive",
-			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
-			"content-type": "application/json",
-			"date": "Fri, 03 Jul 2026 09:47:19 GMT",
-			"request-id": "req_011Cceus5uEGy1afTMXwajFH",
-			"server": "cloudflare",
-			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-5742d46422da95a2397c9163b1435a8f-5b1de7682cc3b91e-01",
-			"vary": "Accept-Encoding",
-			"x-robots-tag": "none"
-		},
-		"responseIsBinary": false
-	},
-	{
-		"scope": "https://api.anthropic.com:443",
-		"method": "POST",
-		"path": "/v1/messages",
-		"body": {
-			"model": "claude-haiku-4-5",
-			"max_tokens": 64000,
-			"system": [
-				{
-					"type": "text",
-					"text": "You are testing deferred tool discovery with approval. When asked to delete a temporary file, first call search_tools, then call load_tool with the exact returned tool name, then call delete_temp_file. Do not skip the tool."
-				}
-			],
-			"messages": [
-				{
-					"role": "user",
-					"content": [
-						{
-							"type": "text",
-							"text": "Use deferred tools to delete /tmp/deferred-tool-test.txt. Search for the tool, load it, and call it with that exact path."
-						}
-					]
-				},
-				{
-					"role": "assistant",
-					"content": [
-						{
-							"type": "text",
-							"text": "I'll help you delete that file using deferred tools. Let me start by searching for the appropriate tool."
-						},
-						{
-							"type": "tool_use",
-							"id": "toolu_01UG2oYn3s526Qpfv2Y5cwrm",
-							"name": "search_tools",
-							"input": {
-								"query": "delete temporary file"
-							},
-							"caller": {
-								"type": "direct"
-							}
-						}
-					]
-				},
-				{
-					"role": "user",
-					"content": [
-						{
-							"type": "tool_result",
-							"tool_use_id": "toolu_01UG2oYn3s526Qpfv2Y5cwrm",
-							"content": "{\"results\":[{\"name\":\"delete_temp_file\",\"description\":\"Delete a temporary file at a requested path after approval\",\"loaded\":false}]}"
-						}
-					]
-				}
-			],
-			"tools": [
-				{
-					"name": "search_tools",
-					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"query": {
-								"type": "string",
-								"minLength": 1,
-								"description": "Keywords describing the capability or integration you need"
-							}
-						},
-						"required": ["query"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "load_tool",
-					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"toolName": {
-								"type": "string",
-								"minLength": 1,
-								"description": "Exact tool name returned by search_tools"
-							}
-						},
-						"required": ["toolName"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				}
-			],
-			"tool_choice": {
-				"type": "auto"
-			}
-		},
-		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01Grqa8cETmwg6nbjDh9oMwy\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Great! I found the `delete_temp_file` tool. Now let me load it.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01Ws9Gw8qkdAgUapPBdGSmF4\",\"name\":\"load_tool\",\"input\":{\"toolName\":\"delete_temp_file\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":943,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":79,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
-		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:20Z",
-			"anthropic-ratelimit-output-tokens-limit": "2000000",
-			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:20Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:19Z",
-			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:20Z",
-			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a154f7d7b93f3ec1-VIE",
-			"connection": "keep-alive",
-			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
-			"content-type": "application/json",
-			"date": "Fri, 03 Jul 2026 09:47:20 GMT",
-			"request-id": "req_011CceusPTutrA3cxyHztNCS",
-			"server": "cloudflare",
-			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-edb43ba11b2f82b40c6a5d940f0ea825-cd7645618f5fc2b2-01",
-			"vary": "Accept-Encoding",
-			"x-robots-tag": "none"
-		},
-		"responseIsBinary": false
-	},
-	{
-		"scope": "https://api.anthropic.com:443",
-		"method": "POST",
-		"path": "/v1/messages",
-		"body": {
-			"model": "claude-haiku-4-5",
-			"max_tokens": 64000,
-			"system": [
-				{
-					"type": "text",
-					"text": "You are testing deferred tool discovery with approval. When asked to delete a temporary file, first call search_tools, then call load_tool with the exact returned tool name, then call delete_temp_file. Do not skip the tool."
-				}
-			],
-			"messages": [
-				{
-					"role": "user",
-					"content": [
-						{
-							"type": "text",
-							"text": "Use deferred tools to delete /tmp/deferred-tool-test.txt. Search for the tool, load it, and call it with that exact path."
-						}
-					]
-				},
-				{
-					"role": "assistant",
-					"content": [
-						{
-							"type": "text",
-							"text": "I'll help you delete that file using deferred tools. Let me start by searching for the appropriate tool."
-						},
-						{
-							"type": "tool_use",
-							"id": "toolu_01UG2oYn3s526Qpfv2Y5cwrm",
-							"name": "search_tools",
-							"input": {
-								"query": "delete temporary file"
-							},
-							"caller": {
-								"type": "direct"
-							}
-						}
-					]
-				},
-				{
-					"role": "user",
-					"content": [
-						{
-							"type": "tool_result",
-							"tool_use_id": "toolu_01UG2oYn3s526Qpfv2Y5cwrm",
-							"content": "{\"results\":[{\"name\":\"delete_temp_file\",\"description\":\"Delete a temporary file at a requested path after approval\",\"loaded\":false}]}"
-						}
-					]
-				},
-				{
-					"role": "assistant",
-					"content": [
-						{
-							"type": "text",
-							"text": "Great! I found the `delete_temp_file` tool. Now let me load it."
-						},
-						{
-							"type": "tool_use",
-							"id": "toolu_01Ws9Gw8qkdAgUapPBdGSmF4",
-							"name": "load_tool",
-							"input": {
-								"toolName": "delete_temp_file"
-							},
-							"caller": {
-								"type": "direct"
-							}
-						}
-					]
-				},
-				{
-					"role": "user",
-					"content": [
-						{
-							"type": "tool_result",
-							"tool_use_id": "toolu_01Ws9Gw8qkdAgUapPBdGSmF4",
-							"content": "{\"status\":\"loaded\",\"toolName\":\"delete_temp_file\",\"tool\":{\"name\":\"delete_temp_file\",\"description\":\"Delete a temporary file at a requested path after approval\",\"loaded\":true},\"message\":\"Tool \\\"delete_temp_file\\\" is loaded and will be available on the next model turn.\"}"
-						}
-					]
-				}
-			],
-			"tools": [
-				{
-					"name": "search_tools",
-					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"query": {
-								"type": "string",
-								"minLength": 1,
-								"description": "Keywords describing the capability or integration you need"
-							}
-						},
-						"required": ["query"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "load_tool",
-					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"toolName": {
-								"type": "string",
-								"minLength": 1,
-								"description": "Exact tool name returned by search_tools"
-							}
-						},
-						"required": ["toolName"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "delete_temp_file",
-					"description": "Delete a temporary file at a requested path after approval",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"path": {
-								"type": "string",
-								"description": "Temporary file path to delete"
-							}
-						},
-						"required": ["path"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				}
-			],
-			"tool_choice": {
-				"type": "auto"
-			}
-		},
-		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011uWLuKmy1XGbDa6VFV4EQp\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Perfect! The tool is now loaded. Now let me call it to delete the file at the exact path you specified.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01Q82FfxweQBK4RdiadwoKt8\",\"name\":\"delete_temp_file\",\"input\":{\"path\":\"/tmp/deferred-tool-test.txt\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1197,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":90,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CgrMAR5wkDNUGNNkygYxt\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll help you delete that temporary file. Let me first find the tool and then call it.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01TzYBxdeCYcy9EcgVbNkeAV\",\"name\":\"find_tools\",\"input\":{\"tools\":[\"delete_temp_file\"]},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1319,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":80,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:21Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-08T23:43:24Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:21Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-08T23:43:24Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:21Z",
+			"anthropic-ratelimit-requests-reset": "2026-11-08T23:43:24Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:21Z",
+			"anthropic-ratelimit-tokens-reset": "2026-11-08T23:43:24Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a154f7e02cd23ec1-VIE",
+			"cf-ray": "a578708e1ddcd7b4-TXL",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Fri, 03 Jul 2026 09:47:22 GMT",
-			"request-id": "req_011CceusV5kM1MrxeuvaHbCy",
+			"date": "Sun, 08 Nov 2026 23:43:24 GMT",
+			"request-id": "req_011CgrMAQtHnQJKfuPySwejN",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=870",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-4661612fada87cb122e339dd689e4ca8-ab9e2906a1ac5e31-01",
+			"traceresponse": "00-61aac6f81a9b59db9971e3b51d0b1bf9-8a4cc11eaf7709a8-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -397,7 +126,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "You are testing deferred tool discovery with approval. When asked to delete a temporary file, first call search_tools, then call load_tool with the exact returned tool name, then call delete_temp_file. Do not skip the tool."
+					"text": "<built_in_rules>\n- <tool_catalog_rules>\nMost of your tools are not in your toolset. The \"Tool catalog\" section in the conversation lists them by namespace, with their names only, not their arguments. When that section changes, a newer one replaces it.\n- To use one, get its input schema with find_tools, then run it with call_tool. Do this even when you know the name, and even when a skill names the tool.\n- Skills and instructions often name a catalog tool directly, such as \"call `some_tool` with the IDs\". Read that as call_tool with tool \"some_tool\" and those arguments. Never emit a tool call whose name is a catalog tool.\n- Look up every tool the task will need in one find_tools call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.\n- When you do not know a tool's name, search by query or list a namespace.\n</tool_catalog_rules>\n</built_in_rules>\n\nYou are testing deferred tool discovery with approval. When asked to delete a temporary file, first call find_tools, then call call_tool with delete_temp_file. Do not skip the tool."
 				}
 			],
 			"messages": [
@@ -406,7 +135,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Use deferred tools to delete /tmp/deferred-tool-test.txt. Search for the tool, load it, and call it with that exact path."
+							"text": "<context>\n# Tool catalog\n- tools: delete_temp_file\n</context>"
+						},
+						{
+							"type": "text",
+							"text": "Use deferred tools to delete /tmp/deferred-tool-test.txt. Find the tool and call it with that exact path."
 						}
 					]
 				},
@@ -415,14 +148,14 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "I'll help you delete that file using deferred tools. Let me start by searching for the appropriate tool."
+							"text": "I'll help you delete that temporary file. Let me first find the tool and then call it."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01UG2oYn3s526Qpfv2Y5cwrm",
-							"name": "search_tools",
+							"id": "toolu_01TzYBxdeCYcy9EcgVbNkeAV",
+							"name": "find_tools",
 							"input": {
-								"query": "delete temporary file"
+								"tools": ["delete_temp_file"]
 							},
 							"caller": {
 								"type": "direct"
@@ -435,8 +168,125 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01UG2oYn3s526Qpfv2Y5cwrm",
-							"content": "{\"results\":[{\"name\":\"delete_temp_file\",\"description\":\"Delete a temporary file at a requested path after approval\",\"loaded\":false}]}"
+							"tool_use_id": "toolu_01TzYBxdeCYcy9EcgVbNkeAV",
+							"content": "{\"tools\":[{\"name\":\"delete_temp_file\",\"namespace\":\"tools\",\"description\":\"Delete a temporary file at a requested path after approval\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Temporary file path to delete\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}}],\"missing\":[]}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "find_tools",
+					"description": "Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.\n- tools: the full description and input schema of each named tool.\n- namespace alone: every tool in that namespace, briefly.\n- query, optionally with namespace: the tools that best match the keywords, best first.\n- pattern, optionally with namespace: tools whose name or description matches the regular expression.\nA lookup that returns 5 tools or fewer includes their full schemas.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"namespace": {
+								"type": "string",
+								"description": "A namespace, as the tool catalog lists it"
+							},
+							"tools": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Tool names to get in full, with their input schemas. Name every tool you will need in one lookup."
+							},
+							"query": {
+								"type": "string",
+								"description": "Keywords for what you want to do, matched against names and descriptions"
+							},
+							"pattern": {
+								"type": "string",
+								"description": "Regular expression matched against tool names and descriptions"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "call_tool",
+					"description": "Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"tool": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The tool's name, as the tool catalog lists it"
+							},
+							"arguments": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings."
+							}
+						},
+						"required": ["tool"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CgrMAVg2Ns7FhEyQFgV9p\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now I'll call the delete_temp_file tool with the exact path you provided:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01Q79rwYSELnbW3vajpfThmw\",\"name\":\"call_tool\",\"input\":{\"tool\":\"delete_temp_file\",\"arguments\":{\"path\":\"/tmp/deferred-tool-test.txt\"}},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1506,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":107,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-08T23:43:25Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-08T23:43:26Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-11-08T23:43:25Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-08T23:43:25Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a5787094da24d7b4-TXL",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Sun, 08 Nov 2026 23:43:26 GMT",
+			"request-id": "req_011CgrMAVVNHQcT6Ury8vZF5",
+			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=1048",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-5f87b1c021afff7a24d4a8d32a0a520a-6670d992e7eaf288-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "<built_in_rules>\n- <tool_catalog_rules>\nMost of your tools are not in your toolset. The \"Tool catalog\" section in the conversation lists them by namespace, with their names only, not their arguments. When that section changes, a newer one replaces it.\n- To use one, get its input schema with find_tools, then run it with call_tool. Do this even when you know the name, and even when a skill names the tool.\n- Skills and instructions often name a catalog tool directly, such as \"call `some_tool` with the IDs\". Read that as call_tool with tool \"some_tool\" and those arguments. Never emit a tool call whose name is a catalog tool.\n- Look up every tool the task will need in one find_tools call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.\n- When you do not know a tool's name, search by query or list a namespace.\n</tool_catalog_rules>\n</built_in_rules>\n\nYou are testing deferred tool discovery with approval. When asked to delete a temporary file, first call find_tools, then call call_tool with delete_temp_file. Do not skip the tool."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "<context>\n# Tool catalog\n- tools: delete_temp_file\n</context>"
+						},
+						{
+							"type": "text",
+							"text": "Use deferred tools to delete /tmp/deferred-tool-test.txt. Find the tool and call it with that exact path."
 						}
 					]
 				},
@@ -445,14 +295,14 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Great! I found the `delete_temp_file` tool. Now let me load it."
+							"text": "I'll help you delete that temporary file. Let me first find the tool and then call it."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01Ws9Gw8qkdAgUapPBdGSmF4",
-							"name": "load_tool",
+							"id": "toolu_01TzYBxdeCYcy9EcgVbNkeAV",
+							"name": "find_tools",
 							"input": {
-								"toolName": "delete_temp_file"
+								"tools": ["delete_temp_file"]
 							},
 							"caller": {
 								"type": "direct"
@@ -465,8 +315,8 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01Ws9Gw8qkdAgUapPBdGSmF4",
-							"content": "{\"status\":\"loaded\",\"toolName\":\"delete_temp_file\",\"tool\":{\"name\":\"delete_temp_file\",\"description\":\"Delete a temporary file at a requested path after approval\",\"loaded\":true},\"message\":\"Tool \\\"delete_temp_file\\\" is loaded and will be available on the next model turn.\"}"
+							"tool_use_id": "toolu_01TzYBxdeCYcy9EcgVbNkeAV",
+							"content": "{\"tools\":[{\"name\":\"delete_temp_file\",\"namespace\":\"tools\",\"description\":\"Delete a temporary file at a requested path after approval\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Temporary file path to delete\"}},\"required\":[\"path\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}}],\"missing\":[]}"
 						}
 					]
 				},
@@ -475,14 +325,17 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Perfect! The tool is now loaded. Now let me call it to delete the file at the exact path you specified."
+							"text": "Now I'll call the delete_temp_file tool with the exact path you provided:"
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01Q82FfxweQBK4RdiadwoKt8",
-							"name": "delete_temp_file",
+							"id": "toolu_01Q79rwYSELnbW3vajpfThmw",
+							"name": "call_tool",
 							"input": {
-								"path": "/tmp/deferred-tool-test.txt"
+								"tool": "delete_temp_file",
+								"arguments": {
+									"path": "/tmp/deferred-tool-test.txt"
+								}
 							},
 							"caller": {
 								"type": "direct"
@@ -495,7 +348,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01Q82FfxweQBK4RdiadwoKt8",
+							"tool_use_id": "toolu_01Q79rwYSELnbW3vajpfThmw",
 							"content": "{\"deleted\":true,\"path\":\"/tmp/deferred-tool-test.txt\"}"
 						}
 					]
@@ -503,51 +356,53 @@
 			],
 			"tools": [
 				{
-					"name": "search_tools",
-					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"name": "find_tools",
+					"description": "Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.\n- tools: the full description and input schema of each named tool.\n- namespace alone: every tool in that namespace, briefly.\n- query, optionally with namespace: the tools that best match the keywords, best first.\n- pattern, optionally with namespace: tools whose name or description matches the regular expression.\nA lookup that returns 5 tools or fewer includes their full schemas.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
+							"namespace": {
+								"type": "string",
+								"description": "A namespace, as the tool catalog lists it"
+							},
+							"tools": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Tool names to get in full, with their input schemas. Name every tool you will need in one lookup."
+							},
 							"query": {
 								"type": "string",
-								"minLength": 1,
-								"description": "Keywords describing the capability or integration you need"
+								"description": "Keywords for what you want to do, matched against names and descriptions"
+							},
+							"pattern": {
+								"type": "string",
+								"description": "Regular expression matched against tool names and descriptions"
 							}
 						},
-						"required": ["query"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				},
 				{
-					"name": "load_tool",
-					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"name": "call_tool",
+					"description": "Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
-							"toolName": {
+							"tool": {
 								"type": "string",
 								"minLength": 1,
-								"description": "Exact tool name returned by search_tools"
+								"description": "The tool's name, as the tool catalog lists it"
+							},
+							"arguments": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings."
 							}
 						},
-						"required": ["toolName"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "delete_temp_file",
-					"description": "Delete a temporary file at a requested path after approval",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"path": {
-								"type": "string",
-								"description": "Temporary file path to delete"
-							}
-						},
-						"required": ["path"],
+						"required": ["tool"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -558,30 +413,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01P38CnFzc6QGe3vABxRhWxU\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Success! I've successfully completed the deferred tool workflow:\\n\\n1. ✅ **Searched** for the tool using `search_tools` - found `delete_temp_file`\\n2. ✅ **Loaded** the tool using `load_tool` with the exact name returned\\n3. ✅ **Called** `delete_temp_file` with the exact path `/tmp/deferred-tool-test.txt`\\n\\nThe file at `/tmp/deferred-tool-test.txt` has been deleted successfully.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1318,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":122,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CgrMAb5y2YRppFZYxw6dQ\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Done! The temporary file at `/tmp/deferred-tool-test.txt` has been successfully deleted.\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1644,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":26,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:22Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-08T23:43:26Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:23Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-08T23:43:26Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:22Z",
+			"anthropic-ratelimit-requests-reset": "2026-11-08T23:43:26Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:22Z",
+			"anthropic-ratelimit-tokens-reset": "2026-11-08T23:43:26Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a154f7e85d4d3ec1-VIE",
+			"cf-ray": "a578709cc81ed7b4-TXL",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Fri, 03 Jul 2026 09:47:23 GMT",
-			"request-id": "req_011CceusaipqbLs9ZkdfnTZ5",
+			"date": "Sun, 08 Nov 2026 23:43:26 GMT",
+			"request-id": "req_011CgrMAau3qW5c18p6ZCo4e",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=555",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-b32f26baecdaa7815b3323857ed9a853-ff278e610a51b2eb-01",
+			"traceresponse": "00-8623f95e0cc5d2b37ddf5767d8aa7911-a3afe4fbdb1781ea-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

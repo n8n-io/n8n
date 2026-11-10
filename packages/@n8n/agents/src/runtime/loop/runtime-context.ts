@@ -7,7 +7,7 @@ import {
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
-import { isRuntimeSkillCatalog } from '../../sdk/message';
+import { isRuntimeSkillCatalog, isRuntimeToolCatalog } from '../../sdk/message';
 import { renderDynamicSkillCatalog } from '../../skills/prompt';
 import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
 import type {
@@ -57,7 +57,7 @@ import {
 	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
 import type { ActiveSkills } from '../skills/active-skills';
-import type { DeferredToolManager } from '../tools/deferred-tool-manager';
+import type { ToolCatalog } from '../tools/tool-catalog';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
 /**
@@ -108,7 +108,7 @@ export class RuntimeContextBuilder {
 
 	constructor(
 		private readonly config: AgentRuntimeConfig,
-		private readonly deferredToolManager: DeferredToolManager | undefined,
+		private readonly toolCatalog: ToolCatalog | undefined,
 	) {}
 
 	get modelId(): string {
@@ -199,6 +199,25 @@ export class RuntimeContextBuilder {
 		// Append changes to preserve cached history. Restore snapshots hidden by compaction.
 		// Runtime context is input, so generated answers must not include it.
 		list.addInput([{ type: 'custom', data: { type: 'n8n:runtime-skill-catalog', content } }]);
+	}
+
+	/**
+	 * Add the list of catalog tool names to the conversation, ahead of the turn's
+	 * input. The first list goes in a `<context>` block; a later change goes in a
+	 * `<system-reminder>` that replaces it. An unchanged list adds nothing, so the
+	 * system prompt and earlier messages stay byte-for-byte the same.
+	 */
+	synchronizeToolCatalog(list: AgentMessageList): void {
+		const catalog = this.toolCatalog?.hasTools ? this.toolCatalog.renderCatalog() : '';
+		const previous = list.llmVisibleMessages().filter(isRuntimeToolCatalog).at(-1);
+		if ((previous?.data.catalog ?? '') === catalog) return;
+		const section = `# Tool catalog\n${catalog || 'No longer applies. No catalog tools are available.'}`;
+		const content = previous
+			? `<system-reminder>\nThe tool catalog changed. This list replaces the earlier one.\n\n${section}\n</system-reminder>`
+			: `<context>\n${section}\n</context>`;
+		list.addInput([
+			{ type: 'custom', data: { type: 'n8n:runtime-tool-catalog', catalog, content } },
+		]);
 	}
 
 	/** Build the current local tool view; deferred loads can change this between iterations. */
@@ -301,9 +320,8 @@ export class RuntimeContextBuilder {
 		return { ...cached, ...openRouterCache };
 	}
 
-	/** Legacy loading changes the tool prefix. Native search keeps this prefix fixed. */
+	/** Native search and the tool catalog both keep the tool prefix fixed, so it can carry a cache point. */
 	private getStaticToolCacheName(aiTools: ReturnType<typeof toAiSdkTools>): string | undefined {
-		if (this.deferredToolManager?.hasTools) return undefined;
 		return Object.entries(aiTools)
 			.filter(([, tool]) => tool.type !== 'provider' && !isAnthropicToolDeferred(tool))
 			.at(-1)?.[0];
@@ -327,25 +345,28 @@ export class RuntimeContextBuilder {
 		const tools = [
 			...baseTools,
 			...(this.config.nativeToolDeferral ? (this.config.deferredTools ?? []) : []),
-			...(this.deferredToolManager?.hasTools
-				? [
-						...this.deferredToolManager.getControllerTools(),
-						...this.deferredToolManager.getLoadedTools(),
-					]
-				: []),
+			...(this.toolCatalog?.getControllerTools() ?? []),
 		];
 
 		const memoryTools: BuiltTool[] = [];
-		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
+		// Catalog-mode deferred tools are not in the toolset but still reserve their names.
+		const reservedCheck = [
+			...tools,
+			...(this.toolCatalog ? (this.config.deferredTools ?? []) : []),
+		];
+		const recallTool = this.createRecallMemoryToolForRun(
+			persistence,
+			reservedCheck,
+			executionCounter,
+		);
 		if (recallTool) memoryTools.push(recallTool);
-		const flagTool = this.createFlagMemoryToolForRun(persistence, [...tools, ...memoryTools], list);
+		const flagTool = this.createFlagMemoryToolForRun(
+			persistence,
+			[...reservedCheck, ...memoryTools],
+			list,
+		);
 		if (flagTool) memoryTools.push(flagTool);
 		return { tools: [...tools, ...memoryTools], memoryTools };
-	}
-
-	hydrateDeferredToolsFromList(list: AgentMessageList): void {
-		if (!this.deferredToolManager?.hasTools) return;
-		this.deferredToolManager.hydrateLoadedToolsFromMessages(list.serialize().messages);
 	}
 
 	/**
@@ -432,33 +453,29 @@ export class RuntimeContextBuilder {
 	 * Merge tool-attached `systemInstruction` fragments into the agent's
 	 * configured instructions, split by stability:
 	 *
-	 * - `instructions`: fragments from tools present for the life of the run
-	 *   (base tools, deferred-tool controllers, the recall tool) plus the
-	 *   user's instructions. Sent as the cached system message.
-	 * - `volatileInstructions`: fragments from deferred tools loaded mid-
-	 *   conversation via `load_tool`. Kept out of the cached message —
-	 *   growing it the moment a tool loads would invalidate the whole
-	 *   prefix (OpenAI's automatic cache, and the Anthropic breakpoint) for
-	 *   the rest of the conversation. Sent as the uncached system message
-	 *   instead (see `buildSystemMessages`).
+	 * - `instructions`: fragments from every tool of the run, including the
+	 *   deferred tools behind the catalog, plus the user's instructions. The
+	 *   toolset never changes mid-run, so this is the cached system message.
+	 * - `volatileInstructions`: tool fragments never change mid-run, so this
+	 *   holds nothing today. Kept for callers that read it.
 	 */
 	private composeEffectiveInstructions(tools: BuiltTool[]): {
 		instructions: string;
 		volatileInstructions: string | undefined;
 	} {
-		const { stableFragments, volatileFragments } = this.collectInstructionFragments(tools);
+		const fragments = this.collectInstructionFragments([
+			...tools,
+			// Catalog tools run through `call_tool`, so their rules must be in the prompt too.
+			...(this.toolCatalog ? (this.config.deferredTools ?? []) : []),
+		]);
 		return {
-			instructions: prependBuiltInRules(stableFragments, this.config.instructions),
-			volatileInstructions: wrapBuiltInRules(volatileFragments),
+			instructions: prependBuiltInRules(fragments, this.config.instructions),
+			volatileInstructions: undefined,
 		};
 	}
 
-	private collectInstructionFragments(tools: BuiltTool[]) {
-		const loadedToolNames = new Set(
-			this.deferredToolManager?.getLoadedTools().map((t) => t.name) ?? [],
-		);
-		const stableFragments: string[] = [];
-		const volatileFragments: string[] = [];
+	private collectInstructionFragments(tools: BuiltTool[]): string[] {
+		const fragments: string[] = [];
 		for (const tool of tools) {
 			if (
 				typeof tool.systemInstruction !== 'string' ||
@@ -466,22 +483,14 @@ export class RuntimeContextBuilder {
 			) {
 				continue;
 			}
-			const fragments = loadedToolNames.has(tool.name) ? volatileFragments : stableFragments;
 			fragments.push(tool.systemInstruction);
 		}
 
 		// Define the untrusted-data boundary ahead of the first wrapped result.
-		// Goes in the cached block unless the only untrusted tools were loaded
-		// mid-conversation, mirroring the fragment split above.
-		const untrustedTools = tools.filter((tool) => tool.outputTrust === 'untrusted');
-		if (untrustedTools.length > 0) {
-			const target = untrustedTools.some((tool) => !loadedToolNames.has(tool.name))
-				? stableFragments
-				: volatileFragments;
-			target.unshift(UNTRUSTED_OUTPUT_DOCTRINE);
+		if (tools.some((tool) => tool.outputTrust === 'untrusted')) {
+			fragments.unshift(UNTRUSTED_OUTPUT_DOCTRINE);
 		}
-
-		return { stableFragments, volatileFragments };
+		return fragments;
 	}
 
 	/** Build the providerOptions object for provider-specific thinking config. */

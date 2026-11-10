@@ -4,9 +4,10 @@ import type { JSONSchema7 } from 'json-schema';
 import {
 	executeTool,
 	isSuspendedToolResult,
-	resolveToolForCall,
+	resolveToolCallTarget,
 	type SuspendedToolResult,
 } from './tool-adapter';
+import { CALL_TOOL_TOOL_NAME, FIND_TOOLS_TOOL_NAME } from './tool-catalog';
 import {
 	guardToolErrorForModel,
 	guardToolMessageForModel,
@@ -98,13 +99,25 @@ export class ToolCallRunner {
 	 * error tool-result message to the list so the LLM can self-correct, and returns
 	 * `{ outcome: 'error' }` — never re-throws.
 	 */
-	async processToolCall(params: ProcessToolCallParams): Promise<ToolCallOutcome> {
-		const { toolName, toolMap, list, toolCallId, resumeData } = params;
-		const builtTool = resolveToolForCall(toolMap, toolName, params.input);
+	async processToolCall(callParams: ProcessToolCallParams): Promise<ToolCallOutcome> {
+		const { toolName, toolMap, list, toolCallId, resumeData } = callParams;
+		// A catalog tool called by its own name runs as if it came through
+		// call_tool. Skills and tool results name catalog tools directly, and some
+		// models then call them by that name. Invalid input returns the schema.
+		const target = resolveToolCallTarget(toolMap, toolName, callParams.input);
 
-		if (!builtTool) {
-			return await this.toolError(params, new Error(`Tool ${toolName} not found`));
+		if (!target) {
+			const hint = toolMap.has(CALL_TOOL_TOOL_NAME)
+				? ` Find the right name with ${FIND_TOOLS_TOOL_NAME} (query), then run it with ${CALL_TOOL_TOOL_NAME}.`
+				: '';
+			return await this.toolError(callParams, new Error(`Tool ${toolName} not found.${hint}`));
 		}
+		// A dispatcher (the catalog's call_tool) hands the call to the tool it
+		// names. That tool's schema, approval, and suspension then apply.
+		const builtTool = target.tool;
+		const params: ProcessToolCallParams = target.dispatchedBy
+			? { ...callParams, input: target.input as JSONValue }
+			: callParams;
 
 		// Already settled by the AI SDK (e.g. provider-executed tools): emit the
 		// lifecycle end and skip re-execution.
@@ -126,7 +139,7 @@ export class ToolCallRunner {
 			incrementToolCallCount(params.executionCounter);
 		}
 
-		const validation = await this.validateToolInput(params, builtTool);
+		const validation = await this.validateToolInput(params, builtTool, !!target.dispatchedBy);
 		if (!validation.ok) return validation.outcome;
 		const input = validation.input;
 
@@ -365,13 +378,21 @@ export class ToolCallRunner {
 	private async validateToolInput(
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
+		dispatched: boolean,
 	): Promise<{ ok: true; input: JSONValue } | { ok: false; outcome: ToolCallOutcome }> {
 		if (!builtTool.inputSchema) return { ok: true, input: params.input };
 		const result = await parseWithSchema(builtTool.inputSchema, params.input);
 		if (!result.success) {
 			const reason = result.schemaInvalid
 				? `Tool ${params.toolName} has an input schema that could not be compiled: ${result.error}`
-				: `Invalid tool input: ${result.error}`;
+				: !dispatched && params.toolName === builtTool.name
+					? `Invalid tool input: ${result.error}`
+					: // Dispatched calls carry no schema in the request, so return it to retry with.
+						`Invalid arguments for ${builtTool.name}: ${result.error}\nInput schema: ${JSON.stringify(
+							isZodSchema(builtTool.inputSchema)
+								? zodSchemaToJsonSchema(builtTool.inputSchema)
+								: builtTool.inputSchema,
+						)}`;
 			return { ok: false, outcome: await this.toolError(params, new Error(reason)) };
 		}
 		return { ok: true, input: result.data as JSONValue };
