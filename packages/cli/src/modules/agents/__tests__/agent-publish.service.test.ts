@@ -840,7 +840,7 @@ describe('AgentPublishService', () => {
 		});
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(agent.activeVersion);
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(agent.activeVersion ?? null);
 		const result = await service.publishAgent(agentId, projectId, user, byUser);
 		expect(result).toStrictEqual({ agent });
 		expect(Object.hasOwn(result, 'draftValidation')).toBe(false);
