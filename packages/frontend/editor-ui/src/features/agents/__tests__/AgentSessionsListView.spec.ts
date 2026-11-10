@@ -206,6 +206,8 @@ vi.mock('element-plus', () => ({
 
 import type { AgentExecutionThread, AgentSessionFilters } from '../composables/useAgentThreadsApi';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
+import * as agentConfirmationModal from '../composables/useAgentConfirmationModal';
+import { MODAL_CONFIRM } from '@/app/constants';
 
 const defaultFilters: AgentSessionFilters = {
 	status: 'all',
@@ -288,6 +290,44 @@ describe('AgentSessionsListView', () => {
 	afterEach(() => {
 		documentAddEventListenerSpy.mockRestore();
 		documentRemoveEventListenerSpy.mockRestore();
+	});
+
+	it('deletes a child through its own agent and refreshes the parent list', async () => {
+		const confirmation = vi
+			.spyOn(agentConfirmationModal, 'useAgentConfirmationModal')
+			.mockReturnValue({
+				openAgentConfirmationModal: vi.fn().mockResolvedValue(MODAL_CONFIRM),
+			});
+		try {
+			const wrapper = await mountView({
+				threads: [makeThread({ agentId: 'child-agent', parentThreadId: 'parent-thread' })],
+			});
+			wrapper.getComponent({ name: 'N8nDropdownMenu' }).vm.$emit('select', 'delete');
+			await flushPromises();
+			expect(deleteThread).toHaveBeenCalledExactlyOnceWith('project-1', 'child-agent', 'thread-1');
+			expect(refreshThreads).toHaveBeenCalledWith('project-1', 'agent-1');
+			wrapper.unmount();
+		} finally {
+			confirmation.mockRestore();
+		}
+	});
+
+	it('stops a child through its own agent and refreshes the parent list', async () => {
+		const wrapper = await mountView({
+			threads: [
+				makeThread({
+					status: 'running',
+					agentId: 'child-agent',
+					parentAgentId: 'agent-1',
+					parentThreadId: 'parent-thread',
+				}),
+			],
+		});
+		wrapper.getComponent({ name: 'N8nDropdownMenu' }).vm.$emit('select', 'stop');
+		await flushPromises();
+		expect(stopSession).toHaveBeenCalledExactlyOnceWith({}, 'project-1', 'child-agent', 'thread-1');
+		expect(refreshThreads).toHaveBeenCalledWith('project-1', 'agent-1');
+		wrapper.unmount();
 	});
 
 	it('offers Stop for a running session and refreshes after stopping it', async () => {
