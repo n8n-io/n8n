@@ -14,8 +14,9 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
-import { RedisExecutionResponseSender } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
-import type { RedisResponsePublisher } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
+import { ExecutionChannelSender } from '@/modules/engine-v2/execution-channel/execution-channel-sender';
+import { LifecycleEventChannelSender } from '@/modules/engine-v2/execution-channel/lifecycle-event-sender';
+import type { RedisChannelPublisher } from '@/modules/engine-v2/execution-channel/redis-execution-channel-publisher';
 import { NodeTypes } from '@/node-types';
 import { OtelService } from '@/modules/otel/otel.service';
 import { PostHogClient } from '@/posthog';
@@ -40,7 +41,7 @@ const objectStoreService = mockInstance(ObjectStoreService);
 // Mocked so the tests do not depend on the storage env of the machine.
 const objectStoreConfig = mockInstance(ObjectStoreConfig, { bucket: { name: '', region: '' } });
 const azureBlobConfig = mockInstance(AzureBlobConfig, { containerName: '' });
-const publisher = mock<RedisResponsePublisher>();
+const publisher = mock<RedisChannelPublisher>();
 const redisClientService = mockInstance(RedisClientService, {
 	toValidPrefix: (prefix: string) => prefix,
 	createClient: vi.fn(() => publisher) as unknown as RedisClientService['createClient'],
@@ -184,11 +185,39 @@ describe('Engine', () => {
 			expect(taskRunnerModule.start).not.toHaveBeenCalled();
 		});
 
-		it('sends execution responses over Redis', async () => {
+		it('sends execution responses and lifecycle events over Redis', async () => {
 			await createEngine().init();
 
 			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'publisher(n8n)' });
-			expect(runtime.init).toHaveBeenCalledWith(expect.any(RedisExecutionResponseSender));
+			expect(runtime.init).toHaveBeenCalledWith({
+				responseSender: expect.any(ExecutionChannelSender),
+				lifecycleEventSender: expect.any(LifecycleEventChannelSender),
+			});
+		});
+
+		it('publishes lifecycle events over Redis on the channel of their execution', async () => {
+			publisher.publish.mockResolvedValue(1);
+			await createEngine().init();
+			const lifecycleEventSender = vi
+				.mocked(runtime.init)
+				.mock.calls.at(-1)?.[0]?.lifecycleEventSender;
+
+			await lifecycleEventSender?.send(
+				[
+					{
+						type: 'execution:completed',
+						executionId: 'exec-1',
+						workflowId: 'wf-1',
+						at: '2026-10-29T10:00:00.000Z',
+					},
+				],
+				new AbortController().signal,
+			);
+
+			expect(publisher.publish).toHaveBeenCalledWith(
+				expect.stringMatching(/:engine-v2-lifecycle:exec-1$/),
+				expect.any(String),
+			);
 		});
 
 		it('starts the data plane after the base init and finishes loading the nodes', async () => {

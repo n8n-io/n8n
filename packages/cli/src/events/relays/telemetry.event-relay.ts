@@ -26,9 +26,11 @@ import type {
 	JsonValue,
 } from 'n8n-workflow';
 import {
+	ERROR_MESSAGE_REDACTED_MESSAGE,
 	getEmptyGroupAnchor,
 	hasCredentialChanges,
 	hasNonPositionalChanges,
+	isExecutionOutputRedacted,
 	TelemetryHelpers,
 	toExecutionContextEstablishmentHookParameter,
 } from 'n8n-workflow';
@@ -194,14 +196,19 @@ function getExecutionTelemetryProperties(
 	telemetryMetadata: RelayEventMap['workflow-post-execute']['telemetryMetadata'],
 ): ITelemetryTrackProperties {
 	const executionSource = source ?? 'user';
+	const { mockDataSources, personalCredentialsCount } = telemetryMetadata ?? {};
+	const personalCredentials = personalCredentialsCount
+		? { personal_credentials_count: personalCredentialsCount }
+		: {};
 
-	if (executionSource !== 'instance_ai') return { execution_source: executionSource };
-
-	const { mockDataSources } = telemetryMetadata ?? {};
+	if (executionSource !== 'instance_ai') {
+		return { execution_source: executionSource, ...personalCredentials };
+	}
 
 	return {
 		execution_source: executionSource,
 		...(mockDataSources?.length ? { mock_data_sources: mockDataSources.join(',') } : {}),
+		...personalCredentials,
 	};
 }
 
@@ -344,6 +351,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-signed-up': (event) => this.userSignedUp(event),
 			'user-mfa-enabled': (event) => this.userMfaEnabled(event),
 			'user-mfa-disabled': (event) => this.userMfaDisabled(event),
+			'user-logged-out': (event) => this.userLoggedOut(event),
 			'user-submitted-personalization-survey': (event) =>
 				this.userSubmittedPersonalizationSurvey(event),
 			'email-failed': (event) => this.emailFailed(event),
@@ -1935,7 +1943,14 @@ export class TelemetryEventRelay extends EventRelay {
 					this.telemetry.track('User ran out of free AI credits');
 				}
 
-				telemetryProperties.error_message = runData?.data.resultData.error.message;
+				// Under an active redaction policy the message can carry node output.
+				telemetryProperties.error_message = isExecutionOutputRedacted(
+					runData.data,
+					workflow.settings,
+					runData.mode,
+				)
+					? ERROR_MESSAGE_REDACTED_MESSAGE
+					: runData.data.resultData.error.message;
 				let errorNodeName =
 					'node' in runData?.data.resultData.error
 						? runData?.data.resultData.error.node?.name
@@ -2610,6 +2625,10 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_DISABLED_MFA, { user_id: user.id });
 	}
 
+	private userLoggedOut({ user }: RelayEventMap['user-logged-out']) {
+		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_LOGGED_OUT, { user_id: user.id });
+	}
+
 	private userSubmittedPersonalizationSurvey({
 		userId,
 		answers,
@@ -3053,6 +3072,7 @@ export class TelemetryEventRelay extends EventRelay {
 		durationMs,
 		counts,
 		selectedWorkflowCount,
+		selectedFolderCount,
 		openedReview,
 	}: RelayEventMap['promotion-promoted']) {
 		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES, {
@@ -3070,6 +3090,7 @@ export class TelemetryEventRelay extends EventRelay {
 			variable_count: counts?.variables,
 			tag_count: counts?.tags,
 			selected_workflow_count: selectedWorkflowCount,
+			selected_folder_count: selectedFolderCount,
 			opened_review: openedReview,
 		});
 	}
@@ -3084,6 +3105,8 @@ export class TelemetryEventRelay extends EventRelay {
 		durationMs,
 		workflowsChanged,
 		workflowsFailedToPublish,
+		foldersChanged,
+		projectsChanged,
 	}: RelayEventMap['promotion-applied']) {
 		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES, {
 			user_id: user.id,
@@ -3095,6 +3118,8 @@ export class TelemetryEventRelay extends EventRelay {
 			duration_ms: durationMs,
 			workflows_changed: workflowsChanged,
 			workflows_failed_to_publish: workflowsFailedToPublish,
+			folders_changed: foldersChanged,
+			projects_changed: projectsChanged,
 		});
 	}
 

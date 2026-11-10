@@ -159,7 +159,7 @@ const budgetIncreasePending = ref(false);
 const budgetStop = computed<{
 	index: number;
 	executionId: string;
-	code: 'budget.monthly' | 'budget.session';
+	code: 'budget.monthly' | 'budget.session' | 'budget.credits';
 } | null>(() => {
 	const lastExecutionId = executions.value.at(-1)?.id;
 	if (!lastExecutionId || lastExecutionId === resolvedBudgetStopExecutionId.value) return null;

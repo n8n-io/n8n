@@ -73,11 +73,13 @@ async function indexVersion(
 
 async function listRestricted({
 	projectId,
+	parentFolderId,
 	includeFolders,
-}: { projectId?: string; includeFolders?: boolean } = {}) {
+}: { projectId?: string; parentFolderId?: string; includeFolders?: boolean } = {}) {
 	const filter = JSON.stringify({
 		executionBlockedBy: ['restrictedNode'],
 		...(projectId && { projectId }),
+		...(parentFolderId && { parentFolderId }),
 	});
 	const response = await ownerAgent
 		.get('/workflows')
@@ -209,6 +211,26 @@ describe('GET /workflows with the restricted node filter', () => {
 
 		expect(await listRestricted({ projectId: project.id, includeFolders: true })).toEqual({
 			ids: [folder.id, restricted.id].sort(),
+			count: 2,
+		});
+	});
+
+	test('reaches the workflows in nested folders of the folder it lists', async () => {
+		const project = await createTeamProject('Nested folders', owner);
+		const folder = await createFolder(project);
+		const subfolder = await createFolder(project, { parentFolder: folder });
+		const otherFolder = await createFolder(project);
+		const inFolder = await createWorkflow({ nodes: [node(SLACK)], parentFolder: folder }, project);
+		const inSubfolder = await createWorkflow(
+			{ nodes: [node(SLACK)], parentFolder: subfolder },
+			project,
+		);
+		await createWorkflow({ nodes: [node(SLACK)], parentFolder: otherFolder }, project);
+
+		await ownerAgent.put('/node-type-policies/instance').send(denySlack).expect(200);
+
+		expect(await listRestricted({ projectId: project.id, parentFolderId: folder.id })).toEqual({
+			ids: [inFolder.id, inSubfolder.id].sort(),
 			count: 2,
 		});
 	});

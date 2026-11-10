@@ -2,6 +2,7 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import * as aiModule from 'ai';
+import { APICallError } from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import type { Mock, MockedFunction } from 'vitest';
 import { z } from 'zod';
@@ -12042,6 +12043,71 @@ describe('AgentRuntime — MCP tool provenance', () => {
 	});
 });
 
+describe('AgentRuntime — tool calls reported with a stop finish reason', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	const toolCall = { toolCallId: 'tc-1', toolName: 'lookup', args: { value: 'a' } };
+
+	it('runs the tool and calls the model again when generating', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ found: true }));
+		const { runtime } = createRuntimeWithTools([makeMockTool('lookup', handler)], 1);
+		generateText
+			.mockResolvedValueOnce({ ...makeGenerateWithToolCalls([toolCall]), finishReason: 'stop' })
+			.mockResolvedValueOnce(makeGenerateSuccess('Found it'));
+
+		const result = await runtime.generate('look it up');
+
+		expect(handler).toHaveBeenCalledWith({ value: 'a' });
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+		expect(result.toolCalls).toEqual([expect.objectContaining({ tool: 'lookup' })]);
+	});
+
+	it('runs the tool and calls the model again when streaming', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ found: true }));
+		const { runtime } = createRuntimeWithTools([makeMockTool('lookup', handler)], 1);
+		streamText
+			.mockReturnValueOnce({
+				...makeStreamWithToolCalls([toolCall]),
+				finishReason: Promise.resolve('stop'),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Found it'));
+
+		const chunks = await collectChunks((await runtime.stream('look it up')).stream);
+
+		expect(handler).toHaveBeenCalledWith({ value: 'a' });
+		expect(streamText).toHaveBeenCalledTimes(2);
+		expect(chunks).toContainEqual(
+			expect.objectContaining({ type: 'tool-result', toolCallId: 'tc-1' }),
+		);
+		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
+	});
+
+	it('ends the run when every call ran on the provider', async () => {
+		generateText.mockResolvedValueOnce({
+			...makeGenerateWithToolCall('tc-provider', 'openai.web_search', { query: 'n8n' }),
+			finishReason: 'stop',
+			toolCalls: [
+				{
+					toolCallId: 'tc-provider',
+					toolName: 'openai.web_search',
+					input: { query: 'n8n' },
+					providerExecuted: true,
+				},
+			],
+		});
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('search');
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+		expect(result.finishReason).toBe('stop');
+	});
+});
+
 describe('AgentRuntime — tools that end the turn', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -12140,6 +12206,99 @@ describe('Tool builder — ending the turn', () => {
 			.toModelOutput((output) => output);
 
 		expect(() => tool.build()).toThrow('cannot combine .endsTurnWhen() with .toModelOutput()');
+	});
+});
+
+describe('AgentRuntime — model error classification', () => {
+	function depletedGatewayError() {
+		return new APICallError({
+			message: 'Payment Required',
+			url: 'https://gateway.example/v1/responses',
+			requestBodyValues: {},
+			statusCode: 402,
+			responseBody: '{"error":"Your Gateway credits have been depleted"}',
+		});
+	}
+
+	const classifyAsCredits = (error: unknown) =>
+		APICallError.isInstance(error) && error.statusCode === 402
+			? { code: 'budget.credits' }
+			: undefined;
+
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it('ends a generate run as a guardrail stop when the classifier maps the error', async () => {
+		generateText.mockRejectedValue(depletedGatewayError());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', { classifyModelError: classifyAsCredits });
+
+		expect(result.finishReason).toBe('guardrail');
+		expect(result.guardrail).toEqual({ code: 'budget.credits' });
+		expect(result.error).toBeUndefined();
+	});
+
+	it('ends a stream run with a guardrail finish chunk carrying the mapped code', async () => {
+		const error = depletedGatewayError();
+		streamText.mockReturnValue({
+			stream: makeChunkStream([]),
+			finishReason: silentReject(error),
+			usage: silentReject(error),
+			response: silentReject(error),
+			toolCalls: silentReject(error),
+		});
+		const { runtime } = createRuntime();
+
+		const { stream } = await runtime.stream('hi', { classifyModelError: classifyAsCredits });
+		const chunks = await collectChunks(stream);
+
+		expect(chunks[chunks.length - 1]).toMatchObject({
+			type: 'finish',
+			finishReason: 'guardrail',
+			guardrail: { code: 'budget.credits' },
+		});
+	});
+
+	it('keeps the error finish when the classifier returns undefined', async () => {
+		generateText.mockRejectedValue(depletedGatewayError());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', {
+			classifyModelError: () => undefined,
+		});
+
+		expect(result.finishReason).toBe('error');
+		expect(result.guardrail).toBeUndefined();
+	});
+
+	it('keeps the error finish when no classifier is attached', async () => {
+		generateText.mockRejectedValue(depletedGatewayError());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi');
+
+		expect(result.finishReason).toBe('error');
+		expect(result.guardrail).toBeUndefined();
+	});
+
+	it('lets cancellation win when the run aborts while the call rejects', async () => {
+		const controller = new AbortController();
+		generateText.mockImplementation(async () => {
+			controller.abort();
+			throw depletedGatewayError();
+		});
+		const { runtime } = createRuntime();
+
+		const result = await runtime.generate('hi', {
+			abortSignal: controller.signal,
+			classifyModelError: classifyAsCredits,
+		});
+
+		expect(result.finishReason).not.toBe('guardrail');
+		expect(result.guardrail).toBeUndefined();
 	});
 });
 

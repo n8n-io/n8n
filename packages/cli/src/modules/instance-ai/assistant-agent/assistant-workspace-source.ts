@@ -29,8 +29,9 @@ export interface AssistantSandboxLease {
 
 /**
  * Supplies the Assistant sandbox to the Agents runtime. Each thread gets one
- * sandbox with a name derived from the thread id. The sandbox starts on first
- * use, and a later turn on any main reattaches it by name.
+ * sandbox with an identity derived from the thread id (`assistant-<threadId>`,
+ * separate from the v1 names). The sandbox starts on first use, and a later
+ * turn on any main reattaches it by that identity.
  */
 @Service()
 export class AssistantSandboxWorkspaceSource
@@ -64,6 +65,8 @@ export class AssistantSandboxWorkspaceSource
 			settingsService,
 			aiService,
 			getTemplatesService: () => adapterService.getTemplatesService(),
+			// A v1 thread can have the same id, so the sandbox identity needs its own base name.
+			identityScheme: 'assistant',
 		});
 	}
 
