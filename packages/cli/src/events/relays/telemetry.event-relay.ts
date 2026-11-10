@@ -2290,18 +2290,21 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	/** Owner of the workflow's personal project, else the instance owner. */
+	/**
+	 * Owner of the workflow's personal project, or the instance owner for a team project.
+	 * `undefined` when a lookup fails, so the event still goes out, without a user.
+	 */
 	private async getWorkflowOwnerId(workflowId: string) {
 		try {
 			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 			if (project.type === 'personal') {
 				const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
-				if (owner) return owner.id;
+				return owner?.id;
 			}
+			return await this.getInstanceOwnerId();
 		} catch {
-			// The workflow may be deleted by now.
+			return undefined;
 		}
-		return await this.getInstanceOwnerId();
 	}
 
 	/** Owner user ID once setup is complete, `undefined` while only the placeholder owner row exists. */
