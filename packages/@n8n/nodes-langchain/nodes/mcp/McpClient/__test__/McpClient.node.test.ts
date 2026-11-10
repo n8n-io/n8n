@@ -1159,25 +1159,33 @@ describe('McpClient', () => {
 			]);
 		});
 
-		it('rejects an unsafe prompt argument name (B2)', async () => {
+		it('accepts __proto__ as a prompt argument name without polluting Object.prototype (B2)', async () => {
 			const unsafeName = '__proto__';
-			await expect(
-				runV12({
-					operation: 'getPrompt',
-					promptName: 'p',
-					promptArguments: { arguments: [{ name: unsafeName, value: 'x' }] },
-				}),
-			).rejects.toThrow('Prompt argument name "__proto__" is not allowed.');
+			client.getPrompt.mockResolvedValue({ messages: [] });
+
+			await runV12({
+				operation: 'getPrompt',
+				promptName: 'p',
+				promptArguments: { arguments: [{ name: unsafeName, value: 'x' }] },
+			});
+
+			const call = client.getPrompt.mock.calls[0][0];
+			expect(call.arguments?.['__proto__']).toBe('x');
+			expect((Object.prototype as Record<string, unknown>).polluted).toBeUndefined();
 		});
 
-		it('rejects the constructor prompt argument name (B2)', async () => {
-			await expect(
-				runV12({
-					operation: 'getPrompt',
-					promptName: 'p',
-					promptArguments: { arguments: [{ name: 'constructor', value: 'x' }] },
-				}),
-			).rejects.toThrow('Prompt argument name "constructor" is not allowed.');
+		it('accepts constructor as a prompt argument name (B2)', async () => {
+			const name = 'constructor';
+			client.getPrompt.mockResolvedValue({ messages: [] });
+
+			await runV12({
+				operation: 'getPrompt',
+				promptName: 'p',
+				promptArguments: { arguments: [{ name, value: 'x' }] },
+			});
+
+			const call = client.getPrompt.mock.calls[0][0];
+			expect(call.arguments?.['constructor']).toBe('x');
 		});
 
 		it('rejects an empty prompt argument name (B2)', async () => {
@@ -1187,7 +1195,7 @@ describe('McpClient', () => {
 					promptName: 'p',
 					promptArguments: { arguments: [{ name: '', value: 'x' }] },
 				}),
-			).rejects.toThrow('Prompt argument name "" is not allowed.');
+			).rejects.toThrow('Prompt argument name must be a non-empty string.');
 		});
 
 		it('passes safe prompt arguments through and leaves Object.prototype unchanged (B2)', async () => {

@@ -606,9 +606,10 @@ export class McpClient implements INodeType {
 						default: true,
 						description:
 							'Whether to convert images and audio to binary data. If false, images and audio will be returned as base64 encoded strings.',
+						// Collection-scoped conditions need the `/` prefix to reference root parameters.
 						displayOptions: {
 							show: {
-								operation: ['executeTool', 'readResource', 'getPrompt'],
+								'/operation': ['executeTool', 'readResource', 'getPrompt'],
 							},
 						},
 					},
@@ -751,6 +752,8 @@ export class McpClient implements INodeType {
 							const { items: resources, truncated } = await getAllResources(
 								client.result,
 								requestOptions,
+								node,
+								itemIndex,
 							).catch((error: unknown) => {
 								throw mapCapabilityError(node, itemIndex, 'resources', 'resources/list', error);
 							});
@@ -765,6 +768,8 @@ export class McpClient implements INodeType {
 							const { items: resourceTemplates, truncated } = await getAllResourceTemplates(
 								client.result,
 								requestOptions,
+								node,
+								itemIndex,
 							).catch((error: unknown) => {
 								throw mapCapabilityError(
 									node,
@@ -785,6 +790,8 @@ export class McpClient implements INodeType {
 							const { items: prompts, truncated } = await getAllPrompts(
 								client.result,
 								requestOptions,
+								node,
+								itemIndex,
 							).catch((error: unknown) => {
 								throw mapCapabilityError(node, itemIndex, 'prompts', 'prompts/list', error);
 							});

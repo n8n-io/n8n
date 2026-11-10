@@ -43,6 +43,13 @@ export async function getTools(
 	}
 }
 
+/**
+ * Lists resources for the Resource URI picker, filtered locally by name or URI.
+ *
+ * @param filter - Optional case-insensitive filter for the resource name or URI.
+ * @param paginationToken - Cursor returned by the previous page, when present.
+ * @returns The matching resources and the next pagination token.
+ */
 export async function getResources(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -92,6 +99,13 @@ export async function getResources(
 	}
 }
 
+/**
+ * Lists prompts for the Prompt Name picker, filtered locally by name.
+ *
+ * @param filter - Optional case-insensitive filter for the prompt name.
+ * @param paginationToken - Cursor returned by the previous page, when present.
+ * @returns The matching prompts and the next pagination token.
+ */
 export async function getPrompts(
 	this: ILoadOptionsFunctions,
 	filter?: string,

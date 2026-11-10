@@ -318,6 +318,8 @@ describe('utils', () => {
 	});
 
 	describe('getAllResources', () => {
+		const node = mockDeep<INode>();
+
 		it('aggregates resources across pages and passes the cursor and options', async () => {
 			const client = mockDeep<Client>();
 			const options = { timeout: 1234 };
@@ -330,7 +332,7 @@ describe('utils', () => {
 					resources: [{ uri: 'mem://b', name: 'b' }],
 				});
 
-			const result = await getAllResources(client, options);
+			const result = await getAllResources(client, options, node, 0);
 
 			expect(result).toEqual({
 				items: [
@@ -350,7 +352,7 @@ describe('utils', () => {
 				return { resources: [], nextCursor: String(page + 1) };
 			});
 
-			const result = await getAllResources(client, {});
+			const result = await getAllResources(client, {}, node, 0);
 
 			expect(result).toEqual({ items: [], truncated: true });
 			expect(client.listResources).toHaveBeenCalledTimes(MCP_MAX_LIST_PAGES);
@@ -360,25 +362,50 @@ describe('utils', () => {
 			const client = mockDeep<Client>();
 			client.listResources.mockResolvedValue({ resources: [], nextCursor: 'c' });
 
-			const result = await getAllResources(client, {});
+			const result = await getAllResources(client, {}, node, 0);
 
 			expect(result).toEqual({ items: [], truncated: true });
 			expect(client.listResources).toHaveBeenCalledTimes(2);
 		});
 
-		it('throws before calling the server when the signal is already aborted', async () => {
+		it('returns a truncated result and unique items when a continuation cursor repeats', async () => {
+			const client = mockDeep<Client>();
+			client.listResources
+				.mockResolvedValueOnce({
+					resources: [{ uri: 'mem://a', name: 'a' }],
+					nextCursor: 'c1',
+				})
+				.mockResolvedValueOnce({
+					resources: [{ uri: 'mem://b', name: 'b' }],
+					nextCursor: 'c2',
+				})
+				.mockResolvedValueOnce({
+					resources: [{ uri: 'mem://c', name: 'c' }],
+					nextCursor: 'c1',
+				});
+
+			const result = await getAllResources(client, {}, node, 0);
+
+			expect(result.truncated).toBe(true);
+			expect(result.items.map((resource) => resource.name)).toEqual(['a', 'b', 'c']);
+			expect(client.listResources).toHaveBeenCalledTimes(3);
+		});
+
+		it('throws a NodeOperationError before calling the server when the signal is already aborted', async () => {
 			const client = mockDeep<Client>();
 			const controller = new AbortController();
 			controller.abort();
 
-			await expect(getAllResources(client, { signal: controller.signal })).rejects.toThrow(
-				'Execution was cancelled',
-			);
+			await expect(
+				getAllResources(client, { signal: controller.signal }, node, 0),
+			).rejects.toBeInstanceOf(NodeOperationError);
 			expect(client.listResources).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('getAllResourceTemplates', () => {
+		const node = mockDeep<INode>();
+
 		it('aggregates resource templates across pages', async () => {
 			const client = mockDeep<Client>();
 			client.listResourceTemplates
@@ -390,7 +417,7 @@ describe('utils', () => {
 					resourceTemplates: [{ uriTemplate: 'mem://b/{id}', name: 'b' }],
 				});
 
-			const result = await getAllResourceTemplates(client, {});
+			const result = await getAllResourceTemplates(client, {}, node, 0);
 
 			expect(result).toEqual({
 				items: [
@@ -404,6 +431,8 @@ describe('utils', () => {
 	});
 
 	describe('getAllPrompts', () => {
+		const node = mockDeep<INode>();
+
 		it('aggregates prompts across pages', async () => {
 			const client = mockDeep<Client>();
 			client.listPrompts
@@ -415,7 +444,7 @@ describe('utils', () => {
 					prompts: [{ name: 'second' }],
 				});
 
-			const result = await getAllPrompts(client, {});
+			const result = await getAllPrompts(client, {}, node, 0);
 
 			expect(result).toEqual({
 				items: [{ name: 'first' }, { name: 'second' }],
@@ -535,31 +564,44 @@ describe('utils', () => {
 		});
 
 		it.each(['__proto__', 'constructor', 'prototype'])(
-			'rejects the unsafe argument name %s',
+			'accepts the previously denylisted argument name %s',
 			(name) => {
-				expect(() => buildPromptArguments({ arguments: [{ name, value: 'x' }] }, node, 0)).toThrow(
-					`Prompt argument name "${name}" is not allowed.`,
-				);
+				const result = buildPromptArguments({ arguments: [{ name, value: 'x' }] }, node, 0);
+
+				expect(result).toEqual({ [name]: 'x' });
+				expect(Object.getPrototypeOf(result)).toBeNull();
 			},
 		);
+
+		it('accepts constructor as a valid argument name', () => {
+			const name = 'constructor';
+			const result = buildPromptArguments({ arguments: [{ name, value: 'x' }] }, node, 0);
+
+			expect(result).toEqual({ constructor: 'x' });
+			expect(Object.getPrototypeOf(result)).toBeNull();
+		});
 
 		it('rejects an empty argument name', () => {
 			expect(() =>
 				buildPromptArguments({ arguments: [{ name: '', value: 'x' }] }, node, 0),
-			).toThrow('Prompt argument name "" is not allowed.');
+			).toThrow('Prompt argument name must be a non-empty string.');
 		});
 
 		it('rejects a non-string argument name', () => {
 			expect(() =>
 				buildPromptArguments({ arguments: [{ name: 123, value: 'x' }] }, node, 0),
-			).toThrow('Prompt argument name "123" is not allowed.');
+			).toThrow('Prompt argument name must be a non-empty string.');
 		});
 
 		it('does not pollute Object.prototype', () => {
 			const unsafeName = '__proto__';
-			expect(() =>
-				buildPromptArguments({ arguments: [{ name: unsafeName, value: 'x' }] }, node, 0),
-			).toThrow();
+			const result = buildPromptArguments(
+				{ arguments: [{ name: unsafeName, value: 'x' }] },
+				node,
+				0,
+			);
+
+			expect(result?.['__proto__']).toBe('x');
 			expect((Object.prototype as Record<string, unknown>).polluted).toBeUndefined();
 		});
 	});
