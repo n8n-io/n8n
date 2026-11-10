@@ -1,7 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionRepository, User } from '@n8n/db';
-import { createEmptyRunExecutionData, jsonParse, type IRunExecutionData } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	jsonParse,
+	type ExecutionStatus,
+	type IRunExecutionData,
+} from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { z } from 'zod';
 
@@ -896,7 +901,7 @@ describe('get-execution MCP tool', () => {
 		});
 
 		describe('failure summary', () => {
-			const metadata = (status: string) => ({
+			const metadata = (status: ExecutionStatus) => ({
 				id: 'execution-1',
 				workflowId: 'workflow-1',
 				mode: 'manual',
@@ -908,8 +913,13 @@ describe('get-execution MCP tool', () => {
 				waitTill: null,
 			});
 
-			const failedExecution = (status: string, error: Record<string, unknown>) => {
+			const task = (executionStatus: ExecutionStatus) => [
+				{ startTime: 0, executionIndex: 0, executionTime: 0, source: [], executionStatus },
+			];
+
+			const failedExecution = (status: ExecutionStatus, error: Record<string, unknown>) => {
 				const data = createEmptyRunExecutionData();
+				data.resultData.runData = { Trigger: task('success'), 'HTTP Request': task(status) };
 				data.resultData.lastNodeExecuted = 'HTTP Request';
 				data.resultData.error = error as unknown as IRunExecutionData['resultData']['error'];
 				return { ...metadata(status), data };
@@ -944,14 +954,20 @@ describe('get-execution MCP tool', () => {
 				};
 			};
 
+			const mockStoredExecution = (execution: ReturnType<typeof failedExecution>) => {
+				(executionRepository.findIfAccessible as Mock).mockResolvedValue(
+					metadata(execution.status),
+				);
+				(executionPersistence.findSingleExecution as Mock).mockResolvedValue(execution);
+			};
+
 			beforeEach(() => {
 				mockInstance(Logger);
 				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
 			});
 
 			test('returns the failed node, error message and description for an error execution', async () => {
-				(executionRepository.findIfAccessible as Mock).mockResolvedValue(metadata('error'));
-				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(
+				mockStoredExecution(
 					failedExecution('error', {
 						message: 'The resource you are requesting could not be found',
 						description: 'Not found',
@@ -961,9 +977,13 @@ describe('get-execution MCP tool', () => {
 
 				const output = await callTool();
 
-				expect(executionPersistence.findWithUnflattenedData).toHaveBeenCalledWith('execution-1', [
+				expect(executionRepository.findIfAccessible).toHaveBeenCalledWith('execution-1', [
 					'workflow-1',
 				]);
+				expect(executionPersistence.findSingleExecution).toHaveBeenCalledWith('execution-1', {
+					includeData: true,
+					unflattenData: true,
+				});
 				expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
 					expect.objectContaining({ id: 'execution-1' }),
 					{ user },
@@ -978,8 +998,7 @@ describe('get-execution MCP tool', () => {
 			});
 
 			test('cuts the error description at 500 characters', async () => {
-				(executionRepository.findIfAccessible as Mock).mockResolvedValue(metadata('error'));
-				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(
+				mockStoredExecution(
 					failedExecution('error', { message: 'Failed', description: 'x'.repeat(2000) }),
 				);
 
@@ -993,10 +1012,7 @@ describe('get-execution MCP tool', () => {
 			});
 
 			test('returns the failure summary for a crashed execution', async () => {
-				(executionRepository.findIfAccessible as Mock).mockResolvedValue(metadata('crashed'));
-				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(
-					failedExecution('crashed', { message: 'Workflow did crash' }),
-				);
+				mockStoredExecution(failedExecution('crashed', { message: 'Workflow did crash' }));
 
 				const output = await callTool();
 
@@ -1006,12 +1022,61 @@ describe('get-execution MCP tool', () => {
 				});
 			});
 
+			test('returns the crashed node when crash recovery sets a successful node as the last node executed', async () => {
+				const execution = failedExecution('crashed', { message: 'Workflow did crash' });
+				execution.data.resultData.lastNodeExecuted = 'Trigger';
+				mockStoredExecution(execution);
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({
+					nodeName: 'HTTP Request',
+					message: 'Workflow did crash',
+				});
+			});
+
+			test('omits the node name when no node failed', async () => {
+				const execution = failedExecution('error', { message: 'Workflow has issues' });
+				execution.data.resultData.runData = { Trigger: task('success') };
+				execution.data.resultData.lastNodeExecuted = 'Trigger';
+				mockStoredExecution(execution);
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({ message: 'Workflow has issues' });
+			});
+
+			test('returns the last node executed when it has no run data', async () => {
+				const execution = failedExecution('error', { message: 'Workflow ran out of memory' });
+				execution.data.resultData.runData = {};
+				mockStoredExecution(execution);
+
+				const output = await callTool();
+
+				expect(output.execution?.failure).toEqual({
+					nodeName: 'HTTP Request',
+					message: 'Workflow ran out of memory',
+				});
+			});
+
+			test('does not add a failure summary for a crashed execution without an error', async () => {
+				const execution = failedExecution('crashed', {});
+				delete execution.data.resultData.error;
+				execution.data.resultData.runData = { Trigger: task('success') };
+				execution.data.resultData.lastNodeExecuted = 'Trigger';
+				mockStoredExecution(execution);
+
+				const output = await callTool();
+
+				expect(output.execution).not.toHaveProperty('failure');
+			});
+
 			test('does not load execution data or add a failure summary for a successful execution', async () => {
 				(executionRepository.findIfAccessible as Mock).mockResolvedValue(metadata('success'));
 
 				const output = await callTool();
 
-				expect(executionPersistence.findWithUnflattenedData).not.toHaveBeenCalled();
+				expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 				expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
 				expect(output.execution).not.toHaveProperty('failure');
 			});
@@ -1022,8 +1087,7 @@ describe('get-execution MCP tool', () => {
 					message: secretText,
 					description: secretText,
 				});
-				(executionRepository.findIfAccessible as Mock).mockResolvedValue(metadata('error'));
-				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(execution);
+				mockStoredExecution(execution);
 				(executionRedactionServiceProxy.processExecution as Mock).mockImplementation(
 					async (target: typeof execution) => {
 						delete target.data.resultData.error;
@@ -1042,10 +1106,7 @@ describe('get-execution MCP tool', () => {
 			});
 
 			test('omits the failure summary when the redaction check fails', async () => {
-				(executionRepository.findIfAccessible as Mock).mockResolvedValue(metadata('error'));
-				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(
-					failedExecution('error', { message: 'sk-secret-value' }),
-				);
+				mockStoredExecution(failedExecution('error', { message: 'sk-secret-value' }));
 				(executionRedactionServiceProxy.processExecution as Mock).mockRejectedValue(
 					new Error('Redaction failed'),
 				);
@@ -1064,6 +1125,7 @@ describe('get-execution MCP tool', () => {
 				const output = await callTool(true);
 
 				expect(executionPersistence.findWithUnflattenedData).toHaveBeenCalledTimes(1);
+				expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 				expect(output.execution).not.toHaveProperty('failure');
 				expect(output.data).toEqual(execution.data);
 			});

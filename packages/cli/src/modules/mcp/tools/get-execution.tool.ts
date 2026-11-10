@@ -19,6 +19,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';
 import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -152,12 +153,7 @@ export const createGetExecutionTool = (
 			} else {
 				execution = await executionRepository.findIfAccessible(executionId, [workflowId]);
 				if (execution && FAILED_EXECUTION_STATUSES.includes(execution.status)) {
-					failure = await findFailureSummary(
-						executionId,
-						workflowId,
-						user,
-						executionRedactionServiceProxy,
-					);
+					failure = await findFailureSummary(executionId, user);
 				}
 			}
 
@@ -253,21 +249,10 @@ export const createGetExecutionTool = (
 	},
 });
 
-async function findFailureSummary(
-	executionId: string,
-	workflowId: string,
-	user: User,
-	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
-): Promise<ExecutionFailure> {
+async function findFailureSummary(executionId: string, user: User): Promise<ExecutionFailure> {
 	try {
-		const execution = await Container.get(ExecutionPersistence).findWithUnflattenedData(
-			executionId,
-			[workflowId],
-		);
-		if (!execution) return undefined;
-
-		await executionRedactionServiceProxy.processExecution(execution, { user });
-		return toFailureSummary(execution.data.resultData);
+		const execution = await loadExecutionForViewer(executionId, user);
+		return execution && toFailureSummary(execution.data.resultData);
 	} catch (error) {
 		Container.get(Logger).warn('MCP get_workflow_execution could not load the failure summary', {
 			executionId,
@@ -277,12 +262,22 @@ async function findFailureSummary(
 	}
 }
 
-function toFailureSummary({
-	error,
-	redactedError,
-	lastNodeExecuted,
-}: IRunExecutionData['resultData']): ExecutionFailure {
-	const nodeName = lastNodeExecuted ? { nodeName: lastNodeExecuted } : {};
+function findFailedNodeName({ runData, lastNodeExecuted }: IRunExecutionData['resultData']) {
+	const lastRunStatus = (nodeName: string) => runData?.[nodeName]?.at(-1)?.executionStatus;
+	const isFailed = (status?: ExecutionStatus) =>
+		status !== undefined && FAILED_EXECUTION_STATUSES.includes(status);
+
+	if (lastNodeExecuted) {
+		const status = lastRunStatus(lastNodeExecuted);
+		if (status === undefined || isFailed(status)) return lastNodeExecuted;
+	}
+	return Object.keys(runData ?? {}).find((nodeName) => isFailed(lastRunStatus(nodeName)));
+}
+
+function toFailureSummary(resultData: IRunExecutionData['resultData']): ExecutionFailure {
+	const { error, redactedError } = resultData;
+	const failedNodeName = findFailedNodeName(resultData);
+	const nodeName = failedNodeName ? { nodeName: failedNodeName } : {};
 	if (redactedError) return { ...nodeName, message: formatRedactedError(redactedError) };
 	if (!error) return undefined;
 
