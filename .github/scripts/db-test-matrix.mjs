@@ -19,6 +19,13 @@ const RUNNER = 'blacksmith-4vcpu-ubuntu-2204';
 const MAX_WORKERS = '--maxWorkers=100%';
 
 /**
+ * `janitor test-run` replays a cached suite result when turbo's hash for the
+ * package is unchanged, and skips a package that the change cannot reach. It
+ * does not scope a DB suite to the changed files: a DB change can reach any test.
+ */
+const TEST_RUN = 'node packages/quality/testing/janitor/dist/cli.js test-run';
+
+/**
  * @typedef {Object} PostgresVersions
  * @property {string} primary
  * @property {Array<{ major: number, image: string, support?: string }>} matrix
@@ -34,12 +41,11 @@ const SCOPES = new Set(['pr', 'full']);
 
 /**
  * The schema-docs check runs on the primary Postgres leg only, since the
- * committed docs come from that one version. PRs collect coverage on that leg.
- * Merge groups use the full scope and skip duplicate coverage collection.
+ * committed docs come from that one version. Scope 'pr' collects coverage on
+ * that leg. Scope 'full' collects no coverage.
  *
  * Scope 'pr' keeps SQLite plus the primary Postgres leg. Scope 'full' keeps
- * every Postgres major. The merge queue generates with 'full', so every merge
- * still gates on the older majors.
+ * every Postgres major. CI runs DB tests on PRs only, with 'pr'.
  *
  * @param {PostgresVersions} versions
  * @param {'pr' | 'full'} scope
@@ -92,7 +98,7 @@ export function buildMatrix(versions, scope = 'full') {
 		{
 			name: 'SQLite Pooled',
 			runner: RUNNER,
-			'test-cmd': `pnpm test:sqlite ${MAX_WORKERS}`,
+			'test-cmd': `pnpm --filter=n8n test:sqlite ${MAX_WORKERS}`,
 			'migration-cmd': 'pnpm test:sqlite:migrations',
 			'schema-check-cmd': 'pnpm --filter=@n8n/db schema:check:sqlite',
 			TEST_IMAGE_POSTGRES: undefined,
@@ -101,7 +107,7 @@ export function buildMatrix(versions, scope = 'full') {
 		...postgresLegs.map(({ major, image }) => ({
 			name: `Postgres ${major}`,
 			runner: RUNNER,
-			'test-cmd': `pnpm test:postgres:integration:tc ${MAX_WORKERS}`,
+			'test-cmd': `${TEST_RUN} --full-task=test:postgres:integration:tc --filter=n8n --only -- ${MAX_WORKERS}`,
 			'migration-cmd': `pnpm test:postgres:migrations:tc ${MAX_WORKERS}`,
 			'schema-check-cmd': image === primary ? 'pnpm --filter=@n8n/db schema:check:postgres' : '',
 			TEST_IMAGE_POSTGRES: image,
@@ -117,7 +123,7 @@ export function buildMatrix(versions, scope = 'full') {
  */
 export const INTEGRATION_SHARDS = 2;
 
-const PACKAGED_MODULES_CMD = `pnpm --filter './packages/modules/*/backend' --if-present run test:postgres ${MAX_WORKERS}`;
+const PACKAGED_MODULES_CMD = `${TEST_RUN} --full-task=test:postgres --filter='./packages/modules/*/backend' --only -- ${MAX_WORKERS}`;
 
 /**
  * Expands the legs into the jobs of test-db-reusable.yml. The workflow runs each
@@ -129,20 +135,33 @@ const PACKAGED_MODULES_CMD = `pnpm --filter './packages/modules/*/backend' --if-
  *
  * @param {PostgresVersions} versions
  * @param {'pr' | 'full'} scope
+ * @param {{ cliIntegrationRuns?: boolean }} [options] `cliIntegrationRuns`: the
+ *   caller runs the CLI Integration Tests job in full on SQLite.
  */
-export function buildJobMatrices(versions, scope = 'full') {
+export function buildJobMatrices(versions, scope = 'full', { cliIntegrationRuns = false } = {}) {
 	const legs = buildMatrix(versions, scope);
+	// When the CLI Integration Tests job runs the same SQLite suite (same config
+	// and pool size) in full, the SQLite leg only keeps its migrations. Its
+	// schema-docs check moves to the first Postgres job.
+	const integrationLegs = cliIntegrationRuns ? legs.filter((leg) => leg.TEST_IMAGE_POSTGRES) : legs;
+	const movedSchemaChecks = cliIntegrationRuns
+		? legs.filter((leg) => !leg.TEST_IMAGE_POSTGRES).map((leg) => leg['schema-check-cmd'])
+		: [];
 
-	const integration = legs.flatMap((leg) =>
+	const integration = integrationLegs.flatMap((leg, legIndex) =>
 		Array.from({ length: INTEGRATION_SHARDS }, (_, i) => {
 			const shard = `${i + 1}/${INTEGRATION_SHARDS}`;
 			const isFirstShard = i === 0;
+			const schemaChecks = [
+				leg['schema-check-cmd'],
+				...(legIndex === 0 ? movedSchemaChecks : []),
+			].filter(Boolean);
 			return {
 				name: `${leg.name} Integration (${shard})`,
 				runner: leg.runner,
 				'test-cmd': `${leg['test-cmd']} --shard=${shard}`,
 				'packaged-modules-cmd': isFirstShard && leg.TEST_IMAGE_POSTGRES ? PACKAGED_MODULES_CMD : '',
-				'schema-check-cmd': isFirstShard ? leg['schema-check-cmd'] : '',
+				'schema-check-cmd': isFirstShard ? schemaChecks.join(' && ') : '',
 				TEST_IMAGE_POSTGRES: leg.TEST_IMAGE_POSTGRES,
 				collectCoverage: leg.collectCoverage,
 			};
@@ -163,5 +182,8 @@ export function buildJobMatrices(versions, scope = 'full') {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
 	const scopeArg = process.argv.find((arg) => arg.startsWith('--scope='));
 	const scope = scopeArg ? scopeArg.slice('--scope='.length) : 'full';
-	console.log(JSON.stringify(buildJobMatrices(readPostgresVersions(), scope)));
+	const cliIntegrationRuns = process.argv.includes('--cli-integration-runs=true');
+	console.log(
+		JSON.stringify(buildJobMatrices(readPostgresVersions(), scope, { cliIntegrationRuns })),
+	);
 }

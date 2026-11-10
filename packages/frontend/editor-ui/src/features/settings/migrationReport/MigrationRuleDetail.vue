@@ -13,6 +13,7 @@ import type {
 	MigrationNotifySkipReason,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	N8nBadge,
 	N8nButton,
@@ -44,13 +45,16 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useAsyncState, useDebounceFn } from '@vueuse/core';
 import orderBy from 'lodash/orderBy';
 import { computed, nextTick, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { I18nT } from 'vue-i18n';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import FindingStateSelect from './components/FindingStateSelect.vue';
 import HowToFixPanel from './components/HowToFixPanel.vue';
 import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
+import SplitButton from './components/SplitButton.vue';
+import ArchiveWorkflowsModal from './ArchiveWorkflowsModal.vue';
+import type { ArchiveWorkflowsModalMode } from './constants';
 import {
 	DEFAULT_WORKFLOW_FILTERS,
 	isUnresolvedState,
@@ -66,12 +70,14 @@ const rbacStore = useRBACStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const toast = useToast();
+const workflowsStore = useWorkflowsStore();
 
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
+const route = useRoute();
 
 // The server lists only the workflows the user can edit, and editing a workflow
 // allows triaging and migrating it. So every row is editable. A notification
@@ -371,6 +377,7 @@ async function onFindingStatusChange(
 			workflow.id,
 			status,
 		);
+		if (status === 'wont_fix') promptToArchive(workflow);
 	} catch (error) {
 		restoreWorkflows([workflow]);
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
@@ -607,6 +614,97 @@ function reviewUnusedWorkflows() {
 	workflowFilters.value = { ...UNUSED_WORKFLOW_FILTERS };
 }
 
+// The open archive dialog, if any. The page does the work when the user confirms.
+const archiveDialog = ref<{ mode: ArchiveWorkflowsModalMode; workflows: AffectedWorkflow[] }>();
+
+function onArchiveDialogConfirm() {
+	if (!archiveDialog.value) return;
+	const { mode, workflows } = archiveDialog.value;
+	void (mode === 'prompt' ? archiveWorkflows(workflows) : markWontFixAndArchive(workflows));
+}
+
+/**
+ * On a rule whose executions will fail, a won't fix usually means the workflow is
+ * not needed. So a won't fix from the row asks to archive it too. On other rules
+ * the workflow often keeps running, so the row does not ask.
+ */
+function promptToArchive(workflow: AffectedWorkflow) {
+	if (state.value.ruleImpact !== 'executionsFail' || workflow.isArchived) return;
+	archiveDialog.value = { mode: 'prompt', workflows: [workflow] };
+}
+
+const bulkArchiveTargets = computed(() =>
+	selectedWorkflows.value.filter(
+		(workflow) => isSelectable(workflow) && !isBusy(workflow) && !workflow.isArchived,
+	),
+);
+
+const bulkWontFixActions = computed(() => [
+	{
+		label: i18n.baseText('settings.migrationReport.detail.bulk.wontFixAndArchive'),
+		value: 'wontFixAndArchive',
+		disabled: bulkArchiveTargets.value.length === 0,
+	},
+]);
+
+function onBulkWontFixAndArchive() {
+	const workflows = bulkArchiveTargets.value;
+	if (workflows.length === 0) return;
+	if (!workflows.some((workflow) => workflow.active)) {
+		void markWontFixAndArchive(workflows);
+		return;
+	}
+	archiveDialog.value = { mode: 'confirm', workflows };
+}
+
+async function markWontFixAndArchive(workflows: AffectedWorkflow[]) {
+	const toMark = workflows.filter((workflow) => findingState(workflow) !== 'wont_fix');
+	if (toMark.length > 0 && !(await changeFindingStatuses(toMark, 'wont_fix'))) return;
+	const done = new Set(workflows.map((workflow) => workflow.id));
+	selectedWorkflowIds.value = selectedWorkflowIds.value.filter((id) => !done.has(id));
+	await archiveWorkflows(workflows);
+}
+
+async function archiveWorkflows(workflows: AffectedWorkflow[]) {
+	const count = workflows.length;
+	// One request per workflow. A bulk archive endpoint would be faster for large selections.
+	const archivedIds = new Set<string>();
+	for (const workflow of workflows) {
+		try {
+			await workflowsStore.archiveWorkflow(workflow.id);
+			archivedIds.add(workflow.id);
+		} catch {
+			// Counted below. The user may triage a workflow without the right to archive it.
+		}
+	}
+
+	state.value = {
+		...state.value,
+		affectedWorkflows: state.value.affectedWorkflows.map((workflow) =>
+			// Archiving also unpublishes the workflow, as the server does.
+			archivedIds.has(workflow.id) ? { ...workflow, isArchived: true, active: false } : workflow,
+		),
+	};
+
+	if (archivedIds.size === count) {
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.migrationReport.detail.wontFix.archive.success.title', {
+				adjustToNumber: count,
+				interpolate: { count: String(count) },
+			}),
+		});
+	} else {
+		toast.showMessage({
+			type: 'warning',
+			title: i18n.baseText('settings.migrationReport.detail.wontFix.archive.partial.title', {
+				interpolate: { archived: String(archivedIds.size), total: String(count) },
+			}),
+			message: i18n.baseText('settings.migrationReport.detail.wontFix.archive.partial.message'),
+		});
+	}
+}
+
 async function markUnusedWorkflowsAsWontFix() {
 	const workflows = unusedOpenWorkflows.value;
 	if (workflows.length === 0) return;
@@ -677,7 +775,13 @@ function onSortChange(value: string) {
 // Filter state
 const searchInput = ref('');
 const searchQuery = ref(''); // Debounced value for filtering
-const workflowFilters = ref<WorkflowFilters>({ ...DEFAULT_WORKFLOW_FILTERS });
+// The notification email links here with `?owner=me` to show the recipient's workflows.
+const workflowFilters = ref<WorkflowFilters>({
+	...DEFAULT_WORKFLOW_FILTERS,
+	...(route.query.owner === 'me' && usersStore.currentUserId
+		? { owner: usersStore.currentUserId }
+		: {}),
+});
 
 // Debounced search to avoid excessive filtering
 const debouncedSearch = useDebounceFn((value: string) => {
@@ -797,6 +901,29 @@ const sortedWorkflows = computed(() => {
 	const { id, desc } = sortBy.value[0];
 	return orderBy(filteredWorkflows.value, [sortValues[id] ?? id], [desc ? 'desc' : 'asc']);
 });
+
+const page = ref(0);
+const itemsPerPage = ref(25);
+
+const pagedWorkflows = computed(() =>
+	sortedWorkflows.value.slice(
+		page.value * itemsPerPage.value,
+		(page.value + 1) * itemsPerPage.value,
+	),
+);
+
+watch([searchQuery, workflowFilters, sortBy], () => {
+	page.value = 0;
+});
+
+// Resolving rows can empty the last page, so the page moves back to the last one with rows.
+watch(
+	() => sortedWorkflows.value.length,
+	(length) => {
+		const lastPage = Math.max(0, Math.ceil(length / itemsPerPage.value) - 1);
+		if (page.value > lastPage) page.value = lastPage;
+	},
+);
 </script>
 
 <template>
@@ -922,10 +1049,11 @@ const sortedWorkflows = computed(() => {
 			:key="String(state.migratable)"
 			v-model:sort-by="sortBy"
 			v-model:selection="selectedWorkflowIds"
+			v-model:page="page"
+			v-model:items-per-page="itemsPerPage"
 			show-select
 			:item-selectable="isSelectable"
-			:items-per-page="sortedWorkflows.length + 1"
-			:items="sortedWorkflows"
+			:items="pagedWorkflows"
 			:items-length="sortedWorkflows.length"
 			:headers="tableHeaders"
 			:loading="isLoading"
@@ -1139,12 +1267,14 @@ const sortedWorkflows = computed(() => {
 							}}
 						</N8nText>
 					</template>
-					<N8nButton
-						variant="outline"
+					<SplitButton
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.wontFix')"
 						:disabled="bulkTargets('wont_fix').length === 0"
+						:actions="bulkWontFixActions"
+						:toggle-label="i18n.baseText('settings.migrationReport.detail.bulk.wontFixMore')"
 						data-test-id="migration-bulk-wont-fix-button"
 						@click="onBulkStatusChange('wont_fix')"
+						@action="onBulkWontFixAndArchive"
 					/>
 					<N8nButton
 						variant="outline"
@@ -1156,6 +1286,13 @@ const sortedWorkflows = computed(() => {
 				</template>
 			</N8nSelectedItemsInfo>
 		</div>
+		<ArchiveWorkflowsModal
+			v-if="archiveDialog"
+			:mode="archiveDialog.mode"
+			:workflows="archiveDialog.workflows"
+			@confirm="onArchiveDialogConfirm"
+			@close="archiveDialog = undefined"
+		/>
 	</N8nSettingsLayout>
 </template>
 

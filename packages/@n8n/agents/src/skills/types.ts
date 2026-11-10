@@ -202,6 +202,12 @@ export interface RuntimeSkillLoadError {
 
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
+	/** Keep these entries out of cached instructions. Send snapshots in user messages instead. */
+	dynamicCatalog?: {
+		skillIds: string[];
+		/** Current availability and loading guidance for these skills. */
+		notice?: string;
+	};
 	/** Observe applied revocations and skill context prepared for model calls. */
 	onContext?: (skills: RuntimeSkillContextUsage[]) => void;
 	/** Identify skills that need explicit updates, including IDs no longer in the catalog. */

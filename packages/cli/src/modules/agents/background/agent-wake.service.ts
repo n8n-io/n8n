@@ -5,11 +5,11 @@ import { UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 import { AgentConversationStateService } from '../agent-conversation-state.service';
 import { AgentPlanService } from '../agent-plan.service';
@@ -141,11 +141,11 @@ export class AgentWakeService {
 		const updates: string[] = [];
 		if (jobs.length > 0)
 			updates.push(
-				`${jobs.length} background job(s) settled: ${summaries}. Call check_background_jobs once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.`,
+				`${jobs.length} background job(s) settled: ${summaries}. Call background_jobs with action "check" once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.`,
 			);
 		if (stoppedHere)
 			updates.push(
-				'The user requested a stop for background tasks. Sub-agents pause at their checkpoints. Workflows stop through execution cancellation. One combined report follows when the selected tasks are inactive. Do not replace or resume these tasks automatically. First call resume_background_jobs when the latest user message explicitly asks to continue. If that message arrived before the report, ask the user to wait and retry. Cancelled workflows need new calls through their normal tools. Check conversation history and current jobs before repeating a workflow call.',
+				'The user requested a stop for background tasks. Sub-agents pause at their checkpoints. Workflows stop through execution cancellation. One combined report follows when the selected tasks are inactive. Do not replace or resume these tasks automatically. First call background_jobs with action "resume" when the latest user message explicitly asks to continue. If that message arrived before the report, ask the user to wait and retry. Cancelled workflows need new calls through their normal tools. Check conversation history and current jobs before repeating a workflow call.',
 			);
 		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${updates.join('\n')}${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
 	}
@@ -398,13 +398,13 @@ export class AgentWakeService {
 				pauseReport: Boolean(jobs[0]?.pauseRequestId),
 				backgroundJobSignal: {
 					...(isFinal ? { isFinal: true } : {}),
-					tasks: jobs.flatMap(({ id, title, kind, status }) =>
+					tasks: jobs.flatMap(({ id, title, kind, status, files }) =>
 						status === 'running' ||
 						status === 'suspended' ||
 						status === 'paused' ||
 						jobs[0]?.pauseRequestId
 							? []
-							: [{ id, title, kind, status }],
+							: [{ id, title, kind, status, ...(files?.length ? { files } : {}) }],
 					),
 				},
 				memory: { threadId, resourceId },

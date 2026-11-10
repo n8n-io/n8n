@@ -282,11 +282,7 @@ export type {
 	CredentialListItem,
 } from './types';
 export { McpClient } from './sdk/mcp-client';
-export {
-	hasMcpMediaContent,
-	mcpContentToMessageParts,
-	mcpContentToModelParts,
-} from './runtime/mcp/mcp-content';
+export { hasMcpMediaContent, mcpContentToModelParts } from './runtime/mcp/mcp-content';
 export type { McpModelContentPart } from './runtime/mcp/mcp-content';
 export { providerTools } from './sdk/provider-tools';
 export { verify } from './sdk/verify';
@@ -443,6 +439,7 @@ export type {
 	MemoryLifecycleStatus,
 } from './runtime/memory/memory-lifecycle';
 export { loadReplayedMessages } from './runtime/memory/memory-orchestrator';
+export { settleAbandonedToolCallsInMemory } from './runtime/memory/strip-orphaned-tool-messages';
 export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
 export {
 	parseObservationLogMarkdown,

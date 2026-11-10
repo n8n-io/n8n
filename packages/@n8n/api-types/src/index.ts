@@ -14,6 +14,7 @@ export * from './agents/index';
 export * from './skills/index';
 export * from './builder-tool-names';
 export * from './schemas/app.schema';
+export * from './schemas/app-binding.schema';
 export * from './schemas/mcp-tool-permissions.schema';
 export * from './instance-registry-types';
 export type * from './instance-reporting';
@@ -140,9 +141,6 @@ export {
 	aiPreferenceContentSchema,
 	aiPreferenceScopeSchema,
 	aiPreferenceSourceSchema,
-	CONTEXT_PREFERENCES_CONTROL_VARIANT,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
 	aiPreferenceScopeOf,
 	aiPreferenceTargetOf,
 } from './schemas/ai-preference.schema';
@@ -433,6 +431,8 @@ export {
 	taskItemSchema,
 	taskListSchema,
 	tasksUpdatePayloadSchema,
+	instanceContextPayloadSchema,
+	statusPayloadSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
@@ -450,6 +450,9 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	confirmationInputTypeSchema,
+	appBlueprintSchema,
+	appBlueprintResumeSchema,
+	appBlueprintErrorsSchema,
 	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
 	mcpConnectServerSchema,
@@ -509,9 +512,6 @@ export {
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
 	instanceAiThreadArtifactSchema,
-	instanceAiThreadTabRefSchema,
-	instanceAiThreadTabSchema,
-	instanceAiThreadTabsStateSchema,
 	instanceAiThreadArtifactsContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -550,6 +550,7 @@ export {
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 	base64EncodedSize,
 	exceedsAttachmentSizeLimit,
 	formatAttachmentSizeLimit,
@@ -557,8 +558,6 @@ export {
 	MAX_ATTACHMENT_DECODED_BYTES,
 	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
 	MAX_ATTACHMENT_BASE64_BYTES,
-	MAX_INSTANCE_AI_THREAD_OPEN_TABS,
-	MAX_INSTANCE_AI_THREAD_CLOSED_TABS,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 	MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE,
 	MAX_INSTANCE_AI_NODES_PER_SET,
@@ -610,6 +609,9 @@ export type {
 	InstanceAiSetupStateInput,
 	InstanceAiRunLimitReason,
 	InstanceAiRunLimitMeta,
+	AppBlueprint,
+	AppBlueprintResume,
+	AppBlueprintErrors,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -703,7 +705,6 @@ export type {
 	InstanceAiEnvManagedFields,
 	InstanceAiVerificationFailure,
 	InstanceAiVerificationResponse,
-	InstanceAiUserPreferencesResponse,
 	InstanceAiProviderConnection,
 	InstanceAiSandboxProvider,
 	InstanceAiConnectionUpdate,
@@ -716,6 +717,7 @@ export type {
 	InstanceAiTargetResource,
 	InstanceAiFileAttachment,
 	InstanceAiNodesAttachment,
+	InstanceAiElementAttachment,
 	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
 	DomainAccessAction,
@@ -729,10 +731,6 @@ export type {
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifact,
-	InstanceAiThreadTabRef,
-	InstanceAiThreadTab,
-	InstanceAiThreadTabsState,
-	InstanceAiThreadTabsResponse,
 	InstanceAiThreadArtifactsContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
@@ -760,6 +758,22 @@ export type {
 	InstanceAiEvalSeedAgent,
 	InstanceAiEvalSeedFolder,
 } from './schemas/instance-ai.schema';
+
+export {
+	assistantArtifactTypeSchema,
+	assistantThreadTabRefSchema,
+	assistantThreadTabSchema,
+	assistantThreadTabsStateSchema,
+	MAX_ASSISTANT_THREAD_OPEN_TABS,
+	MAX_ASSISTANT_THREAD_CLOSED_TABS,
+} from './schemas/assistant-thread-tabs.schema';
+export type {
+	AssistantArtifactType,
+	AssistantThreadTabRef,
+	AssistantThreadTab,
+	AssistantThreadTabsState,
+	AssistantThreadTabsResponse,
+} from './schemas/assistant-thread-tabs.schema';
 
 export {
 	instanceAiSetupCredentialSelectionKey,
@@ -994,6 +1008,7 @@ export {
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
 export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
+export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI } from './constants/client';
 
 export {
 	instanceAiApprovalDetailsSchema,

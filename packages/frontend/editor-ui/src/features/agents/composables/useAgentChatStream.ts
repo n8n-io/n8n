@@ -56,6 +56,7 @@ import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/share
 import { CHAT_MESSAGE_ROLE, CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isPolicyRefusedToolOutput } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
+import { addReplyAttachments } from '@/features/ai/shared/agentsChat/replyFiles';
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
@@ -677,7 +678,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	function attachBudgetNotice(
 		session: StreamSession,
-		code: 'budget.monthly' | 'budget.session' | 'budget.alert',
+		code: 'budget.monthly' | 'budget.session' | 'budget.alert' | 'budget.credits',
 		agentId?: string,
 	): void {
 		const msg = ensureCurrent(session);
@@ -930,6 +931,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return false;
 	}
 
+	function holdsOnlyHostEvents(msg: ChatMessage): boolean {
+		return (
+			!!msg.hostEvents?.length &&
+			!msg.content &&
+			(msg.toolCalls?.length ?? 0) === 0 &&
+			getMessageThinkingSegments(msg).length === 0 &&
+			!msg.budgetNotices?.length
+		);
+	}
+
 	function dropOrphanMintedBubbles(session: StreamSession): void {
 		for (const msg of session.minted) {
 			if (
@@ -1091,8 +1102,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'finish-step':
 				// LLM iteration boundary — the next text/tool event mints a
 				// fresh ChatMessage. We don't flip status here; `done` is what
-				// finalizes the message at the end of the stream.
-				if (!session.stopReport) session.current = undefined;
+				// finalizes the message at the end of the stream. A message with
+				// only host events, such as the turn setup sends before the first
+				// step, takes the next step too, as the history shows it.
+				if (!session.stopReport && !(session.current && holdsOnlyHostEvents(session.current))) {
+					session.current = undefined;
+				}
 				break;
 			case 'text-start':
 			case 'text-end':
@@ -1215,6 +1230,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
+					addReplyAttachments(found.msg, found.tc);
 					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
 					const updated = rebuildInteractiveFromHistory(found.tc, extensions);
 					if (updated && currentInteractive?.resolvedAt === undefined) {

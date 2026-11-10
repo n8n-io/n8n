@@ -1,13 +1,20 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
 import type { BuiltTool } from '@n8n/agents';
-import { WORKFLOW_TOOL_NAME_BY_ACTION } from '@n8n/api-types';
+import {
+	DATA_TABLE_TOOL_ACTIONS,
+	DATA_TABLE_TOOL_NAME_BY_ACTION,
+	EXECUTION_TOOL_ACTIONS,
+	EXECUTION_TOOL_NAME_BY_ACTION,
+	WORKFLOW_TOOL_NAME_BY_ACTION,
+	WORKSPACE_TOOL_NAME_BY_ACTION,
+} from '@n8n/api-types';
 
-import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
 import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
 import { getSupportedWorkflowActions } from './workflows/workflow-tool-actions';
+import { getSupportedWorkspaceActions } from './workspace-tool-actions';
 
 const lazyMod = <T>(loader: () => T): (() => T) => {
 	let cached: T | undefined;
@@ -112,7 +119,10 @@ function getOrchestratorDomainToolFactories(
 			WORKFLOW_TOOL_NAME_BY_ACTION[action],
 			() => loadWorkflowsTool().createWorkflowTool(context, action),
 		]),
-		[DOMAIN_TOOL_IDS.EXECUTIONS, () => loadExecutionsTool().createExecutionsTool(context)],
+		...EXECUTION_TOOL_ACTIONS.map((action): [string, DomainToolFactory] => [
+			EXECUTION_TOOL_NAME_BY_ACTION[action],
+			() => loadExecutionsTool().createExecutionTool(context, action),
+		]),
 		[
 			DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
 			() => loadCredentialsTool().createListCredentialsTool(context),
@@ -133,8 +143,14 @@ function getOrchestratorDomainToolFactories(
 			DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
 			() => loadCredentialsTool().createDeleteCredentialTool(context),
 		],
-		[DOMAIN_TOOL_IDS.DATA_TABLES, () => loadDataTablesTool().createDataTablesTool(context)],
-		[DOMAIN_TOOL_IDS.WORKSPACE, () => loadWorkspaceTool().createWorkspaceTool(context)],
+		...DATA_TABLE_TOOL_ACTIONS.map((action): [string, DomainToolFactory] => [
+			DATA_TABLE_TOOL_NAME_BY_ACTION[action],
+			() => loadDataTablesTool().createDataTableTool(context, action),
+		]),
+		...getSupportedWorkspaceActions(context).map((action): [string, DomainToolFactory] => [
+			WORKSPACE_TOOL_NAME_BY_ACTION[action],
+			() => loadWorkspaceTool().createWorkspaceActionTool(context, action),
+		]),
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.SEARCH_NODES, () => loadNodesTool().createSearchNodesTool(context)],
@@ -236,12 +252,15 @@ function getOrchestratorDomainToolFactories(
 		tools.push([DOMAIN_TOOL_IDS.APPS, () => loadAppsTool().createAppsTool(context)]);
 	}
 
-	if (context.currentUserAttachments?.some(isParseableAttachment)) {
-		tools.push([
-			DOMAIN_TOOL_IDS.PARSE_FILE,
-			() => loadParseFileTool().createParseFileTool(context),
-		]);
-	}
+	// Registered on every turn, with or without files, so the tool list, which
+	// leads the cached prompt prefix, stays the same for the whole thread.
+	const { storedFiles } = context;
+	tools.push([
+		DOMAIN_TOOL_IDS.PARSE_FILE,
+		storedFiles
+			? () => loadParseFileTool().createParseStoredFileTool(storedFiles)
+			: () => loadParseFileTool().createParseFileTool(context),
+	]);
 
 	return tools;
 }

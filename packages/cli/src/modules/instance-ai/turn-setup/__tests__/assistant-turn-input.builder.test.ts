@@ -643,7 +643,6 @@ describe('AssistantTurnInputBuilder — opening-turn title', () => {
 			memory,
 			taskStorage: { get: vi.fn(async () => undefined) },
 			conversationHistory,
-			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
 			skillScope: {},
 		} as unknown as AssistantTurnEnvironment;
@@ -695,6 +694,34 @@ describe('AssistantTurnInputBuilder — opening-turn title', () => {
 		expect(patch).toEqual({
 			title: 'Digest',
 			metadata: { [OPENED_METADATA_KEY]: true, titleRefined: true },
+		});
+	});
+
+	it('leaves the title to the agent runtime when only an unsaved agent is attached', async () => {
+		const memory = createMemory({});
+
+		const { patch } = await buildOpeningTurn(memory, {
+			titledByRuntime: true,
+			contextAttachments: [
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Untitled', pending: true },
+			],
+		});
+
+		expect(patch).toEqual({ metadata: { [OPENED_METADATA_KEY]: true } });
+	});
+
+	it('titles from the message when only an unsaved agent is attached', async () => {
+		const memory = createMemory({});
+
+		const { patch } = await buildOpeningTurn(memory, {
+			contextAttachments: [
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Untitled', pending: true },
+			],
+		});
+
+		expect(patch).toEqual({
+			title: 'Send me a daily digest of new GitHub issues',
+			metadata: { [OPENED_METADATA_KEY]: true },
 		});
 	});
 

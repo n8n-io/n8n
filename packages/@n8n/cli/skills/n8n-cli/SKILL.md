@@ -215,6 +215,11 @@ n8n-cli promotion-environment connect <applyId>
 # 4. Promote from this instance, or apply to it.
 n8n-cli promotion-environment promote <promoteId>
 n8n-cli promotion-environment apply <applyId>
+
+# A project that exists only in the Apply package must exist here before you
+# apply to it from its project. Create it empty, with the same ID:
+n8n-cli promotion-environment list-missing-projects <applyId>
+n8n-cli promotion-environment create-missing-projects <applyId>   # exits 1 if one fails
 ```
 
 GitLab setup. A GitLab provider lists its repositories and branches, so read the
@@ -235,8 +240,8 @@ Apply a reviewed commit only:
 ```bash
 # Review the changes. Take the commit SHA from the same response as the rows:
 # a second request can read a newer commit.
-n8n-cli promotion-environment list-changes <projectId> apply --sort=updatedAt --order=desc --json > reviewed-changes.json
-jq '{commitSha, changes}' reviewed-changes.json
+n8n-cli promotion-environment list-changes <projectId> apply --json > reviewed-changes.json
+jq '{commitSha, source, resources}' reviewed-changes.json
 # The branch comes from the Apply environment.
 n8n-cli promotion-environment get <applyId> --jq '.settings.branchName'
 
@@ -249,6 +254,24 @@ n8n-cli promotion-environment apply-continue <applyId> \
   --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
 # To also apply destructive data table changes and delete the team projects that the
 # package does not hold, add --confirm-destructive-changes.
+```
+
+Promote or apply a selection of a project:
+
+```bash
+# The table lists each changed resource with its TYPE and ID. Select workflows with -w and
+# folders with --folder; the project is always included. A changed credential, data table,
+# variable, or tag can't be selected: select a workflow from its USEDBY column instead.
+n8n-cli promotion-environment list-changes <projectId> promote
+n8n-cli promotion-environment promote-selection <projectId> -w <workflowId> --folder <folderId>
+
+# Apply only the reviewed selection. Take the source and the revision from the same preview.
+n8n-cli promotion-environment list-changes <projectId> apply --json > preview.json
+jq '{commitSha, source, revision}' preview.json
+n8n-cli promotion-environment apply-selection <projectId> -w <workflowId> \
+  --expected-environment-id=<source.environmentId> --expected-branch=<source.branchName> \
+  --expected-commit-sha=<commitSha> --expected-preview-revision=<revision>
+# Exit 3: the source or the preview changed since the review. Review again.
 ```
 
 Environment JSON for step 2 (`promote.json`; `apply.json` uses `"direction":"apply"`
@@ -318,8 +341,10 @@ Key points:
   or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
   read `counts`. With `--json`, a `blocked` result lists what is missing under
   `check`.
-- The `--expected-*` flags go together: pass all three or none. The commit SHA
-  must be the full SHA.
+- The `--expected-environment-id`, `--expected-branch`, and
+  `--expected-commit-sha` flags go together: pass all three or none. The commit
+  SHA must be the full SHA. `--expected-preview-revision` is separate and works
+  only with `apply-selection` and `apply-selection-continue`.
 - API key scopes for this group are named `promotions:*`. `promote` also needs
   `variable:list` when the workflows reference variables.
 

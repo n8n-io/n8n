@@ -14,7 +14,8 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, TimeoutExecutionCancelledError, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes, TimeoutExecutionCancelledError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialTypes } from '@/credential-types';
@@ -23,7 +24,7 @@ import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { PrepareWorkflowAgentForEval } from '@/modules/agents/evaluation/agent-evaluation.contracts';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTableService } from '@n8n/backend-module-data-table';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';

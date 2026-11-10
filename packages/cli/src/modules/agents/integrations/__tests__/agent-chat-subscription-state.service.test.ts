@@ -4,7 +4,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 import type { StateAdapter, Lock, QueueEntry } from 'chat';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import { AgentChangePublisher } from '../../agent-change-publisher.service';
 import { AgentChatSubscriptionStateService } from '../agent-chat-subscription-state.service';
@@ -117,6 +117,7 @@ describe('AgentChatSubscriptionStateService', () => {
 				credentialId: 'cred-1',
 			},
 			'thread-from-peer',
+			{},
 		);
 		expect(delegate.subscribe).toHaveBeenCalledWith('thread-from-peer');
 
@@ -203,6 +204,7 @@ describe('AgentChatSubscriptionStateService', () => {
 				credentialId: 'cred-1',
 			},
 			'thread-1',
+			{},
 		);
 		expect(delegate.subscribe).toHaveBeenCalledWith('thread-1');
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
@@ -273,6 +275,7 @@ describe('AgentChatSubscriptionStateService', () => {
 				credentialId: 'cred-1',
 			},
 			'thread-1',
+			{},
 		);
 		expect(delegate.unsubscribe).toHaveBeenCalledWith('thread-1');
 		await expect(state.isSubscribed('thread-1')).resolves.toBe(false);
@@ -376,6 +379,7 @@ describe('AgentChatSubscriptionStateService', () => {
 				credentialId: 'cred-1',
 			},
 			'thread-1',
+			{},
 		);
 		expect(delegate.subscribe).toHaveBeenCalledWith('thread-1');
 		expect(logger.warn).toHaveBeenCalledWith(
@@ -389,10 +393,13 @@ describe('AgentChatSubscriptionStateService', () => {
 
 		await service.deleteSubscriptionsForIntegration('agent-1', slackIntegration);
 
-		expect(repository.deleteForConnection).toHaveBeenCalledWith({
-			agentId: 'agent-1',
-			integrationType: 'slack',
-			credentialId: 'cred-1',
-		});
+		expect(repository.deleteForConnection).toHaveBeenCalledWith(
+			{
+				agentId: 'agent-1',
+				integrationType: 'slack',
+				credentialId: 'cred-1',
+			},
+			{},
+		);
 	});
 });

@@ -1,11 +1,12 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import { saveAs } from 'file-saver';
 import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	SKILLS_SORT_OPTIONS,
+	skillScopeSchema,
 	type AgentSkill,
 	type SkillCreateMethod,
 	type SkillAgentOption,
@@ -17,6 +18,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nActionDropdown,
@@ -42,6 +44,10 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import {
+	AgentSkillImportError,
+	useAgentSkillImport,
+} from '@/features/agents/composables/useAgentSkillImport';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
 import { exportAgentSkill } from '@/features/agents/utils/agentSkillExport';
@@ -101,7 +107,7 @@ const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
-const { failedSkillReason } = useSkillSourceReasons();
+const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
 
@@ -143,7 +149,6 @@ const scopeFilterOptions = computed(() =>
 		[
 			['instance', 'settings.context.skills.filter.instance'],
 			['project', 'settings.context.skills.filter.project'],
-			['agent', 'settings.context.skills.filter.agent'],
 		] as const
 	).map(([value, key]) => ({ value, label: i18n.baseText(key) })),
 );
@@ -154,7 +159,8 @@ function creatorLabel(creator: SkillUserDto): string {
 }
 
 function scopeQuery(scope: string): Pick<SkillListQuery, 'scope'> {
-	return scope === 'instance' || scope === 'project' || scope === 'agent' ? { scope } : {};
+	const parsed = skillScopeSchema.safeParse(scope);
+	return parsed.success ? { scope: parsed.data } : {};
 }
 
 // Paging, sort, search and filters run on the server: the count and the page both
@@ -176,7 +182,7 @@ function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 
 /**
  * Where a new skill can live: the instance, the personal project and the team projects
- * that the user may write to. An agent skill is made from inside its agent, not here.
+ * that the user may write to.
  */
 const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 	const options: AgentSkillModalScopeOption[] = [];
@@ -185,7 +191,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: INSTANCE_SCOPE,
 			label: i18n.baseText('settings.context.skills.scope.instance'),
 			icon: 'globe',
-			target: { projectId: null, agentId: null },
+			target: { projectId: null },
 		});
 	}
 	const personalProject = projectsStore.personalProject;
@@ -194,7 +200,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
-			target: { projectId: personalProject.id, agentId: null },
+			target: { projectId: personalProject.id },
 		});
 	}
 	for (const project of projectsStore.myProjects) {
@@ -203,7 +209,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
-			target: { projectId: project.id, agentId: null },
+			target: { projectId: project.id },
 		});
 	}
 	return options;
@@ -313,14 +319,22 @@ async function loadFilterOptions() {
 }
 
 function openModal(data: AgentSkillModalData) {
+	// The skill modal is shared, so a late upload must not replace what opens now.
+	dropPendingUpload();
 	uiStore.openModalWithData({ name: AGENT_SKILL_MODAL_KEY, data });
 }
 
-/** Starts at the SKILL.md upload step, which also offers "Add manually". */
-function openCreateModal() {
+/**
+ * Opens the create modal. Without `preset` it starts at the SKILL.md upload step, which also
+ * offers "Add manually". The create menu presets the form step, or a skill the user uploaded.
+ */
+function openCreateModal(
+	preset: Pick<AgentSkillModalData, 'initialStep' | 'skill' | 'initialMethod'> = {},
+) {
 	const options = scopeOptions.value;
 	if (options.length === 0) return;
 	openModal({
+		...preset,
 		scopeOptions: options,
 		initialScope: options[0].value,
 		...(mcpSkillsEnabled.value ? { availableToMCP: false } : {}),
@@ -335,14 +349,45 @@ function openCreateModal() {
 	});
 }
 
-type CreateAction = 'github' | 'manual';
+type CreateAction = 'github' | 'uploadFolder' | 'uploadFile' | 'manual';
 
+// One upload at a time. An upload is dropped when another skill action starts or the
+// user leaves the page, so its late result opens no modal and shows no toast.
+const uploadBusy = ref(false);
+let pendingUpload: object | null = null;
+
+function dropPendingUpload() {
+	pendingUpload = null;
+	uploadBusy.value = false;
+}
+
+onBeforeUnmount(dropPendingUpload);
+
+// Only "Connect to GitHub" is behind the Skill Sync flag. The other items are for everyone.
 const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => [
+	...(skillSyncEnabled.value
+		? [
+				{
+					id: 'github' as const,
+					label: i18n.baseText('settings.context.skills.actions.connectGithub'),
+					icon: 'git-branch' as const,
+					testId: 'skills-create-github',
+				},
+			]
+		: []),
 	{
-		id: 'github',
-		label: i18n.baseText('settings.context.skills.actions.connectGithub'),
-		icon: 'git-branch',
-		testId: 'skills-create-github',
+		id: 'uploadFolder',
+		label: i18n.baseText('settings.context.skills.actions.uploadFolder'),
+		icon: 'folder-open',
+		testId: 'skills-create-upload-folder',
+		disabled: uploadBusy.value,
+	},
+	{
+		id: 'uploadFile',
+		label: i18n.baseText('settings.context.skills.actions.uploadSkillFile'),
+		icon: 'file-text',
+		testId: 'skills-create-upload-file',
+		disabled: uploadBusy.value,
 	},
 	{
 		id: 'manual',
@@ -352,9 +397,46 @@ const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => 
 	},
 ]);
 
+const skillFolderInput = useTemplateRef<HTMLInputElement>('skillFolderInput');
+const skillFileInput = useTemplateRef<HTMLInputElement>('skillFileInput');
+const { importSkillFiles } = useAgentSkillImport();
+
 function onCreateMenuSelect(action: CreateAction) {
-	if (action === 'github') connectOpen.value = true;
-	else openCreateModal();
+	if (action === 'uploadFolder') skillFolderInput.value?.click();
+	else if (action === 'uploadFile') skillFileInput.value?.click();
+	else if (action === 'manual') openCreateModal({ initialStep: 'manual' });
+	else {
+		dropPendingUpload();
+		connectOpen.value = true;
+	}
+}
+
+/** Reads the picked folder or SKILL.md, then opens the form with the skill for review. */
+async function onSkillFilesPicked(event: Event) {
+	const input = event.target;
+	if (!(input instanceof HTMLInputElement)) return;
+	const files = Array.from(input.files ?? []);
+	// Cleared so that the same pick fires a change event again.
+	input.value = '';
+	if (files.length === 0 || uploadBusy.value) return;
+	const request = {};
+	pendingUpload = request;
+	uploadBusy.value = true;
+	try {
+		const skill = await importSkillFiles(files);
+		if (pendingUpload !== request) return;
+		openCreateModal({ skill, initialMethod: 'upload' });
+	} catch (error) {
+		if (pendingUpload !== request) return;
+		// The same texts as the upload step in the modal, so both paths read alike.
+		const key =
+			error instanceof AgentSkillImportError
+				? error.i18nKey
+				: 'agents.builder.skills.import.invalidFolder';
+		showError(new Error(i18n.baseText(key)), i18n.baseText('settings.context.skills.upload.error'));
+	} finally {
+		if (pendingUpload === request) dropPendingUpload();
+	}
 }
 
 type FailedSkill = SkillSourceConnected['response']['failed'][number];
@@ -459,7 +541,7 @@ async function onCreate(
 	return undefined;
 }
 
-/** The value of the scope picker for a saved skill. An agent skill has no picker value of its own. */
+/** The value of the scope picker for a saved skill. */
 function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string {
 	if (skill.scope === 'project' && skill.projectId)
 		return `${PROJECT_SCOPE_PREFIX}${skill.projectId}`;
@@ -488,8 +570,8 @@ function scopeLock(
 	return {};
 }
 
-/** `show` opens the editor with the Versions panel or with the latest two versions compared. */
-async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' | 'compare') {
+/** `show` opens the editor with the Versions panel. */
+async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions') {
 	try {
 		const detail = await skillsStore.fetchSkill(item.id);
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
@@ -499,11 +581,12 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 			read_only: !detail.canEdit,
 		});
 		const currentValue = scopeValueOf(detail);
-		// The current scope is listed even when the user could not create a skill there,
-		// such as an agent skill, which is only made from inside its agent.
+		// The current scope is listed even when the user could not create a skill there.
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
 			? scopeOptions.value
 			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
+		// A restore keeps the modal open, so the next save must send the hash it produced.
+		let baseSkillHash = detail.skillHash;
 		openModal({
 			skill: detail.skill,
 			skillId: detail.id,
@@ -520,7 +603,6 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 			existingSkillNames: [],
 			latestVersion: detail.latestVersion,
 			initialVersionsOpen: show === 'versions',
-			initialCompare: show === 'compare',
 			onDelete: async () => await onDelete(detail, () => uiStore.closeModal(AGENT_SKILL_MODAL_KEY)),
 			deleteDisabledReason: deleteBlockedReason(detail),
 			...(detail.syncedFrom?.canStopSyncing
@@ -533,10 +615,11 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 				await onSave(
 					detail.id,
 					skill,
-					detail.skillHash,
+					baseSkillHash,
 					scope !== currentValue ? scope : undefined,
 					availableToAssistant,
 					availableToMCP,
+					(skillHash) => (baseSkillHash = skillHash),
 				),
 		});
 	} catch (error) {
@@ -553,10 +636,11 @@ async function onSave(
 	newScope?: string,
 	availableToAssistant?: boolean,
 	availableToMCP?: boolean,
+	onSaved?: (skillHash: string) => void,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let created: boolean;
 	try {
-		({ created } = await skillsStore.saveSkill(id, {
+		const saved = await skillsStore.saveSkill(id, {
 			name: skill.name,
 			description: skill.description,
 			instructions: skill.instructions,
@@ -566,7 +650,9 @@ async function onSave(
 			...(newScope ? parseScope(newScope) : {}),
 			...(availableToAssistant !== undefined ? { availableToAssistant } : {}),
 			availableToMCP,
-		}));
+		});
+		created = saved.created;
+		onSaved?.(saved.skillHash);
 	} catch (error) {
 		return saveFailed(error);
 	}
@@ -660,6 +746,50 @@ async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 	onStopped?.();
 	showMessage({
 		title: i18n.baseText('settings.context.skills.stopSyncing.success', { interpolate: { name } }),
+		type: 'success',
+	});
+	await load();
+}
+
+/**
+ * Check now: checks the whole source of the skill. The list reloads, so the badges of every
+ * skill of the source show what the check found.
+ */
+async function onCheckForUpdates(skill: SkillListItem) {
+	let result;
+	try {
+		result = await skillsStore.checkForUpdates(skill.id);
+	} catch (error) {
+		const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
+		// The user cannot pick another credential here, so that reason gets its own text.
+		const text =
+			reason === 'credential_missing'
+				? i18n.baseText('settings.context.skills.checkForUpdates.error.credentialMissing')
+				: reason !== undefined
+					? reasonText(reason)
+					: undefined;
+		showError(
+			text ? new Error(text) : error,
+			i18n.baseText('settings.context.skills.checkForUpdates.error'),
+		);
+		return;
+	}
+	const { label, updatesFound, throttled } = result;
+	showMessage({
+		title: throttled
+			? i18n.baseText('settings.context.skills.checkForUpdates.throttled', {
+					interpolate: { label },
+				})
+			: i18n.baseText('settings.context.skills.checkForUpdates.checked', {
+					interpolate: { label },
+				}),
+		message:
+			updatesFound === 0
+				? i18n.baseText('settings.context.skills.checkForUpdates.none')
+				: i18n.baseText('settings.context.skills.checkForUpdates.found', {
+						interpolate: { count: updatesFound },
+						adjustToNumber: updatesFound,
+					}),
 		type: 'success',
 	});
 	await load();
@@ -803,7 +933,7 @@ onMounted(async () => {
 			</ResourceFiltersDropdown>
 			<span :class="$style.spacer" />
 			<N8nActionDropdown
-				v-if="scopeOptions.length > 0 && skillSyncEnabled"
+				v-if="scopeOptions.length > 0"
 				:items="createMenuItems"
 				placement="bottom-end"
 				data-test-id="skills-create-menu"
@@ -816,12 +946,6 @@ onMounted(async () => {
 					</N8nButton>
 				</template>
 			</N8nActionDropdown>
-			<N8nButton
-				v-else-if="scopeOptions.length > 0"
-				:label="i18n.baseText('settings.context.skills.actions.create')"
-				data-test-id="skills-create-button"
-				@click="openCreateModal"
-			/>
 		</div>
 
 		<SkillsTable
@@ -834,8 +958,8 @@ onMounted(async () => {
 			:show-mcp-availability="mcpSkillsEnabled"
 			@open="openEditModal($event)"
 			@timeline="openEditModal($event, 'versions')"
-			@compare="openEditModal($event, 'compare')"
 			@download="onDownload"
+			@check-for-updates="onCheckForUpdates($event)"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
@@ -861,7 +985,7 @@ onMounted(async () => {
 						v-if="scopeOptions.length > 0"
 						:label="i18n.baseText('settings.context.skills.actions.create')"
 						data-test-id="skills-empty-create-button"
-						@click="openCreateModal"
+						@click="openCreateModal()"
 					/>
 				</div>
 			</template>
@@ -872,6 +996,25 @@ onMounted(async () => {
 			v-model:open="connectOpen"
 			:scope-options="scopeOptions"
 			@connected="onSourceConnected"
+		/>
+		<input
+			ref="skillFolderInput"
+			type="file"
+			webkitdirectory
+			multiple
+			hidden
+			tabindex="-1"
+			data-test-id="skills-upload-folder-input"
+			@change="onSkillFilesPicked"
+		/>
+		<input
+			ref="skillFileInput"
+			type="file"
+			accept=".md,text/markdown"
+			hidden
+			tabindex="-1"
+			data-test-id="skills-upload-file-input"
+			@change="onSkillFilesPicked"
 		/>
 	</N8nSettingsLayout>
 </template>

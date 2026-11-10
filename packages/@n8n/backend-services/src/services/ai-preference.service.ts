@@ -16,6 +16,7 @@ import {
 	ProjectRelationRepository,
 	ProjectRepository,
 	UserRepository,
+	accountSummary,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -556,24 +557,10 @@ export class AiPreferenceService {
 			id: row.id,
 			content: row.content,
 			userId: row.userId,
-			user: row.user
-				? {
-						id: row.user.id,
-						email: row.user.email,
-						firstName: row.user.firstName,
-						lastName: row.user.lastName,
-					}
-				: null,
+			user: row.user ? accountSummary(row.user) : null,
 			projectId: row.projectId,
 			source: row.source,
-			createdBy: row.createdBy
-				? {
-						id: row.createdBy.id,
-						email: row.createdBy.email,
-						firstName: row.createdBy.firstName,
-						lastName: row.createdBy.lastName,
-					}
-				: null,
+			createdBy: row.createdBy ? accountSummary(row.createdBy) : null,
 			project: row.project
 				? {
 						id: row.project.id,

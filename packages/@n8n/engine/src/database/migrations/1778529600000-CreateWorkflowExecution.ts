@@ -32,7 +32,7 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 						name: 'parent_execution_id',
 						type: 'uuid',
 						isNullable: true,
-						comment: 'The execution whose step started this one. Null for a top-level execution.',
+						comment: 'The parent execution. Null for a top-level execution.',
 					},
 					{ name: 'parent_step_id', type: 'uuid', isNullable: true },
 					{
@@ -40,6 +40,13 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 						type: 'boolean',
 						isNullable: true,
 						comment: 'Whether the parent step waits for this execution to end.',
+					},
+					{
+						name: 'lifecycle_event_subscription',
+						type: 'jsonb',
+						isNullable: true,
+						comment:
+							'Which lifecycle events the caller subscribes to (none or all). NULL means none.',
 					},
 					{
 						name: 'created_at',
@@ -71,7 +78,17 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 		);
 
 		await queryRunner.createIndices(TABLE, [
-			new TableIndex({ name: 'idx_workflow_execution_workflow_id', columnNames: ['workflow_id'] }),
+			// Serves the listing's keyset order `created_at DESC, id DESC`. ASC
+			// because `TableIndex` cannot say DESC; Postgres scans it backwards.
+			new TableIndex({
+				name: 'idx_workflow_execution_workflow_id_created_at_id',
+				columnNames: ['workflow_id', 'created_at', 'id'],
+			}),
+			// The same page order for a listing over every workflow.
+			new TableIndex({
+				name: 'idx_workflow_execution_created_at_id',
+				columnNames: ['created_at', 'id'],
+			}),
 			new TableIndex({ name: 'idx_workflow_execution_status', columnNames: ['status'] }),
 			// Partial: most executions have no parent, and a top-level insert then
 			// never touches this index. A lookup by parent id still uses it.

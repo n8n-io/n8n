@@ -1,10 +1,12 @@
 import { reactive, watch } from 'vue';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	DATA_TABLE_TOOL_NAMES,
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	WORKFLOW_TOOL_NAMES,
+	getDataTableCallAction,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
@@ -13,6 +15,7 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 	InstanceAiWorkflowAttachment,
+	InstanceAiAppTarget,
 } from '@n8n/api-types';
 
 import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from './canvasPreview.utils';
@@ -38,19 +41,13 @@ export type ResourceEntry = {
 	pending?: boolean;
 };
 
-export interface TransientWorkflowArtifactReference {
-	referenceId: string;
-	workflowId: string;
-	workflowName: string;
-	projectId?: string;
-}
-
 /**
  * How a produced artifact first entered the thread: the agent built or edited
  * it (`built`), the agent read it in a lookup that opens a tab (`fetched`), a
  * message or the editor hand-off attached it (`attached`), or the user
- * mentioned it from the composer (`mentioned`). Telemetry only; the panel does
- * not show it.
+ * mentioned it from the composer (`mentioned`). A mention reaches the thread
+ * as a message attachment, so `sendMessage` seeds `mentioned` before the
+ * message lands. Telemetry only; the panel does not show it.
  */
 export type ArtifactOrigin = 'built' | 'fetched' | 'attached' | 'mentioned';
 
@@ -172,7 +169,7 @@ const ARTIFACT_TOOLS = new Set<string>([
 	...WORKFLOW_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 	SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS,
-	SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
+	...DATA_TABLE_TOOL_NAMES,
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
@@ -191,16 +188,18 @@ const WORKFLOW_READ_TOOLS = new Set<string>([
 	WORKFLOW_BUILDER_TOOL_NAMES.VALIDATE_WORKFLOW,
 	WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOW_VERSIONS,
 ]);
-const DATA_TABLE_READ_ACTIONS = new Set(['schema', 'query']);
+const DATA_TABLE_READ_ACTIONS = new Set<string>(['schema', 'query']);
+
+function isDataTableReadCall(tc: InstanceAiToolCallState): boolean {
+	const action = getDataTableCallAction(tc.toolName, tc.args?.action);
+	return action !== undefined && DATA_TABLE_READ_ACTIONS.has(action);
+}
 
 /** Origin for whatever a tool call registers, judged by what the call did, not by its result shape. */
 function toolCallOrigin(tc: InstanceAiToolCallState): ArtifactOrigin {
 	if (WORKFLOW_READ_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action)))
 		return 'fetched';
-	const action = optionalString(tc.args?.action);
-	if (!action) return 'built';
-	if (tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES && DATA_TABLE_READ_ACTIONS.has(action))
-		return 'fetched';
+	if (isDataTableReadCall(tc)) return 'fetched';
 	return 'built';
 }
 function entryFromAgentBuilderTarget(
@@ -421,11 +420,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			optionalString(result.dataTableName) ??
 			existing?.name ??
 			result.dataTableId;
-		const dataTableAction = optionalString(tc.args?.action);
-		const isReadOnlyLookup =
-			tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES &&
-			dataTableAction !== undefined &&
-			DATA_TABLE_READ_ACTIONS.has(dataTableAction);
+		const isReadOnlyLookup = isDataTableReadCall(tc);
 		recordProduced(
 			col,
 			{
@@ -590,21 +585,19 @@ function enrichWorkflowFromPendingAttachment(
 	);
 }
 
-function enrichWorkflowsFromTransientReferences(
-	col: Collections,
-	references: readonly TransientWorkflowArtifactReference[],
-): void {
-	for (const reference of references) {
-		if (col.produced.has(reference.workflowId)) continue;
+function enrichAppsFromTargets(col: Collections, targets: readonly InstanceAiAppTarget[]): void {
+	for (const target of targets) {
+		const existing = col.produced.get(target.appId);
+		if (existing && existing.type !== 'app') continue;
 		recordProduced(
 			col,
 			{
-				type: 'workflow',
-				id: reference.workflowId,
-				name: reference.workflowName,
-				...(reference.projectId ? { projectId: reference.projectId } : {}),
+				type: 'app',
+				id: target.appId,
+				name: existing?.name ?? target.name ?? 'App',
+				projectId: target.projectId,
 			},
-			{ linkable: false },
+			{ linkable: existing !== undefined },
 		);
 	}
 }
@@ -645,6 +638,17 @@ function enrichAgentFromPendingTarget(
 // Composable
 // ---------------------------------------------------------------------------
 
+/** Thread state besides the messages that adds or enriches registry entries. */
+export interface ResourceRegistrySources {
+	workflowNameLookup?: (id: string) => string | undefined;
+	archivedWorkflowIds?: () => ReadonlySet<string>;
+	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined;
+	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined;
+	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined;
+	agentBuilderTargets?: () => AgentBuilderTargetMetadata[];
+	appTargets?: () => readonly InstanceAiAppTarget[];
+}
+
 /**
  * Scans tool-call results in the conversation and returns two collections:
  *
@@ -663,19 +667,22 @@ function enrichAgentFromPendingTarget(
  *
  * - `producedArtifactOrigins` (keyed by resource id) — how each produced
  *   artifact first entered the thread. Sticky for the life of this registry:
- *   a mention keeps `mentioned` after its send turns it into a plain message
- *   attachment. A reload has only the messages, so an earlier mention then
- *   reads as `attached`.
+ *   the `mentioned` origin that `seedArtifactOrigins` plants before a send
+ *   survives the message attachment that then carries the mention, which
+ *   would read as `attached`. A reload has only the messages, so an earlier
+ *   mention then reads as `attached`.
  */
 export function useResourceRegistry(
 	messages: () => InstanceAiMessage[],
-	workflowNameLookup?: (id: string) => string | undefined,
-	archivedWorkflowIds?: () => ReadonlySet<string>,
-	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
-	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
-	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined,
-	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
-	agentBuilderTargets?: () => AgentBuilderTargetMetadata[],
+	{
+		workflowNameLookup,
+		archivedWorkflowIds,
+		agentBuilderTarget,
+		pendingAgentTarget,
+		pendingWorkflowAttachment,
+		agentBuilderTargets,
+		appTargets,
+	}: ResourceRegistrySources = {},
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -718,8 +725,7 @@ export function useResourceRegistry(
 			}
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
 			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
-			col.intake = 'mentioned';
-			enrichWorkflowsFromTransientReferences(col, transientWorkflowReferences?.() ?? []);
+			enrichAppsFromTargets(col, appTargets?.() ?? []);
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);
@@ -763,8 +769,8 @@ export function useResourceRegistry(
 /**
  * Forget artifacts that left the thread and adopt the origin of new ones. An
  * artifact already known keeps its origin, whatever this pass derived: the
- * transient reference a mention created vanishes on send while the message
- * attachment that replaces it would read as `attached`.
+ * `mentioned` origin seeded before a send stays, while the message attachment
+ * that carries the mention would read as `attached`.
  */
 function reconcileOrigins(
 	target: Map<string, ArtifactOrigin>,

@@ -1,0 +1,96 @@
+operationId: getPromotionEnvironmentMissingProjects
+tags:
+  - Promotions
+summary: 'Beta: List package projects that are missing on this instance'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Reads the package at the Apply branch tip and returns its team projects whose IDs do not exist on this instance. Projects are matched by ID, not by name. An ID that a personal project uses counts as existing. Create each project with `POST /projects`, using the returned id, name, icon, description, and customTelemetryTags. The new project is empty, and the caller becomes its project admin. Then use the project Apply flow to apply its resources. An empty `data` means that no setup is needed. `git` is null when the branch has no package yet. Requires a connected Apply environment with instance scope.
+x-required-scope: promotions:read
+parameters:
+  - schema:
+      type: string
+      format: uuid
+    required: true
+    description: The ID of the promotion environment.
+    name: promotionEnvironmentId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            environmentId:
+              type: string
+              minLength: 1
+              maxLength: 36
+            git:
+              type: object
+              nullable: true
+              properties:
+                commitSha:
+                  type: string
+                branchName:
+                  type: string
+              required:
+                - commitSha
+                - branchName
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    minLength: 1
+                  name:
+                    type: string
+                  icon:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - emoji
+                          - icon
+                      value:
+                        type: string
+                    required:
+                      - type
+                      - value
+                  description:
+                    type: string
+                  customTelemetryTags:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                        value:
+                          type: string
+                      required:
+                        - key
+                        - value
+                required:
+                  - id
+                  - name
+          required:
+            - environmentId
+            - git
+            - data
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

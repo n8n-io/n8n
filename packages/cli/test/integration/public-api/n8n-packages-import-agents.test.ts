@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	ImportResultDto,
@@ -45,9 +46,12 @@ import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import {
+	DataTableColumnRepository,
+	DataTableRepository,
+	DataTableService,
+} from '@n8n/backend-module-data-table';
+
 import {
 	looseAgentsFixture,
 	projectAgentsFixture,
@@ -70,7 +74,11 @@ mockInstance(ActiveWorkflowManager);
 mockInstance(Telemetry);
 mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
 beforeAll(
-	async () => await testModules.loadModules(['skills', 'n8n-packages', 'agents', 'data-table']),
+	async () =>
+		await testModules.loadModules(
+			['skills', 'n8n-packages', 'agents', 'data-table'],
+			packagedModules,
+		),
 );
 const server = setupTestServer({
 	endpointGroups: ['publicApi'],
@@ -136,7 +144,7 @@ beforeEach(async () => {
 		const skill = serializedSkillSchema.parse(fixture.files[`skills/${entry.id}_skill/skill.json`]);
 		await createSkill({
 			id: skill.id,
-			agentId: agent.id,
+			projectId: sourceProject.id,
 			source: 'agent',
 			createdById: owner.id,
 			content: toSkillContent(skill.skill, skill.frontmatter),
@@ -342,7 +350,12 @@ it.each(['loose', 'project'] as const)(
 			expect(destinationCredentials.map(({ credentials }) => credentials.type)).not.toContain(
 				'slackApi',
 			);
-			expect(await skillRefs.readDraft({ id: localId }, {})).toEqual(sourceSkills[index]);
+			const savedSkills = await skillRefs.readDraft({ id: localId }, {});
+			expect(Object.values(savedSkills.skills)).toEqual(Object.values(sourceSkills[index].skills));
+			// The source skills stay in the source project, so another project gets copies.
+			const sourceSkillIds = Object.keys(sourceSkills[index].skills);
+			if (shape === 'project') expect(Object.keys(savedSkills.skills)).toEqual(sourceSkillIds);
+			else expect(Object.keys(savedSkills.skills)).not.toEqual(sourceSkillIds);
 			const [task] = await tasks.findByAgentId(localId);
 			expect(task).toMatchObject({
 				id: `${source.id}_task`,
@@ -352,10 +365,11 @@ it.each(['loose', 'project'] as const)(
 			const history = await Container.get(AgentHistoryRepository).findByVersionAndAgentId(
 				saved!.versionId!,
 				localId,
+				{},
 			);
 			expect(history).not.toBeNull();
 			expect(await Container.get(AgentDefinitionService).readVersion(history!)).toMatchObject({
-				skills: sourceSkills[index].skills,
+				skills: savedSkills.skills,
 				tools: source.tools,
 				tasks: new Map([[task.id, expect.objectContaining({ objective: task.objective })]]),
 			});
@@ -722,7 +736,7 @@ it('shares conflict, ID, and publication policies across mixed content', async (
 	]);
 	for (const { localId } of initial.agents) {
 		const saved = await agents.findById(localId);
-		const versions = await Container.get(AgentHistoryRepository).findByAgentId(localId, 10, 0);
+		const versions = await Container.get(AgentHistoryRepository).findByAgentId(localId, 10, 0, {});
 		expect(versions).toHaveLength(2);
 		expect(versions.map(({ versionId }) => versionId)).toContain(saved!.versionId);
 	}
@@ -746,11 +760,12 @@ it('shares conflict, ID, and publication policies across mixed content', async (
 	expect(await records()).toEqual(before);
 });
 
-it('imports with Agent-only grants and skips with no write grants', async () => {
+it('imports with Agent and skill grants and skips with no write grants', async () => {
 	const archive = await download();
 	await agents.delete({ projectId: sourceProject.id });
+	// The package skills belong to the project, so their writes need the skill grant.
 	const member = await createMemberWithApiKey({
-		scopes: ['agent:import', 'agent:read', 'agent:create'],
+		scopes: ['agent:import', 'agent:read', 'agent:create', 'skill:create'],
 	});
 	await linkUserToProject(member, destination, 'project:editor');
 	const created = await upload(archive, {}, member);
@@ -779,6 +794,7 @@ it.each(['read', 'create', 'update', 'publish', 'unpublish'] as const)(
 		if (action === 'update' || action === 'unpublish') {
 			expect((await upload(archive, { publishingPolicy: 'publish-all' })).statusCode).toBe(200);
 		}
+		// The skill grants stay, so only the missing Agent grant can refuse the import.
 		const scopes: ApiKeyScope[] = [
 			'agent:import',
 			'agent:read',
@@ -786,6 +802,8 @@ it.each(['read', 'create', 'update', 'publish', 'unpublish'] as const)(
 			'agent:update',
 			'agent:publish',
 			'agent:unpublish',
+			'skill:create',
+			'skill:update',
 		];
 		const caller = await createOwnerWithApiKey({
 			scopes: scopes.filter((scope) => scope !== `agent:${action}`),
@@ -803,8 +821,9 @@ it.each(['project:viewer', 'project:chatUser'] as const)(
 	async (role) => {
 		const archive = await download();
 		await agents.delete({ projectId: sourceProject.id });
+		// With every grant, only the project role can refuse the import.
 		const member = await createMemberWithApiKey({
-			scopes: ['agent:import', 'agent:read', 'agent:create'],
+			scopes: ['agent:import', 'agent:read', 'agent:create', 'skill:create'],
 		});
 		await linkUserToProject(member, destination, role);
 		const before = await records();
@@ -818,7 +837,13 @@ it.each(['agent:import', 'workflow:import'] as const)(
 	async (missing) => {
 		await addWorkflowDependency();
 		const archive = await download();
-		const scopes: ApiKeyScope[] = ['agent:import', 'workflow:import', 'agent:read', 'agent:create'];
+		const scopes: ApiKeyScope[] = [
+			'agent:import',
+			'workflow:import',
+			'agent:read',
+			'agent:create',
+			'skill:create',
+		];
 		const caller = await createOwnerWithApiKey({
 			scopes: scopes.filter((scope) => scope !== missing),
 		});
