@@ -30,7 +30,7 @@ const props = withDefaults(
 			'artifactHref' | 'routerPathHref' | 'toRouterPath'
 		>;
 	}>(),
-	{ options: () => ({}), singlePre: false, artifactLinks: undefined },
+	{ options: () => ({}), singlePre: false },
 );
 const processedContent = computed(() => {
 	const content = props.filterInternalBlocks

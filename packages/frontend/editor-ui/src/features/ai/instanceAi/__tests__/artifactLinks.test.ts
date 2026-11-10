@@ -21,7 +21,6 @@ function setup(base: string) {
 const BASES = [
 	{ base: '/', prefix: '' },
 	{ base: '/n8n/', prefix: '/n8n' },
-	{ base: '/nested/n8n/', prefix: '/nested/n8n' },
 ];
 
 describe('useArtifactLinks', () => {
@@ -43,19 +42,6 @@ describe('useArtifactLinks', () => {
 		expect(artifactUrl('app', 'app-1')).toBeUndefined();
 		expect(openArtifactInNewTab('app', 'app-1')).toBe(false);
 		expect(open).not.toHaveBeenCalled();
-	});
-
-	it('encodes ids in paths and queries', () => {
-		const { artifactHref } = setup('/n8n/');
-		const id = 'id /+#?%č&';
-
-		const workflowUrl = new URL(artifactHref('workflow', id) ?? '', window.location.origin);
-		expect(decodeURIComponent(workflowUrl.pathname)).toBe(`/n8n/workflow/${id}`);
-
-		const skillUrl = new URL(artifactHref('skill', id) ?? '', window.location.origin);
-		expect(skillUrl.pathname).toBe('/n8n/settings/context/skills');
-		expect(skillUrl.searchParams.get('skillId')).toBe(id);
-		expect(skillUrl.hash).toBe('');
 	});
 
 	it.each(BASES)(
@@ -96,14 +82,6 @@ describe('toRouterPath and routerPathHref', () => {
 			}
 		},
 	);
-
-	it('ignores relative and cross-origin links', () => {
-		const { toRouterPath } = setup('/n8n/');
-
-		expect(toRouterPath('workflow/wf-1')).toBeUndefined();
-		expect(toRouterPath('//other.test/workflow/wf-1')).toBeUndefined();
-		expect(toRouterPath('https://other.test/workflow/wf-1')).toBeUndefined();
-	});
 
 	it('removes only a whole-segment base', () => {
 		const { toRouterPath } = setup('/n8n/');

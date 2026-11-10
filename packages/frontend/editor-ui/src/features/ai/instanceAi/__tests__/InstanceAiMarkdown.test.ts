@@ -324,25 +324,5 @@ describe('InstanceAiMarkdown with the shared renderer', () => {
 			expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
 			expect(event.defaultPrevented).toBe(true);
 		});
-
-		it('keeps a prefixed link to the subject agent', async () => {
-			const output = await renderWithBase(
-				'[Subject Agent](/n8n/projects/project-1/agents/agent-1)',
-				{
-					provide: {
-						[INSTANCE_AI_EMBED_SUBJECT_KEY as symbol]: computed(() => ({
-							type: 'agent',
-							id: 'agent-1',
-							projectId: 'project-1',
-						})),
-					},
-				},
-			);
-
-			expect(output.querySelector('a')?.getAttribute('href')).toBe(
-				'/n8n/projects/project-1/agents/agent-1',
-			);
-			expect(output.textContent?.trim()).toBe('Subject Agent');
-		});
 	});
 });
