@@ -49,21 +49,26 @@ export class Engine extends BaseCommand {
 		// The control plane runs in another process, so the execution channel uses Redis.
 		const logger = this.logger.scoped('engine-v2');
 		const { createRedisExecutionChannelPublisher } = await import(
-			'@/modules/engine-v2/response-channel/redis-execution-response-channel.js'
+			'@/modules/engine-v2/execution-channel/redis-execution-channel.js'
 		);
 		const { ExecutionChannelSender } = await import(
-			'@/modules/engine-v2/response-channel/in-memory-execution-response-sender.js'
+			'@/modules/engine-v2/execution-channel/execution-channel-sender.js'
 		);
 		const { createExecutionResponseCodec } = await import(
-			'@/modules/engine-v2/response-channel/execution-response-frame.js'
+			'@/modules/engine-v2/execution-channel/execution-response-frame.js'
 		);
-		this.channelPublisher = await createRedisExecutionChannelPublisher(logger);
+		const { LifecycleEventChannelSender } = await import(
+			'@/modules/engine-v2/execution-channel/lifecycle-event-sender.js'
+		);
+		const publisher = await createRedisExecutionChannelPublisher(logger);
+		this.channelPublisher = publisher;
 
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
-		await this.runtime.init(
-			new ExecutionChannelSender(this.channelPublisher, createExecutionResponseCodec(logger)),
-		);
+		await this.runtime.init({
+			responseSender: new ExecutionChannelSender(publisher, createExecutionResponseCodec(logger)),
+			lifecycleEventSender: new LifecycleEventChannelSender(publisher, logger),
+		});
 
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}

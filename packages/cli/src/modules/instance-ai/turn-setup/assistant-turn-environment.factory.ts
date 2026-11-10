@@ -22,6 +22,7 @@ import {
 	isSetupPanelEnabled,
 	orchestratorAgentId,
 	type InstanceAiContext,
+	type InstanceAiTraceContext,
 	type ModelConfig,
 	type OrchestrationContext,
 	type ServiceProxyConfig,
@@ -109,6 +110,7 @@ export interface AssistantTurnEnvironmentParams {
 	/** Resumed segments use the gates bound to the original turn. */
 	instanceContextGates?: InstanceContextGates;
 	experimentGates?: InstanceAiFeatureFlags;
+	tracing?: InstanceAiTraceContext;
 }
 
 export type AssistantProxyRunConfig = Awaited<
@@ -237,6 +239,7 @@ export class AssistantTurnEnvironmentFactory {
 			proxyRunConfig,
 			instanceContextGates,
 			experimentGates,
+			tracing,
 		} = params;
 		const { memory } = runtime;
 		const thread = await memory.getThread(threadId);
@@ -449,7 +452,7 @@ export class AssistantTurnEnvironmentFactory {
 		if (sandboxStatus.workflowBuilderAvailable) {
 			const sandboxConfig = await this.instanceAiErrorReporter.withBoundary(
 				'instance-ai-sandbox-setup',
-				{ threadId, runId, userId: user.id, messageGroupId },
+				{ threadId, runId, userId: user.id, messageGroupId, tracing },
 				async () => await runtime.sandbox.resolveConfig(),
 			);
 
@@ -519,6 +522,7 @@ export class AssistantTurnEnvironmentFactory {
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
+			...(tracing ? { tracing } : {}),
 			modelFetch: this.modelService.getModelFetch(),
 			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
 			eventBus: runtime.eventBus,
@@ -543,6 +547,7 @@ export class AssistantTurnEnvironmentFactory {
 						component: 'instance-ai-agent-builder-usage',
 						threadId,
 						runId,
+						tracing: orchestrationContext.tracing,
 						userId: user.id,
 						...(boundProjectId ? { projectId: boundProjectId } : {}),
 						...(messageGroupId ? { messageGroupId } : {}),

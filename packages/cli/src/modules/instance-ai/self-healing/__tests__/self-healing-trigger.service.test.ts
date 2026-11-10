@@ -9,7 +9,7 @@ import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData, type IRun, type IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 import { SelfHealingInvestigationService } from '../self-healing-investigation.service';
 import { SelfHealingTriggerService } from '../self-healing-trigger.service';

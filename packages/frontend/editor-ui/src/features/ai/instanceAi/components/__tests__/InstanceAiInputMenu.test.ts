@@ -71,6 +71,19 @@ describe('InstanceAiInputMenu', () => {
 		expect(action).not.toHaveBeenCalled();
 	});
 
+	it('closes an open menu when it becomes disabled', async () => {
+		const { getByRole, queryByRole, rerender } = renderComponent();
+
+		await userEvent.click(getByRole('button', { name: /Add .*files/ }));
+		expect(getByRole('menuitem', { name: 'Action' })).toBeInTheDocument();
+
+		await rerender({ disabled: true });
+
+		await waitFor(() =>
+			expect(queryByRole('menuitem', { name: 'Action' })).not.toBeInTheDocument(),
+		);
+	});
+
 	it('explains the streaming restriction and restores the normal label afterward', async () => {
 		const { getByRole, getByText, rerender } = renderComponent({
 			props: { disabled: true, isStreaming: true },

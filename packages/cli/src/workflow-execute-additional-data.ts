@@ -33,6 +33,7 @@ import type {
 	ExecutionStatus,
 	IDataObject,
 	IExecuteData,
+	IWorkflowExecutionTelemetryMetadata,
 	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INode,
@@ -660,12 +661,18 @@ async function startExecution(
 		 */
 		await executionRepository.setRunning(executionId);
 
+		// The hooks read this object when the run ends, so the credential check
+		// below can still fill it in.
+		const telemetryMetadata: IWorkflowExecutionTelemetryMetadata = {};
 		hooks = getLifecycleHooksForSubExecutions(
 			runData.executionMode,
 			executionId,
 			workflowData,
 			additionalData.userId,
 			options.parentExecution,
+			undefined,
+			undefined,
+			telemetryMetadata,
 		);
 
 		// The original mode of the whole run tree: a sub-workflow's own
@@ -701,11 +708,12 @@ async function startExecution(
 			// acting user rides along only for what that project does not carry: a
 			// credential reachable personally has to stay runnable by the person it
 			// belongs to, one level down as much as at the top.
-			await Container.get(CredentialsPermissionChecker).check(
+			const { personalCredentialsCount } = await Container.get(CredentialsPermissionChecker).check(
 				workflowData.id,
 				workflowData.nodes,
 				additionalData.userId,
 			);
+			telemetryMetadata.personalCredentialsCount = personalCredentialsCount;
 		}
 		credentialChecksPassed = true;
 
