@@ -15,10 +15,7 @@ import {
 	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
 } from '../runtime/memory/observation-log-defaults';
-import {
-	DEFAULT_OBSERVATION_WINDOW_SHARES,
-	DEFAULT_OBSERVER_MAX_BATCHES_AFTER_TURN,
-} from '../runtime/memory/observation-policy';
+import { DEFAULT_MEMORY_POLICY } from '../runtime/memory/observation-policy';
 import { hasObservationLogStore } from '../runtime/memory/observation-log-store';
 import { createEmbeddingModel } from '../runtime/model/model-factory';
 import type {
@@ -48,7 +45,9 @@ export function resolveObservationalMemoryConfig(
 	// A fixed threshold is an explicit choice, so it replaces the default shares.
 	const windowShares =
 		config.windowShares ??
-		(config.observerThresholdTokens === undefined ? DEFAULT_OBSERVATION_WINDOW_SHARES : undefined);
+		(config.observerThresholdTokens === undefined
+			? { maxContextWindowTokens: DEFAULT_MEMORY_POLICY.maxContextWindowTokens }
+			: undefined);
 
 	return {
 		observerThresholdTokens:
@@ -63,12 +62,14 @@ export function resolveObservationalMemoryConfig(
 			: {}),
 		...(windowShares !== undefined ? { windowShares } : {}),
 		...(config.cacheTtlMs !== undefined ? { cacheTtlMs: config.cacheTtlMs } : {}),
-		logPlacement: config.logPlacement ?? 'message',
-		failurePolicy: config.failurePolicy ?? 'retry',
-		maxObserverBatchesPerRun:
-			config.maxObserverBatchesPerRun ?? DEFAULT_OBSERVER_MAX_BATCHES_AFTER_TURN,
+		logPlacement: config.logPlacement ?? DEFAULT_MEMORY_POLICY.logPlacement,
+		failurePolicy: config.failurePolicy ?? DEFAULT_MEMORY_POLICY.failurePolicy,
+		maxConsecutiveObserverFailures:
+			config.maxConsecutiveObserverFailures ?? DEFAULT_MEMORY_POLICY.maxConsecutiveObserverFailures,
+		maxObserverBatchesAfterTurn:
+			config.maxObserverBatchesAfterTurn ?? DEFAULT_MEMORY_POLICY.maxObserverBatchesAfterTurn,
 		...(config.reflectionMode !== undefined ? { reflectionMode: config.reflectionMode } : {}),
-		historyRecall: config.historyRecall ?? true,
+		historyRecall: config.historyRecall ?? DEFAULT_MEMORY_POLICY.historyRecall,
 		observe: config.observe ?? createObservationLogObserveFn(observerModel),
 		reflect: config.reflect ?? createObservationLogReflectFn(reflectorModel),
 	};

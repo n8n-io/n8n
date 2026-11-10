@@ -1,30 +1,9 @@
-import { DateTimeColumn, WithTimestamps } from '@n8n/db';
-import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
+import { Entity, PrimaryColumn } from '@n8n/typeorm';
+
+import { ObservationCursorColumns } from '@/modules/agents/entities/observation-cursor-columns';
 
 @Entity({ name: 'instance_ai_observation_cursors' })
-export class InstanceAiObservationCursor extends WithTimestamps {
+export class InstanceAiObservationCursor extends ObservationCursorColumns {
 	@PrimaryColumn({ type: 'uuid' })
 	observationScopeId: string;
-
-	@Column({ type: 'varchar', length: 36 })
-	lastObservedMessageId: string;
-
-	@DateTimeColumn()
-	lastObservedAt: Date;
-
-	/** Last message replaced by `resumeNotes`; later requests start after it. */
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	resumeFromMessageId: string | null;
-
-	@DateTimeColumn({ nullable: true })
-	resumeFromAt: Date | null;
-
-	@Column({ type: 'text', nullable: true })
-	resumeNotes: string | null;
-
-	@Column({ type: 'int', nullable: true })
-	lastRequestTokens: number | null;
-
-	@Column({ type: 'varchar', length: 255, nullable: true })
-	lastModelId: string | null;
 }

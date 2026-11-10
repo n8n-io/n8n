@@ -23,7 +23,7 @@ export interface ObservationResumeState {
 	lastModelId: string | null;
 }
 
-/** Optional store methods for resume state. Stores without them replay from the cursor. */
+/** Store methods for resume state. Observational memory requires them. */
 export interface BuiltObservationResumeStore {
 	getResumeState(observationScopeId: string): Promise<ObservationResumeState | null>;
 	/** Saves the state on the existing cursor row. Does nothing when the thread has no cursor. */

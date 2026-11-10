@@ -1,10 +1,14 @@
-import {
-	decideResume,
-	resolveObservationThresholds,
-	shouldDisableAfterFailure,
-} from '../memory/observation-policy';
+import type { ObservationalMemoryConfig } from '../../types';
+import { decideResume, MemoryBudget, shouldStopObserving } from '../memory/observation-policy';
 
 const noopReflect = async () => await Promise.resolve({ drop: [], merge: [] });
+
+function resolveObservationThresholds(
+	config: ObservationalMemoryConfig,
+	window: number | undefined,
+) {
+	return MemoryBudget.resolve(config, window)?.thresholds;
+}
 
 describe('resolveObservationThresholds', () => {
 	it('keeps the fixed thresholds when no shares are set', () => {
@@ -20,7 +24,6 @@ describe('resolveObservationThresholds', () => {
 			midRunHard: 30_000,
 			observerBatch: 120_000,
 			reflect: 40_000,
-			source: 'fixed',
 		});
 	});
 
@@ -37,7 +40,6 @@ describe('resolveObservationThresholds', () => {
 			midRunHard: 180_000,
 			observerBatch: 120_000,
 			reflect: 120_000,
-			source: 'windowShare',
 		});
 	});
 
@@ -46,7 +48,7 @@ describe('resolveObservationThresholds', () => {
 			{ observerThresholdTokens: 30_000, windowShares: {} },
 			undefined,
 		);
-		expect(thresholds?.source).toBe('fixed');
+		expect(thresholds?.observeFirst).toBe(30_000);
 		expect(thresholds?.observerBatch).toBeUndefined();
 	});
 
@@ -73,7 +75,6 @@ describe('resolveObservationThresholds', () => {
 				midRunHard: 180_000,
 				observerBatch: 120_000,
 				reflect: 120_000,
-				source: 'windowShare',
 			});
 		});
 
@@ -99,12 +100,11 @@ describe('resolveObservationThresholds', () => {
 });
 
 describe('decideResume', () => {
-	const thresholds = resolveObservationThresholds({ windowShares: {} }, 200_000)!;
+	const budget = MemoryBudget.resolve({ windowShares: {} }, 200_000)!;
 	const now = Date.UTC(2026, 10, 10, 12);
 	const warmSmall = {
 		requestTokens: 50_000,
-		thresholds,
-		windowTokens: 200_000,
+		budget,
 		replaceableTokens: 30_000,
 		now,
 		lastActivityAt: now - 60_000,
@@ -147,12 +147,39 @@ describe('decideResume', () => {
 	});
 });
 
-describe('shouldDisableAfterFailure', () => {
-	it('disables after the first failure with disableForRun', () => {
-		expect(shouldDisableAfterFailure({ failurePolicy: 'disableForRun' })).toBe(true);
+describe('MemoryBudget', () => {
+	it('caps the hard limit at the model window', () => {
+		const budget = MemoryBudget.resolve({ observerThresholdTokens: 300_000 }, undefined)!;
+		expect(budget.hardLimit).toBe(300_000);
+		const capped = MemoryBudget.resolve(
+			{ observerThresholdTokens: 300_000, windowShares: { contextWindowTokens: 1 } },
+			undefined,
+		);
+		expect(capped?.isOverModelWindow(2)).toBe(true);
 	});
 
-	it('keeps retrying with retry', () => {
-		expect(shouldDisableAfterFailure({ failurePolicy: 'retry' })).toBe(false);
+	it('lets requests up to the memory window through', () => {
+		const budget = MemoryBudget.resolve(
+			{ windowShares: { maxContextWindowTokens: 200_000 } },
+			1_000_000,
+		)!;
+		expect(budget.requestLimit).toBe(200_000);
+		expect(budget.isOverModelWindow(999_999)).toBe(false);
+	});
+});
+
+describe('shouldStopObserving', () => {
+	it('stops after the first failure with disableForRun', () => {
+		expect(shouldStopObserving({ failurePolicy: 'disableForRun' }, 1)).toBe(true);
+	});
+
+	it('retries until the failures in a row reach the limit', () => {
+		const config = { failurePolicy: 'retry' as const, maxConsecutiveObserverFailures: 3 };
+		expect(shouldStopObserving(config, 2)).toBe(false);
+		expect(shouldStopObserving(config, 3)).toBe(true);
+	});
+
+	it('never stops without a failure', () => {
+		expect(shouldStopObserving({ failurePolicy: 'disableForRun' }, 0)).toBe(false);
 	});
 });

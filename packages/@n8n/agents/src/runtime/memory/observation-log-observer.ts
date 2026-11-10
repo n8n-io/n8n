@@ -7,7 +7,7 @@ import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
-import type { ObservationCursor } from '../../types/sdk/observation';
+import type { BuiltObservationResumeStore, ObservationCursor } from '../../types/sdk/observation';
 import type {
 	BuiltObservationLogStore,
 	ObservationLogBatchEntry,
@@ -60,7 +60,10 @@ export interface RenderObserverTranscriptOptions {
 	maxObjectKeys?: number;
 }
 
-export interface ObservationLogObserverMemory extends BuiltMemory, BuiltObservationLogStore {
+export interface ObservationLogObserverMemory
+	extends BuiltMemory,
+		BuiltObservationLogStore,
+		BuiltObservationResumeStore {
 	getMessagesForObservationScope(
 		observationScopeId: string,
 		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },

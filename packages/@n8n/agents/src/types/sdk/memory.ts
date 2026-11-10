@@ -458,15 +458,18 @@ export interface ObservationalMemoryConfig {
 	 */
 	logPlacement?: ObservationLogPlacement;
 	/**
-	 * `retry` (default) tries a failed Observer call again at the next step.
+	 * `retry` (default) tries a failed Observer call again at the next step,
+	 * up to `maxConsecutiveObserverFailures` in a row.
 	 * `disableForRun` stops observation for the rest of the run.
 	 */
 	failurePolicy?: ObservationFailurePolicy;
+	/** Failures in a row after which `retry` stops observing for the run. Default 3. */
+	maxConsecutiveObserverFailures?: number;
 	/**
-	 * Maximum Observer calls after one turn. Each call reads one batch that fits
-	 * the memory window. A blocking mid-run observation has no limit. Default 5.
+	 * Maximum Observer calls after one turn. Each call reads one batch. A
+	 * blocking observation has no limit. `0` means no limit. Default 5.
 	 */
-	maxObserverBatchesPerRun?: number;
+	maxObserverBatchesAfterTurn?: number;
 	/**
 	 * `background` (default) queues the Reflector after every turn.
 	 * `afterObserve` runs it only after an Observer call that advanced the cursor.
@@ -500,6 +503,8 @@ export interface ObservationWindowShares {
 	waitAt?: number;
 	/** Observation log size that triggers the Reflector. Default 0.6. */
 	reflectAt?: number;
+	/** Largest unobserved batch that one Observer call reads. Default 0.6. */
+	batchAt?: number;
 }
 
 interface MemoryConfigBase {

@@ -22,13 +22,12 @@ import {
 import { settleOrphanedToolMessagesWithChanges } from './strip-orphaned-tool-messages';
 import { messageToText } from './message-text';
 import {
-	DEFAULT_OBSERVATION_CACHE_TTL_MS,
+	DEFAULT_MEMORY_POLICY,
+	MemoryBudget,
 	decideResume,
-	resolveMemoryWindow,
-	resolveObservationThresholds,
-	shouldDisableAfterFailure,
-	type ObservationThresholds,
+	shouldStopObserving,
 } from './observation-policy';
+import { isAfterPoint, ResumeStateStore, resumeView, type ObservationPoint } from './resume-state';
 import { getModelContextWindow } from '../../sdk/catalog';
 import { getCreatedAt } from '../../sdk/message';
 import { getCatalogModelId, getModelIdString } from '../../utils/model';
@@ -50,11 +49,6 @@ import type {
 	TokenUsage,
 } from '../../types/sdk/agent';
 import type { AgentDbMessage } from '../../types/sdk/message';
-import type {
-	BuiltObservationResumeStore,
-	ObservationCursor,
-	ObservationResumeState,
-} from '../../types/sdk/observation';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import { promptSizeOf } from '../loop/prompt-size-usage';
@@ -90,26 +84,22 @@ function latestActivityAt(messages: AgentDbMessage[]): number | undefined {
 	return latest;
 }
 
-type ObservationPoint = Pick<ObservationCursor, 'lastObservedAt' | 'lastObservedMessageId'>;
-
 /**
- * History and notes for a new run. `notes: 'live'` renders the current
- * observation log. A string or `undefined` is sent as is.
+ * Notes for the list. `'live'` renders the current observation log. A string
+ * or `undefined` is sent as is.
  */
+type ListNotes = string | undefined | 'live';
+
+/** History and notes for a new run. */
 interface RunHistory {
 	messages: AgentDbMessage[];
-	notes: string | undefined | 'live';
+	notes: ListNotes;
 }
 
-function isAfterCursor(message: AgentDbMessage, cursor: ObservationPoint): boolean {
-	const createdAt = getCreatedAt(message);
-	if (!createdAt) return true;
-	return (
-		compareKeyset(
-			{ createdAt, id: message.id },
-			{ createdAt: new Date(cursor.lastObservedAt), id: cursor.lastObservedMessageId },
-		) > 0
-	);
+/** Observer state of one run. Queued jobs keep their run's state when a new run starts. */
+interface ObserverRunState {
+	consecutiveFailures: number;
+	stopped: boolean;
 }
 
 function hasSuccessfulMemoryFlag(list: AgentMessageList): boolean {
@@ -159,25 +149,16 @@ function hasObservationLogObserverMemory(
 	return (
 		hasObservationLogStore(memory) &&
 		hasFunctionProperty(memory, 'getMessagesForObservationScope') &&
-		hasFunctionProperty(memory, 'getCursor')
-	);
-}
-
-/** Stores without resume state replay from the cursor on every turn. */
-function hasResumeStore<T extends BuiltMemory>(
-	memory: T,
-): memory is T & BuiltObservationResumeStore {
-	return (
-		hasFunctionProperty(memory, 'getResumeState') && hasFunctionProperty(memory, 'saveResumeState')
+		hasFunctionProperty(memory, 'getCursor') &&
+		hasFunctionProperty(memory, 'getResumeState') &&
+		hasFunctionProperty(memory, 'saveResumeState')
 	);
 }
 
 /**
- * The persisted messages that the runtime replays to the model on the next turn.
- * With observational memory, the messages before the resume point are replaced
- * by notes, so only the messages after it are replayed. A thread without a
- * resume point replays its full history. Stores without resume state use the
- * cursor. A host that checks what the model already sees must read the same window.
+ * The persisted messages that the runtime replays to the model on the next
+ * turn (see `resumeView`). A host that checks what the model already sees
+ * must read the same window.
  */
 export async function loadReplayedMessages(
 	memory: BuiltMemory,
@@ -185,22 +166,9 @@ export async function loadReplayedMessages(
 	options: { observationalMemory: boolean },
 ): Promise<AgentDbMessage[]> {
 	const { threadId, resourceId } = persistence;
-	if (options.observationalMemory && hasObservationLogObserverMemory(memory)) {
-		const { cursor } = await readObservationState(memory, threadId);
-		const since =
-			cursor && hasResumeStore(memory)
-				? (await memory.getResumeState(threadId))?.resumeFrom
-				: cursor;
-		if (since) {
-			return await memory.getMessagesForObservationScope(threadId, {
-				since: {
-					sinceCreatedAt: since.lastObservedAt,
-					sinceMessageId: since.lastObservedMessageId,
-				},
-			});
-		}
-	}
-	return await memory.getMessages(threadId, { resourceId });
+	const all = await memory.getMessages(threadId, { resourceId });
+	if (!options.observationalMemory || !hasObservationLogObserverMemory(memory)) return all;
+	return resumeView(all, await memory.getResumeState(threadId)).messages;
 }
 
 /**
@@ -216,16 +184,8 @@ export class MemoryOrchestrator {
 	/** Keyed by resource and thread because backends can lock on either scope. */
 	private episodicMemoryTasks = new Map<string, Promise<unknown>>();
 
-	/**
-	 * Per-message model-facing token estimates, cached by message id so
-	 * observation gates never re-encode messages.
-	 */
-	private visibleTokenEstimates = new Map<string, number>();
-
-	private visibleTokenEstimateTotal = 0;
-
 	/** Size of the next model request, from the provider's reported usage. */
-	private readonly requestSize = new RequestSizeTracker();
+	private readonly requestSize: RequestSizeTracker;
 
 	/** In-flight background mid-run observer task; `result` set on settlement. */
 	private midRunObserverTask: MidRunObserverTask | undefined;
@@ -236,8 +196,7 @@ export class MemoryOrchestrator {
 	 */
 	private cursorAdvancedThisRun = false;
 
-	/** Queued jobs retain their run's state when a new run starts. */
-	private observerRun = { disabled: false };
+	private observerRun: ObserverRunState = { consecutiveFailures: 0, stopped: false };
 
 	/**
 	 * Keyset high-water mark of turn messages already persisted mid-run;
@@ -248,11 +207,11 @@ export class MemoryOrchestrator {
 	/** Cursor known at load or last activation; used to count unobserved tokens. */
 	private knownCursor: ObservationPoint | undefined;
 
-	/** Resume state as last read or written for the thread of this run. */
-	private resumeState: ObservationResumeState | undefined;
+	/** Resume state of the thread of this run. */
+	private resume: ResumeStateStore | undefined;
 
-	/** Lazily resolved context window; `null` means looked up and unknown. */
-	private contextWindow: number | null | undefined;
+	/** Limits for this runtime; the model's window is looked up once. */
+	private budget: Promise<MemoryBudget | undefined> | undefined;
 
 	constructor(
 		private readonly config: AgentRuntimeConfig,
@@ -260,7 +219,9 @@ export class MemoryOrchestrator {
 		private readonly eventBus: AgentEventBus,
 		private readonly runtimeTelemetry: RuntimeTelemetry,
 		private readonly tokenCounter: TokenCounter = estimateObservationTokens,
-	) {}
+	) {
+		this.requestSize = new RequestSizeTracker(tokenCounter);
+	}
 
 	async loadHistoryMessages(
 		persistence: AgentPersistenceOptions,
@@ -351,52 +312,46 @@ export class MemoryOrchestrator {
 		if (!memory || !observationalMemory || !hasObservationLogObserverMemory(memory)) {
 			return { messages: await this.loadHistoryMessages(persistence, telemetry), notes: 'live' };
 		}
-		if (!hasResumeStore(memory)) {
-			this.knownCursor =
-				(await readObservationState(memory, persistence.threadId)).cursor ?? undefined;
-			return { messages: await this.loadHistoryMessages(persistence, telemetry), notes: 'live' };
-		}
-
 		const { threadId, resourceId } = persistence;
+		const resume = new ResumeStateStore(memory, threadId);
+		this.resume = resume;
 		const [{ cursor }, state, all] = await Promise.all([
 			readObservationState(memory, threadId),
-			memory.getResumeState(threadId),
+			resume.load(),
 			memory.getMessages(threadId, { resourceId }),
 		]);
 		this.knownCursor = cursor ?? undefined;
-		this.resumeState = state ?? undefined;
-		const resumeFrom = state?.resumeFrom ?? undefined;
-		const view = resumeFrom ? all.filter((m) => isAfterCursor(m, resumeFrom)) : all;
-		const savedNotes = resumeFrom ? (state?.resumeNotes ?? undefined) : undefined;
-		const thresholds = cursor ? await this.resolveThresholds() : undefined;
-		if (!cursor || !thresholds) return { messages: view, notes: savedNotes };
+		const view = resumeView(all, state);
+		const budget = cursor ? await this.resolveBudget() : undefined;
+		if (!cursor || !budget) return view;
 
-		const viewTokens = await this.sumTokens(view);
+		const viewTokens = await this.sumTokens(view.messages);
 		const modelId = this.modelId();
 		const reason = decideResume({
 			// The saved size is the provider's count for the same view, so it
 			// includes the system prompt and tools that the estimate misses.
 			requestTokens: state?.lastRequestTokens ?? viewTokens,
-			thresholds,
-			windowTokens: this.windowLimit(thresholds),
-			replaceableTokens: await this.sumTokens(view.filter((m) => !isAfterCursor(m, cursor))),
+			budget,
+			replaceableTokens: await this.sumTokens(
+				view.messages.filter((m) => !isAfterPoint(m, cursor)),
+			),
 			now: Date.now(),
 			lastActivityAt: latestActivityAt(all),
 			cacheTtlMs: this.cacheTtlMs(),
 			modelSwitched: Boolean(state?.lastModelId && modelId) && state?.lastModelId !== modelId,
 		});
 		if (!reason) {
-			if (state?.lastRequestTokens) this.requestSize.record(state.lastRequestTokens, viewTokens);
-			return { messages: view, notes: savedNotes };
+			if (state?.lastRequestTokens) this.requestSize.seed(state.lastRequestTokens, viewTokens);
+			return view;
 		}
 
 		let resumeAt: ObservationPoint = cursor;
 		if (reason === 'over-limit')
 			resumeAt = (await this.observeBacklog(options, telemetry)) ?? cursor;
 		const notes = await this.renderLiveNotes(persistence);
-		await this.saveResumePoint(threadId, resumeAt, notes);
+		await resume.moveTo(resumeAt, notes, modelId);
 		logger.debug('Observation resume point moved at turn start', { threadId, reason });
-		return { messages: all.filter((m) => isAfterCursor(m, resumeAt)), notes };
+		return resumeView(all, resume.current);
 	}
 
 	/** Run the Observer over the whole backlog and return the new cursor. */
@@ -428,12 +383,13 @@ export class MemoryOrchestrator {
 	}
 
 	private cacheTtlMs(): number {
+		const configured = this.config.observationalMemory?.cacheTtlMs;
+		if (configured !== undefined) return configured;
 		const modelId = this.modelId();
-		if (!modelId) return DEFAULT_OBSERVATION_CACHE_TTL_MS;
-		return (
-			getPromptCacheRetentionMs(this.config.promptCaching, modelId) ??
-			DEFAULT_OBSERVATION_CACHE_TTL_MS
-		);
+		const retention = modelId
+			? getPromptCacheRetentionMs(this.config.promptCaching, modelId)
+			: undefined;
+		return retention ?? DEFAULT_MEMORY_POLICY.cacheTtlMs;
 	}
 
 	private modelId(): string | null {
@@ -442,88 +398,45 @@ export class MemoryOrchestrator {
 		return typeof id === 'string' && id.length > 0 ? id : null;
 	}
 
-	/**
-	 * Move the resume point and freeze the notes the model resumes from. Later
-	 * turns send these notes until the next resume, so the prompt prefix stays
-	 * stable while the Observer and Reflector keep writing.
-	 */
-	private async saveResumePoint(
-		threadId: string,
-		at: ObservationPoint,
-		notes: string | undefined,
-	): Promise<void> {
-		this.resumeState = {
-			observationScopeId: threadId,
-			resumeFrom: {
-				lastObservedAt: at.lastObservedAt,
-				lastObservedMessageId: at.lastObservedMessageId,
-			},
-			resumeNotes: notes ?? null,
-			lastRequestTokens: null,
-			lastModelId: this.modelId(),
-		};
-		await this.writeResumeState(this.resumeState);
-	}
-
 	/** Save the request size of this turn, so the next turn starts from a real count. */
-	private async saveRequestSize(list: AgentMessageList, threadId: string): Promise<void> {
-		const memory = this.config.memory;
-		if (!memory || !this.config.observationalMemory || !hasResumeStore(memory)) return;
-		let lastRequestTokens: number;
+	private async saveRequestSize(list: AgentMessageList): Promise<void> {
+		if (!this.resume) return;
+		let tokens: number;
 		try {
-			lastRequestTokens = await this.estimateRequestTokens(list);
+			tokens = await this.requestSize.estimate(list);
 		} catch (error) {
 			// A missing size only means the next turn estimates again.
-			logger.warn('Failed to estimate request size', { threadId, error });
+			logger.warn('Failed to estimate request size', { error });
 			return;
 		}
-		this.resumeState = {
-			...(this.resumeState ?? { resumeFrom: null, resumeNotes: null }),
-			observationScopeId: threadId,
-			lastRequestTokens,
-			lastModelId: this.modelId(),
-		};
-		await this.writeResumeState(this.resumeState);
+		await this.resume.saveRequestSize(tokens, this.modelId());
 	}
 
-	private async writeResumeState(state: ObservationResumeState): Promise<void> {
-		const memory = this.config.memory;
-		if (!memory || !hasResumeStore(memory)) return;
-		try {
-			await memory.saveResumeState(state);
-		} catch (error) {
-			// The next turn falls back to the previous resume point and an estimate.
-			logger.warn('Failed to save observation resume state', {
-				threadId: state.observationScopeId,
-				error,
-			});
-		}
-	}
-
-	/** Thresholds for this runtime, resolving the context window once. */
-	private async resolveThresholds(): Promise<ObservationThresholds | undefined> {
+	/** Limits for this runtime. The model's window is looked up once. */
+	private async resolveBudget(): Promise<MemoryBudget | undefined> {
 		const observationalMemory = this.config.observationalMemory;
 		if (!observationalMemory) return undefined;
-		const needsWindow = observationalMemory.windowShares !== undefined;
-		if (needsWindow && this.contextWindow === undefined) {
-			try {
-				this.contextWindow =
-					observationalMemory.windowShares?.contextWindowTokens ??
-					(await getModelContextWindow(
-						getCatalogModelId(this.config.model),
-						this.config.modelFetch,
-					)) ??
-					null;
-			} catch (error) {
-				logger.warn('Context window lookup failed; using fixed thresholds', { error });
-				this.contextWindow = null;
-			}
-			logger.debug('Resolved observation context window', {
-				modelId: getCatalogModelId(this.config.model),
-				contextWindow: this.contextWindow,
-			});
+		this.budget ??= this.lookUpModelWindow(observationalMemory).then((window) =>
+			MemoryBudget.resolve(observationalMemory, window),
+		);
+		return await this.budget;
+	}
+
+	private async lookUpModelWindow(
+		observationalMemory: NonNullable<AgentRuntimeConfig['observationalMemory']>,
+	): Promise<number | undefined> {
+		const shares = observationalMemory.windowShares;
+		if (!shares) return undefined;
+		if (shares.contextWindowTokens) return shares.contextWindowTokens;
+		const modelId = getCatalogModelId(this.config.model);
+		try {
+			const window = await getModelContextWindow(modelId, this.config.modelFetch);
+			logger.debug('Resolved observation context window', { modelId, window });
+			return window ?? undefined;
+		} catch (error) {
+			logger.warn('Context window lookup failed; using the memory cap', { error });
+			return undefined;
 		}
-		return resolveObservationThresholds(observationalMemory, this.contextWindow ?? undefined);
 	}
 
 	private async saveMessagesWithSpan(
@@ -560,11 +473,23 @@ export class MemoryOrchestrator {
 			...this.getObservationLogScope(options),
 			order: 'asc',
 		});
-		return (
-			renderObservationLog(observations, {
-				renderTokenBudget: this.config.observationLog?.renderTokenBudget,
-			}) ?? undefined
-		);
+		return this.renderNotes(observations);
+	}
+
+	private renderNotes(observations: Parameters<typeof renderObservationLog>[0]) {
+		const { renderTokenBudget } = this.config.observationLog ?? {};
+		return renderObservationLog(observations, { renderTokenBudget }) ?? undefined;
+	}
+
+	/** The one place notes enter the list, so placement is set the same way on every path. */
+	private setListNotes(
+		list: AgentMessageList,
+		observationalMemory: AgentRuntimeConfig['observationalMemory'],
+		notes: string | undefined,
+	): void {
+		list.observationLogPlacement =
+			observationalMemory?.logPlacement ?? DEFAULT_MEMORY_POLICY.logPlacement;
+		list.observationLogMemory = notes;
 	}
 
 	/**
@@ -574,34 +499,28 @@ export class MemoryOrchestrator {
 	async setListObservationLogMemory(
 		list: AgentMessageList,
 		options: AgentPersistenceOptions | undefined,
-		opts: { notes?: RunHistory['notes'] } = {},
+		opts: { notes?: ListNotes } = {},
 	): Promise<string | undefined> {
 		// An explicit `notes: undefined` means no notes, not the default.
 		const notes = 'notes' in opts ? opts.notes : 'live';
 		const memory = this.config.memory;
 		if (!memory || !options?.threadId || !hasObservationLogStore(memory)) return undefined;
-		list.observationLogPlacement = this.config.observationalMemory?.logPlacement ?? 'message';
-		const scope = this.getObservationLogScope(options);
 		const observations = await memory.getActiveObservationLog({
-			...scope,
+			...this.getObservationLogScope(options),
 			order: 'asc',
 		});
-		list.observationLogMemory =
-			notes === 'live'
-				? (renderObservationLog(observations, {
-						renderTokenBudget: this.config.observationLog?.renderTokenBudget,
-					}) ?? undefined)
-				: notes;
+		const rendered = notes === 'live' ? this.renderNotes(observations) : notes;
+		this.setListNotes(list, this.config.observationalMemory, rendered);
 		// Empty batches can move the cursor beyond the latest observation.
 		// Seed both timestamps to keep new messages after the trusted cursor.
 		if (observations.length > 0) {
 			list.seedLastCreatedAt(observations[observations.length - 1].createdAt.getTime());
-			if (hasObservationLogObserverMemory(memory)) {
-				const cursor = await memory.getCursor(options.threadId);
-				if (cursor) list.seedLastCreatedAt(new Date(cursor.lastObservedAt).getTime());
-			}
+			const cursor = hasObservationLogObserverMemory(memory)
+				? await memory.getCursor(options.threadId)
+				: null;
+			if (cursor) list.seedLastCreatedAt(new Date(cursor.lastObservedAt).getTime());
 		}
-		return list.observationLogMemory;
+		return rendered;
 	}
 
 	async discardRejectedInput(
@@ -741,7 +660,8 @@ export class MemoryOrchestrator {
 				this.lastPersistedTurnKeyset = { createdAt: lastCreatedAt, id: last.id };
 			}
 		} catch (error) {
-			observerRun.disabled = true;
+			// The Observer reads from the store, so it must not see a partial turn.
+			observerRun.stopped = true;
 			// Best-effort: a completed turn's end-of-turn save still persists this delta,
 			// so a transient failure here must not abort the suspend/cancel flow. Only a turn
 			// that ends early (suspend-abandon or abort) whose save here also failed loses output.
@@ -787,7 +707,7 @@ export class MemoryOrchestrator {
 			telemetry,
 			options.onSideCallUsage,
 		);
-		await this.saveRequestSize(list, options.persistence.threadId);
+		await this.saveRequestSize(list);
 		if (hasSuccessfulMemoryFlag(list)) {
 			this.scheduleEpisodicMemoryJob(
 				options.persistence,
@@ -823,10 +743,7 @@ export class MemoryOrchestrator {
 		try {
 			await this.observeMidRun(list, options);
 		} catch (error) {
-			const config = this.config.observationalMemory;
-			if (!config || shouldDisableAfterFailure(config)) {
-				run.disabled = true;
-			}
+			this.noteObserverFailure(run);
 			// Masking only optimizes the next model call, so optional memory work
 			// must never terminate the primary run.
 			logger.warn('Mid-run observation failed', {
@@ -843,21 +760,29 @@ export class MemoryOrchestrator {
 	 */
 	async recordModelCallUsage(list: AgentMessageList, usage: TokenUsage | undefined): Promise<void> {
 		if (!usage || !this.config.observationalMemory?.observe) return;
-		this.requestSize.record(promptSizeOf(usage), await this.estimateVisibleBudget(list));
+		await this.requestSize.record(list, promptSizeOf(usage));
 	}
 
 	/** Reset per-run observation state on generate and resume entry. */
 	private resetRunState(): void {
 		this.midRunObserverTask = undefined;
-		this.observerRun = { disabled: false };
+		this.observerRun = { consecutiveFailures: 0, stopped: false };
 		this.lastPersistedTurnKeyset = undefined;
-		this.visibleTokenEstimates.clear();
-		this.visibleTokenEstimateTotal = 0;
-		// Keep the overhead: the next run sends the same system prompt and tools.
-		this.requestSize.invalidate();
+		this.requestSize.reset();
 		this.cursorAdvancedThisRun = false;
 		this.knownCursor = undefined;
-		this.resumeState = undefined;
+		this.resume = undefined;
+	}
+
+	/**
+	 * One rule for every Observer failure path: count it, and stop observing
+	 * for the run when the failure policy says so. Queued jobs keep their
+	 * run's state, so pass the state captured when the job started.
+	 */
+	private noteObserverFailure(run: ObserverRunState): void {
+		run.consecutiveFailures++;
+		const config = this.config.observationalMemory;
+		if (!config || shouldStopObserving(config, run.consecutiveFailures)) run.stopped = true;
 	}
 
 	private noteMidRunObserverResult(
@@ -880,9 +805,9 @@ export class MemoryOrchestrator {
 		// window stays byte-stable within a turn (better prompt-cache reuse).
 		if (observationalMemory?.midRunObservation === false) return;
 		if (!observationalMemory?.observe) return;
-		const thresholds = await this.resolveThresholds();
-		if (!thresholds) return;
-		const hardLimit = this.hardLimit(thresholds);
+		const memoryBudget = await this.resolveBudget();
+		if (!memoryBudget) return;
+		const { hardLimit, thresholds } = memoryBudget;
 
 		// Phase 1: activate a settled background result first — cheap, resets
 		// the budget for the threshold checks below.
@@ -894,9 +819,9 @@ export class MemoryOrchestrator {
 			}
 		}
 
-		if (this.observerRun.disabled) return;
+		if (this.observerRun.stopped) return;
 
-		const budget = await this.estimateRequestTokens(list);
+		const budget = await this.requestSize.estimate(list);
 		if (budget < thresholds.midRunSoft) return;
 
 		const telemetry = this.runtimeTelemetry.resolve(options);
@@ -915,10 +840,10 @@ export class MemoryOrchestrator {
 				this.midRunObserverTask = undefined;
 				if (this.noteMidRunObserverResult(result)) {
 					await this.activateObservations(list, options.persistence);
-					if ((await this.estimateRequestTokens(list)) < hardLimit) return;
+					if ((await this.requestSize.estimate(list)) < hardLimit) return;
 				}
 			}
-			if (this.observerRun.disabled) return;
+			if (this.observerRun.stopped) return;
 			await this.persistTurnDelta(list, options);
 			const handle = this.scheduleObserverTask(
 				options.persistence,
@@ -931,7 +856,7 @@ export class MemoryOrchestrator {
 			const result = await handle.done;
 			if (!this.noteMidRunObserverResult(result)) return;
 			await this.activateObservations(list, options.persistence);
-			await this.warnIfOverWindow(list, options.persistence.threadId);
+			await this.warnIfOverWindow(list, memoryBudget, options.persistence.threadId);
 			return;
 		}
 
@@ -955,71 +880,21 @@ export class MemoryOrchestrator {
 	}
 
 	/**
-	 * The size at which the loop blocks for observation. Fixed thresholds can
-	 * be set above the model's window, so the window caps the limit.
-	 */
-	private hardLimit(thresholds: ObservationThresholds): number {
-		return this.contextWindow
-			? Math.min(thresholds.midRunHard, this.contextWindow)
-			: thresholds.midRunHard;
-	}
-
-	/**
-	 * The largest request memory lets through: the memory window (model window
-	 * or cap, whichever is smaller). Fixed thresholds fall back to the hard limit.
-	 */
-	private windowLimit(thresholds: ObservationThresholds): number {
-		const config = this.config.observationalMemory;
-		const window = config
-			? resolveMemoryWindow(config, this.contextWindow ?? undefined)
-			: undefined;
-		return window && thresholds.source === 'windowShare' ? window : this.hardLimit(thresholds);
-	}
-
-	/**
 	 * Observation cannot shrink the request further, so the provider is likely
 	 * to reject it. Log it to explain the failure that follows.
 	 */
-	private async warnIfOverWindow(list: AgentMessageList, threadId: string): Promise<void> {
-		if (!this.contextWindow) return;
-		const requestTokens = await this.estimateRequestTokens(list);
-		if (requestTokens < this.contextWindow) return;
+	private async warnIfOverWindow(
+		list: AgentMessageList,
+		budget: MemoryBudget,
+		threadId: string,
+	): Promise<void> {
+		const requestTokens = await this.requestSize.estimate(list);
+		if (!budget.isOverModelWindow(requestTokens)) return;
 		logger.warn('Request is still over the context window after observation', {
 			threadId,
 			requestTokens,
-			contextWindow: this.contextWindow,
+			contextWindow: budget.modelWindow,
 		});
-	}
-
-	/** Estimated tokens of the next model request; see `RequestSizeTracker`. */
-	private async estimateRequestTokens(list: AgentMessageList): Promise<number> {
-		return this.requestSize.estimate(await this.estimateVisibleBudget(list));
-	}
-
-	/**
-	 * Sum cached per-message estimates of the visible model-facing text and
-	 * full tool payloads. Non-text blocks such as files are excluded.
-	 */
-	private async estimateVisibleBudget(list: AgentMessageList): Promise<number> {
-		const visible = list.llmVisibleMessages();
-		for (const message of visible) {
-			if (!this.visibleTokenEstimates.has(message.id)) {
-				const estimate = await this.tokenCounter(messageToText(message));
-				this.visibleTokenEstimates.set(message.id, estimate);
-				this.visibleTokenEstimateTotal += estimate;
-			}
-		}
-		return this.visibleTokenEstimateTotal;
-	}
-
-	private pruneVisibleTokenEstimates(list: AgentMessageList): void {
-		const visibleIds = new Set(list.llmVisibleMessages().map((message) => message.id));
-		for (const [messageId, estimate] of this.visibleTokenEstimates) {
-			if (!visibleIds.has(messageId)) {
-				this.visibleTokenEstimates.delete(messageId);
-				this.visibleTokenEstimateTotal -= estimate;
-			}
-		}
 	}
 
 	/**
@@ -1037,10 +912,9 @@ export class MemoryOrchestrator {
 		if (!cursor) return;
 		this.knownCursor = cursor;
 		list.maskObservedMessages(cursor);
-		this.pruneVisibleTokenEstimates(list);
 		this.requestSize.invalidate();
 		const notes = await this.setListObservationLogMemory(list, persistence);
-		await this.saveResumePoint(persistence.threadId, cursor, notes);
+		await this.resume?.moveTo(cursor, notes, this.modelId());
 	}
 
 	/**
@@ -1060,24 +934,18 @@ export class MemoryOrchestrator {
 		const { memory, observationalMemory } = this.config;
 		if (!observationalMemory) return;
 		if (!memory || !persistence || !hasObservationLogObserverMemory(memory)) return;
-		const { cursor } = await readObservationState(memory, persistence.threadId);
+		const resume = new ResumeStateStore(memory, persistence.threadId);
+		this.resume = resume;
+		const [{ cursor }, state] = await Promise.all([
+			readObservationState(memory, persistence.threadId),
+			resume.load(),
+		]);
 		this.knownCursor = cursor ?? undefined;
-		if (!hasResumeStore(memory)) {
-			if (cursor) list.maskObservedMessages(cursor);
-			return;
-		}
-		list.observationLogPlacement = observationalMemory.logPlacement ?? 'message';
-		const state = await memory.getResumeState(persistence.threadId);
-		this.resumeState = state ?? undefined;
 		// Without a resume point the window holds the full thread, so notes
-		// loaded by `prepareResumeMemory` would duplicate it. An oversized
-		// window is swapped at the next step by the hard-limit check.
-		if (!state?.resumeFrom) {
-			list.observationLogMemory = undefined;
-			return;
-		}
-		list.maskObservedMessages(state.resumeFrom);
-		list.observationLogMemory = state.resumeNotes ?? undefined;
+		// would duplicate it. An oversized window is swapped at the next step
+		// by the hard-limit check.
+		if (state?.resumeFrom) list.maskObservedMessages(state.resumeFrom);
+		this.setListNotes(list, observationalMemory, resumeView([], state).notes);
 	}
 
 	/**
@@ -1094,71 +962,82 @@ export class MemoryOrchestrator {
 		{ unlimited = false }: { unlimited?: boolean } = {},
 	): ScopedMemoryTaskHandle<RunObservationLogObserverResult> | undefined {
 		const run = this.observerRun;
-		if (run.disabled) return undefined;
+		if (run.stopped) return undefined;
 		const { memory, observationalMemory } = this.config;
 		if (!memory || !observationalMemory || !hasObservationLogObserverMemory(memory)) {
 			return undefined;
 		}
 		const observe = observationalMemory.observe;
 		if (!observe) return undefined;
+		// Without a threshold or window shares there is nothing to observe against.
 		if (
 			observationalMemory.observerThresholdTokens === undefined &&
 			!observationalMemory.windowShares
-		) {
+		)
 			return undefined;
-		}
 		const maxBatches = unlimited
 			? Number.POSITIVE_INFINITY
-			: observationalMemory.maxObserverBatchesPerRun || Number.POSITIVE_INFINITY;
-		const onFailure = () => {
-			if (shouldDisableAfterFailure(observationalMemory)) {
-				run.disabled = true;
-			}
-		};
-
+			: observationalMemory.maxObserverBatchesAfterTurn || Number.POSITIVE_INFINITY;
 		const scope = this.getObservationLogScope(persistence);
 		const runner = this.getMemoryTaskRunner(memory, observationalMemory.lockTtlMs);
 		const handle = runner.schedule<RunObservationLogObserverResult>(
 			{ ...scope, taskKind: 'observer' },
-			async () => {
-				if (run.disabled) return { status: 'skipped', reason: 'run-disabled' };
-				const maxBatchTokens = (await this.resolveThresholds())?.observerBatch;
-				let outcome: RunObservationLogObserverResult | undefined;
-				for (let batch = 0; batch < maxBatches && !run.disabled; batch++) {
-					const result = await runObservationLogObserver({
-						memory,
-						...scope,
-						observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
-						observe,
-						maxBatchTokens,
-						tokenCounter: this.tokenCounter,
-						executionCounter,
-						telemetry,
-						modelFetch: this.config.modelFetch,
-						functionId: this.config.functionId,
-						// Usage is forwarded inside the observer right after the model
-						// call (before persistence), so a billed observer turn is
-						// priced even when post-processing throws.
-						onUsage: onSideCallUsage
-							? (model, usage) => {
-									void this.forwardSideCallUsage(onSideCallUsage, 'observer', model, usage);
-								}
-							: undefined,
-					});
-					if (result.status === 'ran' && !result.cursorAdvanced) onFailure();
-					// Keep the last advancing result, so callers see that the cursor moved.
-					if (!outcome || didAdvanceObserver(result) || !didAdvanceObserver(outcome)) {
-						outcome = result;
-					}
-					if (!didAdvanceObserver(result) || !result.moreToObserve) break;
-				}
-				return outcome ?? { status: 'skipped', reason: 'run-disabled' };
-			},
+			async () =>
+				await this.observeInBatches(
+					run,
+					maxBatches,
+					async (maxBatchTokens) =>
+						await runObservationLogObserver({
+							memory,
+							...scope,
+							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
+							observe,
+							maxBatchTokens,
+							tokenCounter: this.tokenCounter,
+							executionCounter,
+							telemetry,
+							modelFetch: this.config.modelFetch,
+							functionId: this.config.functionId,
+							// Usage is forwarded inside the observer right after the model
+							// call (before persistence), so a billed observer turn is
+							// priced even when post-processing throws.
+							onUsage: onSideCallUsage
+								? (model, usage) => {
+										void this.forwardSideCallUsage(onSideCallUsage, 'observer', model, usage);
+									}
+								: undefined,
+						}),
+				),
 		);
 		void handle.done.then((result) => {
-			if (result.status === 'failed') onFailure();
+			if (result.status === 'failed') this.noteObserverFailure(run);
 		});
 		return handle;
+	}
+
+	/**
+	 * Read the backlog one batch per Observer call, each sized to fit the
+	 * memory model, until it is read, `maxBatches` is reached, or a call does
+	 * not advance the cursor. Returns the last advancing result, so callers
+	 * see that the cursor moved.
+	 */
+	private async observeInBatches(
+		run: ObserverRunState,
+		maxBatches: number,
+		observeBatch: (maxBatchTokens: number | undefined) => Promise<RunObservationLogObserverResult>,
+	): Promise<RunObservationLogObserverResult> {
+		const maxBatchTokens = (await this.resolveBudget())?.thresholds.observerBatch;
+		let outcome: RunObservationLogObserverResult | undefined;
+		for (let batch = 0; batch < maxBatches && !run.stopped; batch++) {
+			const result = await observeBatch(maxBatchTokens);
+			const ran = result.status === 'ran';
+			const advanced = ran && result.cursorAdvanced;
+			if (advanced) run.consecutiveFailures = 0;
+			else if (ran) this.noteObserverFailure(run);
+			if (!outcome || advanced || !didAdvanceObserver(outcome)) outcome = result;
+			if (!advanced || !(ran && result.moreToObserve)) break;
+		}
+		return outcome ?? { status: 'skipped', reason: 'run-disabled' };
 	}
 
 	private async scheduleObservationLogJobs(
@@ -1208,8 +1087,6 @@ export class MemoryOrchestrator {
 			);
 		} else {
 			const decision = await this.shouldScheduleObserver(list, persistence.threadId);
-			// A turn that ended at the hard limit observes everything now, like
-			// Rokura's forced run on a full window, so the next turn fits.
 			if (decision)
 				observerHandle = this.scheduleObserverTask(
 					persistence,
@@ -1221,7 +1098,7 @@ export class MemoryOrchestrator {
 		}
 
 		const reflect = observationalMemory.reflect;
-		const reflectorThresholdTokens = (await this.resolveThresholds())?.reflect;
+		const reflectorThresholdTokens = (await this.resolveBudget())?.thresholds.reflect;
 		if (reflect && reflectorThresholdTokens !== undefined) {
 			const scheduleReflector = async () =>
 				await this.scheduleMemoryTask(runner, scope, 'reflector', async () => {
@@ -1273,18 +1150,18 @@ export class MemoryOrchestrator {
 		threadId: string,
 	): Promise<'full' | 'batches' | false> {
 		try {
-			const thresholds = await this.resolveThresholds();
-			if (!thresholds) return false;
+			const budget = await this.resolveBudget();
+			if (!budget) return false;
+			const { thresholds } = budget;
 			// A turn that ended at the hard limit observes now, so the next turn
 			// can resume from notes instead of starting over the limit.
-			if ((await this.estimateRequestTokens(list)) >= this.hardLimit(thresholds)) return 'full';
+			if ((await this.requestSize.estimate(list)) >= budget.hardLimit) return 'full';
 			const cursor = this.knownCursor;
-			await this.estimateVisibleBudget(list);
-			// Count only unobserved tokens: a cacheAware window also holds observed ones.
+			// Count only unobserved tokens: the window can also hold observed ones.
 			let unobserved = 0;
 			for (const message of list.llmVisibleMessages()) {
-				if (cursor && !isAfterCursor(message, cursor)) continue;
-				unobserved += this.visibleTokenEstimates.get(message.id) ?? 0;
+				if (cursor && !isAfterPoint(message, cursor)) continue;
+				unobserved += this.requestSize.messageTokens(message.id);
 			}
 			return unobserved >= (cursor ? thresholds.observeNew : thresholds.observeFirst)
 				? 'batches'
