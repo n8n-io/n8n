@@ -1,7 +1,15 @@
+import { Logger } from '@n8n/backend-common';
 import { type ExecutionRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { formatRedactedError } from '@n8n/instance-ai/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { IPinData, IRunData, IRunExecutionData, ITaskDataConnections } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	IPinData,
+	IRunData,
+	IRunExecutionData,
+	ITaskDataConnections,
+} from 'n8n-workflow';
 import { jsonStringify, replaceCircularReferences } from 'n8n-workflow';
 import z from 'zod';
 
@@ -40,6 +48,23 @@ const inputSchema = z.object({
 		),
 });
 
+const FAILURE_DESCRIPTION_MAX_LENGTH = 500;
+
+const FAILED_EXECUTION_STATUSES: ExecutionStatus[] = ['error', 'crashed'];
+
+const failureSchema = z
+	.object({
+		nodeName: z.string().optional(),
+		message: z.string(),
+		description: z.string().optional(),
+	})
+	.optional()
+	.describe(
+		'Summary of the failure for executions with status error or crashed (only present when includeData is false)',
+	);
+
+type ExecutionFailure = z.infer<typeof failureSchema>;
+
 const outputSchema = {
 	execution: z
 		.object({
@@ -52,6 +77,7 @@ const outputSchema = {
 			retryOf: z.string().nullable().optional(),
 			retrySuccessId: z.string().nullable().optional(),
 			waitTill: z.string().nullable().optional(),
+			failure: failureSchema,
 		})
 		.passthrough()
 		.nullable()
@@ -73,7 +99,7 @@ export const createGetExecutionTool = (
 	name: 'get_workflow_execution',
 	config: {
 		description:
-			'Get workflow execution details by execution ID and workflow ID. By default returns metadata only. Set includeData to true to include node execution data, optionally filtered by nodeNames and truncated by truncateData.',
+			'Get workflow execution details by execution ID and workflow ID. By default returns metadata only. Set includeData to true to include node execution data, optionally filtered by nodeNames and truncated by truncateData. The metadata of a failed execution includes the failed node and the error message, so includeData is not necessary to find the cause of the failure.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
@@ -109,6 +135,7 @@ export const createGetExecutionTool = (
 			// split into branches so TypeScript can narrow each return type.
 			let execution;
 			let executionData: IRunExecutionData | null | undefined;
+			let failure: ExecutionFailure;
 			if (includeData) {
 				const fullExecution = await Container.get(ExecutionPersistence).findWithUnflattenedData(
 					executionId,
@@ -124,6 +151,14 @@ export const createGetExecutionTool = (
 				executionData = fullExecution?.data ?? null;
 			} else {
 				execution = await executionRepository.findIfAccessible(executionId, [workflowId]);
+				if (execution && FAILED_EXECUTION_STATUSES.includes(execution.status)) {
+					failure = await findFailureSummary(
+						executionId,
+						workflowId,
+						user,
+						executionRedactionServiceProxy,
+					);
+				}
 			}
 
 			if (!execution) {
@@ -143,6 +178,7 @@ export const createGetExecutionTool = (
 				retryOf: execution.retryOf ?? null,
 				retrySuccessId: execution.retrySuccessId ?? null,
 				waitTill: execution.waitTill?.toISOString() ?? null,
+				...(failure && { failure }),
 			};
 
 			let filteredData: IRunExecutionData | null | undefined;
@@ -216,6 +252,48 @@ export const createGetExecutionTool = (
 		}
 	},
 });
+
+async function findFailureSummary(
+	executionId: string,
+	workflowId: string,
+	user: User,
+	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+): Promise<ExecutionFailure> {
+	try {
+		const execution = await Container.get(ExecutionPersistence).findWithUnflattenedData(
+			executionId,
+			[workflowId],
+		);
+		if (!execution) return undefined;
+
+		await executionRedactionServiceProxy.processExecution(execution, { user });
+		return toFailureSummary(execution.data.resultData);
+	} catch (error) {
+		Container.get(Logger).warn('MCP get_workflow_execution could not load the failure summary', {
+			executionId,
+			error: ensureError(error),
+		});
+		return undefined;
+	}
+}
+
+function toFailureSummary({
+	error,
+	redactedError,
+	lastNodeExecuted,
+}: IRunExecutionData['resultData']): ExecutionFailure {
+	const nodeName = lastNodeExecuted ? { nodeName: lastNodeExecuted } : {};
+	if (redactedError) return { ...nodeName, message: formatRedactedError(redactedError) };
+	if (!error) return undefined;
+
+	return {
+		...nodeName,
+		message: error.message,
+		...(error.description && {
+			description: error.description.slice(0, FAILURE_DESCRIPTION_MAX_LENGTH),
+		}),
+	};
+}
 
 function filterExecutionData(
 	data: IRunExecutionData,
