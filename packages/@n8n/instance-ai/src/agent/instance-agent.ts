@@ -15,6 +15,7 @@ import {
 } from './mcp-tool-name-validation';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
+import { createInstanceAiContextCueProvider } from '../skills/context-cues';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
@@ -22,7 +23,12 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES } from '../tools/tool-ids';
+import {
+	ALWAYS_LOADED_TOOL_NAMES,
+	getMcpToolGroup,
+	getToolGroup,
+	getToolGroupDescription,
+} from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
@@ -243,7 +249,35 @@ export async function createInstanceAgent(
 		applyAgentThinking(agent, modelId);
 	}
 	if (hasDeferrableTools) {
-		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
+		// Tool catalog mode keeps the toolset fixed for the whole run, so the prompt cache
+		// survives, and a deferred tool costs one call_tool call instead of a load step.
+		agent.toolDeferral({ mode: 'tool-catalog' });
+		// MCP tools are listed under their server and n8n tools under their resource
+		// (workflows, data_tables, agents, ...), so the model can browse one area
+		// with find_tools({ group }) instead of searching the whole set.
+		const toolsByGroup = new Map<string | undefined, InstanceAiToolRegistry>();
+		const groupDescriptions = new Map<string, string>();
+		for (const [name, tool] of deferredTools) {
+			let group: string | undefined;
+			if (tool.mcpServerName) {
+				group = getMcpToolGroup(tool.mcpServerName);
+				groupDescriptions.set(group, `tools from the ${tool.mcpServerName} MCP server`);
+			} else {
+				group = getToolGroup(name);
+				const description = group ? getToolGroupDescription(group) : undefined;
+				if (group && description) groupDescriptions.set(group, description);
+			}
+			const groupTools = toolsByGroup.get(group) ?? createToolRegistry();
+			groupTools.set(name, tool);
+			toolsByGroup.set(group, groupTools);
+		}
+		for (const [group, groupTools] of toolsByGroup) {
+			const groupDescription = group ? groupDescriptions.get(group) : undefined;
+			agent.deferredTool(
+				toolRegistryValues(groupTools),
+				group ? { group, groupDescription } : undefined,
+			);
+		}
 	}
 	// The agents module owns the builder skills that are generated from its config schema.
 	const builderSkills = context.builderDelegate?.getRuntimeSkills() ?? [];
@@ -256,7 +290,10 @@ export async function createInstanceAgent(
 		agent.telemetry(telemetry);
 	}
 	if (orchestrationContext?.workspace) agent.workspace(orchestrationContext.workspace);
-	if (skills) agent.skills(skills);
+	if (skills) {
+		agent.skills(skills);
+		agent.contextCueProvider(createInstanceAiContextCueProvider());
+	}
 
 	if (options.memory) {
 		const mem = new Memory().storage(options.memory);
@@ -316,7 +353,7 @@ export async function createInstanceAgent(
 					}
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,
-			inputProcessors: hasDeferrableTools ? ['NativeToolSearch'] : undefined,
+			inputProcessors: hasDeferrableTools ? ['ToolCatalog'] : undefined,
 			skills: skills?.registry,
 		}),
 	);

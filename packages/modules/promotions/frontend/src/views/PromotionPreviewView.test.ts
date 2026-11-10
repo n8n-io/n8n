@@ -517,7 +517,6 @@ describe('PromotionPreviewView', () => {
 		const blocked = () =>
 			billingPreview({
 				resources: [],
-				changes: [],
 				blocker: { code: 'reviewOpen', reviewId: 'review-1' },
 			});
 

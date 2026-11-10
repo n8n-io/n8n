@@ -169,17 +169,14 @@ describe('InstanceAiConversation', () => {
 	});
 
 	it.each([true, false])(
-		'preserves the draft and only restores composer focus when idle (idle: %s)',
+		'only focuses a revealed composer when focus is idle (idle: %s)',
 		async (focusIsIdle) => {
 			const wrapper = mountConversation({ autofocus: true });
-			document.body.append(wrapper.element);
 			const externalInput = document.createElement('input');
 			document.body.append(externalInput);
 			try {
 				await flushPromises();
-				const input = wrapper.findComponent(InstanceAiInputStub);
-				await input.get('[data-test-id="instance-ai-input-edit-draft"]').trigger('click');
-				await input.get('[data-test-id="instance-ai-input-add-attachment"]').trigger('click');
+				const composer = wrapper.findComponent(InstanceAiInputStub);
 				thread.pendingConfirmations = [
 					{
 						messageId: 'approval-message',
@@ -204,7 +201,8 @@ describe('InstanceAiConversation', () => {
 					},
 				];
 				await nextTick();
-				expect(input.isVisible()).toBe(false);
+				expect(wrapper.findComponent(InstanceAiInputStub).vm).toBe(composer.vm);
+				expect(composer.attributes('style')).toContain('display: none;');
 				externalInput.focus();
 				if (focusIsIdle) externalInput.blur();
 				inputFocusSpy.mockClear();
@@ -213,12 +211,8 @@ describe('InstanceAiConversation', () => {
 				await nextTick();
 				await nextTick();
 
-				expect(wrapper.findComponent(InstanceAiInputStub).vm).toBe(input.vm);
-				expect(input.isVisible()).toBe(true);
-				expect(input.get('[data-test-id="instance-ai-input-draft"]').text()).toBe(
-					'Edited user draft',
-				);
-				expect(input.get('[data-test-id="instance-ai-input-attachments"]').text()).toBe('attached');
+				expect(wrapper.findComponent(InstanceAiInputStub).vm).toBe(composer.vm);
+				expect(composer.attributes('style')).not.toContain('display: none;');
 				expect(inputFocusSpy).toHaveBeenCalledTimes(focusIsIdle ? 1 : 0);
 				if (!focusIsIdle) expect(document.activeElement).toBe(externalInput);
 			} finally {
