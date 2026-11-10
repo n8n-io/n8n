@@ -339,7 +339,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		return `${alias}"status" = '${ScheduledTaskStatus.Pending}'
 			AND ${alias}"taskType" ${taskTypesSql}
 			AND ${alias}"runAt" <= ${dueBeforeSql}
-			AND ${this.claimableSql(alias, dbClockNowLiteral(this.isPostgres))}`;
+			AND ${this.claimableSql(alias)}`;
 	}
 
 	private limitedJobIdsSql(): string {
@@ -373,7 +373,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 				WHERE cj."concurrencyLimit" IS NOT NULL
 					AND (
 						c."status" = '${ScheduledTaskStatus.Running}'
-						OR (c."status" = '${ScheduledTaskStatus.Pending}' AND ${this.claimableSql('c.', dbClockNowLiteral(this.isPostgres))})
+						OR (c."status" = '${ScheduledTaskStatus.Pending}' AND ${this.claimableSql('c.')})
 					)
 			) ranked
 			WHERE ranked."status" = '${ScheduledTaskStatus.Pending}'
@@ -387,9 +387,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * deadline at all, or has already been attempted: a retry's backoff pushes it past
 	 * its deadline by design, and the attempt count decides its fate from then on.
 	 */
-	private claimableSql(alias: string, nowSql: string): string {
+	private claimableSql(alias = ''): string {
 		const deadline = `${alias}"missedAfter"`;
-		return `(${deadline} IS NULL OR ${deadline} > ${nowSql} OR ${alias}"attempts" > 0)`;
+		return `(${deadline} IS NULL OR ${deadline} > ${dbTxNowLiteral(this.isPostgres)} OR ${alias}"attempts" > 0)`;
 	}
 
 	private async claimWithPostgres(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
@@ -657,7 +657,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 */
 	async getMetricSnapshot(): Promise<ScheduledTaskMetricSnapshot> {
 		const now = dbTxNowLiteral(this.isPostgres);
-		const claimable = this.claimableSql('', now);
+		const claimable = this.claimableSql();
 		// "running" is computed through a subquery (and not a FILTER) to prevent
 		// the WHERE to use 'IN', which does not take the partial index into account
 		const [row]: [
