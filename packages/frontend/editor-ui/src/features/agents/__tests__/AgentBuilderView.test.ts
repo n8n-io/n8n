@@ -12,6 +12,7 @@ import {
 import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { N8nToggle } from '@n8n/design-system';
+import { AGENT_SETUP_HEADER_EXPERIMENT } from '@/app/constants/experiments';
 import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import type {
 	AgentJsonConfig,
@@ -38,6 +39,14 @@ import {
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 } from '../constants';
+
+const setupHeaderVariant = ref<string | boolean>();
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({
+		isVariantEnabled: (name: string, variant: string) =>
+			name === AGENT_SETUP_HEADER_EXPERIMENT.name && setupHeaderVariant.value === variant,
+	}),
+}));
 
 const builderExperimentMock = reactive({
 	layout: { chatWidth: 'current', testChat: 'dock' },
@@ -658,6 +667,7 @@ const commonStubs = {
 			'configValidationStatus',
 			'saveStatus',
 			'beforePublish',
+			'tasks',
 		],
 		emits: [
 			'header-action',
@@ -667,6 +677,7 @@ const commonStubs = {
 			'reverted',
 			'switch-agent',
 			'open-publish-timeline',
+			'setup-task-action',
 			'toggle-instance-ai',
 		],
 	},
@@ -855,6 +866,7 @@ function mockPendingAgentRow(...pendingIds: string[]) {
 }
 
 function resetViewMocks() {
+	setupHeaderVariant.value = undefined;
 	vi.clearAllMocks();
 	for (let index = localStorage.length - 1; index >= 0; index--) {
 		const key = localStorage.key(index);
@@ -3217,6 +3229,7 @@ describe('AgentBuilderView — preview routing', () => {
 describe('AgentBuilderView — configuration validation', () => {
 	beforeEach(() => {
 		resetViewMocks();
+		setupHeaderVariant.value = AGENT_SETUP_HEADER_EXPERIMENT.variant;
 		vi.restoreAllMocks();
 		createObjectURLSpy?.mockRestore();
 		revokeObjectURLSpy?.mockRestore();
@@ -3247,6 +3260,53 @@ describe('AgentBuilderView — configuration validation', () => {
 		);
 		const header = wrapper.find('[data-testid="stub-agent-builder-header"]');
 		expect(header.attributes('data-config-validation-status')).toBe('invalid');
+	});
+
+	it.each(
+		[undefined, false, true, 'control', 'variant'].flatMap((variant) =>
+			[false, true].map((artifactMode) => ({ variant, artifactMode })),
+		),
+	)(
+		'places setup tasks for flag $variant (artifact mode: $artifactMode)',
+		async ({ variant, artifactMode }) => {
+			setupHeaderVariant.value = variant;
+			const wrapper = await renderView({
+				props: { artifactMode, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+			});
+			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			const host = variant === 'variant' ? editor : header;
+			const other = variant === 'variant' ? header : editor;
+
+			expect(host.props('tasks')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'add-tool' })]),
+			);
+			expect(other.props('tasks')).toBeUndefined();
+			const tasks = host.props('tasks') as SetupTask[];
+			host.vm.$emit(
+				'setup-task-action',
+				tasks.find((task) => task.id === 'test-agent'),
+			);
+			await flushPromises();
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+			await wrapper.setProps({ artifactEditingLocked: true });
+			expect(host.props('tasks')).toBeUndefined();
+			expect(other.props('tasks')).toBeUndefined();
+		},
+	);
+
+	it('moves setup tasks when the flag loads after the view', async () => {
+		setupHeaderVariant.value = undefined;
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(header.props('tasks')).toBeDefined();
+		expect(editor.props('tasks')).toBeUndefined();
+
+		setupHeaderVariant.value = AGENT_SETUP_HEADER_EXPERIMENT.variant;
+		await nextTick();
+		expect(header.props('tasks')).toBeUndefined();
+		expect(editor.props('tasks')).toBeDefined();
 	});
 
 	it('shows setup tasks after the assistant finishes building an agent artifact', async () => {

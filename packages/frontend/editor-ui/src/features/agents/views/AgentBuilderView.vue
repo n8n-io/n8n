@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentSetupHeaderExperiment } from '@/experiments/agentSetupHeader/useAgentSetupHeaderExperiment';
 import { useAgentBuilderExperimentStore } from '@/experiments/agentBuilder/stores/agentBuilder.store';
 import {
 	ref,
@@ -1060,6 +1061,7 @@ const setupChecklistContext = computed(() => {
 });
 const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =
 	useAgentSetupTasks(setupChecklistContext);
+const { isEnabled: isSetupHeaderEnabled } = useAgentSetupHeaderExperiment();
 const areSetupTasksVisible = computed(
 	() =>
 		isSetupChecklistVisible.value &&
@@ -3523,6 +3525,8 @@ useKeybindings({
 			:config-validation-status="configValidation?.status ?? null"
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
+			:tasks="areSetupTasksVisible && !isSetupHeaderEnabled ? setupTasks : undefined"
+			@setup-task-action="onSetupTaskAction"
 			@header-action="onHeaderAction"
 			@open-publish-timeline="onOpenVersionHistory('timeline')"
 			@publish-ready="isPublishReady = $event"
@@ -3744,7 +3748,7 @@ useKeybindings({
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
-					:tasks="areSetupTasksVisible ? setupTasks : undefined"
+					:tasks="areSetupTasksVisible && isSetupHeaderEnabled ? setupTasks : undefined"
 					:main-tab-options="visibleMainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"

@@ -227,7 +227,10 @@ export const AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT = createExperiment(
 	},
 );
 
+export const AGENT_SETUP_HEADER_EXPERIMENT = createExperiment('136_agent_setup_header');
+
 export const EXPERIMENTS_TO_TRACK = [
+	AGENT_SETUP_HEADER_EXPERIMENT.name,
 	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT.name,
 	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT.name,
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)

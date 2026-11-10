@@ -4,6 +4,12 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
 import type { AgentResource } from '../types';
+import {
+	setupTaskDefinitions,
+	type SetupTask,
+	type SetupTaskId,
+} from '../components/AgentSetupTasks/agentSetupTasks.registry';
+import AgentSetupTasks from '../components/AgentSetupTasks/AgentSetupTasks.vue';
 import { AGENT_BUILDER_VIEW, PENDING_AGENT_ID_STATE } from '../constants';
 
 const trackClickedNewAgentMock = vi.fn();
@@ -127,6 +133,12 @@ const baseAgent = {
 } as unknown as AgentResource;
 
 const globalStubs = {
+	AgentSetupTasks: {
+		name: 'AgentSetupTasks',
+		template: '<button />',
+		props: ['tasks'],
+		emits: ['action'],
+	},
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
@@ -186,6 +198,24 @@ describe('AgentBuilderHeader', () => {
 		routerResolve.mockClear();
 		trackClickedNewAgentMock.mockReset();
 		agentsListRef.value = null;
+	});
+
+	it('shows setup tasks and forwards their actions in the top bar', async () => {
+		const wrapper = mountHeader();
+		expect(wrapper.findComponent(AgentSetupTasks).exists()).toBe(false);
+		const task: SetupTask<SetupTaskId> = {
+			...setupTaskDefinitions['test-agent'],
+			id: 'test-agent',
+			state: 'todo',
+			visible: true,
+		};
+		await wrapper.setProps({ tasks: [task] });
+		const checklist = wrapper.getComponent(AgentSetupTasks);
+		expect(checklist.props('tasks')).toEqual([task]);
+		checklist.vm.$emit('action', task);
+		expect(wrapper.emitted('setup-task-action')).toEqual([[task]]);
+		await wrapper.setProps({ tasks: [] });
+		expect(wrapper.findComponent(AgentSetupTasks).exists()).toBe(false);
 	});
 
 	it('renders breadcrumbs, publish and action dropdown', () => {
