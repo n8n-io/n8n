@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import {
 	type HttpRequestClient,
 	isConnectionRefusedError,
+	isHttpRequestError,
 	isTransportFailure,
 	OutboundHttp,
 } from '@n8n/backend-network';
@@ -124,6 +125,13 @@ interface KvMount {
 
 function isCachedSecretData(value: IDataObject[string]): value is IDataObject {
 	return isRecord(value);
+}
+
+function isEmptyKvListResponse(statusCode: number | undefined, body: unknown): boolean {
+	// Vault returns 404 with no errors for an empty KV path. Unknown mounts include an error.
+	return (
+		statusCode === 404 && isRecord(body) && Array.isArray(body.errors) && body.errors.length === 0
+	);
 }
 
 export class VaultProvider extends SecretsProvider {
@@ -544,8 +552,14 @@ export class VaultProvider extends SecretsProvider {
 				async () => await this.#http.request<VaultResponse<VaultSecretList>>(listRequest),
 			);
 		} catch (error) {
-			// A transport failure preserves the full snapshot. Other failures keep this path's cache.
+			// A transport failure preserves the full snapshot.
 			if (isTransportFailure(error)) throw error;
+			if (
+				isHttpRequestError(error) &&
+				isEmptyKvListResponse(error.response?.status, error.response?.data)
+			) {
+				return {};
+			}
 			const errorContext = buildHttpProviderErrorContext(error);
 			this.logger.warn('Vault provider failed to list KV secrets', {
 				providerName: this.name,
@@ -706,16 +720,7 @@ export class VaultProvider extends SecretsProvider {
 		if (resp.statusCode === 403) {
 			return [false, forbiddenMessage];
 		}
-		const { body } = resp;
-		// Vault answers a list on an empty KV mount with 404 and an empty `errors` array. A 404 for an
-		// unknown mount path carries an error message instead.
-		const isEmptyMount =
-			resp.statusCode === 404 &&
-			typeof body === 'object' &&
-			body !== null &&
-			'errors' in body &&
-			Array.isArray(body.errors) &&
-			body.errors.length === 0;
+		const isEmptyMount = isEmptyKvListResponse(resp.statusCode, resp.body);
 		if (resp.statusCode === 200 || (manualMount?.subPath === '' && isEmptyMount)) {
 			return [true];
 		}
