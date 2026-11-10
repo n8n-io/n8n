@@ -1,5 +1,6 @@
 packages/quality/testing/playwright/tests/infrastructure/promotions/environment-lock-multi-main.spec.ts
-  s_15e6ef8768e112::t_c7185d550dfe60 75-76
+  s_0da4b348b3b902::t_0d6f25e56d4cd5 75-76
+  s_0da4b348b3b902::t_09275869f7cfaf 75-76
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -7,10 +8,10 @@ packages/quality/testing/playwright/tests/infrastructure/promotions/environment-
   "base_commit_sha": "917814731883a1aeb122a04d3927717d439c694f",
   "prompts": {},
   "sessions": {
-    "s_15e6ef8768e112": {
+    "s_0da4b348b3b902": {
       "agent_id": {
         "tool": "claude",
-        "id": "10d3b34c-e62c-4e8c-b494-f31c38e5cd50",
+        "id": "b39a28ab-fdbc-4a8e-8e76-7040acec36d2",
         "model": "claude-opus-5-5"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"

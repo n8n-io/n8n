@@ -1,0 +1,28 @@
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_90e528a8804a09::t_678615df2b884e 5-10,170,204,2138-2206
+  s_90e528a8804a09::t_36e8f7f219ed82 13
+  s_90e528a8804a09::t_582e06faee1e62 104
+packages/cli/src/modules/agents/__tests__/agent-integration-management.service.test.ts
+  s_90e528a8804a09::t_678615df2b884e 4,49-52,76,84,308-315
+  s_90e528a8804a09::t_582e06faee1e62 5,24
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_90e528a8804a09::t_900ee220789698 9,16,61,462-465
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_90e528a8804a09::t_900ee220789698 64,69,489,1855,2077-2079,2084-2089
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f14da8f6c99bb93bb22631b741a43d80b819e96a",
+  "prompts": {},
+  "sessions": {
+    "s_90e528a8804a09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44a568aa-8001-4c8c-babf-2f2d45eb4103",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
