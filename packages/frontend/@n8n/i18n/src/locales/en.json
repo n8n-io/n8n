@@ -4044,7 +4044,6 @@
 	"settings.context.skills.connect.check.rule.hiddenUnicode": "Hidden Unicode characters",
 	"settings.context.skills.connect.check.rule.newUrl": "Links to a new domain",
 	"settings.context.skills.connect.check.rule.permissionChange": "A change to permission settings",
-	"settings.context.skills.connect.check.rule.suspiciousPhrase": "Text that can change what the agent does",
 	"settings.context.skills.connect.check.rule.lossyConversion": "Content that n8n cannot convert exactly",
 	"settings.context.skills.connect.importGlobal": "Import {count} skill to Global | Import {count} skills to Global",
 	"settings.context.skills.connect.importProject": "Import {count} skill to {project} | Import {count} skills to {project}",

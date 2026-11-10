@@ -610,7 +610,7 @@ describe('SkillSourceConnectDialog', () => {
 					findings: [
 						{ rule: 'new_url', severity: 'info', file: 'SKILL.md', detail: 'd', location },
 						{
-							rule: 'suspicious_phrase',
+							rule: 'hidden_unicode',
 							severity: 'needs_review',
 							file: 'SKILL.md',
 							detail: 'd',
@@ -625,7 +625,7 @@ describe('SkillSourceConnectDialog', () => {
 
 			expect(view.getByTestId('skill-source-finding-mark')).toHaveAttribute(
 				'title',
-				'Text that can change what the agent does',
+				'Hidden Unicode characters',
 			);
 		});
 

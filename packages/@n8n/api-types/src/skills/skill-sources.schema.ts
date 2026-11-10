@@ -98,7 +98,6 @@ export const SKILL_SCAN_RULES = [
 	'hidden_unicode',
 	'new_url',
 	'permission_change',
-	'suspicious_phrase',
 	'lossy_conversion',
 ] as const;
 
