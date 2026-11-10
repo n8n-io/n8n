@@ -775,7 +775,7 @@ describe('McpClient', () => {
 			]);
 		});
 
-		it('keeps images as JSON when convertToBinary is false on v1.2 executeTool (B1)', async () => {
+		it('keeps images as JSON when convertToBinary is false on v1.2 executeTool', async () => {
 			client.callTool.mockResolvedValue({
 				content: [{ type: 'image', data: 'abcdef', mimeType: 'image/png' }],
 			});
@@ -897,7 +897,7 @@ describe('McpClient', () => {
 			]);
 		});
 
-		it('gets a prompt and keeps text as a string (S2)', async () => {
+		it('gets a prompt and keeps text as a string', async () => {
 			client.getPrompt.mockResolvedValue({
 				description: 'A prompt',
 				messages: [{ role: 'user', content: { type: 'text', text: '{"a":1}' } }],
@@ -927,7 +927,7 @@ describe('McpClient', () => {
 			expect(client.close).toHaveBeenCalledTimes(1);
 		});
 
-		it('maps a missing resources capability to a NodeOperationError (B3)', async () => {
+		it('maps a missing resources capability to a NodeOperationError', async () => {
 			client.listResources.mockRejectedValue(
 				new McpError(ErrorCode.MethodNotFound, 'Method not found'),
 			);
@@ -947,7 +947,7 @@ describe('McpClient', () => {
 			});
 		});
 
-		it('maps a missing prompts capability to a NodeOperationError (B3)', async () => {
+		it('maps a missing prompts capability to a NodeOperationError', async () => {
 			client.getPrompt.mockRejectedValue(
 				new McpError(ErrorCode.MethodNotFound, 'Method not found'),
 			);
@@ -979,7 +979,7 @@ describe('McpClient', () => {
 			]);
 		});
 
-		it('succeeds when the server does not advertise resources but returns data (B3)', async () => {
+		it('succeeds when the server does not advertise resources but returns data', async () => {
 			client.listResources.mockResolvedValue({
 				resources: [{ uri: 'mem://a', name: 'a' }],
 			});
@@ -1159,7 +1159,7 @@ describe('McpClient', () => {
 			]);
 		});
 
-		it('accepts __proto__ as a prompt argument name without polluting Object.prototype (B2)', async () => {
+		it('accepts __proto__ as a prompt argument name without polluting Object.prototype', async () => {
 			const unsafeName = '__proto__';
 			client.getPrompt.mockResolvedValue({ messages: [] });
 
@@ -1174,7 +1174,7 @@ describe('McpClient', () => {
 			expect((Object.prototype as Record<string, unknown>).polluted).toBeUndefined();
 		});
 
-		it('accepts constructor as a prompt argument name (B2)', async () => {
+		it('accepts constructor as a prompt argument name', async () => {
 			const name = 'constructor';
 			client.getPrompt.mockResolvedValue({ messages: [] });
 
@@ -1188,7 +1188,7 @@ describe('McpClient', () => {
 			expect(call.arguments?.['constructor']).toBe('x');
 		});
 
-		it('rejects an empty prompt argument name (B2)', async () => {
+		it('rejects an empty prompt argument name', async () => {
 			await expect(
 				runV12({
 					operation: 'getPrompt',
@@ -1198,7 +1198,7 @@ describe('McpClient', () => {
 			).rejects.toThrow('Prompt argument name must be a non-empty string.');
 		});
 
-		it('passes safe prompt arguments through and leaves Object.prototype unchanged (B2)', async () => {
+		it('passes safe prompt arguments through and leaves Object.prototype unchanged', async () => {
 			client.getPrompt.mockResolvedValue({
 				messages: [{ role: 'user', content: { type: 'text', text: 'ok' } }],
 			});
@@ -1216,7 +1216,7 @@ describe('McpClient', () => {
 			expect((Object.prototype as Record<string, unknown>).polluted).toBeUndefined();
 		});
 
-		it('converts an embedded resource blob in a prompt (S3)', async () => {
+		it('converts an embedded resource blob in a prompt', async () => {
 			client.getPrompt.mockResolvedValue({
 				messages: [
 					{
@@ -1260,7 +1260,7 @@ describe('McpClient', () => {
 			]);
 		});
 
-		it('keeps an embedded resource blob as base64 when convertToBinary is false (S3)', async () => {
+		it('keeps an embedded resource blob as base64 when convertToBinary is false', async () => {
 			client.getPrompt.mockResolvedValue({
 				messages: [
 					{
