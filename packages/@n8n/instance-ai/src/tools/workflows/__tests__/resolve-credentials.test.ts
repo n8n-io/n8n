@@ -422,9 +422,9 @@ describe('resolveCredentials', () => {
 		});
 
 		it('auto-applies n8n credits to a credential-less default-parameter node when the type is covered', async () => {
-			// LlamaParse persists no explicit operation (relies on defaults). The host's
-			// node check judges such a node by its default action; without that check
-			// a covered credential type is applied regardless of parameter shape.
+			// LlamaParse persists no explicit operation (relies on defaults). Auto-apply
+			// is gated on credential-type coverage only, so a covered type is applied
+			// without a setup card regardless of parameter shape.
 			const json = makeWorkflow({
 				nodes: [
 					{
