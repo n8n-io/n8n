@@ -117,6 +117,41 @@ describe('ContextMenu', () => {
 		await waitFor(() => expect(document.activeElement).toBe(canvas));
 	});
 
+	it('restores focus after selecting a regular item with the pointer', async () => {
+		const canvas = document.createElement('button');
+		document.body.appendChild(canvas);
+		canvas.focus();
+		renderComponent();
+		open([{ id: 'open', label: 'Open' }]);
+		await getMenu();
+
+		await userEvent.click(document.querySelector('[data-test-id="context-menu-item-open"]')!);
+
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="context-menu"]')).not.toBeInTheDocument(),
+		);
+		expect(document.activeElement).toBe(canvas);
+	});
+
+	it('restores focus after selecting a regular item with Enter', async () => {
+		const canvas = document.createElement('button');
+		document.body.appendChild(canvas);
+		canvas.focus();
+		renderComponent();
+		open([{ id: 'open', label: 'Open' }]);
+		await getMenu();
+		const item = document.querySelector('[data-test-id="context-menu-item-open"]');
+		if (!(item instanceof HTMLElement)) throw new Error('Context menu item not found');
+		item.focus();
+
+		await userEvent.keyboard('{Enter}');
+
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="context-menu"]')).not.toBeInTheDocument(),
+		);
+		expect(document.activeElement).toBe(canvas);
+	});
+
 	it('does not restore focus when the user clicked elsewhere', async () => {
 		const canvas = document.createElement('button');
 		const input = document.createElement('input');

@@ -1,125 +1,123 @@
 <script lang="ts" setup>
+import { computed, watch } from 'vue';
+import {
+	N8nDropdownMenu,
+	N8nKeyboardShortcut,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system';
+import type { ActionDropdownItem } from '@/Interface';
+
 import { useContextMenu } from '../composables/useContextMenu';
 import { isFocusHandoffAction, type ContextMenuAction } from '../composables/useContextMenuItems';
-import { useStyles } from '@n8n/composables/useStyles';
-import { watch } from 'vue';
-import {
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuPortal,
-	DropdownMenuRoot,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from 'reka-ui';
 
-import { N8nIcon, N8nKeyboardShortcut } from '@n8n/design-system';
-
-// The menu is driven by `isOpen` instead of Reka's `ContextMenuRoot`. That
-// component only opens from a `contextmenu` event, so we used to re-dispatch
-// a synthetic one. A script-dispatched `contextmenu` cannot be cancelled in
-// time for WebKit, and Safari showed its own menu next to ours (API-490).
+// Reka `ContextMenuRoot` opens only from a `contextmenu` event. A script-dispatched
+// event cannot be cancelled in time on WebKit, and Safari showed its own menu
+// next to ours (API-490). Drive `N8nDropdownMenu` from `isOpen` instead.
 const contextMenu = useContextMenu();
 const { position, isOpen, actions } = contextMenu;
 const emit = defineEmits<{
 	action: [action: ContextMenuAction, nodeIds: string[], groupId?: string];
 }>();
-const { APP_Z_INDEXES } = useStyles();
 
-// When a selected action hands off to another floating layer (e.g. the sticky
-// color popover), we must not restore focus as the menu closes — otherwise
-// the restore lands outside the freshly-opened layer and dismisses it.
+type MenuItem = DropdownMenuItemProps<ContextMenuAction, ActionDropdownItem<ContextMenuAction>>;
+
+const menuItems = computed<MenuItem[]>(() =>
+	actions.value.map((item) => ({
+		id: item.id,
+		testId: `context-menu-item-${item.id}`,
+		label: item.label,
+		icon: item.icon ? { type: 'icon', value: item.icon } : undefined,
+		disabled: item.disabled,
+		divided: item.divided,
+		data: item,
+	})),
+);
+
+// A selected action can hand focus to another floating layer. Restoring focus
+// here would land outside that layer and dismiss it.
 let suppressRestoreFocus = false;
-// Dropdown content would move focus to the hidden trigger on close. Restore
-// the element that was focused before the menu opened instead, and only when
-// the user did not click elsewhere, which already moved focus itself.
+// The dropdown returns focus to its trigger on close. Restore the element that
+// was focused before the menu opened, unless the user already moved focus.
 let previouslyFocused: HTMLElement | null = null;
 let interactedOutside = false;
 
-watch(isOpen, (open) => {
-	if (!open) return;
-	previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-	interactedOutside = false;
-});
-
-function onActionSelect(item: ContextMenuAction) {
-	suppressRestoreFocus = isFocusHandoffAction(item);
-	// Read the target while the menu is guaranteed open, and hand it down as
-	// data — group actions must target the group that was right-clicked, not
-	// whatever the snapshotted member ids resolve to at dispatch time.
-	emit('action', item, contextMenu.targetNodeIds.value, contextMenu.targetGroupId.value);
+function eventElement(target: EventTarget | null): Element | null {
+	if (target instanceof Element) return target;
+	if (target instanceof Text) return target.parentElement;
+	return null;
 }
 
-function onInteractOutside() {
-	interactedOutside = true;
+function isInsideMenu(target: EventTarget | null): boolean {
+	const element = eventElement(target);
+	return Boolean(element?.closest('[role="menu"], [data-context-menu-trigger]'));
 }
 
-function onCloseAutoFocus(event: Event) {
-	event.preventDefault();
+function onInteractOutside(event: Event) {
+	if (!isInsideMenu(event.target)) interactedOutside = true;
+}
+
+watch(isOpen, (open, _previous, onCleanup) => {
+	if (open) {
+		previouslyFocused =
+			document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		interactedOutside = false;
+		document.addEventListener('pointerdown', onInteractOutside, true);
+		document.addEventListener('focusin', onInteractOutside, true);
+		onCleanup(() => {
+			document.removeEventListener('pointerdown', onInteractOutside, true);
+			document.removeEventListener('focusin', onInteractOutside, true);
+		});
+		return;
+	}
+
 	const restore = !suppressRestoreFocus && !interactedOutside;
 	suppressRestoreFocus = false;
 	if (restore) previouslyFocused?.focus();
 	previouslyFocused = null;
+});
+
+function onActionSelect(action: ContextMenuAction) {
+	suppressRestoreFocus = isFocusHandoffAction(action);
+	// Read the target while the menu is open. Group actions must target the
+	// group that was right-clicked, not a later resolution of its member ids.
+	emit('action', action, contextMenu.targetNodeIds.value, contextMenu.targetGroupId.value);
 }
 
 function onOpenChange(open: boolean) {
-	if (!open) {
-		contextMenu.close();
-	}
+	if (!open) contextMenu.close();
 }
 </script>
 
 <template>
 	<Teleport v-if="isOpen" to="body">
-		<DropdownMenuRoot :open="isOpen" :modal="false" @update:open="onOpenChange">
-			<DropdownMenuTrigger as-child>
+		<N8nDropdownMenu
+			:model-value="isOpen"
+			:items="menuItems"
+			placement="right-start"
+			:modal="false"
+			:suppress-close-auto-focus="true"
+			content-test-id="context-menu"
+			@update:model-value="onOpenChange"
+			@select="onActionSelect"
+		>
+			<template #trigger>
 				<div
 					:class="$style.trigger"
+					data-context-menu-trigger
 					:style="{
 						left: `${position[0]}px`,
 						top: `${position[1]}px`,
-						zIndex: APP_Z_INDEXES.CONTEXT_MENU,
 					}"
 				/>
-			</DropdownMenuTrigger>
-			<DropdownMenuPortal>
-				<DropdownMenuContent
-					:class="$style.content"
-					data-test-id="context-menu"
-					:style="{ zIndex: APP_Z_INDEXES.CONTEXT_MENU }"
-					side="right"
-					align="start"
-					:side-offset="2"
-					@close-auto-focus="onCloseAutoFocus"
-					@interact-outside="onInteractOutside"
-				>
-					<template v-for="item in actions" :key="item.id">
-						<DropdownMenuSeparator v-if="item.divided" :class="$style.separator" />
-						<DropdownMenuItem
-							:class="[
-								$style.item,
-								$style.itemContainer,
-								{
-									[$style.disabled]: !!item.disabled,
-								},
-							]"
-							:disabled="item.disabled"
-							:data-test-id="`context-menu-item-${item.id}`"
-							@select="onActionSelect(item.id)"
-						>
-							<span v-if="item.icon" :class="$style.icon">
-								<N8nIcon :icon="item.icon" size="medium" />
-							</span>
-							<span :class="$style.label">{{ item.label }}</span>
-							<N8nKeyboardShortcut
-								v-if="item.shortcut"
-								v-bind="item.shortcut"
-								:class="$style.shortcut"
-							/>
-						</DropdownMenuItem>
-					</template>
-				</DropdownMenuContent>
-			</DropdownMenuPortal>
-		</DropdownMenuRoot>
+			</template>
+			<template #item-trailing="{ item, ui }">
+				<N8nKeyboardShortcut
+					v-if="item.data?.shortcut"
+					v-bind="item.data.shortcut"
+					:class="[ui.class, $style.shortcut]"
+				/>
+			</template>
+		</N8nDropdownMenu>
 	</Teleport>
 </template>
 
@@ -132,105 +130,13 @@ function onOpenChange(open: boolean) {
 	opacity: 0;
 }
 
-.content {
-	--n8n--dropdown--offset--slide-x: 0;
-	--n8n--dropdown--offset--slide-y: 0;
-	--n8n--dropdown--offset--origin-x: left;
-	--n8n--dropdown--offset--origin-y: top;
-	--n8n--dropdown-menu-width: 24rem;
-
-	display: flex;
-	flex-direction: column;
-	width: fit-content;
-	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
-	max-width: var(--n8n--dropdown-menu-width);
-	max-height: var(--reka-dropdown-menu-content-available-height);
-	overflow-y: auto;
-	border-radius: var(--radius--xs);
-	background-color: var(--background--surface);
-	--shadow-color--outline: var(--border-color);
-	box-shadow:
-		var(--shadow--md),
-		inset var(--shadow--outline);
-	will-change: transform, opacity;
-	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
-	scrollbar-width: none;
-
-	&[data-state='open'] {
-		animation-duration: var(--duration--snappy);
-		animation-timing-function: var(--easing--ease-out);
-		animation-name: contextMenuIn;
-	}
-}
-
-.item {
-	display: flex;
-	align-items: center;
-	height: var(--spacing--xl);
-	padding: var(--spacing--2xs);
-	position: relative;
-	user-select: none;
-	gap: var(--spacing--2xs);
-	outline: none;
-	color: var(--text-color);
-
-	&:not([data-disabled]) {
-		cursor: pointer;
-
-		&[data-highlighted] {
-			background-color: var(--background--hover);
-		}
-	}
-
-	&[data-disabled] {
-		color: var(--text-color--disabled);
-		cursor: not-allowed;
-	}
-}
-
-.itemContainer {
-	font-size: var(--font-size--2xs);
-	line-height: var(--font-line-height-regular);
-	font-weight: var(--font-weight--regular);
-}
-
-.icon {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	width: var(--spacing--xs);
-	margin-right: var(--spacing--2xs);
-	flex-grow: 0;
-	flex-shrink: 0;
-}
-
-.label {
-	flex-grow: 1;
-	white-space: nowrap;
+/* Keep the menu on the app context-menu layer, with the canvas. */
+:global([data-test-id='context-menu'][data-side]) {
+	z-index: var(--context-menu--z);
 }
 
 .shortcut {
-	margin-left: var(--spacing--xl);
-}
-
-.disabled {
-	opacity: 0.5;
-}
-
-.separator {
-	height: var(--border-width);
-	background-color: var(--border-color);
-	margin: var(--spacing--3xs) var(--spacing--2xs);
-}
-
-@keyframes contextMenuIn {
-	from {
-		opacity: 0;
-		transform: translate(0, 2px) scale(0.96);
-	}
-	to {
-		opacity: 1;
-		transform: translate(0, 0) scale(1);
-	}
+	display: flex;
+	margin-left: auto;
 }
 </style>

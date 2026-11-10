@@ -61,6 +61,12 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'reka-ui',
+		prefixes: ['DropdownMenu'],
+		allowedFolders: ['components/N8nDropdownMenu'],
+		replacement: 'N8nDropdownMenu',
+	},
+	{
+		library: 'reka-ui',
 		prefixes: ['Editable'],
 		allowedFolders: ['components/N8nInlineTextEdit'],
 		replacement: 'N8nInlineTextEdit',
@@ -150,6 +156,21 @@ export const wrappedComponentBans = [
 		prefixes: ['VisuallyHidden'],
 		allowedFolders: ['components/N8nVisuallyHidden'],
 		replacement: 'N8nVisuallyHidden',
+	},
+	{
+		library: 'element-plus',
+		names: ['ElDropdown', 'ElDropdownItem', 'ElDropdownMenu'],
+		componentPaths: ['dropdown', 'dropdown-item', 'dropdown-menu'],
+		templateNames: [
+			'el-dropdown',
+			'ElDropdown',
+			'el-dropdown-item',
+			'ElDropdownItem',
+			'el-dropdown-menu',
+			'ElDropdownMenu',
+		],
+		allowedFolders: ['components/N8nDropdownMenu'],
+		replacement: 'N8nDropdownMenu',
 	},
 	{
 		library: 'element-plus',
