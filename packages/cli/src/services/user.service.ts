@@ -523,11 +523,16 @@ export class UserService {
 		limit?: number;
 		offset?: number;
 	}): Promise<{ users: User[]; count: number }> {
-		const listOptions = { includeRole: true, offset: options.offset, limit: options.limit };
+		const listOptions = {
+			includeRole: true,
+			offset: options.offset,
+			limit: options.limit,
+			kind: 'person' as const,
+		};
 		const users = options.ids
 			? await this.userRepository.findManyByIds(options.ids, listOptions)
 			: await this.userRepository.findMany(listOptions);
-		const count = await this.userRepository.count();
+		const count = await this.userRepository.countAccounts({ kind: 'person' });
 
 		return { users, count };
 	}
