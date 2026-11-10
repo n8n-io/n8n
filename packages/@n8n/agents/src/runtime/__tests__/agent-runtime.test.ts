@@ -2363,6 +2363,68 @@ describe('AgentRuntime — volatile instruction provider', () => {
 	});
 });
 
+describe('AgentRuntime — context cue providers', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	function sentText(callIndex: number): string {
+		return JSON.stringify(generateText.mock.calls[callIndex]?.[0].messages);
+	}
+
+	it('appends new cues before each model call and sends each cue once', async () => {
+		generateText
+			.mockResolvedValueOnce({
+				...makeGenerateWithToolCall('tc-cue', 'openai.web_search', { query: 'n8n' }),
+				toolCalls: [
+					{
+						toolCallId: 'tc-cue',
+						toolName: 'openai.web_search',
+						input: { query: 'n8n' },
+						providerExecuted: true,
+					},
+				],
+			})
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+		const provider = vi.fn().mockResolvedValue([{ id: 'one', content: '- Cue one.' }]);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Base instructions.',
+			contextCueProviders: [provider],
+		});
+
+		const result = await runtime.generate('search');
+
+		expect(provider).toHaveBeenCalledTimes(2);
+		expect(provider.mock.calls[0][0].sentCueIds).toEqual(new Set());
+		expect(provider.mock.calls[1][0].sentCueIds).toEqual(new Set(['one']));
+		expect(sentText(0)).toContain('<system-reminder>');
+		expect(sentText(0)).toContain('- Cue one.');
+		expect(sentText(1).split('- Cue one.')).toHaveLength(2);
+		expect(JSON.stringify(result.getState())).toContain('n8n:runtime-context-cue');
+	});
+
+	it('continues the model call when a provider fails', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Base instructions.',
+			contextCueProviders: [
+				vi.fn().mockRejectedValue(new Error('embedder down')),
+				vi.fn().mockResolvedValue([{ id: 'two', content: '- Cue two.' }]),
+			],
+		});
+
+		await expect(runtime.generate('hello')).resolves.toEqual(
+			expect.objectContaining({ finishReason: 'stop' }),
+		);
+		expect(sentText(0)).toContain('- Cue two.');
+	});
+});
+
 // ---------------------------------------------------------------------------
 // reasoning-only turn
 // ---------------------------------------------------------------------------

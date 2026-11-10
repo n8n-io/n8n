@@ -270,6 +270,13 @@ export interface CustomAgentMessages {
 			change?: 'updated' | 'restored' | 'unavailable';
 		};
 	};
+	runtimeContextCue: {
+		type: 'n8n:runtime-context-cue';
+		/** Stable cue ids, so a conversation receives each cue only once. */
+		cueIds: string[];
+		/** The cue text the model sees, without the `<system-reminder>` wrapper. */
+		content: string;
+	};
 	// Apps can add message types through declaration merging.
 }
 
