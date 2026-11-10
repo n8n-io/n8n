@@ -20,16 +20,14 @@ import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import { FLAG_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory-capture';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
 import { AgentMessageList } from '../runtime/model/message-list';
+import { resolveNativeToolDeferral } from '../runtime/model/model-factory';
 import type { FetchFn } from '../runtime/model/model-factory';
 import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
 import { assertFunctionId } from '../runtime/telemetry/function-id';
 import { deriveSubAgentTelemetry } from '../runtime/telemetry/sub-agent-telemetry';
-import {
-	LOAD_TOOL_TOOL_NAME,
-	SEARCH_TOOLS_TOOL_NAME,
-} from '../runtime/tools/deferred-tool-manager';
+import { CALL_TOOL_TOOL_NAME, FIND_TOOLS_TOOL_NAME } from '../runtime/tools/tool-catalog';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
@@ -75,6 +73,7 @@ import type {
 	Provider,
 	PromptCachingConfig,
 	NativeToolDeferralConfig,
+	ToolDeferralConfig,
 	ReasoningLevel,
 	RunOptions,
 	StreamResult,
@@ -118,6 +117,10 @@ interface DeferredToolOptions {
 	search?: {
 		topK?: number;
 	};
+	/** Tool catalog mode: the tool group these tools are listed under. Default: `tools`. */
+	group?: string;
+	/** Tool catalog mode: one line on what the tool group holds, shown next to its tool names. */
+	groupDescription?: string;
 }
 
 type ActiveRuntime = {
@@ -151,6 +154,7 @@ export interface AgentSnapshot {
 	/** The prompt caching config if set via `.promptCaching()`, otherwise null. */
 	promptCaching: PromptCachingConfig | null;
 	nativeToolDeferral: NativeToolDeferralConfig | null;
+	toolDeferral: ToolDeferralConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
 	toolCallConcurrency: number | null;
 }
@@ -189,6 +193,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private deferredToolSearchTopK: number | undefined;
 
 	private nativeToolDeferralConfig?: NativeToolDeferralConfig;
+
+	private toolDeferralConfig?: ToolDeferralConfig;
+
+	private deferredToolGroups: Record<string, string> = {};
+
+	private deferredToolGroupDescriptions: Record<string, string> = {};
 
 	private providerTools: BuiltProviderTool[] = [];
 
@@ -337,19 +347,33 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this.tool(store.asTool(options));
 	}
 
-	/** Use provider tool search when the model and endpoint support it. */
+	/** Set which tools stay eager under provider tool search, the default deferral mode. */
 	nativeToolDeferral(config: NativeToolDeferralConfig): this {
 		this.nativeToolDeferralConfig = { eagerToolNames: [...config.eagerToolNames] };
 		return this;
 	}
 
-	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */
+	/**
+	 * Choose how deferred tools reach the model. `provider` (default) uses the
+	 * provider's tool search when the model supports it. `tool-catalog` lists tool
+	 * names in the prompt and runs them through `find_tools` and `call_tool`.
+	 */
+	toolDeferral(config: ToolDeferralConfig): this {
+		this.toolDeferralConfig = { mode: config.mode };
+		return this;
+	}
+
+	/** Add tools that the model discovers on demand. See `toolDeferral()` for how. */
 	deferredTool(t: ToolParameter | ToolParameter[], options?: DeferredToolOptions): this {
 		const tools = Array.isArray(t) ? t : [t];
 		for (const tool of tools) {
 			const built = 'build' in tool ? tool.build() : tool;
 			this.assertReservedSdkBuiltInToolName(built);
 			this.deferredTools.push(built);
+			if (options?.group) this.deferredToolGroups[built.name] = options.group;
+		}
+		if (options?.group && options.groupDescription) {
+			this.deferredToolGroupDescriptions[options.group] = options.groupDescription;
 		}
 		if (options?.search?.topK !== undefined) {
 			this.deferredToolSearchTopK = options.search.topK;
@@ -769,6 +793,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			nativeToolDeferral: this.nativeToolDeferralConfig
 				? { eagerToolNames: [...this.nativeToolDeferralConfig.eagerToolNames] }
 				: null,
+			toolDeferral: this.toolDeferralConfig ? { ...this.toolDeferralConfig } : null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 		};
 	}
@@ -1081,8 +1106,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		const staticNames = new Set(finalStaticTools.map((t) => t.name));
 		const reservedDeferredToolNames = new Set([
-			SEARCH_TOOLS_TOOL_NAME,
-			LOAD_TOOL_TOOL_NAME,
+			FIND_TOOLS_TOOL_NAME,
+			CALL_TOOL_TOOL_NAME,
 			...RUNTIME_SKILL_TOOL_NAMES,
 		]);
 		const deferredNames = new Set<string>();
@@ -1101,6 +1126,24 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			throw new Error(
 				`Deferred tool name collision — the following tool names resolve to duplicates or reserved tools: ${deferredCollisions.join(', ')}`,
 			);
+		}
+
+		// The tool catalog adds find_tools and call_tool, and would silently replace a direct
+		// or MCP tool with the same name. Provider tool search adds neither.
+		const usesToolCatalog =
+			this.toolDeferralConfig?.mode === 'tool-catalog' ||
+			!this.modelConfig ||
+			resolveNativeToolDeferral(this.modelConfig) === undefined;
+		if (finalDeferredTools.length > 0 && usesToolCatalog) {
+			const toolCatalogNames = new Set([FIND_TOOLS_TOOL_NAME, CALL_TOOL_TOOL_NAME]);
+			const reserved = [...finalStaticTools, ...mcpTools]
+				.filter((t) => toolCatalogNames.has(t.name))
+				.map((t) => t.name);
+			if (reserved.length > 0) {
+				throw new Error(
+					`Tool name collision — the following tool names are reserved for the tool catalog: ${reserved.join(', ')}`,
+				);
+			}
 		}
 
 		const collisions = mcpTools
@@ -1201,6 +1244,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			reasoning: this.reasoningLevel,
 			promptCaching: this.promptCachingConfig,
 			nativeToolDeferral: this.nativeToolDeferralConfig,
+			toolDeferral: this.toolDeferralConfig,
+			deferredToolGroups: this.deferredToolGroups,
+			deferredToolGroupDescriptions: this.deferredToolGroupDescriptions,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
@@ -1352,6 +1398,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				instructionProviderOptions: this.instructionProviderOpts,
 				promptCaching: this.promptCachingConfig,
 				nativeToolDeferral: this.nativeToolDeferralConfig,
+				toolDeferral: this.toolDeferralConfig,
+				deferredToolGroups: this.deferredToolGroups,
+				deferredToolGroupDescriptions: this.deferredToolGroupDescriptions,
 				runState: options.runState,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
 				...(this.reasoningLevel !== undefined ? { reasoning: this.reasoningLevel } : {}),
