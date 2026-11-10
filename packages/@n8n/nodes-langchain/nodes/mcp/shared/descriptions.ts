@@ -56,7 +56,6 @@ export const credentials: INodeCredentialDescription[] = [
 	{
 		name: 'oAuth2Api',
 		required: true,
-		hint: 'Unlike the MCP OAuth2 credential, this credential has no Resource URL field (RFC 8707). MCP servers that require a resource parameter must use the MCP OAuth2 credential instead.',
 		displayOptions: {
 			show: {
 				authentication: ['oAuth2Api'],
