@@ -17,6 +17,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { createTestRun, createTestCaseExecution } from '@test-integration/db/evaluation';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createUserShell } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -507,5 +508,56 @@ describe('GET /workflows/:workflowId/test-runs/:id/test-cases', () => {
 			status: 'success',
 			metrics: { precision: 0.87 },
 		});
+	});
+});
+
+describe('GET /workflows/:workflowId/test-runs/:id/test-cases run data scope', () => {
+	const RUN_DATA = { answer: 'runtime-marker-212' };
+
+	async function setupProjectMember(scopes: string[]) {
+		const member = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const teamProject = await createTeamProject();
+		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+		await linkUserToProject(member, teamProject, role.slug);
+
+		const workflow = await createWorkflow({}, teamProject);
+		const testRun = await createTestRun(workflow.id);
+		await createTestCaseExecution(testRun.id, {
+			status: 'success',
+			metrics: { score: 1 },
+			inputs: {},
+			outputs: RUN_DATA,
+		});
+
+		return { memberAgent: testServer.authAgentFor(member), workflow, testRun };
+	}
+
+	test('should not return run data to a custom role with workflow:read but without execution:read', async () => {
+		const { memberAgent, workflow, testRun } = await setupProjectMember([
+			'workflow:read',
+			'workflow:list',
+		]);
+
+		const resp = await memberAgent.get(
+			`/workflows/${workflow.id}/test-runs/${testRun.id}/test-cases`,
+		);
+
+		expect(JSON.stringify(resp.body)).not.toContain(RUN_DATA.answer);
+		expect(resp.statusCode).toBe(404);
+	});
+
+	test('should return run data to a custom role with workflow:read and execution:read', async () => {
+		const { memberAgent, workflow, testRun } = await setupProjectMember([
+			'workflow:read',
+			'workflow:list',
+			'execution:read',
+		]);
+
+		const resp = await memberAgent.get(
+			`/workflows/${workflow.id}/test-runs/${testRun.id}/test-cases`,
+		);
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data[0]).toMatchObject({ outputs: RUN_DATA });
 	});
 });
