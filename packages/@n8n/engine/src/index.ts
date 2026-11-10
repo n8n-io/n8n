@@ -34,7 +34,6 @@ export type {
 	ResolveStepRequest,
 	ResolveStepResponse,
 	ResumeLocateRequest,
-	ResumeTargetRequest,
 	ResumeTargetResponse,
 } from './server';
 
@@ -55,6 +54,8 @@ export type {
 
 export {
 	createResponseEmitter,
+	EXECUTION_CHANNEL_TOPICS,
+	MAX_FRAME_BYTES,
 	executionResponseSchema,
 	noopExecutionResponseSender,
 	noopResponseEmitter,
@@ -64,13 +65,20 @@ export {
 export type {
 	ChunkMessage,
 	EndedMessage,
+	ExecutionChannelCodec,
+	ExecutionChannelFrameHandler,
+	ExecutionChannelPublisher,
+	ExecutionChannelSubscriber,
+	ExecutionChannelTopic,
 	ExecutionResponse,
 	ExecutionResponseSender,
+	FrameResult,
 	ResponseEmitter,
 	ResponseExpectation,
 	ResponseExpectationKind,
 	ResponseMessage,
 	UndeliverableMessage,
+	UnsubscribeFromExecutionChannel,
 } from './response-channel';
 
 export { jsonObjectSchema, UnimplementedError } from './common';

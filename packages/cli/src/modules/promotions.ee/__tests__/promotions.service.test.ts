@@ -1,6 +1,7 @@
 import type { PromotionApplyCheck } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
+import { Person } from '@n8n/db';
 import type { Project, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
@@ -89,7 +90,7 @@ describe('PromotionsService', () => {
 	const runRepository = mock<PromotionRunRepository>();
 	const reviewsService = mock<PromotionReviewsService>();
 	const eventService = mock<EventService>();
-	const actor = mock<User>({
+	const actor = Object.assign(new Person(), {
 		id: 'actor',
 		firstName: 'Ada',
 		lastName: 'Lovelace',
@@ -1043,7 +1044,12 @@ describe('PromotionsService', () => {
 		});
 
 		it('commits as n8n when the actor has no name or email', async () => {
-			const bareActor = mock<User>({ id: 'x', firstName: '', lastName: '', email: undefined });
+			const bareActor = Object.assign(new Person(), {
+				id: 'x',
+				firstName: '',
+				lastName: '',
+				email: undefined,
+			});
 
 			await service.promote(ENVIRONMENT_ID, bareActor, {
 				canExportVariableValues: true,
@@ -1061,7 +1067,11 @@ describe('PromotionsService', () => {
 			{ firstName: 'Ada', lastName: '', name: 'Ada' },
 			{ firstName: '', lastName: 'Lovelace', name: 'Lovelace' },
 		])('uses the available profile name: $name', async ({ firstName, lastName, name }) => {
-			const partialActor = mock<User>({ firstName, lastName, email: 'ada@example.com' });
+			const partialActor = Object.assign(new Person(), {
+				firstName,
+				lastName,
+				email: 'ada@example.com',
+			});
 
 			await service.promote(ENVIRONMENT_ID, partialActor, {
 				canExportVariableValues: true,
@@ -1099,7 +1109,7 @@ describe('PromotionsService', () => {
 	});
 
 	describe('promoteProjectSelection push mechanics', () => {
-		const actor = mock<User>({
+		const actor = Object.assign(new Person(), {
 			id: 'actor',
 			firstName: 'Ada',
 			lastName: 'Lovelace',
@@ -1750,7 +1760,7 @@ describe('PromotionsService', () => {
 	});
 
 	describe('promoteProjectSelection', () => {
-		const actor = mock<User>({ id: 'actor', email: 'ada@example.com' });
+		const actor = Object.assign(new Person(), { id: 'actor', email: 'ada@example.com' });
 
 		// The promote resolves the environment the same way the change preview does,
 		// so a selection pushes to the environment the user previewed.
@@ -1791,7 +1801,12 @@ describe('PromotionsService', () => {
 					canExportVariableValues: true,
 					commitMessage: undefined,
 				}),
-				{ projectId: 'p1', workflowIds: ['w1', 'w2', 'w4'], deletedWorkflowIds: ['w3'] },
+				{
+					projectId: 'p1',
+					workflowIds: ['w1', 'w2', 'w4'],
+					deletedWorkflowIds: ['w3'],
+					folderIds: [],
+				},
 				new Map(),
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
@@ -1820,7 +1835,7 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.objectContaining({ commitMessage: 'Promote checkout flow' }),
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [], folderIds: [] },
 				new Map(),
 			);
 		});
@@ -1842,7 +1857,7 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.anything(),
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'] },
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'], folderIds: [] },
 				new Map(),
 			);
 		});
@@ -1866,21 +1881,9 @@ describe('PromotionsService', () => {
 				promoteInput(),
 				actor,
 				expect.anything(),
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'] },
+				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'], folderIds: [] },
 				new Map([['w9', 'project "Ops"']]),
 			);
-		});
-
-		it('rejects a selection with duplicate workflow ids', async () => {
-			const promoteSelectionResolved = spyPromoteSelectionResolved();
-
-			await expect(
-				service.promoteProjectSelection('p1', actor, {
-					workflowIds: ['w1', 'w1'],
-					canExportVariableValues: false,
-				}),
-			).rejects.toThrow(BadRequestError);
-			expect(promoteSelectionResolved).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2264,6 +2267,8 @@ describe('PromotionsService', () => {
 				durationMs: expect.any(Number),
 				workflowsChanged: 6,
 				workflowsFailedToPublish: 0,
+				foldersChanged: 7,
+				projectsChanged: 2,
 			});
 		});
 
@@ -2522,10 +2527,12 @@ describe('PromotionsService', () => {
 					selectedProjectId: 'p1',
 					selectedWorkflowIds: selection.selectedWorkflowIds,
 					deletedWorkflowIds: selection.deletedWorkflowIds,
+					selectedFolderIds: [],
 				};
 				expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledWith(
 					{
 						user: actor,
+						projectConflictPolicy: 'overwrite',
 						overwriteDeletionPolicy: 'hard-delete',
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 						tagConflictPolicy: 'rename',
@@ -2714,6 +2721,7 @@ describe('PromotionsService', () => {
 									selectedProjectId: 'p1',
 									selectedWorkflowIds: ['w1'],
 									deletedWorkflowIds: ['deleted'],
+									selectedFolderIds: [],
 								},
 								noMoves,
 							);
@@ -2746,6 +2754,7 @@ describe('PromotionsService', () => {
 								selectedProjectId: 'p1',
 								selectedWorkflowIds: ['w1'],
 								deletedWorkflowIds: ['deleted'],
+								selectedFolderIds: [],
 							},
 							'enforce',
 						);

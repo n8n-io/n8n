@@ -3,6 +3,7 @@ import type {
 	ApplyPackageResult,
 	PromotionApplyCheck,
 	PromotionProjectDeletion,
+	PromotionSelection,
 } from '../../client';
 
 type ReportFlags = { quiet?: boolean; format?: string; json?: boolean; jq?: string };
@@ -121,14 +122,15 @@ export function environmentContinueCommand(environmentId: string): ContinueComma
 		expectedSourceArgs(result);
 }
 
-/** The command that resumes a blocked selection Apply. It resends the same workflow ids. */
+/** The command that resumes a blocked selection Apply. It resends the same selection. */
 export function selectionContinueCommand(
 	projectId: string,
-	workflowIds: string[],
+	{ workflowIds = [], folderIds = [] }: PromotionSelection,
 ): ContinueCommand {
 	return (result) =>
 		`n8n-cli promotion-environment apply-selection-continue ${shellQuote(projectId)}` +
 		workflowIds.map((id) => ` -w ${shellQuote(id)}`).join('') +
+		folderIds.map((id) => ` --folder ${shellQuote(id)}`).join('') +
 		expectedSourceArgs(result);
 }
 

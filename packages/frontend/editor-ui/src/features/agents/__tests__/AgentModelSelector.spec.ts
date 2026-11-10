@@ -123,8 +123,8 @@ vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal
 	}),
 	ContactAdminModal: {
 		name: 'ContactAdminModal',
-		props: ['open', 'nodeTypeName', 'kind', 'audience'],
-		template: '<div v-if="open" data-testid="contact-admin-modal">{{ nodeTypeName }}</div>',
+		props: ['open', 'typeName', 'kind', 'audience'],
+		template: '<div v-if="open" data-testid="contact-admin-modal">{{ typeName }}</div>',
 	},
 }));
 
@@ -446,7 +446,7 @@ describe('AgentModelSelector', () => {
 		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props()).toEqual({
 			open: true,
 			kind: 'credential',
-			nodeTypeName: 'OpenAI credentials',
+			typeName: 'OpenAI credentials',
 			audience: 'project',
 		});
 	});

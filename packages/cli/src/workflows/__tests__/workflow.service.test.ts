@@ -20,7 +20,7 @@ import type {
 	WorkflowPublishedVersionRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
+import { Person, WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -1974,7 +1974,7 @@ describe('WorkflowService', () => {
 				'_addToActiveWorkflowManager',
 			).mockResolvedValue(undefined);
 
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',
@@ -1982,7 +1982,7 @@ describe('WorkflowService', () => {
 				role: mock<Role>({ slug: 'global:admin' }),
 			});
 
-			await workflowService.activateWorkflow(user, WORKFLOW_ID, {
+			await workflowService.activateWorkflow(person, WORKFLOW_ID, {
 				versionId: TARGET_VERSION_ID,
 			});
 
@@ -2157,7 +2157,7 @@ describe('WorkflowService', () => {
 
 			externalHooksMock.run.mockResolvedValue(undefined);
 
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',
@@ -2165,7 +2165,7 @@ describe('WorkflowService', () => {
 				role: mock<Role>({ slug: 'global:admin' }),
 			});
 
-			await workflowService.deactivateWorkflow(user, WORKFLOW_ID);
+			await workflowService.deactivateWorkflow(person, WORKFLOW_ID);
 
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
 			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as [
@@ -2415,6 +2415,7 @@ describe('WorkflowService', () => {
 		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
 		let workflowIndexServiceMock: MockProxy<WorkflowIndexService>;
+		let eventServiceMock: MockProxy<EventService>;
 
 		const WORKFLOW_ID = 'workflow-1';
 		const ACTIVE_VERSION_ID = 'v1';
@@ -2442,6 +2443,7 @@ describe('WorkflowService', () => {
 			activeWorkflowManagerMock = mock();
 			externalHooksMock = mock<ExternalHooks>();
 			workflowIndexServiceMock = mock<WorkflowIndexService>();
+			eventServiceMock = mock<EventService>();
 
 			workflowRepositoryMock.create.mockImplementation(
 				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
@@ -2460,7 +2462,7 @@ describe('WorkflowService', () => {
 				mock(), // roleService
 				mock(), // projectService
 				mock(), // executionPersistence
-				mock(), // eventService
+				eventServiceMock, // eventService
 				globalConfigMock, // globalConfig
 				mock(), // folderRepository
 				mock(), // workflowFinderService
@@ -2495,7 +2497,7 @@ describe('WorkflowService', () => {
 		test('removes the published dependency index after teardown', async () => {
 			workflowRepositoryMock.findOne.mockResolvedValue(makeWorkflowEntity());
 
-			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID);
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard');
 
 			expect(workflowIndexServiceMock.removePublishedDependenciesForWorkflow).toHaveBeenCalledWith(
 				WORKFLOW_ID,
@@ -2505,12 +2507,31 @@ describe('WorkflowService', () => {
 			);
 		});
 
+		test('emits workflow-deactivated-by-system with the reason after teardown', async () => {
+			workflowRepositoryMock.findOne.mockResolvedValue(makeWorkflowEntity());
+
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard');
+
+			expect(eventServiceMock.emit).toHaveBeenCalledExactlyOnceWith(
+				'workflow-deactivated-by-system',
+				{
+					workflowId: WORKFLOW_ID,
+					workflowName: 'My workflow',
+					deactivatedVersionId: ACTIVE_VERSION_ID,
+					reason: 'memory-guard',
+				},
+			);
+			expect(workflowRepositoryMock.update.mock.invocationCallOrder[0]).toBeLessThan(
+				eventServiceMock.emit.mock.invocationCallOrder[0],
+			);
+		});
+
 		test('proceeds with deactivation when the workflow.deactivate hook fails', async () => {
 			workflowRepositoryMock.findOne.mockResolvedValue(makeWorkflowEntity());
 			externalHooksMock.run.mockRejectedValue(new Error('Code freeze in effect'));
 
 			await expect(
-				workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID),
+				workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard'),
 			).resolves.toBeUndefined();
 
 			expect(activeWorkflowManagerMock.remove).toHaveBeenCalledWith(WORKFLOW_ID);
@@ -2529,7 +2550,7 @@ describe('WorkflowService', () => {
 		test('does nothing when the workflow does not exist', async () => {
 			workflowRepositoryMock.findOne.mockResolvedValue(null);
 
-			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID);
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard');
 
 			expect(externalHooksMock.run).not.toHaveBeenCalled();
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
@@ -2542,7 +2563,7 @@ describe('WorkflowService', () => {
 				makeWorkflowEntity({ active: false, activeVersionId: null }),
 			);
 
-			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID);
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard');
 
 			expect(externalHooksMock.run).not.toHaveBeenCalled();
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
@@ -2551,6 +2572,7 @@ describe('WorkflowService', () => {
 			expect(
 				workflowIndexServiceMock.removePublishedDependenciesForWorkflow,
 			).not.toHaveBeenCalled();
+			expect(eventServiceMock.emit).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2869,7 +2891,7 @@ describe('WorkflowService', () => {
 			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
 
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',
@@ -2877,7 +2899,7 @@ describe('WorkflowService', () => {
 				role: mock<Role>({ slug: 'global:admin' }),
 			});
 
-			await workflowService.delete(user, WORKFLOW_ID, true);
+			await workflowService.delete(person, WORKFLOW_ID, true);
 
 			const expectedActor: WorkflowLifecycleHookActor = {
 				id: 'user-1',
@@ -2983,7 +3005,7 @@ describe('WorkflowService', () => {
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
 			workflowRepositoryMock.get.mockResolvedValue(workflow);
 
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',
@@ -2992,7 +3014,7 @@ describe('WorkflowService', () => {
 			});
 
 			await workflowService.update(
-				user,
+				person,
 				{ nodes: [], connections: {} } as unknown as WorkflowEntity,
 				WORKFLOW_ID,
 			);
@@ -3269,7 +3291,7 @@ describe('WorkflowService', () => {
 		};
 
 		function makeActingUser() {
-			return mock<User>({
+			return Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',

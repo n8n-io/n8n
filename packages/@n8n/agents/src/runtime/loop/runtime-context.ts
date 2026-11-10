@@ -40,6 +40,7 @@ import {
 	createModel,
 	resolveNativeToolDeferral,
 	supportsSplitSystemMessages,
+	usesOfficialAnthropicApi,
 } from '../model/model-factory';
 import { applyNativeToolDeferral, type NativeToolDeferral } from '../model/native-tool-deferral';
 import { applyOpenRouterPromptCache } from '../model/openrouter-prompt-cache';
@@ -513,7 +514,9 @@ export class RuntimeContextBuilder {
 		const quirksProvider =
 			provider === 'google-vertex' ? getGoogleVertexQuirksProvider(model, sdk) : provider;
 		const quirks = getProviderQuirks(quirksProvider);
-		return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
+		return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId, {
+			isOfficialApi: usesOfficialAnthropicApi(modelConfig),
+		});
 	}
 
 	/**

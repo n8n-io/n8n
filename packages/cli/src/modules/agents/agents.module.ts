@@ -51,14 +51,13 @@ export class AgentsModule implements ModuleInterface {
 		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
 		registerUserDeletionHandler();
 
-		// Register blob backends for agent execution logs and knowledge files.
+		// Register blob backends for agent execution logs.
 		// The fs backend is always available; s3/az reuse the clients base-command
 		// already initialized (initBinaryDataService runs before module init in
 		// all commands), which exits the process when the configured execution
 		// data backend cannot be reached — so a live process in s3/az mode always
 		// has that location registered here.
 		const { AgentExecutionLogStore } = await import('./execution-log/agent-execution-log-store.js');
-		const { AgentKnowledgeFileStore } = await import('./agent-knowledge-file-store.js');
 		const { ExecutionDataJsonStore } = await import(
 			'@/executions/execution-data/execution-data-json-store.js'
 		);
@@ -66,7 +65,6 @@ export class AgentsModule implements ModuleInterface {
 		await registerAgentBlobByteStores({
 			executionDataJsonStore: Container.get(ExecutionDataJsonStore),
 			agentExecutionLogStore: Container.get(AgentExecutionLogStore),
-			agentKnowledgeFileStore: Container.get(AgentKnowledgeFileStore),
 		});
 
 		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
@@ -259,7 +257,6 @@ export class AgentsModule implements ModuleInterface {
 
 	async entities() {
 		const { Agent } = await import('./entities/agent.entity.js');
-		const { AgentFile } = await import('./entities/agent-file.entity.js');
 		const { AgentChatAttachment } = await import('./entities/agent-chat-attachment.entity.js');
 		const { AgentFileGrant } = await import('./entities/agent-file-grant.entity.js');
 		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity.js');
@@ -317,7 +314,6 @@ export class AgentsModule implements ModuleInterface {
 
 		return [
 			Agent,
-			AgentFile,
 			AgentChatAttachment,
 			AgentFileGrant,
 			AgentChatSubscription,
