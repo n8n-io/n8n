@@ -22,6 +22,7 @@ const display = computed(() => scopeDisplay(props.skill));
 		<template #leading>
 			<ProjectIcon
 				v-if="props.skill.scope === 'project' && props.projectIcon"
+				:class="$style.icon"
 				:icon="props.projectIcon"
 				size="mini"
 				border-less

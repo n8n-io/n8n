@@ -36,7 +36,7 @@ describe('SkillSourceHealth', () => {
 		expect(getByRole('button', { name: label })).toHaveFocus();
 		expect(await screen.findByTestId('tooltip-content')).toHaveTextContent(description);
 		expect(getByRole('button', { name: label })).toHaveAccessibleDescription(
-			expect.stringContaining('n8n checks every hour.'),
+			expect.stringContaining('n8n checks every hour by default.'),
 		);
 	});
 
