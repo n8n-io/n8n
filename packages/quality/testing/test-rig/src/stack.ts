@@ -28,9 +28,11 @@ const byName = (containers: Container[]) =>
 	[...containers].sort((a, b) => a.getName().localeCompare(b.getName(), 'en', { numeric: true }));
 
 const running = new Set<RigStack>();
+const starting = new Set<Promise<unknown>>();
 
 /** Stops every stack this process started and has not stopped, for cleanup after a timeout or an interrupt. */
 export async function stopAllStacks() {
+	await Promise.allSettled([...starting]);
 	const results = await Promise.allSettled([...running].map(async (rig) => await rig.stop()));
 	const errors = results
 		.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
@@ -46,6 +48,8 @@ export class RigStack {
 
 	readonly redis: RedisProbe;
 
+	private stopping?: Promise<void>;
+
 	private constructor(
 		readonly stack: N8NStack,
 		readonly hooks: HookSpec[],
@@ -58,7 +62,7 @@ export class RigStack {
 	static async start(options: StackOptions): Promise<RigStack> {
 		const hooks = parseHookSpecs(options.hooks ?? []);
 		const mains = options.mains ?? 1;
-		const stack = await createN8NStack({
+		const creating = createN8NStack({
 			projectName: `rig-${options.name}-${process.pid}-${Date.now().toString(36)}`,
 			postgres: true,
 			mains,
@@ -76,9 +80,13 @@ export class RigStack {
 				...scaledTimeouts(options.scale),
 				...options.env,
 			},
+		}).then((stack) => {
+			const rig = new RigStack(stack, hooks);
+			running.add(rig);
+			return rig;
 		});
-		const rig = new RigStack(stack, hooks);
-		running.add(rig);
+		starting.add(creating);
+		const rig = await creating.finally(() => starting.delete(creating));
 		try {
 			await rig.assertHooksInstalled();
 		} catch (error) {
@@ -160,7 +168,7 @@ export class RigStack {
 	}
 
 	async stop() {
-		if (!running.delete(this)) return;
-		await this.stack.stop();
+		this.stopping ??= this.stack.stop().finally(() => running.delete(this));
+		await this.stopping;
 	}
 }
