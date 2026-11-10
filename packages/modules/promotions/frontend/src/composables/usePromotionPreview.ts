@@ -79,7 +79,7 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 			}
 
 			const result = await getPromotionPreview(
-				rootStore.restApiContext,
+				rootStore.publicApiContext,
 				requested.projectId,
 				requested.direction,
 			);

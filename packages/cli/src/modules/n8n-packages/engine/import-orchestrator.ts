@@ -112,6 +112,8 @@ import {
 	assertArchiveTransitionsAllowed,
 	assertCredentialUpdatesAllowed,
 	assertDataTableWritesAllowed,
+	assertFolderWritesAllowed,
+	assertWorkflowRemovalsAllowed,
 	assertSharedSkillWritesAllowed,
 	assertTagWritesAllowed,
 	assertVariableWritesAllowed,
@@ -240,6 +242,11 @@ export class ImportOrchestrator {
 		assertDataTableWritesAllowed(
 			options.apiKeyScopes,
 			plans.map((plan) => plan.dataTablePlan),
+		);
+		assertFolderWritesAllowed(this.licenseState, options.apiKeyScopes, plans);
+		assertWorkflowRemovalsAllowed(
+			options.apiKeyScopes,
+			plans.map((plan) => plan.removalPlan),
 		);
 		if (
 			plans.some(

@@ -420,7 +420,7 @@ overrides:
   'knip>zod': catalog:zod-v4
   js-yaml: 4.3.2
   katex: 0.18.2
-  body-parser: 2.3.0
+  body-parser: 2.4.0
   glob@10: 10.5.0
   # These consumers use the same APIs in the maintained releases.
   js-beautify@<1.15.4: 1.15.4

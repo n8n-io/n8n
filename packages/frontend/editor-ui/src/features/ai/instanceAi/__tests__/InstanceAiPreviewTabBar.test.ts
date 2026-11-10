@@ -10,6 +10,7 @@ import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import type { ArtifactTab } from '../useCanvasPreview';
 import { HOVER_DELAY } from '@/app/constants/durations';
 import { useSkillsStore } from '@/features/settings/context/skills.store';
+import { createArtifactTestRouter } from './artifactTestRouter';
 
 const mockCopy = vi.fn();
 const mockShowMessage = vi.fn();
@@ -107,7 +108,10 @@ const Wrapper = defineComponent({
 });
 
 // Experiment cleanup: remove with openWorkflowInAssistant.
-const renderComponent = createComponentRenderer(Wrapper, { pinia: createTestingPinia() });
+const renderComponent = createComponentRenderer(Wrapper, {
+	pinia: createTestingPinia(),
+	global: { plugins: [createArtifactTestRouter()] },
+});
 
 async function openAgentTabContextMenu(container: Element, tabId = 'agent-1') {
 	const agentTabTrigger = container.querySelector<HTMLElement>(`[data-tab-id="${tabId}"]`);
@@ -428,6 +432,25 @@ describe('InstanceAiPreviewTabBar', () => {
 			expect(window.open).toHaveBeenCalledWith('/home/agents', '_blank', 'noopener');
 		});
 	});
+
+	it('opens and copies tab links with the router base', async () => {
+		const href = '/n8n/projects/proj-1/datatables/dt-1';
+		const { container } = renderComponent({
+			props: { tabs: [dataTableTab], activeTabId: 'dt-1' },
+			global: { plugins: [createArtifactTestRouter('/n8n/')] },
+		});
+
+		await openAgentTabContextMenu(container, 'dt-1');
+		await selectContextMenuItem('Open in editor');
+		expect(window.open).toHaveBeenCalledWith(href, '_blank', 'noopener');
+
+		await openAgentTabContextMenu(container, 'dt-1');
+		await selectContextMenuItem('Copy link');
+		await waitFor(() => {
+			expect(mockCopy).toHaveBeenCalledWith(`${window.location.origin}${href}`);
+		});
+	});
+
 	describe('tab hover card', () => {
 		const workflowTab2: ArtifactTab = { ...workflowTab, id: 'wf-2', name: 'Second Workflow' };
 

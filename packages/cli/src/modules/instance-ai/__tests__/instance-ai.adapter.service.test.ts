@@ -1,5 +1,5 @@
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, NodeTypesProxy } from '@n8n/backend-services';
 // EOF Experiment cleanup
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
@@ -94,7 +94,6 @@ import {
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { NodeCatalogService } from '@/node-catalog';
-import type { NodeTypes } from '@/node-types';
 import { pairAiGatewayServers } from '@/modules/mcp-registry/registry/mcp-registry-ai-gateway';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import {
@@ -243,8 +242,8 @@ function mockMultiOutputRun(outputs: Array<IDataObject[] | null>, node = FILTER_
 }
 
 /** Node types that resolve every node to the given description. `new Workflow` needs `properties`. */
-function nodeTypesWith(description: Partial<INodeTypeDescription>): NodeTypes {
-	const nodeTypes = mock<NodeTypes>();
+function nodeTypesWith(description: Partial<INodeTypeDescription>): NodeTypesProxy {
+	const nodeTypes = mock<NodeTypesProxy>();
 	nodeTypes.getByNameAndVersion.mockReturnValue({
 		description: { properties: [], ...description },
 	} as never);
@@ -252,7 +251,7 @@ function nodeTypesWith(description: Partial<INodeTypeDescription>): NodeTypes {
 }
 
 /** Node types that resolve every node to a Filter: one declared output, two output names. */
-function filterNodeTypes(): NodeTypes {
+function filterNodeTypes(): NodeTypesProxy {
 	return nodeTypesWith({ outputs: [NodeConnectionTypes.Main], outputNames: ['Kept', 'Discarded'] });
 }
 
@@ -592,7 +591,7 @@ describe('redacted executions', () => {
 		const result = await extractExecutionDebugInfo(
 			makeRedactedExecution(),
 			true,
-			mock<NodeTypes>(),
+			mock<NodeTypesProxy>(),
 		);
 
 		expect(result.redaction).toEqual({ reason: 'workflow_redaction_policy', canReveal: false });
@@ -1217,7 +1216,7 @@ describe('extractExecutionDebugInfo', () => {
 	// ── resolvedParameters on failedNode ──────────────────────────────────────
 
 	describe('failedNode.resolvedParameters', () => {
-		const debugNodeTypes = mock<NodeTypes>();
+		const debugNodeTypes = mock<NodeTypesProxy>();
 
 		/** Build an execution that has a full workflow snapshot + a failed node entry. */
 		function makeFailedExecution(opts: {
@@ -1897,7 +1896,7 @@ describe('extractNodeOutput', () => {
 			name: 'Filter',
 			type: 'n8n-nodes-community.missing',
 		});
-		const nodeTypes = mock<NodeTypes>();
+		const nodeTypes = mock<NodeTypesProxy>();
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {
 			throw new Error('Unrecognized node type');
 		});
@@ -2501,11 +2500,12 @@ describe('createNodeAdapter', () => {
 
 		it('acquires and releases the isolate around dynamic input resolution', async () => {
 			const { service, nodeService } = createNodeAdapterServiceForTests([]);
-			(service as unknown as { nodeTypes: Pick<NodeTypes, 'getByNameAndVersion'> }).nodeTypes = {
-				getByNameAndVersion: vi
-					.fn()
-					.mockReturnValue({ description: { inputs: ['main'], properties: [] } }),
-			} as unknown as NodeTypes;
+			(service as unknown as { nodeTypes: Pick<NodeTypesProxy, 'getByNameAndVersion'> }).nodeTypes =
+				{
+					getByNameAndVersion: vi
+						.fn()
+						.mockReturnValue({ description: { inputs: ['main'], properties: [] } }),
+				} as unknown as NodeTypesProxy;
 
 			const workflowJson = {
 				nodes: [
@@ -5597,8 +5597,8 @@ describe('resolveDataTableByIdOrName', () => {
  * registry added is named for its server (`@n8n/mcp-registry.<slug>`) and says
  * "tool" nowhere, yet it describes an `ai_tool` output all the same.
  */
-function runNodeTypesStub(): NodeTypes {
-	const nodeTypes = mock<NodeTypes>();
+function runNodeTypesStub(): NodeTypesProxy {
+	const nodeTypes = mock<NodeTypesProxy>();
 	nodeTypes.getByNameAndVersion.mockImplementation(
 		(type: string) =>
 			({
@@ -5624,7 +5624,7 @@ function createRunAdapterForTests(
 		threadId?: string;
 		queueMode?: boolean;
 		allowSendingParameterValues?: boolean;
-		nodeTypes?: NodeTypes;
+		nodeTypes?: NodeTypesProxy;
 	},
 ) {
 	const mockWorkflowFinderService = {

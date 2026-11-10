@@ -169,13 +169,14 @@ describe('InstanceAiConversation', () => {
 	});
 
 	it.each([true, false])(
-		'only focuses a remounted composer when focus is idle (idle: %s)',
+		'only focuses a revealed composer when focus is idle (idle: %s)',
 		async (focusIsIdle) => {
 			const wrapper = mountConversation({ autofocus: true });
 			const externalInput = document.createElement('input');
 			document.body.append(externalInput);
 			try {
 				await flushPromises();
+				const composer = wrapper.findComponent(InstanceAiInputStub);
 				thread.pendingConfirmations = [
 					{
 						messageId: 'approval-message',
@@ -200,7 +201,8 @@ describe('InstanceAiConversation', () => {
 					},
 				];
 				await nextTick();
-				expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(false);
+				expect(wrapper.findComponent(InstanceAiInputStub).vm).toBe(composer.vm);
+				expect(composer.attributes('style')).toContain('display: none;');
 				externalInput.focus();
 				if (focusIsIdle) externalInput.blur();
 				inputFocusSpy.mockClear();
@@ -209,7 +211,8 @@ describe('InstanceAiConversation', () => {
 				await nextTick();
 				await nextTick();
 
-				expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(true);
+				expect(wrapper.findComponent(InstanceAiInputStub).vm).toBe(composer.vm);
+				expect(composer.attributes('style')).not.toContain('display: none;');
 				expect(inputFocusSpy).toHaveBeenCalledTimes(focusIsIdle ? 1 : 0);
 				if (!focusIsIdle) expect(document.activeElement).toBe(externalInput);
 			} finally {
