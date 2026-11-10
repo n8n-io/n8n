@@ -246,23 +246,21 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		{ immediate: true },
 	);
 
-	// Automatic types store the selected mode for the backend.
-	watch(
-		() => [
-			isAutomaticOAuthType.value,
-			useCustomOAuth.value,
-			credentialData.value.useDynamicClientRegistration,
-		],
-		() => {
-			if (!isAutomaticOAuthType.value) return;
-			const useDynamicClientRegistration = !useCustomOAuth.value;
-			if (credentialData.value.useDynamicClientRegistration === useDynamicClientRegistration) {
-				return;
-			}
-			credentialData.value = { ...credentialData.value, useDynamicClientRegistration };
-		},
-		{ immediate: true },
-	);
+	/** Automatic types store the selected mode, because the backend reads it. */
+	function storeSelectedOAuthMode() {
+		if (!isAutomaticOAuthType.value) return;
+		const useDynamicClientRegistration = !useCustomOAuth.value;
+		if (credentialData.value.useDynamicClientRegistration === useDynamicClientRegistration) return;
+		credentialData.value = { ...credentialData.value, useDynamicClientRegistration };
+	}
+
+	const oauthModeInputs = () => [
+		isAutomaticOAuthType.value,
+		useCustomOAuth.value,
+		credentialData.value.useDynamicClientRegistration,
+	];
+
+	watch(oauthModeInputs, storeSelectedOAuthMode, { immediate: true });
 
 	// --- properties --------------------------------------------------------
 	const credentialProperties = computed(() => {

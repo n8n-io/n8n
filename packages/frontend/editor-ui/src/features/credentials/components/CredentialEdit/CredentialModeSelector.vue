@@ -70,25 +70,26 @@ const hasManualCredentialFields = computed(() =>
 	hasManualCredentialInputFields(props.credentialType),
 );
 
+const OAUTH_APP_LABEL_KEYS = {
+	automatic: {
+		plain: 'credentialEdit.credentialConfig.oauthModeAutomatic',
+		withAuthType: 'credentialEdit.credentialConfig.oauthModeAutomaticWithAuthType',
+	},
+	managed: {
+		plain: 'credentialEdit.credentialConfig.oauthModeManaged',
+		withAuthType: 'credentialEdit.credentialConfig.oauthModeManagedWithAuthType',
+	},
+} as const;
+
 function getManagedOAuthOptions(
 	authType: string,
 	automatic: boolean,
 	authTypeLabel?: string,
 ): Option[] {
-	let appLabel: string;
-	if (automatic) {
-		appLabel = authTypeLabel
-			? i18n.baseText('credentialEdit.credentialConfig.oauthModeAutomaticWithAuthType', {
-					interpolate: { authType: authTypeLabel },
-				})
-			: i18n.baseText('credentialEdit.credentialConfig.oauthModeAutomatic');
-	} else {
-		appLabel = authTypeLabel
-			? i18n.baseText('credentialEdit.credentialConfig.oauthModeManagedWithAuthType', {
-					interpolate: { authType: authTypeLabel },
-				})
-			: i18n.baseText('credentialEdit.credentialConfig.oauthModeManaged');
-	}
+	const keys = OAUTH_APP_LABEL_KEYS[automatic ? 'automatic' : 'managed'];
+	const appLabel = authTypeLabel
+		? i18n.baseText(keys.withAuthType, { interpolate: { authType: authTypeLabel } })
+		: i18n.baseText(keys.plain);
 	return [
 		{
 			name: appLabel,
