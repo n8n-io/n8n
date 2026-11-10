@@ -13,7 +13,6 @@ import {
 	loadEngineTls,
 	setEngineServerTls,
 	watchEngineTls,
-	type EngineTls,
 } from './tls';
 
 const logger = createConsoleLogger();
@@ -32,22 +31,8 @@ async function main(): Promise<void> {
 	}
 
 	// Before the database, so a bad certificate fails the boot in a second.
-	let tls = loadEngineTls(config);
+	const tls = loadEngineTls(config);
 	assertSecureTransport(config, tls, {}, logger);
-
-	// Before the database too, so a renewal during startup is not missed.
-	let applyToServer: (next: EngineTls) => void = () => {};
-	const tlsWatcher = tls
-		? watchEngineTls(
-				config,
-				tls,
-				(next) => {
-					tls = next;
-					applyToServer(next);
-				},
-				logger,
-			)
-		: undefined;
 
 	const dataSource = createDataSource(config.databaseUrl);
 	await dataSource.initialize();
@@ -64,11 +49,12 @@ async function main(): Promise<void> {
 	});
 	runtime.start();
 
-	const server = createEngineHttpServer(runtime.app, tls);
-	applyToServer = (next) => setEngineServerTls(server, next);
-	server.listen(config.port, config.host, () => {
+	const server = createEngineHttpServer(runtime.app, tls).listen(config.port, config.host, () => {
 		logger.info(`listening on ${tls ? 'https' : 'http'}://${config.host}:${config.port}`);
 	});
+	const tlsWatcher = tls
+		? watchEngineTls(config, tls, (next) => setEngineServerTls(server, next), logger)
+		: undefined;
 
 	let shuttingDown = false;
 	const shutdown = async (signal: string): Promise<void> => {
