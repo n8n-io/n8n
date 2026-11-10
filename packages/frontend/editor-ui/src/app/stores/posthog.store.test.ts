@@ -240,6 +240,16 @@ describe('Posthog store', () => {
 			);
 		});
 
+		it('masks the text of captured elements', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: true });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ mask_all_text: true }),
+			);
+		});
+
 		it('keeps autocapture off when the flag is off', () => {
 			const posthog = usePostHog();
 			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: false });

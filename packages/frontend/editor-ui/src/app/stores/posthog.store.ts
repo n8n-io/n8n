@@ -33,7 +33,9 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
-// These attributes can hold user-defined names and values, so autocapture must not send them.
+// These attributes can hold sensitive information, such as node names, node parameters or workflow
+// data. Autocapture must not send them.
+// https://docs.n8n.io/privacy-and-security#data-collection-in-self-hosted-n8n
 const AUTOCAPTURE_IGNORED_ATTRIBUTES = [
 	'title',
 	'alt',
@@ -316,6 +318,10 @@ export const usePostHog = defineStore('posthog', () => {
 				hasServerFlags && evaluatedFeatureFlags[ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name] === true
 					? { element_attribute_ignorelist: AUTOCAPTURE_IGNORED_ATTRIBUTES }
 					: false,
+			// The text of a clicked element can hold sensitive information, such as node names or
+			// parameter values, so we mask it. Add a `data-attr` to any element that analytics needs
+			// to identify. See https://docs.n8n.io/privacy-and-security#data-collection-in-self-hosted-n8n
+			mask_all_text: true,
 			disable_session_recording: config.disableSessionRecording,
 			debug: false, // Enables console logs for debugging reasons
 			session_recording: {
