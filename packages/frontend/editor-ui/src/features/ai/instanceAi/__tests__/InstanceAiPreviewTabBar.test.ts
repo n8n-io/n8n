@@ -9,6 +9,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import type { ArtifactTab } from '../useCanvasPreview';
 import { HOVER_DELAY } from '@/app/constants/durations';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
 
 const mockCopy = vi.fn();
 const mockShowMessage = vi.fn();
@@ -64,6 +65,13 @@ const agentTabWithoutProject: ArtifactTab = {
 	type: 'agent',
 	name: 'Standalone Agent',
 	icon: 'robot',
+};
+
+const skillTab: ArtifactTab = {
+	id: 'skill-1',
+	type: 'skill',
+	name: 'Brand voice',
+	icon: 'book-open',
 };
 
 // TabsList/Trigger rely on reka-ui's Tabs context, so the harness wraps the
@@ -341,6 +349,37 @@ describe('InstanceAiPreviewTabBar', () => {
 		);
 
 		expect(source).not.toContain('--left--fade');
+	});
+
+	describe('skill artifacts', () => {
+		it('opens the skill hub from the context menu', async () => {
+			const { container } = renderComponent({
+				props: { tabs: [skillTab], activeTabId: skillTab.id },
+			});
+
+			await openAgentTabContextMenu(container, skillTab.id);
+			await selectContextMenuItem('Open in skill hub');
+
+			expect(window.open).toHaveBeenCalledWith(
+				'/settings/context/skills?skillId=skill-1',
+				'_blank',
+				'noopener',
+			);
+		});
+
+		it('updates the tab name when the saved skill name changes', async () => {
+			const { getByRole } = renderComponent({
+				props: { tabs: [skillTab], activeTabId: skillTab.id },
+			});
+			expect(getByRole('tab', { name: 'Brand voice' })).toBeInTheDocument();
+
+			useSkillsStore().skillNames.set(skillTab.id, 'New brand voice');
+
+			await waitFor(() =>
+				expect(getByRole('tab', { name: 'New brand voice' })).toBeInTheDocument(),
+			);
+			expect(getByRole('button', { name: 'Close New brand voice' })).toBeInTheDocument();
+		});
 	});
 
 	describe('agent artifact context menu', () => {

@@ -26,6 +26,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	const skills = ref<SkillListItem[]>([]);
 	const count = ref(0);
 	const loading = ref(false);
+	/** Current names for skill artifact tabs, including renames made in the editor. */
+	const skillNames = ref(new Map<string, string>());
 
 	// Only the newest read commits, so a slow earlier search cannot overwrite a later one.
 	let latestRead = 0;
@@ -66,7 +68,9 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	}
 
 	async function fetchSkill(id: string): Promise<SkillDetail> {
-		return await api.getSkill(rootStore.restApiContext, id);
+		const detail = await api.getSkill(rootStore.restApiContext, id);
+		skillNames.value.set(id, detail.name);
+		return detail;
 	}
 
 	async function createSkill(payload: CreateSkillDto): Promise<SkillDetail> {
@@ -74,7 +78,9 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	}
 
 	async function saveSkill(id: string, payload: SaveSkillDto): Promise<SkillSaveResponse> {
-		return await api.saveSkill(rootStore.restApiContext, id, payload);
+		const saved = await api.saveSkill(rootStore.restApiContext, id, payload);
+		skillNames.value.set(id, saved.skill.name);
+		return saved;
 	}
 
 	async function deleteSkill(id: string): Promise<void> {
@@ -117,6 +123,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		skills,
 		count,
 		loading,
+		skillNames,
 		fetchSkills,
 		fetchSkillCount,
 		fetchCreators,

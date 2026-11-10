@@ -14,6 +14,7 @@ import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import { useTimeoutFn } from '@vueuse/core';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { HOVER_DELAY } from '@/app/constants/durations';
 import type { ArtifactTab } from '../useCanvasPreview';
@@ -54,6 +55,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const clipboard = useClipboard();
 const toast = useToast();
+const skillsStore = useSkillsStore();
 const tabListRef = ref<HTMLElement | null>(null);
 const sizeToggleLabel = computed(() =>
 	i18n.baseText(
@@ -137,9 +139,13 @@ type HoverTarget = { tabId: string; reference: HTMLElement };
 
 const {
 	getSummary,
-	displayName: tabName,
+	displayName,
 	refresh: refreshSummaries,
 } = useArtifactTabSummaries(() => props.tabs);
+
+function tabName(tab: ArtifactTab): string {
+	return tab.type === 'skill' ? (skillsStore.skillNames.get(tab.id) ?? tab.name) : displayName(tab);
+}
 const hoverTarget = shallowRef<HoverTarget | null>(null);
 // Read the tab from the current props, so a rename shows at once while the card is open.
 const hoveredTab = computed(() => {
@@ -330,7 +336,13 @@ async function handleCopyLink(tab: ArtifactTab) {
 					<ContextMenuContent :class="$style.contextMenu">
 						<ContextMenuItem :class="$style.contextMenuItem" @select="handleOpenInEditor(tab)">
 							<N8nIcon icon="external-link" size="small" />
-							<span>{{ i18n.baseText('instanceAi.previewTabBar.openInEditor') }}</span>
+							<span>{{
+								i18n.baseText(
+									tab.type === 'skill'
+										? 'instanceAi.previewTabBar.openInSkillHub'
+										: 'instanceAi.previewTabBar.openInEditor',
+								)
+							}}</span>
 						</ContextMenuItem>
 						<ContextMenuItem :class="$style.contextMenuItem" @select="handleCopyLink(tab)">
 							<N8nIcon icon="link" size="small" />
