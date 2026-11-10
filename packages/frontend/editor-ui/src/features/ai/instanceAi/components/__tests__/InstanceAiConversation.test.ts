@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, nextTick, provide, reactive } from 'vue';
+import { defineComponent, h, nextTick, provide, reactive, type Ref } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -56,6 +56,8 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 const infiniteScroll = vi.hoisted(() => ({
 	load: undefined as (() => Promise<void>) | undefined,
 	options: undefined as UseInfiniteScrollOptions | undefined,
+	isLoading: undefined as Ref<boolean> | undefined,
+	arrivedState: undefined as { top: boolean; bottom: boolean } | undefined,
 	/** The `bottom` value that the scroll state reads when it measures the view. */
 	measuredBottom: true,
 }));
@@ -68,6 +70,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 		useScroll: () => {
 			// The same start state as vueuse, before any scroll event.
 			const arrivedState = reactive({ top: true, bottom: false });
+			infiniteScroll.arrivedState = arrivedState;
 			return {
 				arrivedState,
 				measure: () => {
@@ -82,7 +85,8 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 		) => {
 			infiniteScroll.load = load;
 			infiniteScroll.options = options;
-			return { isLoading: ref(false), reset: () => {} };
+			infiniteScroll.isLoading = ref(false);
+			return { isLoading: infiniteScroll.isLoading, reset: () => {} };
 		},
 	};
 });
@@ -428,6 +432,38 @@ describe('InstanceAiConversation', () => {
 		await nextTick();
 
 		expect(wrapper.find('[data-icon="arrow-down"]').exists()).toBe(true);
+	});
+
+	it('shows a spinner while older messages load', async () => {
+		const wrapper = mountConversation();
+		const spinner = '[data-test-id="instance-ai-older-messages-loading"]';
+		expect(wrapper.find(spinner).exists()).toBe(false);
+
+		infiniteScroll.isLoading!.value = true;
+		await nextTick();
+
+		expect(wrapper.find(spinner).exists()).toBe(true);
+	});
+
+	it('shows an error and stops the retries until the user scrolls away from the top', async () => {
+		const error = new Error('Network error');
+		Object.assign(thread, { hasOlderMessages: true });
+		thread.loadOlderMessages = vi.fn(async () => {
+			throw error;
+		});
+		mountConversation();
+		const view = { scrollHeight: 1000, clientHeight: 500 } as HTMLElement;
+		infiniteScroll.options?.onScroll?.(new Event('scroll'));
+
+		await infiniteScroll.load?.();
+
+		expect(showErrorSpy).toHaveBeenCalledWith(error, "Couldn't load earlier messages");
+		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(false);
+
+		infiniteScroll.arrivedState!.top = false;
+		await nextTick();
+
+		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(true);
 	});
 
 	it('renders the above-input and inline-offers slots', () => {
