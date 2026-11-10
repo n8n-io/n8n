@@ -56,6 +56,12 @@ const INSTANCE_AI_STOPWORDS = [
 /** The service adds this block to the user's message text. */
 const INSTANCE_AI_INJECTED_TAGS = ['thread-context'];
 
+function isFailedOutput(output: unknown): boolean {
+	return (
+		typeof output === 'object' && output !== null && 'success' in output && output.success === false
+	);
+}
+
 /** Phases the conversation has reached, from the tools that succeeded so far. */
 function detectInstanceAiCuePhases(messages: readonly AgentMessage[]): Set<InstanceAiCuePhase> {
 	const phases = new Set<InstanceAiCuePhase>();
@@ -70,7 +76,9 @@ function detectInstanceAiCuePhases(messages: readonly AgentMessage[]): Set<Insta
 			builtThisTurn = false;
 		}
 		for (const part of message.content) {
-			if (part.type !== 'tool-call' || part.state !== 'resolved') continue;
+			if (part.type !== 'tool-call' || part.state !== 'resolved' || part.canceled) continue;
+			// Denied or failed calls report `success: false` and change no workflow.
+			if (isFailedOutput(part.output)) continue;
 			const name = part.toolName;
 			if (AFTER_BUILD_TOOLS.has(name)) phases.add('after-build');
 			if (EDITING_TOOLS.has(name)) phases.add('editing');

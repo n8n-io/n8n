@@ -31,7 +31,8 @@ authentication. Pick in this order:
    values — this covers API keys and bearer tokens. When the provider documents
    `Authorization: Bearer <token>`, do NOT use `httpBearerAuth`: template it as
    `{"headers":{"Authorization":"Bearer {{api_key}}"}}`. Set the HTTP Request
-   node's `genericAuthType` to `httpTemplatedCustomAuth`. Note the provider's
+   node's `authentication` to `genericCredentialType` and its `genericAuthType`
+   to `httpTemplatedCustomAuth`. Note the provider's
    documented auth scheme (header format, key page, a cheap authenticated GET
    endpoint) while you have the docs open: the setup call needs them for the
    `credentialHints` recipe. Before that setup call, load the

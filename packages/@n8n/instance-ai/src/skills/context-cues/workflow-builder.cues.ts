@@ -166,7 +166,7 @@ export const WORKFLOW_BUILDER_CUES: ContextCueSet = {
 		},
 		{
 			id: 'placeholder-not-wrapped',
-			text: "Use `placeholder('hint')` directly as the parameter value. Do not wrap it in `expr()`, objects or arrays.",
+			text: "For plain parameters, use `placeholder('hint')` directly as the value. Do not wrap it in `expr()`, objects or arrays. Resource-locator fields are the exception: put it in their `value`.",
 			appliesWhen:
 				'A node parameter value is unknown and needs a placeholder the user fills in later.',
 		},

@@ -2,7 +2,8 @@
 name: workflow-builder
 description: >-
   Load before calling workflow_builder_build_workflow. Once the user wants a
-  workflow, load it before you ask about that workflow. Use for new one-off
+  workflow, load it before you ask about that workflow. Do not load it to ask
+  about a request that does not yet say what to build. Use for new one-off
   workflows, edits, repairs and post-build verification of one workflow (not
   requests only to run or inspect a saved workflow), and for its
   credentials, model choices, evaluations and error workflow. For any other new
