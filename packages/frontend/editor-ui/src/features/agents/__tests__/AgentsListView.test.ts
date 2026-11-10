@@ -14,7 +14,8 @@ import {
 } from '../constants';
 
 const templatesEnabled = ref(false);
-const instanceAiReady = ref(false);
+const experimentVariant = ref<'control' | 'test' | undefined>('control');
+const trackTemplatesExposure = vi.fn();
 
 const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
@@ -105,13 +106,11 @@ vi.mock(
 	() => ({
 		useAgentsListEmptyStateTemplatesExperiment: () => ({
 			isFeatureEnabled: computed(() => templatesEnabled.value),
+			variant: computed(() => experimentVariant.value),
+			trackExposure: trackTemplatesExposure,
 		}),
 	}),
 );
-
-vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
-	useInstanceAiReady: () => computed(() => instanceAiReady.value),
-}));
 
 vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({
@@ -173,6 +172,10 @@ const agent = (id: string, name: string, projectId = 'project-1'): AgentResource
 		updatedAt: '2026-01-02T00:00:00Z',
 	}) as AgentResource;
 
+// Mounted views are unmounted after each test. Without this, watchers from
+// earlier tests stay alive and react to shared refs mutated by later tests.
+const activeWrappers: Array<ReturnType<typeof mount>> = [];
+
 const mountView = async () => {
 	const wrapper = mount(AgentsListView, {
 		global: {
@@ -199,6 +202,7 @@ const mountView = async () => {
 		},
 	});
 	await flushPromises();
+	activeWrappers.push(wrapper);
 	return wrapper;
 };
 
@@ -207,13 +211,17 @@ beforeEach(() => {
 	mocks.routeQuery = {};
 });
 
+afterEach(() => {
+	let wrapper: (typeof activeWrappers)[number] | undefined;
+	while ((wrapper = activeWrappers.shift())) wrapper.unmount();
+});
+
 describe('AgentsListView — project page', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
 		mocks.isSummaryEnabled = false;
 		templatesEnabled.value = false;
-		instanceAiReady.value = false;
 	});
 
 	afterEach(() => {
@@ -480,7 +488,6 @@ describe('AgentsListView — overview page', () => {
 		mocks.routeProjectId = undefined;
 		mocks.isSummaryEnabled = false;
 		templatesEnabled.value = false;
-		instanceAiReady.value = false;
 	});
 
 	afterEach(() => {
@@ -544,7 +551,6 @@ describe('AgentsListView — create agent', () => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
 		templatesEnabled.value = false;
-		instanceAiReady.value = false;
 	});
 
 	it('opens the builder for a new pending agent in the current project', async () => {
@@ -571,23 +577,71 @@ describe('AgentsListView — empty state templates', () => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
 		templatesEnabled.value = false;
-		instanceAiReady.value = false;
+		experimentVariant.value = 'control';
 		mocks.listAgentsPage.mockResolvedValue({ count: 0, data: [] });
 	});
 
-	it('keeps the current empty state unless the flag is on and Instance AI is ready', async () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('keeps the current empty state unless the experiment is enabled', async () => {
 		const flagOff = await mountView();
 		expect(flagOff.find('[data-test-id="agents-list-intro"]').exists()).toBe(false);
 		expect(flagOff.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(true);
 
 		templatesEnabled.value = true;
-		const notReady = await mountView();
-		expect(notReady.find('[data-test-id="agents-list-intro"]').exists()).toBe(false);
+		const enabled = await mountView();
+		expect(enabled.find('[data-test-id="agents-list-intro"]').exists()).toBe(true);
+		expect(enabled.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(false);
+	});
 
-		instanceAiReady.value = true;
-		const ready = await mountView();
-		expect(ready.find('[data-test-id="agents-list-intro"]').exists()).toBe(true);
-		expect(ready.find('[data-test-id="agents-list-empty-fallback"]').exists()).toBe(false);
+	it('records experiment exposure for the rendered empty state', async () => {
+		await mountView();
+
+		expect(trackTemplatesExposure).toHaveBeenCalledTimes(1);
+	});
+
+	it('records no exposure when the list has agents', async () => {
+		mocks.listAgentsPage.mockResolvedValueOnce({
+			count: 1,
+			data: [agent('agent-1', 'Support Agent')],
+		});
+
+		await mountView();
+
+		expect(trackTemplatesExposure).not.toHaveBeenCalled();
+	});
+
+	it('records no exposure while a search yields no matching agents', async () => {
+		vi.useFakeTimers();
+		mocks.listAgentsPage
+			.mockResolvedValueOnce({ count: 1, data: [agent('agent-1', 'Support Agent')] })
+			.mockResolvedValueOnce({ count: 0, data: [] });
+
+		const wrapper = await mountView();
+		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
+
+		layout.vm.$emit('update:search', 'No agent matches');
+		await flushPromises();
+		vi.advanceTimersByTime(300);
+		await flushPromises();
+
+		expect(mocks.listAgentsPage).toHaveBeenCalledTimes(2);
+		expect(trackTemplatesExposure).not.toHaveBeenCalled();
+	});
+
+	it('records exposure when the variant resolves after the list is empty', async () => {
+		experimentVariant.value = undefined;
+
+		await mountView();
+
+		expect(trackTemplatesExposure).not.toHaveBeenCalled();
+
+		experimentVariant.value = 'test';
+		await flushPromises();
+
+		expect(trackTemplatesExposure).toHaveBeenCalledTimes(1);
 	});
 
 	it.each([
@@ -611,7 +665,6 @@ describe('AgentsListView — empty state templates', () => {
 		},
 	])('records $name and opens the builder', async ({ testId, source, starter }) => {
 		templatesEnabled.value = true;
-		instanceAiReady.value = true;
 		const wrapper = await mountView();
 
 		await wrapper.get(`[data-test-id="${testId}"]`).trigger('click');

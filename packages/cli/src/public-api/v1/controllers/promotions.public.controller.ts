@@ -421,7 +421,7 @@ export class PromotionsPublicController {
 	@ApiSummary("Beta: Remove an environment's local checkout")
 	@ApiDescription(
 		BETA_NOTE +
-			'Removes the local checkout and keeps the environment, its credentials, and the trusted SSH host keys.',
+			'Removes the local checkout on this instance, asks the other main instances to remove theirs, and keeps the environment, its credentials, and the trusted SSH host keys.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionCheckoutPublicDto)
