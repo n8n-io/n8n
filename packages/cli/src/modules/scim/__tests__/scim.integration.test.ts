@@ -10,7 +10,9 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
+	GLOBAL_MEMBER_ROLE,
 	ProjectRepository,
+	ServiceAccountRepository,
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -369,6 +371,21 @@ describe('SCIM /scim/v2/Users', () => {
 		expect(response.body.Resources).toEqual([]);
 		expect(response.body.itemsPerPage).toBe(0);
 		expect(response.body.totalResults).toBe(3);
+	});
+
+	it('lists persons only', async () => {
+		const member = await createMember();
+		await Container.get(ServiceAccountRepository).create({
+			name: 'Deploy bot',
+			role: GLOBAL_MEMBER_ROLE,
+		});
+
+		const response = await scimRequest('get', '/Users').expect(200);
+
+		expect(response.body.totalResults).toBe(3);
+		expect(response.body.Resources.map(({ id }: { id: string }) => id).sort()).toEqual(
+			[owner.id, admin.id, member.id].sort(),
+		);
 	});
 
 	describe('owner guard', () => {
