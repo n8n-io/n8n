@@ -1,5 +1,6 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
+import { UserError } from '@n8n/errors';
 import type {
 	INode,
 	INodeParameters,
@@ -183,7 +184,9 @@ function resolveNodeTypeDescription(
 ): INodeTypeDescription | undefined {
 	try {
 		return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
-	} catch {
+	} catch (error) {
+		// Unknown or tool-incapable node types are bad config; any other failure is a bug.
+		if (!(error instanceof UserError)) throw error;
 		return undefined;
 	}
 }
@@ -261,7 +264,8 @@ export async function autoPopulateNodeCredentials(
 		try {
 			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			nodeTypeDescription = nodeType.description;
-		} catch {
+		} catch (error) {
+			if (!(error instanceof UserError)) throw error;
 			continue;
 		}
 
