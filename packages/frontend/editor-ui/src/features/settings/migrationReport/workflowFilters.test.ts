@@ -7,7 +7,7 @@ import {
 	matchesWorkflowFilters,
 	type WorkflowFilters,
 } from './workflowFilters';
-import { daysAgo, now, owner, rowContext, workflowRow as workflow } from './__tests__/workflowRow';
+import { daysAgo, now, owner, workflowRow as workflow } from './__tests__/workflowRow';
 
 const matches = (item: BreakingChangeRuleDetailWorkflow, filters: Partial<WorkflowFilters>) =>
 	matchesWorkflowFilters(item, { ...DEFAULT_WORKFLOW_FILTERS, ...filters }, now);
@@ -123,13 +123,19 @@ describe('workflowFilters', () => {
 		];
 
 		it('should search names without regard to case', () => {
-			const result = filterWorkflows(rows, 'sync', DEFAULT_WORKFLOW_FILTERS, rowContext(), now);
+			const result = filterWorkflows(
+				rows,
+				'sync',
+				DEFAULT_WORKFLOW_FILTERS,
+				{ migratedIds: new Set() },
+				now,
+			);
 
 			expect(result.map((row) => row.id)).toEqual(['invoices', 'orders']);
 		});
 
 		it('should leave a migrated row out of the open state filter', () => {
-			const context = rowContext({ migratedIds: new Set(['orders']) });
+			const context = { migratedIds: new Set(['orders']) };
 			const filters = { ...DEFAULT_WORKFLOW_FILTERS, state: 'open' as const };
 
 			expect(filterWorkflows(rows, '', filters, context, now).map((row) => row.id)).toEqual([
@@ -148,7 +154,7 @@ describe('workflowFilters', () => {
 			workflow({ id: '4' }),
 			workflow({ id: '5', status: 'fixed_unpublished' }),
 		];
-		const context = rowContext({ migratedIds: new Set(['5']) });
+		const context = { migratedIds: new Set(['5']) };
 
 		expect(countQuickFilters(rows, context, 'me')).toEqual({
 			assignedToMe: 2,

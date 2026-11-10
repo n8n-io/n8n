@@ -7,10 +7,16 @@ import { TIME } from '@/app/constants';
 /** The state that a row shows. A row that was migrated this session shows `migrated`. */
 export type FindingState = MigrationFindingListedStatus | 'migrated';
 
-/** What the page knows about the rows that the server does not tell it. */
-export interface RowContext {
-	/** Workflows migrated this session. */
+/**
+ * The workflows migrated this session. Filters and counts read only this, so the
+ * saving and notifying marks coming and going do not recompute them.
+ */
+export interface MigrationContext {
 	migratedIds: ReadonlySet<string>;
+}
+
+/** What the page knows about the rows that the server does not tell it. */
+export interface RowContext extends MigrationContext {
 	/** Rows with a state change in flight. One change at a time keeps the revert correct. */
 	savingIds: ReadonlySet<string>;
 	/** Rows with a notification in flight. Its response sets the status, so a state change must wait. */
@@ -30,7 +36,7 @@ export function isUnresolvedState(state: FindingState): boolean {
 
 export function findingState(
 	workflow: BreakingChangeRuleDetailWorkflow,
-	context: RowContext,
+	context: MigrationContext,
 ): FindingState {
 	return context.migratedIds.has(workflow.id) ? 'migrated' : workflow.status;
 }
@@ -38,7 +44,7 @@ export function findingState(
 // A migration fixes the finding on save, so a migrated row is not unresolved.
 export function isUnresolved(
 	workflow: BreakingChangeRuleDetailWorkflow,
-	context: RowContext,
+	context: MigrationContext,
 ): boolean {
 	return isUnresolvedState(findingState(workflow, context));
 }
@@ -50,7 +56,7 @@ export function isBusy(workflow: BreakingChangeRuleDetailWorkflow, context: RowC
 // A migrated row has no state to change, so it cannot be selected.
 export function isSelectable(
 	workflow: BreakingChangeRuleDetailWorkflow,
-	context: RowContext,
+	context: MigrationContext,
 ): boolean {
 	return !context.migratedIds.has(workflow.id);
 }
