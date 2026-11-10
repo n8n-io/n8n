@@ -794,6 +794,19 @@ describe('AgentRepository', () => {
 				publicationRevision: 1,
 			});
 		});
+
+		it('changes the archive state only when the agent has the opposite state', async () => {
+			const agent = await createAgent();
+
+			expect(await agentRepo.setArchived(agent.id, true)).toBe(true);
+			expect(await agentRepo.setArchived(agent.id, true)).toBe(false);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				isArchived: true,
+				publicationRevision: 1,
+			});
+			expect(await agentRepo.setArchived(agent.id, false)).toBe(true);
+			expect(await agentRepo.setArchived(agent.id, false)).toBe(false);
+		});
 	});
 
 	describe('findIntegrationState', () => {

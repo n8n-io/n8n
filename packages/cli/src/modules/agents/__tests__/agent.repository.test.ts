@@ -423,6 +423,22 @@ describe('AgentRepository', () => {
 		});
 	});
 
+	describe('setAvailableInMCP', () => {
+		it('updates only agents that are not archived and returns the affected count', async () => {
+			const update = vi
+				.spyOn(repository, 'update')
+				.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+			const result = await repository.setAvailableInMCP(['a1', 'a2'], true);
+
+			expect(update).toHaveBeenCalledWith(
+				{ id: In(['a1', 'a2']), scope: 'project', isArchived: false },
+				expect.objectContaining({ availableInMCP: true }),
+			);
+			expect(result).toBe(1);
+		});
+	});
+
 	describe('findWithIntegrationType', () => {
 		const makeQb = (rows: unknown[]) => ({
 			select: vi.fn().mockReturnThis(),
