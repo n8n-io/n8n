@@ -181,6 +181,10 @@ export const WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT = createExperiment(
 
 export const AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT = createExperiment(
 	'120_agents_empty_state_templates',
+	{
+		control: 'control',
+		test: 'test',
+	},
 );
 
 export const AGENTS_N8N_CHAT_EXPERIMENT = createExperiment(AGENTS_N8N_CHAT_FLAG, {
