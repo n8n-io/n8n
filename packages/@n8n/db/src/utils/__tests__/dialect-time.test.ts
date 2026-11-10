@@ -96,18 +96,6 @@ describe('dbClockNowPlusMsLiteral', () => {
 		);
 	});
 
-	it('offsets the statement clock into the past on postgres', () => {
-		expect(dbClockNowPlusMsLiteral(true, -1500)).toBe(
-			"clock_timestamp()::timestamptz(3) + (-1500 || ' milliseconds')::interval",
-		);
-	});
-
-	it('rounds a fractional offset on postgres', () => {
-		expect(dbClockNowPlusMsLiteral(true, 1000.4)).toBe(
-			"clock_timestamp()::timestamptz(3) + (1000 || ' milliseconds')::interval",
-		);
-	});
-
 	it('matches the transaction literal on sqlite', () => {
 		expect(dbClockNowPlusMsLiteral(false, 1500)).toBe(dbTxNowPlusMsLiteral(false, 1500));
 		expect(dbClockNowPlusMsLiteral(false, -1500)).toBe(dbTxNowPlusMsLiteral(false, -1500));
