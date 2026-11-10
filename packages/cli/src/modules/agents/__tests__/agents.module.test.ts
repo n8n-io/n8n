@@ -23,7 +23,6 @@ import { AgentExecutionService } from '../agent-execution.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
-import { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import { AgentChannelReconciler } from '../integrations/agent-channel-reconciler.service';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { DiscordIntegration } from '../integrations/platforms/discord/discord-integration';
@@ -57,7 +56,6 @@ function setUpContainerForInit() {
 	Container.set(AgentDependencyIndexListener, mock<AgentDependencyIndexListener>());
 	Container.set(AgentExecutionService, mock<AgentExecutionService>());
 	Container.set(AgentExecutionLogStore, mock<AgentExecutionLogStore>());
-	Container.set(AgentKnowledgeFileStore, mock<AgentKnowledgeFileStore>());
 	Container.set(ExecutionDataJsonStore, mock<ExecutionDataJsonStore>());
 	Container.set(AgentRuntimeCacheService, mock<AgentRuntimeCacheService>());
 	Container.set(AgentHistoryRepository, mock<AgentHistoryRepository>());

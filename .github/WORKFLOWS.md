@@ -26,6 +26,7 @@ Complete reference for n8n's `.github/` folder.
 │   ├── trim-fe-packageJson.js            # Strip frontend devDeps
 │   ├── ensure-provenance-fields.mjs      # Add license/author fields
 │   ├── validate-docs-links.js            # Check documentation URLs
+│   ├── check-inflight.mjs                # Reject inflight in checked-in pnpm lockfiles
 │   ├── send-build-stats.mjs              # Turbo build telemetry → webhook
 │   └── docker/
 │       ├── docker-tags.mjs               # Generate image tags
@@ -80,6 +81,10 @@ Complete reference for n8n's `.github/` folder.
 ---
 
 ## Quick Reference
+
+The PR format job runs `pnpm check:dependencies` on every PR and merge group.
+This check rejects the exact package `inflight` in all checked-in pnpm lockfiles.
+It includes development and optional dependencies. It allows `promise-inflight`.
 
 | Prefix     | Purpose                                 |
 |------------|-----------------------------------------|
@@ -174,7 +179,7 @@ These only run if specific files changed:
 | `packages/@n8n/task-runner-python/**`                                  | `ci-python.yml`             | any        |
 | `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db.yml`               | any        |
 | `packages/frontend/@n8n/storybook/**`, design-system, chat             | `release-storybook.yml` | master     |
-| `docker/images/n8n-base/Dockerfile`                                    | `build-base-image.yml`      | any        |
+| `docker/images/n8n-base/Dockerfile`, `docker/images/n8n-base/Dockerfile.debian`, `.github/scripts/docker/base-debian-smoke-check.mjs` | `build-base-image.yml` | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/quality/efficiency/scale/benchmark/**`                       | `build-benchmark-image.yml` | master     |
@@ -819,6 +824,7 @@ Scripts in `.github/scripts/`:
 | `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
+| `docker/base-debian-smoke-check.mjs`| Verify the Debian base image contract (tools, no package manager, fonts, global npm modules) on amd64 and arm64 | `build-base-image.yml`|
 | `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
 
 ### Validation Scripts

@@ -302,6 +302,7 @@ export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData =
 	() => loadSanitizeWebContent().wrapUntrustedData,
 );
 export type { Logger } from './logger';
+export { createThreadApprovalContext } from './approval-review/thread-approval-context';
 export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAccessTracker =
 	lazyFunction(() => loadDomainAccess().createDomainAccessTracker);
 export type { DomainAccessTracker } from './domain-access';
