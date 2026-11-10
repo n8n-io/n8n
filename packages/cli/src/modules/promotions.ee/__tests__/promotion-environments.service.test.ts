@@ -118,7 +118,7 @@ describe('PromotionEnvironmentsService', () => {
 		await expect(stat(workingDirectory.paths(ENVIRONMENT_ID).rootFolder)).rejects.toThrow();
 	});
 
-	it('emits an event with the direction and scope of the environment it deletes', async () => {
+	it('emits an event that describes the environment it deletes', async () => {
 		environmentRepository.deleteEnvironment.mockResolvedValue(true);
 
 		await service.delete(ENVIRONMENT_ID, actor);
@@ -126,6 +126,10 @@ describe('PromotionEnvironmentsService', () => {
 		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-deleted', {
 			user: actor,
 			environmentId: ENVIRONMENT_ID,
+			environmentName: 'Staging',
+			providerId: 'prov1',
+			providerName: 'Deploy key',
+			repository: 'git@github.com:o/r.git',
 			direction: 'promote',
 			environmentScope: 'projects',
 		});
@@ -176,9 +180,46 @@ describe('PromotionEnvironmentsService', () => {
 		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-updated', {
 			user: actor,
 			environmentId: ENVIRONMENT_ID,
+			environmentName: 'Renamed',
+			providerId: 'prov1',
+			providerName: 'Deploy key',
+			repository: 'git@github.com:o/r.git',
 			direction: 'promote',
+			environmentScope: 'projects',
 			changedFields: ['name'],
 		});
+	});
+
+	it('names an HTTPS remote without its query string and fragment', async () => {
+		environmentRepository.updateEnvironment.mockResolvedValue(true);
+		providersService.getEntity.mockResolvedValue({
+			...provider(),
+			id: 'prov2',
+			name: 'Bot user',
+			authType: 'token',
+			config: { schemaVersion: 1 },
+		});
+
+		await service.update(
+			ENVIRONMENT_ID,
+			{
+				providerId: 'prov2',
+				remote: {
+					schemaVersion: 1,
+					remoteUrl: 'https://git.example.com/o/r.git?private_token=secret#main',
+				},
+			},
+			actor,
+		);
+
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'promotion-environment-updated',
+			expect.objectContaining({
+				providerId: 'prov2',
+				repository: 'https://git.example.com/o/r.git',
+				changedFields: ['remote', 'provider'],
+			}),
+		);
 	});
 
 	describe('checkout state', () => {

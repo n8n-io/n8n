@@ -65,6 +65,20 @@ function invalidatesOpenReviews(current: ReviewTarget, next: ReviewTarget): bool
 }
 
 /**
+ * Names the repository in audit events. The remote URL check rejects a username
+ * and password, but not a query string. A query string can carry a token, so
+ * this removes it.
+ */
+function repositoryForEvents(remote: PromotionStoredEnvironmentRemote): string {
+	if ('repositoryPath' in remote) return remote.repositoryPath;
+	if (!URL.canParse(remote.remoteUrl)) return remote.remoteUrl;
+	const url = new URL(remote.remoteUrl);
+	url.search = '';
+	url.hash = '';
+	return url.href;
+}
+
+/**
  * Owns environments and their project links. Provider credentials belong to
  * {@link PromotionProvidersService}, so nothing here accepts or returns them.
  */
@@ -109,7 +123,11 @@ export class PromotionEnvironmentsService {
 		this.eventService.emit('promotion-environment-created', {
 			user: actor,
 			environmentId: environment.id,
+			environmentName: input.name,
+			providerId: provider.id,
+			providerName: provider.name,
 			providerType: provider.type,
+			repository: repositoryForEvents(remote),
 			direction: input.direction,
 			environmentScope: input.scope,
 			...('createBranchOnPromotion' in settings && {
@@ -205,7 +223,12 @@ export class PromotionEnvironmentsService {
 			this.eventService.emit('promotion-environment-updated', {
 				user: actor,
 				environmentId: id,
+				environmentName: input.name ?? current.name,
+				providerId: provider.id,
+				providerName: provider.name,
+				repository: repositoryForEvents(remote),
 				direction: current.direction,
+				environmentScope: current.scope,
 				changedFields,
 			});
 		}
@@ -217,7 +240,14 @@ export class PromotionEnvironmentsService {
 	 * provider stays, because other environments may use it.
 	 */
 	async delete(id: string, actor: User): Promise<void> {
-		const { id: environmentId, direction, scope } = await this.getEntity(id);
+		const {
+			id: environmentId,
+			name,
+			provider,
+			remote,
+			direction,
+			scope,
+		} = await this.getEntity(id);
 		// Close first: the delete clears the environment of its reviews.
 		const { closed, deleted } = await this.txRunner.run({}, async (ctx) => {
 			const closed = await this.reviewRepository.closeOpenByEnvironmentId(
@@ -233,6 +263,10 @@ export class PromotionEnvironmentsService {
 			this.eventService.emit('promotion-environment-deleted', {
 				user: actor,
 				environmentId,
+				environmentName: name,
+				providerId: provider.id,
+				providerName: provider.name,
+				repository: repositoryForEvents(remote),
 				direction,
 				environmentScope: scope,
 			});
