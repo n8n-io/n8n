@@ -3348,6 +3348,57 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 			expect.anything(),
 		);
 	});
+
+	test('does not track for a workflow that only appears in an older history page', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-new',
+					role: 'user',
+					createdAt: new Date().toISOString(),
+					content: 'Thanks',
+					reasoning: '',
+					isStreaming: false,
+				},
+			],
+			nextEventId: 11,
+			nextCursor: 'cursor-1',
+		});
+		await activeRuntime(registry).loadHistoricalMessages();
+		const { agentTree } = runSyncWithBuild({
+			runId: 'run-old',
+			messageGroupId: 'mg-old',
+			workflowId: 'wf-old',
+			toolCallId: 'tc-old',
+		});
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-old',
+					runId: 'run-old',
+					messageGroupId: 'mg-old',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: '',
+					reasoning: '',
+					isStreaming: false,
+					agentTree,
+				},
+			],
+			nextEventId: 11,
+		});
+
+		await activeRuntime(registry).loadOlderMessages();
+
+		expect(activeRuntime(registry).messages.map((msg) => msg.id)).toEqual(['msg-old', 'msg-new']);
+		expect(activeRuntime(registry).isHydratingThread).toBe(false);
+		expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
+			'User viewed new builder workflow',
+			expect.anything(),
+		);
+	});
 });
 
 describe('createThreadRuntime - "Builder generation stalled" telemetry', () => {

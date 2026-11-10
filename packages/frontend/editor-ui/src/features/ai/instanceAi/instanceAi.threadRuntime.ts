@@ -1476,7 +1476,15 @@ export function createThreadRuntime(
 				for (const msg of older) {
 					if (msg.agentTree) normalizeAgentTreeToolNames(msg.agentTree);
 				}
-				messages.value = [...older, ...messages.value];
+				// The older page holds past builds and agent changes. The watchers that open
+				// the preview or send events for new ones run synchronously and skip them
+				// while the thread hydrates.
+				hydrationStatus.value = 'hydrating';
+				try {
+					messages.value = [...older, ...messages.value];
+				} finally {
+					hydrationStatus.value = 'ready';
+				}
 				olderMessagesCursor.value = result.nextCursor;
 
 				// Same routing rebuild as the first page, so a resumed older run (an old
