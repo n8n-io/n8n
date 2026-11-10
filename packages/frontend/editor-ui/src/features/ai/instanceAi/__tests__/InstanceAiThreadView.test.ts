@@ -611,7 +611,12 @@ describe('InstanceAiThreadView', () => {
 				versionId: 'version-2',
 				version: 2,
 				created: true,
-				skill: payload,
+				skill: {
+					name: payload.name ?? id,
+					description: payload.description ?? '',
+					instructions: payload.instructions ?? '',
+					references: payload.references,
+				},
 				skillHash: `saved-hash-${id}`,
 			}));
 			thread.producedArtifacts = new Map([
