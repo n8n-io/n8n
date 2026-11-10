@@ -384,9 +384,16 @@ describe('InstanceAiConversation', () => {
 	});
 
 	it('keeps the visible messages in place when older messages load above them', async () => {
+		thread.messages = [
+			{ id: 'msg-1', role: 'user', content: 'Hello', createdAt: '2026-04-01T00:00:00.000Z' },
+		] as InstanceAiMessage[];
 		let contentHeight = 1000;
+		// The position of the first message in the scrolled content.
+		let firstMessageTop = 300;
 		thread.loadOlderMessages = vi.fn(async () => {
-			contentHeight = 1600;
+			// The older page adds 600px above the first message.
+			firstMessageTop += 600;
+			contentHeight += 600;
 		});
 		const wrapper = mountConversation();
 		const viewport = wrapper.find('[data-reka-scroll-area-viewport]').element;
@@ -398,10 +405,13 @@ describe('InstanceAiConversation', () => {
 				scrollTop = value;
 			},
 		});
+		const firstMessage = wrapper.find('[data-message-id="msg-1"]').element;
+		firstMessage.getBoundingClientRect = () => new DOMRect(0, firstMessageTop - scrollTop);
 
 		const loading = infiniteScroll.load?.();
-		// The user scrolls while the page loads.
+		// The user scrolls and a live reply grows below the view while the page loads.
 		scrollTop = 20;
+		contentHeight += 400;
 		await loading;
 
 		expect(thread.loadOlderMessages).toHaveBeenCalledOnce();

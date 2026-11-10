@@ -458,7 +458,11 @@ const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
 		// Set the flag directly: when the state was already wrong, its watcher does not run.
 		measureScroll();
 		userScrolledUp.value = !arrivedState.bottom;
-		const { scrollHeight } = container;
+		// The older page lands above the first message. Measure only how far that message moves:
+		// the user can scroll and a live reply can grow below the view while the page loads.
+		const contentTop = (el: HTMLElement) => el.getBoundingClientRect().top + container.scrollTop;
+		const anchor = messageListRef.value?.querySelector<HTMLElement>('[data-message-id]');
+		const anchorTop = anchor ? contentTop(anchor) : 0;
 		try {
 			await thread.loadOlderMessages();
 		} catch (error) {
@@ -467,9 +471,8 @@ const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
 			return;
 		}
 		await nextTick();
-		// Prepended messages push the content down. Keep the messages the user reads in place.
-		// Add only the height change: the user can scroll while the page loads.
-		container.scrollTop += container.scrollHeight - scrollHeight;
+		// Keep the messages the user reads in place.
+		if (anchor && container.contains(anchor)) container.scrollTop += contentTop(anchor) - anchorTop;
 	},
 	{
 		direction: 'top',
@@ -975,6 +978,7 @@ defineExpose({
 							v-for="message in renderedMessages"
 							:key="message.id"
 							:message="message"
+							:data-message-id="message.id"
 							:class="{ [$style.greetingLines]: greetingPhase !== null }"
 						/>
 					</TransitionGroup>
