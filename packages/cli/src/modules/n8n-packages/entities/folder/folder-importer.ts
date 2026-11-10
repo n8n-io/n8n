@@ -1,4 +1,7 @@
+import { folderNameSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { Telemetry } from '@/telemetry';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
@@ -15,6 +18,7 @@ import { LayoutConflictPolicy } from '../../n8n-packages.types';
 import type { FolderConflict, ImportedFolderSummary } from '../../n8n-packages.types';
 
 interface ExistingFolder {
+	resourceType: 'workflow' | 'agent';
 	projectId: string;
 	parentFolderId: string | null;
 	name: string;
@@ -22,7 +26,10 @@ interface ExistingFolder {
 
 @Service()
 export class FolderImporter {
-	constructor(private readonly folderService: FolderService) {}
+	constructor(
+		private readonly folderService: FolderService,
+		private readonly telemetry: Telemetry,
+	) {}
 
 	async plan(context: FolderImportContext, folders: PreparedFolder[]): Promise<FolderImportPlan> {
 		const ordered = orderParentsFirst(folders);
@@ -32,8 +39,20 @@ export class FolderImporter {
 		const conflicts: FolderConflict[] = [];
 
 		for (const folder of ordered) {
+			const parsedName = folderNameSchema.safeParse(folder.name);
+
+			if (!parsedName.success) {
+				throw new UserError('Package folder name is invalid');
+			}
+
+			folder.name = parsedName.data;
+
 			const targetParentFolderId =
-				folder.parentFolderId === null ? (context.folderId ?? null) : folder.parentFolderId;
+				folder.parentFolderId === null
+					? folder.resourceType === 'agent'
+						? null
+						: (context.folderId ?? null)
+					: folder.parentFolderId;
 
 			const match = existing.get(folder.sourceFolderId);
 
@@ -45,6 +64,10 @@ export class FolderImporter {
 					targetParentFolderId,
 				});
 				continue;
+			}
+
+			if (match.resourceType !== (folder.resourceType ?? 'workflow')) {
+				throw new UserError('Cannot change the resource type of an existing folder');
 			}
 
 			if (match.projectId !== context.projectId) {
@@ -103,6 +126,25 @@ export class FolderImporter {
 			});
 		}
 
+		const byId = new Map(ordered.map((folder) => [folder.sourceFolderId, folder]));
+
+		for (const item of items) {
+			item.resourceType = byId.get(item.sourceFolderId)?.resourceType ?? 'workflow';
+			const parent = item.targetParentFolderId ? byId.get(item.targetParentFolderId) : undefined;
+
+			if (parent && (parent.resourceType ?? 'workflow') !== item.resourceType) {
+				throw new UserError('Parent and child folders must use the same resource type');
+			}
+
+			if (item.targetParentFolderId && !parent) {
+				await this.folderService.validateDestination(
+					item.targetParentFolderId,
+					context.projectId,
+					item.resourceType,
+				);
+			}
+		}
+
 		return { items, conflicts };
 	}
 
@@ -114,10 +156,15 @@ export class FolderImporter {
 		for (const item of plan.items) {
 			if (item.action !== 'create') continue;
 			await this.folderService.createFolder(
-				{ name: item.name, parentFolderId: item.targetParentFolderId ?? undefined },
+				{
+					name: item.name,
+					parentFolderId: item.targetParentFolderId ?? undefined,
+					resourceType: item.resourceType,
+				},
 				context.projectId,
 				item.sourceFolderId,
 			);
+			this.track(context, item, 'created');
 		}
 	}
 
@@ -129,7 +176,25 @@ export class FolderImporter {
 				...(item.renamed ? { name: item.name } : {}),
 				...(item.moved ? { parentFolderId: item.targetParentFolderId ?? PROJECT_ROOT } : {}),
 			});
+			this.track(context, item, item.moved ? 'moved' : 'updated');
 		}
+	}
+
+	private track(
+		context: FolderImportContext,
+		item: FolderPlanItem,
+		action: 'created' | 'moved' | 'updated',
+	): void {
+		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.RESOURCE_FOLDER_CHANGED, {
+			user_id: context.user.id,
+			project_id: context.projectId,
+			resource_type: item.resourceType ?? 'workflow',
+			action,
+			source: 'package',
+			folder_id: item.sourceFolderId,
+			target_folder_id: item.targetParentFolderId,
+			folder_count: 1,
+		});
 	}
 
 	private async findExisting(folderIds: string[]): Promise<Map<string, ExistingFolder>> {
@@ -141,6 +206,7 @@ export class FolderImporter {
 					projectId: folder.homeProject.id,
 					parentFolderId: folder.parentFolderId,
 					name: folder.name,
+					resourceType: folder.resourceType ?? 'workflow',
 				},
 			]),
 		);

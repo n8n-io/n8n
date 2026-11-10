@@ -37,6 +37,7 @@ const RESOURCE_ICONS: Record<PromotionResourceType, IconName> = {
 	project: 'layers',
 	folder: 'folder',
 	workflow: 'workflow',
+	agent: 'bot',
 	credential: 'key-round',
 	dataTable: 'table',
 	variable: 'variable',
@@ -61,6 +62,7 @@ function groupOf(resource: PromotionResource): PreviewTreeGroup | null {
 	switch (resource.type) {
 		case 'project':
 		case 'folder':
+		case 'agent':
 			return null;
 		case 'workflow':
 			// Workflows outside the project appear only as sub-workflows that a listed workflow calls.

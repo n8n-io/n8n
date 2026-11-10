@@ -68,6 +68,7 @@ function fieldsOf(
 			if (!project) return {};
 			return { name: project.name, description: project.description, icon: project.icon?.value };
 		}
+		case 'agent':
 		case 'folder': {
 			const folder = detail[side];
 			return folder ? { name: folder.name } : {};

@@ -46,7 +46,7 @@ beforeAll(async () => {
 	await testDb.init();
 	repository = Container.get(AgentRepository);
 	exporter = Container.get(AgentSelectionExporter);
-});
+}, 60_000);
 
 afterAll(async () => await testDb.terminate());
 
@@ -445,3 +445,33 @@ it.each([undefined, true, false])(
 		);
 	},
 );
+
+it('exports the folder ancestors of a selected Agent', async () => {
+	const folder = await createFolder(project, { name: 'Team', resourceType: 'agent' });
+	const childFolder = await createFolder(project, {
+		name: 'Support',
+		resourceType: 'agent',
+		parentFolder: folder,
+	});
+	await repository.update(parent.id, { parentFolderId: childFolder.id });
+	const writer = new CapturingWriter();
+
+	const result = await exporter.export({ user: owner, writer, agentIds: [parent.id] });
+
+	expect(result.folderEntries?.map(({ id }) => id)).toEqual([folder.id, childFolder.id]);
+	expect(result.agentEntries[0].target).toContain(`${result.folderEntries?.[1].target}/agents/`);
+	const serialized = writer.files
+		.filter(({ path }) => path.endsWith('/folder.json'))
+		.map(({ content }) => JSON.parse(content));
+
+	expect(serialized).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({ id: folder.id, resourceType: 'agent' }),
+			expect.objectContaining({
+				id: childFolder.id,
+				resourceType: 'agent',
+				parentFolderId: folder.id,
+			}),
+		]),
+	);
+});

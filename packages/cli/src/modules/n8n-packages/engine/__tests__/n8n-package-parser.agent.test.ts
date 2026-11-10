@@ -116,6 +116,32 @@ describe('N8nPackageParser.getAgents', () => {
 		}
 	});
 
+	it('derives Agent placement from its folder path and rejects workflow folders', async () => {
+		const nestedTarget = 'folders/team/agents/support';
+		fixture.manifest.folders = [{ id: 'folder-1', name: 'Team', target: 'folders/team' }];
+		fixture.manifest.agents = [{ id: agent.id, name: agent.name, target: nestedTarget }];
+		fixture.files['folders/team/folder.json'] = {
+			id: 'folder-1',
+			name: 'Team',
+			parentFolderId: null,
+			resourceType: 'agent',
+		};
+		fixture.files[`${nestedTarget}/agent.json`] = agent;
+		fixture.files[`${nestedTarget}/agent-metadata.json`] =
+			fixture.files['agents/support/agent-metadata.json'];
+
+		const [parsed] = await parser.getAgents(memoryReader(fixture));
+
+		expect(parsed.parentFolderId).toBe('folder-1');
+		fixture.files['folders/team/folder.json'] = {
+			id: 'folder-1',
+			name: 'Team',
+			parentFolderId: null,
+		};
+
+		await expect(parser.getAgents(memoryReader(fixture))).rejects.toThrow('Agent folder');
+	});
+
 	it('scopes Agents by the requested package prefix', async () => {
 		const input = projectAgentsFixture();
 		delete input.manifest.projects;

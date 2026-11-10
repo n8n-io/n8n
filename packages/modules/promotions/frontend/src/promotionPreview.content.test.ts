@@ -28,8 +28,8 @@ const folderDetail = (
 ): PromotionResourceDetail => ({
 	key: 'folder:f3',
 	type: 'folder',
-	before: { id: 'f3', ...before },
-	after: { id: 'f3', ...after },
+	before: { id: 'f3', resourceType: 'workflow', ...before },
+	after: { id: 'f3', resourceType: 'workflow', ...after },
 	revision: { before: 'b', after: 'a' },
 });
 

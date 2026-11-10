@@ -2,6 +2,7 @@ import type { User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { Telemetry } from '@/telemetry';
 import type { FolderService } from '@/services/folder.service';
 
 import type { LayoutConflictPolicy } from '../../../n8n-packages.types';
@@ -34,7 +35,7 @@ describe('FolderImporter', () => {
 		const folderService = mock<FolderService>();
 		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-1', 'old')]);
 
-		const plan = await new FolderImporter(folderService).plan(context(), [
+		const plan = await new FolderImporter(folderService, mock<Telemetry>()).plan(context(), [
 			folder('new', null),
 			folder('a', 'new'),
 		]);
@@ -49,7 +50,7 @@ describe('FolderImporter', () => {
 			existingFolder('b', 'project-1', 'a'),
 			existingFolder('a', 'project-1', null),
 		]);
-		const importer = new FolderImporter(folderService);
+		const importer = new FolderImporter(folderService, mock<Telemetry>());
 
 		// `b` sat under `a`. The package puts `a` under `b`, and `b` at the project root.
 		const plan = await importer.plan(context('follow-package'), [
@@ -69,14 +70,14 @@ describe('FolderImporter', () => {
 	it('creates new folders in apply and leaves the moves to applyUpdates', async () => {
 		const folderService = mock<FolderService>();
 		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-1', null)]);
-		const importer = new FolderImporter(folderService);
+		const importer = new FolderImporter(folderService, mock<Telemetry>());
 		const ctx = context('follow-package');
 
 		const plan = await importer.plan(ctx, [folder('new', null), folder('a', 'new')]);
 		await importer.apply(ctx, plan);
 
 		expect(folderService.createFolder).toHaveBeenCalledExactlyOnceWith(
-			{ name: 'new', parentFolderId: undefined },
+			{ name: 'new', parentFolderId: undefined, resourceType: 'workflow' },
 			'project-1',
 			'new',
 		);
@@ -96,7 +97,7 @@ describe('FolderImporter', () => {
 			existingFolder('a', 'project-1', null),
 			existingFolder('b', 'project-1', null),
 		]);
-		const importer = new FolderImporter(folderService);
+		const importer = new FolderImporter(folderService, mock<Telemetry>());
 		const ctx = context('follow-package');
 
 		const plan = await importer.plan(ctx, [
@@ -124,7 +125,7 @@ describe('FolderImporter', () => {
 	it('keeps the existing name of a folder by default', async () => {
 		const folderService = mock<FolderService>();
 		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-1', null)]);
-		const importer = new FolderImporter(folderService);
+		const importer = new FolderImporter(folderService, mock<Telemetry>());
 
 		const plan = await importer.plan(context(), [{ ...folder('a', null), name: 'Invoices' }]);
 		await importer.applyUpdates(context(), plan);
@@ -136,7 +137,7 @@ describe('FolderImporter', () => {
 	it('still reports a folder that belongs to another project', async () => {
 		const folderService = mock<FolderService>();
 		folderService.getFoldersByIds.mockResolvedValue([existingFolder('a', 'project-2', null)]);
-		const importer = new FolderImporter(folderService);
+		const importer = new FolderImporter(folderService, mock<Telemetry>());
 		const ctx = context('follow-package');
 
 		// The package also renames it, so a skipped project check would plan an update.
@@ -159,7 +160,7 @@ describe('FolderImporter', () => {
 			existingFolder('new', 'project-1', null),
 		]);
 
-		const plan = await new FolderImporter(folderService).plan(
+		const plan = await new FolderImporter(folderService, mock<Telemetry>()).plan(
 			context('follow-package', { folderConflictPolicy: 'fail' }),
 			[folder('new', null), folder('a', 'new')],
 		);

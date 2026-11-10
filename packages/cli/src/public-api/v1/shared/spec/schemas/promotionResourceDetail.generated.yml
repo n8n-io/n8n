@@ -123,6 +123,12 @@ oneOf:
           name:
             type: string
             minLength: 1
+          resourceType:
+            type: string
+            enum:
+              - workflow
+              - agent
+            default: workflow
           parentFolderId:
             type: string
             nullable: true
@@ -141,6 +147,12 @@ oneOf:
           name:
             type: string
             minLength: 1
+          resourceType:
+            type: string
+            enum:
+              - workflow
+              - agent
+            default: workflow
           parentFolderId:
             type: string
             nullable: true
@@ -459,6 +471,54 @@ oneOf:
           - connections
           - parentFolderId
           - isArchived
+      revision:
+        type: object
+        properties:
+          before:
+            type: string
+            nullable: true
+          after:
+            type: string
+            nullable: true
+        required:
+          - before
+          - after
+    required:
+      - key
+      - type
+      - before
+      - after
+      - revision
+  - type: object
+    properties:
+      key:
+        type: string
+      type:
+        type: string
+        enum:
+          - agent
+      before:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+        required:
+          - id
+          - name
+      after:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+        required:
+          - id
+          - name
       revision:
         type: object
         properties:

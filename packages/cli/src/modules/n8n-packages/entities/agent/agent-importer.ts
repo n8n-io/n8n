@@ -1,6 +1,8 @@
 import type { AgentIntegrationConfig, ImportedAgentChannel } from '@n8n/api-types';
 import { ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { Telemetry } from '@/telemetry';
 import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 
@@ -50,6 +52,7 @@ export class AgentImporter {
 		private readonly settingsService: AgentsSettingsService,
 		private readonly skillImporter: SkillImporter,
 		private readonly urlService: UrlService,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	async plan(
@@ -199,6 +202,21 @@ export class AgentImporter {
 					},
 				);
 			}
+			if (item.parentFolderId !== undefined) {
+				await this.agentsService.move(agent.id, context.projectId, item.parentFolderId);
+				agent.parentFolderId = item.parentFolderId;
+				this.telemetry.track(TELEMETRY_EVENT.PLATFORM.RESOURCE_FOLDER_CHANGED, {
+					user_id: context.user.id,
+					project_id: context.projectId,
+					resource_type: 'agent',
+					action: 'placed',
+					source: 'package',
+					folder_id: item.parentFolderId,
+					resource_id: agent.id,
+					resource_count: 1,
+				});
+			}
+
 			agent = await this.applyArchiveTransition(context, item, agent);
 			const channels = item.channels.map((channel) => this.withSetupUrl(channel, agent));
 			outcomes.push({

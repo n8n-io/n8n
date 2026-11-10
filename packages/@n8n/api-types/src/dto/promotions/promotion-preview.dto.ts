@@ -26,6 +26,7 @@ export const promotionResourceTypeSchema = z.enum([
 	'project',
 	'folder',
 	'workflow',
+	'agent',
 	'credential',
 	'dataTable',
 	'variable',
@@ -181,6 +182,7 @@ export const promotionResourceDetailSchema = z
 		resourceDetailSchema('project', serializedProjectSchema),
 		resourceDetailSchema('folder', serializedFolderSchema),
 		resourceDetailSchema('workflow', serializedWorkflowSchema),
+		resourceDetailSchema('agent', z.object({ id: z.string(), name: z.string() }).passthrough()),
 		resourceDetailSchema(
 			'credential',
 			serializedCredentialSchema.extend({

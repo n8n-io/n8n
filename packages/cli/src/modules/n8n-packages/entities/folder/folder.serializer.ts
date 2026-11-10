@@ -9,6 +9,7 @@ type FolderPackageKeyHandling = {
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	name: 'copy';
+	resourceType: 'copy';
 	parentFolderId: 'transform';
 	parentFolder: 'exclude';
 	subFolders: 'exclude';
@@ -30,6 +31,7 @@ export class FolderSerializer {
 			serializePayload({
 				id: folder.id,
 				name: folder.name,
+				resourceType: folder.resourceType ?? 'workflow',
 				parentFolderId,
 			}),
 		);

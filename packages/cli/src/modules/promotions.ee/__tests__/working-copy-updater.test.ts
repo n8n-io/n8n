@@ -489,6 +489,47 @@ describe('WorkingCopyUpdater', () => {
 			);
 		});
 
+		it('keeps an unselected Agent and its metadata when its folder moves', async () => {
+			const agentFile = JSON.stringify({ id: 'a1', name: 'Agent' });
+			const metadata = JSON.stringify({ versionId: 'v1', publishedVersionId: 'v1' });
+			await apply(
+				{
+					manifest: makeManifest({
+						projects: [alpha],
+						folders: [folder('f1', 'Sales', 'sales')],
+						agents: [{ id: 'a1', name: 'Agent', target: 'projects/alpha/folders/sales/agents/a1' }],
+					}),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/folders/sales/folder.json': folderFile('f1', 'Sales'),
+						'projects/alpha/folders/sales/agents/a1/agent.json': agentFile,
+						'projects/alpha/folders/sales/agents/a1/agent-metadata.json': metadata,
+					},
+				},
+				{
+					manifest: makeManifest({
+						projects: [alpha],
+						folders: [folder('f1', 'Revenue', 'revenue')],
+					}),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/folders/revenue/folder.json': folderFile('f1', 'Revenue'),
+					},
+				},
+				{ folderIds: ['f1'] },
+			);
+
+			expect(await readExported('projects/alpha/folders/revenue/agents/a1/agent.json')).toBe(
+				agentFile,
+			);
+			expect(
+				await readExported('projects/alpha/folders/revenue/agents/a1/agent-metadata.json'),
+			).toBe(metadata);
+			expect((await readWrittenManifest()).agents).toEqual([
+				{ id: 'a1', name: 'Agent', target: 'projects/alpha/folders/revenue/agents/a1' },
+			]);
+		});
+
 		it('renames the folder on the branch and rides unselected workflows along', async () => {
 			await apply(
 				{
