@@ -272,8 +272,13 @@ describe('AgentSelectorParameterInput', () => {
 		expect(getAgent).toHaveBeenCalledWith(expect.anything(), 'proj-1', 'agent-1');
 		await userEvent.click(getByTestId('rlc-input'));
 		await flushPromises();
-		const items = getAllByTestId('rlc-item').map((el) => el.textContent?.trim());
-		expect(items.some((text) => text?.includes('Archived Agent'))).toBe(true);
+		const archivedItem = getAllByTestId('rlc-item').find((el) =>
+			el.textContent?.includes('Archived Agent'),
+		);
+		expect(archivedItem).toBeDefined();
+		expect(archivedItem?.querySelector('[data-test-id="workflow-archived-tag"]')).toHaveTextContent(
+			'Archived',
+		);
 	});
 
 	it('shows an error with retry that re-fetches the catalog', async () => {
