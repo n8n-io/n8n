@@ -1,9 +1,8 @@
 import type { SerializedDataTable, SerializedDataTableColumn } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UserError } from '@n8n/errors';
 import {
 	type DataTable,
 	DataTableService,

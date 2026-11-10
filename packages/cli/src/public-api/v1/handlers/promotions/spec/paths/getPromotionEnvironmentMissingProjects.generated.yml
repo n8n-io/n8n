@@ -1,8 +1,11 @@
 operationId: getPromotionEnvironmentMissingProjects
 tags:
   - Promotions
-summary: List package projects that are missing on this instance
-description: Reads the package at the Apply branch tip and returns its team projects whose IDs do not exist on this instance. Projects are matched by ID, not by name. An ID that a personal project uses counts as existing. Create each project with `POST /projects`, using the returned id, name, icon, description, and customTelemetryTags. The new project is empty, and the caller becomes its project admin. Then use the project Apply flow to apply its resources. An empty `data` means that no setup is needed. `git` is null when the branch has no package yet. Requires a connected Apply environment with instance scope.
+summary: 'Beta: List package projects that are missing on this instance'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Reads the package at the Apply branch tip and returns its team projects whose IDs do not exist on this instance. Projects are matched by ID, not by name. An ID that a personal project uses counts as existing. Create each project with `POST /projects`, using the returned id, name, icon, description, and customTelemetryTags. The new project is empty, and the caller becomes its project admin. Then use the project Apply flow to apply its resources. An empty `data` means that no setup is needed. `git` is null when the branch has no package yet. Requires a connected Apply environment with instance scope.
 x-required-scope: promotions:read
 parameters:
   - schema:

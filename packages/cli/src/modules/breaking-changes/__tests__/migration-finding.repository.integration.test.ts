@@ -343,6 +343,33 @@ describe('MigrationFindingRepository', () => {
 			]);
 		});
 
+		test('does not count the findings of archived workflows', async () => {
+			const [kept, archived] = await Promise.all([
+				createWorkflow(),
+				createWorkflow({ isArchived: true }),
+			]);
+			await findingRepository.insertMany(
+				[
+					finding(kept.id, 'rule-a'),
+					finding(archived.id, 'rule-a'),
+					finding(archived.id, 'rule-b'),
+				],
+				ctx,
+			);
+			const [wontFix] = await findingRepository.listForWorkflows('v3', [archived.id], ctx);
+			await findingRepository.updateStatusForIds([wontFix.id], 'wont_fix', undefined, ctx);
+
+			expect(await findingRepository.countUnresolvedByRule('v3', undefined, ctx)).toEqual([
+				{ ruleId: 'rule-a', count: 1 },
+			]);
+			expect(await findingRepository.countWontFixByRule('v3', undefined, ctx)).toEqual([]);
+			expect(await findingRepository.countDistinctUnresolvedWorkflows('v3', undefined, ctx)).toBe(
+				1,
+			);
+			const listed = await findingRepository.listTriageableForRule('v3', 'rule-a', undefined, ctx);
+			expect(listed.map(({ workflow }) => workflow.isArchived)).toEqual([false, true]);
+		});
+
 		test('counts a fixed_unpublished finding as unresolved', async () => {
 			const [fixedUnpublished, fixed] = await Promise.all([createWorkflow(), createWorkflow()]);
 			await findingRepository.insertMany(

@@ -21,7 +21,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useElementSize } from '@vueuse/core';
 import { TabsRoot } from 'reka-ui';
-import { computed, provide, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
@@ -32,6 +32,7 @@ import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
 import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview.vue';
 import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue';
+import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
@@ -68,7 +69,7 @@ import {
 	saveAssistantAgentThreadTabs,
 } from './assistantAgentTabs.api';
 import {
-	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
+	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	ASSISTANT_AGENT_ID,
 	ASSISTANT_AGENT_PROJECT_ID,
 	ASSISTANT_AGENT_THREAD_ID,
@@ -80,6 +81,7 @@ import {
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
+import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
 import {
 	countSentNodes,
 	readNodesAttachment,
@@ -113,7 +115,10 @@ const isNewSession = ref(isNewThread);
 let pendingReferences: InstanceAiAttachment[] = handoff.references;
 let pendingHandoffContext: InstanceAiHandoffContext | undefined = handoff.context;
 // The lists show a thread opened by URL even when it is older than the recent page.
-if (!isNewThread) void threadsStore.loadThread(props.threadId);
+if (!isNewThread) {
+	void threadsStore.loadThread(props.threadId);
+	void threadsStore.loadThreadCredits(props.threadId);
+}
 
 /** The first message to send, from the empty view or from a hand-off. */
 function firstMessageOf(
@@ -388,6 +393,11 @@ watch(
 	([current, pending]) => {
 		if (!current || pending.length === 0) return;
 		for (const attachment of instanceAiStore.consumePendingAttachments()) {
+			if (attachment.type === 'element') {
+				const { chip, clientContextPatch } = toElementComposerAttachment(attachment);
+				current.addComposerAttachment(chip, clientContextPatch);
+				continue;
+			}
 			if (attachment.type !== 'nodes') continue;
 			const { chip, clientContextPatch } = toNodesComposerAttachment(
 				attachment,
@@ -398,6 +408,13 @@ watch(
 	},
 	{ immediate: true },
 );
+
+watch(
+	() => stagedElementAppId(panel.value?.composerAttachments ?? []),
+	(appId) => instanceAiStore.setComposerElementAppId(appId),
+	{ immediate: true },
+);
+onBeforeUnmount(() => instanceAiStore.setComposerElementAppId(null));
 
 // The canvas asks for the composer after it stages nodes: show the chat and focus its input.
 watch(
@@ -429,7 +446,11 @@ function removeStagedNodes(chipId: string): void {
 <template>
 	<div ref="threadArea" :class="$style.container" data-test-id="assistant-agent-thread-view">
 		<div :class="$style.chatArea">
-			<InstanceAiViewHeader :title="threadTitle" :thread-id="props.threadId">
+			<InstanceAiViewHeader
+				:title="threadTitle"
+				:thread-id="props.threadId"
+				:thread-credits-used="threadsStore.threadCreditsUsed(props.threadId)"
+			>
 				<template #actions>
 					<N8nTooltip
 						:content="i18n.baseText('instanceAi.thread.new')"
@@ -544,12 +565,13 @@ function removeStagedNodes(chipId: string): void {
 						:continue-session-id="props.threadId"
 						:new-session="isNewSession"
 						:agent-config="agentConfig"
-						:attachment-capabilities="ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES"
+						:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 						agent-status="production"
 						:connected-triggers="[]"
 						channel="system"
 						:client-context="clientContext"
 						:interaction-extensions="interactionExtensions"
+						:show-attach-button="false"
 						@stream-event="trace.recordEvent"
 						@session-created="onSessionCreated"
 						@message-accepted="onMessageAccepted"
@@ -574,6 +596,10 @@ function removeStagedNodes(chipId: string): void {
 								@update:attachment="updateStagedNodes"
 								@remove-all="removeStagedNodes(id)"
 							/>
+						</template>
+						<!-- The Assistant "+" menu replaces the attach button: files, connectors and browser use. -->
+						<template #footer-start="{ disabled }">
+							<InstanceAiInputMenu :disabled="disabled" @attach-files="panel?.openFilePicker()" />
 						</template>
 					</AgentChatPanel>
 				</div>
