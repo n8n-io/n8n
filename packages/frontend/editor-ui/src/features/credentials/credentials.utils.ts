@@ -69,3 +69,58 @@ export function hasManagedOAuthApp(credentialType: ICredentialType | undefined):
 		overwrittenProperties.includes('clientId') && overwrittenProperties.includes('clientSecret')
 	);
 }
+
+/**
+ * Whether a credential type matches the `credentialTypes` of a `credentialsSelect` parameter,
+ * such as `extends:oAuth2Api` or `has:authenticate`.
+ */
+export function isCredentialTypeSupported(
+	credentialType: ICredentialType,
+	credentialTypes: string[],
+	nodeType: string,
+	getCredentialType: (name: string) => ICredentialType | undefined,
+): boolean {
+	if (credentialType.hidden) return false;
+
+	// Exclude credentials that opt into node-restriction when the current
+	// node is not in their supportedNodes list. Mirrors the server-side
+	// `isCredentialUsableByNode` policy so the UI does not offer a choice
+	// that the API/runtime would reject.
+	if (
+		credentialType.restrictToSupportedNodes &&
+		!credentialType.supportedNodes?.includes(nodeType)
+	) {
+		return false;
+	}
+
+	const supportedHas = credentialTypes.flatMap((entry) =>
+		entry.startsWith('has:') ? [entry.slice('has:'.length)] : [],
+	);
+	const supportedExtends = credentialTypes.flatMap((entry) =>
+		entry.startsWith('extends:') ? [entry.slice('extends:'.length)] : [],
+	);
+
+	for (const property of supportedHas) {
+		if (credentialType[property as keyof ICredentialType] !== undefined) {
+			// generic-auth credentials (e.g. httpHeaderAuth) may also define
+			// `authenticate`; they belong in the generic auth dropdown, not the
+			// predefined credential type list
+			if (property === 'authenticate' && credentialType.genericAuth === true) continue;
+
+			return true;
+		}
+	}
+
+	const parentNames = credentialType.extends ?? [];
+	if (parentNames.some((parentName) => supportedExtends.includes(parentName))) return true;
+	if (supportedExtends.length === 0) return false;
+
+	// recurse upward until base credential type
+	// e.g. microsoftDynamicsOAuth2Api -> microsoftOAuth2Api -> oAuth2Api
+	return parentNames.some((parentName) => {
+		const parent = getCredentialType(parentName);
+		return parent
+			? isCredentialTypeSupported(parent, credentialTypes, nodeType, getCredentialType)
+			: false;
+	});
+}

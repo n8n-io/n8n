@@ -8,29 +8,29 @@ import { HTTP_REQUEST_NODE_TYPE, type ICredentialType } from 'n8n-workflow';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '../credentials.store';
+import { isCredentialTypeSupported } from '../credentials.utils';
 
-const HTTP_REQUEST_PARENT_TYPES = ['oAuth2Api', 'oAuth1Api'];
+// Same as `nodeCredentialType` in nodes-base/nodes/HttpRequest/V3/Description.ts.
+const HTTP_REQUEST_CREDENTIAL_TYPES = [
+	'extends:oAuth2Api',
+	'extends:oAuth1Api',
+	'has:authenticate',
+];
 
 export type CredentialTypeUsability =
 	| { reason: 'typeRestricted'; restriction: CredentialTypeAvailability }
 	| { reason: 'nodesRestricted'; restriction: TypeRestriction; nodeTypeNames: string[] };
 
-/**
- * Mirrors the `credentialTypes` of the HTTP Request predefined credential parameter
- * (`extends:oAuth2Api`, `extends:oAuth1Api`, `has:authenticate`).
- */
 export function isUsableByHttpRequest(
 	credentialType: ICredentialType,
 	getCredentialType: (name: string) => ICredentialType | undefined,
 ): boolean {
-	if (credentialType.restrictToSupportedNodes) return false;
-	if (credentialType.authenticate !== undefined && credentialType.genericAuth !== true) return true;
-
-	return (credentialType.extends ?? []).some((parentName) => {
-		if (HTTP_REQUEST_PARENT_TYPES.includes(parentName)) return true;
-		const parent = getCredentialType(parentName);
-		return parent ? isUsableByHttpRequest(parent, getCredentialType) : false;
-	});
+	return isCredentialTypeSupported(
+		credentialType,
+		HTTP_REQUEST_CREDENTIAL_TYPES,
+		HTTP_REQUEST_NODE_TYPE,
+		getCredentialType,
+	);
 }
 
 /**

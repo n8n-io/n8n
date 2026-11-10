@@ -277,9 +277,10 @@ sourceControlStore.$onAction(({ name, after }) => {
 watch(() => route?.params?.projectId, initialize);
 
 // A new credential goes to this project, so the new credential picker reads its policy.
-useTypeAvailability(
-	() => (route?.params?.projectId as string | undefined) ?? projectsStore.personalProject?.id,
-);
+useTypeAvailability(() => {
+	const { projectId } = route?.params ?? {};
+	return typeof projectId === 'string' ? projectId : projectsStore.personalProject?.id;
+});
 
 watch(
 	() => props.credentialId,
