@@ -233,7 +233,7 @@ function onMenuSelect(id: string) {
 				}}
 			</span>
 			<AgentSetupTasks
-				v-if="tasks && tasks.length > 0"
+				v-if="tasks && tasks.length > 0 && !agent?.isArchived"
 				:tasks="tasks"
 				@action="emit('setup-task-action', $event)"
 			/>

@@ -1243,6 +1243,8 @@ export class AgentExecutionOrchestratorService {
 						params.usePublishedVersion === true && Boolean(agent.activeVersion?.schema),
 						this.agentSkillRefs,
 						{},
+						// The record of a rejected run needs the content of an archived agent.
+						{ allowArchived: true },
 					);
 				}
 			} catch (cause) {
