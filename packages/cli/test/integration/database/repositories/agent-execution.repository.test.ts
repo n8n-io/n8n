@@ -1,3 +1,4 @@
+import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import type {
 	AgentSessionOrigin,
 	AgentSessionQueryFilters,
@@ -27,7 +28,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { Telemetry } from '@/telemetry';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
@@ -93,6 +94,7 @@ import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execu
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
+import { AgentUserDeletionRepository } from '@/modules/agents/repositories/agent-user-deletion.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentPlanRepository } from '@/modules/agents/repositories/agent-plan.repository';
 import type { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
@@ -103,6 +105,7 @@ import { SystemAgentRegistry } from '@/modules/agents/system-agents/system-agent
 import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-access';
 
 import { createMember, createAdmin } from '../../shared/db/users';
+import type { AgentSandboxFilesService } from '@/modules/agents/agent-sandbox-files.service';
 
 // Share the transaction class loaded by the built BaseRepository.
 const { TypeOrmTransaction, TypeOrmTransactionRunner } = createRequire(__filename)(
@@ -178,7 +181,12 @@ describe('AgentExecutionRepository', () => {
 		);
 		const executions = connection ? new AgentExecutionRepository(connection, txRunner) : repository;
 		const threads = connection
-			? new AgentExecutionThreadRepository(connection, txRunner)
+			? new AgentExecutionThreadRepository(
+					connection,
+					txRunner,
+					new AgentProjectDeletionRepository(connection, txRunner),
+					new AgentUserDeletionRepository(connection, txRunner),
+				)
 			: threadRepo;
 		const queueRepository = new AgentMessageQueueRepository(
 			connection ?? repository.manager.connection,
@@ -217,6 +225,7 @@ describe('AgentExecutionRepository', () => {
 			queueRepository,
 			messageRepository,
 			systemAgents,
+			Container.get(AgentProjectDeletionRepository),
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const settingsService = new AgentsSettingsService(
@@ -283,6 +292,7 @@ describe('AgentExecutionRepository', () => {
 				steering,
 				mock<AgentToolApprovalService>(),
 				mock<AgentKnowledgeUsageTracker>(),
+				mock<AgentSandboxFilesService>(),
 			),
 		};
 	}
@@ -521,6 +531,7 @@ describe('AgentExecutionRepository', () => {
 						repository,
 						mock<SystemAgentUsageRelay>(),
 						mock<AgentChatAttachmentService>({ returnToParent: async () => [] }),
+						mock<AgentSandboxFilesService>(),
 					),
 					service,
 					mockLogger(),

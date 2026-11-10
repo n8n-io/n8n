@@ -175,7 +175,6 @@ function renderModal({
 		| 'onDelete'
 		| 'deleteDisabledReason'
 		| 'initialVersionsOpen'
-		| 'initialCompare'
 		| 'latestVersion'
 	>;
 } & Pick<
@@ -2364,21 +2363,6 @@ describe('Compare mode', () => {
 		}));
 	});
 
-	it('opens comparing the latest version with the one before it', async () => {
-		const { findByTestId, getByTestId, queryByTestId } = renderModal({
-			skill: v2,
-			skillId: 'tone',
-			settings: { ...settings, initialCompare: true },
-		});
-
-		expect(await findByTestId('agent-skill-compare-bar')).toBeInTheDocument();
-		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-sources');
-		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-search');
-		expect(getByTestId('skill-version-diff-instructions')).not.toHaveTextContent('−');
-		// The footer is hidden while comparing.
-		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
-	});
-
 	it('compares a version from the panel with the version the editor shows, and leaves with Done', async () => {
 		const { findByTestId, getByTestId, queryByTestId } = renderModal({
 			skill: v2,
@@ -2391,6 +2375,12 @@ describe('Compare mode', () => {
 		expect(await findByTestId('skill-version-diff')).toBeInTheDocument();
 		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 1);
 		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 2);
+		expect(getByTestId('agent-skill-compare-bar')).toBeInTheDocument();
+		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-sources');
+		expect(getByTestId('skill-version-diff-name')).toHaveTextContent('research-search');
+		expect(getByTestId('skill-version-diff-instructions')).not.toHaveTextContent('−');
+		// The footer is hidden while comparing.
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
 
 		await userEvent.click(getByTestId('agent-skill-compare-done'));
 

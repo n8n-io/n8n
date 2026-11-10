@@ -5,14 +5,14 @@ import type {
 	FindLatestExecutionRequest,
 	ResolveStepRequest,
 	ResolveStepResponse,
-	ResumeTargetRequest,
+	ResumeLocateRequest,
 	ResumeTargetResponse,
 	StartExecutionRequest,
 	StartExecutionResult,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 } from '@n8n/engine';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
 
@@ -53,6 +53,7 @@ export type ResumeOutcome<T> =
  * runs in the same process, so this stays a network-shaped contract.
  */
 export interface EngineDataPlaneProvider {
+	/** One page of the executions that match `request`. */
 	searchExecutions(request: SearchExecutionsRequest): Promise<SearchExecutionsResponse>;
 
 	/**
@@ -85,16 +86,19 @@ export interface EngineDataPlaneProvider {
 	 * and the one step that accepts the request, or `null` when none does. The
 	 * data plane verifies the token; this plane forwards it unread.
 	 */
-	locateResumeTarget(
-		id: ExecutionIdV2,
-		request: ResumeTargetRequest,
-	): Promise<ResumeOutcome<ResumeTargetResponse>>;
+	locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>>;
 
 	/** Phase two: ends the wait of one step with the output of the node's resume method. */
 	resolveStep(
 		stepId: string,
 		request: ResolveStepRequest,
 	): Promise<ResumeOutcome<ResolveStepResponse>>;
+
+	/**
+	 * The step id that an engine v2 approval callback names, or `undefined` for
+	 * any other reference. Does not verify the callback: `locateResume` does.
+	 */
+	readApprovalCallback(reference: string): string | undefined;
 }
 
 /**
@@ -157,13 +161,10 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 	}
 
 	/** As `getExecution`: no provider, no v2 execution that could wait. */
-	async locateResumeTarget(
-		id: ExecutionIdV2,
-		request: ResumeTargetRequest,
-	): Promise<ResumeOutcome<ResumeTargetResponse>> {
+	async locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>> {
 		if (!this.provider) return { ok: false, status: 404, error: 'not_found' };
 
-		return await this.provider.locateResumeTarget(id, request);
+		return await this.provider.locateResume(request);
 	}
 
 	/** As `getExecution`: no provider, no v2 execution that could wait. */
@@ -174,5 +175,10 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		if (!this.provider) return { ok: false, status: 404, error: 'not_found' };
 
 		return await this.provider.resolveStep(stepId, request);
+	}
+
+	/** No provider, no engine v2 callback. */
+	readApprovalCallback(reference: string): string | undefined {
+		return this.provider?.readApprovalCallback(reference);
 	}
 }

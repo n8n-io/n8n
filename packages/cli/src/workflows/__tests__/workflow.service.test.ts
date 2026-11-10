@@ -20,7 +20,7 @@ import type {
 	WorkflowPublishedVersionRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
+import { Person, WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -43,6 +43,7 @@ import type { SharedWorkflowRepository } from '@n8n/db';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { PolicyCleared } from '@n8n/decorators';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
@@ -150,6 +151,7 @@ describe('WorkflowService', () => {
 				restrictedNodeTypesProviderMock, // restrictedNodeTypesProvider
 				mock(),
 				mock(), // projectScopeService
+				mock(),
 			);
 		});
 
@@ -541,6 +543,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // projectScopeService
+				mock(),
 			);
 
 			vi.clearAllMocks();
@@ -1718,6 +1721,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // projectScopeService
+				mock(),
 			);
 
 			// Bypass validation internals
@@ -1970,7 +1974,7 @@ describe('WorkflowService', () => {
 				'_addToActiveWorkflowManager',
 			).mockResolvedValue(undefined);
 
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',
@@ -1978,7 +1982,7 @@ describe('WorkflowService', () => {
 				role: mock<Role>({ slug: 'global:admin' }),
 			});
 
-			await workflowService.activateWorkflow(user, WORKFLOW_ID, {
+			await workflowService.activateWorkflow(person, WORKFLOW_ID, {
 				versionId: TARGET_VERSION_ID,
 			});
 
@@ -2153,7 +2157,7 @@ describe('WorkflowService', () => {
 
 			externalHooksMock.run.mockResolvedValue(undefined);
 
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',
@@ -2161,7 +2165,7 @@ describe('WorkflowService', () => {
 				role: mock<Role>({ slug: 'global:admin' }),
 			});
 
-			await workflowService.deactivateWorkflow(user, WORKFLOW_ID);
+			await workflowService.deactivateWorkflow(person, WORKFLOW_ID);
 
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
 			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as [
@@ -2410,6 +2414,7 @@ describe('WorkflowService', () => {
 		let globalConfigMock: MockProxy<GlobalConfig>;
 		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
+		let workflowIndexServiceMock: MockProxy<WorkflowIndexService>;
 
 		const WORKFLOW_ID = 'workflow-1';
 		const ACTIVE_VERSION_ID = 'v1';
@@ -2436,6 +2441,7 @@ describe('WorkflowService', () => {
 			});
 			activeWorkflowManagerMock = mock();
 			externalHooksMock = mock<ExternalHooks>();
+			workflowIndexServiceMock = mock<WorkflowIndexService>();
 
 			workflowRepositoryMock.create.mockImplementation(
 				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
@@ -2482,6 +2488,20 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // projectScopeService
+				workflowIndexServiceMock,
+			);
+		});
+
+		test('removes the published dependency index after teardown', async () => {
+			workflowRepositoryMock.findOne.mockResolvedValue(makeWorkflowEntity());
+
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID);
+
+			expect(workflowIndexServiceMock.removePublishedDependenciesForWorkflow).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+			);
+			expect(workflowRepositoryMock.update.mock.invocationCallOrder[0]).toBeLessThan(
+				workflowIndexServiceMock.removePublishedDependenciesForWorkflow.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -2528,6 +2548,9 @@ describe('WorkflowService', () => {
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
 			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
 			expect(workflowPublishHistoryRepositoryMock.addRecord).not.toHaveBeenCalled();
+			expect(
+				workflowIndexServiceMock.removePublishedDependenciesForWorkflow,
+			).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2627,6 +2650,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // projectScopeService
+				mock(),
 			);
 		});
 
@@ -2845,7 +2869,7 @@ describe('WorkflowService', () => {
 			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
 
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',
@@ -2853,7 +2877,7 @@ describe('WorkflowService', () => {
 				role: mock<Role>({ slug: 'global:admin' }),
 			});
 
-			await workflowService.delete(user, WORKFLOW_ID, true);
+			await workflowService.delete(person, WORKFLOW_ID, true);
 
 			const expectedActor: WorkflowLifecycleHookActor = {
 				id: 'user-1',
@@ -2941,6 +2965,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // projectScopeService
+				mock(),
 			);
 		});
 
@@ -2958,7 +2983,7 @@ describe('WorkflowService', () => {
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
 			workflowRepositoryMock.get.mockResolvedValue(workflow);
 
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',
@@ -2967,7 +2992,7 @@ describe('WorkflowService', () => {
 			});
 
 			await workflowService.update(
-				user,
+				person,
 				{ nodes: [], connections: {} } as unknown as WorkflowEntity,
 				WORKFLOW_ID,
 			);
@@ -3119,6 +3144,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // projectScopeService
+				mock(),
 			);
 		});
 
@@ -3243,7 +3269,7 @@ describe('WorkflowService', () => {
 		};
 
 		function makeActingUser() {
-			return mock<User>({
+			return Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',
@@ -3310,6 +3336,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // projectScopeService
+				mock(),
 			);
 		});
 
@@ -3417,6 +3444,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // projectScopeService
+				mock(),
 			);
 		});
 
@@ -3527,6 +3555,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // projectScopeService
+				mock(),
 			);
 
 			vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);

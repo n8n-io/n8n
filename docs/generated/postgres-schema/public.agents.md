@@ -154,6 +154,7 @@ erDiagram
 "public.agent_chat_attachments" {
   varchar_36_ agentId FK
   text binaryDataId
+  varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
   varchar_128_ createdByThreadId
   varchar_255_ fileName

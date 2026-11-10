@@ -28,7 +28,7 @@ import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -37,7 +37,7 @@ import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ExternalHooks } from '@/external-hooks';
 import type { Telemetry } from '@/telemetry';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import type { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
@@ -89,6 +89,7 @@ import type { ToolRegistry } from '../tool-registry';
 import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 // Draft runs check `agent:read`; these tests run as a user who holds it.
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -300,6 +301,7 @@ function makeService(sandboxEnabled = false) {
 			mock<AgentMessageSteeringService>(),
 			toolApprovalService,
 			knowledgeUsageTracker,
+			mock<AgentSandboxFilesService>(),
 		),
 		telemetry,
 		runtimeCacheService,
@@ -2199,6 +2201,7 @@ describe('AgentExecutionOrchestratorService', () => {
 							principalHash: userPrincipalHash,
 						}),
 					),
+					persistSettledSuspensions: true,
 				},
 				executionCounter: expect.any(Object),
 				abortSignal: expect.any(AbortSignal),
@@ -2811,6 +2814,7 @@ describe('AgentExecutionOrchestratorService', () => {
 							...encodeIntegrationMessageContext(selectedContext),
 							n8nExecutionId: 'execution-1',
 						},
+						persistSettledSuspensions: true,
 					},
 				}),
 			);

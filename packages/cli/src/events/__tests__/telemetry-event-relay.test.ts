@@ -23,6 +23,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
 	createErrorExecutionData,
+	ERROR_MESSAGE_REDACTED_MESSAGE,
 	type INode,
 	type INodesGraphResult,
 	type IRun,
@@ -294,7 +295,7 @@ describe('TelemetryEventRelay', () => {
 				surfaces: ['public-api'],
 				identitySubject: 'binding',
 				linkByEmail: 'verified-only',
-				provisionHuman: 'off',
+				provisionPerson: 'off',
 				roleMappingMode: 'off',
 			};
 
@@ -4026,6 +4027,24 @@ describe('TelemetryEventRelay', () => {
 			},
 		);
 
+		it('should track on `user-logged-out` event', () => {
+			const event: RelayEventMap['user-logged-out'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+			};
+
+			eventService.emit('user-logged-out', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_LOGGED_OUT, {
+				user_id: 'user123',
+			});
+		});
+
 		it('should track on `user-submitted-personalization-survey` event', () => {
 			const event: RelayEventMap['user-submitted-personalization-survey'] = {
 				userId: 'user123',
@@ -4794,6 +4813,31 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(expectedProperties);
 		});
 
+		it('should add the personal credentials count to workflow execution telemetry', async () => {
+			const runData = {
+				finished: true,
+				status: 'success',
+				mode: 'trigger',
+				data: { resultData: { runData: {} } },
+			} as unknown as IRun;
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+				telemetryMetadata: { personalCredentialsCount: 2 },
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ execution_source: 'user', personal_credentials_count: 2 }),
+			);
+		});
+
 		it('should call telemetry.track when manual node execution finished', async () => {
 			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
 			credentialsRepository.findOneBy.mockResolvedValue(
@@ -4888,6 +4932,67 @@ describe('TelemetryEventRelay', () => {
 					node_graph_string: JSON.stringify(nodeGraph.nodeGraph),
 					error_node_id: '1',
 				}),
+			);
+		});
+
+		it('should redact the error message when the workflow policy covers the run', async () => {
+			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
+			credentialsRepository.findOneBy.mockResolvedValue(
+				mock<CredentialsEntity>({ type: 'openAiApi', isManaged: false }),
+			);
+
+			const errorNode: INode = {
+				id: '1',
+				typeVersion: 1,
+				name: 'Jira',
+				type: 'n8n-nodes-base.jira',
+				parameters: {},
+				position: [100, 200],
+			};
+			const error = new NodeApiError(
+				errorNode,
+				{ message: 'secret value', httpCode: '401', stack: '' },
+				{ message: 'secret value', level: 'warning', functionality: 'regular' },
+			);
+			const runData = {
+				status: 'error',
+				mode: 'manual',
+				data: createErrorExecutionData(errorNode, error),
+			} as IRun;
+
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(
+				() =>
+					({
+						nodeGraph: { node_types: [], node_connections: [], webhookNodeNames: [] },
+						nameIndices: { Jira: '1' },
+					}) as unknown as INodesGraphResult,
+			);
+			vi.spyOn(TelemetryHelpers, 'getNodeTypeForName').mockImplementation(
+				() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+			);
+
+			eventService.emit('workflow-post-execute', {
+				workflow: { ...mockWorkflowBase, settings: { redactionPolicy: 'all' } },
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+			});
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Manual node exec finished',
+				expect.objectContaining({ error_message: ERROR_MESSAGE_REDACTED_MESSAGE }),
+			);
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					error_message: ERROR_MESSAGE_REDACTED_MESSAGE,
+					error_node_type: 'n8n-nodes-base.jira',
+				}),
+			);
+			expect(JSON.stringify(vi.mocked(telemetry.track).mock.calls)).not.toContain('secret value');
+			expect(JSON.stringify(vi.mocked(telemetry.trackWorkflowExecution).mock.calls)).not.toContain(
+				'secret value',
 			);
 		});
 
@@ -6138,7 +6243,7 @@ describe('TelemetryEventRelay', () => {
 			surfaces: ['public-api', 'instance-mcp'],
 			identitySubject: 'binding',
 			linkByEmail: 'verified-only',
-			provisionHuman: 'jit',
+			provisionPerson: 'jit',
 			roleMappingMode: 'on-provision',
 		};
 		const trackedFacets = {
@@ -6148,6 +6253,7 @@ describe('TelemetryEventRelay', () => {
 			identity_subject: 'binding',
 			link_by_email: 'verified-only',
 			provision_human: 'jit',
+			provision_person: 'jit',
 			role_mapping_mode: 'on-provision',
 		};
 
@@ -6202,6 +6308,163 @@ describe('TelemetryEventRelay', () => {
 			// The `init` tests above leave extra relays listening, so the call count is not asserted.
 			expect(telemetry.track).toHaveBeenCalled();
 			expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain('idp.example.com');
+		});
+	});
+
+	describe('app events', () => {
+		const appId = 'app-1';
+		// The init tests register a second relay on the shared emitter, so this block uses its own.
+		const appEventService = new EventService();
+
+		beforeAll(async () => {
+			await new TelemetryEventRelay(
+				appEventService,
+				telemetry,
+				license,
+				licenseState,
+				globalConfig,
+				instanceSettings,
+				binaryDataConfig,
+				workflowRepository,
+				nodeTypes,
+				sharedWorkflowRepository,
+				projectRelationRepository,
+				credentialsRepository,
+				dynamicCredentialsProxy,
+				dbConnection,
+				loadNodesAndCredentials,
+				postHogClient,
+				ownershipService,
+			).init();
+		});
+
+		it.each([
+			[
+				'app-created',
+				{ userId: 'user-1', threadId: 'thread-1', appId, projectId: 'p-1', visibility: 'project' },
+				TELEMETRY_EVENT.APPS.USER_CREATED_APP,
+				{
+					app_id: appId,
+					project_id: 'p-1',
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					visibility: 'project',
+				},
+			],
+			[
+				'app-visibility-changed',
+				{ userId: 'user-1', appId, from: 'project', to: 'instance' },
+				TELEMETRY_EVENT.APPS.USER_CHANGED_APP_VISIBILITY,
+				{ app_id: appId, user_id: 'user-1', from: 'project', to: 'instance' },
+			],
+			[
+				'app-deleted',
+				{ userId: 'user-1', appId, wasPublished: true },
+				TELEMETRY_EVENT.APPS.USER_DELETED_APP,
+				{ app_id: appId, user_id: 'user-1', was_published: true },
+			],
+			[
+				'app-published',
+				{ userId: 'user-1', appId, versionId: 'v-1', visibility: 'instance', isFirstPublish: true },
+				TELEMETRY_EVENT.APPS.USER_PUBLISHED_APP,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					access_level: 'instance',
+					is_first_publish: true,
+				},
+			],
+			[
+				'app-unpublished',
+				{ userId: 'user-1', appId },
+				TELEMETRY_EVENT.APPS.USER_UNPUBLISHED_APP,
+				{ app_id: appId, user_id: 'user-1' },
+			],
+			[
+				'app-build-finished',
+				{
+					userId: 'user-1',
+					threadId: 'thread-1',
+					appId,
+					versionId: 'v-1',
+					changeSource: 'chat',
+					status: 'failed',
+					attempts: 2,
+					durationMs: 1200,
+				},
+				TELEMETRY_EVENT.APPS.APP_BUILD_FINISHED,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					change_source: 'chat',
+					status: 'failed',
+					attempts: 2,
+					duration_ms: 1200,
+				},
+			],
+			[
+				'app-opened',
+				{ appId, versionId: 'v-1', userId: 'user-1', isPreview: false },
+				TELEMETRY_EVENT.APPS.USER_INTERACTED_WITH_APP,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					interaction_type: 'app_opened',
+					is_preview: false,
+				},
+			],
+			[
+				'app-bindings-changed',
+				{
+					appId,
+					projectId: 'project-1',
+					versionId: 'v-2',
+					userId: 'user-1',
+					workflowCount: 1,
+					dataTableCount: 2,
+					agentCount: 0,
+					addedCount: 1,
+					removedCount: 0,
+				},
+				TELEMETRY_EVENT.APPS.USER_CHANGED_APP_BINDINGS,
+				{
+					app_id: appId,
+					project_id: 'project-1',
+					version_id: 'v-2',
+					user_id: 'user-1',
+					workflow_count: 1,
+					data_table_count: 2,
+					agent_count: 0,
+					added_count: 1,
+					removed_count: 0,
+				},
+			],
+			[
+				'app-interacted',
+				{
+					appId,
+					versionId: 'v-1',
+					userId: 'user-1',
+					interactionType: 'workflow_run',
+					isPreview: true,
+				},
+				TELEMETRY_EVENT.APPS.USER_INTERACTED_WITH_APP,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					interaction_type: 'workflow_run',
+					is_preview: true,
+				},
+			],
+		] as const)('should track on `%s` event', (eventName, payload, entry, properties) => {
+			appEventService.emit(eventName, payload);
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(entry, properties);
 		});
 	});
 });

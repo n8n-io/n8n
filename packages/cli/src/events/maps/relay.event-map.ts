@@ -1,3 +1,4 @@
+import type { AppEventMap } from '@n8n/backend-module-apps';
 import type { DataTableEventMap } from '@n8n/backend-module-data-table';
 import type {
 	AuthenticationMethod,
@@ -87,7 +88,9 @@ export type ProjectSummary = {
 	name: string;
 };
 
-export type RelayEventMap = DataTableEventMap & {
+type ModuleEventMap = DataTableEventMap & AppEventMap;
+
+export type RelayEventMap = ModuleEventMap & {
 	// #region Lifecycle
 
 	'server-started': {};
@@ -375,6 +378,10 @@ export type RelayEventMap = DataTableEventMap & {
 	'user-logged-in': {
 		user: UserLike;
 		authenticationMethod: AuthenticationMethod;
+	};
+
+	'user-logged-out': {
+		user: UserLike;
 	};
 
 	'user-login-failed': {

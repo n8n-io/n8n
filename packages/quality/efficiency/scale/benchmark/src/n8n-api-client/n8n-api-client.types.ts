@@ -5,6 +5,7 @@ export type Workflow = {
 	id: string;
 	name: string;
 	versionId: string;
+	isArchived?: boolean;
 	tags?: string[];
 	settings?: Record<string, unknown>;
 };

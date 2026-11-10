@@ -75,12 +75,16 @@ comma and a space: `fix(core, editor): ...`.
    - Scope: Which scope from the Scopes list fits? Omit the scope if none fits.
    - Summary: What does the change do? Start it with a capital letter.
 
-5. **Push branch if needed**:
+5. **Identify feature flag test settings**: Inspect the full PR diff for new
+   PostHog flags. Record the keys and values needed to test the new behavior
+   as described in Feature Flag Test Settings below.
+
+6. **Push branch if needed**:
    ```bash
    git push -u origin HEAD
    ```
 
-6. **Create PR** using gh CLI. Read `.github/pull_request_template.md` as the
+7. **Create PR** using gh CLI. Read `.github/pull_request_template.md` as the
    body structure, then populate each section with actual content before
    creating the PR:
    - **Summary**: describe what the PR does
@@ -101,6 +105,7 @@ comma and a space: `fix(core, editor): ...`.
    4. Each sentence is true for the diff.
 
    When a later commit changes a fact in the body, update the body.
+   If step 5 found new flags, include their test settings in **How to test**.
 
    ```bash
    gh pr create --draft --title "<type>(<scope>): <summary>" --body "$(cat <<'EOF'
@@ -108,6 +113,37 @@ comma and a space: `fix(core, editor): ...`.
    EOF
    )"
    ```
+
+## Feature Flag Test Settings
+
+1. Compare the branch with `origin/master` using `git diff origin/master...HEAD`.
+   If the PR targets another branch, use `origin/<target-branch>` instead.
+   Inspect new experiment definitions in
+   `packages/frontend/editor-ui/src/app/constants/experiments.ts`, shared
+   flag constants in `packages/@n8n/api-types`, and new PostHog checks elsewhere
+   in the diff. Resolve constants to the exact PostHog key string.
+   Exclude removed flags, existing flags that the PR only references, and
+   flag names that appear only in tests or documentation.
+2. Select a test value for each new flag. Use `true` to enable a boolean flag.
+   Read the flag's consumers and variant definitions for an A/B experiment.
+   Use the exact variant that shows the new behavior.
+   Do not assume that boolean `true` selects a named variant.
+   If the required variant is unclear, report it instead of guessing.
+   Preserve any value that the user explicitly requested for the same key.
+3. If step 1 found at least one new flag, include `N8N_FEATURE_FLAG_OVERRIDES`
+   in **How to test**. This environment variable accepts a JSON object that maps
+   PostHog keys to boolean values or named variants. Tell the tester to set it
+   before starting the test instance.
+   For example:
+   ```bash
+   export N8N_FEATURE_FLAG_OVERRIDES='{"136_skill_sync":true}'
+   ```
+   Use JSON `false` to disable a boolean flag, or a string for a named variant.
+   Combine multiple overrides in one JSON object.
+
+The Codespace preview runner does not read `flag:` labels. Do not create or
+apply them. For supported preview settings, see the Preview toggles and Preview
+environment from a webhook sections in `.github/WORKFLOWS.md`.
 
 ## PR Body Guidelines
 

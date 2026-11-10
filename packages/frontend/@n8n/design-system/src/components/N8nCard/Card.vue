@@ -56,6 +56,7 @@ function getClasses() {
 .card {
 	border-radius: var(--radius);
 	border: var(--border);
+	background-clip: padding-box;
 	box-shadow: var(--shadow--xs);
 	background-color: var(--background--surface);
 	padding: var(--card--padding, var(--spacing--sm));

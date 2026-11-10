@@ -3,7 +3,7 @@ import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { ExecutionResponse, ResponseExpectation } from '@n8n/engine';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
 import type { ResponseStream } from '@/webhooks/streaming-webhook-response-heartbeat';
@@ -11,7 +11,7 @@ import type { ResponseStream } from '@/webhooks/streaming-webhook-response-heart
 import type {
 	ExecutionResponseReceiver,
 	UnsubscribeExecutionResponse,
-} from '../response-channel/execution-response-receiver';
+} from '../execution-channel/execution-response-receiver';
 import { StreamingResponseWriter } from './streaming-response-writer';
 import { toWebhookOutcome, type WebhookRunOutcome } from './webhook-outcome';
 

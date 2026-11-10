@@ -12,7 +12,8 @@ import {
 	serializedWorkflowSchema,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { z } from 'zod';
 import { ZodError } from 'zod';
 
