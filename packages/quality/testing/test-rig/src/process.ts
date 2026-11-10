@@ -1,5 +1,5 @@
-import { execFile } from 'node:child_process';
-import type { Readable } from 'node:stream';
+import type { ChildProcess } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { sleep } from '@n8n/utils/sleep';
@@ -98,7 +98,9 @@ export interface LogMatch {
 	at: number;
 }
 
-/** Resolves on the first new line containing one of the snippets in any of the containers' logs. */
+const LOG_LOOKBACK_MS = 200;
+
+/** Resolves on the first line containing one of the snippets that any of the containers logged from 200 ms before the call on. */
 export async function waitForLog(
 	containers: Container[],
 	snippet: string | string[],
@@ -107,38 +109,34 @@ export async function waitForLog(
 ): Promise<LogMatch> {
 	const wanted = Array.isArray(snippet) ? snippet : [snippet];
 	const label = `log "${wanted.join('" | "')}"`;
-	const streams: Readable[] = [];
-	let settled = false;
+	if (abort?.aborted) throw new Error(`${label} wait aborted`);
+	const since = ((Date.now() - LOG_LOOKBACK_MS) / 1000).toFixed(3);
+	const followers: ChildProcess[] = [];
+	let timer: NodeJS.Timeout | undefined;
+	let onAbort: (() => void) | undefined;
 	try {
-		return await new Promise((resolve, reject) => {
-			const timer = setTimeout(
-				() => reject(new Error(`${label} not seen in ${timeoutMs}ms`)),
-				timeoutMs,
-			);
-			abort?.addEventListener('abort', () => {
-				clearTimeout(timer);
-				reject(new Error(`${label} wait aborted`));
-			});
+		return await new Promise<LogMatch>((resolve, reject) => {
+			timer = setTimeout(() => reject(new Error(`${label} not seen in ${timeoutMs}ms`)), timeoutMs);
+			onAbort = () => reject(new Error(`${label} wait aborted`));
+			abort?.addEventListener('abort', onAbort, { once: true });
 			for (const container of containers) {
-				void container.logs({ since: Math.floor(Date.now() / 1000) - 1 }).then((stream) => {
-					if (settled) {
-						stream.destroy();
-						return;
-					}
-					streams.push(stream);
+				const follower = spawn('docker', ['logs', '--follow', '--since', since, container.getId()]);
+				followers.push(follower);
+				follower.on('error', reject);
+				for (const stream of [follower.stdout, follower.stderr]) {
 					const match = lineMatcher(wanted);
-					stream.on('data', (chunk: Buffer | string) => {
-						const line = match(chunk.toString());
-						if (line) {
-							clearTimeout(timer);
-							resolve({ container, line, at: Date.now() });
-						}
+					stream.setEncoding('utf8');
+					stream.on('error', reject);
+					stream.on('data', (chunk: string) => {
+						const line = match(chunk);
+						if (line) resolve({ container, line, at: Date.now() });
 					});
-				}, reject);
+				}
 			}
 		});
 	} finally {
-		settled = true;
-		for (const stream of streams) stream.destroy();
+		clearTimeout(timer);
+		if (onAbort) abort?.removeEventListener('abort', onAbort);
+		for (const follower of followers) follower.kill();
 	}
 }
