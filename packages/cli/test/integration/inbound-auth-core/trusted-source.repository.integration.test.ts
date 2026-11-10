@@ -2,6 +2,7 @@ import { testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 
 import { TrustedSourceRepository } from '@/modules/inbound-auth-core/database/repositories/trusted-source.repository';
@@ -65,14 +66,16 @@ describe('TrustedSourceRepository (integration)', () => {
 		it('treats a lease as expired after waiting on a row lock held past its expiry', async () => {
 			const { id } = await seedSource();
 			const order: string[] = [];
+			const holderClaimed = createDeferredPromise();
 
 			const holder = transactionRunner.run({}, async (ctx) => {
 				expect(await repository.claimForDiscovery(id, 'token-a', LEASE_SECONDS, ctx)).toBe(true);
+				holderClaimed.resolve();
 				await sleep(PAST_LEASE_MS);
 				order.push('holder committed');
 			});
 
-			await sleep(200);
+			await holderClaimed.promise;
 			const claimed = await repository.claimForDiscovery(id, 'token-b', LEASE_SECONDS, {});
 			order.push('claimer finished');
 			await holder;
