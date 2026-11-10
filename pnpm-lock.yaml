@@ -1095,7 +1095,7 @@ overrides:
   prosemirror-view@<1.42.3: 1.42.3
   pdf-parse>@napi-rs/canvas: 1.0.11
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
-  toml@<4.2.0: 4.2.0
+  toml@<5.0.1: 5.0.1
   '@langchain/langgraph': 1.4.21
   '@langchain/langgraph-checkpoint': 1.1.6
 
@@ -24007,8 +24007,8 @@ packages:
     resolution: {integrity: sha512-dRXchy+C0IgK8WPC6xvCHFRIWYUbqqdEIKPaKo/AcTUNzwLTK6AH7RjdLWsEZcAN/TBdtfUw3PYEgPr5VPr6ww==}
     engines: {node: '>=14.16'}
 
-  toml@4.2.0:
-    resolution: {integrity: sha512-TvAJjbHZlYmI323+srtqHQFyJsoWy6mI09ppkuj9+iRsqsVKG9fvTcOP7FHF2UCb0QSYtjEavffrKzdd0XgClg==}
+  toml@5.0.1:
+    resolution: {integrity: sha512-EqYNA/YvUNndrA2B3O2ojzLQoTQrBxeZ9UIjQwk8t10oe6n7dwclBwd9IdZQTOKwe6vWX+AXtl6IntXRbepdxQ==}
     engines: {node: '>=20'}
 
   toposort@2.0.2:
@@ -42020,7 +42020,7 @@ snapshots:
       oauth4webapi: 3.8.6
       open: 7.4.2
       simple-lru-cache: 0.0.2
-      toml: 4.2.0
+      toml: 5.0.1
       winston: 3.14.2
     transitivePeerDependencies:
       - debug
@@ -42784,7 +42784,7 @@ snapshots:
       '@tokenizer/token': 0.3.0
       ieee754: 1.2.1
 
-  toml@4.2.0: {}
+  toml@5.0.1: {}
 
   toposort@2.0.2: {}
 

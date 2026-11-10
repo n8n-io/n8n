@@ -514,7 +514,7 @@ overrides:
   'pdf-parse>@napi-rs/canvas': 'catalog:'
   # The @icetee/ftp patch replaces xregexp with native RegExp.
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
-  'toml@<4.2.0': 4.2.0
+  'toml@<5.0.1': 5.0.1
   # Keep the copies that langchain brings in on the catalog version.
   '@langchain/langgraph': 'catalog:'
   '@langchain/langgraph-checkpoint': 'catalog:'
