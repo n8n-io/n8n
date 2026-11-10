@@ -227,7 +227,7 @@ function assertConsistentPathParameterNames(paths: OpenApiDocument['paths']): vo
 
 /**
  * Builds the published spec: the hand-written envelope (`openapi.yml`) with the paths and
- * components of the bundled generated root. Sets `info.version` to the n8n version of the build.
+ * components of the bundled generated root.
  */
 export function assembleSpec(
 	envelope: OpenApiDocument,

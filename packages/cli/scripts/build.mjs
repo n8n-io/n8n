@@ -5,6 +5,7 @@ import shell from 'shelljs';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { rawTimeZones } from '@vvo/tzdb';
 import glob from 'fast-glob';
+import cliPackageJson from '../package.json' with { type: 'json' };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,24 +90,18 @@ async function buildPublicApiSpec() {
 	const generatedDistSpec = path.join(v1DistDir, DECORATOR_ROOT_FILENAME);
 	bundleSpec(path.join(v1Dir, DECORATOR_ROOT_FILENAME), generatedDistSpec);
 
-	// 3. Assemble the published spec from the envelope and the bundled root. The spec version
-	// is the n8n version, so a build from a release tag publishes the release version.
+	// 3. Assemble the published spec from the envelope and the bundled root.
 	const envelope = parseYaml(readFileSync(path.join(v1Dir, SPEC_FILENAME), 'utf8'));
 	const generated = parseYaml(readFileSync(generatedDistSpec, 'utf8'));
-	const n8nVersion = readCliPackageVersion();
-	writeFileSync(
-		path.join(v1DistDir, SPEC_FILENAME),
-		stringifyYaml(assembleSpec(envelope, generated, n8nVersion), YAML_STRINGIFY_OPTS),
-	);
+	const n8nVersion = cliPackageJson.version;
+
+	const openApiSpec = assembleSpec(envelope, generated, n8nVersion);
+	const openApiSpecYaml = stringifyYaml(openApiSpec, YAML_STRINGIFY_OPTS);
+
+	writeFileSync(path.join(v1DistDir, SPEC_FILENAME), openApiSpecYaml);
 
 	// 4. Remove the bundled root. Only the assembled spec is published.
 	rmSync(generatedDistSpec);
-}
-
-function readCliPackageVersion() {
-	const packageJsonPath = path.resolve(ROOT_DIR, 'package.json');
-	const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-	return packageJson.version;
 }
 
 // Imports the already-compiled generator from dist rather than the .ts source — by the time
