@@ -727,6 +727,29 @@ it('plans a copy of a skill whose ID belongs to another scope', async () => {
 	await deleteSkill('skill_shared');
 });
 
+it('reports a skill when other scopes own its ID and the ID of its copy', async () => {
+	const content = (name: string) =>
+		toSkillContent({ name, description: 'Other.', instructions: 'Other.' });
+	await createSkill({ id: 'skill_shared', projectId: null, content: content('Other') });
+	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
+	request.skills = [sharedSkill('skill_shared', 'project')];
+	// The first plan gives the ID of the copy.
+	const copyId = (await planner.plan(request)).agentPlan?.skills?.shared[0].skill.id ?? '';
+	expect(copyId).not.toBe('');
+	await createSkill({ id: copyId, projectId: otherProject.id, content: content('Copy owner') });
+	const plan = await planner.plan(request);
+	expect(plan.blockingIssues).toEqual([
+		expect.objectContaining({
+			type: 'agent-invalid',
+			sourceAgentId: 'source',
+			path: 'skills.skill_shared',
+			message: expect.stringContaining('already belongs to another'),
+		}),
+	]);
+	await deleteSkill('skill_shared');
+	await deleteSkill(copyId);
+});
+
 it.each([
 	['another skill with the same name', 'skill_other', 'REVIEW', 'already named "Review"'],
 	['changed content under fail', 'skill_shared', 'Review', 'already exists with different content'],
