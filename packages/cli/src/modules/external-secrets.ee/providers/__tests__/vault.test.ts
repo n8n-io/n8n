@@ -855,13 +855,15 @@ describe('VaultProvider', () => {
 			{ location: 'nested folder', subPath: '', folderPath: 'team/' },
 			{ location: 'configured sub-path', subPath: 'team/project/', folderPath: '' },
 		])('at a $location', ({ subPath, folderPath }) => {
-			it.each([
-				{
-					state: 'deleted',
-					metadata: { deletion_time: '2026-11-10T00:00:00Z', destroyed: false },
-				},
-				{ state: 'destroyed', metadata: { deletion_time: '', destroyed: true } },
-			])('should remove a $state version that remains listed', async ({ metadata }) => {
+			it.each(
+				[
+					{
+						state: 'deleted',
+						metadata: { deletion_time: '2026-11-10T00:00:00Z', destroyed: false },
+					},
+					{ state: 'destroyed', metadata: { deletion_time: '', destroyed: true } },
+				].flatMap((entry) => [200, 404].map((status) => ({ ...entry, status }))),
+			)('should remove a listed $state version after GET $status', async ({ metadata, status }) => {
 				const provider = new VaultProvider(logger);
 				await provider.init(vaultSettingsWithKvPath('secret/', '2', subPath));
 				const path = subPath + folderPath;
@@ -884,7 +886,7 @@ describe('VaultProvider', () => {
 					.reply(200, kvV2SecretResponse({ password: 'old-password' }))
 					.get(`/v1/secret/data/${path}app`)
 					.twice()
-					.reply(404, { data: { data: null, metadata: { ...metadata, version: 1 } } })
+					.reply(status, { data: { data: null, metadata: { ...metadata, version: 1 } } })
 					.get(`/v1/secret/data/${path}sibling`)
 					.times(3)
 					.reply(200, kvV2SecretResponse({ password: 'updated-password' }))

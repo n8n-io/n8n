@@ -134,9 +134,8 @@ function isEmptyKvListResponse(statusCode: number | undefined, body: unknown): b
 	);
 }
 
-function isDeletedKvV2SecretResponse(statusCode: number | undefined, body: unknown): boolean {
+function isDeletedKvV2SecretResponse(body: unknown): boolean {
 	if (
-		statusCode !== 404 ||
 		!isRecord(body) ||
 		!isRecord(body.data) ||
 		body.data.data !== null ||
@@ -616,6 +615,9 @@ export class VaultProvider extends SecretsProvider {
 										method: 'GET',
 									}),
 							);
+							if (kvVersion === '2' && isDeletedKvV2SecretResponse(secretBody)) {
+								return null;
+							}
 							this.logger.debug(`Vault provider retrieved secrets from ${secretPath}`);
 							return [
 								key,
@@ -627,7 +629,8 @@ export class VaultProvider extends SecretsProvider {
 							if (
 								kvVersion === '2' &&
 								isHttpRequestError(error) &&
-								isDeletedKvV2SecretResponse(error.response?.status, error.response?.data)
+								error.response?.status === 404 &&
+								isDeletedKvV2SecretResponse(error.response.data)
 							) {
 								return null;
 							}
