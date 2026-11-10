@@ -109,6 +109,34 @@ describe('NodeCreator', () => {
 		);
 	});
 
+	function clickOn(target: Element) {
+		const [[, handler]] = vi.mocked(onClickOutside).mock.calls;
+		const event = new PointerEvent('click');
+		Object.defineProperty(event, 'target', { value: target });
+		handler(event);
+	}
+
+	it('stays open on a click inside an overlay layer', () => {
+		const { emitted } = renderComponent();
+		const layer = document.body.appendChild(document.createElement('div'));
+		layer.setAttribute('data-dismissable-layer', '');
+
+		clickOn(layer.appendChild(document.createElement('button')));
+
+		expect(emitted('closeNodeCreator')).toBeUndefined();
+		layer.remove();
+	});
+
+	it('closes on a click outside it and outside any overlay layer', () => {
+		const { emitted } = renderComponent();
+		const outside = document.body.appendChild(document.createElement('div'));
+
+		clickOn(outside);
+
+		expect(emitted('closeNodeCreator')).toHaveLength(1);
+		outside.remove();
+	});
+
 	it('places the panel below the main header', () => {
 		const { getByTestId } = renderComponent({ props: { active: true } });
 

@@ -1,9 +1,12 @@
 import { createSkillLoadTool } from '@n8n/agents';
+import { SPLIT_BUILDER_TOOLS } from '@n8n/api-types';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { resolvePromptProfile } from '../../prompts/prompt-profiles';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
+import { POST_BUILD_FLOW_CUES } from '../context-cues/post-build-flow.cues';
+import { WORKFLOW_BUILDER_CUES } from '../context-cues/workflow-builder.cues';
 import {
 	INSTANCE_AI_SKILLS_DIR,
 	loadInstanceAiPromptSkills,
@@ -22,14 +25,14 @@ describe('Instance AI skills', () => {
 		}
 	});
 
-	// `load_tool` only resolves DEFERRED tools, so a gate that names an always-loaded
-	// tool can only answer `not_found`. The model then falls back to `search_tools`,
-	// which costs 2 to 4 full-context round trips (INS-1394). This caught the
+	// `call_tool` only dispatches to DEFERRED tools, so a gate that sends an always-loaded
+	// tool through it can only answer `not_found`. The model then falls back to `find_tools`,
+	// which costs extra full-context round trips (INS-1394). This caught the
 	// `n8n-docs` gates that went stale when INS-749 made the tool always-loaded.
 	it('never tells the model to load an always-loaded tool', () => {
 		const gatePatterns = [
-			/load\s+`?([\w.-]+)`?\s+via\s+`?load_tool/gi,
-			/calling\s+`?([\w.-]+)`?,\s+load it via\s+`?load_tool/gi,
+			/(?:load|call|run)\s+`?([\w.-]+)`?\s+(?:via|through|with)\s+`?(?:load_tool|call_tool)/gi,
+			/calling\s+`?([\w.-]+)`?,\s+(?:load|call|run) it (?:via|through|with)\s+`?(?:load_tool|call_tool)/gi,
 		];
 		const offenders: string[] = [];
 
@@ -39,12 +42,29 @@ describe('Instance AI skills', () => {
 			for (const pattern of gatePatterns) {
 				for (const match of content.matchAll(pattern)) {
 					const toolName = match[1];
-					// "load it via load_tool" names the tool earlier; the second pattern catches it.
+					// "call it via call_tool" names the tool earlier; the second pattern catches it.
 					if (toolName === 'it') continue;
 					if (ALWAYS_LOADED_TOOL_NAMES.has(toolName)) {
 						offenders.push(`${file} tells the model to load "${toolName}"`);
 					}
 				}
+			}
+		}
+
+		expect(offenders).toEqual([]);
+	});
+
+	// Split tools keep their former names only as aliases for stored calls. A skill that
+	// names one makes the model look up or guess a tool that is not in the tool catalog.
+	it('never names a former multi-action tool that was split into one tool per action', () => {
+		const formerNames = Object.keys(SPLIT_BUILDER_TOOLS).map((name) => name.replace(/[-]/g, '\\-'));
+		const pattern = new RegExp(`\\b(${formerNames.join('|')})\\(action`, 'g');
+		const offenders: string[] = [];
+
+		for (const file of skillMarkdownFiles()) {
+			const content = readFileSync(join(INSTANCE_AI_SKILLS_DIR, file), 'utf-8');
+			for (const match of content.matchAll(pattern)) {
+				offenders.push(`${file} names the former tool "${match[1]}"`);
 			}
 		}
 
@@ -89,13 +109,13 @@ describe('Instance AI skills', () => {
 		expect(skill).toContain('.group(name, members, { description })');
 	});
 
-	it('defers sticky and other SDK defects to workflow-sdk validate', () => {
+	it('defers sticky and other SDK defects to the build source lint', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
 			'utf-8',
 		);
 		expect(skill).toContain('unsolicited `sticky()`');
-		expect(skill).toContain('workflow-sdk validate');
+		expect(skill).toContain('The SDK source lint in `workflow_builder_build_workflow`');
 		expect(skill).not.toMatch(/import \{\n(?:[^\n]*\n)*?\s*sticky,/);
 	});
 
@@ -107,7 +127,7 @@ describe('Instance AI skills', () => {
 
 		expect(recipeResearch).toMatchObject({
 			name: 'credential-recipe-research',
-			recommendedTools: ['research', 'workflow_builder_workflows'],
+			recommendedToolGroups: ['workflows'],
 		});
 		expect(recipeResearch?.description).toContain('Load before composing');
 		expect(recipeResearch?.description).toContain('credentialHints');
@@ -118,7 +138,18 @@ describe('Instance AI skills', () => {
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'references', 'post-build-flow.md'),
 			'utf-8',
 		);
-		expect(postBuildFlow).toMatch(/load the\s+`credential-recipe-research` skill/);
+		expect(postBuildFlow).toMatch(/load the\s+`credential-recipe-research` reference/);
+	});
+
+	// Routing needs intent-recognition once per request; carrying its body for the
+	// rest of the thread costs every later call ~7K tokens.
+	it('expires intent-recognition when the next user turn starts', async () => {
+		for (const version of ['default@1', 'progressive@1']) {
+			const { profile } = resolvePromptProfile({ version });
+			const { source } = await loadInstanceAiPromptSkills(profile);
+			const entry = source.registry.skills.find((skill) => skill.id === 'intent-recognition');
+			expect(entry?.policy?.lifetime).toBe('turn');
+		}
 	});
 
 	it('lists only top-level skills in the catalog', () => {
@@ -127,6 +158,7 @@ describe('Instance AI skills', () => {
 
 		expect(topLevel.sort()).toEqual([
 			'agent-builder',
+			'app-builder',
 			'data-table-manager',
 			'debugging-executions',
 			'instance-awareness',
@@ -134,8 +166,22 @@ describe('Instance AI skills', () => {
 			'n8n-docs-assistant',
 			'progressive-building',
 			'suggest-automations',
+			'v3-migration',
 			'workflow-builder',
 		]);
+	});
+
+	it('asks focused questions before proposing an unclear app', async () => {
+		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
+
+		expect(skill?.instructions).toContain('`ask_user` to clarify it');
+		expect(skill?.instructions).not.toContain('additionalInstructions');
+	});
+
+	it('opens a newly created app before editing its files', async () => {
+		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
+
+		expect(skill?.instructions).toContain('`action: "open"` and the returned `app.id`');
 	});
 
 	it('loads every reference file as a reference skill with a description', () => {
@@ -166,13 +212,17 @@ describe('Instance AI skills', () => {
 			'compositional-workflows',
 			'config-eval-playbook',
 			'config-evals',
+			'credential-choices',
 			'credential-recipe-research',
 			'credential-setup-with-browser-use',
 			'error-workflows',
 			'model-selection',
 			'one-off-operations',
 			'post-build-flow',
+			'publishing',
+			'service-selection',
 			'trigger-input-data-shapes',
+			'trigger-url-sharing',
 		]);
 
 		const loaded = skillLoadText(
@@ -206,10 +256,10 @@ describe('Instance AI skills', () => {
 		expect(dataTableManager).toMatchObject({
 			name: 'data-table-manager',
 			platforms: ['daytona'],
-			recommendedTools: ['data_tables', 'parse-file'],
+			recommendedToolGroups: ['data_tables'],
 		});
 		expect(dataTableManager?.description).toContain(
-			'Load before calling data_tables or parse-file',
+			'Load before calling the data table tools or parse-file',
 		);
 		expect(dataTableManager?.description).toContain('what data tables do I have?');
 		expect(dataTableManager?.description).toContain(
@@ -244,7 +294,7 @@ describe('Instance AI skills', () => {
 		expect(configEvals).toMatchObject({
 			name: 'config-evals',
 			platforms: ['daytona'],
-			recommendedTools: ['eval-config', 'data_tables'],
+			recommendedToolGroups: ['tools', 'data_tables'],
 			parents: ['workflow-builder'],
 		});
 
@@ -308,6 +358,9 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('## Agent UI labels');
 		expect(loaded?.instructions).toContain('Sessions tab');
 		expect(loaded?.instructions).toContain('Never say Runs tab');
+		// The skill and task tools no longer carry the templates, so these load gates must stay.
+		expect(loaded?.instructions).toContain('Load `agent-builder-target-skills`');
+		expect(loaded?.instructions).toContain('Load `agent-builder-target-tasks`');
 	});
 
 	it('loads the bundled Browser Use credential setup skill', async () => {
@@ -317,16 +370,7 @@ describe('Instance AI skills', () => {
 		);
 
 		expect(skill?.name).toBe('credential-setup-with-browser-use');
-		for (const tool of [
-			'research',
-			'workflow_builder_ask_user',
-			'browser_connect',
-			'browser_snapshot',
-			'browser_capture_secret',
-			'browser_create_credential',
-		]) {
-			expect(skill?.recommendedTools).toContain(tool);
-		}
+		expect(skill?.recommendedToolGroups).toBeUndefined();
 		expect(skill?.linkedFiles.references).toEqual([]);
 
 		const loaded = await source.loadSkill('credential-setup-with-browser-use');
@@ -347,13 +391,7 @@ describe('Instance AI skills', () => {
 
 		expect(skill).toMatchObject({
 			name: 'n8n-docs-assistant',
-			recommendedTools: [
-				'n8n-docs',
-				'list_credentials',
-				'search_credential_types',
-				'search_nodes',
-				'get_node_types',
-			],
+			recommendedToolGroups: ['credentials', 'nodes'],
 		});
 		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
 		expect(skill?.description).not.toContain('load_tool');
@@ -379,25 +417,7 @@ describe('Instance AI skills', () => {
 
 		expect(skill?.name).toBe('workflow-builder');
 		expect(skill?.platforms).toBeUndefined();
-		expect(skill?.recommendedTools).toEqual([
-			'read_file',
-			'write_file',
-			'edit_file',
-			'execute_command',
-			'workflow_builder_build_workflow',
-			'workflow_builder_workflows',
-			'search_nodes',
-			'get_node_types',
-			'get_node_parameter_options',
-			'execute_node',
-			'data_tables',
-			'list_credentials',
-			'search_credential_types',
-			'setup_credentials',
-			'test_credential',
-			'workflow_builder_verify_built_workflow',
-			'workflow_builder_executions',
-		]);
+		expect(skill?.recommendedToolGroups).toBeUndefined();
 		expect(skill?.description).toContain('Load before calling workflow_builder_build_workflow');
 		expect(skill?.description).not.toContain('Default path');
 		expect(skill?.description).toContain('new one-off workflows');
@@ -405,7 +425,7 @@ describe('Instance AI skills', () => {
 		expect(skill?.description).toContain(
 			'For any other new workflow, load intent-recognition first when it is listed',
 		);
-		expect(skill?.description).toContain('workflow-sdk validate');
+		expect(skill?.description).not.toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
 
 		const loaded = await source.loadSkill('workflow-builder');
@@ -414,8 +434,9 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('filePath');
 		expect(loaded?.instructions).toContain('workspace_write_file');
 		expect(loaded?.instructions).toContain(
-			'node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate',
+			'Do not run a separate validation command before the build',
 		);
+		expect(loaded?.instructions).not.toContain('cli/index.js validate');
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('`search_nodes` with `categories`');
 		expect(loaded?.instructions).toContain('`search_nodes` with `query`/`queries`');
@@ -427,9 +448,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain(
 			'Do not call\n    `workflow_builder_verify_built_workflow` directly',
 		);
-		expect(loaded?.instructions).toContain(
-			'workflow_builder_workflows(action="get-as-code", workflowId)',
-		);
+		expect(loaded?.instructions).toContain('`get_workflow_as_code` with `workflowId`');
 		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');
 		expect(loaded?.instructions).toContain('the `error-workflows` reference');
 		expect(loaded?.instructions).toContain('settings.errorWorkflow');
@@ -441,26 +460,39 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('n8n-docs-assistant');
 		expect(loaded?.instructions).toContain('never load `templates/index.json`');
 		expect(loaded?.instructions).toContain('node-types/index.txt');
-		expect(loaded?.instructions).toContain('## Trigger URL Sharing');
-		expect(loaded?.instructions).toContain('{formBaseUrl}/{path}');
-		expect(loaded?.instructions).toContain('**Open chat** button');
-		expect(loaded?.instructions).toContain('batch\n`get_node_types`');
-		expect(loaded?.instructions).toContain('together with the `load_skill` call');
+		// Eval-driven rules arrive as retrieved context cues, not in the skill body.
+		const builderCueText = WORKFLOW_BUILDER_CUES.cues.map(({ text }) => text).join('\n');
+		// The path is set while building; sharing the URL happens after the build.
+		expect(builderCueText).toContain('explicit, readable `path`');
+		expect(loaded?.instructions).not.toContain('## Trigger URL Sharing');
+		expect(loaded?.instructions).not.toContain('{formBaseUrl}/{path}');
+		expect(loaded?.instructions).not.toContain('**Open chat** button');
+		// URLs are shared after the build, from a reference post-build-flow points to.
+		const postBuild = (await source.loadSkill('post-build-flow'))?.instructions ?? '';
+		expect(postBuild).toContain('`trigger-url-sharing`');
+		const urls = (await source.loadSkill('trigger-url-sharing'))?.instructions ?? '';
+		expect(urls).toContain('# Trigger URL Sharing');
+		expect(urls).toContain('{formBaseUrl}/{path}');
+		expect(urls).toContain('**Open chat** button');
+		expect(loaded?.instructions).toContain('make one\n`find_tools` call');
+		expect(loaded?.instructions).toContain('in the same response as the\n`load_skill` call');
+		expect(loaded?.instructions).toContain('the `credential-choices`');
 		expect(loaded?.instructions).toContain(
 			'never stop before the first\n`workflow_builder_build_workflow` call',
 		);
-		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
-		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
+		expect(builderCueText).toContain('inspect it first via `debugging-executions`');
+		// The sandbox runs the published workflow-sdk, which does not yet warn about MOCK_OUTPUT_JSON_ENVELOPE.
+		expect(builderCueText).toContain('mock `output` items are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the n8n\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
-		expect(loaded?.instructions).toContain(
+		expect(builderCueText).toContain(
 			'Do NOT wire branches as standalone statements after `export default`',
 		);
-		expect(loaded?.instructions).toContain('never reaches the builder');
+		expect(builderCueText).toContain('calls never reach the builder');
 	});
 
 	it('loads the bundled one-off-operations skill', async () => {
@@ -475,7 +507,7 @@ describe('Instance AI skills', () => {
 		const flattened = loaded?.instructions.replace(/\s+/g, ' ');
 		expect(flattened).toContain('executionIntent: "one-off"');
 		expect(flattened).toContain('not required and never the completion criterion');
-		expect(flattened).toContain('get-node-output');
+		expect(flattened).toContain('get_execution_node_output');
 		expect(flattened).toContain('keep the workflow for future reuse or delete');
 	});
 
@@ -493,56 +525,76 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "not_verifiable"');
 		expect(loaded?.instructions).toContain('setupRequirement.status === "required"');
 		expect(loaded?.instructions).toMatch(/inline setup card in\s+the n8n Assistant panel/);
-		expect(loaded?.instructions).toContain(
-			'ask once whether the user wants to build an error workflow for that workflow',
-		);
-		expect(loaded?.instructions).toContain(
-			'Do not replace this explicit opt-in with a generic "add\n    anything else?", publish, or test question.',
-		);
-		expect(loaded?.instructions).toMatch(
-			/ask only whether the user wants the live test\. Do not\s+mention publishing or ask about the error workflow/,
-		);
-		expect(loaded?.instructions).toContain(
-			'The error workflow must be published before it can be assigned',
-		);
-		expect(loaded?.instructions).toContain('Continue the publish-before-assign flow');
-		expect(loaded?.instructions).toContain('settings.errorWorkflow');
-		expect(loaded?.instructions).toContain(
-			'The opt-in must explicitly mention an error workflow and the target workflow\nname.',
-		);
-		expect(loaded?.instructions).toContain(
-			'Mention that n8n has\n   no global or instance-wide error workflow setting only when the user\n   explicitly asked about',
-		);
 		expect(loaded?.instructions).toContain('Mocked verification live-test follow-up');
-		expect(loaded?.instructions).toMatch(
-			/Do not ask whether to build now and set up\s+credentials later/,
-		);
-		expect(loaded?.instructions).toContain(
-			'Ask once when a service has multiple credentials of the same type',
-		);
-		expect(loaded?.instructions).toContain(
-			'Ask which auth type to use when a service supports more than one',
-		);
-		expect(loaded?.instructions).toContain(
-			'Only call `workflow_builder_workflows(action="publish")` when the user explicitly asks',
-		);
 		expect(loaded?.instructions).toContain(
 			'Do not proactively offer, recommend, or mention publishing until a successful',
-		);
-		expect(loaded?.instructions).toContain(
-			'A user-run execution satisfies the publishing gate only',
 		);
 		expect(loaded?.instructions).toContain(
 			'Do not offer publishing as an alternative or describe the workflow as ready to\nuse or publish',
 		);
 
+		// Credential questions during setup live in the credential-choices reference.
+		expect(loaded?.instructions).toContain('`credential-choices`');
+		const credentialChoices = (await source.loadSkill('credential-choices'))?.instructions ?? '';
+		expect(credentialChoices).toMatch(
+			/Do not ask whether to build now and set up\s+credentials later/,
+		);
+		expect(credentialChoices).toMatch(
+			/Let setup collect the choice when a service has multiple credentials of the\s+same type/,
+		);
+		expect(credentialChoices).toContain(
+			'Ask which auth type to use when a service supports more than one** only for a\nstandalone credential request',
+		);
+		expect(credentialChoices).toMatch(
+			/In a\s+workflow build, never ask about the auth type, before or after the build/,
+		);
+		expect(loaded?.instructions).not.toContain('Credentials before build');
 		expect(loaded?.instructions).toContain('`trigger-input-data-shapes`');
+		expect(loaded?.instructions).toContain('load the `publishing` reference');
+		expect(loaded?.instructions).toContain('load `error-workflows` and follow its');
+		expect(loaded?.instructions.length).toBeLessThan(35_000);
+
+		// Step-specific sections live in the reference that owns the step.
+		const errorWorkflows = (await source.loadSkill('error-workflows'))?.instructions ?? '';
+		expect(errorWorkflows).toContain(
+			'ask once whether the user wants to build an error workflow for that workflow',
+		);
+		// These step rules moved to post-build-flow context cues.
+		const cueText = POST_BUILD_FLOW_CUES.cues.map((cue) => cue.text).join('\n');
+		expect(cueText).toContain('Do not replace it with a generic "anything else?"');
+		expect(cueText).toContain('After setup with mocked evidence, ask only about the live test.');
+		expect(errorWorkflows).toContain(
+			'The error workflow must be published before it can be assigned',
+		);
+		expect(errorWorkflows).toContain('Continue the publish-before-assign flow');
+		expect(errorWorkflows).toContain('settings.errorWorkflow');
+		expect(errorWorkflows).toContain(
+			'The opt-in must explicitly mention an error workflow and the target workflow\nname.',
+		);
+		expect(errorWorkflows).toContain(
+			'Mention that n8n has\n   no global or instance-wide error workflow setting only when the user\n   explicitly asked about',
+		);
+
+		const publishing = (await source.loadSkill('publishing'))?.instructions ?? '';
+		expect(publishing).toContain('A user-run execution satisfies the publishing gate only');
+		expect(publishing).toContain('acknowledgeUnverified: true');
+		expect(publishing).toContain('Fixing a workflow that is already published');
+		expect(publishing).toContain(
+			'Only run `publish_workflow` through `call_tool` when the user explicitly asks',
+		);
+
+		const recipes = (await source.loadSkill('credential-recipe-research'))?.instructions ?? '';
+		expect(recipes).toContain('"suggestedName": "fal.ai API Key"');
+		expect(recipes).not.toContain('load the\n`credential-recipe-research` skill');
+		expect(recipes).toContain('`placeholders` — one entry per marker');
 
 		const loadTool = createSkillLoadTool(source);
 		const reference = skillLoadText(
 			await loadTool.handler?.({ skillId: 'trigger-input-data-shapes' }, {}),
 		);
 		expect(reference).toContain('Do NOT wrap in `formFields`');
+		expect(reference).toContain('{body, query, headers, params}');
+		expect(reference).toMatch(/simulated downstream node can still\s+look green/);
 	});
 
 	it('loads the bundled instance-awareness skill', async () => {
@@ -559,16 +611,11 @@ describe('Instance AI skills', () => {
 		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'debugging-executions');
 
-		expect(skill?.recommendedTools).toEqual([
-			'workflow_builder_executions',
-			'workflow_builder_workflows',
-		]);
+		expect(skill?.recommendedToolGroups).toEqual(['executions', 'workflows']);
 
 		const loaded = await source.loadSkill('debugging-executions');
-		expect(loaded?.instructions).toContain('workflow_builder_executions(action="debug")');
-		expect(loaded?.instructions).toContain(
-			'workflow_builder_executions(action="get-resolved-node-parameters", executionId, nodeName)',
-		);
+		expect(loaded?.instructions).toContain('debug_execution');
+		expect(loaded?.instructions).toContain('get_resolved_node_parameters(executionId, nodeName)');
 		expect(loaded?.instructions).toContain('unreconstructable-context');
 		expect(loaded?.instructions).toContain('do this unprompted');
 		expect(loaded?.instructions).toContain('## Before you name a cause');

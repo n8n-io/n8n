@@ -20,14 +20,14 @@ export const nodeTypePrompt = async () =>
 			message: 'What kind of node are you building?',
 			options: [
 				{
-					label: 'HTTP API',
+					label: 'Declarative',
 					value: 'declarative',
-					hint: 'Low-code, faster approval for n8n Cloud',
+					hint: 'Recommended. Easier to maintain, ideal for REST APIs',
 				},
 				{
 					label: 'Programmatic',
 					value: 'programmatic',
-					hint: 'Programmatic node with full flexibility',
+					hint: 'For triggers, non-REST APIs, or custom data handling',
 				},
 			],
 			initialValue: 'declarative',

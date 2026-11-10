@@ -8,7 +8,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { findExportableProjects } from './project-export-access';
 import { ProjectShellExporter, type ProjectShellExportContext } from './project-shell.exporter';
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { ManifestEntry, WorkflowManifestEntry } from '../../spec/manifest.schema';
 import type { ExportVersionPolicy } from '../../n8n-packages.types';
 import { FolderExporter } from '../folder/folder.exporter';
 import type { FolderExportResult } from '../folder/folder.exporter';
@@ -31,12 +31,14 @@ export interface ProjectExportRequest {
 	 * project shells only. Every id must belong to one of `projectIds`.
 	 */
 	workflowIds?: string[];
+	/** With `workflowIds`, also export these folders and the folders above them. */
+	folderIds?: string[];
 }
 
 interface ProjectExportResult {
 	entries: ManifestEntry[];
 	folderEntries: ManifestEntry[];
-	workflowEntries: ManifestEntry[];
+	workflowEntries: WorkflowManifestEntry[];
 	requirements: ExportRequirements;
 	projectTargetsById: Map<string, string>;
 }
@@ -59,7 +61,9 @@ export class ProjectExporter {
 			request.projectIds,
 		);
 
-		const selectedWorkflowIds = request.workflowIds ? new Set(request.workflowIds) : undefined;
+		// A selection of only folders still selects, so it must not export every workflow.
+		const selectedWorkflowIds =
+			request.workflowIds || request.folderIds ? new Set(request.workflowIds) : undefined;
 
 		if (request.workflowIds) {
 			await this.assertSelectionInProjects(request.workflowIds, projects, request.user);
@@ -156,6 +160,7 @@ export class ProjectExporter {
 			includeArchivedWorkflows: request.includeArchivedWorkflows,
 			basePrefix: target,
 			selectedWorkflowIds,
+			selectedFolderIds: request.folderIds ? new Set(request.folderIds) : undefined,
 		});
 	}
 

@@ -8,6 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WebhookRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_PATH_SUFFIX, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -33,7 +34,7 @@ const rootAgentFor = (user: User) => {
 	return agent;
 };
 
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { OAuthClient } from '../database/entities/oauth-client.entity';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
 const testServer = setupTestServer({
@@ -381,7 +382,8 @@ describe('runtime gate: verifyOAuthAccessToken enforces workflow:execute', () =>
 		const tokenService = Container.get(OAuthTokenService);
 		// A registered client is needed only to satisfy the token rows' FK.
 		const clientId = `client-${randomUUID()}`;
-		await Container.get(OAuthClientRepository).save({
+		const clients = Container.get(DataSource).getRepository(OAuthClient);
+		await clients.save({
 			id: clientId,
 			name: 'Chat resolver tests',
 			redirectUris: ['https://example.com/callback'],
@@ -516,7 +518,8 @@ describe('consent reuse on a second visit', () => {
 
 		// Seed a prior consent for this exact (clientId, user) pair, as a previous visit
 		// would have left behind.
-		await Container.get(OAuthClientRepository).upsert(
+		const clients = Container.get(DataSource).getRepository(OAuthClient);
+		await clients.upsert(
 			{
 				id: resourceUrl,
 				name: 'chat trigger',

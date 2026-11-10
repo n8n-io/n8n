@@ -147,6 +147,22 @@ describe('GitLabMergeRequestClient', () => {
 		expect(created.diff_refs).toBeUndefined();
 	});
 
+	it('keeps the users who merged or closed the merge request', async () => {
+		respond(201, {
+			...mergeRequest,
+			state: 'merged',
+			merge_user: { name: 'Ada Lovelace', username: 'ada' },
+			merged_by: { name: 'Ada Lovelace' },
+			closed_by: null,
+		});
+
+		const created = await openMergeRequest();
+
+		expect(created.merge_user).toEqual({ name: 'Ada Lovelace' });
+		expect(created.merged_by).toEqual({ name: 'Ada Lovelace' });
+		expect(created.closed_by).toBeNull();
+	});
+
 	it('rejects a merge request response that misses required fields', async () => {
 		respond(201, { iid: 3 });
 
@@ -176,6 +192,25 @@ describe('GitLabMergeRequestClient', () => {
 
 		await expect(promise).rejects.toThrow(errorClass);
 		await expect(promise).rejects.toThrow(message);
+	});
+
+	it.each([401, 403])(
+		'asks for the Maintainer role when a merge returns HTTP %s',
+		async (status) => {
+			respond(status, {});
+
+			await expect(client.merge(access, { projectId: 42, iid: 7 }, 'abc')).rejects.toThrow(
+				/Maintainer role/,
+			);
+		},
+	);
+
+	it.each([401, 403])('asks for the Developer role when a read returns HTTP %s', async (status) => {
+		respond(status, {});
+
+		await expect(client.getMergeRequest(access, { projectId: 42, iid: 7 })).rejects.toThrow(
+			/Developer role/,
+		);
 	});
 
 	it('includes field errors from a GitLab validation response', async () => {

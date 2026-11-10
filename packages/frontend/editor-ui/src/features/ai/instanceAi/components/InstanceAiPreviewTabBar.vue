@@ -1,13 +1,5 @@
 <script lang="ts" setup>
-import {
-	N8nDropdownMenu,
-	N8nHoverCard,
-	N8nIcon,
-	N8nIconButton,
-	N8nLoading,
-} from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
-import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { N8nHoverCard, N8nIcon, N8nIconButton, N8nLoading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	ContextMenuContent,
@@ -23,11 +15,12 @@ import { useTimeoutFn } from '@vueuse/core';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { DEBOUNCE_TIME, HOVER_DELAY } from '@/app/constants/durations';
+import { HOVER_DELAY } from '@/app/constants/durations';
 import type { ArtifactTab } from '../useCanvasPreview';
+import { useArtifactLinks } from '../artifactLinks';
 import { hasTabSummary, useArtifactTabSummaries } from '../useArtifactTabSummaries';
-import { useProjectResourceSearch } from '../composables/useProjectResourceSearch';
 import { TAB_DRAG_IGNORE_ATTRIBUTE, useTabDragReorder } from '../composables/useTabDragReorder';
+import InstanceAiResourcePicker from './InstanceAiResourcePicker.vue';
 
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import ManualEditorButton from '@/experiments/openWorkflowInAssistant/components/ManualEditorButton.vue';
@@ -60,6 +53,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const clipboard = useClipboard();
+const { artifactUrl, openArtifactInNewTab } = useArtifactLinks();
 const toast = useToast();
 const tabListRef = ref<HTMLElement | null>(null);
 const sizeToggleLabel = computed(() =>
@@ -121,21 +115,8 @@ watch(
 	},
 );
 
-function tabHref(tab: ArtifactTab): string | undefined {
-	if (tab.type === 'workflow') return `/workflow/${tab.id}`;
-	if (tab.type === 'data-table') {
-		return tab.projectId ? `/projects/${tab.projectId}/datatables/${tab.id}` : '/home/datatables';
-	}
-	if (tab.type === 'agent') {
-		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
-	}
-	return undefined;
-}
-
 function handleOpenInEditor(tab: ArtifactTab) {
-	const href = tabHref(tab);
-	if (!href) return;
-	window.open(href, '_blank', 'noopener');
+	openArtifactInNewTab(tab.type, tab.id, tab.projectId);
 }
 
 type HoverTarget = { tabId: string; reference: HTMLElement };
@@ -250,38 +231,9 @@ const tabDrag = useTabDragReorder({
 	onDragStart: () => hideTabHoverCard(),
 });
 
-// --- New tab picker ---
-
-const isPickerOpen = ref(false);
-const resourceSearch = useProjectResourceSearch({
-	projectId: () => props.projectId,
-	excludedTabs: () => props.tabs,
-});
-const pickerItems = computed(
-	(): Array<DropdownMenuItemProps<string>> =>
-		resourceSearch.results.value.map((resource) => ({
-			id: `${resource.type}:${resource.id}`,
-			label: resource.name,
-			icon: { type: 'icon', value: resource.icon },
-		})),
-);
-
-function handlePickerOpenChange(open: boolean) {
-	isPickerOpen.value = open;
-	if (open) void resourceSearch.search();
-}
-
-function handlePickerSelect(itemId: string) {
-	const resource = resourceSearch.results.value.find(
-		(result) => `${result.type}:${result.id}` === itemId,
-	);
-	if (resource) emit('openTab', resource);
-}
-
 async function handleCopyLink(tab: ArtifactTab) {
-	const href = tabHref(tab);
-	if (!href) return;
-	const url = new URL(href, window.location.origin).toString();
+	const url = artifactUrl(tab.type, tab.id, tab.projectId);
+	if (!url) return;
 	await clipboard.copy(url);
 	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 }
@@ -372,34 +324,23 @@ async function handleCopyLink(tab: ArtifactTab) {
 					</ContextMenuContent>
 				</ContextMenuPortal>
 			</ContextMenuRoot>
-			<N8nDropdownMenu
+			<InstanceAiResourcePicker
 				v-if="projectId"
-				:model-value="isPickerOpen"
-				:items="pickerItems"
-				:loading="resourceSearch.isLoading.value && pickerItems.length === 0"
-				:search-placeholder="i18n.baseText('instanceAi.previewTabBar.searchResources')"
-				:search-debounce="getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH)"
-				:empty-text="i18n.baseText('instanceAi.previewTabBar.noResources')"
-				:extra-popper-class="$style.picker"
-				max-height="320px"
-				placement="bottom-start"
-				content-test-id="instance-ai-tab-picker"
-				searchable
-				@update:model-value="handlePickerOpenChange"
-				@search="resourceSearch.search"
-				@select="handlePickerSelect"
+				:project-id="projectId"
+				:excluded-tabs="tabs"
+				@select="emit('openTab', $event)"
 			>
-				<template #trigger>
+				<template #trigger="{ isOpen }">
 					<N8nIconButton
 						icon="plus"
 						variant="ghost"
 						size="small"
-						:class="[$style.newTabButton, { [$style.newTabButtonOpen]: isPickerOpen }]"
+						:class="[$style.newTabButton, { [$style.newTabButtonOpen]: isOpen }]"
 						:aria-label="i18n.baseText('instanceAi.previewTabBar.newTab')"
 						data-test-id="instance-ai-new-tab-button"
 					/>
 				</template>
-			</N8nDropdownMenu>
+			</InstanceAiResourcePicker>
 		</TabsList>
 		<!-- One shared card follows the hovered tab, so each tab does not mount its own. -->
 		<N8nHoverCard
@@ -730,10 +671,6 @@ async function handleCopyLink(tab: ArtifactTab) {
 // Keep the hover background while the picker is open, as in the design.
 .newTabButtonOpen {
 	background-color: var(--background--hover);
-}
-
-.picker {
-	width: 200px;
 }
 
 .contextMenu {

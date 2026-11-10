@@ -227,6 +227,34 @@ function expectStateMapsNotPolluted(state: AgentRunState): void {
 // ---------------------------------------------------------------------------
 
 describe('agent-run-reducer', () => {
+	it('keeps skill updates through history restore and deduplicates replay', () => {
+		const state = stateWithRun('run-1', 'root');
+		const event: InstanceAiEvent = {
+			type: 'skill-update',
+			runId: 'run-1',
+			agentId: 'root',
+			payload: {
+				skillId: 'hub:1',
+				name: 'Writing',
+				version: 'v2',
+				change: 'updated',
+				content: 'Use the revised writing instructions.',
+			},
+		};
+		reduceEvent(state, event);
+		const restored = stateFromAgentTree(deepCopy(toAgentTree(state)))!;
+		reduceEvent(restored, event);
+		expect(restored.agentsById.root.timeline).toEqual([
+			{ type: 'skill-update', runId: 'run-1', ...event.payload },
+		]);
+		reduceEvent(restored, {
+			...event,
+			payload: { skillId: 'hub:1', version: null, change: 'unavailable' },
+		});
+		expect(restored.agentsById.root.timeline).toHaveLength(2);
+		expect(restored.agentsById.root.toolCalls).toEqual([]);
+	});
+
 	describe('instance context', () => {
 		it('appends what the turn was handed to the root timeline', () => {
 			const state = stateWithRun('run-1', 'root');
@@ -822,6 +850,31 @@ describe('agent-run-reducer', () => {
 
 			const tc = state.toolCallsById['tc-legacy'];
 			expect(tc.toolName).toBe('workflow_builder_build_workflow');
+			expect(tc.renderHint).toBe('builder');
+		});
+
+		it('shows the tool that a tool catalog call_tool call runs', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'tool-input-start',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-catalog', toolName: 'call_tool' },
+			});
+			reduceEvent(state, {
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-catalog',
+					toolName: 'call_tool',
+					args: { tool: 'build-workflow', arguments: { name: 'Tickets' } },
+				},
+			});
+
+			const tc = state.toolCallsById['tc-catalog'];
+			expect(tc.toolName).toBe('workflow_builder_build_workflow');
+			expect(tc.args).toEqual({ name: 'Tickets' });
 			expect(tc.renderHint).toBe('builder');
 		});
 

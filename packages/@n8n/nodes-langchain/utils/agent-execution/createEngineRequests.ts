@@ -11,7 +11,12 @@ import type {
 	ToolCallRequest,
 	ToolMetadata,
 } from './types';
-import { isGeminiThoughtSignatureBlock, isRedactedThinkingBlock, isThinkingBlock } from './types';
+import {
+	isGeminiThoughtSignatureBlock,
+	isRedactedThinkingBlock,
+	isThinkingBlock,
+	INTERNAL_TOOL_ARG_STASH_KEY,
+} from './types';
 
 export function hasGatedToolNodeName(
 	metadata: unknown,
@@ -243,7 +248,17 @@ export function createEngineRequests(
 
 			let input: IDataObject = toolInput;
 			if (metadata.isFromToolkit) {
-				input = { ...input, tool: toolCall.tool };
+				input = { ...input };
+				delete input[INTERNAL_TOOL_ARG_STASH_KEY];
+				if (metadata.isMcpTool) {
+					const stashedArguments: IDataObject = {};
+					if ('tool' in input) stashedArguments.tool = input.tool;
+					if ('toolCallId' in input) stashedArguments.toolCallId = input.toolCallId;
+					if (Object.keys(stashedArguments).length > 0) {
+						input[INTERNAL_TOOL_ARG_STASH_KEY] = stashedArguments;
+					}
+				}
+				input.tool = toolCall.tool;
 			}
 			if (hitlMetadata) {
 				// This input will be used as HITL node input

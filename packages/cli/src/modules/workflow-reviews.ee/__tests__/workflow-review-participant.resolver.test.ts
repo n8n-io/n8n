@@ -1,5 +1,5 @@
+import { Person } from '@n8n/db';
 import type {
-	User,
 	UserRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
@@ -26,7 +26,14 @@ describe('WorkflowReviewParticipantResolver', () => {
 
 	function mockUsers(...ids: string[]) {
 		userRepository.findManyByIds.mockResolvedValue(
-			ids.map((id) => mock<User>({ id, email: `${id}@example.com`, firstName: id, lastName: id })),
+			ids.map((id) =>
+				Object.assign(new Person(), {
+					id,
+					email: `${id}@example.com`,
+					firstName: id,
+					lastName: id,
+				}),
+			),
 		);
 	}
 

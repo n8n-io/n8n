@@ -9,6 +9,7 @@ import {
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
 	type RuntimeSkill,
 	type RuntimeSkillLinkedFile,
+	type RuntimeSkillLoadError,
 	type RuntimeSkillLinkedFileGroup,
 	type RuntimeSkillLinkedFiles,
 	type RuntimeSkillRegistry,
@@ -97,11 +98,15 @@ export function filterRuntimeSkillSource(
 		loadSkill: async (skillId) => (excluded.has(skillId) ? null : await source.loadSkill(skillId)),
 		...(loadFile
 			? {
-					loadFile: async (skillId: string, filePath: string) =>
+					loadFile: async (
+						skillId: string,
+						filePath: string,
+						onError?: (error: RuntimeSkillLoadError) => void,
+					) =>
 						excluded.has(skillId) ||
 						hiddenFiles.has(linkedFileKey(skillId, posix.normalize(filePath)))
 							? null
-							: await loadFile(skillId, filePath),
+							: await loadFile(skillId, filePath, onError),
 				}
 			: {}),
 	};
@@ -140,13 +145,17 @@ export function extendRuntimeSkillSource(
 
 	const extended: RuntimeSkillSource = {
 		...source,
+		onContext: (usage) => source.onContext?.(usage),
 		registry: mergeRegistry(source.registry),
 		loadSkill: async (skillId) =>
 			addedIds.has(skillId) ? await added.loadSkill(skillId) : await source.loadSkill(skillId),
 		...(loadFile
 			? {
-					loadFile: async (skillId: string, filePath: string) =>
-						addedIds.has(skillId) ? null : await loadFile(skillId, filePath),
+					loadFile: async (
+						skillId: string,
+						filePath: string,
+						onError?: (error: RuntimeSkillLoadError) => void,
+					) => (addedIds.has(skillId) ? null : await loadFile(skillId, filePath, onError)),
 				}
 			: {}),
 	};
@@ -451,7 +460,7 @@ function toRegistryEntry(skill: RuntimeSkill): RuntimeSkillRegistryEntry {
 		description: skill.description,
 		hash: hashSkill(skill),
 		linkedFiles: normalizeLinkedFiles(skill.linkedFiles),
-		...(skill.recommendedTools ? { recommendedTools: skill.recommendedTools } : {}),
+		...(skill.recommendedToolGroups ? { recommendedToolGroups: skill.recommendedToolGroups } : {}),
 		...(skill.sourceName ? { sourceName: skill.sourceName } : {}),
 		...(skill.path ? { path: skill.path } : {}),
 		...(skill.sourcePath ? { sourcePath: skill.sourcePath } : {}),
@@ -480,7 +489,7 @@ function hashSkill(skill: RuntimeSkill): string {
 		name: skill.name,
 		description: skill.description,
 		instructions: skill.instructions,
-		recommendedTools: skill.recommendedTools,
+		recommendedToolGroups: skill.recommendedToolGroups,
 		allowedTools: skill.allowedTools,
 		interface: skill.interface,
 		policy: skill.policy,

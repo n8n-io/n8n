@@ -1,0 +1,174 @@
+<script setup lang="ts">
+import type { AppResponse, AppVersionResponse } from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nIconButton,
+	useMessage,
+	type ActionDropdownItem,
+} from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { computed, ref } from 'vue';
+
+import { unpublishApp } from '../apps.api';
+import { getAppPermissions } from '../apps.permissions';
+import AppPublishDialog from './publish/AppPublishDialog.vue';
+
+type MenuAction = 'versions' | 'open' | 'showCode' | 'unpublish';
+
+const props = defineProps<{ app: AppResponse; version: AppVersionResponse | null }>();
+
+const emit = defineEmits<{ updated: [app: AppResponse]; showVersions: [] }>();
+
+const i18n = useI18n();
+const toast = useToast();
+const message = useMessage();
+const rootStore = useRootStore();
+const telemetry = useTelemetry();
+
+const busy = ref(false);
+const dialogOpen = ref(false);
+
+const canUpdate = computed(() => getAppPermissions(props.app.projectId).canUpdate);
+const isUpToDate = computed(
+	() => props.version !== null && props.app.publishedVersionId === props.version.id,
+);
+const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() => {
+	const items: Array<ActionDropdownItem<MenuAction>> = [
+		{ id: 'versions', label: i18n.baseText('apps.publish.viewVersions'), icon: 'history' },
+		{ id: 'showCode', label: i18n.baseText('apps.publish.showCode'), icon: 'code' },
+	];
+	if (!props.app.publishedUrl) return items;
+	items.push({ id: 'open', label: i18n.baseText('apps.publish.openApp'), icon: 'external-link' });
+	if (canUpdate.value) {
+		items.push({
+			id: 'unpublish',
+			label: i18n.baseText('apps.publish.unpublish'),
+			icon: 'eye-off',
+			divided: true,
+		});
+	}
+	return items;
+});
+
+async function unpublish() {
+	const answer = await message.confirm(
+		i18n.baseText('apps.publish.unpublishConfirm.message', {
+			interpolate: { name: props.app.name },
+		}),
+		i18n.baseText('apps.publish.unpublishConfirm.title'),
+		{
+			confirmButtonText: i18n.baseText('apps.publish.unpublish'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+			type: 'warning',
+		},
+	);
+	if (answer !== 'confirm') return;
+	busy.value = true;
+	try {
+		emit(
+			'updated',
+			await unpublishApp(rootStore.restApiContext, props.app.projectId, props.app.id),
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.publish.unpublishError'));
+	} finally {
+		busy.value = false;
+	}
+}
+
+function showCode() {
+	telemetry.track(TELEMETRY_EVENT.APPS.USER_CLICKED_SHOW_APP_CODE, {
+		app_id: props.app.id,
+		project_id: props.app.projectId,
+	});
+	toast.showMessage({
+		type: 'info',
+		title: i18n.baseText('apps.showCode.comingSoon.title'),
+		message: i18n.baseText('apps.showCode.comingSoon.message'),
+	});
+}
+
+async function onMenuSelect(action: MenuAction) {
+	if (action === 'showCode') {
+		showCode();
+		return;
+	}
+	if (action === 'versions') {
+		emit('showVersions');
+		return;
+	}
+	const url = props.app.publishedUrl;
+	if (!url) return;
+	if (action === 'open') {
+		window.open(url, '_blank', 'noopener');
+	} else {
+		await unpublish();
+	}
+}
+</script>
+
+<template>
+	<div :class="$style.group" data-test-id="app-publish">
+		<N8nButton
+			:class="[$style.main, { [$style.published]: isUpToDate }]"
+			variant="outline"
+			:loading="busy"
+			:disabled="!canUpdate || !version || isUpToDate"
+			data-test-id="app-publish-button"
+			@click="dialogOpen = true"
+		>
+			{{ i18n.baseText(isUpToDate ? 'apps.publish.published' : 'apps.publish.publish') }}
+		</N8nButton>
+		<N8nActionDropdown
+			:items="menuItems"
+			:disabled="busy"
+			placement="bottom-end"
+			data-test-id="app-publish-menu"
+			@select="onMenuSelect"
+		>
+			<template #activator>
+				<N8nIconButton
+					:class="$style.toggle"
+					variant="outline"
+					icon="chevron-down"
+					:disabled="busy"
+					:aria-label="i18n.baseText('apps.publish.menuAriaLabel')"
+					data-test-id="app-publish-menu-trigger"
+				/>
+			</template>
+		</N8nActionDropdown>
+		<AppPublishDialog
+			v-if="version"
+			v-model:open="dialogOpen"
+			:app="app"
+			:version="version"
+			@updated="emit('updated', $event)"
+		/>
+	</div>
+</template>
+
+<style lang="scss" module>
+.group {
+	display: inline-flex;
+
+	.main {
+		border-top-right-radius: 0;
+		border-bottom-right-radius: 0;
+	}
+
+	.toggle {
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+		border-left: none;
+	}
+}
+
+.published {
+	color: var(--color--text--tint-1);
+}
+</style>

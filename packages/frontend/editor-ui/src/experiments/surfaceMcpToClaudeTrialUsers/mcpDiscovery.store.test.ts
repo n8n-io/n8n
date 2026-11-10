@@ -3,7 +3,13 @@ import { flushPromises } from '@vue/test-utils';
 import { createPinia, disposePinia, getActivePinia, setActivePinia } from 'pinia';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { MCP_DISCOVERY_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	MCP_DISCOVERY_EXPERIMENT,
+	AGENT_BUILDER_EXPERIMENT_COHORT as COHORT,
+	AGENT_BUILDER_CHAT_WIDTH_EXPERIMENT as WIDTH,
+	AGENT_BUILDER_TEST_TOGGLE_EXPERIMENT as TOGGLE,
+	PREFERENCES_EMPTY_STATE_EXPERIMENT as PREFERENCES,
+} from '@/app/constants/experiments';
 
 import { MCP_DISCOVERY_CONNECT_HINT_CALLOUT, useMcpDiscoveryStore } from './mcpDiscovery.store';
 
@@ -111,6 +117,38 @@ describe('MCP discovery store', () => {
 			);
 			await store.refresh();
 			expect(mocks.track).toHaveBeenCalledTimes(1);
+		},
+	);
+
+	it.each([
+		[COHORT.chatWidth, WIDTH.name],
+		[COHORT.testToggle, TOGGLE.name],
+		[COHORT.outside, undefined],
+		[false, undefined],
+		[undefined, undefined],
+		['unknown', undefined],
+	] as const)(
+		'reports only the allocated agent experiment for cohort %s',
+		async (cohort, assignedName) => {
+			const flags: Record<string, string | boolean | undefined> = {
+				[MCP_DISCOVERY_EXPERIMENT.name]: 'variant',
+				[COHORT.name]: cohort,
+				[WIDTH.name]: WIDTH.wide,
+				[TOGGLE.name]: TOGGLE.current,
+				[PREFERENCES.name]: PREFERENCES.examples,
+			};
+			mocks.getVariant.mockImplementation((name: string) => flags[name]);
+			mocks.request.mockResolvedValue({ status: 'assigned', eligibleAt: 123 });
+			await useMcpDiscoveryStore().refresh();
+			expect(mocks.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.MCP.DISCOVERY_EXPOSED,
+				expect.objectContaining({
+					concurrent_experiments: {
+						[PREFERENCES.name]: PREFERENCES.examples,
+						...(assignedName ? { [assignedName]: flags[assignedName] } : {}),
+					},
+				}),
+			);
 		},
 	);
 

@@ -10,7 +10,7 @@ import { DataSource } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
-import { skillContentHash } from '@/modules/skills/skill-content-hash';
+import { skillContentHash } from '@/modules/skills/testing';
 
 const migrationName = 'MigrateAgentSkillsToHub1792764566513';
 

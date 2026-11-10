@@ -1,7 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UserError } from '@n8n/errors';
 import {
+	LATEST_TRUSTED_SOURCE_CONFIG_VERSION,
 	migrateToLatest,
 	trustedSourceConfigSchemaFor,
 	TrustedSourceStore,
@@ -15,7 +16,7 @@ import {
 } from '@n8n/inbound-auth';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import type { TrustedSourceEntity } from './database/entities/trusted-source.entity';
@@ -107,6 +108,32 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		return all.filter((source) => source.config.surfaces[surface] !== undefined);
 	}
 
+	/** Uncached: the status as the database holds it now, for a run that holds the lease. */
+	async getStatus(id: string): Promise<TrustedSourceStatus | undefined> {
+		return (await this.trustedSourceRepository.findById(id, {}))?.status;
+	}
+
+	/**
+	 * `true` for the one caller that stamps the row; the database decides between instances. A
+	 * snapshot that already carries the stamp skips the write, so the steady state costs no query.
+	 * A snapshot cached before the column existed has no stamp either way, hence the truthy check.
+	 */
+	async recordFirstAuthentication(source: TrustedSource): Promise<boolean> {
+		if (source.firstAuthenticatedAt) return false;
+		const first = await this.trustedSourceRepository.markFirstAuthenticated(source.id, {});
+		// Win or loss, the snapshot is stale: the next read must carry the stamp to short-circuit.
+		// The stamp is committed; a failed invalidation must not hide the win from the caller.
+		try {
+			await this.invalidateCache(source);
+		} catch (error) {
+			this.logger.warn('First authentication stamped but the cache could not be invalidated', {
+				id: source.id,
+				error,
+			});
+		}
+		return first;
+	}
+
 	/** Sources due for discovery, most urgent first; not cached, the task reads it once a minute. */
 	async listDue(limit: number): Promise<TrustedSource[]> {
 		const rows = await this.trustedSourceRepository.findDue(
@@ -152,14 +179,27 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			},
 			{},
 		);
-		if (recorded) await this.invalidateCache(source);
+		// The write is committed at this point. A failed invalidation leaves stale reads for at most
+		// CACHE_TTL; it must not turn the write into a failure for the caller.
+		if (recorded) {
+			try {
+				await this.invalidateCache(source);
+			} catch (error) {
+				this.logger.warn('Discovery result written but the cache could not be invalidated', {
+					id: source.id,
+					error,
+				});
+			}
+		}
 		return recorded;
 	}
 
 	async create(input: CreateTrustedSourceInput): Promise<TrustedSource> {
 		// Persist the parsed, migrated output, not the raw input: stored rows hold the latest version
 		// with defaults filled in, so a later default change must not alter them.
-		const config = migrateToLatest(trustedSourceConfigSchemaFor('admin').parse(input.config));
+		const config = migrateToLatest(trustedSourceConfigSchemaFor('admin').parse(input.config), {
+			managedBy: 'admin',
+		});
 		const row = await this.trustedSourceRepository.insertRow(
 			{
 				name: input.name,
@@ -191,6 +231,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		if (input.config !== undefined) {
 			const config = migrateToLatest(
 				trustedSourceConfigSchemaFor(row.managedBy).parse(input.config),
+				{ managedBy: row.managedBy },
 			);
 			changes.configVersion = config.version;
 			changes.config = await this.cipher.encryptV2(config);
@@ -217,10 +258,15 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		await this.invalidateCache(row, changes.issuer);
 	}
 
-	async delete(id: string): Promise<void> {
+	/**
+	 * Reads only the raw row, never the config, so a source whose config cannot be read can still
+	 * be deleted. Returns the id and issuer of the deleted row.
+	 */
+	async delete(id: string): Promise<Pick<TrustedSource, 'id' | 'issuer'>> {
 		const row = await this.loadAdminRow(id, 'delete');
 		await this.trustedSourceRepository.deleteById(id, {}); // identities go with it via FK cascade
 		await this.invalidateCache(row);
+		return { id: row.id, issuer: row.issuer };
 	}
 
 	/**
@@ -233,7 +279,9 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		const existing = await this.trustedSourceRepository.findById(id, {});
 
 		if (!existing) {
-			const config = migrateToLatest(trustedSourceConfigSchemaFor('system').parse(input.config));
+			const config = migrateToLatest(trustedSourceConfigSchemaFor('system').parse(input.config), {
+				managedBy: 'system',
+			});
 			await this.trustedSourceRepository.insertIfAbsent(
 				{
 					id,
@@ -288,6 +336,57 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		return 'issuer-updated';
 	}
 
+	/**
+	 * Rewrites every row stored below the latest config version, so the database holds what reads
+	 * return. Only the config changes: status, metadata and bindings stay. Reads still migrate on
+	 * demand, so a row this skips stays usable. Returns the number of rows it rewrote.
+	 */
+	async upgradeStoredConfigs(): Promise<number> {
+		const rows = await this.trustedSourceRepository.findWithConfigVersionBelow(
+			LATEST_TRUSTED_SOURCE_CONFIG_VERSION,
+			{},
+		);
+		let upgraded = 0;
+		for (const row of rows) {
+			let written: boolean;
+			try {
+				const config = migrateToLatest(await this.parseConfig(row), {
+					managedBy: row.managedBy,
+				});
+				written = await this.trustedSourceRepository.upgradeConfig(
+					row.id,
+					row.configVersion,
+					{ config: await this.cipher.encryptV2(config), configVersion: config.version },
+					{},
+				);
+			} catch (error) {
+				this.logger.warn('Could not upgrade the config of a trusted source', {
+					id: row.id,
+					reason: ensureError(error).message,
+				});
+				continue;
+			}
+			if (!written) continue;
+			upgraded += 1;
+			// Cached copies were migrated on read, so a stale entry still serves the same config.
+			try {
+				await this.invalidateCache(row);
+			} catch (error) {
+				this.logger.warn('Config upgraded but the cache could not be invalidated', {
+					id: row.id,
+					error,
+				});
+			}
+		}
+		if (upgraded > 0) {
+			this.logger.info('Upgraded stored trusted source configs', {
+				count: upgraded,
+				version: LATEST_TRUSTED_SOURCE_CONFIG_VERSION,
+			});
+		}
+		return upgraded;
+	}
+
 	private async loadAdminRow(id: string, action: 'update' | 'delete') {
 		const row = await this.trustedSourceRepository.findById(id, {});
 		if (!row) throw new NotFoundError(`Trusted source "${id}" not found`);
@@ -312,9 +411,8 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	private async load(row: TrustedSourceEntity | null): Promise<TrustedSource | undefined> {
 		if (!row) return undefined;
 		try {
-			const document = jsonParse<unknown>(await this.cipher.decryptV2(row.config));
-			const config = trustedSourceConfigSchemaFor(row.managedBy).parse(document);
-			return this.toRuntime(row, migrateToLatest(config));
+			const config = migrateToLatest(await this.parseConfig(row), { managedBy: row.managedBy });
+			return this.toRuntime(row, config);
 		} catch (error) {
 			this.logger.warn('Skipping unusable trusted source', {
 				id: row.id,
@@ -322,6 +420,12 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			});
 			return undefined;
 		}
+	}
+
+	/** The stored document, validated for the row but not migrated. Throws when it is unusable. */
+	private async parseConfig(row: TrustedSourceEntity) {
+		const document = jsonParse<unknown>(await this.cipher.decryptV2(row.config));
+		return trustedSourceConfigSchemaFor(row.managedBy).parse(document);
 	}
 
 	private async loadAll(): Promise<TrustedSource[]> {
@@ -340,6 +444,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			status: row.status,
 			lastError: row.lastError,
 			lastCheckedAt: row.lastCheckedAt?.toISOString() ?? null,
+			firstAuthenticatedAt: row.firstAuthenticatedAt?.toISOString() ?? null,
 			createdAt: row.createdAt.toISOString(),
 			updatedAt: row.updatedAt.toISOString(),
 			config,

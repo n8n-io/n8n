@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_STANDALONE_KEY } from '../components/agentBuilderInjectionKeys';
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns */
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
@@ -32,6 +33,7 @@ function mountTooltip(props: {
 	fallback?: string;
 }) {
 	return mount(AgentValidationTooltip, {
+		global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: true } },
 		props: {
 			disabled: false,
 			fallback: 'agents.builder.preview.disabledTooltip',
@@ -45,7 +47,23 @@ function mountTooltip(props: {
 }
 
 describe('AgentValidationTooltip', () => {
-	it('renders preview-specific copy for missing instructions without capability-prefixed bullets', () => {
+	it('keeps the master tooltip content outside the standalone Agents UI', () => {
+		const wrapper = mount(AgentValidationTooltip, {
+			props: {
+				disabled: false,
+				fallback: 'Cannot test yet',
+				action: 'preview',
+				issues: [{ code: 'missing_required', path: 'instructions', capability: { kind: 'agent' } }],
+			},
+		});
+		expect(wrapper.text()).toContain(
+			'agents.builder.preview.issue.agent.instructions.missingRequired',
+		);
+		expect(wrapper.find('ul').exists()).toBe(false);
+		expect(wrapper.text()).not.toContain('agents.validationTooltip.add');
+	});
+
+	it('lists missing instructions under one Add heading', () => {
 		const wrapper = mountTooltip({
 			action: 'preview',
 			issues: [{ code: 'missing_required', path: 'instructions', capability: { kind: 'agent' } }],
@@ -54,12 +72,44 @@ describe('AgentValidationTooltip', () => {
 		const content = wrapper.get('[data-testid="stub-tooltip-content"]');
 
 		expect(content.text()).toContain('agents.builder.preview.disabledTooltip');
-		expect(content.text()).toContain(
-			'agents.builder.preview.issue.agent.instructions.missingRequired',
-		);
+		expect(content.text()).toContain('agents.chat.misconfigured.missing.instructions');
 		expect(content.text()).not.toContain('agents.chat.misconfigured.missing.instructions:');
-		expect(wrapper.findAll('li')).toHaveLength(0);
+		expect(wrapper.findAll('li')).toHaveLength(1);
 	});
+
+	it('groups missing setup fields and other blockers into separate bullet lists', () => {
+		const wrapper = mountTooltip({
+			action: 'preview',
+			issues: [
+				{ code: 'missing_required', path: 'instructions', capability: { kind: 'agent' } },
+				{ code: 'missing_required', path: 'instructions', capability: { kind: 'agent' } },
+				{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } },
+				{ code: 'invalid_credential', path: 'credential', capability: { kind: 'agent' } },
+			],
+		});
+		const content = wrapper.get('[data-testid="stub-tooltip-content"]');
+		expect(content.text()).toContain('agents.builder.preview.disabledTooltip');
+		expect(content.text()).toContain('agents.validationTooltip.add');
+		expect(content.text()).toContain('agents.validationTooltip.fix');
+		const lists = content.findAll('ul');
+		expect(lists).toHaveLength(2);
+		expect(lists[0].findAll('li').map((item) => item.text())).toEqual([
+			'agents.chat.misconfigured.missing.instructions',
+			'agents.chat.misconfigured.missing.model',
+		]);
+		expect(lists[1].findAll('li').map((item) => item.text())).toEqual([
+			'agents.builder.preview.issue.agent.credential.invalidCredential',
+		]);
+	});
+
+	it.each(['Wait for the Assistant to finish working', 'No permission to test'])(
+		'keeps the status warning without setup headings: %s',
+		(fallback) => {
+			const wrapper = mountTooltip({ action: 'preview', fallback });
+			expect(wrapper.get('[data-testid="stub-tooltip-content"]').text()).toBe(fallback);
+			expect(wrapper.find('ul').exists()).toBe(false);
+		},
+	);
 
 	it('filters out preview-excluded issues', () => {
 		const wrapper = mountTooltip({
@@ -92,7 +142,7 @@ describe('AgentValidationTooltip', () => {
 
 		const content = wrapper.get('[data-testid="stub-tooltip-content"]').text();
 
-		expect(content).toContain('agents.builder.preview.issue.agent.instructions.missingRequired');
+		expect(content).toContain('agents.chat.misconfigured.missing.instructions');
 		expect(content).not.toContain(
 			'agents.builder.preview.issue.tool.workflow.incompatibleReference',
 		);
@@ -198,9 +248,9 @@ describe('AgentValidationTooltip', () => {
 
 		const content = wrapper.get('[data-testid="stub-tooltip-content"]').text();
 
-		expect(content).toContain('agents.builder.preview.issue.agent.instructions.missingRequired');
-		expect(content).toContain('agents.builder.preview.issue.agent.model.missingRequired');
-		expect(content).toContain('agents.builder.preview.issue.agent.credential.missingCredential');
+		expect(content).toContain('agents.chat.misconfigured.missing.instructions');
+		expect(content).toContain('agents.chat.misconfigured.missing.model');
+		expect(content).toContain('agents.chat.misconfigured.missing.credential');
 		expect(content).toContain('agents.builder.preview.issue.skill.missingReference');
 		expect(content).toContain('agents.builder.preview.issue.subAgent.missingReference');
 		expect(content).not.toContain('agents.builder.preview.issue.mcpServer.missingCredential');

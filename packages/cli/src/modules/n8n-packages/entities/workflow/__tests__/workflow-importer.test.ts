@@ -28,6 +28,7 @@ const makeWorkflow = (id: string): WorkflowEntity =>
 	});
 
 const bindings: PackageImportBindings = {
+	agents: new Map(),
 	credentials: new Map(),
 	workflows: new Map(),
 };
@@ -72,6 +73,7 @@ describe('WorkflowImporter.apply', () => {
 				parentFolderId: 'folder-1',
 				sourcePublished: false,
 				sourceArchived: false,
+				publishingAction: 'noop',
 			},
 			{
 				action: 'update',
@@ -82,6 +84,7 @@ describe('WorkflowImporter.apply', () => {
 				parentFolderId: null,
 				sourcePublished: false,
 				sourceArchived: false,
+				publishingAction: 'noop',
 			},
 			{
 				action: 'skip',
@@ -91,6 +94,7 @@ describe('WorkflowImporter.apply', () => {
 				parentFolderId: null,
 				sourcePublished: false,
 				sourceArchived: false,
+				publishingAction: 'noop',
 			},
 		] satisfies WorkflowPlanItem[];
 		const plan: WorkflowImportPlan = {
@@ -155,6 +159,7 @@ describe('WorkflowImporter.apply', () => {
 					parentFolderId: null,
 					sourcePublished: false,
 					sourceArchived: false,
+					publishingAction: 'noop',
 				},
 			] satisfies WorkflowPlanItem[],
 			conflicts: [],
@@ -225,6 +230,7 @@ describe('WorkflowImporter.apply', () => {
 					parentFolderId: null,
 					sourcePublished: false,
 					sourceArchived: false,
+					publishingAction: 'noop',
 				},
 			],
 			conflicts: [],
@@ -238,6 +244,7 @@ describe('WorkflowImporter.apply', () => {
 		createWorkflow.mockResolvedValue(makeWorkflow('created'));
 
 		await importer.apply(context, plan, {
+			agents: new Map(),
 			credentials: new Map([['source-credential', 'target-credential']]),
 			workflows: new Map(),
 		});
@@ -280,6 +287,7 @@ describe('WorkflowImporter.apply', () => {
 					parentFolderId: null,
 					sourcePublished: false,
 					sourceArchived: true,
+					publishingAction: 'noop',
 				},
 			],
 			conflicts: [],
@@ -326,6 +334,7 @@ describe('WorkflowImporter.apply', () => {
 					parentFolderId: null,
 					sourcePublished: false,
 					sourceArchived: true,
+					publishingAction: 'noop',
 				},
 			],
 			conflicts: [],
@@ -365,6 +374,7 @@ describe('WorkflowImporter.apply', () => {
 					parentFolderId: null,
 					sourcePublished: false,
 					sourceArchived: false,
+					publishingAction: 'noop',
 				},
 			],
 			conflicts: [],
@@ -410,9 +420,9 @@ describe('WorkflowImporter.plan', () => {
 				},
 			],
 			{
-				workflowConflictPolicy: 'new-version',
-				workflowIdPolicy: 'source',
-				workflowPublishingPolicy: 'preserve-published-state',
+				conflictPolicy: 'new-version',
+				idPolicy: 'source',
+				publishingPolicy: 'preserve-published-state',
 				missingNodeTypeMode: 'fail',
 			},
 			{ checkRootPlacement: false },
@@ -452,9 +462,9 @@ describe('WorkflowImporter.plan', () => {
 				},
 			],
 			{
-				workflowConflictPolicy: 'new-version',
-				workflowIdPolicy: 'source',
-				workflowPublishingPolicy: 'preserve-published-state',
+				conflictPolicy: 'new-version',
+				idPolicy: 'source',
+				publishingPolicy: 'preserve-published-state',
 				missingNodeTypeMode: 'fail',
 			},
 			{ checkRootPlacement: false },
@@ -472,9 +482,9 @@ describe('WorkflowImporter.plan', () => {
 	});
 	describe('placement of a matched workflow', () => {
 		const options = {
-			workflowConflictPolicy: 'new-version',
-			workflowIdPolicy: 'source',
-			workflowPublishingPolicy: 'preserve-published-state',
+			conflictPolicy: 'new-version',
+			idPolicy: 'source',
+			publishingPolicy: 'preserve-published-state',
 			missingNodeTypeMode: 'fail',
 		} as const;
 

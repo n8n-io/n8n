@@ -6,10 +6,12 @@ import {
 	type AgentProviderModelsResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import {
 	BuilderModelLiveLookupService,
@@ -55,6 +57,7 @@ export class AgentModelCatalogService {
 		private readonly logger: Logger,
 		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	/** Returns the provider's models according to the live lookup's catalog policy. */
@@ -255,7 +258,7 @@ export class AgentModelCatalogService {
 	private async getCatalogModels(provider: string): Promise<Record<string, AgentCatalogModel>> {
 		try {
 			const { fetchProviderCatalog } = await import('@n8n/agents');
-			const catalog = await fetchProviderCatalog();
+			const catalog = await fetchProviderCatalog({ fetch: createAiProxyFetch(this.outboundHttp) });
 			return catalog[provider]?.models ?? {};
 		} catch (error) {
 			this.logger.warn('Model catalog fetch failed', {

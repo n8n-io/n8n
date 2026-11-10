@@ -35,7 +35,7 @@ import {
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { deniedNodeTypes } from '@/modules/type-availability-policies/type-violation';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import {
 	toPolicedMcpNodes,
 	toPolicedNodes,
@@ -61,7 +61,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
-import { findNameClashGroups } from '@/modules/skills/skill-names';
+import { findNameClashGroups } from '@/modules/skills';
 
 type AgentValidationScope = 'runtime' | 'publish';
 
@@ -142,7 +142,7 @@ export class AgentValidationService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly definitionService: AgentDefinitionService,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly aiGatewayService: AiGatewayService,

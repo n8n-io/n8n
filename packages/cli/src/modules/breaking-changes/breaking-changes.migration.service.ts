@@ -6,8 +6,8 @@ import { calculateWorkflowChecksum } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
-import { NodeTypes } from '@/node-types';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -36,7 +36,7 @@ export class BreakingChangeMigrationService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowValidationService: WorkflowValidationService,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly logger: Logger,
 	) {
 		this.logger = logger.scoped('breaking-changes');

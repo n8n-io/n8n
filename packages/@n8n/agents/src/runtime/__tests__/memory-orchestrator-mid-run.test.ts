@@ -583,6 +583,60 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 			}),
 		);
 	});
+
+	it('does not tell the observer that a live offloaded result is unavailable', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+		const inputs: ObservationLogObserverInput[] = [];
+		const { orchestrator } = buildOrchestrator(store, {
+			observerThresholdTokens: 10,
+			observationLogTailLimit: 20,
+			observe: async (input) => {
+				inputs.push(input);
+				return await Promise.resolve('* CRITICAL (14:30) Search done.');
+			},
+		});
+		const path = `tool-results/runs/${'a'.repeat(43)}/${'r'.repeat(43)}.result.json`;
+		const list = new AgentMessageList();
+		list.addInput([userMsg('search something big')]);
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'c1',
+						toolName: 'search',
+						input: {},
+						state: 'resolved',
+						output: {
+							_offloaded: true,
+							path,
+							originalCharCount: 250_000,
+							estimatedTokenCount: 60_000,
+							requiredAction: {
+								toolName: 'workspace_read_tool_result',
+								input: { path, view: 'json', pointer: '' },
+							},
+							message: 'Stored in workspace',
+						},
+					},
+				],
+			},
+		]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		expect(inputs).toHaveLength(1);
+		const { transcript } = inputs[0];
+		expect(transcript).not.toMatch(/expired|unavailable/i);
+		expect(transcript).toContain('stored only for its originating run');
+		expect(transcript).toContain('250000');
+		// The durable log must not point at a run-scoped file.
+		expect(transcript).not.toContain(path);
+		// The live run keeps the readable reference.
+		expect(JSON.stringify(list.messages())).toContain(path);
+	});
 });
 
 describe('MemoryOrchestrator.saveToMemory observer gating', () => {
@@ -934,5 +988,79 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 		await orchestrator.applyObservationMask(list, runOptions().persistence);
 		await orchestrator.persistTurnDelta(list, runOptions());
 		expect(saveSpy).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('MemoryOrchestrator budget estimate', () => {
+	it('counts runtime catalogue reminders but ignores custom messages hidden from the model', async () => {
+		const counted: string[] = [];
+		const { orchestrator } = buildOrchestrator(
+			new InMemoryMemory(),
+			{ observerThresholdTokens: 100_000, observe: vi.fn(), observationLogTailLimit: 20 },
+			async (text) => {
+				counted.push(text);
+				return await Promise.resolve(text.length);
+			},
+		);
+		const list = new AgentMessageList();
+		list.addInput([userMsg('Review an invoice')]);
+		list.addResponse([
+			{ type: 'custom', data: { type: 'n8n:runtime-skill-catalog', content: 'Current catalogue' } },
+			{ type: 'custom', data: { dummy: 'Hidden application state' } },
+		]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		expect(counted.join('\n')).toContain(
+			'<system-reminder>\nCurrent catalogue\n</system-reminder>',
+		);
+		expect(counted.join('\n')).not.toContain('Hidden application state');
+	});
+
+	it('does not count the bytes of a file in a tool output', async () => {
+		const counted: string[] = [];
+		const { orchestrator } = buildOrchestrator(
+			new InMemoryMemory(),
+			{ observerThresholdTokens: 100_000, observe: vi.fn(), observationLogTailLimit: 20 },
+			async (text) => {
+				counted.push(text);
+				return await Promise.resolve(text.length);
+			},
+		);
+		const list = new AgentMessageList();
+		list.addInput([userMsg('Read the image')]);
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'call-1',
+						toolName: 'read_binary_data',
+						input: { fileId: 'file-1' },
+						state: 'resolved',
+						output: {
+							type: 'content',
+							value: [
+								{ type: 'text', text: '{"fileId":"file-1"}' },
+								{
+									type: 'file',
+									mediaType: 'image/png',
+									fileRef: { id: 'file-1' },
+									data: new Uint8Array(10_000),
+								},
+							],
+						},
+					},
+				],
+			} as unknown as AgentMessage,
+		]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		const text = counted.join('\n');
+		expect(text).toContain('file-1');
+		expect(text).not.toContain('"data"');
+		expect(text.length).toBeLessThan(1_000);
 	});
 });

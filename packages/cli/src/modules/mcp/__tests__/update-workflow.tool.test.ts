@@ -21,10 +21,10 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
-import { NodeTypes } from '@/node-types';
+import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { TagService } from '@/services/tag.service';
-import { UrlService, WorkflowPublishedDataService } from '@n8n/backend-services';
+import { UrlService, WorkflowPublishedDataService, NodeTypesProxy } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
@@ -94,7 +94,7 @@ describe('update-workflow MCP tool', () => {
 	let telemetry: Telemetry;
 	let credentialsService: CredentialsService;
 	let sharedWorkflowRepository: SharedWorkflowRepository;
-	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
+	let nodeTypes: ReturnType<typeof mockInstance<NodeTypesProxy>>;
 	let collaborationService: CollaborationService;
 	let dataTableOps: DataTableOpsMock;
 	let tagService: TagService;
@@ -146,7 +146,7 @@ describe('update-workflow MCP tool', () => {
 		sharedWorkflowRepository = mockInstance(SharedWorkflowRepository, {
 			findOneOrFail: vi.fn().mockResolvedValue({ projectId: 'project-1' }),
 		});
-		nodeTypes = mockInstance(NodeTypes);
+		nodeTypes = mockInstance(NodeTypesProxy);
 		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 			if (type === '@n8n/n8n-nodes-langchain.agent') {
 				return { description: { group: ['transform'], outputs: [NodeConnectionTypes.Main] } };
@@ -211,7 +211,7 @@ describe('update-workflow MCP tool', () => {
 	const buildErrorWorkflowValidationService = () =>
 		new ErrorWorkflowValidationService(
 			globalConfig,
-			nodeTypes,
+			nodeTypes as unknown as NodeTypes,
 			workflowFinderService,
 			workflowPublishedDataService,
 			subworkflowPolicyChecker,

@@ -13,18 +13,16 @@
  */
 
 import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytona/sdk';
-import { DAYTONA_WORKSPACE_ROOT, loadDaytona } from '@n8n/agents/sandbox';
+import { loadDaytona, PORTABLE_WORKSPACE_ROOT } from '@n8n/agents/sandbox';
 import { sleep } from '@n8n/utils/sleep';
+import { dirname as posixDirname } from 'node:path/posix';
 
 import {
 	buildKnowledgeBaseWorkspaceBundle,
 	type KnowledgeBaseWorkspaceBundle,
 } from '../knowledge-base/materialize-knowledge-base';
 import type { Logger } from '../logger';
-import {
-	BuilderTemplatesService,
-	builderTemplatesOptionsFromEnv,
-} from './builder-templates-service';
+import type { BuilderTemplatesService } from './builder-templates-service';
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS, NPM_INSTALL_FLAGS } from './sandbox-setup';
 import { loadWorkflowDiagnosticsWorker, WORKFLOW_DIAGNOSTICS_FILENAME } from './sandbox-typescript';
 import { stageWorkspaceFilesForImage } from './snapshot-image-context';
@@ -50,6 +48,11 @@ export interface CreateSnapshotOptions {
 type DaytonaSnapshot = Awaited<ReturnType<Daytona['snapshot']['get']>>;
 
 const DAYTONA_WORKSPACE_BAKE_ROOT = '/tmp/n8n-workspace-bake';
+/** Parent of the workspace root. The Daytona image user does not own it by default. */
+const PORTABLE_WORKSPACE_PARENT = posixDirname(PORTABLE_WORKSPACE_ROOT);
+// The Daytona base image builds as a user with passwordless sudo. A root base image has no
+// sudo, so use it only when the build user is not root. The image user keeps ownership.
+const CREATE_PORTABLE_WORKSPACE_ROOT_COMMAND = `SUDO=$([ "$(id -u)" = 0 ] || echo sudo) && $SUDO mkdir -p ${PORTABLE_WORKSPACE_ROOT} && $SUDO chown -R "$(id -u):$(id -g)" ${PORTABLE_WORKSPACE_PARENT}`;
 const SNAPSHOT_WORKSPACE_LAYOUT_DIRS = ['src', 'chunks', 'node-types'] as const;
 const SNAPSHOT_BUILDING_STATES = new Set(['building', 'pending', 'pulling']);
 const SNAPSHOT_VERIFY_POLL_MS = 5_000;
@@ -184,7 +187,7 @@ export class SnapshotManager {
 		private readonly baseImage: string | undefined,
 		private readonly logger: Logger,
 		private readonly n8nVersion: string | undefined,
-		private readonly templatesService?: BuilderTemplatesService,
+		private readonly templatesService: BuilderTemplatesService,
 	) {}
 
 	/** Get or prepare the image descriptor. */
@@ -199,28 +202,28 @@ export class SnapshotManager {
 		const cacheKey = this.n8nVersion ?? knowledgeBaseBundle.contentHash;
 
 		const workspaceFiles = new Map<string, string>(knowledgeBaseBundle.files);
-		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/package.json`, PACKAGE_JSON);
-		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/tsconfig.json`, TSCONFIG_JSON);
-		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/build.mjs`, BUILD_MJS);
+		workspaceFiles.set(`${PORTABLE_WORKSPACE_ROOT}/package.json`, PACKAGE_JSON);
+		workspaceFiles.set(`${PORTABLE_WORKSPACE_ROOT}/tsconfig.json`, TSCONFIG_JSON);
+		workspaceFiles.set(`${PORTABLE_WORKSPACE_ROOT}/build.mjs`, BUILD_MJS);
 		workspaceFiles.set(
-			`${DAYTONA_WORKSPACE_ROOT}/${WORKFLOW_DIAGNOSTICS_FILENAME}`,
+			`${PORTABLE_WORKSPACE_ROOT}/${WORKFLOW_DIAGNOSTICS_FILENAME}`,
 			await loadWorkflowDiagnosticsWorker(),
 		);
 
 		const { stagingDir } = await stageWorkspaceFilesForImage(
 			workspaceFiles,
-			DAYTONA_WORKSPACE_ROOT,
+			PORTABLE_WORKSPACE_ROOT,
 			cacheKey,
 		);
 
 		const { Image } = loadDaytona();
 		const layoutDirs = SNAPSHOT_WORKSPACE_LAYOUT_DIRS.map(
-			(dir) => `${DAYTONA_WORKSPACE_ROOT}/${dir}`,
+			(dir) => `${PORTABLE_WORKSPACE_ROOT}/${dir}`,
 		).join(' ');
 		const image = Image.base(base)
 			.addLocalDir(stagingDir, DAYTONA_WORKSPACE_BAKE_ROOT)
 			.runCommands(
-				`cp -a ${DAYTONA_WORKSPACE_BAKE_ROOT}/. ${DAYTONA_WORKSPACE_ROOT}/ && mkdir -p ${layoutDirs} && cd ${DAYTONA_WORKSPACE_ROOT} && npm install ${NPM_INSTALL_FLAGS}`,
+				`${CREATE_PORTABLE_WORKSPACE_ROOT_COMMAND} && cp -a ${DAYTONA_WORKSPACE_BAKE_ROOT}/. ${PORTABLE_WORKSPACE_ROOT}/ && mkdir -p ${layoutDirs} && cd ${PORTABLE_WORKSPACE_ROOT} && npm install ${NPM_INSTALL_FLAGS}`,
 			);
 
 		this.logger.info('Builder image descriptor prepared', {
@@ -741,13 +744,10 @@ export class SnapshotManager {
 	}
 
 	private async buildKnowledgeBaseBundle(): Promise<KnowledgeBaseWorkspaceBundle> {
-		const templatesService =
-			this.templatesService ??
-			new BuilderTemplatesService(builderTemplatesOptionsFromEnv({ logger: this.logger }));
-		const templatesBundle = await templatesService.getBundle();
+		const templatesBundle = await this.templatesService.getBundle();
 
 		return await buildKnowledgeBaseWorkspaceBundle({
-			root: DAYTONA_WORKSPACE_ROOT,
+			root: PORTABLE_WORKSPACE_ROOT,
 			templatesArchive: templatesBundle.archive,
 			logger: this.logger,
 		});

@@ -61,6 +61,8 @@ export interface IntegrationMessageContext {
 	/** Inbound target whose automatic reply is controlled by `replyExpectation`. */
 	replyTarget?: IntegrationMessageTarget;
 	replyMessageId?: string;
+	/** Files that respond queued for the final reply of a run. */
+	queuedFiles?: { runId: string; fileIds: string[] };
 	updatedAt: string;
 }
 
@@ -109,7 +111,8 @@ export type IntegrationContextQuery =
 	| 'search_labels'
 	| 'search_issue_states'
 	| 'get_issue'
-	| 'search_issues';
+	| 'search_issues'
+	| 'list_templates';
 
 export type IntegrationAction =
 	| 'respond'
@@ -120,7 +123,8 @@ export type IntegrationAction =
 	| 'add_reaction'
 	| 'create_issue'
 	| 'update_issue'
-	| 'create_comment';
+	| 'create_comment'
+	| 'send_template';
 
 export interface IntegrationToolOperationDefinition<Name extends string = string> {
 	name: Name;
@@ -166,6 +170,13 @@ export interface IntegrationMessageContextStore {
 	resolveSession(derivedThreadId: string): Promise<SessionBinding | null>;
 	unbindSession(derivedThreadId: string): Promise<void>;
 	clearSessionBindings(originThreadId: string): Promise<void>;
+	/** Remembers which session sent a message, so a later delivery failure reaches that session. */
+	recordSentMessage(
+		derivedThreadId: string,
+		messageId: string,
+		origin: SessionBinding,
+	): Promise<void>;
+	resolveSentMessage(derivedThreadId: string, messageId: string): Promise<SessionBinding | null>;
 }
 
 export interface SessionBinding {
@@ -193,6 +204,8 @@ export interface IntegrationActionParams {
 	runId?: string;
 	toolCallId?: string;
 	currentMessageContext?: IntegrationMessageContext;
+	/** Read scope for `input.fileIds`. Undefined when the run has no thread. */
+	fileScope?: { projectId: string; threadId: string };
 }
 
 export interface IntegrationActionExecutor {

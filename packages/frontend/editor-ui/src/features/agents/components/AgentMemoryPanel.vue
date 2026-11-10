@@ -6,6 +6,7 @@ import {
 	N8nDialogBody,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nIconButton,
 	N8nText,
 	N8nSwitch,
 } from '@n8n/design-system';
@@ -15,6 +16,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import { AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE } from '../constants';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
+import AgentMemoryGuidanceModal, { type AgentMemoryGuidance } from './AgentMemoryGuidanceModal.vue';
 import AgentPanel from './AgentPanel.vue';
 
 import type { AgentJsonConfig } from '../types';
@@ -31,10 +33,15 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 
 const i18n = useI18n();
 const credentialDialogOpen = ref(false);
+const guidanceDialogOpen = ref(false);
 const settingsStore = useSettingsStore();
 const projectId = useAgentProjectId();
 const episodicMemory = computed(() => props.config?.memory?.episodicMemory ?? null);
 const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === true);
+const episodicMemoryGuidance = computed(() => {
+	const memory = episodicMemory.value;
+	return memory?.enabled === true ? memory.guidance : undefined;
+});
 const episodicMemoryCredentialId = computed(() => {
 	const memory = episodicMemory.value;
 	return memory?.enabled === true ? memory.credential : null;
@@ -73,6 +80,18 @@ function disableEpisodicMemory() {
 		memory: {
 			...buildEnabledMemoryConfig(),
 			episodicMemory: { enabled: false },
+		},
+	});
+}
+
+function onGuidanceSave(guidance: AgentMemoryGuidance | undefined) {
+	const existingEpisodicMemory = episodicMemory.value;
+	if (existingEpisodicMemory?.enabled !== true) return;
+	const { guidance: _, ...rest } = existingEpisodicMemory;
+	emit('update:config', {
+		memory: {
+			...buildEnabledMemoryConfig(),
+			episodicMemory: guidance ? { ...rest, guidance } : rest,
 		},
 	});
 }
@@ -130,14 +149,31 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 					}}
 				</N8nButton>
 			</div>
-			<N8nSwitch
-				:model-value="episodicMemoryEnabled"
-				:disabled="props.disabled"
-				:class="shared.settingControl"
-				data-testid="agent-episodic-memory-toggle"
-				@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
-			/>
+			<div :class="[shared.settingControl, $style.episodicControls]">
+				<N8nSwitch
+					:model-value="episodicMemoryEnabled"
+					:disabled="props.disabled"
+					data-testid="agent-episodic-memory-toggle"
+					@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
+				/>
+				<N8nIconButton
+					v-if="episodicMemoryEnabled"
+					icon="chevron-right"
+					variant="ghost"
+					size="small"
+					:disabled="props.disabled"
+					:aria-label="i18n.baseText('agents.builder.memory.episodicMemory.guidance.open')"
+					data-testid="agent-episodic-memory-guidance-open"
+					@click="guidanceDialogOpen = true"
+				/>
+			</div>
 		</div>
+		<AgentMemoryGuidanceModal
+			v-model:open="guidanceDialogOpen"
+			:guidance="episodicMemoryGuidance"
+			:disabled="props.disabled"
+			@save="onGuidanceSave"
+		/>
 		<N8nDialog
 			:open="credentialDialogOpen"
 			size="medium"
@@ -248,6 +284,12 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 
 .changeCredentialButton {
 	align-self: flex-start;
+}
+
+.episodicControls {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .credentialPicker {

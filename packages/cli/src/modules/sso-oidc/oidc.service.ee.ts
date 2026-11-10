@@ -5,8 +5,10 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	AuthIdentity,
 	AuthIdentityRepository,
+	isPerson,
 	isValidEmail,
 	GLOBAL_MEMBER_ROLE,
+	PersonRepository,
 	SettingsRepository,
 	type User,
 	UserRepository,
@@ -15,11 +17,11 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import { Cipher, InstanceSettings } from 'n8n-core';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import type * as openidClientTypes from 'openid-client';
 import { inspect } from 'util';
 
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { JwtService, UrlService } from '@n8n/backend-services';
@@ -101,6 +103,7 @@ export class OidcService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly provisioningService: ProvisioningService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly personRepository: PersonRepository,
 	) {}
 
 	async init() {
@@ -349,17 +352,18 @@ export class OidcService {
 		});
 
 		if (openidUser) {
+			if (!isPerson(openidUser.user)) {
+				throw new ForbiddenError('A service account cannot log in with OIDC');
+			}
+
 			await this.applySsoProvisioning(openidUser.user, claims, userInfo);
 
 			return { user: openidUser.user, idToken: tokens.id_token };
 		}
 
-		const foundUser = await this.userRepository.findOne({
-			where: { email },
-			relations: ['authIdentities', 'role'],
-		});
+		const foundPerson = await this.personRepository.findByEmailWithAuthIdentities(email);
 
-		if (foundUser) {
+		if (foundPerson) {
 			// Linking to an existing account uses the email as the key, so only do it
 			// when the IdP says the email is verified.
 			this.assertEmailVerified(userInfo.email_verified);
@@ -371,13 +375,13 @@ export class OidcService {
 			const id = this.authIdentityRepository.create({
 				providerId: claims.sub,
 				providerType: 'oidc',
-				userId: foundUser.id,
+				userId: foundPerson.id,
 			});
 
 			await this.authIdentityRepository.save(id);
-			await this.applySsoProvisioning(foundUser, claims, userInfo);
+			await this.applySsoProvisioning(foundPerson, claims, userInfo);
 
-			return { user: foundUser, idToken: tokens.id_token };
+			return { user: foundPerson, idToken: tokens.id_token };
 		}
 
 		const user = await this.userRepository.manager.transaction(async (trx) => {
@@ -630,7 +634,7 @@ export class OidcService {
 
 	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			const { Publisher } = await import('@n8n/backend-services');
 			await Container.get(Publisher).publishCommand({ command: 'reload-oidc-config' });
 		}
 	}

@@ -162,7 +162,12 @@ describe('WorkflowExporter', () => {
 		});
 
 		expect(entries).toEqual([
-			{ id: workflow.id, name: workflow.name, target: 'workflows/repeated-wf_repeated' },
+			{
+				id: workflow.id,
+				name: workflow.name,
+				target: 'workflows/repeated-wf_repeated',
+				isArchived: false,
+			},
 		]);
 		expect(
 			writer.files.filter((f) => f.path === 'workflows/repeated-wf_repeated/workflow.json'),

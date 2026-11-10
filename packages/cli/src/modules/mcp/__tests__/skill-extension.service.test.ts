@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 import { parse as parseYaml } from 'yaml';
 
-import type { McpSkillContent, SkillService } from '@/modules/skills/skill.service';
+import type { McpSkillContent, SkillService } from '@/modules/skills';
 import type { Telemetry } from '@/telemetry';
 
 import {
@@ -257,6 +257,22 @@ describe('McpSkillExtensionService', () => {
 				project_id: 'project-1',
 				file: 'reference',
 			});
+		});
+
+		it('reports the provider and access of the source of a synced skill', async () => {
+			skillService.readForMcp.mockResolvedValue({
+				...content(releaseNotes, 'project-1'),
+				origin: { provider: 'github', access: 'credential' },
+			});
+
+			await client.request('resources/read', {
+				uri: 'skill://skill_a1/release-notes-writer/references/style.md',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.MCP_READ_SKILL_FILE,
+				expect.objectContaining({ source_provider: 'github', source_access: 'credential' }),
+			);
 		});
 
 		it.each([

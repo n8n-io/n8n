@@ -1,4 +1,9 @@
-import type { Agent as RuntimeAgent, SideCallUsageReport, StreamChunk } from '@n8n/agents';
+import type {
+	Agent as RuntimeAgent,
+	SideCallUsageReport,
+	StreamChunk,
+	Workspace,
+} from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
@@ -9,8 +14,12 @@ import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
+import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { ExecutionRecorder } from '../execution-recorder';
+import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentTurnFinalizeOutcome } from '../types/agent-turn-outcome';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 it('ends a preview turn stopped during preparation without recording an error', async () => {
 	const executions = mock<AgentExecutionService>();
@@ -26,6 +35,7 @@ it('ends a preview turn stopped during preparation without recording an error', 
 		mock<AgentMessageSteeringService>(),
 		mock<AgentToolApprovalService>(),
 		mock<AgentKnowledgeUsageTracker>(),
+		mock<AgentSandboxFilesService>(),
 	);
 	const controller = new AbortController();
 	const turn: AgentTurnRequest = {
@@ -78,23 +88,31 @@ describe('onBeforeFinalize', () => {
 			onBeforeFinalize?: (outcome: AgentTurnFinalizeOutcome) => Promise<void>;
 			onRecorderCreated?: (recorder: ExecutionRecorder) => void;
 			beforeStream?: () => void;
+			streamError?: Error;
+			expectedError?: Error;
+			workspace?: Workspace;
 		} = {},
 	) {
 		const executions = mock<AgentExecutionService>();
 		executions.finalizeExecution.mockResolvedValue('exec-1');
 		executions.getAbortSignal.mockReturnValue(new AbortController().signal);
+		const chatExecutions = mock<AgentChatExecutionService>();
+		const sandboxFiles = mock<AgentSandboxFilesService>();
 		const service = new AgentTurnExecutionService(
 			mock<Logger>(),
 			executions,
-			mock<AgentChatExecutionService>(),
+			chatExecutions,
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
 			mock<AgentKnowledgeUsageTracker>(),
+			sandboxFiles,
 		);
 		const agentInstance = mock<RuntimeAgent>();
+		agentInstance.getWorkspace.mockReturnValue(options.workspace);
 		agentInstance.stream.mockImplementation(async () => {
 			options.beforeStream?.();
+			if (options.streamError) throw options.streamError;
 			return { stream: streamOf(chunks) } as never;
 		});
 		const abortController = options.abortController ?? new AbortController();
@@ -105,20 +123,60 @@ describe('onBeforeFinalize', () => {
 			recording: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 		} as unknown as AgentTurnRequest;
 		const onBeforeFinalize = vi.fn(options.onBeforeFinalize ?? (async () => {}));
-		for await (const _chunk of service.execute({
-			admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
-			agentInstance,
-			toolRegistry: new Map(),
-			mcpServerAttributions: new Map(),
-			context: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
-			onBeforeFinalize,
-			onRecorderCreated: options.onRecorderCreated,
-			prepare: async () => turn,
-		})) {
-			// Read the stream to the end.
-		}
-		return { onBeforeFinalize, executions };
+		const outputChunks: AgentExecutionStreamChunk[] = [];
+		const collect = async () => {
+			for await (const chunk of service.execute({
+				admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
+				agentInstance,
+				toolRegistry: new Map(),
+				mcpServerAttributions: new Map(),
+				context: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+				onBeforeFinalize,
+				onRecorderCreated: options.onRecorderCreated,
+				prepare: async () => turn,
+			})) {
+				outputChunks.push(chunk);
+			}
+		};
+		if (options.expectedError) await expect(collect()).rejects.toBe(options.expectedError);
+		else await collect();
+		return { onBeforeFinalize, executions, chatExecutions, sandboxFiles, chunks: outputChunks };
 	}
+
+	describe('sandbox outputs', () => {
+		const toolChunks = (toolName: string): StreamChunk[] => [
+			{ type: 'tool-call', toolCallId: 'call-1', toolName, input: {} },
+			{ type: 'tool-result', toolCallId: 'call-1', toolName, output: 'ok' },
+			{ type: 'finish', finishReason: 'stop' },
+		];
+
+		it('stores the outputs of a turn that used the workspace before the hook runs', async () => {
+			const workspace = mock<Workspace>();
+			const { sandboxFiles, onBeforeFinalize } = await runTurn(
+				toolChunks('workspace_execute_command'),
+				{
+					workspace,
+				},
+			);
+
+			expect(sandboxFiles.syncOutputs).toHaveBeenCalledWith(workspace, {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+			});
+			expect(sandboxFiles.syncOutputs.mock.invocationCallOrder[0]).toBeLessThan(
+				onBeforeFinalize.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not sync a turn that did not use the workspace', async () => {
+			const { sandboxFiles } = await runTurn(toolChunks('read_binary_data'), {
+				workspace: mock<Workspace>(),
+			});
+
+			expect(sandboxFiles.syncOutputs).not.toHaveBeenCalled();
+		});
+	});
 
 	it('broadcasts server duration with each model turn before finalization', async () => {
 		vi.useFakeTimers();
@@ -214,15 +272,110 @@ describe('onBeforeFinalize', () => {
 		});
 	});
 
-	it('reports a cancelled turn', async () => {
+	it('reports a session stop', async () => {
 		const abortController = new AbortController();
-		const { onBeforeFinalize } = await runTurn([], {
+		const { onBeforeFinalize, chunks, executions, chatExecutions } = await runTurn([], {
 			abortController,
-			beforeStream: () => abortController.abort(),
+			beforeStream: () => abortController.abort(SESSION_STOPPED_REASON),
 		});
 
 		expect(onBeforeFinalize).toHaveBeenCalledWith({ executionId: 'exec-1', status: 'cancelled' });
+		expect(chunks).toEqual([{ type: 'finish', finishReason: 'cancelled' }]);
+		expect(chatExecutions.cancelSessionSuspension).toHaveBeenCalledExactlyOnceWith(
+			'agent-1',
+			'thread-1',
+			'exec-1',
+		);
+		expect(executions.finalizeExecution.mock.invocationCallOrder[0]).toBeLessThan(
+			chatExecutions.cancelSessionSuspension.mock.invocationCallOrder[0],
+		);
 	});
+
+	it.each(['throw', 'error-chunks'] as const)(
+		'preserves a real failure after Stop through %s',
+		async (mode) => {
+			const controller = new AbortController();
+			const error = new Error('Model request failed');
+			const { onBeforeFinalize, executions, chunks } = await runTurn(
+				mode === 'throw'
+					? []
+					: [
+							{ type: 'error', error },
+							{ type: 'finish', finishReason: 'error' },
+						],
+				{
+					abortController: controller,
+					beforeStream: () => controller.abort(SESSION_STOPPED_REASON),
+					streamError: mode === 'throw' ? error : undefined,
+					expectedError: mode === 'throw' ? error : undefined,
+				},
+			);
+			expect(onBeforeFinalize).toHaveBeenCalledWith({
+				executionId: 'exec-1',
+				status: 'errored',
+				error,
+			});
+			expect(executions.finalizeExecution.mock.calls[0][1].record).toMatchObject({
+				finishReason: 'error',
+				error: 'Model request failed',
+			});
+			expect(chunks).not.toContainEqual({ type: 'finish', finishReason: 'cancelled' });
+		},
+	);
+
+	it('records a caller cancellation without emitting a chat stop event', async () => {
+		const controller = new AbortController();
+		const { onBeforeFinalize, chunks } = await runTurn([], {
+			abortController: controller,
+			beforeStream: () => controller.abort(),
+		});
+
+		expect(onBeforeFinalize).toHaveBeenCalledWith({ executionId: 'exec-1', status: 'cancelled' });
+		expect(chunks).toEqual([]);
+	});
+
+	it('keeps a stream failure when Stop races with an ending that has no finish event', async () => {
+		const controller = new AbortController();
+		const error = new Error('Model request failed');
+		const { chunks, executions, onBeforeFinalize } = await runTurn([{ type: 'error', error }], {
+			abortController: controller,
+			beforeStream: () => controller.abort(SESSION_STOPPED_REASON),
+		});
+		expect(chunks).toEqual([{ type: 'error', error }]);
+		expect(executions.finalizeExecution.mock.calls[0][1].record.error).toBe('Model request failed');
+		expect(onBeforeFinalize).toHaveBeenCalledWith({
+			executionId: 'exec-1',
+			status: 'errored',
+			error,
+		});
+	});
+
+	it.each(['throw', 'error-chunks'] as const)(
+		'reports an integration stop through %s without a failure message',
+		async (mode) => {
+			const controller = new AbortController();
+			const error = new DOMException('Execution stopped', 'AbortError');
+			const { chunks, executions } = await runTurn(
+				mode === 'throw'
+					? []
+					: [
+							{ type: 'error', error },
+							{ type: 'finish', finishReason: 'error' },
+						],
+				{
+					abortController: controller,
+					beforeStream: () => controller.abort(SESSION_STOPPED_REASON),
+					streamError: mode === 'throw' ? error : undefined,
+				},
+			);
+
+			expect(chunks).toEqual([{ type: 'finish', finishReason: 'cancelled' }]);
+			expect(executions.finalizeExecution.mock.calls[0][1].record).toMatchObject({
+				finishReason: 'cancelled',
+				error: null,
+			});
+		},
+	);
 
 	it('stores the turn when the hook fails', async () => {
 		const { executions } = await runTurn([{ type: 'finish', finishReason: 'stop' }], {
@@ -265,6 +418,7 @@ describe('onSideCallUsage', () => {
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
 			mock<AgentKnowledgeUsageTracker>(),
+			mock<AgentSandboxFilesService>(),
 		);
 		const emptyStream = () =>
 			new ReadableStream<StreamChunk>({
@@ -370,4 +524,64 @@ describe('onSideCallUsage', () => {
 			expect((await delivered).error).toEqual(new Error('claim failed'));
 		},
 	);
+});
+
+describe('admitted start turns', () => {
+	async function startTurn(persistence: { threadId: string; resourceId: string }) {
+		const executions = mock<AgentExecutionService>();
+		executions.finalizeExecution.mockResolvedValue('exec-1');
+		executions.getAbortSignal.mockReturnValue(new AbortController().signal);
+		const service = new AgentTurnExecutionService(
+			mock<Logger>(),
+			executions,
+			mock<AgentChatExecutionService>(),
+			mock<AgentMessageQueueService>(),
+			mock<AgentMessageSteeringService>(),
+			mock<AgentToolApprovalService>(),
+			mock<AgentKnowledgeUsageTracker>(),
+			mock<AgentSandboxFilesService>(),
+		);
+		const agentInstance = mock<RuntimeAgent>();
+		agentInstance.stream.mockResolvedValue({
+			stream: new ReadableStream<StreamChunk>({
+				start(controller) {
+					controller.enqueue({ type: 'finish', finishReason: 'stop' });
+					controller.close();
+				},
+			}),
+		} as never);
+		const recording = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
+		const turn = {
+			type: 'start',
+			input: 'hello',
+			options: { abortSignal: new AbortController().signal, persistence },
+			recording,
+		} as unknown as AgentTurnRequest;
+		for await (const _chunk of service.execute({
+			admittedExecution: { executionId: 'exec-1', startedAt: new Date(), inputMessageIds: [] },
+			agentInstance,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
+			context: recording,
+			prepare: async () => turn,
+		})) {
+			// Read the stream to the end.
+		}
+		return agentInstance;
+	}
+
+	it('lets the runtime write back abandoned tool calls that it settles in history', async () => {
+		const agentInstance = await startTurn({ threadId: 'thread-1', resourceId: 'user-1' });
+
+		expect(agentInstance.stream).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				persistence: expect.objectContaining({
+					threadId: 'thread-1',
+					persistSettledSuspensions: true,
+					hostMetadata: expect.objectContaining({ [EXECUTION_METADATA_KEY]: 'exec-1' }),
+				}),
+			}),
+		);
+	});
 });

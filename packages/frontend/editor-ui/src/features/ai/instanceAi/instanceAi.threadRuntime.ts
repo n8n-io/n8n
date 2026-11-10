@@ -2,19 +2,12 @@ import { computed, nextTick, reactive, ref, shallowRef, triggerRef, watch } from
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
-	buildDataTablesSessionGrantKey,
-	buildExecuteNodeSessionGrantKey,
-	buildRunStepSessionGrantKey,
-	buildRunWorkflowSessionGrantKey,
-	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	aiPreferencesAppliedPayloadSchema,
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	resolveBuilderToolName,
-	REMOVED_BUILDER_TOOL_NAMES,
-	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
@@ -39,6 +32,7 @@ import {
 import { isRecord } from '@n8n/utils/is-record';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
+import { buildAlwaysAllowKey } from './alwaysAllow';
 import {
 	redactTelemetryProperties,
 	TELEMETRY_EVENT,
@@ -71,11 +65,9 @@ import {
 	createRunStateFromTree,
 	normalizeAgentTreeToolNames,
 } from './instanceAi.reducer';
-import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
-import {
-	useResourceRegistry,
-	type TransientWorkflowArtifactReference,
-} from './useResourceRegistry';
+import { createArtifactPreviewMemory } from './artifactPreviewMemory';
+import { getLatestBuildResult } from './canvasPreview.utils';
+import { useResourceRegistry } from './useResourceRegistry';
 import { buildThreadArtifactsContext, type OpenThreadTab } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
@@ -83,7 +75,9 @@ import {
 	INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	NEW_CONVERSATION_TITLE,
 } from './constants';
 import {
@@ -156,10 +150,10 @@ interface PendingResponseMetric {
 	isFirstUserMessage: boolean;
 	actionSource: InstanceAiThreadSourcePersisted;
 	generation: number;
-	// Context of the message that started the run, repeated on the response event
-	// so outcome cuts by context need no join back to the send event.
+	// Repeat the message context on the response event for outcome analysis.
 	mentionCounts: AssistantMentionCounts;
 	attachmentCount: number;
+	selectedElementCount: number;
 }
 
 /**
@@ -250,6 +244,41 @@ export function getPendingAgentTargetFromThreadMetadata(
 	return { agentId: target.agentId, projectId: target.projectId };
 }
 
+export function getAppTargetsFromThreadMetadata(metadata: Record<string, unknown> | undefined) {
+	const targets = metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY];
+	if (!Array.isArray(targets)) return [];
+	return targets.flatMap((target) => {
+		if (
+			!isRecord(target) ||
+			typeof target.appId !== 'string' ||
+			typeof target.projectId !== 'string'
+		) {
+			return [];
+		}
+		return [
+			{
+				appId: target.appId,
+				projectId: target.projectId,
+				...(typeof target.name === 'string' ? { name: target.name } : {}),
+			},
+		];
+	});
+}
+
+export function getPendingAppTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const target = metadata?.[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY];
+	if (
+		!isRecord(target) ||
+		typeof target.appId !== 'string' ||
+		typeof target.projectId !== 'string'
+	) {
+		return undefined;
+	}
+	return { appId: target.appId, projectId: target.projectId };
+}
+
 export function getAgentPreviewViewFromThreadMetadata(
 	metadata: Record<string, unknown> | undefined,
 ) {
@@ -318,7 +347,8 @@ function collectActionableConfirmations(
 
 /** Confirmations the panel owns: everything except the timeline-rendered kinds. */
 function isPanelConfirmation(item: PendingConfirmationItem): boolean {
-	return !item.toolCall.confirmation.mcpConnectRequest;
+	const confirmation = item.toolCall.confirmation;
+	return !confirmation.mcpConnectRequest && !confirmation.appBlueprint;
 }
 
 /**
@@ -574,45 +604,15 @@ export function createThreadRuntime(
 	function clearPendingWorkflowAttachment(): void {
 		pendingWorkflowAttachment.value = null;
 	}
-	const transientWorkflowReferences = reactive(
-		new Map<string, TransientWorkflowArtifactReference>(),
-	);
-	function upsertTransientWorkflowReference(reference: TransientWorkflowArtifactReference): void {
-		transientWorkflowReferences.set(reference.referenceId, { ...reference });
-	}
-	function removeTransientWorkflowReference(referenceId: string): void {
-		transientWorkflowReferences.delete(referenceId);
-	}
 
-	// Latest user-triggered (non-agent) preview run per workflow. Lives on the
-	// thread runtime so it survives the preview canvas unmounting on a tab switch
-	// and is re-seeded on remount; a fresh runtime per thread resets it (INS-611).
-	// Plain Map: only read imperatively (on push events / remount), never rendered.
-	const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
-	function rememberManualExecution(
-		workflowId: string,
-		executionId: string,
-		agentExecutionId: string | undefined,
-	): void {
-		rememberedManualExecutions.set(workflowId, { executionId, agentExecutionId });
-	}
-	function getRememberedManualExecution(workflowId: string): RememberedManualExecution | undefined {
-		return rememberedManualExecutions.get(workflowId);
-	}
-	function forgetManualExecution(workflowId: string): void {
-		rememberedManualExecutions.delete(workflowId);
-	}
-
-	// Artifact logs panel auto-open bookkeeping. It lives here because the preview
-	// remounts on every tab switch. A fresh runtime per thread resets it (INS-1192).
-	const logsPanelMemory = {
-		// The user collapsed the panel in this thread, so later runs do not open it again.
-		collapsedByUser: false,
-		// Only a panel that opened automatically collapses after a successful run.
-		autoOpened: false,
-		// Latest started run per workflow id. Only the success of that run collapses the panel.
-		latestStartedExecutionIds: new Map<string, string>(),
-	};
+	// Preview state that survives the preview canvas unmounting on a tab switch.
+	// A fresh runtime per thread resets it (INS-611, INS-1192).
+	const {
+		rememberManualExecution,
+		getRememberedManualExecution,
+		forgetManualExecution,
+		logsPanelMemory,
+	} = createArtifactPreviewMemory();
 
 	// --- Reducer routing state ---
 	// Plain Maps: the routing tables themselves are never rendered. The run
@@ -642,19 +642,20 @@ export function createThreadRuntime(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
-	} = useResourceRegistry(
-		() => messages.value,
-		(id) => workflowsListStore.getWorkflowById(id)?.name,
-		() => archivedWorkflowIds.value,
-		() => getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
-		() => {
+	} = useResourceRegistry(() => messages.value, {
+		workflowNameLookup: (id) => workflowsListStore.getWorkflowById(id)?.name,
+		archivedWorkflowIds: () => archivedWorkflowIds.value,
+		agentBuilderTarget: () =>
+			getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		pendingAgentTarget: () => {
 			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
-		() => pendingWorkflowAttachment.value ?? undefined,
-		() => [...transientWorkflowReferences.values()],
-		() => getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
-	);
+		pendingWorkflowAttachment: () => pendingWorkflowAttachment.value ?? undefined,
+		agentBuilderTargets: () =>
+			getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		appTargets: () => getAppTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+	});
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
 		useResponseFeedback({
@@ -784,6 +785,7 @@ export function createThreadRuntime(
 				tab_visible: tabVisible,
 				mention_counts: metric.mentionCounts,
 				attachment_count: metric.attachmentCount,
+				selected_element_count: metric.selectedElementCount,
 			});
 		});
 	}
@@ -936,77 +938,6 @@ export function createThreadRuntime(
 	// `submit-workflow` is keyed on `workflowId` presence so a create grant
 	// doesn't silently auto-approve later updates.
 	const sessionAlwaysAllowKeys = ref<Set<string>>(new Set());
-
-	function resolveAlwaysAllowWorkflowId(
-		args: Record<string, unknown>,
-		confirmationWorkflowId?: string,
-	): string {
-		if (typeof args.workflowId === 'string' && args.workflowId.length > 0) {
-			return args.workflowId;
-		}
-		if (typeof confirmationWorkflowId === 'string' && confirmationWorkflowId.length > 0) {
-			return confirmationWorkflowId;
-		}
-		return '';
-	}
-
-	/**
-	 * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
-	 * generic `workflow_builder_build_workflow:` key would auto-approve later foreign edits.
-	 */
-	function buildAlwaysAllowKey(
-		rawToolName: string,
-		args: Record<string, unknown>,
-		confirmationWorkflowId?: string,
-	): string | null {
-		const toolName = resolveBuilderToolName(rawToolName);
-		if (toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW) {
-			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
-			return `${REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW}:${isUpdate ? 'update' : 'create'}`;
-		}
-		const action = typeof args.action === 'string' ? args.action : '';
-		const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
-		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
-		// workflow the user approved.
-		if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && action === 'run') {
-			return buildRunWorkflowSessionGrantKey(workflowId);
-		}
-		// Running one node grants "always allow" per node, so a debug loop on one
-		// node stops prompting while the rest of the workflow still asks. Without
-		// a node name the key cannot be scoped — refuse to store one (fail closed).
-		if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && action === 'run-step') {
-			const nodeName = typeof args.nodeName === 'string' ? args.nodeName : '';
-			if (!workflowId || !nodeName) return null;
-			return buildRunStepSessionGrantKey(workflowId, nodeName);
-		}
-		// Editing a workflow (workflow_builder_build_workflow save or workflows update) is also per-workflow,
-		// matching the backend `workflows:update:<id>` thread grant. Bound workflow_builder_build_workflow
-		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
-		// payload instead. Without either ID, refuse to store a key (fail closed).
-		if (
-			(toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS && action === 'update') ||
-			toolName === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW
-		) {
-			if (!workflowId) return null;
-			return buildUpdateWorkflowSessionGrantKey(workflowId);
-		}
-		if (toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES) {
-			return buildDataTablesSessionGrantKey(action);
-		}
-		// Executing a node grants "always allow" per node type + resource + operation,
-		// mirroring the backend thread grant. Without a type, fail closed.
-		if (
-			(toolName === WORKFLOW_BUILDER_TOOL_NAMES.NODES && action === 'execute') ||
-			toolName === SHARED_BUILDER_TOOL_NAMES.EXECUTE_NODE
-		) {
-			const nodeType = typeof args.type === 'string' ? args.type : '';
-			if (!nodeType) return null;
-			const config = isRecord(args.config) ? args.config : undefined;
-			const parameters = isRecord(config?.parameters) ? config.parameters : undefined;
-			return buildExecuteNodeSessionGrantKey(nodeType, parameters);
-		}
-		return `${toolName}:${action}`;
-	}
 
 	function addAlwaysAllowKey(
 		toolName: string,
@@ -1429,7 +1360,6 @@ export function createThreadRuntime(
 		activeArtifactId.value = undefined;
 		openTabs.value = undefined;
 		pendingWorkflowAttachment.value = null;
-		transientWorkflowReferences.clear();
 		pendingHandoff.value = null;
 		disarmGenerationStallWatchdog();
 	}
@@ -1598,6 +1528,7 @@ export function createThreadRuntime(
 		actionSource: InstanceAiThreadSourcePersisted,
 		mentionCounts: AssistantMentionCounts,
 		attachmentCount: number,
+		selectedElementCount: number,
 	): void {
 		const isPrefill = authorship.kind === 'prefill';
 		const setupContext =
@@ -1617,6 +1548,7 @@ export function createThreadRuntime(
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
 			mention_counts: mentionCounts,
 			attachment_count: attachmentCount,
+			selected_element_count: selectedElementCount,
 		});
 	}
 
@@ -1714,12 +1646,15 @@ export function createThreadRuntime(
 			seedArtifactOrigins(mentionedWorkflowIds, 'mentioned');
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
 			const attachmentCount = attachments?.length ?? 0;
+			const selectedElementCount =
+				attachments?.filter(({ type }) => type === 'element').length ?? 0;
 			trackUserMessageSent(
 				isFirstMessage,
 				authorship,
 				actionSource,
 				mentionCounts,
 				attachmentCount,
+				selectedElementCount,
 			);
 
 			const runId = await dispatchUserMessage(message, attachments, handoffContext, pushRef);
@@ -1736,6 +1671,7 @@ export function createThreadRuntime(
 				generation: metricGeneration,
 				mentionCounts,
 				attachmentCount,
+				selectedElementCount,
 			});
 			return true;
 		} finally {
@@ -1895,9 +1831,6 @@ export function createThreadRuntime(
 		pendingWorkflowAttachment,
 		setPendingWorkflowAttachment,
 		clearPendingWorkflowAttachment,
-		transientWorkflowReferences,
-		upsertTransientWorkflowReference,
-		removeTransientWorkflowReference,
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,

@@ -216,6 +216,80 @@ test.describe(
 			await verifyCellValues(n8n, columnIds, testData);
 		});
 
+		test('Should show the full add-row button hover state inside the grid cell', async ({
+			n8n,
+		}) => {
+			await expect(n8n.dataTableDetails.getPageWrapper()).toBeVisible();
+
+			await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string', 'header');
+			await n8n.dataTableDetails.addRow();
+			await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
+
+			const addRowButton = n8n.dataTableDetails.getAddRowTableButton();
+			await addRowButton.hover();
+
+			// The hover background fills the button box. Measure how much of that box
+			// the ancestors that clip their overflow cut off.
+			const clippedPx = await addRowButton.evaluate((button) => {
+				const box = button.getBoundingClientRect();
+				const visible = { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+				const grid = button.closest('[data-test-id="data-table-grid"]');
+				let ancestor = button.parentElement;
+				while (ancestor && ancestor !== grid) {
+					const style = getComputedStyle(ancestor);
+					const clipsX = style.overflowX !== 'visible';
+					const clipsY = style.overflowY !== 'visible';
+					if (clipsX || clipsY) {
+						const clip = ancestor.getBoundingClientRect();
+						if (clipsX) {
+							visible.left = Math.max(visible.left, clip.left);
+							visible.right = Math.min(visible.right, clip.right);
+						}
+						if (clipsY) {
+							visible.top = Math.max(visible.top, clip.top);
+							visible.bottom = Math.min(visible.bottom, clip.bottom);
+						}
+					}
+					ancestor = ancestor.parentElement;
+				}
+				return {
+					left: Math.round(visible.left - box.left),
+					right: Math.round(box.right - visible.right),
+					top: Math.round(visible.top - box.top),
+					bottom: Math.round(box.bottom - visible.bottom),
+				};
+			});
+
+			expect(clippedPx).toEqual({ left: 0, right: 0, top: 0, bottom: 0 });
+		});
+
+		test('Should draw each header column divider in a single color', async ({ n8n }) => {
+			await expect(n8n.dataTableDetails.getPageWrapper()).toBeVisible();
+
+			await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string', 'header');
+			await n8n.dataTableDetails.addColumn(COLUMN_NAMES.age, 'number', 'header');
+			await n8n.dataTableDetails.addRow();
+
+			const nameHeaderCell = n8n.dataTableDetails.getColumnHeaderCellByName(COLUMN_NAMES.name);
+			await expect(nameHeaderCell).toBeVisible();
+
+			// AG Grid draws the divider on the right of a header cell with `::after`.
+			// The resize handle of a resizable column sits on top of that divider.
+			const colors = await nameHeaderCell.evaluate((cell) => {
+				const resizeHandle = cell.querySelector('.ag-header-cell-resize');
+				return {
+					divider: getComputedStyle(cell, '::after').borderRightColor,
+					resizeHandle: resizeHandle
+						? getComputedStyle(resizeHandle, '::after').backgroundColor
+						: null,
+				};
+			});
+
+			expect(colors.resizeHandle).not.toBeNull();
+			// A visible resize handle must use the divider color, or the divider shows two shades.
+			expect([colors.divider, 'rgba(0, 0, 0, 0)']).toContain(colors.resizeHandle);
+		});
+
 		test('Should automatically move to second page when adding 21st row', async ({ n8n }) => {
 			await expect(n8n.dataTableDetails.getPageWrapper()).toBeVisible();
 

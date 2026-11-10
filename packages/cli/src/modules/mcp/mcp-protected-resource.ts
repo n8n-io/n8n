@@ -1,5 +1,6 @@
 import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_AGENT_SCOPES,
 	MCP_SKILL_SCOPES,
 	MCP_INSTANCE_SCOPES,
@@ -11,7 +12,7 @@ import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService } from '@n8n/backend-services';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillsGate } from '@/modules/skills';
 import { PostHogClient } from '@/posthog';
 
 import {
@@ -23,7 +24,6 @@ import {
 } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
-	arePreferenceToolsEnabled,
 	canChangeMigrationReport,
 	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
@@ -39,7 +39,6 @@ import { McpSettingsService } from './mcp.settings.service';
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
 const SKILL_SCOPES = new Set<string>(MCP_SKILL_SCOPES);
-const PREFERENCE_SCOPES = new Set<string>(['aiPreference:read', 'aiPreference:write']);
 const MIGRATION_REPORT_SCOPES = new Set<string>([
 	'breakingChanges:list',
 	'breakingChanges:migrate',
@@ -85,7 +84,7 @@ export class McpProtectedResource implements ProtectedResource {
 
 	get scopes(): string[] {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
-		const skillsAvailable = Container.get(SkillAgentsProxy).hasProvider;
+		const skillsAvailable = Container.get(SkillsGate).isEnabled;
 		const migrationReportAvailable = isMigrationReportAvailable(this.moduleRegistry);
 		return SUPPORTED_SCOPES.filter(
 			(scope) =>
@@ -115,6 +114,11 @@ export class McpProtectedResource implements ProtectedResource {
 			// Keep context tools hidden when the gate cannot be read.
 		}
 
+		const credentialDescriptionsEnabled =
+			(await this.postHogClient
+				.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)
+				.catch(() => false)) === true;
+
 		return Object.fromEntries(
 			Object.entries(TOOLS_BY_SCOPE)
 				.filter(([scope]) => supportedScopes.has(scope))
@@ -126,7 +130,8 @@ export class McpProtectedResource implements ProtectedResource {
 							(!tagsDisabled || tool !== 'list_workflow_tags') &&
 							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
 							(instanceContextAvailable || !ACTIVITY_LOG_TOOLS.has(tool)) &&
-							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)),
+							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)) &&
+							(credentialDescriptionsEnabled || tool !== 'update_credential_description'),
 					),
 				]),
 		);
@@ -183,10 +188,6 @@ export class McpProtectedResource implements ProtectedResource {
 	 * re-checking one of its conditions: the screen pre-checks every offered
 	 * scope on first consent, so a scope offered here is a scope granted.
 	 *
-	 * `aiPreference:*` is dropped for a user outside the preferences experiment
-	 * arm for the same reason, and one more: showing the scopes to the control
-	 * arm exposes the feature to the users the experiment keeps unaware of it.
-	 *
 	 * `breakingChanges:list` and `breakingChanges:migrate` are each dropped for a
 	 * user whose role lacks the permission of the same name, for the first reason:
 	 * registration checks the same permission, so the grant could do nothing more.
@@ -202,26 +203,15 @@ export class McpProtectedResource implements ProtectedResource {
 			this.mcpConfig,
 			user,
 		);
-		const preferencesEnabled = await this.arePreferencesEnabledFor(user);
 		const migrationReportReadable = canReadMigrationReport(this.moduleRegistry, user);
 		const migrationReportChangeable = canChangeMigrationReport(this.moduleRegistry, user);
 
 		return this.scopes.filter(
 			(scope) =>
 				(installAvailable || scope !== 'communityPackage:install') &&
-				(preferencesEnabled || !PREFERENCE_SCOPES.has(scope)) &&
 				(migrationReportReadable || scope !== 'breakingChanges:list') &&
 				(migrationReportChangeable || scope !== 'breakingChanges:migrate'),
 		);
-	}
-
-	private async arePreferencesEnabledFor(user: ResourceUser): Promise<boolean> {
-		try {
-			return arePreferenceToolsEnabled(await this.postHogClient.getFeatureFlags(user));
-		} catch {
-			// Registration treats an unreadable flag as off; consent must agree.
-			return false;
-		}
 	}
 
 	async isAvailable(): Promise<boolean> {

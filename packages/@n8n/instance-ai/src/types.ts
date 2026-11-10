@@ -20,6 +20,11 @@ import type {
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
+	AppBinding,
+	AppBindingsResponse,
+	AppBuildResponse,
+	AppListResponse,
+	AppResponse,
 	SaveSkillDto,
 	SkillDetail,
 	SkillListResponse,
@@ -60,7 +65,6 @@ import type { AgentContextInput } from './tools/agent-context.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
-import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
 import type {
@@ -803,6 +807,7 @@ export interface CredentialHostInfo {
 }
 
 export interface InstanceAiCredentialService {
+	updateDescription(credentialId: string, description: string | null): Promise<void>;
 	/**
 	 * List credentials.
 	 *
@@ -905,7 +910,7 @@ export interface InstanceAiActivityEntry {
 
 /**
  * An entry in full, plus the rest of what the log knows about the same resource. Deliberately not
- * the live record: `workflow_builder_workflows` and `list_credentials` already fetch those, and the entry carries the ids
+ * the live record: `get_workflow` and `list_credentials` already fetch those, and the entry carries the ids
  * to call them with.
  */
 export interface InstanceAiActivityExpansion {
@@ -1292,6 +1297,36 @@ export interface InstanceAiDataTableService {
 	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
+export interface InstanceAiAppService {
+	createApp(input: {
+		name: string;
+		namespace: string;
+		visibility?: AppResponse['visibility'];
+		id?: string;
+	}): Promise<AppResponse>;
+	listApps(query: { name?: string }): Promise<AppListResponse>;
+	getApp(appId: string): Promise<AppResponse>;
+	findApp(appId: string): Promise<AppResponse | undefined>;
+	/** The draft source as a gzip tar archive, with the version it is based on. */
+	exportDraft(appId: string): Promise<{ baseVersionId: string | null; archive: Buffer }>;
+	commit(
+		appId: string,
+		baseVersionId: string | null,
+		archive: Buffer,
+		label: string | null,
+	): Promise<AppBuildResponse>;
+	/** The bindings of the draft version, with the TypeScript declarations that describe them. */
+	getBindings(appId: string): Promise<AppBindingsResponse & { types: string }>;
+	/** Saves the full binding list as a new version on top of `baseVersionId`. */
+	setBindings(
+		appId: string,
+		baseVersionId: string | null,
+		bindings: AppBinding[],
+	): Promise<AppBindingsResponse & { types: string }>;
+	/** The `@n8n/app-sdk` package of this instance as a gzip tar archive. */
+	exportSdk(): Promise<Buffer>;
+}
+
 // ── Evaluation configs (config-based evals) ──────────────────────────────────
 
 /** Preset LLM-judge metrics supported by config-based evals — mirrors
@@ -1531,7 +1566,7 @@ export interface InstanceAiBuilderDelegate {
 	): BuiltTool[];
 	/** Runtime skills that the builder tools rely on, such as `agent-builder-config`. */
 	getRuntimeSkills(): RuntimeSkill[];
-	/** Preview link and model recommendations for the target agent. */
+	/** Preview link for the target agent. */
 	getBuilderSessionContext(agentId: string): Promise<string>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
@@ -1651,6 +1686,20 @@ export interface InstanceAiAgentContextReader {
 	lookup(input: AgentContextLookup): Promise<Record<string, unknown>>;
 }
 
+/** A stored file of the thread, as `parse-file` reads it. */
+export interface InstanceAiStoredFile {
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
+	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
+	readContent(): Promise<Buffer | undefined>;
+}
+
+export interface InstanceAiStoredFileReader {
+	/** Gives `undefined` when the thread has no such file. */
+	read(fileId: string): Promise<InstanceAiStoredFile | undefined>;
+}
+
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 /** An artifact that a tool created or changed. Tools pass the name when they know it. */
@@ -1672,7 +1721,7 @@ export interface InstanceAiContext {
 	projectId?: string;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
-	 * is built. When true, the `workflow_builder_workflows` list action advertises folder fields
+	 * is built. When true, `list_workflows` advertises folder fields
 	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
 	 */
 	folderExplorationEnabled?: boolean;
@@ -1710,6 +1759,7 @@ export interface InstanceAiContext {
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
 	skillService?: InstanceAiSkillService;
+	appService?: InstanceAiAppService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */
@@ -1824,10 +1874,16 @@ export interface InstanceAiContext {
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
 	 * File attachments from the current user message. Runtime-only — not
-	 * persisted. Used to register `parse-file` and supply data to the parser.
+	 * persisted. The current-message `parse-file` reads them by index.
 	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
 	currentUserAttachments?: InstanceAiFileAttachment[];
+	/**
+	 * Reads stored files of the thread by id. When it is set, `parse-file` takes
+	 * a `fileId` and is registered on every turn, so the tool list stays stable
+	 * and files from earlier messages stay readable.
+	 */
+	storedFiles?: InstanceAiStoredFileReader;
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
 	/** Optional telemetry sink for domain tools. */
@@ -1838,6 +1894,11 @@ export interface InstanceAiContext {
 	 *  accept absolute file paths under the root by normalizing them to
 	 *  workspace-relative. */
 	workspaceRoot?: string;
+	/**
+	 * Second root that the tools accept in absolute paths. Older Daytona sandboxes keep their files
+	 * there and link `workspaceRoot` to it, so tool output can name either root.
+	 */
+	fallbackWorkspaceRoot?: string;
 	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */
@@ -1942,6 +2003,16 @@ export interface InstanceAiMemoryConfig {
 		model?: ModelConfig;
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */
 		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
+	};
+	/**
+	 * Generate a title for a thread that has none, after the first turn. The
+	 * runtime reports the usage of the title call through `onSideCallUsage`.
+	 */
+	titleGeneration?: {
+		/** Model for the title call. Defaults to the agent's model. */
+		model?: ModelConfig;
+		/** Saves the title before the run ends, instead of after it in the background. */
+		sync?: boolean;
 	};
 }
 
@@ -2191,7 +2262,6 @@ export interface OrchestrationContext {
 	mcpTools?: InstanceAiToolRegistry;
 	/** Skills that the agent can load. */
 	skills?: RuntimeSkillSource;
-	skillAvailabilityNotice?: string;
 	/** Add loaded Hub content to UI events without changing agent memory. */
 	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
@@ -2211,8 +2281,6 @@ export interface OrchestrationContext {
 	currentUserMessage?: string;
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
-	/** Thread-scoped iteration log for accumulating attempt history across retries */
-	iterationLog?: IterationLog;
 	/** Send a correction message to a running background task */
 	sendCorrectionToTask?: (
 		taskId: string,
@@ -2253,4 +2321,6 @@ export interface CreateInstanceAgentOptions {
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 	/** Transport for the agent's model calls. Sub-agents and memory tasks inherit it. */
 	modelFetch?: FetchFn;
+	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */
+	requestLabels?: boolean;
 }

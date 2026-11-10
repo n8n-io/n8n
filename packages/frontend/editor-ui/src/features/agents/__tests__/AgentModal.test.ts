@@ -9,11 +9,15 @@ import AgentModalMultiStep from '../components/modals/AgentModalMultiStep.vue';
 
 vi.mock('@n8n/design-system', async () => {
 	const { defineComponent, nextTick, onMounted, ref } = await import('vue');
+	// The design system re-exports this primitive. Use that component so a nested
+	// dialog still pauses focus.
+	const { FocusScope } = await import('@n8n/design-system/components/FocusScope');
 	return {
 		N8nDialog: defineComponent({
 			props: {
 				open: Boolean,
 				size: String,
+				containerClass: String,
 				trapFocus: Boolean,
 				disableOutsidePointerEvents: Boolean,
 				showCloseButton: {
@@ -46,6 +50,7 @@ vi.mock('@n8n/design-system', async () => {
 					ref="dialog"
 					v-if="open"
 					role="dialog"
+					:class="containerClass"
 					:data-size="size"
 					:data-trap-focus="trapFocus"
 					:data-disable-outside-pointer-events="disableOutsidePointerEvents"
@@ -83,6 +88,7 @@ vi.mock('@n8n/design-system', async () => {
 				/>
 			`,
 		}),
+		FocusScope,
 		N8nIcon: defineComponent({ template: '<i />' }),
 		N8nIconButton: defineComponent({
 			inheritAttrs: false,
@@ -127,6 +133,80 @@ describe('AgentModal', () => {
 			{ footerActions: '<button>Save</button>' },
 		);
 		expect(hiddenFooter.find('footer').exists()).toBe(false);
+	});
+
+	it('renders a title suffix and a custom Cancel label', () => {
+		const wrapper = mountModal(
+			{ cancelLabel: 'Close' },
+			{
+				titleSuffix: '<button data-test-id="title-menu">More</button>',
+				footerActions: '<button>Save</button>',
+			},
+		);
+
+		expect(wrapper.find('[data-test-id="title-menu"]').exists()).toBe(true);
+		expect(wrapper.findAll('footer button').map((button) => button.text())).toContain('Close');
+		wrapper.unmount();
+	});
+
+	it('renders a side panel beside the body only when one is given', () => {
+		const withPanel = mountModal(
+			{},
+			{ default: '<p>Form</p>', sidePanel: '<p data-test-id="versions">Versions</p>' },
+		);
+		expect(
+			withPanel.find('[data-testid="agent-modal-side-panel"] [data-test-id="versions"]').exists(),
+		).toBe(true);
+		withPanel.unmount();
+
+		const withoutPanel = mountModal({}, { default: '<p>Form</p>' });
+		expect(withoutPanel.find('[data-testid="agent-modal-side-panel"]').exists()).toBe(false);
+		withoutPanel.unmount();
+	});
+
+	it('gives the dialog a fixed size when asked', () => {
+		const fixed = mountModal({ fixedSize: true });
+		expect(
+			fixed
+				.get('[role="dialog"]')
+				.classes()
+				.some((name) => /dialogFixed/.test(name)),
+		).toBe(true);
+		fixed.unmount();
+
+		const sized = mountModal();
+		expect(
+			sized
+				.get('[role="dialog"]')
+				.classes()
+				.some((name) => /dialogFixed/.test(name)),
+		).toBe(false);
+		sized.unmount();
+	});
+
+	it('draws the divider over each column of a fixed dialog, in warning color when asked', () => {
+		const wrapper = mountModal(
+			{ fixedSize: true, headerDivider: true, headerDividerTone: 'warning' },
+			{ default: '<p>Form</p>', sidePanel: '<p>Versions</p>' },
+		);
+		const split = wrapper.find('[class*="splitDivided"]');
+
+		expect(split.exists()).toBe(true);
+		expect(split.classes().some((name) => /dividerWarning/.test(name))).toBe(true);
+		expect(
+			wrapper
+				.get('header')
+				.classes()
+				.some((name) => /headerDivider/.test(name)),
+		).toBe(false);
+		wrapper.unmount();
+	});
+
+	it('names the cancel button Cancel by default', () => {
+		const wrapper = mountModal({}, { footerActions: '<button>Save</button>' });
+
+		expect(wrapper.findAll('footer button').map((button) => button.text())).toContain('Cancel');
+		wrapper.unmount();
 	});
 
 	it('preserves inferred footer visibility through the multi-step shell', () => {
@@ -235,6 +315,7 @@ describe('AgentModal', () => {
 		expect(wrapper.get('[data-testid="agent-modal-back"]').attributes('disabled')).toBeDefined();
 		expect(wrapper.find('[data-testid="dialog-close-button"]').exists()).toBe(false);
 		expect(wrapper.emitted('update:open')).toBeUndefined();
+		wrapper.unmount();
 	});
 
 	it('releases and restores focus and dismissal for a nested parameter editor', async () => {
@@ -262,13 +343,23 @@ describe('AgentModal', () => {
 			},
 		});
 		const wrapper = mount(AgentModal, {
+			attachTo: document.body,
 			props: { open: true, title: 'Tool settings' },
 			slots: { default: () => h(editor) },
 		});
 		const dialog = wrapper.get('[role="dialog"]');
-		await wrapper.get('[data-test-id="open-editor"]').trigger('click');
+		const opener = wrapper.get<HTMLButtonElement>('[data-test-id="open-editor"]');
+		const editorInput = document.querySelector<HTMLInputElement>(
+			'[data-test-id="parameter-editor-input"]',
+		)!;
+		opener.element.focus();
+		await opener.trigger('click');
+		await flushPromises();
 		expect(dialog.attributes('data-trap-focus')).toBe('false');
 		expect(dialog.attributes('data-disable-outside-pointer-events')).toBe('false');
+		expect(document.activeElement).toBe(opener.element);
+		editorInput.focus();
+		expect(document.activeElement).toBe(editorInput);
 		await wrapper.get('[data-test-id="dialog-escape"]').trigger('click');
 		await wrapper.get('[data-test-id="dialog-dismiss"]').trigger('click');
 		expect(dialog.attributes('data-escape-prevented')).toBe('true');
@@ -279,13 +370,15 @@ describe('AgentModal', () => {
 			bubbles: true,
 			cancelable: true,
 		});
-		document.querySelector('[data-test-id="parameter-editor-input"]')!.dispatchEvent(escape);
+		editorInput.dispatchEvent(escape);
 		wrapper.getComponent(N8nDialog).vm.$emit('escapeKeyDown', escape);
 		await flushPromises();
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(escape.defaultPrevented).toBe(true);
 		expect(wrapper.emitted('update:open')).toBeUndefined();
 		expect(dialog.attributes('data-trap-focus')).toBe('true');
 		expect(dialog.attributes('data-disable-outside-pointer-events')).toBe('true');
+		expect(document.activeElement).toBe(editorInput);
 		await wrapper.get('[data-test-id="dialog-dismiss"]').trigger('click');
 		expect(wrapper.emitted('update:open')).toEqual([[false]]);
 		wrapper.unmount();

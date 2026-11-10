@@ -12,7 +12,7 @@ import type {
 	SuspendEmission,
 } from '../../types/runtime/agent-loop';
 import { withPromptSizeBreakdown } from './prompt-size-usage';
-import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
+import { classifyModelTurnError, mergeUsage, resolveAiFinishReason } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
 import { isAttachmentValidationError } from '../model/attachment-validation-error';
@@ -73,6 +73,10 @@ export class StreamSink implements RunOutputSink<void> {
 
 	async emitInput(message: AgentDbMessage): Promise<void> {
 		await this.guard.write({ type: 'input', message });
+	}
+
+	async emitMessage(message: AgentMessage): Promise<void> {
+		await this.guard.write({ type: 'message', message });
 	}
 
 	private lastUsage: TokenUsage | undefined;
@@ -279,6 +283,8 @@ export class StreamSink implements RunOutputSink<void> {
 			// Result promises report this error. Do not forward it or count it as content before a retry.
 			if (chunk.type === 'error' && NoOutputGeneratedError.isInstance(chunk.error)) continue;
 			if (!this.captureStreamChunk(chunk, attemptState)) continue;
+			// Before the write, so preparation is not held up by a slow consumer.
+			if (chunk.type === 'tool-input-start') ctx.onToolInputStart?.(chunk.toolName);
 			await this.writeStreamChunk(chunk);
 		}
 
@@ -388,7 +394,8 @@ export class StreamSink implements RunOutputSink<void> {
 				? await raceWithStallDeadline(promise, idleMs, () => turnAbort.abort())
 				: await promise;
 
-		const aiFinishReason = await settle(result.finishReason);
+		const toolCalls = await settle(result.toolCalls);
+		const aiFinishReason = resolveAiFinishReason(await settle(result.finishReason), toolCalls);
 		const usage = await settle(result.usage);
 		const finalStep = await settle(result.finalStep);
 		const newMessages = fromAiMessages(await settle(result.responseMessages));
@@ -403,7 +410,7 @@ export class StreamSink implements RunOutputSink<void> {
 			finishReason: fromAiFinishReason(aiFinishReason),
 			usage: toTokenUsage(usage, finalStep.providerMetadata),
 			newMessages,
-			toolCalls: await settle(result.toolCalls),
+			toolCalls,
 			structuredOutput:
 				ctx.outputSpec && aiFinishReason !== 'tool-calls' ? await settle(result.output) : undefined,
 			...(errorReason && { errorReason }),
@@ -419,6 +426,7 @@ export class StreamSink implements RunOutputSink<void> {
 				output: r.modelOutput,
 				...(r.toolEntry.canceled ? { canceled: true } : {}),
 				...(r.mcpServerName !== undefined ? { mcpServerName: r.mcpServerName } : {}),
+				...(r.traceOutput !== undefined ? { traceOutput: r.traceOutput } : {}),
 			});
 			if (r.customMessage) {
 				await this.guard.write({ type: 'message', message: r.customMessage });
