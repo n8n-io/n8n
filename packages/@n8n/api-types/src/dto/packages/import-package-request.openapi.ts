@@ -134,9 +134,10 @@ export const importPackageRequestFieldDocs = {
 			'import. `overwrite` is project-packages-only, needs the `workflow:delete` and ' +
 			'`folder:delete` scopes, is rejected against a `projectConflictPolicy` other than ' +
 			'`overwrite`, and blocks up front if the caller cannot delete something it would remove. ' +
-			'A project package needs the `folder:create` scope and a folders-enabled license only ' +
-			'when the import creates a folder. A workflow package with folders always needs ' +
-			'`folder:create`, `folder:update` and that license.',
+			'A project package needs the `folder:create` scope only when the import creates a ' +
+			'folder, and a folders-enabled license only when it creates, changes or removes a ' +
+			'folder. A workflow package with folders always needs `folder:create`, ' +
+			'`folder:update` and that license.',
 	},
 	overwriteDeletionPolicy: {
 		description:

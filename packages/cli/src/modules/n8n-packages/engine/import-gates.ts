@@ -7,6 +7,7 @@ import { plannedCredentialUpdates } from '../entities/credential/credential-conf
 import type { CredentialImportPlan } from '../entities/credential/credential.types';
 import type { DataTableImportPlan } from '../entities/data-table/data-table.types';
 import type { FolderImportPlan } from '../entities/folder/folder-import.types';
+import type { FolderRemovalPlan } from '../entities/folder/folder-removal.types';
 import type { ProjectPlanItem } from '../entities/project/project-import.types';
 import type { SkillImportPlan } from '../entities/skill/skill-import.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
@@ -78,21 +79,26 @@ export function assertProjectWritesAllowed(
 
 /**
  * A workflow can go into a folder that already exists without the folders licence, as elsewhere
- * in n8n. Only creating, moving or renaming a folder needs the licence and a folder scope.
+ * in n8n. Creating, changing or removing a folder needs the licence. The folder:delete scope is
+ * checked before planning.
  */
 export function assertFolderWritesAllowed(
 	licenseState: LicenseState,
 	apiKeyScopes: string[] | undefined,
-	folderPlans: Array<Pick<FolderImportPlan, 'items'>>,
+	plans: Array<{
+		folderPlan: Pick<FolderImportPlan, 'items'>;
+		folderRemovalPlan: Pick<FolderRemovalPlan, 'removals'>;
+	}>,
 ): void {
-	const items = folderPlans.flatMap((plan) => plan.items);
+	const items = plans.flatMap(({ folderPlan }) => folderPlan.items);
 	const hasCreations = items.some((item) => item.action === 'create');
 	const hasUpdates = items.some((item) => item.action === 'update');
-	if (!hasCreations && !hasUpdates) return;
+	const hasRemovals = plans.some(({ folderRemovalPlan }) => folderRemovalPlan.removals.length > 0);
+	if (!hasCreations && !hasUpdates && !hasRemovals) return;
 
 	if (!licenseState.isLicensed('feat:folders')) {
 		throw new ForbiddenError(
-			'Your license does not allow folders. Importing a package that creates or changes folders requires a license that supports folders.',
+			'Your license does not allow folders. Importing a package that creates, changes or removes folders requires a license that supports folders.',
 		);
 	}
 	if (hasCreations) assertPackageImportApiKeyScopes(apiKeyScopes, ['folder:create']);

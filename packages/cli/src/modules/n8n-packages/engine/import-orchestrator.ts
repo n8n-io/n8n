@@ -242,11 +242,7 @@ export class ImportOrchestrator {
 			options.apiKeyScopes,
 			plans.map((plan) => plan.dataTablePlan),
 		);
-		assertFolderWritesAllowed(
-			this.licenseState,
-			options.apiKeyScopes,
-			plans.map((plan) => plan.folderPlan),
-		);
+		assertFolderWritesAllowed(this.licenseState, options.apiKeyScopes, plans);
 		if (
 			plans.some(
 				({ input, credentialPlan, agentPlan }) =>

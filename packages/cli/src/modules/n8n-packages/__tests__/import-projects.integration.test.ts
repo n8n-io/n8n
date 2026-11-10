@@ -490,6 +490,14 @@ describe('project shell import', () => {
 			expect((await findWorkflow(kept.id))?.isArchived).toBe(false);
 		});
 
+		it('needs the folders license to remove an empty folder', async () => {
+			const empty = await createFolder(project, { name: 'empty' });
+			licenseMocker.disable('feat:folders');
+
+			await expect(reconcile('overwrite')).rejects.toBeInstanceOf(ForbiddenError);
+			expect(await findFolder(empty.id)).not.toBeNull();
+		});
+
 		it('shelters a target-only folder holding only an archived workflow', async () => {
 			const shelved = await createFolder(project, { name: 'shelved' });
 			const archived = await createWorkflow(
