@@ -81,7 +81,7 @@ function renderOpenModal() {
 	});
 	const externalSecretsStore = useExternalSecretsStore();
 	externalSecretsStore.state.providers = [savedProvider];
-	externalSecretsStore.getProvider.mockResolvedValue(savedProvider);
+	vi.mocked(externalSecretsStore.getProvider).mockResolvedValue(savedProvider);
 
 	return renderModal({
 		pinia,
