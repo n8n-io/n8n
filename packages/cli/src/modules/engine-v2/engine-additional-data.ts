@@ -5,6 +5,8 @@ import { Service } from '@n8n/di';
 import { UnimplementedError } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import { ExternalSecretsProxy } from 'n8n-core';
+
+import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import type {
 	DataTableProxyProvider,
 	ICredentialsHelper,
@@ -79,6 +81,7 @@ export class EngineAdditionalDataBuilder {
 		private readonly eventService: EventService,
 		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly taskRequester: TaskRequester,
 	) {}
 
 	build(
@@ -120,12 +123,9 @@ export class EngineAdditionalDataBuilder {
 			logHitlResponse: (payload) => {
 				eventService.emit('hitl-response-actioned', payload);
 			},
-			// The data plane runs no task runner, so the Code node has nowhere to send
-			// work. Python asks first and gets "unavailable" with no reason, since the
-			// node maps reasons to Python install problems; JavaScript reaches
-			// `startRunnerTask` and fails there.
-			getRunnerStatus: () => ({ available: false }),
-			startRunnerTask: unimplemented('Task runners (Code node)'),
+			// The Code node's work goes to the task broker this process hosts, as on v1.
+			getRunnerStatus: (taskType) => this.taskRequester.getRunnerStatus(taskType),
+			startRunnerTask: async (...args) => await this.taskRequester.startTask(...args),
 			executeWorkflow: unimplemented('Sub-workflows (executeWorkflow)'),
 			executeAgent: unimplemented('Agents (executeAgent)'),
 			listAgents: unimplemented('Agents (listAgents)'),

@@ -2,10 +2,11 @@ import type { SsrfProtectionService } from '@n8n/backend-network';
 import type { EventService, UrlService } from '@n8n/backend-services';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { UnimplementedError } from '@n8n/engine';
-import type { DataTableProxyProvider, ICredentialsHelper } from 'n8n-workflow';
+import type { DataTableProxyProvider, ICredentialsHelper, IExecuteFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineAdditionalDataBuilder } from '../engine-additional-data';
+import type { TaskRequester } from '@/task-runners/task-managers/task-requester';
 
 describe('EngineAdditionalDataBuilder', () => {
 	const urlService = mock<UrlService>({
@@ -30,6 +31,7 @@ describe('EngineAdditionalDataBuilder', () => {
 	const credentialsHelper = mock<ICredentialsHelper>();
 	const dataTableProxyProvider = mock<DataTableProxyProvider>();
 	const ssrfProtectionService = mock<SsrfProtectionService>();
+	const taskRequester = mock<TaskRequester>();
 
 	const context = {
 		executionId: 'exec-1',
@@ -46,6 +48,7 @@ describe('EngineAdditionalDataBuilder', () => {
 			eventService,
 			mock<SsrfProtectionConfig>({ enabled: ssrfEnabled }),
 			ssrfProtectionService,
+			taskRequester,
 		).build(context, credentialsHelper, dataTableProxyProvider);
 
 	beforeEach(() => {
@@ -130,36 +133,54 @@ describe('EngineAdditionalDataBuilder', () => {
 	});
 
 	describe('task runners', () => {
-		it('reports every runner as unavailable, so the Code node fails before it waits', () => {
-			// No reason: the Code node reads it as a Python install problem key.
-			expect(build().getRunnerStatus?.('python')).toEqual({ available: false });
+		it('asks the task requester whether a runner is available', () => {
+			taskRequester.getRunnerStatus.mockReturnValue({ available: true });
+
+			expect(build().getRunnerStatus?.('python')).toEqual({ available: true });
+			expect(taskRequester.getRunnerStatus).toHaveBeenCalledWith('python');
 		});
 
-		it('rejects a runner task and names the feature', async () => {
+		it('hands a runner task to the task requester', async () => {
+			taskRequester.startTask.mockResolvedValue({ ok: true, result: [] });
 			const data = build();
+			const executeFunctions = mock<IExecuteFunctions>();
 
-			const error = await data
-				.startRunnerTask(
-					data,
-					'javascript',
-					{},
-					mock(),
-					{ main: [] },
-					mock(),
-					mock(),
-					mock(),
-					0,
-					0,
-					'Code',
-					[],
-					{},
-					'manual',
-					mock(),
-				)
-				.catch((e: unknown) => e);
+			const result = await data.startRunnerTask(
+				data,
+				'javascript',
+				{},
+				executeFunctions,
+				{ main: [] },
+				mock(),
+				mock(),
+				mock(),
+				0,
+				0,
+				'Code',
+				[],
+				{},
+				'manual',
+				mock(),
+			);
 
-			expect(error).toBeInstanceOf(UnimplementedError);
-			expect((error as Error).message).toContain('Task runners');
+			expect(result).toEqual({ ok: true, result: [] });
+			expect(taskRequester.startTask).toHaveBeenCalledWith(
+				data,
+				'javascript',
+				{},
+				executeFunctions,
+				{ main: [] },
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				0,
+				0,
+				'Code',
+				[],
+				{},
+				'manual',
+				expect.anything(),
+			);
 		});
 	});
 

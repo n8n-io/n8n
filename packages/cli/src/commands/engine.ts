@@ -22,9 +22,9 @@ export class Engine extends BaseCommand {
 	// engine's, opened by the runtime from N8N_ENGINE_DATABASE_URL.
 	override needsDb = false;
 
-	// No task runner yet, so the Code node fails with a clear error instead of
-	// waiting for a runner that never connects.
-	override needsTaskRunner = false;
+	// The data plane runs the nodes, so it hosts the task broker the Code node's
+	// runners connect to. Same module and env as `n8n start`.
+	override needsTaskRunner = true;
 
 	override needsExpressionEngine = true;
 

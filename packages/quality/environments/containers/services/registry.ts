@@ -1,6 +1,7 @@
 import { cadvisor } from './cadvisor';
 import { cloudflared } from './cloudflared';
 import { createEnginePostgresHelper, enginePostgres } from './engine-postgres';
+import { engineTaskRunner } from './engine-task-runner';
 import { gitea, createGiteaHelper } from './gitea';
 import { kafka, createKafkaHelper } from './kafka';
 import { kent, createKentHelper } from './kent';
@@ -39,6 +40,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	tracing,
 	proxy,
 	taskRunner,
+	engineTaskRunner,
 	loadBalancer,
 	cloudflared,
 	ngrok,
