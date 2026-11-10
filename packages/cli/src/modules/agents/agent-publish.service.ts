@@ -303,13 +303,14 @@ export class AgentPublishService {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		if (agent.isArchived) throw new BadRequestError('Agent is already archived.');
 
+		let current = agent;
 		if (agent.activeVersionId) {
-			await this.unpublishAgent(agentId, projectId, user, 'user', pushRef, undefined, {
+			current = await this.unpublishAgent(agentId, projectId, user, 'user', pushRef, undefined, {
 				archive: true,
 			});
-		} else {
-			await this.setArchived(agentId, projectId, true, pushRef);
 		}
+		// A concurrent unpublication makes unpublishAgent skip the archive write.
+		if (!current.isArchived) await this.setArchived(agentId, projectId, true, pushRef);
 
 		this.eventService.emit('agent-archived', { user, agentId, projectId });
 		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_ARCHIVED_AGENT, {
@@ -750,6 +751,7 @@ export class AgentPublishService {
 			await this.publishHistory.record(agent.id, agent.activeVersionId, 'deactivated', user, ctx);
 			agent.activeVersionId = null;
 			agent.activeVersion = null;
+			if (archive) agent.isArchived = true;
 			agent.publicationRevision = expectedRevision + 1;
 		});
 	}

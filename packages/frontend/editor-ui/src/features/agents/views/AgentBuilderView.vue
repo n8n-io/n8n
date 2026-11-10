@@ -2842,21 +2842,28 @@ const archiveHeaderActions = computed((): Array<ActionDropdownItem<string>> => {
 });
 
 async function onArchiveAgent() {
-	if (!agent.value) return;
+	const target = agent.value;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	if (!target) return;
 	// Save pending edits first. The backend rejects edits to an archived agent.
 	try {
 		await flushAutosave();
 	} catch {
 		return;
 	}
-	const updated = await archive(agent.value);
-	if (updated) onUnpublished(updated);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+	const updated = await archive(target);
+	if (updated && !isStaleAgentTarget(targetProjectId, targetAgentId)) onUnpublished(updated);
 }
 
 async function onUnarchiveAgent() {
-	if (!agent.value) return;
-	const updated = await unarchive(agent.value);
-	if (updated) onUnpublished(updated);
+	const target = agent.value;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	if (!target) return;
+	const updated = await unarchive(target);
+	if (updated && !isStaleAgentTarget(targetProjectId, targetAgentId)) onUnpublished(updated);
 }
 
 async function exportAgentJson() {

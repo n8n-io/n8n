@@ -17,6 +17,7 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -292,6 +293,14 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			expect(config.skills).toEqual(usePublishedVersion ? publishedRefs : draftRefs);
 		},
 	);
+
+	it('rejects an archived agent with a user error', async () => {
+		const agent = { id: 'agent-1', isArchived: true } as unknown as ProjectAgent;
+
+		await expect(
+			resolveAgentRunSource(agent, false, createAgentSkillRefsService(), {}),
+		).rejects.toThrow(UserError);
+	});
 
 	it('does not filter tools when no user is supplied (published/integration runs)', async () => {
 		const { service } = makeService({});

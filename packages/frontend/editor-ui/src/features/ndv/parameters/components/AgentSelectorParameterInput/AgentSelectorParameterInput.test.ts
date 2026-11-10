@@ -252,6 +252,30 @@ describe('AgentSelectorParameterInput', () => {
 		expect(emitted()['update:modelValue']).toBeUndefined();
 	});
 
+	it('lists the selected archived agent after a switch from ID mode to list mode', async () => {
+		getAgent.mockResolvedValue({
+			id: 'agent-1',
+			name: 'Archived Agent',
+			projectId: 'proj-1',
+			isArchived: true,
+		});
+
+		const { getByTestId, getAllByTestId, rerender } = renderComponent({
+			props: makeProps({ modelValue: { __rl: true, value: 'agent-1', mode: 'id' } }),
+		});
+		await flushPromises();
+		expect(getAgent).not.toHaveBeenCalled();
+
+		await rerender({ modelValue: { __rl: true, value: 'agent-1', mode: 'list' } });
+		await flushPromises();
+
+		expect(getAgent).toHaveBeenCalledWith(expect.anything(), 'proj-1', 'agent-1');
+		await userEvent.click(getByTestId('rlc-input'));
+		await flushPromises();
+		const items = getAllByTestId('rlc-item').map((el) => el.textContent?.trim());
+		expect(items.some((text) => text?.includes('Archived Agent'))).toBe(true);
+	});
+
 	it('shows an error with retry that re-fetches the catalog', async () => {
 		listAgentsPage.mockRejectedValueOnce(new Error('boom'));
 

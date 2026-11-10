@@ -217,27 +217,29 @@ function toolRestriction(
 	};
 }
 
+// An older lookup can finish last. Only the latest lookup sets the archived sub-agents.
+let subAgentNamesRequest = 0;
+
 async function ensureSubAgentNamesLoaded() {
+	const request = ++subAgentNamesRequest;
 	let agents = await ensureProjectAgentsLoaded();
 	const loadedIds = new Set(agents.map((agent) => agent.id));
 	if (selectedSubAgentIds.value.some((agentId) => !loadedIds.has(agentId))) {
 		agents = await refreshProjectAgents();
 	}
-	await loadArchivedSubAgents(agents);
+	const archived = await fetchArchivedSubAgents(agents);
+	if (request === subAgentNamesRequest) archivedSubAgents.value = archived;
 }
 
 // The project list hides archived agents. Load the selected sub-agents that it does not contain.
-async function loadArchivedSubAgents(listedAgents: AgentResource[]) {
+async function fetchArchivedSubAgents(listedAgents: AgentResource[]) {
 	const listedIds = new Set(listedAgents.map((agent) => agent.id));
 	const ids = selectedSubAgentIds.value.filter((agentId) => !listedIds.has(agentId));
-	if (ids.length === 0) {
-		archivedSubAgents.value = [];
-		return;
-	}
+	if (ids.length === 0) return [];
 	const { data } = await listAgentsPage(rootStore.restApiContext, props.projectId, {
 		filter: { ids, includeArchived: true },
 	});
-	archivedSubAgents.value = data.filter((agent) => agent.isArchived);
+	return data.filter((agent) => agent.isArchived);
 }
 
 onMounted(() => {

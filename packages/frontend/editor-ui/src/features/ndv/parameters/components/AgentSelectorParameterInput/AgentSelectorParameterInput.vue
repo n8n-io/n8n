@@ -278,6 +278,11 @@ onUnmounted(() => {
 	window.removeEventListener('resize', setWidth);
 });
 
+// The mount refresh skips ID mode. Refresh again when the mode or the selected agent changes.
+watch([() => props.modelValue?.mode, () => props.modelValue?.value], () => {
+	void refreshCachedAgent();
+});
+
 watch(
 	() => props.isValueExpression,
 	(isValueExpression) => {

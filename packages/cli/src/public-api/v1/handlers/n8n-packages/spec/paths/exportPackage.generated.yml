@@ -115,7 +115,7 @@ requestBody:
           includeArchived:
             type: boolean
             default: false
-            description: 'Whether folder and project exports include their archived workflows and agents. When `false` (default) they are left out. When `true` they travel with `isArchived: true` and are archived on import. Workflows listed in `workflowIds` and agents listed in `agentIds` always export, also when archived.'
+            description: 'Whether folder exports include archived workflows and project exports include archived workflows and agents. When `false` (default) they are left out. When `true` they travel with `isArchived: true` and are archived on import. Workflows listed in `workflowIds` and agents listed in `agentIds` always export, also when archived.'
             example: false
           includeArchivedWorkflows:
             type: boolean

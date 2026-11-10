@@ -10,6 +10,9 @@ import {
 } from './useProjectAgentsList';
 import type { AgentResource } from '../types';
 
+// Every component instance shares this set, so a second click cannot send a second request.
+const agentIdsInFlight = new Set<string>();
+
 /**
  * Shared archive/unarchive flow used by the builder header menu and the list card.
  * Owns the confirmation modal, toasts, error handling, and the project list cache.
@@ -33,7 +36,9 @@ export function useAgentArchive() {
 	async function archive(agent: AgentResource): Promise<AgentResource | null> {
 		// Archive unpublishes the agent, so a published agent needs a confirmation.
 		if (agent.activeVersionId !== null && !(await confirmArchivePublished(agent.name))) return null;
+		if (agentIdsInFlight.has(agent.id)) return null;
 
+		agentIdsInFlight.add(agent.id);
 		try {
 			const updated = await archiveAgent(rootStore.restApiContext, agent.projectId, agent.id);
 			// The project list cache holds only agents that are not archived.
@@ -43,10 +48,15 @@ export function useAgentArchive() {
 		} catch (error) {
 			showError(error, locale.baseText('agents.archive.error.archive'));
 			return null;
+		} finally {
+			agentIdsInFlight.delete(agent.id);
 		}
 	}
 
 	async function unarchive(agent: AgentResource): Promise<AgentResource | null> {
+		if (agentIdsInFlight.has(agent.id)) return null;
+
+		agentIdsInFlight.add(agent.id);
 		try {
 			const updated = await unarchiveAgent(rootStore.restApiContext, agent.projectId, agent.id);
 			upsertProjectAgentsListCache(agent.projectId, updated);
@@ -55,6 +65,8 @@ export function useAgentArchive() {
 		} catch (error) {
 			showError(error, locale.baseText('agents.archive.error.unarchive'));
 			return null;
+		} finally {
+			agentIdsInFlight.delete(agent.id);
 		}
 	}
 

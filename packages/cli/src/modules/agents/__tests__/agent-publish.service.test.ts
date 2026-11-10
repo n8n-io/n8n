@@ -1714,7 +1714,7 @@ describe('AgentPublishService', () => {
 	);
 
 	it('unpublishes and archives a published agent in one write', async () => {
-		const { service, agentRepository, eventService, ctx } = makeService();
+		const { service, agentRepository, eventService, telemetry, ctx } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({ activeVersionId: versionId, publicationRevision: 2 }),
 		);
@@ -1725,6 +1725,26 @@ describe('AgentPublishService', () => {
 			archive: true,
 		});
 		expect(agentRepository.setArchived).not.toHaveBeenCalled();
+		expect(eventService.emit).toHaveBeenCalledWith('agent-archived', { user, agentId, projectId });
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_ARCHIVED_AGENT, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: user.id,
+			event_version: '1',
+		});
+	});
+
+	it('archives an agent that is unpublished during the archive', async () => {
+		const { service, agentRepository, eventService } = makeService();
+		agentRepository.findByIdAndProjectId
+			.mockResolvedValueOnce(makeAgent({ activeVersionId: versionId }))
+			.mockResolvedValue(makeAgent());
+		agentRepository.setArchived.mockResolvedValue(true);
+
+		await service.archiveAgent(agentId, projectId, user);
+
+		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
+		expect(agentRepository.setArchived).toHaveBeenCalledWith(agentId, true);
 		expect(eventService.emit).toHaveBeenCalledWith('agent-archived', { user, agentId, projectId });
 	});
 
@@ -1740,7 +1760,7 @@ describe('AgentPublishService', () => {
 	});
 
 	it('restores an archived agent without a publication', async () => {
-		const { service, agentRepository, eventService } = makeService();
+		const { service, agentRepository, eventService, telemetry } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
 		agentRepository.setArchived.mockResolvedValue(true);
 
@@ -1752,6 +1772,12 @@ describe('AgentPublishService', () => {
 			user,
 			agentId,
 			projectId,
+		});
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_UNARCHIVED_AGENT, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: user.id,
+			event_version: '1',
 		});
 	});
 

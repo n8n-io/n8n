@@ -519,7 +519,7 @@ export class McpAgentToolsService {
 		registerIfAllowed(this.listAgentVersionsTool(user));
 		registerIfAllowed(this.listAgentSessionsTool(user));
 		registerIfAllowed(this.getAgentSessionTool(user));
-		registerIfAllowed(this.deleteAgentTool(user));
+		registerIfAllowed(this.archiveAgentTool(user));
 		registerIfAllowed(this.discoverAssetsTool(user));
 		registerIfAllowed(this.verifyMcpServerTool(user));
 		registerIfAllowed(this.updateIntegrationTool(user));
@@ -1076,14 +1076,15 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private deleteAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+	private archiveAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
 		return {
-			name: 'delete_agent',
+			name: 'archive_agent',
 			config: {
-				description: 'Permanently delete an Agent and its associated resources.',
+				description:
+					'Archive an Agent. An archived Agent is unpublished and hidden. A user can restore it in n8n.',
 				inputSchema: agentIdentityShape,
 				annotations: {
-					title: 'Delete Agent',
+					title: 'Archive Agent',
 					readOnlyHint: false,
 					destructiveHint: true,
 					idempotentHint: true,
@@ -1091,12 +1092,11 @@ export class McpAgentToolsService {
 				},
 			},
 			handler: async ({ agentId }) =>
-				await this.run(user, 'delete_agent', { agentId }, async () => {
+				await this.run(user, 'archive_agent', { agentId }, async () => {
 					const { projectId } = await this.resolveAgent(user, agentId);
 					await this.assertScope(user, projectId, 'agent:delete');
-					const deleted = await this.agentsService.delete(agentId, projectId);
-					if (!deleted) throw new UserError(`Agent "${agentId}" not found`);
-					return { ok: true, deleted: true, agentId };
+					await this.agentPublishService.archiveAgent(agentId, projectId, user);
+					return { ok: true, archived: true, agentId };
 				}),
 		};
 	}

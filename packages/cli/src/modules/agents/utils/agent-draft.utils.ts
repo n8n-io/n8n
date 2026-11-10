@@ -28,7 +28,9 @@ export async function saveAgentDraftFenced(
 	if (agent.isArchived && !allowArchivedUpdate) {
 		throw new BadRequestError('Cannot update an archived agent');
 	}
-	const won = await agentRepository.saveDraftFenced(agent, ctx, metadata);
+	const won = await agentRepository.saveDraftFenced(agent, ctx, metadata, {
+		allowArchivedUpdate,
+	});
 	if (!won) {
 		throw new ConflictError('Agent was modified concurrently; please retry');
 	}

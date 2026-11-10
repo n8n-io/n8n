@@ -105,7 +105,7 @@ export default class PackageExport extends BaseCommand {
 		})(),
 		includeArchived: Flags.option({
 			description:
-				'Whether folder and project exports include their archived workflows and agents (workflows and agents given by id always export)',
+				'Whether folder exports include archived workflows and project exports include archived workflows and agents (workflows and agents given by id always export)',
 			options: ['true', 'false'] as const,
 			default: 'false',
 			// The last two are the names before agents could be archived.

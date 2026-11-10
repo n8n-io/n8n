@@ -306,9 +306,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 		// `true` is the default page view: drop it so owned drafts stay in the list.
 		// `false` still narrows the list to the agents not in n8n Chat yet.
+		// n8n Chat never lists archived agents, so the request cannot include them.
 		this.applyFilters(query, {
 			...options.filter,
 			availableInChat: options.filter?.availableInChat === false ? false : undefined,
+			includeArchived: false,
 		});
 		this.applySorting(query, options.sortBy, usageCounts);
 		query.skip(options.skip).take(options.take);
@@ -680,6 +682,8 @@ export class AgentRepository extends BaseRepository<Agent> {
 					revision: expected.revision,
 					versionId: expected.versionId ?? IsNull(),
 					activeVersionId: expected.activeVersionId ?? IsNull(),
+					// An archive does not advance the revision.
+					isArchived: false,
 				},
 				{
 					integrations,
@@ -859,6 +863,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		agent: Agent,
 		ctx: OperationContext = {},
 		metadata: AgentDefinitionMetadata = {},
+		{ allowArchivedUpdate = false }: { allowArchivedUpdate?: boolean } = {},
 	): Promise<boolean> {
 		const expectedRevision = agent.revision;
 		const previous = await this.managerFor(ctx).findOne(Agent, {
@@ -872,7 +877,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
 		// so the in-memory entity can report the exact persisted timestamp.
 		const updatedAt = new Date();
-		const result = await this.managerFor(ctx)
+		const query = this.managerFor(ctx)
 			.createQueryBuilder()
 			.update(Agent)
 			.set({
@@ -889,8 +894,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 				...(connectionsChanged ? { publicationRevision: () => '"publicationRevision" + 1' } : {}),
 			})
 			.where('id = :id AND revision = :expected', { id: agent.id, expected: expectedRevision })
-			.andWhere(projectScopeUpdateSql)
-			.execute();
+			.andWhere(projectScopeUpdateSql);
+		// Archiving does not change the revision. The write must check the stored state.
+		if (!allowArchivedUpdate) query.andWhere('"isArchived" = :isArchived', { isArchived: false });
+		const result = await query.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
 			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;

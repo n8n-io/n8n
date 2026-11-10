@@ -962,6 +962,33 @@ describe('AgentCapabilitiesSection', () => {
 		);
 	});
 
+	it('keeps the archived sub-agents of the latest selection when an older lookup resolves last', async () => {
+		const first = makeAgent({ id: 'agent-first', name: 'First Agent', isArchived: true });
+		const second = makeAgent({ id: 'agent-second', name: 'Second Agent', isArchived: true });
+		let resolveFirst: (page: { count: number; data: AgentResource[] }) => void = () => {};
+		listAgentsPageSpy
+			.mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+			.mockResolvedValueOnce({ count: 1, data: [second] });
+		const config = { name: 'Parent Agent', model: '', instructions: '', tools: [] };
+
+		const wrapper = mountSection(
+			[],
+			{},
+			{ ...config, subAgents: { agents: [{ agentId: first.id }] } },
+			[],
+			[],
+		);
+		await flushPromises();
+		await wrapper.setProps({
+			config: { ...config, subAgents: { agents: [{ agentId: second.id }] } },
+		});
+		await flushPromises();
+		resolveFirst({ count: 1, data: [first] });
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('Second Agent');
+	});
+
 	it('never exposes an unresolved sub-agent id as the chip label', async () => {
 		const missingAgentId = 'agent-missing';
 		const wrapper = mountSection(

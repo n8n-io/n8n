@@ -330,6 +330,32 @@ describe('AgentRepository', () => {
 		});
 	});
 
+	describe('findN8nChatListPaginated', () => {
+		it('excludes archived agents when the filter requests them', async () => {
+			const mockQb = {
+				leftJoinAndSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				skip: vi.fn().mockReturnThis(),
+				take: vi.fn().mockReturnThis(),
+				getManyAndCount: vi.fn().mockResolvedValue([[], 0]),
+			};
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findN8nChatListPaginated(null, ['p1'], {
+				skip: 0,
+				take: 10,
+				filter: { availableInChat: true, includeArchived: true },
+			} as never);
+
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.isArchived = :isArchived', {
+				isArchived: false,
+			});
+		});
+	});
+
 	describe('findChatReachableById', () => {
 		const makeSingleQb = (result: Agent | null = null) => ({
 			leftJoinAndSelect: vi.fn().mockReturnThis(),
