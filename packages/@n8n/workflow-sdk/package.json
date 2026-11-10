@@ -64,7 +64,7 @@
     "validate": "npx tsx src/cli/index.ts validate"
   },
   "main": "dist/index.js",
-  "module": "src/index.ts",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "typesVersions": {
     "*": {
