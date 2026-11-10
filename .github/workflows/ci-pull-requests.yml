@@ -40,7 +40,7 @@ jobs:
           || contains(github.event.pull_request.labels.*.name, 'force-e2e')) }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
-      lint_base: ${{ steps.lint-base.outputs.sha }}
+      affected_base: ${{ steps.affected-base.outputs.sha }}
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
@@ -59,11 +59,11 @@ jobs:
         id: commit-sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      # Lint compares the checked-out commit against this base. On a PR it is the
-      # first parent of the merge commit. A merge group can hold more than one PR,
-      # so it uses the queue base.
-      - name: Resolve lint base
-        id: lint-base
+      # Lint and typecheck compare the checked-out commit against this base. On a
+      # PR it is the first parent of the merge commit. A merge group can hold more
+      # than one PR, so it uses the queue base.
+      - name: Resolve affected base
+        id: affected-base
         env:
           MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
         run: echo "sha=${MERGE_GROUP_BASE_SHA:-$(git rev-parse HEAD^1)}" >> "$GITHUB_OUTPUT"
@@ -340,17 +340,30 @@ jobs:
       # Inherited by every worker turbo spawns, so the real budget is
       # concurrency x cap: 2 x 6 GB fits the runner's 15.2 GB.
       NODE_OPTIONS: --max-old-space-size=6144
+      # Read by `turbo --affected`. If the base is missing, turbo checks every package.
+      TURBO_SCM_BASE: ${{ needs.install-and-build.outputs.affected_base }}
+      TURBO_SCM_HEAD: HEAD
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+      # Turbo needs the history back to the base to find the merge base.
+      - name: Fetch history back to the affected base
+        if: env.TURBO_SCM_BASE != ''
+        run: |
+          for depth in 2 10 50 200; do
+            git merge-base --is-ancestor "$TURBO_SCM_BASE" HEAD 2>/dev/null && exit 0
+            git fetch --no-tags --quiet --depth="$depth" origin "$(git rev-parse HEAD)" || break
+          done
+          git merge-base --is-ancestor "$TURBO_SCM_BASE" HEAD || echo "::warning::Base $TURBO_SCM_BASE is not reachable. Typecheck runs on all packages."
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
           # turbo directly, not the root `typecheck` script, to keep the
           # concurrency bound CI-only.
-          build-command: pnpm turbo typecheck --concurrency=2
+          build-command: pnpm turbo typecheck --concurrency=2${{ needs.install-and-build.outputs.affected_base != '' && ' --affected' || '' }}
 
   lint:
     name: Lint
@@ -359,7 +372,7 @@ jobs:
     needs: [install-and-build, format-check]
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
-      affectedBase: ${{ needs.install-and-build.outputs.lint_base }}
+      affectedBase: ${{ needs.install-and-build.outputs.affected_base }}
 
   check-packaging:
     name: Check packaging
