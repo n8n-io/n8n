@@ -1,7 +1,9 @@
-import type { Resolve } from '@/utlity.types';
+import type { PubSubCommandMap, PubSubWorkerResponseMap } from '@n8n/decorators';
 
-import type { PubSubCommandMap, PubSubWorkerResponseMap } from './pubsub.event-map';
-import type { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from '../constants';
+import type { COMMAND_PUBSUB_CHANNEL, WORKER_RESPONSE_PUBSUB_CHANNEL } from './pubsub.constants';
+
+/** Flatten an intersection type for display. */
+type Resolve<T> = { [K in keyof T]: T[K] };
 
 export namespace PubSub {
 	// ----------------------------------

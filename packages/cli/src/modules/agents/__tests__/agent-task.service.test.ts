@@ -3,12 +3,11 @@ import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User, TransactionRunner, OperationContext, Transaction } from '@n8n/db';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, Publisher } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';

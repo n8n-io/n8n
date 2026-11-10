@@ -9,6 +9,7 @@ import {
 	shallowReactive,
 	useTemplateRef,
 	watch,
+	type Ref,
 } from 'vue';
 import { storeToRefs } from 'pinia';
 import { N8nChatMessage, N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
@@ -80,28 +81,34 @@ import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builder
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 
-const props = defineProps<{
-	/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
-	beforeSend?: () => Promise<void>;
-	placeholder?: string;
-	composerHeight?: string;
-	/**
-	 * The live embed subject (an agent in the builder today). When it refers to
-	 * the same agent as the stashed `pendingAgentAttachment`, the chat-input
-	 * context chip follows this subject's `name` instead of the snapshot taken
-	 * at thread mint — so a rename in the host updates the chip live. Optional:
-	 * the full thread view passes no subject and keeps the stashed-name behavior.
-	 */
-	subject?: InstanceAiEmbedSubject;
-	/** Extra scroll space for a panel that overlays messages above the input. */
-	aboveInputOverlapHeight?: number;
-	/** Enables the dormant mention integration after the rollout gate resolves true. */
-	mentionsEnabled?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
+		beforeSend?: () => Promise<void>;
+		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
+		autofocus?: boolean;
+		composerHeight?: string;
+		/**
+		 * The live embed subject (an agent in the builder today). When it refers to
+		 * the same agent as the stashed `pendingAgentAttachment`, the chat-input
+		 * context chip follows this subject's `name` instead of the snapshot taken
+		 * at thread mint — so a rename in the host updates the chip live. Optional:
+		 * the full thread view passes no subject and keeps the stashed-name behavior.
+		 */
+		subject?: InstanceAiEmbedSubject;
+		/** Extra scroll space for a panel that overlays messages above the input. */
+		aboveInputOverlapHeight?: number;
+		/** Enables the dormant mention integration after the rollout gate resolves true. */
+		mentionsEnabled?: boolean;
+	}>(),
+	{ autofocus: undefined },
+);
 
 const emit = defineEmits<{
 	'thread-missing': [];
 	'message-sent': [];
+	'content-change': [hasContent: boolean];
 	'agent-attachment-restored': [attachment: InstanceAiAgentAttachment];
 }>();
 
@@ -459,6 +466,7 @@ watch(
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 
 function focusChatInputIfFocusIsIdle() {
+	if (props.autofocus === false) return;
 	const activeElement = document.activeElement;
 	if (
 		activeElement instanceof HTMLElement &&
@@ -471,11 +479,18 @@ function focusChatInputIfFocusIsIdle() {
 	chatInputRef.value?.focus();
 }
 
-// Focus input on initial render (ref rebinds when messages load)
-watch(chatInputRef, (el) => {
-	if (el) {
-		void nextTick(focusChatInputIfFocusIsIdle);
-	}
+// Confirmations can remount the composer while the user edits another field.
+let hasMountedChatInput = false;
+watch([chatInputRef, () => props.autofocus], ([input, autofocus], [, previousAutofocus]) => {
+	if (!input) return;
+	const forceFocus = autofocus === true && (!hasMountedChatInput || previousAutofocus !== true);
+	hasMountedChatInput = true;
+	if (autofocus === false) return;
+	void nextTick(() => {
+		if (chatInputRef.value !== input || props.autofocus === false) return;
+		if (forceFocus) input.focus();
+		else focusChatInputIfFocusIsIdle();
+	});
 });
 
 watch(
@@ -995,6 +1010,7 @@ defineExpose({
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
 										:placeholder="props.placeholder"
+										:placeholder-preview="props.placeholderPreview"
 										:composer-height="props.composerHeight"
 										:placeholder-key="
 											isPendingAgentComposer ? 'instanceAi.input.newAgentPlaceholder' : undefined
@@ -1005,6 +1021,7 @@ defineExpose({
 										:mention-artifacts="mentionArtifacts"
 										:mention-active-workflow-id="mentionActiveWorkflowId"
 										:reserved-attachment-count="reservedComposerAttachmentCount"
+										@content-change="emit('content-change', $event)"
 										@submit="handleSubmit"
 										@stop="handleStop"
 										@dismiss-context-chip="dismissComposerContextChip"

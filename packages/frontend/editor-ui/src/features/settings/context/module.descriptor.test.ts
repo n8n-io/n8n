@@ -68,7 +68,7 @@ describe('ContextModule routes', () => {
 			},
 		);
 
-		test.each([
+		test.each<{ agentsActive: boolean; moduleSettings: FrontendModuleSettings }>([
 			{ agentsActive: true, moduleSettings: allConsumersOff },
 			{ agentsActive: true, moduleSettings: {} },
 			{

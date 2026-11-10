@@ -1,5 +1,5 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, Publisher } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type ApiKey, type AuthenticatedRequest, User, Role } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -8,7 +8,6 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@n8n/errors';
 import type { ListQuery } from '@/requests';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { UpdateAllowedRedirectUrisDto } from '../dto/update-allowed-redirect-uris.dto';

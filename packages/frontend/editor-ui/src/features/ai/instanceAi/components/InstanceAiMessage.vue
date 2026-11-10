@@ -177,9 +177,15 @@ function formatJson(value: unknown): string {
 		:data-test-id="isUser ? 'instance-ai-user-message' : 'instance-ai-assistant-message'"
 	>
 		<!-- User message -->
-		<div v-if="isUser" :class="$style.userMessage">
-			<N8nText v-if="props.message.content" size="large">{{ props.message.content }}</N8nText>
-			<div v-if="attachments.length > 0" :class="$style.userAttachments">
+		<template v-if="isUser">
+			{{ props.message.content }}
+			<div
+				v-if="attachments.length > 0"
+				:class="[
+					$style.userAttachments,
+					{ [$style.userAttachmentsAfterText]: props.message.content },
+				]"
+			>
 				<AttachmentPreview
 					v-for="(attachment, index) in attachments"
 					:key="index"
@@ -187,7 +193,7 @@ function formatJson(value: unknown): string {
 					:is-removable="false"
 				/>
 			</div>
-		</div>
+		</template>
 
 		<!-- Assistant message -->
 		<template v-else>
@@ -233,9 +239,11 @@ function formatJson(value: unknown): string {
 			</N8nCallout>
 
 			<!-- Text content (shown when no agentTree, or streaming dots) -->
-			<N8nText v-if="showContent && !props.message.agentTree && props.message.content" size="large">
-				<InstanceAiMarkdown :content="props.message.content" />
-			</N8nText>
+
+			<InstanceAiMarkdown
+				v-if="showContent && !props.message.agentTree && props.message.content"
+				:content="props.message.content"
+			/>
 
 			<!-- Status indicator while preparing context -->
 			<div v-if="statusMessage && !props.message.content" :class="$style.statusIndicator">
@@ -296,10 +304,8 @@ function formatJson(value: unknown): string {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
 
-.userMessage {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
+.userAttachmentsAfterText {
+	margin-top: var(--spacing--2xs);
 }
 
 .userAttachments {

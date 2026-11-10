@@ -1,5 +1,5 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, Publisher } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
 import {
@@ -16,7 +16,6 @@ import type { Response } from 'express';
 import { ForbiddenError } from '@n8n/errors';
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { UpdateAllowedRedirectUrisDto } from './dto/update-allowed-redirect-uris.dto';

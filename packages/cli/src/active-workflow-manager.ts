@@ -3,7 +3,13 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import {
+	OnLeaderStepdown,
+	OnLeaderTakeover,
+	OnPubSubEvent,
+	OnShutdown,
+	PubSubCommandMap,
+} from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import chunk from 'lodash/chunk';
@@ -49,8 +55,7 @@ import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish'
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Publisher } from '@n8n/backend-services';
 import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
