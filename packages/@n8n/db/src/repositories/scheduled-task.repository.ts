@@ -20,6 +20,7 @@ import {
 } from '../entities/scheduled-task';
 import {
 	columnOrTxNowPlusMsLiteral,
+	dbClockNowLiteral,
 	dbTxNowLiteral,
 	dbTxNowPlusMsLiteral,
 	parseDbTime,
@@ -312,7 +313,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 					columnOrTxNowPlusMsLiteral(this.isPostgres, this.runAtColumn, misfireGraceSeconds * 1000),
 			})
 			.where({ jobId: In(jobIds), status: ScheduledTaskStatus.Pending, missedAfter: Not(IsNull()) })
-			.andWhere(`${this.missedAfterColumn} > ${dbTxNowLiteral(this.isPostgres)}`)
+			.andWhere(`${this.missedAfterColumn} > ${dbClockNowLiteral(this.isPostgres)}`)
 			.execute();
 	}
 
@@ -338,7 +339,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		return `${alias}"status" = '${ScheduledTaskStatus.Pending}'
 			AND ${alias}"taskType" ${taskTypesSql}
 			AND ${alias}"runAt" <= ${dueBeforeSql}
-			AND ${this.claimableSql(alias)}`;
+			AND ${this.claimableSql(alias, dbClockNowLiteral(this.isPostgres))}`;
 	}
 
 	private limitedJobIdsSql(): string {
@@ -372,7 +373,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 				WHERE cj."concurrencyLimit" IS NOT NULL
 					AND (
 						c."status" = '${ScheduledTaskStatus.Running}'
-						OR (c."status" = '${ScheduledTaskStatus.Pending}' AND ${this.claimableSql('c.')})
+						OR (c."status" = '${ScheduledTaskStatus.Pending}' AND ${this.claimableSql('c.', dbClockNowLiteral(this.isPostgres))})
 					)
 			) ranked
 			WHERE ranked."status" = '${ScheduledTaskStatus.Pending}'
@@ -386,9 +387,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * deadline at all, or has already been attempted: a retry's backoff pushes it past
 	 * its deadline by design, and the attempt count decides its fate from then on.
 	 */
-	private claimableSql(alias = ''): string {
+	private claimableSql(alias: string, nowSql: string): string {
 		const deadline = `${alias}"missedAfter"`;
-		return `(${deadline} IS NULL OR ${deadline} > ${dbTxNowLiteral(this.isPostgres)} OR ${alias}"attempts" > 0)`;
+		return `(${deadline} IS NULL OR ${deadline} > ${nowSql} OR ${alias}"attempts" > 0)`;
 	}
 
 	private async claimWithPostgres(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
@@ -656,7 +657,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 */
 	async getMetricSnapshot(): Promise<ScheduledTaskMetricSnapshot> {
 		const now = dbTxNowLiteral(this.isPostgres);
-		const claimable = this.claimableSql();
+		const claimable = this.claimableSql('', now);
 		// "running" is computed through a subquery (and not a FILTER) to prevent
 		// the WHERE to use 'IN', which does not take the partial index into account
 		const [row]: [
@@ -836,7 +837,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			.update(ScheduledTask)
 			.set(values)
 			.where({ id, status: ScheduledTaskStatus.Running, leaseEpoch: claimedEpoch })
-			.andWhere(`${this.leaseExpiresAtColumn} < ${dbTxNowLiteral(this.isPostgres)}`)
+			.andWhere(`${this.leaseExpiresAtColumn} < ${dbClockNowLiteral(this.isPostgres)}`)
 			.andWhere(dispatchedFence)
 			.execute();
 		return result.affected ?? 0;

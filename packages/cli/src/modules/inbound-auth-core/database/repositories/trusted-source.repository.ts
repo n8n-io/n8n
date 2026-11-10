@@ -1,6 +1,7 @@
 import { DatabaseConfig } from '@n8n/config';
 import {
 	BaseRepository,
+	dbClockNowPlusMsLiteral,
 	dbTxNowLiteral,
 	dbTxNowPlusMsLiteral,
 	OperationContext,
@@ -187,7 +188,7 @@ export class TrustedSourceRepository {
 		leaseSeconds: number,
 		ctx: OperationContext,
 	): Promise<boolean> {
-		const staleBefore = dbTxNowPlusMsLiteral(this.isPostgres, -leaseSeconds * 1000);
+		const staleBefore = dbClockNowPlusMsLiteral(this.isPostgres, -leaseSeconds * 1000);
 		const result = await this.table
 			.managerFor(ctx)
 			.createQueryBuilder()
