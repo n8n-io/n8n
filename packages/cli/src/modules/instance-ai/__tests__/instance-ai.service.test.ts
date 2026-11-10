@@ -15,6 +15,8 @@ vi.mock('@n8n/instance-ai', async () => {
 	const profiles = await vi.importActual<typeof import('@n8n/instance-ai')>('@n8n/instance-ai');
 	return {
 		resolvePromptProfile: profiles.resolvePromptProfile,
+		MAX_STEPS: profiles.MAX_STEPS,
+		createThreadApprovalContext: profiles.createThreadApprovalContext,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		SELF_HEALING_PROFILE_VERSION: profiles.SELF_HEALING_PROFILE_VERSION,
@@ -268,6 +270,7 @@ import {
 	type WorkSummary,
 	type SuspendedRunState,
 	type ManagedBackgroundTask,
+	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
 	type OrchestrationContext,
@@ -1558,6 +1561,23 @@ describe('InstanceAiService — memory task observer', () => {
 
 		expect(() => observer(event)).not.toThrow();
 		expect(service.memoryTaskRegistry.handleEvent).toHaveBeenCalledWith('thread-1', event);
+	});
+
+	it('logs the reason when a completed observer task was skipped', () => {
+		const service = createMemoryTaskObserverService();
+		const observer = service.memoryTaskObserverFor('thread-1', undefined);
+		const { task } = queuedMemoryTaskEvent();
+
+		observer({
+			type: 'completed',
+			task,
+			value: { status: 'skipped', reason: 'pending-tool-call' },
+		});
+
+		expect(service.logger.info).toHaveBeenCalledWith(
+			'Observational memory task completed',
+			expect.objectContaining({ outcome: 'skipped', reason: 'pending-tool-call' }),
+		);
 	});
 });
 
@@ -5561,6 +5581,174 @@ describe('InstanceAiService — background task cancellation', () => {
 	});
 });
 
+describe('InstanceAiService — suspended run cancellation', () => {
+	type SuspendedCancellationService = {
+		cancelRun: (threadId: string, reason?: string) => void;
+		finalizeCancelledSuspendedRun: (
+			suspended: { threadId: string; runId: string; user: User },
+			reason?: string,
+		) => Promise<void>;
+		agentMemory: { getMessages: Mock; saveMessages: Mock };
+		logger: { warn: Mock };
+		emitTerminalRun: Mock;
+		publishRunFinish: Mock;
+		liveness: { consumeRunTimeout: Mock; publishRunTimeoutNotice: Mock; markRunTimedOut: Mock };
+		tracing: {
+			finalizeRunTracing: Mock;
+			maybeFinalizeRunTraceRoot: Mock;
+			buildMessageTraceMetadata: Mock;
+			finalizeBackgroundTaskTracing: Mock;
+		};
+		temporaryWorkflowService: { reapForRun: Mock };
+		backgroundTasks: { cancelThread: Mock; getRunningTasks: Mock };
+		runState: { getThreadUser: Mock; cancelThread: Mock };
+		suspendedThreads: { dropPendingConfirmationsForThread: Mock; dropPendingConfirmation: Mock };
+	};
+
+	const pendingSetupMessage = {
+		id: 'msg-setup',
+		createdAt: new Date('2026-11-09T12:09:55Z'),
+		role: 'assistant',
+		content: [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-setup',
+				toolName: 'setup_workflow',
+				input: {},
+				state: 'pending',
+				suspension: { message: 'Configure credentials for your workflow' },
+			},
+		],
+	};
+	const resolvedMessage = {
+		id: 'msg-build',
+		createdAt: new Date('2026-11-09T12:09:49Z'),
+		role: 'assistant',
+		content: [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-build',
+				toolName: 'build_workflow',
+				input: {},
+				state: 'resolved',
+				output: 'built',
+			},
+		],
+	};
+	const suspendedRun = {
+		threadId: 'thread-a',
+		runId: 'run-1',
+		user: fakeUser,
+		requestId: 'request-1',
+		abortController: new AbortController(),
+	};
+
+	function createSuspendedCancellationService() {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as SuspendedCancellationService;
+		Object.assign(service, {
+			agentMemory: {
+				getMessages: vi.fn(async () => [resolvedMessage, pendingSetupMessage]),
+				saveMessages: vi.fn(async () => {}),
+			},
+			logger: { warn: vi.fn() },
+			emitTerminalRun: vi.fn(async () => {}),
+			publishRunFinish: vi.fn(),
+			liveness: {
+				consumeRunTimeout: vi.fn(() => undefined),
+				publishRunTimeoutNotice: vi.fn(),
+				markRunTimedOut: vi.fn(),
+			},
+			tracing: {
+				finalizeRunTracing: vi.fn(async () => {}),
+				maybeFinalizeRunTraceRoot: vi.fn(async () => {}),
+				buildMessageTraceMetadata: vi.fn(async () => ({})),
+				finalizeBackgroundTaskTracing: vi.fn(async () => {}),
+			},
+			temporaryWorkflowService: { reapForRun: vi.fn(async () => []) },
+			backgroundTasks: { cancelThread: vi.fn(() => []), getRunningTasks: vi.fn(() => []) },
+			runState: {
+				getThreadUser: vi.fn(() => fakeUser),
+				cancelThread: vi.fn(() => ({ suspended: suspendedRun })),
+			},
+			suspendedThreads: {
+				dropPendingConfirmationsForThread: vi.fn(async () => {}),
+				dropPendingConfirmation: vi.fn(async () => {}),
+			},
+		});
+		return service;
+	}
+
+	function expectSettledSetupCall(service: SuspendedCancellationService) {
+		expect(service.agentMemory.getMessages).toHaveBeenCalledWith('thread-a', {
+			resourceId: 'user-1',
+		});
+		expect(service.agentMemory.saveMessages).toHaveBeenCalledWith({
+			threadId: 'thread-a',
+			resourceId: 'user-1',
+			messages: [
+				expect.objectContaining({
+					id: 'msg-setup',
+					content: [
+						expect.objectContaining({
+							toolCallId: 'tc-setup',
+							state: 'rejected',
+							error: expect.stringContaining('Configure credentials for your workflow'),
+						}),
+					],
+				}),
+			],
+		});
+	}
+
+	it('persists the settled tool call when a suspended run is stopped', async () => {
+		const service = createSuspendedCancellationService();
+
+		service.cancelRun('thread-a');
+
+		await vi.waitFor(() => expect(service.agentMemory.saveMessages).toHaveBeenCalled());
+		expectSettledSetupCall(service);
+	});
+
+	it('persists the settled tool call when a suspended run times out', async () => {
+		const service = createSuspendedCancellationService();
+
+		// The liveness service finalizes timed-out suspensions without `cancelRun`.
+		await service.finalizeCancelledSuspendedRun(suspendedRun, 'timeout');
+
+		await vi.waitFor(() => expect(service.agentMemory.saveMessages).toHaveBeenCalled());
+		expectSettledSetupCall(service);
+	});
+
+	it('persists the settled tool call when a suspended run is stopped for missing credits', async () => {
+		const service = createSuspendedCancellationService();
+
+		service.cancelRun('thread-a', 'quota_exhausted');
+
+		await vi.waitFor(() => expect(service.agentMemory.saveMessages).toHaveBeenCalled());
+		expect(service.emitTerminalRun).toHaveBeenCalled();
+		expectSettledSetupCall(service);
+	});
+
+	it('logs and continues when the settled tool call cannot be saved', async () => {
+		const service = createSuspendedCancellationService();
+		service.agentMemory.saveMessages.mockRejectedValueOnce(new Error('db down'));
+
+		service.cancelRun('thread-a');
+
+		await vi.waitFor(() =>
+			expect(service.logger.warn).toHaveBeenCalledWith(
+				'Failed to settle the tool call of a cancelled suspended run',
+				{ threadId: 'thread-a', error: 'db down' },
+			),
+		);
+		expect(service.suspendedThreads.dropPendingConfirmationsForThread).toHaveBeenCalledWith(
+			'thread-a',
+		);
+	});
+});
+
 describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 	type SetupFollowUpService = {
 		listWorkflowLoopRecords: Mock;
@@ -7059,4 +7247,83 @@ describe('InstanceAiService — instance-context turn event', () => {
 			);
 		},
 	);
+});
+
+describe('approval context of orchestrator runs', () => {
+	interface OptionsServiceInternals {
+		buildOrchestratorAgentStreamOptions: (
+			user: User,
+			threadId: string,
+			runId: string,
+			signal: AbortSignal,
+			context: InstanceAiContext | undefined,
+		) => Record<string, unknown>;
+		buildOrchestratorResumeAgentOptions: (
+			user: User,
+			threadId: string,
+			runId: string,
+			agentRunId: string,
+			toolCallId: string,
+			signal: AbortSignal,
+			context: InstanceAiContext | undefined,
+		) => Record<string, unknown>;
+	}
+
+	function createOptionsService(): OptionsServiceInternals {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as OptionsServiceInternals;
+		Object.assign(service, {
+			instanceAiConfig: { runDebugEnabled: false },
+			aiConfig: {},
+			runState: { getBuildMode: vi.fn(), getPromptVersion: vi.fn() },
+		});
+		return service;
+	}
+
+	function optionsFor(service: OptionsServiceInternals, context: InstanceAiContext | undefined) {
+		const user = mock<User>({ id: 'user-1' });
+		const signal = new AbortController().signal;
+		return [
+			service.buildOrchestratorAgentStreamOptions(user, 'thread-1', 'run-1', signal, context),
+			service.buildOrchestratorResumeAgentOptions(
+				user,
+				'thread-1',
+				'run-1',
+				'agent-run-1',
+				'call-1',
+				signal,
+				context,
+			),
+		];
+	}
+
+	it('lets MCP approval cards read and save the thread grants when streaming and resuming', async () => {
+		const grantSessionToolApproval = vi.fn(async () => {});
+		const context = {
+			sessionApprovedToolKeys: new Set(['mcp:notes:list_notes']),
+			grantSessionToolApproval,
+		} as unknown as InstanceAiContext;
+
+		for (const options of optionsFor(createOptionsService(), context)) {
+			const approvalContext = options.approvalContext as {
+				approvedKeys: Set<string>;
+				onDecision: (key: string, decision: { approved: boolean; scope?: string }) => Promise<void>;
+			};
+			expect(approvalContext.approvedKeys.has('mcp:notes:list_notes')).toBe(true);
+			await approvalContext.onDecision('mcp:notes:create_note', {
+				approved: true,
+				scope: 'session',
+			});
+		}
+
+		expect(grantSessionToolApproval).toHaveBeenCalledTimes(2);
+		expect(grantSessionToolApproval).toHaveBeenCalledWith('mcp:notes:create_note');
+	});
+
+	it('passes no approval context when the run has no thread grants', () => {
+		for (const options of optionsFor(createOptionsService(), undefined)) {
+			expect(options).not.toHaveProperty('approvalContext');
+		}
+	});
 });

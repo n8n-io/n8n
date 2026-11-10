@@ -1,5 +1,5 @@
 import type { CreateSkillDto, ListSkillsQueryDto, SaveSkillDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import { Person, type User } from '@n8n/db';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { MockInstance } from 'vitest';
@@ -151,7 +151,7 @@ describe('SkillService user actions', () => {
 				skill('skill_c', { createdById: 'user-gone' }),
 			];
 			userRepository.findManyByIds.mockResolvedValue([
-				mock<User>({
+				Object.assign(new Person(), {
 					id: 'user-2',
 					email: 'ada@example.com',
 					firstName: 'Ada',
@@ -477,7 +477,7 @@ describe('SkillService user actions', () => {
 		it('names the creators of the skills the user may see', async () => {
 			repository.findVisibleCreatorIds.mockResolvedValue(['user-2']);
 			userRepository.findManyByIds.mockResolvedValue([
-				mock<User>({
+				Object.assign(new Person(), {
 					id: 'user-2',
 					email: 'ada@example.com',
 					firstName: 'Ada',
