@@ -9,10 +9,12 @@ import {
 } from '@n8n/ai-utilities/model-discovery';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { isRecord } from '@n8n/utils/is-record';
+import type * as AiSdk from 'ai';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
 import { createGoogleVertexModel, parseGoogleVertexAuthOptions } from './google-vertex';
+import { loadAi } from './lazy-ai';
 import type { NativeToolDeferral } from './native-tool-deferral';
 import { anthropicToolDeferral } from './native-tool-deferral/anthropic';
 import { openAiToolDeferral } from './native-tool-deferral/openai';
@@ -101,6 +103,9 @@ type OpenAiCompatibleCreds = {
 	baseURL?: string;
 	headers?: Record<string, string>;
 };
+
+/** A model the AI SDK's `wrapLanguageModel` accepts. */
+type UnwrappedLanguageModel = Parameters<typeof AiSdk.wrapLanguageModel>[0]['model'];
 
 /**
  * Azure OpenAI scope for Entra Bearer auth. Mirrors the LangChain Azure node's
@@ -201,14 +206,19 @@ function buildOpenAiCompatible(
 	creds: OpenAiCompatibleCreds,
 	model: string,
 	fetch: FetchFn | undefined,
-	options?: { includeUsage?: boolean; supportsStructuredOutputs?: boolean },
-): LanguageModel {
+	options?: {
+		includeUsage?: boolean;
+		supportsStructuredOutputs?: boolean;
+		supportedUrls?: Record<string, RegExp[]>;
+	},
+): UnwrappedLanguageModel {
 	const { createOpenAICompatible } =
 		require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
 	const baseURL = creds.baseURL ?? defaultBaseURL;
 	if (!baseURL) {
 		throw new Error(`baseURL is required for OpenAI-compatible provider "${name}"`);
 	}
+	const supportedUrls = options?.supportedUrls;
 	return createOpenAICompatible({
 		name,
 		baseURL,
@@ -217,13 +227,104 @@ function buildOpenAiCompatible(
 		fetch,
 		includeUsage: options?.includeUsage,
 		supportsStructuredOutputs: options?.supportsStructuredOutputs,
+		...(supportedUrls && { supportedUrls: () => supportedUrls }),
 	})(model);
+}
+
+/** The `openai` call options that the OpenAI-compatible chat adapter reads. */
+const OPENAI_COMPATIBLE_CHAT_OPTIONS = new Set([
+	'reasoningEffort',
+	'strictJsonSchema',
+	'textVerbosity',
+	'user',
+]);
+
+/**
+ * The chat route of an `openai/` model on a custom base URL. A server there
+ * speaks chat completions but is not OpenAI, so it gets the OpenAI-compatible
+ * adapter. That adapter accepts streams that leave out fields OpenAI always
+ * sends, and it sends back the metadata a server attaches to a tool call. The
+ * options keep what the OpenAI chat adapter sent: usage on streams, JSON Schema
+ * response formats, and image URLs.
+ */
+function buildOpenAiCompatibleChat(
+	creds: OpenAiCompatibleCreds,
+	model: string,
+	fetch: FetchFn,
+): ReturnType<typeof AiSdk.wrapLanguageModel> {
+	// Without a key, `createOpenAI` falls back to OPENAI_API_KEY. This adapter has
+	// no fallback, so it gets the same key, or the chat route sends no auth.
+	const apiKey = creds.apiKey ?? process.env.OPENAI_API_KEY;
+	const chat = buildOpenAiCompatible('openai', undefined, { ...creds, apiKey }, model, fetch, {
+		includeUsage: true,
+		supportsStructuredOutputs: true,
+		supportedUrls: { 'image/*': [/^https?:\/\/.*$/] },
+	});
+	// The adapter sends each `openai` option it does not know as a raw body
+	// field, so the OpenAI-only options (such as the prompt cache key) are dropped.
+	return loadAi().wrapLanguageModel({
+		model: chat,
+		middleware: {
+			transformParams: async ({ params }) => {
+				const openai = params.providerOptions?.openai;
+				if (!openai) return params;
+				return {
+					...params,
+					providerOptions: {
+						...params.providerOptions,
+						openai: Object.fromEntries(
+							Object.entries(openai).filter(([key]) => OPENAI_COMPATIBLE_CHAT_OPTIONS.has(key)),
+						),
+					},
+				};
+			},
+		},
+	});
+}
+
+/**
+ * Defaults a custom endpoint's Responses calls to `store: false`. The runtime
+ * replays the whole history each turn, but with the SDK default (`store: true`)
+ * earlier output goes out as `item_reference` items. Proxies such as LiteLLM
+ * serve /responses without storing them, so every turn after the first fails.
+ */
+function statelessResponses(
+	model: Parameters<typeof AiSdk.wrapLanguageModel>[0]['model'],
+): ReturnType<typeof AiSdk.wrapLanguageModel> {
+	const { wrapLanguageModel, defaultSettingsMiddleware } = loadAi();
+	return wrapLanguageModel({
+		model,
+		middleware: defaultSettingsMiddleware({
+			settings: { providerOptions: { openai: { store: false } } },
+		}),
+	});
 }
 
 type OpenAiCompatibleProviderId = 'nvidia';
 
 export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
+}
+
+/**
+ * The custom base URL of a model config. Reads `baseURL`, then the `url` alias,
+ * the same way `createModel` does. An empty value means the provider default.
+ */
+function getConfigBaseUrl(model: unknown): string | undefined {
+	if (!isRecord(model) || isLanguageModel(model)) return undefined;
+	const baseURL = model.baseURL ?? model.url;
+	return typeof baseURL === 'string' && baseURL !== '' ? baseURL : undefined;
+}
+
+/**
+ * Whether the model calls Anthropic's own API. A pre-built model hides its base
+ * URL, and n8n builds one only for a proxy, so it counts as not official.
+ */
+export function usesOfficialAnthropicApi(model: ModelConfig): boolean {
+	if (isLanguageModel(model)) return false;
+	const baseURL = getConfigBaseUrl(model);
+	if (baseURL === undefined) return true;
+	return URL.canParse(baseURL) && new URL(baseURL).origin === 'https://api.anthropic.com';
 }
 
 /** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
@@ -234,14 +335,8 @@ export function supportsSplitSystemMessages(model: ModelConfig): boolean {
 		case 'openrouter':
 			return true;
 		case 'openai': {
-			if (typeof model === 'string') return true;
-			const baseURL =
-				'baseURL' in model && typeof model.baseURL === 'string'
-					? model.baseURL
-					: 'url' in model && typeof model.url === 'string'
-						? model.url
-						: undefined;
-			return !baseURL || isOfficialOpenAiBaseUrl(baseURL);
+			const baseURL = getConfigBaseUrl(model);
+			return baseURL === undefined || isOfficialOpenAiBaseUrl(baseURL);
 		}
 		default:
 			return false;
@@ -354,21 +449,19 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// 200 with an HTML page, which the SDK stream parser accepts as an empty
 			// stream. Every route through such an endpoint runs on the guarded
 			// transport, whichever API the user pinned.
-			const guarded = createOpenAI({
-				...providerCreds,
-				fetch: guardOpenAiRoutes(fetch ?? globalFetch),
-			});
+			const guardedFetch = guardOpenAiRoutes(fetch ?? globalFetch);
+			const guarded = createOpenAI({ ...providerCreds, fetch: guardedFetch });
 			// `apiStyle` is the explicit override and wins over the automatic choice:
 			// it pins the route, so a refusal on it surfaces instead of falling back.
-			if (apiStyle === 'chat') return guarded.chat(model);
+			if (apiStyle === 'chat') return buildOpenAiCompatibleChat(providerCreds, model, guardedFetch);
 			if (apiStyle === 'responses') return guarded(model);
 			// Without it, only the endpoint knows whether it is a proxy for real
 			// OpenAI or an OpenAI-COMPATIBLE server, so both adapters share the
 			// transport and the first answer decides.
 			return withChatCompletionsFallback(
 				(headers) => endpointRouteKey(baseURL, providerCreds, headers),
-				guarded(model),
-				guarded.chat(model),
+				statelessResponses(guarded(model)),
+				buildOpenAiCompatibleChat(providerCreds, model, guardedFetch),
 			);
 		},
 	},
@@ -556,6 +649,8 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			const { createAmazonBedrock } =
 				require('@ai-sdk/amazon-bedrock') as typeof import('@ai-sdk/amazon-bedrock');
 			return createAmazonBedrock({
+				// An empty key stops the SDK from reading AWS_BEARER_TOKEN_BEDROCK from the process env.
+				apiKey: '',
 				region: creds.region,
 				accessKeyId: creds.accessKeyId,
 				secretAccessKey: creds.secretAccessKey,

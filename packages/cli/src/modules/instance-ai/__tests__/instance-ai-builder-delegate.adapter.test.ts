@@ -88,6 +88,36 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		},
 	);
 
+	it('tracks Agent credential requests with the user and run context', () => {
+		const { delegate, telemetry } = setup();
+		const session = { threadId: 'thread-1', runId: 'run-1' };
+		const expected = {
+			agent_id: 'agent-1',
+			user_id: 'user-1',
+			thread_id: 'thread-1',
+			run_id: 'run-1',
+			credential_type: 'slackApi',
+		};
+
+		delegate.trackCredentialRequest?.('agent-1', session, {
+			credentialType: 'slackApi',
+			outcome: 'requested',
+		});
+		delegate.trackCredentialRequest?.('agent-1', session, {
+			credentialType: 'slackApi',
+			outcome: 'skipped',
+		});
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL,
+			expected,
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_PROVIDED_CREDENTIAL, {
+			...expected,
+			outcome: 'skipped',
+		});
+	});
+
 	it('creates the agent inside the Assistant session, so the creation event carries it', async () => {
 		const { delegate, drafts, user } = setup();
 		let sessionDuringCreate: ReturnType<typeof builderTelemetrySessionProperties> = {};

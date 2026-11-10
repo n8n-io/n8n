@@ -49,9 +49,6 @@ export function makeThread(): ThreadRuntime {
 		setPendingWorkflowAttachment: vi.fn(),
 		clearPendingWorkflowAttachment: vi.fn(),
 		applyEvent: vi.fn(),
-		transientWorkflowReferences: new Map(),
-		upsertTransientWorkflowReference: vi.fn(),
-		removeTransientWorkflowReference: vi.fn(),
 		loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
 		loadThreadStatus: vi.fn().mockResolvedValue(undefined),
 		connectSSE: vi.fn(),
@@ -73,12 +70,6 @@ export function makeThread(): ThreadRuntime {
 	thread.clearPendingWorkflowAttachment = vi.fn(() => {
 		thread.pendingWorkflowAttachment = null;
 	});
-	thread.upsertTransientWorkflowReference = vi.fn((reference) => {
-		thread.transientWorkflowReferences.set(reference.referenceId, reference);
-	});
-	thread.removeTransientWorkflowReference = vi.fn((referenceId) => {
-		thread.transientWorkflowReferences.delete(referenceId);
-	});
 	return thread as unknown as ThreadRuntime;
 }
 
@@ -93,6 +84,7 @@ export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance
 	sandboxUnavailableReason: null,
 	runDebugEnabled: false,
 	workflowSuggestionsEnabled: false,
+	assistantAgentEnabled: false,
 };
 
 // Shared mutable fixtures the stub below reads from — tests reset them in `beforeEach`
@@ -118,13 +110,7 @@ export const InstanceAiInputStub = defineComponent({
 		reservedAttachmentCount: { type: Number, required: false },
 		isOutOfCredits: { type: Boolean, required: false },
 	},
-	emits: [
-		'submit',
-		'dismiss-context-chip',
-		'mention-reference-added',
-		'mention-reference-removed',
-		'mention-workflow-open',
-	],
+	emits: ['submit', 'dismiss-context-chip'],
 	setup(props, { emit, expose }) {
 		const inputDraft = ref(inputState.initialDraft);
 		const hasAttachments = ref(inputState.hasAttachments);

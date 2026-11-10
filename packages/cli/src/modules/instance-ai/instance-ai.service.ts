@@ -1,8 +1,8 @@
+import { settleAbandonedToolCallsInMemory } from '@n8n/agents';
 import type { Message, ScopedMemoryTaskEvent } from '@n8n/agents';
 import {
 	mcpConnectRequestSchema,
 	credentialSetupHintSchema,
-	formatAttachmentSizeLimit,
 	instanceAiBuildModeSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
@@ -10,6 +10,7 @@ import {
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
@@ -27,10 +28,10 @@ import {
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, Publisher } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
 	SELF_HEALING_PROFILE_VERSION,
@@ -63,6 +64,7 @@ import {
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
+	createThreadApprovalContext,
 	orchestratorAgentId,
 	type ConfirmationData,
 	type DomainAccessTracker,
@@ -76,7 +78,6 @@ import {
 	type OrchestratorRunStopSignal,
 	type StreamRunResult,
 	type SuspendedRunState,
-	type SuspensionInfo,
 	type WorkflowLoopWorkItemRecord,
 	type WorkflowSetupRoutingClaim,
 	type WorkflowVerificationObligation,
@@ -94,20 +95,24 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ForbiddenError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { AiService } from '@/services/ai.service';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
+import { InstanceAiSkillTelemetry } from './instance-ai-skill-telemetry';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
@@ -154,6 +159,15 @@ import {
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import {
+	getUserFacingErrorCode,
+	getUserFacingErrorMessage,
+	isMaskedStreamFailure,
+	isStaleResumeError,
+	OPERATIONAL_ERROR_USER_MESSAGE,
+	QUOTA_EXHAUSTED_USER_MESSAGE,
+	type TerminalErrorCode,
+} from './user-facing-errors';
+import {
 	assistantCreditsExhaustedError,
 	QuotaExhaustedStreamError,
 } from './turn-setup/assistant-credits';
@@ -169,12 +183,12 @@ import {
 	type AssistantTurnInputRuntime,
 } from './turn-setup/assistant-turn-input.builder';
 import type { AssistantTurnRuntime } from './turn-setup/assistant-turn-runtime';
+import { buildAssistantTurnTraceInput } from './turn-setup/assistant-turn-trace-input';
 
 export {
 	isAssistantCreditBalanceExhausted,
 	QuotaExhaustedStreamError,
 } from './turn-setup/assistant-credits';
-import { isStreamTransportError } from './stream-transport-error';
 import {
 	SuspendedRunRestorer,
 	type RebuildSuspendedRunOutcome,
@@ -186,32 +200,10 @@ import {
 	type MessageTraceFinalization,
 	type OrchestratorResumeReason,
 } from './tracing';
+import { buildResumeTraceInput } from './tracing/resume-trace-input';
+import { buildSuspensionTraceOutputs } from './tracing/suspension-trace';
 import { WorkflowVerificationObligationService } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
-
-/**
- * A resource attachment as the trace records it: the reference, not its contents.
- */
-type TracedResourceAttachment = {
-	type: InstanceAiResourceAttachment['type'];
-	id: string;
-	projectId?: string;
-	executionId?: string;
-};
-
-/** Root-run outputs for a suspended segment — keep the LangSmith turn readable (AGENT-371). */
-function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo | undefined) {
-	const rawMessage = suspension?.suspendPayload.message;
-	const message = typeof rawMessage === 'string' && rawMessage ? rawMessage : undefined;
-	return {
-		status: 'suspended',
-		runId,
-		...(suspension?.requestId ? { requestId: suspension.requestId } : {}),
-		...(suspension?.toolCallId ? { pendingToolCallId: suspension.toolCallId } : {}),
-		...(suspension?.toolName ? { toolName: suspension.toolName } : {}),
-		...(message ? { message } : {}),
-	};
-}
 
 function isTelemetryConfigurableAgent(
 	agent: unknown,
@@ -221,6 +213,19 @@ function isTelemetryConfigurableAgent(
 		agent !== null &&
 		typeof Reflect.get(agent, 'telemetry') === 'function'
 	);
+}
+
+/** Log fields for a completed memory task, e.g. `{ outcome: 'skipped', reason: 'pending-tool-call' }`. */
+function describeMemoryTaskOutcome(value: unknown): { outcome?: string; reason?: string } {
+	if (!isRecord(value) || typeof value.status !== 'string') return {};
+	return {
+		outcome: value.status,
+		...(typeof value.reason === 'string' ? { reason: value.reason } : {}),
+	};
+}
+
+function toTelemetryInputType(inputType: string): string {
+	return inputType === 'app-blueprint' ? 'app_blueprint' : inputType;
 }
 
 const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
@@ -238,154 +243,6 @@ const RESUME_REJECTED_MESSAGE =
  * stuck agent can't burn the whole budget here.
  */
 const INSTANCE_AI_SHUTDOWN_DRAIN_TIMEOUT_MS = 5 * 1000;
-
-function isSandboxEndpointNotAllowedError(error: unknown): boolean {
-	return getErrorMessage(error).toLowerCase().includes('endpoint not allowed');
-}
-
-function isStaleResumeError(error: unknown): boolean {
-	// Name check instead of instanceof: the class crosses the @n8n/agents package boundary.
-	return error instanceof Error && error.name === 'StaleResumeError';
-}
-
-/** Signals that the failure is about an attached file rather than the request as a whole. */
-const ATTACHMENT_SUBJECT_PATTERN = /image|attachment/;
-
-/** Signals that the attachment was refused for its size/decodability, not merely mentioned. */
-const ATTACHMENT_REFUSAL_PATTERN = /exceed|too large|maximum|max allowed|could not process/;
-
-/**
- * Every scrap of message text reachable from an error, following `cause` chains,
- * arrays (an aggregate of stream failures) and the message-bearing fields the AI
- * SDK hangs the provider's response on.
- *
- * Needed because the terminal error is the ai-sdk's `AI_NoOutputGeneratedError`
- * wrapper: the provider's actual refusal is nested underneath it, and a plain
- * `error.message` check sees only "No output generated".
- */
-function collectErrorText(value: unknown, depth = 0): string[] {
-	if (depth > 4 || value === null || value === undefined) return [];
-	if (typeof value === 'string') return [value];
-	if (Array.isArray(value)) return value.flatMap((item) => collectErrorText(item, depth + 1));
-	if (value instanceof Error) {
-		return [value.message, ...collectErrorText(Reflect.get(value, 'cause'), depth + 1)];
-	}
-	if (typeof value === 'object') {
-		const record = value as Record<string, unknown>;
-		return ['message', 'error', 'responseBody', 'data', 'cause', 'errors'].flatMap((key) =>
-			collectErrorText(record[key], depth + 1),
-		);
-	}
-	return [];
-}
-
-/**
- * True when the provider refused an attached file outright. Both signals must be
- * present: matching on the subject alone would misclassify unrelated failures that
- * happen to mention an image.
- *
- * Matched on the message text because the provider surfaces this as a plain 400
- * with no machine-readable discriminator. `validateAttachmentSizes` rejects the
- * known cases before the request is built, so this is the net for provider-side
- * limits we don't model (pixel dimensions, per-provider ceilings, format quirks) —
- * without it, such a rejection sticks in thread history and fails every later turn.
- */
-export function isAttachmentRejectedByProviderError(error: unknown): boolean {
-	const haystack = [getErrorMessage(error), ...collectErrorText(error)].join(' ').toLowerCase();
-	return ATTACHMENT_SUBJECT_PATTERN.test(haystack) && ATTACHMENT_REFUSAL_PATTERN.test(haystack);
-}
-
-/**
- * Shown when the user has exhausted their AI credits/quota. Self-contained so it
- * still reads clearly on older clients that don't render the structured
- * `quota_exhausted` error state; kept in sync with the FE i18n copy.
- */
-export const QUOTA_EXHAUSTED_USER_MESSAGE =
-	"You've run out of AI credits. Upgrade your plan to continue using the n8n Assistant.";
-
-const OPERATIONAL_ERROR_USER_MESSAGE =
-	'I hit an operational error before I could finish that response. Please try again.';
-
-const GENERIC_ERROR_USER_MESSAGE =
-	'Something went wrong before I could finish that response. Please try again.';
-
-/** Structured error code for the UI when a run failed because credits ran out. */
-function getUserFacingErrorCode(error: unknown): 'quota_exhausted' | undefined {
-	return isQuotaExhaustedError(error) ? 'quota_exhausted' : undefined;
-}
-
-type TerminalErrorCode = NonNullable<ReturnType<typeof getUserFacingErrorCode>>;
-
-/** `fallback` lets a caller name what specifically failed when the error itself
- *  carries no user-facing meaning. */
-export function getUserFacingErrorMessage(
-	error: unknown,
-	fallback: string = GENERIC_ERROR_USER_MESSAGE,
-	opts: {
-		/**
-		 * Whether the refused attachment was actually removed from thread history.
-		 * `false` means the thread still replays it, so the guidance must send the user
-		 * to a new conversation rather than promise a clean slate.
-		 */
-		attachmentRemoved?: boolean;
-	} = {},
-): string {
-	if (isQuotaExhaustedError(error)) {
-		return QUOTA_EXHAUSTED_USER_MESSAGE;
-	}
-
-	if (isStreamTransportError(error)) {
-		return 'The connection to the AI provider dropped before I could finish that response. Please try again.';
-	}
-
-	if (error instanceof UserError) {
-		return error.message;
-	}
-
-	if (isStaleResumeError(error)) {
-		return "This approval was already handled. If the assistant isn't responding, send a new message to continue.";
-	}
-
-	if (isSandboxEndpointNotAllowedError(error)) {
-		return "I couldn't finish preparing the workspace sandbox. Please try again in a moment.";
-	}
-
-	// Deliberately no "try again": retrying replays the same attachment. Wording stays
-	// generic because PDFs and spreadsheets get refused too, and the size hint is only
-	// offered when the error actually says so — the provider's text is usually
-	// unavailable here, and guessing "too large" would misdirect the user.
-	if (opts.attachmentRemoved !== undefined || isAttachmentRejectedByProviderError(error)) {
-		const sizeAdvice = isAttachmentRejectedByProviderError(error)
-			? ` Keep it under ${formatAttachmentSizeLimit()}, and for images no more than 8000x8000 pixels.`
-			: '';
-
-		return opts.attachmentRemoved === false
-			? 'I could not read one of the attached files, and I could not remove it from this ' +
-					`conversation either. Start a new chat and attach it again.${sizeAdvice}`
-			: 'I could not read one of the attached files, so I left it out. Attach it again — ' +
-					`ideally a smaller version.${sizeAdvice}`;
-	}
-
-	if (error instanceof OperationalError) {
-		return OPERATIONAL_ERROR_USER_MESSAGE;
-	}
-
-	return fallback;
-}
-
-/**
- * Masked terminal failures whose real cause is unrecoverable from the error
- * object: the ai-sdk's flush wrapper when zero steps were recorded (created
- * without `cause`), and undici's `TypeError: terminated` when the upstream
- * connection is killed mid-stream. When the credit wall hits at the model call
- * instead of the token endpoint, the run dies with one of these rather than a
- * classified quota error — see `reclassifyMaskedStreamFailure`.
- */
-export function isMaskedStreamFailure(error: unknown): error is Error {
-	if (!(error instanceof Error)) return false;
-	if (error.name === 'AI_NoOutputGeneratedError') return true;
-	return error.name === 'TypeError' && error.message === 'terminated';
-}
 
 /** Error codes reported by the browser tool wrapper for failures that happen
  *  before credential persistence (capturing/resolving secrets in the browser). */
@@ -507,6 +364,7 @@ const TITLE_REFINE_HISTORY_LIMIT = 50;
 
 /** Bind identity, gate results, and injection once for all segments of a turn. */
 type InstanceContextTurnBinding = {
+	skills?: InstanceAiSkillTelemetry;
 	userId: string;
 	threadId: string;
 	runId: string;
@@ -716,6 +574,7 @@ export class InstanceAiService {
 			backgroundTasks: this.backgroundTasks,
 			settingsService: this.settingsService,
 			aiService: this.aiService,
+			getTemplatesService: () => this.adapterService.getTemplatesService(),
 			resolveTracingConfig: async (threadId, userId) => {
 				const ownerId = userId ?? (await this.memoryService.getThreadActorId(threadId));
 				if (!ownerId) return { userId: 'system' };
@@ -992,13 +851,7 @@ export class InstanceAiService {
 				pendingCount: pendingTasks.length,
 				...(event.type === 'skipped' ? { reason: event.reason } : {}),
 				...(event.type === 'failed' ? { error: getErrorMessage(event.error) } : {}),
-				...(event.type === 'completed' &&
-				event.value &&
-				typeof event.value === 'object' &&
-				'status' in event.value &&
-				typeof event.value.status === 'string'
-					? { outcome: event.value.status }
-					: {}),
+				...(event.type === 'completed' ? describeMemoryTaskOutcome(event.value) : {}),
 			};
 			this.logger.info(`Observational memory task ${event.type}`, logContext);
 		};
@@ -1013,12 +866,16 @@ export class InstanceAiService {
 		threadId: string,
 		runId: string,
 		signal: AbortSignal,
+		context: InstanceAiContext | undefined,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
 		}
+		const approvalContext = context && createThreadApprovalContext(context);
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
+			// Lets the SDK approval gate read and save "Always allow" grants of the thread.
+			...(approvalContext ? { approvalContext } : {}),
 			abortSignal: signal,
 			// Recover token usage from raw provider events so a stopped/errored run
 			// is still billed for the tokens consumed before the stop.
@@ -1051,12 +908,16 @@ export class InstanceAiService {
 		agentRunId: string,
 		toolCallId: string,
 		signal: AbortSignal,
+		context: InstanceAiContext | undefined,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
 		}
+		const approvalContext = context && createThreadApprovalContext(context);
 		return {
 			runId: agentRunId,
+			// Mirrors the stream options: a decision on an SDK approval card can save a grant.
+			...(approvalContext ? { approvalContext } : {}),
 			toolCallId,
 			abortSignal: signal,
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
@@ -1456,12 +1317,29 @@ export class InstanceAiService {
 					...(suspended.modelId !== undefined ? { modelId: suspended.modelId } : {}),
 					promptVersion: suspended.orchestrationContext?.promptConfiguration?.version,
 				});
+				void this.settleCancelledSuspension(threadId, suspended.user.id);
 			} else {
 				void this.finalizeCancelledSuspendedRun(suspended, reason);
 			}
 		}
 
 		void this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
+	}
+
+	/**
+	 * A cancelled suspension never resumes, but its tool call stays `pending` in stored
+	 * history. The Observer does not observe past a stored pending call, so persist the
+	 * settled form to keep compaction running for the thread.
+	 */
+	private async settleCancelledSuspension(threadId: string, resourceId: string): Promise<void> {
+		try {
+			await settleAbandonedToolCallsInMemory(this.agentMemory, { threadId, resourceId });
+		} catch (error) {
+			this.logger.warn('Failed to settle the tool call of a cancelled suspended run', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	/** Send a correction message to a running background task. */
@@ -1843,7 +1721,7 @@ export class InstanceAiService {
 			if (run.abortController.signal.aborted) continue;
 
 			// Runs holding an inline HITL confirmation (for example
-			// `workflow_builder_ask_user`) sit in `activeRuns` because the orchestrator
+			// `ask_user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
 			// `instance_ai_pending_confirmations` row survives the restart and
 			// `handleOrphanedConfirmation` will issue the user-visible
@@ -2163,6 +2041,7 @@ export class InstanceAiService {
 		return {
 			memory: this.agentMemory,
 			resourceId: user.id,
+			getProjectId: async () => (await this.agentMemory.getThreadProjectId(threadId)) ?? undefined,
 			eventBus: this.eventBus,
 			checkpointStore: this.checkpointStore,
 			turnState: {
@@ -2237,7 +2116,8 @@ export class InstanceAiService {
 		suspendPayload: Record<string, unknown> | undefined,
 	): string | undefined {
 		if (!toolName || !suspendPayload) return undefined;
-		if (resolveBuilderToolName(toolName) !== WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS)
+		// Only setup suspends with `setupRequests`, so a former multi-action call is a setup.
+		if (resolveBuilderToolName(toolName, 'setup') !== WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW)
 			return undefined;
 		if (!Array.isArray(suspendPayload.setupRequests)) return undefined;
 		return typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
@@ -2553,10 +2433,15 @@ export class InstanceAiService {
 			(attachment): attachment is InstanceAiNodesAttachment => attachment.type === 'nodes',
 		);
 
+		const elementAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiElementAttachment => attachment.type === 'element',
+		);
+
 		return [
 			...workflowAttachments,
 			...agentAttachments,
 			...(nodeContextEnabled ? nodeAttachments : []),
+			...elementAttachments,
 		];
 	}
 
@@ -2628,50 +2513,19 @@ export class InstanceAiService {
 		let contextSegmentReported = false;
 		let blockedForQuota = false;
 		const observedContextWork = new WorkSummaryAccumulator();
-		const contextEventBus = this.observeInstanceContextEvents(observedContextWork);
+		const skillTelemetry = new InstanceAiSkillTelemetry(orchestratorAgentId(runId));
 
 		try {
 			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(runId);
 
 			messageId = nanoid();
-			const traceInput: Record<string, unknown> = { message };
-			if (fileAttachments.length) {
-				traceInput.attachments = fileAttachments.map((attachment) => ({
-					mimeType: attachment.mimeType,
-					size: attachment.data.length,
-				}));
-			}
-
-			// `message` is the user's raw text, so without this the trace has no
-			// record that the editor handed the agent a resource.
-			if (contextAttachments.length) {
-				traceInput.resourceAttachments = contextAttachments.map((attachment) => {
-					if (attachment.type === 'nodes') {
-						return { type: attachment.type, id: attachment.workflowId };
-					}
-
-					const resource: TracedResourceAttachment = {
-						type: attachment.type,
-						id: attachment.id,
-					};
-
-					if (attachment.type === 'agent') {
-						resource.projectId = attachment.projectId;
-					}
-
-					if (attachment.type === 'workflow' && attachment.executionId) {
-						resource.executionId = attachment.executionId;
-					}
-
-					return resource;
-				});
-			}
-			if (threadArtifacts?.artifacts.length) {
-				traceInput.threadArtifacts = threadArtifacts;
-			}
-			if (messageGroupId) {
-				traceInput.messageGroupId = messageGroupId;
-			}
+			const traceInput = buildAssistantTurnTraceInput({
+				message,
+				fileAttachments,
+				contextAttachments,
+				threadArtifacts,
+				messageGroupId,
+			});
 
 			// Shared with createExecutionEnvironment so one ProxyTokenManager backs tracing + the run.
 			const proxyRunConfig = await this.createProxyRunConfig(user);
@@ -2777,6 +2631,12 @@ export class InstanceAiService {
 				instanceContextEnabled,
 				nodeUsageEnabled,
 			} = environment;
+			skillTelemetry.bind(orchestrationContext.skills);
+			const contextEventBus = this.createRunEventBus(
+				observedContextWork,
+				orchestrationContext,
+				skillTelemetry,
+			);
 			modelId = resolvedModelId;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
 			setTracePromptVersion(tracing, promptVersion);
@@ -2832,6 +2692,7 @@ export class InstanceAiService {
 				// Bound before the input build ends, so a later failure still reports the segment.
 				onInstanceContextInjection: (injection) => {
 					contextTurn = {
+						skills: skillTelemetry,
 						userId: user.id,
 						threadId,
 						runId,
@@ -2844,20 +2705,6 @@ export class InstanceAiService {
 			const { fullMessage, nonStructuredAttachments, contextInjection, aiPreferencesTurn } =
 				turnInput;
 			turnHadFileAttachments = turnInput.turnHadFileAttachments;
-			if (
-				aiPreferencesTurn &&
-				!aiPreferencesTurn.payload.injectedThisTurn &&
-				aiPreferencesTurn.payload.renderedLength > 0
-			) {
-				// A lookup failure only costs the run attribution, never the skip itself.
-				const carriedFromRunId = await this.bestEffort(
-					'Instance AI failed to resolve which run sent the AI preferences block',
-					{ threadId },
-					async () => await this.eventLog.getLastPreferencesInjectionRunId(threadId),
-				);
-				if (carriedFromRunId)
-					aiPreferencesTurn.payload = { ...aiPreferencesTurn.payload, carriedFromRunId };
-			}
 
 			const promptBuildRun = tracing
 				? await tracing.startChildRun(tracing.messageRun, {
@@ -2927,7 +2774,13 @@ export class InstanceAiService {
 				tracing,
 			);
 
-			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
+			const streamOptions = this.buildOrchestratorAgentStreamOptions(
+				user,
+				threadId,
+				runId,
+				signal,
+				environment.context,
+			);
 
 			streamReached = true;
 			await this.turnInput.onInputAccepted(environment, turnInputRuntime, turnInput, {
@@ -2999,6 +2852,7 @@ export class InstanceAiService {
 				});
 				if (result.suspension) {
 					const suspendedContext = {
+						hubSkills: skillTelemetry.save(),
 						injection: contextInjection,
 						instanceContextEnabled,
 						nodeUsageEnabled,
@@ -3827,16 +3681,7 @@ export class InstanceAiService {
 			runId,
 			userId: activeUser.id,
 			modelId,
-			input: {
-				requestId,
-				toolCallId,
-				approved: data.approved,
-				resumeFields: Object.keys(resumeData),
-				...(data.userInput ? { userInput: data.userInput } : {}),
-				...(data.action ? { action: data.action } : {}),
-				...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
-				...(data.answers ? { answers: data.answers } : {}),
-			},
+			input: { requestId, toolCallId, ...buildResumeTraceInput(resumeData) },
 			resumeReason: 'approval',
 			metadata: {
 				...(await this.readThreadProvenance(activeUser.id, threadId)),
@@ -3967,12 +3812,21 @@ export class InstanceAiService {
 		let resumeClaimed = false;
 		let resumeTraceRegistered = false;
 		let errorReporterExecutionToken: symbol | undefined;
+		const skillTelemetry = new InstanceAiSkillTelemetry(
+			orchestratorAgentId(opts.runId),
+			opts.instanceContext?.hubSkills,
+		);
 		const contextTurn = this.instanceContextTurnBinding(opts);
+		if (contextTurn) contextTurn.skills = skillTelemetry;
 		let contextResult: StreamRunResult | undefined;
 		let contextSegmentReported = false;
 		let blockedForQuota = false;
 		const observedContextWork = new WorkSummaryAccumulator();
-		const contextEventBus = this.observeInstanceContextEvents(observedContextWork);
+		const contextEventBus = this.createRunEventBus(
+			observedContextWork,
+			opts.orchestrationContext,
+			skillTelemetry,
+		);
 		/**
 		 * Set once the model run has yielded output. The catch below also wraps
 		 * post-result finalization, so without this a finalization failure after a
@@ -3983,6 +3837,7 @@ export class InstanceAiService {
 		const onResumeClaimed = async () => {
 			if (resumeClaimed) return;
 			resumeClaimed = true;
+			skillTelemetry.bind(opts.orchestrationContext?.skills);
 
 			if (opts.resumeTracing && !resumeTraceRegistered) {
 				this.tracing.registerTraceContext(
@@ -4034,6 +3889,7 @@ export class InstanceAiService {
 					opts.agentRunId,
 					opts.toolCallId,
 					opts.signal,
+					opts.orchestrationContext?.domainContext,
 				),
 				onResumeClaimed,
 			};
@@ -4079,7 +3935,7 @@ export class InstanceAiService {
 					workSummary: result.workSummary,
 					usage: result.usage,
 				});
-				// Telemetry reports this segment only. The trace retains reads across all suspensions.
+				// Context reads describe this segment. The trace retains reads across all suspensions.
 				const resumedSegmentReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
 				const resumedSuspendedReach = mergeInstanceContextReach(
 					opts.instanceContext?.reachSoFar,
@@ -4098,7 +3954,11 @@ export class InstanceAiService {
 				if (result.suspension) {
 					const resumeMessageGroupId = this.tracing.getMessageGroupId(opts.runId);
 					const suspendedContext = opts.instanceContext
-						? { ...opts.instanceContext, reachSoFar: resumedSuspendedReach }
+						? {
+								...opts.instanceContext,
+								reachSoFar: resumedSuspendedReach,
+								hubSkills: skillTelemetry.save(),
+							}
 						: undefined;
 					this.runState.suspendRun(opts.threadId, {
 						runId: opts.runId,
@@ -4784,7 +4644,7 @@ export class InstanceAiService {
 			?.servers;
 		let type: string;
 		if (inputType) {
-			type = inputType;
+			type = toTelemetryInputType(inputType);
 		} else if (Array.isArray(payload.setupRequests) && payload.setupRequests.length > 0) {
 			type = 'setup';
 		} else if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0) {
@@ -4855,6 +4715,8 @@ export class InstanceAiService {
 		suspended: SuspendedRunState<User>,
 		reason = 'user_cancelled',
 	): Promise<void> {
+		// Covers the stop button and the confirmation timeout of the liveness service.
+		void this.settleCancelledSuspension(suspended.threadId, suspended.user.id);
 		const runTimeout =
 			reason === INSTANCE_AI_RUN_TIMEOUT_REASON
 				? this.liveness.consumeRunTimeout(suspended.runId)
@@ -5146,11 +5008,16 @@ export class InstanceAiService {
 		};
 	}
 
-	private observeInstanceContextEvents(workSummary: WorkSummaryAccumulator): InstanceAiEventBus {
+	private createRunEventBus(
+		workSummary: WorkSummaryAccumulator,
+		context?: OrchestrationContext,
+		skills?: InstanceAiSkillTelemetry,
+	): InstanceAiEventBus {
 		return {
 			publish: (threadId, event) => {
 				workSummary.observe(event);
-				this.eventBus.publish(threadId, event);
+				skills?.observe(event);
+				this.eventBus.publish(threadId, context?.mapSkillEventForDisplay?.(event) ?? event);
 			},
 			subscribe: (threadId, handler) => this.eventBus.subscribe(threadId, handler),
 		};
@@ -5171,6 +5038,7 @@ export class InstanceAiService {
 		if (!turn) return;
 		const { injection } = turn;
 		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN, {
+			...turn.skills?.snapshot(),
 			user_id: turn.userId,
 			thread_id: turn.threadId,
 			run_id: turn.runId,
@@ -5301,6 +5169,8 @@ export class InstanceAiService {
 					llmTitle = await titleTracing.withActiveSpan(titleTracing.rootRun, async () => {
 						const title = await generateTitleForRun(modelId, userText, {
 							...(titleTelemetry ? { telemetry: titleTelemetry } : {}),
+							modelFetch: this.modelService.getLabeledModelFetch({ threadId }),
+							requestLabels: this.instanceAiConfig.modelRequestLabels,
 						});
 						if (title) {
 							await titleTracing.finishRun(titleTracing.rootRun, {
@@ -5319,7 +5189,10 @@ export class InstanceAiService {
 					releaseTraceClient(titleTracing.rootRun.traceId);
 				}
 			} else {
-				llmTitle = await generateTitleForRun(modelId, userText);
+				llmTitle = await generateTitleForRun(modelId, userText, {
+					modelFetch: this.modelService.getLabeledModelFetch({ threadId }),
+					requestLabels: this.instanceAiConfig.modelRequestLabels,
+				});
 			}
 			if (!llmTitle) return;
 

@@ -2,12 +2,13 @@ import type { FrontendSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { GlobalConfig } from '@n8n/config';
-import type { TagEntity, User, ICredentialsDb, PublicUser } from '@n8n/db';
+import type { TagEntity, User, ICredentialsDb, CloudHooksPeople, PublicUser } from '@n8n/db';
 import {
 	CredentialsRepository,
+	isPerson,
 	WorkflowRepository,
 	SettingsRepository,
-	UserRepository,
+	PersonRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -18,15 +19,16 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowExecutionSource,
 } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type clientOAuth1 from 'oauth-1.0a';
 
 import type { AbstractServer } from '@/abstract-server';
 import type { Config } from '@/config';
+import type { OtelConfigureHookApi } from '@/modules/otel/otel-configure-hook';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 type Repositories = {
-	User: UserRepository;
+	User: CloudHooksPeople;
 	Settings: SettingsRepository;
 	Credentials: CredentialsRepository;
 	Workflow: WorkflowRepository;
@@ -59,11 +61,13 @@ export function toWorkflowLifecycleHookActor(user?: User): WorkflowLifecycleHook
 		return undefined;
 	}
 
+	// A service account has no email or name.
+	const person = isPerson(user) ? user : undefined;
 	return {
 		id: user.id,
-		email: user.email,
-		firstName: user.firstName,
-		lastName: user.lastName,
+		email: person?.email ?? null,
+		firstName: person?.firstName ?? null,
+		lastName: person?.lastName ?? null,
 		role: user.role?.slug,
 	};
 }
@@ -92,6 +96,8 @@ type ExternalHooksMap = {
 	'oauth2.authenticate': [oAuthOptions: ClientOAuth2Options];
 	'oauth2.callback': [oAuthOptions: ClientOAuth2Options];
 	'oauth2.dynamicClientRegistration': [registerPayload: { redirect_uris: string[] }];
+
+	'otel.configure': [api: OtelConfigureHookApi];
 
 	'tag.beforeCreate': [tag: TagEntity];
 	'tag.afterCreate': [tag: TagEntity];
@@ -185,13 +191,13 @@ export class ExternalHooks {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly globalConfig: GlobalConfig,
-		userRepository: UserRepository,
+		personRepository: PersonRepository,
 		settingsRepository: SettingsRepository,
 		credentialsRepository: CredentialsRepository,
 		workflowRepository: WorkflowRepository,
 	) {
 		this.dbCollections = {
-			User: userRepository,
+			User: personRepository.forCloudHooks(),
 			Settings: settingsRepository,
 			Credentials: credentialsRepository,
 			Workflow: workflowRepository,

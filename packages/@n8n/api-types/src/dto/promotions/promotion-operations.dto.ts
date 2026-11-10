@@ -5,11 +5,10 @@ import { z } from 'zod';
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
-	promotionBindingPreflightResultSchema,
-	promotionBindingProjectSchema,
+	promotionApplyCheckSchema,
 	promotionBindingWarningSchema,
-} from './promotion-binding-preflight.dto';
-import { promotionCommitMessageSchema } from './promotion-common.dto';
+} from './promotion-apply-check.dto';
+import { promotionCommitMessageSchema, promotionSelectedIdsSchema } from './promotion-common.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
 
 export class PromotePackageDto extends Z.class(
@@ -66,11 +65,29 @@ export class PromotePackageResultDto extends Z.class(promotePackageResultSchema.
 /** What the import changed. Partial results are visible here too. */
 export const applyPackageCountsSchema = z.object({
 	projects: z.object({ created: count(), updated: count(), skipped: count(), deleted: count() }),
-	folders: z.object({ created: count(), skipped: count(), removed: count() }),
+	folders: z.object({
+		created: count(),
+		updated: count().openapi({
+			description: 'Existing folders that Apply moved or renamed to match the branch.',
+		}),
+		skipped: count(),
+		moved: count().openapi({
+			description:
+				'Updated folders that Apply moved under another parent of their project. Included in `updated`.',
+		}),
+		renamed: count().openapi({
+			description: 'Updated folders that Apply gave the name on the branch. Included in `updated`.',
+		}),
+		removed: count(),
+	}),
 	workflows: z.object({
 		created: count(),
 		updated: count(),
 		skipped: count(),
+		moved: count().openapi({
+			description:
+				'Updated workflows that Apply also moved to another folder of their project. Included in `updated`.',
+		}),
 		archived: count(),
 		deleted: count(),
 		publishing: z.object({
@@ -136,26 +153,42 @@ export class ContinueApplyPackageDto extends Z.class(
 	{ strict: true },
 ) {}
 
-/** The selection is a set, so a repeated workflow id is a malformed request. */
-const selectedWorkflowIdsSchema = z
-	.array(n8nIdSchema)
-	.min(1)
-	.refine((ids) => new Set(ids).size === ids.length, {
-		message: 'workflowIds contains duplicates',
+const expectedPreviewRevisionSchema = z
+	.string()
+	.regex(/^[0-9a-f]{64}$/)
+	.optional()
+	.openapi({
+		description:
+			'The `revision` of the reviewed Apply preview. Apply builds the preview again and returns ' +
+			'status `preview-changed` without writing when it differs, for example after a local edit.',
 	});
+
+/**
+ * The selection of a project Apply. Apply always applies the project details, so a request
+ * without workflows and folders applies only the project.
+ */
+const applySelectionShape = {
+	workflowIds: promotionSelectedIdsSchema('workflowIds'),
+	folderIds: promotionSelectedIdsSchema('folderIds').openapi({
+		description:
+			'Folders of the project on the branch. Apply creates a selected folder, or moves and renames it to match the branch.',
+	}),
+};
 
 export class ApplySelectionDto extends Z.class(
 	{
-		workflowIds: selectedWorkflowIdsSchema,
+		...applySelectionShape,
 		expectedSource: expectedSourceSchema.optional(),
+		expectedPreviewRevision: expectedPreviewRevisionSchema,
 	},
 	{ strict: true },
 ) {}
 
 export class ContinueApplySelectionDto extends Z.class(
 	{
-		workflowIds: selectedWorkflowIdsSchema,
+		...applySelectionShape,
 		expectedSource: expectedSourceSchema,
+		expectedPreviewRevision: expectedPreviewRevisionSchema,
 		confirmDestructiveChanges: confirmDestructiveChangesSchema,
 	},
 	{ strict: true },
@@ -174,9 +207,11 @@ export const applyPackageResultSchema = z.discriminatedUnion('status', [
 	}),
 	applyPackageIdentitySchema.extend({
 		status: z.literal('blocked'),
-		preflight: promotionBindingPreflightResultSchema,
+		check: promotionApplyCheckSchema,
 	}),
 	applyPackageIdentitySchema.extend({ status: z.literal('source-changed') }),
+	/** This instance changed after the reviewed preview. Nothing was imported. */
+	applyPackageIdentitySchema.extend({ status: z.literal('preview-changed') }),
 ]);
 
 export const ApplyPackageResultDto = {
@@ -186,19 +221,3 @@ export const ApplyPackageResultDto = {
 };
 
 export type ApplyPackageResultDto = z.infer<typeof applyPackageResultSchema>;
-
-/** The Apply check reads the package at the commit of the Apply preview. */
-export class ApplyCheckQueryDto extends Z.class(
-	{ commitSha: expectedSourceSchema.shape.commitSha },
-	{ strict: true },
-) {}
-
-const applyCheckResultSchema = applyPackageIdentitySchema.extend({
-	preflight: promotionBindingPreflightResultSchema,
-	/** Workflows of this project that the branch holds in another project. A selective Apply cannot move them. */
-	movedWorkflows: z.array(
-		z.object({ id: z.string(), name: z.string(), project: promotionBindingProjectSchema }),
-	),
-});
-
-export type ApplyCheckResult = z.infer<typeof applyCheckResultSchema>;

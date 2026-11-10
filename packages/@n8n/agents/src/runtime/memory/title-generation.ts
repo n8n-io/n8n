@@ -16,6 +16,7 @@ import { computeSideCallCost } from '../loop/side-call-cost';
 import { loadAi } from '../model/lazy-ai';
 import { createModel, type FetchFn } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
+import { buildFunctionIdHeaders } from '../telemetry/function-id';
 import { buildAiSdkTelemetry } from '../telemetry/telemetry-options';
 
 const logger = createFilteredLogger();
@@ -63,6 +64,8 @@ interface GenerateTitleFromMessageOptions {
 	instructions?: string;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	/** Sent verbatim as the `x-n8n-function-id` header. */
+	functionId?: string;
 }
 
 /**
@@ -135,6 +138,7 @@ export async function generateTitleFromMessage(
 				content: `Generate a title for the following first message of a conversation. Do not answer the message — only produce the title.\n\n<message>\n${trimmed}\n</message>`,
 			},
 		],
+		...buildFunctionIdHeaders(opts?.functionId),
 		...buildAiSdkTelemetry(opts?.telemetry, { fallbackFunctionId: 'title-generation' }),
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
@@ -180,6 +184,7 @@ ${trimmed}
 		model,
 		instructions: opts?.instructions ?? DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS,
 		messages: [{ role: 'user', content: wrappedMessage }],
+		...buildFunctionIdHeaders(opts?.functionId),
 		...buildAiSdkTelemetry(opts?.telemetry, { fallbackFunctionId: 'title-generation' }),
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
@@ -216,6 +221,15 @@ ${trimmed}
 	return { title, emoji, usage };
 }
 
+function firstUserText(turnDelta: AgentDbMessage[]): string | undefined {
+	const userMessage = turnDelta.find((m) => 'role' in m && m.role === 'user');
+	if (!userMessage || !('content' in userMessage)) return undefined;
+	return (userMessage.content as Array<{ type: string; text?: string }>)
+		.filter((c) => c.type === 'text' && c.text)
+		.map((c) => c.text!)
+		.join(' ');
+}
+
 /**
  * Generate a title and emoji for a thread if it doesn't already have one.
  *
@@ -232,9 +246,13 @@ export async function generateThreadTitle(opts: {
 	agentModel: ModelConfig;
 	/** Proxy/SSRF-aware `fetch` for the title model call (see {@link AgentRuntimeConfig.modelFetch}). */
 	modelFetch?: FetchFn;
+	/** The owning runtime's `functionId`; the title call sends `<functionId>.title`. */
+	functionId?: string;
 	telemetry?: BuiltTelemetry;
 	/** Messages from the current turn, used to find the first user message. */
 	turnDelta: AgentDbMessage[];
+	/** Replaces the first user message of the turn as the text to title. See `ExecutionOptions.titleText`. */
+	titleText?: string;
 	executionCounter?: AgentExecutionCounter;
 	/**
 	 * Host callback that receives the priced title-generation usage so it can
@@ -248,13 +266,7 @@ export async function generateThreadTitle(opts: {
 		const thread = await opts.memory.getThread(opts.threadId);
 		if (thread?.title) return;
 
-		const userMessage = opts.turnDelta.find((m) => 'role' in m && m.role === 'user');
-		if (!userMessage || !('content' in userMessage)) return;
-
-		const userText = (userMessage.content as Array<{ type: string; text?: string }>)
-			.filter((c) => c.type === 'text' && c.text)
-			.map((c) => c.text!)
-			.join(' ');
+		const userText = opts.titleText ?? firstUserText(opts.turnDelta);
 		if (!userText) return;
 
 		const titleModelId = opts.titleConfig.model ?? opts.agentModel;
@@ -263,6 +275,7 @@ export async function generateThreadTitle(opts: {
 			instructions: opts.titleConfig.instructions,
 			telemetry: opts.telemetry,
 			executionCounter: opts.executionCounter,
+			...(opts.functionId ? { functionId: `${opts.functionId}.title` } : {}),
 		});
 		if (!generated) return;
 
@@ -283,20 +296,25 @@ export async function generateThreadTitle(opts: {
 				getCatalogModelId(titleModelId),
 				usage,
 				opts.promptCaching,
+				opts.modelFetch,
 			);
 		}
 
 		// No usable title — the model call was still billed (reported above).
 		if (!title) return;
 
-		// Store emoji in thread metadata
-		const metadata = { ...(thread?.metadata ?? {}), ...(emoji && { emoji }) };
+		// The thread was read before the model call. Merge the emoji onto a fresh read, so
+		// metadata that changed in the meantime is not written back. Without an emoji, the
+		// metadata is left as it is.
+		const metadata = emoji
+			? { ...((await opts.memory.getThread(opts.threadId))?.metadata ?? {}), emoji }
+			: undefined;
 
 		await opts.memory.saveThread({
 			id: opts.threadId,
 			resourceId: opts.resourceId,
 			title,
-			metadata,
+			...(metadata ? { metadata } : {}),
 		});
 	} catch (error) {
 		logger.warn('Failed to generate thread title', { error });
@@ -313,9 +331,10 @@ async function reportTitleUsage(
 	modelId: string,
 	usage: TokenUsage,
 	promptCaching?: PromptCachingConfig,
+	modelFetch?: FetchFn,
 ): Promise<void> {
 	try {
-		const cost = await computeSideCallCost(modelId, usage, promptCaching);
+		const cost = await computeSideCallCost(modelId, usage, promptCaching, modelFetch);
 		await onSideCallUsage({
 			task: 'title',
 			model: modelId,

@@ -49,6 +49,7 @@ describe('useAgentTelemetry', () => {
 		'suspension',
 		'hitl-response',
 		'background-task-signal',
+		'background-task',
 	] as const)('tracks %s trace selection without trace content', (itemType) => {
 		useAgentTelemetry().trackClickedTraceItem({ agentId: 'ag-1', itemType });
 		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
@@ -175,14 +176,10 @@ describe('useAgentTelemetry', () => {
 
 	it('trackSubmittedMessage includes mode, status, agent_config (no raw message)', () => {
 		const fingerprint = {
-			instructions: 'hello',
-			tools: ['a'],
 			skills: [],
 			tasks: [],
 			triggers: [],
-			vector_stores: [],
 			memory: null,
-			model: 'gpt-4',
 			config_version: 'v1',
 		};
 		useAgentTelemetry().trackSubmittedMessage({

@@ -57,6 +57,16 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				};
 			}
 
+			// The mocked-node map is only meaningful for the workflow this build saved.
+			if (buildOutcome.workflowId !== input.workflowId) {
+				return {
+					success: false,
+					error:
+						`Work item ${input.workItemId} belongs to workflow ${buildOutcome.workflowId ?? '(none)'}, ` +
+						`but credentials were requested for workflow ${input.workflowId}.`,
+				};
+			}
+
 			const { mockedCredentialsByNode } = buildOutcome;
 			const { workflowService } = context.domainContext;
 
@@ -80,6 +90,9 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				for (const credType of mockedTypes) {
 					const credId = input.credentials[credType];
 					if (!credId) continue;
+					// The build leaves a mocked slot empty. A filled slot is a real
+					// binding, for example one the user set after the build.
+					if (node.credentials?.[credType]) continue;
 
 					const resolved = await resolveCredentialForApply(credType, credId, context.domainContext);
 					if (!resolved.resolved) return { success: false, error: resolved.error };
@@ -121,6 +134,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 					workflow: json,
 					availableCredentials,
 					fallbackModelConfig: context.modelId,
+					modelFetch: context.modelFetch,
 				});
 				if (patch) {
 					await context.workflowTaskService.updateBuildOutcome(input.workItemId, {

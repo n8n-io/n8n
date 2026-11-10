@@ -55,4 +55,107 @@ describe('createAskUserTool', () => {
 
 		expect(result).toEqual({ answered: false });
 	});
+
+	it('defaults missing question ids to the first free qN', async () => {
+		const suspend = vi.fn().mockResolvedValue({ suspended: true });
+		const tool = createAskUserTool();
+
+		await executeTool(
+			tool,
+			{
+				questions: [
+					{ question: 'First?', type: 'text' },
+					{ id: 'q2', question: 'Second?', type: 'text' },
+					{ question: 'Third?', type: 'text' },
+				],
+			},
+			{ resumeData: undefined, suspend },
+		);
+
+		const payload = suspend.mock.calls[0][0] as { questions: Array<{ id: string }> };
+		expect(payload.questions.map((q) => q.id)).toEqual(['q1', 'q2', 'q3']);
+	});
+
+	it('rejects duplicate explicit question ids', async () => {
+		const tool = createAskUserTool();
+
+		await expect(
+			executeTool(
+				tool,
+				{
+					questions: [
+						{ id: 'dup', question: 'First?', type: 'text' },
+						{ id: 'dup', question: 'Second?', type: 'text' },
+					],
+				},
+				{ resumeData: undefined, suspend: vi.fn() },
+			),
+		).rejects.toThrow('question ids must be unique');
+	});
+
+	it('returns answered false when every answer is skipped', async () => {
+		const tool = createAskUserTool();
+
+		const result = await executeTool(
+			tool,
+			{ questions: [QUESTION] },
+			{
+				resumeData: {
+					approved: true,
+					answers: [{ questionId: 'q1', selectedOptions: [], skipped: true }],
+				},
+			},
+		);
+
+		expect(result).toEqual({ answered: false });
+	});
+
+	it('accepts a resume without approved from a former agent_builder_ask_questions call', async () => {
+		const tool = createAskUserTool();
+
+		const result = await executeTool(
+			tool,
+			{ questions: [{ question: 'Which region?', type: 'single', options: ['us', 'eu'] }] },
+			{ resumeData: { answers: [{ questionId: 'q1', selectedOptions: ['us'] }] } },
+		);
+
+		expect(result).toEqual({
+			answered: true,
+			answers: [{ questionId: 'q1', question: 'Which region?', selectedOptions: ['us'] }],
+		});
+	});
+});
+
+describe('ask_user model output', () => {
+	const tool = createAskUserTool();
+	const modelView = (result: Record<string, unknown>) =>
+		tool.toModelOutput!(result) as Record<string, unknown>;
+
+	it('tells the model to assume defaults after a dismissal', () => {
+		const view = modelView({ answered: false });
+
+		expect(view.nextStep).toContain('default');
+		expect(view.nextStep).toContain('do not ask');
+	});
+
+	it('tells the model to assume defaults for skipped questions', () => {
+		const view = modelView({
+			answered: true,
+			answers: [
+				{ questionId: 'q1', selectedOptions: ['a'] },
+				{ questionId: 'q2', selectedOptions: [], skipped: true },
+			],
+		});
+
+		expect(view.nextStep).toContain('skipped');
+	});
+
+	it('adds no next step when every question is answered', () => {
+		const view = modelView({
+			answered: true,
+			answers: [{ questionId: 'q1', selectedOptions: ['a'] }],
+		});
+
+		expect(view).not.toHaveProperty('nextStep');
+	});
 });

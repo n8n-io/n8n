@@ -11,13 +11,15 @@ export class AgentsModule implements ModuleInterface {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
-		// The skills module reads the skills hub setting before this module starts. Tell it
-		// which agents use skills, then, with the hub on, copy inline agent skills into the
-		// hub on each main before agents run.
-		const { registerSkillAgentsProvider } = await import('./register-skill-agents-provider.js');
-		registerSkillAgentsProvider();
-		const { SkillsHubStartupCopy } = await import('./skills/skills-hub-startup-copy.js');
-		await Container.get(SkillsHubStartupCopy).runOnStartup();
+		// The skills module starts before this module. Tell it which agents use skills.
+		const { registerSkillUsage } = await import('./register-skill-usage.js');
+		registerSkillUsage();
+
+		// The knowledge module starts before this module. Hand it the sandbox its file mirror runs in.
+		const { registerKnowledgeSandboxProvider } = await import(
+			'./register-knowledge-sandbox-provider.js'
+		);
+		registerKnowledgeSandboxProvider();
 
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.
@@ -55,14 +57,13 @@ export class AgentsModule implements ModuleInterface {
 		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
 		registerUserDeletionHandler();
 
-		// Register blob backends for agent execution logs and knowledge files.
+		// Register blob backends for agent execution logs.
 		// The fs backend is always available; s3/az reuse the clients base-command
 		// already initialized (initBinaryDataService runs before module init in
 		// all commands), which exits the process when the configured execution
 		// data backend cannot be reached — so a live process in s3/az mode always
 		// has that location registered here.
 		const { AgentExecutionLogStore } = await import('./execution-log/agent-execution-log-store.js');
-		const { AgentKnowledgeFileStore } = await import('./agent-knowledge-file-store.js');
 		const { ExecutionDataJsonStore } = await import(
 			'@/executions/execution-data/execution-data-json-store.js'
 		);
@@ -70,7 +71,6 @@ export class AgentsModule implements ModuleInterface {
 		await registerAgentBlobByteStores({
 			executionDataJsonStore: Container.get(ExecutionDataJsonStore),
 			agentExecutionLogStore: Container.get(AgentExecutionLogStore),
-			agentKnowledgeFileStore: Container.get(AgentKnowledgeFileStore),
 		});
 
 		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
@@ -251,7 +251,6 @@ export class AgentsModule implements ModuleInterface {
 		const { KnowledgeAvailabilityService } = await import(
 			'@/modules/knowledge/knowledge-availability.service.js'
 		);
-		const { SkillsHubRollout } = await import('@/modules/skills/skills-hub-rollout.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
@@ -259,14 +258,13 @@ export class AgentsModule implements ModuleInterface {
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
 			proxyEnabled,
-			skillsHubEnabled: Container.get(SkillsHubRollout).isEnabled,
 		};
 	}
 
 	async entities() {
 		const { Agent } = await import('./entities/agent.entity.js');
-		const { AgentFile } = await import('./entities/agent-file.entity.js');
 		const { AgentChatAttachment } = await import('./entities/agent-chat-attachment.entity.js');
+		const { AgentFileGrant } = await import('./entities/agent-file-grant.entity.js');
 		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity.js');
 		const { AgentChannelStatus } = await import('./entities/agent-channel-status.entity.js');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity.js');
@@ -283,6 +281,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
 		const { AgentPlan } = await import('./entities/agent-plan.entity.js');
 		const { AgentPlanHistory } = await import('./entities/agent-plan-history.entity.js');
+		const { AgentPublishHistory } = await import('./entities/agent-publish-history.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
@@ -321,8 +320,8 @@ export class AgentsModule implements ModuleInterface {
 
 		return [
 			Agent,
-			AgentFile,
 			AgentChatAttachment,
+			AgentFileGrant,
 			AgentChatSubscription,
 			AgentChannelStatus,
 			AgentCheckpoint,
@@ -338,6 +337,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentPlan,
 			AgentPlanHistory,
 			AgentHistory,
+			AgentPublishHistory,
 			AgentCredentialDependency,
 			AgentWorkflowDependency,
 			AgentTask,

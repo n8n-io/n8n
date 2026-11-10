@@ -46,6 +46,8 @@ import type * as ChatModelValidationMod from './tools/workflows/chat-model-valid
 import type * as WorkflowValidationWarningsMod from './tools/workflows/workflow-validation-warnings';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
+import type * as BuilderMetricEventMod from './tracing/builder-metric-event';
+import type * as BuilderToolsMod from './tools/orchestration/builder-tools';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
 import type * as AgentTreeMod from './utils/agent-tree';
@@ -109,6 +111,12 @@ const loadTraceReplay = lazyModule(
 );
 const loadAgentSnapshotEvent = lazyModule(
 	() => require('./tracing/agent-snapshot-event') as typeof AgentSnapshotEventMod,
+);
+const loadBuilderMetricEvent = lazyModule(
+	() => require('./tracing/builder-metric-event') as typeof BuilderMetricEventMod,
+);
+const loadBuilderTools = lazyModule(
+	() => require('./tools/orchestration/builder-tools') as typeof BuilderToolsMod,
 );
 const loadAgentBuildMetrics = lazyModule(
 	() => require('./tools/orchestration/agent-build-metrics') as typeof AgentBuildMetricsMod,
@@ -263,6 +271,7 @@ export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export {
+	AppNamespaceTakenError,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	WorkflowEditorLockedError,
@@ -280,18 +289,21 @@ export {
 	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
+	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
 export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export { parseAppTargets, parsePendingAppTarget } from './tools/apps/app-target-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
-} from './tools/orchestration/agent-preview-session-binding';
+} from './tools/orchestration/agent-test-session-binding';
 
 export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData = lazyFunction(
 	() => loadSanitizeWebContent().wrapUntrustedData,
 );
 export type { Logger } from './logger';
+export { createThreadApprovalContext } from './approval-review/thread-approval-context';
 export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAccessTracker =
 	lazyFunction(() => loadDomainAccess().createDomainAccessTracker);
 export type { DomainAccessTracker } from './domain-access';
@@ -306,6 +318,14 @@ export type {
 	AgentSnapshotArtifact,
 	AgentSnapshotReason,
 } from './tracing/agent-snapshot-event';
+
+export const snapshotAgent: typeof BuilderToolsMod.snapshotAgent = lazyFunction(
+	() => loadBuilderTools().snapshotAgent,
+);
+
+export const emitBuilderMetric: typeof BuilderMetricEventMod.emitBuilderMetric = lazyFunction(
+	() => loadBuilderMetricEvent().emitBuilderMetric,
+);
 
 export const carryAgentBuildRunState: typeof AgentBuildMetricsMod.carryAgentBuildRunState =
 	lazyFunction(() => loadAgentBuildMetrics().carryAgentBuildRunState);
@@ -412,14 +432,6 @@ export const createAgentContextTool: typeof AgentContextToolMod.createAgentConte
 	lazyFunction(() => loadAgentContextTool().createAgentContextTool);
 export declare const SUB_AGENT_RESOURCE_PREFIX: typeof AgentPersistenceMod.SUB_AGENT_RESOURCE_PREFIX;
 
-export declare const iterationEntrySchema: typeof StorageMod.iterationEntrySchema;
-export const formatPreviousAttempts: typeof StorageMod.formatPreviousAttempts = lazyFunction(
-	() => loadStorage().formatPreviousAttempts,
-);
-export type ThreadIterationLogStorage = StorageMod.ThreadIterationLogStorage;
-export const ThreadIterationLogStorage: typeof StorageMod.ThreadIterationLogStorage = lazyClass(
-	() => loadStorage().ThreadIterationLogStorage,
-);
 export type ThreadTaskStorage = StorageMod.ThreadTaskStorage;
 export const ThreadTaskStorage: typeof StorageMod.ThreadTaskStorage = lazyClass(
 	() => loadStorage().ThreadTaskStorage,
@@ -438,8 +450,6 @@ export const WorkflowLoopStorage: typeof StorageMod.WorkflowLoopStorage = lazyCl
 );
 export type {
 	AgentTreeSnapshot,
-	IterationEntry,
-	IterationLog,
 	PatchableThreadMemory,
 	ThreadPatch,
 	TerminalOutcome,
@@ -485,7 +495,6 @@ defineLazyExport(
 	'SUB_AGENT_RESOURCE_PREFIX',
 	() => loadAgentPersistence().SUB_AGENT_RESOURCE_PREFIX,
 );
-defineLazyExport('iterationEntrySchema', () => loadStorage().iterationEntrySchema);
 defineLazyExport(
 	'suspendedInstanceContextSchema',
 	() => loadInstanceContextState().suspendedInstanceContextSchema,
@@ -559,6 +568,7 @@ export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = laz
 );
 export { orchestratorAgentId } from './runtime/orchestrator-identity';
 export declare const suspendedInstanceContextSchema: typeof InstanceContextStateMod.suspendedInstanceContextSchema;
+export type { HubSkillTelemetryState } from './runtime/instance-context-state';
 export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
 export {
 	formatWorkflowSetupStateNote,
@@ -573,12 +583,12 @@ export {
 export type {
 	ActiveRunState,
 	BackgroundTaskStatusSnapshot,
-	ConfirmationData,
 	PendingConfirmation,
 	RunStateTimeoutDetails,
 	StartedRunState,
 	SuspendedRunState,
 } from './runtime/run-state-registry';
+export type { ConfirmationData } from './runtime/confirmation-payload';
 export type InstanceAiTerminalResponseGuard =
 	TerminalResponseGuardMod.InstanceAiTerminalResponseGuard;
 export const InstanceAiTerminalResponseGuard: typeof TerminalResponseGuardMod.InstanceAiTerminalResponseGuard =
@@ -712,6 +722,7 @@ export type {
 	ExecuteNodeResult,
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
+	InstanceAiAppService,
 	InstanceAiDataTableService,
 	DataTableSummary,
 	DataTableColumnInfo,
@@ -778,6 +789,8 @@ export type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	ResolveParameterOptionsParams,
+	ResolveParameterOptionsResult,
 	UnavailableLocatorValue,
 	FetchedPage,
 	WebSearchResult,
@@ -801,6 +814,8 @@ export type {
 	AgentSessionSummary,
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
+	InstanceAiStoredFile,
+	InstanceAiStoredFileReader,
 	InstanceAiSkillService,
 	BrowserUseState,
 } from './types';

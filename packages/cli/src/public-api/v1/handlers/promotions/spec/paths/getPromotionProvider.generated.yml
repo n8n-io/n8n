@@ -1,9 +1,12 @@
 operationId: getPromotionProvider
 tags:
   - Promotions
-summary: Retrieve a promotion provider
-description: Returns the provider with its public configuration. Secrets are never returned.
-x-required-scope: gitConnection:read
+summary: 'Beta: Retrieve a promotion provider'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Returns the provider with its public configuration. Secrets are never returned.
+x-required-scope: promotions:read
 parameters:
   - schema:
       type: string
@@ -24,5 +27,7 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

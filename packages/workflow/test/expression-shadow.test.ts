@@ -98,6 +98,15 @@ describe.runIf(process.env.N8N_EXPRESSION_ENGINE === 'legacy')('Expression shado
 			}
 		});
 
+		it('loads the QuickJS WASM module through the bridge', async () => {
+			const runtime = await import('@n8n/expression-runtime');
+			const loadWasm = vi.spyOn(runtime.QuickJsBridge, 'loadWasm').mockResolvedValue();
+
+			await Expression.loadQuickJsWasm();
+
+			expect(loadWasm).toHaveBeenCalledTimes(1);
+		});
+
 		it('returns a timeout as an outcome instead of throwing', async () => {
 			const evaluator = await start(50);
 			try {

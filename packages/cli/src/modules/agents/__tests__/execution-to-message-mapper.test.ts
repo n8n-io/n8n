@@ -19,6 +19,17 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 }
 
 describe('execution-to-message-mapper', () => {
+	it('keeps the outcome when a stopped execution produced no assistant content', () => {
+		const messages = executionsToMessagesDto([execution({ status: 'cancelled', timeline: [] })]);
+
+		expect(messages.at(-1)).toMatchObject({
+			role: 'assistant',
+			content: [],
+			executionId: 'execution-1',
+			executionStatus: 'cancelled',
+		});
+	});
+
 	it('maps a host event to a host-event content part in its position', () => {
 		const result = executionToMessagesDto(
 			execution({
@@ -75,6 +86,21 @@ describe('execution-to-message-mapper', () => {
 			{ role: 'assistant', content: [{ type: 'host-event', name: 'test.notice', payload: null }] },
 		]);
 	});
+
+	it.each(['success', 'error', 'cancelled', 'interrupted'] as const)(
+		'keeps an empty Stop reply in history when its execution ends with %s',
+		(status) => {
+			const messages = executionsToMessagesDto([
+				execution({ userMessage: null, inputMessages: [], stopReport: true, status }),
+				execution({ id: 'later', userMessage: 'Continue' }),
+			]);
+
+			expect(messages).toMatchObject([
+				{ role: 'assistant', stopReport: true, content: [], executionId: 'execution-1' },
+				{ role: 'user', content: [{ type: 'text', text: 'Continue' }] },
+			]);
+		},
+	);
 
 	it('splits assistant output around stable additional user messages', () => {
 		const inputD = {

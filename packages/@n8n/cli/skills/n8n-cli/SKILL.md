@@ -215,6 +215,24 @@ n8n-cli promotion-environment connect <applyId>
 # 4. Promote from this instance, or apply to it.
 n8n-cli promotion-environment promote <promoteId>
 n8n-cli promotion-environment apply <applyId>
+
+# A project that exists only in the Apply package must exist here before you
+# apply to it from its project. Create it empty, with the same ID:
+n8n-cli promotion-environment list-missing-projects <applyId>
+n8n-cli promotion-environment create-missing-projects <applyId>   # exits 1 if one fails
+```
+
+GitLab setup. A GitLab provider lists its repositories and branches, so read the
+remote URL and the branch names from it instead of guessing them:
+
+```bash
+# gitlab-provider.json:
+# {"name":"GitLab","type":"gitlab","config":{"schemaVersion":1,"baseUrl":"https://gitlab.example.com"},
+#  "auth":{"authType":"token","password":"<GitLab access token>"}}
+n8n-cli promotion-provider create --file=gitlab-provider.json --format=id-only   # providerId
+n8n-cli promotion-provider list-repositories <providerId> --search=flows --json  # remoteUrl, fullPath
+n8n-cli promotion-provider list-branches <providerId> <fullPath> --json          # isDefault marks the default branch
+# Put remoteUrl and a branch name in the environment JSON, then create and connect as above.
 ```
 
 Apply a reviewed commit only:
@@ -222,20 +240,38 @@ Apply a reviewed commit only:
 ```bash
 # Review the changes. Take the commit SHA from the same response as the rows:
 # a second request can read a newer commit.
-n8n-cli promotion-environment list-changes <projectId> apply --sort=updatedAt --order=desc --json > reviewed-changes.json
-jq '{commitSha, changes}' reviewed-changes.json
+n8n-cli promotion-environment list-changes <projectId> apply --json > reviewed-changes.json
+jq '{commitSha, source, resources}' reviewed-changes.json
 # The branch comes from the Apply environment.
 n8n-cli promotion-environment get <applyId> --jq '.settings.branchName'
 
 n8n-cli promotion-environment apply <applyId> \
   --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
 # Exit 3: the source changed since the review. Review again.
-# Exit 4: preflight found missing bindings, access requirements, or conflicts. Resolve them,
+# Exit 4: the Apply check found missing bindings, access requirements, or conflicts. Resolve them,
 # then run the apply-continue command that apply printed:
 n8n-cli promotion-environment apply-continue <applyId> \
   --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
 # To also apply destructive data table changes and delete the team projects that the
 # package does not hold, add --confirm-destructive-changes.
+```
+
+Promote or apply a selection of a project:
+
+```bash
+# The table lists each changed resource with its TYPE and ID. Select workflows with -w and
+# folders with --folder; the project is always included. A changed credential, data table,
+# variable, or tag can't be selected: select a workflow from its USEDBY column instead.
+n8n-cli promotion-environment list-changes <projectId> promote
+n8n-cli promotion-environment promote-selection <projectId> -w <workflowId> --folder <folderId>
+
+# Apply only the reviewed selection. Take the source and the revision from the same preview.
+n8n-cli promotion-environment list-changes <projectId> apply --json > preview.json
+jq '{commitSha, source, revision}' preview.json
+n8n-cli promotion-environment apply-selection <projectId> -w <workflowId> \
+  --expected-environment-id=<source.environmentId> --expected-branch=<source.branchName> \
+  --expected-commit-sha=<commitSha> --expected-preview-revision=<revision>
+# Exit 3: the source or the preview changed since the review. Review again.
 ```
 
 Environment JSON for step 2 (`promote.json`; `apply.json` uses `"direction":"apply"`
@@ -258,6 +294,8 @@ n8n-cli promotion-provider list
 n8n-cli promotion-provider get <id>          # re-read the public key; the list omits it
 echo '{"name":"New name"}' | n8n-cli promotion-provider update <id> --stdin
 n8n-cli promotion-provider delete <id>       # fails while an environment uses it
+n8n-cli promotion-provider list-repositories <id> --search=<text> --limit=20   # GitLab only
+n8n-cli promotion-provider list-branches <id> <fullPath or repository id>      # GitLab only
 
 # Environments
 n8n-cli promotion-environment list --scope=instance --direction=promote
@@ -281,8 +319,18 @@ n8n-cli promotion-environment remove-project <id> <projectId>
 Key points:
 - Pass every JSON body through `--stdin` or `--file`, never through a flag. This
   keeps credentials off the command line.
-- `authType` is `ssh-key` or `token`. `token` means an HTTP(S) username and
-  password, not a Git host API token. `publicKey` is `null` for a `token` provider.
+- `type` is `git` or `gitlab`. For `git`, `authType` is `ssh-key` or `token`, and
+  `token` means an HTTP(S) username and password. For `gitlab`, `authType` is
+  `token` only: `password` is the GitLab access token (`api` and
+  `write_repository`), `config.baseUrl` is required, and n8n ignores `username`.
+  `publicKey` is `null` for a `token` provider. The token user needs the
+  Developer role or higher to open merge requests. Protected branches can
+  require the Maintainer role to push, and to merge when a reviewer approves.
+- `list-repositories` and `list-branches` work for `gitlab` providers only. A `git`
+  provider fails with an error. Pass the repository as plain `fullPath`
+  (`acme/flows`), `id`, or an environment's `remote.repositoryPath`. Do not URL-encode it.
+  Read `remoteUrl`, `fullPath` and branch names from `--json` output: the table
+  shortens values longer than 60 characters to `...`.
 - `createBranchOnPromotion` is always required in promote settings.
 - `promote` and `apply` work on an `instance` environment of their direction
   only, and need it connected first. Connecting one environment does not make another
@@ -292,10 +340,12 @@ Key points:
 - `apply` and `apply-continue` import nothing on exit code `3` (`source-changed`)
   or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
   read `counts`. With `--json`, a `blocked` result lists what is missing under
-  `preflight`.
-- The `--expected-*` flags go together: pass all three or none. The commit SHA
-  must be the full SHA.
-- API key scopes for this group are named `gitConnection:*`. `promote` also needs
+  `check`.
+- The `--expected-environment-id`, `--expected-branch`, and
+  `--expected-commit-sha` flags go together: pass all three or none. The commit
+  SHA must be the full SHA. `--expected-preview-revision` is separate and works
+  only with `apply-selection` and `apply-selection-continue`.
+- API key scopes for this group are named `promotions:*`. `promote` also needs
   `variable:list` when the workflows reference variables.
 
 ## Other

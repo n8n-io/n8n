@@ -10,6 +10,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
+import { CacheService } from '@n8n/backend-services';
 import type { Project } from '@n8n/db';
 import {
 	FolderRepository,
@@ -34,6 +35,8 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
+import { OwnershipService } from '@/services/ownership.service';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
@@ -379,12 +382,16 @@ describe('Project members endpoints', () => {
 			await provisioningService.getConfig();
 			// @ts-expect-error - provisioningConfig is private
 			savedConfig = { ...provisioningService.provisioningConfig };
+			// The lock applies only while SAML or OIDC sign-in is on.
+			testServer.license.enable('feat:saml');
+			await setSamlLoginEnabled(true);
 		});
 
 		afterEach(async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
 			await Container.get(RoleMappingRuleRepository).delete({});
+			await setSamlLoginEnabled(false);
 		});
 
 		test('should return 403 when SSO provider controls project roles', async () => {
@@ -1803,6 +1810,76 @@ describe('DELETE /project/:projectId', () => {
 		expect(foldersInTargetProject.map((f) => f.name)).toEqual(
 			expect.arrayContaining(['folder1', 'folder1', 'folder2']),
 		);
+	});
+
+	describe('workflow project cache', () => {
+		const cachedProjectId = async (workflowId: string) =>
+			(
+				await Container.get(CacheService).getHashValue<Partial<Project>>(
+					'workflow-project',
+					workflowId,
+				)
+			)?.id;
+
+		const createCachedWorkflows = async () => {
+			const sourceProject = await createTeamProject('Source project');
+			const targetProject = await createTeamProject('Target project');
+			const workflowIds = [
+				(await createWorkflow({}, sourceProject)).id,
+				(await createWorkflow({}, sourceProject)).id,
+			];
+			for (const workflowId of workflowIds) {
+				await Container.get(OwnershipService).getWorkflowProjectCached(workflowId);
+				// The lookup writes to the cache in the background.
+				await expect.poll(async () => await cachedProjectId(workflowId)).toBe(sourceProject.id);
+			}
+			return { sourceProject, targetProject, workflowIds };
+		};
+
+		const deleteWithTransfer = async (sourceProject: Project, targetProject: Project) => {
+			await testServer
+				.authAgentFor(await createAdmin())
+				.delete(`/projects/${sourceProject.id}`)
+				.query({ transferId: targetProject.id })
+				.expect(200);
+		};
+
+		const expectWorkflowProjects = async (workflowIds: string[], projectId: string) => {
+			for (const workflowId of workflowIds) {
+				await expect(
+					Container.get(OwnershipService).getWorkflowProjectCached(workflowId),
+				).resolves.toMatchObject({ id: projectId });
+			}
+		};
+
+		test('returns the target project for moved workflows', async () => {
+			const { sourceProject, targetProject, workflowIds } = await createCachedWorkflows();
+
+			await deleteWithTransfer(sourceProject, targetProject);
+
+			await expectWorkflowProjects(workflowIds, targetProject.id);
+		});
+
+		test('returns the target project when the cache is refilled during the deletion', async () => {
+			const { sourceProject, targetProject, workflowIds } = await createCachedWorkflows();
+			const projectRepository = Container.get(ProjectRepository);
+			const removeProject = projectRepository.removeProjectForDeletion.bind(projectRepository);
+			const removeProjectSpy = vi
+				.spyOn(projectRepository, 'removeProjectForDeletion')
+				.mockImplementationOnce(async (...args) => {
+					// Not a real lookup: while both owner rows exist, it can return either project.
+					await Container.get(CacheService).setHash(
+						'workflow-project',
+						Object.fromEntries(workflowIds.map((id) => [id, { ...sourceProject }])),
+					);
+					return await removeProject(...args);
+				});
+
+			await deleteWithTransfer(sourceProject, targetProject);
+
+			expect(removeProjectSpy).toHaveBeenCalledTimes(1);
+			await expectWorkflowProjects(workflowIds, targetProject.id);
+		});
 	});
 
 	test('does not migrate end-user credentials to a personal project', async () => {

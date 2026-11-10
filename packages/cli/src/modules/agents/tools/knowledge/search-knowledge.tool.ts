@@ -1,12 +1,6 @@
 import { Tool } from '@n8n/agents/tool';
 import { isRecord } from '@n8n/utils/is-record';
 
-import type { AgentKnowledgeMirrorService } from '../../agent-knowledge-mirror.service';
-import type {
-	FinishKnowledgeToolCall,
-	KnowledgeToolCall,
-	KnowledgeToolCallResult,
-} from '../../agent-knowledge-usage-tracker';
 import {
 	globKnowledgeFilesInputSchema,
 	MAX_READ_RANGES,
@@ -15,7 +9,14 @@ import {
 	type GlobKnowledgeFilesResult,
 	type ReadKnowledgeResult,
 	type SearchKnowledgeResult,
-} from '../../agent-knowledge-retrieval';
+} from '@/modules/knowledge/retrieval/retrieval-schemas';
+
+import type { AgentKnowledgeMirrorService } from '../../agent-knowledge-mirror.service';
+import type {
+	FinishKnowledgeToolCall,
+	KnowledgeToolCall,
+	KnowledgeToolCallResult,
+} from '../../agent-knowledge-usage-tracker';
 
 interface KnowledgeToolErrorOutput {
 	error: string;
@@ -62,6 +63,47 @@ function toKnowledgeToolCallResult(
 
 	const json: string | undefined = JSON.stringify(toModelOutput(output));
 	return { failed: false, contentChars: json?.length ?? 0 };
+}
+
+/** A search that worked and found nothing, in the output mode that the agent chose. */
+function isEmptySearchResult(output: unknown): boolean {
+	if (!isSearchKnowledgeResult(output)) {
+		return false;
+	}
+
+	switch (output.outputMode) {
+		case 'content':
+			return output.matches.length === 0;
+		case 'files_with_matches':
+			return output.files.length === 0;
+		case 'count':
+			return output.counts.every((entry) => entry.count === 0);
+	}
+}
+
+/** Adds the duration of a search_text call, and whether it found nothing or which error it hit. */
+function withSearchStats(
+	result: KnowledgeToolCallResult,
+	output: unknown,
+	durationMs: number,
+): KnowledgeToolCallResult {
+	if (result.failed) {
+		const errorType = isKnowledgeToolErrorOutput(output) ? output.errorType : undefined;
+		return { ...result, searchDurationMs: durationMs, errorType };
+	}
+
+	return { ...result, searchDurationMs: durationMs, emptySearch: isEmptySearchResult(output) };
+}
+
+function withFileUploadedAt(
+	result: KnowledgeToolCallResult,
+	output: unknown,
+): KnowledgeToolCallResult {
+	if (result.failed || !isReadKnowledgeResult(output)) {
+		return result;
+	}
+
+	return { ...result, readFile: { fileId: output.fileId, uploadedAt: output.createdAt } };
 }
 
 function truncateForModel(text: string, maxChars: number): { text: string; truncated: boolean } {
@@ -285,11 +327,13 @@ export function createKnowledgeRetrievalTools({
 		.input(searchKnowledgeInputSchema)
 		.handler(async (input, ctx) => {
 			const finishToolCall = startToolCall(ctx.runId, 'file_search');
+			const startedAt = Date.now();
 			const output = await runKnowledgeTool(
 				async () => await knowledgeMirrorService.searchKnowledge(projectId, agentId, input),
 			);
+			const durationMs = Date.now() - startedAt;
 			const result = toKnowledgeToolCallResult(output, toSearchKnowledgeModelOutput);
-			finishToolCall(result);
+			finishToolCall(withSearchStats(result, output, durationMs));
 			return output;
 		})
 		.toModelOutput(toSearchKnowledgeModelOutput);
@@ -305,7 +349,7 @@ export function createKnowledgeRetrievalTools({
 				async () => await knowledgeMirrorService.readKnowledge(projectId, agentId, input),
 			);
 			const result = toKnowledgeToolCallResult(output, toReadKnowledgeModelOutput);
-			finishToolCall(result);
+			finishToolCall(withFileUploadedAt(result, output));
 			return output;
 		})
 		.toModelOutput(toReadKnowledgeModelOutput);

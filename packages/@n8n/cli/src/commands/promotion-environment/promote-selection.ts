@@ -4,10 +4,12 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 	static override description =
-		"Read a chosen set of a project's workflows now and push their current state to the branch of the project's Promote environment, or of the instance Promote environment. Archived workflows stay on the branch as archived. A selected workflow that was deleted or moved to another project leaves this project's branch. The request fails before any write if the branch does not hold that workflow under this project. Requires that environment to be connected first.";
+		"Read a chosen set of a project's workflows and folders now and push their current state to the branch of the project's Promote environment, or of the instance Promote environment. The project's own details are always pushed, so a call without --workflow and --folder promotes only the project. A selected folder is pushed with the folders above it. Archived workflows stay on the branch as archived. A selected workflow that was deleted leaves this project's branch. A selected workflow that moved into or out of the project since the branch was written is refused. Move it back first. The request fails before any write if the branch does not hold a deleted workflow under this project. Requires that environment to be connected first.";
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment promote-selection proj-abc -w wf-1 -w wf-2',
+		'<%= config.bin %> promotion-environment promote-selection proj-abc --folder folder-1',
+		'<%= config.bin %> promotion-environment promote-selection proj-abc',
 	];
 
 	static override args = {
@@ -20,7 +22,10 @@ export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 			char: 'w',
 			description: 'Workflow ID to promote (repeat for more than one)',
 			multiple: true,
-			required: true,
+		}),
+		folder: Flags.string({
+			description: 'Folder ID to promote (repeat for more than one)',
+			multiple: true,
 		}),
 		message: Flags.string({
 			char: 'm',
@@ -33,7 +38,7 @@ export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 		await this.execute(async () => {
 			const result = await this.getClient(flags).promoteProjectSelection(
 				args.projectId,
-				flags.workflow,
+				{ workflowIds: flags.workflow, folderIds: flags.folder },
 				flags.message,
 			);
 			this.succeed(

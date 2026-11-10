@@ -56,6 +56,7 @@ export type PromotionReviewRemote = z.infer<typeof promotionReviewRemoteSchema>;
 /**
  * Why the host data of a review is missing. Computed for each request and never stored.
  * `no_connection` means the environment was deleted or its provider no longer matches.
+ * The Inbox sync then closes the review.
  */
 export type PromotionReviewRemoteError = 'not_found' | 'auth' | 'unreachable' | 'no_connection';
 
@@ -100,8 +101,18 @@ const commitShaSchema = z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/);
 export const promotionReviewWarningSchema = z.enum([
 	'baselineManifestUnreadable',
 	'headManifestUnreadable',
+	'commitsUnavailable',
 ]);
 export type PromotionReviewWarning = z.infer<typeof promotionReviewWarningSchema>;
+
+/** How a review ended on the host. The actor is the host user, or the n8n approver. */
+export const promotionReviewOutcomeSchema = z.object({
+	state: z.enum(['merged', 'closed']),
+	at: z.string().datetime().nullable(),
+	by: z.string().nullable(),
+	webUrl: z.string(),
+});
+export type PromotionReviewOutcome = z.infer<typeof promotionReviewOutcomeSchema>;
 
 /**
  * What a Promotion Review changes on its target branch, in the shape of the promotion preview.
@@ -115,6 +126,8 @@ export const promotionReviewChangesSchema = z.object({
 	dependencies: z.array(promotionResourceDependencySchema),
 	/** Why the changes cannot be listed. The resources are then empty. */
 	warnings: z.array(promotionReviewWarningSchema),
+	/** NULL while the review is open. */
+	outcome: promotionReviewOutcomeSchema.nullable(),
 });
 export type PromotionReviewChanges = z.infer<typeof promotionReviewChangesSchema>;
 

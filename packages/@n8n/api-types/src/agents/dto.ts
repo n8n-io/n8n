@@ -26,6 +26,10 @@ import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
 import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
 import { Z } from '../zod-class';
+import {
+	workflowVersionNameSchema,
+	workflowVersionDescriptionSchema,
+} from '../schemas/workflow-version.schema';
 
 export class AgentsSettingsDto extends Z.class({
 	enabled: z.boolean(),
@@ -147,6 +151,24 @@ export class ListN8nChatThreadsQueryDto extends Z.class({
 	/** Filters threads to one agent. */
 	agentId: z.string().min(1).max(128).optional(),
 	search: threadTitleSearchSchema,
+}) {}
+
+/** The thread list of a system agent: one page, optionally filtered by title. */
+export class ListSystemAgentThreadsQueryDto extends Z.class({
+	// The `nextCursor` of the previous page. The route decodes it.
+	cursor: z.string().max(512).optional(),
+	limit: z.string().optional(),
+	search: threadTitleSearchSchema,
+}) {}
+
+/** A new title for a thread of a system agent. */
+export class RenameSystemAgentThreadDto extends Z.class({
+	title: z.string().trim().min(1).max(255),
+}) {}
+
+/** A message to a system agent. `projectId` is the working project of a new session. */
+export class SystemAgentChatQueryDto extends Z.class({
+	projectId: z.string().min(1).max(128).optional(),
 }) {}
 
 export class AgentProviderModelsQueryDto extends Z.class({
@@ -344,16 +366,46 @@ const agentChatMessageShape = {
 	clientContext: z.record(z.unknown()).optional(),
 };
 
+/** Rules that every chat message DTO applies on top of its shape. */
+const hasMessageContent = {
+	check: (value: { message: string; attachments?: unknown[] }) =>
+		value.message.trim().length > 0 || (value.attachments?.length ?? 0) > 0,
+	options: { message: 'Message text or at least one attachment is required', path: ['message'] },
+};
+const hasSessionForMessageId = {
+	check: (value: { sessionId?: string; messageId?: string }) =>
+		!value.messageId || !!value.sessionId,
+	options: { message: 'A session ID is required with a message ID', path: ['sessionId'] },
+};
+
 const agentChatMessageSchema = z
 	.object(agentChatMessageShape)
-	.refine((value) => value.message.trim().length > 0 || (value.attachments?.length ?? 0) > 0, {
-		message: 'Message text or at least one attachment is required',
-		path: ['message'],
-	})
-	.refine((value) => !value.messageId || !!value.sessionId, {
-		message: 'A session ID is required with a message ID',
-		path: ['sessionId'],
-	});
+	.refine(hasMessageContent.check, hasMessageContent.options)
+	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
+
+/**
+ * A UUID in canonical lowercase form. Use it where an id becomes part of a
+ * case-insensitive name: two ids that differ only in case must not map to the
+ * same name.
+ */
+export const lowercaseUuidSchema = z
+	.string()
+	.uuid()
+	.refine((value) => value === value.toLowerCase(), { message: 'The UUID must be lowercase' });
+
+/**
+ * A system agent session ID is a lowercase UUID. System agents derive
+ * resource names, such as sandbox names, from it.
+ */
+const systemAgentChatMessageShape = {
+	...agentChatMessageShape,
+	sessionId: lowercaseUuidSchema.optional(),
+};
+
+const systemAgentChatMessageSchema = z
+	.object(systemAgentChatMessageShape)
+	.refine(hasMessageContent.check, hasMessageContent.options)
+	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
 
 /**
  * Validate via `parse`/`safeParse` (what the controller registry's `@Body`
@@ -372,6 +424,25 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 
 	static override parse(data: unknown) {
 		return agentChatMessageSchema.parse(data);
+	}
+}
+
+/**
+ * The chat message of a system agent. Same as {@link AgentChatMessageDto},
+ * but the session ID must be a lowercase UUID. Validate via `parse`/`safeParse`,
+ * for the same reason as `AgentChatMessageDto`.
+ */
+export class SystemAgentChatMessageDto extends Z.class(systemAgentChatMessageShape) {
+	constructor(data: z.infer<typeof systemAgentChatMessageSchema>) {
+		super(systemAgentChatMessageSchema.parse(data));
+	}
+
+	static override safeParse(data: unknown) {
+		return systemAgentChatMessageSchema.safeParse(data);
+	}
+
+	static override parse(data: unknown) {
+		return systemAgentChatMessageSchema.parse(data);
 	}
 }
 
@@ -486,7 +557,15 @@ export class AgentDisconnectIntegrationDto extends Z.class({
 	deleteExternalResource: z.boolean().optional(),
 }) {}
 
+const agentVersionMetadataShape = {
+	name: workflowVersionNameSchema.unwrap().trim().nullable().optional(),
+	description: workflowVersionDescriptionSchema.nullable(),
+};
+
+export class UpdateAgentVersionDto extends Z.class(agentVersionMetadataShape) {}
+
 export class PublishAgentDto extends Z.class({
+	...agentVersionMetadataShape,
 	versionId: z.string().min(1).optional(),
 }) {}
 

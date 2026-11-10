@@ -21,6 +21,7 @@ const workflow = (
 	lastExecutedAt: daysAgo(1),
 	issues: [],
 	status: 'open',
+	isArchived: false,
 	...overrides,
 });
 
@@ -101,6 +102,8 @@ describe('workflowFilters', () => {
 		expect(matches(workflow({ status: 'wont_fix' }), { state: 'wont_fix' })).toBe(true);
 		expect(matches(workflow({ status: 'notified' }), { state: 'open' })).toBe(true);
 		expect(matches(workflow({ status: 'notified' }), { state: 'wont_fix' })).toBe(false);
+		expect(matches(workflow({ status: 'fixed_unpublished' }), { state: 'open' })).toBe(true);
+		expect(matches(workflow({ status: 'fixed_unpublished' }), { state: 'wont_fix' })).toBe(false);
 		// A migrated row keeps its status, but the page shows it as migrated.
 		expect(
 			matchesWorkflowFilters(
@@ -110,6 +113,15 @@ describe('workflowFilters', () => {
 				'migrated',
 			),
 		).toBe(false);
+	});
+
+	it('should hide archived workflows unless the filter shows them', () => {
+		const archived = workflow({ isArchived: true });
+		expect(matches(archived, {})).toBe(false);
+		expect(matches(archived, { showArchived: true })).toBe(true);
+		expect(matches(workflow(), {})).toBe(true);
+		expect(matches(workflow(), { showArchived: true })).toBe(true);
+		expect(countActiveFilters({ ...DEFAULT_WORKFLOW_FILTERS, showArchived: true })).toBe(1);
 	});
 
 	it('should count the filters that differ from the default', () => {

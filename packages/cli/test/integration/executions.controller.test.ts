@@ -265,6 +265,9 @@ describe('GET /executions/:id', () => {
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
+				locateResume: vi.fn(),
+				resolveStep: vi.fn(),
+				readApprovalCallback: vi.fn(),
 			});
 		});
 
@@ -294,6 +297,7 @@ describe('GET /executions/:id', () => {
 				seeded: [],
 			},
 			workflow: ranWorkflow(workflowId),
+			parent: null,
 			createdAt: '2026-08-25T10:00:00.000Z',
 			updatedAt: '2026-08-25T10:00:05.000Z',
 			finishedAt: '2026-08-25T10:00:05.000Z',

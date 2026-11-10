@@ -4,23 +4,25 @@ import { Service } from '@n8n/di';
 import { chmod, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { UnexpectedError } from 'n8n-workflow';
 import pLimit from 'p-limit';
 import {
 	CheckRepoActions,
+	GitError,
 	GitPluginError,
 	simpleGit,
 	type SimpleGit,
 	type SimpleGitOptions,
 } from 'simple-git';
 
-import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
+import { BadRequestError, ServiceUnavailableError, UnexpectedError } from '@n8n/errors';
 
 import {
 	GIT_COMMAND_STALL_TIMEOUT_MS,
 	GIT_READ_CONCURRENCY,
 	PROMOTION_KEY_COMMENT,
 } from './constants';
+import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
+import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
 import type { PromotionGitCredentials } from './promotions.types';
 
@@ -285,9 +287,7 @@ export class PromotionsGitService {
 									).trim()
 								: undefined;
 							try {
-								// Scope staging to the package while including removed entities.
-								await git.add(['--all', '--', stagePathspec]);
-								await git.commit(commitMessage);
+								await this.commitPackage(git, stagePathspec, commitMessage);
 								const commitSha = (await git.revparse(['HEAD'])).trim();
 
 								if (force) {
@@ -328,12 +328,32 @@ export class PromotionsGitService {
 		}
 	}
 
-	/** Reset the checkout to the latest base branch before one branched promotion. */
-	async prepareCheckoutForPromotion(operation: GitOperation): Promise<void> {
+	/** Whether the remote holds the branch. Throws when the remote can't be reached. */
+	async hasRemoteBranch(operation: GitOperation): Promise<boolean> {
 		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
 		try {
-			await this.lockCheckout(paths.repositoryFolder, async () => {
-				await this.withGit(
+			// The lock also covers SSH, which can write known_hosts in sshDir.
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const refs = await this.withGit(
+					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+					async (git) => await git.listRemote(['--heads', 'origin', `refs/heads/${branchName}`]),
+				);
+				return refs.trim() !== '';
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
+	 * Reset the checkout to the latest base branch before one promotion. Returns the commit it
+	 * reset to, so later reads of the base need no second fetch.
+	 */
+	async prepareCheckoutForPromotion(operation: GitOperation): Promise<{ commitSha: string }> {
+		const { remoteUrl, credentials, paths, branchName, environmentId } = operation;
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				return await this.withGit(
 					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
 					async (git) => {
 						const branchRefs = await git.listRemote([
@@ -351,12 +371,24 @@ export class PromotionsGitService {
 							['--progress'],
 						);
 						await git.raw(['reset', '--hard', `origin/${branchName}`]);
+						return { commitSha: (await git.revparse(['HEAD'])).trim() };
 					},
 				);
 			});
 		} catch (error) {
 			throw this.mapGitError(error, { environmentId, branchName });
 		}
+	}
+
+	/** Stages the package, including removed files, and commits it. */
+	private async commitPackage(git: SimpleGit, stagePathspec: string, commitMessage: string) {
+		await git.add(['--all', '--', stagePathspec]);
+		// `git commit` fails when nothing is staged. Report that as a user error, not a Git failure.
+		const staged = await git.diff(['--cached', '--name-only', '--', stagePathspec]);
+		if (!staged.trim()) {
+			throw new BadRequestError('Nothing to promote. The branch already matches the selection.');
+		}
+		await git.commit(commitMessage);
 	}
 
 	/** Push one commit to a new branch and restore the local base branch. */
@@ -384,8 +416,7 @@ export class PromotionsGitService {
 		}
 
 		try {
-			await git.add(['--all', '--', stagePathspec]);
-			await git.commit(commitMessage);
+			await this.commitPackage(git, stagePathspec, commitMessage);
 			const commitSha = (await git.revparse(['HEAD'])).trim();
 			await git.push('origin', `HEAD:refs/heads/${targetBranchName}`);
 			return { commitSha };
@@ -642,9 +673,7 @@ export class PromotionsGitService {
 			throw new UnexpectedError('The commit SHA is not a Git object name');
 		}
 		if (baseline.targetBranchName) await this.validateBranchName(baseline.targetBranchName);
-		const missingCommits = new BadRequestError(
-			'The remote no longer has the commits of this review. Open the review on the Git host.',
-		);
+		const missingCommits = new PromotionReviewCommitsMissingError();
 		try {
 			return await this.lockCheckout(paths.repositoryFolder, async () => {
 				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
@@ -847,8 +876,28 @@ export class PromotionsGitService {
 		}
 
 		this.logger.warn('Git operation failed', ctx);
-		return new BadRequestError('Could not complete the Git operation');
+		return isRemoteGitError(error)
+			? new PromotionGitError('Could not complete the Git operation')
+			: new PromotionLocalGitError('Could not complete the Git operation');
 	}
+}
+
+const REMOTE_GIT_COMMANDS = new Set(['clone', 'fetch', 'push', 'pull', 'ls-remote']);
+
+/** Reads the Git subcommand, not the message, which can hold secrets. */
+function isRemoteGitError(error: unknown): boolean {
+	if (!(error instanceof GitError)) return false;
+	const commands = error.task?.commands ?? [];
+	for (let index = 0; index < commands.length; index++) {
+		// `-c key=value` passes config before the subcommand.
+		if (commands[index] === '-c') {
+			index++;
+			continue;
+		}
+		if (commands[index].startsWith('-')) continue;
+		return REMOTE_GIT_COMMANDS.has(commands[index]);
+	}
+	return false;
 }
 
 async function hasCommit(git: SimpleGit, commitSha: string): Promise<boolean> {

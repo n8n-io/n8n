@@ -1,3 +1,5 @@
+const { createInstanceAgent } = vi.hoisted(() => ({ createInstanceAgent: vi.fn() }));
+
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { MemoryTaskUsageReport } from '@n8n/agents';
@@ -6,6 +8,7 @@ import type { Mock } from 'vitest';
 
 vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/instance-ai')>()),
+	createInstanceAgent,
 	tokenUsageToBuilderUsageItems: (
 		model: string,
 		usage: {
@@ -32,12 +35,14 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			runId: string,
 			memoryModelId?: ModelConfig,
 			observerThresholdTokens?: number,
+			generateTitle?: boolean,
 		) => {
 			observationalMemory: {
 				observerThresholdTokens: number;
 				model?: ModelConfig;
 				onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void>;
 			};
+			titleGeneration?: { model?: ModelConfig; sync?: boolean };
 		};
 		instanceAiConfig: Pick<
 			InstanceAiConfig,
@@ -88,6 +93,28 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		expect(
 			service.createAgentMemoryOptions(user, 'thread-1', 'run-1').observationalMemory.model,
 		).toBeUndefined();
+	});
+
+	it('generates titles only when the caller asks for it, on the memory model, before the run ends', () => {
+		const service = buildService();
+		const user = { id: 'user-1' } as User;
+		expect(
+			service.createAgentMemoryOptions(user, 'thread-1', 'run-1').titleGeneration,
+		).toBeUndefined();
+		expect(
+			service.createAgentMemoryOptions(user, 'thread-1', 'run-1', undefined, undefined, true)
+				.titleGeneration,
+		).toEqual({ sync: true });
+		expect(
+			service.createAgentMemoryOptions(
+				user,
+				'thread-1',
+				'run-1',
+				'anthropic/claude-haiku-4-5',
+				undefined,
+				true,
+			).titleGeneration,
+		).toEqual({ model: 'anthropic/claude-haiku-4-5', sync: true });
 	});
 
 	it('uses the per-thread override when an eval set one', () => {
@@ -143,5 +170,132 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		});
 
 		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('AssistantAgentFactory — model transport', () => {
+	it.each([true, false])('passes requestLabels %s from the config', async (modelRequestLabels) => {
+		createInstanceAgent.mockClear();
+		createInstanceAgent.mockResolvedValue({ agent: {}, mcpConnectionFailures: [] });
+		const factory = Object.assign(Object.create(AssistantAgentFactory.prototype) as object, {
+			bindAgentContextReader: vi.fn(),
+			bindAgentPreviewSession: vi.fn(),
+			buildMcpServers: vi.fn(async () => []),
+			createAgentMemoryOptions: vi.fn(() => ({})),
+			subscribeToAgentErrors: vi.fn(),
+			instanceAiConfig: { thinkingEnabled: true, modelRequestLabels },
+			_mcpClientManager: {},
+			modelService: { getLabeledModelFetch: vi.fn() },
+		}) as unknown as AssistantAgentFactory;
+
+		await factory.createAgent(
+			{
+				modelId: 'anthropic/claude-sonnet-4-6',
+				context: {},
+				orchestrationContext: {},
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[0],
+			{
+				turnState: { getObserverThresholdTokens: vi.fn() },
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[1],
+			{ user: { id: 'user-1' } as User, threadId: 'thread-1', runId: 'run-1' },
+		);
+
+		expect(createInstanceAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ requestLabels: modelRequestLabels }),
+		);
+	});
+
+	it('passes the labeled model transport to the orchestrator agent', async () => {
+		const modelFetch = vi.fn();
+		createInstanceAgent.mockResolvedValue({ agent: {}, mcpConnectionFailures: [] });
+		const factory = Object.assign(Object.create(AssistantAgentFactory.prototype) as object, {
+			bindAgentContextReader: vi.fn(),
+			bindAgentPreviewSession: vi.fn(),
+			buildMcpServers: vi.fn(async () => []),
+			createAgentMemoryOptions: vi.fn(() => ({})),
+			subscribeToAgentErrors: vi.fn(),
+			instanceAiConfig: { thinkingEnabled: true, modelRequestLabels: true },
+			_mcpClientManager: {},
+			modelService: { getLabeledModelFetch: vi.fn(() => modelFetch) },
+		}) as unknown as AssistantAgentFactory;
+
+		await factory.createAgent(
+			{
+				modelId: 'anthropic/claude-sonnet-4-6',
+				context: {},
+				orchestrationContext: {},
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[0],
+			{
+				turnState: { getObserverThresholdTokens: vi.fn() },
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[1],
+			{ user: { id: 'user-1' } as User, threadId: 'thread-1', runId: 'run-1' },
+		);
+
+		expect(createInstanceAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ modelFetch, requestLabels: true }),
+		);
+		expect(
+			(factory as unknown as { modelService: { getLabeledModelFetch: unknown } }).modelService
+				.getLabeledModelFetch,
+		).toHaveBeenCalledWith({ runId: 'run-1', threadId: 'thread-1' });
+	});
+});
+
+describe('AssistantAgentFactory — agent error reports', () => {
+	it('reports a background agent error with the ids and the trace of the turn', async () => {
+		let onError: ((event: unknown) => void) | undefined;
+		const agent = {
+			on: vi.fn((_event: string, handler: (event: unknown) => void) => {
+				onError = handler;
+			}),
+		};
+		createInstanceAgent.mockResolvedValue({ agent, mcpConnectionFailures: [] });
+		const report = vi.fn();
+		const factory = Object.assign(Object.create(AssistantAgentFactory.prototype) as object, {
+			bindAgentContextReader: vi.fn(),
+			bindAgentPreviewSession: vi.fn(),
+			buildMcpServers: vi.fn(async () => []),
+			createAgentMemoryOptions: vi.fn(() => ({})),
+			instanceAiConfig: { thinkingEnabled: true },
+			_mcpClientManager: {},
+			modelService: { getLabeledModelFetch: vi.fn() },
+			instanceAiErrorReporter: { report },
+		}) as unknown as AssistantAgentFactory;
+		const tracing = { rootRun: { traceId: 'ls-trace-1' } };
+
+		await factory.createAgent(
+			{
+				modelId: 'anthropic/claude-sonnet-4-6',
+				context: {},
+				orchestrationContext: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					userId: 'user-1',
+					messageGroupId: 'mg-1',
+				},
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[0],
+			{
+				turnState: { getObserverThresholdTokens: vi.fn() },
+			} as unknown as Parameters<AssistantAgentFactory['createAgent']>[1],
+			{
+				user: { id: 'user-1' } as User,
+				threadId: 'thread-1',
+				runId: 'run-1',
+				tracing: tracing as unknown as NonNullable<
+					Parameters<AssistantAgentFactory['createAgent']>[2]['tracing']
+				>,
+			},
+		);
+		const error = new Error('persist failed');
+		onError?.({ type: 'error', source: 'input-persistence', error });
+
+		expect(report).toHaveBeenCalledWith(error, {
+			component: 'instance-ai-input-persistence',
+			threadId: 'thread-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			messageGroupId: 'mg-1',
+			tracing,
+		});
 	});
 });

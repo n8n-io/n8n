@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, provide, ref, watch, type Component } from 'vue';
 import isEqual from 'lodash/isEqual';
 import { MODAL_CONFIRM } from '@/app/constants';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRootStore } from '@n8n/stores/useRootStore';

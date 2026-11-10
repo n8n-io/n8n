@@ -88,7 +88,8 @@ jobs:
       needs.update-popularity.outputs.pull-request-number != '' &&
       (github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'n8n-io/n8n'))
-    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    uses: n8n-io/github-actions/.github/workflows/approve-and-set-automerge.yml@8fe337080c0386a17ce3c857b61db606c9430f4b
     secrets: inherit
     with:
       pull-request-number: ${{ needs.update-popularity.outputs.pull-request-number }}
+      enable-automerge: true

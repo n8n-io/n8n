@@ -75,6 +75,14 @@ describe('applyEngineEnv', () => {
 			expect(env.N8N_ENGINE_DATABASE_URL).toBe('postgres://engine-postgres/db');
 		});
 
+		test('gives the main the resume secret, because it hosts the data plane', () => {
+			const env = { ...postgresEnv };
+
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
+
+			expect(env.N8N_ENGINE_RESUME_SECRET).toMatch(/^[0-9a-f]{64}$/);
+		});
+
 		test('leaves the mode unset so the module hosts the data plane', () => {
 			const env = { ...postgresEnv };
 
@@ -89,6 +97,7 @@ describe('applyEngineEnv', () => {
 			const env: Record<string, string> = {
 				...postgresEnv,
 				N8N_ENGINE_DATABASE_URL: 'postgres://engine-postgres/db',
+				N8N_ENGINE_RESUME_SECRET: 'caller-resume-secret'.repeat(2),
 			};
 			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, ...engineOptions });
 			return env;
@@ -123,12 +132,20 @@ describe('applyEngineEnv', () => {
 			expect(containerEnv().N8N_ENGINE_AUTH_SECRET).toBe(authSecret);
 		});
 
+		test('gives the main no resume secret, even when the caller set one', () => {
+			expect(containerEnv().N8N_ENGINE_RESUME_SECRET).toBeUndefined();
+		});
+
 		test('gives the main no data plane database, even when a service provided one', () => {
 			expect(containerEnv().N8N_ENGINE_DATABASE_URL).toBeUndefined();
 		});
 
 		test('points the main at the storage path it shares with the engine container', () => {
 			expect(containerEnv().N8N_STORAGE_PATH).toBe(ENGINE_SHARED_STORAGE_PATH);
+		});
+
+		test('pins the filesystem mode, since queue mode defaults to the database', () => {
+			expect(containerEnv().N8N_DEFAULT_BINARY_DATA_MODE).toBe('filesystem');
 		});
 
 		test('drops a caller storage path, since the planes must share one and the two variables must not differ', () => {
@@ -229,6 +246,20 @@ describe('engineContainerEnv', () => {
 	test('shares the secret both planes verify against', () => {
 		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_ENGINE_AUTH_SECRET).toBe(
 			authSecret,
+		);
+	});
+
+	test('gives the engine the resume secret the in-process main would get', () => {
+		const inProcessEnv = { ...postgresEnv };
+		applyEngineEnv(inProcessEnv, {
+			engine: 'in-process',
+			mains: 1,
+			isQueueMode: false,
+			projectName,
+		});
+
+		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_ENGINE_RESUME_SECRET).toBe(
+			inProcessEnv.N8N_ENGINE_RESUME_SECRET,
 		);
 	});
 
