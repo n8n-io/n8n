@@ -1,5 +1,7 @@
 import {
+	createTeamProject,
 	createWorkflow,
+	linkUserToProject,
 	mockInstance,
 	shareWorkflowWithUsers,
 	testDb,
@@ -15,6 +17,7 @@ import { Telemetry } from '@/telemetry';
 
 import { createTestCaseExecution, createTestRun } from '../shared/db/evaluation';
 import { createExecution } from '../shared/db/executions';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -329,6 +332,41 @@ describe('scope enforcement on read endpoints', () => {
 			expect(response.statusCode).toBe(404);
 			expect(response.body.message).toBe('Workflow with ID "does-not-exist" not found.');
 		}
+	});
+
+	test('should withhold test cases from a project role without execution:read', async () => {
+		const member = await createMemberWithApiKey();
+		const memberAgent = testServer.publicApiAgentFor(member);
+		const readOnlyRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
+			roleType: 'project',
+			displayName: 'Workflow Reader',
+		});
+		const executionRole = await createCustomRoleWithScopeSlugs(
+			['workflow:read', 'workflow:list', 'execution:read'],
+			{ roleType: 'project', displayName: 'Execution Reader' },
+		);
+		const project = await createTeamProject('Eval Project', owner);
+		await linkUserToProject(member, project, readOnlyRole.slug);
+		const executionMember = await createMemberWithApiKey();
+		await linkUserToProject(executionMember, project, executionRole.slug);
+		const workflow = await createWorkflow(undefined, project);
+		const run = await createTestRun(workflow.id, { status: 'completed' });
+		await createTestCaseExecution(run.id, { status: 'success', outputs: { answer: 'secret' } });
+
+		const denied = await memberAgent.get(
+			`/workflows/${workflow.id}/test-runs/${run.id}/test-cases`,
+		);
+		expect(denied.statusCode).toBe(403);
+		expect(JSON.stringify(denied.body)).not.toContain('secret');
+
+		// Run summaries hold aggregates only, so `workflow:read` still reads them.
+		await memberAgent.get(`/workflows/${workflow.id}/test-runs/${run.id}`).expect(200);
+
+		const allowed = await testServer
+			.publicApiAgentFor(executionMember)
+			.get(`/workflows/${workflow.id}/test-runs/${run.id}/test-cases`);
+		expect(allowed.statusCode).toBe(200);
+		expect(allowed.body.data[0].outputs).toEqual({ answer: 'secret' });
 	});
 
 	test('should let a member read runs of a workflow shared with them', async () => {

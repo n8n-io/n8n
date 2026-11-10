@@ -225,6 +225,78 @@ describe('TestRunsController', () => {
 				metricScales: { 'Tone Match': 'oneToFive' },
 			});
 		});
+
+		it('keeps case inputs and outputs for a user with execution:read', async () => {
+			mockTestRunRepository.getTestRunSummaryById.mockResolvedValue({
+				id: mockTestRunId,
+				testCaseExecutions: [{ id: 'case1', inputs: { a: 1 }, outputs: { b: 2 } }],
+			} as any);
+
+			const result = await testRunsController.getOne({
+				params: { workflowId: mockWorkflowId, id: mockTestRunId },
+				user: mockUser,
+			} as unknown as TestRunsRequest.GetOne);
+
+			expect(result.testCaseExecutions).toEqual([
+				{ id: 'case1', inputs: { a: 1 }, outputs: { b: 2 } },
+			]);
+		});
+
+		it('strips case inputs and outputs for a user without execution:read', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockImplementation(
+				async (_workflowId, _user, scopes) =>
+					scopes.includes('execution:read') ? null : ({ id: mockWorkflowId } as any),
+			);
+			mockTestRunRepository.getTestRunSummaryById.mockResolvedValue({
+				id: mockTestRunId,
+				finalResult: 'success',
+				testCaseExecutions: [
+					{ id: 'case1', status: 'success', inputs: { a: 1 }, outputs: { b: 2 } },
+				],
+			} as any);
+
+			const result = await testRunsController.getOne({
+				params: { workflowId: mockWorkflowId, id: mockTestRunId },
+				user: mockUser,
+			} as unknown as TestRunsRequest.GetOne);
+
+			expect(result.finalResult).toBe('success');
+			expect(result.testCaseExecutions).toEqual([
+				{ id: 'case1', status: 'success', inputs: null, outputs: null },
+			]);
+		});
+	});
+
+	describe('getTestCases', () => {
+		const buildReq = () =>
+			({
+				params: { workflowId: mockWorkflowId, id: mockTestRunId },
+				user: mockUser,
+			}) as TestRunsRequest.GetCases;
+
+		it('requires execution:read and returns the cases', async () => {
+			const cases = [{ id: 'case1', outputs: { a: 1 } }];
+			mockTestCaseExecutionRepository.find.mockResolvedValue(cases as any);
+
+			const result = await testRunsController.getTestCases(buildReq());
+
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['execution:read'],
+			);
+			expect(result).toEqual(cases);
+		});
+
+		it('returns NotFoundError without reading cases when the user lacks execution:read', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockImplementation(
+				async (_workflowId, _user, scopes) =>
+					scopes.includes('execution:read') ? null : ({ id: mockWorkflowId } as any),
+			);
+
+			await expect(testRunsController.getTestCases(buildReq())).rejects.toThrow(NotFoundError);
+			expect(mockTestCaseExecutionRepository.find).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getTestRun', () => {

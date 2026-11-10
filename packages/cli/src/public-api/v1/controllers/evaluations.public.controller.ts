@@ -208,9 +208,13 @@ export class EvaluationsPublicController {
 
 	@Get('/:runId/test-cases')
 	@ApiKeyScope('testRun:read')
-	@ProjectScope('workflow:read')
+	@ProjectScope('execution:read')
 	@ApiSummary('Retrieve test run cases')
-	@ApiDescription('Retrieve the per-case results of an evaluation test run.')
+	@ApiDescription(
+		'Retrieve the per-case results of an evaluation test run. Case inputs and outputs come ' +
+			'from execution data, so this route requires the `execution:read` project scope in ' +
+			'addition to the `testRun:read` API key scope.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(200, TestCaseExecutionListPublicDto)
 	@ApiErrorResponse(400)

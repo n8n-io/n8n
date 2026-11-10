@@ -41,6 +41,13 @@ export class TestRunsController {
 		}
 	}
 
+	private async canReadExecutions(workflowId: string, user: User) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'execution:read',
+		]);
+		return workflow !== null;
+	}
+
 	/**
 	 * Get the test run (or just check that it exists and the user has access to it).
 	 *
@@ -126,6 +133,15 @@ export class TestRunsController {
 		try {
 			await this.getTestRun(id, workflowId, req.user); // FIXME: do not fetch test run twice
 			const summary = await this.testRunRepository.getTestRunSummaryById(id);
+			// Case inputs and outputs come from the case executions' run data, which
+			// sits behind `execution:read`. A user without it still gets the summary.
+			if (!(await this.canReadExecutions(workflowId, req.user))) {
+				summary.testCaseExecutions = summary.testCaseExecutions?.map((testCase) => ({
+					...testCase,
+					inputs: null,
+					outputs: null,
+				}));
+			}
 			const [withScales] = await this.attachMetricScales([summary], workflowId);
 			return withScales;
 		} catch (error) {
@@ -136,7 +152,9 @@ export class TestRunsController {
 
 	@Get('/:workflowId/test-runs/:id/test-cases')
 	async getTestCases(req: TestRunsRequest.GetCases) {
-		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		// Test cases carry run data of the case executions, so reading them
+		// takes `execution:read`, not just `workflow:read`.
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['execution:read']);
 
 		return await this.testCaseExecutionRepository.find({
 			where: { testRun: { id: req.params.id } },
