@@ -923,14 +923,17 @@ describe('WaitingForms on an engine v2 execution', () => {
 			status,
 			workflow: { nodes: [formNode, waitNode] },
 		}) as unknown as ExecutionSnapshot;
-	const request = (suffix: string | undefined, headers: Record<string, string> = {}) =>
-		mock<WaitingWebhookRequest>({
+	const request = (suffix: string | undefined, headers: Record<string, string> = {}) => {
+		const url = `/form-waiting/${EXECUTION_ID}/${suffix ?? ''}?${WAITING_TOKEN_QUERY_PARAM}=t`;
+		return mock<WaitingWebhookRequest>({
 			method: 'GET',
 			params: { path: EXECUTION_ID, suffix },
 			query: { [WAITING_TOKEN_QUERY_PARAM]: 't' },
-			url: `/form-waiting/${EXECUTION_ID}/${suffix ?? ''}?${WAITING_TOKEN_QUERY_PARAM}=t`,
+			url,
+			originalUrl: url,
 			headers: { host: 'localhost', ...headers },
 		});
+	};
 	const response = () => {
 		const res = mock<express.Response>();
 		res.status.mockReturnValue(res);
@@ -943,7 +946,7 @@ describe('WaitingForms on an engine v2 execution', () => {
 	});
 
 	it('answers a bad token with the invalid-token page', async () => {
-		dataPlane.locateResumeTarget.mockResolvedValue({
+		dataPlane.locateResume.mockResolvedValue({
 			ok: false,
 			status: 401,
 			error: 'invalid_token',
@@ -965,7 +968,7 @@ describe('WaitingForms on an engine v2 execution', () => {
 	] as const)(
 		"answers '%s' to the status poll of a %s execution with %s",
 		async (expected, status, _, target) => {
-			dataPlane.locateResumeTarget.mockResolvedValue({
+			dataPlane.locateResume.mockResolvedValue({
 				ok: true,
 				value: { execution: snapshot(status), target },
 			});
@@ -989,7 +992,7 @@ describe('WaitingForms on an engine v2 execution', () => {
 	it.each(['running', 'queued'] as const)(
 		'answers nothing while a %s execution has not reached its form, so the page keeps polling',
 		async (status) => {
-			dataPlane.locateResumeTarget.mockResolvedValue({
+			dataPlane.locateResume.mockResolvedValue({
 				ok: true,
 				value: { execution: snapshot(status), target: null },
 			});
@@ -1005,7 +1008,7 @@ describe('WaitingForms on an engine v2 execution', () => {
 	);
 
 	it('renders the completion page for an execution that completed', async () => {
-		dataPlane.locateResumeTarget.mockResolvedValue({
+		dataPlane.locateResume.mockResolvedValue({
 			ok: true,
 			value: { execution: snapshot('completed'), target: null },
 		});
@@ -1018,7 +1021,7 @@ describe('WaitingForms on an engine v2 execution', () => {
 	});
 
 	it('answers 409 for an execution that failed', async () => {
-		dataPlane.locateResumeTarget.mockResolvedValue({
+		dataPlane.locateResume.mockResolvedValue({
 			ok: true,
 			value: { execution: snapshot('failed'), target: null },
 		});
@@ -1034,7 +1037,7 @@ describe('WaitingForms on an engine v2 execution', () => {
 	] as const)(
 		'%s the auth cookie when a %s node waits for the form',
 		async (_, __, node, cookie) => {
-			dataPlane.locateResumeTarget.mockResolvedValue({
+			dataPlane.locateResume.mockResolvedValue({
 				ok: true,
 				value: { execution: snapshot('waiting'), target: { stepId: 'step-1', nodeId: node.id } },
 			});

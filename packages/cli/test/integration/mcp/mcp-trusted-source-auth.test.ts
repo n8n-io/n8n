@@ -28,7 +28,7 @@ import { McpServerApiKeyService } from '@/modules/mcp/mcp-api-key.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import { McpService } from '@/modules/mcp/mcp.service';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
+import { OAuthClient } from '@/modules/oauth-server/database/entities/oauth-client.entity';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { ScopedJwtStrategy } from '@/modules/token-exchange/services/scoped-jwt.strategy';
 import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
@@ -152,7 +152,8 @@ beforeAll(async () => {
 	apiKey = (await Container.get(McpServerApiKeyService).createMcpServerApiKey(member)).apiKey;
 	await Container.get(McpSettingsService).setEnabled(true);
 	// The token rows of the local server need a registered client.
-	await Container.get(OAuthClientRepository).save({
+	const clients = Container.get(DataSource).getRepository(OAuthClient);
+	await clients.save({
 		id: CLIENT_ID,
 		name: 'MCP pipeline tests',
 		redirectUris: ['https://example.com/callback'],

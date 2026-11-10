@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { PushProxy } from '@n8n/backend-services';
+import type { Publisher, PushProxy } from '@n8n/backend-services';
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -22,7 +22,6 @@ import {
 	notionMockServer,
 	slackExtendingMockServer,
 } from '@/modules/mcp-registry/registry/mock-servers';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 const OVERLAPPING_RUNS = 4;

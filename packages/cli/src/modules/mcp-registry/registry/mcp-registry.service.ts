@@ -4,10 +4,9 @@ import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
 import { InstanceSettings } from 'n8n-core';
 import type { McpRegistryConnection } from 'n8n-workflow';
-import { PushProxy } from '@n8n/backend-services';
+import { Publisher, PushProxy } from '@n8n/backend-services';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { McpRegistryServerRepository } from './mcp-registry-server.repository';

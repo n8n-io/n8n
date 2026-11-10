@@ -77,9 +77,9 @@ vi.mock('@n8n/design-system', () => ({
 vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	ContactAdminModal: {
-		props: ['open', 'nodeTypeName', 'kind', 'audience'],
+		props: ['open', 'typeName', 'kind', 'audience'],
 		template:
-			'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ nodeTypeName }}</div>',
+			'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ typeName }}</div>',
 	},
 }));
 

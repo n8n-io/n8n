@@ -555,9 +555,9 @@ describe('ResourceLocator', () => {
 		expect(nodeTypesStore.getNodeParameterActionResult).not.toHaveBeenCalled();
 	});
 
-	it('falls back to workflow homeProject ID when currentProjectId is not available', async () => {
+	it('uses the workflow homeProject ID over currentProjectId when adding a resource', async () => {
 		const windowOpenSpy = vi.spyOn(window, 'open');
-		projectsStore.currentProjectId = undefined as unknown as string;
+		projectsStore.currentProjectId = 'former-project-123';
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
 			paginationToken: undefined,

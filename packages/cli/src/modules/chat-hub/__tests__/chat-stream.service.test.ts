@@ -1,12 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
-import type { PushProxy } from '@n8n/backend-services';
+import type { Publisher, PushProxy } from '@n8n/backend-services';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { ChatStreamStateService } from '@/modules/chat-hub/chat-stream-state.service';
 import { ChatStreamService } from '@/modules/chat-hub/chat-stream.service';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 describe('ChatStreamService', () => {
 	const logger = mock<Logger>();

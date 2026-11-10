@@ -11,7 +11,7 @@ import type {
 	User,
 	WorkflowRepository,
 } from '@n8n/db';
-import { WorkflowEntity } from '@n8n/db';
+import { Person, WorkflowEntity } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -566,7 +566,7 @@ describe('WorkflowCreationService', () => {
 			};
 
 			function makeActingUser() {
-				return mock<User>({
+				return Object.assign(new Person(), {
 					id: 'user-1',
 					email: 'actor@example.com',
 					firstName: 'Ada',

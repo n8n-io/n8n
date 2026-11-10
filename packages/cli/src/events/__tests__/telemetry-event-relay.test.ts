@@ -295,7 +295,7 @@ describe('TelemetryEventRelay', () => {
 				surfaces: ['public-api'],
 				identitySubject: 'binding',
 				linkByEmail: 'verified-only',
-				provisionHuman: 'off',
+				provisionPerson: 'off',
 				roleMappingMode: 'off',
 			};
 
@@ -4027,6 +4027,24 @@ describe('TelemetryEventRelay', () => {
 			},
 		);
 
+		it('should track on `user-logged-out` event', () => {
+			const event: RelayEventMap['user-logged-out'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+			};
+
+			eventService.emit('user-logged-out', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_LOGGED_OUT, {
+				user_id: 'user123',
+			});
+		});
+
 		it('should track on `user-submitted-personalization-survey` event', () => {
 			const event: RelayEventMap['user-submitted-personalization-survey'] = {
 				userId: 'user123',
@@ -6200,7 +6218,7 @@ describe('TelemetryEventRelay', () => {
 			surfaces: ['public-api', 'instance-mcp'],
 			identitySubject: 'binding',
 			linkByEmail: 'verified-only',
-			provisionHuman: 'jit',
+			provisionPerson: 'jit',
 			roleMappingMode: 'on-provision',
 		};
 		const trackedFacets = {
@@ -6210,6 +6228,7 @@ describe('TelemetryEventRelay', () => {
 			identity_subject: 'binding',
 			link_by_email: 'verified-only',
 			provision_human: 'jit',
+			provision_person: 'jit',
 			role_mapping_mode: 'on-provision',
 		};
 

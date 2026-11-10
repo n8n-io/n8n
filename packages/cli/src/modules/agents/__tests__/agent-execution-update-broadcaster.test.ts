@@ -3,8 +3,7 @@ import type { UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { RoleService, PushProxy } from '@n8n/backend-services';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher, PushProxy, RoleService } from '@n8n/backend-services';
 
 import { AgentPushRecipientsService } from '../agent-push-recipients.service';
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
