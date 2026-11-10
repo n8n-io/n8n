@@ -227,7 +227,16 @@ describe('Posthog store', () => {
 
 			expect(window.posthog?.init).toHaveBeenCalledWith(
 				DEFAULT_POSTHOG_SETTINGS.apiKey,
-				expect.objectContaining({ autocapture: true }),
+				expect.objectContaining({
+					autocapture: {
+						element_attribute_ignorelist: expect.arrayContaining([
+							'data-node-name',
+							'title',
+							'alt',
+							'data-value',
+						]),
+					},
+				}),
 			);
 		});
 

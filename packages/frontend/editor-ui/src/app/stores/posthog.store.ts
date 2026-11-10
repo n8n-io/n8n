@@ -33,6 +33,22 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
+// These attributes can hold user-defined names and values, so autocapture must not send them.
+const AUTOCAPTURE_IGNORED_ATTRIBUTES = [
+	'title',
+	'alt',
+	'data-node-name',
+	'data-source-node-name',
+	'data-target-node-name',
+	'data-action-parameter-node',
+	'data-value',
+	'data-name',
+	'data-path',
+	'data-resourcename',
+	'data-table-name',
+	'data-placeholder',
+];
+
 export type PosthogStore = ReturnType<typeof usePostHog>;
 
 type FeatureFlagOverride = {
@@ -296,8 +312,9 @@ export const usePostHog = defineStore('posthog', () => {
 			api_host: settingsStore.settings.posthog.proxy,
 			// Needs server-evaluated flags: autocapture is fixed at init, before client-side flags load.
 			autocapture:
-				hasServerFlags &&
-				evaluatedFeatureFlags[ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name] === true,
+				hasServerFlags && evaluatedFeatureFlags[ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name] === true
+					? { element_attribute_ignorelist: AUTOCAPTURE_IGNORED_ATTRIBUTES }
+					: false,
 			disable_session_recording: config.disableSessionRecording,
 			debug: false, // Enables console logs for debugging reasons
 			session_recording: {
