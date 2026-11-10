@@ -4,9 +4,12 @@ import { ApiResponse, ControllerRegistryMetadata, Get, Patch } from '@n8n/decora
 import type { Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
+import fs from 'node:fs';
+import path from 'node:path';
 import { parse } from 'yaml';
 import { z } from 'zod';
 
+import { N8N_VERSION } from '@/constants';
 import { markPublicApiController } from '@/public-api/__tests__/public-api-controller-test-utils';
 
 import {
@@ -18,6 +21,10 @@ import {
 	type OpenApiDocument,
 } from '../generate';
 import { buildBinarySuccessResponse } from '../decorator-routes';
+
+vi.unmock('node:fs');
+
+const ENVELOPE_PATH = path.resolve(__dirname, '../../openapi.yml');
 
 function makeNamedResponseDto(className: string, shape: Parameters<typeof Z.class>[0]) {
 	return { [className]: class extends Z.class(shape) {} }[className];
@@ -73,6 +80,8 @@ describe('getGeneratedArtifacts path parameter names', () => {
 });
 
 describe('assembleSpec', () => {
+	const n8nVersion = '2.45.5';
+
 	it('takes paths and components from the generated document', () => {
 		const envelope: OpenApiDocument = { openapi: '3.0.0', paths: {} };
 		const generated: OpenApiDocument = {
@@ -80,7 +89,7 @@ describe('assembleSpec', () => {
 			components: { schemas: { Tag: { type: 'object' } } },
 		};
 
-		const assembled = assembleSpec(envelope, generated);
+		const assembled = assembleSpec(envelope, generated, n8nVersion);
 
 		expect(assembled.paths).toEqual({ '/tags': { get: { operationId: 'getTags' } } });
 		expect(assembled.components).toEqual({ schemas: { Tag: { type: 'object' } } });
@@ -89,21 +98,25 @@ describe('assembleSpec', () => {
 	it('keeps the envelope keys and its security schemes', () => {
 		const envelope: OpenApiDocument = {
 			openapi: '3.0.0',
-			info: { title: 'n8n Public API', version: '1.1.1' },
+			info: { title: 'n8n Public API' },
 			security: [{ ApiKeyAuth: [] }],
 			tags: [{ name: 'Tags' }],
 			paths: {},
 			components: { securitySchemes: { ApiKeyAuth: { type: 'apiKey', in: 'header' } } },
 		};
 
-		const assembled = assembleSpec(envelope, {
-			paths: { '/tags': { get: { operationId: 'getTags' } } },
-			components: { schemas: { Tag: { type: 'object' } } },
-		});
+		const assembled = assembleSpec(
+			envelope,
+			{
+				paths: { '/tags': { get: { operationId: 'getTags' } } },
+				components: { schemas: { Tag: { type: 'object' } } },
+			},
+			n8nVersion,
+		);
 
 		expect(assembled).toMatchObject({
 			openapi: '3.0.0',
-			info: { title: 'n8n Public API', version: '1.1.1' },
+			info: { title: 'n8n Public API', version: n8nVersion },
 			security: [{ ApiKeyAuth: [] }],
 			tags: [{ name: 'Tags' }],
 		});
@@ -111,6 +124,26 @@ describe('assembleSpec', () => {
 			schemas: { Tag: { type: 'object' } },
 			securitySchemes: { ApiKeyAuth: { type: 'apiKey', in: 'header' } },
 		});
+	});
+
+	it('sets info.version to the n8n version and keeps the other info fields', () => {
+		const envelope: OpenApiDocument = {
+			info: { title: 'n8n Public API', description: 'n8n Public API' },
+			paths: {},
+		};
+
+		const assembled = assembleSpec(
+			envelope,
+			{ paths: { '/tags': { get: { operationId: 'getTags' } } } },
+			n8nVersion,
+		);
+
+		expect(assembled.info).toEqual({
+			title: 'n8n Public API',
+			description: 'n8n Public API',
+			version: n8nVersion,
+		});
+		expect(envelope.info).not.toHaveProperty('version');
 	});
 
 	it('throws when the envelope and the generated document define the same component', () => {
@@ -123,8 +156,8 @@ describe('assembleSpec', () => {
 			components: { schemas: { Tag: { type: 'object' } } },
 		};
 
-		expect(() => assembleSpec(envelope, generated)).toThrow(UnexpectedError);
-		expect(() => assembleSpec(envelope, generated)).toThrow(/components\.schemas\.Tag/);
+		expect(() => assembleSpec(envelope, generated, n8nVersion)).toThrow(UnexpectedError);
+		expect(() => assembleSpec(envelope, generated, n8nVersion)).toThrow(/components\.schemas\.Tag/);
 	});
 
 	it('throws when the envelope declares paths', () => {
@@ -133,15 +166,54 @@ describe('assembleSpec', () => {
 			paths: { '/tags': { get: { operationId: 'getTags' } } },
 		};
 
-		expect(() => assembleSpec(envelope, generated)).toThrow(UnexpectedError);
-		expect(() => assembleSpec(envelope, generated)).toThrow(/still declares paths \(\/tags\)/);
+		expect(() => assembleSpec(envelope, generated, n8nVersion)).toThrow(UnexpectedError);
+		expect(() => assembleSpec(envelope, generated, n8nVersion)).toThrow(
+			/still declares paths \(\/tags\)/,
+		);
+	});
+
+	it('throws when the envelope declares info.version', () => {
+		const envelope: OpenApiDocument = { info: { title: 'n8n Public API', version: '1.1.1' } };
+		const generated: OpenApiDocument = {
+			paths: { '/tags': { get: { operationId: 'getTags' } } },
+		};
+
+		expect(() => assembleSpec(envelope, generated, n8nVersion)).toThrow(UnexpectedError);
+		expect(() => assembleSpec(envelope, generated, n8nVersion)).toThrow(
+			/still declares info\.version/,
+		);
+	});
+
+	it('throws when the n8n version is empty', () => {
+		const envelope: OpenApiDocument = { paths: {} };
+		const generated: OpenApiDocument = {
+			paths: { '/tags': { get: { operationId: 'getTags' } } },
+		};
+
+		expect(() => assembleSpec(envelope, generated, '  ')).toThrow(UnexpectedError);
+		expect(() => assembleSpec(envelope, generated, '  ')).toThrow(
+			/n8n version for the Public API spec is empty/,
+		);
 	});
 
 	it('throws when the generated spec has no paths', () => {
 		const envelope: OpenApiDocument = { paths: {} };
 
-		expect(() => assembleSpec(envelope, { paths: {} })).toThrow(UnexpectedError);
-		expect(() => assembleSpec(envelope, { paths: {} })).toThrow(/has no paths/);
+		expect(() => assembleSpec(envelope, { paths: {} }, n8nVersion)).toThrow(UnexpectedError);
+		expect(() => assembleSpec(envelope, { paths: {} }, n8nVersion)).toThrow(/has no paths/);
+	});
+
+	it('assembles the committed envelope with the version from packages/cli/package.json', () => {
+		const envelope = parse(fs.readFileSync(ENVELOPE_PATH, 'utf8')) as OpenApiDocument;
+
+		const assembled = assembleSpec(
+			envelope,
+			{ paths: { '/tags': { get: { operationId: 'getTags' } } } },
+			N8N_VERSION,
+		);
+
+		expect(N8N_VERSION).toMatch(/^\d+\.\d+\.\d+/);
+		expect(assembled.info?.version).toBe(N8N_VERSION);
 	});
 });
 
