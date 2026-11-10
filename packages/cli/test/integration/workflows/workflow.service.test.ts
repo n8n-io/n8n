@@ -46,7 +46,7 @@ import {
 	RoleService,
 	RestrictedNodeTypesProviderProxy,
 	type WorkflowPublishGuardProxy,
-	WorkflowVersionedSettings,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -150,7 +150,7 @@ beforeAll(async () => {
 		mock(),
 		Container.get(ProjectScopeService), // projectScopeService
 		mock(),
-		Container.get(WorkflowVersionedSettings), // workflowVersionedSettings
+		Container.get(WorkflowVersionedSettingsService), // WorkflowVersionedSettingsService
 	);
 });
 

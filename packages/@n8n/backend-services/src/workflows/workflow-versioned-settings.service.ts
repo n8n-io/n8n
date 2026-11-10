@@ -7,7 +7,7 @@ import { Service } from '@n8n/di';
  * module turns this on. Without it, every setting applies at once, as before.
  */
 @Service()
-export class WorkflowVersionedSettings {
+export class WorkflowVersionedSettingsService {
 	constructor(private readonly moduleRegistry: ModuleRegistry) {}
 
 	// Read at call time: modules become active after services are constructed.
