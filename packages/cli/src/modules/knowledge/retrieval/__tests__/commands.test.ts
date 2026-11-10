@@ -1,3 +1,4 @@
+import { getKnowledgePaths } from '../../files/storage-naming';
 import {
 	buildMirrorFinalizeCommand,
 	buildReadKnowledgeCommand,
@@ -7,12 +8,8 @@ import {
 	parseReadKnowledgeOutput,
 	parseRipgrepCountOutput,
 	parseRipgrepOutput,
-} from '../agent-knowledge-commands';
-import { getKnowledgePaths } from '@/modules/knowledge/files/storage-naming';
-import {
-	searchKnowledgeInputSchema,
-	type AgentKnowledgeFileReference,
-} from '../agent-knowledge-retrieval';
+} from '../commands';
+import { searchKnowledgeInputSchema, type AgentKnowledgeFileReference } from '../retrieval-schemas';
 
 const mobyDickFile: AgentKnowledgeFileReference = {
 	file: 'moby-dick.txt',
