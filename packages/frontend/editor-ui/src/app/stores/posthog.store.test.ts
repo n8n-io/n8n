@@ -240,9 +240,19 @@ describe('Posthog store', () => {
 			);
 		});
 
-		it('keeps autocapture off when the flag is off or flags are not bootstrapped', () => {
+		it('keeps autocapture off when the flag is off', () => {
 			const posthog = usePostHog();
 			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: false });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ autocapture: false }),
+			);
+		});
+
+		it('keeps autocapture off when flags are not bootstrapped', () => {
+			const posthog = usePostHog();
+			posthog.init();
 
 			expect(window.posthog?.init).toHaveBeenCalledWith(
 				DEFAULT_POSTHOG_SETTINGS.apiKey,
