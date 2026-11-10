@@ -1520,6 +1520,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 			<N8nInputLabel
 				:label="getCredentialsFieldLabel(type)"
 				:required="type.required"
+				:tooltip-text="type.hint"
 				:bold="false"
 				size="small"
 				color="text-dark"
