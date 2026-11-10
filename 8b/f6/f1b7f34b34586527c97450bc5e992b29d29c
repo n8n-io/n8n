@@ -1,0 +1,19 @@
+packages/@n8n/decorators/src/pubsub/pubsub.event-map.ts
+  s_2a775e6f393796::t_b3ce9c65ccf320 453-454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8bf6f1b7f34b34586527c97450bc5e992b29d29c",
+  "prompts": {},
+  "sessions": {
+    "s_2a775e6f393796": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e7b0167-e0cc-4bf3-b98a-5d4903b79796",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
