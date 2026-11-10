@@ -1,0 +1,192 @@
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 143-145,149,160-163,333-358,414,421
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 145-148,150,152-155,215,309,313,381-383,622,624-625,685-686,813-829,835,840-844,866,880,897-900
+packages/cli/src/modules/agents/agent-context.service.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 212-219
+packages/cli/src/modules/agents/sub-agents/sub-agent-cleanup.service.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 59-63
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 281
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 249-251,384-386
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 929-941
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-cleanup.service.test.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 81-83
+packages/cli/src/modules/agents/agents.service.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 43,569,752-757,763-764
+  s_08690fb8a4caf5::t_1a98446a566b5f 765
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 20,298-304
+  s_08690fb8a4caf5::t_aa97d108c02b41 305
+packages/@n8n/api-types/src/agents/dto.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 85
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 103-104,149-151
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-source-resolver.test.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 203-220
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 92-93,306-320
+  s_08690fb8a4caf5::t_fe192a40301175 321
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 1693-1695,1715-1801
+packages/quality/testing/playwright/services/agent-api-helper.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 92-96
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 117-119,215-217
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 56-57,190-228
+  s_08690fb8a4caf5::t_dfa9ede698837b 229-231
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 532-534,684-686
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 679-694,901-916
+  s_08690fb8a4caf5::t_d27f1bcdaa3144 917
+packages/@n8n/db/src/migrations/sqlite/1794305119000-AddIsArchivedToAgents.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 1-9
+packages/cli/src/modules/agents/agents.controller.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 128-130
+packages/cli/src/modules/agents/utils/agent-published-snapshot.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 3,47,49-51
+packages/cli/src/modules/agents/sub-agents/sub-agent-source-resolver.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 54-59
+packages/@n8n/telemetry/src/events/agents.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 680-697
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 77-80
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 2983-3020
+packages/cli/src/events/maps/relay.event-map.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 1341-1352
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 19,145,269,279,293-359,740,748,754
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 120-121
+packages/cli/src/modules/agents/utils/agent-draft.utils.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 4,26,28-33
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 1377-1378
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 96-145
+packages/@n8n/db/src/migrations/common/1794305119000-AddIsArchivedToAgents.ts
+  s_08690fb8a4caf5::t_7cea99f9677fcf 1-19
+docs/generated/postgres-schema/README.md
+  s_08690fb8a4caf5::t_8100f8321bf6e3 41,836
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_08690fb8a4caf5::t_4ef27b12631fce 110
+docs/generated/postgres-schema/public.agent_channel_status.md
+  s_08690fb8a4caf5::t_d6c23f99fef991 69
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_08690fb8a4caf5::t_bb7a2f029fe3a7 80
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_08690fb8a4caf5::t_1f439c8c05d5a9 55
+docs/generated/postgres-schema/public.agent_checkpoints.md
+  s_08690fb8a4caf5::t_2c9abd4b99e3a4 57
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_08690fb8a4caf5::t_3ca1666816741d 48
+docs/generated/postgres-schema/public.agent_eval_dataset.md
+  s_08690fb8a4caf5::t_21a84fc8e3c1c2 68
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_08690fb8a4caf5::t_32ef43074e58c1 103
+docs/generated/postgres-schema/public.agent_files.md
+  s_08690fb8a4caf5::t_f50a4a296e6842 69
+docs/generated/postgres-schema/public.agent_history.md
+  s_08690fb8a4caf5::t_e233a4ac37e95b 71
+docs/generated/postgres-schema/public.agent_publish_history.md
+  s_08690fb8a4caf5::t_bd6b4e14eecbc6 66
+docs/generated/postgres-schema/public.agent_skill_dependency.md
+  s_08690fb8a4caf5::t_4438e7eb79aecc 52
+docs/generated/postgres-schema/public.agent_task_definition.md
+  s_08690fb8a4caf5::t_c0a6bb1daa7e8e 60
+docs/generated/postgres-schema/public.agent_task_run_lock.md
+  s_08690fb8a4caf5::t_d15ec087333a01 54
+docs/generated/postgres-schema/public.agent_workflow_dependency.md
+  s_08690fb8a4caf5::t_394facb0902dec 48
+docs/generated/postgres-schema/public.agents.md
+  s_08690fb8a4caf5::t_b07dc309db2f27 12,38,91
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_08690fb8a4caf5::t_0f86b7b252647a 81
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_08690fb8a4caf5::t_9cdec8de93b5a7 90
+docs/generated/postgres-schema/public.agents_memory_entry_locks.md
+  s_08690fb8a4caf5::t_6879848c6b23db 57
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_08690fb8a4caf5::t_49f92f5e70c1a7 79
+docs/generated/postgres-schema/public.agents_observation_cursors.md
+  s_08690fb8a4caf5::t_8a180dc888d6c9 57
+docs/generated/postgres-schema/public.agents_observation_locks.md
+  s_08690fb8a4caf5::t_2900a2e59b98c6 61
+docs/generated/postgres-schema/public.agents_observations.md
+  s_08690fb8a4caf5::t_a9e7b3a18427cf 80
+docs/generated/postgres-schema/public.project.md
+  s_08690fb8a4caf5::t_1d5da67a48137d 156
+docs/generated/sqlite-schema/README.md
+  s_08690fb8a4caf5::t_fbde5e9265b28e 41,246,822
+docs/generated/sqlite-schema/agent_background_job.md
+  s_08690fb8a4caf5::t_81f35779b71063 112
+docs/generated/sqlite-schema/agent_channel_status.md
+  s_08690fb8a4caf5::t_54c8cb4d50de2b 76
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_08690fb8a4caf5::t_02a5ea46575670 81
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_08690fb8a4caf5::t_cee3c83ec31b64 64
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_08690fb8a4caf5::t_af6b75daf30b35 65
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_08690fb8a4caf5::t_acc9383a465895 58
+docs/generated/sqlite-schema/agent_eval_dataset.md
+  s_08690fb8a4caf5::t_ff322eb7ec228a 73
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_08690fb8a4caf5::t_f65ecff34a0772 103
+docs/generated/sqlite-schema/agent_files.md
+  s_08690fb8a4caf5::t_06d98407369208 72
+docs/generated/sqlite-schema/agent_history.md
+  s_08690fb8a4caf5::t_628480a81de598 78
+docs/generated/sqlite-schema/agent_publish_history.md
+  s_08690fb8a4caf5::t_771deb6e1ba3a9 70
+docs/generated/sqlite-schema/agent_skill_dependency.md
+  s_08690fb8a4caf5::t_4e8d4ae4d4975d 62
+docs/generated/sqlite-schema/agent_task_definition.md
+  s_08690fb8a4caf5::t_c56b195fd525b8 65
+docs/generated/sqlite-schema/agent_task_run_lock.md
+  s_08690fb8a4caf5::t_a07ea5cfff5f0b 61
+docs/generated/sqlite-schema/agent_workflow_dependency.md
+  s_08690fb8a4caf5::t_105294d596208f 58
+docs/generated/sqlite-schema/agents.md
+  s_08690fb8a4caf5::t_6a58c7749fdb55 9,23,40-43,91
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_08690fb8a4caf5::t_d1c09c9b3e3688 84
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_08690fb8a4caf5::t_380b5aa2e1412c 89
+docs/generated/sqlite-schema/agents_memory_entry_locks.md
+  s_08690fb8a4caf5::t_358f75233d2b4e 64
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_08690fb8a4caf5::t_beff794ff290ee 83
+docs/generated/sqlite-schema/agents_observation_cursors.md
+  s_08690fb8a4caf5::t_b776133e9a58a4 64
+docs/generated/sqlite-schema/agents_observation_locks.md
+  s_08690fb8a4caf5::t_374f3165483d5b 68
+docs/generated/sqlite-schema/agents_observations.md
+  s_08690fb8a4caf5::t_a39c80e18268bb 83
+docs/generated/sqlite-schema/project.md
+  s_08690fb8a4caf5::t_3faa1f9e89c7ac 162
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_08690fb8a4caf5::t_8273d96154f6ed 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "29634fc641a6605e77eb1e7bf711d44f44e0f4dd",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
