@@ -5,16 +5,18 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.folder](public.folder.md) [public.folder_tag](public.folder_tag.md) [public.workflow_entity](public.workflow_entity.md) |  |  |
+| id | varchar(36) |  | false | [public.agents](public.agents.md) [public.folder](public.folder.md) [public.folder_tag](public.folder_tag.md) [public.workflow_entity](public.workflow_entity.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | parentFolderId | varchar(36) |  | true |  | [public.folder](public.folder.md) |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
+| resourceType | varchar(16) | 'workflow'::character varying | false |  |  | Resource tree: workflow or agent |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_folder_resourceType | CHECK | CHECK ((("resourceType")::text = ANY ((ARRAY['workflow'::character varying, 'agent'::character varying])::text[]))) |
 | FK_804ea52f6729e3940498bd54d78 | FOREIGN KEY | FOREIGN KEY ("parentFolderId") REFERENCES folder(id) ON DELETE CASCADE |
 | FK_a8260b0b36939c6247f385b8221 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_6278a41a706740c94c02e288df8 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -22,6 +24,7 @@
 | folder_id_not_null | n | NOT NULL id |
 | folder_name_not_null | n | NOT NULL name |
 | folder_projectId_not_null | n | NOT NULL "projectId" |
+| folder_resourceType_not_null | n | NOT NULL "resourceType" |
 | folder_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -36,6 +39,7 @@
 ```mermaid
 erDiagram
 
+"public.agents" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE RESTRICT"
 "public.folder" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE CASCADE"
 "public.folder_tag" }o--|| "public.folder" : "FOREIGN KEY (#quot;folderId#quot;) REFERENCES folder(id) ON DELETE CASCADE"
 "public.workflow_entity" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE CASCADE"
@@ -47,7 +51,27 @@ erDiagram
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
+  varchar_16_ resourceType
   timestamp_3__with_time_zone updatedAt
+}
+"public.agents" {
+  varchar_36_ activeVersionId FK
+  boolean availableInMCP
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  json integrations
+  varchar_128_ name
+  varchar_36_ parentFolderId FK
+  varchar_255_ projectId FK
+  integer publicationRevision
+  integer revision
+  json schema
+  varchar_16_ scope
+  timestamp_3__with_time_zone setupCompletedAt
+  json skills
+  json tools
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ versionId
 }
 "public.folder_tag" {
   varchar_36_ folderId FK

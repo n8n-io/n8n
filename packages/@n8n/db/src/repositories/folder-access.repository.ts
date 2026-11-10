@@ -43,11 +43,24 @@ export class FolderAccessRepository extends BaseRepository<Folder> {
 			const baseQuery = manager
 				.createQueryBuilder(Folder, 'f')
 				.select('f.id', 'id')
+				.addSelect('f.projectId', 'project_id')
+				.addSelect('f.resourceType', 'resource_type')
+				.innerJoin(
+					Folder,
+					'anchor',
+					'f.parentFolderId = anchor.id AND f.projectId = anchor.projectId AND f.resourceType = anchor.resourceType',
+				)
 				.where('f.parentFolderId IN (:...parentFolderIds)', { parentFolderIds: chunk });
 			const recursiveQuery = manager
 				.createQueryBuilder(Folder, 'child')
 				.select('child.id', 'id')
-				.innerJoin('folder_tree', 'parent', 'child.parentFolderId = parent.id');
+				.addSelect('child.projectId', 'project_id')
+				.addSelect('child.resourceType', 'resource_type')
+				.innerJoin(
+					'folder_tree',
+					'parent',
+					'child.parentFolderId = parent.id AND child.projectId = parent.project_id AND child.resourceType = parent.resource_type',
+				);
 			const query = manager
 				.createQueryBuilder()
 				.addCommonTableExpression(
@@ -72,6 +85,7 @@ export class FolderAccessRepository extends BaseRepository<Folder> {
 		const manager = this.managerFor(ctx);
 		for (const chunk of chunkIds(folderIds)) {
 			const rows = await manager.find(Folder, {
+				relations: { homeProject: true },
 				where: {
 					id: In(chunk),
 					...(access

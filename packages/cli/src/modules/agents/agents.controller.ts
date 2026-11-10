@@ -1,4 +1,10 @@
-import { type AgentCapabilitySummary, CreateAgentDto, ListAgentsQueryDto } from '@n8n/api-types';
+import {
+	type AgentCapabilitySummary,
+	AgentJsonConfigSchema,
+	CreateAgentDto,
+	ListAgentsQueryDto,
+	MoveAgentDto,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -6,12 +12,16 @@ import {
 	Get,
 	Param,
 	Post,
+	Patch,
+	Licensed,
 	ProjectScope,
 	Query,
 	RestController,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { Telemetry } from '@/telemetry';
 import { NotFoundError } from '@n8n/errors';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 
@@ -26,6 +36,7 @@ export class AgentsController {
 		private readonly agentRunnableStateService: AgentRunnableStateService,
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 		private readonly collaborationService: CollaborationService,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	@Post('/')
@@ -52,6 +63,7 @@ export class AgentsController {
 				createdBy: 'user',
 				pushRef: req.headers?.['push-ref'],
 				id: payload.id,
+				parentFolderId: payload.parentFolderId,
 				config: payload.config,
 				tagIds: payload.tags,
 				...(defaultModel ? { defaultModel } : {}),
@@ -61,13 +73,26 @@ export class AgentsController {
 				// required fields (model, instructions) stay required for the service.
 				...(isDuplicate && payload.schema
 					? {
-							schema: { ...payload.schema, name: payload.name },
+							schema: { ...AgentJsonConfigSchema.parse(payload.schema), name: payload.name },
 							skills: payload.skills,
 							tools: payload.tools,
 						}
 					: {}),
 			},
 		);
+		if (payload.parentFolderId !== undefined && !creationState.adopted) {
+			this.telemetry.track(TELEMETRY_EVENT.PLATFORM.RESOURCE_FOLDER_CHANGED, {
+				user_id: req.user.id,
+				project_id: projectId,
+				resource_type: 'agent',
+				action: 'placed',
+				source: 'rest',
+				folder_id: agent.parentFolderId,
+				resource_id: agent.id,
+				resource_count: 1,
+			});
+		}
+
 		return {
 			...(await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user)),
 			...creationState,
@@ -133,6 +158,38 @@ export class AgentsController {
 		if (!deleted) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
+
+		return { success: true };
+	}
+
+	@Patch('/:agentId/move')
+	@Licensed('feat:folders')
+	@ProjectScope('agent:update')
+	async move(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Body payload: MoveAgentDto,
+	) {
+		const moved = await this.agentsService.move(
+			req.params.agentId,
+			req.params.projectId,
+			payload.parentFolderId,
+		);
+
+		if (!moved) {
+			throw new NotFoundError('Agent not found');
+		}
+
+		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.RESOURCE_FOLDER_CHANGED, {
+			user_id: req.user.id,
+			project_id: req.params.projectId,
+			resource_type: 'agent',
+			action: 'moved',
+			source: 'rest',
+			folder_id: payload.parentFolderId,
+			resource_id: req.params.agentId,
+			resource_count: 1,
+		});
 
 		return { success: true };
 	}

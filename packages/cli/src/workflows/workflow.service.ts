@@ -886,10 +886,14 @@ export class WorkflowService {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
 			if (parentFolderId !== PROJECT_ROOT) {
 				try {
-					await this.folderRepository.findOneOrFailFolderInProject(
+					const folder = await this.folderRepository.findOneOrFailFolderInProject(
 						parentFolderId,
 						project?.id ?? '',
 					);
+
+					if (folder.resourceType !== 'workflow') {
+						throw new FolderNotFoundError(parentFolderId);
+					}
 				} catch (e) {
 					throw new FolderNotFoundError(parentFolderId);
 				}

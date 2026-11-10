@@ -52,7 +52,7 @@ export class InstanceAiPendingAgentService {
 	async persistAndBind(
 		user: User,
 		threadId: string,
-		{ projectId, agentId, name, config }: InstanceAiPersistPendingAgentRequest,
+		{ projectId, agentId, name, config, parentFolderId }: InstanceAiPersistPendingAgentRequest,
 		pushRef?: string,
 	) {
 		const agents = this.agentsModule();
@@ -72,6 +72,7 @@ export class InstanceAiPendingAgentService {
 		const agent = await agents.persistDraft(user, projectId, {
 			id: agentId,
 			name,
+			...(parentFolderId !== undefined ? { parentFolderId } : {}),
 			adoptOnCollision: adoptable,
 			config,
 			pushRef,

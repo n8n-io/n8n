@@ -1,3 +1,5 @@
+import { mock } from 'vitest-mock-extended';
+import type { TransactionRunner } from '../../services/transaction';
 import { In } from '@n8n/typeorm';
 
 import { Folder } from '../../entities';
@@ -6,7 +8,7 @@ import { FolderRepository } from '../folder.repository';
 
 describe('FolderRepository', () => {
 	const entityManager = mockEntityManager(Folder);
-	const repository = new FolderRepository(entityManager.connection);
+	const repository = new FolderRepository(entityManager.connection, mock<TransactionRunner>());
 
 	beforeEach(() => {
 		vi.resetAllMocks();

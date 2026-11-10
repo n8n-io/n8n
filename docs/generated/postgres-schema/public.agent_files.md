@@ -68,6 +68,7 @@ erDiagram
   json integrations
   boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   integer publicationRevision
   integer revision

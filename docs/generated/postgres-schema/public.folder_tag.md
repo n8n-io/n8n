@@ -41,6 +41,7 @@ erDiagram
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
+  varchar_16_ resourceType
   timestamp_3__with_time_zone updatedAt
 }
 "public.tag_entity" {

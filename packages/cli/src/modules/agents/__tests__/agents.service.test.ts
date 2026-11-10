@@ -1,3 +1,4 @@
+import type { FolderService } from '@/services/folder.service';
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
@@ -174,6 +175,7 @@ function makeService() {
 		mock<AgentDefinitionService>(),
 		globalConfig,
 		tagService,
+		mock<FolderService>(),
 	);
 
 	return {
@@ -521,6 +523,7 @@ describe('AgentsService', () => {
 			id: agentId,
 			name: 'Support Agent',
 			projectId,
+			parentFolderId: null,
 			schema: {
 				name: 'Support Agent',
 				model: '',

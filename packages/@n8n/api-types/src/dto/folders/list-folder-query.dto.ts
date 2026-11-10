@@ -2,6 +2,7 @@ import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { Z } from '../../zod-class';
+import { folderResourceTypeSchema } from '../../schemas/folder.schema';
 
 export const VALID_SELECT_FIELDS = [
 	'id',
@@ -12,6 +13,8 @@ export const VALID_SELECT_FIELDS = [
 	'tags',
 	'parentFolder',
 	'workflowCount',
+	'agentCount',
+	'resourceType',
 	'subFolderCount',
 	'path',
 ] as const;
@@ -122,6 +125,7 @@ const sortByValidator = z
 	.optional();
 
 export class ListFolderQueryDto extends Z.class({
+	resourceType: folderResourceTypeSchema.default('workflow'),
 	filter: filterValidator,
 	skip: skipValidator,
 	take: takeValidator,

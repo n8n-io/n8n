@@ -1,3 +1,4 @@
+import type { FolderRepository } from '@n8n/db';
 import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import type {
 	AgentSessionOrigin,
@@ -257,7 +258,7 @@ describe('AgentExecutionRepository', () => {
 			executionService,
 			checkpointStorage,
 			connection
-				? new AgentRepository(connection, txRunner, Container.get(GlobalConfig))
+				? new AgentRepository(connection, txRunner, Container.get(GlobalConfig), mock<FolderRepository>())
 				: agentRepo,
 			attachmentService,
 			queueUpdates,

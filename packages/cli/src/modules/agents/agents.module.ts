@@ -8,6 +8,20 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
 	async init() {
+		const { FolderContentService } = await import('@/services/folder-content.service.js');
+		const folderHandler = async () => {
+			const { AgentFolderService } = await import('./agent-folder.service.js');
+
+			return Container.get(AgentFolderService);
+		};
+		Container.get(FolderContentService).register('agent', {
+			assertAccess: async (...args) => await (await folderHandler()).assertAccess(...args),
+			count: async (...args) => await (await folderHandler()).count(...args),
+			directCounts: async (...args) => await (await folderHandler()).directCounts(...args),
+			relocate: async (...args) => await (await folderHandler()).relocate(...args),
+			deleteContents: async (...args) => await (await folderHandler()).deleteContents(...args),
+		});
+
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 

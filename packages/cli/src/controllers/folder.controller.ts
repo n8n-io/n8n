@@ -25,7 +25,15 @@ import {
 import { NextFunction, Response } from 'express';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError, InternalServerError, NotFoundError, UserError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+	UserError,
+} from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { Telemetry } from '@/telemetry';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -36,6 +44,7 @@ export class ProjectController {
 		private readonly folderService: FolderService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly projectService: ProjectService,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	@Middleware()
@@ -66,8 +75,31 @@ export class ProjectController {
 
 		try {
 			const folder = await this.folderService.createFolder(payload, projectId);
+			this.telemetry.track(TELEMETRY_EVENT.PLATFORM.RESOURCE_FOLDER_CHANGED, {
+				user_id: req.user.id,
+				project_id: projectId,
+				resource_type: folder.resourceType,
+				action: 'created',
+				source: 'rest',
+				folder_id: folder.id,
+				target_folder_id: folder.parentFolderId ?? null,
+				folder_count: 1,
+			});
+
 			return folder;
 		} catch (e) {
+			if (
+				e instanceof ForbiddenError ||
+				e instanceof BadRequestError ||
+				e instanceof NotFoundError
+			) {
+				throw e;
+			}
+
+			if (e instanceof UserError) {
+				throw new BadRequestError(e.message);
+			}
+
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
 			}
@@ -88,6 +120,18 @@ export class ProjectController {
 			const tree = await this.folderService.getFolderTree(folderId, projectId);
 			return tree;
 		} catch (e) {
+			if (
+				e instanceof ForbiddenError ||
+				e instanceof BadRequestError ||
+				e instanceof NotFoundError
+			) {
+				throw e;
+			}
+
+			if (e instanceof UserError) {
+				throw new BadRequestError(e.message);
+			}
+
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
 			}
@@ -105,6 +149,7 @@ export class ProjectController {
 		const { projectId, folderId } = req.params;
 
 		try {
+			await this.folderService.assertWorkflowFolder(folderId, projectId);
 			const credentials = await this.enterpriseWorkflowService.getFolderUsedCredentials(
 				req.user,
 				folderId,
@@ -112,6 +157,18 @@ export class ProjectController {
 			);
 			return credentials;
 		} catch (e) {
+			if (
+				e instanceof ForbiddenError ||
+				e instanceof BadRequestError ||
+				e instanceof NotFoundError
+			) {
+				throw e;
+			}
+
+			if (e instanceof UserError) {
+				throw new BadRequestError(e.message);
+			}
+
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
 			}
@@ -130,12 +187,33 @@ export class ProjectController {
 		const { projectId, folderId } = req.params;
 
 		try {
-			await this.folderService.updateFolder(folderId, projectId, payload);
+			await this.folderService.assertContentAccess(req.user, folderId, projectId, 'update');
+			const folder = await this.folderService.updateFolder(folderId, projectId, payload);
+			this.telemetry.track(TELEMETRY_EVENT.PLATFORM.RESOURCE_FOLDER_CHANGED, {
+				user_id: req.user.id,
+				project_id: projectId,
+				resource_type: folder.resourceType,
+				action: payload.parentFolderId ? 'moved' : 'updated',
+				source: 'rest',
+				folder_id: folderId,
+				target_folder_id: folder.parentFolderId ?? null,
+				folder_count: 1,
+			});
 		} catch (e) {
+			if (
+				e instanceof ForbiddenError ||
+				e instanceof BadRequestError ||
+				e instanceof NotFoundError
+			) {
+				throw e;
+			}
+
+			if (e instanceof UserError) {
+				throw new BadRequestError(e.message);
+			}
+
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
-			} else if (e instanceof UserError) {
-				throw new BadRequestError(e.message);
 			}
 			throw new InternalServerError(undefined, e);
 		}
@@ -152,12 +230,36 @@ export class ProjectController {
 		const { projectId, folderId } = req.params;
 
 		try {
+			const folder = await this.folderService.findFolderInProjectOrFail(folderId, projectId);
+			const counts = await this.folderService.findFolderWithContentCounts(folderId, projectId);
 			await this.folderService.deleteFolder(req.user, folderId, projectId, payload);
+			this.telemetry.track(TELEMETRY_EVENT.PLATFORM.RESOURCE_FOLDER_CHANGED, {
+				user_id: req.user.id,
+				project_id: projectId,
+				resource_type: folder.resourceType,
+				action: payload.transferToFolderId ? 'relocated' : 'deleted',
+				source: 'rest',
+				folder_id: folderId,
+				target_folder_id: payload.transferToFolderId ?? null,
+				folder_count: payload.transferToFolderId ? 1 : counts.totalSubFolders + 1,
+				resource_count:
+					folder.resourceType === 'agent' ? counts.totalAgents : counts.totalWorkflows,
+			});
 		} catch (e) {
+			if (
+				e instanceof ForbiddenError ||
+				e instanceof BadRequestError ||
+				e instanceof NotFoundError
+			) {
+				throw e;
+			}
+
+			if (e instanceof UserError) {
+				throw new BadRequestError(e.message);
+			}
+
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
-			} else if (e instanceof UserError) {
-				throw new BadRequestError(e.message);
 			}
 			throw new InternalServerError(undefined, e);
 		}
@@ -173,6 +275,10 @@ export class ProjectController {
 	) {
 		const { projectId } = req.params;
 
+		if (payload.resourceType === 'agent') {
+			await this.folderService.assertAgentContentAccess(req.user, projectId, 'read');
+		}
+
 		const [data, count] = await this.folderService.getManyAndCount(projectId, payload);
 
 		res.json({ count, data });
@@ -185,14 +291,28 @@ export class ProjectController {
 		const { projectId, folderId } = req.params;
 
 		try {
-			const { totalSubFolders, totalWorkflows } =
+			await this.folderService.assertContentAccess(req.user, folderId, projectId, 'read');
+			const { totalSubFolders, totalWorkflows, totalAgents } =
 				await this.folderService.findFolderWithContentCounts(folderId, projectId);
 
 			return {
 				totalSubFolders,
 				totalWorkflows,
+				totalAgents,
 			};
 		} catch (e) {
+			if (
+				e instanceof ForbiddenError ||
+				e instanceof BadRequestError ||
+				e instanceof NotFoundError
+			) {
+				throw e;
+			}
+
+			if (e instanceof UserError) {
+				throw new BadRequestError(e.message);
+			}
+
 			if (e instanceof FolderNotFoundError) {
 				throw new NotFoundError(e.message);
 			}
@@ -211,6 +331,7 @@ export class ProjectController {
 		@Query query: TransferPreviewQueryDto,
 	): Promise<FolderTransferPreview> {
 		try {
+			await this.folderService.assertWorkflowFolder(sourceFolderId, sourceProjectId);
 			return await this.enterpriseWorkflowService.previewFolderTransfer(
 				req.user,
 				sourceProjectId,
@@ -218,6 +339,18 @@ export class ProjectController {
 				query.destinationProjectId,
 			);
 		} catch (e) {
+			if (
+				e instanceof ForbiddenError ||
+				e instanceof BadRequestError ||
+				e instanceof NotFoundError
+			) {
+				throw e;
+			}
+
+			if (e instanceof UserError) {
+				throw new BadRequestError(e.message);
+			}
+
 			if (e instanceof FolderNotFoundError) throw new NotFoundError(e.message);
 			throw e;
 		}
@@ -233,6 +366,8 @@ export class ProjectController {
 		@Param('projectId') sourceProjectId: string,
 		@Body body: TransferFolderBodyDto,
 	) {
+		await this.folderService.assertWorkflowFolder(sourceFolderId, sourceProjectId);
+
 		return await this.enterpriseWorkflowService.transferFolder(
 			req.user,
 			sourceProjectId,

@@ -1968,6 +1968,7 @@ export class InstanceAiEnsureThreadRequest extends Z.class({
  * there first, and binds it to the thread in the same request.
  */
 export class InstanceAiPersistPendingAgentRequest extends Z.class({
+	parentFolderId: z.string().min(1).max(36).nullable().optional(),
 	projectId: z.string().min(1),
 	agentId: clientMintedAgentIdSchema,
 	name: z.string().min(1),

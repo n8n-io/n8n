@@ -11,6 +11,7 @@
 | integrations | json | '[]'::json | false |  |  |  |
 | isArchived | boolean | false | false |  |  | Whether the agent is archived: hidden, unpublished and read-only |
 | name | varchar(128) |  | false |  |  |  |
+| parentFolderId | varchar(36) |  | true |  | [public.folder](public.folder.md) | Agent folder ID, or null at the project root |
 | projectId | varchar(255) |  | true |  | [public.project](public.project.md) |  |
 | publicationRevision | integer | 0 | false |  |  |  |
 | revision | integer | 0 | false |  |  |  |
@@ -26,10 +27,12 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_agents_folder_scope | CHECK | CHECK ((((scope)::text <> 'instance'::text) OR ("parentFolderId" IS NULL))) |
 | CHK_agents_scope | CHECK | CHECK (((scope)::text = ANY ((ARRAY['project'::character varying, 'instance'::character varying])::text[]))) |
 | CHK_agents_scope_project | CHECK | CHECK ((((scope)::text = 'instance'::text) = ("projectId" IS NULL))) |
 | FK_940597dfe9753375309ce6aeea0 | FOREIGN KEY | FOREIGN KEY ("activeVersionId") REFERENCES agent_history("versionId") ON DELETE SET NULL |
 | FK_a30d560207c4071d98aa03c179c | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
+| FK_agents_parent_folder | FOREIGN KEY | FOREIGN KEY ("parentFolderId") REFERENCES folder(id) ON DELETE RESTRICT |
 | PK_9c653f28ae19c5884d5baf6a1d9 | PRIMARY KEY | PRIMARY KEY (id) |
 | agents_availableInMCP_not_null | n | NOT NULL "availableInMCP" |
 | agents_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -50,6 +53,7 @@
 | ---- | ---------- |
 | IDX_a30d560207c4071d98aa03c179 | CREATE INDEX "IDX_a30d560207c4071d98aa03c179" ON public.agents USING btree ("projectId") |
 | IDX_agents_projectId | CREATE INDEX "IDX_agents_projectId" ON public.agents USING btree ("projectId") |
+| IDX_agents_project_folder | CREATE INDEX "IDX_agents_project_folder" ON public.agents USING btree ("projectId", "parentFolderId") |
 | PK_9c653f28ae19c5884d5baf6a1d9 | CREATE UNIQUE INDEX "PK_9c653f28ae19c5884d5baf6a1d9" ON public.agents USING btree (id) |
 
 ## Relations
@@ -81,6 +85,7 @@ erDiagram
 "public.agents_observation_locks" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_observations" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_tags" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agents" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE RESTRICT"
 "public.agents" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.agents" {
@@ -91,6 +96,7 @@ erDiagram
   json integrations
   boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   integer publicationRevision
   integer revision
@@ -368,6 +374,15 @@ erDiagram
 "public.agents_tags" {
   varchar_36_ agentId FK
   varchar_36_ tagId FK
+}
+"public.folder" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_128_ name
+  varchar_36_ parentFolderId FK
+  varchar_36_ projectId FK
+  varchar_16_ resourceType
+  timestamp_3__with_time_zone updatedAt
 }
 "public.project" {
   timestamp_3__with_time_zone createdAt
