@@ -313,6 +313,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 					columnOrTxNowPlusMsLiteral(this.isPostgres, this.runAtColumn, misfireGraceSeconds * 1000),
 			})
 			.where({ jobId: In(jobIds), status: ScheduledTaskStatus.Pending, missedAfter: Not(IsNull()) })
+			// Clock time, so a deadline that passed during a row-lock wait is not extended.
 			.andWhere(`${this.missedAfterColumn} > ${dbClockNowLiteral(this.isPostgres)}`)
 			.execute();
 	}
@@ -698,7 +699,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * A caller already inside a transaction must pass its `manager`: reading off the
 	 * data source would take a second pooled connection while the first one is held,
 	 * which deadlocks once the pool is saturated. On Postgres the value is then the
-	 * transaction's start time, consistent with the `CURRENT_TIMESTAMP` its own writes
+	 * transaction's start time, consistent with the transaction time its own writes
 	 * record.
 	 */
 	async readDbTime(manager?: EntityManager): Promise<Date> {
@@ -837,6 +838,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			.update(ScheduledTask)
 			.set(values)
 			.where({ id, status: ScheduledTaskStatus.Running, leaseEpoch: claimedEpoch })
+			// Clock time, so a lease renewed during a row-lock wait is judged at the later time.
 			.andWhere(`${this.leaseExpiresAtColumn} < ${dbClockNowLiteral(this.isPostgres)}`)
 			.andWhere(dispatchedFence)
 			.execute();

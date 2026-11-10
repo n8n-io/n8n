@@ -189,6 +189,7 @@ export class TrustedSourceRepository {
 		leaseSeconds: number,
 		ctx: OperationContext,
 	): Promise<boolean> {
+		// Clock time, so the stale check is judged after any row-lock wait.
 		const staleBefore = dbClockNowPlusMsLiteral(this.isPostgres, -leaseSeconds * 1000);
 		const result = await this.table
 			.managerFor(ctx)
@@ -196,6 +197,7 @@ export class TrustedSourceRepository {
 			.update(TrustedSourceEntity)
 			.set({
 				discoveryClaimToken: token,
+				// Clock time, so a takeover after a lock wait gets its full lease.
 				discoveryClaimedAt: () => dbClockNowLiteral(this.isPostgres),
 			})
 			.where(
