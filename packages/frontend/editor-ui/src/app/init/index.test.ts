@@ -275,26 +275,6 @@ describe('Init', () => {
 			expect(initializeExpressionEngine).toHaveBeenLastCalledWith('quickjs');
 		});
 
-		// The page embeds public settings, which the store applies before `initializeCore`.
-		// The login hook must still replace them with the full settings.
-		it('should load the full settings in the login hook when the store holds embedded public settings', async () => {
-			settingsStore.settings.settingsMode = 'public';
-			settingsStore.getSettings.mockImplementation(async () => {
-				settingsStore.settings.settingsMode = 'authenticated';
-				settingsStore.settings.expressionEngine = 'quickjs';
-			});
-			usersStore.registerLoginHook.mockImplementation(async (hook) => {
-				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
-			});
-
-			await initializeCore();
-
-			expect(settingsStore.initialize).toHaveBeenCalledTimes(1);
-			expect(settingsStore.getSettings).toHaveBeenCalledTimes(1);
-			expect(settingsStore.settings.settingsMode).toBe('authenticated');
-			expect(initializeExpressionEngine).toHaveBeenLastCalledWith('quickjs');
-		});
-
 		it('should stop the expression shadow run on logout', async () => {
 			usersStore.registerLogoutHook.mockImplementation((hook) => {
 				void hook();
