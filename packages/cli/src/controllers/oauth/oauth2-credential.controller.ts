@@ -88,11 +88,10 @@ export class OAuth2CredentialController {
 					});
 					// The MCP spec forbids showing error details when `iss` fails validation (RFC 9207).
 					const flowState = await this.oauthService.peekCallbackFlowState(encodedState);
-					const reason = !isAuthorizationResponseIssuerValid(flowState, iss)
-						? undefined
-						: typeof errorDescription === 'string' && errorDescription
-							? `${error}: ${errorDescription}`
-							: error;
+					const isIssuerValid = isAuthorizationResponseIssuerValid(flowState, iss);
+					const details =
+						typeof errorDescription === 'string' && errorDescription ? `: ${errorDescription}` : '';
+					const reason = isIssuerValid ? `${error}${details}` : undefined;
 					return this.oauthService.renderCallbackError(
 						res,
 						'The OAuth2 server returned an error.',
@@ -112,10 +111,10 @@ export class OAuth2CredentialController {
 			credentialType = credential.type;
 
 			// RFC 9207: do not send the code to a token endpoint when `iss` fails validation.
-			if (
-				flowState.issuer !== undefined &&
-				!isAuthorizationResponseIssuerValid(flowState, req.query.iss)
-			) {
+			// Credentials without automatic registration record no issuer, so n8n cannot check `iss`.
+			const isIssuerRecorded = flowState.issuer !== undefined;
+			const isIssuerValid = isAuthorizationResponseIssuerValid(flowState, req.query.iss);
+			if (isIssuerRecorded && !isIssuerValid) {
 				this.logger.warn('OAuth2 authorization response has an unexpected issuer', {
 					credentialId: credential.id,
 					expectedIssuer: flowState.issuer,

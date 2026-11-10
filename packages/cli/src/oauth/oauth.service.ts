@@ -101,7 +101,7 @@ export type OauthFlowState = {
 	 */
 	issuer?: string;
 	/** The server sends `iss` in every authorization response, so a response without it is invalid. */
-	issParameterRequired?: boolean;
+	isIssuerParameterRequired?: boolean;
 	/** OAuth1 request-token secret, needed to sign the access-token request in the callback. */
 	oauthTokenSecret?: string;
 	/**
@@ -122,7 +122,7 @@ export function isAuthorizationResponseIssuerValid(
 	iss: unknown,
 ): boolean {
 	if (!flowState) return false;
-	if (iss === undefined) return !flowState.issParameterRequired;
+	if (iss === undefined) return !flowState.isIssuerParameterRequired;
 	return iss === flowState.issuer;
 }
 
@@ -1215,16 +1215,17 @@ export class OauthService {
 			csrfData.resource = resolvedResource;
 		}
 
-		const metadata =
-			oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl
-				? await this.registerClient(
-						oauthCredentials,
-						authorizationServerUrl!,
-						toUpdate,
-						toDelete,
-						discoveredScopes,
-					)
-				: undefined;
+		// Automatic registration returns the server metadata. The callback checks `iss` against its issuer.
+		let authorizationServerMetadata: OAuthAuthorizationServerMetadata | undefined;
+		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
+			authorizationServerMetadata = await this.registerClient(
+				oauthCredentials,
+				authorizationServerUrl!,
+				toUpdate,
+				toDelete,
+				discoveredScopes,
+			);
+		}
 
 		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
 		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
@@ -1247,8 +1248,9 @@ export class OauthService {
 			csrfSecret,
 			stateData: csrfData,
 			managedVersion,
-			issuer: metadata?.issuer,
-			issParameterRequired: metadata?.authorization_response_iss_parameter_supported,
+			issuer: authorizationServerMetadata?.issuer,
+			isIssuerParameterRequired:
+				authorizationServerMetadata?.authorization_response_iss_parameter_supported,
 		};
 		if (this.shouldUsePkce(oauthCredentials)) {
 			const { code_verifier, code_challenge } = await pkceChallenge();

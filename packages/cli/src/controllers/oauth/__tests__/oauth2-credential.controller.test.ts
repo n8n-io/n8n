@@ -220,7 +220,7 @@ describe('OAuth2CredentialController', () => {
 			['hides', { issuer: 'https://auth.example.com' }, 'https://attacker.example', undefined],
 			[
 				'hides',
-				{ issuer: 'https://auth.example.com', issParameterRequired: true },
+				{ issuer: 'https://auth.example.com', isIssuerParameterRequired: true },
 				undefined,
 				undefined,
 			],
@@ -319,13 +319,17 @@ describe('OAuth2CredentialController', () => {
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);
 
-			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: {
-					code: 'auth_code',
-					state: validState,
+			const req = Object.assign(
+				mock<OAuthRequest.OAuth2Credential.Callback>({
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				}),
+				{
+					query: {
+						code: 'auth_code',
+						state: validState,
+					},
 				},
-				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
-			});
+			);
 
 			await controller.handleCallback(req, res);
 
@@ -341,7 +345,7 @@ describe('OAuth2CredentialController', () => {
 
 		describe('authorization response issuer', () => {
 			const runCallback = async (
-				flowState: { issuer?: string; issParameterRequired?: boolean },
+				flowState: { issuer?: string; isIssuerParameterRequired?: boolean },
 				iss?: string,
 			) => {
 				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
@@ -373,7 +377,7 @@ describe('OAuth2CredentialController', () => {
 
 			it.each([
 				['iss differs from the recorded issuer', {}, 'https://attacker.example'],
-				['iss is absent but required', { issParameterRequired: true }, undefined],
+				['iss is absent but required', { isIssuerParameterRequired: true }, undefined],
 			])('should not exchange the code when %s', async (_, flowState, iss) => {
 				const getToken = await runCallback(
 					{ issuer: 'https://auth.example.com', ...flowState },
@@ -687,13 +691,17 @@ describe('OAuth2CredentialController', () => {
 			};
 
 			const callbackRequest = (state: object = {}) =>
-				mock<OAuthRequest.OAuth2Credential.Callback>({
-					query: {
-						code: 'auth_code',
-						state: Buffer.from(JSON.stringify({ ...state, token: 'token' })).toString('base64'),
+				Object.assign(
+					mock<OAuthRequest.OAuth2Credential.Callback>({
+						originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+					}),
+					{
+						query: {
+							code: 'auth_code',
+							state: Buffer.from(JSON.stringify({ ...state, token: 'token' })).toString('base64'),
+						},
 					},
-					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
-				});
+				);
 
 			const staticState = {
 				token: 'token',
@@ -914,13 +922,17 @@ describe('OAuth2CredentialController', () => {
 			externalHooks.run.mockResolvedValue(undefined);
 			oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
 
-			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: {
-					code: 'auth_code',
-					state: validState,
+			const req = Object.assign(
+				mock<OAuthRequest.OAuth2Credential.Callback>({
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				}),
+				{
+					query: {
+						code: 'auth_code',
+						state: validState,
+					},
 				},
-				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
-			});
+			);
 
 			await controller.handleCallback(req, res);
 
@@ -1145,13 +1157,17 @@ describe('OAuth2CredentialController', () => {
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);
 
-			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: {
-					code: 'auth_code',
-					state: undefinedOriginState,
+			const req = Object.assign(
+				mock<OAuthRequest.OAuth2Credential.Callback>({
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				}),
+				{
+					query: {
+						code: 'auth_code',
+						state: undefinedOriginState,
+					},
 				},
-				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
-			});
+			);
 
 			await controller.handleCallback(req, res);
 

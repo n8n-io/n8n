@@ -1268,7 +1268,7 @@ describe('OauthService', () => {
 			['iss differs by a trailing slash', { issuer }, `${issuer}/`, false],
 			['iss differs', { issuer }, 'https://attacker.example', false],
 			['iss is absent and not required', { issuer }, undefined, true],
-			['iss is absent but required', { issuer, issParameterRequired: true }, undefined, false],
+			['iss is absent but required', { issuer, isIssuerParameterRequired: true }, undefined, false],
 			['iss is present but no issuer is recorded', {}, issuer, false],
 			['iss is absent and there is no flow state', undefined, undefined, false],
 		])('returns the correct result when %s', (_, flowState, iss, expected) => {
@@ -2692,7 +2692,7 @@ describe('OauthService', () => {
 					csrfSecret: expect.any(String),
 					codeVerifier: 'code_verifier',
 					issuer: 'https://example.domain',
-					issParameterRequired: true,
+					isIssuerParameterRequired: true,
 				}),
 				expect.any(Number),
 			);
