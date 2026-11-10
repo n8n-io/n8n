@@ -383,7 +383,7 @@ describe('planStepRun', () => {
 				connections,
 				targetName: 'Target',
 				priorRunData,
-				pinnedNodeNames: ['Trigger'],
+				pinData: { Trigger: [{ json: {} }] },
 			});
 
 			expect(plan.inputMode).toBe('reused-execution');
@@ -445,7 +445,7 @@ describe('planStepRun', () => {
 				connections,
 				targetName: 'Target',
 				priorRunData,
-				pinnedNodeNames: ['Fetch'],
+				pinData: { Fetch: [{ json: {} }] },
 			});
 
 			expect(plan.unhonoredInput?.upstreamNodeNames).toEqual(['Fetch']);
@@ -466,13 +466,32 @@ describe('planStepRun', () => {
 				connections: branchConnections,
 				targetName: 'Target',
 				priorRunData,
-				pinnedNodeNames: ['IF'],
+				pinData: { IF: [{ json: {} }] },
 			});
 
 			expect(plan.inputMode).toBe('reused-execution');
 			expect(
 				engineStartNodes(branching, branchConnections, priorRunData, { IF: [{ json: {} }] }),
 			).toEqual(['Target']);
+		});
+
+		it('does not follow a node pinned with no items, because the engine sends nothing on', () => {
+			const chain = [node('Trigger'), node('Empty'), node('Next'), node('Target')];
+			const chainConnections = connect(['Trigger', 'Empty'], ['Empty', 'Next'], ['Next', 'Target']);
+			const priorRunData: IRunData = { Trigger: [taskData([{ json: {} }])] };
+			const pinData: IPinData = { Empty: [] };
+
+			const plan = planStepRun({
+				nodes: chain,
+				connections: chainConnections,
+				targetName: 'Target',
+				priorRunData,
+				pinData,
+			});
+
+			expect(plan.inputMode).toBe('reused-execution');
+			expect(plan.unhonoredInput).toBeUndefined();
+			expect(engineStartNodes(chain, chainConnections, priorRunData, pinData)).toEqual([]);
 		});
 
 		describe('a Loop Over Items node above the target', () => {
