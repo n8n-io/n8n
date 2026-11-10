@@ -65,18 +65,15 @@ const agentCollaborationStore = useAgentCollaborationStore();
 // unavailable rather than getting a 409/423 on click.
 const actions = computed<Array<UserAction<IUser>>>(() => {
 	const result: Array<UserAction<IUser>> = [];
+
 	if (canUpdate.value) {
-		result.push({
-			label: i18n.baseText('agents.versionHistory.metadata.editTitle'),
-			value: 'edit',
-			disabled: Boolean(props.editingLocked),
-		});
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.revert'),
 			value: 'revert',
 			disabled: Boolean(props.editingLocked),
 		});
 	}
+
 	if (canPublish.value) {
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.publish'),
@@ -84,6 +81,15 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 			disabled: Boolean(props.editingLocked),
 		});
 	}
+
+	if (canUpdate.value) {
+		result.push({
+			label: i18n.baseText('agents.versionHistory.metadata.editTitle'),
+			value: 'edit',
+			disabled: Boolean(props.editingLocked),
+		});
+	}
+
 	return result;
 });
 
@@ -93,18 +99,15 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 // the header dropdown.
 const activeActions = computed<Array<UserAction<IUser>>>(() => {
 	const result: Array<UserAction<IUser>> = [];
+
 	if (canUpdate.value) {
-		result.push({
-			label: i18n.baseText('agents.versionHistory.metadata.editTitle'),
-			value: 'edit',
-			disabled: Boolean(props.editingLocked),
-		});
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.revert'),
 			value: 'revert',
 			disabled: Boolean(props.editingLocked) || !props.hasUnpublishedChanges,
 		});
 	}
+
 	if (canUnpublish.value) {
 		result.push({
 			label: i18n.baseText('agents.versionHistory.item.actions.unpublish'),
@@ -112,6 +115,15 @@ const activeActions = computed<Array<UserAction<IUser>>>(() => {
 			disabled: Boolean(props.editingLocked),
 		});
 	}
+
+	if (canUpdate.value) {
+		result.push({
+			label: i18n.baseText('agents.versionHistory.metadata.editTitle'),
+			value: 'edit',
+			disabled: Boolean(props.editingLocked),
+		});
+	}
+
 	return result;
 });
 

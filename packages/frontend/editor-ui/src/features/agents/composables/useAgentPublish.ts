@@ -84,6 +84,7 @@ export function useAgentPublish() {
 			let updated: AgentResource | null = null;
 			const published = await openVersionMetadata({
 				mode: 'publish',
+				versionId: selectedId,
 				isCurrent,
 				name: version.name,
 				description: version.description,

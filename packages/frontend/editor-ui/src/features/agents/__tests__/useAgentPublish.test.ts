@@ -190,6 +190,9 @@ describe('useAgentPublish', () => {
 		await useAgentPublish().publish('p1', 'a1', 'older-version');
 		expect(getAgentMock).not.toHaveBeenCalled();
 		expect(getAgentVersionMock).toHaveBeenCalledWith({}, 'p1', 'a1', 'older-version');
+		expect(openVersionMetadataMock).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'publish', versionId: 'older-version' }),
+		);
 		expect(publishAgentMock).toHaveBeenCalledWith(
 			{},
 			'p1',
