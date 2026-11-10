@@ -177,7 +177,7 @@ describe('useSkillsStore', () => {
 
 			await store.fetchSkill('skill-1');
 			expect(store.skillNames.get('skill-1')).toBe('brand-voice');
-			await store.saveSkill('skill-1', {});
+			await store.saveSkill('skill-1', { baseSkillHash: 'hash-1' });
 			expect(store.skillNames.get('skill-1')).toBe('brand-tone');
 		});
 
@@ -188,7 +188,7 @@ describe('useSkillsStore', () => {
 			const store = useSkillsStore();
 
 			const reading = store.fetchSkill('skill-1');
-			await store.saveSkill('skill-1', {});
+			await store.saveSkill('skill-1', { baseSkillHash: 'hash-1' });
 			read.settle(detail('brand-voice'));
 			await reading;
 
