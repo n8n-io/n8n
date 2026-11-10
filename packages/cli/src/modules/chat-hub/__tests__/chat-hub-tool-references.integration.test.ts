@@ -7,6 +7,7 @@ import type { INode } from 'n8n-workflow';
 
 import { saveCredential } from '@test-integration/db/credentials';
 import { createMember } from '@test-integration/db/users';
+import { initNodeTypes } from '@test-integration/utils';
 
 import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service';
 import { ChatHubAgent } from '../chat-hub-agent.entity';
@@ -27,6 +28,7 @@ mockInstance(ChatHubCredentialsService);
 beforeAll(async () => {
 	await testModules.loadModules(['chat-hub']);
 	await testDb.init();
+	await initNodeTypes();
 });
 
 beforeEach(async () => {
