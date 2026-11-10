@@ -396,9 +396,10 @@ describe('utils', () => {
 			const controller = new AbortController();
 			controller.abort();
 
-			await expect(
-				getAllResources(client, { signal: controller.signal }, node, 0),
-			).rejects.toBeInstanceOf(NodeOperationError);
+			const promise = getAllResources(client, { signal: controller.signal }, node, 0);
+
+			await expect(promise).rejects.toBeInstanceOf(NodeOperationError);
+			await expect(promise).rejects.toThrow('Execution was cancelled');
 			expect(client.listResources).not.toHaveBeenCalled();
 		});
 	});
