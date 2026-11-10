@@ -216,9 +216,6 @@ export {
 	withPromptSizeBreakdown,
 } from './runtime/loop/prompt-size-usage';
 export type {
-	ContextNote,
-	ContextNoteProvider,
-	ContextNoteRequest,
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
 } from './runtime/loop/agent-runtime';
@@ -316,7 +313,6 @@ export {
 	filterLlmMessages,
 	getCreatedAt,
 	isLlmMessage,
-	isRuntimeContextNote,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
 export type {

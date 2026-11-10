@@ -13,7 +13,6 @@ import type { VectorStore } from './vector-store';
 import {
 	AgentRuntime,
 	type AgentRuntimeConfig,
-	type ContextNoteProvider,
 	type VolatileInstructionsProvider,
 } from '../runtime/loop/agent-runtime';
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
@@ -252,8 +251,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private volatileInstructionsProviderValue?: VolatileInstructionsProvider;
 
-	private contextNoteProviders: ContextNoteProvider[] = [];
-
 	private defaultExecutionOptions?: ExecutionOptions;
 
 	private buildPromise: Promise<AgentRuntimeConfig> | undefined;
@@ -328,12 +325,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	/** Set the provider that supplies host instructions before each model call. */
 	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this {
 		this.volatileInstructionsProviderValue = provider;
-		return this;
-	}
-
-	/** Add a provider of notes that the runtime appends to the conversation before each model call. */
-	contextNotes(provider: ContextNoteProvider): this {
-		this.contextNoteProviders.push(provider);
 		return this;
 	}
 
@@ -1265,9 +1256,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...(mcpConnectionFailures.length > 0 ? { mcpConnectionFailures } : {}),
 			...(this.volatileInstructionsProviderValue
 				? { volatileInstructionsProvider: this.volatileInstructionsProviderValue }
-				: {}),
-			...(this.contextNoteProviders.length > 0
-				? { contextNoteProviders: [...this.contextNoteProviders] }
 				: {}),
 		};
 	}
