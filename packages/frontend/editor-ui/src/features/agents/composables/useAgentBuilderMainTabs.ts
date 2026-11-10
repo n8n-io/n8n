@@ -89,10 +89,9 @@ export function useAgentBuilderMainTabs({
 			label: i18n.baseText('agents.builder.header.tab.executions'),
 			value: 'sessions',
 			icon: hasFailedSession.value ? 'circle-alert' : undefined,
-			tooltip:
-				hasFailedSession.value
-					? i18n.baseText('agents.builder.executions.hasFailedSession')
-					: undefined,
+			tooltip: hasFailedSession.value
+				? i18n.baseText('agents.builder.executions.hasFailedSession')
+				: undefined,
 		},
 		{
 			label: i18n.baseText('agents.builder.header.tab.settings' as BaseTextKey),
