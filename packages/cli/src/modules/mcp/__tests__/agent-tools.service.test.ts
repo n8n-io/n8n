@@ -320,9 +320,9 @@ describe('McpAgentToolsService', () => {
 		it('registers all agent tools and the reference resource', () => {
 			expect([...tools.keys()].sort()).toEqual(
 				[
+					'archive_agent',
 					'call_agent',
 					'create_agent',
-					'delete_agent',
 					'discover_agent_assets',
 					'get_agent',
 					'get_agent_builder_reference',
@@ -442,7 +442,7 @@ describe('McpAgentToolsService', () => {
 			['list_agent_versions', 'agent:read', identity],
 			['list_agent_sessions', 'agent:read', identity],
 			['get_agent_session', 'agent:read', { ...identity, sessionId: 'session-1' }],
-			['delete_agent', 'agent:delete', identity],
+			['archive_agent', 'agent:delete', identity],
 			['discover_agent_assets', 'agent:read', { projectId: 'project-1', kind: 'models' }],
 			[
 				'verify_agent_mcp_server',
@@ -494,7 +494,7 @@ describe('McpAgentToolsService', () => {
 			['list_agent_versions', identity],
 			['list_agent_sessions', identity],
 			['get_agent_session', { ...identity, sessionId: 'session-1' }],
-			['delete_agent', identity],
+			['archive_agent', identity],
 			[
 				'update_agent_integration',
 				{ ...identity, action: 'disconnect', type: 'slack', credentialId: 'cred-1' },
@@ -3051,23 +3051,27 @@ describe('McpAgentToolsService', () => {
 		});
 	});
 
-	describe('delete_agent', () => {
-		it('deletes an existing agent', async () => {
-			agentsService.delete.mockResolvedValue(true);
+	describe('archive_agent', () => {
+		it('archives an existing agent', async () => {
+			const result = await callTool('archive_agent', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			});
 
-			const result = await callTool('delete_agent', { projectId: 'project-1', agentId: 'agent-1' });
-
-			expect(agentsService.delete).toHaveBeenCalledWith('agent-1', 'project-1');
-			expect(result.structuredContent).toEqual({ ok: true, deleted: true, agentId: 'agent-1' });
+			expect(agentPublishService.archiveAgent).toHaveBeenCalledWith('agent-1', 'project-1', user);
+			expect(result.structuredContent).toEqual({ ok: true, archived: true, agentId: 'agent-1' });
 		});
 
-		it('returns an error result when the agent does not exist', async () => {
-			agentsService.delete.mockResolvedValue(false);
+		it('returns an error result for an archived agent', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ isArchived: true }));
 
-			const result = await callTool('delete_agent', { projectId: 'project-1', agentId: 'nope' });
+			const result = await callTool('archive_agent', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			});
 
 			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({ error: 'Agent "nope" not found' });
+			expect(agentPublishService.archiveAgent).not.toHaveBeenCalled();
 		});
 	});
 });
