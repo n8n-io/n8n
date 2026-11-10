@@ -10,6 +10,7 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
+import { accountSummary } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	BadRequestError,
@@ -419,10 +420,7 @@ const toReviewState = ({
 	return detailed_merge_status === 'requested_changes' ? 'changes_requested' : 'open';
 };
 
-const toReviewUser = (user: User | null) =>
-	user
-		? { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email }
-		: null;
+const toReviewUser = (user: User | null) => (user ? accountSummary(user) : null);
 
 const newestFirst = (runs: PromotionRun[]) =>
 	runs.toSorted(

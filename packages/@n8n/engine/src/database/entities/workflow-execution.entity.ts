@@ -19,7 +19,8 @@ import type { LifecycleEventSubscription } from '../../lifecycle-events';
 import type { ResponseExpectation } from '../../response-channel';
 
 @Entity('workflow_execution')
-@Index('idx_workflow_execution_workflow_id', ['workflowId'])
+@Index('idx_workflow_execution_workflow_id_created_at_id', ['workflowId', 'createdAt', 'id'])
+@Index('idx_workflow_execution_created_at_id', ['createdAt', 'id'])
 @Index('idx_workflow_execution_status', ['status'])
 @Index('idx_workflow_execution_parent_execution_id', ['parentExecutionId'], {
 	where: 'parent_execution_id IS NOT NULL',

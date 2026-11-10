@@ -2,6 +2,7 @@ import { EventService } from '@n8n/backend-services';
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb, type User, type UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import { ERROR_MESSAGE_REDACTED_MESSAGE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -773,6 +774,107 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should redact the error message on `workflow-post-execute` when the workflow policy covers the run', () => {
+			const runData = mock<IRun>({
+				status: 'error',
+				mode: 'manual',
+				finished: false,
+				data: {
+					resultData: {
+						lastNodeExecuted: 'some-node',
+						error: {
+							name: 'NodeApiError',
+							httpCode: '500',
+							node: mock<INode>({ type: 'some-type' }),
+							message: 'secret value',
+						},
+					},
+				},
+			} as never) as unknown as IRun;
+
+			eventService.emit('workflow-post-execute', {
+				executionId: 'some-id',
+				workflow: mock<IWorkflowBase>({
+					id: 'some-id',
+					name: 'some-name',
+					settings: { redactionPolicy: 'all' },
+				}),
+				runData,
+			});
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.failed',
+				payload: expect.objectContaining({
+					lastNodeExecuted: 'some-node',
+					errorNodeType: 'some-type',
+					errorMessage: ERROR_MESSAGE_REDACTED_MESSAGE,
+					errorType: 'NodeApiError',
+					errorHttpCode: '500',
+				}),
+			});
+			expect(JSON.stringify(eventBus.sendWorkflowEvent.mock.calls)).not.toContain('secret value');
+		});
+
+		it('should redact the error message on `workflow-post-execute` when the run snapshot covers the mode', () => {
+			const runData = mock<IRun>({
+				status: 'error',
+				mode: 'trigger',
+				finished: false,
+				data: {
+					resultData: {
+						error: { name: 'NodeOperationError', message: 'secret value' },
+					},
+					executionData: {
+						runtimeData: { redaction: { version: 2, production: true, manual: false } },
+					},
+				},
+			} as never) as unknown as IRun;
+
+			eventService.emit('workflow-post-execute', {
+				executionId: 'some-id',
+				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name', settings: {} }),
+				runData,
+			});
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.failed',
+				payload: expect.objectContaining({
+					errorMessage: ERROR_MESSAGE_REDACTED_MESSAGE,
+					errorType: 'NodeOperationError',
+				}),
+			});
+			const [{ payload }] = eventBus.sendWorkflowEvent.mock.calls[0];
+			expect(payload).not.toHaveProperty('errorHttpCode');
+			expect(JSON.stringify(eventBus.sendWorkflowEvent.mock.calls)).not.toContain('secret value');
+		});
+
+		it('should keep the error message on `workflow-post-execute` when the policy does not cover the mode', () => {
+			const runData = mock<IRun>({
+				status: 'error',
+				mode: 'manual',
+				finished: false,
+				data: {
+					resultData: { error: { name: 'NodeOperationError', message: 'visible value' } },
+					executionData: {
+						runtimeData: { redaction: { version: 2, production: true, manual: false } },
+					},
+				},
+			} as never) as unknown as IRun;
+
+			eventService.emit('workflow-post-execute', {
+				executionId: 'some-id',
+				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name', settings: {} }),
+				runData,
+			});
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.failed',
+				payload: expect.objectContaining({ errorMessage: 'visible value' }),
+			});
+			const [{ payload }] = eventBus.sendWorkflowEvent.mock.calls[0];
+			expect(payload).not.toHaveProperty('errorType');
+		});
+
 		it('should log job failure on `workflow-post-execute` for failed job', () => {
 			const runData = mock<IRun>({
 				finished: false,
@@ -995,6 +1097,31 @@ describe('LogStreamingEventRelay', () => {
 					_lastName: 'In',
 					globalRole: 'global:owner',
 					authenticationMethod: 'email',
+				},
+			});
+		});
+
+		it('should log on `user-logged-out` event', () => {
+			const event: RelayEventMap['user-logged-out'] = {
+				user: {
+					id: 'user405',
+					email: 'loggedout@example.com',
+					firstName: 'Logged',
+					lastName: 'Out',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+			};
+
+			eventService.emit('user-logged-out', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.logout',
+				payload: {
+					userId: 'user405',
+					_email: 'loggedout@example.com',
+					_firstName: 'Logged',
+					_lastName: 'Out',
+					globalRole: 'global:owner',
 				},
 			});
 		});
@@ -3704,7 +3831,7 @@ describe('LogStreamingEventRelay', () => {
 						surfaces: ['public-api'],
 						identitySubject: 'binding',
 						linkByEmail: 'verified-only',
-						provisionHuman: 'off',
+						provisionPerson: 'off',
 						roleMappingMode: 'off',
 					},
 				});

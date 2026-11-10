@@ -1,7 +1,7 @@
 <!-- Experiment cleanup (119_surface_assistant_on_workflow_error) -->
 <!-- Injects the "Fix with n8n Assistant" button inside error toasts on workflow error + defines CTA logic (on click, animations) -->
 <script setup lang="ts">
-import { N8nAssistantIcon, N8nButton } from '@n8n/design-system';
+import { N8nIcon, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
@@ -246,7 +246,7 @@ onBeforeUnmount(stopTracking);
 					@click="onFixWithAssistant"
 				>
 					<template #icon>
-						<N8nAssistantIcon size="medium" />
+						<N8nIcon icon="n8n-assistant" :size="12" />
 					</template>
 				</N8nButton>
 			</div>

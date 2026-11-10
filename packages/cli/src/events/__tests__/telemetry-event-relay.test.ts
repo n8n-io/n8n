@@ -23,6 +23,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
 	createErrorExecutionData,
+	ERROR_MESSAGE_REDACTED_MESSAGE,
 	type INode,
 	type INodesGraphResult,
 	type IRun,
@@ -294,7 +295,7 @@ describe('TelemetryEventRelay', () => {
 				surfaces: ['public-api'],
 				identitySubject: 'binding',
 				linkByEmail: 'verified-only',
-				provisionHuman: 'off',
+				provisionPerson: 'off',
 				roleMappingMode: 'off',
 			};
 
@@ -4026,6 +4027,24 @@ describe('TelemetryEventRelay', () => {
 			},
 		);
 
+		it('should track on `user-logged-out` event', () => {
+			const event: RelayEventMap['user-logged-out'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+			};
+
+			eventService.emit('user-logged-out', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AUTH.USER_LOGGED_OUT, {
+				user_id: 'user123',
+			});
+		});
+
 		it('should track on `user-submitted-personalization-survey` event', () => {
 			const event: RelayEventMap['user-submitted-personalization-survey'] = {
 				userId: 'user123',
@@ -4794,6 +4813,31 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(expectedProperties);
 		});
 
+		it('should add the personal credentials count to workflow execution telemetry', async () => {
+			const runData = {
+				finished: true,
+				status: 'success',
+				mode: 'trigger',
+				data: { resultData: { runData: {} } },
+			} as unknown as IRun;
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+				telemetryMetadata: { personalCredentialsCount: 2 },
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ execution_source: 'user', personal_credentials_count: 2 }),
+			);
+		});
+
 		it('should call telemetry.track when manual node execution finished', async () => {
 			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
 			credentialsRepository.findOneBy.mockResolvedValue(
@@ -4888,6 +4932,67 @@ describe('TelemetryEventRelay', () => {
 					node_graph_string: JSON.stringify(nodeGraph.nodeGraph),
 					error_node_id: '1',
 				}),
+			);
+		});
+
+		it('should redact the error message when the workflow policy covers the run', async () => {
+			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:editor');
+			credentialsRepository.findOneBy.mockResolvedValue(
+				mock<CredentialsEntity>({ type: 'openAiApi', isManaged: false }),
+			);
+
+			const errorNode: INode = {
+				id: '1',
+				typeVersion: 1,
+				name: 'Jira',
+				type: 'n8n-nodes-base.jira',
+				parameters: {},
+				position: [100, 200],
+			};
+			const error = new NodeApiError(
+				errorNode,
+				{ message: 'secret value', httpCode: '401', stack: '' },
+				{ message: 'secret value', level: 'warning', functionality: 'regular' },
+			);
+			const runData = {
+				status: 'error',
+				mode: 'manual',
+				data: createErrorExecutionData(errorNode, error),
+			} as IRun;
+
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(
+				() =>
+					({
+						nodeGraph: { node_types: [], node_connections: [], webhookNodeNames: [] },
+						nameIndices: { Jira: '1' },
+					}) as unknown as INodesGraphResult,
+			);
+			vi.spyOn(TelemetryHelpers, 'getNodeTypeForName').mockImplementation(
+				() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+			);
+
+			eventService.emit('workflow-post-execute', {
+				workflow: { ...mockWorkflowBase, settings: { redactionPolicy: 'all' } },
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+			});
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Manual node exec finished',
+				expect.objectContaining({ error_message: ERROR_MESSAGE_REDACTED_MESSAGE }),
+			);
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					error_message: ERROR_MESSAGE_REDACTED_MESSAGE,
+					error_node_type: 'n8n-nodes-base.jira',
+				}),
+			);
+			expect(JSON.stringify(vi.mocked(telemetry.track).mock.calls)).not.toContain('secret value');
+			expect(JSON.stringify(vi.mocked(telemetry.trackWorkflowExecution).mock.calls)).not.toContain(
+				'secret value',
 			);
 		});
 
@@ -6138,7 +6243,7 @@ describe('TelemetryEventRelay', () => {
 			surfaces: ['public-api', 'instance-mcp'],
 			identitySubject: 'binding',
 			linkByEmail: 'verified-only',
-			provisionHuman: 'jit',
+			provisionPerson: 'jit',
 			roleMappingMode: 'on-provision',
 		};
 		const trackedFacets = {
@@ -6148,6 +6253,7 @@ describe('TelemetryEventRelay', () => {
 			identity_subject: 'binding',
 			link_by_email: 'verified-only',
 			provision_human: 'jit',
+			provision_person: 'jit',
 			role_mapping_mode: 'on-provision',
 		};
 

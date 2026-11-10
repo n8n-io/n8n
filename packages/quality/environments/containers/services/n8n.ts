@@ -185,7 +185,7 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 		}
 	}
 
-	if (mains === 1 && baseUrl && !serviceEnvironment.WEBHOOK_URL) {
+	if (mains === 1 && baseUrl && !serviceEnvironment.WEBHOOK_URL && !userEnvironment.WEBHOOK_URL) {
 		env.WEBHOOK_URL = baseUrl;
 		env.N8N_PORT = '5678';
 	}

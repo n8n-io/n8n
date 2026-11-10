@@ -426,7 +426,7 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: false, variant: 'unassigned' },
-			aiPreferencesEnabled: true,
+			instanceContextEnabled: true,
 		});
 		const res = createRes();
 
@@ -449,7 +449,7 @@ describe('McpController', () => {
 
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
-			expect.objectContaining({ aiPreferencesEnabled: true }),
+			expect.objectContaining({ instanceContextEnabled: true }),
 			{ name: 'Claude', version: '1.0.0' },
 			{ caller: undefined, grantedScopes: undefined },
 		);

@@ -643,7 +643,6 @@ describe('AssistantTurnInputBuilder — opening-turn title', () => {
 			memory,
 			taskStorage: { get: vi.fn(async () => undefined) },
 			conversationHistory,
-			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
 			skillScope: {},
 		} as unknown as AssistantTurnEnvironment;

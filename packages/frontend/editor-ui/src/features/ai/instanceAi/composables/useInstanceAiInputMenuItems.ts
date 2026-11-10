@@ -4,7 +4,6 @@ import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
 import type { NodeIconSource, ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
 import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
@@ -246,15 +245,13 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			);
 		}
 
-		if (isContextPreferencesEnabled()) {
-			items.push({
-				id: 'preferences',
-				label: i18n.baseText('instanceAi.inputMenu.preferences.label'),
-				icon: { type: 'icon', value: 'brain' },
-				divided: true,
-				data: { action: openPreferenceSettings },
-			});
-		}
+		items.push({
+			id: 'preferences',
+			label: i18n.baseText('instanceAi.inputMenu.preferences.label'),
+			icon: { type: 'icon', value: 'brain' },
+			divided: true,
+			data: { action: openPreferenceSettings },
+		});
 
 		return items;
 	});
