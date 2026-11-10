@@ -207,8 +207,9 @@ describe('Init', () => {
 			settingsStore.getSettings.mockRejectedValue(error);
 			let hookResult: Promise<void> | undefined;
 			usersStore.registerLoginHook.mockImplementation((hook) => {
-				hookResult = hook(mock<CurrentUserResponse>({ id: 'userId' }));
-				hookResult.catch(() => {});
+				const result = Promise.resolve(hook(mock<CurrentUserResponse>({ id: 'userId' })));
+				result.catch(() => {});
+				hookResult = result;
 			});
 
 			await initializeCore();
