@@ -18,7 +18,10 @@ export class CreateAgentTagMappingTable1794239569285 implements ReversibleMigrat
 				tableName: 'tag_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-			});
+			})
+			// The composite key only indexes the `agentId` prefix; tag usage
+			// counts, tag-id filters and tag-delete cascades lead with `tagId`.
+			.withIndexOn(['tagId']);
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {

@@ -32,6 +32,7 @@ CREATE TABLE "agents_tags" ("agentId" varchar(36) NOT NULL, "tagId" varchar(36) 
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_330ed9e51d337fe4b4a4ba63aa | CREATE INDEX "IDX_330ed9e51d337fe4b4a4ba63aa" ON "agents_tags" ("tagId")  |
 | sqlite_autoindex_agents_tags_1 | PRIMARY KEY (agentId, tagId) |
 
 ## Relations

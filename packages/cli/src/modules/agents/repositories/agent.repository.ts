@@ -430,17 +430,20 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * list's tag filter.
 	 */
 	private applyTagsFilter(query: SelectQueryBuilder<Agent>, tagIds: string[]): void {
+		// Duplicates would demand more distinct mappings than a tag pair can
+		// hold, so count the deduped list.
+		const uniqueTagIds = [...new Set(tagIds)];
 		const subQuery = query
 			.subQuery()
 			.select('atm.agentId')
 			.from(AgentTagMapping, 'atm')
-			.where('atm.tagId IN (:...tagIds)', { tagIds })
+			.where('atm.tagId IN (:...tagIds)', { tagIds: uniqueTagIds })
 			.groupBy('atm.agentId')
-			.having('COUNT(DISTINCT atm.tagId) = :tagCount', { tagCount: tagIds.length });
+			.having('COUNT(DISTINCT atm.tagId) = :tagCount', { tagCount: uniqueTagIds.length });
 
 		query.andWhere(`agent.id IN (${subQuery.getQuery()})`).setParameters({
-			tagIds,
-			tagCount: tagIds.length,
+			tagIds: uniqueTagIds,
+			tagCount: uniqueTagIds.length,
 		});
 	}
 

@@ -1,4 +1,5 @@
 import { budgetMonthKey } from '@n8n/agents';
+import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -96,6 +97,11 @@ describe('AgentsConfigController putConfig', () => {
 		const agentConfigService = mock<AgentConfigService>();
 		agentConfigService.updateConfig.mockResolvedValue({ savedAt: '2026-11-09' } as never);
 		const agentsService = mock<AgentsService>();
+		const validatedTags = [
+			{ id: 'tag-2', name: 'Two' },
+			{ id: 'tag-1', name: 'One' },
+		];
+		agentsService.validateAgentTags.mockResolvedValue(validatedTags as never);
 		const controller = new AgentsConfigController(
 			agentConfigService,
 			mock<AgentCustomToolsService>(),
@@ -113,11 +119,39 @@ describe('AgentsConfigController putConfig', () => {
 			tags: ['tag-2', 'tag-1'],
 		} as never);
 
-		expect(agentsService.updateAgentTags).toHaveBeenCalledWith('agent-1', 'project-1', [
+		expect(agentsService.validateAgentTags).toHaveBeenCalledWith('agent-1', 'project-1', [
 			'tag-2',
 			'tag-1',
 		]);
+		expect(agentsService.applyValidatedAgentTags).toHaveBeenCalledWith('agent-1', validatedTags);
 		expect(result).toEqual({ savedAt: '2026-11-09' });
+	});
+
+	it('rejects the tag list before the config is written', async () => {
+		const agentConfigService = mock<AgentConfigService>();
+		const agentsService = mock<AgentsService>();
+		agentsService.validateAgentTags.mockRejectedValue(new NotFoundError('Some tags not found'));
+
+		const controller = new AgentsConfigController(
+			agentConfigService,
+			mock<AgentCustomToolsService>(),
+			mock<AgentValidationService>(),
+			mock<CredentialsService>(),
+			mock<AgentRepository>(),
+			mock<CollaborationService>(),
+			mock<AgentSpendLedger>(),
+			agentsService,
+		);
+
+		await expect(
+			controller.putConfig(req, undefined as never, 'agent-1', {
+				config: { name: 'Support Agent' },
+				baseConfigHash: 'hash-1',
+				tags: ['missing'],
+			} as never),
+		).rejects.toThrow('Some tags not found');
+		expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		expect(agentsService.applyValidatedAgentTags).not.toHaveBeenCalled();
 	});
 
 	it('leaves the tags alone when the payload omits them', async () => {
@@ -140,6 +174,7 @@ describe('AgentsConfigController putConfig', () => {
 			baseConfigHash: 'hash-1',
 		} as never);
 
-		expect(agentsService.updateAgentTags).not.toHaveBeenCalled();
+		expect(agentsService.validateAgentTags).not.toHaveBeenCalled();
+		expect(agentsService.applyValidatedAgentTags).not.toHaveBeenCalled();
 	});
 });

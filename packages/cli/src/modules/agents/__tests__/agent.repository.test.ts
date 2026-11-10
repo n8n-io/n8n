@@ -317,6 +317,22 @@ describe('AgentRepository', () => {
 			});
 		});
 
+		it('dedupes repeated tag ids before counting distinct mappings', async () => {
+			const mockQb = makePaginationQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1'], {
+				skip: 0,
+				take: 10,
+				filter: { tags: ['tag-1', 'tag-1', 'tag-2'] },
+			} as never);
+
+			expect(mockQb.setParameters).toHaveBeenCalledWith({
+				tagIds: ['tag-1', 'tag-2'],
+				tagCount: 2,
+			});
+		});
+
 		it('adds no tag filter clause when no tags are requested', async () => {
 			const mockQb = makePaginationQb();
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
@@ -415,15 +431,18 @@ describe('AgentRepository', () => {
 			return transactionRunner;
 		};
 
-		it('replaces the mappings in one transaction, deduping ids', async () => {
+		it('replaces the mappings in one runner transaction, deduping ids', async () => {
+			const transactionRunner = makeTransactionRunner();
 			const repository = new AgentRepository(
 				mockDataSource as never,
-				makeTransactionRunner(),
+				transactionRunner,
 				globalConfig,
 			);
 
 			await repository.overwriteTagMappings('agent-1', ['tag-1', 'tag-1', 'tag-2']);
 
+			// The delete and the inserts share one transaction.
+			expect(transactionRunner.run).toHaveBeenCalledTimes(1);
 			expect(entityManager.delete).toHaveBeenCalledWith(AgentTagMapping, {
 				agentId: 'agent-1',
 			});

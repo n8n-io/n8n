@@ -103,6 +103,13 @@ export class AgentsConfigController {
 			agentId,
 			'update',
 		);
+		// Validate the tag write before the config is committed, so a rejected
+		// tag list cannot leave the request half-applied. Omitted `tags` leave
+		// the agent's tags alone; an explicit list replaces them after the save.
+		const validatedTags =
+			tags === undefined
+				? undefined
+				: await this.agentsService.validateAgentTags(agentId, projectId, tags);
 		const result = await this.agentConfigService.updateConfig(
 			agentId,
 			projectId,
@@ -114,9 +121,8 @@ export class AgentsConfigController {
 				pushRef: req.headers?.['push-ref'],
 			},
 		);
-		// Omitted `tags` leaves the agent's tags alone; an explicit list replaces them.
-		if (tags !== undefined) {
-			await this.agentsService.updateAgentTags(agentId, projectId, tags);
+		if (validatedTags !== undefined) {
+			await this.agentsService.applyValidatedAgentTags(agentId, validatedTags);
 		}
 		return result;
 	}

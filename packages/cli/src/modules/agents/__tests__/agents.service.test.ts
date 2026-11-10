@@ -425,6 +425,18 @@ describe('AgentsService', () => {
 				);
 				expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 			});
+
+			it('validates without writing when validateAgentTags is used alone', async () => {
+				const { service, agentRepository, tagService } = makeService();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+				const tags = [mock<TagEntity>({ id: 'tag-1', name: 'One' })];
+				tagService.getByIds.mockResolvedValue(tags);
+
+				await expect(service.validateAgentTags(agentId, projectId, ['tag-1'])).resolves.toEqual(
+					tags,
+				);
+				expect(agentRepository.overwriteTagMappings).not.toHaveBeenCalled();
+			});
 		});
 	});
 

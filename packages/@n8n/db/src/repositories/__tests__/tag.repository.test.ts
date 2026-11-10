@@ -3,13 +3,13 @@ import type { SelectQueryBuilder } from '@n8n/typeorm';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { TagEntity } from '../../entities';
+import { AgentTagMapping, FolderTagMapping, TagEntity, WorkflowTagMapping } from '../../entities';
 import { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { TagRepository } from '../tag.repository';
 
 describe('TagRepository', () => {
-	mockEntityManager(TagEntity);
+	const entityManager = mockEntityManager(TagEntity);
 	Container.set(TransactionRunner, mock<TransactionRunner>());
 	const tagRepository = Container.get(TagRepository);
 
@@ -90,6 +90,35 @@ describe('TagRepository', () => {
 
 			expect(queryBuilder.orderBy).toHaveBeenCalledWith('tag.name', 'ASC');
 			expect(queryBuilder.limit).toHaveBeenCalledWith(10);
+		});
+	});
+
+	describe('reconcileTagId', () => {
+		it('re-keys workflow, folder and agent mappings to the new tag id', async () => {
+			entityManager.findOneByOrFail.mockResolvedValue({
+				id: 'tag-old',
+				name: 'prod',
+				createdAt: new Date('2026-01-01'),
+			});
+
+			await tagRepository.reconcileTagId('tag-old', 'tag-new', {});
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				WorkflowTagMapping,
+				{ tagId: 'tag-old' },
+				{ tagId: 'tag-new' },
+			);
+			expect(entityManager.update).toHaveBeenCalledWith(
+				FolderTagMapping,
+				{ tagId: 'tag-old' },
+				{ tagId: 'tag-new' },
+			);
+			expect(entityManager.update).toHaveBeenCalledWith(
+				AgentTagMapping,
+				{ tagId: 'tag-old' },
+				{ tagId: 'tag-new' },
+			);
+			expect(entityManager.delete).toHaveBeenCalledWith(TagEntity, { id: 'tag-old' });
 		});
 	});
 });

@@ -528,26 +528,46 @@ export class AgentsService {
 		projectId: string,
 		tagIds: string[],
 	): Promise<TagEntity[]> {
+		const tags = await this.validateAgentTags(agentId, projectId, tagIds);
+		return await this.applyValidatedAgentTags(agentId, tags);
+	}
+
+	/**
+	 * Checks a tag write would succeed: tags enabled, the agent in the given
+	 * project, every tag id existing. Returns the tags in request order.
+	 * Callers that write tags after another write (the config update) validate
+	 * first, so a rejected tag list cannot leave that earlier write committed.
+	 */
+	async validateAgentTags(
+		agentId: string,
+		projectId: string,
+		tagIds: string[],
+	): Promise<TagEntity[]> {
 		this.assertTagsEnabled();
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
-		return await this.applyAgentTags(agentId, tagIds);
+		return await this.resolveAgentTags(tagIds);
 	}
 
-	/** Overwrites the mappings after checking every requested tag exists. */
-	private async applyAgentTags(agentId: string, tagIds: string[]): Promise<TagEntity[]> {
+	/** Writes previously validated tags; returns them in request order. */
+	async applyValidatedAgentTags(agentId: string, tags: TagEntity[]): Promise<TagEntity[]> {
+		await this.agentRepository.overwriteTagMappings(
+			agentId,
+			tags.map((tag) => tag.id),
+		);
+		return tags;
+	}
+
+	/** Resolves the requested ids to existing tags, deduped and in request order. */
+	private async resolveAgentTags(tagIds: string[]): Promise<TagEntity[]> {
 		const uniqueTagIds = [...new Set(tagIds)];
-		if (uniqueTagIds.length === 0) {
-			await this.agentRepository.overwriteTagMappings(agentId, []);
-			return [];
-		}
+		if (uniqueTagIds.length === 0) return [];
 		const tags = await this.tagService.getByIds(uniqueTagIds);
 		if (tags.length !== uniqueTagIds.length) {
 			throw new NotFoundError('Some tags not found');
 		}
-		await this.agentRepository.overwriteTagMappings(agentId, uniqueTagIds);
 		return this.tagService.sortByRequestOrder(tags, { requestOrder: uniqueTagIds });
 	}
 
@@ -559,13 +579,7 @@ export class AgentsService {
 	private async resolveCreateTags(tagIds: string[] | undefined): Promise<TagEntity[] | undefined> {
 		if (tagIds === undefined) return undefined;
 		this.assertTagsEnabled();
-		const uniqueTagIds = [...new Set(tagIds)];
-		if (uniqueTagIds.length === 0) return [];
-		const tags = await this.tagService.getByIds(uniqueTagIds);
-		if (tags.length !== uniqueTagIds.length) {
-			throw new NotFoundError('Some tags not found');
-		}
-		return this.tagService.sortByRequestOrder(tags, { requestOrder: uniqueTagIds });
+		return await this.resolveAgentTags(tagIds);
 	}
 
 	private assertTagsEnabled(): void {

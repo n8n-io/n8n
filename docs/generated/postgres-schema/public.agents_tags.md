@@ -21,6 +21,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_330ed9e51d337fe4b4a4ba63aa | CREATE INDEX "IDX_330ed9e51d337fe4b4a4ba63aa" ON public.agents_tags USING btree ("tagId") |
 | PK_847dcd3889a9a795c14053b76a4 | CREATE UNIQUE INDEX "PK_847dcd3889a9a795c14053b76a4" ON public.agents_tags USING btree ("agentId", "tagId") |
 
 ## Relations
