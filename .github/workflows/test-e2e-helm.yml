@@ -45,8 +45,9 @@ jobs:
           fetch-depth: 1
 
       - name: Normalize GHCR owner
+        id: normalize-ghcr-owner
         shell: bash
-        run: echo "GHCR_ORG=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+        run: echo "ghcr_org=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
       - name: Login to GHCR
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
@@ -65,7 +66,7 @@ jobs:
           INCLUDE_TEST_CONTROLLER: 'true'
           IMAGE_BASE_NAME: ghcr.io/${{ github.repository }}
           IMAGE_TAG: ci-${{ github.run_id }}
-          RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ env.GHCR_ORG }}/runners
+          RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ steps.normalize-ghcr-owner.outputs.ghcr_org }}/runners
 
   helm-e2e:
     name: "Helm E2E (${{ inputs.mode || 'queue' }})"
@@ -174,13 +175,14 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Normalize GHCR owner
+        id: normalize-ghcr-owner
         shell: bash
-        run: echo "GHCR_ORG=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+        run: echo "ghcr_org=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
       - name: Delete images from GHCR
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_ORG: ${{ env.GHCR_ORG }}
+          GHCR_ORG: ${{ steps.normalize-ghcr-owner.outputs.ghcr_org }}
           GHCR_REPO: ${{ github.event.repository.name }}
         run: node .github/scripts/cleanup-ghcr-images.mjs --tag ci-${{ github.run_id }}
