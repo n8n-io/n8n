@@ -1,16 +1,23 @@
 import type {
+	AgentHitlChannel,
 	AgentHitlChannelConfiguration,
 	AgentHitlChannelDescriptor,
 	AgentHitlOptionsPage,
 	AgentHitlOptionsQuery,
 } from '@n8n/api-types';
 import type { HttpRequestClient } from '@n8n/backend-network';
-import type { INode } from 'n8n-workflow';
+import type { ActionEvent } from 'chat';
+import { isResourceLocatorValue, type INode, type NodeParameterValueType } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
 
 export type ChannelHitlDefinition =
 	| { supported: false }
 	| {
 			supported: true;
+			channel: AgentHitlChannel;
+			nodeType: string;
+			credentialType: string;
+			matchesResponse: (node: INode, event: ActionEvent) => boolean;
 			fields: AgentHitlChannelDescriptor['fields'];
 			listOptions: (context: {
 				credential: Record<string, unknown>;
@@ -49,4 +56,25 @@ export function approvalNode(
 			...parameters,
 		},
 	};
+}
+
+export function matchesApprovalUser(
+	destination: NodeParameterValueType,
+	event: ActionEvent,
+): boolean {
+	const id = isResourceLocatorValue(destination) ? destination.value : destination;
+	return (typeof id === 'string' || typeof id === 'number') && String(id) === event.user.userId;
+}
+
+export function matchesApprovalChannel(
+	destination: NodeParameterValueType,
+	event: ActionEvent,
+): boolean {
+	if (!isResourceLocatorValue(destination)) return false;
+	try {
+		const thread = event.adapter.decodeThreadId(event.threadId);
+		return isRecord(thread) && destination.value === (thread.channel ?? thread.channelId);
+	} catch {
+		return false;
+	}
 }

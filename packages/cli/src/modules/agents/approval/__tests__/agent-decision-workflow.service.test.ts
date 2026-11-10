@@ -1,3 +1,5 @@
+import { getAgentRuntimeDefinitionHash } from '../../utils/agent-config-hash';
+import { AgentsConfig } from '@n8n/config';
 import { AgentChannelHitlService } from '../agent-channel-hitl.service';
 import { AgentEvent, type BuiltTool, type InterruptibleToolContext } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
@@ -6,6 +8,7 @@ import type { IExecutionResponse, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowRunner } from '@/workflow-runner';
+import { ExecutionService } from '@/executions/execution.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -29,11 +32,17 @@ const configuration: AgentJsonConfig = {
 	],
 };
 
+let definitionHash: string;
+beforeAll(() => {
+	definitionHash = getAgentRuntimeDefinitionHash(configuration);
+});
+
 function setup(agentConfiguration: AgentJsonConfig = configuration) {
 	const jobs = mock<AgentBackgroundJobRepository>();
 	const executions = mock<ExecutionPersistence>();
 	const loader = mock<CallableWorkflowLoader>();
 	const jobService = mock<AgentBackgroundJobService>();
+	const runtimeConfig = mock<AgentsConfig>({ humanInteractionsEnabled: true });
 	const service = new AgentDecisionWorkflowService(
 		loader,
 		mock<SubworkflowPolicyChecker>(),
@@ -41,6 +50,7 @@ function setup(agentConfiguration: AgentJsonConfig = configuration) {
 		jobService,
 		jobs,
 		executions,
+		runtimeConfig,
 	);
 	const handler = vi.fn().mockResolvedValue('executed');
 	const tool: BuiltTool = { name: 'write', description: 'Write a record', handler };
@@ -60,10 +70,11 @@ function setup(agentConfiguration: AgentJsonConfig = configuration) {
 		resumeData: undefined,
 		emitEvent: vi.fn(),
 		toolCallId: 'call',
-		continuation: { __agentDecisionWorkflow: true, executionId: 'child' },
+		continuation: { __agentDecisionWorkflow: true, executionId: 'child', definitionHash },
 		suspendPayload: { type: 'workflow_wait' },
 	};
 	return {
+		runtimeConfig,
 		jobs,
 		jobService,
 		loader,
@@ -81,6 +92,52 @@ describe('Agent decision workflow approval', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		Container.reset();
+	});
+
+	it('stops the child when request registration fails', async () => {
+		const { loader, jobService, wrapped, handler, context } = setup();
+		Container.set(WorkflowRunner, mock<WorkflowRunner>());
+		const stopping = mock<ExecutionService>();
+		Container.set(ExecutionService, stopping);
+		vi.spyOn(workflowTools, 'executeWorkflow').mockResolvedValue({
+			executionId: 'child',
+			status: 'waiting',
+		});
+		loader.loadWorkflow.mockResolvedValue({
+			id: 'decision',
+			nodes: [{ name: 'Decision', type: 'n8n-nodes-base.agentDecisionTrigger' }],
+			settings: {},
+		} as WorkflowEntity);
+		jobService.registerWorkflowJob.mockRejectedValue(new Error('Receipt write failed'));
+		await expect(
+			wrapped.handler?.(
+				{},
+				{
+					...context,
+					continuation: undefined,
+					suspendPayload: undefined,
+					runId: 'run',
+					persistence: {
+						threadId: 'thread',
+						resourceId: 'resource',
+						hostMetadata: {
+							...encodeAgentSandboxHostMetadata({
+								projectId: 'project',
+								principalHash: hashAgentSandboxPrincipal({
+									type: 'workflow-execution',
+									workflowId: 'caller',
+									executionId: 'parent',
+								}),
+							}),
+							workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
+						},
+					},
+				},
+			),
+		).rejects.toThrow('Receipt write failed');
+		expect(stopping.stop).toHaveBeenCalledWith('child', ['decision']);
+		expect(handler).not.toHaveBeenCalled();
+		expect(context.suspend).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -290,7 +347,6 @@ describe('Agent decision workflow approval', () => {
 			[integration],
 			'project',
 			'agent',
-			'caller',
 		);
 		expect(execute.mock.calls[0][2]).toMatchObject({
 			...(redacted ? { argumentsRedacted: true } : { description: 'Update the selected record.' }),
@@ -353,7 +409,7 @@ describe('Agent decision workflow approval', () => {
 		expect(suspend).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({
-				continuation: { __agentDecisionWorkflow: true, executionId: 'child' },
+				continuation: { __agentDecisionWorkflow: true, executionId: 'child', definitionHash },
 			}),
 		);
 		expect(handler).not.toHaveBeenCalled();
@@ -583,7 +639,19 @@ describe('Agent decision workflow approval', () => {
 
 	it('continues an approved tool that later parks at its own wait', async () => {
 		const { wrapped, handler, context, jobs } = setup();
-		await wrapped.handler?.({}, { ...context, continuation: { executionId: 'tool-child' } });
+		await wrapped.handler?.(
+			{},
+			{
+				...context,
+				continuation: {
+					__agentDecisionWorkflow: true,
+					executionId: 'tool-child',
+					definitionHash,
+					toolSuspended: true,
+					toolContinuation: JSON.stringify({ executionId: 'tool-child' }),
+				},
+			},
+		);
 		expect(handler).toHaveBeenCalledOnce();
 		expect(jobs.findWorkflowJobByExecutionId).not.toHaveBeenCalled();
 	});
@@ -639,4 +707,86 @@ describe('Agent decision workflow approval', () => {
 		await wrapped.handler?.({}, context);
 		expect(handler).toHaveBeenCalledOnce();
 	});
+});
+
+it('does not use a decision after the Agent definition changes', async () => {
+	const { wrapped, context, handler, jobs } = setup();
+	await expect(
+		wrapped.handler?.(
+			{},
+			{
+				...context,
+				continuation: {
+					__agentDecisionWorkflow: true,
+					executionId: 'child',
+					definitionHash: 'changed',
+				},
+			},
+		),
+	).rejects.toThrow('configuration changed');
+	expect(handler).not.toHaveBeenCalled();
+	expect(jobs.findWorkflowJobByExecutionId).not.toHaveBeenCalled();
+});
+
+it('blocks new configured requests when the feature is disabled', async () => {
+	const { wrapped, context, runtimeConfig, loader, handler } = setup();
+	Object.defineProperty(runtimeConfig, 'humanInteractionsEnabled', { value: false });
+	await expect(
+		wrapped.handler?.({}, { ...context, continuation: undefined, suspendPayload: undefined }),
+	).rejects.toThrow('not enabled');
+	expect(loader.loadWorkflow).not.toHaveBeenCalled();
+	expect(handler).not.toHaveBeenCalled();
+});
+it('allows a pending request to finish after the feature is disabled', async () => {
+	const { wrapped, context, runtimeConfig, jobs, handler } = setup();
+	Object.defineProperty(runtimeConfig, 'humanInteractionsEnabled', { value: false });
+	jobs.findWorkflowJobByExecutionId.mockResolvedValue(
+		mock<AgentBackgroundJob>({ status: 'completed', result: '{"approved":true}' }),
+	);
+	await expect(wrapped.handler?.({}, context)).resolves.toBe('executed');
+	expect(handler).toHaveBeenCalledOnce();
+});
+it('does not use a decision for changed custom tool code', async () => {
+	const { service, tool, context, handler } = setup();
+	const changed = service.wrap(
+		tool,
+		{ type: 'configuration', configurationId: 'review' },
+		configuration,
+		{ agentId: 'agent', projectId: 'project', published: false },
+		{ write: 'changed implementation' },
+	);
+	await expect(changed.handler?.({}, context)).rejects.toThrow('configuration changed');
+	expect(handler).not.toHaveBeenCalled();
+});
+
+it('passes the reviewed workflow version to the protected tool', async () => {
+	const { wrapped, context, jobs, handler } = setup();
+	jobs.findWorkflowJobByExecutionId.mockResolvedValue(
+		mock<AgentBackgroundJob>({ status: 'completed', result: '{"approved":true}' }),
+	);
+	await wrapped.handler?.(
+		{},
+		{
+			...context,
+			continuation: {
+				__agentDecisionWorkflow: true,
+				executionId: 'child',
+				definitionHash,
+				workflowVersionId: 'reviewed-version',
+			},
+		},
+	);
+	expect(handler).toHaveBeenCalledWith(
+		{},
+		expect.objectContaining({
+			continuation: { __agentApprovalWorkflowVersion: 'reviewed-version' },
+		}),
+	);
+});
+it('does not treat an unknown continuation as a prior approval', async () => {
+	const { wrapped, context, handler } = setup();
+	await expect(
+		wrapped.handler?.({}, { ...context, continuation: { executionId: 'unrecognized-child' } }),
+	).rejects.toThrow('continuation is invalid');
+	expect(handler).not.toHaveBeenCalled();
 });

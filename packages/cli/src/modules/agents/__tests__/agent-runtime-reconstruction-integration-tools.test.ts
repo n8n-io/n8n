@@ -405,6 +405,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<N8nChatFlagService>(),
 			mock<AgentDefinitionService>(),
+			mock(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

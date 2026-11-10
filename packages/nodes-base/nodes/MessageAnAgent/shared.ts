@@ -583,6 +583,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			: (this.getNodeParameter('advanced.invokeMode', 0, 'allItems') as string);
 	const runOnceForAll = invokeMode === 'allItems';
 	const loopCount = runOnceForAll ? Math.min(1, items.length) : items.length;
+	let waiting = false;
 
 	for (let i = 0; i < loopCount; i++) {
 		try {
@@ -628,7 +629,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				i,
 			);
 
-			if (result.waiting) break;
+			if (result.waiting) {
+				waiting = true;
+				break;
+			}
 
 			returnData.push({
 				json: {
@@ -655,5 +659,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 	}
 
+	if (!waiting && this.getNode().typeVersion >= 4)
+		this.setMetadata({ agentInvocations: undefined });
 	return [returnData];
 }

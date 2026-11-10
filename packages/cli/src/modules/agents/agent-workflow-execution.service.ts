@@ -14,7 +14,7 @@ import {
 	sanitizeAgentSkillBodies,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AiConfig } from '@n8n/config';
+import { AiConfig, AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { context } from '@opentelemetry/api';
 import type { JSONSchema7 } from 'json-schema';
@@ -212,6 +212,7 @@ export class AgentWorkflowExecutionService {
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly backgroundJobs: AgentBackgroundJobRepository,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -704,6 +705,12 @@ export class AgentWorkflowExecutionService {
 		sandboxScope?: WorkflowSandboxScope,
 		{ streamObserver, prepareForEval }: WorkflowAgentRunOptions = {},
 	): Promise<ExecuteAgentData> {
+		if (
+			workflowContext?.supportsSuspension &&
+			!workflowContext.continuation &&
+			!this.agentsConfig.humanInteractionsEnabled
+		)
+			throw new UserError('Message an Agent version 4 requires human interactions to be enabled');
 		return await this.executeForWorkflowInternal({
 			agentId,
 			message,
@@ -792,11 +799,20 @@ export class AgentWorkflowExecutionService {
 								: [];
 						})
 					: [];
-				if (executionIds.length === 0)
-					throw new UserError('This Agent needs a decision workflow to approve its tool');
+				if (executionIds.length === 0) {
+					await this.checkpointStorage.delete(run.runId, agentId);
+					throw new UserError('This Agent needs a human interaction to approve its tool');
+				}
+				if (!checkpoint?.persistence)
+					throw new OperationalError('The suspended Agent checkpoint is unavailable');
 				snapshot.approvalExecutionIds = [
 					...new Set([...(snapshot.approvalExecutionIds ?? []), ...executionIds]),
 				];
+				checkpoint.persistence.hostMetadata = {
+					...checkpoint.persistence.hostMetadata,
+					workflowAgentSnapshot: JSON.stringify(snapshot),
+				};
+				await this.checkpointStorage.save(run.runId, checkpoint, agentId);
 				return {
 					response: '',
 					structuredOutput: null,
@@ -807,7 +823,6 @@ export class AgentWorkflowExecutionService {
 					waiting: {
 						runId: run.runId,
 						executionIds: [...new Set(executionIds)],
-						snapshot: JSON.stringify(snapshot),
 					},
 				};
 			}
@@ -828,11 +843,14 @@ export class AgentWorkflowExecutionService {
 	private async prepareWorkflowContinuation(params: StoredWorkflowExecutionContext) {
 		const continuation = params.workflowContext?.continuation;
 		if (!continuation) throw new OperationalError('The Agent continuation is unavailable');
-		const snapshot = jsonParse<WorkflowRunSnapshot>(continuation.snapshot);
 		const checkpoint = await this.checkpointStorage.load(continuation.runId, params.agentId);
 		if (!checkpoint || checkpoint.persistence?.threadId !== params.threadId) {
 			throw new UserError('The suspended Agent does not belong to this workflow invocation');
 		}
+		const serializedSnapshot = checkpoint.persistence.hostMetadata?.workflowAgentSnapshot;
+		if (typeof serializedSnapshot !== 'string')
+			throw new OperationalError('The Agent runtime snapshot is unavailable');
+		const snapshot = jsonParse<WorkflowRunSnapshot>(serializedSnapshot);
 		const call = Object.values(checkpoint.pendingToolCalls).find((entry) => entry.suspended);
 		if (!call) throw new OperationalError('The Agent has no pending tool call');
 		if (!(await this.agentRepository.findByIdAndProjectId(params.agentId, params.projectId))) {

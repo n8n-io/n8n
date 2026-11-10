@@ -1,3 +1,5 @@
+import { Container } from '@n8n/di';
+import { AgentsConfig } from '@n8n/config';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -66,6 +68,11 @@ export class AgentDecisionTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		if (!Container.get(AgentsConfig).humanInteractionsEnabled)
+			throw new NodeOperationError(
+				this.getNode(),
+				'Human interactions are not enabled on this instance',
+			);
 		if (this.getMode() !== 'manual') return {};
 		return {
 			manualTriggerFunction: async () => {
@@ -83,6 +90,11 @@ export class AgentDecisionTrigger implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions) {
+		if (!Container.get(AgentsConfig).humanInteractionsEnabled)
+			throw new NodeOperationError(
+				this.getNode(),
+				'Human interactions are not enabled on this instance',
+			);
 		return [this.getInputData()];
 	}
 }

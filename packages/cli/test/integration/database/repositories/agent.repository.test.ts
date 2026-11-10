@@ -209,6 +209,7 @@ describe('AgentRepository', () => {
 				mock<AgentSetupCompletionService>(),
 				mock(),
 				definitionService,
+				mock(),
 			);
 			const person = Object.assign(new Person(), { firstName: 'Test', lastName: 'User' });
 			const id = uuid();

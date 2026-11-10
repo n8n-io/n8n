@@ -29,10 +29,17 @@ export class AgentCheckpointRepository extends BaseRepository<AgentCheckpoint> {
 		updatedAfter: Date,
 		ctx: OperationContext = {},
 	): Promise<AgentCheckpoint[]> {
-		return await this.managerFor(ctx).find(AgentCheckpoint, {
-			where: { agentId, threadId, expired: false, updatedAt: MoreThan(updatedAfter) },
-			order: { updatedAt: 'DESC' },
-		});
+		const retained = this.retainedApprovalCheckpoints().select('retained.runId');
+		return await this.managerFor(ctx)
+			.createQueryBuilder(AgentCheckpoint, 'checkpoint')
+			.where({ agentId, threadId, expired: false })
+			.andWhere(
+				`(checkpoint.updatedAt > :updatedAfter OR checkpoint.runId IN (${retained.getQuery()}))`,
+				{ updatedAfter },
+			)
+			.setParameters(retained.getParameters())
+			.orderBy('checkpoint.updatedAt', 'DESC')
+			.getMany();
 	}
 
 	async saveCheckpoint(checkpoint: AgentCheckpoint, ctx: OperationContext): Promise<void> {

@@ -1,7 +1,7 @@
 import type { ChannelHitlDefinition } from '../../channel-hitl';
-import { approvalNode } from '../../channel-hitl';
+import { approvalNode, matchesApprovalUser, matchesApprovalChannel } from '../../channel-hitl';
 import { requireCredentialField } from '../../credential-fields';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 const resultSchema = z.object({
@@ -27,6 +27,15 @@ const resultSchema = z.object({
 });
 export const slackHitl: ChannelHitlDefinition = {
 	supported: true,
+	channel: 'slack',
+	nodeType: 'n8n-nodes-base.slack',
+	credentialType: 'slackApi',
+	matchesResponse(node, event) {
+		return node.parameters.select === 'user'
+			? matchesApprovalUser(node.parameters.user, event)
+			: node.parameters.select === 'channel' &&
+					matchesApprovalChannel(node.parameters.channelId, event);
+	},
 	fields: [{ name: 'recipient', type: 'search', kinds: ['channel', 'user'] }],
 	async listOptions({ credential, httpClient, query }) {
 		if (query.field === 'guild') throw new UserError('Slack does not use servers');

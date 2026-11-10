@@ -5,7 +5,13 @@ import type {
 	AgentToolOutputFile,
 	AgentToolSkippedFile,
 } from '@n8n/api-types';
-import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
+import {
+	DateTimeColumn,
+	JsonColumn,
+	WithTimestampsAndStringId,
+	ExecutionEntity,
+	idStringifier,
+} from '@n8n/db';
 import { Column, Entity, Index, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
 export type AgentBackgroundJobKind = AgentBackgroundJobDto['kind'];
@@ -21,6 +27,9 @@ export type AgentBackgroundJobStatus = AgentBackgroundJobDto['status'];
 @Entity({ name: 'agent_background_job' })
 @Index(['parentThreadId', 'status'])
 @Index(['parentAgentId'])
+@Index(['parentAgentId', 'parentRunId'], {
+	where: '"kind" = \'approval\' AND "notifiedAt" IS NULL',
+})
 @Index(['sourceExecutionId'])
 @Index(['planId', 'planTaskId'])
 @Index(['settledAt'])
@@ -66,6 +75,22 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 		comment: 'Agent SDK run ID retained by this approval request',
 	})
 	parentRunId: string | null;
+
+	@Index()
+	@Column({
+		type: 'int',
+		nullable: true,
+		transformer: idStringifier,
+		comment: 'Workflow execution waiting for this approval',
+	})
+	callerExecutionId: string | null;
+
+	@ManyToOne(() => ExecutionEntity, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({
+		name: 'callerExecutionId',
+		foreignKeyConstraintName: 'FK_agent_approval_caller_execution',
+	})
+	callerExecution: Relation<ExecutionEntity> | null;
 
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentBackgroundJobStatus;

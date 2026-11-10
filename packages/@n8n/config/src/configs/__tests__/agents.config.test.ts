@@ -18,3 +18,18 @@ describe('AgentsConfig plan tools', () => {
 		expect(Container.get(AgentsConfig).planToolsEnabled).toBe(expected);
 	});
 });
+
+describe('AgentsConfig human interactions', () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		Container.reset();
+	});
+	it.each([
+		['', false],
+		['human-interactions', true],
+	])('enables configured approvals with modules=%s', (modules, enabled) => {
+		vi.stubEnv('N8N_AGENTS_MODULES', modules);
+		Container.reset();
+		expect(Container.get(AgentsConfig).humanInteractionsEnabled).toBe(enabled);
+	});
+});

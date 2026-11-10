@@ -1,5 +1,6 @@
+import { UserError } from '@n8n/errors';
 import { parseAgentDecision } from '@n8n/api-types';
-import { getChildNodes, UserError, type IRunData, type IConnections } from 'n8n-workflow';
+import { getChildNodes, type IRunData, type IConnections } from 'n8n-workflow';
 
 /** A decision workflow must finish with one decision, including across branches. */
 export function collectAgentDecision(runData: IRunData, connections?: IConnections) {

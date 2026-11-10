@@ -30,6 +30,7 @@ describe('AgentProjectCleanupService', () => {
 		deletion,
 		sessions,
 		executions,
+		mock(),
 	);
 
 	beforeEach(() => {

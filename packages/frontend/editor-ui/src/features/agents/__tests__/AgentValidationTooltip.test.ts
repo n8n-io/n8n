@@ -417,3 +417,20 @@ describe('AgentValidationTooltip — restricted node types', () => {
 		);
 	});
 });
+
+it('describes a decision trigger without exposing its configuration ID', () => {
+	const wrapper = mountTooltip({
+		action: 'publish',
+		issues: [
+			{
+				code: 'incompatible_reference',
+				path: 'hitlConfigurations.0.workflowId',
+				capability: { kind: 'humanInteraction', id: 'interaction_internal', index: 0 },
+				reason: 'no_decision_trigger',
+			},
+		],
+	});
+	expect(wrapper.text()).toContain('agents.hitl.title');
+	expect(wrapper.text()).toContain('agents.hitl.validation.noDecisionTrigger');
+	expect(wrapper.text()).not.toContain('interaction_internal');
+});

@@ -25,6 +25,8 @@ export const isNodeIdTooLong = (nodeId: string): boolean => [...nodeId].length >
 export const MODULE_GATED_NODE_TYPES = {
 	'n8n-nodes-base.dataTable': 'data-table',
 	'n8n-nodes-base.dataTableTool': 'data-table',
+	'n8n-nodes-base.agentDecisionTrigger': 'agents',
+	'n8n-nodes-base.agentDecisionResponse': 'agents',
 	'n8n-nodes-base.messageAnAgent': 'agents',
 	'n8n-nodes-base.messageAnAgentTool': 'agents',
 } as const;
@@ -39,3 +41,13 @@ export const isModuleGatedNodeType = (nodeType: string): nodeType is ModuleGated
 export function getNodeGatingModule(nodeType: string): NodeGatingModule | undefined {
 	return isModuleGatedNodeType(nodeType) ? MODULE_GATED_NODE_TYPES[nodeType] : undefined;
 }
+
+export const HUMAN_INTERACTIONS_MODULE = 'human-interactions';
+
+export const HUMAN_INTERACTION_NODE_TYPES = [
+	'n8n-nodes-base.agentDecisionTrigger',
+	'n8n-nodes-base.agentDecisionResponse',
+] as const;
+
+export const isHumanInteractionNodeType = (nodeType: string): boolean =>
+	HUMAN_INTERACTION_NODE_TYPES.some((name) => name === nodeType);

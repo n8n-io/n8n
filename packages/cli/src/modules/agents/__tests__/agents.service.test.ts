@@ -163,6 +163,7 @@ function makeService() {
 		setupCompletion,
 		n8nChatFlag,
 		mock<AgentDefinitionService>(),
+		mock(),
 	);
 
 	return {
@@ -871,9 +872,9 @@ describe('AgentsService', () => {
 
 		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(projectId, agentId);
 		expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
-			agentRepository.remove.mock.invocationCallOrder[0],
+			agentRepository.removeAfterApprovalCleanup.mock.invocationCallOrder[0],
 		);
-		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentRepository.removeAfterApprovalCleanup).toHaveBeenCalledWith(agentId, projectId);
 		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(agentId, {
 			type: 'slack',
 			credentialId: 'slack-1',
@@ -901,7 +902,7 @@ describe('AgentsService', () => {
 
 		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
 		expect(eventService.emit.mock.invocationCallOrder[0]).toBeGreaterThan(
-			agentRepository.remove.mock.invocationCallOrder[0],
+			agentRepository.removeAfterApprovalCleanup.mock.invocationCallOrder[0],
 		);
 	});
 
@@ -922,7 +923,7 @@ describe('AgentsService', () => {
 		testChatService.clearAllTestChatMessages.mockRejectedValue(new Error('memory down'));
 
 		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
-		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentRepository.removeAfterApprovalCleanup).toHaveBeenCalledWith(agentId, projectId);
 		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
@@ -931,7 +932,7 @@ describe('AgentsService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
 		await expect(service.delete(agentId, projectId)).resolves.toBe(false);
-		expect(agentRepository.remove).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
 	});
 
 	describe('findByIdForUser', () => {

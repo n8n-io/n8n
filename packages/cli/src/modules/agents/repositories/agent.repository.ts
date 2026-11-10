@@ -14,7 +14,7 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from '@n8n/errors';
+import { ConflictError, UnexpectedError } from '@n8n/errors';
 import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -25,6 +25,7 @@ import {
 	type ProjectAgent,
 	type ProjectScoped,
 } from '../entities/agent.entity';
+import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { AgentDefinitionMetadata } from '../utils/agent-definition';
 
 export interface AgentListResult {
@@ -68,8 +69,44 @@ export type AgentSummaryFilters = {
 
 @Service()
 export class AgentRepository extends BaseRepository<Agent> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-		super(Agent, dataSource.manager, transactionRunner);
+	constructor(
+		dataSource: DataSource,
+		private readonly transactions: TransactionRunner,
+	) {
+		super(Agent, dataSource.manager, transactions);
+	}
+
+	async removeAfterApprovalCleanup(id: string, projectId: string): Promise<void> {
+		await this.transactions.run({}, async (ctx) => {
+			const manager = this.managerFor(ctx);
+			// SQLite needs a write before the read. Preserve the authored revision timestamp.
+			await manager.update(
+				Agent,
+				{ id, projectId, scope: projectScope },
+				{ updatedAt: () => '"updatedAt"' },
+			);
+			const agent = await manager.findOne(Agent, {
+				where: { id, projectId, scope: projectScope },
+				lock:
+					manager.connection.options.type === 'postgres'
+						? { mode: 'pessimistic_write' }
+						: undefined,
+			});
+			if (!agent) return;
+			if (
+				agent.approvalWorkflowId ||
+				(await manager.existsBy(AgentBackgroundJob, {
+					parentAgentId: id,
+					kind: 'approval',
+					notifiedAt: IsNull(),
+				}))
+			)
+				throw new ConflictError(
+					'An Agent approval started during cleanup. Stop its session and retry deletion.',
+				);
+			// The row lock also serializes new job references with the final delete.
+			await manager.remove(agent);
+		});
 	}
 
 	/**

@@ -1,3 +1,4 @@
+import { ExecutionRetentionService } from '@n8n/backend-services';
 import { mockLogger, createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -34,6 +35,7 @@ describe('softDeleteOnPruningCycle()', () => {
 			mockLogger(),
 			Container.get(ExecutionRepository),
 			mockInstance(ExecutionPersistence),
+			Container.get(ExecutionRetentionService),
 		);
 
 		workflow = await createWorkflow();
@@ -41,6 +43,7 @@ describe('softDeleteOnPruningCycle()', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['ExecutionEntity', 'ExecutionAnnotation']);
+		Container.get(ExecutionRetentionService).register('test', async () => []);
 	});
 
 	afterAll(async () => {
@@ -53,6 +56,22 @@ describe('softDeleteOnPruningCycle()', () => {
 			withDeleted: true,
 		});
 	}
+
+	it('retains pending work without a bind parameter for each retained ID', async () => {
+		executionsConfig.pruneDataMaxAge = 336;
+		executionsConfig.pruneDataMaxCount = 1;
+		const retained = await createSuccessfulExecution(workflow);
+		const prunable = await createSuccessfulExecution(workflow);
+		await createSuccessfulExecution(workflow);
+		Container.get(ExecutionRetentionService).register('test', async () => [
+			retained.id,
+			...Array.from({ length: 2000 }, (_, i) => String(9000000 + i)),
+		]);
+		await pruningService.softDelete();
+		const executions = await findAllExecutions();
+		expect(executions.find(({ id }) => id === retained.id)?.deletedAt).toBeNull();
+		expect(executions.find(({ id }) => id === prunable.id)?.deletedAt).toBeInstanceOf(Date);
+	});
 
 	describe('when EXECUTIONS_DATA_PRUNE_MAX_COUNT is set', () => {
 		beforeAll(() => {

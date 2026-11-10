@@ -37,6 +37,8 @@ const props = withDefaults(
 		headerDividerTone?: 'default' | 'warning';
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
+		/** Keep the dialog height stable between steps when requested. */
+		stableHeight?: boolean;
 		/** A fixed size from the window, so the dialog never resizes when its content changes. */
 		fixedSize?: boolean;
 		busy?: boolean;
@@ -58,6 +60,7 @@ const props = withDefaults(
 		headerDividerTone: 'default',
 		bodyScrollable: true,
 		bodyFlush: false,
+		stableHeight: false,
 		fixedSize: false,
 		busy: false,
 		size: '2xlarge',
@@ -226,7 +229,7 @@ function onOpenAutoFocus(event: Event) {
 			<div :class="$style.main">
 				<N8nDialogBody
 					ref="bodyRoot"
-					:class="$style.body"
+					:class="[$style.body, props.stableHeight && $style.bodyStableHeight]"
 					:data-flush="props.bodyFlush ? 'true' : undefined"
 					:data-scrollable="props.bodyScrollable ? 'true' : 'false'"
 					data-testid="agent-modal-body"
@@ -491,6 +494,10 @@ function onOpenAutoFocus(event: Event) {
 .body[data-scrollable='true'] > * {
 	// Keep the bottom inset after scrolling past a tall form.
 	flex-shrink: 0;
+}
+
+.bodyStableHeight {
+	height: min(60dvh, calc(var(--height--5xl) * 5));
 }
 
 .body :global(.n8n-markdown) {

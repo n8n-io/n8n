@@ -1,5 +1,5 @@
 import { parseFlatted } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, ExecutionRetentionService } from '@n8n/backend-services';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -85,6 +85,7 @@ export class ExecutionPersistence {
 		private readonly storageConfig: StorageConfig,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly databaseConfig: DatabaseConfig,
+		private readonly retention: ExecutionRetentionService,
 		private readonly errorReporter: ErrorReporter,
 		private readonly eventService: EventService,
 	) {}
@@ -689,6 +690,8 @@ export class ExecutionPersistence {
 	async hardDelete(target: DeletionTarget | DeletionTarget[]) {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
+
+		await this.retention.assertCanDelete(targets.map((target) => target.executionId));
 
 		// Binaries first. A failure leaves the payload and the rows, so the execution stays openable.
 		await this.binaryDataService.deleteMany(

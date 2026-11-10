@@ -1,9 +1,15 @@
 import type { ChannelHitlDefinition } from '../../channel-hitl';
-import { approvalNode } from '../../channel-hitl';
-import { UserError } from 'n8n-workflow';
+import { approvalNode, matchesApprovalUser } from '../../channel-hitl';
+import { UserError } from '@n8n/errors';
 
 export const telegramHitl: ChannelHitlDefinition = {
 	supported: true,
+	channel: 'telegram',
+	nodeType: 'n8n-nodes-base.telegram',
+	credentialType: 'telegramApi',
+	matchesResponse(node, event) {
+		return matchesApprovalUser(node.parameters.chatId, event);
+	},
 	fields: [{ name: 'recipient', type: 'text', kinds: ['user'] }],
 	async listOptions() {
 		return { options: [] };

@@ -150,3 +150,5 @@ export {
 export { AiPreferenceScopeFullError } from './errors/response-errors/ai-preference-scope-full.error';
 export * from './auth';
 export { ProjectNotFoundError } from './errors/project-not-found.error';
+
+export { ExecutionRetentionService } from './services/execution-retention.service';

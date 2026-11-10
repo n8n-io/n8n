@@ -465,7 +465,7 @@ describe('ExecuteContext', () => {
 			};
 			const waiting = {
 				...complete,
-				waiting: { runId: 'run-2', executionIds: ['decision-2'], snapshot: '{}' },
+				waiting: { runId: 'run-2', executionIds: ['decision-2'] },
 			};
 			const runAgent = vi
 				.fn()

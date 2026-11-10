@@ -149,6 +149,7 @@ erDiagram
 }
 "public.agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id

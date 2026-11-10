@@ -571,7 +571,7 @@ owns approver access.
 Generate the interaction name from the selected workflow name or the platform
 and destination. Prefix channel destinations with a hash. Let users override the
 name in the modal title. Keep automatic naming after Save until a user overrides
-it. Preserve names from older configurations. Store the definitions and name
+it. Store the definitions and name
 override state in the Agent JSON.
 
 Disable the connected channel approval method when no supported channels are

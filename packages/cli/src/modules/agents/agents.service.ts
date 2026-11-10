@@ -1,3 +1,4 @@
+import { AgentApprovalCleanupService } from './approval/agent-approval-cleanup.service';
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
@@ -151,6 +152,7 @@ export class AgentsService {
 		private readonly setupCompletion: AgentSetupCompletionService,
 		private readonly n8nChatFlag: N8nChatFlagService,
 		private readonly definitionService: AgentDefinitionService,
+		private readonly approvalCleanup: AgentApprovalCleanupService,
 	) {}
 
 	/**
@@ -756,6 +758,8 @@ export class AgentsService {
 			return false;
 		}
 
+		await this.approvalCleanup.cleanupAgent(agentId, projectId, agent.approvalWorkflowId);
+
 		await this.deleteKnowledgeFiles(projectId, agentId);
 
 		await this.agentKnowledgeService.destroyKnowledgeSandbox(projectId, agentId);
@@ -771,7 +775,7 @@ export class AgentsService {
 
 		await this.agentExecutionService.deleteMemoryThreadsForAgent(agentId);
 
-		await this.agentRepository.remove(agent);
+		await this.agentRepository.removeAfterApprovalCleanup(agentId, projectId);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 

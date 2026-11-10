@@ -59,6 +59,7 @@ function setup() {
 	});
 	const execution = mock<IExecutionResponse>({
 		id: '123',
+		workflowId: 'workflow',
 		status: 'waiting',
 		data: mock<IRunExecutionData>({
 			parentAgentRun: {
@@ -74,7 +75,10 @@ function setup() {
 	executions.findSingleExecution.mockResolvedValue(execution);
 	const job = mock<AgentBackgroundJob>({
 		kind: 'approval',
+		workflowId: 'workflow',
 		parentAgentId: 'agent',
+		parentRunId: 'run',
+		parentThreadId: 'original-thread',
 		status: 'running',
 		timeoutAt: null,
 		settledAt: null,
@@ -148,6 +152,9 @@ it.each([
 	'node',
 	'state',
 	'job',
+	'parentRun',
+	'parentThread',
+	'workflow',
 	'expired',
 	'user',
 	'channel',
@@ -162,6 +169,9 @@ it.each([
 	if (reason === 'node') node.parameters.agentApproval = false;
 	if (reason === 'state') execution.status = 'success';
 	if (reason === 'job') jobs.findWorkflowJobByExecutionId.mockResolvedValue(null);
+	if (reason === 'parentRun') job.parentRunId = 'other-run';
+	if (reason === 'parentThread') job.parentThreadId = 'other-thread';
+	if (reason === 'workflow') job.workflowId = 'other-workflow';
 	if (reason === 'expired') job.timeoutAt = new Date(Date.now() - 1000);
 	if (reason === 'user') event.user.userId = 'other';
 	if (reason === 'channel')

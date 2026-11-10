@@ -76,6 +76,31 @@ function setup() {
 }
 
 describe('AgentExporter', () => {
+	it('exports interaction definitions without local channel credentials or execution ownership', () => {
+		const { agent, draft } = setup();
+		if (!draft.schema) throw new Error('Expected an Agent definition');
+		draft.schema.hitlConfigurations = [
+			{ id: 'interaction_workflow', name: 'Review', method: 'workflow', workflowId: 'review' },
+			{
+				id: 'interaction_channel',
+				name: 'Approvals',
+				method: 'channel',
+				channel: 'slack',
+				credentialId: 'source-credential',
+				recipient: { kind: 'channel', id: 'C_REVIEW' },
+			},
+		];
+		agent.approvalWorkflowId = 'private-owner';
+		const content = new AgentSerializer().serialize(agent, draft, agent.integrations);
+		expect(content.config?.hitlConfigurations).toEqual([
+			draft.schema.hitlConfigurations[0],
+			{ ...draft.schema.hitlConfigurations[1], credentialId: '' },
+		]);
+		expect(JSON.stringify(content)).not.toContain('private-owner');
+		expect(JSON.stringify(content)).not.toContain('source-credential');
+		expect(draft.schema.hitlConfigurations[1]).toHaveProperty('credentialId', 'source-credential');
+	});
+
 	it.each([
 		{ policy: undefined, published: true, selected: 'draft' },
 		{ policy: ExportVersionPolicy.Latest, published: false, selected: 'draft' },

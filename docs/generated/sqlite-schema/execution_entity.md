@@ -20,7 +20,7 @@ CREATE TABLE "execution_entity" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL
 | deduplicationKey | varchar(255) |  | true |  |  |  |
 | deletedAt | datetime(3) |  | true |  |  |  |
 | finished | boolean |  | false |  |  |  |
-| id | INTEGER |  | false | [chat_hub_messages](chat_hub_messages.md) [execution_annotations](execution_annotations.md) [execution_data](execution_data.md) [execution_metadata](execution_metadata.md) [test_case_execution](test_case_execution.md) |  |  |
+| id | INTEGER |  | false | [agent_background_job](agent_background_job.md) [chat_hub_messages](chat_hub_messages.md) [execution_annotations](execution_annotations.md) [execution_data](execution_data.md) [execution_metadata](execution_metadata.md) [test_case_execution](test_case_execution.md) |  |  |
 | jsonSizeBytes | bigint | 0 | false |  |  |  |
 | mode | varchar |  | false |  |  |  |
 | resumeAttempts | SMALLINT | 0 | false |  |  |  |
@@ -58,6 +58,7 @@ CREATE TABLE "execution_entity" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL
 ```mermaid
 erDiagram
 
+"agent_background_job" }o--o| "execution_entity" : "FOREIGN KEY (callerExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "chat_hub_messages" }o--o| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "execution_annotations" }o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "execution_data" |o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -88,6 +89,35 @@ erDiagram
   datetime waitTill
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
+}
+"agent_background_job" {
+  INTEGER callerExecutionId FK
+  varchar_36_ childExecutionId
+  varchar_128_ childThreadId
+  datetime_3_ createdAt
+  TEXT error
+  TEXT files
+  varchar_36_ id PK
+  varchar_16_ kind
+  datetime_3_ notifiedAt
+  varchar_36_ parentAgentId FK
+  varchar_64_ parentPrincipalHash
+  varchar_255_ parentResourceId
+  varchar_128_ parentRunId
+  varchar_128_ parentThreadId
+  varchar pauseRequestId
+  varchar planId FK
+  varchar planTaskId
+  TEXT result
+  datetime_3_ settledAt
+  TEXT skippedFiles
+  varchar_36_ sourceExecutionId FK
+  varchar_16_ status
+  varchar_36_ subAgentId
+  datetime_3_ timeoutAt
+  varchar_255_ title
+  datetime_3_ updatedAt
+  varchar_36_ workflowId
 }
 "chat_hub_messages" {
   varchar_36_ agentId FK

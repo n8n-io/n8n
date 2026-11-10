@@ -14,7 +14,10 @@ import { collectResultData } from '@/workflows/callable/callable-workflow-result
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentRepository } from './repositories/agent.repository';
-import { productionChatMemoryResourceId } from './utils/agent-memory-scope';
+import {
+	isTaskRunMemoryResourceId,
+	productionChatMemoryResourceId,
+} from './utils/agent-memory-scope';
 import { AgentTestRunService } from './agent-test-run.service';
 import {
 	AgentBackgroundJobService,
@@ -138,6 +141,7 @@ export class AgentWorkflowToolResumeService {
 	private async resumeSafely(agentRun: RelatedAgentRun, status: string): Promise<void> {
 		try {
 			await this.resume(agentRun, status);
+			await this.backgroundJobService.consumeSettledApprovals(agentRun.runId, agentRun.agentId);
 		} catch (error) {
 			this.logger.error('Failed to resume agent run after sub-workflow completed', {
 				agentId: agentRun.agentId,
@@ -166,6 +170,10 @@ export class AgentWorkflowToolResumeService {
 			return;
 		}
 		const resumeData = { type: 'workflow_finished', value: status };
+		if (agentRun.integrationType === 'task') {
+			await this.resumeTask(agentRun, resumeData);
+			return;
+		}
 		if (agentRun.publishedN8nChat === true) {
 			await this.resumeInProductionChat(agentRun, resumeData);
 			return;
@@ -219,6 +227,40 @@ export class AgentWorkflowToolResumeService {
 			resumeData,
 			{ messageContext, allowLegacyThreadId },
 		);
+	}
+
+	private async resumeTask(agentRun: RelatedAgentRun, resumeData: unknown): Promise<void> {
+		const checkpoint = await this.checkpointStorage.getStatus(agentRun.runId, agentRun.agentId);
+		if (checkpoint.status !== 'active' || checkpoint.checkpoint.status !== 'suspended') return;
+		const memory = checkpoint.checkpoint.persistence;
+		if (
+			!memory ||
+			memory.threadId !== agentRun.threadId ||
+			!isTaskRunMemoryResourceId(memory.resourceId) ||
+			typeof agentRun.published !== 'boolean'
+		)
+			return;
+		const user = agentRun.userId
+			? await this.userRepository.findOneBy({ id: agentRun.userId })
+			: undefined;
+		if (!agentRun.published && !user) return;
+		const stream = this.agentExecutionOrchestratorService.resumeForChat({
+			agentId: agentRun.agentId,
+			projectId: agentRun.projectId,
+			runId: agentRun.runId,
+			toolCallId: agentRun.toolCallId,
+			resumeData,
+			...(user ? { user } : {}),
+			usePublishedVersion: agentRun.published,
+			integrationType: 'task',
+			source: 'task',
+			expectedMemory: { threadId: memory.threadId, resourceId: memory.resourceId },
+			allowBackgroundTasks: false,
+		});
+		// Task results stay in the existing session. There is no conversational requester.
+		for await (const chunk of stream) {
+			void chunk;
+		}
 	}
 
 	private async resumeInProductionChat(

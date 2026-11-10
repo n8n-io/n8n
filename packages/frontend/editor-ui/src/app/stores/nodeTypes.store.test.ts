@@ -93,6 +93,10 @@ describe('useNodeTypesStore', () => {
 	describe('visibleNodeTypes module gating', () => {
 		const DATA_TABLE = 'n8n-nodes-base.dataTable';
 		const MESSAGE_AN_AGENT = 'n8n-nodes-base.messageAnAgent';
+		const DECISION_NODES = [
+			'n8n-nodes-base.agentDecisionTrigger',
+			'n8n-nodes-base.agentDecisionResponse',
+		];
 
 		let activeModules: string[];
 
@@ -103,10 +107,14 @@ describe('useNodeTypesStore', () => {
 				makeNodeType({ name: 'n8n-nodes-test.plain', outputs: ['main'] }),
 				makeNodeType({ name: DATA_TABLE, outputs: ['main'] }),
 				makeNodeType({ name: MESSAGE_AN_AGENT, outputs: ['main'] }),
+				...DECISION_NODES.map((name) => makeNodeType({ name, outputs: ['main'] })),
 			]);
 
 			activeModules = ['data-table', 'agents'];
 			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'isAgentModuleActive').mockImplementation((name) =>
+				activeModules.includes(name),
+			);
 			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation((name) =>
 				activeModules.includes(name),
 			);
@@ -137,6 +145,19 @@ describe('useNodeTypesStore', () => {
 			expect(visibleNames()).not.toContain(MESSAGE_AN_AGENT);
 			expect(visibleNames()).toContain(DATA_TABLE);
 			expect(store.isNodeTypeModuleDisabled(MESSAGE_AN_AGENT)).toBe(true);
+		});
+
+		it.each([false, true])(
+			'shows decision nodes when Human interactions is enabled=%s',
+			(enabled) => {
+				if (enabled) activeModules.push('human-interactions');
+				for (const name of DECISION_NODES) expect(visibleNames().includes(name)).toBe(enabled);
+			},
+		);
+
+		it('keeps decision nodes hidden when the Agents module is disabled', () => {
+			activeModules = ['human-interactions'];
+			for (const name of DECISION_NODES) expect(visibleNames()).not.toContain(name);
 		});
 
 		it('should never treat a node type without a module as disabled', () => {

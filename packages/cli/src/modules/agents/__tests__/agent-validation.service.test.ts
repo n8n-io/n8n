@@ -1925,3 +1925,73 @@ describe('AgentValidationService — restricted node types', () => {
 		expect(result).toEqual({ status: 'valid', issues: [] });
 	});
 });
+
+describe('human interaction validation', () => {
+	it('reports an assignment whose configuration is missing', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [
+					{
+						type: 'custom',
+						id: 'missing-tool',
+						approvalRoute: { type: 'configuration', configurationId: 'missing' },
+					},
+				],
+			}),
+		);
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			'runtime',
+		);
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({ code: 'missing_reference', path: 'tools.0.approvalRoute' }),
+		);
+	});
+	it.each(['missing', 'archived', 'unpublished', 'wrong-trigger', 'valid'] as const)(
+		'checks a decision workflow before publication: %s',
+		async (state) => {
+			const { service, agentRepository, workflowRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					...runnableConfig,
+					hitlConfigurations: [
+						{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'decision' },
+					],
+				}),
+			);
+			workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+				state === 'missing'
+					? null
+					: mock({
+							id: 'decision',
+							isArchived: state === 'archived',
+							activeVersionId: state === 'unpublished' ? null : 'version',
+							activeVersion: {
+								nodes: [
+									{
+										disabled: false,
+										type:
+											state === 'wrong-trigger'
+												? 'n8n-nodes-base.manualTrigger'
+												: 'n8n-nodes-base.agentDecisionTrigger',
+									},
+								],
+							},
+						}),
+			);
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+				'publish',
+			);
+			const issues = result.issues.filter(({ path }) => path === 'hitlConfigurations.0.workflowId');
+			if (state === 'valid') expect(issues).toEqual([]);
+			else expect(issues).toHaveLength(1);
+		},
+	);
+});

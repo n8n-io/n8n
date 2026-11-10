@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "parentAgentId" varchar(36) NOT NULL, "parentThreadId" varchar(128) NOT NULL, "title" varchar(255) NOT NULL, "subAgentId" varchar(36), "childThreadId" varchar(128), "childExecutionId" varchar(36), "workflowId" varchar(36), "timeoutAt" datetime(3), "result" text, "error" text, "settledAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "notifiedAt" datetime(3), "parentResourceId" varchar(255) NOT NULL, "parentPrincipalHash" varchar(64) NOT NULL, "pauseRequestId" varchar, "sourceExecutionId" varchar(36), "planId" varchar, "planTaskId" varchar, "parentRunId" varchar(128), "files" text, "skippedFiles" text, CONSTRAINT "CHK_agent_background_job_status" CHECK ((("status" IN ('running', 'suspended', 'paused', 'completed', 'failed', 'cancelled')))), CONSTRAINT "CHK_agent_background_job_kind" CHECK (("kind" IN ('subagent', 'workflow', 'approval'))), CONSTRAINT "FK_ce131bff629d89015893e350e9c" FOREIGN KEY ("planId") REFERENCES "agent_plan" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_4db3b7ebea4ed4f69649982018c" FOREIGN KEY ("sourceExecutionId") REFERENCES "agent_execution" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_d46c6f00730c2ef8bcb6ee24b67" FOREIGN KEY ("parentAgentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "parentAgentId" varchar(36) NOT NULL, "parentThreadId" varchar(128) NOT NULL, "title" varchar(255) NOT NULL, "subAgentId" varchar(36), "childThreadId" varchar(128), "childExecutionId" varchar(36), "workflowId" varchar(36), "timeoutAt" datetime(3), "result" text, "error" text, "settledAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "notifiedAt" datetime(3), "parentResourceId" varchar(255) NOT NULL, "parentPrincipalHash" varchar(64) NOT NULL, "pauseRequestId" varchar, "sourceExecutionId" varchar(36), "planId" varchar, "planTaskId" varchar, "files" text, "skippedFiles" text, "parentRunId" varchar(128), "callerExecutionId" integer, CONSTRAINT "CHK_agent_background_job_status" CHECK ((("status" IN ('running', 'suspended', 'paused', 'completed', 'failed', 'cancelled')))), CONSTRAINT "CHK_agent_background_job_kind" CHECK ("kind" IN ('subagent', 'workflow', 'approval')), CONSTRAINT "FK_ce131bff629d89015893e350e9c" FOREIGN KEY ("planId") REFERENCES "agent_plan" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_4db3b7ebea4ed4f69649982018c" FOREIGN KEY ("sourceExecutionId") REFERENCES "agent_execution" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_d46c6f00730c2ef8bcb6ee24b67" FOREIGN KEY ("parentAgentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_agent_approval_caller_execution" FOREIGN KEY ("callerExecutionId") REFERENCES "execution_entity" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -15,6 +15,7 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| callerExecutionId | INTEGER |  | true |  | [execution_entity](execution_entity.md) |  |
 | childExecutionId | varchar(36) |  | true |  |  |  |
 | childThreadId | varchar(128) |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -47,10 +48,11 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - | CHECK | CHECK ((("status" IN ('running', 'suspended', 'paused', 'completed', 'failed', 'cancelled')))) |
-| - | CHECK | CHECK (("kind" IN ('subagent', 'workflow', 'approval'))) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (sourceExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
-| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| - | CHECK | CHECK ("kind" IN ('subagent', 'workflow', 'approval')) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (callerExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (sourceExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| - (Foreign key ID: 3) | FOREIGN KEY | FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_background_job_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -59,7 +61,9 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 | Name | Definition |
 | ---- | ---------- |
 | IDX_93d62baabe9858816b5adafb44 | CREATE INDEX "IDX_93d62baabe9858816b5adafb44" ON "agent_background_job" ("parentThreadId", "status")  |
+| IDX_agent_background_job_callerExecutionId | CREATE INDEX "IDX_agent_background_job_callerExecutionId" ON "agent_background_job" ("callerExecutionId")  |
 | IDX_agent_background_job_childExecutionId | CREATE UNIQUE INDEX "IDX_agent_background_job_childExecutionId" ON "agent_background_job" ("childExecutionId") WHERE "childExecutionId" IS NOT NULL |
+| IDX_agent_background_job_parentAgentId_parentRunId | CREATE INDEX "IDX_agent_background_job_parentAgentId_parentRunId" ON "agent_background_job" ("parentAgentId", "parentRunId") WHERE "kind" = 'approval' AND "notifiedAt" IS NULL |
 | IDX_agent_background_job_parentThreadId | CREATE INDEX "IDX_agent_background_job_parentThreadId" ON "agent_background_job" ("parentThreadId") WHERE "status" <> 'running' AND "notifiedAt" IS NULL |
 | IDX_agent_background_job_planId_planTaskId | CREATE INDEX "IDX_agent_background_job_planId_planTaskId" ON "agent_background_job" ("planId", "planTaskId")  |
 | IDX_agent_background_job_sourceExecutionId | CREATE INDEX "IDX_agent_background_job_sourceExecutionId" ON "agent_background_job" ("sourceExecutionId")  |
@@ -73,11 +77,13 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 ```mermaid
 erDiagram
 
+"agent_background_job" }o--o| "execution_entity" : "FOREIGN KEY (callerExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_background_job" }o--|| "agents" : "FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_background_job" }o--o| "agent_plan" : "FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_background_job" }o--o| "agent_execution" : "FOREIGN KEY (sourceExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "agent_background_job" {
+  INTEGER callerExecutionId FK
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   datetime_3_ createdAt
@@ -105,8 +111,31 @@ erDiagram
   datetime_3_ updatedAt
   varchar_36_ workflowId
 }
+"execution_entity" {
+  bigint binaryDataSizeBytes
+  datetime_3_ createdAt
+  varchar_255_ deduplicationKey
+  datetime_3_ deletedAt
+  boolean finished
+  INTEGER id
+  bigint jsonSizeBytes
+  varchar mode
+  SMALLINT resumeAttempts
+  varchar retryOf
+  varchar retrySuccessId
+  datetime startedAt
+  varchar status
+  datetime stoppedAt
+  varchar_2_ storedAt
+  TEXT tracingContext
+  BOOLEAN usedPrivateCredentials
+  datetime waitTill
+  varchar_36_ workflowId FK
+  varchar_36_ workflowVersionId
+}
 "agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK

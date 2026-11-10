@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { isRecord } from '@n8n/utils/is-record';
 
 export const AGENT_DECISION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.agentDecisionTrigger';
 
@@ -12,11 +11,10 @@ export const AgentHitlChannelSchema = z.enum(['slack', 'telegram', 'discord']);
 const configurationBase = {
 	id: z.string().min(1),
 	name: z.string().trim().min(1),
-	/** An omitted value preserves the name of an older configuration. */
 	nameOverridden: z.boolean().optional(),
 	expirySeconds: z.union([z.literal(3600), z.literal(86400), z.literal(604800)]).optional(),
 };
-const configurationSchema = z
+export const AgentHitlConfigurationSchema = z
 	.discriminatedUnion('method', [
 		z
 			.object({
@@ -30,7 +28,7 @@ const configurationSchema = z
 				...configurationBase,
 				method: z.literal('channel'),
 				channel: AgentHitlChannelSchema,
-				credentialId: z.string().min(1),
+				credentialId: z.string(),
 				recipient: z
 					.object({
 						kind: z.enum(['channel', 'user']),
@@ -65,13 +63,6 @@ const configurationSchema = z
 			});
 		}
 	});
-
-// Remove the retired requester policy from saved Agent documents.
-export const AgentHitlConfigurationSchema = z.preprocess((value) => {
-	if (!isRecord(value)) return value;
-	const { disallowRequesterApproval: _retired, ...configuration } = value;
-	return configuration;
-}, configurationSchema);
 
 export type AgentHitlChannel = z.infer<typeof AgentHitlChannelSchema>;
 export type AgentHitlChannelConfiguration = Extract<AgentHitlConfiguration, { method: 'channel' }>;

@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v7 as uuid } from 'uuid';
 
-const migration = 'AddAgentApprovalJobKind1793026533805';
+const migration = 'AddAgentApprovalJobKind1794242589192';
 
 describe('Agent approval job migration', () => {
 	async function context<T>(run: (ctx: TestMigrationContext) => Promise<T>) {
@@ -74,5 +74,43 @@ describe('Agent approval job migration', () => {
 			});
 		});
 		await runSingleMigration(migration);
+	});
+	it('adds and removes private execution ownership without changing Agent definitions', async () => {
+		const ownerMigration = 'AddAgentApprovalExecutionOwner1794243760175';
+		await runSingleMigration(ownerMigration);
+		await context(async ({ escape, runQuery }) => {
+			const jobs = await runQuery<{ id: string }[]>(
+				`SELECT ${escape.columnName('id')} FROM ${escape.tableName('agent_background_job')}`,
+			);
+			expect(jobs).toHaveLength(2);
+			const workflowId = uuid();
+			const now = new Date();
+			await runQuery(
+				`INSERT INTO ${escape.tableName('workflow_entity')} (${['id', 'name', 'nodes', 'connections', 'versionId', 'active', 'createdAt', 'updatedAt'].map(escape.columnName).join(', ')}) VALUES (:workflowId, 'Private execution owner', '[]', '{}', :versionId, :active, :now, :now)`,
+				{ workflowId, versionId: uuid(), active: false, now },
+			);
+			await runQuery(
+				`UPDATE ${escape.tableName('agents')} SET ${escape.columnName('approvalWorkflowId')} = :workflowId`,
+				{ workflowId },
+			);
+			await expect(
+				runQuery(
+					`DELETE FROM ${escape.tableName('workflow_entity')} WHERE ${escape.columnName('id')} = :workflowId`,
+					{ workflowId },
+				),
+			).rejects.toThrow();
+		});
+		await undoLastSingleMigration();
+		await context(async ({ escape, runQuery }) => {
+			const agents = await runQuery<{ name: string }[]>(
+				`SELECT ${escape.columnName('name')} FROM ${escape.tableName('agents')}`,
+			);
+			expect(agents).toEqual([{ name: 'Agent' }]);
+			const jobs = await runQuery<{ id: string }[]>(
+				`SELECT ${escape.columnName('id')} FROM ${escape.tableName('agent_background_job')}`,
+			);
+			expect(jobs).toHaveLength(2);
+		});
+		await runSingleMigration(ownerMigration);
 	});
 });

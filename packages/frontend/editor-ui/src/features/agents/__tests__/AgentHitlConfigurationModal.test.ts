@@ -452,7 +452,7 @@ it('shows platform icons in the channel select and recipient icons for each dest
 	expect(wrapper.getComponent(AgentHitlDestinationPicker).props('icon')).toBe('hash');
 });
 
-it('uses Human interactions for new configurations and preserves saved names', async () => {
+it('uses Human interactions for new configurations and preserves custom names', async () => {
 	const wrapper = render();
 	await flushPromises();
 	expect(wrapper.get('[data-testid="title"]').element).toHaveProperty(
@@ -462,6 +462,7 @@ it('uses Human interactions for new configurations and preserves saved names', a
 	const saved = render({
 		id: 'existing',
 		name: 'HITL Settings 1',
+		nameOverridden: true,
 		method: 'workflow',
 		workflowId: 'wf',
 	});
@@ -481,6 +482,7 @@ it('generates names from workflow choices and keeps automatic naming after Save'
 	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
 	const saved = wrapper.emitted('save')?.[0]?.[0] as AgentHitlConfiguration;
 	expect(saved).toMatchObject({ name: 'Confirm deployment', nameOverridden: false });
+	expect(saved.id).toMatch(/^interaction_[A-Za-z0-9]{16}$/);
 	const reopened = render(saved);
 	await flushPromises();
 	reopened.getComponent(N8nCombobox2).vm.$emit('update:modelValue', 'review');

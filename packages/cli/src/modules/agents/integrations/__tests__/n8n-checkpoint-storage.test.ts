@@ -369,3 +369,36 @@ describe('N8NCheckpointStorage', () => {
 		});
 	});
 });
+
+it('checks a pending decision before the SDK loads a changed runtime', async () => {
+	const { service, repository } = makeService();
+	const state: SerializableAgentState = {
+		...suspendedState,
+		pendingToolCalls: {
+			call: {
+				toolCallId: 'call',
+				toolName: 'write',
+				input: {},
+				suspended: true,
+				suspendPayload: {},
+				resumeSchema: {},
+				runId: 'run-1',
+				continuation: {
+					__agentDecisionWorkflow: true,
+					executionId: 'child',
+					definitionHash: 'original',
+				},
+			},
+		},
+	};
+	repository.findByRunIdAndAgentId.mockResolvedValue({
+		runId: 'run-1',
+		expired: false,
+		state: JSON.stringify(state),
+	} as AgentCheckpoint);
+	await expect(service.getStorage('agent-1', 'original').load('run-1')).resolves.toEqual(state);
+	await expect(service.getStorage('agent-1', 'changed').load('run-1')).rejects.toThrow(
+		'configuration changed',
+	);
+	expect(repository.claimForResume).not.toHaveBeenCalled();
+});

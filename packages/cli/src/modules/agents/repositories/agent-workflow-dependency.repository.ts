@@ -59,8 +59,16 @@ export class AgentWorkflowDependencyRepository extends BaseRepository<AgentWorkf
 				...extractAgentWorkflowRefs(agent.schema),
 				...extractAgentWorkflowRefs(publishedVersion?.schema),
 			];
+			const decisions = [agent.schema, publishedVersion?.schema].flatMap((config) =>
+				(config?.hitlConfigurations ?? []).flatMap((interaction) =>
+					interaction.method === 'workflow' ? [interaction.workflowId] : [],
+				),
+			);
 			const workflowIds = [
-				...new Set(refs.flatMap((ref) => (ref.workflowId === undefined ? [] : [ref.workflowId]))),
+				...new Set([
+					...refs.flatMap((ref) => (ref.workflowId === undefined ? [] : [ref.workflowId])),
+					...decisions,
+				]),
 			];
 			const legacyWorkflowNames = [
 				...new Set(refs.flatMap((ref) => (ref.workflowId === undefined ? [ref.workflow] : []))),

@@ -5,6 +5,13 @@ import AgentApprovalRouteSelect from '../components/AgentApprovalRouteSelect.vue
 import AgentHitlConfigurationModal from '../components/AgentHitlConfigurationModal.vue';
 
 enableAutoUnmount(afterEach);
+const feature = vi.hoisted(() => ({ enabled: true }));
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ isAgentModuleActive: () => feature.enabled }),
+}));
+beforeEach(() => {
+	feature.enabled = true;
+});
 
 const configurations: AgentHitlConfiguration[] = [
 	{ id: 'workflow', name: 'HITL Settings 1', method: 'workflow', workflowId: 'wf' },
@@ -156,4 +163,9 @@ it('opens creation without changing the route and selects the saved configuratio
 		{ type: 'configuration', configurationId: 'new' },
 	]);
 	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(false);
+});
+
+it('hides configuration controls while the feature is disabled', () => {
+	feature.enabled = false;
+	expect(render().wrapper.find('[data-testid="agent-approval-route"]').exists()).toBe(false);
 });

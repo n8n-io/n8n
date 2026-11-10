@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { HUMAN_INTERACTIONS_MODULE } from '@n8n/constants';
 import { N8nCombobox2, N8nInputLabel, type ComboboxItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentApprovalRoute, AgentHitlConfiguration } from '@n8n/api-types';
@@ -16,6 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [value: AgentApprovalRoute | undefined] }>();
 const i18n = useI18n();
 const label = computed(() => props.label ?? i18n.baseText('agents.hitl.route'));
+const enabled = computed(() => useSettingsStore().isAgentModuleActive(HUMAN_INTERACTIONS_MODULE));
 const creating = ref(false);
 const open = ref(false);
 const configurations = computed(() => props.context.getConfig()?.hitlConfigurations ?? []);
@@ -56,7 +59,7 @@ function save(configuration: AgentHitlConfiguration, toolKeys?: string[]) {
 </script>
 
 <template>
-	<div>
+	<div v-if="enabled">
 		<N8nInputLabel :label="label">
 			<N8nCombobox2
 				v-model:open="open"

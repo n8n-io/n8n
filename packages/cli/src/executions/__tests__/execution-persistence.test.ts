@@ -1,3 +1,4 @@
+import { ExecutionRetentionService } from '@n8n/backend-services';
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/unbound-method */
 
@@ -89,6 +90,7 @@ describe('ExecutionPersistence', () => {
 	const createPersistenceService = (
 		modeTag: 'db' | 'fs' | 's3' | 'az',
 		dbType: DatabaseConfig['type'] = 'postgresdb',
+		retention = new ExecutionRetentionService(),
 	) =>
 		new ExecutionPersistence(
 			executionRepository,
@@ -98,9 +100,22 @@ describe('ExecutionPersistence', () => {
 			mock<StorageConfig>({ modeTag }),
 			executionsConfig,
 			mock<DatabaseConfig>({ type: dbType }),
+			retention,
 			errorReporter,
 			eventService,
 		);
+
+	it('keeps retained execution payloads when deletion is requested', async () => {
+		const retention = new ExecutionRetentionService();
+		retention.register('consumer', async () => ['123']);
+		const service = createPersistenceService('fs', 'postgresdb', retention);
+		await expect(
+			service.hardDelete({ executionId: '123', workflowId: 'workflow', storedAt: 'fs' }),
+		).rejects.toThrow('required by pending work');
+		expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
+		expect(jsonStore.delete).not.toHaveBeenCalled();
+		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+	});
 
 	describe('create', () => {
 		const createPayload: CreateExecutionPayload = {

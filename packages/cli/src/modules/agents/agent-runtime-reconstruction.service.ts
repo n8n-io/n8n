@@ -1,3 +1,4 @@
+import { getAgentRuntimeDefinitionHash } from './utils/agent-config-hash';
 import {
 	createWriteTodosTool,
 	raceWithAbort,
@@ -235,6 +236,7 @@ interface RuntimeDependencies
 		| 'unavailableTools'
 	> {
 	agent: RuntimeAgent;
+	toolCodeByName: AgentRuntimeAssets['toolCodeByName'];
 	agentId: string;
 	workflowToolExecutionMode: WorkflowToolExecutionMode;
 	parentAgentIdForDelegation: string;
@@ -900,19 +902,25 @@ export class AgentRuntimeReconstructionService {
 			return withApprovalDescription(wrapToolForApproval(tool, { requireApproval: true }));
 		}
 		return withApprovalDescription(
-			Container.get(AgentDecisionWorkflowService).wrap(tool, effective, options.config, {
-				agentId: options.memoryOwnerAgentId,
-				projectId: options.projectId,
-				published: options.runType === 'production',
-				integrations: options.credentialIntegrations,
-				integrationType: options.integrationType,
-				userId: options.attributionUserId ?? options.user?.id,
-				previewChat: options.previewChat,
-				publishedN8nChat:
-					options.runType === 'production' &&
-					options.integrationType === N8N_CHAT_INTEGRATION_TYPE &&
-					options.attributionUserId !== undefined,
-			}),
+			Container.get(AgentDecisionWorkflowService).wrap(
+				tool,
+				effective,
+				options.config,
+				{
+					agentId: options.memoryOwnerAgentId,
+					projectId: options.projectId,
+					published: options.runType === 'production',
+					integrations: options.credentialIntegrations,
+					integrationType: options.integrationType,
+					userId: options.attributionUserId ?? options.user?.id,
+					previewChat: options.previewChat,
+					publishedN8nChat:
+						options.runType === 'production' &&
+						options.integrationType === N8N_CHAT_INTEGRATION_TYPE &&
+						options.attributionUserId !== undefined,
+				},
+				options.toolCodeByName,
+			),
 		);
 	}
 
@@ -1134,7 +1142,16 @@ export class AgentRuntimeReconstructionService {
 		// Inline agents have no entity for checkpoint or attachment rows.
 		if (runtimeProfile === 'inline') return;
 		if (!agent.hasCheckpointStorage()) {
-			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
+			agent.checkpoint(
+				this.n8nCheckpointStorage.getStorage(
+					agentId,
+					getAgentRuntimeDefinitionHash(
+						config,
+						params.toolCodeByName,
+						params.credentialIntegrations,
+					),
+				),
+			);
 		}
 		const provider = getProviderPrefix(config.model);
 		agent.fileStore(this.agentChatAttachmentService.getFileStore({ agentId, projectId }, provider));

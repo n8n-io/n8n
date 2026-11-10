@@ -1,9 +1,22 @@
+import { Container } from '@n8n/di';
+import { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode, INodeExecutionData, ITriggerFunctions } from 'n8n-workflow';
 
 import { AgentDecisionTrigger } from './AgentDecisionTrigger.node';
 
 const node = new AgentDecisionTrigger();
+beforeEach(() =>
+	Container.set(AgentsConfig, mock<AgentsConfig>({ humanInteractionsEnabled: true })),
+);
+afterEach(() => Container.reset());
+
+it('rejects a new request when human interactions are disabled', async () => {
+	Container.set(AgentsConfig, mock<AgentsConfig>({ humanInteractionsEnabled: false }));
+	await expect(node.trigger.call(mock<ITriggerFunctions>())).rejects.toThrow(
+		'Human interactions are not enabled',
+	);
+});
 
 it('emits the example request when the workflow is tested manually', async () => {
 	const context = mock<ITriggerFunctions>();

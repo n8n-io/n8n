@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { AgentBackgroundJobDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
@@ -1001,7 +1002,7 @@ export class AgentBackgroundJobService {
 		const jobs = await this.jobRepository.findByParentThread(parentThreadId);
 		for (const job of jobs) {
 			if (
-				job.kind === 'subagent' &&
+				(job.kind === 'subagent' || parentResourceId === undefined) &&
 				job.parentAgentId === parentAgentId &&
 				(parentResourceId === undefined || job.parentResourceId === parentResourceId) &&
 				(job.status === 'running' || job.status === 'suspended')
@@ -1131,6 +1132,7 @@ export class AgentBackgroundJobService {
 			...(await this.jobRepository.findRunningJobs('approval')),
 		];
 		await this.settleFinishedWorkflowJobs(jobs, signal);
+		await this.reconcileSettledApprovals(signal);
 		for (const job of jobs) {
 			if (signal?.aborted) return;
 			if (!job.pauseRequestId) continue;
@@ -1143,6 +1145,75 @@ export class AgentBackgroundJobService {
 
 		if (signal?.aborted) return;
 		await this.jobRepository.deleteSettledBefore(new Date(Date.now() - SETTLED_JOB_RETENTION_MS));
+	}
+
+	async consumeSettledApprovals(parentRunId: string, parentAgentId: string): Promise<void> {
+		const checkpoint = await this.checkpointStorage.getStatus(parentRunId, parentAgentId);
+		// A missing checkpoint can mean that the first suspension has not been saved yet.
+		if (checkpoint.status === 'not-found') return;
+		for (const job of await this.jobRepository.findUnconsumedSettledApprovals({
+			runId: parentRunId,
+			agentId: parentAgentId,
+		})) {
+			if (
+				job.parentRunId !== parentRunId ||
+				job.parentAgentId !== parentAgentId ||
+				!job.childExecutionId
+			)
+				continue;
+			if (checkpoint.status === 'active') {
+				const pending = Object.values(checkpoint.checkpoint.pendingToolCalls);
+				if (
+					pending.some(
+						(call) =>
+							call.suspended &&
+							isRecord(call.continuation) &&
+							call.continuation.__agentDecisionWorkflow === true &&
+							call.continuation.executionId === job.childExecutionId,
+					)
+				)
+					continue;
+			}
+			await this.jobRepository.consumeApprovalJob(job.childExecutionId);
+		}
+	}
+
+	private async reconcileSettledApprovals(signal?: AbortSignal): Promise<void> {
+		for (const job of await this.jobRepository.findUnconsumedSettledApprovals()) {
+			if (signal?.aborted) return;
+			if (!job.childExecutionId || !job.parentRunId) continue;
+			try {
+				const execution = await this.executionPersistence.findSingleExecution(
+					job.childExecutionId,
+					{ includeData: true, unflattenData: true },
+				);
+				const parent = execution?.data.parentAgentRun;
+				if (
+					!parent ||
+					parent.agentId !== job.parentAgentId ||
+					parent.runId !== job.parentRunId ||
+					parent.threadId !== job.parentThreadId
+				)
+					continue;
+				await this.consumeSettledApprovals(parent.runId, parent.agentId);
+				const checkpoint = await this.checkpointStorage.getStatus(parent.runId, parent.agentId);
+				if (
+					checkpoint.status !== 'active' ||
+					checkpoint.checkpoint.status !== 'suspended' ||
+					!checkpoint.checkpoint.pendingToolCalls[parent.toolCallId]
+				)
+					continue;
+				const { AgentWorkflowToolResumeService } = await import(
+					'../agent-workflow-tool-resume.service.js'
+				);
+				await Container.get(AgentWorkflowToolResumeService).resumeIfSuspended(
+					parent,
+					execution.status,
+				);
+			} catch (error) {
+				this.logger.warn('Failed to reconcile an approval result', { jobId: job.id, error });
+			}
+		}
 	}
 
 	/** Stop expired waits and use the existing workflow continuation path. */
@@ -1200,7 +1271,8 @@ export class AgentBackgroundJobService {
 		job: AgentBackgroundJob,
 	): Promise<'cancelled' | 'already-settled'> {
 		if (!(await this.stopWorkflowJobExecution(job))) {
-			if (job.pauseRequestId) await this.settleFinishedWorkflowJobs([job]);
+			if (job.pauseRequestId || job.kind === 'approval')
+				await this.settleFinishedWorkflowJobs([job]);
 			return 'already-settled';
 		}
 

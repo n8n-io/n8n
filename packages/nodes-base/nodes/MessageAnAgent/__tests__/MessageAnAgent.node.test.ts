@@ -86,11 +86,20 @@ describe('MessageAnAgent Node', () => {
 		]);
 		executeFunctions.executeAgent.mockResolvedValueOnce(mockAgentResult).mockResolvedValueOnce({
 			...mockAgentResult,
-			waiting: { runId: 'run', executionIds: ['decision'], snapshot: '{}' },
+			waiting: { runId: 'run', executionIds: ['decision'] },
 		});
 		const result = await node.execute.call(executeFunctions);
 		expect(executeFunctions.executeAgent).toHaveBeenCalledTimes(2);
 		expect(result[0]).toHaveLength(1);
+	});
+
+	it('drops temporary invocation results when version 4 finishes its items', async () => {
+		executeFunctions.getNode.mockReturnValue({ ...executeFunctions.getNode(), typeVersion: 4 });
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+		mockParams();
+		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+		await node.execute.call(executeFunctions);
+		expect(executeFunctions.setMetadata).toHaveBeenCalledWith({ agentInvocations: undefined });
 	});
 
 	it('should send a message and return the agent response', async () => {
@@ -1104,10 +1113,10 @@ describe('MessageAnAgent versioning', () => {
 		);
 	});
 
-	it('exposes the previous versions with v4 as the default', () => {
+	it('keeps version 3.1 as the default and exposes version 4 explicitly', () => {
 		const versioned = new MessageAnAgent();
 
-		expect(versioned.description.defaultVersion).toBe(4);
+		expect(versioned.description.defaultVersion).toBe(3.1);
 		expect(Object.keys(versioned.nodeVersions).sort()).toEqual(['1', '2', '3', '3.1', '4']);
 	});
 

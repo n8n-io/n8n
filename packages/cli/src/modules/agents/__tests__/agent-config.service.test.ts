@@ -1,3 +1,4 @@
+import { AgentsConfig } from '@n8n/config';
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
 import type { EventService } from '@n8n/backend-services';
@@ -374,6 +375,11 @@ describe('AgentConfigService', () => {
 
 	describe('updateConfig', () => {
 		describe('Human interactions', () => {
+			beforeEach(() => {
+				vi.spyOn(Container.get(AgentsConfig), 'humanInteractionsEnabled', 'get').mockReturnValue(
+					true,
+				);
+			});
 			const configurations: AgentHitlConfiguration[] = [
 				{
 					id: 'workflow-review',
@@ -391,10 +397,30 @@ describe('AgentConfigService', () => {
 				},
 			];
 
+			it('refuses a new human interaction while the module is disabled', async () => {
+				vi.spyOn(Container.get(AgentsConfig), 'humanInteractionsEnabled', 'get').mockReturnValue(
+					false,
+				);
+				const { service, agentRepository } = makeService();
+				const agent = makeAgent();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, hitlConfigurations: [configurations[0]] },
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow('not enabled');
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			});
+
 			it.each(configurations)(
 				'saves and updates a $method destination in the returned config',
 				async (configuration) => {
-					const { service, agentRepository } = makeService();
+					const { service, agentRepository, credentialsService } = makeService();
+					mockAccessibleCredentials(credentialsService, ['bot']);
 					const agent = makeAgent();
 					agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 					const added = await service.updateConfig(

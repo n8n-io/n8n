@@ -62,6 +62,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agent_background_job" {
+  INTEGER callerExecutionId FK
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   datetime_3_ createdAt

@@ -970,6 +970,7 @@ export class AgentExecutionOrchestratorService {
 						agentId,
 						projectId,
 						user,
+						integrationType: 'task',
 						sandboxPrincipalHash,
 						allowBackgroundTasks: false,
 					},
@@ -1351,6 +1352,9 @@ export class AgentExecutionOrchestratorService {
 			runtime,
 		);
 		const messageContext = await this.resolveResumeMessageContext(config, memoryScope);
+		const taskThread = isTaskRunMemoryResourceId(memoryScope.resourceId)
+			? await this.agentExecutionService.findThreadById(memoryScope.threadId)
+			: undefined;
 		return {
 			type: 'resume',
 			resumeData: config.resumeData,
@@ -1366,7 +1370,11 @@ export class AgentExecutionOrchestratorService {
 						: {}),
 				},
 			),
-			recording: this.createResumeRecording(config, checkpoint, runtime, executionSource),
+			recording: {
+				...this.createResumeRecording(config, checkpoint, runtime, executionSource),
+				...(taskThread?.taskId ? { taskId: taskThread.taskId } : {}),
+				...(taskThread?.taskVersionId ? { taskVersionId: taskThread.taskVersionId } : {}),
+			},
 		};
 	}
 

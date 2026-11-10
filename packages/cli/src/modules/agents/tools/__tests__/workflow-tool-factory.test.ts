@@ -870,6 +870,17 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		expect(executionData?.parentAgentRun).toEqual(expect.objectContaining({ previewChat: true }));
 	});
 
+	it.each([true, false])(
+		'keeps the runtime choice when a task workflow waits (published=%s)',
+		async (published) => {
+			const executionData = await runToolWith(
+				{ agentId: 'agent-1', integrationType: 'task', usePublishedWorkflowVersion: published },
+				agentCtx,
+			);
+			expect(executionData?.parentAgentRun).toMatchObject({ integrationType: 'task', published });
+		},
+	);
+
 	it('stamps the production n8n Chat marker so the wake-up uses the published runtime', async () => {
 		const executionData = await runToolWith(
 			{

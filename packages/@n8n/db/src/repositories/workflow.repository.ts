@@ -1,3 +1,5 @@
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { randomUUID } from 'node:crypto';
 import { GlobalConfig } from '@n8n/config';
 import { assertClearedFor, workflowContentSubject, workflowSubject } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -361,6 +363,25 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 					return saved;
 				}),
 		);
+	}
+
+	/** Create an empty private owner. Execution snapshots still pass the workflowStart policy. */
+	async createPrivateExecutionOwner(ctx: OperationContext): Promise<string> {
+		const workflow = this.create({
+			id: generateNanoId(),
+			name: 'Internal execution owner',
+			isArchived: true,
+			active: false,
+			activeVersionId: null,
+			versionId: randomUUID(),
+			nodes: [],
+			connections: {},
+			settings: { callerPolicy: 'none' },
+		});
+		await runWorkflowContentWrite(
+			async () => await this.managerFor(ctx).insert(WorkflowEntity, workflow),
+		);
+		return workflow.id;
 	}
 
 	/**

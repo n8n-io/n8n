@@ -2603,8 +2603,6 @@ export interface ExecuteAgentOptions {
 export interface AgentWorkflowSuspension {
 	runId: string;
 	executionIds: string[];
-	/** Serialized runtime snapshot. It belongs to execution data, not display data. */
-	snapshot: string;
 }
 
 export interface ExecuteAgentData {
@@ -3623,6 +3621,8 @@ export interface RelatedAgentRun {
 	threadId: string;
 	runId: string;
 	toolCallId: string;
+	/** Use the same published or draft runtime when a task resumes. */
+	published?: boolean;
 	/** Chat platform the run came from, or `n8n_chat` for the in-app preview. */
 	integrationType?: string;
 	/**

@@ -1,3 +1,4 @@
+import { ExecutionRetentionService } from '@n8n/backend-services';
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -16,7 +17,12 @@ describe('ExecutionsPruningService', () => {
 		logger.scoped.mockReturnValue(logger);
 		const executionRepository = mock<ExecutionRepository>({ hardDeletionBatchSize: BATCH_SIZE });
 		const executionPersistence = mock<ExecutionPersistence>();
-		const service = new ExecutionsPruningService(logger, executionRepository, executionPersistence);
+		const service = new ExecutionsPruningService(
+			logger,
+			executionRepository,
+			executionPersistence,
+			new ExecutionRetentionService(),
+		);
 		return { service, logger, executionRepository, executionPersistence };
 	};
 

@@ -38,6 +38,7 @@ export type NewSubAgentJob = NewAgentBackgroundJobBase & {
 export type NewWorkflowJob = NewAgentBackgroundJobBase & {
 	kind: 'workflow' | 'approval';
 	parentRunId?: string;
+	callerExecutionId?: string;
 	workflowId: string;
 	childExecutionId: string;
 	timeoutAt?: Date;
@@ -194,6 +195,41 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 
 	async findWorkflowJobByExecutionId(executionId: string): Promise<AgentBackgroundJob | null> {
 		return await this.findOneBy({ childExecutionId: executionId });
+	}
+
+	async findUnconsumedApprovalsForAgent(agentId: string): Promise<AgentBackgroundJob[]> {
+		return await this.find({
+			where: { kind: 'approval', parentAgentId: agentId, notifiedAt: IsNull() },
+		});
+	}
+
+	async findExecutionIdsRetainedForApproval(): Promise<string[]> {
+		const jobs = await this.find({
+			select: ['childExecutionId', 'callerExecutionId'],
+			where: { kind: 'approval', notifiedAt: IsNull() },
+		});
+		return [
+			...new Set(
+				jobs.flatMap(({ childExecutionId, callerExecutionId }) =>
+					[childExecutionId, callerExecutionId].filter(
+						(id): id is string => typeof id === 'string',
+					),
+				),
+			),
+		];
+	}
+
+	async findUnconsumedSettledApprovals(parent?: { runId: string; agentId: string }): Promise<
+		AgentBackgroundJob[]
+	> {
+		return await this.find({
+			where: {
+				kind: 'approval',
+				status: In(['completed', 'failed', 'cancelled']),
+				notifiedAt: IsNull(),
+				...(parent ? { parentRunId: parent.runId, parentAgentId: parent.agentId } : {}),
+			},
+		});
 	}
 
 	async consumeApprovalJob(executionId: string): Promise<void> {

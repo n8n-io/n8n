@@ -81,7 +81,7 @@ describe('NodeCatalogService', () => {
 		MockNodeTypeParser.mockClear();
 
 		activeModules = ['data-table', 'agents'];
-		moduleSettings = new Map();
+		moduleSettings = new Map([['agents', { modules: ['human-interactions'] }]]);
 		// A plain stub: a deep mock would proxy the settings Map and break `Map#get`.
 		const moduleRegistry = {
 			isActive: (moduleName: string) => activeModules.includes(moduleName),
@@ -278,6 +278,15 @@ describe('NodeCatalogService', () => {
 				await service.searchNodes(['agent']);
 
 				expect(mockSearchCodeBuilderNodes).toHaveBeenCalledWith(expect.anything(), ['agent']);
+			});
+
+			test('only offers decision nodes when human interactions is enabled', async () => {
+				moduleSettings.set('agents', { modules: [] });
+				await service.initialize();
+				await service.searchNodes(['decision']);
+				expect(searchFilter()('n8n-nodes-base.agentDecisionTrigger')).toBe(false);
+				expect(searchFilter()('n8n-nodes-base.agentDecisionResponse')).toBe(false);
+				expect(searchFilter()('n8n-nodes-base.messageAnAgent')).toBe(true);
 			});
 
 			test('leaves out the Data table nodes while the data-table module is inactive', async () => {

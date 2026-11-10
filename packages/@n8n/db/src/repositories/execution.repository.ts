@@ -754,7 +754,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}).then((executions) => executions.map(({ id }) => id));
 	}
 
-	async softDeletePrunableExecutions() {
+	async softDeletePrunableExecutions(retainedExecutionIds: string[] = []) {
 		const { pruneDataMaxAge, pruneDataMaxCount } = this.globalConfig.executions;
 
 		// Sub-query to exclude executions having annotations
@@ -788,14 +788,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			}
 		});
 
-		// A waiting caller still needs these child rows to resume through WaitTracker.
-		const approvalExecutions = this.manager
-			.createQueryBuilder()
-			.select('CAST(approval."childExecutionId" AS BIGINT)')
-			.from(`${this.globalConfig.database.tablePrefix}agent_background_job`, 'approval')
-			.where("approval.kind = 'approval'")
-			.andWhere('approval."notifiedAt" IS NULL')
-			.andWhere('approval."childExecutionId" IS NOT NULL');
 		return await this.createQueryBuilder()
 			.update(ExecutionEntity)
 			.set({ deletedAt: () => dbNowLiteral(isPostgres) })
@@ -806,7 +798,16 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			})
 			// Only mark executions as deleted if they are not annotated
 			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
-			.andWhere('id NOT IN (' + approvalExecutions.getQuery() + ')')
+			.andWhere(
+				isPostgres
+					? 'CAST(id AS TEXT) <> ALL(CAST(:retainedExecutionIds AS TEXT[]))'
+					: 'CAST(id AS TEXT) NOT IN (SELECT value FROM json_each(:retainedExecutionIds))',
+				{
+					retainedExecutionIds: isPostgres
+						? retainedExecutionIds
+						: JSON.stringify(retainedExecutionIds),
+				},
+			)
 			.andWhere(pruningCriteria)
 			.execute();
 	}

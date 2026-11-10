@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { v4 as uuid } from 'uuid';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import {
 	N8nButton,
 	N8nCombobox2,
@@ -51,9 +52,7 @@ const router = useRouter();
 const rootStore = useRootStore();
 const workflowsStore = useWorkflowsStore();
 const workflowList = useWorkflowsListStore();
-const customName = ref(
-	props.configuration?.nameOverridden === false ? '' : (props.configuration?.name ?? ''),
-);
+const customName = ref(props.configuration?.nameOverridden ? props.configuration.name : '');
 const expirySeconds = ref<AgentHitlConfiguration['expirySeconds'] | 'none'>(
 	props.configuration?.expirySeconds ?? 'none',
 );
@@ -325,7 +324,7 @@ async function loadOptions(field: 'guild' | 'channel' | 'user', query: string, c
 function save() {
 	if (saveDisabledReason.value || creating.value) return;
 	const base = {
-		id: props.configuration?.id ?? uuid(),
+		id: props.configuration?.id ?? `interaction_${generateNanoId()}`,
 		name: name.value.trim(),
 		nameOverridden: Boolean(customName.value.trim()),
 		expirySeconds: expirySeconds.value === 'none' ? undefined : expirySeconds.value,

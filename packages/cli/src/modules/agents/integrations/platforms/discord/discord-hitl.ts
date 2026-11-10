@@ -1,7 +1,7 @@
 import type { ChannelHitlDefinition } from '../../channel-hitl';
-import { approvalNode } from '../../channel-hitl';
+import { approvalNode, matchesApprovalUser, matchesApprovalChannel } from '../../channel-hitl';
 import { requireCredentialField } from '../../credential-fields';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 const idName = z.object({ id: z.string(), name: z.string() });
@@ -18,6 +18,15 @@ const membersSchema = z.array(
 );
 export const discordHitl: ChannelHitlDefinition = {
 	supported: true,
+	channel: 'discord',
+	nodeType: 'n8n-nodes-base.discord',
+	credentialType: 'discordBotApi',
+	matchesResponse(node, event) {
+		return node.parameters.sendTo === 'user'
+			? matchesApprovalUser(node.parameters.userId, event)
+			: node.parameters.sendTo === 'channel' &&
+					matchesApprovalChannel(node.parameters.channelId, event);
+	},
 	fields: [
 		{ name: 'guild', type: 'search' },
 		{ name: 'recipient', type: 'search', kinds: ['channel', 'user'] },

@@ -57,6 +57,7 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_background_job" {
+  integer callerExecutionId FK
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt

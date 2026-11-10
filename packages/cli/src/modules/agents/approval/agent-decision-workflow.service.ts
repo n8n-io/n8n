@@ -1,9 +1,10 @@
-import { truncate } from '@n8n/utils/string/truncate';
-import { isRecord } from '@n8n/utils/is-record';
-import { AgentChannelHitlService } from './agent-channel-hitl.service';
-import { AgentEvent, type BuiltTool, type InterruptibleToolContext } from '@n8n/agents';
+import {
+	AgentEvent,
+	type BuiltTool,
+	type InterruptibleToolContext,
+	type JSONValue,
+} from '@n8n/agents';
 import { getToolApprovalDisplayName, wrapToolForApproval } from '@n8n/agents/tool';
-import { buildApprovalCardPayload } from '../integrations/agent-chat-suspension-cards';
 import {
 	AGENT_DECISION_TRIGGER_NODE_TYPE,
 	AgentDecisionSchema,
@@ -12,25 +13,32 @@ import {
 	type AgentJsonConfig,
 	type AgentIntegrationConfig,
 } from '@n8n/api-types';
-import { Container, Service } from '@n8n/di';
+import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { OperationalError, UserError, jsonParse } from 'n8n-workflow';
+import { Container, Service } from '@n8n/di';
+import { OperationalError, UserError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
+import { truncate } from '@n8n/utils/string/truncate';
+import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { buildApprovalArgs } from '../execution-recorder';
+import { buildApprovalCardPayload } from '../integrations/agent-chat-suspension-cards';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
 import { executeWorkflow } from '../tools/workflow-tool-factory';
-import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
+import { AgentChannelHitlService } from './agent-channel-hitl.service';
+import { getAgentRuntimeDefinitionHash } from '../utils/agent-config-hash';
+import { APPROVAL_EXPIRED_ERROR, hasApprovalExpired } from './approval-expiry';
 import { collectAgentDecision } from './decision-result';
 import { readWorkflowCaller } from './workflow-caller';
-import { APPROVAL_EXPIRED_ERROR, hasApprovalExpired } from './approval-expiry';
 
 interface ApprovalRunIdentity {
 	agentId: string;
@@ -46,6 +54,10 @@ interface ApprovalRunIdentity {
 export const DECISION_CONTINUATION_SCHEMA = z.object({
 	__agentDecisionWorkflow: z.literal(true),
 	executionId: z.string(),
+	definitionHash: z.string(),
+	workflowVersionId: z.string().optional(),
+	toolSuspended: z.boolean().optional(),
+	toolContinuation: z.string().optional(),
 });
 
 const RESUME_SCHEMA = z.object({ type: z.string().optional(), value: z.string().optional() });
@@ -59,6 +71,7 @@ export class AgentDecisionWorkflowService {
 		private readonly jobs: AgentBackgroundJobService,
 		private readonly jobRepository: AgentBackgroundJobRepository,
 		private readonly executionPersistence: ExecutionPersistence,
+		private readonly config: AgentsConfig,
 	) {}
 
 	wrap(
@@ -66,6 +79,7 @@ export class AgentDecisionWorkflowService {
 		route: AgentApprovalRoute | undefined,
 		agentConfig: AgentJsonConfig,
 		identity: ApprovalRunIdentity,
+		toolCodeByName: Record<string, string> = {},
 	): BuiltTool {
 		const effective = route;
 		if (!effective || effective.type === 'conversation') {
@@ -73,6 +87,11 @@ export class AgentDecisionWorkflowService {
 		}
 		const configuration = agentConfig.hitlConfigurations?.find(
 			(entry) => entry.id === effective.configurationId,
+		);
+		const definitionHash = getAgentRuntimeDefinitionHash(
+			agentConfig,
+			toolCodeByName,
+			identity.integrations,
 		);
 		const handler = tool.handler;
 		return {
@@ -83,15 +102,54 @@ export class AgentDecisionWorkflowService {
 			handler: async (input, ctx) => {
 				if (!('suspend' in ctx)) throw new OperationalError('Approval requires a resumable tool');
 				const pending = DECISION_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
-				if (
-					ctx.suspendPayload !== undefined &&
-					!pending.success &&
-					(!isRecord(ctx.suspendPayload) || ctx.suspendPayload.type !== 'approval')
-				) {
-					return await handler?.call(tool, input, ctx);
+				if (pending.success && pending.data.definitionHash !== definitionHash)
+					throw new UserError(
+						'The Agent configuration changed while approval was pending. Start a new request.',
+					);
+				if (pending.success && pending.data.toolSuspended) {
+					ctx.abortSignal?.throwIfAborted();
+					return await handler?.call(tool, input, {
+						...this.approvedContext(ctx, pending.data.executionId, pending.data.definitionHash),
+						continuation:
+							pending.data.toolContinuation === undefined
+								? undefined
+								: jsonParse<JSONValue>(pending.data.toolContinuation),
+					});
 				}
+				if (
+					!pending.success &&
+					ctx.suspendPayload !== undefined &&
+					(!isRecord(ctx.suspendPayload) || ctx.suspendPayload.type !== 'approval')
+				)
+					throw new UserError('The approval continuation is invalid');
 				if (!configuration) throw new UserError('The selected human interaction is unavailable');
-				return await this.decide(tool, input, ctx, configuration, identity);
+				return await this.decide(tool, input, ctx, configuration, identity, definitionHash);
+			},
+		};
+	}
+
+	private approvedContext(
+		ctx: InterruptibleToolContext,
+		executionId: string,
+		definitionHash: string,
+	): InterruptibleToolContext {
+		return {
+			...ctx,
+			suspend: async (payload, options) => {
+				const child = options?.continuation;
+				return await ctx.suspend(payload, {
+					...options,
+					continuation: {
+						__agentDecisionWorkflow: true,
+						executionId:
+							isRecord(child) && typeof child.executionId === 'string'
+								? child.executionId
+								: executionId,
+						definitionHash,
+						toolSuspended: true,
+						...(child === undefined ? {} : { toolContinuation: JSON.stringify(child) }),
+					},
+				});
 			},
 		};
 	}
@@ -120,12 +178,32 @@ export class AgentDecisionWorkflowService {
 		ctx: InterruptibleToolContext,
 		configuration: NonNullable<AgentJsonConfig['hitlConfigurations']>[number],
 		identity: ApprovalRunIdentity,
+		definitionHash: string,
 	): Promise<unknown> {
 		const pending = DECISION_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
 		let executionId: string;
+		let workflowVersionId = pending.success ? pending.data.workflowVersionId : undefined;
 		if (pending.success) {
+			if (pending.data.definitionHash !== definitionHash)
+				throw new UserError(
+					'The Agent configuration changed while approval was pending. Start a new request.',
+				);
 			executionId = pending.data.executionId;
 		} else {
+			if (!this.config.humanInteractionsEnabled)
+				throw new UserError('Human interactions are not enabled on this instance');
+			if (tool.metadata?.kind === 'workflow' && typeof tool.metadata.workflowId === 'string') {
+				const target = await this.loader.loadWorkflow(
+					identity.projectId,
+					{
+						workflowId: tool.metadata.workflowId,
+						workflowName: String(tool.metadata.workflowName ?? tool.name),
+					},
+					{ usePublishedVersion: identity.published },
+				);
+				if (!target) throw new UserError('The tool workflow is unavailable');
+				workflowVersionId = target.versionId;
+			}
 			const caller = readWorkflowCaller(ctx.persistence?.hostMetadata?.workflowCaller);
 			if (
 				!ctx.runId ||
@@ -133,7 +211,9 @@ export class AgentDecisionWorkflowService {
 				!ctx.persistence ||
 				(!caller && !identity.integrationType)
 			) {
-				throw new UserError('Advanced approvals require a resumable conversation or workflow run');
+				throw new UserError(
+					'Human interactions require a resumable conversation, workflow, or task run',
+				);
 			}
 			const workflow =
 				configuration.method === 'channel'
@@ -142,7 +222,6 @@ export class AgentDecisionWorkflowService {
 							identity.integrations ?? [],
 							identity.projectId,
 							identity.agentId,
-							caller?.workflowId,
 						)
 					: await this.loader.loadWorkflow(
 							identity.projectId,
@@ -156,6 +235,8 @@ export class AgentDecisionWorkflowService {
 				throw new UserError('Select a workflow with an Agent decision trigger');
 			if (configuration.method === 'workflow' && workflow.id === caller?.workflowId)
 				throw new UserError('A decision workflow cannot call itself');
+			const scope = decodeAgentSandboxHostMetadata(ctx.persistence.hostMetadata);
+			if (!scope) throw new OperationalError('Approval execution scope is unavailable');
 			const { WorkflowRunner } = await import('@/workflow-runner.js');
 			const requestedAt = new Date();
 			const timeoutAt = configuration.expirySeconds
@@ -213,21 +294,38 @@ export class AgentDecisionWorkflowService {
 				},
 			);
 			executionId = result.executionId;
-			const scope = decodeAgentSandboxHostMetadata(ctx.persistence.hostMetadata);
-			if (!scope) throw new OperationalError('Approval execution scope is unavailable');
-			await this.jobs.registerWorkflowJob({
-				id: randomUUID(),
-				kind: 'approval',
-				parentRunId: ctx.runId,
-				parentAgentId: identity.agentId,
-				parentThreadId: ctx.persistence.threadId,
-				parentResourceId: ctx.persistence.resourceId,
-				parentPrincipalHash: scope.principalHash,
-				title: configuration.name,
-				workflowId: workflow.id,
-				executionId,
-				...(timeoutAt ? { timeoutAt } : {}),
-			});
+			try {
+				await this.jobs.registerWorkflowJob({
+					id: randomUUID(),
+					kind: 'approval',
+					parentRunId: ctx.runId,
+					callerExecutionId: caller?.executionId,
+					parentAgentId: identity.agentId,
+					parentThreadId: ctx.persistence.threadId,
+					parentResourceId: ctx.persistence.resourceId,
+					parentPrincipalHash: scope.principalHash,
+					title: configuration.name,
+					workflowId: workflow.id,
+					executionId,
+					...(timeoutAt ? { timeoutAt } : {}),
+				});
+			} catch (error) {
+				// A request without a durable receipt must not leave a waiting child behind.
+				const { ExecutionService } = await import('@/executions/execution.service.js');
+				const { MissingExecutionStopError } = await import(
+					'@/errors/missing-execution-stop.error.js'
+				);
+				try {
+					await Container.get(ExecutionService).stop(executionId, [workflow.id]);
+				} catch (stopError) {
+					if (!(stopError instanceof MissingExecutionStopError))
+						throw new AggregateError(
+							[error, stopError],
+							'Could not register or stop the approval execution',
+						);
+				}
+				throw error;
+			}
 			ctx.emitEvent?.({
 				type: AgentEvent.ToolApproval,
 				phase: 'requested',
@@ -302,7 +400,12 @@ export class AgentDecisionWorkflowService {
 					],
 				},
 				{
-					continuation: { __agentDecisionWorkflow: true, executionId },
+					continuation: {
+						__agentDecisionWorkflow: true,
+						executionId,
+						definitionHash,
+						...(workflowVersionId ? { workflowVersionId } : {}),
+					},
 					resumeSchema: RESUME_SCHEMA,
 				},
 			);
@@ -323,9 +426,11 @@ export class AgentDecisionWorkflowService {
 		if (!decision.approved)
 			return { declined: true, message: `Tool "${tool.name}" was not approved` };
 		return await tool.handler?.call(tool, input, {
-			...ctx,
+			...this.approvedContext(ctx, executionId, definitionHash),
 			resumeData: undefined,
-			continuation: undefined,
+			continuation: workflowVersionId
+				? { __agentApprovalWorkflowVersion: workflowVersionId }
+				: undefined,
 			suspendPayload: undefined,
 			resumeSchema: undefined,
 		});

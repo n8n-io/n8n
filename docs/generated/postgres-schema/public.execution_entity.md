@@ -9,7 +9,7 @@
 | deduplicationKey | varchar(255) |  | true |  |  |  |
 | deletedAt | timestamp(3) with time zone |  | true |  |  |  |
 | finished | boolean |  | false |  |  |  |
-| id | integer | nextval('execution_entity_id_seq'::regclass) | false | [public.chat_hub_messages](public.chat_hub_messages.md) [public.execution_annotations](public.execution_annotations.md) [public.execution_data](public.execution_data.md) [public.execution_metadata](public.execution_metadata.md) [public.test_case_execution](public.test_case_execution.md) |  |  |
+| id | integer | nextval('execution_entity_id_seq'::regclass) | false | [public.agent_background_job](public.agent_background_job.md) [public.chat_hub_messages](public.chat_hub_messages.md) [public.execution_annotations](public.execution_annotations.md) [public.execution_data](public.execution_data.md) [public.execution_metadata](public.execution_metadata.md) [public.test_case_execution](public.test_case_execution.md) |  |  |
 | jsonSizeBytes | bigint | 0 | false |  |  | Byte size of the JSON execution data bundle (run data, workflow snapshot, version id); excludes binary data. 0 means unknown. |
 | mode | varchar |  | false |  |  |  |
 | resumeAttempts | smallint | 0 | false |  |  | Resume attempts since the execution last entered waiting or new. Reset to 0 once the execution runs. |
@@ -62,6 +62,7 @@
 ```mermaid
 erDiagram
 
+"public.agent_background_job" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;callerExecutionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
 "public.chat_hub_messages" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
 "public.execution_annotations" }o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
 "public.execution_data" |o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
@@ -90,6 +91,35 @@ erDiagram
   timestamp_3__with_time_zone waitTill
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
+}
+"public.agent_background_job" {
+  integer callerExecutionId FK
+  varchar_36_ childExecutionId
+  varchar_128_ childThreadId
+  timestamp_3__with_time_zone createdAt
+  text error
+  json files
+  varchar_36_ id
+  varchar_16_ kind
+  timestamp_3__with_time_zone notifiedAt
+  varchar_36_ parentAgentId FK
+  varchar_64_ parentPrincipalHash
+  varchar_255_ parentResourceId
+  varchar_128_ parentRunId
+  varchar_128_ parentThreadId
+  uuid pauseRequestId
+  uuid planId FK
+  uuid planTaskId
+  text result
+  timestamp_3__with_time_zone settledAt
+  json skippedFiles
+  varchar_36_ sourceExecutionId FK
+  varchar_16_ status
+  varchar_36_ subAgentId
+  timestamp_3__with_time_zone timeoutAt
+  varchar_255_ title
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId
 }
 "public.chat_hub_messages" {
   uuid agentId FK

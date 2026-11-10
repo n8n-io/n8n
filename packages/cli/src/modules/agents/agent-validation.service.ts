@@ -3,6 +3,7 @@ import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
 	AgentModelSchema,
+	AGENT_DECISION_TRIGGER_NODE_TYPE,
 	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
 	findVectorStoreToolNameCollisions,
@@ -401,6 +402,7 @@ export class AgentValidationService {
 		}
 		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
 		await this.collectMcpServerIssues(config, findCredential, issues);
+		await this.collectInteractionIssues(ctx, findCredential, issues, scope);
 
 		return this.dedupe(withoutIssuesOfLockedEntries(issues));
 	}
@@ -733,6 +735,87 @@ export class AgentValidationService {
 					restriction,
 				),
 			);
+		}
+	}
+
+	private async collectInteractionIssues(
+		ctx: ConfigurationValidationContext,
+		findCredential: FindCredential,
+		issues: AgentConfigValidationIssue[],
+		scope: AgentValidationScope,
+	): Promise<void> {
+		const configurations = ctx.config.hitlConfigurations ?? [];
+		const ids = new Set(configurations.map(({ id }) => id));
+		for (const [entries, kind] of [
+			[ctx.config.tools ?? [], 'tool'],
+			[ctx.config.mcpServers ?? [], 'mcpServer'],
+		] as const) {
+			for (const [index, entry] of entries.entries()) {
+				if (
+					('enabled' in entry && entry.enabled === false) ||
+					entry.approvalRoute?.type !== 'configuration' ||
+					ids.has(entry.approvalRoute.configurationId)
+				)
+					continue;
+				issues.push(
+					issue(
+						'missing_reference',
+						`${kind === 'tool' ? 'tools' : 'mcpServers'}.${index}.approvalRoute`,
+						{ kind, index },
+					),
+				);
+			}
+		}
+		for (const [index, configuration] of configurations.entries()) {
+			const path = `hitlConfigurations.${index}`;
+			const capability = { kind: 'humanInteraction' as const, id: configuration.id, index };
+			if (configuration.method === 'workflow') {
+				const workflow = await this.workflowRepository.findOneByAgentToolReference(
+					ctx.projectId,
+					{ workflowId: configuration.workflowId, workflowName: configuration.name },
+					{ withActiveVersion: scope === 'publish' },
+				);
+				if (!workflow || workflow.isArchived) {
+					issues.push(issue('missing_reference', `${path}.workflowId`, capability));
+					continue;
+				}
+				if (scope === 'publish' && !workflow.activeVersionId) {
+					issues.push(
+						issue('incompatible_reference', `${path}.workflowId`, capability, 'not_published'),
+					);
+					continue;
+				}
+				const nodes = scope === 'publish' ? workflow.activeVersion?.nodes : workflow.nodes;
+				if (
+					!nodes?.some((node) => node.type === AGENT_DECISION_TRIGGER_NODE_TYPE && !node.disabled)
+				)
+					issues.push(
+						issue(
+							'incompatible_reference',
+							`${path}.workflowId`,
+							capability,
+							'no_decision_trigger',
+						),
+					);
+				continue;
+			}
+			const platform = this.chatIntegrationRegistry.get(configuration.channel);
+			if (
+				!platform?.hitl.supported ||
+				!ctx.integrations.some(
+					(integration) =>
+						integration.type === configuration.channel &&
+						'credentialId' in integration &&
+						integration.credentialId === configuration.credentialId,
+				)
+			) {
+				issues.push(issue('missing_reference', `${path}.credentialId`, capability));
+				continue;
+			}
+			const credential = await this.findCredentialSafe(findCredential, configuration.credentialId);
+			if (!credential) issues.push(issue('invalid_credential', `${path}.credentialId`, capability));
+			else if (credential.type !== platform.hitl.credentialType)
+				issues.push(issue('incompatible_credential', `${path}.credentialId`, capability));
 		}
 	}
 

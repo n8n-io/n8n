@@ -1,7 +1,13 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentIntegrationConfig, AgentSkill, StoredAgentConfig } from '@n8n/api-types';
-import { DateTimeColumn, JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
+import {
+	DateTimeColumn,
+	JsonColumn,
+	Project,
+	WorkflowEntity,
+	WithTimestampsAndStringId,
+} from '@n8n/db';
+import { Column, Entity, Index, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
 import type { AgentHistory } from './agent-history.entity';
 
@@ -27,6 +33,7 @@ export function isProjectAgent<T extends Pick<Agent, 'projectId'>>(
 }
 
 @Entity({ name: 'agents' })
+@Index(['approvalWorkflowId'])
 export class Agent extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
@@ -46,6 +53,17 @@ export class Agent extends WithTimestampsAndStringId {
 	 */
 	@Column({ type: 'varchar', length: 16, default: 'project' })
 	scope: AgentScope;
+
+	/** Private backing workflow for channel approval executions. It has no user shares. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	approvalWorkflowId: string | null;
+
+	@ManyToOne(() => WorkflowEntity, { onDelete: 'RESTRICT', nullable: true })
+	@JoinColumn({
+		name: 'approvalWorkflowId',
+		foreignKeyConstraintName: 'FK_agent_approval_execution_owner',
+	})
+	approvalWorkflow?: Relation<WorkflowEntity> | null;
 
 	@JsonColumn({ nullable: true, default: null })
 	schema: StoredAgentConfig | null;

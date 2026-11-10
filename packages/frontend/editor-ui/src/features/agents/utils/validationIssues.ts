@@ -43,10 +43,18 @@ export function hasBlockingIssues(issues: AgentConfigValidationIssue[]): boolean
 export function unpublishedWorkflowTools(
 	issues: AgentConfigValidationIssue[],
 	tools: NonNullable<AgentJsonConfig['tools']>,
+	interactions: NonNullable<AgentJsonConfig['hitlConfigurations']> = [],
 ): UnpublishedWorkflowTool[] {
 	return issues
 		.filter((issue) => isWarningIssue(issue))
 		.map((issue) => {
+			if (issue.capability.kind === 'humanInteraction') {
+				const interaction =
+					issue.capability.index === undefined ? undefined : interactions[issue.capability.index];
+				return interaction?.method === 'workflow'
+					? { name: interaction.name, workflowId: interaction.workflowId }
+					: { name: '' };
+			}
 			const tool = issue.capability.index === undefined ? undefined : tools[issue.capability.index];
 			const workflowTool = tool?.type === 'workflow' ? tool : undefined;
 			return {

@@ -1,3 +1,4 @@
+import { AgentsConfig } from '@n8n/config';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Agent as RuntimeAgent, ExecutionOptions, RunOptions, StreamChunk } from '@n8n/agents';
@@ -194,6 +195,7 @@ function makeService() {
 		skillRefs,
 		checkpointStorage,
 		backgroundJobs,
+		mock<AgentsConfig>({ humanInteractionsEnabled: true }),
 	);
 
 	return {
@@ -243,7 +245,11 @@ describe('workflow approval continuation', () => {
 					runId: 'runtime-run-1',
 					suspendPayload: {},
 					resumeSchema: { type: 'object' },
-					continuation: { __agentDecisionWorkflow: true, executionId: 'decision-execution' },
+					continuation: {
+						__agentDecisionWorkflow: true,
+						executionId: 'decision-execution',
+						definitionHash: 'definition',
+					},
 				},
 			},
 		});
@@ -273,6 +279,17 @@ describe('workflow approval continuation', () => {
 			runId: 'runtime-run-1',
 			executionIds: ['decision-execution'],
 		});
+		expect(JSON.stringify(waiting)).not.toContain('snapshot');
+		expect(JSON.stringify(waiting)).not.toContain(schema.instructions);
+		expect(checkpointStorage.save).toHaveBeenCalledWith(
+			'runtime-run-1',
+			expect.objectContaining({
+				persistence: expect.objectContaining({
+					hostMetadata: expect.objectContaining({ workflowAgentSnapshot: expect.any(String) }),
+				}),
+			}),
+			agentId,
+		);
 		expect(backgroundJobs.consumeApprovalJob).not.toHaveBeenCalled();
 		expect(first.agent.stream).toHaveBeenCalledWith(
 			expect.anything(),

@@ -1,7 +1,7 @@
 import type { BuiltTool } from '@n8n/agents';
 import { isZodSchema, zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { isRecord } from '@n8n/utils/is-record';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 const DESCRIPTION_FIELD = '__approvalDescription';

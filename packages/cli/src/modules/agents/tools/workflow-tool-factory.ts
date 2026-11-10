@@ -37,7 +37,7 @@ import {
 	TimeoutExecutionCancelledError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, UserError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -580,6 +580,9 @@ function agentRunOf(
 		runId: ctx.runId,
 		toolCallId: ctx.toolCallId,
 		...(context.integrationType ? { integrationType: context.integrationType } : {}),
+		...(context.integrationType === 'task'
+			? { published: context.usePublishedWorkflowVersion === true }
+			: {}),
 		...(context.userId ? { userId: context.userId } : {}),
 		...(context.previewChat ? { previewChat: true } : {}),
 		...(context.publishedN8nChat ? { publishedN8nChat: true } : {}),
@@ -1053,6 +1056,14 @@ function assembleWorkflowTool(
 				inputFiles = new Map(Object.entries(pending.data.inputFiles ?? {}));
 			} else {
 				current = await loadCurrentWorkflow(context, reference);
+				if (
+					isRecord(ctx.continuation) &&
+					typeof ctx.continuation.__agentApprovalWorkflowVersion === 'string' &&
+					ctx.continuation.__agentApprovalWorkflowVersion !== current.workflow.versionId
+				)
+					throw new UserError(
+						'The tool workflow changed while approval was pending. Request approval again.',
+					);
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
 				const { files, ...rest } = input;
 				const modelInput = acceptsFiles ? rest : input;

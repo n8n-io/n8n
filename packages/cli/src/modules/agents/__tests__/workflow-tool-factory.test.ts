@@ -495,3 +495,15 @@ describe('findWorkflowToolWorkflows', () => {
 		expect(result.get('Legacy Workflow')).toBe(legacyWorkflow);
 	});
 });
+
+it('checks the approved workflow version before starting an execution', async () => {
+	const context = makeContext(makeWorkflow({ versionId: 'current-version' }));
+	const tool = await resolveWorkflowTool(
+		{ type: 'workflow', workflow: 'Review target', workflowId: 'workflow-123' },
+		context,
+	);
+	await expect(
+		tool.handler?.({}, { continuation: { __agentApprovalWorkflowVersion: 'approved-version' } }),
+	).rejects.toThrow('workflow changed while approval was pending');
+	expect(context.workflowRunner.run).not.toHaveBeenCalled();
+});

@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| callerExecutionId | integer |  | true |  | [public.execution_entity](public.execution_entity.md) | Workflow execution waiting for this approval |
 | childExecutionId | varchar(36) |  | true |  |  | Workflow jobs only |
 | childThreadId | varchar(128) |  | true |  |  | Sub-agent jobs only; minted at dispatch, links to agent_execution_threads |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -38,6 +39,7 @@
 | CHK_agent_background_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['subagent'::character varying, 'workflow'::character varying, 'approval'::character varying])::text[]))) |
 | CHK_agent_background_job_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'suspended'::character varying, 'paused'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[]))) |
 | FK_4db3b7ebea4ed4f69649982018c | FOREIGN KEY | FOREIGN KEY ("sourceExecutionId") REFERENCES agent_execution(id) ON DELETE SET NULL |
+| FK_agent_approval_caller_execution | FOREIGN KEY | FOREIGN KEY ("callerExecutionId") REFERENCES execution_entity(id) ON DELETE SET NULL |
 | FK_ce131bff629d89015893e350e9c | FOREIGN KEY | FOREIGN KEY ("planId") REFERENCES agent_plan(id) ON DELETE SET NULL |
 | FK_d46c6f00730c2ef8bcb6ee24b67 | FOREIGN KEY | FOREIGN KEY ("parentAgentId") REFERENCES agents(id) ON DELETE CASCADE |
 | PK_6e0db58281aa2b4c956dc0d58e9 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -57,7 +59,9 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_93d62baabe9858816b5adafb44 | CREATE INDEX "IDX_93d62baabe9858816b5adafb44" ON public.agent_background_job USING btree ("parentThreadId", status) |
+| IDX_agent_background_job_callerExecutionId | CREATE INDEX "IDX_agent_background_job_callerExecutionId" ON public.agent_background_job USING btree ("callerExecutionId") |
 | IDX_agent_background_job_childExecutionId | CREATE UNIQUE INDEX "IDX_agent_background_job_childExecutionId" ON public.agent_background_job USING btree ("childExecutionId") WHERE ("childExecutionId" IS NOT NULL) |
+| IDX_agent_background_job_parentAgentId_parentRunId | CREATE INDEX "IDX_agent_background_job_parentAgentId_parentRunId" ON public.agent_background_job USING btree ("parentAgentId", "parentRunId") WHERE (((kind)::text = 'approval'::text) AND ("notifiedAt" IS NULL)) |
 | IDX_agent_background_job_parentThreadId | CREATE INDEX "IDX_agent_background_job_parentThreadId" ON public.agent_background_job USING btree ("parentThreadId") WHERE (((status)::text <> 'running'::text) AND ("notifiedAt" IS NULL)) |
 | IDX_agent_background_job_planId_planTaskId | CREATE INDEX "IDX_agent_background_job_planId_planTaskId" ON public.agent_background_job USING btree ("planId", "planTaskId") |
 | IDX_agent_background_job_sourceExecutionId | CREATE INDEX "IDX_agent_background_job_sourceExecutionId" ON public.agent_background_job USING btree ("sourceExecutionId") |
@@ -71,11 +75,13 @@
 ```mermaid
 erDiagram
 
+"public.agent_background_job" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;callerExecutionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
 "public.agent_background_job" }o--|| "public.agents" : "FOREIGN KEY (#quot;parentAgentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_background_job" }o--o| "public.agent_plan" : "FOREIGN KEY (#quot;planId#quot;) REFERENCES agent_plan(id) ON DELETE SET NULL"
 "public.agent_background_job" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;sourceExecutionId#quot;) REFERENCES agent_execution(id) ON DELETE SET NULL"
 
 "public.agent_background_job" {
+  integer callerExecutionId FK
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
@@ -103,8 +109,31 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId
 }
+"public.execution_entity" {
+  bigint binaryDataSizeBytes
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ deduplicationKey
+  timestamp_3__with_time_zone deletedAt
+  boolean finished
+  integer id
+  bigint jsonSizeBytes
+  varchar mode
+  smallint resumeAttempts
+  varchar retryOf
+  varchar retrySuccessId
+  timestamp_3__with_time_zone startedAt
+  varchar status
+  timestamp_3__with_time_zone stoppedAt
+  varchar_2_ storedAt
+  json tracingContext
+  boolean usedPrivateCredentials
+  timestamp_3__with_time_zone waitTill
+  varchar_36_ workflowId FK
+  varchar_36_ workflowVersionId
+}
 "public.agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id

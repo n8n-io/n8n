@@ -1,12 +1,22 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import {
 	getNodeGatingModule,
+	isHumanInteractionNodeType,
+	HUMAN_INTERACTIONS_MODULE,
 	MODULE_GATED_NODE_TYPES,
 	type NodeGatingModule,
 } from '@n8n/constants';
 
-function isModuleEnabled(moduleRegistry: ModuleRegistry, moduleName: NodeGatingModule): boolean {
-	return moduleRegistry.isActive(moduleName) && !isTurnedOffInSettings(moduleRegistry, moduleName);
+function isModuleEnabled(
+	moduleRegistry: ModuleRegistry,
+	moduleName: NodeGatingModule,
+	nodeType: string,
+): boolean {
+	if (!moduleRegistry.isActive(moduleName) || isTurnedOffInSettings(moduleRegistry, moduleName))
+		return false;
+	if (!isHumanInteractionNodeType(nodeType)) return true;
+	const modules = moduleRegistry.settings.get('agents')?.modules;
+	return Array.isArray(modules) && modules.includes(HUMAN_INTERACTIONS_MODULE);
 }
 
 // An admin can turn agents off in Settings > Agents. The module then reports `enabled: false`.
@@ -17,7 +27,7 @@ function isTurnedOffInSettings(moduleRegistry: ModuleRegistry, moduleName: NodeG
 /** Module-gated node types whose module is off. Node discovery must not offer them. */
 export function getModuleDisabledNodeTypes(moduleRegistry: ModuleRegistry): string[] {
 	return Object.entries(MODULE_GATED_NODE_TYPES)
-		.filter(([, moduleName]) => !isModuleEnabled(moduleRegistry, moduleName))
+		.filter(([nodeType, moduleName]) => !isModuleEnabled(moduleRegistry, moduleName, nodeType))
 		.map(([nodeType]) => nodeType);
 }
 
@@ -27,11 +37,14 @@ export function getModuleDisabledNotice(
 	nodeType: string,
 ): string | undefined {
 	const moduleName = getNodeGatingModule(nodeType);
-	if (!moduleName || isModuleEnabled(moduleRegistry, moduleName)) return undefined;
+	if (!moduleName || isModuleEnabled(moduleRegistry, moduleName, nodeType)) return undefined;
 
-	const fix = moduleRegistry.isActive(moduleName)
-		? `An admin turned "${moduleName}" off in the instance settings.`
-		: `The "${moduleName}" module is disabled on this instance.`;
+	const fix =
+		isHumanInteractionNodeType(nodeType) && moduleRegistry.isActive('agents')
+			? 'Enable human-interactions in N8N_AGENTS_MODULES to use this node.'
+			: moduleRegistry.isActive(moduleName)
+				? `An admin turned "${moduleName}" off in the instance settings.`
+				: `The "${moduleName}" module is disabled on this instance.`;
 
 	return `This node cannot run, so do not build with it. ${fix}`;
 }

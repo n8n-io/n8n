@@ -30,14 +30,17 @@ it('requires a Discord server and excludes Linear', () => {
 	);
 });
 
-it.each([true, false])('discards the retired requester policy %s from both methods', (policy) => {
+it.each([true, false])('rejects the unsupported requester policy %s in both methods', (policy) => {
 	for (const configuration of [
 		{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' },
 		{ ...base, channel: 'telegram' },
 	]) {
 		expect(
-			AgentHitlConfigurationSchema.parse({ ...configuration, disallowRequesterApproval: policy }),
-		).toEqual(configuration);
+			AgentHitlConfigurationSchema.safeParse({
+				...configuration,
+				disallowRequesterApproval: policy,
+			}).success,
+		).toBe(false);
 	}
 });
 

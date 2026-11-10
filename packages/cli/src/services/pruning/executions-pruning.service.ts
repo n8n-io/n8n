@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ExecutionRetentionService } from '@n8n/backend-services';
 import { sleep } from '@n8n/utils/sleep';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -26,13 +27,16 @@ export class ExecutionsPruningService {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionPersistence: ExecutionPersistence,
+		private readonly retention: ExecutionRetentionService,
 	) {
 		this.logger = this.logger.scoped('pruning');
 	}
 
 	/** Soft-delete executions based on max age and/or max count. */
 	async softDelete() {
-		const result = await this.executionRepository.softDeletePrunableExecutions();
+		const result = await this.executionRepository.softDeletePrunableExecutions(
+			await this.retention.getRetainedExecutionIds(),
+		);
 
 		if (result.affected === 0) {
 			this.logger.debug('Found no executions to soft-delete');

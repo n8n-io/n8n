@@ -192,19 +192,19 @@ approves or rejects them in this chat. If it returns `approval_required` for an
 unsupported interaction, explain that it cannot be completed here and send the
 user to the Preview link from `sessionContext` to run it again.
 
-The Human interactions spike adds workflow and connected-channel approval for saved
-Agents called from a workflow or conversation. Workflow calls require Message
-an Agent version 4. It does not yet support scheduled Agent tasks. Do not promise
-that path.
+Human interactions adds workflow and connected-channel approval for saved Agents.
+It supports conversations, workflow calls, and scheduled tasks. Workflow calls
+require Message an Agent version 4. The instance must enable the human interactions
+module. Do not configure this feature when the instance has not enabled it.
 
 Use `hitlConfigurations` in the Agent JSON for named human interactions. Do not
 create a separate configuration resource. These definitions import and export
 with the Agent. A workflow configuration
-has `id`, `name`, `method: "workflow"`, and `workflowId`. A channel configuration
+has `id`, `name`, `method: "workflow"`, and `workflowId`. Use the canonical
+Agent resource ID form `interaction_<nanoid>` for a new configuration. A channel configuration
 has `id`, `name`, `method: "channel"`, `channel`, `credentialId`, and
 `recipient: { kind: "channel" | "user", id, name? }`. Use a Slack, Telegram, or
-Discord connection already configured on the Agent. Linear does not support
-approval delivery. Discord also requires `guildId`. Telegram requires a numeric
+Discord connection already configured on the Agent. Teams, WhatsApp, Linear, and n8n Chat are not configurable approval destinations. Discord also requires `guildId`. Telegram requires a numeric
 user ID, and the user must first message the bot. Do not use a Telegram username.
 Slack and Discord provide searchable destination lists in Settings. The channel
 path uses existing durable send-and-wait nodes with the connected credential.
@@ -222,9 +222,9 @@ controls its approvers. This does not add an n8n administrator-role check.
 Use the selected workflow name or the platform and destination for the default
 interaction name. Set `nameOverridden: false` for an automatic name. Use
 `nameOverridden: true` when the user chooses a custom name. Preserve a custom
-name when its destination changes. Existing names without this field stay custom.
+name when its destination changes.
 The UI calls these definitions Human interactions. Tools select a Human interaction
-for approval. Only approval interactions are available in this spike.
+for approval. Only approval interactions are available.
 
 A decision workflow starts with `n8n-nodes-base.agentDecisionTrigger`. Add
 review steps and return one terminal item with `{ approved: boolean }`.

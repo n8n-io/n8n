@@ -9,6 +9,7 @@ import {
 import { WorkflowRepository, type User } from '@n8n/db';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { Container, Service } from '@n8n/di';
+import { AgentsConfig } from '@n8n/config';
 import { ForbiddenError, UserError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import { getStaticSubworkflowId } from 'n8n-workflow';
@@ -240,6 +241,9 @@ export class AgentConfigPreparationService {
 		if (localIds.some((id) => !id))
 			throw new UserError('A workflow tool references a missing workflow.');
 		const ids = new Set(localIds.filter((id): id is string => id !== undefined));
+		for (const interaction of config.hitlConfigurations ?? []) {
+			if (interaction.method === 'workflow') ids.add(interaction.workflowId);
+		}
 		for (const tool of config.tools ?? []) {
 			if (tool.type !== 'node') continue;
 			const id = getStaticSubworkflowId({
@@ -302,6 +306,15 @@ export class AgentConfigPreparationService {
 
 		// Keep persisted provider tools consistent with the web-search settings.
 		const validatedConfig = reconcileNativeWebSearch(result.config);
+		if (
+			!Container.get(AgentsConfig).humanInteractionsEnabled &&
+			(validatedConfig.hitlConfigurations?.length ||
+				validatedConfig.tools?.some((tool) => tool.approvalRoute?.type === 'configuration') ||
+				validatedConfig.mcpServers?.some(
+					(server) => server.approvalRoute?.type === 'configuration',
+				))
+		)
+			throw new UserError('Human interactions are not enabled on this instance');
 
 		if (validatedConfig.tools !== undefined) {
 			await this.nodeToolAiGatewayService.assignManagedCredentials(

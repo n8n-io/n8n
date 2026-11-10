@@ -8,14 +8,13 @@ import { AGENT_DECISION_TRIGGER_NODE_TYPE } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { isResourceLocatorValue, UserError, type IWorkflowBase } from 'n8n-workflow';
-import { NotFoundError } from '@n8n/errors';
+import type { IWorkflowBase } from 'n8n-workflow';
+import { NotFoundError, UserError } from '@n8n/errors';
 import {
 	InstanceSettings,
 	parseHitlCallbackReference,
 	verifyHitlCallbackReference,
 } from 'n8n-core';
-import { isRecord } from '@n8n/utils/is-record';
 import type { ActionEvent } from 'chat';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
@@ -66,10 +65,10 @@ export class AgentChannelHitlService {
 			parent.projectId !== projectId ||
 			!node ||
 			node.parameters.agentApproval !== true ||
-			node.type !== `n8n-nodes-base.${integration.type}` ||
 			!platform?.hitl.supported ||
+			node.type !== platform.hitl.nodeType ||
 			!('credentialId' in integration) ||
-			node.credentials?.[platform.credentialTypes[0]]?.id !== integration.credentialId
+			node.credentials?.[platform.hitl.credentialType]?.id !== integration.credentialId
 		)
 			return 'unavailable';
 		const job = await this.jobs.findWorkflowJobByExecutionId(reference.executionId);
@@ -77,29 +76,15 @@ export class AgentChannelHitlService {
 			!job ||
 			job.kind !== 'approval' ||
 			job.parentAgentId !== agentId ||
+			job.parentRunId !== parent.runId ||
+			job.parentThreadId !== parent.threadId ||
+			job.workflowId !== execution.workflowId ||
 			job.status !== 'running' ||
 			hasApprovalExpired(job)
 		)
 			return 'unavailable';
-		const userDestination =
-			integration.type === 'telegram'
-				? node.parameters.chatId
-				: node.parameters.select === 'user'
-					? node.parameters.user
-					: node.parameters.sendTo === 'user'
-						? node.parameters.userId
-						: undefined;
-		const userId = isResourceLocatorValue(userDestination)
-			? userDestination.value
-			: userDestination;
-		if (userId !== undefined && userId !== event.user.userId) return 'unavailable';
-		if (userId === undefined) {
-			const destination = node.parameters.channelId;
-			const thread = event.adapter.decodeThreadId(event.threadId);
-			const channelId = isRecord(thread) ? (thread.channel ?? thread.channelId) : undefined;
-			if (!isResourceLocatorValue(destination) || destination.value !== channelId)
-				return 'unavailable';
-		}
+		if (!platform.hitl.matchesResponse(node, event)) return 'unavailable';
+
 		const approved = reference.decision === 'a';
 		const { WaitTracker } = await import('@/wait-tracker.js');
 		try {
@@ -136,25 +121,24 @@ export class AgentChannelHitlService {
 		if (!agent) throw new NotFoundError('Agent not found');
 		const channels: AgentHitlChannelDescriptor[] = [];
 		for (const integration of agent.integrations ?? []) {
+			const platform = this.registry.get(integration.type);
 			if (
-				integration.type !== 'slack' &&
-				integration.type !== 'telegram' &&
-				integration.type !== 'discord'
+				!platform?.hitl.supported ||
+				!('credentialId' in integration) ||
+				!integration.credentialId
 			)
 				continue;
-			const platform = this.registry.require(integration.type);
-			if (!platform.hitl.supported || !integration.credentialId) continue;
 			if (
 				!(await this.credentials.decryptForUser(
 					user,
 					projectId,
 					integration.credentialId,
-					platform.credentialTypes[0],
+					platform.hitl.credentialType,
 				))
 			)
 				continue;
 			channels.push({
-				channel: integration.type,
+				channel: platform.hitl.channel,
 				credentialId: integration.credentialId,
 				label: platform.displayLabel,
 				fields: platform.hitl.fields,
@@ -174,13 +158,13 @@ export class AgentChannelHitlService {
 			user,
 			projectId,
 			query.credentialId,
-			platform.credentialTypes[0],
+			platform.hitl.credentialType,
 		);
 		if (!credential) throw new UserError('The channel credential is unavailable');
 		return await platform.hitl.listOptions({
 			credential,
 			query,
-			httpClient: this.outboundHttp.requests({ useDefaultSsrfPolicy: 'unsafe' }),
+			httpClient: this.outboundHttp.requests(),
 		});
 	}
 
@@ -189,19 +173,19 @@ export class AgentChannelHitlService {
 		integrations: AgentIntegrationConfig[],
 		projectId: string,
 		agentId: string,
-		callerWorkflowId?: string,
 	): Promise<IWorkflowBase> {
 		this.requireConnection(configuration.channel, configuration.credentialId, integrations);
-		const ownerId =
-			callerWorkflowId ??
-			(await Container.get(AgentHitlWorkflowRepository).ensureExecutionOwner(projectId, agentId));
+		const ownerId = await Container.get(AgentHitlWorkflowRepository).ensureExecutionOwner(
+			projectId,
+			agentId,
+		);
 		return this.buildWorkflow(configuration, integrations, ownerId);
 	}
 
 	buildWorkflow(
 		configuration: AgentHitlChannelConfiguration,
 		integrations: AgentIntegrationConfig[],
-		callerWorkflowId: string,
+		ownerId: string,
 	): IWorkflowBase {
 		this.requireConnection(configuration.channel, configuration.credentialId, integrations);
 		const platform = this.registry.require(configuration.channel);
@@ -209,9 +193,9 @@ export class AgentChannelHitlService {
 			throw new UserError('This channel does not support approval requests');
 		const node = platform.hitl.createNode(configuration);
 		const now = new Date();
-		// Keep the generated child under its caller. The execution stores its own node snapshot.
+		// The execution stores the generated graph. Its private owner has no editable graph.
 		return {
-			id: callerWorkflowId,
+			id: ownerId,
 			name: configuration.name,
 			active: false,
 			activeVersionId: null,
