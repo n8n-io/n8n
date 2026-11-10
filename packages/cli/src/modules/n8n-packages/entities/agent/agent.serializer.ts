@@ -1,3 +1,4 @@
+import { isCredentialAgentIntegration } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { z } from 'zod';
 
@@ -57,6 +58,16 @@ const serializeMetadataPayload = definePackageSerializationPayload<
 	AgentMetadataKeyHandling
 >();
 
+/**
+ * Imported channels never use package credentials. Clearing the ID keeps channel credentials
+ * out of the package requirements. The key stays because the integration schema requires it.
+ */
+function withoutChannelCredentials(integrations: Agent['integrations']): Agent['integrations'] {
+	return integrations.map((integration) =>
+		isCredentialAgentIntegration(integration) ? { ...integration, credentialId: '' } : integration,
+	);
+}
+
 @Service()
 export class AgentSerializer {
 	serialize(
@@ -68,7 +79,7 @@ export class AgentSerializer {
 		const config = definition.schema
 			? {
 					...definition.schema,
-					integrations,
+					integrations: withoutChannelCredentials(integrations),
 					...(definition.schema.skills
 						? { skills: definition.schema.skills.map(({ type, id }) => ({ type, id })) }
 						: {}),

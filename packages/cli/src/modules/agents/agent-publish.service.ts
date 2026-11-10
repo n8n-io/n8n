@@ -17,6 +17,11 @@ import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import {
+	KnowledgeFileRepository,
+	type AgentKnowledgeTotals,
+} from '@/modules/knowledge/repositories/knowledge-file.repository';
 import { Telemetry } from '@/telemetry';
 
 import { AgentDefinitionService } from './agent-definition.service';
@@ -42,10 +47,6 @@ import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { toAgentDocument } from './json-config/agent-document';
-import {
-	AgentFileRepository,
-	type AgentKnowledgeTotals,
-} from './repositories/agent-file.repository';
 import { AgentPublishHistoryRepository } from './repositories/agent-publish-history.repository';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -123,8 +124,9 @@ export class AgentPublishService {
 		private readonly definitionService: AgentDefinitionService,
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
-		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly publishHistory: AgentPublishHistoryRepository,
+		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
 
 	/** `pushRef`: push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
@@ -290,6 +292,11 @@ export class AgentPublishService {
 	private async readKnowledgeTotalsForTelemetry(
 		agentId: string,
 	): Promise<AgentKnowledgeTotals | undefined> {
+		// With the knowledge module off no file is reachable, so the event carries no totals.
+		if (!this.knowledgeAvailabilityService.isModuleActive()) {
+			return undefined;
+		}
+
 		try {
 			return await this.agentFileRepository.getKnowledgeTotals(agentId, {});
 		} catch (error) {

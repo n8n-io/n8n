@@ -13,7 +13,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
 | [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
-| [public.agent_chat_attachments](public.agent_chat_attachments.md) | 13 |  | BASE TABLE |
+| [public.agent_chat_attachments](public.agent_chat_attachments.md) | 14 |  | BASE TABLE |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
 | [public.agent_checkpoints](public.agent_checkpoints.md) | 7 |  | BASE TABLE |
 | [public.agent_credential_dependency](public.agent_credential_dependency.md) | 3 |  | BASE TABLE |
@@ -557,6 +557,7 @@ erDiagram
 "public.agent_chat_attachments" {
   varchar_36_ agentId FK
   text binaryDataId
+  varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
   varchar_128_ createdByThreadId
   varchar_255_ fileName
@@ -1273,7 +1274,7 @@ erDiagram
   varchar_8_ origin
   varchar_16_ outcome
   varchar_36_ projectId
-  integer runtimeMs
+  bigint runtimeMs
   varchar_32_ source
   integer timeSavedMin
 }

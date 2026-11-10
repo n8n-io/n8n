@@ -89,8 +89,8 @@ const submitSuggestionMock = vi.hoisted(() => vi.fn());
 
 const InstanceAiConversationStub = defineComponent({
 	name: 'InstanceAiConversation',
-	props: ['beforeSend', 'placeholder'],
-	emits: ['thread-missing', 'agent-attachment-restored', 'message-sent'],
+	props: ['beforeSend', 'placeholder', 'placeholderPreview', 'autofocus'],
+	emits: ['thread-missing', 'agent-attachment-restored', 'message-sent', 'content-change'],
 	methods: {
 		focus: focusMock,
 		isDirty: isDirtyMock,
@@ -109,7 +109,8 @@ const agentApplyHandoffMock = vi.hoisted(() => vi.fn());
 
 const AssistantAgentPanelThreadStub = defineComponent({
 	name: 'AssistantAgentPanelThread',
-	props: ['threadId', 'subject', 'newSession', 'beforeSend'],
+	props: ['threadId', 'subject', 'newSession', 'beforeSend', 'visible', 'placeholderPreview'],
+	emits: ['content-change'],
 	methods: {
 		focus: vi.fn(),
 		isDirty: () => false,
@@ -190,15 +191,18 @@ describe('InstanceAiChatPanel', () => {
 		});
 		await flushPromises();
 		const conversation = wrapper.getComponent(InstanceAiConversationStub);
-		expect(focusMock).not.toHaveBeenCalled();
+		expect(conversation.props('autofocus')).toBe(true);
 		await conversation.get('textarea').setValue('Keep this draft');
 		await wrapper.setProps({ visible: false });
+		expect(conversation.props('autofocus')).toBe(false);
 		await wrapper.setProps({ visible: true });
 		await flushPromises();
 		expect(wrapper.getComponent(InstanceAiConversationStub).vm).toBe(conversation.vm);
 		expect(conversation.get<HTMLTextAreaElement>('textarea').element.value).toBe('Keep this draft');
 		expect(store.disposeRuntime).not.toHaveBeenCalled();
-		expect(focusMock).toHaveBeenCalled();
+		expect(conversation.props('autofocus')).toBe(true);
+		conversation.vm.$emit('content-change', true);
+		expect(wrapper.emitted('content-change')).toEqual([[true]]);
 		expect(wrapper.find('[data-test-id="instance-ai-embed-close"]').exists()).toBe(false);
 		wrapper.unmount();
 	});
@@ -998,6 +1002,12 @@ describe('InstanceAiChatPanel', () => {
 			const thread = wrapper.get('[data-test-id="agent-thread-stub"]');
 			expect(thread.attributes('data-thread-id')).toBe('thread-2');
 			expect(thread.attributes('data-new-session')).toBe('true');
+			const conversation = wrapper.getComponent(AssistantAgentPanelThreadStub);
+			expect(conversation.props('visible')).toBe(true);
+			await wrapper.setProps({ visible: false });
+			expect(conversation.props('visible')).toBe(false);
+			conversation.vm.$emit('content-change', true);
+			expect(wrapper.emitted('content-change')).toEqual([[true]]);
 			expect(wrapper.find('[data-test-id="conversation-stub"]').exists()).toBe(false);
 		});
 

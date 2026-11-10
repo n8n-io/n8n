@@ -176,6 +176,8 @@ function renderModal({
 		| 'deleteDisabledReason'
 		| 'initialVersionsOpen'
 		| 'latestVersion'
+		| 'initialStep'
+		| 'initialMethod'
 	>;
 } & Pick<
 	AgentSkillModalData,
@@ -1512,6 +1514,49 @@ describe('AgentSkillModal', () => {
 });
 
 describe('AgentSkillModal from Settings', () => {
+	it('opens at the form when the caller starts manually, with no Back and a default name', async () => {
+		const getDefaultName = vi.fn().mockResolvedValue('New skill 2');
+		const { container, queryByTestId } = renderModal({
+			settings: {
+				initialStep: 'manual',
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				initialScope: 'instance',
+				getDefaultName,
+			},
+		});
+
+		expect(queryByTestId('agent-skill-upload')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-modal-back')).not.toBeInTheDocument();
+		expect(getDefaultName).toHaveBeenCalledWith('instance');
+		await waitFor(() => expect(getTitleInput(container)).toHaveValue('New skill 2'));
+	});
+
+	it('saves a skill the caller uploaded with the upload method and no Back', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId, queryByTestId } = renderModal({
+			onConfirm,
+			skill: { name: 'Research', description: 'Use for research', instructions: 'Main' },
+			settings: {
+				initialMethod: 'upload',
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				initialScope: 'instance',
+			},
+		});
+
+		expect(queryByTestId('agent-skill-upload')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-modal-back')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-name-input').querySelector('input')!).toHaveValue('Research');
+		// The editor reports the form valid a tick after it renders, as after an in-modal upload.
+		await waitFor(() => expect(getByTestId('agent-skill-viewer')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		await waitFor(() =>
+			expect(onConfirm).toHaveBeenCalledWith(
+				expect.objectContaining({ id: undefined, method: 'upload', scope: 'instance' }),
+			),
+		);
+	});
+
 	it('shows a read-only skill without edit controls', () => {
 		const { getByTestId, queryByTestId } = renderModal({
 			skillId: 's1',

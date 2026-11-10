@@ -1,0 +1,242 @@
+{
+	"createdAt": "2026-11-09T10:00:00.000Z",
+	"updatedAt": "2026-11-09T10:00:00.000Z",
+	"name": "Expression Mix",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "expression-mix-benchmark",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"id": "1a60c87e-c378-43d9-a7eb-db749a299c73",
+			"name": "Webhook",
+			"webhookId": "53f82679-8e34-48a8-b2ba-0f6970d585d5"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b8f18b12-0da0-4240-8407-cf98b47b86d7",
+							"name": "email",
+							"value": "={{ $json.body.user.email.trim().toLowerCase() }}",
+							"type": "string"
+						},
+						{
+							"id": "52629297-c969-4a68-843e-e72be4fb31a0",
+							"name": "fullName",
+							"value": "={{ $json.body.user.firstName }} {{ $json.body.user.lastName }}",
+							"type": "string"
+						},
+						{
+							"id": "6516857c-6263-4d02-8a8d-758ddb524eb1",
+							"name": "country",
+							"value": "={{ $json.body.user.country }}",
+							"type": "string"
+						},
+						{
+							"id": "15e5431b-060e-4cb6-9325-5a0a88944662",
+							"name": "region",
+							"value": "={{ $json.body.user.country === 'DE' || $json.body.user.country === 'FR' ? 'EU' : 'ROW' }}",
+							"type": "string"
+						},
+						{
+							"id": "e454f2be-a296-4fba-89f5-86695f6ea672",
+							"name": "isVip",
+							"value": "={{ $json.body.user.tags.includes('vip') }}",
+							"type": "boolean"
+						},
+						{
+							"id": "75605f78-b6ed-4100-bcf7-d2893611915d",
+							"name": "orderId",
+							"value": "={{ $json.body.order.id }}",
+							"type": "string"
+						},
+						{
+							"id": "84f537dc-ca50-4436-89f3-9600acca1007",
+							"name": "receivedAt",
+							"value": "={{ $now.toISO() }}",
+							"type": "string"
+						},
+						{
+							"id": "f66be469-396d-4c9d-ba0d-b42f82236971",
+							"name": "customer",
+							"value": "={{ { id: $json.body.user.id, email: $json.body.user.email } }}",
+							"type": "object"
+						},
+						{
+							"id": "5efa3f6e-7027-4fc4-b658-21b2a9046e5d",
+							"name": "itemsJson",
+							"value": "={{ JSON.stringify($json.body.order.items) }}",
+							"type": "string"
+						},
+						{
+							"id": "3a7d9b3e-3783-4f8b-a004-85b57ca1ba9b",
+							"name": "channel",
+							"value": "webhook",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "8d9c9ae8-bf37-4485-bcd0-9b23fd41d9cc",
+			"name": "Normalize Customer"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "f0fe41e1-0fdf-4002-ac8d-f90cbcc80131",
+							"leftValue": "={{ $json.isVip }}",
+							"rightValue": "",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							}
+						},
+						{
+							"id": "496d8c31-442c-4879-bf53-9a3a014e40dd",
+							"leftValue": "={{ $('Webhook').item.json.body.order.items.length }}",
+							"rightValue": 5,
+							"operator": {
+								"type": "number",
+								"operation": "gt"
+							}
+						}
+					],
+					"combinator": "or"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [440, 0],
+			"id": "940fe8d8-15e7-4e80-bbbd-6243873a4b63",
+			"name": "Is High Value"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "568a1e3c-76f6-4b64-82fd-1b0676fd5bbc",
+							"name": "orderId",
+							"value": "={{ $('Webhook').item.json.body.order.id }}",
+							"type": "string"
+						},
+						{
+							"id": "000cfe5d-8697-4699-bccf-3cbb9165e452",
+							"name": "skus",
+							"value": "={{ $('Webhook').item.json.body.order.items.map(item => item.sku) }}",
+							"type": "array"
+						},
+						{
+							"id": "fc4f1cc7-43a2-400f-97bc-3c0621464f12",
+							"name": "bulkLines",
+							"value": "={{ $('Webhook').first().json.body.order.items.filter(item => item.qty > 2).length }}",
+							"type": "number"
+						},
+						{
+							"id": "db3f3026-1087-4bc6-a2e5-e978cae1f9fc",
+							"name": "total",
+							"value": "={{ $('Webhook').item.json.body.order.items.reduce((sum, item) => sum + item.qty * item.price, 0) }}",
+							"type": "number"
+						},
+						{
+							"id": "c478bb0b-2405-4472-ab1d-efbff18ae71e",
+							"name": "createdDay",
+							"value": "={{ DateTime.fromISO($('Webhook').item.json.body.order.createdAt).toFormat('yyyy-MM-dd') }}",
+							"type": "string"
+						},
+						{
+							"id": "936287a1-b116-45dd-9a4f-b49950739c5c",
+							"name": "dueDate",
+							"value": "={{ $now.plus({ days: 14 }).toFormat('yyyy-MM-dd') }}",
+							"type": "string"
+						},
+						{
+							"id": "5969c246-25e1-426d-9af0-6488e9bad90e",
+							"name": "summary",
+							"value": "=Order {{ $json.orderId }} for {{ $json.fullName }} ({{ $json.region }})",
+							"type": "string"
+						},
+						{
+							"id": "daa23a92-d2c0-464c-af05-4f93f09565c3",
+							"name": "reference",
+							"value": "={{ `${$json.country}-${$json.orderId}` }}",
+							"type": "string"
+						},
+						{
+							"id": "0eefd312-5452-40e1-a42f-2d7f026f5877",
+							"name": "source",
+							"value": "={{ $node[\"Webhook\"].json.body.source }}",
+							"type": "string"
+						},
+						{
+							"id": "45b196e4-dfb4-4e5d-be9c-f2abb9e179e2",
+							"name": "currency",
+							"value": "={{ $('Webhook').item.json.body.order.currency.toUpperCase() }}",
+							"type": "string"
+						},
+						{
+							"id": "015734da-3f1e-4c69-82fd-61812535f277",
+							"name": "emailDomain",
+							"value": "={{ $json.email.extractDomain() }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [660, 0],
+			"id": "5c1aecfb-eb8f-4467-a627-c0b7e7763ef7",
+			"name": "Build Payload"
+		},
+		{
+			"parameters": { "respondWith": "allIncomingItems", "options": {} },
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [880, 0],
+			"id": "7f16e90e-6f56-4059-916a-96abd09255fd",
+			"name": "Respond to Webhook"
+		}
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Normalize Customer", "type": "main", "index": 0 }]] },
+		"Normalize Customer": { "main": [[{ "node": "Is High Value", "type": "main", "index": 0 }]] },
+		"Is High Value": {
+			"main": [
+				[{ "node": "Build Payload", "type": "main", "index": 0 }],
+				[{ "node": "Build Payload", "type": "main", "index": 0 }]
+			]
+		},
+		"Build Payload": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" },
+	"staticData": null,
+	"meta": null,
+	"pinData": {},
+	"versionId": "a874552e-88bc-45b9-8040-4aaea1bffea0",
+	"triggerCount": 0,
+	"tags": []
+}

@@ -293,6 +293,12 @@
 		"POST /promotions/environments/{promotionEnvironmentId}/promote": {
 			"status": "gap"
 		},
+		"GET /promotions/projects/{projectId}/changes/{direction}": {
+			"status": "gap"
+		},
+		"POST /promotions/projects/{projectId}/changes/{direction}/details": {
+			"status": "gap"
+		},
 		"POST /promotions/projects/{projectId}/promote": {
 			"status": "gap"
 		},
