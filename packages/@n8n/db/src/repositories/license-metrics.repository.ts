@@ -1,6 +1,8 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, Repository, Entity } from '@n8n/typeorm';
+import { Between, DataSource, Repository, Entity } from '@n8n/typeorm';
+
+import { AgentExecutionStatistics } from '../entities/agent-execution-statistics';
 
 @Entity()
 export class LicenseMetrics {}
@@ -23,6 +25,44 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 		return this.manager.connection.driver.escape(name);
 	}
 
+	async recordAgentExecution(now = new Date()): Promise<void> {
+		const periodStart = new Date(now);
+		periodStart.setUTCHours(0, 0, 0, 0);
+		const table = this.toTableName('agent_execution_statistics');
+		const count = this.toColumnName('count');
+		const period = this.toColumnName('periodStart');
+		const [query, parameters] = this.manager
+			.createQueryBuilder()
+			.insert()
+			.into(AgentExecutionStatistics)
+			.values({ periodStart, count: 1 })
+			.getQueryAndParameters();
+		await this.query(
+			`${query} ON CONFLICT (${period}) DO UPDATE SET ${count} = ${table}.${count} + 1`,
+			parameters,
+		);
+	}
+
+	async getDailyAgentExecutions({
+		startDate,
+		endDate,
+	}: { startDate: Date; endDate: Date }): Promise<Map<string, number>> {
+		const rows = await this.manager.find(AgentExecutionStatistics, {
+			where: { periodStart: Between(startDate, endDate) },
+		});
+		return new Map(
+			rows.map(({ periodStart, count }) => [periodStart.toISOString().slice(0, 10), count]),
+		);
+	}
+
+	async getFirstAgentExecutionDate(): Promise<Date | null> {
+		const [first] = await this.manager.find(AgentExecutionStatistics, {
+			order: { periodStart: 'ASC' },
+			take: 1,
+		});
+		return first?.periodStart ?? null;
+	}
+
 	async getLicenseRenewalMetrics() {
 		type Row = {
 			enabled_user_count: string | number;
@@ -40,6 +80,8 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 		const workflowTable = this.toTableName('workflow_entity');
 		const credentialTable = this.toTableName('credentials_entity');
 		const workflowStatsTable = this.toTableName('workflow_statistics');
+		const agentStatsTable = this.toTableName('agent_execution_statistics');
+		const agentExecutions = `(SELECT COALESCE(SUM(count), 0) FROM ${agentStatsTable})`;
 		const testRunTable = this.toTableName('test_run');
 		// Service accounts share the user table but do not take a seat.
 		const isPerson = `${this.toColumnName('kind')} = 'person'`;
@@ -63,8 +105,8 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 				(SELECT COUNT(*) FROM ${workflowTable} WHERE ${this.toColumnName('activeVersionId')} IS NOT NULL) AS active_workflow_count,
 				(SELECT COUNT(*) FROM ${workflowTable}) AS total_workflow_count,
 				(SELECT COUNT(*) FROM ${credentialTable}) AS total_credentials_count,
-				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_executions_count,
-				(SELECT SUM(${this.toColumnName('rootCount')}) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_root_executions_count,
+				(SELECT COALESCE(SUM(count), 0) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) + ${agentExecutions} AS production_executions_count,
+				(SELECT COALESCE(SUM(${this.toColumnName('rootCount')}), 0) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) + ${agentExecutions} AS production_root_executions_count,
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('manual_success', 'manual_error')) AS manual_executions_count,
 				(SELECT COUNT(distinct ${this.toColumnName('workflowId')}) FROM ${testRunTable}) AS evaluations_count;
 		`)) as Row[];

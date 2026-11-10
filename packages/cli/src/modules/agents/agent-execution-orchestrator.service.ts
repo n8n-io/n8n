@@ -15,7 +15,7 @@ import type {
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
-import { UserRepository, type User } from '@n8n/db';
+import { LicenseMetricsRepository, UserRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { OperationalError, UserError } from '@n8n/errors';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
@@ -382,7 +382,17 @@ export class AgentExecutionOrchestratorService {
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly userRepository: UserRepository,
+		private readonly licenseMetricsRepository: LicenseMetricsRepository,
 	) {}
+
+	private async beforeProductionExecution(agentId: string): Promise<void> {
+		await this.externalHooks.run('agent.preExecute', [agentId]);
+		try {
+			await this.licenseMetricsRepository.recordAgentExecution();
+		} catch (error) {
+			this.logger.error('Failed to record agent execution statistic', { error });
+		}
+	}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
 		return await this.agentExecutionService.getSessionMode(threadId);
@@ -858,7 +868,7 @@ export class AgentExecutionOrchestratorService {
 			sandboxPrincipalHash,
 			sessionMode = 'new',
 		} = config;
-		await this.externalHooks.run('agent.preExecute', [agentId]);
+		await this.beforeProductionExecution(agentId);
 
 		// Published integration runtimes have no n8n user but are isolated by
 		// their external caller's hashed workspace principal.
@@ -959,7 +969,7 @@ export class AgentExecutionOrchestratorService {
 			userId: user.id,
 			sessionMode,
 		});
-		await this.externalHooks.run('agent.preExecute', [agentId]);
+		await this.beforeProductionExecution(agentId);
 		yield* this.withRuntimeLease(
 			async () =>
 				await this.getRuntimeOrRecordFailure(
@@ -1029,7 +1039,7 @@ export class AgentExecutionOrchestratorService {
 		config: ExecuteForTaskPublishedConfig,
 	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
-		await this.externalHooks.run('agent.preExecute', [agentId]);
+		await this.beforeProductionExecution(agentId);
 
 		// Cron-fired runs have no n8n user and reuse the scheduled task's scope.
 		const sandboxPrincipalHash = hashAgentSandboxPrincipal({ type: 'scheduled-task', taskId });
@@ -1178,7 +1188,7 @@ export class AgentExecutionOrchestratorService {
 				sessionMode: 'existing',
 			});
 		} else {
-			await this.externalHooks.run('agent.preExecute', [agentId]);
+			await this.beforeProductionExecution(agentId);
 		}
 		const access: AgentThreadAccess = setup?.access ?? { accessScope: 'project', ownerId: null };
 		const integrationType = isDraft ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType;

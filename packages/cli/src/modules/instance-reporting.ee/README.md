@@ -5,8 +5,13 @@ receiver, once a day.
 
 Each report carries two data points for the previous completed UTC day:
 
-- a `daily` billable-execution count, from the `insights` module
+- a `daily` billable-execution count, from workflow Insights and agent turn counts
 - a `cumulative` lifetime total, from the license metrics repository
+
+Both counts include production agent turns. Agent counts are stored for each
+UTC day, including on Community instances and when diagnostics are disabled.
+The counts survive agent and session deletion. Recording starts with this
+version. Past agent turns are not added to the counts.
 
 Every report is persisted in `instance_monitoring_report` before it is
 sent, so a retry resends the exact same measurement under the same `batchId`
@@ -19,11 +24,12 @@ series is the authoritative one: the two cumulative samples around the gap sit
 more than 24 hours apart, so their difference covers the whole outage. A missed
 day with no executions is reported as `0`, so a gap in the series always means
 "not reported", never "nothing ran". The one exception: missed days before the
-first `insights` data are not reported at all.
+first workflow Insights data or recorded agent turn are not reported at all.
 
 The first report works the same way: it carries a `daily` point for every day
-from the first `insights` data to yesterday. It carries no past `cumulative`
-values, since those are unknown. Days before the first `insights` data are not
+from the first workflow Insights data or recorded agent turn to yesterday.
+It carries no past `cumulative` values, since those are unknown.
+Days before the first recorded data are not
 sent. A report reads only hourly `insights` data, because only hourly rows
 split exactly into UTC days. `insights` folds hours older than 90 days (by
 default) into daily rows, so a report never carries a day older than 89 days.
@@ -39,7 +45,8 @@ later day sends the `billable` number, also when it is `0`.
 Known limits:
 
 - If `insights` was disabled for a time between its first data and the first
-  report, those days are sent as `0`.
+  report, workflow executions from that time are absent. Agent counts remain
+  available.
 - After this instance's database is restored from a backup, the days since the
   backup are sent again, as `0` or as a lower value. Consumers of the receiver's
   export must use the highest value for each instance, metric and day.

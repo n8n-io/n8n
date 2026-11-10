@@ -23,6 +23,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
 | [public.agent_execution](public.agent_execution.md) | 28 |  | BASE TABLE |
 | [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
+| [public.agent_execution_statistics](public.agent_execution_statistics.md) | 2 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 20 |  | BASE TABLE |
 | [public.agent_file_grants](public.agent_file_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
@@ -681,6 +682,10 @@ erDiagram
   varchar_36_ executionId FK
   varchar_36_ messageId FK
   integer position
+}
+"public.agent_execution_statistics" {
+  bigint count
+  timestamp_3__with_time_zone periodStart
 }
 "public.agent_execution_threads" {
   varchar_16_ accessScope

@@ -6,6 +6,7 @@ import {
 	type ActivityResourceType,
 } from './activity-event';
 import { AgentEvalDataset, type AgentEvalColumnMapping } from './agent-eval-dataset.ee';
+import { AgentExecutionStatistics } from './agent-execution-statistics';
 import { AgentEvalRating, type AgentEvalVote } from './agent-eval-rating.ee';
 import { AgentEvalResult, type AgentEvalResultStatus } from './agent-eval-result.ee';
 import { AgentEvalRun, type AgentEvalRunStatus } from './agent-eval-run.ee';
@@ -120,6 +121,7 @@ import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
+	AgentExecutionStatistics,
 	Person,
 	ServiceAccount,
 	ServiceAccountDetails,
@@ -231,6 +233,7 @@ export {
 };
 
 export const entities = {
+	AgentExecutionStatistics,
 	ActivityEvent,
 	AgentEvalDataset,
 	AgentEvalRun,

@@ -75,6 +75,8 @@ describe('instance reporting across mains', () => {
 		insights.getDailyExecutionTotals.mockResolvedValue(new Map([[REPORT_DAY, 5]]));
 		insights.getFirstBillableDay.mockResolvedValue(null);
 		const metrics = mock<LicenseMetricsRepository>();
+		metrics.getDailyAgentExecutions.mockResolvedValue(new Map());
+		metrics.getFirstAgentExecutionDate.mockResolvedValue(null);
 		metrics.getLicenseRenewalMetrics.mockResolvedValue(
 			mock<Awaited<ReturnType<LicenseMetricsRepository['getLicenseRenewalMetrics']>>>({
 				productionRootExecutions: 10,

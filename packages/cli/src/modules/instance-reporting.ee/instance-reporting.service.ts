@@ -361,8 +361,7 @@ export class InstanceReportingService {
 
 	/**
 	 * The oldest day the next report owes: the day after the last delivered one,
-	 * but never before the first insights data, since nothing before it shows
-	 * that insights was collecting.
+	 * but never before the first workflow Insights data or recorded agent turn.
 	 */
 	private async firstOwedDay(lastCoveredDay: string | null, yesterday: string): Promise<string> {
 		const dayAfterCovered = lastCoveredDay ? addUtcDays(lastCoveredDay, 1) : null;
@@ -370,8 +369,14 @@ export class InstanceReportingService {
 		// Only yesterday is owed, which is the everyday case: skip the history read.
 		if (dayAfterCovered === yesterday) return yesterday;
 
-		const earliest = await this.insightsService.getEarliestDataDate();
-		const dataStart = earliest ? earliest.toISOString().slice(0, 10) : null;
+		const [insightsStart, agentStart] = await Promise.all([
+			this.insightsService.getEarliestDataDate(),
+			this.licenseMetricsRepository.getFirstAgentExecutionDate(),
+		]);
+		const dataStart =
+			[insightsStart, agentStart]
+				.flatMap((date) => (date ? [date.toISOString().slice(0, 10)] : []))
+				.sort()[0] ?? null;
 
 		// Without any data, a first report still carries yesterday, so that a new
 		// instance shows up on the receiver.
@@ -393,19 +398,24 @@ export class InstanceReportingService {
 		const totalDays = days.filter((day) => firstBillableDay === null || day <= firstBillableDay);
 		const billableDays = days.slice(totalDays.length);
 
-		const [totalsByDay, billableByDay, { productionRootExecutions }] = await Promise.all([
-			this.readDays(
-				totalDays,
-				async (range) => await this.insightsService.getDailyExecutionTotals(range),
-			),
-			this.readDays(
-				billableDays,
-				async (range) => await this.insightsService.getDailyBillableExecutions(range),
-			),
-			// Same source as the `productionRootExecutions` license metric, so the
-			// reported total matches what the license server sees.
-			this.licenseMetricsRepository.getLicenseRenewalMetrics(),
-		]);
+		const [totalsByDay, billableByDay, agentsByDay, { productionRootExecutions }] =
+			await Promise.all([
+				this.readDays(
+					totalDays,
+					async (range) => await this.insightsService.getDailyExecutionTotals(range),
+				),
+				this.readDays(
+					billableDays,
+					async (range) => await this.insightsService.getDailyBillableExecutions(range),
+				),
+				this.readDays(
+					days,
+					async (range) => await this.licenseMetricsRepository.getDailyAgentExecutions(range),
+				),
+				// Same source as the `productionRootExecutions` license metric, so the
+				// reported total matches what the license server sees.
+				this.licenseMetricsRepository.getLicenseRenewalMetrics(),
+			]);
 		const executionsByDay = new Map([...totalsByDay, ...billableByDay]);
 
 		return [
@@ -415,7 +425,7 @@ export class InstanceReportingService {
 			...days.map((date) => ({
 				kind: 'daily' as const,
 				name: 'billableExecutions',
-				value: executionsByDay.get(date) ?? 0,
+				value: (executionsByDay.get(date) ?? 0) + (agentsByDay.get(date) ?? 0),
 				date,
 			})),
 		];

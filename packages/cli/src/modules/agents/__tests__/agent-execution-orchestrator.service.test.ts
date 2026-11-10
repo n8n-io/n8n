@@ -25,7 +25,7 @@ import {
 import { mockLogger } from '@n8n/backend-test-utils';
 import { LockService, type Logger } from '@n8n/backend-common';
 import type { AiConfig } from '@n8n/config';
-import type { UserRepository, User } from '@n8n/db';
+import type { LicenseMetricsRepository, UserRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { OperationalError, UserError } from '@n8n/errors';
@@ -243,6 +243,7 @@ function makeService(sandboxEnabled = false) {
 	});
 	const agentRunTracingService = mock<AgentRunTracingService>();
 	const externalHooks = mock<ExternalHooks>();
+	const licenseMetricsRepository = mock<LicenseMetricsRepository>();
 	const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 		isEnabled: () => sandboxEnabled,
 	});
@@ -319,10 +320,12 @@ function makeService(sandboxEnabled = false) {
 		settingsService,
 		createAgentSkillRefsService(),
 		userRepository,
+		licenseMetricsRepository,
 	);
 
 	return {
 		service,
+		licenseMetricsRepository,
 		logger,
 		userRepository,
 		cancellations,
@@ -2276,6 +2279,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('executes in-app chat against the draft runtime with the caller source', async () => {
 		const {
+			licenseMetricsRepository,
 			service,
 			runtimeCacheService,
 			executionService,
@@ -2320,6 +2324,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			integrationMessageContextService.setLatest.mock.invocationCallOrder[0] ?? 0,
 		).toBeLessThan(runtime.agent.stream.mock.invocationCallOrder[0] ?? 0);
 		expect(externalHooks.run).not.toHaveBeenCalled();
+		expect(licenseMetricsRepository.recordAgentExecution).not.toHaveBeenCalled();
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({
@@ -2405,6 +2410,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('executes published integration chat with integration-scoped runtime', async () => {
 		const {
+			licenseMetricsRepository,
 			service,
 			runtimeCacheService,
 			executionService,
@@ -2453,6 +2459,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.any(Date),
 		);
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
+		expect(licenseMetricsRepository.recordAgentExecution).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
 			runtimeCacheService.getRuntime.mock.invocationCallOrder[0] ?? 0,
@@ -2474,6 +2481,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('runs production n8n Chat with a published user-owned session', async () => {
 		const {
+			licenseMetricsRepository,
 			service,
 			agentRepository,
 			runtimeCacheService,
@@ -2495,6 +2503,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
+		expect(licenseMetricsRepository.recordAgentExecution).toHaveBeenCalledTimes(1);
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
 			expect.objectContaining({
 				integrationType: N8N_CHAT_INTEGRATION_TYPE,
@@ -3004,6 +3013,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('executes published scheduled tasks with task-scoped runtime and metadata', async () => {
 		const {
+			licenseMetricsRepository,
 			service,
 			runtimeCacheService,
 			executionService,
@@ -3033,6 +3043,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			allowBackgroundTasks: false,
 		});
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
+		expect(licenseMetricsRepository.recordAgentExecution).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
 			runtimeCacheService.getRuntime.mock.invocationCallOrder[0] ?? 0,
@@ -3054,8 +3065,31 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('continues a published turn when the usage counter cannot be saved', async () => {
+		const { service, runtimeCacheService, licenseMetricsRepository, logger } = makeService();
+		const error = new Error('Database unavailable');
+		licenseMetricsRepository.recordAgentExecution.mockRejectedValue(error);
+		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
+
+		await collect(
+			service.executeForTaskPublished({
+				agentId,
+				projectId,
+				message: 'run task',
+				memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
+				taskId: 'task-1',
+				taskVersionId: 'version-1',
+			}),
+		);
+
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalled();
+		expect(logger.error).toHaveBeenCalledWith('Failed to record agent execution statistic', {
+			error,
+		});
+	});
+
 	it('does not execute a published scheduled task when the agent quota hook rejects it', async () => {
-		const { service, runtimeCacheService, externalHooks } = makeService();
+		const { licenseMetricsRepository, service, runtimeCacheService, externalHooks } = makeService();
 		const quotaError = new UserError('Execution quota exhausted');
 		externalHooks.run.mockRejectedValue(quotaError);
 
@@ -3073,10 +3107,17 @@ describe('AgentExecutionOrchestratorService', () => {
 		).rejects.toBe(quotaError);
 
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+		expect(licenseMetricsRepository.recordAgentExecution).not.toHaveBeenCalled();
 	});
 
 	it('does not run the quota hook for manually started scheduled tasks', async () => {
-		const { service, runtimeCacheService, externalHooks, executionService } = makeService();
+		const {
+			licenseMetricsRepository,
+			service,
+			runtimeCacheService,
+			externalHooks,
+			executionService,
+		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -3092,6 +3133,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		expect(externalHooks.run).not.toHaveBeenCalled();
+		expect(licenseMetricsRepository.recordAgentExecution).not.toHaveBeenCalled();
 		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
 			expect.objectContaining({ access: { accessScope: 'project', ownerId: null } }),
 			expect.any(Date),
@@ -3422,6 +3464,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('delivers a published wake through the stored connection and reply thread', async () => {
 		const {
+			licenseMetricsRepository,
 			service,
 			runtimeCacheService,
 			externalHooks,
@@ -3468,6 +3511,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			encodeEpisodicScopeMetadata({ disabled: true }),
 		);
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
+		expect(licenseMetricsRepository.recordAgentExecution).toHaveBeenCalledTimes(1);
 		expect(chatIntegrationService.getBridge).toHaveBeenCalledWith(agentId, 'slack', 'credential-1');
 		// The third argument keeps a card the woken turn raises addressed to the
 		// person the conversation belongs to, on platforms that can target one.
@@ -3856,6 +3900,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('rejects expired checkpoints and resumes active checkpoints without passing resourceId', async () => {
 		const {
+			licenseMetricsRepository,
 			service,
 			checkpointStorage,
 			runtimeCacheService,
@@ -3909,6 +3954,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 		expect(externalHooks.run).not.toHaveBeenCalled();
+		expect(licenseMetricsRepository.recordAgentExecution).not.toHaveBeenCalled();
 		// After the resumed turn, request any job results that arrived during the approval wait.
 		expect(wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
 		expect(JSON.stringify(runtime.agent.resume.mock.calls[0])).not.toContain('platform-user-1');

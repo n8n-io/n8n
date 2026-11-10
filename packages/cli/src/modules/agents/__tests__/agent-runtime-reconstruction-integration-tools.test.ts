@@ -1,3 +1,4 @@
+import type { LicenseMetricsRepository } from '@n8n/db';
 import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 import type {
 	CredentialsFinderService,
@@ -336,6 +337,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentsSettingsService>(),
 			skillRefs,
 			mock<UserRepository>(),
+			mock<LicenseMetricsRepository>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
