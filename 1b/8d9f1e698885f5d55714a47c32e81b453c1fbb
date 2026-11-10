@@ -5,6 +5,7 @@ packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
   s_32901a907f7a0f::t_c90804a4134833 2367-2458
 packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
   s_32901a907f7a0f::t_8821c6df8b4146 1152-1164,1167-1169,1171-1191,1194-1200
+  s_c465b850cfb0cb::t_0ce649dac53af5 1166,1193
 packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
   s_32901a907f7a0f::t_0274d6b33cc3c2 754-848
 packages/cli/src/modules/promotions.ee/promotions-git.service.ts
@@ -20,6 +21,14 @@ packages/cli/src/modules/promotions.ee/promotions-git.service.ts
       "agent_id": {
         "tool": "claude",
         "id": "26176e8e-4c70-4d5a-b1be-29afcd68b425",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c465b850cfb0cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70004df1-718f-4e3b-8c11-caba08123f81",
         "model": "claude-opus-5-5"
       },
       "human_author": "Irénée <irenee.ajeneza@n8n.io>"
