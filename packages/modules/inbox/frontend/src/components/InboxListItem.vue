@@ -181,6 +181,7 @@ const menuItems = computed<Array<ContextMenuNode<CardMenuAction>>>(() => {
 						type: 'item',
 						id: 'close',
 						label: closeLabel,
+						variant: 'destructive',
 						icon: { type: 'icon', value: 'x' },
 					}
 				: {

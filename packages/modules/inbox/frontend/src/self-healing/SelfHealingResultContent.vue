@@ -17,11 +17,13 @@ import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref } from 'vue';
 
+import PrototypeDirectionLine from '../prototype/PrototypeDirectionLine.vue';
 import PrototypeEditableBody from '../prototype/PrototypeEditableBody.vue';
 import PrototypeEditableTitle from '../prototype/PrototypeEditableTitle.vue';
 import {
 	addPrototypeComment,
 	prototypeDescription,
+	prototypeSession,
 	prototypeState,
 	prototypeTitle,
 } from '../prototype/prototype.session';
@@ -30,7 +32,7 @@ import SelfHealingResultMetadata from './SelfHealingResultMetadata.vue';
 import type { SelfHealingPublishAccess, SelfHealingResultAction } from './selfHealingResults.api';
 
 type DetailTab = 'activity' | 'changes';
-type MenuAction = Exclude<SelfHealingResultAction, 'dismiss'>;
+type MenuAction = SelfHealingResultAction | 'continue' | 'continue-note' | 'chat-note';
 
 const props = defineProps<{
 	detail: SelfHealingResultDetail;
@@ -62,6 +64,16 @@ const inboxState = computed(() =>
 	prototypeState(props.detail.resultId, props.detail.reviewState === 'open' ? 'open' : 'closed'),
 );
 const displayTitle = computed(() => prototypeTitle(props.detail.resultId, props.detail.summary));
+const fixActor = computed(() => (prototypeSession.active ? { kind: 'assistant' as const } : null));
+const fixDirection = computed(() =>
+	prototypeSession.active && props.workflowName
+		? {
+				keypath: 'inbox.prototype.direction.fix' as const,
+				resourceName: props.workflowName,
+				workflowId: props.detail.workflowId,
+			}
+		: null,
+);
 const reportText = computed(() => prototypeDescription(props.detail.resultId, props.detail.report));
 const isOpen = computed(() => inboxState.value === 'open');
 const isFixReady = computed(() => props.detail.outcome === 'fix_ready');
@@ -100,13 +112,12 @@ const tabOptions = computed(() => [
 ]);
 
 const menuItems = computed<Array<DropdownMenuItemProps<MenuAction>>>(() => {
-	const continuation: Array<DropdownMenuItemProps<MenuAction>> = [
+	const continueChildren: Array<DropdownMenuItemProps<MenuAction>> = [
 		{
 			id: 'chat',
 			label: i18n.baseText('inbox.selfHealing.action.continueWithAssistant'),
 			icon: { type: 'icon', value: 'message-circle-plus' },
 			disabled: !props.canChat,
-			divided: isFixReady.value,
 		},
 		{
 			id: 'editor',
@@ -114,26 +125,60 @@ const menuItems = computed<Array<DropdownMenuItemProps<MenuAction>>>(() => {
 			icon: { type: 'icon', value: 'square-pen' },
 		},
 	];
-	if (!isFixReady.value) return continuation;
+	if (hasSuggestion.value) {
+		continueChildren.push({
+			id: 'continue-note',
+			label: i18n.baseText('inbox.selfHealing.action.continueSavesDraft'),
+			header: true,
+			divided: true,
+		});
+	}
+	if (!props.canChat) {
+		continueChildren.push({
+			id: 'chat-note',
+			label: i18n.baseText('inbox.selfHealing.action.chatUnavailable'),
+			header: true,
+			divided: !hasSuggestion.value,
+		});
+	}
 
-	return [
-		{
+	const items: Array<DropdownMenuItemProps<MenuAction>> = [];
+	if (isFixReady.value) {
+		items.push({
 			id: 'approve-and-publish',
 			label: i18n.baseText('inbox.selfHealing.action.applyAndPublish'),
 			icon: { type: 'icon', value: 'check' },
 			disabled: props.publishAccess !== 'allowed',
+		});
+	}
+	items.push(
+		{
+			id: 'continue',
+			label: i18n.baseText('inbox.selfHealing.action.continueIn'),
+			icon: { type: 'icon', value: 'pencil' },
+			children: continueChildren,
 		},
-		...continuation,
-	];
+		{
+			id: 'dismiss',
+			label: i18n.baseText('inbox.selfHealing.action.discardAndClose'),
+			icon: { type: 'icon', value: 'x' },
+			destructive: true,
+			divided: true,
+		},
+	);
+	return items;
 });
 
-const menuNotes = computed(() => [
-	...(hasSuggestion.value ? [i18n.baseText('inbox.selfHealing.action.continueSavesDraft')] : []),
-	...(isFixReady.value && props.publishAccess === 'denied'
+const menuNotes = computed(() =>
+	isFixReady.value && props.publishAccess === 'denied'
 		? [i18n.baseText('inbox.selfHealing.action.publishUnavailable')]
-		: []),
-	...(props.canChat ? [] : [i18n.baseText('inbox.selfHealing.action.chatUnavailable')]),
-]);
+		: [],
+);
+
+function onMenuSelect(action: MenuAction) {
+	if (action === 'continue' || action === 'continue-note' || action === 'chat-note') return;
+	emit('action', action);
+}
 
 function onTabChange(tab: string) {
 	if (tab === 'activity' || tab === 'changes') emit('update:tab', tab);
@@ -163,11 +208,13 @@ function onCommentSubmit() {
 <template>
 	<section :class="$style.detail" data-test-id="self-healing-result-content">
 		<div :class="$style.columnTitle">
-			<PrototypeEditableTitle
-				:item-id="detail.resultId"
-				:text="displayTitle"
-				test-id="self-healing-result-title"
-			/>
+			<PrototypeDirectionLine :actor="fixActor" :direction="fixDirection">
+				<PrototypeEditableTitle
+					:item-id="detail.resultId"
+					:text="displayTitle"
+					test-id="self-healing-result-title"
+				/>
+			</PrototypeDirectionLine>
 		</div>
 		<slot name="notice" />
 		<div :class="$style.container">
@@ -180,21 +227,13 @@ function onCommentSubmit() {
 					@update:model-value="onTabChange"
 				/>
 				<div v-if="isOpen" :class="$style.actions">
-					<N8nButton
-						variant="ghost"
-						size="small"
-						:label="i18n.baseText('inbox.selfHealing.action.discardAndClose')"
-						:disabled="pending"
-						:loading="pendingAction === 'dismiss'"
-						data-test-id="self-healing-discard"
-						@click="emit('action', 'dismiss')"
-					/>
 					<N8nDropdownMenu
 						:items="menuItems"
 						placement="bottom-end"
 						:disabled="pending"
 						content-test-id="self-healing-review-menu"
-						@select="emit('action', $event)"
+						sub-menu-width="var(--spacing--5xl)"
+						@select="onMenuSelect"
 					>
 						<template #trigger>
 							<N8nButton

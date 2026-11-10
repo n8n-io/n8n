@@ -16,6 +16,7 @@ import N8nLoading from '../N8nLoading';
 import {
 	DropdownMenuPortalTargetKey,
 	DropdownMenuSubMaxHeightKey,
+	DropdownMenuSubWidthKey,
 	DropdownMenuWidthKey,
 	DropdownMenuExternalNavigationKey,
 	type DropdownMenuItemProps,
@@ -56,6 +57,7 @@ const emit = defineEmits<{
 const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 const subMenuMaxHeight = inject(DropdownMenuSubMaxHeightKey, ref(undefined));
+const subMenuWidth = inject(DropdownMenuSubWidthKey, ref(undefined));
 const menuWidth = inject(DropdownMenuWidthKey, ref('24rem'));
 const externalNavigation = inject(DropdownMenuExternalNavigationKey, null);
 
@@ -359,7 +361,7 @@ onBeforeUnmount(() => {
 					:style="[
 						subContentMaxHeight ? { maxHeight: subContentMaxHeight } : {},
 						subMenuMaxHeight ? { '--n8n-dropdown-sub-max-height': subMenuMaxHeight } : {},
-						{ '--n8n--dropdown-menu-width': menuWidth },
+						{ '--n8n--dropdown-menu-width': subMenuWidth || menuWidth },
 					]"
 					:side-offset="1"
 					:prioritize-position="true"
@@ -607,17 +609,14 @@ onBeforeUnmount(() => {
 	}
 
 	&.destructive.destructive:not([data-disabled]) {
-		&[data-highlighted],
-		&[data-virtual-highlighted] {
-			.item-label.item-label {
-				color: var(--text-color--danger);
-			}
+		.item-label.item-label {
+			color: var(--color--text--danger);
+		}
 
-			.icon.icon,
-			.item-check.item-check,
-			.sub-indicator.sub-indicator {
-				color: var(--icon-color--danger) !important;
-			}
+		.icon.icon,
+		.item-check.item-check,
+		.sub-indicator.sub-indicator {
+			color: var(--color--danger) !important;
 		}
 	}
 
@@ -626,18 +625,6 @@ onBeforeUnmount(() => {
 	:global([data-menu-items]:has([data-virtual-highlighted])) &:not([data-virtual-highlighted]) {
 		&[data-highlighted] {
 			background-color: transparent;
-
-			&.destructive.destructive {
-				.item-label.item-label {
-					color: var(--text-color);
-				}
-
-				.icon.icon,
-				.item-check.item-check,
-				.sub-indicator.sub-indicator {
-					color: var(--color--text--tint-1) !important;
-				}
-			}
 		}
 	}
 }

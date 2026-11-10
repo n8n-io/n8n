@@ -18,6 +18,13 @@ export const DropdownMenuSubMaxHeightKey: InjectionKey<Ref<string | undefined>> 
 /** Injection key for preserving the root menu width across portaled sub-menus. */
 export const DropdownMenuWidthKey: InjectionKey<Ref<string>> = Symbol('DropdownMenuWidth');
 
+/**
+ * Injection key overriding the max-width of nested sub-menu content, per
+ * dropdown. Default (unset) keeps the root menu width.
+ */
+export const DropdownMenuSubWidthKey: InjectionKey<Ref<string | undefined>> =
+	Symbol('DropdownMenuSubWidth');
+
 export interface DropdownMenuExternalNavigationController {
 	/** Handles a key for one visible menu level. */
 	handleExternalKeydown: (event: KeyboardEvent) => boolean;
@@ -162,6 +169,8 @@ export interface DropdownMenuProps<T = string, D = never> {
 	width?: string;
 	/** Overrides the max-height cap of nested sub-menu content (CSS length). */
 	subMenuMaxHeight?: string | number;
+	/** Overrides the max-width of nested sub-menu content (CSS length). The root menu keeps `width`. */
+	subMenuWidth?: string;
 	/** Whether to show loading state */
 	loading?: boolean;
 	/** Number of skeleton items to show when loading */

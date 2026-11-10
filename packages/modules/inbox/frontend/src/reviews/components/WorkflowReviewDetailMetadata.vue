@@ -16,9 +16,14 @@ import { formatUserDisplayName } from '../workflowReviews.utils';
 import { getWorkflowReviewStatusDisplay } from '../workflowReviewStatus.utils';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
 
-const props = defineProps<{
-	review: WorkflowReviewInboxItem | WorkflowReviewRequestDetail;
-}>();
+const props = withDefaults(
+	defineProps<{
+		review: WorkflowReviewInboxItem | WorkflowReviewRequestDetail;
+		/** Prototype item 1. Links stay plain and underline on hover, as on item 2. */
+		hoverLinks?: boolean;
+	}>(),
+	{ hoverLinks: false },
+);
 
 const i18n = useI18n();
 
@@ -203,13 +208,21 @@ function addReviewer() {
 					:to="{ name: VIEWS.WORKFLOW, params: { workflowId: workflow.workflowId } }"
 					theme="text"
 					size="medium"
-					:class="$style.workflow"
+					:underline="!hoverLinks"
+					:class="[$style.workflow, hoverLinks && $style.plainLink]"
 					data-test-id="workflow-review-detail-workflow-link"
 				>
 					<N8nIcon icon="workflow" size="medium" :class="$style.workflowIcon" />
 					<span :class="$style.workflowName">{{ workflow.workflowName }}</span>
 				</N8nLink>
 			</div>
+		</section>
+		<section
+			v-if="$slots.extra"
+			:class="$style.section"
+			data-test-id="workflow-review-detail-extra"
+		>
+			<slot name="extra" />
 		</section>
 	</aside>
 </template>
@@ -284,6 +297,11 @@ function addReviewer() {
 		align-items: flex-start;
 		min-width: 0;
 	}
+}
+
+.plainLink:hover,
+.plainLink:focus-visible {
+	text-decoration: underline;
 }
 
 .workflowName {

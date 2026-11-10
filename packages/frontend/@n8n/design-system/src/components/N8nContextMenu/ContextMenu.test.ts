@@ -194,7 +194,7 @@ describe('N8nContextMenu', () => {
 				color: 'var(--icon-color--subtle)',
 			});
 			expect(document.querySelector('[data-icon="trash"]')).toHaveStyle({
-				color: 'var(--icon-color--danger)',
+				color: 'var(--color--danger)',
 			});
 		});
 

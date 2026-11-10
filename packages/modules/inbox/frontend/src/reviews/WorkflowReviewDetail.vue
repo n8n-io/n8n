@@ -7,8 +7,9 @@ import { storeToRefs } from 'pinia';
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 
 import type { InboxItemChange } from '../inbox.constants';
+import PrototypeDirectionLine from '../prototype/PrototypeDirectionLine.vue';
 import PrototypeEditableTitle from '../prototype/PrototypeEditableTitle.vue';
-import { prototypeTitle } from '../prototype/prototype.session';
+import { prototypeSession, prototypeTitle } from '../prototype/prototype.session';
 import WorkflowReviewDetailTabs from './components/WorkflowReviewDetailTabs.vue';
 import type { WorkflowReviewDetailTab } from './components/WorkflowReviewDetailTabs.vue';
 import { useReviewActivityStore } from './reviewActivity.store';
@@ -47,6 +48,39 @@ const review = computed(() => {
 	return props.listItem?.id === props.reviewId ? props.listItem : null;
 });
 const displayTitle = computed(() => prototypeTitle(props.reviewId, review.value?.title ?? ''));
+
+const publishActor = computed(() => {
+	const requester = review.value?.requester;
+	if (!prototypeSession.active || !requester) return null;
+	return {
+		kind: 'person' as const,
+		firstName: requester.firstName,
+		lastName: requester.lastName,
+		email: requester.email,
+	};
+});
+
+const publishDirection = computed(() => {
+	const current = review.value;
+	if (!prototypeSession.active || !current) return null;
+	// A review lists one workflow today. Several names would not fit this line.
+	if ('workflows' in current) {
+		if (current.workflows.length !== 1) return null;
+		const workflow = current.workflows[0];
+		return {
+			keypath: 'inbox.prototype.direction.publish' as const,
+			resourceName: workflow.workflowName,
+			workflowId: workflow.workflowId,
+		};
+	}
+	if (!current.workflowName) return null;
+	// The list row has the name and not the workflow id. The detail supplies the id.
+	return {
+		keypath: 'inbox.prototype.direction.publish' as const,
+		resourceName: current.workflowName,
+		workflowId: null,
+	};
+});
 
 let isMounted = false;
 let selectionRevision = 0;
@@ -180,11 +214,13 @@ onBeforeUnmount(() => {
 				:class="$style.reviewTitle"
 				data-test-id="workflow-review-request-title-row"
 			>
-				<PrototypeEditableTitle
-					:item-id="reviewId"
-					:text="displayTitle"
-					test-id="workflow-review-request-title"
-				/>
+				<PrototypeDirectionLine :actor="publishActor" :direction="publishDirection">
+					<PrototypeEditableTitle
+						:item-id="reviewId"
+						:text="displayTitle"
+						test-id="workflow-review-request-title"
+					/>
+				</PrototypeDirectionLine>
 			</div>
 		</div>
 		<div :class="[$style.mainBody, { [$style.mainBodyLocked]: splitChanges && tab === 'changes' }]">

@@ -15,10 +15,13 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nDropdownMenu,
 	N8nEmptyState,
 	N8nExternalLink,
 	N8nHeading,
 	N8nIcon,
+	N8nLink,
+	type DropdownMenuItemProps,
 	N8nTabs,
 	N8nText,
 	type BadgeVariant,
@@ -30,9 +33,16 @@ import { computed, provide, ref, useId, useTemplateRef, watch } from 'vue';
 
 import InboxAvatarTooltip from '../components/InboxAvatarTooltip.vue';
 import type { InboxItemChange } from '../inbox.constants';
+import PrototypeDirectionLine from '../prototype/PrototypeDirectionLine.vue';
 import PrototypeEditableBody from '../prototype/PrototypeEditableBody.vue';
 import PrototypeEditableTitle from '../prototype/PrototypeEditableTitle.vue';
-import { prototypeDescription, prototypeTitle } from '../prototype/prototype.session';
+import {
+	prototypeDescription,
+	prototypeSession,
+	prototypeState,
+	prototypeTitle,
+	setPrototypeState,
+} from '../prototype/prototype.session';
 import WorkflowReviewActivityFeed from '../reviews/components/WorkflowReviewActivityFeed.vue';
 import WorkflowReviewCommentComposer from '../reviews/components/WorkflowReviewCommentComposer.vue';
 import WorkflowReviewDetailMetadata from '../reviews/components/WorkflowReviewDetailMetadata.vue';
@@ -70,6 +80,29 @@ const displayTitle = computed(() =>
 			props.item.branchName ??
 			i18n.baseText('inbox.promotionReview.untitled'),
 	),
+);
+const promoteActor = computed(() => {
+	const requester = props.item.requester;
+	if (!prototypeSession.active || !props.activityReview || !requester) return null;
+	return {
+		kind: 'person' as const,
+		firstName: requester.firstName,
+		lastName: requester.lastName,
+		email: requester.email,
+	};
+});
+const promoteDirection = computed(() => {
+	const environment = props.item.environmentName;
+	if (!prototypeSession.active || !props.activityReview || !environment) return null;
+	return {
+		keypath: 'inbox.prototype.direction.promote' as const,
+		environment,
+	};
+});
+// The host reports this title as the merge request name. A missing title uses the branch.
+const mergeRequestName = computed(
+	() =>
+		props.item.title ?? props.item.branchName ?? i18n.baseText('inbox.promotionReview.untitled'),
 );
 
 const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
@@ -148,8 +181,24 @@ const tabOptions = computed(() => [
 const changes = ref<PromotionChangesState>({ status: 'loading' });
 watch(
 	() => props.item.id,
-	() => (changes.value = { status: 'loading' }),
+	(id) => {
+		changes.value = { status: 'loading' };
+		// Approve reads this head. Load it here so the Review menu can use it from Activity.
+		void loadChanges(id);
+	},
+	{ immediate: true },
 );
+
+async function loadChanges(id: string) {
+	try {
+		const result = await getPromotionReviewChanges(rootStore.restApiContext, id);
+		if (props.item.id !== id) return;
+		changes.value = { status: 'ready', headCommitSha: result.headCommitSha };
+	} catch {
+		if (props.item.id !== id) return;
+		changes.value = { status: 'unavailable' };
+	}
+}
 
 const hasNewCommits = computed(
 	() =>
@@ -193,6 +242,52 @@ const approveDescribedBy = computed(() => {
 	return hasNewCommits.value ? newCommitsId : undefined;
 });
 
+type ReviewMenuAction = 'approve' | 'gitlab' | 'close';
+
+const promotionOpen = computed(() => prototypeState(props.item.id, props.item.state) === 'open');
+
+const reviewMenuItems = computed<Array<DropdownMenuItemProps<ReviewMenuAction>>>(() => {
+	const items: Array<DropdownMenuItemProps<ReviewMenuAction>> = [
+		{
+			id: 'approve',
+			label: i18n.baseText('inbox.promotionReview.approve.button'),
+			icon: { type: 'icon', value: 'check' },
+			disabled: approveDisabled.value,
+			testId: 'inbox-promotion-review-approve',
+		},
+	];
+	if (props.item.webUrl) {
+		items.push({
+			id: 'gitlab',
+			label: i18n.baseText('inbox.promotionReview.detail.viewInGitLab'),
+			icon: { type: 'icon', value: 'gitlab' },
+			testId: 'inbox-promotion-review-gitlab',
+		});
+	}
+	items.push({
+		id: 'close',
+		label: i18n.baseText('inbox.contextMenu.closeReview'),
+		icon: { type: 'icon', value: 'x' },
+		destructive: true,
+		divided: true,
+		testId: 'inbox-promotion-review-close',
+	});
+	return items;
+});
+
+function onReviewSelect(action: ReviewMenuAction) {
+	if (action === 'approve') {
+		openApproval();
+		return;
+	}
+	if (action === 'close') {
+		setPrototypeState(props.item.id, 'closed');
+		return;
+	}
+	if (!props.item.webUrl) return;
+	window.open(props.item.webUrl, '_blank', 'noopener');
+}
+
 function openApproval() {
 	if (changes.value.status !== 'ready') return;
 	pendingApproval.value = { id: props.item.id, headCommitSha: changes.value.headCommitSha };
@@ -232,7 +327,9 @@ async function onApprove() {
 	>
 		<div v-if="activityReview" :class="$style.columnTitle">
 			<div :class="$style.reviewTitle">
-				<PrototypeEditableTitle :item-id="item.id" :text="displayTitle" />
+				<PrototypeDirectionLine :actor="promoteActor" :direction="promoteDirection">
+					<PrototypeEditableTitle :item-id="item.id" :text="displayTitle" />
+				</PrototypeDirectionLine>
 			</div>
 		</div>
 		<header v-else :class="$style.header">
@@ -309,20 +406,40 @@ async function onApprove() {
 				data-test-id="inbox-promotion-review-tab-bar"
 				@update:model-value="detailTab = $event === 'activity' ? 'activity' : 'changes'"
 			/>
-			<!-- Same slot as Discard and close on a self-healing result: the ghost action left of the main button. -->
 			<div :class="$style.tabActions">
-				<N8nButton
-					v-if="activityReview && item.webUrl"
-					variant="ghost"
-					size="small"
-					:href="item.webUrl"
-					target="_blank"
-					data-test-id="inbox-promotion-review-gitlab"
-				>
-					{{ i18n.baseText('inbox.promotionReview.detail.viewInGitLab') }}
-					<N8nIcon icon="external-link" size="small" />
-				</N8nButton>
-				<div v-if="item.state === 'open'" :class="$style.approve">
+				<template v-if="activityReview">
+					<N8nDropdownMenu
+						v-if="promotionOpen"
+						:items="reviewMenuItems"
+						placement="bottom-end"
+						:disabled="approving"
+						content-test-id="inbox-promotion-review-review-menu"
+						@select="onReviewSelect"
+					>
+						<template #trigger>
+							<N8nButton
+								size="small"
+								:disabled="approving"
+								data-test-id="inbox-promotion-review-review"
+							>
+								{{ i18n.baseText('inbox.selfHealing.action.review') }}
+								<N8nIcon :icon="approving ? 'loader' : 'chevron-down'" :spin="approving" />
+							</N8nButton>
+						</template>
+						<template v-if="disabledReason" #footer>
+							<N8nText
+								:id="disabledReasonId"
+								size="small"
+								color="text-light"
+								:class="$style.menuNote"
+								data-test-id="inbox-promotion-review-approve-reason"
+							>
+								{{ disabledReason }}
+							</N8nText>
+						</template>
+					</N8nDropdownMenu>
+				</template>
+				<div v-else-if="item.state === 'open'" :class="$style.approve">
 					<!-- Visible text, not a tooltip: a disabled button cannot take keyboard focus. -->
 					<N8nText
 						v-if="disabledReason"
@@ -368,7 +485,30 @@ async function onApprove() {
 						</template>
 					</WorkflowReviewActivityFeed>
 				</div>
-				<WorkflowReviewDetailMetadata :review="activityReview" />
+				<WorkflowReviewDetailMetadata
+					:review="activityReview"
+					:hover-links="prototypeSession.active"
+				>
+					<template v-if="item.webUrl" #extra>
+						<N8nText bold color="text-light" size="medium">
+							{{ i18n.baseText('inbox.promotionReview.detail.links') }}
+						</N8nText>
+						<N8nLink
+							:to="item.webUrl"
+							new-window
+							theme="text"
+							size="medium"
+							rel="noopener noreferrer"
+							:title="mergeRequestName"
+							:underline="!prototypeSession.active"
+							:class="$style.linkRow"
+							data-test-id="inbox-promotion-review-gitlab-link"
+						>
+							<N8nIcon icon="gitlab" size="medium" :class="$style.linkIcon" />
+							<span :class="$style.linkName">{{ mergeRequestName }}</span>
+						</N8nLink>
+					</template>
+				</WorkflowReviewDetailMetadata>
 			</div>
 		</div>
 		<div v-else :class="$style.changesArea">
@@ -551,7 +691,8 @@ async function onApprove() {
 	flex: 1;
 	min-width: 0;
 	max-width: var(--review-activity--max-width, 45rem);
-	margin-inline: auto;
+	/* End margin only, so the column starts on the tab edge. */
+	margin-inline-end: auto;
 }
 
 .descriptionCard {
@@ -625,10 +766,51 @@ async function onApprove() {
 	gap: var(--spacing--xs);
 }
 
+/* A disabled reason is a sentence. There is no token for this menu width. */
+.menuNote {
+	display: block;
+	max-width: 16rem;
+	padding: 0 var(--spacing--xs) var(--spacing--xs);
+}
+
 .gitlabLink {
 	/* A standalone external link takes the font size around it. The text next to it is smaller. */
 	font-size: var(--font-size--sm);
 	white-space: nowrap;
+}
+
+/* Same row as a workflow link in the metadata rail: icon, then the name. */
+.linkRow {
+	display: flex;
+	width: 100%;
+	min-width: 0;
+
+	&:hover,
+	&:focus-visible {
+		text-decoration: underline;
+	}
+
+	> span,
+	> span > span {
+		display: flex;
+		flex: 1;
+		align-items: center;
+		min-width: 0;
+		overflow: hidden;
+	}
+}
+
+.linkName {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.linkIcon {
+	flex-shrink: 0;
+	margin-right: var(--spacing--4xs);
 }
 
 .meta {

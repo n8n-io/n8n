@@ -46,7 +46,7 @@ const TEXT_COLOR: Record<Exclude<ItemTone, 'destructive'>, TextColor> = {
 
 const ICON_COLOR = {
 	disabled: '--icon-color--subtle',
-	destructive: '--icon-color--danger',
+	destructive: '--color--danger',
 	default: '--icon-color',
 } as const;
 
@@ -272,7 +272,7 @@ function handleSubmenuOpenChange(open: boolean) {
 }
 
 .destructive:not([data-disabled]) {
-	color: var(--text-color--danger);
+	color: var(--color--text--danger);
 
 	&[data-highlighted] {
 		background-color: var(--background--danger);

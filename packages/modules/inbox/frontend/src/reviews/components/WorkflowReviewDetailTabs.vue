@@ -1,12 +1,32 @@
 <script setup lang="ts">
-import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
-import { N8nCallout, N8nTabs, N8nText } from '@n8n/design-system';
+import {
+	WORKFLOW_REVIEW_TEXT_MAX_LENGTH,
+	type WorkflowReviewInboxItem,
+	type WorkflowReviewRequestDetail,
+} from '@n8n/api-types';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nDropdownMenu,
+	N8nIcon,
+	N8nInput,
+	N8nPopover,
+	N8nTabs,
+	N8nText,
+	N8nTooltip,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system';
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { computed, provide, ref, useTemplateRef, watch } from 'vue';
+import { computed, provide, ref, useId, useTemplateRef, watch } from 'vue';
 
 import PrototypeEditableBody from '../../prototype/PrototypeEditableBody.vue';
-import { prototypeDescription, prototypeState } from '../../prototype/prototype.session';
+import {
+	prototypeDescription,
+	prototypeSession,
+	prototypeState,
+	setPrototypeState,
+} from '../../prototype/prototype.session';
 import { ReviewDetailScrollContainerKey, ReviewLinkedWorkflowsKey } from '../constants';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
@@ -118,6 +138,89 @@ const showApprovedAndPublished = computed(() => {
 
 const PromotionChanges = computed(() => componentRegistry.get('promotion-changes'));
 
+type PrototypeReviewAction = 'approve' | 'request-changes' | 'close';
+
+// The note opens on the Review button. The comment field stays in the feed.
+const reviewMenuOpen = ref(false);
+const requestingChanges = ref(false);
+const changeNote = ref('');
+const requestChangesNoteId = useId();
+const reviewAnchor = useTemplateRef<HTMLElement>('reviewAnchor');
+const reviewAnchorElement = computed(() => reviewAnchor.value ?? undefined);
+
+const prototypeReviewMenu = computed<Array<DropdownMenuItemProps<PrototypeReviewAction>>>(() => [
+	{
+		id: 'approve',
+		label: i18n.baseText('workflowReviews.detail.decision.approveAndPublish'),
+		icon: { type: 'icon', value: 'check' },
+		disabled: props.deciding,
+		testId: 'workflow-review-prototype-approve',
+	},
+	{
+		id: 'request-changes',
+		label: i18n.baseText('workflowReviews.detail.decision.requestChanges'),
+		icon: { type: 'icon', value: 'refresh-cw' },
+		disabled: props.deciding,
+		// The note popover takes focus when this item closes the menu.
+		suppressCloseAutoFocus: true,
+		testId: 'workflow-review-prototype-request-changes',
+	},
+	{
+		id: 'close',
+		label: i18n.baseText('inbox.contextMenu.closeReview'),
+		icon: { type: 'icon', value: 'x' },
+		destructive: true,
+		divided: true,
+		testId: 'workflow-review-prototype-close',
+	},
+]);
+
+const changeNoteReady = computed(() => changeNote.value.trim().length > 0);
+
+function closeRequestChanges() {
+	requestingChanges.value = false;
+	changeNote.value = '';
+}
+
+watch(
+	() => props.review.id,
+	() => {
+		closeRequestChanges();
+	},
+);
+
+// Close the note when the menu opens. The two stay apart.
+watch(reviewMenuOpen, (open) => {
+	if (open) closeRequestChanges();
+});
+
+function onPrototypeReview(action: PrototypeReviewAction) {
+	if (action === 'approve') {
+		closeRequestChanges();
+		emit('decide', { decision: 'approved' });
+		return;
+	}
+	if (action === 'request-changes') {
+		requestingChanges.value = true;
+		return;
+	}
+	closeRequestChanges();
+	setPrototypeState(props.review.id, 'closed');
+}
+
+// The Review menu opens this popover. Ignore an open event from the hidden trigger.
+function onRequestChangesOpen(open: boolean) {
+	if (open) return;
+	closeRequestChanges();
+}
+
+function submitRequestChanges() {
+	const note = changeNote.value.trim();
+	if (!note || props.deciding) return;
+	closeRequestChanges();
+	emit('decide', { decision: 'changes_requested', note });
+}
+
 const tabOptions = computed(() => [
 	{
 		label: i18n.baseText('workflowReviews.detail.tabs.activity'),
@@ -148,7 +251,88 @@ const tabOptions = computed(() => [
 				v-if="prototypeState(review.id, detail?.state ?? 'closed') === 'open'"
 				:class="$style.decisionActions"
 			>
+				<N8nDropdownMenu
+					v-if="prototypeSession.active"
+					v-model="reviewMenuOpen"
+					:items="prototypeReviewMenu"
+					placement="bottom-end"
+					:disabled="deciding || !viewerCanDecide"
+					content-test-id="workflow-review-prototype-menu"
+					@select="onPrototypeReview"
+				>
+					<template #trigger>
+						<span ref="reviewAnchor" :class="$style.reviewAnchor">
+							<span v-if="ineligibilityHint">
+								<N8nTooltip :content="ineligibilityHint" :show-after="300">
+									<N8nButton size="small" disabled data-test-id="workflow-review-prototype-review">
+										{{ i18n.baseText('workflowReviews.detail.decision.trigger') }}
+										<N8nIcon icon="chevron-down" />
+									</N8nButton>
+								</N8nTooltip>
+							</span>
+							<N8nButton
+								v-else
+								size="small"
+								:disabled="deciding"
+								data-test-id="workflow-review-prototype-review"
+							>
+								{{ i18n.baseText('workflowReviews.detail.decision.trigger') }}
+								<N8nIcon :icon="deciding ? 'loader' : 'chevron-down'" :spin="deciding" />
+							</N8nButton>
+						</span>
+					</template>
+				</N8nDropdownMenu>
+				<!-- The note sits where the menu sat. The hidden trigger only satisfies the popover. -->
+				<N8nPopover
+					v-if="prototypeSession.active"
+					:open="requestingChanges"
+					side="bottom"
+					align="end"
+					width="20rem"
+					:enable-scrolling="false"
+					:reference="reviewAnchorElement"
+					:content-class="$style.requestChangesPopover"
+					@update:open="onRequestChangesOpen"
+				>
+					<template #trigger>
+						<span :class="$style.requestChangesTrigger" aria-hidden="true" />
+					</template>
+					<template #content>
+						<div :class="$style.requestChanges" data-test-id="workflow-review-request-changes-form">
+							<N8nText tag="label" bold size="medium" :for="requestChangesNoteId">
+								{{ i18n.baseText('workflowReviews.detail.decision.note.required') }}
+							</N8nText>
+							<N8nInput
+								:id="requestChangesNoteId"
+								v-model="changeNote"
+								type="textarea"
+								:rows="4"
+								autofocus
+								:maxlength="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
+								data-test-id="workflow-review-request-changes-note"
+							/>
+							<div :class="$style.requestChangesActions">
+								<N8nButton
+									variant="ghost"
+									size="small"
+									:label="i18n.baseText('generic.cancel')"
+									:disabled="deciding"
+									data-test-id="workflow-review-request-changes-cancel"
+									@click="closeRequestChanges"
+								/>
+								<N8nButton
+									size="small"
+									:disabled="!changeNoteReady || deciding"
+									:label="i18n.baseText('workflowReviews.detail.decision.requestChanges')"
+									data-test-id="workflow-review-request-changes-submit"
+									@click="submitRequestChanges"
+								/>
+							</div>
+						</div>
+					</template>
+				</N8nPopover>
 				<WorkflowReviewDecisionPopover
+					v-else
 					:deciding="deciding"
 					:viewer-can-decide="viewerCanDecide"
 					:viewer-can-comment="viewerCanComment"
@@ -215,8 +399,8 @@ const tabOptions = computed(() => [
 							</div>
 						</N8nCallout>
 					</template>
-					<!-- Closed reviews take no new comments (the backend 409s) -->
-					<template v-if="review.state === 'open'" #composer>
+					<!-- A real close still refuses new comments. The prototype keeps the box. -->
+					<template v-if="prototypeSession.active || review.state === 'open'" #composer>
 						<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
 					</template>
 				</WorkflowReviewActivityFeed>
@@ -258,7 +442,11 @@ const tabOptions = computed(() => [
 				</template>
 			</div>
 
-			<WorkflowReviewDetailMetadata v-if="!(splitChanges && tab === 'changes')" :review="review" />
+			<WorkflowReviewDetailMetadata
+				v-if="!(splitChanges && tab === 'changes')"
+				:review="review"
+				:hover-links="prototypeSession.active"
+			/>
 		</div>
 	</div>
 </template>
@@ -352,7 +540,8 @@ const tabOptions = computed(() => [
 	flex: 1;
 	min-width: 0;
 	max-width: var(--review-activity--max-width, 45rem);
-	margin-inline: auto;
+	/* End margin only, so the column starts on the tab edge. */
+	margin-inline-end: auto;
 }
 
 .descriptionCard {
@@ -386,9 +575,44 @@ const tabOptions = computed(() => [
 }
 
 .decisionActions {
+	position: relative;
+	display: flex;
 	flex-shrink: 0;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	/* The tab label sits above the row center, clear of the underline. Match that. */
 	margin-bottom: calc(var(--spacing--xs) + 2px - var(--spacing--4xs));
+}
+
+.reviewAnchor {
+	display: inline-flex;
+}
+
+/* The popover positions on the Review button. This trigger stays out of the layout. */
+.requestChangesTrigger {
+	position: absolute;
+	width: 0;
+	height: 0;
+	padding: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.requestChangesPopover {
+	padding: var(--spacing--xs);
+}
+
+.requestChanges {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	width: 100%;
+}
+
+.requestChangesActions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
 }
 
 @container review-detail (max-width: 44rem) {
