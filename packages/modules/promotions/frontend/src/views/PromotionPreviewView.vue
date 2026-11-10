@@ -28,11 +28,11 @@ import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue
 import PromotionResourceTree from '../components/preview/PromotionResourceTree.vue';
 import PromotionReviewBlocker from '../components/preview/PromotionReviewBlocker.vue';
 import PromoteSelectionDialog from '../components/PromoteSelectionDialog.vue';
-import { usePromotionOperation } from '../composables/usePromotionOperation';
+import { usePromotionOperation, type OperationRequest } from '../composables/usePromotionOperation';
 import { usePromotionResourceDetails } from '../composables/usePromotionResourceDetails';
 import { usePromotionPreview } from '../composables/usePromotionPreview';
 import { usePromotionSelection } from '../composables/usePromotionSelection';
-import { getPromotionResourceDetails } from '../promotions.api';
+import { getPromotionEnvironmentDetails, getPromotionResourceDetails } from '../promotions.api';
 import { PROMOTIONS_SETTINGS_SCOPES, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
 import {
 	indexBlockers,
@@ -53,7 +53,8 @@ import {
 import { defaultActiveWorkflow, hasWorkflowDiff } from '../promotionPreview.workflow';
 import { buildPreviewTree, cardOrder } from '../promotionPreview.tree';
 
-const props = defineProps<{ projectId: string; direction: PromotionDirection }>();
+/** Without a project, the page applies the whole instance. Users cannot select changes then. */
+const props = defineProps<{ projectId?: string; direction: PromotionDirection }>();
 
 const i18n = useI18n();
 const route = useRoute();
@@ -67,16 +68,19 @@ const documentTitle = useDocumentTitle({
 
 const projectId = toRef(props, 'projectId');
 const direction = toRef(props, 'direction');
+const isInstance = computed(() => props.projectId === undefined);
 
 const { state, preview, check, graph, environment, refreshing, refreshFailed, refresh } =
 	usePromotionPreview(projectId, direction);
 const promoteEnvironment = computed(() =>
 	environment.value?.direction === 'promote' ? environment.value : null,
 );
-// The page shows and enforces only the blockers of the workflows it lists.
-const scopedCheck = computed(() =>
-	check.value && graph.value ? scopeCheck(check.value, graph.value) : null,
-);
+// The page shows and enforces only the blockers of the workflows it lists. A whole-instance
+// Apply stops for any blocker, also on a workflow that it does not change.
+const scopedCheck = computed(() => {
+	if (!check.value || !graph.value) return null;
+	return isInstance.value ? check.value : scopeCheck(check.value, graph.value);
+});
 // A project-wide conflict blocks all of them, so it also stops a selection without workflows.
 const selectableResourceKeys = computed(() => (graph.value ? selectableKeys(graph.value) : []));
 const blockerList = computed(() => [
@@ -91,28 +95,34 @@ const selection = usePromotionSelection(graph, {
 });
 const activeWorkflowKey = ref<ResourceKey>();
 const details = usePromotionResourceDetails(
-	async (keys) =>
-		await getPromotionResourceDetails(
-			rootStore.publicApiContext,
-			props.projectId,
-			props.direction,
-			{
-				commitSha: preview.value?.commitSha ?? null,
-				keys,
-			},
-		),
+	async (keys) => {
+		const request = { commitSha: preview.value?.commitSha ?? null, keys };
+		return props.projectId === undefined
+			? await getPromotionEnvironmentDetails(
+					rootStore.publicApiContext,
+					environment.value?.id ?? '',
+					request,
+				)
+			: await getPromotionResourceDetails(
+					rootStore.publicApiContext,
+					props.projectId,
+					props.direction,
+					request,
+				);
+	},
 	preview,
 	graph,
 	activeWorkflowKey,
 );
 
-const projectName = computed(() =>
-	projectContext.currentProject()?.id === props.projectId
+const projectName = computed(() => {
+	if (props.projectId === undefined) return undefined;
+	return projectContext.currentProject()?.id === props.projectId
 		? projectContext.currentProject()?.name
 		: preview.value?.resources.find(
 				(resource) => resource.type === 'project' && resource.id === props.projectId,
-			)?.name,
-);
+			)?.name;
+});
 const title = computed(() => {
 	if (!environment.value?.name) {
 		return i18n.baseText(`promotions.preview.title.${props.direction}`);
@@ -178,13 +188,19 @@ const canOpenSettings = computed(() =>
 	rbacStore.hasScope([...PROMOTIONS_SETTINGS_SCOPES], {}, { mode: 'allOf' }),
 );
 
-const projectRoute = computed(() => ({
-	name: VIEWS.PROJECTS_WORKFLOWS,
-	params: { projectId: props.projectId },
-}));
+// The whole-instance Apply starts on the settings page, so it goes back there.
+const backRoute = computed(() =>
+	props.projectId === undefined
+		? { name: PROMOTIONS_SETTINGS_VIEW }
+		: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: props.projectId } },
+);
 const backLabel = computed(() =>
 	i18n.baseText('promotions.preview.back', {
-		interpolate: { project: projectContext.currentProject()?.name ?? '' },
+		interpolate: {
+			project: isInstance.value
+				? i18n.baseText('settings.promotions.title')
+				: (projectContext.currentProject()?.name ?? ''),
+		},
 	}),
 );
 
@@ -193,12 +209,27 @@ const includedChanges = computed(() =>
 	graph.value ? includedChangeCount(graph.value, selection.inclusion.value) : 0,
 );
 
-const request = computed(() => ({
-	...(graph.value
-		? toOperationRequest(graph.value, selection.selected.value)
-		: { workflowIds: [], folderIds: [] }),
-	confirmDestructiveChanges: touchesDestructiveChange(blockers.value, selection.selected.value),
-}));
+const request = computed((): OperationRequest => {
+	if (isInstance.value) {
+		return {
+			workflowIds: [],
+			folderIds: [],
+			confirmDestructiveChanges: blockerList.value.some(({ kind }) => kind === 'destructive'),
+			deletedProjects: (check.value?.conflicts ?? []).flatMap((conflict) =>
+				conflict.code === 'project-deletion' ? conflict.project.name : [],
+			),
+		};
+	}
+	return {
+		...(graph.value
+			? toOperationRequest(graph.value, selection.selected.value)
+			: { workflowIds: [], folderIds: [] }),
+		confirmDestructiveChanges: touchesDestructiveChange(blockers.value, selection.selected.value),
+	};
+});
+const isDestructive = computed(
+	() => request.value.confirmDestructiveChanges || !!request.value.deletedProjects?.length,
+);
 const hasSelectedBlocked = computed(() =>
 	[...selection.selected.value].some((key) => blockers.value.blocked.has(key)),
 );
@@ -211,6 +242,11 @@ const submitBlockedReason = computed(() => {
 			interpolate: { folders: movedFolders.map(({ name }) => `"${name}"`).join(', ') },
 		});
 	}
+	if (isInstance.value) {
+		return blockerList.value.some(isBlocking)
+			? i18n.baseText('promotions.preview.submit.blockedInstance')
+			: undefined;
+	}
 	if (!hasSelectedBlocked.value) return undefined;
 	return i18n.baseText(
 		props.direction === 'promote'
@@ -220,6 +256,7 @@ const submitBlockedReason = computed(() => {
 });
 const actionableChanges = computed(() => {
 	if (!graph.value || scopedCheck.value?.movedFolders.length) return 0;
+	if (isInstance.value) return totalChanges.value;
 	const actionable = new Set(
 		[...selection.selected.value].filter((key) => !blockers.value.blocked.has(key)),
 	);
@@ -323,7 +360,7 @@ const treeResizer = useResizablePanel({
 <template>
 	<div :class="$style.page" data-test-id="promotion-preview-page">
 		<header :class="$style.header">
-			<N8nLink :to="projectRoute" theme="text" size="small" data-test-id="promotion-preview-back">
+			<N8nLink :to="backRoute" theme="text" size="small" data-test-id="promotion-preview-back">
 				<span :class="$style.back"><N8nIcon icon="arrow-left" size="small" />{{ backLabel }}</span>
 			</N8nLink>
 			<N8nHeading tag="h1" size="xlarge" :class="$style.title">{{ title }}</N8nHeading>
@@ -347,7 +384,7 @@ const treeResizer = useResizablePanel({
 						{{ i18n.baseText('promotions.preview.refresh') }}
 					</N8nButton>
 					<N8nButton
-						:variant="request.confirmDestructiveChanges ? 'destructive' : 'brand'"
+						:variant="isDestructive ? 'destructive' : 'brand'"
 						size="small"
 						:disabled="!canSubmit"
 						:loading="operation.isRunning.value"
@@ -444,6 +481,7 @@ const treeResizer = useResizablePanel({
 						:locked="operation.isBusy.value"
 						:direction="direction"
 						:blockers="blockers"
+						:selectable="!isInstance"
 						@show-blockers="showBlockers"
 						@toggle="selection.toggle"
 						@toggle-container="selection.toggleAllInside"
@@ -491,6 +529,7 @@ const treeResizer = useResizablePanel({
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
 						:blockers="blockers"
+						:selectable="!isInstance"
 						@retry="details.retry"
 						@refresh="refresh"
 						@inspect="inspect"

@@ -311,6 +311,12 @@ paths:
   /promotions/environments/{promotionEnvironmentId}/apply/continue:
     post:
       $ref: ./handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  /promotions/environments/{promotionEnvironmentId}/changes:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getInstanceApplyChanges.generated.yml
+  /promotions/environments/{promotionEnvironmentId}/changes/details:
+    post:
+      $ref: ./handlers/promotions/spec/paths/getInstanceApplyChangeDetails.generated.yml
   /promotions/projects/{projectId}/changes/{direction}:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionChanges.generated.yml

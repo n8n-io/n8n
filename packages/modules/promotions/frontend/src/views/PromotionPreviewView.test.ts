@@ -17,12 +17,21 @@ import { render as renderToast, waitFor, within } from '@testing-library/vue';
 import { defineComponent } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
-import { applied, destructiveChange, variable } from '../__tests__/bindings.fixtures';
-import { billingPreview, COMMIT_SHA } from '../__tests__/preview.fixtures';
+import {
+	applied,
+	destructiveChange,
+	projectDeletion,
+	variable,
+} from '../__tests__/bindings.fixtures';
+import { billingPreview, COMMIT_SHA, resource } from '../__tests__/preview.fixtures';
 import { registerDiffSlotStubs } from '../__tests__/slots';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import * as api from '../promotions.api';
-import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
+import {
+	PROMOTION_INSTANCE_APPLY_VIEW,
+	PROMOTION_PREVIEW_VIEWS,
+	PROMOTIONS_SETTINGS_VIEW,
+} from '../promotions.constants';
 import type { ApplyCheckResult } from '../promotions.types';
 import * as settingsApi from '../promotionsSettings.api';
 import PromotionPreviewView from './PromotionPreviewView.vue';
@@ -75,6 +84,8 @@ const router = createRouter({
 			component: stub,
 		},
 		{ path: '/inbox', name: INBOX_VIEW, component: stub },
+		{ path: '/promotions/apply', name: PROMOTION_INSTANCE_APPLY_VIEW, component: stub },
+		{ path: '/settings/promotions', name: PROMOTIONS_SETTINGS_VIEW, component: stub },
 	],
 });
 const renderComponent = createComponentRenderer(PromotionPreviewView, {
@@ -998,5 +1009,78 @@ describe('PromotionPreviewView', () => {
 		await userEvent.click(getByRole('tab', { name: /Changes/ }));
 		expect(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox')).toBeChecked();
 		expect(getByTestId('promotion-preview-submit')).toBeEnabled();
+	});
+
+	describe('whole-instance Apply', () => {
+		// The branch no longer holds the "Sales" project, so Apply deletes it and its workflow.
+		const instancePreview = (fields: Partial<ApplyCheckResult> = {}) => {
+			const preview = previewWithCheck(check(fields));
+			return {
+				...preview,
+				commitSha: COMMIT_SHA,
+				resources: [
+					...preview.resources,
+					resource({ key: 'project:team-b', name: 'Sales', change: 'deleted' }),
+					resource({
+						key: 'workflow:w20',
+						name: 'Lead routing',
+						parentKey: 'project:team-b',
+						change: 'deleted',
+					}),
+				],
+			};
+		};
+
+		async function renderInstance() {
+			vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment('apply')]);
+			await router.push('/promotions/apply');
+			const result = renderComponent({
+				pinia: createTestingPinia(),
+				props: { direction: 'apply' },
+			});
+			await waitAllPromises();
+			return result;
+		}
+
+		it('should stop for a blocker on a workflow that the Apply does not change', async () => {
+			const missing = { ...variable, name: 'API_URL', consumers: consumers('w-unchanged') };
+			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(
+				instancePreview({ missingBindings: [missing] }),
+			);
+
+			const { getByTestId } = await renderInstance();
+
+			expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+			expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
+				'Some changes have blockers',
+			);
+		});
+
+		it('should list a deleted project with its workflows, confirm the deletion and apply the reviewed state', async () => {
+			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(
+				instancePreview({
+					conflicts: [{ ...projectDeletion, project: { id: 'team-b', name: 'Sales' } }],
+				}),
+			);
+			vi.mocked(settingsApi.continueApplyPromotion).mockResolvedValue(applied);
+			confirm.mockResolvedValue('confirm');
+
+			const { getAllByTestId, getByTestId } = await renderInstance();
+			expect(treeRow(getAllByTestId, 'workflow:w20').getByText('Lead routing')).toBeVisible();
+
+			await userEvent.click(getByTestId('promotion-preview-submit'));
+
+			expect(confirm).toHaveBeenCalledWith(
+				expect.stringContaining('"Sales"'),
+				'Apply and delete projects?',
+				expect.anything(),
+			);
+			expect(settingsApi.continueApplyPromotion).toHaveBeenCalledWith(
+				expect.anything(),
+				expectedSource.environmentId,
+				{ expectedSource, expectedPreviewRevision: REVISION, confirmDestructiveChanges: true },
+			);
+			expect(router.currentRoute.value.name).toBe(PROMOTIONS_SETTINGS_VIEW);
+		});
 	});
 });

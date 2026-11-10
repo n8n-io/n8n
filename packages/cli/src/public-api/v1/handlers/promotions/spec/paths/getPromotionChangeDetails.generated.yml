@@ -54,19 +54,7 @@ responses:
     content:
       application/json:
         schema:
-          type: object
-          properties:
-            details:
-              type: array
-              items:
-                $ref: ../../../../shared/spec/schemas/promotionResourceDetail.generated.yml
-            missingKeys:
-              type: array
-              items:
-                type: string
-          required:
-            - details
-            - missingKeys
+          $ref: ../../../../shared/spec/schemas/promotionResourceDetailsDto.generated.yml
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

@@ -141,6 +141,24 @@ export type PromotionPreview = z.infer<typeof promotionPreviewSchema>;
 
 export class PromotionPreviewDto extends Z.class(promotionPreviewSchema.shape) {}
 
+/** The preview of a whole-instance Apply. It always has a commit, a check and a revision. */
+export const promotionInstanceApplyPreviewSchema = promotionPreviewSchema
+	.omit({ blocker: true })
+	.extend({
+		commitSha: z.string(),
+		check: promotionPreviewCheckSchema,
+		revision: z.string().openapi({
+			description:
+				'Send it as `expectedPreviewRevision` to apply only when this instance still matches the preview.',
+		}),
+	});
+
+export type PromotionInstanceApplyPreview = z.infer<typeof promotionInstanceApplyPreviewSchema>;
+
+export class PromotionInstanceApplyPreviewDto extends Z.class(
+	promotionInstanceApplyPreviewSchema.shape,
+) {}
+
 export class PromotionResourceDetailsRequestDto extends Z.class(
 	{
 		/** The commit of the summary. `null` when the branch had no commit yet. */

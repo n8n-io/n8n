@@ -59,7 +59,7 @@ requestBody:
             description: The `revision` of the reviewed Apply preview. Apply builds the preview again and returns status `preview-changed` without writing when it differs, for example after a local edit.
           confirmDestructiveChanges:
             type: boolean
-            description: 'Also applies destructive data table changes, which a `destructive-change` conflict reports: removed or retyped columns. The values in those columns are removed. Rows and other columns are kept. On a full apply, also deletes the team projects that a `project-deletion` conflict reports, with everything in them. The confirmation covers every such change and deletion when Continue runs, including those that are not in the reviewed result.'
+            description: 'Also applies destructive data table changes, which a `destructive-change` conflict reports: removed or retyped columns. The values in those columns are removed. Rows and other columns are kept. On a full apply, also deletes the team projects that a `project-deletion` conflict reports, with everything in them. Without `expectedPreviewRevision`, the confirmation covers every such change and deletion when Continue runs, including those that are not in the reviewed result.'
         required:
           - expectedSource
         additionalProperties: false

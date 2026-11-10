@@ -11,11 +11,12 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import type { PromotionEnvironment } from '../promotionsSettings.api';
+import { PROMOTION_INSTANCE_APPLY_VIEW } from '../promotions.constants';
 import { promotionEnvironmentBranch, promotionProviderIcon } from '../promotionsSettings.utils';
-import ApplyInstanceDialog from './ApplyInstanceDialog.vue';
 import PromoteInstanceDialog from './PromoteInstanceDialog.vue';
 import PromotionMissingProjectsButton from './PromotionMissingProjectsButton.vue';
 
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 const { permissions } = usePromotionCheckout();
 
 const dialogOpen = ref(false);
@@ -63,6 +65,15 @@ const actions = computed(() => [
 		destructive: true,
 	},
 ]);
+
+// Apply opens its preview page, so users review the whole Apply first. Promote asks in a dialog.
+async function run() {
+	if (props.environment.direction === 'apply') {
+		await router.push({ name: PROMOTION_INSTANCE_APPLY_VIEW });
+		return;
+	}
+	dialogOpen.value = true;
+}
 
 function onAction(action: 'edit' | 'remove') {
 	if (action === 'edit') emit('edit');
@@ -165,7 +176,7 @@ function onAction(action: 'edit' | 'remove') {
 						size="small"
 						:disabled="status !== 'connected' || !!busy"
 						:data-test-id="`${environment.direction}-instance-button`"
-						@click="dialogOpen = true"
+						@click="run"
 					>
 						{{ i18n.baseText(`settings.promotions.${environment.direction}.button`) }}
 					</N8nButton>
@@ -181,14 +192,6 @@ function onAction(action: 'edit' | 'remove') {
 			:environment-name="environment.name"
 			:create-branch-on-promotion="environment.settings.createBranchOnPromotion"
 			:provider-type="environment.provider.type"
-			@update:open="dialogOpen = $event"
-		/>
-		<ApplyInstanceDialog
-			v-if="dialogOpen && environment.direction === 'apply'"
-			:open="dialogOpen"
-			:environment-id="environment.id"
-			:branch-name="environment.settings.branchName"
-			:environment-name="environment.name"
 			@update:open="dialogOpen = $event"
 		/>
 	</div>

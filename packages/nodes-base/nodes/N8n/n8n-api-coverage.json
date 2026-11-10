@@ -314,6 +314,12 @@
 		"POST /promotions/environments/{promotionEnvironmentId}/apply": {
 			"status": "gap"
 		},
+		"GET /promotions/environments/{promotionEnvironmentId}/changes": {
+			"status": "gap"
+		},
+		"POST /promotions/environments/{promotionEnvironmentId}/changes/details": {
+			"status": "gap"
+		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},

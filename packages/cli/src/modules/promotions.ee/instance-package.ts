@@ -12,7 +12,7 @@ import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schem
 import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
 
-/** The project as this instance would export it, without writing any file. */
+/** The projects as this instance would export them, without writing any file. */
 export type InstancePackage = {
 	files: readonly PackageFile[];
 	manifest: PackageManifest;
@@ -49,7 +49,7 @@ export function instancePromotionExportRequest({
 export async function exportInstancePackage(
 	packagesService: N8nPackagesService,
 	user: User,
-	projectId: string,
+	projectIds: string[],
 	{ keepContent }: { keepContent?: (path: string) => boolean } = {},
 ): Promise<InstancePackage> {
 	const writer = new HashingPackageWriter();
@@ -57,7 +57,7 @@ export async function exportInstancePackage(
 	const { manifest } = await packagesService.exportPackageToWriter(
 		{
 			user,
-			projectIds: [projectId],
+			projectIds,
 			includeAgents: false,
 			includeArchivedWorkflows: true,
 			includeTags: true,
@@ -79,7 +79,7 @@ export async function exportInstancePackage(
 			...file,
 			path: `${PACKAGE_SUBFOLDER}/${file.path}`,
 		})),
-		{ exportRoot: PACKAGE_SUBFOLDER, projectId },
+		{ exportRoot: PACKAGE_SUBFOLDER, projectIds },
 	);
 	return { files, manifest, contents };
 }

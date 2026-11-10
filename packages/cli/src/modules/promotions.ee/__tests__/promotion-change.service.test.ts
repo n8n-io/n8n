@@ -124,10 +124,30 @@ describe('buildPreview', () => {
 	it('labels a changed workflow of a package without the flag as modified', () => {
 		expect(changeOf(side({}, 'after'))).toBe('modified');
 	});
+
+	it('shows a workflow that the branch lacks as deleted only when the whole-instance Apply removes it', () => {
+		// wfB stands for a sub-workflow that the branch calls but does not carry. Apply keeps it.
+		const base = packageManifestSchema.parse({
+			...manifest,
+			variables: undefined,
+			requirements: undefined,
+		});
+		const { resources } = buildPreview({
+			operation: { direction: 'apply', planned: new Map(), removals: new Set(['workflow:wfA']) },
+			projectIds: ['A', 'B'],
+			base: { manifest: base, blobByPath: new Map() },
+			desired: { manifest: { ...base, workflows: [] }, blobByPath: new Map() },
+		});
+
+		expect(resources.filter(({ change }) => change === 'deleted').map(({ key }) => key)).toEqual([
+			'workflow:wfA',
+		]);
+	});
 });
 
 describe('PromotionChangeService preview permission', () => {
 	const service = new PromotionChangeService(
+		mock(),
 		mock(),
 		mock(),
 		mock(),

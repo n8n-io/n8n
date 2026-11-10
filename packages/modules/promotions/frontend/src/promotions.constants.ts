@@ -20,5 +20,8 @@ export const PROMOTION_PREVIEW_VIEWS = {
 	apply: 'PromotionPreviewApply',
 } as const;
 
+/** The preview page of a whole-instance Apply. */
+export const PROMOTION_INSTANCE_APPLY_VIEW = 'PromotionInstanceApply';
+
 /** The details endpoint accepts at most this many keys in one request. */
 export const PROMOTION_DETAILS_BATCH_SIZE = 50;

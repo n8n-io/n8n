@@ -516,6 +516,7 @@ function changeService() {
 		Container.get(LocalPackageEntities),
 		Container.get(PromotionEnvironmentResolver),
 		Container.get(PromotionReviewGateService),
+		Container.get(ProjectRepository),
 	);
 }
 
@@ -1005,7 +1006,7 @@ describe('Promote and Apply', () => {
 		await expect(createFixtureGit(bareDir).raw(['show-ref', '--heads'])).resolves.toBe('');
 	});
 
-	it('applies the package and matches the managed target scope', async () => {
+	it('previews the whole-instance Apply and applies only the reviewed state', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.apply.id, owner);
@@ -1043,8 +1044,54 @@ describe('Promote and Apply', () => {
 			targetProject,
 		);
 		const removedProject = await createTeamProject('Removed from Git', owner);
+		const removedWorkflow = await createWorkflow(
+			{ name: 'Old report', nodes: [], connections: {} },
+			removedProject,
+		);
+		// No workflow uses it, so only the project deletion removes it.
+		const unusedCredential = await saveCredential(
+			{ name: 'Old report token', type: 'httpHeaderAuth', data: {} },
+			{ project: removedProject, role: 'credential:owner' },
+		);
 
-		const blocked = await service.apply(environments.apply.id, owner);
+		const reviewed = await changeService().getInstanceApplyPreview(owner, environments.apply.id);
+		expect(reviewed.commitSha).toBe(remoteHead);
+		expect(
+			reviewed.resources
+				.filter(({ change }) => change === 'deleted')
+				.map(({ key }) => key)
+				.sort(),
+		).toEqual(
+			[
+				`project:${removedProject.id}`,
+				`workflow:${removedWorkflow.id}`,
+				`credential:${unusedCredential.id}`,
+				`folder:${targetOnlyFolder.id}`,
+				`workflow:${targetOnlyWorkflow.id}`,
+			].sort(),
+		);
+		const expectedSource = {
+			environmentId: reviewed.source.environmentId,
+			commitSha: remoteHead,
+			branchName: 'main',
+		};
+
+		// A project created after the review would be deleted too, so the reviewed confirmation stops.
+		const lateProject = await createTeamProject('Created after review', owner);
+		const stale = await service.continueApply(environments.apply.id, owner, {
+			expectedSource,
+			expectedPreviewRevision: reviewed.revision,
+			confirmDestructiveChanges: true,
+		});
+		expect(stale.status).toBe('preview-changed');
+		expect(await projectRepository.findOneBy({ id: removedProject.id })).not.toBeNull();
+		await projectService.deleteProject(owner, lateProject.id);
+
+		const fresh = await changeService().getInstanceApplyPreview(owner, environments.apply.id);
+		const blocked = await service.apply(environments.apply.id, owner, {
+			expectedSource,
+			expectedPreviewRevision: fresh.revision,
+		});
 		assert(blocked.status === 'blocked');
 		expect(blocked.check.conflicts).toEqual([
 			{
@@ -1055,8 +1102,10 @@ describe('Promote and Apply', () => {
 		]);
 		expect(await projectRepository.findOneBy({ id: removedProject.id })).not.toBeNull();
 
+		// The confirmed policy plans differently, but the revision of the unconfirmed preview still matches.
 		const result = await service.continueApply(environments.apply.id, owner, {
-			expectedSource: { environmentId: blocked.environmentId, ...blocked.git },
+			expectedSource,
+			expectedPreviewRevision: fresh.revision,
 			confirmDestructiveChanges: true,
 		});
 		assert(result.status === 'applied');
@@ -1348,7 +1397,7 @@ describe('Promote and Apply', () => {
 		await commitAndPushRemote(remote, 'Update description');
 		const source = { environmentId: reviewed.environmentId, ...reviewed.git };
 
-		const moved = await service.apply(environments.apply.id, owner, source);
+		const moved = await service.apply(environments.apply.id, owner, { expectedSource: source });
 		expect(moved).toEqual({
 			status: 'source-changed',
 			environmentId: reviewed.environmentId,
@@ -1356,7 +1405,9 @@ describe('Promote and Apply', () => {
 		});
 		expect(await snapshotApplyState()).toEqual(before);
 
-		const current = await service.apply(environments.apply.id, owner, { ...source, ...moved.git });
+		const current = await service.apply(environments.apply.id, owner, {
+			expectedSource: { ...source, ...moved.git },
+		});
 		expect(current.status).toBe('blocked');
 		expect(await snapshotApplyState()).toEqual(before);
 	});

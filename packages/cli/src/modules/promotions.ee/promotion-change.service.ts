@@ -1,5 +1,6 @@
 import type {
 	PromotionDirection,
+	PromotionInstanceApplyPreview,
 	PromotionPreview,
 	PromotionResource,
 	PromotionResourceDetail,
@@ -16,7 +17,7 @@ import {
 	serializedVariableSchema,
 	serializedWorkflowSchema,
 } from '@n8n/api-types';
-import { SharedWorkflowRepository, type User } from '@n8n/db';
+import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { jsonParse } from 'n8n-workflow';
@@ -37,11 +38,18 @@ import type { PackageFile } from './base-branch-files';
 import { projectHolding } from './branch-placement';
 import { toInstanceProject, type InstanceProject } from './cross-project-moves';
 import { PACKAGE_SUBFOLDER } from './constants';
-import { buildPreview, indexSide, scopeManifestToProject } from './promotion-preview';
+import {
+	buildPreview,
+	indexProjects,
+	indexSide,
+	resourceKey,
+	scopeManifestToProject,
+	type SideIndex,
+} from './promotion-preview';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionReviewGateService } from './promotion-review-gate.service';
 import { ApplyPreviewService } from './apply-preview.service';
-import { exportInstancePackage } from './instance-package';
+import { exportInstancePackage, type InstancePackage } from './instance-package';
 import {
 	LocalPackageEntities,
 	type LocalDataTable,
@@ -68,6 +76,7 @@ export class PromotionChangeService {
 		private readonly localEntities: LocalPackageEntities,
 		private readonly environmentResolver: PromotionEnvironmentResolver,
 		private readonly reviewGate: PromotionReviewGateService,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	/**
@@ -102,7 +111,7 @@ export class PromotionChangeService {
 			};
 		}
 		const branch = await this.promotionsService.readBranchPackage(projectId, 'promote');
-		const instance = await exportInstancePackage(this.packagesService, user, projectId);
+		const instance = await exportInstancePackage(this.packagesService, user, [projectId]);
 		// Promote compares with the branch manifest to see renames and moves. The manifest can list
 		// other projects while this project has no files on the branch yet, and the move markers
 		// still need it.
@@ -141,7 +150,7 @@ export class PromotionChangeService {
 		}
 		const [files, instance] = await Promise.all([
 			this.promotionsService.readApplyPackageAtCommit(projectId, branch.commitSha),
-			exportInstancePackage(this.packagesService, user, projectId),
+			exportInstancePackage(this.packagesService, user, [projectId]),
 		]);
 		const preview = await this.applyPreviewService.build({ user, projectId, files, instance });
 		return {
@@ -149,6 +158,20 @@ export class PromotionChangeService {
 			source: { environmentId: branch.environmentId, branchName: branch.branchName },
 			...preview,
 		};
+	}
+
+	/**
+	 * The preview of a whole-instance Apply: every change, what stops it and what it deletes,
+	 * built from the import plan at the branch tip.
+	 */
+	async getInstanceApplyPreview(
+		user: User,
+		environmentId: string,
+	): Promise<PromotionInstanceApplyPreview> {
+		const { commitSha, source, files } =
+			await this.promotionsService.readInstanceApplyPackage(environmentId);
+		const preview = await this.applyPreviewService.buildInstance({ user, files });
+		return { commitSha, source, ...preview };
 	}
 
 	/**
@@ -219,7 +242,7 @@ export class PromotionChangeService {
 		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
 		const [branchFiles, instance] = await Promise.all([
 			readBranch([manifestPath]),
-			exportInstancePackage(this.packagesService, user, projectId, {
+			exportInstancePackage(this.packagesService, user, [projectId], {
 				// Keep the content of the requested resources only. Variables match by name, not by ID.
 				keepContent: (path) =>
 					requestedIds.has(entityIdOfPath(path)) ||
@@ -235,6 +258,114 @@ export class PromotionChangeService {
 		// A resource can disappear after the summary, for example when a local workflow is deleted.
 		const missingKeys = keys.filter((key) => !branchIndex.has(key) && !instanceIndex.has(key));
 
+		const details = await this.assembleDetails({
+			keys,
+			direction,
+			branchIndex,
+			instanceIndex,
+			instance,
+			readBranch,
+			canSeeVariableValues,
+		});
+		return { details, missingKeys };
+	}
+
+	/**
+	 * The file content of resources of the whole-instance Apply preview, like {@link getDetails}.
+	 * A deleted project also deletes what it owns that no workflow uses. That is not in the
+	 * export. Such a data table has its current content as the before side. Such a credential or
+	 * variable has nothing to show, so it counts as missing.
+	 */
+	async getInstanceApplyDetails(
+		user: User,
+		environmentId: string,
+		{ commitSha, keys }: PromotionResourceDetailsRequestDto,
+		{ canSeeVariableValues }: { canSeeVariableValues: boolean },
+	): Promise<PromotionResourceDetails> {
+		// The whole-instance preview always has a commit.
+		if (commitSha === null) {
+			throw new BadRequestError('Send the commitSha of the whole-instance Apply preview.');
+		}
+		const requestedIds = new Set(keys.map((key) => key.slice(key.indexOf(':') + 1)));
+		const readBranch = async (paths: readonly string[]) =>
+			await this.promotionsService.readInstanceApplyFilesAtCommit(environmentId, commitSha, paths);
+		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
+		const teamProjectIds = await this.projectRepository.findTeamProjectIds();
+		const [branchFiles, instance] = await Promise.all([
+			readBranch([manifestPath]),
+			exportInstancePackage(this.packagesService, user, teamProjectIds, {
+				// Keep the content of the requested resources only. Variables match by name, not by ID.
+				keepContent: (path) =>
+					requestedIds.has(entityIdOfPath(path)) ||
+					path.includes(`/${PACKAGE_ENTITY_LAYOUT.variables.directory}/`),
+			}),
+		]);
+		const branchManifest = parsePackageManifest(branchFiles.get(manifestPath));
+		const branchProjectIds = new Set(branchManifest?.projects?.map(({ id }) => id));
+		const projectIds = [...new Set([...teamProjectIds, ...branchProjectIds])];
+		const branchIndex = indexProjects(
+			{ manifest: branchManifest, blobByPath: new Map() },
+			projectIds,
+		);
+		const instanceIndex = indexProjects(
+			{ manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
+			projectIds,
+		);
+		const unindexed = keys.filter((key) => !branchIndex.has(key) && !instanceIndex.has(key));
+		// A deleted project also deletes its data tables that no workflow uses. The preview shows
+		// their schema, so the detail holds their current content.
+		const tablePrefix = resourceKey('dataTable', '');
+		const [details, localTables] = await Promise.all([
+			this.assembleDetails({
+				keys,
+				direction: 'apply',
+				branchIndex,
+				instanceIndex,
+				instance,
+				readBranch,
+				canSeeVariableValues,
+			}),
+			this.localEntities.dataTables(
+				unindexed.flatMap((key) =>
+					key.startsWith(tablePrefix) ? [key.slice(tablePrefix.length)] : [],
+				),
+			),
+		]);
+		const found = new Set<string>();
+		for (const [id, table] of localTables) {
+			const key = resourceKey('dataTable', id);
+			found.add(key);
+			details.push(
+				toDetail({
+					key,
+					type: 'dataTable',
+					before: table,
+					after: { content: null, blobSha: null },
+					hideVariableValues: false,
+				}),
+			);
+		}
+		return { details, missingKeys: unindexed.filter((key) => !found.has(key)) };
+	}
+
+	/** Reads both sides of each requested resource that an index holds. */
+	private async assembleDetails({
+		keys,
+		direction,
+		branchIndex,
+		instanceIndex,
+		instance,
+		readBranch,
+		canSeeVariableValues,
+	}: {
+		keys: readonly string[];
+		direction: PromotionDirection;
+		branchIndex: SideIndex;
+		instanceIndex: SideIndex;
+		instance: InstancePackage;
+		readBranch: (paths: readonly string[]) => Promise<Map<string, string>>;
+		canSeeVariableValues: boolean;
+	}): Promise<PromotionResourceDetail[]> {
 		const branchContents = await readBranch(
 			keys.flatMap((key) => branchIndex.get(key)?.path ?? []),
 		);
@@ -259,7 +390,7 @@ export class PromotionChangeService {
 					)
 				: new Map<string, LocalTag>();
 
-		const details = keys.flatMap((key): PromotionResourceDetail[] => {
+		return keys.flatMap((key): PromotionResourceDetail[] => {
 			const fromBranch = branchIndex.get(key);
 			const fromInstance = instanceIndex.get(key);
 			const resource = fromInstance ?? fromBranch;
@@ -291,7 +422,6 @@ export class PromotionChangeService {
 				}),
 			];
 		});
-		return { details, missingKeys };
 	}
 
 	/** One route serves both directions, so the per-direction scope is checked here, not on the decorator. */

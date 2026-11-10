@@ -48,6 +48,7 @@ describe('PromotionChangeService.getPreview review gate', () => {
 		mock<LocalPackageEntities>(),
 		environmentResolver,
 		reviewGate,
+		mock(),
 	);
 
 	beforeEach(() => {

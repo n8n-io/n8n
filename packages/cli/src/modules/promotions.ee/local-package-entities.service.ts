@@ -1,6 +1,7 @@
+import type { PromotionResource } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { DataTableService } from '@n8n/backend-module-data-table';
-import { CredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, SharedCredentialsRepository, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
@@ -8,6 +9,8 @@ import { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';
 import { serializeTag } from '@/modules/n8n-packages/entities/tag/tag.exporter';
 import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
+
+import { resourceKey, variableResourceKey } from './promotion-preview';
 
 export type LocalDataTable = { content: string; blobSha: string };
 
@@ -26,7 +29,49 @@ export class LocalPackageEntities {
 		private readonly dataTableSerializer: DataTableSerializer,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly credentialsRepository: CredentialsRepository,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly variablesRepository: VariablesRepository,
 	) {}
+
+	/**
+	 * The credentials, data tables and variables that the projects own. A project deletion
+	 * deletes them too, also those that no workflow uses.
+	 */
+	async ownedByProjects(projectIds: string[]): Promise<PromotionResource[]> {
+		if (projectIds.length === 0) return [];
+		const [credentials, tables, variables] = await Promise.all([
+			this.sharedCredentialsRepository.findOwnedCredentialsByProjects(projectIds),
+			this.moduleRegistry.isActive('data-table')
+				? this.dataTableService
+						.getManyAndCount({ filter: { projectId: projectIds } })
+						.then(({ data }) => data)
+				: [],
+			this.variablesRepository.findByProjectIds(projectIds),
+		]);
+		const deleted = (
+			type: PromotionResource['type'],
+			key: string,
+			{ id, name }: { id: string; name: string },
+		): PromotionResource => ({
+			key,
+			type,
+			id,
+			name,
+			parentKey: null,
+			change: 'deleted',
+			selectable: false,
+			revision: { before: null, after: null },
+		});
+		return [
+			...credentials.map((credential) =>
+				deleted('credential', resourceKey('credential', credential.id), credential),
+			),
+			...tables.map((table) => deleted('dataTable', resourceKey('dataTable', table.id), table)),
+			...variables.map(({ id, key, projectId }) =>
+				deleted('variable', variableResourceKey(key, projectId), { id, name: key }),
+			),
+		];
+	}
 
 	/** The local name of each credential. A credential that Apply only binds keeps this name. */
 	async credentialNames(ids: string[]): Promise<Map<string, string>> {

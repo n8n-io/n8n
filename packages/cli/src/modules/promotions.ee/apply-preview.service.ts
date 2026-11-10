@@ -1,4 +1,5 @@
 import type {
+	PromotionBindingConflict,
 	PromotionPreviewCheck,
 	PromotionResource,
 	PromotionResourceDependency,
@@ -20,12 +21,21 @@ import { FolderService } from '@/services/folder.service';
 import {
 	CredentialConflictPolicy,
 	CredentialPersonalRoute,
+	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
+	FolderConflictPolicy,
+	ImportConflictPolicy,
 	LayoutConflictPolicy,
+	MissingNodeTypeMode,
 	OverwriteDeletionPolicy,
 	ProjectConflictPolicy,
 	TagConflictPolicy,
+	TagMissingMode,
+	VariableConflictPolicy,
+	VariableMissingMode,
+	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
+	type ImportRequest,
 	type ImportSelection,
 	type ImportSelectionRequest,
 } from '@/modules/n8n-packages/n8n-packages.types';
@@ -35,9 +45,13 @@ import { PACKAGE_SUBFOLDER } from './constants';
 import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cross-project-moves';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { LocalPackageEntities } from './local-package-entities.service';
-import type { InstancePackage } from './instance-package';
-import { collectCredentialReferences, collectVariableReferences } from './package-references';
-import { buildPreview } from './promotion-preview';
+import { exportInstancePackage, type InstancePackage } from './instance-package';
+import {
+	collectCredentialReferences,
+	collectVariableReferences,
+	compare,
+} from './package-references';
+import { buildPreview, resourceKey, type PreviewSide } from './promotion-preview';
 
 export type ApplyPreview = {
 	resources: PromotionResource[];
@@ -73,6 +87,38 @@ export function applySelectionRequest(
 	};
 }
 
+// A whole-instance Apply treats the package as source of truth. Callers cannot override this
+// policy, but a confirmed Continue uses `overwrite` for data tables.
+const INSTANCE_IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
+	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
+	conflictPolicy: ImportConflictPolicy.NewVersion,
+	idPolicy: WorkflowIdPolicy.Source,
+	// Promotion moves content only. Publish state stays with the target until autopublish exists.
+	publishingPolicy: WorkflowPublishingPolicy.PreserveTargetState,
+	missingNodeTypeMode: MissingNodeTypeMode.Fail,
+	credentialMatchingMode: 'id-only',
+	credentialMissingMode: 'must-preexist',
+	credentialConflictPolicy: CredentialConflictPolicy.Overwrite,
+	folderConflictPolicy: FolderConflictPolicy.Overwrite,
+	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
+	dataTableMatchingMode: 'by-id',
+	dataTableMissingMode: DataTableMissingMode.Create,
+	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.OverwriteNonDestructive,
+	variableMissingMode: VariableMissingMode.MustPreexist,
+	variableConflictPolicy: VariableConflictPolicy.KeepExisting,
+	tagMissingMode: TagMissingMode.Create,
+	tagConflictPolicy: TagConflictPolicy.Rename,
+};
+
+/** The request of a whole-instance Apply. The preview and the Apply plan with the same one. */
+export function instanceApplyRequest(
+	user: User,
+	confirmDestructiveChanges = false,
+): Parameters<N8nPackagesService['planPackage']>[0] {
+	// Both Apply flows share the policies of a selection.
+	return { ...INSTANCE_IMPORT_POLICY, ...applySelectionRequest(user, confirmDestructiveChanges) };
+}
+
 /**
  * Builds the Apply preview of a project from the import plan, so that the preview shows what
  * Apply does and what stops it. Writes nothing.
@@ -104,13 +150,7 @@ export class ApplyPreviewService {
 		files: ReadonlyMap<string, Buffer>;
 		instance: InstancePackage;
 	}): Promise<ApplyPreview> {
-		if (files.size === 0) {
-			throw new BadRequestError(
-				'The remote branch has no exported package to import. Promote to it first.',
-			);
-		}
-		const reader = new GitCommitPackageReader(files);
-		const inventory = await this.inventoryReader.read(reader);
+		const { reader, inventory } = await this.readPackage(files);
 		const moves = await this.findCrossProjectMoves(inventory, projectId);
 		const selection = classifyProjectWorkflows(
 			inventory,
@@ -133,25 +173,112 @@ export class ApplyPreviewService {
 		const check = plan
 			? this.check(plan, inventory, selection, moves)
 			: projectNotOnBranch(projectId, instance);
-		const { resources, dependencies } = buildPreview({
+		const { resources, dependencies } = compareWithBranch({
 			operation: { direction: 'apply', planned: plan && plannedChanges(plan) },
 			projectIds: [projectId],
-			base: {
-				manifest: instance.manifest,
-				blobByPath: new Map(instance.files.map(({ path, blobSha }) => [path, blobSha])),
-			},
-			desired: {
-				manifest: plan?.manifest ?? (await reader.readManifest()),
-				blobByPath: new Map(
-					[...files].map(([path, content]) => [
-						`${PACKAGE_SUBFOLDER}/${path}`,
-						gitBlobSha(content),
-					]),
-				),
-			},
+			instance,
+			files,
+			manifest: plan?.manifest ?? (await reader.readManifest()),
 		});
-		await this.addLocalState(resources);
+		return await this.finish(resources, dependencies, check);
+	}
 
+	/**
+	 * Plans the Apply of the whole package, as the whole-instance Apply does. The preview also
+	 * lists what Apply deletes: workflows and folders that a kept project no longer holds, and the
+	 * team projects that the package lacks, with what they own.
+	 */
+	async buildInstance({
+		user,
+		files,
+	}: {
+		user: User;
+		files: ReadonlyMap<string, Buffer>;
+	}): Promise<ApplyPreview> {
+		const { reader, inventory } = await this.readPackage(files);
+		const teamProjectIds = await this.projectRepository.findTeamProjectIds();
+		const [moves, deletedProjects, instance] = await Promise.all([
+			this.findCrossProjectMoves(inventory),
+			this.deletionsOf(inventory, teamProjectIds),
+			exportInstancePackage(this.packagesService, user, teamProjectIds),
+		]);
+		const plan = await this.packagesService.planPackage(
+			instanceApplyRequest(user),
+			reader,
+			'check',
+		);
+		const planCheck = this.check(plan, inventory, undefined, moves);
+		const check = { ...planCheck, conflicts: [...planCheck.conflicts, ...deletedProjects] };
+
+		const deletedProjectIds = deletedProjects.flatMap((conflict) =>
+			conflict.code === 'project-deletion' ? conflict.project.id : [],
+		);
+		const owned = await this.localEntities.ownedByProjects(deletedProjectIds);
+		const { resources, dependencies } = compareWithBranch({
+			operation: {
+				direction: 'apply',
+				planned: plannedChanges(plan),
+				removals: new Set([
+					...plannedRemovals(plan),
+					...contentOfProjects(instance, deletedProjectIds),
+					...owned.map(({ key }) => key),
+				]),
+			},
+			projectIds: [...new Set([...teamProjectIds, ...inventory.projects.map(({ id }) => id)])],
+			instance,
+			files,
+			manifest: plan.manifest,
+		});
+		// What a deleted project owns but no listed workflow uses is not in the comparison.
+		const listed = new Set(resources.map(({ key }) => key));
+		for (const resource of owned) if (!listed.has(resource.key)) resources.push(resource);
+		// Apply applies the whole package, so nothing can be selected.
+		for (const resource of resources) resource.selectable = false;
+		return await this.finish(resources, dependencies, check);
+	}
+
+	/** A whole-instance Apply deletes the team projects that the package does not hold. */
+	async projectDeletions(
+		inventory: PackageDirectoryInventory,
+	): Promise<PromotionBindingConflict[]> {
+		return await this.deletionsOf(inventory, await this.projectRepository.findTeamProjectIds());
+	}
+
+	private async deletionsOf(
+		inventory: PackageDirectoryInventory,
+		teamProjectIds: readonly string[],
+	): Promise<PromotionBindingConflict[]> {
+		const packageProjectIds = new Set(inventory.projects.map(({ id }) => id));
+		const deletedIds = teamProjectIds.filter((id) => !packageProjectIds.has(id));
+		if (deletedIds.length === 0) return [];
+
+		const projects = await this.projectRepository.findTeamProjectInfoByIds(deletedIds);
+		return projects
+			.sort((a, b) => compare(a.name, b.name) || compare(a.id, b.id))
+			.map(({ id, name }) => ({
+				kind: 'project',
+				code: 'project-deletion',
+				project: { id, name },
+			}));
+	}
+
+	private async readPackage(files: ReadonlyMap<string, Buffer>) {
+		if (files.size === 0) {
+			throw new BadRequestError(
+				'The remote branch has no exported package to import. Promote to it first.',
+			);
+		}
+		const reader = new GitCommitPackageReader(files);
+		return { reader, inventory: await this.inventoryReader.read(reader) };
+	}
+
+	/** Adds the local state of resources that the export lacks, then identifies the preview. */
+	private async finish(
+		resources: PromotionResource[],
+		dependencies: PromotionResourceDependency[],
+		check: PromotionPreviewCheck,
+	): Promise<ApplyPreview> {
+		await this.addLocalState(resources);
 		return { resources, dependencies, check, revision: previewRevision(resources, check) };
 	}
 
@@ -241,6 +368,57 @@ export class ApplyPreviewService {
 			projectId,
 		});
 	}
+}
+
+/** The workflows and folders that the plan removes from the projects that Apply keeps. */
+/** Compares this instance with the package files at the branch commit, by the rules of the operation. */
+function compareWithBranch({
+	operation,
+	projectIds,
+	instance,
+	files,
+	manifest,
+}: Pick<Parameters<typeof buildPreview>[0], 'operation' | 'projectIds'> & {
+	instance: InstancePackage;
+	files: ReadonlyMap<string, Buffer>;
+	manifest: PreviewSide['manifest'];
+}) {
+	return buildPreview({
+		operation,
+		projectIds,
+		base: {
+			manifest: instance.manifest,
+			blobByPath: new Map(instance.files.map(({ path, blobSha }) => [path, blobSha])),
+		},
+		desired: {
+			manifest,
+			blobByPath: new Map(
+				[...files].map(([path, content]) => [`${PACKAGE_SUBFOLDER}/${path}`, gitBlobSha(content)]),
+			),
+		},
+	});
+}
+
+function plannedRemovals(plan: PackageImportPlan): string[] {
+	return plan.scopes.flatMap(({ plan: scope }) => [
+		...scope.removalPlan.removals.map(({ id }) => resourceKey('workflow', id)),
+		...scope.folderRemovalPlan.removals.map(({ id }) => resourceKey('folder', id)),
+	]);
+}
+
+/** The deleted projects, and the folders and workflows inside them. */
+function contentOfProjects(instance: InstancePackage, projectIds: readonly string[]): string[] {
+	const { manifest } = instance;
+	return projectIds.flatMap((projectId) => {
+		const project = manifest.projects?.find(({ id }) => id === projectId);
+		if (!project) return [];
+		const inside = ({ target }: { target: string }) => target.startsWith(`${project.target}/`);
+		return [
+			resourceKey('project', projectId),
+			...(manifest.folders ?? []).filter(inside).map(({ id }) => resourceKey('folder', id)),
+			...(manifest.workflows ?? []).filter(inside).map(({ id }) => resourceKey('workflow', id)),
+		];
+	});
 }
 
 /**

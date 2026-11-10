@@ -30,14 +30,6 @@ export const variable: Extract<MissingPromotionBinding, { kind: 'variable' }> = 
 	consumers: [consumers[0]],
 };
 
-export const projectConflict: Extract<PromotionBindingConflict, { code: 'project-not-team' }> = {
-	kind: 'project',
-	code: 'project-not-team',
-	project: { id: 'personal', name: 'Personal project' },
-	filePath: 'project.json',
-	workflows: [],
-};
-
 export const destructiveChange: Extract<PromotionBindingConflict, { code: 'destructive-change' }> =
 	{
 		kind: 'data-table',
