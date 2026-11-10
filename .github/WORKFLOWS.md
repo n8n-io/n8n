@@ -578,6 +578,7 @@ out: `npm deprecate n8n@X.Y.Z "Failed release, use X.Y.(Z+1)"`.
 | `release-standalone-package.yml`           | Manual dispatch | Release individual packages (@n8n/codemirror-lang, @n8n/create-node, etc.) |
 | `release-create-patch-pr.yml`              | Manual dispatch | Open a patch release PR for one track          |
 | `release-recreate-failed-release.yml`      | Manual dispatch | Re-release a version whose publish failed after it reached npm |
+| `release-setup-trusted-publishing.yml`     | Manual dispatch or workflow call | Publish and configure new public packages for trusted publishing |
 
 ---
 
@@ -782,6 +783,8 @@ Workflows with `workflow_call` trigger:
 | `sbom-generation-callable.yml`     | `n8n_version`, `release_tag_ref`              | SBOM generation       |
 | `sbom-validation-callable.yml`     | `sha`                                         | Read-only SBOM validation |
 | `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
+| `release-setup-trusted-publishing.yml` | none                                       | Find and configure unpublished workspace packages |
+| `release-publish-new-package.yml`  | `package-path`                                | Publish and configure one package |
 
 ---
 

@@ -275,6 +275,7 @@ describe('trusted publishing setup workflows', () => {
 			'${{ steps.detect.outputs.packages-json }}',
 		);
 		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['max-parallel'], 1);
+		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['fail-fast'], false);
 		assert.equal(
 			orchestrator.jobs['setup-trusted-publishing'].strategy.matrix.package,
 			'${{ fromJSON(needs.detect-new-packages.outputs.packages) }}',

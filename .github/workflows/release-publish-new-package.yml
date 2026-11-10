@@ -96,8 +96,7 @@ jobs:
           if TRUST_CONFIGS="$TRUST_CONFIGS" node -e '
             if (!process.env.TRUST_CONFIGS.trim()) process.exit(1);
             const config = JSON.parse(process.env.TRUST_CONFIGS);
-            const isConfigured = config.type === "github" &&
-              config.repository === "n8n-io/n8n" &&
+            const isConfigured = config.repository === "n8n-io/n8n" &&
               config.file === "release-publish.yml" &&
               config.environment === "npm" &&
               config.permissions?.includes("createPackage");
