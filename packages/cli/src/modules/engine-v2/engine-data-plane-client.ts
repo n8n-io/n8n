@@ -58,23 +58,24 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		private readonly instanceSettings: InstanceSettings,
 		tlsMaterial: EngineTlsMaterial,
 	) {
-		const { tls } = tlsMaterial;
-		this.http = outboundHttp.requests({
-			// Fixed, n8n-controlled host.
-			useDefaultSsrfPolicy: 'unsafe',
-			// `engineConfig.host` is a bind address, not a destination, so it is not
-			// dialable. Default to loopback and let `N8N_ENGINE_BASE_URL` override
-			// when the engine answers somewhere else.
-			baseURL: engineConfig.baseUrl || `http://127.0.0.1:${engineConfig.port}`,
-			// A factory, not a fixed value: every request gets a fresh short-lived
-			// token, and `engineConfig.authSecret` is read at request time — after
-			// the module generates it, which is after this constructor runs.
-			headers: () => ({
-				authorization: `Bearer ${mintIdentityToken(this.engineConfig.authSecret, this.caller())}`,
+		this.http = tlsMaterial.reloadingClient((tls) =>
+			outboundHttp.requests({
+				// Fixed, n8n-controlled host.
+				useDefaultSsrfPolicy: 'unsafe',
+				// `engineConfig.host` is a bind address, not a destination, so it is not
+				// dialable. Default to loopback and let `N8N_ENGINE_BASE_URL` override
+				// when the engine answers somewhere else.
+				baseURL: engineConfig.baseUrl || `http://127.0.0.1:${engineConfig.port}`,
+				// A factory, not a fixed value: every request gets a fresh short-lived
+				// token, and `engineConfig.authSecret` is read at request time — after
+				// the module generates it, which is after this constructor runs.
+				headers: () => ({
+					authorization: `Bearer ${mintIdentityToken(this.engineConfig.authSecret, this.caller())}`,
+				}),
+				// Explicit, so a global NODE_TLS_REJECT_UNAUTHORIZED=0 cannot turn off the peer check.
+				...(tls && { connectionPool: { agentOptions: { ...tls, rejectUnauthorized: true } } }),
 			}),
-			// Explicit, so a global NODE_TLS_REJECT_UNAUTHORIZED=0 cannot turn off the peer check.
-			...(tls && { connectionPool: { agentOptions: { ...tls, rejectUnauthorized: true } } }),
-		});
+		);
 	}
 
 	/**

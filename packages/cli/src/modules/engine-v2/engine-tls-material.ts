@@ -1,16 +1,32 @@
 import type { Logger } from '@n8n/backend-common';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { assertSecureTransport, loadEngineTls, type EngineTls } from '@n8n/engine';
+import {
+	assertSecureTransport,
+	loadEngineTls,
+	watchEngineTls,
+	type EngineTls,
+	type EngineTlsWatcher,
+} from '@n8n/engine';
+
+import { ReloadingHttpRequestClient } from './reloading-http-request-client';
+
+type ReloadListener = (tls: EngineTls) => void;
 
 /**
- * This process's engine TLS certificate, key and CA, read once from
- * `N8N_ENGINE_TLS_*`. `undefined` when none is set: the planes then use plain
- * HTTP, which the boot checks allow only in-process or with the opt-out.
+ * This process's engine TLS certificate, key and CA, read from
+ * `N8N_ENGINE_TLS_*` and read again when the files change. `undefined` when
+ * none is set: the planes then use plain HTTP, which the boot checks allow
+ * only in-process or with the opt-out.
  */
 @Service()
 export class EngineTlsMaterial {
 	private loaded?: { tls: EngineTls | undefined };
+
+	private watcher?: EngineTlsWatcher;
+
+	private readonly listeners = new Set<ReloadListener>();
 
 	constructor(private readonly engineConfig: EngineConfig) {}
 
@@ -22,5 +38,44 @@ export class EngineTlsMaterial {
 	/** Refuses plain HTTP without the opt-out, and an `http://` peer URL with TLS on. */
 	assertSecureTransport(peerUrls: Record<string, string>, logger: Logger): void {
 		assertSecureTransport(this.engineConfig, this.tls, peerUrls, logger);
+	}
+
+	/** Reloads the TLS files when they change. Does nothing when TLS is off. */
+	watch(logger: Logger): void {
+		const { tls } = this;
+		if (!tls || this.watcher) return;
+
+		this.watcher = watchEngineTls(
+			this.engineConfig,
+			tls,
+			(next) => {
+				this.loaded = { tls: next };
+				for (const listener of this.listeners) listener(next);
+			},
+			logger,
+		);
+	}
+
+	stopWatching(): void {
+		this.watcher?.close();
+		this.watcher = undefined;
+	}
+
+	/** Calls `listener` with the new material after each reload. Returns a function that removes it. */
+	onReload(listener: ReloadListener): () => void {
+		this.listeners.add(listener);
+		return () => this.listeners.delete(listener);
+	}
+
+	/**
+	 * A client from `build` that is built again with the new material after each
+	 * reload. Without TLS, the client from `build` itself.
+	 */
+	reloadingClient(build: (tls: EngineTls | undefined) => HttpRequestClient): HttpRequestClient {
+		if (!this.tls) return build(undefined);
+
+		const client = new ReloadingHttpRequestClient(() => build(this.tls));
+		this.onReload(() => client.reload());
+		return client;
 	}
 }

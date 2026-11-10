@@ -23,7 +23,9 @@ const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.fro
 const useTls = (value: EngineTlsMaterial['tls']) => {
 	const material = new EngineTlsMaterial(Container.get(EngineConfig));
 	vi.spyOn(material, 'tls', 'get').mockReturnValue(value);
+	vi.spyOn(material, 'watch').mockReturnValue();
 	Container.set(EngineTlsMaterial, material);
+	return material;
 };
 
 describe('EngineV2Module', () => {
@@ -175,14 +177,15 @@ describe('EngineV2Module', () => {
 			engineConfig.tlsInsecureAllowPlainHttp = true;
 		});
 
-		it('starts over mutual TLS with an https data plane address', async () => {
-			useTls(tls);
+		it('starts over mutual TLS with an https data plane address and watches the TLS files', async () => {
+			const material = useTls(tls);
 			engineConfig.baseUrl = 'https://engine:3000';
 			engineConfig.tlsInsecureAllowPlainHttp = false;
 
 			await module.init();
 
 			expect(controlPlaneServer.start).toHaveBeenCalled();
+			expect(material.watch).toHaveBeenCalledOnce();
 		});
 
 		it('refuses to start over plain HTTP without the opt-out', async () => {
@@ -333,6 +336,15 @@ describe('EngineV2Module', () => {
 			expect(vi.mocked(controlPlaneServer.stop).mock.invocationCallOrder[0]).toBeGreaterThan(
 				vi.mocked(runtime.shutdown).mock.invocationCallOrder[0],
 			);
+		});
+
+		it('stops watching the TLS files', async () => {
+			const material = useTls(undefined);
+			const stopWatching = vi.spyOn(material, 'stopWatching');
+
+			await module.shutdown();
+
+			expect(stopWatching).toHaveBeenCalledOnce();
 		});
 	});
 });

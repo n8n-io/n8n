@@ -5,9 +5,12 @@ import { Container } from '@n8n/di';
 import { mintActionToken, mintIdentityToken } from '@n8n/engine';
 import type { Request, Response } from 'express';
 import { generateTlsCerts, type TlsCertFiles } from 'n8n-containers/helpers/tls-certs';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { X509Certificate } from 'node:crypto';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { get } from 'node:https';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { TLSSocket } from 'node:tls';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 
@@ -16,7 +19,7 @@ import { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsController } from '../engine-credentials.controller';
 import type { EngineDataTablesController } from '../engine-data-tables.controller';
 import type { EngineSubWorkflowController } from '../engine-sub-workflow.controller';
-import type { EngineTlsMaterial } from '../engine-tls-material';
+import { EngineTlsMaterial } from '../engine-tls-material';
 
 const authSecret = 'a'.repeat(32);
 
@@ -37,10 +40,18 @@ describe('EngineControlPlaneServer', () => {
 			...overrides,
 		});
 
-	const startServer = async (tls?: EngineTlsMaterial['tls']) => {
+	/** Fixed material that never reloads. */
+	const fixedTls = (tls: EngineTlsMaterial['tls']) =>
+		({
+			tls,
+			onReload: () => () => {},
+			reloadingClient: (build) => build(tls),
+		}) as Pick<EngineTlsMaterial, 'tls' | 'onReload' | 'reloadingClient'> as EngineTlsMaterial;
+
+	const startServer = async (tlsMaterial = fixedTls(undefined)) => {
 		server = new EngineControlPlaneServer(
 			engineConfig(),
-			{ tls } as EngineTlsMaterial,
+			tlsMaterial,
 			credentialsController,
 			dataTablesController,
 			mock<EngineSubWorkflowController>(),
@@ -213,7 +224,12 @@ describe('EngineControlPlaneServer', () => {
 
 		beforeAll(() => {
 			dir = mkdtempSync(join(tmpdir(), 'engine-cp-tls-'));
-			certs = generateTlsCerts(dir, { cp: loopback, dp: loopback });
+			certs = generateTlsCerts(dir, {
+				cp: loopback,
+				dp: loopback,
+				renewedCp: loopback,
+				renewedDp: loopback,
+			});
 		});
 
 		afterAll(() => rmSync(dir, { recursive: true, force: true }));
@@ -227,7 +243,7 @@ describe('EngineControlPlaneServer', () => {
 			new EngineControlPlaneTransport(
 				engineConfig({ controlPlaneBaseUrl }),
 				Container.get(OutboundHttp),
-				{ tls: { ...leaf('dp'), ca: readFileSync(certs.caFile) } } as EngineTlsMaterial,
+				fixedTls({ ...leaf('dp'), ca: readFileSync(certs.caFile) }),
 			);
 
 		const resolveVia = async (transport: EngineControlPlaneTransport) =>
@@ -246,7 +262,7 @@ describe('EngineControlPlaneServer', () => {
 				},
 			);
 			await server.stop();
-			await startServer({ ...leaf('cp'), ca: readFileSync(certs.caFile) });
+			await startServer(fixedTls({ ...leaf('cp'), ca: readFileSync(certs.caFile) }));
 			baseUrl = `https://127.0.0.1:${server.port}`;
 		});
 
@@ -262,11 +278,13 @@ describe('EngineControlPlaneServer', () => {
 			try {
 				const other = generateTlsCerts(otherDir, { cp: loopback });
 				await server.stop();
-				await startServer({
-					cert: readFileSync(other.leaves.cp.certFile),
-					key: readFileSync(other.leaves.cp.keyFile),
-					ca: readFileSync(certs.caFile),
-				});
+				await startServer(
+					fixedTls({
+						cert: readFileSync(other.leaves.cp.certFile),
+						key: readFileSync(other.leaves.cp.keyFile),
+						ca: readFileSync(certs.caFile),
+					}),
+				);
 				vi.stubEnv('NODE_TLS_REJECT_UNAUTHORIZED', '0');
 
 				await expect(
@@ -276,6 +294,77 @@ describe('EngineControlPlaneServer', () => {
 			} finally {
 				vi.unstubAllEnvs();
 				rmSync(otherDir, { recursive: true, force: true });
+			}
+		});
+
+		it('uses renewed certificates for new connections in both directions once the files are replaced', async () => {
+			const fingerprintOf = (leafName: string) =>
+				new X509Certificate(readFileSync(certs.leaves[leafName].certFile)).fingerprint256;
+			const mount = (leafName: string) => {
+				const mountDir = mkdtempSync(join(dir, 'mount-'));
+				const files = {
+					tlsCertFile: join(mountDir, 'tls.crt'),
+					tlsKeyFile: join(mountDir, 'tls.key'),
+					tlsCaFile: join(mountDir, 'ca.crt'),
+				};
+				copyFileSync(certs.caFile, files.tlsCaFile);
+				replace(files, leafName);
+				return files;
+			};
+			const replace = (files: Partial<EngineConfig>, leafName: string) => {
+				copyFileSync(certs.leaves[leafName].keyFile, files.tlsKeyFile!);
+				copyFileSync(certs.leaves[leafName].certFile, files.tlsCertFile!);
+			};
+			const serverFingerprint = async () =>
+				await new Promise<string>((resolve, reject) => {
+					const options = { host: '127.0.0.1', port: server.port, path: '/healthz', agent: false };
+					get({ ...options, ca: readFileSync(certs.caFile) }, (res) => {
+						resolve((res.socket as TLSSocket).getPeerCertificate().fingerprint256);
+						res.resume();
+					}).on('error', reject);
+				});
+
+			const cpFiles = mount('cp');
+			const dpFiles = mount('dp');
+			const cpTls = new EngineTlsMaterial(engineConfig(cpFiles));
+			const dpTls = new EngineTlsMaterial(engineConfig(dpFiles));
+			await server.stop();
+			await startServer(cpTls);
+			cpTls.watch(mock<Logger>());
+			dpTls.watch(mock<Logger>());
+
+			try {
+				const clientFingerprints: string[] = [];
+				server['server']!.on('secureConnection', (socket: TLSSocket) => {
+					clientFingerprints.push(socket.getPeerCertificate().fingerprint256);
+				});
+				const transport = new EngineControlPlaneTransport(
+					engineConfig({ controlPlaneBaseUrl: `https://127.0.0.1:${server.port}` }),
+					Container.get(OutboundHttp),
+					dpTls,
+				);
+				await resolveVia(transport);
+
+				replace(cpFiles, 'renewedCp');
+				replace(dpFiles, 'renewedDp');
+				const renewedCp = readFileSync(certs.leaves.renewedCp.certFile);
+				const renewedDp = readFileSync(certs.leaves.renewedDp.certFile);
+				await vi.waitFor(
+					() => {
+						expect(cpTls.tls?.cert).toEqual(renewedCp);
+						expect(dpTls.tls?.cert).toEqual(renewedDp);
+					},
+					{ timeout: 4000, interval: 50 },
+				);
+
+				const response = await resolveVia(transport);
+
+				expect(response.statusCode).toBe(200);
+				expect(clientFingerprints).toEqual([fingerprintOf('dp'), fingerprintOf('renewedDp')]);
+				await expect(serverFingerprint()).resolves.toBe(fingerprintOf('renewedCp'));
+			} finally {
+				cpTls.stopWatching();
+				dpTls.stopWatching();
 			}
 		});
 

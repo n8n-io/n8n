@@ -22,6 +22,12 @@ import type { EngineTlsMaterial } from '../engine-tls-material';
 
 const authSecret = 'a'.repeat(32);
 const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
+/** A plain object: a deep mock would wrap the buffers, which TLS cannot read. */
+const tlsMaterialWith = (value: EngineTlsMaterial['tls']) =>
+	({
+		tls: value,
+		reloadingClient: (build) => build(value),
+	}) as Pick<EngineTlsMaterial, 'tls' | 'reloadingClient'> as EngineTlsMaterial;
 const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
 
 describe('EngineDataPlaneClient', () => {
@@ -51,7 +57,7 @@ describe('EngineDataPlaneClient', () => {
 	/** Rebuilds the client so each test can vary the engine config. */
 	const newClient = (
 		config: Partial<EngineConfig> = {},
-		tlsMaterial: Pick<EngineTlsMaterial, 'tls'> = { tls: undefined },
+		tlsMaterial = tlsMaterialWith(undefined),
 	) => {
 		http = mock<HttpRequestClient>();
 		const outboundHttp = mock<OutboundHttp>({
@@ -65,7 +71,7 @@ describe('EngineDataPlaneClient', () => {
 			mock<EngineConfig>({ port: 3000, host: '0.0.0.0', baseUrl: '', authSecret, ...config }),
 			outboundHttp,
 			mock<InstanceSettings>({ instanceId: 'instance-1' }),
-			tlsMaterial as EngineTlsMaterial,
+			tlsMaterial,
 		);
 	};
 
@@ -74,7 +80,7 @@ describe('EngineDataPlaneClient', () => {
 	});
 
 	it('presents the client certificate and verifies the engine against the engine CA alone when TLS is on', () => {
-		newClient({}, { tls });
+		newClient({}, tlsMaterialWith(tls));
 
 		expect(clientOptions?.connectionPool).toEqual({
 			agentOptions: { ...tls, rejectUnauthorized: true },

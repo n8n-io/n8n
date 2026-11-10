@@ -89,6 +89,7 @@ const mocks = vi.hoisted(() => {
 		stepDataLoader,
 		createDataSource: vi.fn((_url: string) => dataSource),
 		createEngineHttpServer: vi.fn((_app: unknown, _tls: unknown) => httpServer),
+		setEngineServerTls: vi.fn((_server: unknown, _tls: unknown) => {}),
 		createEngineRuntime: vi.fn((_options: unknown) => engine),
 		createEngineStepDataLoader: vi.fn((_executionStore: unknown, _stepStore: unknown) => {
 			return stepDataLoader;
@@ -106,6 +107,7 @@ vi.mock('@n8n/engine', async (importOriginal) => ({
 	SharedSecretIdentityVerifier: vi.fn(),
 	createDataSource: mocks.createDataSource,
 	createEngineHttpServer: mocks.createEngineHttpServer,
+	setEngineServerTls: mocks.setEngineServerTls,
 	createEngineRuntime: mocks.createEngineRuntime,
 	mintResumeToken: vi.fn((_secret: string, executionId: string) => `token-for-${executionId}`),
 	mintStepBoundResumeToken: vi.fn(() => 'step-bound-token'),
@@ -144,14 +146,17 @@ describe('EngineV2Runtime', () => {
 		lifecycleEventSender: { send: vi.fn().mockResolvedValue(undefined) },
 	});
 
+	let tlsMaterial: EngineTlsMaterial;
+
 	const newRuntime = (
 		databaseUrl = 'postgres://engine',
 		config: Partial<EngineConfig> = {},
 		tls?: EngineTlsMaterial['tls'],
-	) =>
-		new EngineV2Runtime(
+	) => {
+		tlsMaterial = { tls, onReload: vi.fn() } as Partial<EngineTlsMaterial> as EngineTlsMaterial;
+		return new EngineV2Runtime(
 			engineConfig(databaseUrl, config),
-			{ tls } as EngineTlsMaterial,
+			tlsMaterial,
 			nodeTypes,
 			mockLogger(),
 			credentialsClient,
@@ -162,6 +167,7 @@ describe('EngineV2Runtime', () => {
 			additionalDataBuilder,
 			binaryDataService,
 		);
+	};
 
 	const stepContext = {
 		executionId: 'exec-1',
@@ -435,6 +441,17 @@ describe('EngineV2Runtime', () => {
 			await newRuntime(undefined, {}, tls).init(senders());
 
 			expect(mocks.createEngineHttpServer).toHaveBeenCalledWith(mocks.engine.app, tls);
+		});
+
+		it('gives new connections to the engine API the reloaded certificate', async () => {
+			const tls = { cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') };
+			const renewed = { ...tls, cert: Buffer.from('renewed cert') };
+			await newRuntime(undefined, {}, tls).init(senders());
+
+			const [onReload] = vi.mocked(tlsMaterial.onReload).mock.calls[0];
+			onReload(renewed);
+
+			expect(mocks.setEngineServerTls).toHaveBeenCalledExactlyOnceWith(mocks.server, renewed);
 		});
 
 		it('closes the connection when migrations fail', async () => {

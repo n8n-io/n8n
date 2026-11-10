@@ -64,7 +64,9 @@ mockInstance(WorkflowFailureNotificationEventRelay);
 const useTls = (value: EngineTlsMaterial['tls']) => {
 	const material = new EngineTlsMaterial(Container.get(EngineConfig));
 	vi.spyOn(material, 'tls', 'get').mockReturnValue(value);
+	vi.spyOn(material, 'watch').mockReturnValue();
 	Container.set(EngineTlsMaterial, material);
+	return material;
 };
 
 describe('Engine', () => {
@@ -189,6 +191,19 @@ describe('Engine', () => {
 			await expect(createEngine().init()).rejects.toThrow(
 				'N8N_ENGINE_CONTROL_PLANE_BASE_URL must start with https://',
 			);
+		});
+
+		it('watches the TLS files for renewed certificates when TLS is on', async () => {
+			const material = useTls({
+				cert: Buffer.from('cert'),
+				key: Buffer.from('key'),
+				ca: Buffer.from('ca'),
+			});
+			engineConfig.controlPlaneBaseUrl = 'https://n8n-main:3001';
+
+			await createEngine().init();
+
+			expect(material.watch).toHaveBeenCalledOnce();
 		});
 
 		it('never opens, migrates or reads the control plane database', async () => {

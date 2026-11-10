@@ -24,20 +24,21 @@ export class EngineControlPlaneTransport {
 
 	/** Returns a client that sends a fresh action token with `scope` on every request. */
 	forScope(scope: ActionScope): HttpRequestClient {
-		const { tls } = this.tlsMaterial;
-		return this.outboundHttp.requests({
-			// Fixed, n8n-controlled host.
-			useDefaultSsrfPolicy: 'unsafe',
-			// A bind address is not dialable, so default to loopback.
-			baseURL:
-				this.engineConfig.controlPlaneBaseUrl ||
-				`http://127.0.0.1:${this.engineConfig.controlPlanePort}`,
-			// A factory: each request needs a fresh token, and the secret is set later.
-			headers: () => ({
-				authorization: `Bearer ${mintActionToken(this.engineConfig.authSecret, scope)}`,
+		return this.tlsMaterial.reloadingClient((tls) =>
+			this.outboundHttp.requests({
+				// Fixed, n8n-controlled host.
+				useDefaultSsrfPolicy: 'unsafe',
+				// A bind address is not dialable, so default to loopback.
+				baseURL:
+					this.engineConfig.controlPlaneBaseUrl ||
+					`http://127.0.0.1:${this.engineConfig.controlPlanePort}`,
+				// A factory: each request needs a fresh token, and the secret is set later.
+				headers: () => ({
+					authorization: `Bearer ${mintActionToken(this.engineConfig.authSecret, scope)}`,
+				}),
+				// Explicit, so a global NODE_TLS_REJECT_UNAUTHORIZED=0 cannot turn off the peer check.
+				...(tls && { connectionPool: { agentOptions: { ...tls, rejectUnauthorized: true } } }),
 			}),
-			// Explicit, so a global NODE_TLS_REJECT_UNAUTHORIZED=0 cannot turn off the peer check.
-			...(tls && { connectionPool: { agentOptions: { ...tls, rejectUnauthorized: true } } }),
-		});
+		);
 	}
 }

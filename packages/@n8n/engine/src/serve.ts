@@ -7,7 +7,13 @@ import { createDataSource } from './database';
 import { createConsoleLogger } from './logging';
 import { noopExecutionResponseSender } from './response-channel';
 import { createEngineRuntime } from './runtime';
-import { assertSecureTransport, createEngineHttpServer, loadEngineTls } from './tls';
+import {
+	assertSecureTransport,
+	createEngineHttpServer,
+	loadEngineTls,
+	setEngineServerTls,
+	watchEngineTls,
+} from './tls';
 
 const logger = createConsoleLogger();
 
@@ -46,12 +52,16 @@ async function main(): Promise<void> {
 	const server = createEngineHttpServer(runtime.app, tls).listen(config.port, config.host, () => {
 		logger.info(`listening on ${tls ? 'https' : 'http'}://${config.host}:${config.port}`);
 	});
+	const tlsWatcher = tls
+		? watchEngineTls(config, tls, (next) => setEngineServerTls(server, next), logger)
+		: undefined;
 
 	let shuttingDown = false;
 	const shutdown = async (signal: string): Promise<void> => {
 		if (shuttingDown) return;
 		shuttingDown = true;
 		logger.info(`received ${signal}, shutting down`);
+		tlsWatcher?.close();
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
 		});

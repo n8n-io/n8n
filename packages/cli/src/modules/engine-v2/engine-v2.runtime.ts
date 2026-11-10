@@ -12,6 +12,7 @@ import {
 	mintResumeToken,
 	mintStepBoundResumeToken,
 	noopExecutionResponseSender,
+	setEngineServerTls,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
 import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
@@ -56,6 +57,8 @@ export class EngineV2Runtime {
 	private engine?: EngineRuntime;
 
 	private server?: Server;
+
+	private stopTlsReload?: () => void;
 
 	/**
 	 * Shared by every credential request. Aborted after the engine has stopped,
@@ -206,6 +209,9 @@ export class EngineV2Runtime {
 			listener.once('error', reject);
 		});
 
+		const server = this.server;
+		this.stopTlsReload = this.tlsMaterial.onReload((next) => setEngineServerTls(server, next));
+
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
 		this.logger.info(`Engine v2 listening on ${tls ? 'https' : 'http'}://${shownHost}:${port}`);
@@ -239,6 +245,7 @@ export class EngineV2Runtime {
 	private async closeServer(): Promise<void> {
 		if (!this.server) return;
 
+		this.stopTlsReload?.();
 		await new Promise<void>((resolve, reject) => {
 			this.server!.close((error) => (error ? reject(error) : resolve()));
 		});
