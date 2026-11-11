@@ -191,12 +191,32 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout CI filter
+        if: >-
+          github.event_name != 'pull_request' || !(
+            github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
+            startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
+            startsWith(github.event.pull_request.base.ref, 'release/')
+          )
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/actions/ci-filter
           sparse-checkout-cone-mode: false
       - name: Validate required checks
+        if: >-
+          github.event_name != 'pull_request' || !(
+            github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
+            startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
+            startsWith(github.event.pull_request.base.ref, 'release/')
+          )
         uses: ./.github/actions/ci-filter
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
+      - name: Pass automated release PR
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
+          startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
+          startsWith(github.event.pull_request.base.ref, 'release/')
+        run: echo 'CI is not required for automated release PRs.'

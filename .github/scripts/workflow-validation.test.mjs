@@ -141,10 +141,21 @@ describe('evaluateStepCondition', () => {
 });
 
 describe('automated release PR CI bypass', () => {
+	const releasePrConjunction = [
+		"github.event.pull_request.user.login == 'n8n-assistant[bot]'",
+		"startsWith(github.event.pull_request.head.ref, 'release-pr/')",
+		"startsWith(github.event.pull_request.base.ref, 'release/')",
+	].join(' && ');
+	const compact = (condition) => condition.replaceAll(/\s/g, '');
+
 	const assertSkipsReleasePr = (condition) => {
-		assert.match(condition, /github\.event\.pull_request\.user\.login == 'n8n-assistant\[bot\]'/);
-		assert.match(condition, /startsWith\(github\.event\.pull_request\.head\.ref, 'release-pr\/'\)/);
-		assert.match(condition, /startsWith\(github\.event\.pull_request\.base\.ref, 'release\/'\)/);
+		assert.ok(compact(condition).includes(`!(${compact(releasePrConjunction)})`));
+	};
+	const assertPassesReleasePr = (condition) => {
+		assert.equal(
+			compact(condition),
+			compact(`github.event_name == 'pull_request' && ${releasePrConjunction}`),
+		);
 	};
 
 	it('skips the expensive PR jobs and keeps the aggregate checks', () => {
@@ -152,12 +163,20 @@ describe('automated release PR CI bypass', () => {
 		assertSkipsReleasePr(ci.jobs['install-and-build'].if);
 		assertSkipsReleasePr(ci.jobs['format-check'].if);
 		assert.equal(ci.jobs['required-checks'].if, 'always()');
+		assertSkipsReleasePr(stepNamed(ci, 'required-checks', 'Validate required checks').if);
+		assertPassesReleasePr(stepNamed(ci, 'required-checks', 'Pass automated release PR').if);
 
 		const quality = workflowFile('ci-pr-quality.yml');
 		assertSkipsReleasePr(quality.jobs.changes.if);
 		assertSkipsReleasePr(quality.jobs['check-knip'].if);
 		assertSkipsReleasePr(quality.jobs['check-do-not-merge'].if);
 		assert.equal(quality.jobs['required-pr-quality-checks'].if, 'always()');
+		assertSkipsReleasePr(
+			stepNamed(quality, 'required-pr-quality-checks', 'Validate required checks').if,
+		);
+		assertPassesReleasePr(
+			stepNamed(quality, 'required-pr-quality-checks', 'Pass automated release PR').if,
+		);
 	});
 
 	it('skips standalone workflows for automated release PRs', () => {
