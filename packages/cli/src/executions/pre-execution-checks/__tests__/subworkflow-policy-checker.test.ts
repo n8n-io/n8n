@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { Project, User, WorkflowEntity } from '@n8n/db';
+import { Person, type Project, type WorkflowEntity } from '@n8n/db';
 import type { INode, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
@@ -211,7 +211,7 @@ describe('SubworkflowPolicyChecker', () => {
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
-			const subworkflowProjectOwner = mock<User>({ id: uuid() });
+			const subworkflowProjectOwner = Object.assign(new Person(), { id: uuid() });
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
 			accessService.hasReadAccess.mockResolvedValueOnce(true);
 
@@ -241,7 +241,7 @@ describe('SubworkflowPolicyChecker', () => {
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
-			const subworkflowProjectOwner = mock<User>({
+			const subworkflowProjectOwner = Object.assign(new Person(), {
 				id: uuid(),
 				firstName: 'John',
 				lastName: 'Doe',
@@ -288,7 +288,7 @@ describe('SubworkflowPolicyChecker', () => {
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
-			const subworkflowProjectOwner = mock<User>({
+			const subworkflowProjectOwner = Object.assign(new Person(), {
 				id: uuid(),
 				firstName: 'John',
 				lastName: 'Doe',
@@ -319,7 +319,7 @@ describe('SubworkflowPolicyChecker', () => {
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
-			const subworkflowProjectOwner = mock<User>({ id: uuid() });
+			const subworkflowProjectOwner = Object.assign(new Person(), { id: uuid() });
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
 			accessService.hasReadAccess.mockResolvedValueOnce(true);
 

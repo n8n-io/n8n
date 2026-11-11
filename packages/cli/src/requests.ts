@@ -114,7 +114,10 @@ export declare namespace CredentialRequest {
 		{},
 		{},
 		{},
-		({ workflowId: string } | { projectId: string }) & { forAgent?: 'true' | 'false' }
+		({ workflowId: string } | { projectId: string }) & {
+			forAgent?: 'true' | 'false';
+			forAssistant?: 'true' | 'false';
+		}
 	>;
 }
 

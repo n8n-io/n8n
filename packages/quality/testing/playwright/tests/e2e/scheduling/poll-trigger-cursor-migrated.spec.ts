@@ -15,7 +15,7 @@ test.use(migratedPollTestConfig);
 test.describe(
 	'Poll Trigger cursor (migrated)',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should emit an item past the cursor and advance it in poller_state', async ({

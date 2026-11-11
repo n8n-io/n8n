@@ -18,6 +18,7 @@ import {
 	renderObserverTranscript,
 	runObservationLogObserver,
 } from '../memory/observation-log-observer';
+import { settleAbandonedToolCallsInMemory } from '../memory/strip-orphaned-tool-messages';
 import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 
 type GenerateTextCall = Record<string, unknown>;
@@ -749,7 +750,7 @@ describe('runObservationLogObserver', () => {
 		expect(await store.getObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
 	});
 
-	it('rebuilds missing observations once at an unchanged boundary under a fixed clock', async () => {
+	it('commits one of two concurrent runs at the same boundary under a fixed clock', async () => {
 		const store = new InMemoryMemory();
 		const now = new Date('2026-05-12T10:00:00Z');
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
@@ -757,12 +758,6 @@ describe('runObservationLogObserver', () => {
 			threadId: 'thread-1',
 			resourceId: 'user-1',
 			messages: [message('m1', 'user', 'Keep this history.', new Date(1))],
-		});
-		await store.setCursor({
-			observationScopeId: 'thread-1',
-			lastObservedMessageId: 'm1',
-			lastObservedAt: new Date(1),
-			updatedAt: now,
 		});
 		let release!: () => void;
 		const ready = new Promise<void>((resolve) => {
@@ -794,11 +789,10 @@ describe('runObservationLogObserver', () => {
 				expect.objectContaining({ observationsWritten: 0, cursorAdvanced: false, usage }),
 			]),
 		);
-		expect(await store.getCursor('thread-1')).toEqual({
+		expect(await store.getCursor('thread-1')).toMatchObject({
 			observationScopeId: 'thread-1',
 			lastObservedMessageId: 'm1',
 			lastObservedAt: new Date(1),
-			updatedAt: new Date(now.getTime() + 1),
 		});
 		const before = await store.getObservationLog({ observationScopeId: 'thread-1' });
 		expect(before).toMatchObject([{ text: 'Rebuilt fact.' }]);
@@ -823,7 +817,6 @@ describe('runObservationLogObserver', () => {
 			lastObservedAt: new Date(1),
 			updatedAt: now,
 		};
-		await store.setCursor(cursor);
 		const readCursor = store.getCursor.bind(store);
 		vi.spyOn(store, 'getCursor').mockImplementationOnce(async (scope) => {
 			await new Promise<void>((resolve) => {
@@ -836,7 +829,7 @@ describe('runObservationLogObserver', () => {
 			const rows = await readActive(scope);
 			await store.commitObservationLogBatch({
 				observationScopeId: 'thread-1',
-				expectedCursor: cursor,
+				expectedCursor: null,
 				nextCursor: cursor,
 				entries: [
 					{
@@ -862,10 +855,7 @@ describe('runObservationLogObserver', () => {
 		expect(await store.getObservationLog({ observationScopeId: 'thread-1' })).toMatchObject([
 			{ text: 'Concurrent fact.' },
 		]);
-		expect(await store.getCursor('thread-1')).toEqual({
-			...cursor,
-			updatedAt: new Date(now.getTime() + 1),
-		});
+		expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: 'm1' });
 	});
 
 	it('never fails observation when onUsage throws synchronously or rejects', async () => {
@@ -999,7 +989,7 @@ describe('runObservationLogObserver', () => {
 		);
 	});
 
-	it('keeps an empty prefix until observations allow the cursor to advance', async () => {
+	it('advances the cursor past empty batches on a thread without observations', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
 		for (const [index, output] of [
@@ -1027,22 +1017,17 @@ describe('runObservationLogObserver', () => {
 			).toMatchObject({
 				status: 'ran',
 				observationsWritten: index === 2 ? 1 : 0,
-				cursorAdvanced: index >= 2,
+				cursorAdvanced: true,
 				skippedLines: [],
 			});
-			if (index < 2) {
-				expect(await store.getCursor('thread-1')).toBeNull();
-				expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
-			} else {
-				expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: id });
-			}
+			expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: id });
 		}
 		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject([
 			{ text: 'Deployment requires approval.' },
 		]);
 	});
 
-	it('keeps history and the stored cursor after an empty result with missing observations', async () => {
+	it('resumes from the stored cursor when the thread has no observations', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
 		await store.saveMessages({
@@ -1059,7 +1044,6 @@ describe('runObservationLogObserver', () => {
 			lastObservedAt: new Date(1),
 			updatedAt: new Date(1),
 		});
-		const beforeCursor = await store.getCursor('thread-1');
 		const beforeMessages = await store.getMessagesForObservationScope('thread-1');
 		const observe = vi.fn(async () => await Promise.resolve('NO_OBSERVATIONS'));
 		expect(
@@ -1073,18 +1057,15 @@ describe('runObservationLogObserver', () => {
 		).toMatchObject({
 			status: 'ran',
 			observationsWritten: 0,
-			cursorAdvanced: false,
+			cursorAdvanced: true,
 			skippedLines: [],
 		});
 		expect(observe).toHaveBeenCalledWith(
 			expect.objectContaining({
-				deltaMessages: expect.arrayContaining([
-					expect.objectContaining({ id: 'm1' }),
-					expect.objectContaining({ id: 'm2' }),
-				]),
+				deltaMessages: [expect.objectContaining({ id: 'm2' })],
 			}),
 		);
-		expect(await store.getCursor('thread-1')).toEqual(beforeCursor);
+		expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: 'm2' });
 		expect(await store.getMessagesForObservationScope('thread-1')).toEqual(beforeMessages);
 		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
 	});
@@ -1168,6 +1149,62 @@ describe('runObservationLogObserver', () => {
 		},
 	);
 
+	it('observes past a suspended tool call after the host settles it as abandoned', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [
+				message('m1', 'user', 'Build a Telegram workflow.', new Date(2026, 4, 12, 14, 30)),
+				{
+					id: 'm2',
+					createdAt: new Date(2026, 4, 12, 14, 31),
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc1',
+							toolName: 'setup_workflow',
+							input: {},
+							state: 'pending',
+							suspension: { message: 'Configure credentials for your workflow' },
+						},
+					],
+				},
+				message('m3', 'user', 'Add a schedule trigger.', new Date(2026, 4, 12, 14, 32)),
+				message('m4', 'assistant', 'Added the trigger.', new Date(2026, 4, 12, 14, 33)),
+			],
+		});
+
+		const observe = vi.fn().mockResolvedValue('* IMPORTANT (14:40) Progress noted.');
+		const run = async () =>
+			await runObservationLogObserver({
+				memory: store,
+				observationScopeId: 'thread-1',
+				observationLogTailLimit: 20,
+				tokenCounter: () => 10,
+				now: new Date(2026, 4, 12, 14, 40),
+				observe,
+			});
+
+		await run();
+		expect(await run()).toEqual({ status: 'skipped', reason: 'pending-tool-call' });
+
+		// The user stopped the turn, so the suspension can never resume.
+		expect(
+			await settleAbandonedToolCallsInMemory(store, { threadId: 'thread-1', resourceId: 'user-1' }),
+		).toBe(1);
+
+		expect(await run()).toMatchObject({ status: 'ran', cursorAdvanced: true });
+		expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: 'm4' });
+		const [stored] = await store.getMessages('thread-1', { limit: 3 });
+		expect(stored).toMatchObject({
+			id: 'm2',
+			content: [{ type: 'tool-call', state: 'rejected' }],
+		});
+	});
+
 	it('does not persist secret values echoed by the observer into observation entries', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
@@ -1195,5 +1232,23 @@ describe('runObservationLogObserver', () => {
 		expect(observations).toHaveLength(1);
 		expect(observations[0].text).toContain('[REDACTED]');
 		expect(observations[0].text).not.toContain('xoxb-1234567890-abcdefghij');
+	});
+});
+
+describe('InMemoryMemory.deleteThread', () => {
+	it('clears the resume state with the thread', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveResumeState({
+			observationScopeId: 'thread-1',
+			resumeFrom: { lastObservedMessageId: 'm1', lastObservedAt: new Date(1) },
+			resumeNotes: 'Old notes.',
+			lastRequestTokens: 1_000,
+			lastModelId: 'openai/gpt-4o-mini',
+		});
+
+		await store.deleteThread('thread-1');
+
+		expect(await store.getResumeState('thread-1')).toBeNull();
 	});
 });

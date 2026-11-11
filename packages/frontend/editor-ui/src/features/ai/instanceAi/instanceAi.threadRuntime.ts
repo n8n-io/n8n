@@ -66,11 +66,9 @@ import {
 	normalizeAgentTreeToolNames,
 } from './instanceAi.reducer';
 import { createArtifactPreviewMemory } from './artifactPreviewMemory';
+import { toArtifactTurns } from './agentTreeArtifactTurns';
 import { getLatestBuildResult } from './canvasPreview.utils';
-import {
-	useResourceRegistry,
-	type TransientWorkflowArtifactReference,
-} from './useResourceRegistry';
+import { useResourceRegistry } from './useResourceRegistry';
 import { buildThreadArtifactsContext, type OpenThreadTab } from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
@@ -607,15 +605,6 @@ export function createThreadRuntime(
 	function clearPendingWorkflowAttachment(): void {
 		pendingWorkflowAttachment.value = null;
 	}
-	const transientWorkflowReferences = reactive(
-		new Map<string, TransientWorkflowArtifactReference>(),
-	);
-	function upsertTransientWorkflowReference(reference: TransientWorkflowArtifactReference): void {
-		transientWorkflowReferences.set(reference.referenceId, { ...reference });
-	}
-	function removeTransientWorkflowReference(referenceId: string): void {
-		transientWorkflowReferences.delete(referenceId);
-	}
 
 	// Preview state that survives the preview canvas unmounting on a tab switch.
 	// A fresh runtime per thread resets it (INS-611, INS-1192).
@@ -647,6 +636,7 @@ export function createThreadRuntime(
 	const isSendingMessage = computed(() => pendingMessageCount.value > 0);
 	const hasMessages = computed(() => messages.value.length > 0);
 	const isHydratingThread = computed(() => hydrationStatus.value === 'hydrating');
+	const artifactTurns = computed(() => toArtifactTurns(messages.value));
 
 	const {
 		producedArtifacts,
@@ -654,7 +644,7 @@ export function createThreadRuntime(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
-	} = useResourceRegistry(() => messages.value, {
+	} = useResourceRegistry(() => artifactTurns.value, {
 		workflowNameLookup: (id) => workflowsListStore.getWorkflowById(id)?.name,
 		archivedWorkflowIds: () => archivedWorkflowIds.value,
 		agentBuilderTarget: () =>
@@ -664,7 +654,6 @@ export function createThreadRuntime(
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
 		pendingWorkflowAttachment: () => pendingWorkflowAttachment.value ?? undefined,
-		transientWorkflowReferences: () => [...transientWorkflowReferences.values()],
 		agentBuilderTargets: () =>
 			getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 		appTargets: () => getAppTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
@@ -715,16 +704,7 @@ export function createThreadRuntime(
 	// canvas preview opens: `latestBuildResult.toolCallId` changes only on a live
 	// build, so re-hydrating past messages or rebuilding the same workflow won't
 	// re-fire. Emitted once per workflow id for this runtime.
-	const latestBuildResult = computed(() => {
-		for (let i = messages.value.length - 1; i >= 0; i--) {
-			const tree = messages.value[i].agentTree;
-			if (tree) {
-				const result = getLatestBuildResult(tree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
+	const latestBuildResult = computed(() => getLatestBuildResult(artifactTurns.value) ?? null);
 	const reportedBuiltWorkflowIds = new Set<string>();
 
 	watch(
@@ -1373,7 +1353,6 @@ export function createThreadRuntime(
 		activeArtifactId.value = undefined;
 		openTabs.value = undefined;
 		pendingWorkflowAttachment.value = null;
-		transientWorkflowReferences.clear();
 		pendingHandoff.value = null;
 		disarmGenerationStallWatchdog();
 	}
@@ -1823,6 +1802,7 @@ export function createThreadRuntime(
 		isSendingMessage,
 		hasMessages,
 		isHydratingThread,
+		artifactTurns,
 		producedArtifacts,
 		resourceNameIndex,
 		linkableResourceNameIndex,
@@ -1845,9 +1825,6 @@ export function createThreadRuntime(
 		pendingWorkflowAttachment,
 		setPendingWorkflowAttachment,
 		clearPendingWorkflowAttachment,
-		transientWorkflowReferences,
-		upsertTransientWorkflowReference,
-		removeTransientWorkflowReference,
 		rememberManualExecution,
 		getRememberedManualExecution,
 		forgetManualExecution,

@@ -7,8 +7,8 @@ import {
 } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EngineConfig, ExecutionsConfig } from '@n8n/config';
-import type { Project, User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { Project } from '@n8n/db';
+import { Person, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	ResourceAdmission,
@@ -27,7 +27,7 @@ import {
 	isWebhookHtmlSandboxingDisabled,
 } from 'n8n-core';
 
-import type { ExecutionResponseReceiver } from '@/modules/engine-v2/response-channel/execution-response-receiver';
+import type { ExecutionResponseReceiver } from '@/modules/engine-v2/execution-channel/execution-response-receiver';
 
 vi.mock('n8n-core', async () => ({
 	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
@@ -2388,7 +2388,7 @@ describe('executeWebhook additional data', () => {
 
 	it('projects the looked-up user down to the four public fields', async () => {
 		userRepository.findByIdWithRole.mockResolvedValue(
-			mock<User>({
+			Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'user@example.com',
 				firstName: 'Test',

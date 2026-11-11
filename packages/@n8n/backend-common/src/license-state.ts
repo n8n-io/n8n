@@ -70,6 +70,10 @@ export class LicenseState {
 		return this.isLicensed(LICENSE_FEATURES.WORKFLOW_REVIEWS);
 	}
 
+	isExecutionLimitsLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.EXECUTION_LIMITS);
+	}
+
 	isSharingLicensed() {
 		return this.isLicensed('feat:sharing');
 	}

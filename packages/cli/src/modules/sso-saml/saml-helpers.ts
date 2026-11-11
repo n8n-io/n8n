@@ -1,6 +1,6 @@
 import type { SamlAcsDto, SamlPreferences } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import type { Person, User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import { AuthIdentity, AuthIdentityRepository, PersonRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
@@ -49,11 +49,13 @@ export const isSamlPreferences = (candidate: unknown): candidate is SamlPreferen
 	);
 };
 
-export async function createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
+export async function createUserFromSamlAttributes(
+	attributes: SamlUserAttributes,
+): Promise<Person> {
 	const randomPassword = randomString(18);
 	const userRepository = Container.get(UserRepository);
 	return await userRepository.manager.transaction(async (trx) => {
-		const { user } = await userRepository.createUserWithProject(
+		const { user } = await Container.get(PersonRepository).createPersonWithProject(
 			{
 				email: attributes.email.toLowerCase(),
 				firstName: attributes.firstName,

@@ -22,6 +22,17 @@ describe('role-mapping-rule.validation', () => {
 			);
 		});
 
+		it.each(['global:owner', 'global:agent'])(
+			'should reject the reserved role %s for instance mapping',
+			(slug) => {
+				const reservedRole = { roleType: 'global', slug } as Role;
+				const act = () => assertRoleCompatibleWithMappingType(reservedRole, 'instance');
+
+				expect(act).toThrow(BadRequestError);
+				expect(act).toThrow('Instance mapping rules cannot use a reserved role');
+			},
+		);
+
 		it('should accept project role for project mapping', () => {
 			expect(() => assertRoleCompatibleWithMappingType(projectRole, 'project')).not.toThrow();
 		});
