@@ -41,6 +41,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowEngineV2Compatibility } from '@/app/composables/useWorkflowEngineV2Compatibility';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -57,6 +58,7 @@ import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 
 export const useActions = () => {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const { isNodeTypeIncompatible } = useWorkflowEngineV2Compatibility();
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
@@ -314,8 +316,13 @@ export const useActions = () => {
 
 	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
 		// Every insert path ends here — click, Enter, drag, the "no results" links, actions mode —
-		// so this is where a restricted type is refused.
-		if (addedNodes.length === 0 || addedNodes.some((node) => isNodeItemRestricted(node.type))) {
+		// so this is where a restricted or engine-incompatible type is refused.
+		if (
+			addedNodes.length === 0 ||
+			addedNodes.some(
+				(node) => isNodeItemRestricted(node.type) || isNodeTypeIncompatible(node.type),
+			)
+		) {
 			return { nodes: [], connections: [] };
 		}
 

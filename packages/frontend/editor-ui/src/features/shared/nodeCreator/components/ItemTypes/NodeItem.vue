@@ -18,6 +18,7 @@ import { isCommunityPackageName } from 'n8n-workflow';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 
 import { useNodeType } from '@/app/composables/useNodeType';
+import { useWorkflowEngineV2Compatibility } from '@/app/composables/useWorkflowEngineV2Compatibility';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
@@ -54,6 +55,12 @@ const { isSubNodeType } = useNodeType({
 });
 const nodeTypesStore = useNodeTypesStore();
 const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
+const { isNodeTypeIncompatible } = useWorkflowEngineV2Compatibility();
+// A policy restriction has its own popover, so it takes priority over the engine label.
+const isEngineIncompatible = computed(
+	() => !restriction.value && isNodeTypeIncompatible(props.nodeType.name),
+);
+const isDisabled = computed(() => !!restriction.value || isEngineIncompatible.value);
 const rowRef = ref<ComponentPublicInstance | null>(null);
 
 const dragging = ref(false);
@@ -82,7 +89,7 @@ const description = computed<string>(() => {
 });
 
 const showActionArrow = computed(() => {
-	if (restriction.value) return false;
+	if (isDisabled.value) return false;
 
 	if (shouldShowCommunityNodeDetails(isCommunityNode.value, activeViewStack)) {
 		return true;
@@ -158,6 +165,9 @@ const author = computed(() => {
 });
 
 const tag = computed(() => {
+	if (isEngineIncompatible.value) {
+		return { text: i18n.baseText('nodeCreator.nodeItem.notCompatible'), type: 'info' };
+	}
 	if (props.nodeType.tag) {
 		return props.nodeType.tag;
 	}
@@ -203,8 +213,8 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	<!-- Node Item is draggable only if it doesn't contain actions -->
 	<N8nNodeCreatorNode
 		ref="rowRef"
-		:draggable="!restriction && !showActionArrow"
-		:disabled="!!restriction"
+		:draggable="!isDisabled && !showActionArrow"
+		:disabled="isDisabled"
 		:class="$style.nodeItem"
 		:description="description"
 		:title="displayName"

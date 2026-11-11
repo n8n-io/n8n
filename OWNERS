@@ -101,6 +101,7 @@ packages/cli/src/binary-data/                           @n8n-io/core-execution
 packages/cli/src/eventbus/                              @n8n-io/core-execution
 packages/cli/src/events/                                @n8n-io/core-execution
 packages/cli/src/modules/engine-v2/                     @n8n-io/core-execution
+packages/modules/engine-v2/frontend/                    @n8n-io/core-execution
 packages/cli/src/workflow-runner.ts                     @n8n-io/core-execution
 packages/cli/src/wait-tracker.ts                        @n8n-io/core-execution
 packages/cli/src/active-executions.ts                   @n8n-io/core-execution

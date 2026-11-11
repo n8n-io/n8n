@@ -5,6 +5,9 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useActions } from './useActions';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import {
 	AGENT_NODE_TYPE,
 	AI_CATEGORY_LANGUAGE_MODELS,
@@ -64,7 +67,8 @@ const mockDocumentStoreState = vi.hoisted(() => ({
 	workflowTriggerNodes: [] as INodeUi[],
 	aiNodes: [] as INodeUi[],
 	name: '',
-	settings: {},
+	settings: {} as IWorkflowSettings,
+	connectionsBySourceNode: {},
 	getPinDataSnapshot: () => ({}),
 	getNodeById: (_id: string) => undefined as INodeUi | undefined,
 }));
@@ -84,6 +88,7 @@ describe('useActions', () => {
 		vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockReset();
 		mockDocumentStoreState.allNodes = [];
 		mockDocumentStoreState.getNodeById = () => undefined;
+		mockDocumentStoreState.settings = {};
 		useUIStore().lastInteractedWithNodeId = undefined;
 		useNodeCreatorStore().openingContext = null;
 	});
@@ -96,6 +101,41 @@ describe('useActions', () => {
 			expect(getAddedNodesAndConnections([{ type: 'n8n-nodes-base.gmail' }])).toEqual({
 				nodes: [],
 				connections: [],
+			});
+		});
+
+		describe('engine v2 compatibility', () => {
+			beforeEach(() => {
+				mockEngineV2Compatibility({ unsupportedNodeTypes: [SLACK_NODE_TYPE] });
+				mockDocumentStoreState.workflowTriggerNodes = [{ name: 'Trigger' } as INodeUi];
+			});
+
+			afterEach(() => {
+				mockDocumentStoreState.workflowTriggerNodes = [];
+			});
+
+			it('adds nothing when a requested type is not supported on engine v2', () => {
+				vi.mocked(useSettingsStore().isModuleActive).mockReturnValue(true);
+				mockDocumentStoreState.settings = { engineType: 'v2' };
+				const { getAddedNodesAndConnections } = useActions();
+
+				expect(getAddedNodesAndConnections([{ type: SLACK_NODE_TYPE }])).toEqual({
+					nodes: [],
+					connections: [],
+				});
+			});
+
+			it.each([
+				['the engine-v2 module is off', false, 'v2'],
+				['the workflow runs on engine v1', true, 'v1'],
+			] as const)('adds the type when %s', (_case, moduleActive, engineType) => {
+				vi.mocked(useSettingsStore().isModuleActive).mockReturnValue(moduleActive);
+				mockDocumentStoreState.settings = { engineType };
+				const { getAddedNodesAndConnections } = useActions();
+
+				expect(getAddedNodesAndConnections([{ type: SLACK_NODE_TYPE }]).nodes).toEqual([
+					expect.objectContaining({ type: SLACK_NODE_TYPE }),
+				]);
 			});
 		});
 

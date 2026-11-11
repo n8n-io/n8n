@@ -55,6 +55,7 @@
     "@n8n/expression-runtime": "workspace:*",
     "@n8n/frontend-constants": "workspace:*",
     "@n8n/frontend-module-apps": "workspace:*",
+    "@n8n/frontend-module-engine-v2": "workspace:*",
     "@n8n/frontend-module-inbox": "workspace:*",
     "@n8n/frontend-module-insights": "workspace:*",
     "@n8n/frontend-module-instance-registry": "workspace:*",

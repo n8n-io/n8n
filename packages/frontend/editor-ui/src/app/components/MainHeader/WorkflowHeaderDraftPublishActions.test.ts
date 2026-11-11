@@ -26,6 +26,11 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import {
+	describeEngineV2Block,
+	type EngineCompatibilityReason,
+} from '@n8n/frontend-module-engine-v2';
+import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
@@ -1304,6 +1309,168 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
+		});
+	});
+
+	describe('Engine v2 compatibility', () => {
+		const blockingReason: EngineCompatibilityReason = {
+			code: 'trigger-external-identity',
+			severity: 'blocking',
+			nodeId: triggerNode.id,
+			nodeName: triggerNode.name,
+			message: 'Engine v2 cannot run this trigger yet.',
+		};
+		const warningReason: EngineCompatibilityReason = {
+			...blockingReason,
+			severity: 'warning',
+		};
+
+		const setEngineV2Gate = ({ moduleActive = true, engineType = 'v2' as 'v1' | 'v2' } = {}) => {
+			settingsStore.settings = {
+				...settingsStore.settings,
+				activeModules: moduleActive ? ['engine-v2'] : [],
+			};
+			workflowDocumentStore.mergeSettings({ engineType });
+		};
+
+		const seedOpenReview = () => {
+			setWorkflowReviewGates();
+			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+				count: 1,
+				data: [
+					{
+						id: 'req-1',
+						state: 'open',
+						decision: 'pending',
+						workflowVersionId: 'version-0',
+						workflowVersionName: null,
+						description: null,
+						createdAt: '2026-07-20T10:00:00.000Z',
+						updatedAt: '2026-07-20T10:00:00.000Z',
+						decisionBy: null,
+						viewerCanOpen: true,
+					},
+				],
+			});
+		};
+
+		beforeEach(() => {
+			workflowDocumentStore.setNodes([triggerNode]);
+		});
+
+		afterEach(() => {
+			settingsStore.settings = { ...settingsStore.settings, activeModules: [] };
+			workflowDocumentStore.setSettings({});
+		});
+
+		it('should disable publish and give the reason for a never-published workflow', () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByText(describeEngineV2Block())).toBeInTheDocument();
+		});
+
+		it('should disable publish and give the reason for a published workflow with changes', () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-0',
+				activeVersion: createMockActiveVersion('version-0'),
+			});
+			uiStore.markStateDirty();
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByText(describeEngineV2Block())).toBeInTheDocument();
+		});
+
+		// The NDV, the command bar and the shortcut publish through the event bus,
+		// which never sees the button's disabled state.
+		it('should stop a publish command from the event bus', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
+			renderComponent();
+			nodeViewEventBus.emit('publishWorkflow');
+			await waitFor(() => expect(mockShowMessage).toHaveBeenCalled());
+
+			expect(openModalSpy).not.toHaveBeenCalledWith(
+				expect.objectContaining({ name: WORKFLOW_PUBLISH_MODAL_KEY }),
+			);
+			expect(mockSaveCurrentWorkflow).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				title: describeEngineV2Block(),
+				type: 'warning',
+			});
+		});
+
+		it('should keep publish enabled and open the modal for a warning only', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [warningReason] });
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
+			const { getByTestId, queryByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
+			expect(queryByText(describeEngineV2Block())).not.toBeInTheDocument();
+
+			nodeViewEventBus.emit('publishWorkflow');
+			await waitFor(() =>
+				expect(openModalSpy).toHaveBeenCalledWith(
+					expect.objectContaining({ name: WORKFLOW_PUBLISH_MODAL_KEY }),
+				),
+			);
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['the engine-v2 module is off', { moduleActive: false }],
+			['the workflow runs on engine v1', { engineType: 'v1' as const }],
+		])('should change nothing when %s', async (_case, gate) => {
+			setEngineV2Gate(gate);
+			const { checkWorkflow } = mockEngineV2Compatibility({ reasons: [blockingReason] });
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
+			const { getByTestId, queryByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
+			expect(queryByText(describeEngineV2Block())).not.toBeInTheDocument();
+			expect(checkWorkflow).not.toHaveBeenCalled();
+
+			nodeViewEventBus.emit('publishWorkflow');
+			await waitFor(() =>
+				expect(openModalSpy).toHaveBeenCalledWith(
+					expect.objectContaining({ name: WORKFLOW_PUBLISH_MODAL_KEY }),
+				),
+			);
+		});
+
+		it('should disable Submit changes with Publish for a blocking reason', async () => {
+			seedOpenReview();
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			const { findByTestId, getByTestId } = renderComponent();
+			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+		});
+
+		it('should keep Submit changes enabled for a warning only', async () => {
+			seedOpenReview();
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [warningReason] });
+
+			const { findByTestId, getByTestId } = renderComponent();
+			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+
+			expect(getByTestId('workflow-review-submit-changes-button')).toBeEnabled();
 		});
 	});
 

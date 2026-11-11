@@ -45,6 +45,8 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { DEFAULT_NODE_SIZE, snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import type { EngineCompatibilityReason } from '@n8n/frontend-module-engine-v2';
+import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
 import { usePostHog } from '@/app/stores/posthog.store';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
@@ -1023,6 +1025,117 @@ describe('NodeView', () => {
 			renderNodeView();
 
 			await waitFor(() => expect(fetchForProject).not.toHaveBeenCalled());
+		});
+	});
+
+	describe('Engine v2 compatibility', () => {
+		const CALLOUT = 'engine-v2-compatibility-callout';
+		const incompatible = createTestNode({ type: SET_NODE_TYPE, name: 'Incompatible' });
+		const blockingReason: EngineCompatibilityReason = {
+			code: 'error-workflow',
+			severity: 'blocking',
+			message: 'Engine v2 does not run an error workflow yet.',
+		};
+
+		// A reason for every node of the incompatible type, so the callout follows the canvas.
+		const mockReasonsForIncompatibleNodes = () =>
+			mockEngineV2Compatibility({
+				reasons: (workflow) =>
+					workflow.nodes
+						.filter((node) => node.type === SET_NODE_TYPE)
+						.map((node) => ({ ...blockingReason, nodeId: node.id, nodeName: node.name })),
+			});
+
+		const setEngineV2Gate = ({ moduleActive = true, engineType = 'v2' as 'v1' | 'v2' } = {}) => {
+			useSettingsStore().settings.activeModules = moduleActive ? ['engine-v2'] : [];
+			workflowDocumentStore.mergeSettings({ engineType });
+		};
+
+		beforeEach(() => {
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
+				mockNodeTypeDescription({ name: SET_NODE_TYPE }),
+			]);
+		});
+
+		it('shows the reasons on the canvas', async () => {
+			setEngineV2Gate();
+			mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			const { findByTestId } = renderNodeView();
+
+			expect(await findByTestId(CALLOUT)).toHaveTextContent(
+				"Engine v2 doesn't run error workflows yet.",
+			);
+		});
+
+		it.each([
+			['the engine-v2 module is off', { moduleActive: false }],
+			['the workflow runs on engine v1', { engineType: 'v1' as const }],
+		])('shows nothing when %s', async (_case, gate) => {
+			setEngineV2Gate(gate);
+			const { checkWorkflow } = mockEngineV2Compatibility({ reasons: [blockingReason] });
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId(CALLOUT)).not.toBeInTheDocument();
+			expect(checkWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('hides the callout when no reason is left', async () => {
+			setEngineV2Gate();
+			mockReasonsForIncompatibleNodes();
+			workflowDocumentStore.setNodes([incompatible]);
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+			expect(await findByTestId(CALLOUT)).toHaveTextContent('Incompatible');
+
+			workflowDocumentStore.removeNodeById(incompatible.id);
+
+			await waitFor(() => expect(queryByTestId(CALLOUT)).not.toBeInTheDocument());
+		});
+
+		it('shows the reasons after an import', async () => {
+			setEngineV2Gate();
+			mockReasonsForIncompatibleNodes();
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId(CALLOUT)).not.toBeInTheDocument();
+
+			nodeViewEventBus.emit('importWorkflowData', {
+				data: { nodes: [incompatible], connections: {} },
+			});
+
+			expect(await findByTestId(CALLOUT)).toHaveTextContent('Incompatible');
+		});
+
+		it('shows the reasons after a paste', async () => {
+			setEngineV2Gate();
+			mockReasonsForIncompatibleNodes();
+			// Paste only runs on the workflow tab of a writable canvas.
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			mockMcpJsonNudgeGate.mockReset().mockImplementation(async (_surface, action) => {
+				await action();
+			});
+
+			const { findByTestId, queryByTestId } = renderNodeView();
+			await findByTestId('canvas-stub-copy');
+			expect(queryByTestId(CALLOUT)).not.toBeInTheDocument();
+
+			const event = new Event('paste');
+			Object.assign(event, {
+				clipboardData: {
+					getData: () => JSON.stringify({ nodes: [incompatible], connections: {} }),
+				},
+			});
+			document.dispatchEvent(event);
+
+			expect(await findByTestId(CALLOUT)).toHaveTextContent('Incompatible');
 		});
 	});
 

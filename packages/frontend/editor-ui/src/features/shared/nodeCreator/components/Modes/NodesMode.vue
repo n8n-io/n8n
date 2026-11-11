@@ -41,6 +41,7 @@ import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowEngineV2Compatibility } from '@/app/composables/useWorkflowEngineV2Compatibility';
 import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 
 export interface Props {
@@ -85,6 +86,7 @@ const visibleItems = computed(() => {
 const isMcpCategory = computed(() => activeViewStack.value.subcategory === AI_CATEGORY_MCP_NODES);
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const { isNodeTypeIncompatible } = useWorkflowEngineV2Compatibility();
 
 const nodeTypesStore = useNodeTypesStore();
 const communityNodesAndActions = computed(() => nodeTypesStore.communityNodesAndActions);
@@ -123,8 +125,13 @@ function onSelected(item: INodeCreateElement) {
 	if (item.key === ADD_EMPTY_GROUP_NODE_CREATOR_ITEM && shouldHideEmptyGroupCommand.value) return;
 
 	// Insertion itself is refused in getAddedNodesAndConnections; this keeps a restricted
-	// node from opening its actions view.
-	if (item.type === 'node' && isNodeItemRestricted(item.key)) return;
+	// or engine-incompatible node from opening its actions view.
+	if (
+		item.type === 'node' &&
+		(isNodeItemRestricted(item.key) || isNodeTypeIncompatible(item.key))
+	) {
+		return;
+	}
 
 	if (item.type === 'subcategory') {
 		pushViewStack(subcategoryStack(item, activeViewStack.value.rootView));

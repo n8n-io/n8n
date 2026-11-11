@@ -105,6 +105,8 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
+import { EngineV2CompatibilityCallout } from '@n8n/frontend-module-engine-v2';
+import { useWorkflowEngineV2Compatibility } from '@/app/composables/useWorkflowEngineV2Compatibility';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
@@ -215,6 +217,7 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowExecutionState = computed(() =>
 	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
 );
+const { reasons: engineV2Reasons } = useWorkflowEngineV2Compatibility();
 const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
@@ -2359,6 +2362,12 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
+			<EngineV2CompatibilityCallout
+				v-if="engineV2Reasons.length > 0"
+				:reasons="engineV2Reasons"
+				:class="$style.engineV2CompatibilityCallout"
+			/>
+
 			<N8nCanvasCollaborationPill
 				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentTabWriter"
 				:class="$style.canvasCenterPill"
@@ -2490,6 +2499,14 @@ onBeforeUnmount(() => {
 	bottom: 16px;
 	left: 50%;
 	transform: translateX(-50%);
+}
+
+.engineV2CompatibilityCallout {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: 50%;
+	transform: translateX(-50%);
+	max-width: 60%;
 }
 
 .canvasCenterPill {

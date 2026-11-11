@@ -12,6 +12,7 @@ import type { CommandBarItem, CommandBarSearchRequest, CommandGroup } from '../t
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowEngineV2Compatibility } from '@/app/composables/useWorkflowEngineV2Compatibility';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -34,6 +35,7 @@ export function useNodeCommands(): CommandGroup {
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const { isNodeTypeIncompatible } = useWorkflowEngineV2Compatibility();
 
 	const isReadOnly = computed(
 		() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
@@ -61,7 +63,7 @@ export function useNodeCommands(): CommandGroup {
 		id: node.name,
 		title: node.displayName,
 		section: i18n.baseText('commandBar.nodes.addNode'),
-		disabled: isNodeItemRestricted(node.name),
+		disabled: isNodeItemRestricted(node.name) || isNodeTypeIncompatible(node.name),
 		keywords: node.codex?.alias ?? [],
 		icon: {
 			component: NodeIcon as Component,
