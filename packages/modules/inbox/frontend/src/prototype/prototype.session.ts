@@ -18,15 +18,10 @@ type PrototypePatch = {
 	comments?: PrototypeComment[];
 };
 
-/** The row styles of the New list. The first one is the card list of the product. */
-export const PROTOTYPE_LIST_VARIANTS = ['cards', 'dividers', 'email', 'compact'] as const;
-export type PrototypeListVariant = (typeof PROTOTYPE_LIST_VARIANTS)[number];
-
 /** Local edits for the reviews prototype. Nothing here is saved. */
 export const prototypeSession = reactive({
 	active: false,
 	patches: {} as Record<string, PrototypePatch>,
-	listVariant: 'cards' as PrototypeListVariant,
 	/** The ids of the items that the viewer opened. The other open items are unread. */
 	readIds: [] as string[],
 });

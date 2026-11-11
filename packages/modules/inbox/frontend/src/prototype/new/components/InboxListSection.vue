@@ -3,11 +3,9 @@ import type { InboxItem } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { computed } from 'vue';
 
 import type { CollapsibleReviewInboxSection } from '../../../composables/useReviewInboxSectionCollapse';
 import type { InboxSectionKey } from '../../../inbox.constants';
-import { prototypeSession } from '../../prototype.session';
 import InboxListItem from './InboxListItem.vue';
 
 export type InboxListSection = {
@@ -35,9 +33,6 @@ const emit = defineEmits<{
 }>();
 const i18n = useI18n();
 const usersStore = useUsersStore();
-
-// Every style but Cards draws a thin line between rows, not a gap.
-const divided = computed(() => prototypeSession.listVariant !== 'cards');
 
 function sectionTitle(key: 'waiting' | 'authored') {
 	return key === 'waiting' && usersStore.isAdminOrOwner
@@ -67,7 +62,7 @@ function sectionTitle(key: 'waiting' | 'authored') {
 		</button>
 		<div
 			:id="`inbox-section-${section.key}`"
-			:class="[$style.group, { [$style.divided]: divided }]"
+			:class="$style.group"
 			role="list"
 			:aria-labelledby="
 				section.key !== 'closed' ? `inbox-section-header-${section.key}` : undefined
@@ -135,15 +130,17 @@ function sectionTitle(key: 'waiting' | 'authored') {
 	min-width: 0;
 }
 
-.divided {
+// A thin line between rows, not a gap.
+.group {
 	gap: 0;
 }
-.divided .item:not(:last-child) {
+.group .item:not(:last-child) {
 	border-bottom: var(--border);
 }
-// The line stays out of the highlight of the open row.
-.divided .item:has([aria-current='true']),
-.divided .item:has(+ .item [aria-current='true']) {
+// A line would stick out under the rounded highlight of an open, hovered or focused row.
+// The row hides its own line and the line above it. The line keeps its space.
+.group .item:has([aria-current='true'], [role='button']:hover, :focus-visible),
+.group .item:has(+ .item :is([aria-current='true'], [role='button']:hover, :focus-visible)) {
 	border-bottom-color: transparent;
 }
 

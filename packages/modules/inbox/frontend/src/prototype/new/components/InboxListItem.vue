@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { InboxItem, InboxSelfHealingItem } from '@n8n/api-types';
+import type { InboxItem } from '@n8n/api-types';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nAssistantAvatar,
 	N8nAvatar,
-	N8nCard,
 	N8nContextMenu,
+	N8nIconButton,
 	N8nText,
 	N8nTooltip,
 	type ContextMenuNode,
@@ -18,20 +18,16 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { inboxItemLocation } from '../../../inbox.routes';
 import InboxAvatarTooltip from '../../../components/InboxAvatarTooltip.vue';
-import PrototypeStatusMenu from '../../PrototypeStatusMenu.vue';
 import {
 	isPrototypeUnread,
 	markPrototypeRead,
 	markPrototypeUnread,
-	prototypeSession,
 	prototypeState,
 	prototypeTitle,
 	setPrototypeState,
 } from '../../prototype.session';
 import InboxUnreadDot from './InboxUnreadDot.vue';
 import PrototypeMenuItemLabel from './PrototypeMenuItemLabel.vue';
-import { listPreviewText } from './listPreview';
-import WorkflowReviewStatusDot from '../../../reviews/components/WorkflowReviewStatusDot.vue';
 import { formatUserDisplayName } from '../../../reviews/workflowReviews.utils';
 
 const props = defineProps<{ item: InboxItem; selected: boolean }>();
@@ -43,7 +39,7 @@ const router = useRouter();
 const clipboard = useClipboard();
 const { showMessage, showError } = useToast();
 
-type CardMenuAction = 'copy-link' | 'view-gitlab' | 'close' | 'reopen' | 'mark-unread' | 'state';
+type CardMenuAction = 'copy-link' | 'view-gitlab' | 'close' | 'reopen' | 'toggle-unread' | 'state';
 
 // Same steps as the shared relative-time label. The past labels have no "ago" and use their own keys.
 const RELATIVE_SECOND_STEPS = [60, 60, 24, 7, 365 / 7 / 12, 12];
@@ -137,12 +133,20 @@ watch(cardTitle, () => {
 	void nextTick(measureTitle);
 });
 
-const variant = computed(() => prototypeSession.listVariant);
-const isMailRow = computed(() => variant.value === 'email' || variant.value === 'compact');
-const isCompact = computed(() => variant.value === 'compact');
-// Cards and Dividers keep a bold title. Email and Compact bold only an unread title.
-const boldTitle = computed(() => !isMailRow.value || unread.value);
+// Only an unread title is bold.
 const unread = computed(() => isPrototypeUnread(props.item.id, cardState(props.item)));
+// Only an open item can be unread, so only an open item has the read action.
+const canToggleUnread = computed(() => cardState(props.item) === 'open');
+// The menu and the quick action share this label and icon.
+const toggleUnreadLabel = computed(() =>
+	i18n.baseText(unread.value ? 'inbox.prototype.markRead' : 'inbox.prototype.markUnread'),
+);
+const toggleUnreadIcon = computed(() => (unread.value ? 'check-check' : 'mail'));
+
+function toggleUnread() {
+	if (unread.value) markPrototypeRead(props.item.id);
+	else markPrototypeUnread(props.item.id);
+}
 
 function onSelect() {
 	markPrototypeRead(props.item.id);
@@ -155,18 +159,7 @@ const requesterName = computed(() => {
 	return formatUserDisplayName(item.requester);
 });
 
-function outcomeLabel(item: InboxSelfHealingItem) {
-	switch (item.outcome) {
-		case 'fix_ready':
-			return i18n.baseText('inbox.outcome.fixReady');
-		case 'needs_you':
-			return i18n.baseText('inbox.outcome.needsAttention');
-		case 'could_not_fix':
-			return i18n.baseText('inbox.outcome.couldNotFix');
-	}
-}
-
-// The second line of an Email or Compact row. It reads like the direction line of the detail.
+// The second line of the row. It reads like the direction line of the detail.
 const actorName = computed(() =>
 	props.item.type === 'self_healing_result'
 		? i18n.baseText('inbox.selfHealing.metadata.assistant')
@@ -196,17 +189,10 @@ const directionText = computed(() => {
 const actorLine = computed(() =>
 	[actorName.value, directionText.value].filter(Boolean).join(' · '),
 );
-const previewText = computed(() => listPreviewText(props.item));
 
 // The Activity status row reads this same local edit.
 function cardState(item: InboxItem) {
 	return prototypeState(item.id, item.state);
-}
-
-// The Activity status pill uses this same open label.
-function openLabel(item: InboxItem) {
-	if (item.type === 'self_healing_result') return outcomeLabel(item);
-	return i18n.baseText('workflowReviews.status.open');
 }
 
 const menuItems = computed<Array<ContextMenuNode<CardMenuAction>>>(() => {
@@ -231,13 +217,13 @@ const menuItems = computed<Array<ContextMenuNode<CardMenuAction>>>(() => {
 			icon: { type: 'icon', value: 'external-link' },
 		});
 	}
-	// Every list style can mark an open, read item as unread.
-	if (open && !unread.value) {
+	// The entry toggles the same read state as the quick action.
+	if (canToggleUnread.value) {
 		actions.push({
 			type: 'item',
-			id: 'mark-unread',
-			label: i18n.baseText('inbox.prototype.markUnread'),
-			icon: { type: 'icon', value: 'mail' },
+			id: 'toggle-unread',
+			label: toggleUnreadLabel.value,
+			icon: { type: 'icon', value: toggleUnreadIcon.value },
 		});
 	}
 	actions.push({
@@ -283,8 +269,8 @@ function onMenuSelect(action: CardMenuAction) {
 		window.open(props.item.webUrl, '_blank', 'noopener');
 		return;
 	}
-	if (action === 'mark-unread') {
-		markPrototypeUnread(props.item.id);
+	if (action === 'toggle-unread') {
+		toggleUnread();
 		return;
 	}
 	if (action === 'close' || action === 'reopen') {
@@ -296,34 +282,32 @@ function onMenuSelect(action: CardMenuAction) {
 <template>
 	<N8nContextMenu :items="menuItems" @select="onMenuSelect">
 		<template #trigger>
-			<component
-				:is="variant === 'cards' ? N8nCard : 'div'"
-				:class="[$style.row, $style[variant], { [$style.selected]: selected }]"
+			<div
+				:class="[
+					$style.row,
+					{ [$style.selected]: selected, [$style.hasQuickAction]: canToggleUnread },
+				]"
 				role="button"
 				tabindex="0"
 				:aria-current="selected ? 'true' : undefined"
 				:data-source="item.type"
-				:data-variant="variant"
 				data-test-id="inbox-row"
 				@click="onSelect"
 				@keydown.enter.prevent="onSelect"
 				@keydown.space.prevent="onSelect"
 			>
-				<!-- All styles share one grid: avatar column, then the text lines. -->
+				<!-- One grid: the avatar column, then the text lines. -->
 				<div :class="$style.rowGrid">
 					<span :class="$style.avatar">
 						<InboxAvatarTooltip
 							v-if="item.type === 'self_healing_result'"
 							:name="i18n.baseText('inbox.selfHealing.metadata.assistant')"
 						>
-							<N8nAssistantAvatar
-								:size="isCompact ? 'mini' : 'small'"
-								data-test-id="inbox-assistant-avatar"
-							/>
+							<N8nAssistantAvatar size="mini" data-test-id="inbox-assistant-avatar" />
 						</InboxAvatarTooltip>
 						<InboxAvatarTooltip v-else-if="item.requester" :name="requesterName">
 							<N8nAvatar
-								:size="isCompact ? 'xxsmall' : 'xsmall'"
+								size="xxsmall"
 								:first-name="item.requester.firstName ?? ''"
 								:last-name="item.requester.lastName ?? ''"
 								data-test-id="inbox-requester-avatar"
@@ -331,7 +315,6 @@ function onMenuSelect(action: CardMenuAction) {
 						</InboxAvatarTooltip>
 					</span>
 					<div :class="$style.top">
-						<!-- Cards and Dividers: the unread dot follows the title text. A long title shrinks, not the dot. -->
 						<div :class="$style.titleRow">
 							<N8nTooltip
 								as-child
@@ -341,14 +324,13 @@ function onMenuSelect(action: CardMenuAction) {
 								:content-class="$style.titleTooltip"
 							>
 								<template #content>{{ cardTitle }}</template>
-								<N8nText ref="titleRef" :bold="boldTitle" tag="h3" :class="$style.cardTitle">{{
+								<N8nText ref="titleRef" :bold="unread" tag="h3" :class="$style.cardTitle">{{
 									cardTitle
 								}}</N8nText>
 							</N8nTooltip>
-							<InboxUnreadDot v-if="unread && !isMailRow" />
 						</div>
-						<!-- Email and Compact: the time, then the dot. A read row has no dot and no gap. -->
-						<div v-if="isMailRow" :class="$style.trailing">
+						<!-- The time, then the dot. A read row has no dot and no gap. -->
+						<div :class="$style.trailing">
 							<N8nText
 								:class="$style.time"
 								size="xsmall"
@@ -359,77 +341,31 @@ function onMenuSelect(action: CardMenuAction) {
 							</N8nText>
 							<InboxUnreadDot v-if="unread" />
 						</div>
-					</div>
-					<div v-if="!isMailRow" :class="[$style.second, $style.meta]">
-						<!-- Keep a status click on the pill. The row click stays on the card. -->
-						<div :class="$style.statusMenu" @click.stop @keydown.stop>
-							<PrototypeStatusMenu
-								:item-id="item.id"
-								:state="cardState(item)"
-								:open-label="openLabel(item)"
-							>
-								<WorkflowReviewStatusDot
-									v-if="item.type === 'workflow_review'"
-									:state="cardState(item)"
-									:decision="item.decision"
-									size="small"
-									decorative
-								/>
-								<!-- A promotion review uses the same Open pill as a workflow review. -->
-								<WorkflowReviewStatusDot
-									v-else-if="item.type === 'promotion_review'"
-									:state="cardState(item)"
-									decision="pending"
-									size="small"
-									decorative
-								/>
-								<span
-									v-else
-									:class="[
-										$style.statusDot,
-										cardState(item) === 'closed'
-											? $style.dotClosed
-											: item.outcome === 'needs_you'
-												? $style.dotAttention
-												: $style.dotOpen,
-									]"
-								/>
-							</PrototypeStatusMenu>
-						</div>
-						<div :class="$style.metaActions">
-							<N8nText
-								v-if="item.type === 'promotion_review' && item.remoteError"
-								size="xsmall"
-								color="warning"
-								>{{
-									i18n.baseText(`inbox.promotionReview.remoteError.${item.remoteError}`)
-								}}</N8nText
-							>
-							<N8nText
-								:class="$style.time"
-								size="xsmall"
-								color="text-light"
-								:title="inboxCardTimeTitle(item.updatedAt)"
-							>
-								{{ inboxCardTime(item.updatedAt) }}
-							</N8nText>
-						</div>
-					</div>
-					<template v-else>
-						<N8nText size="small" color="text-light" :class="[$style.second, $style.actorLine]">{{
-							actorLine
-						}}</N8nText>
-						<N8nText
-							v-if="variant === 'email'"
-							size="small"
-							color="text-light"
-							:class="$style.preview"
-							data-test-id="inbox-row-preview"
-							>{{ previewText }}</N8nText
+						<!-- The action covers the time group on hover. The group keeps its space. -->
+						<N8nTooltip
+							v-if="canToggleUnread"
+							as-child
+							placement="top"
+							:content="toggleUnreadLabel"
 						>
-					</template>
+							<N8nIconButton
+								:class="$style.quickAction"
+								variant="ghost"
+								size="xsmall"
+								:icon="toggleUnreadIcon"
+								:aria-label="toggleUnreadLabel"
+								data-test-id="inbox-row-toggle-unread"
+								@click.stop="toggleUnread"
+								@keydown.enter.stop
+								@keydown.space.stop
+							/>
+						</N8nTooltip>
+					</div>
+					<N8nText size="small" color="text-light" :class="[$style.second, $style.actorLine]">{{
+						actorLine
+					}}</N8nText>
 				</div>
-			</component>
+			</div>
 		</template>
 		<!-- Hover on the close row explains what it does. -->
 		<template #item-label="{ item: menuItem, ui }">
@@ -453,72 +389,26 @@ function onMenuSelect(action: CardMenuAction) {
 }
 
 .row {
-	// The avatar column is as wide as the avatar. The Compact row uses a smaller one.
-	--inbox-row--avatar-size: var(--spacing--md);
+	// The avatar column is as wide as the avatar.
+	--inbox-row--avatar-size: var(--spacing--sm);
 	cursor: pointer;
 	min-width: 0;
-}
-
-// Cards: the product card, one box for each row.
-.cards {
-	padding: var(--spacing--xs);
-	align-items: stretch;
-	border: var(--border-width) solid var(--border-color);
-}
-
-.cards:hover:not(.selected) {
-	background-color: var(--background--hover);
-	border-color: transparent;
-}
-
-.cards:focus-visible {
-	border-color: var(--focus--border-color);
-}
-
-// Dividers: the card content without the box. The list draws a line between rows.
-.dividers {
-	padding: var(--spacing--xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
 	border-radius: var(--radius);
 }
 
-.dividers:hover:not(.selected) {
+.row:hover:not(.selected) {
 	background-color: var(--background--hover);
 }
 
-.email,
-.compact {
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border-radius: var(--radius);
-}
-
-// After the shared padding, so the block padding wins. The smaller avatar replaces the one of `.row`.
-.compact {
-	--inbox-row--avatar-size: var(--spacing--sm);
-	padding-block: var(--spacing--3xs);
-}
-
-.email:hover:not(.selected),
-.compact:hover:not(.selected) {
-	background-color: var(--background--hover);
-}
-
-.dividers:focus-visible,
-.email:focus-visible,
-.compact:focus-visible {
+.row:focus-visible {
 	outline: var(--focus--border-width) solid var(--focus--outline-color);
 	outline-offset: calc(-1 * var(--focus--border-width));
 }
 
-.cards.selected,
-.dividers.selected {
-	background-color: var(--background--active);
-	border-color: transparent;
-}
-
-// A solid tint, so the open row stands out from hover in the dense lists.
+// A solid tint, so the open row stands out from hover in the dense list.
 // The unread dot gets a halo in the color of the page. A blue dot would sink into the tint.
-.email.selected,
-.compact.selected {
+.row.selected {
 	--unread-dot--halo-width: var(--spacing--5xs);
 	--unread-dot--halo-color: var(--background--surface);
 	background-color: var(--background--info);
@@ -528,15 +418,10 @@ function onMenuSelect(action: CardMenuAction) {
 	display: grid;
 	grid-template-columns: var(--inbox-row--avatar-size) minmax(0, 1fr);
 	column-gap: var(--spacing--2xs);
-	row-gap: var(--spacing--2xs);
+	row-gap: var(--spacing--5xs);
 	align-items: center;
 	width: 100%;
 	min-width: 0;
-}
-
-.email .rowGrid,
-.compact .rowGrid {
-	row-gap: var(--spacing--5xs);
 }
 
 // The avatar sits in the first line of the text column.
@@ -548,6 +433,7 @@ function onMenuSelect(action: CardMenuAction) {
 }
 
 .top {
+	position: relative;
 	grid-column: 2;
 	grid-row: 1;
 	display: flex;
@@ -560,7 +446,6 @@ function onMenuSelect(action: CardMenuAction) {
 	display: flex;
 	flex: 1 1 auto;
 	align-items: center;
-	gap: var(--spacing--3xs);
 	min-width: 0;
 }
 
@@ -570,6 +455,29 @@ function onMenuSelect(action: CardMenuAction) {
 	flex-shrink: 0;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+// The action sits on top of the time group, out of the flow. The row keeps its size.
+// It stays in the tab order while it is invisible.
+.quickAction {
+	position: absolute;
+	top: 50%;
+	right: calc(-1 * var(--spacing--4xs));
+	transform: translateY(-50%);
+	opacity: 0;
+	pointer-events: none;
+}
+
+// Hover and keyboard focus show the action. The time group hides but keeps its space.
+.hasQuickAction:is(:hover, :focus-visible, :has(:focus-visible)) {
+	.quickAction {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	.trailing {
+		visibility: hidden;
+	}
 }
 
 .cardTitle {
@@ -596,51 +504,6 @@ function onMenuSelect(action: CardMenuAction) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-// A muted preview of the description. It stops after two lines.
-.preview {
-	grid-column: 2;
-	grid-row: 3;
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 2;
-	line-clamp: 2;
-	overflow: hidden;
-	min-width: 0;
-}
-
-.meta {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-}
-.statusMenu {
-	flex: 0 1 auto;
-	min-width: 0;
-}
-.statusDot {
-	flex-shrink: 0;
-	width: var(--font-size--3xs);
-	height: var(--font-size--3xs);
-	border-radius: 50%;
-}
-.dotOpen {
-	background-color: var(--color--blue-500);
-}
-.dotAttention {
-	background-color: var(--color--yellow-500);
-}
-.dotClosed {
-	background-color: var(--color--neutral-500);
-}
-.metaActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	margin-left: auto;
-	flex-shrink: 0;
 }
 
 .time {

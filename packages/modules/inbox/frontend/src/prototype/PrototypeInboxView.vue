@@ -7,7 +7,6 @@ import type {
 	InboxWorkflowReviewItem,
 } from '@n8n/api-types';
 import { N8nResizeWrapper, useResizablePanel } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 // Old shows the components of master. New shows the copies in ./new.
@@ -23,7 +22,7 @@ import NewPromotionReviewDetail from './new/promotions/PromotionReviewDetail.vue
 import NewWorkflowReviewDetail from './new/reviews/WorkflowReviewDetail.vue';
 import NewSelfHealingResultDetail from './new/self-healing/SelfHealingResultDetail.vue';
 import { promotionActivityReview, prototypeItems } from './prototype.fixtures';
-import { PROTOTYPE_LIST_VARIANTS, prototypeSession } from './prototype.session';
+import { prototypeSession } from './prototype.session';
 import { usePrototypeRequests } from './usePrototypeRequests';
 
 // The same frame as InboxView. That view reads the selection from the route and loads the
@@ -48,7 +47,6 @@ const sidebarWidth = sidebarResizer.width;
 const activeTab = ref<InboxState>('open');
 // New is the layout under construction. Old is the product as it is on master.
 const changesLayout = ref<'new' | 'old'>('new');
-const i18n = useI18n();
 const isNew = computed(() => changesLayout.value === 'new');
 const views = computed(() =>
 	isNew.value
@@ -230,26 +228,6 @@ onBeforeUnmount(() => {
 			</div>
 		</main>
 		<div :class="$style.switches">
-			<!-- The list style only applies to the New list. -->
-			<div
-				v-if="isNew"
-				:class="$style.layoutSwitch"
-				role="group"
-				:aria-label="i18n.baseText('inbox.prototype.listVariant.label')"
-				data-test-id="inbox-prototype-list-variant"
-			>
-				<button
-					v-for="variant in PROTOTYPE_LIST_VARIANTS"
-					:key="variant"
-					type="button"
-					:aria-pressed="prototypeSession.listVariant === variant"
-					:class="{ [$style.active]: prototypeSession.listVariant === variant }"
-					:data-test-id="`inbox-prototype-list-variant-${variant}`"
-					@click="prototypeSession.listVariant = variant"
-				>
-					{{ i18n.baseText(`inbox.prototype.listVariant.${variant}`) }}
-				</button>
-			</div>
 			<div :class="$style.layoutSwitch" role="group" aria-label="Changes layout">
 				<button
 					type="button"
@@ -327,17 +305,14 @@ onBeforeUnmount(() => {
 	overflow: auto;
 }
 
-// On a narrow window the two groups wrap and stay inside the content area.
+// On a narrow window the toggle stays inside the content area.
 .switches {
 	position: absolute;
 	z-index: 20;
 	right: var(--spacing--lg);
 	bottom: var(--spacing--lg);
 	display: flex;
-	flex-wrap: wrap;
 	justify-content: flex-end;
-	align-items: center;
-	gap: var(--spacing--xs);
 	max-width: calc(100% - 2 * var(--spacing--lg));
 }
 
