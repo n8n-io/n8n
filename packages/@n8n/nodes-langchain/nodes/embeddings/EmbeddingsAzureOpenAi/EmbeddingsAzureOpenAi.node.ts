@@ -329,8 +329,6 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			azureOpenAIApiDeploymentName: modelName,
 			// instance name only needed to set base url
 			azureOpenAIApiInstanceName: !target.endpoint ? target.resourceName : undefined,
-			// An explicit '' keeps LangChain from reading AZURE_OPENAI_API_KEY when Entra ID is used
-			azureOpenAIApiKey: apiKey ?? '',
 			azureADTokenProvider: tokenProvider,
 			azureOpenAIApiVersion: target.apiVersion,
 			// azureOpenAIEndpoint and configuration.baseURL are both ignored here
@@ -344,6 +342,9 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				},
 			},
 			...options,
+			// Set after options so nothing can unset it. An explicit '' keeps LangChain from
+			// reading AZURE_OPENAI_API_KEY when Entra ID is used
+			azureOpenAIApiKey: apiKey ?? '',
 		});
 
 		return {
