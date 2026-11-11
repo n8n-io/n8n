@@ -241,7 +241,7 @@ async function onAction(action: SelfHealingResultAction) {
 			const request = { target, projectId: target.projectId, result };
 			if (responseLost) chatRetry.value = { ...request, reason: 'unconfirmed' };
 			else await startChat(request);
-		} else if (action !== 'dismiss') {
+		} else {
 			if (responseLost && action === 'approve-and-publish') {
 				showMessage({
 					type: 'warning',
