@@ -128,7 +128,7 @@
       "glob@7": "7.2.3",
       "jws@3": "3.2.3",
       "jws@4": "4.0.1",
-      "@modelcontextprotocol/sdk": "1.31.0",
+      "@modelcontextprotocol/sdk": "1.32.0",
       "langchain": "1.2.3",
       "@langchain/langgraph-checkpoint@<1.0.3": "1.0.3",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
