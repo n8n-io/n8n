@@ -45,6 +45,7 @@ jobs:
       ref: ${{ github.sha }}
       nodeVersion: ${{ matrix.node-version }}
       collectCoverage: ${{ matrix.node-version == '24.22.2' }}
+      warmPrCache: ${{ matrix.node-version == '26.13.0' }}
     secrets: inherit
 
   lint:
