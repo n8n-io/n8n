@@ -61,7 +61,6 @@ function mockRestrictions(nodeTypes: Scopes, credentialTypes: Scopes = {}) {
 
 const WORKFLOW_ID = 'workflow-1';
 
-/** The import already added these nodes to the open canvas. */
 function putOnCanvas(...nodes: INode[]) {
 	useUIStore().currentView = VIEWS.WORKFLOW;
 	useWorkflowsStore().setWorkflowId(WORKFLOW_ID);
@@ -250,7 +249,6 @@ describe('useRestrictedImportToast', () => {
 		const { queryByTestId, findByTestId } = renderMessage();
 		expect(queryByTestId('policy-violation-jump')).toBeInTheDocument();
 
-		// The user undoes the paste.
 		useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID)).setNodes([]);
 
 		await vi.waitFor(() => expect(queryByTestId('policy-violation-jump')).not.toBeInTheDocument());

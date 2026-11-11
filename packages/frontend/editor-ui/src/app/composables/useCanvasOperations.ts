@@ -3249,7 +3249,6 @@ export function useCanvasOperations() {
 			viewport?: ViewportBoundaries;
 			trackEvents?: boolean;
 			setStateDirty?: boolean;
-			/** Warn when the imported nodes include a restricted type. Only user imports opt in. */
 			warnRestrictedNodes?: boolean;
 		} = {},
 	): Promise<WorkflowDataUpdate> {
