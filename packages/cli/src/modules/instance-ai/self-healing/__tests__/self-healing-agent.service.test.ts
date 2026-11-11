@@ -293,6 +293,33 @@ describe('SelfHealingAgentService', () => {
 		);
 	});
 
+	it('adds the credits of verification helper calls to the run total', async () => {
+		credits.claimHelperUsage.mockResolvedValue(0.05);
+		vi.mocked(streamAgentRun).mockImplementationOnce(async () => {
+			const { onHelperUsage } = adapter.createContext.mock.calls[0][1] ?? {};
+			const report = {
+				helper: 'verification-simulation-fixtures',
+				model: 'anthropic/claude-haiku-5-5',
+				usage: { promptTokens: 2000, completionTokens: 500, totalTokens: 2500 },
+				reportId: 'report-1',
+			};
+			await onHelperUsage?.(report);
+			await onHelperUsage?.({ ...report, reportId: 'report-2' });
+			return stream;
+		});
+
+		const result = await service.execute(input, options);
+
+		expect(credits.claimHelperUsage).toHaveBeenCalledWith(
+			user,
+			options.threadId,
+			options.runId,
+			expect.objectContaining({ reportId: 'report-1' }),
+			'self_healing',
+		);
+		expect(result.usage).toMatchObject({ credits: 0.35 });
+	});
+
 	it('names the triggering workflow and binds verification', async () => {
 		verifyFirst(baseline.workflowId);
 		const result = await service.execute(input, options);

@@ -63,10 +63,11 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 		mockGenerateFixtures.mockResolvedValue({});
 	});
 
-	it('passes the main and utility models to classification and fixture generation', async () => {
+	it('passes the models and usage callback to classification and fixture generation', async () => {
 		const model = 'anthropic/claude-opus-5-5';
 		const utilityModel = 'anthropic/claude-haiku-5-5';
 		const modelFetch = vi.fn();
+		const onModelUsage = vi.fn();
 		mockClassify.mockResolvedValue([
 			{
 				nodeName: 'Send It',
@@ -83,13 +84,14 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 			model,
 			utilityModel,
 			modelFetch,
+			onModelUsage,
 		});
 
 		expect(mockClassify).toHaveBeenCalledWith(
-			expect.objectContaining({ model, utilityModel, modelFetch }),
+			expect.objectContaining({ model, utilityModel, modelFetch, onModelUsage }),
 		);
 		expect(mockGenerateFixtures).toHaveBeenCalledWith(
-			expect.objectContaining({ model, utilityModel, modelFetch }),
+			expect.objectContaining({ model, utilityModel, modelFetch, onModelUsage }),
 		);
 	});
 

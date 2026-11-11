@@ -24,7 +24,7 @@ import {
 import type { CredentialMap } from './resolve-credentials';
 import type { FetchFn } from '@n8n/agents';
 
-import type { ModelConfig } from '../../types';
+import type { HelperModelUsageReport, ModelConfig } from '../../types';
 import type {
 	NodeSimulationVerdict,
 	WorkflowBuildOutcome,
@@ -86,6 +86,8 @@ export async function reconcileSimulationPlan(args: {
 	utilityModel?: ModelConfig;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
+	/** Receives the classifier call's token usage so the host can bill it. */
+	onModelUsage?: (report: HelperModelUsageReport) => Promise<void>;
 }): Promise<SimulationPlanPatch | undefined> {
 	const { buildOutcome, workflow, availableCredentials, model, utilityModel, modelFetch } = args;
 
@@ -140,6 +142,7 @@ export async function reconcileSimulationPlan(args: {
 			model,
 			utilityModel,
 			modelFetch,
+			onModelUsage: args.onModelUsage,
 		});
 		freshVerdictByName = new Map(freshVerdicts.map((verdict) => [verdict.nodeName, verdict]));
 	}

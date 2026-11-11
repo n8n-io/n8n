@@ -1,7 +1,13 @@
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isSelfHealingResourceId, type BuilderUsageItem, type TraceStatus } from '@n8n/instance-ai';
+import {
+	isSelfHealingResourceId,
+	tokenUsageToBuilderUsageItems,
+	type BuilderUsageItem,
+	type HelperModelUsageReport,
+	type TraceStatus,
+} from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
@@ -101,6 +107,49 @@ export class InstanceAiCreditService {
 	 * `thread.metadata.creditsUsed` is a best-effort *display* total only — the
 	 * authoritative ledger is the service-side claimedCount.
 	 */
+	/**
+	 * Claims the usage of one helper LLM call, such as the verification classifier
+	 * or the simulation fixtures. Returns the claimed credits. Best effort: a
+	 * billing failure is logged and never fails the helper.
+	 */
+	async claimHelperUsage(
+		user: User,
+		threadId: string,
+		runId: string,
+		report: HelperModelUsageReport,
+		source: 'chat' | 'self_healing' = 'chat',
+	): Promise<number | undefined> {
+		try {
+			return await this.claimRunUsage(
+				user,
+				threadId,
+				`${runId}:helper:${report.helper}:${report.reportId}`,
+				tokenUsageToBuilderUsageItems(report.model, report.usage),
+				'completed',
+				source,
+			);
+		} catch (error) {
+			this.logger.warn('Failed to claim Assistant helper usage', {
+				threadId,
+				runId,
+				helper: report.helper,
+				error: getErrorMessage(error),
+			});
+			return undefined;
+		}
+	}
+
+	/** `claimHelperUsage` bound to one run, for the context's `onHelperUsage` hook. */
+	helperUsageClaimer(
+		user: User,
+		threadId: string,
+		runId: string,
+	): (report: HelperModelUsageReport) => Promise<void> {
+		return async (report) => {
+			await this.claimHelperUsage(user, threadId, runId, report);
+		};
+	}
+
 	async claimRunUsage(
 		user: User,
 		threadId: string,

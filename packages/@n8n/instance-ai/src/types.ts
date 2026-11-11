@@ -13,6 +13,7 @@ import type {
 	ObservationalMemoryConfig,
 	ScopedMemoryTaskEvent,
 	Telemetry,
+	TokenUsage,
 	Workspace,
 } from '@n8n/agents';
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
@@ -1755,6 +1756,8 @@ export interface InstanceAiContext {
 	utilityModelId?: ModelConfig;
 	/** Transport for those utility LLM calls. It carries no run labels. */
 	modelFetch?: FetchFn;
+	/** Bills the token usage of one helper LLM call. Best effort: it never throws. */
+	onHelperUsage?: (report: HelperModelUsageReport) => Promise<void>;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -2006,6 +2009,19 @@ export interface McpServerConfig {
 		/** User who owns the registry MCP connection. */
 		userId?: string;
 	};
+}
+
+// ── Helper model usage ───────────────────────────────────────────────────────
+
+/** Token usage of one helper LLM call, such as the destructiveness classifier. */
+export interface HelperModelUsageReport {
+	/** Helper name, for example `verification-simulation-fixtures`. */
+	helper: string;
+	/** Catalog model id the host prices the call by, for example `anthropic/claude-haiku-5-5`. */
+	model: string;
+	usage: TokenUsage;
+	/** Unique for each call, so hosts can build idempotent billing keys. */
+	reportId: string;
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────

@@ -25,7 +25,7 @@ import { AGENT_TOOL_NODE_TYPE, createVerificationGraph } from './verification-gr
 import type { Logger } from '../../logger';
 import type { AnthropicThinkingEffort, FetchFn } from '@n8n/agents';
 
-import type { ModelConfig } from '../../types';
+import type { HelperModelUsageReport, ModelConfig } from '../../types';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
 
@@ -45,6 +45,8 @@ export interface ClassifyNodesForSimulationInput {
 	utilityModel?: ModelConfig;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
+	/** Receives the helper call's token usage so the host can bill it. */
+	onModelUsage?: (report: HelperModelUsageReport) => Promise<void>;
 	logger?: Logger;
 }
 
@@ -347,6 +349,7 @@ async function classifyAmbiguousNodes(
 	model?: ModelConfig,
 	logger?: Logger,
 	modelFetch?: FetchFn,
+	onModelUsage?: (report: HelperModelUsageReport) => Promise<void>,
 ): Promise<NodeSimulationVerdict[]> {
 	const userText = [
 		'Classify the following n8n workflow nodes.',
@@ -363,6 +366,7 @@ async function classifyAmbiguousNodes(
 		userText,
 		schema: LlmVerdictSchema,
 		modelFetch,
+		onModelUsage,
 	});
 	if (!result.ok) {
 		logger?.warn(
@@ -432,6 +436,7 @@ export async function classifyNodesForSimulation(
 				input.utilityModel ?? input.model,
 				input.logger,
 				input.modelFetch,
+				input.onModelUsage,
 			)) {
 				verdictByName.set(verdict.nodeName, verdict);
 			}

@@ -594,6 +594,8 @@ export class InstanceAiAdapterService {
 			modelId?: ModelConfig;
 			/** Host-resolved utility model. Absent → utility calls use `modelId`. */
 			utilityModelId?: ModelConfig;
+			/** Bills the token usage of helper LLM calls. */
+			onHelperUsage?: InstanceAiContext['onHelperUsage'];
 			/** Transport for those utility LLM calls. */
 			modelFetch?: FetchFn;
 			/** Effective data-sharing setting for this run. Absent → the env value. */
@@ -621,6 +623,7 @@ export class InstanceAiAdapterService {
 			assistantSkillsEnabled,
 			modelId,
 			utilityModelId,
+			onHelperUsage,
 			modelFetch,
 			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
@@ -660,6 +663,7 @@ export class InstanceAiAdapterService {
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
 			...(utilityModelId ? { utilityModelId } : {}),
+			...(onHelperUsage ? { onHelperUsage } : {}),
 			modelFetch,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,

@@ -8,11 +8,15 @@
  * helper's own tests mock `eval-agents`.
  */
 
+import { randomUUID } from 'node:crypto';
+
+import { getCatalogModelId } from '@n8n/agents';
 import type { AnthropicThinkingEffort, FetchFn, ModelConfig } from '@n8n/agents';
 import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import type { z } from 'zod';
 
 import { createEvalAgent, extractText } from './eval-agents';
+import type { HelperModelUsageReport } from '../types';
 
 export type ValidatedJsonResult<T> =
 	| { ok: true; data: T }
@@ -34,6 +38,8 @@ export interface GenerateValidatedJsonOptions<T> {
 	schema: z.ZodType<T>;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
+	/** Receives the call's token usage so the host can bill it. */
+	onModelUsage?: (report: HelperModelUsageReport) => Promise<void>;
 }
 
 /** Tracing must never block a model call: when it fails, the call runs without spans. */
@@ -43,6 +49,25 @@ async function helperTelemetry(agentName: string) {
 		return getCurrentHelperTelemetry(agentName);
 	} catch {
 		return undefined;
+	}
+}
+
+/** Billing must never fail the helper call. */
+async function reportUsage<T>(
+	agentName: string,
+	options: GenerateValidatedJsonOptions<T>,
+	usage: HelperModelUsageReport['usage'],
+): Promise<void> {
+	if (!options.onModelUsage || options.model === undefined) return;
+	try {
+		await options.onModelUsage({
+			helper: agentName,
+			model: getCatalogModelId(options.model),
+			usage,
+			reportId: randomUUID(),
+		});
+	} catch {
+		// The host logs its own billing failures.
 	}
 }
 
@@ -66,6 +91,7 @@ export async function generateValidatedJson<T>(
 		const result = await llm.generate([
 			{ role: 'user' as const, content: [{ type: 'text' as const, text: options.userText }] },
 		]);
+		if (result.usage) await reportUsage(agentName, options, result.usage);
 		text = extractText(result);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);

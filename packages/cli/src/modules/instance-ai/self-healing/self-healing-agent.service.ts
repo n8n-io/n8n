@@ -28,6 +28,7 @@ import {
 	MAX_STEPS,
 	type BuilderUsageItem,
 	OutsideThreadProjectError,
+	type HelperModelUsageReport,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
@@ -183,6 +184,7 @@ export class SelfHealingAgentService {
 		let tracing: InstanceAiTraceContext | undefined;
 		let modelId: ModelConfig | undefined;
 		let stream: StreamRunResult | undefined;
+		let helperCredits = 0;
 		let providerStream = false;
 		const result: SelfHealingRunResult = {
 			threadId,
@@ -222,7 +224,16 @@ export class SelfHealingAgentService {
 
 			const targets: Targets = new Map([[baseline.workflowId, baseline]]);
 			const candidateFiles: CandidateFiles = new Map();
-			const environment = await this.prepareEnvironment({ ...input, user }, targets, options);
+			const environment = await this.prepareEnvironment(
+				{ ...input, user },
+				targets,
+				options,
+				async (report) => {
+					helperCredits +=
+						(await this.credits.claimHelperUsage(user, threadId, runId, report, 'self_healing')) ??
+						0;
+				},
+			);
 			modelId = environment.modelId;
 			const { context, proxy, admit } = environment;
 
@@ -316,7 +327,9 @@ export class SelfHealingAgentService {
 					'self_healing',
 				);
 				if ('credits' in result.usage) {
-					result.usage.credits = credits ?? null;
+					// Verification helpers claim their calls during the run; count them in the total.
+					result.usage.credits =
+						credits === undefined && helperCredits === 0 ? null : (credits ?? 0) + helperCredits;
 				}
 			} catch (error) {
 				this.logger.warn('Could not claim self-healing usage.', {
@@ -436,6 +449,7 @@ export class SelfHealingAgentService {
 		input: SelfHealingRunInput,
 		targets: Targets,
 		options: SelfHealingRunOptions,
+		onHelperUsage: (report: HelperModelUsageReport) => Promise<void>,
 	) {
 		const { user } = input;
 		const { signal, runId, threadId } = options;
@@ -467,6 +481,7 @@ export class SelfHealingAgentService {
 			searchProxyConfig: proxy.searchProxyConfig,
 			modelId,
 			utilityModelId,
+			onHelperUsage,
 			modelFetch: this.models.getModelFetch(),
 			allowSendingParameterValues: shareParameters,
 		});

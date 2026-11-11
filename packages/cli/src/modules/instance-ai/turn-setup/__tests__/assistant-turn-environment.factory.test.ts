@@ -70,7 +70,7 @@ function createSetupFactory() {
 			resolveUtilityModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(() => undefined),
 		},
-		creditService: { claimRunUsage: vi.fn() },
+		creditService: { claimRunUsage: vi.fn(), helperUsageClaimer: vi.fn(() => vi.fn()) },
 		instanceAiErrorReporter: {
 			withBoundary: vi.fn(async (_c, _x, fn: () => unknown) => await fn()),
 		},
