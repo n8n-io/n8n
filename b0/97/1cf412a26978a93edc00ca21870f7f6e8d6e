@@ -1,0 +1,83 @@
+packages/workflow/src/interfaces.ts
+  s_db33480b8c9c64::t_b8bdf91cd36d74 3464
+  s_db33480b8c9c64::t_ee5a09a4353821 3021,3024
+  s_db33480b8c9c64::t_81f5ac8a53ac6b 3010-3020,3022-3023,3025-3027
+  s_db33480b8c9c64::t_b8ad951225a273 3009
+  s_db33480b8c9c64::t_1d546b3d6bbe3c 3269
+  s_db33480b8c9c64::t_2264a96533a955 3465
+  s_db33480b8c9c64::t_ea845806739bf1 3268
+packages/core/src/execution-engine/__tests__/declarative-poll.test.ts
+  s_db33480b8c9c64::t_5e8ae21fc17cc1 138,141,143,145-146,148,150-156
+  s_db33480b8c9c64::t_a115f29d78e209 1-8,10-50,56-63,65-103,105-112,174-179,181-183,185-196,206-209,211-213,227-234,240-245,247-250,252-254,258-267,269-281,283-285,292-295,300-301,303-304,316
+  s_db33480b8c9c64::t_cc081f3d787476 180
+  s_db33480b8c9c64::t_37c79de03fef82 286-291
+  s_db33480b8c9c64::t_e4c2df1dc6f50d 236-239,296-299
+  s_db33480b8c9c64::t_cfd45e51f98f13 51-55,64
+  s_db33480b8c9c64::t_179028dd4715cb 9
+  s_db33480b8c9c64::t_5c79073ab37677 104,120,125,135,184,210,222,235,282,302
+  s_db33480b8c9c64::t_3164dae6b99684 268
+  s_db33480b8c9c64::t_76dfcc394674a9 246,251
+  s_db33480b8c9c64::t_0954cdf6a0f67d 113-119,121-124,126-134,136-137,139-140,142,144,147,149,157-173
+  s_db33480b8c9c64::t_c6ba65dbe60354 197-205
+  s_db33480b8c9c64::t_9d4a35b1792141 214-221,223-226
+  s_db33480b8c9c64::t_92bb4b772c3a12 305-315
+  s_db33480b8c9c64::t_a825fbde1c0e64 255-257
+packages/core/src/nodes-loader/directory-loader.ts
+  s_db33480b8c9c64::t_9588136cd71807 410-415
+  s_db33480b8c9c64::t_ea201f820bce39 26
+packages/core/src/execution-engine/standalone-routing.ts
+  s_db33480b8c9c64::t_866a4305a3ce43 49,51-53
+  s_db33480b8c9c64::t_b4be89df29097b 50
+packages/core/src/execution-engine/__tests__/standalone-routing.test.ts
+  s_db33480b8c9c64::t_7c9833549296d1 92-103
+packages/core/src/nodes-loader/__tests__/directory-loader.test.ts
+  s_db33480b8c9c64::t_09b38b98df9b2d 1117
+  s_db33480b8c9c64::t_b6bf1656a7e677 1075
+  s_db33480b8c9c64::t_8592308e889c44 1125-1144
+  s_db33480b8c9c64::t_a9462b5c48b0cf 31,1067-1074,1076-1116,1118-1124
+  s_db33480b8c9c64::t_db9815623b3936 1145
+packages/quality/testing/playwright/tests/e2e/scheduling/declarative-poll-trigger.spec.ts
+  s_db33480b8c9c64::t_3194d86ecf0e37 76
+  s_db33480b8c9c64::t_3164dae6b99684 16
+  s_db33480b8c9c64::t_48940e53334c93 1-15,17-75,78-103
+  s_db33480b8c9c64::t_08ac7402527f5d 77
+packages/nodes-base/nodes/E2eTest/E2eTestDeclarativePollingTrigger.node.ts
+  s_db33480b8c9c64::t_b6fa63077c00b2 3
+  s_db33480b8c9c64::t_17bf8402b0dd34 1-2,4-43
+packages/nodes-base/nodes/E2eTest/E2eTestDeclarativePollingTrigger.node.json
+  s_db33480b8c9c64::t_17bf8402b0dd34 1-18
+packages/core/src/execution-engine/declarative-poll.ts
+  s_db33480b8c9c64::t_f7831887fb5348 20
+  s_db33480b8c9c64::t_d01c489f186fba 37
+  s_db33480b8c9c64::t_5531f30c1638d3 18
+  s_db33480b8c9c64::t_07885dc0310ba0 96
+  s_db33480b8c9c64::t_f70acfd1fed13d 69
+  s_db33480b8c9c64::t_8c9d2a635e67f5 1,10
+  s_db33480b8c9c64::t_0419633bcb4a4a 82
+  s_db33480b8c9c64::t_aeda4922071f77 106
+  s_db33480b8c9c64::t_7c14efa979d43e 107-109
+  s_db33480b8c9c64::t_3d1050d71c6f9a 3,44
+  s_db33480b8c9c64::t_c0e24a69b9e2c3 64-66
+  s_db33480b8c9c64::t_026ec23d7f977d 2,4-9,11-17,19,21-36,38-43,45-55,57-63,67-68,70-81,83-95,97-105,110-114
+  s_db33480b8c9c64::t_4e3b1670d0bb2b 56
+packages/nodes-base/package.json
+  s_db33480b8c9c64::t_17bf8402b0dd34 553
+packages/cli/src/load-nodes-and-credentials.ts
+  s_db33480b8c9c64::t_9fe19d06e82b25 97-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0971cf412a26978a93edc00ca21870f7f6e8d6e",
+  "prompts": {},
+  "sessions": {
+    "s_db33480b8c9c64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a809806-fcd2-4a06-904e-42634dd34dd8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
