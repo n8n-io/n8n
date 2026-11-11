@@ -29,6 +29,13 @@ import type { JiraDynamicWebhook, JiraProject, JiraWebhook } from './types';
 
 const JWT_CLOCK_TOLERANCE_SECONDS = 60;
 
+/** A site lookup failure is worth a retry unless Atlassian answered with a permanent 4xx. */
+function isRetryableLookupError(error: unknown): boolean {
+	if (!(error instanceof NodeApiError)) return false;
+	const status = Number(error.httpCode);
+	return !(status >= 400 && status < 500) || status === 408 || status === 429;
+}
+
 /**
  * Verifies the signed token that Atlassian sends with every Cloud (OAuth2) dynamic-webhook
  * delivery. The token is a JWT signed with HS256 using the OAuth app client secret, with the
@@ -110,8 +117,8 @@ async function verifyCloudOAuth2Request(
 	// `getAtlassianCloudId` caches the resolved cloudId per credential, so this is a lookup
 	// only on the first delivery per process. A failed lookup request is not an auth failure:
 	// answer 503 (which Atlassian retries) rather than 403 (which it does not), so a transient
-	// error does not drop a genuine event. A site the credential cannot reach is permanent, so
-	// it gets 403 and is not retried.
+	// error does not drop a genuine event. A permanent failure (the credential cannot reach
+	// the site, or Atlassian refuses the lookup) gets 403 and is not retried.
 	let siteCloudId: string;
 	try {
 		siteCloudId = await getAtlassianCloudId.call(
@@ -124,7 +131,7 @@ async function verifyCloudOAuth2Request(
 		this.logger.warn('Jira Trigger could not resolve the configured site to verify a webhook', {
 			error: error instanceof Error ? error.message : String(error),
 		});
-		return reject(error instanceof NodeApiError ? 503 : 403);
+		return reject(isRetryableLookupError(error) ? 503 : 403);
 	}
 
 	if (tokenCloudId !== siteCloudId) {

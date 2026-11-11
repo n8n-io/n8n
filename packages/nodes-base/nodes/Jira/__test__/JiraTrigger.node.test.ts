@@ -1077,6 +1077,23 @@ describe('JiraTrigger', () => {
 			expect(responseData).toEqual({ noWebhookResponse: true });
 		});
 
+		test('should answer 403 when Atlassian refuses the site lookup', async () => {
+			const { responseData, response } = await testWebhookTriggerNode(JiraTrigger, {
+				node,
+				credentials,
+				bodyData: event,
+				headerData: { authorization: `Bearer ${sign()}` },
+				helpers: {
+					httpRequestWithAuthentication: vi
+						.fn()
+						.mockRejectedValue({ message: 'Unauthorized', httpCode: '401' }),
+				},
+			});
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
 		test('should answer 403 when the credential cannot reach the configured site', async () => {
 			// A site that never matches is permanent, so the answer must not be retryable.
 			const { responseData, response } = await testWebhookTriggerNode(JiraTrigger, {
