@@ -96,9 +96,13 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MEMORY_MODEL')
 	memoryModel: string = '';
 
-	/** Token threshold for Reflector to condense observations. */
+	/**
+	 * Token threshold for the Reflector to condense observations.
+	 * When unset, the threshold is a share of the model's window or of the max window, whichever is smaller.
+	 * When set, this fixed value replaces that share.
+	 */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
-	reflectorObservationTokens: number = 40_000;
+	reflectorObservationTokens?: number;
 
 	/**
 	 * Whether n8n Assistant summarizes the conversation into memory during a long turn, between tool calls.

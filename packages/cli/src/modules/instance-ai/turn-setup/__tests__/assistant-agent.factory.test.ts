@@ -39,6 +39,7 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 		) => {
 			observationalMemory: {
 				observerThresholdTokens: number;
+				reflectorThresholdTokens?: number;
 				model?: ModelConfig;
 				onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void>;
 				policy?: Record<string, unknown>;
@@ -72,6 +73,27 @@ describe('AssistantAgentFactory — createAgentMemoryOptions', () => {
 			'run-1',
 		).observationalMemory;
 		expect(observerThresholdTokens).toBe(8_000);
+	});
+
+	it('passes a set reflector threshold to the SDK', () => {
+		const service = buildService();
+		const { observationalMemory } = service.createAgentMemoryOptions(
+			{ id: 'user-1' } as User,
+			'thread-1',
+			'run-1',
+		);
+		expect(observationalMemory.reflectorThresholdTokens).toBe(12_000);
+	});
+
+	it('leaves the reflector threshold unset so the SDK uses the reflect share', () => {
+		const service = buildService();
+		service.instanceAiConfig = { observerMessageTokens: 8_000 };
+		const { observationalMemory } = service.createAgentMemoryOptions(
+			{ id: 'user-1' } as User,
+			'thread-1',
+			'run-1',
+		);
+		expect(observationalMemory).not.toHaveProperty('reflectorThresholdTokens');
 	});
 
 	it('passes the memory model to the memory tasks, and leaves it unset by default', () => {

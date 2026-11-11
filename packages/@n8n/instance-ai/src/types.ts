@@ -1997,7 +1997,8 @@ export interface InstanceAiMemoryConfig {
 	threadTtlDays?: number;
 	observationalMemory?: {
 		observerThresholdTokens: number;
-		reflectorThresholdTokens: number;
+		/** Fixed Reflector threshold. When unset, the SDK uses a share of the memory window. */
+		reflectorThresholdTokens?: number;
 		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
 		midRunObservation?: boolean;
 		/** Memory policy options, passed through to the agents SDK. Unset options use the SDK defaults. */

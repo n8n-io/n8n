@@ -320,7 +320,10 @@ export class AssistantAgentFactory {
 				model: memoryModelId,
 				observerThresholdTokens:
 					observerThresholdTokens ?? this.instanceAiConfig.observerMessageTokens,
-				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
+				// Only a set value replaces the SDK's reflect share.
+				...(this.instanceAiConfig.reflectorObservationTokens !== undefined && {
+					reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
+				}),
 				midRunObservation: this.instanceAiConfig.midRunObservation,
 				policy: this.buildObservationPolicy(observerThresholdTokens !== undefined),
 				// Observer/reflector calls run in the background outside the run's
