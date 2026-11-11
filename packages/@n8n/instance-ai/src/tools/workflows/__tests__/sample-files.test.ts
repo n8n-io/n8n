@@ -6,7 +6,7 @@ import {
 	resolveSampleFileMarkers,
 } from '../sample-files';
 
-/** Smallest size that image and file checks in built workflows have treated as real. */
+/** Lower bound for a sample to look like a real file. Agents often reject much smaller payloads. */
 const MIN_REALISTIC_BYTES = 8 * 1024;
 
 function bytesOf(mimeType: string): Buffer {
@@ -170,8 +170,21 @@ describe('resolveSampleFileMarkers', () => {
 
 		const { json, binary } = resolveSampleFileMarkers(item);
 
-		expect(json).toEqual({ image: { $sampleFile: 'video/quicktime' } });
+		expect(json).toEqual({
+			image: { $sampleFile: 'video/quicktime' },
+			$binary: { data: 'video/mp4' },
+		});
 		expect(binary).toBeUndefined();
+	});
+
+	it('keeps only the unsupported $binary entries in the JSON when some entries are supported', () => {
+		const { json, binary } = resolveSampleFileMarkers({
+			id: 'file-1',
+			$binary: { data: 'image/png', clip: 'video/mp4' },
+		});
+
+		expect(json).toEqual({ id: 'file-1', $binary: { clip: 'video/mp4' } });
+		expect(binary).toEqual({ data: createSampleFile('image/png') });
 	});
 
 	it('returns an item without markers unchanged', () => {

@@ -212,19 +212,32 @@ function replaceMarkers(value: unknown): unknown {
 	return Object.fromEntries(Object.entries(value).map(([key, v]) => [key, replaceMarkers(v)]));
 }
 
-function buildBinary(spec: unknown): Record<string, SampleFile> | undefined {
-	if (!isRecord(spec)) return undefined;
-	const entries = Object.entries(spec).flatMap(([property, mimeType]) => {
+/** Split a `$binary` spec into sample files and the entries that have no sample. */
+function buildBinary(spec: unknown): {
+	binary?: Record<string, SampleFile>;
+	unsupported?: Record<string, unknown>;
+} {
+	if (!isRecord(spec))
+		return spec === undefined ? {} : { unsupported: { [SAMPLE_BINARY_KEY]: spec } };
+	const binary: Record<string, SampleFile> = {};
+	const unsupported: Record<string, unknown> = {};
+	for (const [property, mimeType] of Object.entries(spec)) {
 		const file = typeof mimeType === 'string' ? createSampleFile(mimeType) : undefined;
-		return file ? [[property, file] as const] : [];
-	});
-	return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+		if (file) binary[property] = file;
+		else unsupported[property] = mimeType;
+	}
+	return {
+		binary: Object.keys(binary).length > 0 ? binary : undefined,
+		unsupported:
+			Object.keys(unsupported).length > 0 ? { [SAMPLE_BINARY_KEY]: unsupported } : undefined,
+	};
 }
 
 /**
  * Turn one SDK fixture item into a runtime item. `{ $sampleFile: '<mime>' }`
  * becomes base64 file data, and `$binary: { <property>: '<mime>' }` becomes
- * binary properties. Unsupported MIME types stay as they are.
+ * binary properties. Unsupported MIME types stay in the item as they are,
+ * including unsupported `$binary` entries.
  */
 export function resolveSampleFileMarkers(item: unknown): {
 	json: IDataObject;
@@ -232,7 +245,7 @@ export function resolveSampleFileMarkers(item: unknown): {
 } {
 	if (!isRecord(item)) return { json: {} };
 	const { [SAMPLE_BINARY_KEY]: binarySpec, ...rest } = item;
-	const json = replaceMarkers(rest) as IDataObject;
-	const binary = buildBinary(binarySpec);
+	const { binary, unsupported } = buildBinary(binarySpec);
+	const json = { ...(replaceMarkers(rest) as IDataObject), ...unsupported } as IDataObject;
 	return binary ? { json, binary } : { json };
 }
