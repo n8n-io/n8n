@@ -1,0 +1,26 @@
+packages/cli/src/modules/promotions.ee/promotions-push-rejected.error.ts
+  s_d00cf175ed42d2::t_4c1f7c2bc6a4ee 4-7
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_d00cf175ed42d2::t_1b1ddaec44137c 509
+  s_d00cf175ed42d2::t_2146281765b64c 520
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_d00cf175ed42d2::t_a40efa63de1c9d 324
+  s_d00cf175ed42d2::t_18104b4f0bc81b 316
+  s_d00cf175ed42d2::t_4243f7920253cd 323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1f46e49de12cd798b91b8f8a7e82173333e780bc",
+  "prompts": {},
+  "sessions": {
+    "s_d00cf175ed42d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b248cf81-ccac-49c4-853d-d4acffb5451a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

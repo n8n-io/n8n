@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_5f72bed614ce17::t_9dc8629cfefbbd 1508-1510,1523
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "50ef2584c42ca62d78d83b091cfd052d657b3991",
+  "prompts": {},
+  "sessions": {
+    "s_5f72bed614ce17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a1d4fcf-f66a-4d6f-831e-82eea3858884",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

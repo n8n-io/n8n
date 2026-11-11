@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_cb403955b20732::t_a70ed0204f4ce9 514-615
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantNodeAttachments.test.ts
+  s_cb403955b20732::t_c9be32bbbd231c 1-47,49-53,55-79
+  s_cb403955b20732::t_0c52b4cf00e44e 48,54
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_cb403955b20732::t_71906faaada7ed 2-6,33,41,54-58,206-251,331-342
+  s_cb403955b20732::t_ffaf0cc5ab1dff 100,102-103
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_cb403955b20732::t_8e3fbb7c9930a6 1414-1415
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantNodeAttachments.ts
+  s_cb403955b20732::t_2894a5ead7cbbc 21-25,29,45
+  s_cb403955b20732::t_486fdc9c8128de 1-20,26-28,30-44,46-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ca20053fec4e62d063178822ccf02bf4b3b4d3f3",
+  "prompts": {},
+  "sessions": {
+    "s_cb403955b20732": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eaabc383-c981-4501-a597-f5f8835d5b8e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

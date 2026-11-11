@@ -1,0 +1,22 @@
+packages/@n8n/agents/src/runtime/model/model-token-counter.ts
+  s_4a1820556b083c::t_6a62c51da2f328 35,42-43
+packages/@n8n/agents/src/runtime/__tests__/model-token-counter.test.ts
+  s_4a1820556b083c::t_1e3e761970863f 20-21,23
+  s_4a1820556b083c::t_ba0dbb124085c7 19,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c8a6bdbc79592f821661f08b64c9c708b969d6b",
+  "prompts": {},
+  "sessions": {
+    "s_4a1820556b083c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5fc4f33-dbd5-42bc-b8cd-3b19bc5cb197",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

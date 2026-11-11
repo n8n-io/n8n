@@ -1,0 +1,51 @@
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_565818c1363886::t_49bd2c1fde17bf 316-317,319-322
+  s_565818c1363886::t_c10a866f56c0f6 15,154
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_565818c1363886::t_22cd89f6004e34 269,273-279,283,286,289,294-311,314
+  s_565818c1363886::t_c4ac33fc4b0a18 10,43,322,839
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_565818c1363886::t_3ffbd5e01e08ea 122,129,137,140,149
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_565818c1363886::t_d9d04015c0faf0 20,25,176,178,182,186-188
+packages/@n8n/scheduler/src/core/__tests__/executor-lookahead.test.ts
+  s_565818c1363886::t_eed20362e12dac 121
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_565818c1363886::t_af01b443a40a83 13,59
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.property.test.ts
+  s_565818c1363886::t_5c4d524afee401 7,66
+packages/@n8n/scheduler/src/core/executor/index.ts
+  s_565818c1363886::t_6f32e54f50ed81 9
+packages/@n8n/scheduler/src/core/executor/store.ts
+  s_565818c1363886::t_ec185248bd83de 16-19
+packages/@n8n/scheduler/src/core/factory.ts
+  s_565818c1363886::t_341c7f8a06adeb 21,84-85
+packages/@n8n/scheduler/src/core/index.ts
+  s_565818c1363886::t_8d9524600b9c84 9
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_565818c1363886::t_7baca39dd89210 393,400,428
+packages/cli/src/metrics/prometheus/database-metric-query.service.ts
+  s_565818c1363886::t_d4740b5a7a6321 98,104,106
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_565818c1363886::t_c610efaf503af0 70
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_565818c1363886::t_4556d92fcfc002 666,719
+packages/cli/test/integration/database/repositories/scheduled-job.repository.test.ts
+  s_565818c1363886::t_ca1937ae4cdae5 56-59,63-64,66-68,73,78,80-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "424df5ea14933b18f90505bda4357a31c585057f",
+  "prompts": {},
+  "sessions": {
+    "s_565818c1363886": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "213678b0-e58b-43ff-9c09-3554fd4e5c79",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

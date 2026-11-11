@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  ai_agent 48,102-104,131,639-640
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  ai_agent 1675,1884,1920,2184,2378
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  ai_agent 139-141,145
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  ai_agent 314-316,327-328
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  ai_agent 111,923,1387
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  ai_agent 49-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "51ebc526984780aedb2aadc20ecabeb645e0b64c",
+  "prompts": {}
+}

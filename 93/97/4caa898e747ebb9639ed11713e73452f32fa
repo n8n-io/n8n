@@ -1,0 +1,67 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_1a1d05f52b9356::t_1957cace4cdc66 14,146,717,720-721,724-727,729-731,733-739,1758-1762
+  s_1a1d05f52b9356::t_d988dca8f82717 714,718-719,722-723,732
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.vue
+  s_1a1d05f52b9356::t_4991fea705c909 2,23-24,86,289
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_1a1d05f52b9356::t_4991fea705c909 17,59,240
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPromptInspiration.ts
+  s_1a1d05f52b9356::t_43900e73c0f302 62
+  s_1a1d05f52b9356::t_4991fea705c909 63
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_1a1d05f52b9356::t_2ecc5b64ba1e3b 12,89,483-488,490-491,1013
+  s_1a1d05f52b9356::t_ffb657838f4e73 482
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_1a1d05f52b9356::t_320f4cb08e73bb 582-586
+  s_1a1d05f52b9356::t_a9816237bba971 4062,4065-4066,4091
+  s_1a1d05f52b9356::t_642b6b1d8de76e 15,548,556,759,772,4038,4041,4055,4060,4067,4081-4084,4088-4090,4092
+  s_1a1d05f52b9356::t_2332cd6a68ed55 4075-4077,4085-4087
+  s_1a1d05f52b9356::t_ecd7ae92da910d 578-581,587-590,4030-4037,4045-4052
+  s_1a1d05f52b9356::t_9fd573af0334ad 4061,4063-4064,4068-4074,4078-4080
+  s_1a1d05f52b9356::t_bd0af83d461a66 4093-4094
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_1a1d05f52b9356::t_ee296a69917acc 92,112
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_1a1d05f52b9356::t_ffb657838f4e73 230-237
+  s_1a1d05f52b9356::t_c2be52e1131aab 3,110,114,157-159,167-229,238-252
+  s_1a1d05f52b9356::t_ecd7ae92da910d 111-113
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.test.ts
+  s_1a1d05f52b9356::t_ecd7ae92da910d 86-92
+  s_1a1d05f52b9356::t_642b6b1d8de76e 2,79-85,93-107
+  s_1a1d05f52b9356::t_b2e50432b13e54 108-109
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_1a1d05f52b9356::t_4991fea705c909 3487,3676,3678,3681
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPromptInspiration.test.ts
+  s_1a1d05f52b9356::t_4991fea705c909 26
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/AssistantAgentPanelThread.test.ts
+  s_1a1d05f52b9356::t_ee296a69917acc 109-110,122-123,125,127-128
+  s_1a1d05f52b9356::t_280b0eb9139b28 112-118
+  s_1a1d05f52b9356::t_56289a68f6c5d4 111,119-121,124,126
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_1a1d05f52b9356::t_4991fea705c909 2,101,455-463,893
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_1a1d05f52b9356::t_d021feb75c515c 4,452,4605-4626
+  s_1a1d05f52b9356::t_b12e5cfc1890ed 270,497-518,3622-3664
+  s_1a1d05f52b9356::t_8296a07f2938ef 3665,4627-4628
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_1a1d05f52b9356::t_4991fea705c909 24,87,603,713
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_1a1d05f52b9356::t_ee296a69917acc 5,35,284-295
+  s_1a1d05f52b9356::t_30b36032626668 296-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93974caa898e747ebb9639ed11713e73452f32fa",
+  "prompts": {},
+  "sessions": {
+    "s_1a1d05f52b9356": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18d73-69b0-7c73-b6c4-f227fd07fe3f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

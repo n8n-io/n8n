@@ -1,0 +1,11 @@
+packages/cli/src/modules/agents/__tests__/agent-chat-relay.service.test.ts
+  ai_agent 49
+packages/cli/src/modules/agents/agent-chat-relay.service.ts
+  ai_agent 171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d7d35b8e0a240f65ad7f40c4c59eac324f868115",
+  "prompts": {}
+}

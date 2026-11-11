@@ -1,0 +1,230 @@
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_7a118b07ee147d::t_58fc34bb1859ba 9,24,37-41,74
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_7a118b07ee147d::t_8569b067037167 102
+docs/generated/sqlite-schema/agents_resources.md
+  s_7a118b07ee147d::t_8fee4a6d7bbb14 73
+docs/generated/postgres-schema/public.agents_messages.md
+  s_7a118b07ee147d::t_f9a8361205d925 94
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_7a118b07ee147d::t_c1af42009d0451 284,698,819
+  s_7a118b07ee147d::t_ee8d9add50bce2 856-865
+  s_7a118b07ee147d::t_14425dbc91b451 809,828-829,833,836,843,847,850,853,872,882,887
+  s_7a118b07ee147d::t_e0c13bd06451aa 808,810-818,820-827,830-832,834-835,837-842,844-846,848-849,851-852,854-855,866-871,873-881,883-886,888-892
+docs/generated/postgres-schema/public.agents_threads.md
+  s_7a118b07ee147d::t_39db3bf3585594 58
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_7a118b07ee147d::t_e53bc07fe6ed53 9,20,51,53-55,59,76-83
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_7a118b07ee147d::t_1f781d73574d4f 9,20-21,48-49
+packages/cli/src/modules/agents/repositories/agent-memory-entry-source.repository.ts
+  s_7a118b07ee147d::t_5900b8cad48f1f 2,11-12,17-30
+  s_7a118b07ee147d::t_a3665fea75ebee 13-16
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_7a118b07ee147d::t_14425dbc91b451 85-86,111-112
+  s_7a118b07ee147d::t_08ff6052f87d11 123-124
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_7a118b07ee147d::t_65a2ef6ed5bc4b 129,132,138,140,147,149-150,156,158-159,161,164,195-196,202-210,213-215
+  s_7a118b07ee147d::t_5900b8cad48f1f 74,76-79
+  s_7a118b07ee147d::t_d8f77830650d34 75
+  s_7a118b07ee147d::t_ff00ade9a1a9a1 130,197,201,211
+  s_7a118b07ee147d::t_b253ab021f08a7 200,212
+  s_7a118b07ee147d::t_32c7c86767635d 10,152-155,163,165-167,169-192,194
+  s_7a118b07ee147d::t_22314d7be9c801 216
+  s_7a118b07ee147d::t_14425dbc91b451 57-58,121,125,131,148,151,157,160,162,168,193,198-199
+docs/generated/postgres-schema/README.md
+  s_7a118b07ee147d::t_58dbb66d3b6ee5 860
+packages/cli/src/modules/agents/agent-memory.controller.ts
+  s_7a118b07ee147d::t_e53bc07fe6ed53 47-59
+packages/cli/test/migration/1793182079956-revise-agent-memory-capture.test.ts
+  s_7a118b07ee147d::t_d93a9dfdd66fe7 1-171
+packages/@n8n/agents/src/types/runtime/tool-execution.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 43-44,72-73
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_7a118b07ee147d::t_43ce80215d08a8 7,52-54,57,81-88,107,151
+  s_7a118b07ee147d::t_bd34fda1779ceb 191
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineRow.test.ts
+  s_7a118b07ee147d::t_c965bcd096a75b 96-97,105-110
+  s_7a118b07ee147d::t_4d08e00b4c4680 78-95,98-103,111-113
+  s_7a118b07ee147d::t_90d1755610f7e6 104
+  s_7a118b07ee147d::t_defbc8910bdb33 77
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_7a118b07ee147d::t_53e226fa17620e 59-61,75,136,188-190,325-327,341,403,455-457,688-690,855-857
+  s_7a118b07ee147d::t_ceac3f9d9c51d8 64,193,330,460,693,860
+packages/@n8n/db/src/migrations/common/1793182079956-ReviseAgentMemoryCapture.ts
+  s_7a118b07ee147d::t_1957df2ead0d23 1-99
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_7a118b07ee147d::t_0c52d76e11886a 9,118
+packages/@n8n/agents/src/runtime/memory/memory-lifecycle.ts
+  s_7a118b07ee147d::t_86789bcddbafa8 1
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_7a118b07ee147d::t_0c52d76e11886a 451-463
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_7a118b07ee147d::t_c56416df45b087 12
+  s_7a118b07ee147d::t_1f781d73574d4f 16,32-35,173-181,536-549,824,827,830-831
+docs/generated/postgres-schema/public.agents_memory_entries.md
+  s_7a118b07ee147d::t_aeed9a1cf3e897 25
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_7a118b07ee147d::t_08ff6052f87d11 57-60,163,167,190,268,351
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7a118b07ee147d::t_5c1ee1533419f5 1813-1814,1816,1818-1824
+  s_7a118b07ee147d::t_9a951ea2bafbdc 1815
+  s_7a118b07ee147d::t_6ce9f6560bd2e1 1817
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_7a118b07ee147d::t_b8951daf932f65 39-56
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_7a118b07ee147d::t_d6445d00950e63 225-254
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 162-163
+docs/generated/postgres-schema/public.agents_resources.md
+  s_7a118b07ee147d::t_e67ee47fc0bb5b 64
+packages/cli/test/integration/database/repositories/agent-memory-entry-candidate.repository.test.ts
+  s_7a118b07ee147d::t_c1af42009d0451 71
+docs/generated/sqlite-schema/agents_messages.md
+  s_7a118b07ee147d::t_7d8787b94b7e2f 99
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_7a118b07ee147d::t_1f781d73574d4f 110-111
+  s_7a118b07ee147d::t_c56416df45b087 143-144
+  s_7a118b07ee147d::t_5e623c4ed27d68 19
+packages/cli/src/modules/agents/__tests__/agent-memory.controller.test.ts
+  s_7a118b07ee147d::t_947fa4a5b3ccf4 64
+  s_7a118b07ee147d::t_d6445d00950e63 21,58-63
+packages/cli/src/modules/agents/agent-memory-trace.service.ts
+  s_7a118b07ee147d::t_60790fc2f8d12d 1-102,104-153,155-180,182-190
+  s_7a118b07ee147d::t_d8f77830650d34 103,154,181
+packages/cli/src/modules/agents/repositories/agent-memory-entry-candidate.repository.ts
+  s_7a118b07ee147d::t_5900b8cad48f1f 60-69
+  s_7a118b07ee147d::t_9a870577b9c720 16
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_7a118b07ee147d::t_c50c4170c5fbf4 201-202
+  s_7a118b07ee147d::t_622782d7c6c301 194,198-200
+packages/@n8n/agents/src/runtime/model/__tests__/native-tool-deferral.test.ts
+  s_7a118b07ee147d::t_ae18f1744edd6b 409,424
+  s_7a118b07ee147d::t_6050ff3db0c541 427-428
+packages/frontend/editor-ui/src/features/agents/session-timeline.styles.ts
+  s_7a118b07ee147d::t_1f781d73574d4f 28
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_7a118b07ee147d::t_78eb04a6b9dfb6 13,26,38,75
+packages/cli/test/integration/agents/agent-memory-trace.test.ts
+  s_7a118b07ee147d::t_ee23dc41070227 1-66,68-159,164-166
+  s_7a118b07ee147d::t_a3665fea75ebee 160-163
+  s_7a118b07ee147d::t_c1af42009d0451 67
+packages/frontend/editor-ui/src/features/agents/components/SessionMemoryDetail.vue
+  s_7a118b07ee147d::t_a3665fea75ebee 49,121
+  s_7a118b07ee147d::t_6ce9f6560bd2e1 135,137
+  s_7a118b07ee147d::t_ae1d2a0a48f6d9 1-39,43-47,50,56-106,126,167-178,180-182,191,193-210
+  s_7a118b07ee147d::t_9a951ea2bafbdc 40-42,187-190
+  s_7a118b07ee147d::t_4acbd0696539c0 48,51-55,107-120,122-125,127-134,136,138-166,179,183-186
+  s_7a118b07ee147d::t_781f845f5fc805 192
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_7a118b07ee147d::t_8ed2a15045a7cd 92,687-712,715-716,721,730,732,736-737,1224,1307
+  s_7a118b07ee147d::t_210f47c9f5f8d1 504,562,819,907,1186
+  s_7a118b07ee147d::t_04d20415888907 227-250
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 314
+docs/generated/sqlite-schema/agents_memory_entries.md
+  s_7a118b07ee147d::t_096889b09d726f 9,36-37,39
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_7a118b07ee147d::t_3d4a1a3d253de4 460-461
+  s_7a118b07ee147d::t_d8f77830650d34 457
+  s_7a118b07ee147d::t_5900b8cad48f1f 13,458-459
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 185-186
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_7a118b07ee147d::t_53e226fa17620e 59-61,75,140,152,164,226-228,367-369,383,448,460,472,484,551-553,763-765,928-930
+  s_7a118b07ee147d::t_ceac3f9d9c51d8 64,231,372,556,768,933
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_7a118b07ee147d::t_1d531225d93b18 2,12,27-28,37,74-81
+  s_7a118b07ee147d::t_8db29ed6eecbff 82-84
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_7a118b07ee147d::t_d9efa38a3b9bae 60-69,189
+  s_7a118b07ee147d::t_ae18f1744edd6b 11-16
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_7a118b07ee147d::t_ceac3f9d9c51d8 64,193,400,563
+  s_7a118b07ee147d::t_53e226fa17620e 59-61,75,136,188-190,395-397,558-560
+docs/generated/sqlite-schema/agents_threads.md
+  s_7a118b07ee147d::t_a31b1781b0ed61 66
+docs/generated/sqlite-schema/README.md
+  s_7a118b07ee147d::t_4bde78e3e8ade3 245-246,248-250,846
+docs/generated/sqlite-schema/agents.md
+  s_7a118b07ee147d::t_4ec231ad764cf5 298
+packages/cli/src/modules/agents/entities/agent-memory-entry-candidate.entity.ts
+  s_7a118b07ee147d::t_9a870577b9c720 1,36-37
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory-source-message.integration.test.ts
+  s_7a118b07ee147d::t_c1af42009d0451 58
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionMemoryItem.vue
+  s_7a118b07ee147d::t_30a45e6f440cfe 3,32-44,63,65-81,89
+  s_7a118b07ee147d::t_66e48af0269a66 1-2,6,9,11,13-21,27-29,57
+  s_7a118b07ee147d::t_4592d879bd7709 4-5,7-8,10,12,22-26,30-31,45-56,58-62,64,82-88,90-92
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_7a118b07ee147d::t_ceac3f9d9c51d8 64,193,367,534
+  s_7a118b07ee147d::t_53e226fa17620e 59-61,75,136,188-190,362-364,529-531
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_7a118b07ee147d::t_32c7c86767635d 732
+  s_7a118b07ee147d::t_9a870577b9c720 1038
+packages/frontend/editor-ui/src/features/agents/__tests__/sessionMemoryCards.test.ts
+  s_7a118b07ee147d::t_a3665fea75ebee 114-119
+  s_7a118b07ee147d::t_defbc8910bdb33 68
+  s_7a118b07ee147d::t_bb8413fb33ee6c 1-67,69-113,120-144
+packages/@n8n/api-types/src/agents/types.ts
+  s_7a118b07ee147d::t_a3665fea75ebee 316-321
+  s_7a118b07ee147d::t_5df671edbf48ba 312-315,322-351
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionMemoryDetail.test.ts
+  s_7a118b07ee147d::t_45089faf42c172 93,100-130,132-155
+  s_7a118b07ee147d::t_a3665fea75ebee 63-68,175
+  s_7a118b07ee147d::t_873c5845805294 1-62,69-90,94-96,131,156-174,176-207
+  s_7a118b07ee147d::t_defbc8910bdb33 91-92,97-99
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_7a118b07ee147d::t_2657206c8b0be1 98
+packages/frontend/editor-ui/src/features/agents/utils/sessionMemoryCards.ts
+  s_7a118b07ee147d::t_5c631d4003bc32 1-16,18-42,44-113
+  s_7a118b07ee147d::t_4acbd0696539c0 17,43
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_7a118b07ee147d::t_c1af42009d0451 1414,1527
+docs/generated/postgres-schema/public.agents.md
+  s_7a118b07ee147d::t_81953d33754c58 297
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_7a118b07ee147d::t_1d531225d93b18 4,25-26,301-302,352-353
+  s_7a118b07ee147d::t_1f781d73574d4f 55-56
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 426
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_7a118b07ee147d::t_79f59d0cc73b7e 442-453
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_7a118b07ee147d::t_672aacab8f25f5 254-255,497,741-744,748-749,762,795
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_7a118b07ee147d::t_1f781d73574d4f 203-204
+  s_7a118b07ee147d::t_6b8f028070658f 2-7,75,309,341,478-479
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 467,470,519
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelinePill.vue
+  s_7a118b07ee147d::t_1f781d73574d4f 31-32
+packages/cli/src/modules/agents/agent-memory-entries.service.ts
+  s_7a118b07ee147d::t_e53bc07fe6ed53 117-123
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_7a118b07ee147d::t_04d20415888907 10862-10900
+  s_7a118b07ee147d::t_210f47c9f5f8d1 8497
+packages/@n8n/db/src/migrations/sqlite/1793182079956-ReviseAgentMemoryCapture.ts
+  s_7a118b07ee147d::t_1957df2ead0d23 1-9
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_7a118b07ee147d::t_c1af42009d0451 176
+  s_7a118b07ee147d::t_cf346cce46ab49 94,102
+packages/@n8n/agents/src/sdk/tool.ts
+  s_7a118b07ee147d::t_a833c81b7f2c02 242-243,368-376,473
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ad648c77d0b9f4d7ca02f66c6c9f96d9ac05fc7d",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

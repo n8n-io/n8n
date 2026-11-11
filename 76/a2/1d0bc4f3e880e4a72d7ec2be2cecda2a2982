@@ -1,0 +1,21 @@
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_f006fdb57a7b92::t_264a285ca22923 1195-1197,1199-1208,1210-1219,1221-1249,1251-1253,1255-1261
+packages/@n8n/backend-services/src/executions/__tests__/time-saved.test.ts
+  s_f006fdb57a7b92::t_6c6083d01bb28f 6-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "76a21d0bc4f3e880e4a72d7ec2be2cecda2a2982",
+  "prompts": {},
+  "sessions": {
+    "s_f006fdb57a7b92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f78e4053-fc1f-4713-87d8-15a69d94e5dd",
+        "model": "unknown"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

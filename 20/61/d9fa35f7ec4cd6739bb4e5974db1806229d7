@@ -1,0 +1,73 @@
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 1,84,98-112,280,290,310-315,431-432,509,520,841,851
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 998,1007,1023-1037
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_82789c69de1855::t_0c40ecaf78efd4 130,146,150-182,194,197-216
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 280-291,1098,1178-1181,1183,1210-1211,1214-1215
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 1,28,131,442-445,455-458,732-733
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/selects-foreground-execution-through-the-consolidated-tool.json
+  s_82789c69de1855::t_0c40ecaf78efd4 61-76,218-232
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 1-3,38-39,84-144,182,189-194,200,482-515,558,574
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 1,102,135
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/selects-background-execution-through-the-consolidated-tool.json
+  s_82789c69de1855::t_0c40ecaf78efd4 61-76,214-228
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 25-28,149-153,170-171,176,479,491
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 2,43-46,102-105,154,224-227,334-337
+packages/cli/src/modules/agents/background/background-job-messages.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 66-68,80
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 96-97,155-158,251-254
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_82789c69de1855::t_665d902df3f79a 15
+  s_82789c69de1855::t_cae0d8c443cd90 599-600
+  s_82789c69de1855::t_0c40ecaf78efd4 1,18-19,29-30,57-66,75,87-91,103-121,164-165,473-500,535,583,596-598,606
+packages/cli/test/integration/database/repositories/agent-plan-task-ownership.repository.test.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 1-33,35-46,48-128,131,133-134,136,138-166,168-222,224-228,230-241,244-245,247-261,264-357
+  s_82789c69de1855::t_665d902df3f79a 34,47,129-130,132,135,137,223,229,242-243,246,262-263
+  s_82789c69de1855::t_efa81bcda650e4 167
+packages/@n8n/agents/src/types/runtime/delegation.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 68-69,71-75,123
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 1236-1286
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 1233-1236,1372,1386-1394,1424
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 1,43,798,802
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 1-2,28,96-129,139,190-192,218,221-229,231,246-260,284,291-298,301,309-314
+packages/cli/src/modules/agents/plans/agent-plan-task-context.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 1-13
+packages/cli/src/modules/agents/repositories/agent-plan.repository.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 1,254-260,267-421,423-439
+  s_82789c69de1855::t_665d902df3f79a 14-15,18-25,253
+  s_82789c69de1855::t_cae0d8c443cd90 422,440
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 63-64,159,169,260-266,326-327,334-335,341,368,393-450,463,500-513,749-750,762,776-779,792-794,800,803-807,928
+  s_82789c69de1855::t_665d902df3f79a 9-10,16,18-19,28,31
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_82789c69de1855::t_0c40ecaf78efd4 1,10,85,105-106,108,118,121,123,322,333-338,396-415,918-941,1369-1380,1858-1925,1927-1941
+  s_82789c69de1855::t_cae0d8c443cd90 1926,1942
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2061d9fa35f7ec4cd6739bb4e5974db1806229d7",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/__tests__/agent-sandbox-files.service.test.ts
+  s_f6ecac1d27039d::t_6b524c146d1791 1-16,19,21-31,33-43,45-50,85-107,109-140
+  s_f6ecac1d27039d::t_1f6b2fff5016ac 17-18,32,44
+  s_f6ecac1d27039d::t_d3cba2da192fc1 51-74
+  s_f6ecac1d27039d::t_a37c61055d1ad7 75-84
+  s_f6ecac1d27039d::t_68fd2c33562a86 108
+packages/@n8n/agents/src/sdk/agent.ts
+  s_f6ecac1d27039d::t_4f16cc9558d8ce 594-598
+packages/cli/src/modules/agents/agent-sandbox-files.service.ts
+  s_f6ecac1d27039d::t_b265ddb37a9401 2,4-24,27-34,44-45,48-61,64-74,77,79-84,111-135
+  s_f6ecac1d27039d::t_d3cba2da192fc1 35-42,62,75-76,78,85-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6621322bbe3907f69523c3e62d637c79e885c442",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

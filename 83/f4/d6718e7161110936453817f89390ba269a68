@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/__tests__/agent-workspace.service.test.ts
+  s_5631b188ce818f::t_bdde754e87bbbe 88,92,106,110
+packages/@n8n/agents/src/workspace/tools/workspace-tools.ts
+  s_5631b188ce818f::t_f2530fca785137 6,14,27,31,40,44
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_5631b188ce818f::t_bdde754e87bbbe 495,499
+packages/@n8n/agents/src/__tests__/workspace/workspace-tools.test.ts
+  s_5631b188ce818f::t_7cdd664e0f6ff4 68,72
+  s_5631b188ce818f::t_ac875e333d83e6 110
+packages/@n8n/instance-ai/src/workspace/lazy-runtime-workspace.ts
+  s_5631b188ce818f::t_f2530fca785137 65,70-71
+packages/@n8n/instance-ai/evaluations/__tests__/workspace-tool-contract.test.ts
+  s_5631b188ce818f::t_9381bc7da91eeb 1,11-13
+packages/@n8n/instance-ai/src/workspace/__tests__/lazy-runtime-workspace.test.ts
+  s_5631b188ce818f::t_a4e149f7585a6d 92
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_5631b188ce818f::t_461d795a0f1f70 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "83f4d6718e7161110936453817f89390ba269a68",
+  "prompts": {},
+  "sessions": {
+    "s_5631b188ce818f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84992bfe-521e-4b79-80af-ca4ae976b51f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

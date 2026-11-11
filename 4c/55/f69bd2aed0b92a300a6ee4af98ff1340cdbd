@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_82789c69de1855::t_54d66b9cbc7730 540,542-543
+  s_82789c69de1855::t_bdb33832e20e3f 541
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_82789c69de1855::t_f70682e6918dde 89-92,97,108,110,127,218-222,224,226-228,655
+  s_82789c69de1855::t_d6d62a221d8ac3 223
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_82789c69de1855::t_f70682e6918dde 10,59,78,92,98,100,164,179,182,184-186,188,190,197-199,383
+  s_82789c69de1855::t_d6d62a221d8ac3 187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4c55f69bd2aed0b92a300a6ee4af98ff1340cdbd",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}

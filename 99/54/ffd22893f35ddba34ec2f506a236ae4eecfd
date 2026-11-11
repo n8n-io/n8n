@@ -1,0 +1,23 @@
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_ab80bf3dba8421::t_2455f4dd59704f 122-126
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-event-sink.ts
+  s_ab80bf3dba8421::t_2455f4dd59704f 46
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-event-sink.test.ts
+  s_ab80bf3dba8421::t_2455f4dd59704f 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9954ffd22893f35ddba34ec2f506a236ae4eecfd",
+  "prompts": {},
+  "sessions": {
+    "s_ab80bf3dba8421": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "622abbc5-a35f-4cfa-a072-d511338d74e1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

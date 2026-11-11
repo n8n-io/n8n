@@ -1,0 +1,162 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 140-156
+packages/frontend/editor-ui/src/features/agents/components/agentBuilderInjectionKeys.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 13-15
+packages/cli/src/modules/mcp-registry/__tests__/mcp-connection-discovery.service.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 85,346-370,373-444
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 74,270,273,276,624,1231-1339
+  s_f39b458558a5b9::t_743bf891689518 1340-1341
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 58-61,77,393-407,731-735,880-884,1016
+packages/frontend/editor-ui/src/experiments/agentBuilder/enrollment.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 1-31
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.store.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 6-12,123-151
+  s_f39b458558a5b9::t_4446bb3d8b836f 152-154
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 4,14,25,42-52,98,534,541,560,563,676-677,680-682,730,732-743,864-865,2408,2410-2440,2446-2450,6927-7174
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderChatMode.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 1-123
+packages/quality/testing/playwright/pages/AgentBuilderPage.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 19-56,65-214
+  s_f39b458558a5b9::t_469c7036397d15 215
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 20-25,194-201
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 1,133,183-189,590,593,608-625
+  s_f39b458558a5b9::t_42efc357aae035 626
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewButton.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 13,34-36,42-44,62
+packages/frontend/editor-ui/src/features/agents/utils/toolDisplayName.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 14,17-20,97
+patches/bull@4.16.4.patch
+  s_f39b458558a5b9::t_84176d81ca8cab 1-16
+packages/frontend/editor-ui/src/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.store.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 17-23,66-68,72-74
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_f39b458558a5b9::t_84176d81ca8cab 60-105
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 2,14-16,30-31,57,63-66,105-107,127-135
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 43,365
+packages/cli/src/scaling/__tests__/bull-idle-claim.integration.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 110-127
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 18,42,61-77,82,84,90-91,123-131,387,452-453,473-475,478-482,489,539,555
+packages/quality/testing/playwright/tests/e2e/agents/agent-builder-chat-modes.spec.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 1-434
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 50,346-347,620
+packages/frontend/editor-ui/src/features/agents/components/AgentMarkdownChunk.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 3-4,7,10,12,14,16-36,50-57,61,76-80
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 5-6,24,53-56,190-197,199,253-261,277-292,320-326
+  s_f39b458558a5b9::t_8f707376f6e575 327-328
+packages/@n8n/api-types/src/agents/agent-preview.constants.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 1-2
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 61,63,70,185-191,199,205-206,261,270,593-596
+  s_f39b458558a5b9::t_0e2438c1e0013d 597-598
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f39b458558a5b9::t_84176d81ca8cab 849-858,3666,8901
+packages/frontend/editor-ui/src/experiments/agentBuilder/README.md
+  s_f39b458558a5b9::t_84176d81ca8cab 1-68
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 2,28,323-329,403,417
+  s_f39b458558a5b9::t_817b2aac66f92b 418
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataDisplayModeSelect.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 33
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 87-88,105,111-112,127-133,849,1007-1008,1024-1028,1030,1032-1036,1091,1156,1172
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 102,880,926-930,932
+packages/cli/src/modules/mcp-registry/mcp-connection-discovery.service.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 27,280-281,285,290-291,298-299,305
+packages/frontend/editor-ui/src/features/agents/__tests__/toolDisplayName.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 5,39-49
+  s_f39b458558a5b9::t_f7496f505ed46e 50-51
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 54-56,91,118-120,196,222,249,292,302,323-324,345-353,399-409
+packages/quality/testing/playwright/tests/e2e/workflows/editor/ndv/html-display-mode.spec.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 19,27-28
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 1,78,80-81,437-468
+  s_f39b458558a5b9::t_f71a9db307edc0 469
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 28,168
+packages/frontend/@n8n/stores/src/constants.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 65
+packages/frontend/editor-ui/src/experiments/agentBuilder/stores/agentBuilder.store.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 1-78
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 436-445
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 206-229,231-232
+packages/quality/testing/playwright/services/instance-ai-api-helper.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 4,21-52
+  s_f39b458558a5b9::t_5695bf652d8436 53
+packages/cli/src/modules/mcp-registry/mcp-credential-access.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 1-28
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 55-77,361-397
+  s_f39b458558a5b9::t_dc8447a91e66f1 398-400
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 2269
+packages/@n8n/api-types/src/agents/index.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 10
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewMoreMenu.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 49,76,129-131
+  s_f39b458558a5b9::t_72d6f7a0419861 132
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 72,80-81,83,92,113-114,146,155-177,558-577
+  s_f39b458558a5b9::t_a34ad8d3e5a105 578
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMarkdownChunk.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 1,17-79,83,102,112,114,116-117,119-123,125-154,156-157
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSchedulesRow.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 288-291
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 4,140,143,542-563
+  s_f39b458558a5b9::t_3cfd0380056b2e 564-565
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentValidationTooltip.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 1,36,50-66,75,77-102,105-113,145,251-253
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 24,144-145,491-492,514-515
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 2-12,67,151,154-160,206-207,364-367,372-441,476,500,518-521,562,622-660,662-663,704-711,740-743,748-756,1137-1160,1394,1436-1439,1445-1455,1503,1505,3456-3463,3482,3513,3537-3549,3580-3583,3594-3599,3602-3603,3605-3606,3612-3624,3634-3635,3637-3650,3662-3665,3700,3703,3729,3732,3782-3789,3802-3812,3836,3840,3842-3857,3866-3888,3928-3964,4025-4034
+  s_f39b458558a5b9::t_a3cc8e124e1988 4035
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderLayout.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 1-55
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderLayout.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 1-117
+packages/frontend/editor-ui/src/app/stores/posthog.store.test.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 17-21,589-621
+  s_f39b458558a5b9::t_8023f4ffff4cd6 622
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 137,144,168,215,225-226,1499,1638,1646,1729,1737,1753,1790,1795
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 48-49,281-283,293-294,303-310,365-391
+  s_f39b458558a5b9::t_73f054b0198216 392
+packages/frontend/editor-ui/src/experiments/agentBuilder/stores/agentBuilder.store.ts
+  s_f39b458558a5b9::t_84176d81ca8cab 1-31
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderChatDisclaimer.vue
+  s_f39b458558a5b9::t_84176d81ca8cab 1-21
+pnpm-lock.yaml
+  s_f39b458558a5b9::t_0e658d69fe5609 1100,4892,34592
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4fec0da0506178c62929c191d58d1ad980b61ebc",
+  "prompts": {},
+  "sessions": {
+    "s_f39b458558a5b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17d77-ae13-7a91-b42e-df9fcdd470b9",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

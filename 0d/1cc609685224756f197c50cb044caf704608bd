@@ -1,0 +1,38 @@
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.agent.test.ts
+  s_fb780391c8e997::t_191b0a26492203 91
+packages/cli/src/modules/agents/utils/agent-definition.ts
+  s_fb780391c8e997::t_1a62052a14960d 25,27
+packages/cli/src/modules/skills/skill.service.ts
+  s_fb780391c8e997::t_b78f1c965d5eb4 309,323
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/agent-package-fixtures.ts
+  s_fb780391c8e997::t_b78f1c965d5eb4 47
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_fb780391c8e997::t_3d9bc4261281e0 35-36,101,103,294,296-298,454-457
+  s_fb780391c8e997::t_e630500f5d859d 295,300,405-410,412-416,677-678
+  s_fb780391c8e997::t_2232f12012794a 15,390-402
+  s_fb780391c8e997::t_06f6cb5c004118 348-379
+  s_fb780391c8e997::t_1b0b49abd598e8 43-44,299,301-303,388-389,463,549-552,564-565
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_fb780391c8e997::t_1a62052a14960d 138-140,143-144,146-161
+packages/cli/src/modules/agents/agents.service.ts
+  s_fb780391c8e997::t_1a62052a14960d 405,412-418,420,423-427,429
+packages/cli/src/modules/agents/agent-skill-refs.service.ts
+  s_fb780391c8e997::t_1a62052a14960d 279-286,292,322-326
+  s_fb780391c8e997::t_b78f1c965d5eb4 9,287-291,293-321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0d1cc609685224756f197c50cb044caf704608bd",
+  "prompts": {},
+  "sessions": {
+    "s_fb780391c8e997": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17942-0858-71a1-8300-c3c5dea8152b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

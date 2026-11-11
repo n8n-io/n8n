@@ -1,0 +1,94 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatMarkdown.vue
+  s_342f112c3be80a::t_6edb6bb22b69ec 30-37,42,44
+  s_c9652ad82efea6::t_c28c6d33656d57 5
+  s_342f112c3be80a::t_f9471c008fb97f 9-25
+  s_342f112c3be80a::t_7e9b69248c03df 4,6,26-29,51-56
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatMarkdown.utils.test.ts
+  s_7697af894b7e28::t_01482002fa203d 8-10,24-26,34-36,40-42,47-49,58-63
+  s_342f112c3be80a::t_8600e2e1156937 5-7,11-23,27-33,37-39,43-46,50-57,64
+  s_c9652ad82efea6::t_c2d4fdac80edc5 2
+  s_7697af894b7e28::t_bf61d10eca560c 1,3-4,65
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.vue
+  s_afc3a163d24cbf::t_d5f9a551ac0c26 79-80,98,104,116
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/resourceLinks.test.ts
+  s_c9652ad82efea6::t_887ce3c797f782 2
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  s_afc3a163d24cbf::t_6a3c9f5cab579a 61-62,105
+  s_7697af894b7e28::t_01482002fa203d 24-59,71,113-114,129-138,141,143-144,146-156
+  s_7697af894b7e28::t_6a2168f58d8167 2,13,18-19,23,60,63-70,72-75,77,79,81-84,86-104,106-112,115-128,157-159
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatMarkdownChunk.test.ts
+  s_342f112c3be80a::t_6e191547376a59 31
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.utils.ts
+  s_c9652ad82efea6::t_653adcd80b719b 1-68
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatMarkdown.utils.ts
+  s_7697af894b7e28::t_01482002fa203d 1-124
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/useChatMarkdownOptions.ts
+  s_342f112c3be80a::t_c3295be07df2d2 2,70,77
+  s_342f112c3be80a::t_3c34706cabd1b4 131,156-157
+  s_342f112c3be80a::t_d9371531c7ae87 85-88
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.test.ts
+  s_7697af894b7e28::t_01482002fa203d 13-93
+  s_7697af894b7e28::t_f504329df0f1b7 1-12,94-97
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatResourceLink.vue
+  s_c9652ad82efea6::t_f65837a98f34ad 9
+  s_bde6aa465172a8::t_5be013af966cf9 124
+  s_afc3a163d24cbf::t_369877c2844ace 22-32,35-101,103-117
+  s_bde6aa465172a8::t_fd86a260c0e529 125
+  s_c9652ad82efea6::t_158f666003ccb0 4,10-17
+  s_c9652ad82efea6::t_80dd49e8c49364 5-8
+  s_bde6aa465172a8::t_8589ce275dd1e1 123
+  s_afc3a163d24cbf::t_fb8f7663bffd84 2,19-20,128
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/ChatMarkdown.test.ts
+  s_7697af894b7e28::t_01482002fa203d 20-30
+  s_342f112c3be80a::t_17c2488c5f05ba 1-19,31-41
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.test.ts
+  s_afc3a163d24cbf::t_f27602d2d1a458 56,59-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a0b05fe1cdbeeda4bc93f1d23708084925b9481b",
+  "prompts": {},
+  "sessions": {
+    "s_342f112c3be80a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1826c-a21e-7797-835a-715531d776c1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_7697af894b7e28": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18278-bbae-7797-835a-71590a3e3e5c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_afc3a163d24cbf": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18260-8b40-7797-835a-714fd395a8fc",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_bde6aa465172a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c494b1a-8a8a-4030-af50-7bc1f8b00e35",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c9652ad82efea6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1825e-7f3c-7797-835a-714c34b650da",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

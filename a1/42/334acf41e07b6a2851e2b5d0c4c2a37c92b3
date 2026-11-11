@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/system-agents/system-agent-registry.ts
+  s_0c7f96a78c1ce7::t_1b65f1c7bafded 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a142334acf41e07b6a2851e2b5d0c4c2a37c92b3",
+  "prompts": {},
+  "sessions": {
+    "s_0c7f96a78c1ce7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96a6c49f-175f-41a6-b8eb-e0a49f40838d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/modules/apps/frontend/src/components/AppPreview.test.ts
+  s_b6d332c56aa1c5::t_c0ea15258e0601 1-200
+packages/modules/apps/frontend/src/components/AppView.test.ts
+  s_b6d332c56aa1c5::t_c0ea15258e0601 39-42
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_b6d332c56aa1c5::t_c0ea15258e0601 326,330,850,865
+packages/modules/apps/frontend/src/apps.api.test.ts
+  s_b6d332c56aa1c5::t_c0ea15258e0601 3-10,57-76
+  s_b6d332c56aa1c5::t_45fa597942e4e1 77
+packages/modules/apps/frontend/src/components/AppPreview.vue
+  s_b6d332c56aa1c5::t_c0ea15258e0601 1-285,287-328
+  h_44f8d1c0f2f8c4 286
+packages/modules/apps/frontend/src/components/AppView.vue
+  s_b6d332c56aa1c5::t_c0ea15258e0601 14,67,78,108-110
+  s_b6d332c56aa1c5::t_62c94202299cad 111-112
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b6d332c56aa1c5::t_c0ea15258e0601 342-359
+packages/modules/apps/frontend/src/apps.api.ts
+  s_b6d332c56aa1c5::t_c0ea15258e0601 1-7,43-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67d6c2262fbc3cd4ae931d2d015261e7c2b98f40",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

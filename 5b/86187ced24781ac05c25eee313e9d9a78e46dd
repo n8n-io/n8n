@@ -1,0 +1,50 @@
+packages/modules/apps/frontend/src/components/AppPreviewOptionMenu.test.ts
+  s_07bab60c73146f::t_4941e9dcc52864 18-22
+  s_07bab60c73146f::t_3bb16e685209fe 1-17,23-26
+packages/modules/apps/frontend/src/components/AppPreview.test.ts
+  s_07bab60c73146f::t_86e7b232c24b32 53-68
+packages/modules/apps/frontend/src/components/AppPreview.vue
+  s_07bab60c73146f::t_116952ef48afe2 67-71,74-78
+  s_07bab60c73146f::t_cfc86191c7c0f9 175-183,185,188,190-191,194,196
+  s_07bab60c73146f::t_b94d80ce19dac5 299,301-302
+  s_07bab60c73146f::t_d26919ecf77c6a 273
+  s_07bab60c73146f::t_364f3c3a880b64 297-298,300
+  s_07bab60c73146f::t_bff921848f9a0a 20
+  s_07bab60c73146f::t_fd52889b40439e 312
+  s_07bab60c73146f::t_2ccc46e79a94e4 284-287,289
+  s_07bab60c73146f::t_b71eea0d70cfbb 291-294
+  s_07bab60c73146f::t_bd34869ee8c061 270
+packages/modules/apps/frontend/src/components/AppHeader.vue
+  s_07bab60c73146f::t_5c0e8e541e21c2 128
+  s_07bab60c73146f::t_1a11c734e8e02c 183,188-202
+  s_07bab60c73146f::t_2b413c983076ac 241
+  s_07bab60c73146f::t_3876133c51a38d 215-219
+  s_07bab60c73146f::t_def8d142869a22 242,246
+packages/modules/apps/frontend/src/components/AppPreviewOptionMenu.vue
+  s_07bab60c73146f::t_9c68fb4819dfaa 33-36
+  s_07bab60c73146f::t_6455d49be53ddd 1-32,37-39
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_07bab60c73146f::t_cbf4e0de043285 366
+  s_07bab60c73146f::t_e77b74d562145e 370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b86187ced24781ac05c25eee313e9d9a78e46dd",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_07bab60c73146f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40e54674-1c0b-4e73-b395-0a7af1faeeec",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

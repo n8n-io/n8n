@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.styles.spec.ts
+  s_7a118b07ee147d::t_6538b3e4755dec 15
+packages/cli/src/modules/agents/agent-memory-trace.service.ts
+  s_7a118b07ee147d::t_985f9fb743f856 77-96,179
+  s_7a118b07ee147d::t_af1dd3496777c1 76
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_7a118b07ee147d::t_a3a1b61fd77747 10900-10909
+  s_7a118b07ee147d::t_793857c48f6b5a 10912-10953
+  s_7a118b07ee147d::t_07098017e48d6c 10910-10911
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_7a118b07ee147d::t_793857c48f6b5a 475-480
+  s_7a118b07ee147d::t_8f9c2195de99f4 481
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_7a118b07ee147d::t_5fb776ae91520f 536,538
+packages/cli/test/integration/agents/agent-memory-trace.test.ts
+  s_7a118b07ee147d::t_13003d4eba67e1 166-173,180-194
+  s_7a118b07ee147d::t_32d4860931bcf7 174-179
+packages/frontend/editor-ui/src/features/agents/components/SessionMemoryDetail.vue
+  s_7a118b07ee147d::t_e0f6358b355a3c 186
+packages/cli/src/modules/agents/repositories/agent-memory-entry-source.repository.ts
+  s_7a118b07ee147d::t_985f9fb743f856 24,30-33
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_7a118b07ee147d::t_5fb776ae91520f 443-451
+  s_7a118b07ee147d::t_085d1683ac0741 452,454-456
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5cb3b8c5ec313c297778d79bf849725a0ec3af8d",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

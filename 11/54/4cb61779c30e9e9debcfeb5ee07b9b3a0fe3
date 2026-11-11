@@ -1,0 +1,53 @@
+packages/cli/test/integration/shared/db/roles.ts
+  s_122c352d9bbc34::t_a0719ea6c37d21 159-166
+packages/cli/test/integration/commands/publish/workflow.test.ts
+  s_122c352d9bbc34::t_842f96547ec69c 343-358,375
+  s_122c352d9bbc34::t_24a9ac1dd9f8b4 14
+  s_122c352d9bbc34::t_d1206801afdfb6 13
+  s_122c352d9bbc34::t_a9b7fb58b6a092 359-374
+  s_122c352d9bbc34::t_c2813b4a47fea5 32
+  s_565818c1363886::t_0376c4ef8d5042 376
+packages/cli/src/commands/cli-workflow-publisher.ts
+  s_122c352d9bbc34::t_c6162d83a2a90e 3
+  s_122c352d9bbc34::t_b97ac79e2387e2 1
+  s_122c352d9bbc34::t_36e09a0287e5d7 58
+  s_122c352d9bbc34::t_de059e7c808ba1 83-84,93
+  s_122c352d9bbc34::t_4dc71672b663d5 42
+  s_122c352d9bbc34::t_b12dc7536ebe01 87-89
+  s_122c352d9bbc34::t_9136bba8b81fd4 32
+  s_122c352d9bbc34::t_d3941ee4313f41 33
+  s_122c352d9bbc34::t_7c7cc4f43b537c 51
+  s_122c352d9bbc34::t_89aacd61473a77 85-86,90-92,94
+  s_122c352d9bbc34::t_bdec8b45480520 43-45
+  s_122c352d9bbc34::t_3c3881e1d97d10 52-53
+  s_122c352d9bbc34::t_ab4d12307ccc6f 95-96
+packages/cli/test/integration/commands/unpublish/workflow.test.ts
+  s_122c352d9bbc34::t_9c3d48e5093469 11
+  s_122c352d9bbc34::t_9883810b3b5f3f 271-290
+  s_122c352d9bbc34::t_db0b1e43c01a96 27
+  s_122c352d9bbc34::t_c7bb4b6b6f7992 291-292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11544cb61779c30e9e9debcfeb5ee07b9b3a0fe3",
+  "prompts": {},
+  "sessions": {
+    "s_122c352d9bbc34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85dd6495-03bc-44d8-8c1c-c118edc05fd0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_565818c1363886": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "213678b0-e58b-43ff-9c09-3554fd4e5c79",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

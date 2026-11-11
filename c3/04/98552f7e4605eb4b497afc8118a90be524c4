@@ -1,0 +1,20 @@
+packages/workflow/src/expression.ts
+  s_e82f6408562ded::t_99de853e1234b3 602,605-611,615-622
+  s_e82f6408562ded::t_f566a766af0492 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c30498552f7e4605eb4b497afc8118a90be524c4",
+  "prompts": {},
+  "sessions": {
+    "s_e82f6408562ded": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f4c565c-68e0-43ae-85c2-253d5604f873",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

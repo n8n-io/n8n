@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/tools/shared/ask-user.tool.ts
+  s_2c573839e2200b::t_8df5ff42fb994f 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6460e75d08028cb2b8b2b9b2b5a6540035989822",
+  "prompts": {},
+  "sessions": {
+    "s_2c573839e2200b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26cfe557-3584-4ba5-95fe-b4de47de22be",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/cli/src/modules/mcp/__tests__/mcp-tool-change.service.test.ts
+  s_233b83c0de8338::t_65782139e3847a 216
+  s_233b83c0de8338::t_13cd30c1ee76c0 244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7262cffcf3ed51b3442b82116d1d3ff8f380af49",
+  "prompts": {},
+  "sessions": {
+    "s_233b83c0de8338": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13561-4571-7a83-ae89-cbac378a383d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

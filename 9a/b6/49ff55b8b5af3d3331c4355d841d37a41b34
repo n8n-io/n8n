@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_71ada40c158fee::t_d026a6aa3048ce 573-574
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ab649ff55b8b5af3d3331c4355d841d37a41b34",
+  "prompts": {},
+  "sessions": {
+    "s_71ada40c158fee": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aab2-06c9-738d-a0b9-ae8dddac0e18",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ccaea62974a0e4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aada-d9aa-738d-a0b9-ae8f2357154c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ebb6ed091294d6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aade-2c13-738d-a0b9-ae90cb2b7090",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

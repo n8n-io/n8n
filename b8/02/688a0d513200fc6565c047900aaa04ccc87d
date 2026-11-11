@@ -1,0 +1,35 @@
+packages/cli/src/modules/n8n-packages/entities/skill/skill-importer.ts
+  s_127a9acd7ce7b7::t_ef368a5b218153 52,54,62-67,235-240
+  s_127a9acd7ce7b7::t_38327bc5c226e6 241-242
+packages/cli/src/modules/n8n-packages/entities/skill/skill.exporter.ts
+  s_127a9acd7ce7b7::t_1b8abbb07ebbcb 33,40-42
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-package.integration.test.ts
+  s_127a9acd7ce7b7::t_0b3dd47fe00a75 94,96,116,120-125,283
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_127a9acd7ce7b7::t_6d53e211715815 122-126,147-152,291,367
+  s_127a9acd7ce7b7::t_d1290199c13bc5 65
+packages/cli/src/modules/n8n-packages/entities/skill/__tests__/skill-import.types.test.ts
+  s_127a9acd7ce7b7::t_b731199372d23d 1-28
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_127a9acd7ce7b7::t_1b8abbb07ebbcb 69-70
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_127a9acd7ce7b7::t_b731199372d23d 740-759
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_127a9acd7ce7b7::t_412baa578dad36 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b802688a0d513200fc6565c047900aaa04ccc87d",
+  "prompts": {},
+  "sessions": {
+    "s_127a9acd7ce7b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cde20d3-48ef-4bcf-b24f-c198afd6fca7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

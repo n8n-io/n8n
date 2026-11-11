@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantElementAttachments.ts
+  s_f642d601d434a5::t_86ed8d280de547 1-27
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_f642d601d434a5::t_e77416d5b2c093 8,94-95,98
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_f642d601d434a5::t_efdfba4a729c23 281-296
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.nodesContext.test.ts
+  s_f642d601d434a5::t_e77416d5b2c093 64-76
+  s_f642d601d434a5::t_efdfba4a729c23 3
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantElementAttachments.test.ts
+  s_f642d601d434a5::t_86ed8d280de547 1-34
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AttachmentPreview.vue
+  s_f642d601d434a5::t_86ed8d280de547 8,40-41
+  s_f642d601d434a5::t_f91feef49301c6 42
+packages/frontend/editor-ui/src/features/ai/instanceAi/utils/elementAttachment.test.ts
+  s_f642d601d434a5::t_86ed8d280de547 1-25
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_f642d601d434a5::t_acd84e3dea1812 24,83,392-396,408-413
+  s_f642d601d434a5::t_ec8023b5964e99 414
+packages/modules/apps/backend/src/serving/__tests__/inspector-script.test.ts
+  s_f642d601d434a5::t_7e7a21a43fa6b7 3,131-211,227
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_f642d601d434a5::t_913979fd0abf4b 4,986-1062
+packages/frontend/editor-ui/src/features/ai/instanceAi/utils/elementAttachment.ts
+  s_f642d601d434a5::t_86ed8d280de547 1-11
+packages/modules/apps/backend/src/serving/inspector-script.ts
+  s_f642d601d434a5::t_0866cef01e30b8 3-26,30-34,37-39,41-43,46,48,51-56,58,61,63-65,67-72,74,82,84-85,87,89-90,92-132,136,138,141,143,146,153,155,158,160,169,178-180,191-193,199,205,207-211,213,219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e51e5a84bf3bdd5a9f937c4ba1f870474c0b2f32",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f642d601d434a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24c7f81e-bd86-4e1f-88c9-69e2ad0fd6b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/repositories/agent-plan.repository.ts
+  s_4d1c03f40b5a9d::t_5e03bd6344d8ea 294,300,303,305,309,311,315,320,325,331,336,346,349,352,354,357,364,366,369,373,378,380,386,389,391,394,400,403,416,424,438,440,442,444,446,450,460,465,467
+packages/cli/test/integration/database/repositories/agent-plan-task-ownership.repository.test.ts
+  s_4d1c03f40b5a9d::t_55a0b796a3a405 151-152,156,159,161,164,168,176,180,183,188,191,197,201,213,218,220,224,230,232,234,237,243,245,249,255,262,268,270,278,285,289,291,298,309,324,331,337,355,363,374,382,385,387,397,400,410,412,415
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_4d1c03f40b5a9d::t_3103b5d133feb4 123-126,133,143,150,511,513,565
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ffb18868e3fe15481edf90e753b86729ff9c0f43",
+  "prompts": {},
+  "sessions": {
+    "s_4d1c03f40b5a9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f56959c2-d962-45ff-88a2-12ce6f9aa4ed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

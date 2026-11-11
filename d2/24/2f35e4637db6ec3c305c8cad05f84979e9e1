@@ -1,0 +1,42 @@
+packages/@n8n/api-types/src/agents/dto.ts
+  s_a87ab30323b2bf::t_d6eacc220220c4 21,136
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a87ab30323b2bf::t_142029f5a23791 9060
+packages/cli/src/modules/agents/utils/__tests__/memory-source-filter.test.ts
+  s_a87ab30323b2bf::t_444f43d3bf5d74 60,87-88,90,107-111
+  s_a87ab30323b2bf::t_7964a27794bd25 28-32,35,53
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_a87ab30323b2bf::t_010ed5d26e4e3f 21-24,199-200,202-207
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_a87ab30323b2bf::t_f0794d92135231 205,288-297,312
+  s_a87ab30323b2bf::t_fff39944afaba9 230-233
+packages/cli/src/modules/agents/utils/memory-source-filter.ts
+  s_a87ab30323b2bf::t_ed263325ec9997 3,30,32-42,58-59,93,98,102-105,184-185,197-199
+  s_a87ab30323b2bf::t_0170bcdc5dfa28 232
+packages/frontend/editor-ui/src/features/agents/components/AgentMemorySourceFilter.vue
+  s_a87ab30323b2bf::t_8826b216615be6 130
+  s_a87ab30323b2bf::t_142029f5a23791 96,104,112-120,123-126
+packages/frontend/editor-ui/src/features/agents/composables/useAgentMemorySourceLabels.ts
+  s_a87ab30323b2bf::t_142029f5a23791 1,7-11,17-18,37,45
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemorySourceFilter.test.ts
+  s_a87ab30323b2bf::t_8826b216615be6 29,55,64-67
+  s_a87ab30323b2bf::t_aa32cb09c4f84e 68
+packages/@n8n/api-types/src/agents/types.ts
+  s_a87ab30323b2bf::t_d6eacc220220c4 263-279,323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2242f35e4637db6ec3c305c8cad05f84979e9e1",
+  "prompts": {},
+  "sessions": {
+    "s_a87ab30323b2bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9f44e6d-79e1-4a2e-976f-3b0df0cd5b7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

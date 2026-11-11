@@ -1,0 +1,33 @@
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_3c6ff538aee6b1::t_e804ba51c3f5ac 9
+packages/@n8n/cli/docs/commands/promotions.md
+  s_3c6ff538aee6b1::t_e804ba51c3f5ac 487-488
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_3c6ff538aee6b1::t_e804ba51c3f5ac 2414-2415
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_3c6ff538aee6b1::t_e804ba51c3f5ac 187-188
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_3c6ff538aee6b1::t_e804ba51c3f5ac 675
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3c6ff538aee6b1::t_e804ba51c3f5ac 10716
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_3c6ff538aee6b1::t_1dda09c44140c9 5
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_3c6ff538aee6b1::t_bb943171e954c3 322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b70f8e25602c2ed383b11fbce0dea5cab392269a",
+  "prompts": {},
+  "sessions": {
+    "s_3c6ff538aee6b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c32701e-9c02-42e0-8a31-00aab8a85b96",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

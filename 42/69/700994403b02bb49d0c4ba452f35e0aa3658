@@ -1,0 +1,19 @@
+packages/cli/src/modules/mcp-registry/__tests__/mcp-connection-discovery.service.test.ts
+  s_56a7d22c1ab511::t_e79e447153af02 417-428
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4269700994403b02bb49d0c4ba452f35e0aa3658",
+  "prompts": {},
+  "sessions": {
+    "s_56a7d22c1ab511": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed87d465-9e29-4c06-83f3-0d01efe33472",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

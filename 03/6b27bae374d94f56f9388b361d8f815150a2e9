@@ -1,0 +1,73 @@
+docs/generated/postgres-schema/public.agent_execution.md
+  ai_agent 124
+packages/cli/src/modules/agents/background/background-job-messages.ts
+  s_5f72bed614ce17::t_0e9aed012813f3 80
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_5f72bed614ce17::t_730ae59fa7a944 1487-1491
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_5f72bed614ce17::t_0e9aed012813f3 1,43,516
+docs/generated/sqlite-schema/agent_execution.md
+  ai_agent 128
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_5f72bed614ce17::t_0e9aed012813f3 190
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 9,35,97
+docs/generated/postgres-schema/public.agents.md
+  ai_agent 133
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 24,95
+docs/generated/postgres-schema/README.md
+  ai_agent 12,522
+docs/generated/sqlite-schema/agents.md
+  ai_agent 134
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_5f72bed614ce17::t_51483960982fdd 1,64,73-76,261,270-272,277,279,282-283,288-291,294,1090,1100,1104,1111,1250
+  s_5f72bed614ce17::t_0e9aed012813f3 712
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_ef2fe8491daaf9::t_150fdd83020a14 1197,1205-1206,1208-1209,1211,1213,1415,1436
+  ai_agent 1198,1203-1204,1207,1210,1212,1214-1217,1403-1404,1406-1414,1416-1435,1437-1458,1460-1462,1464-1467,1475,1481-1485,1487-1488,1493-1518,1520-1527,1529
+  s_ef2fe8491daaf9::t_a5b76e76d4452a 1199-1202
+  s_ef2fe8491daaf9::t_01b5423b4735c0 1459,1463,1468-1474,1476-1480,1486,1489-1492
+  s_5f72bed614ce17::t_5c6a4f6e5fe232 1186,1263
+docs/generated/sqlite-schema/agent_plan.md
+  ai_agent 82
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_5f72bed614ce17::t_0e9aed012813f3 3-7,114-116
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_5f72bed614ce17::t_730ae59fa7a944 1055-1057
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_5f72bed614ce17::t_5c6a4f6e5fe232 42,379-384,392,396-398,401-407
+  s_5f72bed614ce17::t_730ae59fa7a944 393-395
+docs/generated/postgres-schema/public.agent_plan.md
+  ai_agent 77
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_ef2fe8491daaf9::t_c7518f5e0e6a8a 773,787,837-838,1283
+  s_ef2fe8491daaf9::t_87440c7ecf58a1 1169-1173,1175,1183-1187,1189,1203-1213,1218-1228
+  s_5f72bed614ce17::t_5442b297c84d6b 905-906
+docs/generated/sqlite-schema/README.md
+  ai_agent 12,508
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "036b27bae374d94f56f9388b361d8f815150a2e9",
+  "prompts": {},
+  "sessions": {
+    "s_5f72bed614ce17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a1d4fcf-f66a-4d6f-831e-82eea3858884",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_ef2fe8491daaf9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "edf1e92c-e697-4d8b-aab2-6ee47b01b00a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

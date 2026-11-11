@@ -1,0 +1,37 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_127a9acd7ce7b7::t_fb393e2f1daee6 8778-8780
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPermissions.test.ts
+  s_127a9acd7ce7b7::t_49f895c5bb69ed 193-211
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_127a9acd7ce7b7::t_536d3e2c0e6b94 632,636-637,2584-2593,2595-2609,2611,2613-2625,2641-2649,2651-2655,2658-2668,2670-2677,2679,2681-2683,2740-2741,2744-2745
+  s_127a9acd7ce7b7::t_8690d94b8f7128 39,2626-2630,2632-2634
+  s_127a9acd7ce7b7::t_79e7c1ab36c712 11-17,136-137,2562,2594,2610,2612,2640
+  s_127a9acd7ce7b7::t_c2d8ee106c56b0 10
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPermissions.ts
+  s_127a9acd7ce7b7::t_49f895c5bb69ed 7-8,21,52-53
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_127a9acd7ce7b7::t_a77caffb960758 74-75,77-78,90-91,94-97,116
+  s_127a9acd7ce7b7::t_793a1ed51d7e78 6750-6753,6757-6876
+  s_127a9acd7ce7b7::t_953d181779cd65 6754-6756
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_127a9acd7ce7b7::t_6fc35593bb2847 305
+  s_127a9acd7ce7b7::t_5b9e61f560cfb4 304
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  s_127a9acd7ce7b7::t_4c8329d85aff32 21,50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a025e04eb5bd14d05bab72924627d85b2107d29",
+  "prompts": {},
+  "sessions": {
+    "s_127a9acd7ce7b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cde20d3-48ef-4bcf-b24f-c198afd6fca7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

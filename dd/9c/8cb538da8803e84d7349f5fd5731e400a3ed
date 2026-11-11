@@ -1,0 +1,36 @@
+packages/@n8n/db/src/migrations/common/1793190226089-ReplaceAgentMemoryCaptureKind.ts
+  s_7a118b07ee147d::t_1a426f627372ec 1,8,10
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_7a118b07ee147d::t_2cc58cfa1d2a46 559,565,573-579
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_7a118b07ee147d::t_c65d370a24eb5d 844-855,858-862,869
+  s_7a118b07ee147d::t_970fe8e86f7eb9 856-857
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_7a118b07ee147d::t_6a543962bd1f91 31-33
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_7a118b07ee147d::t_70100c60e4639f 1282
+  s_7a118b07ee147d::t_eebf3ff0b48789 1280-1281,1283-1317
+packages/@n8n/agents/src/runtime/model/__tests__/native-tool-deferral.test.ts
+  s_7a118b07ee147d::t_d7fe6d4b0a1c69 430-443
+packages/cli/test/migration/1793190226089-replace-agent-memory-capture-kind.test.ts
+  s_7a118b07ee147d::t_77ad338848e929 114
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_7a118b07ee147d::t_7ba383ea486549 313,315-317
+  s_7a118b07ee147d::t_09fbea05c94eab 61-64,66-69,71,187-191,198,292-300,318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd9c8cb538da8803e84d7349f5fd5731e400a3ed",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

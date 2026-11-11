@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolApprovalCard.test.ts
+  s_fb57f159907454::t_bd19978ead650e 7-18,20-22
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_fb57f159907454::t_b3fc4631ebbd34 1606,1630
+  s_fb57f159907454::t_7035adeaa68f50 93
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fb57f159907454::t_b3fc4631ebbd34 8907-8908
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiConfirmationPanel.test.ts
+  s_fb57f159907454::t_9af291d21f256f 50
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_fb57f159907454::t_abb1b34740da7f 265
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_fb57f159907454::t_b3fc4631ebbd34 1816,1836
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolApprovalCard.vue
+  s_fb57f159907454::t_0c22137dd9cca8 63,65-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "64da6e81c8cc7c5bae35521c50c2d5dd0003a52d",
+  "prompts": {},
+  "sessions": {
+    "s_fb57f159907454": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18233-844b-7110-b50e-ea054feea828",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

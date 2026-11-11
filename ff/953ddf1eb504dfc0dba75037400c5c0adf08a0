@@ -1,0 +1,16 @@
+packages/cli/src/modules/oauth-server/__tests__/oauth-grant.service.integration.test.ts
+  h_52a137d26d774c 12
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.module.test.ts
+  h_52a137d26d774c 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ff953ddf1eb504dfc0dba75037400c5c0adf08a0",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

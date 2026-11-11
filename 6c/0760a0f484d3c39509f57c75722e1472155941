@@ -1,0 +1,21 @@
+packages/cli/src/modules/skills/skill.service.ts
+  s_127a9acd7ce7b7::t_fdaa903ba44a73 45,51-54
+packages/cli/src/modules/agents/__tests__/agent-skill-refs.service.test.ts
+  s_127a9acd7ce7b7::t_112d3ffd9f8542 179-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c0760a0f484d3c39509f57c75722e1472155941",
+  "prompts": {},
+  "sessions": {
+    "s_127a9acd7ce7b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cde20d3-48ef-4bcf-b24f-c198afd6fca7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

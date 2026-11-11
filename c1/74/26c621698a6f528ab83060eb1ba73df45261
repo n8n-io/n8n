@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_957eecb2e18fbf::t_bdf95f3151f6e2 828-834,922
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c17426c621698a6f528ab83060eb1ba73df45261",
+  "prompts": {},
+  "sessions": {
+    "s_957eecb2e18fbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a69e75d-aa11-4e29-af26-3cdcee83f150",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

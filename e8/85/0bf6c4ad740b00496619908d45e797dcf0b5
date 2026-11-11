@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  s_96a04a2395d393::t_df5b8d0090bd40 977-1015
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e8850bf6c4ad740b00496619908d45e797dcf0b5",
+  "prompts": {},
+  "sessions": {
+    "s_96a04a2395d393": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba687f9c-84fd-4737-8428-66083ff40308",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

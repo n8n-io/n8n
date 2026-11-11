@@ -1,0 +1,19 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/factory-trace-headers.test.ts
+  s_0f4e16b2c3bd63::t_7ddc322410a181 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a278308c5392cadaab50df887b5f9b60667f1d34",
+  "prompts": {},
+  "sessions": {
+    "s_0f4e16b2c3bd63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24b72644-fa4d-4fed-b88a-ff65b01be832",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  ai_agent 11,110-111,197,210,213,254,273,288,305,318
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  ai_agent 267-339,532-534
+packages/@n8n/expression-runtime/src/bridge/host-functions.ts
+  ai_agent 3-7,30-37
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  ai_agent 10,367
+packages/@n8n/expression-runtime/src/runtime/transfer.ts
+  ai_agent 28-30,36-37,45
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  ai_agent 1,73-79
+packages/@n8n/expression-runtime/src/runtime/__tests__/transfer.test.ts
+  ai_agent 12,67
+packages/@n8n/expression-runtime/src/bridge/__tests__/isolated-vm-bridge.test.ts
+  ai_agent 130,132-135
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  ai_agent 17,120,174-175,180-181,184,193,203,207-208,227,233,236,238,241,255,1000-1001,1004,1168,1323-1326,1329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9c56b6f6fcb5ba8d59d20a4b1bc2127c7a6d609e",
+  "prompts": {}
+}

@@ -1,0 +1,40 @@
+packages/cli/src/webhooks/webhook-server.ts
+  s_55fab4d6e7841e::t_8e69da2a2c360f 25
+packages/cli/src/webhooks/__tests__/webhook-server.test.ts
+  s_55fab4d6e7841e::t_8e69da2a2c360f 68
+packages/cli/src/chat/__tests__/chat-server.test.ts
+  s_55fab4d6e7841e::t_8e69da2a2c360f 39,44,65
+packages/cli/src/push/index.ts
+  s_55fab4d6e7841e::t_8e69da2a2c360f 9,70
+packages/cli/src/modules/instance-ai/__tests__/browser-use-server.test.ts
+  s_55fab4d6e7841e::t_8e69da2a2c360f 35
+packages/cli/src/modules/instance-ai/browser/browser-use-server.ts
+  s_55fab4d6e7841e::t_8e69da2a2c360f 4,24
+packages/cli/src/server.ts
+  s_55fab4d6e7841e::t_8e69da2a2c360f 574-575,577
+packages/cli/src/push/__tests__/index.test.ts
+  s_55fab4d6e7841e::t_8e69da2a2c360f 58,79
+packages/cli/src/chat/chat-server.ts
+  s_55fab4d6e7841e::t_8e69da2a2c360f 4,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "47618308ca5cf40f423432cceb5826f547b976ce",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_55fab4d6e7841e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75b5cb9b-ed1e-4b91-9cb8-d26a0fbb9ba9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

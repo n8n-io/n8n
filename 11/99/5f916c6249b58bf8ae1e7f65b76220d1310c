@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_cb403955b20732::t_4a91aff84a08a7 64-65
+  s_cb403955b20732::t_bc59f22ae377f4 4,290,296
+  s_cb403955b20732::t_933622cdf794c4 284-289,294-295,347-351
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_cb403955b20732::t_4a91aff84a08a7 323,347,920
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_cb403955b20732::t_4a91aff84a08a7 152
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useArtifactsLayout.ts
+  s_cb403955b20732::t_4a91aff84a08a7 156,175
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_cb403955b20732::t_44f9eadeb61ac8 4-5,87-93,176,294-305,537-538
+  s_cb403955b20732::t_933622cdf794c4 308-321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "11995f916c6249b58bf8ae1e7f65b76220d1310c",
+  "prompts": {},
+  "sessions": {
+    "s_cb403955b20732": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eaabc383-c981-4501-a597-f5f8835d5b8e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

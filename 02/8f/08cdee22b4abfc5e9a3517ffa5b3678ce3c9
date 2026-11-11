@@ -1,0 +1,42 @@
+.github/workflows/release-populate-cloud-with-releases.yml
+  h_52a137d26d774c 35-36
+.github/workflows/release-version-release-notification.yml
+  h_52a137d26d774c 28
+cubic.yaml
+  s_8d29570047ebb2::t_7d6c2deef2acb4 82
+.github/actions/setup-nodejs/action.yml
+  s_8d29570047ebb2::t_7d6c2deef2acb4 81
+.github/workflows/release-recreate-failed-release.yml
+  s_8d29570047ebb2::t_7d6c2deef2acb4 153
+.agents/review-rules/qa-dx/workflow-safety.md
+  s_8d29570047ebb2::t_7d6c2deef2acb4 5-8,16-19
+.github/workflows/util-update-credential-setupability.yml
+  s_8d29570047ebb2::t_7d6c2deef2acb4 99
+.github/workflows/build-v3-nightly.yml
+  s_8d29570047ebb2::t_7d6c2deef2acb4 52
+.github/workflows/test-evals-mcp.yml
+  s_8d29570047ebb2::t_7d6c2deef2acb4 147
+.github/workflows/util-update-boundaries-baseline.yml
+  s_8d29570047ebb2::t_7d6c2deef2acb4 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "028f08cdee22b4abfc5e9a3517ffa5b3678ce3c9",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8d29570047ebb2": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e87c06debffeKjbu6Ofl2uGW8I",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

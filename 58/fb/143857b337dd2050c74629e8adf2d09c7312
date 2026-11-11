@@ -1,0 +1,19 @@
+packages/quality/policy/code-health/README.md
+  s_c303585f8e7306::t_368066fa3e8bec 91-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "58fb143857b337dd2050c74629e8adf2d09c7312",
+  "prompts": {},
+  "sessions": {
+    "s_c303585f8e7306": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e797cfa60ffeE2wAshFg5eGJRx",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

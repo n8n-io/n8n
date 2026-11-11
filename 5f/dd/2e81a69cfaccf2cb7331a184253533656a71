@@ -1,0 +1,201 @@
+packages/frontend/@n8n/frontend-module-sdk/src/types/capability.ts
+  s_b6d332c56aa1c5::t_f7bb1339c59d93 2,4
+  s_b6d332c56aa1c5::t_b4518d32e9a818 28-34
+packages/modules/apps/frontend/tsconfig.json
+  s_b6d332c56aa1c5::t_9dda1facc30983 1-21
+packages/modules/apps/frontend/biome.jsonc
+  s_b6d332c56aa1c5::t_9dda1facc30983 1-4
+packages/modules/apps/frontend/src/apps.module.ts
+  s_b6d332c56aa1c5::t_883ec1fb078cc4 7-8,19,23-36,45-52,54-61,63,65-68
+  s_b6d332c56aa1c5::t_9dda1facc30983 1,4,20-22,69
+  s_b6d332c56aa1c5::t_aecc72f98e8608 2
+  s_b6d332c56aa1c5::t_2e90dfeaf690fb 5,64
+  s_b6d332c56aa1c5::t_830cbea24575a7 53,62
+  s_b6d332c56aa1c5::t_bd8ca9ade0e73c 3,6,9-15,17-18,37-44
+  s_b6d332c56aa1c5::t_c3259bbe929bb5 16
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/projectPermissions.ts
+  s_b6d332c56aa1c5::t_d450cd42bade4a 1-10
+packages/frontend/@n8n/frontend-module-sdk/src/types/component.ts
+  s_b6d332c56aa1c5::t_6a1ec93e0706cf 18-19,22-23,25-29,31
+  s_b6d332c56aa1c5::t_4fcecc100eaf30 2,73-77,78-79,82-126
+packages/modules/apps/frontend/eslint.config.mjs
+  s_b6d332c56aa1c5::t_9dda1facc30983 1-4
+packages/modules/apps/frontend/README.md
+  s_b6d332c56aa1c5::t_9dda1facc30983 1-52
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.test.ts
+  s_b6d332c56aa1c5::t_03525230de1ddc 144-153
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_b6d332c56aa1c5::t_9dda1facc30983 15,47
+packages/frontend/editor-ui/tsconfig.json
+  s_b6d332c56aa1c5::t_9dda1facc30983 28-29
+packages/modules/apps/frontend/src/__tests__/setup.ts
+  s_b6d332c56aa1c5::t_9dda1facc30983 1-4
+packages/modules/apps/frontend/src/apps.constants.ts
+  s_b6d332c56aa1c5::t_82b5b1d3a08df0 1-4,6-16
+  s_b6d332c56aa1c5::t_bd8ca9ade0e73c 5
+packages/modules/apps/frontend/src/views/AppsListView.test.ts
+  s_b6d332c56aa1c5::t_c045c7870d1268 1-13,16-18,20,22,29,36,38-41,43,47,49-69,71,73-79,82,89-92,94-112,122-129,141-147,175-181,332-345
+  s_b6d332c56aa1c5::t_a18f34ecc859e7 21,37
+  s_b6d332c56aa1c5::t_3722a4e69faa3e 80-81,93,113-121,182-188,220
+  s_b6d332c56aa1c5::t_63b164cf41debd 44-45,189-219
+  s_b6d332c56aa1c5::t_ee2d055bdb7190 14,30-35,223-239,241-249,254-257,290-293,295-296,333
+  s_b6d332c56aa1c5::t_79dc5939ae0eff 334
+  s_b6d332c56aa1c5::t_26928560bbdede 240,250-253,258-261,263-264,266-280
+  s_b6d332c56aa1c5::t_ea652aeca63e90 265
+  s_b6d332c56aa1c5::t_32d97142e4c4b7 281-316,318-319
+  s_b6d332c56aa1c5::t_d3254abd09d7e3 317
+  s_b6d332c56aa1c5::t_bf7b227934dbcb 320
+  s_b6d332c56aa1c5::t_c3259bbe929bb5 15,19,70,323-332
+  s_b6d332c56aa1c5::t_196df1e1239731 333-334
+  s_b6d332c56aa1c5::t_c4bf8bd36160cf 72
+packages/frontend/editor-ui/src/app/capabilities.manifest.test.ts
+  s_b6d332c56aa1c5::t_aec80fce8bbd12 189-212
+  s_b6d332c56aa1c5::t_902f4510887ddf 2-3,6
+  s_b6d332c56aa1c5::t_74fa29cd353f0f 16-18
+packages/modules/apps/frontend/src/components/AppCard.test.ts
+  s_b6d332c56aa1c5::t_1dd9c512f12f0d 1-2,3,4,5-6,7-21,25,27-31,32,33,34-38,40-42,43-46,48-49,52,54,56-57,60,62,65-66
+  s_b6d332c56aa1c5::t_07904c93847b52 22-24,26,39,47,50-51,53,55,58-59,61,63-64
+packages/modules/apps/frontend/src/apps.module.test.ts
+  s_b6d332c56aa1c5::t_eb1f0493122e27 1-5,7-11,13-22,24-63,85-98
+  s_b6d332c56aa1c5::t_49c46b099cfdcb 6,12,23,64-78,82
+  s_b6d332c56aa1c5::t_945917e0714856 79-81,83-84
+packages/modules/apps/frontend/src/__tests__/design-system-icons.test.ts
+  s_b6d332c56aa1c5::t_9dda1facc30983 1-24
+packages/modules/apps/frontend/src/apps.api.test.ts
+  s_b6d332c56aa1c5::t_f8440d8b8d7e92 1-2,4-30,41-50
+  s_b6d332c56aa1c5::t_58db7add7c9f23 34-38
+  s_b6d332c56aa1c5::t_bd8ca9ade0e73c 3,31-33
+  s_b6d332c56aa1c5::t_48a242334ee409 39-40
+packages/frontend/@n8n/frontend-module-sdk/package.json
+  s_b6d332c56aa1c5::t_1ee462c3d4a8ad 23
+packages/modules/apps/frontend/src/apps.api.ts
+  s_b6d332c56aa1c5::t_42f350fed872b7 2
+  s_b6d332c56aa1c5::t_46a7ee666229a4 3-21,30-36
+  s_b6d332c56aa1c5::t_bd8ca9ade0e73c 1,22-27
+  s_b6d332c56aa1c5::t_8a336ec494a507 28-29
+packages/modules/apps/frontend/stylelint.config.mjs
+  s_b6d332c56aa1c5::t_9dda1facc30983 1-9
+packages/frontend/@n8n/frontend-vite-config/index.ts
+  s_b6d332c56aa1c5::t_9dda1facc30983 47
+packages/frontend/editor-ui/package.json
+  s_b6d332c56aa1c5::t_9dda1facc30983 57
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/index.ts
+  s_b6d332c56aa1c5::t_38b9cdf52a7533 7
+packages/frontend/editor-ui/src/app/componentSlots.manifest.ts
+  s_b6d332c56aa1c5::t_a1b976f4a257c4 36-43,52-57
+packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+  s_b6d332c56aa1c5::t_156c9ca573a7bd 10-12
+  s_b6d332c56aa1c5::t_be2c8f3654112f 64-71,74
+packages/modules/apps/frontend/src/components/AppCard.vue
+  s_b6d332c56aa1c5::t_865713b2ea02a9 1-2,4-5,6,9,11,13-14,15,16-18,20-38,42-50,52-71,73-77
+  s_b6d332c56aa1c5::t_044030b05f39f9 3,7-8,10,12,19,39-41,51,72
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b6d332c56aa1c5::t_778d4ca4370dae 313-330
+  s_b6d332c56aa1c5::t_c43c38e7db48ff 331-336
+packages/modules/apps/frontend/package.json
+  s_b6d332c56aa1c5::t_dd9ead37dc17b4 45
+  s_b6d332c56aa1c5::t_9dda1facc30983 1-25,27-31,32-44,46-58
+  s_b6d332c56aa1c5::t_502212ca0bb78b 26
+packages/modules/apps/frontend/src/views/AppsListView.vue
+  s_b6d332c56aa1c5::t_345c86269b3ef6 1-2,5-10,13-14,16-19,21-22,25-27,31-38,41-44,49,61-65,67,69-70,73,75-76,78,98-100,102,104-112,115,117-118,121-122,141,144-150,153-156,158-165,167-172,176-185,187-189
+  s_b6d332c56aa1c5::t_6c5cd6abfad7de 113-114
+  s_b6d332c56aa1c5::t_b23db4e0760279 45,47-48
+  s_b6d332c56aa1c5::t_7e4e9c453181da 157
+  s_b6d332c56aa1c5::t_79944eb6169e47 40,46,101,152
+  s_b6d332c56aa1c5::t_d57b903812a07c 82-86,94-99
+  s_b6d332c56aa1c5::t_831a6694a21218 23
+  s_b6d332c56aa1c5::t_6f245b65ac85a3 4,11,24,29-30,50,68,74,79,136,140,143,151
+  s_b6d332c56aa1c5::t_a4d9dd60bb5702 87-93,103,116,135,137
+  s_b6d332c56aa1c5::t_32d97142e4c4b7 119-124,133-134,138-139,142
+  s_b6d332c56aa1c5::t_c43c38e7db48ff 12,15,20,125-131
+  s_b6d332c56aa1c5::t_11e971322c13be 186
+packages/frontend/editor-ui/src/app/utils/modules/tabUtils.ts
+  s_b6d332c56aa1c5::t_e138699b4360a0 12-14,18,21,26
+  s_b6d332c56aa1c5::t_e58b7f499efd12 38-40
+packages/modules/apps/frontend/src/index.ts
+  s_b6d332c56aa1c5::t_9dda1facc30983 1
+  s_b6d332c56aa1c5::t_bd8ca9ade0e73c 2
+  s_b6d332c56aa1c5::t_e67ad3ce73c839 3-5
+packages/frontend/@n8n/frontend-module-sdk/src/types/tabs.ts
+  s_b6d332c56aa1c5::t_6449ac848a3ca5 17-21
+packages/modules/apps/frontend/vite.config.ts
+  s_b6d332c56aa1c5::t_9dda1facc30983 1-52
+OWNERS
+  s_b6d332c56aa1c5::t_f5a054f1bbb892 228
+pnpm-lock.yaml
+  s_b6d332c56aa1c5::t_dc90d6b96c9b5a 5991-5993,6545-6547,7039-7067,7068-7135
+packages/frontend/editor-ui/src/app/composables/useN8nLocalStorage.ts
+  s_b6d332c56aa1c5::t_b16bfd0a7c19b6 1,12
+packages/modules/apps/frontend/src/apps.permissions.ts
+  s_b6d332c56aa1c5::t_922ec40e4549d1 1-9,11-13
+  s_b6d332c56aa1c5::t_bd8ca9ade0e73c 10
+packages/frontend/editor-ui/src/app/componentSlots.manifest.test.ts
+  s_b6d332c56aa1c5::t_0dea6b404a4f8e 18-19
+packages/frontend/editor-ui/src/app/utils/modules/tabUtils.test.ts
+  s_b6d332c56aa1c5::t_7e2c18d827b35d 1-47
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_b6d332c56aa1c5::t_b16bfd0a7c19b6 67
+  s_b6d332c56aa1c5::t_fbbf3c864a895a 6
+  s_b6d332c56aa1c5::t_687ed08f7e8e61 190
+packages/frontend/editor-ui/src/Interface.ts
+  s_b6d332c56aa1c5::t_fbbf3c864a895a 16
+  s_b6d332c56aa1c5::t_b16bfd0a7c19b6 384
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_b6d332c56aa1c5::t_08fe2d2a3fea84 19
+  s_b6d332c56aa1c5::t_b16bfd0a7c19b6 12,41
+  s_b6d332c56aa1c5::t_e1fe6506297598 40
+  s_b6d332c56aa1c5::t_6b708e2ee25e2b 42-44
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionChangeCount.ts
+  s_b6d332c56aa1c5::t_bc570cbcf075f5 4
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_b6d332c56aa1c5::t_bc570cbcf075f5 5
+packages/frontend/editor-ui/src/features/core/dataTable/components/ImportCsvModal.vue
+  s_b6d332c56aa1c5::t_bc570cbcf075f5 8
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_b6d332c56aa1c5::t_bc570cbcf075f5 27
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.vue
+  s_b6d332c56aa1c5::t_bc570cbcf075f5 24
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_b6d332c56aa1c5::t_bc570cbcf075f5 19
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_b6d332c56aa1c5::t_bc570cbcf075f5 35
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionPreview.ts
+  s_b6d332c56aa1c5::t_bc570cbcf075f5 5
+packages/frontend/editor-ui/src/features/agents/composables/useAgentRegistryMcpConfig.ts
+  s_b6d332c56aa1c5::t_bc570cbcf075f5 10
+packages/modules/apps/frontend/src/components/AppPublicationBadge.vue
+  s_b6d332c56aa1c5::t_80a9d56cc63534 1-18
+packages/modules/apps/frontend/src/views/AppDetailView.vue
+  s_b6d332c56aa1c5::t_b74be9ffbf91c6 1-29
+packages/modules/apps/frontend/src/components/AppView.test.ts
+  s_b6d332c56aa1c5::t_5f9b935250fd81 83,85
+  s_b6d332c56aa1c5::t_eb14a578e2fb61 1-82,84,86-103
+packages/modules/apps/frontend/src/components/AppView.vue
+  s_b6d332c56aa1c5::t_bee6b82588c5ec 1-2,4-23,25-28,29,31-32,35-36,38-130
+  s_b6d332c56aa1c5::t_9b7acedb203afd 3,24,30,33-34,37
+packages/modules/apps/frontend/src/components/AppActions.vue
+  s_b6d332c56aa1c5::t_ea439cd923a19a 1-55
+packages/modules/apps/frontend/src/components/AppActions.test.ts
+  s_b6d332c56aa1c5::t_d848f5024728f6 1-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5fdd2e81a69cfaccf2cb7331a184253533656a71",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

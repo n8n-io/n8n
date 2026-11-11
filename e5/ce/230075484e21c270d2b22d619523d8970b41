@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/css/_global.scss
+  s_487e84a01c1456::t_efe1fc1b348cb4 8-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5ce230075484e21c270d2b22d619523d8970b41",
+  "prompts": {},
+  "sessions": {
+    "s_487e84a01c1456": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a179ee-c301-706d-b7ca-03dd0c612091",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

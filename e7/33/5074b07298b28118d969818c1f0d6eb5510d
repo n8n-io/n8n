@@ -1,0 +1,17 @@
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredentialDependencies.generated.yml
+  ai_agent 31-32
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getRateLimitSettings.generated.yml
+  ai_agent 20-21
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/updateRateLimitSettings.generated.yml
+  ai_agent 97-98
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowDependencies.generated.yml
+  ai_agent 31-32
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/getDataTableDependencies.generated.yml
+  ai_agent 33-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e7335074b07298b28118d969818c1f0d6eb5510d",
+  "prompts": {}
+}

@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
+  s_82789c69de1855::t_56a7400b04deb5 30,37,39,46,52,58,64,72,88,110,113,115,117,125,136,140,150,159,168,177,104,107,128,130,133
+  s_82789c69de1855::t_0689f2c58fad8b 103,132
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_82789c69de1855::t_bdb33832e20e3f 573,576,578,581,495,504,506,513,517,519,525
+  s_82789c69de1855::t_54d66b9cbc7730 1604,1824-1825
+  s_82789c69de1855::t_d6b616fdf44d36 1605-1608,1613-1627,1629-1630,1637
+  s_35eec4a310924f::t_b7c49ccbf65683 1498-1500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8d7daf6a35c34cb1eedcbd6c0d0ecb1dc3b7d4b",
+  "prompts": {},
+  "sessions": {
+    "s_35eec4a310924f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7cdd8b7-8742-4eb0-b7e6-bd08d27ca2d1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}

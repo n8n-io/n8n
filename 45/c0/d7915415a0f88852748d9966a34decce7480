@@ -1,0 +1,76 @@
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_7a118b07ee147d::t_6943518ed6067c 697-714
+  s_7a118b07ee147d::t_68f9e309b93faf 569,627,895,983,1262
+docs/generated/postgres-schema/README.md
+  s_7a118b07ee147d::t_6f5a1d6b74f9b1 860
+docs/generated/postgres-schema/public.agents.md
+  s_7a118b07ee147d::t_f355e7d45bd2e4 297
+docs/generated/postgres-schema/public.agents_memory_entry_candidates.md
+  s_7a118b07ee147d::t_7f0b56279583e4 13,38,75
+docs/generated/postgres-schema/public.agents_memory_entry_sources.md
+  s_7a118b07ee147d::t_f1018816237839 98
+docs/generated/postgres-schema/public.agents_messages.md
+  s_7a118b07ee147d::t_39c87dc9b500c2 94
+docs/generated/postgres-schema/public.agents_resources.md
+  s_7a118b07ee147d::t_6c8e9860ff39df 64
+docs/generated/postgres-schema/public.agents_threads.md
+  s_7a118b07ee147d::t_436b939316de05 58
+docs/generated/sqlite-schema/README.md
+  s_7a118b07ee147d::t_77a9ed4c13a4d8 846
+docs/generated/sqlite-schema/agents.md
+  s_7a118b07ee147d::t_2c3cbeb5b516a8 298
+docs/generated/sqlite-schema/agents_memory_entry_candidates.md
+  s_7a118b07ee147d::t_b252ad8987e16b 9,24,74
+docs/generated/sqlite-schema/agents_memory_entry_sources.md
+  s_7a118b07ee147d::t_6b66936ec5f8b1 102
+docs/generated/sqlite-schema/agents_messages.md
+  s_7a118b07ee147d::t_cf0398faac9170 99
+docs/generated/sqlite-schema/agents_resources.md
+  s_7a118b07ee147d::t_3fec779c95e9e0 73
+docs/generated/sqlite-schema/agents_threads.md
+  s_7a118b07ee147d::t_303193bf4671b9 66
+packages/@n8n/agents/src/index.ts
+  s_7a118b07ee147d::t_ddfbf2c3798453 55
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_7a118b07ee147d::t_94bc4ca422f1d9 8497
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_7a118b07ee147d::t_370605e70218ac 190-191,269
+packages/@n8n/agents/src/types/index.ts
+  s_7a118b07ee147d::t_df02ca654100e8 92
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_7a118b07ee147d::t_48a4ed7dcdd0d2 111-119,132-133
+packages/cli/src/modules/agents/entities/agent-memory-entry-candidate.entity.ts
+  s_7a118b07ee147d::t_4e5a103b4e0bd3 1,36-37
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory-source-message.integration.test.ts
+  s_7a118b07ee147d::t_e0e49e29b27caa 58
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.integration.test.ts
+  s_7a118b07ee147d::t_543c2d31730214 284,698,819
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_7a118b07ee147d::t_7b7d7504e4e84c 1414,1527
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_7a118b07ee147d::t_ba48f900495e70 1037
+packages/cli/src/modules/agents/repositories/agent-memory-entry-candidate.repository.ts
+  s_7a118b07ee147d::t_f672cb31d3267e 1,17
+packages/cli/test/integration/agents/agent-memory-trace.test.ts
+  s_7a118b07ee147d::t_46fa0d4cf1548b 67
+packages/cli/test/integration/database/repositories/agent-memory-entry-candidate.repository.test.ts
+  s_7a118b07ee147d::t_4321151a7dda2a 71
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_7a118b07ee147d::t_4d8fffbd5aa5da 176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45c0d7915415a0f88852748d9966a34decce7480",
+  "prompts": {},
+  "sessions": {
+    "s_7a118b07ee147d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e0ec06a-e91b-466d-8b5a-495d558044e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_a71582cc5ed9a5::t_bff894f54b57cd 1911-1912
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9917b383a7a9261f4e47f7275cbc1136e8a9e907",
+  "prompts": {},
+  "sessions": {
+    "s_a71582cc5ed9a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7099578e-2731-4a72-8a89-f81257062489",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
