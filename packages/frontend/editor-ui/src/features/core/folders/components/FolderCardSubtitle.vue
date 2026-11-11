@@ -72,7 +72,7 @@ const i18n = useI18n();
 
 .infoCell + .infoCell::before {
 	content: '|';
-	margin: 0 var(--spacing--4xs);
+	margin: 0 var(--spacing--2xs);
 }
 
 @include breakpoints.breakpoint('sm-and-down') {
