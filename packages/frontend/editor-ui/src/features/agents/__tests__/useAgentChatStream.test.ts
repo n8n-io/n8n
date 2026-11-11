@@ -4737,6 +4737,36 @@ describe('useAgentChatStream — queued submissions', () => {
 		);
 	});
 
+	it('keeps the last queue and shows no error when background queue refreshes fail', async () => {
+		const queued = {
+			id: '1',
+			message: 'A',
+			createdAt: new Date().toISOString(),
+			steeringExecutionId: null,
+		};
+		getAgentChatQueueMock.mockResolvedValue({ items: [queued] });
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+		expect(hook.queuedMessages.value).toEqual([queued]);
+
+		getAgentChatQueueMock.mockRejectedValue(new Error("Can't connect to n8n."));
+		for (let i = 0; i < 3; i++) {
+			for (const listener of [...pushListeners])
+				listener({
+					type: 'agentMessageQueueUpdated',
+					data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1' },
+				});
+			await flushPromises();
+		}
+
+		expect(getAgentChatQueueMock.mock.calls.length).toBeGreaterThan(1);
+		expect(showQueueErrorMock).not.toHaveBeenCalledWith(
+			expect.anything(),
+			'agents.chat.queue.loadError',
+		);
+		expect(hook.queuedMessages.value).toEqual([queued]);
+	});
+
 	it('keeps an accepted steer reserved when the queue refresh fails', async () => {
 		getChatMessagesMock.mockResolvedValue({
 			messages: [],
