@@ -140,7 +140,7 @@ describe('useWorkflowImport', () => {
 		vi.mocked(credentialsStore.fetchCredentialTypes).mockImplementation(async () => {
 			callOrder.push('fetchCredentialTypes');
 		});
-		mockInitializeWorkspace.mockImplementation(async () => {
+		mockInitializeWorkspace.mockImplementationOnce(async () => {
 			callOrder.push('initialize');
 			return { workflowDocumentStore: { id: 'mock-store', setConnections: vi.fn() } };
 		});
