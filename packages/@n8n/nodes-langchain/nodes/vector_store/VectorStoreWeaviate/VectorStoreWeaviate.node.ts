@@ -13,7 +13,7 @@ import { UnexpectedError } from '@n8n/errors';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
 import { createWeaviateClient, parseCompositeFilter } from './Weaviate.utils';
-import { createVectorStoreNode } from '@n8n/ai-utilities';
+import { createVectorStoreNode, DEFAULT_OPERATION_MODES } from '@n8n/ai-utilities';
 import { weaviateCollectionsSearch } from '../shared/methods/listSearch';
 import { weaviateCollectionRLC } from '../shared/descriptions';
 
@@ -193,6 +193,18 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
+const deleteFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		// The text key is only for documents, which a delete does not read
+		options: shared_options.filter((option) => !('name' in option) || option.name !== 'textKey'),
+	},
+];
+
 const retrieveFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -308,12 +320,15 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 				required: true,
 			},
 		],
+		operationModes: [...DEFAULT_OPERATION_MODES, 'delete'],
 	},
 	methods: {
 		listSearch: { weaviateCollectionsSearch },
 	},
 	loadFields: retrieveFields,
 	insertFields,
+	deleteFields,
+	parseDeleteFilter: (filter) => parseCompositeFilter(filter as WeaviateCompositeFilter),
 	sharedFields,
 	retrieveFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {

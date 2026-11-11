@@ -34,15 +34,22 @@ vi.mock('@langchain/weaviate', () => {
 });
 
 vi.mock('@n8n/ai-utilities', () => ({
+	DEFAULT_OPERATION_MODES: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
 	createVectorStoreNode: (config: {
+		meta: unknown;
+		deleteFields: unknown;
 		getVectorStoreClient: (...args: unknown[]) => unknown;
 		populateVectorStore: (...args: unknown[]) => unknown;
 		beforeInsert: (...args: unknown[]) => unknown;
+		parseDeleteFilter: (...args: unknown[]) => unknown;
 	}) =>
 		class BaseNode {
+			meta = config.meta;
+			deleteFields = config.deleteFields;
 			getVectorStoreClient = config.getVectorStoreClient;
 			populateVectorStore = config.populateVectorStore;
 			beforeInsert = config.beforeInsert;
+			parseDeleteFilter = config.parseDeleteFilter;
 		},
 }));
 
@@ -53,6 +60,9 @@ import { VectorStoreWeaviate } from './VectorStoreWeaviate.node';
 import { parseCompositeFilter } from './Weaviate.utils';
 
 type TestNode = {
+	meta: { operationModes: string[] };
+	deleteFields: Array<{ name: string; options: Array<{ name: string }> }>;
+	parseDeleteFilter: (filter: Record<string, unknown>) => unknown;
 	getVectorStoreClient: (
 		context: ISupplyDataFunctions,
 		filter: IDataObject | undefined,
@@ -511,6 +521,46 @@ describe('VectorStoreWeaviate.node', () => {
 				await expect(clear({ clearStore: true })).rejects.toThrow('clear failed');
 				expect(closeClient).toHaveBeenCalledTimes(1);
 			});
+		});
+	});
+
+	describe('delete mode', () => {
+		it('should turn on the delete mode with the default modes', () => {
+			expect(node.meta.operationModes).toEqual([
+				'load',
+				'insert',
+				'retrieve',
+				'retrieve-as-tool',
+				'delete',
+			]);
+		});
+
+		it('should parse a nested delete filter into a Weaviate filter', () => {
+			const filter = {
+				AND: [
+					{ path: ['year'], operator: 'LessThan', valueNumber: 2000 },
+					{ NOT: { path: ['author'], operator: 'Equal', valueString: 'Elis' } },
+				],
+			};
+
+			expect(node.parseDeleteFilter(filter)).toEqual(parseCompositeFilter(filter));
+		});
+
+		it('should offer the tenant and connection options, but not the text key', () => {
+			const names = node.deleteFields[0].options.map(({ name }) => name);
+
+			expect(names).toContain('tenant');
+			expect(names).toContain('proxy_grpc');
+			expect(names).not.toContain('textKey');
+		});
+
+		it('should give the tenant to the store that LangChain deletes from', async () => {
+			await getClient({ tenant: 'tenantA' });
+
+			expect(store.fromExistingIndex).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ indexName: 'TestCollection', tenant: 'tenantA' }),
+			);
 		});
 	});
 });
