@@ -300,8 +300,6 @@ function buildResponses(
 	return responses;
 }
 
-// GitBook does not render `x-required-scope`. OpenAPI 3.0 cannot scope an `apiKey` requirement.
-// The description states the scope for readers.
 function describeRequiredApiKeyScope(requirement: ApiKeyScopeRequirement): string {
 	const scopeList = scopesInRequirement(requirement)
 		.map((scope) => `\`${scope}\``)
@@ -318,14 +316,24 @@ function describeRequiredApiKeyScope(requirement: ApiKeyScopeRequirement): strin
 	return `Requires all of these API key scopes: ${scopeList}.`;
 }
 
-/** Joins the route's description and its required API key scope into one Markdown description. */
 function buildOperationDescription(route: ResolvedPublicApiRoute): string | undefined {
-	const paragraphs = [
-		route.description?.trim(),
-		route.apiKeyScope ? describeRequiredApiKeyScope(route.apiKeyScope) : undefined,
-	].filter((paragraph): paragraph is string => Boolean(paragraph));
+	const description = route.description?.trim();
 
-	return paragraphs.length ? paragraphs.join('\n\n') : undefined;
+	// GitBook does not render `x-required-scope`. OpenAPI 3.0 cannot scope an `apiKey` requirement.
+	// So we add a human-readable description of the required scope(s) to the operation's description.
+	const requiredScopeSuffix = route.apiKeyScope
+		? describeRequiredApiKeyScope(route.apiKeyScope)
+		: undefined;
+
+	const descriptionComponents = [description, requiredScopeSuffix].filter(
+		(component): component is string => Boolean(component),
+	);
+
+	if (descriptionComponents.length === 0) {
+		return undefined;
+	}
+
+	return descriptionComponents.join('\n\n');
 }
 
 export interface GeneratedDecoratorOperation {
