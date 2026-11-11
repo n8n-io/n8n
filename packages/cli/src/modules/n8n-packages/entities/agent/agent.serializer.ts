@@ -22,6 +22,7 @@ type AgentPackageKeyHandling = {
 	tools: 'transform';
 	skills: 'exclude';
 	availableInMCP: 'copy';
+	isArchived: 'exclude';
 	project: 'exclude';
 	projectId: 'exclude';
 	scope: 'exclude';
