@@ -254,7 +254,7 @@ describe('VectorStoreWeaviate.node', () => {
 		});
 
 		it('should use the default values when the options are not set', async () => {
-			await getClient({ maxVectorDistance: 0 });
+			await getClient({});
 
 			expect(store.fromExistingIndex).toHaveBeenCalledWith(
 				expect.anything(),
