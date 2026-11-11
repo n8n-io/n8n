@@ -1032,7 +1032,7 @@ describe('telemetry', () => {
 	const tracked = (event: unknown) => track.mock.calls.filter(([sent]) => sent === event);
 
 	it('tracks one view each time the user opens a result, not after an action', async () => {
-		const detail = result({ outcome: 'fix_ready', suggestion: suggestion() });
+		const detail = result({ outcome: 'fix_ready', suggestions: [suggestion()] });
 		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(detail);
 		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(appliedResult(detail));
 		const view = renderComponent();
@@ -1073,7 +1073,7 @@ describe('telemetry', () => {
 	] as const)(
 		'tracks a click on %s as %s before the request',
 		async (button, originalAction, reviewAction) => {
-			const detail = result({ outcome: 'fix_ready', suggestion: suggestion() });
+			const detail = result({ outcome: 'fix_ready', suggestions: [suggestion()] });
 			vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(detail);
 			// The click is tracked even when the request never gets a response.
 			vi.mocked(api.reviewSelfHealingResult).mockImplementation(async () => {
@@ -1104,7 +1104,7 @@ describe('telemetry', () => {
 	it('does not track a click that starts no request', async () => {
 		vi.mocked(api.fetchResultWorkflow).mockResolvedValue({ name: 'Daily report', scopes: [] });
 		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(
-			result({ outcome: 'fix_ready', suggestion: suggestion() }),
+			result({ outcome: 'fix_ready', suggestions: [suggestion()] }),
 		);
 		const view = renderComponent();
 		await waitAllPromises();
