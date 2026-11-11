@@ -6,16 +6,16 @@ import {
 	randomName,
 	randomValidPassword,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
 import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
+	Person,
 	ProjectRelationRepository,
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { Not } from '@n8n/typeorm';
+import { DataSource, Not, type Repository } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
 import { PasswordUtility } from '@/services/password.utility';
@@ -37,19 +37,19 @@ describe('InvitationController', () => {
 
 	const testServer = utils.setupTestServer({ endpointGroups: ['invitations'] });
 
-	let instanceOwner: User;
-	let userRepository: UserRepository;
+	let instanceOwner: Person;
+	let personRepository: Repository<Person>;
 	let projectRelationRepository: ProjectRelationRepository;
 
 	beforeAll(async () => {
-		userRepository = Container.get(UserRepository);
+		personRepository = Container.get(DataSource).manager.getRepository(Person);
 		projectRelationRepository = Container.get(ProjectRelationRepository);
 		instanceOwner = await createOwner();
 	});
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		await userRepository.delete({ role: Not('global:owner') });
+		await personRepository.delete({ role: Not('global:owner') });
 	});
 
 	afterEach(() => {
@@ -85,7 +85,7 @@ describe('InvitationController', () => {
 			expect(returnedMember.role).toBe('global:member');
 			expect(utils.getAuthToken(response)).toBeDefined();
 
-			const storedMember = await userRepository.findOneByOrFail({ id: returnedMember.id });
+			const storedMember = await personRepository.findOneByOrFail({ id: returnedMember.id });
 
 			expect(storedMember.firstName).toBe(memberProps.firstName);
 			expect(storedMember.lastName).toBe(memberProps.lastName);
@@ -116,7 +116,7 @@ describe('InvitationController', () => {
 			expect(returnedAdmin.role).toBe('global:admin');
 			expect(utils.getAuthToken(response)).toBeDefined();
 
-			const storedAdmin = await userRepository.findOneByOrFail({ id: returnedAdmin.id });
+			const storedAdmin = await personRepository.findOneByOrFail({ id: returnedAdmin.id });
 
 			expect(storedAdmin.firstName).toBe(memberProps.firstName);
 			expect(storedAdmin.lastName).toBe(memberProps.lastName);
@@ -124,8 +124,8 @@ describe('InvitationController', () => {
 		});
 
 		test('should fail with invalid payloads', async () => {
-			const memberShell = await userRepository.save(
-				userRepository.create({
+			const memberShell = await personRepository.save(
+				personRepository.create({
 					email: randomEmail(),
 					role: { slug: 'global:member' },
 				}),
@@ -159,7 +159,7 @@ describe('InvitationController', () => {
 			for (const payload of invalidPayloads) {
 				await testServer.authlessAgent.post('/invitations/accept').send(payload).expect(400);
 
-				const storedMemberShell = await userRepository.findOneByOrFail({
+				const storedMemberShell = await personRepository.findOneByOrFail({
 					email: memberShell.email,
 				});
 
@@ -181,7 +181,7 @@ describe('InvitationController', () => {
 
 			await testServer.authlessAgent.post('/invitations/accept').send(memberProps).expect(400);
 
-			const storedMember = await userRepository.findOneByOrFail({
+			const storedMember = await personRepository.findOneByOrFail({
 				email: member.email,
 			});
 
@@ -217,7 +217,7 @@ describe('InvitationController', () => {
 					.send(invalidPayload)
 					.expect(400);
 
-				await expect(userRepository.count()).resolves.toBe(2); // DB unaffected
+				await expect(personRepository.count()).resolves.toBe(2); // DB unaffected
 			}
 		});
 
@@ -230,7 +230,7 @@ describe('InvitationController', () => {
 
 			expect(response.body.data).toStrictEqual([]);
 
-			await expect(userRepository.count()).resolves.toBe(2); // DB unaffected
+			await expect(personRepository.count()).resolves.toBe(2); // DB unaffected
 		});
 
 		test('should return 200 if emailing is not set up', async () => {
@@ -270,11 +270,11 @@ describe('InvitationController', () => {
 
 			const [result] = response.body.data;
 
-			const storedUser = await userRepository.findOneByOrFail({
+			const storedPerson = await personRepository.findOneByOrFail({
 				id: result.user.id,
 			});
 
-			assertStoredUserProps(storedUser);
+			assertStoredUserProps(storedPerson);
 		});
 
 		test('should create personal project for shell account', async () => {
@@ -288,15 +288,15 @@ describe('InvitationController', () => {
 
 			const [result] = response.body.data;
 
-			const storedUser = await userRepository.findOneByOrFail({
+			const storedPerson = await personRepository.findOneByOrFail({
 				id: result.user.id,
 			});
 
-			assertStoredUserProps(storedUser);
+			assertStoredUserProps(storedPerson);
 
 			const projectRelation = await projectRelationRepository.findOneOrFail({
 				where: {
-					userId: storedUser.id,
+					userId: storedPerson.id,
 					role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					project: {
 						type: 'personal',
@@ -306,7 +306,7 @@ describe('InvitationController', () => {
 			});
 
 			expect(projectRelation).not.toBeUndefined();
-			expect(projectRelation.project.name).toBe(storedUser.createPersonalProjectName());
+			expect(projectRelation.project.name).toBe(storedPerson.createPersonalProjectName());
 			expect(projectRelation.project.type).toBe('personal');
 		});
 
@@ -323,11 +323,11 @@ describe('InvitationController', () => {
 
 			const [result] = response.body.data;
 
-			const storedUser = await userRepository.findOneByOrFail({
+			const storedPerson = await personRepository.findOneByOrFail({
 				id: result.user.id,
 			});
 
-			assertStoredUserProps(storedUser);
+			assertStoredUserProps(storedPerson);
 		});
 
 		test('should reinvite member when sharing is licensed', async () => {

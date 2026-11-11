@@ -121,6 +121,8 @@ type Props = {
 	projectId?: string;
 	/** Limit the picker to credentials that agents support. */
 	forAgent?: boolean;
+	/** n8n Assistant surfaces never offer another user's personal credential, so the fetch omits them. */
+	forAssistant?: boolean;
 	/** Pre-fill the credential name when creating a new credential. */
 	suggestedCredentialName?: string;
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
@@ -621,17 +623,20 @@ watch(
 );
 
 function getCredentialFetchScope(): CredentialFetchScope | undefined {
-	const forAgent = props.forAgent ? { forAgent: true } : {};
-	if (props.workflowId) return { workflowId: props.workflowId, ...forAgent };
+	const flags = {
+		...(props.forAgent ? { forAgent: true } : {}),
+		...(props.forAssistant ? { forAssistant: true } : {}),
+	};
+	if (props.workflowId) return { workflowId: props.workflowId, ...flags };
 	const workflowId = workflowDocumentStore?.value.workflowId;
 	if (workflowId && !workflowsStore.isNewWorkflow) {
-		return { workflowId, ...forAgent };
+		return { workflowId, ...flags };
 	}
 
 	const projectId =
 		props.projectId ?? projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
 
-	return projectId ? { projectId, ...forAgent } : undefined;
+	return projectId ? { projectId, ...flags } : undefined;
 }
 
 onMounted(() => {
