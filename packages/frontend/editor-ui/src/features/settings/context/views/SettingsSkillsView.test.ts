@@ -200,6 +200,17 @@ describe('SettingsSkillsView', () => {
 		expect(await findByTestId('skills-empty-state')).toHaveTextContent('No skills yet');
 	});
 
+	it('opens the "Create skills" menu from the empty state', async () => {
+		const view = renderView();
+		await view.findByTestId('skills-empty-state');
+
+		await userEvent.click(view.getByTestId('skills-empty-create-button'));
+
+		expect(await view.findByTestId('skills-create-upload-folder')).toBeInTheDocument();
+		await userEvent.click(view.getByTestId('skills-create-manual'));
+		expect(lastModalData().initialStep).toBe('manual');
+	});
+
 	it('reports the visit once, with the total count', async () => {
 		skillsStore.fetchSkills.mockImplementation(async () => {
 			skillsStore.count = 72;
@@ -557,6 +568,26 @@ describe('SettingsSkillsView', () => {
 				'Could not upload the skill',
 			);
 			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+
+		it('names the number of skills when the folder holds more than one', async () => {
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const files = ['a', 'b'].map((folder) => {
+				const file = skillFile();
+				Object.defineProperty(file, 'webkitRelativePath', { value: `root/${folder}/SKILL.md` });
+				return file;
+			});
+
+			await fireEvent.change(view.getByTestId('skills-upload-folder-input'), {
+				target: { files },
+			});
+
+			await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+			expect(showErrorMock).toHaveBeenCalledWith(
+				new Error('This folder holds 2 skills. Upload one skill folder at a time.'),
+				'Could not upload the skill',
+			);
 		});
 
 		it('shows the generic translated error when the file cannot be read', async () => {
