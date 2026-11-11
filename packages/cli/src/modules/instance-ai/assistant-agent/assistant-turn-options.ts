@@ -12,8 +12,19 @@ export const ASSISTANT_AGENT_NAME = 'Assistant';
 /** Checkpoint host metadata key that carries the turn options to a resume. */
 export const ASSISTANT_TURN_METADATA_KEY = 'assistantTurn';
 
+/**
+ * Fields of the shared send-message request that the Assistant agent does not
+ * read from the client. The turn overrides supply these settings instead.
+ */
+const IGNORED_CLIENT_FIELDS = ['mode', 'promptVersion', 'observerThresholdTokens'] as const;
+
+type IgnoredClientField = (typeof IGNORED_CLIENT_FIELDS)[number];
+
 /** What the client sent with the message, except the message text and the files. */
-export type AssistantClientRequest = Omit<InstanceAiSendMessageRequest, 'message'>;
+export type AssistantClientRequest = Omit<
+	InstanceAiSendMessageRequest,
+	'message' | IgnoredClientField
+>;
 
 /**
  * What one Assistant turn needs besides the message. The queue stores these
@@ -32,10 +43,12 @@ export interface AssistantTurnOptions {
  * attachment store, so the options keep only the resource references.
  */
 function parseClientRequest(value: unknown, logger?: Logger): AssistantClientRequest {
-	const parsed = InstanceAiSendMessageRequest.safeParse({
-		...(isRecord(value) ? value : {}),
-		message: '',
-	});
+	// Remove the ignored fields before validation, so that their values cannot
+	// make the other fields of the client context invalid. Stored options of
+	// older turns can also contain them.
+	const input: Record<string, unknown> = isRecord(value) ? { ...value } : {};
+	for (const field of IGNORED_CLIENT_FIELDS) delete input[field];
+	const parsed = InstanceAiSendMessageRequest.safeParse({ ...input, message: '' });
 	if (!parsed.success) {
 		// Log only the field paths: the values can hold user content.
 		logger?.warn('Dropped the Assistant client context because it is not valid', {
@@ -43,7 +56,14 @@ function parseClientRequest(value: unknown, logger?: Logger): AssistantClientReq
 		});
 		return {};
 	}
-	const { message: _message, attachments, ...request } = parsed.data;
+	const {
+		message: _message,
+		attachments,
+		mode: _mode,
+		promptVersion: _promptVersion,
+		observerThresholdTokens: _observerThresholdTokens,
+		...request
+	} = parsed.data;
 	const references = attachments?.filter((attachment) => attachment.type !== 'file');
 	return { ...request, ...(references?.length ? { attachments: references } : {}) };
 }

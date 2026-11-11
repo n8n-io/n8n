@@ -12,6 +12,7 @@ import {
 } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
+import type { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
 import { QuotaExhaustedStreamError } from '../assistant-credits';
 import { AssistantTurnEnvironmentFactory } from '../assistant-turn-environment.factory';
 import type { AssistantTurnRuntime } from '../assistant-turn-runtime';
@@ -61,7 +62,6 @@ function createSetupFactory() {
 		aiService: { isProxyEnabled: vi.fn(() => false) },
 		instanceWriteAccess: { isReadOnly: vi.fn(() => false) },
 		telemetry: { track: vi.fn() },
-		evalCredentialAllowlists: {},
 		modelService: {
 			getCredits: vi.fn(async () => ({ creditsQuota: -1, creditsClaimed: 0 })),
 			resolveAgentModelConfig: vi.fn(async () => 'anthropic/claude-sonnet'),
@@ -101,6 +101,9 @@ function createRuntime(overrides: Partial<AssistantTurnRuntime> = {}): Assistant
 			setSetupPanelEnabled: vi.fn(),
 			getBrowserUseAvailable: vi.fn(() => undefined),
 			getObserverThresholdTokens: vi.fn(() => undefined),
+			getCredentialIdAllowlist: vi.fn(() => undefined),
+			shouldBypassCredentialTest: vi.fn(() => false),
+			getCredentialTestTarget: vi.fn(() => undefined),
 		},
 		sessionGrants: {
 			load: vi.fn(async () => new Set(['tool:run'])),
@@ -145,6 +148,25 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(environment.orchestrationContext.promptConfiguration).toMatchObject({
 				version: 'progressive@1',
 			});
+		});
+
+		it('reads the credential settings of the thread from the runtime on each call', async () => {
+			const { factory, fields } = createSetupFactory();
+			const target = { credentialType: 'slackApi', baseUrl: 'http://stub', urlField: 'url' };
+			const runtime = createRuntime();
+			vi.mocked(runtime.turnState.getCredentialIdAllowlist).mockReturnValue(['cred-1']);
+			vi.mocked(runtime.turnState.shouldBypassCredentialTest).mockReturnValue(true);
+			vi.mocked(runtime.turnState.getCredentialTestTarget).mockReturnValue(target);
+
+			await factory.create(params, runtime);
+
+			const [, options] = fields.adapterService.createContext.mock
+				.calls[0] as unknown as Parameters<InstanceAiAdapterService['createContext']>;
+			expect(options?.getCredentialIdAllowlist?.()).toEqual(['cred-1']);
+			expect(options?.shouldBypassCredentialTest?.('cred-1')).toBe(true);
+			expect(runtime.turnState.shouldBypassCredentialTest).toHaveBeenCalledWith('cred-1');
+			expect(options?.getCredentialTestTarget?.('slackApi')).toBe(target);
+			expect(runtime.turnState.getCredentialTestTarget).toHaveBeenCalledWith('slackApi');
 		});
 
 		it('wires the runtime hooks into the contexts', async () => {
@@ -372,7 +394,6 @@ describe('AssistantTurnEnvironmentFactory', () => {
 					editorBaseUrl: '',
 				}),
 				mock<UrlService>({ getInstanceBaseUrl: vi.fn(() => 'https://acme.example.com') }),
-				mock(),
 				mock(),
 				mock(),
 				mock(),

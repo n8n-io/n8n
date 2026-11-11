@@ -58,10 +58,14 @@ import {
 	AssistantTurnInputBuilder,
 	type AssistantTurnInput,
 } from '../turn-setup/assistant-turn-input.builder';
-import type { AssistantTurnRuntime } from '../turn-setup/assistant-turn-runtime';
+import type {
+	AssistantTurnRuntime,
+	AssistantTurnState,
+} from '../turn-setup/assistant-turn-runtime';
 import { AssistantEventSink } from './assistant-event-sink';
 import { createThreadTemporaryWorkflowMarkers } from './assistant-temporary-workflow-markers';
 import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
+import { AssistantTurnOverrides } from './assistant-turn-overrides';
 import { AssistantTurnTracer, type AssistantTurnTrace } from './assistant-turn-trace';
 import {
 	ASSISTANT_AGENT_ID,
@@ -133,6 +137,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly tracer: AssistantTurnTracer,
 		private readonly threadTabs: AssistantThreadTabsService,
 		private readonly errorReporter: InstanceAiErrorReporterService,
+		private readonly turnOverrides: AssistantTurnOverrides,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -312,7 +317,12 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			// The runtime adds the files to the model input as stored references, so the
 			// input keeps only the text. parse-file reads the files by id when it needs them.
 			...(turnInput ? { input: turnInput.fullMessage } : {}),
-			hostMetadata: this.hostMetadataOf(options, environment.skillScope.profile.mode, trace),
+			hostMetadata: this.hostMetadataOf(
+				options,
+				environment.skillScope.profile.mode,
+				this.turnOverrides.getPromptVersion(thread.id),
+				trace,
+			),
 			runOptions: {
 				maxIterations: MAX_STEPS.ORCHESTRATOR,
 				// Recover token usage from raw provider events, so a stopped run is still billed.
@@ -385,7 +395,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		options: AssistantTurnOptions,
 		trace: AssistantTurnTrace | undefined,
 	): AssistantTurnRuntime {
-		const { request } = options;
 		const lease = turn.workspace;
 		return {
 			memory: turn.memory,
@@ -402,15 +411,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				? { onMemoryTaskEvent: trace.context.onMemoryTaskEvent }
 				: {}),
 			checkpointStore: turn.checkpointStore,
-			turnState: {
-				getBuildMode: () => request.mode,
-				setBuildMode: () => {},
-				getPromptVersion: () => request.promptVersion,
-				setPromptConfiguration: () => {},
-				setSetupPanelEnabled: () => {},
-				getBrowserUseAvailable: () => request.browserUseAvailable,
-				getObserverThresholdTokens: () => request.observerThresholdTokens,
-			},
+			turnState: this.createTurnState(turn.thread.id, options),
 			sessionGrants: turn.sessionGrants,
 			onDomainAccessTracker: () => {},
 			// The chat shows the tab of a changed artifact only while a browser shows the
@@ -435,6 +436,25 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				getOrCreateWorkspace: async (context) =>
 					lease ? await this.workspace.getWorkspace(lease, context) : undefined,
 			},
+		};
+	}
+
+	/** The turn overrides supply the thread settings. The client request supplies only the Browser Use report. */
+	private createTurnState(threadId: string, options: AssistantTurnOptions): AssistantTurnState {
+		const overrides = this.turnOverrides;
+		return {
+			getBuildMode: () => overrides.getBuildMode(threadId),
+			setBuildMode: () => {},
+			getPromptVersion: () => overrides.getPromptVersion(threadId),
+			setPromptConfiguration: () => {},
+			setSetupPanelEnabled: () => {},
+			getBrowserUseAvailable: () => options.request.browserUseAvailable,
+			getObserverThresholdTokens: () => overrides.getObserverThresholdTokens(threadId),
+			getCredentialIdAllowlist: () => overrides.getCredentialIdAllowlist(threadId),
+			shouldBypassCredentialTest: (credentialId) =>
+				overrides.shouldBypassCredentialTest(threadId, credentialId),
+			getCredentialTestTarget: (credentialType) =>
+				overrides.getCredentialTestTarget(threadId, credentialType),
 		};
 	}
 
@@ -486,12 +506,13 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	private hostMetadataOf(
 		options: AssistantTurnOptions,
 		buildMode: string | undefined,
+		promptVersion: string | undefined,
 		trace: AssistantTurnTrace | undefined,
 	): JSONObject {
 		return {
 			[ASSISTANT_TURN_METADATA_KEY]: serializeAssistantTurnOptions(options),
 			buildMode: buildMode ?? null,
-			promptVersion: options.request.promptVersion ?? null,
+			promptVersion: promptVersion ?? null,
 			...trace?.hostMetadata(),
 		};
 	}

@@ -19,6 +19,13 @@ import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 /** The thread memory that the turn setup reads and the agent writes. */
 export type AssistantTurnMemory = ObservationLogObserverMemory;
 
+/** Where the connection tests of one credential type go instead of the provider. */
+export interface AssistantCredentialTestTarget {
+	credentialType: string;
+	baseUrl: string;
+	urlField: string;
+}
+
 /** Turn settings that the runtime keeps for one thread between turns. */
 export interface AssistantTurnState {
 	getBuildMode(): InstanceAiBuildMode | undefined;
@@ -30,6 +37,12 @@ export interface AssistantTurnState {
 	getBrowserUseAvailable(): boolean | undefined;
 	/** The observer threshold that the thread sets, if any. */
 	getObserverThresholdTokens(): number | undefined;
+	/** The credential ids that the thread can see. `undefined` shows all credentials. */
+	getCredentialIdAllowlist(): string[] | undefined;
+	/** Whether the connection test of the credential passes without a call to the provider. */
+	shouldBypassCredentialTest(credentialId: string): boolean;
+	/** Where the connection tests of a credential type go instead of the provider. */
+	getCredentialTestTarget(credentialType: string): AssistantCredentialTestTarget | undefined;
 }
 
 /**
