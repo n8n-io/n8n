@@ -101,6 +101,49 @@ describe('useModelCatalog', () => {
 		expect(result.anthropic?.models).toEqual([]);
 	});
 
+	// AGENT-809: The picker must show newer OpenAI models before older ones.
+	it.each(['catalog', 'provider-verified'])(
+		'lists OpenAI models newest first from the %s list',
+		async (source) => {
+			const models = [
+				{ ...model('gpt-5', 'GPT-5'), releaseDate: '2025-08-07' },
+				{ ...model('gpt-4.1', 'GPT-4.1'), releaseDate: '2025-04-14' },
+				{ ...model('gpt-5.2', 'GPT-5.2'), releaseDate: '2025-12-11' },
+			];
+			mocks.getModelCatalog.mockResolvedValue(
+				source === 'catalog'
+					? {
+							openai: provider(
+								'openai',
+								Object.fromEntries(models.map((entry) => [entry.id, entry])),
+							),
+						}
+					: {},
+			);
+			if (source === 'provider-verified') {
+				mocks.getProviderModels.mockResolvedValue({
+					provider: 'openai',
+					verified: true,
+					models,
+				});
+			}
+
+			const { useModelCatalog } = await import('../composables/useModelCatalog');
+			const { ensureLoaded, getModelsForPicker } = useModelCatalog();
+			await ensureLoaded('project-1');
+			const credentials = { openai: 'openai-credential-id' };
+
+			getModelsForPicker(credentials);
+			await flushAsync();
+
+			expect(modelIds(getModelsForPicker(credentials).openai?.models ?? [])).toEqual([
+				'gpt-5.2',
+				'gpt-5',
+				'gpt-4.1',
+			]);
+		},
+	);
+
 	it('prefers the provider-verified model list over the static catalog', async () => {
 		mocks.getModelCatalog.mockResolvedValue({
 			anthropic: provider('anthropic', {
