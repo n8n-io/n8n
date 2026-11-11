@@ -146,30 +146,6 @@ export class PrometheusMetricsConfig {
 	workflowPublicationMetricInterval: number = 60;
 }
 
-// The default names of n8n's other top-level paths. The editor matches paths case-insensitively.
-const OTHER_TOP_LEVEL_PATHS = new Set([
-	'rest',
-	'form',
-	'form-test',
-	'form-waiting',
-	'webhook',
-	'webhook-test',
-	'webhook-waiting',
-	'mcp',
-	'mcp-test',
-	'healthz',
-	'metrics',
-	'assets',
-	'static',
-	'types',
-	'e2e',
-]);
-
-const agentWebhookPathSchema = z
-	.string()
-	.regex(/^(?!\.+$)[\w.~-]+$/)
-	.refine((path) => !OTHER_TOP_LEVEL_PATHS.has(path.toLowerCase()));
-
 @Config
 export class EndpointsConfig {
 	/** Maximum request payload size in MiB for the API. */
@@ -211,11 +187,8 @@ export class EndpointsConfig {
 	@Env('N8N_ENDPOINT_WEBHOOK_WAIT')
 	webhookWaiting: string = 'webhook-waiting';
 
-	/**
-	 * Path segment for the agent webhook channel endpoints. Use letters, digits, `-`, `_`, `.`, or `~`.
-	 * The value can't be only dots, or the default path of another n8n endpoint, such as `rest` or `webhook`.
-	 */
-	@Env('N8N_ENDPOINT_AGENT_WEBHOOK', agentWebhookPathSchema)
+	/** Path segment for agent webhook channel endpoints. */
+	@Env('N8N_ENDPOINT_AGENT_WEBHOOK')
 	agentWebhook: string = 'agent-webhook';
 
 	/** Path segment for MCP endpoints. */
