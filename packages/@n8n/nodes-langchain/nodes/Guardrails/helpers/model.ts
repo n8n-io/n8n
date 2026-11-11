@@ -39,14 +39,13 @@ const extractText = (content: MessageContent): string => {
  * `@n8n/ai-utilities/guardrails`.
  */
 export function createLangChainGuardrailRunner(model: BaseChatModel): GuardrailModelRunner {
-	const chatPrompt = ChatPromptTemplate.fromMessages([
-		['system', '{system_message}'],
-		['human', '{input}'],
-		['placeholder', '{agent_scratchpad}'],
-	]);
-	const chain = chatPrompt.pipe(model);
-
 	return async (systemPrompt, input) => {
+		const chatPrompt = ChatPromptTemplate.fromMessages([
+			['system', '{system_message}'],
+			['human', '{input}'],
+			['placeholder', '{agent_scratchpad}'],
+		]);
+		const chain = chatPrompt.pipe(model);
 		const result = await chain.invoke({
 			steps: [],
 			input,
