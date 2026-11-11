@@ -166,6 +166,35 @@ describe('isDomainAllowed', () => {
 		});
 	});
 
+	describe('with malformed allowlist entries', () => {
+		it('should not treat a backslash as a hostname separator', () => {
+			expect(
+				isDomainAllowed({
+					url: 'https://example.com/data',
+					allowedDomains: 'example.com\\evil.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should not treat a backslash as a hostname separator in a wildcard entry', () => {
+			expect(
+				isDomainAllowed({
+					url: 'https://shop.example.com/data',
+					allowedDomains: '*.example.com\\evil.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should keep a percent-encoded entry verbatim', () => {
+			expect(
+				isDomainAllowed({
+					url: 'https://example.com/data',
+					allowedDomains: 'example.com%2Fevil.com',
+				}),
+			).toBe(false);
+		});
+	});
+
 	describe('edge cases', () => {
 		it('should handle invalid URLs safely', () => {
 			expect(isDomainAllowed({ url: 'not-a-valid-url', allowedDomains: 'example.com' })).toBe(
