@@ -83,6 +83,7 @@ describe('createClientCredentialsTokenSource', () => {
 		it.each<[string, unknown, number]>([
 			['one that outlives the wait, so the token is reused', 600, 1],
 			['the same lifetime written as a string', '600', 1],
+			['one alive on arrival that the skew margin retires before the wait ends', 70, 2],
 			['one the wait outlives, so the token is minted again', 20, 2],
 			['a token that is already dead on arrival', 0, 2],
 			['a lifetime below zero, which is at least as dead as zero', -1, 2],
