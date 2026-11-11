@@ -2,7 +2,10 @@ operationId: updateExecutionTags
 tags:
   - Executions
 summary: Update tags of an execution
-description: Update annotation tags of an execution.
+description: |-
+  Update annotation tags of an execution.
+
+  Requires the `executionTags:update` API key scope.
 x-required-scope: executionTags:update
 parameters:
   - schema:

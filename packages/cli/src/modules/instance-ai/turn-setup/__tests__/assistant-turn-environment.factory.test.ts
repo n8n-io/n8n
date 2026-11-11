@@ -162,6 +162,33 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(runtime.onDomainAccessTracker).toHaveBeenCalledWith(context.domainAccessTracker);
 		});
 
+		it('gives the trace of the turn to the error reports of the setup', async () => {
+			const { factory, fields } = createSetupFactory();
+			const report = vi.fn();
+			Object.assign(fields.instanceAiErrorReporter, { report });
+			fields.creditService.claimRunUsage.mockRejectedValue(new Error('negative quota'));
+			const tracing = { rootRun: { traceId: 'ls-trace-1' } } as unknown as NonNullable<
+				Parameters<AssistantTurnEnvironmentFactory['create']>[0]['tracing']
+			>;
+
+			const { orchestrationContext } = await factory.create(
+				{ ...params, tracing },
+				createRuntime(),
+			);
+			await orchestrationContext.claimSubAgentUsage?.('dedupe-1', [], 'completed');
+
+			expect(orchestrationContext.tracing).toBe(tracing);
+			expect(fields.instanceAiErrorReporter.withBoundary).toHaveBeenCalledWith(
+				'instance-ai-sandbox-setup',
+				expect.objectContaining({ runId: 'run-1', tracing }),
+				expect.any(Function),
+			);
+			expect(report).toHaveBeenCalledWith(
+				expect.any(Error),
+				expect.objectContaining({ component: 'instance-ai-agent-builder-usage', tracing }),
+			);
+		});
+
 		it('leaves out the optional hooks that a runtime does not supply', async () => {
 			const { factory } = createSetupFactory();
 

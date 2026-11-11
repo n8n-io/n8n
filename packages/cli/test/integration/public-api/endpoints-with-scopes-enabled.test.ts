@@ -7,7 +7,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { EngineConfig } from '@n8n/config';
-import type { TagEntity, Variables } from '@n8n/db';
+import type { Person, TagEntity, Variables } from '@n8n/db';
 import {
 	ApiKeyRepository,
 	CredentialsRepository,
@@ -232,11 +232,11 @@ describe('Public API endpoints with API key scopes', () => {
 					expect(typeof returnedUser.emailSent).toBe('boolean');
 					expect(error).toBe('');
 
-					const storedUser = await getUserById(returnedUser.id);
-					expect(returnedUser.id).toBe(storedUser.id);
-					expect(returnedUser.email).toBe(storedUser.email);
+					const storedPerson = (await getUserById(returnedUser.id)) as Person;
+					expect(returnedUser.id).toBe(storedPerson.id);
+					expect(returnedUser.email).toBe(storedPerson.email);
 					expect(returnedUser.email).toBe(payloadUser.email);
-					expect(storedUser.role.slug).toBe(payloadUser.role);
+					expect(storedPerson.role.slug).toBe(payloadUser.role);
 				});
 
 				test('should fail to create user when API key doesn\'t have "user:create" scope', async () => {

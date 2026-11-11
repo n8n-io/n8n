@@ -1,9 +1,10 @@
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, NodeTypesProxy } from '@n8n/backend-services';
 // EOF Experiment cleanup
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
 	const {
+		AppNamespaceTakenError,
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
@@ -11,6 +12,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		formatRedactedError,
 	} = await import('@n8n/instance-ai/errors');
 	return {
+		AppNamespaceTakenError,
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
@@ -92,7 +94,6 @@ import {
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { NodeCatalogService } from '@/node-catalog';
-import type { NodeTypes } from '@/node-types';
 import { pairAiGatewayServers } from '@/modules/mcp-registry/registry/mcp-registry-ai-gateway';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import {
@@ -241,8 +242,8 @@ function mockMultiOutputRun(outputs: Array<IDataObject[] | null>, node = FILTER_
 }
 
 /** Node types that resolve every node to the given description. `new Workflow` needs `properties`. */
-function nodeTypesWith(description: Partial<INodeTypeDescription>): NodeTypes {
-	const nodeTypes = mock<NodeTypes>();
+function nodeTypesWith(description: Partial<INodeTypeDescription>): NodeTypesProxy {
+	const nodeTypes = mock<NodeTypesProxy>();
 	nodeTypes.getByNameAndVersion.mockReturnValue({
 		description: { properties: [], ...description },
 	} as never);
@@ -250,7 +251,7 @@ function nodeTypesWith(description: Partial<INodeTypeDescription>): NodeTypes {
 }
 
 /** Node types that resolve every node to a Filter: one declared output, two output names. */
-function filterNodeTypes(): NodeTypes {
+function filterNodeTypes(): NodeTypesProxy {
 	return nodeTypesWith({ outputs: [NodeConnectionTypes.Main], outputNames: ['Kept', 'Discarded'] });
 }
 
@@ -590,7 +591,7 @@ describe('redacted executions', () => {
 		const result = await extractExecutionDebugInfo(
 			makeRedactedExecution(),
 			true,
-			mock<NodeTypes>(),
+			mock<NodeTypesProxy>(),
 		);
 
 		expect(result.redaction).toEqual({ reason: 'workflow_redaction_policy', canReveal: false });
@@ -1215,7 +1216,7 @@ describe('extractExecutionDebugInfo', () => {
 	// ── resolvedParameters on failedNode ──────────────────────────────────────
 
 	describe('failedNode.resolvedParameters', () => {
-		const debugNodeTypes = mock<NodeTypes>();
+		const debugNodeTypes = mock<NodeTypesProxy>();
 
 		/** Build an execution that has a full workflow snapshot + a failed node entry. */
 		function makeFailedExecution(opts: {
@@ -1895,7 +1896,7 @@ describe('extractNodeOutput', () => {
 			name: 'Filter',
 			type: 'n8n-nodes-community.missing',
 		});
-		const nodeTypes = mock<NodeTypes>();
+		const nodeTypes = mock<NodeTypesProxy>();
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {
 			throw new Error('Unrecognized node type');
 		});
@@ -1964,6 +1965,7 @@ import { type DataTableRepository, type DataTableService } from '@n8n/backend-mo
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
+	AppNamespaceTakenError,
 	WorkflowEditorLockedError,
 	WorkflowNotFoundError,
 	WorkflowSaveConflictError,
@@ -2498,11 +2500,12 @@ describe('createNodeAdapter', () => {
 
 		it('acquires and releases the isolate around dynamic input resolution', async () => {
 			const { service, nodeService } = createNodeAdapterServiceForTests([]);
-			(service as unknown as { nodeTypes: Pick<NodeTypes, 'getByNameAndVersion'> }).nodeTypes = {
-				getByNameAndVersion: vi
-					.fn()
-					.mockReturnValue({ description: { inputs: ['main'], properties: [] } }),
-			} as unknown as NodeTypes;
+			(service as unknown as { nodeTypes: Pick<NodeTypesProxy, 'getByNameAndVersion'> }).nodeTypes =
+				{
+					getByNameAndVersion: vi
+						.fn()
+						.mockReturnValue({ description: { inputs: ['main'], properties: [] } }),
+				} as unknown as NodeTypesProxy;
 
 			const workflowJson = {
 				nodes: [
@@ -5594,8 +5597,8 @@ describe('resolveDataTableByIdOrName', () => {
  * registry added is named for its server (`@n8n/mcp-registry.<slug>`) and says
  * "tool" nowhere, yet it describes an `ai_tool` output all the same.
  */
-function runNodeTypesStub(): NodeTypes {
-	const nodeTypes = mock<NodeTypes>();
+function runNodeTypesStub(): NodeTypesProxy {
+	const nodeTypes = mock<NodeTypesProxy>();
 	nodeTypes.getByNameAndVersion.mockImplementation(
 		(type: string) =>
 			({
@@ -5621,7 +5624,7 @@ function createRunAdapterForTests(
 		threadId?: string;
 		queueMode?: boolean;
 		allowSendingParameterValues?: boolean;
-		nodeTypes?: NodeTypes;
+		nodeTypes?: NodeTypesProxy;
 	},
 ) {
 	const mockWorkflowFinderService = {
@@ -6473,6 +6476,35 @@ describe('createExecutionAdapter run()', () => {
 		);
 	});
 
+	it('refuses a run the user cannot make through their own access, before it starts', async () => {
+		const node = { id: 'n1', name: 'Send', type: 'n8n-nodes-base.slack', typeVersion: 1 };
+		const { adapter, mockWorkflowRunner, mockExecutionPersistence, mockTelemetry } =
+			createRunAdapterForTests({ id: 'wf-1', nodes: [node] }, { threadId: 'thread-1' });
+		const checker = mock<CredentialsPermissionChecker>();
+		const message = 'Node "Send" uses the credential "Bot", which you cannot use';
+		const description = 'Ask an admin of the project "Team" to share this credential with you.';
+		checker.checkForUser.mockRejectedValue(new UserError(message, { description }));
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === CredentialsPermissionChecker
+				? checker
+				: mockExecutionPersistence) as typeof Container.get);
+
+		await expect(adapter.run('wf-1')).resolves.toEqual({
+			executionId: '',
+			status: 'error',
+			error: `${message}. ${description}`,
+		});
+		expect(checker.checkForUser).toHaveBeenCalledWith('user-1', [node], {
+			ignoreGlobalUseScope: true,
+		});
+		expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		// The description names the project, so telemetry gets the message only.
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({ status: 'error', error: message }),
+		);
+	});
+
 	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {
 		const original = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
@@ -6718,6 +6750,30 @@ describe('createExecutionAdapter runStep()', () => {
 
 		await expect(runStep('wf-1', 'Nope', undefined)).rejects.toThrow('has no node named "Nope"');
 		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	it('refuses a step the user cannot run through their own access, before it starts', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, { threadId: 'thread-1' });
+		const checker = mock<CredentialsPermissionChecker>();
+		checker.checkForUser.mockRejectedValue(
+			new UserError('Node "Send" uses the credential "Bot", which you cannot use'),
+		);
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === CredentialsPermissionChecker
+				? checker
+				: harness.mockExecutionPersistence) as typeof Container.get);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await expect(runStep('wf-1', 'Send', undefined)).resolves.toMatchObject({
+			executionId: '',
+			status: 'error',
+			error: 'Node "Send" uses the credential "Bot", which you cannot use',
+		});
+		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+		expect(harness.mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({ status: 'error' }),
+		);
 	});
 
 	it('rejects a disabled node instead of starting a run the engine would refuse', async () => {
@@ -9334,6 +9390,30 @@ describe('createContext: appService', () => {
 			'project-1',
 			{ name: 'Todos', namespace: 'todos', visibility: 'instance' },
 			{ id: APP_ID, actor: { userId: 'user-1', threadId: 'thread-1' } },
+		);
+	});
+
+	it('reports a namespace conflict as a taken namespace', async () => {
+		const { apps } = mockAppsModule(true);
+		apps.createApp.mockRejectedValue(
+			new ConflictError('An app already uses this namespace. Choose another namespace.'),
+		);
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		const created = context.appService?.createApp({ name: 'Todos', namespace: 'todos' });
+
+		await expect(created).rejects.toBeInstanceOf(AppNamespaceTakenError);
+		await expect(created).rejects.toThrow('An app already uses the namespace "todos".');
+	});
+
+	it('passes other create failures through unchanged', async () => {
+		const { apps } = mockAppsModule(true);
+		const failure = new BadRequestError('App IDs must be UUIDs.');
+		apps.createApp.mockRejectedValue(failure);
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await expect(context.appService?.createApp({ name: 'Todos', namespace: 'todos' })).rejects.toBe(
+			failure,
 		);
 	});
 

@@ -3,6 +3,7 @@ import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import { EngineConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -13,8 +14,10 @@ import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { EngineTlsMaterial } from '@/modules/engine-v2/engine-tls-material';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
 import { ExecutionChannelSender } from '@/modules/engine-v2/execution-channel/execution-channel-sender';
+import { LifecycleEventChannelSender } from '@/modules/engine-v2/execution-channel/lifecycle-event-sender';
 import type { RedisChannelPublisher } from '@/modules/engine-v2/execution-channel/redis-execution-channel-publisher';
 import { NodeTypes } from '@/node-types';
 import { OtelService } from '@/modules/otel/otel.service';
@@ -57,6 +60,13 @@ mockInstance(TelemetryEventRelay);
 mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 
+/** The real boot check, over files this test does not need to write. */
+const useTls = (value: EngineTlsMaterial['tls']) => {
+	const material = new EngineTlsMaterial(Container.get(EngineConfig));
+	vi.spyOn(material, 'tls', 'get').mockReturnValue(value);
+	Container.set(EngineTlsMaterial, material);
+};
+
 describe('Engine', () => {
 	const originalEnv = process.env;
 	let engineConfig: EngineConfig;
@@ -79,7 +89,9 @@ describe('Engine', () => {
 		engineConfig = mockInstance(EngineConfig, {
 			authSecret: 'a'.repeat(32),
 			controlPlaneBaseUrl: 'http://n8n-main:3001',
+			tlsInsecureAllowPlainHttp: true,
 		});
+		useTls(undefined);
 	});
 
 	afterEach(() => {
@@ -163,6 +175,22 @@ describe('Engine', () => {
 			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_CONTROL_PLANE_BASE_URL');
 		});
 
+		it('refuses to boot over plain HTTP without the opt-out', async () => {
+			engineConfig.tlsInsecureAllowPlainHttp = false;
+
+			await expect(createEngine().init()).rejects.toThrow(
+				'N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP',
+			);
+		});
+
+		it('refuses an http control plane address when TLS is on', async () => {
+			useTls({ cert: Buffer.from('cert'), key: Buffer.from('key'), ca: Buffer.from('ca') });
+
+			await expect(createEngine().init()).rejects.toThrow(
+				'N8N_ENGINE_CONTROL_PLANE_BASE_URL must start with https://',
+			);
+		});
+
 		it('never opens, migrates or reads the control plane database', async () => {
 			await createEngine().init();
 
@@ -177,18 +205,46 @@ describe('Engine', () => {
 			expect(CrashJournal.init).not.toHaveBeenCalled();
 		});
 
-		it('loads the nodes and starts no task runner', async () => {
+		it('loads the nodes and starts the task runner module', async () => {
 			await createEngine().init();
 
 			expect(loadNodesAndCredentials.init).toHaveBeenCalled();
-			expect(taskRunnerModule.start).not.toHaveBeenCalled();
+			expect(taskRunnerModule.start).toHaveBeenCalled();
 		});
 
-		it('sends execution responses over Redis', async () => {
+		it('sends execution responses and lifecycle events over Redis', async () => {
 			await createEngine().init();
 
 			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'publisher(n8n)' });
-			expect(runtime.init).toHaveBeenCalledWith(expect.any(ExecutionChannelSender));
+			expect(runtime.init).toHaveBeenCalledWith({
+				responseSender: expect.any(ExecutionChannelSender),
+				lifecycleEventSender: expect.any(LifecycleEventChannelSender),
+			});
+		});
+
+		it('publishes lifecycle events over Redis on the channel of their execution', async () => {
+			publisher.publish.mockResolvedValue(1);
+			await createEngine().init();
+			const lifecycleEventSender = vi
+				.mocked(runtime.init)
+				.mock.calls.at(-1)?.[0]?.lifecycleEventSender;
+
+			await lifecycleEventSender?.send(
+				[
+					{
+						type: 'execution:completed',
+						executionId: 'exec-1',
+						workflowId: 'wf-1',
+						at: '2026-10-29T10:00:00.000Z',
+					},
+				],
+				new AbortController().signal,
+			);
+
+			expect(publisher.publish).toHaveBeenCalledWith(
+				expect.stringMatching(/:engine-v2-lifecycle:exec-1$/),
+				expect.any(String),
+			);
 		});
 
 		it('starts the data plane after the base init and finishes loading the nodes', async () => {

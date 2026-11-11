@@ -87,10 +87,11 @@ export class Webhook extends BaseCommand {
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
 
+		// Before initialize(), which runs crash recovery.
+		Container.get(LogStreamingEventRelay).init();
 		await Container.get(MessageEventBus).initialize({
 			webhookProcessorId: this.instanceSettings.hostId,
 		});
-		Container.get(LogStreamingEventRelay).init();
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 

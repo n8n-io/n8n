@@ -5,6 +5,7 @@ import {
 	type InstanceAiEvent,
 	type InstanceAiResourceAttachment,
 	type InstanceAiThreadArtifactsContext,
+	unwrapToolCatalogCall,
 } from '@n8n/api-types';
 import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -291,11 +292,18 @@ export class AssistantTurnTrace {
 				}
 				break;
 			case 'tool-call':
-				this.signals.push({ kind: 'tool-call', toolName: chunk.toolName });
+				this.signals.push({
+					kind: 'tool-call',
+					toolName: unwrapToolCatalogCall(chunk.toolName, isRecord(chunk.input) ? chunk.input : {})
+						.toolName,
+				});
 				break;
 			case 'tool-call-suspended':
 				this.suspension = parseSuspension(chunk) ?? undefined;
-				this.signals.push({ kind: 'hitl', toolName: chunk.toolName });
+				this.signals.push({
+					kind: 'hitl',
+					toolName: this.suspension?.targetToolName ?? chunk.toolName,
+				});
 				break;
 			case 'message-steered':
 				this.recordSteeredMessage(chunk);

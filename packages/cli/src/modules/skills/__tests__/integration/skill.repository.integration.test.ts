@@ -818,7 +818,7 @@ describe('SkillRepository', () => {
 	});
 
 	describe('findProjects', () => {
-		it('maps project ids to names and types', async () => {
+		it('maps project ids to names, types, and icons', async () => {
 			const personal = await getPersonalProject(user);
 
 			const projects = await skills.findProjects([
@@ -830,9 +830,9 @@ describe('SkillRepository', () => {
 
 			expect(projects).toEqual(
 				new Map([
-					[project.id, { name: 'Team', type: 'team' }],
-					[otherProject.id, { name: 'Other team', type: 'team' }],
-					[personal.id, { name: personal.name, type: 'personal' }],
+					[project.id, { name: 'Team', type: 'team', icon: null }],
+					[otherProject.id, { name: 'Other team', type: 'team', icon: null }],
+					[personal.id, { name: personal.name, type: 'personal', icon: null }],
 				]),
 			);
 		});
