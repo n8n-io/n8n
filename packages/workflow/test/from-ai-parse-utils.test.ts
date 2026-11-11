@@ -18,6 +18,10 @@ describe('extractFromAICalls', () => {
 		['$fromAI("a", "b", "string")', ['a', 'b', 'string', undefined]],
 		['$fromAI("a", "b", "number", 5)', ['a', 'b', 'number', 5]],
 		['$fromAI("a", "b", "number", "5")', ['a', 'b', 'number', 5]],
+		['$fromAI("a", "b", "number", "0")', ['a', 'b', 'number', 0]],
+		// AGENT-1554: Preserve blank numeric defaults instead of converting them to zero.
+		['$fromAI("a", "b", "number", "")', ['a', 'b', 'number', '']],
+		['$fromAI("a", "b", "number", "   ")', ['a', 'b', 'number', '   ']],
 		['$fromAI("a", "`", "number", 5)', ['a', '`', 'number', 5]],
 		['$fromAI("a", "\\`", "number", 5)', ['a', '`', 'number', 5]], // this is a bit surprising, but intended
 		['$fromAI("a", "\\n", "number", 5)', ['a', 'n', 'number', 5]], // this is a bit surprising, but intended
