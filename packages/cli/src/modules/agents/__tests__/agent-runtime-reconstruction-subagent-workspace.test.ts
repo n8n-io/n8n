@@ -16,7 +16,7 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
 import type { WorkflowRepository } from '@n8n/db';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentKnowledgeMirrorService } from '@/modules/knowledge/retrieval/mirror.service';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type {
@@ -28,7 +28,6 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
-import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
@@ -61,13 +60,12 @@ function makeService(sandboxFilesEnabled = true) {
 	const sandboxRuntimeService = mock<AgentSandboxRuntimeService>();
 	sandboxRuntimeService.isEnabled.mockReturnValue(true);
 	const workspaceService = mock<AgentWorkspaceService>();
-	const fileRepository = mock<KnowledgeFileRepository>();
-	fileRepository.hasFilesForAgent.mockResolvedValue(false);
+	const knowledgeRetriever = mock<KnowledgeRetrievalService>();
+	knowledgeRetriever.hasFiles.mockResolvedValue(false);
 
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
-		fileRepository,
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		mock<N8NCheckpointStorage>(),
@@ -80,7 +78,7 @@ function makeService(sandboxFilesEnabled = true) {
 		mock<AiService>(),
 		outboundHttp,
 		workspaceService,
-		mock<AgentKnowledgeMirrorService>(),
+		knowledgeRetriever,
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),

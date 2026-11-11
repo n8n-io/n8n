@@ -19,8 +19,10 @@ import type { Readable } from 'node:stream';
 
 import type { KnowledgeFile } from '../entities/knowledge-file.entity';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
+import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
 import { createKnowledgeTelemetryHmac } from '../telemetry/helpers';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
+import { KnowledgeMirrorService } from '../retrieval/mirror.service';
 import { KnowledgeFileStore, type StoredKnowledgeFile } from './knowledge-file-store';
 import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
 import { extractPdfText } from './pdf-text';
@@ -34,17 +36,22 @@ export interface UploadedKnowledgeFile {
 }
 
 /**
- * Runs the insert of one knowledge file row. The consumer wraps it in the
- * fence its own writes need: the agents module holds its project-deletion lock
- * for the duration of the write. The context the fence hands over carries its
- * transaction and reaches the repository.
+ * The fence that the consumer puts around its knowledge writes: the agents
+ * module holds its project-deletion lock for the duration of the write. The
+ * fence rejects when the consumer no longer accepts writes. The context it
+ * hands over carries its transaction and reaches the repository.
+ *
+ * An upload inserts each file row through the fence. An upload and a delete
+ * also run an empty write through it before and after the background refresh
+ * of the sandbox mirror.
  */
 export type KnowledgeWriteRunner = <T>(write: (ctx: OperationContext) => Promise<T>) => Promise<T>;
 
 /**
  * Upload, listing and deletion of the knowledge files of one consumer scope.
- * The caller owns the availability and ownership checks, and the retrieval
- * side effects (sandbox warm-up and teardown).
+ * An upload or a delete also refreshes the sandbox mirror of the scope, and
+ * the delete of the last file removes the sandbox. The caller owns the
+ * availability and ownership checks.
  */
 @Service()
 export class KnowledgeFileService {
@@ -53,6 +60,8 @@ export class KnowledgeFileService {
 	constructor(
 		private readonly fileRepository: KnowledgeFileRepository,
 		private readonly fileStore: KnowledgeFileStore,
+		private readonly mirrorService: KnowledgeMirrorService,
+		private readonly sandboxProvider: KnowledgeSandboxProviderRegistry,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 		logger: Logger,
@@ -64,7 +73,7 @@ export class KnowledgeFileService {
 	async uploadFiles(
 		scope: KnowledgeConsumerScope,
 		files: Express.Multer.File[],
-		reserveRow: KnowledgeWriteRunner,
+		writeFence: KnowledgeWriteRunner,
 	): Promise<UploadedKnowledgeFile[]> {
 		try {
 			this.validateUploadMetadata(files);
@@ -75,7 +84,7 @@ export class KnowledgeFileService {
 			try {
 				for (const file of files) {
 					const contentHash = await this.hashUploadedFile(file.path);
-					const storedFile = await this.storeFile(scope, file, reserveRow);
+					const storedFile = await this.storeFile(scope, file, writeFence);
 					uploadedFiles.push(storedFile);
 					results.push({ file: toAgentFileDto(storedFile), contentHash });
 				}
@@ -83,6 +92,8 @@ export class KnowledgeFileService {
 				await this.cleanupUploadedFiles(uploadedFiles);
 				throw error;
 			}
+
+			this.prewarmMirror(scope, writeFence);
 
 			return results;
 		} finally {
@@ -95,12 +106,29 @@ export class KnowledgeFileService {
 		return files.map((file) => toAgentFileDto(file));
 	}
 
-	async hasFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
-		return await this.fileRepository.hasFilesForAgent(scope.agentId, {});
+	/** Boots the sandbox of the scope ahead of use. A scope without files needs no sandbox. */
+	async warmSandbox(scope: KnowledgeConsumerScope): Promise<void> {
+		if (!(await this.hasFiles(scope))) {
+			return;
+		}
+
+		await this.sandboxProvider.warm(scope);
 	}
 
-	/** Returns false when the scope has no file with this id, so nothing was deleted. */
-	async deleteFile(scope: KnowledgeConsumerScope, fileId: string): Promise<boolean> {
+	/** Deletes the sandbox of the scope. Reads no file row, so it also runs while the module is off. Never throws. */
+	async destroySandbox(scope: KnowledgeConsumerScope): Promise<void> {
+		await this.sandboxProvider.destroy(scope);
+	}
+
+	/**
+	 * Returns false when the scope has no file with this id, so nothing was deleted.
+	 * The fence guards only the mirror refresh that follows. The row delete does not run through it.
+	 */
+	async deleteFile(
+		scope: KnowledgeConsumerScope,
+		fileId: string,
+		writeFence: KnowledgeWriteRunner,
+	): Promise<boolean> {
 		const file = await this.fileRepository.findByIdAndAgentId(fileId, scope.agentId, {});
 		if (!file) {
 			return false;
@@ -116,6 +144,12 @@ export class KnowledgeFileService {
 					error: error instanceof Error ? error.message : error,
 				});
 			});
+
+		if (await this.hasFiles(scope)) {
+			this.prewarmMirror(scope, writeFence);
+		} else {
+			await this.destroySandbox(scope);
+		}
 
 		return true;
 	}
@@ -139,6 +173,18 @@ export class KnowledgeFileService {
 					});
 				});
 		}
+	}
+
+	private async hasFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
+		return await this.fileRepository.hasFilesForAgent(scope.agentId, {});
+	}
+
+	private prewarmMirror(scope: KnowledgeConsumerScope, writeFence: KnowledgeWriteRunner): void {
+		// An empty write through the fence rejects when the consumer no longer accepts writes.
+		this.mirrorService.prewarmMirrorInBackground(
+			scope,
+			async () => await writeFence(async () => {}),
+		);
 	}
 
 	private async hashUploadedFile(filePath: string): Promise<string | undefined> {
@@ -165,7 +211,7 @@ export class KnowledgeFileService {
 	private async storeFile(
 		scope: KnowledgeConsumerScope,
 		file: Express.Multer.File,
-		reserveRow: KnowledgeWriteRunner,
+		writeFence: KnowledgeWriteRunner,
 	): Promise<KnowledgeFile> {
 		const fileId = generateNanoId();
 		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
@@ -177,7 +223,7 @@ export class KnowledgeFileService {
 		});
 
 		try {
-			return await reserveRow(
+			return await writeFence(
 				async (ctx) => await this.saveFileRow(scope, fileId, file, stored, ctx),
 			);
 		} catch (error) {

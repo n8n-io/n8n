@@ -2,12 +2,13 @@ import type { CommandResult } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { BadRequestError, OperationalError } from '@n8n/errors';
 import { runSerially } from '@n8n/utils/run-serially';
 import escapeRegExp from 'lodash/escapeRegExp';
 import { safeRegex } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { BadRequestError, NotFoundError, OperationalError } from '@n8n/errors';
+import { sanitizeSandboxErrorDetail } from '@/utils/sanitize-sandbox-error-detail';
 
 import { KnowledgeFileStore } from '../files/knowledge-file-store';
 import {
@@ -16,8 +17,10 @@ import {
 	type KnowledgePaths,
 	storageFileNameForOriginalFileName,
 } from '../files/storage-naming';
+import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
+import type { KnowledgeSandboxHandle } from '../knowledge-sandbox-provider';
+import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
-
 import {
 	buildMirrorFinalizeCommand,
 	buildReadKnowledgeCommand,
@@ -47,17 +50,9 @@ import {
 	type SearchKnowledgeResult,
 } from './retrieval-schemas';
 
-import {
-	type AgentSandboxRuntime,
-	AgentSandboxRuntimeService,
-	sanitizeSandboxErrorDetail,
-} from '@/modules/agents/agent-sandbox-runtime.service';
-import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
-import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-
 const GLOB_MATCH_TIMEOUT_MS = 250;
 
-interface AgentKnowledgeMirrorRuntime extends AgentSandboxRuntime {
+interface KnowledgeMirrorRuntime extends KnowledgeSandboxHandle {
 	paths: KnowledgePaths;
 }
 
@@ -120,27 +115,33 @@ function assertKnowledgeFilesDirectoryAvailable(
 	);
 }
 
+/**
+ * Keeps a copy of the knowledge files of one consumer scope in the sandbox of
+ * that consumer, and searches and reads the copy. The caller owns the
+ * availability and ownership checks.
+ */
 @Service()
-export class AgentKnowledgeMirrorService {
+export class KnowledgeMirrorService {
 	private readonly pendingMirrorSyncs = new Map<string, Promise<unknown>>();
+
+	private readonly logger: Logger;
 
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
-		private readonly logger: Logger,
-		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
-		private readonly agentFileRepository: KnowledgeFileRepository,
-		private readonly agentRepository: AgentRepository,
-		private readonly agentKnowledgeFileStore: KnowledgeFileStore,
-		private readonly projectDeletion: AgentProjectDeletionRepository,
-	) {}
+		logger: Logger,
+		private readonly sandboxProvider: KnowledgeSandboxProviderRegistry,
+		private readonly fileRepository: KnowledgeFileRepository,
+		private readonly fileStore: KnowledgeFileStore,
+	) {
+		this.logger = logger.scoped('knowledge');
+	}
 
 	async searchKnowledge(
-		projectId: string,
-		agentId: string,
+		scope: KnowledgeConsumerScope,
 		request: SearchKnowledgeRequest,
 	): Promise<SearchKnowledgeResult> {
 		const validatedRequest = parseSearchKnowledgeRequest(request);
-		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
+		const references = await this.loadKnowledgeReferenceLookup(scope);
 		const outputMode = validatedRequest.output_mode ?? 'content';
 		const limit = validatedRequest.head_limit ?? DEFAULT_SEARCH_TEXT_LIMIT;
 
@@ -153,12 +154,7 @@ export class AgentKnowledgeMirrorService {
 			validatedRequest,
 			scopedFiles.map((file) => file.file),
 		);
-		const result = await this.executeKnowledgeOperation(
-			projectId,
-			agentId,
-			command,
-			references.files,
-		);
+		const result = await this.executeKnowledgeOperation(scope, command, references.files);
 
 		assertKnowledgeFilesDirectoryAvailable('search', result);
 		if (result.exitCode === 1) {
@@ -172,12 +168,11 @@ export class AgentKnowledgeMirrorService {
 	}
 
 	async globKnowledgeFiles(
-		projectId: string,
-		agentId: string,
+		scope: KnowledgeConsumerScope,
 		request: GlobKnowledgeFilesRequest,
 	): Promise<GlobKnowledgeFilesResult> {
 		const validatedRequest = parseGlobKnowledgeFilesRequest(request);
-		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
+		const references = await this.loadKnowledgeReferenceLookup(scope);
 		const limit = validatedRequest.limit ?? DEFAULT_GLOB_FILES_LIMIT;
 		const offset = validatedRequest.offset ?? 0;
 
@@ -196,20 +191,14 @@ export class AgentKnowledgeMirrorService {
 	}
 
 	async readKnowledge(
-		projectId: string,
-		agentId: string,
+		scope: KnowledgeConsumerScope,
 		request: ReadKnowledgeRequest,
 	): Promise<ReadKnowledgeResult> {
 		const validatedRequest = parseReadKnowledgeRequest(request);
-		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
+		const references = await this.loadKnowledgeReferenceLookup(scope);
 		const file = this.resolveRequiredFile(validatedRequest, references);
 		const command = buildReadKnowledgeCommand(file.file, validatedRequest);
-		const result = await this.executeKnowledgeOperation(
-			projectId,
-			agentId,
-			command,
-			references.files,
-		);
+		const result = await this.executeKnowledgeOperation(scope, command, references.files);
 
 		assertKnowledgeFilesDirectoryAvailable('read', result);
 		if (result.exitCode !== 0) {
@@ -232,41 +221,46 @@ export class AgentKnowledgeMirrorService {
 	 * Fire-and-forget mirror pre-warm. Called after uploads so the mirror copy
 	 * runs while the just-written data is still hot, instead of taxing the
 	 * next search with it.
+	 *
+	 * `assertWritable` rejects when the consumer no longer accepts knowledge
+	 * writes, for example while the agents module deletes the project.
 	 */
-	prewarmMirrorInBackground(projectId: string, agentId: string): void {
+	prewarmMirrorInBackground(
+		scope: KnowledgeConsumerScope,
+		assertWritable: () => Promise<void>,
+	): void {
 		void (async () => {
-			await this.projectDeletion.assertWritable(projectId);
+			await assertWritable();
 			try {
-				const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
-				const runtime = await this.acquireKnowledgeRuntime(projectId, agentId);
+				const references = await this.loadKnowledgeReferenceLookup(scope);
+				const runtime = await this.acquireKnowledgeRuntime(scope);
 				await this.ensureMirrorSynced(runtime, references.files);
 			} finally {
 				// Remote sync must not hold a database lock. Remove a mirror that finishes after deletion.
 				try {
-					await this.projectDeletion.assertWritable(projectId);
+					await assertWritable();
 				} catch {
-					await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
+					await this.sandboxProvider.destroy(scope);
 				}
 			}
 		})().catch((error) => {
 			this.logger.warn('Agent knowledge mirror pre-warm failed', {
-				projectId,
-				agentId,
+				projectId: scope.projectId,
+				agentId: scope.agentId,
 				error: error instanceof Error ? error.message : String(error),
 			});
 		});
 	}
 
 	private async executeKnowledgeOperation(
-		projectId: string,
-		agentId: string,
+		scope: KnowledgeConsumerScope,
 		command: string,
 		files: AgentKnowledgeFileReference[],
 	): Promise<CommandResult> {
-		const runtime = await this.acquireKnowledgeRuntime(projectId, agentId);
+		const runtime = await this.acquireKnowledgeRuntime(scope);
 		const scopedCommand = buildScopedKnowledgeShellCommand(command, runtime.paths);
 		await this.ensureMirrorSynced(runtime, files);
-		return await this.agentSandboxRuntimeService.executeSandboxCommand(
+		return await this.sandboxProvider.executeCommand(
 			runtime.sandbox,
 			scopedCommand,
 			this.agentsConfig.sandboxTimeout,
@@ -279,7 +273,7 @@ export class AgentKnowledgeMirrorService {
 	 * manifest is read every time because providers can reuse sandbox IDs.
 	 */
 	private async ensureMirrorSynced(
-		runtime: AgentKnowledgeMirrorRuntime,
+		runtime: KnowledgeMirrorRuntime,
 		files: AgentKnowledgeFileReference[],
 	): Promise<void> {
 		await runSerially(
@@ -290,10 +284,10 @@ export class AgentKnowledgeMirrorService {
 	}
 
 	private async syncMirror(
-		runtime: AgentKnowledgeMirrorRuntime,
+		runtime: KnowledgeMirrorRuntime,
 		files: AgentKnowledgeFileReference[],
 	): Promise<void> {
-		const manifestResult = await this.agentSandboxRuntimeService.executeSandboxCommand(
+		const manifestResult = await this.sandboxProvider.executeCommand(
 			runtime.sandbox,
 			`cat ${runtime.paths.manifest} 2>/dev/null || true`,
 			MIRROR_SYNC_TIMEOUT_SECONDS * 1000,
@@ -329,7 +323,7 @@ export class AgentKnowledgeMirrorService {
 	 * Returns the names of files that were fetched and uploaded successfully.
 	 */
 	private async uploadMirrorFiles(
-		runtime: AgentKnowledgeMirrorRuntime,
+		runtime: KnowledgeMirrorRuntime,
 		files: AgentKnowledgeFileReference[],
 		stagingId: string,
 	): Promise<Set<string>> {
@@ -343,7 +337,7 @@ export class AgentKnowledgeMirrorService {
 			const name = file.file;
 			let buffer: Buffer | null;
 			try {
-				buffer = await this.agentKnowledgeFileStore.readAsBuffer({
+				buffer = await this.fileStore.readAsBuffer({
 					storedAt: file.storedAt,
 					storageKey: file.storageKey,
 				});
@@ -372,12 +366,11 @@ export class AgentKnowledgeMirrorService {
 	}
 
 	private async loadKnowledgeReferenceLookup(
-		projectId: string,
-		agentId: string,
+		scope: KnowledgeConsumerScope,
 	): Promise<AgentKnowledgeReferenceLookup> {
-		await this.assertKnowledgeAccess(projectId, agentId);
+		this.sandboxProvider.assertConfiguration(scope);
 
-		const files = await this.loadKnowledgeFileReferences(agentId);
+		const files = await this.loadKnowledgeFileReferences(scope.agentId);
 		return {
 			files,
 			byFile: new Map(files.map((file) => [file.file, file])),
@@ -388,7 +381,7 @@ export class AgentKnowledgeMirrorService {
 	private async loadKnowledgeFileReferences(
 		agentId: string,
 	): Promise<AgentKnowledgeFileReference[]> {
-		const files = await this.agentFileRepository.findByAgentId(agentId, {});
+		const files = await this.fileRepository.findByAgentId(agentId, {});
 		return files.map((file) => ({
 			file: storageFileNameForOriginalFileName(file.fileName),
 			fileId: file.id,
@@ -444,22 +437,10 @@ export class AgentKnowledgeMirrorService {
 		return file;
 	}
 
-	private async assertKnowledgeAccess(projectId: string, agentId: string): Promise<void> {
-		this.agentSandboxRuntimeService.assertSandboxConfiguration(projectId, agentId);
-		const agentExists = await this.agentRepository.existsBy({ id: agentId, projectId });
-		if (!agentExists) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
-	}
-
 	private async acquireKnowledgeRuntime(
-		projectId: string,
-		agentId: string,
-	): Promise<AgentKnowledgeMirrorRuntime> {
-		const runtime = await this.agentSandboxRuntimeService.acquireKnowledgeSandbox(
-			projectId,
-			agentId,
-		);
+		scope: KnowledgeConsumerScope,
+	): Promise<KnowledgeMirrorRuntime> {
+		const runtime = await this.sandboxProvider.acquire(scope);
 		return { ...runtime, paths: getKnowledgePaths(runtime.provider) };
 	}
 
@@ -526,7 +507,7 @@ export class AgentKnowledgeMirrorService {
 	}
 
 	private async finalizeMirror(
-		runtime: AgentKnowledgeMirrorRuntime,
+		runtime: KnowledgeMirrorRuntime,
 		files: AgentKnowledgeFileReference[],
 		toCopy: AgentKnowledgeFileReference[],
 		toDelete: string[],
@@ -541,7 +522,7 @@ export class AgentKnowledgeMirrorService {
 			.filter((file) => present.has(file.file) && !copiedNames.has(file.file))
 			.map((file) => file.file);
 
-		const syncResult = await this.agentSandboxRuntimeService.executeSandboxCommand(
+		const syncResult = await this.sandboxProvider.executeCommand(
 			runtime.sandbox,
 			buildMirrorFinalizeCommand(
 				[...copiedNames],
@@ -560,7 +541,7 @@ export class AgentKnowledgeMirrorService {
 	}
 
 	private async cleanMirrorStaging(
-		runtime: AgentKnowledgeMirrorRuntime,
+		runtime: KnowledgeMirrorRuntime,
 		stagingDir: string,
 		stagingId: string,
 	): Promise<void> {

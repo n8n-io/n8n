@@ -34,7 +34,7 @@ import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentKnowledgeMirrorService } from '@/modules/knowledge/retrieval/mirror.service';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentPlanService } from '../agent-plan.service';
 import { AgentWakeService } from '../background/agent-wake.service';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
@@ -60,7 +60,6 @@ import type { N8nMemory } from '../integrations/n8n-memory';
 import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
-import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
@@ -111,9 +110,8 @@ function makeReconstructionService(
 		agentRepository?: AgentRepository;
 		agentSandboxRuntimeService?: AgentSandboxRuntimeService;
 		n8nCheckpointStorage?: N8NCheckpointStorage;
-		agentFileRepository?: KnowledgeFileRepository;
 		agentWorkspaceService?: AgentWorkspaceService;
-		agentKnowledgeMirrorService?: AgentKnowledgeMirrorService;
+		knowledgeRetriever?: KnowledgeRetrievalService;
 		knowledgeAvailabilityService?: KnowledgeAvailabilityService;
 	} = {},
 ): AgentRuntimeReconstructionService {
@@ -132,7 +130,6 @@ function makeReconstructionService(
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
 		overrides.agentRepository ?? mock<AgentRepository>(),
-		overrides.agentFileRepository ?? mock<KnowledgeFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		overrides.n8nCheckpointStorage ?? mock<N8NCheckpointStorage>(),
@@ -145,7 +142,7 @@ function makeReconstructionService(
 		mock<AiService>(),
 		outboundHttp,
 		agentWorkspaceService,
-		overrides.agentKnowledgeMirrorService ?? mock<AgentKnowledgeMirrorService>(),
+		overrides.knowledgeRetriever ?? mock<KnowledgeRetrievalService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
@@ -349,20 +346,20 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 	});
 
 	it('attaches a workspace when the effective sandbox setting is enabled', async () => {
-		const agentFileRepository = mock<KnowledgeFileRepository>();
+		const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 			isEnabled: () => true,
 		});
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
 		const workspace = new Workspace({});
-		agentFileRepository.hasFilesForAgent.mockResolvedValue(false);
+		knowledgeRetriever.hasFiles.mockResolvedValue(false);
 		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
 			workspace,
 			handle: mock<AgentSandboxRuntime>(),
 		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
-			agentFileRepository,
+			knowledgeRetriever,
 			agentWorkspaceService,
 		});
 
@@ -378,44 +375,50 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 	});
 
 	it('keeps knowledge tools gated by uploaded files', async () => {
-		const agentFileRepository = mock<KnowledgeFileRepository>();
+		const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 			isEnabled: () => true,
 		});
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
-		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
+		knowledgeRetriever.hasFiles.mockResolvedValue(true);
 		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
 			workspace: new Workspace({}),
 			handle: mock<AgentSandboxRuntime>(),
 		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
-			agentFileRepository,
+			knowledgeRetriever,
 			agentWorkspaceService,
 		});
 
 		await reconstructWithWorkspace(service);
 
+		// The sandbox id is derived from these ids, so the scope must carry them unchanged.
+		expect(knowledgeRetriever.hasFiles).toHaveBeenCalledWith({
+			kind: 'agent',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+		});
 		expect(getInjectedToolNames()).toEqual(
 			expect.arrayContaining(['find_file', 'search_text', 'read_file']),
 		);
 	});
 
 	it('keeps the workspace but skips knowledge tools when the knowledge module is inactive', async () => {
-		const agentFileRepository = mock<KnowledgeFileRepository>();
+		const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 			isEnabled: () => true,
 		});
 		const agentWorkspaceService = mock<AgentWorkspaceService>();
 		const workspace = new Workspace({});
-		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
+		knowledgeRetriever.hasFiles.mockResolvedValue(true);
 		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
 			workspace,
 			handle: mock<AgentSandboxRuntime>(),
 		});
 		const service = makeReconstructionService({
 			agentSandboxRuntimeService,
-			agentFileRepository,
+			knowledgeRetriever,
 			agentWorkspaceService,
 			knowledgeAvailabilityService: makeKnowledgeAvailabilityService({ isKnowledgeActive: false }),
 		});
@@ -423,8 +426,8 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		await reconstructWithWorkspace(service);
 
 		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
-		// The file repository is never asked while knowledge is off.
-		expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+		// The knowledge module is never asked while it is off.
+		expect(knowledgeRetriever.hasFiles).not.toHaveBeenCalled();
 		for (const toolName of ['find_file', 'search_text', 'read_file']) {
 			expect(getInjectedToolNames()).not.toContain(toolName);
 		}
@@ -437,7 +440,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			const construction = createDeferredPromise<agents.Agent>();
 			const acquisition =
 				createDeferredPromise<Awaited<ReturnType<AgentWorkspaceService['getAgentWorkspace']>>>();
-			const agentFileRepository = mock<KnowledgeFileRepository>();
+			const knowledgeRetriever = mock<KnowledgeRetrievalService>();
 			const agentWorkspaceService = mock<AgentWorkspaceService>();
 			agentWorkspaceService.getAgentWorkspace.mockImplementationOnce(async () => {
 				started.resolve();
@@ -454,7 +457,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			const service = makeReconstructionService({
 				agentSandboxRuntimeService: mock<AgentSandboxRuntimeService>({ isEnabled: () => true }),
 				agentWorkspaceService,
-				agentFileRepository,
+				knowledgeRetriever,
 			});
 			const controller = new AbortController();
 			const reason = new Error('setup cancelled');
@@ -468,7 +471,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			await vi.waitFor(() => expect(builtAgent.close).toHaveBeenCalledTimes(1));
 
 			expect(builtAgent.workspace).not.toHaveBeenCalled();
-			expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+			expect(knowledgeRetriever.hasFiles).not.toHaveBeenCalled();
 			expect(builtAgent.fileStore).not.toHaveBeenCalled();
 		},
 		1_000,

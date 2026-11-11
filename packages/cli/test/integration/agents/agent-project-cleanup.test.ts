@@ -244,7 +244,7 @@ describe('Agent conversations on project deletion', () => {
 			name: 'Replacement project',
 		});
 		await expect(
-			Container.get(AgentProjectDeletionRepository).assertWritable(project.id),
+			Container.get(AgentProjectDeletionRepository).withWritableProject(project.id, async () => {}),
 		).resolves.toBeUndefined();
 		expect(await executions.findOneBy({ id: deletedLog.executionId })).toBeNull();
 		expect(await logs.read(deletedLog, 'fs')).toBeNull();

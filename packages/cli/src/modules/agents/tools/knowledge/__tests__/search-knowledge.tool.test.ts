@@ -1,30 +1,26 @@
 import type { BuiltTool } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentKnowledgeMirrorService } from '@/modules/knowledge/retrieval/mirror.service';
+import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
+import type { KnowledgeRetriever } from '@/modules/knowledge/knowledge-retriever';
+
 import type {
 	FinishKnowledgeToolCall,
 	KnowledgeToolCall,
 } from '../../../agent-knowledge-usage-tracker';
 import { createKnowledgeRetrievalTools } from '../search-knowledge.tool';
 
-const projectId = 'project-1';
-const agentId = 'agent-1';
+const scope: KnowledgeConsumerScope = { kind: 'agent', projectId: 'project-1', agentId: 'agent-1' };
 
 function buildTool(
-	knowledgeMirrorService: AgentKnowledgeMirrorService,
+	retriever: KnowledgeRetriever,
 	toolName: 'find_file' | 'search_text' | 'read_file',
 	startToolCall: (
 		runId: string | undefined,
 		call: KnowledgeToolCall,
 	) => FinishKnowledgeToolCall = () => () => {},
 ): BuiltTool {
-	const tool = createKnowledgeRetrievalTools({
-		projectId,
-		agentId,
-		knowledgeMirrorService,
-		startToolCall,
-	})
+	const tool = createKnowledgeRetrievalTools({ scope, retriever, startToolCall })
 		.map((builder) => builder.build())
 		.find((candidate) => candidate.name === toolName);
 
@@ -54,50 +50,46 @@ function getToolHandler(tool: BuiltTool): NonNullable<BuiltTool['handler']> {
 }
 
 describe('createKnowledgeRetrievalTools', () => {
-	it('finds files through the Agent-scoped knowledge mirror', async () => {
-		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-		knowledgeMirrorService.globKnowledgeFiles.mockResolvedValue({
+	it('finds files through the knowledge retriever with the agent scope', async () => {
+		const retriever = mock<KnowledgeRetriever>();
+		retriever.findFiles.mockResolvedValue({
 			files: [],
 			limit: 20,
 			offset: 0,
 			hasMore: false,
 		});
-		const tool = buildTool(knowledgeMirrorService, 'find_file');
+		const tool = buildTool(retriever, 'find_file');
 		const input = { pattern: '*' };
 
 		await getToolHandler(tool)(input, {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
-		expect(knowledgeMirrorService.globKnowledgeFiles).toHaveBeenCalledWith(
-			projectId,
-			agentId,
-			input,
-		);
+		expect(retriever.findFiles).toHaveBeenCalledWith(scope, input);
 	});
 
-	it('searches the Agent-scoped knowledge mirror regardless of the memory resource', async () => {
-		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-		knowledgeMirrorService.searchKnowledge.mockResolvedValue({
+	it('searches with the agent scope regardless of the memory resource', async () => {
+		const retriever = mock<KnowledgeRetriever>();
+		retriever.searchText.mockResolvedValue({
 			outputMode: 'content',
 			matches: [],
 			limit: 10,
 			hasMore: false,
 			truncated: false,
 		});
-		const tool = buildTool(knowledgeMirrorService, 'search_text');
+		const tool = buildTool(retriever, 'search_text');
 		const input = { pattern: 'needle', path: ['notes.txt'] };
 
 		await getToolHandler(tool)(input, {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
-		expect(knowledgeMirrorService.searchKnowledge).toHaveBeenCalledWith(projectId, agentId, input);
+		expect(retriever.searchText).toHaveBeenCalledWith(scope, input);
 	});
 
-	it('reads the Agent-scoped knowledge mirror regardless of the memory resource', async () => {
-		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-		knowledgeMirrorService.readKnowledge.mockResolvedValue({
+	it('reads with the agent scope regardless of the memory resource', async () => {
+		const retriever = mock<KnowledgeRetriever>();
+		retriever.readFile.mockResolvedValue({
 			file: 'notes.txt',
 			fileId: 'file-1',
 			displayName: 'notes.txt',
@@ -105,14 +97,14 @@ describe('createKnowledgeRetrievalTools', () => {
 			ranges: [],
 			truncated: false,
 		});
-		const tool = buildTool(knowledgeMirrorService, 'read_file');
+		const tool = buildTool(retriever, 'read_file');
 		const input = { file: 'notes.txt', ranges: [{ startLine: 1, endLine: 3 }] };
 
 		await getToolHandler(tool)(input, {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
-		expect(knowledgeMirrorService.readKnowledge).toHaveBeenCalledWith(projectId, agentId, input);
+		expect(retriever.readFile).toHaveBeenCalledWith(scope, input);
 	});
 
 	it.each([
@@ -123,21 +115,21 @@ describe('createKnowledgeRetrievalTools', () => {
 		'records one %s call with the size of the output that the model gets',
 		async (toolName, call, input) => {
 			const { startToolCall, finishToolCall } = mockToolCallTracking();
-			const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-			knowledgeMirrorService.globKnowledgeFiles.mockResolvedValue({
+			const retriever = mock<KnowledgeRetriever>();
+			retriever.findFiles.mockResolvedValue({
 				files: [],
 				limit: 20,
 				offset: 0,
 				hasMore: false,
 			});
-			knowledgeMirrorService.searchKnowledge.mockResolvedValue({
+			retriever.searchText.mockResolvedValue({
 				outputMode: 'content',
 				matches: [],
 				limit: 10,
 				hasMore: false,
 				truncated: false,
 			});
-			knowledgeMirrorService.readKnowledge.mockResolvedValue({
+			retriever.readFile.mockResolvedValue({
 				file: 'notes.txt',
 				fileId: 'file-1',
 				displayName: 'notes.txt',
@@ -145,7 +137,7 @@ describe('createKnowledgeRetrievalTools', () => {
 				ranges: [],
 				truncated: false,
 			});
-			const tool = buildTool(knowledgeMirrorService, toolName, startToolCall);
+			const tool = buildTool(retriever, toolName, startToolCall);
 
 			const output = await getToolHandler(tool)(input, { runId: 'run-1' });
 
@@ -162,10 +154,10 @@ describe('createKnowledgeRetrievalTools', () => {
 
 	it('records the size of the shortened text when the model gets only part of a file', async () => {
 		const { startToolCall, finishToolCall } = mockToolCallTracking();
-		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
+		const retriever = mock<KnowledgeRetriever>();
 		const file = { file: 'notes.txt', fileId: 'file-1', displayName: 'notes.txt' };
 		const longText = 'a'.repeat(20_000);
-		knowledgeMirrorService.readKnowledge.mockResolvedValue({
+		retriever.readFile.mockResolvedValue({
 			...file,
 			createdAt: '2026-10-01T00:00:00.000Z',
 			ranges: [
@@ -178,7 +170,7 @@ describe('createKnowledgeRetrievalTools', () => {
 			],
 			truncated: false,
 		});
-		const tool = buildTool(knowledgeMirrorService, 'read_file', startToolCall);
+		const tool = buildTool(retriever, 'read_file', startToolCall);
 
 		const output = await getToolHandler(tool)({ file: 'notes.txt' }, { runId: 'run-1' });
 
@@ -193,9 +185,9 @@ describe('createKnowledgeRetrievalTools', () => {
 
 	it('records a call that fails as failed, with no content characters', async () => {
 		const { startToolCall, finishToolCall } = mockToolCallTracking();
-		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-		knowledgeMirrorService.searchKnowledge.mockRejectedValue(new Error('search failed'));
-		const tool = buildTool(knowledgeMirrorService, 'search_text', startToolCall);
+		const retriever = mock<KnowledgeRetriever>();
+		retriever.searchText.mockRejectedValue(new Error('search failed'));
+		const tool = buildTool(retriever, 'search_text', startToolCall);
 
 		await getToolHandler(tool)({ pattern: 'refund' }, { runId: 'run-1' });
 
@@ -239,14 +231,14 @@ describe('createKnowledgeRetrievalTools', () => {
 		'passes the duration of a search_text call in %s mode, and whether it found nothing',
 		async (_mode, searchResult, emptySearch) => {
 			const { startToolCall, finishToolCall } = mockToolCallTracking();
-			const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-			knowledgeMirrorService.searchKnowledge.mockResolvedValue({
+			const retriever = mock<KnowledgeRetriever>();
+			retriever.searchText.mockResolvedValue({
 				...searchResult,
 				limit: 10,
 				hasMore: false,
 				truncated: false,
 			} as never);
-			const tool = buildTool(knowledgeMirrorService, 'search_text', startToolCall);
+			const tool = buildTool(retriever, 'search_text', startToolCall);
 
 			await getToolHandler(tool)({ pattern: 'refund' }, { runId: 'run-1' });
 
@@ -262,8 +254,8 @@ describe('createKnowledgeRetrievalTools', () => {
 
 	it('passes the upload time of the file that read_file read, but not to the model', async () => {
 		const { startToolCall, finishToolCall } = mockToolCallTracking();
-		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-		knowledgeMirrorService.readKnowledge.mockResolvedValue({
+		const retriever = mock<KnowledgeRetriever>();
+		retriever.readFile.mockResolvedValue({
 			file: 'notes.txt',
 			fileId: 'file-1',
 			displayName: 'notes.txt',
@@ -271,7 +263,7 @@ describe('createKnowledgeRetrievalTools', () => {
 			ranges: [],
 			truncated: false,
 		});
-		const tool = buildTool(knowledgeMirrorService, 'read_file', startToolCall);
+		const tool = buildTool(retriever, 'read_file', startToolCall);
 
 		const output = await getToolHandler(tool)({ file: 'notes.txt' }, { runId: 'run-1' });
 
@@ -286,20 +278,20 @@ describe('createKnowledgeRetrievalTools', () => {
 
 	it('passes no upload time for a read that fails', async () => {
 		const { startToolCall, finishToolCall } = mockToolCallTracking();
-		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-		knowledgeMirrorService.readKnowledge.mockRejectedValue(new Error('read failed'));
-		const tool = buildTool(knowledgeMirrorService, 'read_file', startToolCall);
+		const retriever = mock<KnowledgeRetriever>();
+		retriever.readFile.mockRejectedValue(new Error('read failed'));
+		const tool = buildTool(retriever, 'read_file', startToolCall);
 
 		await getToolHandler(tool)({ file: 'notes.txt' }, { runId: 'run-1' });
 
 		expect(finishToolCall).toHaveBeenCalledWith({ failed: true });
 	});
 
-	it('counts a call before the knowledge mirror answers', async () => {
+	it('counts a call before the knowledge retriever answers', async () => {
 		const { startToolCall, finishToolCall } = mockToolCallTracking();
-		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-		knowledgeMirrorService.readKnowledge.mockReturnValue(new Promise(() => {}));
-		const tool = buildTool(knowledgeMirrorService, 'read_file', startToolCall);
+		const retriever = mock<KnowledgeRetriever>();
+		retriever.readFile.mockReturnValue(new Promise(() => {}));
+		const tool = buildTool(retriever, 'read_file', startToolCall);
 
 		void getToolHandler(tool)({ file: 'notes.txt' }, { runId: 'run-1' });
 
