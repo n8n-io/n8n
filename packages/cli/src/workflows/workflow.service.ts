@@ -152,7 +152,7 @@ type WorkflowUpdateOptions = {
 	unsentNodeFields?: readonly string[];
 };
 
-type PreparedWorkflowUpdate = {
+export type PreparedWorkflowUpdate = {
 	user: User;
 	previousWorkflow: WorkflowEntity;
 	workflow: WorkflowEntity;
