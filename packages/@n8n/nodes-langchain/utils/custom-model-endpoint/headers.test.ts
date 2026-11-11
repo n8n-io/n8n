@@ -1,7 +1,7 @@
 import { UserError } from '@n8n/errors';
 
-import { buildRequestHeaders, toHeaderRecord } from './headers';
-import type { EndpointCredential, LoginMethod } from './types';
+import { buildRequestHeaders, oauth2BasicCredentials, toHeaderRecord } from './headers';
+import type { EndpointCredential, LoginMethod, OAuth2Login } from './types';
 
 const endpoint = (
 	login: LoginMethod,
@@ -134,6 +134,30 @@ describe('buildRequestHeaders', () => {
 
 			expect(act).toThrow(UserError);
 		});
+	});
+});
+
+describe('oauth2BasicCredentials', () => {
+	const oauth2 = (clientId: string, clientSecret: string): OAuth2Login => ({
+		type: 'oauth2',
+		tokenUrl: 'https://login.example.com/oauth2/token',
+		clientId,
+		clientSecret,
+		scope: '',
+		sendCredentialsIn: 'header',
+	});
+
+	it.each([
+		['a colon, which would otherwise split the pair in the wrong place', 'client-1', 'cs:9f2a71c4'],
+		['the characters base64 reads back ambiguously', 'client-1', 'cs+a/b=9f2a71c4'],
+		['a space', 'client 1', 'cs 9f2a71c4'],
+		['nothing that needs encoding', 'client-1', 'cs-9f2a71c4'],
+	])('percent-encodes both halves when the pair holds %s', (_name, clientId, clientSecret) => {
+		const decoded = Buffer.from(oauth2BasicCredentials(oauth2(clientId, clientSecret)), 'base64');
+
+		expect(decoded.toString('utf8')).toBe(
+			`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`,
+		);
 	});
 });
 
