@@ -1,4 +1,4 @@
-name: 'Release: Setup Trusted Publishing'
+name: 'Release: Setup Trusted Publishing for unpublished packages'
 
 on:
   workflow_call:
