@@ -51,6 +51,7 @@ const enabled = defineModel<boolean>({ default: false });
 				>
 					<N8nSwitch
 						v-model="enabled"
+						size="large"
 						:disabled="disabled"
 						:aria-label="title"
 						:data-test-id="switchTestId"
@@ -59,6 +60,7 @@ const enabled = defineModel<boolean>({ default: false });
 				<N8nSwitch
 					v-else
 					v-model="enabled"
+					size="large"
 					:disabled="disabled"
 					:aria-label="title"
 					:data-test-id="switchTestId"
