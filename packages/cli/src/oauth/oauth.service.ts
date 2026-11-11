@@ -148,6 +148,25 @@ export interface OAuth2CredentialTokenRevision {
 	expiresAt?: number;
 }
 
+function getOAuth2AccessToken(tokenData: unknown): string | undefined {
+	if (!isRecord(tokenData)) return undefined;
+	const accessToken = tokenData.access_token ?? tokenData.accessToken;
+	return typeof accessToken === 'string' && accessToken.length > 0 ? accessToken : undefined;
+}
+
+/**
+ * The access token and expiry of stored OAuth2 token data. `refreshOAuth2CredentialById`
+ * compares them, so it does not repeat a refresh that another caller already finished.
+ */
+export function getOAuth2TokenRevision(tokenData: unknown): OAuth2CredentialTokenRevision {
+	const accessToken = getOAuth2AccessToken(tokenData);
+	const expiresAt = isRecord(tokenData) ? Number(tokenData.n8n_expires_at) : Number.NaN;
+	return {
+		...(accessToken ? { accessToken } : {}),
+		...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
+	};
+}
+
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
 	return value === 'true';
@@ -913,26 +932,11 @@ export class OauthService {
 			: merged;
 	}
 
-	private getOAuth2AccessToken(tokenData: unknown): string | undefined {
-		if (!isRecord(tokenData)) return undefined;
-		const accessToken = tokenData.access_token ?? tokenData.accessToken;
-		return typeof accessToken === 'string' && accessToken.length > 0 ? accessToken : undefined;
-	}
-
-	private getOAuth2TokenRevision(tokenData: unknown): OAuth2CredentialTokenRevision {
-		const accessToken = this.getOAuth2AccessToken(tokenData);
-		const expiresAt = isRecord(tokenData) ? Number(tokenData.n8n_expires_at) : Number.NaN;
-		return {
-			...(accessToken ? { accessToken } : {}),
-			...(Number.isFinite(expiresAt) ? { expiresAt } : {}),
-		};
-	}
-
 	private oauth2TokenRevisionChanged(
 		initial: OAuth2CredentialTokenRevision,
 		current: ClientOAuth2TokenData,
 	): boolean {
-		const currentRevision = this.getOAuth2TokenRevision(current);
+		const currentRevision = getOAuth2TokenRevision(current);
 		return (
 			initial.accessToken !== currentRevision.accessToken ||
 			initial.expiresAt !== currentRevision.expiresAt
@@ -941,7 +945,7 @@ export class OauthService {
 
 	private buildOAuth2RefreshResult(
 		tokenData: ClientOAuth2TokenData,
-		accessToken = this.getOAuth2AccessToken(tokenData),
+		accessToken = getOAuth2AccessToken(tokenData),
 	): OAuth2CredentialRefreshResult | null {
 		if (!accessToken) return null;
 
@@ -979,7 +983,7 @@ export class OauthService {
 		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
 		if (!oauthTokenData) return null;
-		const tokenRevision = knownTokenRevision ?? this.getOAuth2TokenRevision(oauthTokenData);
+		const tokenRevision = knownTokenRevision ?? getOAuth2TokenRevision(oauthTokenData);
 
 		const runRefresh = async (): Promise<OAuth2CredentialRefreshResult | null> => {
 			const currentCredential = await this.credentialsRepository.findOne({
