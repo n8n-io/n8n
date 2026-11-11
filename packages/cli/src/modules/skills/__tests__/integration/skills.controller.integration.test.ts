@@ -549,6 +549,36 @@ describe('SkillsController', () => {
 			});
 		});
 
+		it('returns the hash of the stored version when references arrive out of path order', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+
+			const saved = await editor
+				.patch(`/skills/${id}`)
+				.send({
+					references: [
+						{ path: 'references/zeta.md', content: 'Zeta.' },
+						{ path: 'references/alpha.md', content: 'Alpha.' },
+					],
+					baseSkillHash: skillHash,
+				})
+				.expect(200);
+			const read = await editor.get(`/skills/${id}`).expect(200);
+
+			expect(saved.body.data.skill.references.map((file: { path: string }) => file.path)).toEqual([
+				'references/alpha.md',
+				'references/zeta.md',
+			]);
+			expect(saved.body.data.skillHash).toBe(read.body.data.skillHash);
+			await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: saved.body.data.skillHash })
+				.expect(200);
+		});
+
 		it('refuses a save based on a stale hash', async () => {
 			const { id, skillHash } = await create(editor, {
 				scope: 'project',

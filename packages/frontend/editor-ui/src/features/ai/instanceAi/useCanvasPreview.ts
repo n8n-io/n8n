@@ -1,7 +1,8 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
 import {
 	getLatestBuildResult,
 	getLatestWorkflowSetupResult,
@@ -68,6 +69,7 @@ export function useCanvasPreview({
 	tabsStorage,
 }: UseCanvasPreviewOptions) {
 	const recentWorkflowsStore = useRecentWorkflowsStore();
+	const skillsStore = useSkillsStore();
 
 	// --- Tab state ---
 	const activeTabId = ref<string>();
@@ -199,7 +201,10 @@ export function useCanvasPreview({
 	});
 
 	const dataTableRefreshKey = ref(0);
-	const skillRefreshKey = ref(0);
+	const skillRefreshKeys = ref(new Map<string, number>());
+	const skillRefreshKey = computed(
+		() => skillRefreshKeys.value.get(activeSkillId.value ?? '') ?? 0,
+	);
 	const appRefreshKey = ref(0);
 
 	const isPreviewVisible = computed(
@@ -553,7 +558,7 @@ export function useCanvasPreview({
 	function showLatestToolArtifact<T extends { toolCallId: string }>(
 		getLatest: (turns: readonly ArtifactTurn[]) => T | undefined,
 		artifactId: (result: T) => string,
-		refreshKey: Ref<number>,
+		refresh: (id: string, result: T) => void,
 	) {
 		const latest = computed(() => getLatest(thread.artifactTurns) ?? null);
 
@@ -565,16 +570,28 @@ export function useCanvasPreview({
 
 				const targetId = artifactId(latest.value);
 				showAgentArtifact(targetId);
-				if (activeTabId.value === targetId) {
-					refreshKey.value++;
-				}
+				refresh(targetId, latest.value);
 			},
 			{ flush: 'sync' },
 		);
 	}
 
-	showLatestToolArtifact(getLatestSkillArtifactResult, (result) => result.skillId, skillRefreshKey);
-	showLatestToolArtifact(getLatestAppArtifactResult, (result) => result.appId, appRefreshKey);
+	showLatestToolArtifact(
+		getLatestSkillArtifactResult,
+		(result) => result.skillId,
+		(id, result) => {
+			if (result.name) skillsStore.updateSkillName(id, result.name);
+			// Inactive skill editors stay cached, so record their updates too.
+			skillRefreshKeys.value.set(id, (skillRefreshKeys.value.get(id) ?? 0) + 1);
+		},
+	);
+	showLatestToolArtifact(
+		getLatestAppArtifactResult,
+		(result) => result.appId,
+		(id) => {
+			if (activeTabId.value === id) appRefreshKey.value++;
+		},
+	);
 
 	// --- Close data table preview if the active table is deleted ---
 
