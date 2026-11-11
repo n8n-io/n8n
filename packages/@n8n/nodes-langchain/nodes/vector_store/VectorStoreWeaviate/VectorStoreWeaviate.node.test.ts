@@ -534,4 +534,118 @@ describe('VectorStoreWeaviate.node', () => {
 			});
 		});
 	});
+
+	describe('batch mode', () => {
+		const ingest = vi.fn();
+		const withTenant = vi.fn();
+		const isAtLeast = vi.fn();
+		const client = mock<WeaviateClient>({
+			getWeaviateVersion: vi.fn().mockResolvedValue({ isAtLeast }),
+			collections: mock<WeaviateClient['collections']>({
+				get: vi.fn().mockReturnValue({ data: { ingest }, withTenant }),
+			}),
+		});
+		const documents = [
+			new LcDocument({ pageContent: 'A cat', metadata: { source: 'a.pdf', loc: { page: 1 } } }),
+			new LcDocument({ pageContent: 'A dog', metadata: { source: 'b.pdf' } }),
+		];
+
+		const insert = async (options: Record<string, unknown>) =>
+			await node.populateVectorStore(createContext(options), mock<Embeddings>(), documents, 0);
+
+		const ingestedIds = () =>
+			(ingest.mock.calls[0][0] as Array<{ id: string }>).map(({ id }) => id);
+
+		beforeEach(() => {
+			connectSpy.mockResolvedValue(client);
+			isAtLeast.mockReset().mockReturnValue(true);
+			ingest.mockReset().mockResolvedValue({ errors: {} });
+			withTenant.mockReset().mockReturnValue({ data: { ingest } });
+			store.addVectors.mockReset().mockResolvedValue([]);
+		});
+
+		it('should use the default insert in the default mode', async () => {
+			await insert({ batchMode: 'default' });
+
+			expect(store.addVectors).toHaveBeenCalledWith([[0.5], [0.5]], documents, undefined);
+			expect(ingest).not.toHaveBeenCalled();
+		});
+
+		it('should stream the documents when Weaviate supports server-side batching', async () => {
+			await insert({});
+
+			expect(isAtLeast).toHaveBeenCalledWith(1, 36, 0);
+			expect(ingest).toHaveBeenCalledWith([
+				{
+					id: expect.any(String),
+					vectors: [0.5],
+					properties: { text: 'A cat', source: 'a.pdf', loc_page: 1 },
+				},
+				{ id: expect.any(String), vectors: [0.5], properties: { text: 'A dog', source: 'b.pdf' } },
+			]);
+			expect(store.addVectors).not.toHaveBeenCalled();
+		});
+
+		it('should use the text key and the tenant of the node', async () => {
+			await insert({ batchMode: 'serverSide', textKey: 'content', tenant: 'tenantA' });
+
+			expect(withTenant).toHaveBeenCalledWith('tenantA');
+			expect(ingest).toHaveBeenCalledWith(
+				expect.arrayContaining([
+					expect.objectContaining({ properties: expect.objectContaining({ content: 'A cat' }) }),
+				]),
+			);
+		});
+
+		it('should use the default insert with new IDs when Weaviate is older than v1.36', async () => {
+			isAtLeast.mockReturnValue(false);
+
+			await insert({ batchMode: 'auto' });
+
+			expect(ingest).not.toHaveBeenCalled();
+			expect(store.addVectors).toHaveBeenCalledWith([[0.5], [0.5]], documents, {
+				ids: [expect.any(String), expect.any(String)],
+			});
+		});
+
+		it('should retry with the same IDs in the default insert when the stream fails', async () => {
+			ingest.mockRejectedValue(new Error('stream closed'));
+
+			await insert({ batchMode: 'auto' });
+
+			expect(store.addVectors).toHaveBeenCalledWith([[0.5], [0.5]], documents, {
+				ids: ingestedIds(),
+			});
+		});
+
+		it('should not retry when Weaviate rejects objects', async () => {
+			ingest.mockResolvedValue({ errors: { 0: { message: 'invalid property' } } });
+
+			await expect(insert({ batchMode: 'auto' })).rejects.toThrow(
+				'Weaviate did not insert 1 of 2 objects: invalid property',
+			);
+			expect(store.addVectors).not.toHaveBeenCalled();
+		});
+
+		it('should throw and not retry when the stream fails in the server-side mode', async () => {
+			ingest.mockRejectedValue(new Error('stream closed'));
+
+			await expect(insert({ batchMode: 'serverSide' })).rejects.toThrow('stream closed');
+			expect(store.addVectors).not.toHaveBeenCalled();
+		});
+
+		it('should throw when a document has an id in its metadata', async () => {
+			const withId = [new LcDocument({ pageContent: 'A cat', metadata: { id: 'x' } })];
+
+			await expect(
+				node.populateVectorStore(
+					createContext({ batchMode: 'serverSide' }),
+					mock<Embeddings>(),
+					withId,
+					0,
+				),
+			).rejects.toThrow('must not have "id" in its metadata');
+			expect(ingest).not.toHaveBeenCalled();
+		});
+	});
 });
