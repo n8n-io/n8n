@@ -5030,6 +5030,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../@n8n/utils
+      '@n8n/workflow-engine-check':
+        specifier: workspace:*
+        version: link:../@n8n/workflow-engine-check
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../@n8n/workflow-sdk

@@ -195,6 +195,7 @@
     "@n8n/telemetry": "workspace:*",
     "@n8n/typeorm": "workspace:*",
     "@n8n/utils": "workspace:*",
+    "@n8n/workflow-engine-check": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "@n8n_io/license-sdk": "4.0.0",

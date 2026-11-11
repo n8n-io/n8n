@@ -739,6 +739,26 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 	}
 
+	/**
+	 * One page of unarchived workflows for the engine v2 eligibility report, keyset-paged like
+	 * `getIdsAfter`. It returns the draft and the published version, if one exists.
+	 */
+	async findEngineEligibilityScanPage(
+		afterId: string | undefined,
+		take: number,
+	): Promise<WorkflowEntity[]> {
+		return await this.find({
+			select: ['id', 'nodes', 'connections', 'settings'],
+			relations: { activeVersion: true },
+			where:
+				afterId === undefined
+					? { isArchived: false }
+					: { isArchived: false, id: MoreThan(afterId) },
+			take,
+			order: { id: 'ASC' },
+		});
+	}
+
 	/** One workflow with the fields of `findMigrationScanPage`, for a re-check after a save. */
 	async findMigrationScanWorkflow(workflowId: string): Promise<WorkflowEntity | null> {
 		return await this.findOne({ select: MIGRATION_SCAN_FIELDS, where: { id: workflowId } });
