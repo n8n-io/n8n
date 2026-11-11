@@ -109,6 +109,8 @@ export const RESOURCES = {
 		'listProject',
 	] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
+	executionLimit: ['read', 'update'] as const,
+	projectExecutionLimit: ['read', 'update'] as const,
 	testRun: ['read', 'list'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage', 'read', 'manageProject', 'list'] as const,
