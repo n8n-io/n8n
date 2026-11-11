@@ -294,8 +294,12 @@ describe('CredentialsTester', () => {
 			expect(requestLegacy).toHaveBeenCalledExactlyOnceWith(
 				expect.objectContaining({
 					uri: 'https://test-instance.service-now.com/api/now/table/sys_user',
+					followRedirect: false,
 					qs: { sysparm_limit: '1', sysparm_fields: 'sys_id' },
 					auth: { user: data.user, pass: data.password },
+					json: true,
+					simple: false,
+					resolveWithFullResponse: true,
 				}),
 				expect.any(Object),
 			);
