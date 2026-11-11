@@ -6,7 +6,10 @@ import { STICKY_NODE_TYPE } from '@/app/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
-import { isNodeItemRestricted } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import {
+	getNodeItemRestriction,
+	isNodeItemRestricted,
+} from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { CommandBarItem, CommandBarSearchRequest, CommandGroup } from '../types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -15,6 +18,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import CommandBarRestrictedNode from '../components/CommandBarRestrictedNode.vue';
 import type { INodeUi, SimplifiedNodeType } from '@/Interface';
 import { paginate, rankItems } from '../commandBar.utils';
 
@@ -57,26 +61,35 @@ export function useNodeCommands(): CommandGroup {
 		return [...nodes.filter((node) => !restricted.has(node)), ...restricted];
 	});
 
-	const buildAddNodeItem = (node: SimplifiedNodeType): CommandBarItem => ({
-		id: node.name,
-		title: node.displayName,
-		section: i18n.baseText('commandBar.nodes.addNode'),
-		disabled: isNodeItemRestricted(node.name),
-		keywords: node.codex?.alias ?? [],
-		icon: {
-			component: NodeIcon as Component,
-			props: {
-				nodeType: node,
-				size: 16,
+	const buildAddNodeItem = (node: SimplifiedNodeType): CommandBarItem => {
+		const restriction = getNodeItemRestriction(node.name);
+		return {
+			id: node.name,
+			title: node.displayName,
+			section: i18n.baseText('commandBar.nodes.addNode'),
+			disabled: restriction !== undefined,
+			trailing: restriction
+				? {
+						component: CommandBarRestrictedNode as Component,
+						props: { nodeTypeName: node.displayName, restriction },
+					}
+				: undefined,
+			keywords: node.codex?.alias ?? [],
+			icon: {
+				component: NodeIcon as Component,
+				props: {
+					nodeType: node,
+					size: 16,
+				},
 			},
-		},
-		handler: async () => {
-			const nodes = await addNodes([{ type: node.name }]);
-			if (nodes && nodes.length > 0) {
-				canvasEventBus.emit('nodes:select', { ids: [nodes[0].id] });
-			}
-		},
-	});
+			handler: async () => {
+				const nodes = await addNodes([{ type: node.name }]);
+				if (nodes && nodes.length > 0) {
+					canvasEventBus.emit('nodes:select', { ids: [nodes[0].id] });
+				}
+			},
+		};
+	};
 
 	const buildOpenNodeItem = (node: INodeUi): CommandBarItem => {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);

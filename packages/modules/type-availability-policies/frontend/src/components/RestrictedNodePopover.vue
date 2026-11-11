@@ -126,6 +126,9 @@ function requestContactAdmin() {
 	else isContactAdminOpen.value = true;
 }
 
+/** Lets a list whose focus stays elsewhere, such as a search input, run the card's action from its row. */
+defineExpose({ requestContactAdmin });
+
 function onMarkerKeydown(event: KeyboardEvent) {
 	if (event.key === 'Enter' || event.key === ' ') {
 		event.preventDefault();

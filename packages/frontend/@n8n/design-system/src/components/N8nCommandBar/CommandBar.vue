@@ -61,6 +61,21 @@ const listId = useId();
 const inputRef = ref<HTMLInputElement>();
 const listRef = ref<HTMLElement>();
 const selectedKey = ref<string | null>(null);
+const itemRefs = new Map<string, { activateTrailing: () => void }>();
+
+function isCommandBarItemInstance(value: unknown): value is { activateTrailing: () => void } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'activateTrailing' in value &&
+		typeof value.activateTrailing === 'function'
+	);
+}
+
+function setItemRef(key: string, element: unknown) {
+	if (isCommandBarItemInstance(element)) itemRefs.set(key, element);
+	else itemRefs.delete(key);
+}
 
 const rows = computed(() => {
 	const result: CommandBarRow[] = [];
@@ -163,7 +178,14 @@ function onInputKeydown(event: KeyboardEvent) {
 		case 'Enter': {
 			event.preventDefault();
 			const item = selectedItem.value;
-			if (item) selectItem(item, { newTab: event.metaKey || event.ctrlKey });
+			if (item?.disabled) {
+				// Only a row the user moved to: its trailing component already shows what Enter does.
+				if (selectedKey.value !== null && selectedRow.value) {
+					itemRefs.get(selectedRow.value.key)?.activateTrailing();
+				}
+			} else if (item) {
+				selectItem(item, { newTab: event.metaKey || event.ctrlKey });
+			}
 			break;
 		}
 		case 'Tab':
@@ -250,6 +272,12 @@ function moveInputCaret(input: HTMLInputElement, event: KeyboardEvent) {
 	}
 }
 
+/** A dialog opened over the bar keeps its keys, so typing in it does not change the search behind it. */
+function isInStackedDialog(target: EventTarget | null, input: HTMLInputElement) {
+	const dialog = target instanceof Element ? target.closest('[role="dialog"]') : null;
+	return dialog !== null && !dialog.contains(input);
+}
+
 function onGlobalKeydown(event: KeyboardEvent) {
 	const isAltGraph = event.getModifierState('AltGraph');
 	if (!isAltGraph && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -263,6 +291,7 @@ function onGlobalKeydown(event: KeyboardEvent) {
 		!isOpen.value ||
 		!input ||
 		event.target === input ||
+		isInStackedDialog(event.target, input) ||
 		event.defaultPrevented ||
 		event.isComposing ||
 		event.metaKey ||
@@ -414,9 +443,11 @@ onBeforeUnmount(() => {
 					</div>
 					<N8nCommandBarItem
 						v-else-if="row.type === 'item'"
+						:ref="(element) => setItemRef(row.key, element)"
 						:item="row.item"
 						:row-key="row.key"
 						:is-selected="row.key === selectedRow?.key"
+						:is-active="selectedKey !== null && row.key === selectedRow?.key"
 						:query="query"
 						@select="selectItem"
 						@hover="selectedKey = $event"

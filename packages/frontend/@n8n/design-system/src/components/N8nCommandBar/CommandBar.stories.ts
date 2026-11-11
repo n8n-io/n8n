@@ -1,8 +1,9 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
-import { computed, ref } from 'vue';
+import { computed, defineComponent, h, ref } from 'vue';
 
 import N8nCommandBar from './CommandBar.vue';
+import N8nIcon from '../N8nIcon';
 import type { CommandBarItem, CommandBarSection, CommandBarTab } from './types';
 
 const tabs: CommandBarTab[] = [
@@ -181,6 +182,46 @@ export const EmptyTab: StoryFn = () => ({
 			active-tab="workflows"
 			:tabs="tabs"
 			:sections="[]"
+		/>
+	`,
+});
+
+/** Shows the end of a row as the item draws it. The row element and its active state come with it. */
+const DisabledReason = defineComponent({
+	props: { reason: { type: String, required: true }, isActive: Boolean },
+	setup: (props) => () => [
+		h('span', props.isActive ? `${props.reason} (active)` : props.reason),
+		h(N8nIcon, { icon: 'lock', size: 'small' }),
+	],
+});
+
+export const TrailingComponent: StoryFn = () => ({
+	components: { N8nCommandBar },
+	setup: () => ({
+		sections: [
+			{
+				id: 'nodes',
+				title: 'Add node',
+				items: [
+					{ id: 'slack', title: 'Slack', icon: { type: 'icon', value: 'hash' } },
+					{
+						id: 'gmail',
+						title: 'Gmail',
+						icon: { type: 'icon', value: 'mail' },
+						disabled: true,
+						trailing: {
+							component: DisabledReason,
+							props: { reason: 'Restricted on this instance' },
+						},
+					},
+				],
+			},
+		],
+	}),
+	template: `
+		<n8n-command-bar
+			:open="true"
+			:sections="sections"
 		/>
 	`,
 });

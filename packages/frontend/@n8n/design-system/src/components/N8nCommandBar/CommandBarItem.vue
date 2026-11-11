@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import type { CommandBarItem, CommandBarSelectOptions } from './types';
 import N8nIcon from '../N8nIcon';
@@ -10,6 +10,8 @@ const props = defineProps<{
 	item: CommandBarItem;
 	rowKey: string;
 	isSelected: boolean;
+	/** Selected by the user with the keyboard or the pointer, not by the default first row. */
+	isActive?: boolean;
 	query: string;
 }>();
 
@@ -17,6 +19,24 @@ const emit = defineEmits<{
 	select: [item: CommandBarItem, options: CommandBarSelectOptions];
 	hover: [rowKey: string];
 }>();
+
+const rowRef = ref<HTMLElement | null>(null);
+const trailingRef = ref<unknown>(null);
+
+function hasActivate(value: unknown): value is { activate: () => void } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'activate' in value &&
+		typeof value.activate === 'function'
+	);
+}
+
+function activateTrailing() {
+	if (hasActivate(trailingRef.value)) trailingRef.value.activate();
+}
+
+defineExpose({ activateTrailing });
 
 const titleParts = computed(() => {
 	const needle = props.query.trim().toLowerCase();
@@ -46,6 +66,7 @@ function onClick(event: MouseEvent) {
 	<component
 		:is="item.href ? 'a' : 'div'"
 		:id="rowKey"
+		ref="rowRef"
 		:href="item.href"
 		role="option"
 		:aria-selected="isSelected"
@@ -104,7 +125,15 @@ function onClick(event: MouseEvent) {
 				:date="item.timestamp"
 				capitalize
 			/>
-			<N8nIcon v-if="item.disabled" icon="lock" size="small" :class="$style.lock" />
+			<component
+				:is="item.trailing.component"
+				v-if="item.trailing"
+				ref="trailingRef"
+				v-bind="item.trailing.props"
+				:row-element="rowRef"
+				:is-active="isActive"
+			/>
+			<N8nIcon v-else-if="item.disabled" icon="lock" size="small" :class="$style.lock" />
 			<span v-if="isSelected && !item.disabled" :class="$style.enterHint" aria-hidden="true"
 				>↵</span
 			>

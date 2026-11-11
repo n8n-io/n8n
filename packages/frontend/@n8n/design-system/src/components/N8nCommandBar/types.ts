@@ -3,9 +3,12 @@ import type { Component } from 'vue';
 import type { KeyboardShortcut } from '../../types/keyboardshortcut';
 import type { IconOrEmoji } from '../N8nIconPicker/types';
 
-export type CommandBarItemIcon =
-	| IconOrEmoji
-	| { component: Component; props?: Record<string, unknown> };
+export interface CommandBarItemComponent {
+	component: Component;
+	props?: Record<string, unknown>;
+}
+
+export type CommandBarItemIcon = IconOrEmoji | CommandBarItemComponent;
 
 export interface CommandBarItem {
 	id: string;
@@ -19,6 +22,12 @@ export interface CommandBarItem {
 	timestamp?: string;
 	href?: string;
 	disabled?: boolean;
+	/**
+	 * Rendered at the end of the row in place of the lock of a disabled item.
+	 * It also receives `rowElement` and `isActive` (selected by the user, not by default).
+	 * When it exposes `activate()`, Enter on its disabled, active row calls it.
+	 */
+	trailing?: CommandBarItemComponent;
 	placeholder?: string;
 	children?: CommandBarItem[];
 	handler?: () => void | Promise<void>;
