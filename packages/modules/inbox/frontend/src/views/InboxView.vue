@@ -96,6 +96,36 @@ watch(
 	{ immediate: true },
 );
 
+// Select the first item once per tab visit, so a later explicit clear stays cleared.
+// On entry a deep link wins. On a tab switch, a selection from the other tab is replaced.
+let autoSelect: { tab: 'open' | 'closed'; replaceOutsideTab: boolean } | null = {
+	tab: activeTab.value,
+	replaceOutsideTab: false,
+};
+const activeTabLoaded = computed(
+	() => !store.loading && store.activeSectionKeys.every((key) => store.lists[key].hasLoaded),
+);
+// A decided item follows its own move to Closed, which can load before the decision commits.
+let isFollowingItem = false;
+watch(activeTab, (tab) => {
+	autoSelect = isFollowingItem ? null : { tab, replaceOutsideTab: true };
+	isFollowingItem = false;
+});
+watch(
+	[activeTabLoaded, activeTab],
+	([loaded, tab]) => {
+		if (!loaded || autoSelect?.tab !== tab || !isOnInbox()) return;
+		const { replaceOutsideTab } = autoSelect;
+		autoSelect = null;
+		const items = sections.value.flatMap((section) => section.items);
+		const isSelectedInTab = items.some((item) => `${item.type}:${item.id}` === selectedKey.value);
+		if (selection.value && (isSelectedInTab || !replaceOutsideTab)) return;
+		if (items[0]) onSelect(items[0]);
+		else if (selection.value) onClearSelection();
+	},
+	{ flush: 'post' },
+);
+
 function onSelect(item: InboxItem) {
 	void router.replace(inboxItemLocation(item, route));
 }
@@ -135,6 +165,7 @@ function onItemChange(change: InboxItemChange) {
 		selected?.type === change.type &&
 		selected.id === change.id
 	) {
+		isFollowingItem = true;
 		void router.replace({ query: { ...currentRoute.query, state: 'closed' } });
 	}
 }
