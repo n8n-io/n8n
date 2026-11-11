@@ -267,14 +267,18 @@ describe('SelfHealingCandidateService', () => {
 		expect(suggestions.createSuggestion).not.toHaveBeenCalled();
 	});
 
-	it('passes the context model transport to simulation planning', async () => {
+	it('passes the context model transport and usage callback to simulation planning', async () => {
 		const plan = vi.spyOn(instanceAi, 'planVerificationSimulation');
 		const modelFetch = vi.fn();
+		const onHelperUsage = vi.fn();
 		input.context.modelFetch = modelFetch;
+		input.context.onHelperUsage = onHelperUsage;
 
 		await service.verify(input);
 
-		expect(plan).toHaveBeenCalledWith(expect.objectContaining({ modelFetch }));
+		expect(plan).toHaveBeenCalledWith(
+			expect.objectContaining({ modelFetch, onModelUsage: onHelperUsage }),
+		);
 	});
 
 	it('cleans up the temporary workflow when verification throws', async () => {
