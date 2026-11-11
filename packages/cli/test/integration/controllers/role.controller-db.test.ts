@@ -9,7 +9,7 @@ import {
 	RoleRepository,
 	UserRepository,
 } from '@n8n/db';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '../shared/db/roles';
@@ -21,8 +21,8 @@ describe('RoleController - Integration Tests', () => {
 	const testServer = setupTestServer({ endpointGroups: ['role'] });
 	let ownerAgent: SuperAgentTest;
 	let memberAgent: SuperAgentTest;
-	let owner: User;
-	let member: User;
+	let owner: Person;
+	let member: Person;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -254,7 +254,7 @@ describe('RoleController - Integration Tests', () => {
 	});
 
 	describe('project assignments visibility for a delegated role manager', () => {
-		let roleManager: User;
+		let roleManager: Person;
 		let roleManagerAgent: SuperAgentTest;
 		let ownProject: Project;
 		let otherProject: Project;

@@ -7,7 +7,7 @@ import type { JwtService } from '@n8n/backend-services';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 
-const makeUser = (id: string): User => ({ ...mock<User>(), id });
+const makeUser = (id: string): User => ({ ...mock<User>(), id }) as unknown as User;
 
 describe('McpServerApiKeyService', () => {
 	let authStrategyRegistry: Mocked<AuthStrategyRegistry>;

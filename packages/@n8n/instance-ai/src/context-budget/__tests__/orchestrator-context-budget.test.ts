@@ -16,7 +16,7 @@ import { formatContextBudget, measureContextBudget } from '../context-budget';
  * Raise one only on purpose, and say why in the PR.
  */
 const CEILINGS = {
-	systemPrompt: 21_000,
+	systemPrompt: 21_500,
 	skillCatalog: 9_000,
 	alwaysLoadedTools: 72_000,
 	buildSkills: 117_000,

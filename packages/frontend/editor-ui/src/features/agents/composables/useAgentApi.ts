@@ -42,6 +42,7 @@ import type {
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	UpdateAgentVersionDto,
+	PublishAgentDto,
 	AgentPublishHistoryItemDto,
 	ChatIntegrationDescriptor,
 	SkillDetail,
@@ -670,12 +671,13 @@ export const publishAgent = async (
 	agentId: string,
 	versionId?: string,
 	metadata?: UpdateAgentVersionDto,
+	draft?: PublishAgentDto['draft'],
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/publish`,
-		{ versionId, ...metadata },
+		{ versionId, ...metadata, draft },
 	);
 };
 

@@ -2,7 +2,10 @@ operationId: listFolders
 tags:
   - Folders
 summary: Retrieve folders
-description: Retrieve folders within a project. Supports filtering, sorting, field selection, and pagination.
+description: |-
+  Retrieve folders within a project. Supports filtering, sorting, field selection, and pagination.
+
+  Requires the `folder:list` API key scope.
 x-required-scope: folder:list
 parameters:
   - schema:

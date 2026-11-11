@@ -20,8 +20,10 @@ n8n publishes `n8nio/base` and `n8nio/node-pc`, and the n8n images pin them.
 1. **Inputs PR.** Change the inputs of the image. CI builds the image on the
    PR, but does not publish it. On merge, master publishes it with a tag that
    ends in the full merge commit SHA.
-2. **Pin PR.** Pin the digest of that tag in the bake file. Read it with
-   `docker buildx imagetools inspect <image>:<tag>`.
+2. **Pin PR.** Pin that tag with its digest in the bake file, for example
+   `n8nio/base:26.13.0-<commit>@sha256:<digest>`. Read the digest with
+   `docker buildx imagetools inspect <image>:<tag>`. This tag never moves, so
+   the pin shows which master commit built the image.
 
 | Pin | Tag to read |
 |---|---|

@@ -18,7 +18,9 @@ describe('SystemAgentThreadMetadataService', () => {
 	/** A thread row in memory. `patchThread` applies the update the way the real memory does. */
 	function setup(row: { exists: boolean; metadata?: Metadata }) {
 		const systemAgents = mock<SystemAgentExecutionService>();
-		systemAgents.getUsableThread.mockResolvedValue(mock<AgentExecutionThread>({ id: THREAD_ID }));
+		systemAgents.getUsableThread.mockResolvedValue(
+			mock<AgentExecutionThread>({ id: THREAD_ID, projectId: 'project-1' }),
+		);
 		const memory = {
 			getThread: vi.fn(async () => (row.exists ? { id: THREAD_ID, metadata: row.metadata } : null)),
 			patchThread: vi.fn(
@@ -116,6 +118,62 @@ describe('SystemAgentThreadMetadataService', () => {
 			systemAgents.getUsableThread.mockRejectedValue(new NotFoundError('Session not found'));
 
 			await expect(service.update(AGENT_ID, user, THREAD_ID, 'tabs', () => ['a'])).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(memory.patchThread).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('readThread', () => {
+		it('returns the working project and the whole metadata', async () => {
+			const { service, systemAgents } = setup({ exists: true, metadata: { a: 1, b: 2 } });
+
+			await expect(service.readThread(AGENT_ID, user, THREAD_ID)).resolves.toEqual({
+				projectId: 'project-1',
+				metadata: { a: 1, b: 2 },
+			});
+			expect(systemAgents.getUsableThread).toHaveBeenCalledWith(AGENT_ID, user, THREAD_ID);
+		});
+
+		it('returns no metadata before the first turn', async () => {
+			await expect(
+				setup({ exists: false }).service.readThread(AGENT_ID, user, THREAD_ID),
+			).resolves.toEqual({ projectId: 'project-1', metadata: undefined });
+		});
+	});
+
+	describe('patch', () => {
+		it('replaces the whole metadata and returns it', async () => {
+			const row = { exists: true, metadata: { a: 1, b: 2 } as Metadata };
+			const { service } = setup(row);
+
+			await expect(
+				service.patch(AGENT_ID, user, THREAD_ID, ({ b: _b, ...rest }) => ({ ...rest, c: 3 })),
+			).resolves.toEqual({ a: 1, c: 3 });
+			expect(row.metadata).toEqual({ a: 1, c: 3 });
+		});
+
+		it('writes nothing when the change returns undefined', async () => {
+			const metadata = { a: 1 };
+			const row = { exists: true, metadata: metadata as Metadata };
+			const { service } = setup(row);
+
+			await service.patch(AGENT_ID, user, THREAD_ID, () => undefined);
+
+			expect(row.metadata).toBe(metadata);
+		});
+
+		it('returns undefined when the thread has no memory row yet', async () => {
+			await expect(
+				setup({ exists: false }).service.patch(AGENT_ID, user, THREAD_ID, () => ({ a: 1 })),
+			).resolves.toBeUndefined();
+		});
+
+		it('does not change the thread when the user cannot use it', async () => {
+			const { service, systemAgents, memory } = setup({ exists: true });
+			systemAgents.getUsableThread.mockRejectedValue(new NotFoundError('Session not found'));
+
+			await expect(service.patch(AGENT_ID, user, THREAD_ID, () => ({ a: 1 }))).rejects.toThrow(
 				NotFoundError,
 			);
 			expect(memory.patchThread).not.toHaveBeenCalled();
