@@ -16,6 +16,8 @@ function row(
 		executionId: 'exec-1',
 		nodeId,
 		iteration,
+		branch: 0,
+		sources: null,
 		status,
 		outputs,
 		waitDeclaration: null,
@@ -50,9 +52,9 @@ describe('collectSubExecutionResult', () => {
 		]);
 
 		expect(result).toEqual([
-			{ nodeId: 'b', iteration: 0, outputs: [[{ json: { b: 0 } }]] },
-			{ nodeId: 'c', iteration: 0, outputs: [[{ json: { c: 0 } }]] },
-			{ nodeId: 'c', iteration: 1, outputs: [[{ json: { c: 1 } }]] },
+			{ nodeId: 'b', iteration: 0, branch: 0, outputs: [[{ json: { b: 0 } }]] },
+			{ nodeId: 'c', iteration: 0, branch: 0, outputs: [[{ json: { c: 0 } }]] },
+			{ nodeId: 'c', iteration: 1, branch: 0, outputs: [[{ json: { c: 1 } }]] },
 		]);
 	});
 
@@ -80,7 +82,7 @@ describe('collectSubExecutionResult', () => {
 		const result = collectSubExecutionResult({ nodes: loopNodes, edges: loopEdges }, loopSteps);
 
 		expect(result).toEqual([
-			{ nodeId: 'loop', iteration: 2, outputs: [[{ json: { done: true } }], []] },
+			{ nodeId: 'loop', iteration: 2, branch: 0, outputs: [[{ json: { done: true } }], []] },
 		]);
 	});
 
@@ -96,7 +98,7 @@ describe('collectSubExecutionResult', () => {
 		]);
 
 		expect(result).toEqual([
-			{ nodeId: 'after', iteration: 0, outputs: [[{ json: { after: true } }]] },
+			{ nodeId: 'after', iteration: 0, branch: 0, outputs: [[{ json: { after: true } }]] },
 		]);
 	});
 });

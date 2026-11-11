@@ -5,6 +5,7 @@ import type {
 	ParentLink,
 	StepError,
 	StepSlots,
+	StepSources,
 	StepStatus,
 	WorkflowDocument,
 } from './execution.types';
@@ -84,6 +85,9 @@ export interface StepView {
 	id: string;
 	nodeId: string;
 	iteration: number;
+	branch: number;
+	/** What the step read, per input slot; `null` for the trigger. */
+	sources: StepSources | null;
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;

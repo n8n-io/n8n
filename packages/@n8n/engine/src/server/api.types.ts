@@ -4,6 +4,7 @@ import type {
 	ParentLink,
 	StepError,
 	StepSlots,
+	StepSources,
 	StepStatus,
 	WorkflowDocument,
 } from '../execution';
@@ -75,7 +76,7 @@ export interface ExecutionSnapshot {
 /**
  * A step's detail as `GET /:id?includeSteps=true` reports it.
  *
- * No `input`: step inputs are re-derived at run time from predecessor outputs
+ * No `input`: step inputs are read at run time from the steps `sources` names
  * and never persisted, so there's nothing to return. No `attempt`: the engine
  * has no retry mechanism, so it would always be `1`.
  */
@@ -83,6 +84,10 @@ export interface StepDetail {
 	id: string;
 	nodeId: string;
 	iteration: number;
+	/** Which run of the node at this iteration; 0 unless something upstream converged. */
+	branch: number;
+	/** Which step fed each input slot; `null` for the trigger. */
+	sources: StepSources | null;
 	status: StepStatus;
 	outputs: StepSlots | null;
 	error: StepError | null;

@@ -214,6 +214,7 @@ describe('toV1ExecuteMode', () => {
 		workflowId: 'wf-1',
 		mode: 'production',
 		iteration: 0,
+		branch: 0,
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		...overrides,

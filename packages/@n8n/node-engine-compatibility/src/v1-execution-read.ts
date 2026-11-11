@@ -26,7 +26,16 @@ import { createRunExecutionData, WorkflowOperationError } from 'n8n-workflow';
 
 import { MAIN_CONNECTION_TYPE } from './constants';
 import { fromStepInputs } from './io';
-import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './v1-run-data';
+import {
+	emptyRun,
+	forwardEdgesByTarget,
+	nodeNamesById,
+	runIndexOf,
+	toRunLayout,
+	toRunSourceSlots,
+	toSourceSlots,
+	type RunLayout,
+} from './v1-run-data';
 
 /**
  * Only a step that ran gets an entry. v1 reports a node that did not run by
@@ -66,6 +75,8 @@ interface Lineage {
 	edgesByTarget: Map<string, GraphEdge[]>;
 	loops: WorkflowLoop[];
 	lastIterationByNodeId: Map<string, number>;
+	/** Which v1 run each step is. */
+	layout: RunLayout;
 }
 
 /** @param pinData The pin data the run used. The canvas marks those nodes as pinned, not as executed. */
@@ -74,7 +85,8 @@ export function toV1RunExecutionData(
 	steps: StepDetail[],
 	pinData?: IPinData,
 ) {
-	const runs = toStepRuns(graph, steps);
+	const lineage = toLineage(graph, steps);
+	const runs = toStepRuns(lineage, steps);
 
 	// By settle time, not by creation order: parallel branches settle
 	// independently, so the row created last is not the step that ran last.
@@ -84,7 +96,7 @@ export function toV1RunExecutionData(
 
 	return createRunExecutionData({
 		resultData: {
-			runData: toRunData(runs),
+			runData: toRunData(runs, lineage.layout),
 			pinData,
 			error: failed?.taskData.error,
 			lastNodeExecuted: (failed ?? bySettleTime.at(-1))?.nodeName,
@@ -103,9 +115,7 @@ function settledAt(run: StepRun): number {
 }
 
 /** @param steps Oldest first, as the data plane orders them. Position is the run order. */
-function toStepRuns(graph: WorkflowGraph, steps: StepDetail[]): StepRun[] {
-	const lineage = toLineage(graph, steps);
-
+function toStepRuns(lineage: Lineage, steps: StepDetail[]): StepRun[] {
 	const runs: StepRun[] = [];
 	for (const step of steps) {
 		const executionStatus = TASK_STATUS_V1.get(step.status);
@@ -142,11 +152,16 @@ function toLineage(graph: WorkflowGraph, steps: StepDetail[]): Lineage {
 		edgesByTarget: forwardEdgesByTarget(graph),
 		loops: deriveLoops(graph),
 		lastIterationByNodeId,
+		layout: toRunLayout(steps),
 	};
 }
 
-/** Unlike the execute path, a read reports which pass of the predecessor fed each one. */
+/**
+ * Which run of which predecessor fed each input slot. A step records it; a step
+ * from before steps recorded their sources falls back to the graph's edges.
+ */
 function toSources(lineage: Lineage, step: StepDetail): Array<ISourceData | null> {
+	if (step.sources) return toRunSourceSlots(step.sources, lineage.namesById, lineage.layout);
 	return toSourceSlots(lineage.edgesByTarget.get(step.nodeId) ?? [], lineage.namesById, (edge) =>
 		toPreviousNodeRun(lineage, edge, step.iteration),
 	);
@@ -190,15 +205,16 @@ function toTaskData(
 	};
 }
 
-function toRunData(runs: StepRun[]): IRunData {
+function toRunData(runs: StepRun[], layout: RunLayout): IRunData {
 	const runData: IRunData = {};
 
 	for (const { step, nodeName, taskData } of runs) {
 		const tasks = (runData[nodeName] ??= []);
-		while (tasks.length < step.iteration) {
+		const run = runIndexOf(layout, step);
+		while (tasks.length < run) {
 			tasks.push(emptyRun(tasks.length));
 		}
-		tasks[step.iteration] = taskData;
+		tasks[run] = taskData;
 	}
 
 	return runData;

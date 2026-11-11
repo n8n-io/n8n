@@ -27,7 +27,7 @@ import type {
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
-import type { SeededSteps, TriggerOutputs } from '../execution.types';
+import type { SeededSteps, StepSlots, TriggerOutputs } from '../execution.types';
 import type { StartExecutionResult, StartExecutionService } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
 
@@ -200,6 +200,7 @@ describe('step execution (integration)', () => {
 			nodeId: 'node-a',
 			nodeName: 'A',
 			iteration: 0,
+			branch: 0,
 			outputs: [[{ json: { greeting: 'hi' } }]],
 			at: expect.any(String) as string,
 		});
@@ -220,6 +221,7 @@ describe('step execution (integration)', () => {
 			workflowId: 'wf-1',
 			mode: 'production',
 			iteration: 0,
+			branch: 0,
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
 		});
@@ -655,6 +657,224 @@ describe('step execution (integration)', () => {
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 	});
 
+	describe('runs per live branch', () => {
+		/**
+		 * trigger -> if -> {a (out 0), b (out 1)} -> c, both into c's slot 0. Then
+		 * c -> x and c -> y, which meet again on the two slots of merge.
+		 */
+		const convergingGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-if', name: 'If', type: 'v1-node' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+				{ id: 'node-c', name: 'C', type: 'v1-node' },
+				{ id: 'node-x', name: 'X', type: 'v1-node' },
+				{ id: 'node-y', name: 'Y', type: 'v1-node' },
+				{ id: 'node-merge', name: 'Merge', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-if', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-if', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-if', to: 'node-b', outputIndex: 1, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-c', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-b', to: 'node-c', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-c', to: 'node-x', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-c', to: 'node-y', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-x', to: 'node-merge', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-y', to: 'node-merge', outputIndex: 0, inputIndex: 1 },
+			],
+		};
+
+		/** Tags each item with the node that handled it, so a run's lineage is visible. */
+		function taggingExecutor(ifOutputs: StepSlots, requests: StepExecutionRequest[]) {
+			const executor: IStepExecutor = {
+				execute: async (request) => {
+					requests.push(request);
+					await Promise.resolve();
+					if (request.node.id === 'node-if') return { outputs: ifOutputs };
+					const [items] = request.inputs as Array<Array<{ json: { path: string } }> | null>;
+					const path = items?.[0]?.json.path ?? '';
+					return { outputs: [[{ json: { path: `${path}>${request.node.name}` } }]] };
+				},
+			};
+			return executor;
+		}
+
+		const runsOf = (requests: StepExecutionRequest[], nodeId: string) =>
+			requests
+				.filter(({ node }) => node.id === nodeId)
+				.sort((a, b) => a.context.branch - b.context.branch)
+				.map(({ context, inputs }) => ({ branch: context.branch, inputs }));
+
+		it('runs a convergence once per live branch, and everything after it once per run', async () => {
+			const requests: StepExecutionRequest[] = [];
+			const executor = taggingExecutor(
+				[[{ json: { path: 'true' } }], [{ json: { path: 'false' } }]],
+				requests,
+			);
+
+			const { execution, steps } = await runWorkflow(executor, [{}], {
+				workflowId: 'wf-converge',
+				graph: convergingGraph,
+			});
+
+			expect(runsOf(requests, 'node-c')).toEqual([
+				{ branch: 0, inputs: [[{ json: { path: 'true>A' } }]] },
+				{ branch: 1, inputs: [[{ json: { path: 'false>B' } }]] },
+			]);
+			// each run of merge pairs the x and y that descend from the same run of c
+			expect(runsOf(requests, 'node-merge')).toEqual([
+				{
+					branch: 0,
+					inputs: [[{ json: { path: 'true>A>C>X' } }], [{ json: { path: 'true>A>C>Y' } }]],
+				},
+				{
+					branch: 1,
+					inputs: [[{ json: { path: 'false>B>C>X' } }], [{ json: { path: 'false>B>C>Y' } }]],
+				},
+			]);
+
+			const rowsPerNode = Object.fromEntries(
+				convergingGraph.nodes.map(({ id }) => [id, steps.filter((s) => s.nodeId === id).length]),
+			);
+			expect(rowsPerNode).toEqual({
+				trigger: 1,
+				'node-if': 1,
+				'node-a': 1,
+				'node-b': 1,
+				'node-c': 2,
+				'node-x': 2,
+				'node-y': 2,
+				'node-merge': 2,
+			});
+			expect(steps.every(({ status }) => status === 'completed')).toBe(true);
+			expect(execution.status).toBe('completed');
+		});
+
+		it('runs everything once when only one branch is live, as before', async () => {
+			const requests: StepExecutionRequest[] = [];
+			const executor = taggingExecutor([null, [{ json: { path: 'false' } }]], requests);
+
+			const { execution, steps } = await runWorkflow(executor, [{}], {
+				workflowId: 'wf-converge-one',
+				graph: convergingGraph,
+			});
+
+			expect(runsOf(requests, 'node-c')).toEqual([
+				{ branch: 0, inputs: [[{ json: { path: 'false>B' } }]] },
+			]);
+			expect(runsOf(requests, 'node-merge')).toHaveLength(1);
+			expect(steps.map(({ nodeId, branch, status }) => [nodeId, branch, status]).sort()).toEqual([
+				['node-a', 0, 'skipped'],
+				['node-b', 0, 'completed'],
+				['node-c', 0, 'completed'],
+				['node-if', 0, 'completed'],
+				['node-merge', 0, 'completed'],
+				['node-x', 0, 'completed'],
+				['node-y', 0, 'completed'],
+				['trigger', 0, 'completed'],
+			]);
+			expect(execution.status).toBe('completed');
+		});
+
+		it('pairs a join by run, leaving the input that ran fewer times empty', async () => {
+			// c runs twice, z once: merge's second run has nothing on its second input
+			const joinGraph: WorkflowGraph = {
+				nodes: [
+					...convergingGraph.nodes.filter(({ id }) => !['node-x', 'node-y'].includes(id)),
+					{ id: 'node-z', name: 'Z', type: 'v1-node' },
+				],
+				edges: [
+					...convergingGraph.edges.slice(0, 5),
+					{ from: 'trigger', to: 'node-z', outputIndex: 0, inputIndex: 0 },
+					{ from: 'node-c', to: 'node-merge', outputIndex: 0, inputIndex: 0 },
+					{ from: 'node-z', to: 'node-merge', outputIndex: 0, inputIndex: 1 },
+				],
+			};
+			const requests: StepExecutionRequest[] = [];
+			const executor = taggingExecutor(
+				[[{ json: { path: 'true' } }], [{ json: { path: 'false' } }]],
+				requests,
+			);
+
+			const { execution } = await runWorkflow(executor, [[{ json: { path: 't' } }]], {
+				workflowId: 'wf-join',
+				graph: joinGraph,
+			});
+
+			expect(runsOf(requests, 'node-merge')).toEqual([
+				{ branch: 0, inputs: [[{ json: { path: 'true>A>C' } }], [{ json: { path: 't>Z' } }]] },
+				{ branch: 1, inputs: [[{ json: { path: 'false>B>C' } }], null] },
+			]);
+			expect(execution.status).toBe('completed');
+		});
+
+		it('feeds a loop every run that returns in a pass, without forking the loop', async () => {
+			// trigger -> loop (batch of 1) -> if -> {p, q} -> r -> back to loop. Each
+			// pass, r runs twice; the next pass and the done slot see both runs.
+			const loopGraph: WorkflowGraph = {
+				nodes: [
+					{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+					{ id: 'node-loop', name: 'Loop', type: 'batch', config: { batchSize: 1 } },
+					{ id: 'node-if', name: 'If', type: 'v1-node' },
+					{ id: 'node-p', name: 'P', type: 'v1-node' },
+					{ id: 'node-q', name: 'Q', type: 'v1-node' },
+					{ id: 'node-r', name: 'R', type: 'v1-node' },
+					{ id: 'node-done', name: 'Done', type: 'v1-node' },
+				],
+				edges: [
+					{ from: 'trigger', to: 'node-loop', outputIndex: 0, inputIndex: 0 },
+					{ from: 'node-loop', to: 'node-if', outputIndex: 1, inputIndex: 0 },
+					{ from: 'node-if', to: 'node-p', outputIndex: 0, inputIndex: 0 },
+					{ from: 'node-if', to: 'node-q', outputIndex: 1, inputIndex: 0 },
+					{ from: 'node-p', to: 'node-r', outputIndex: 0, inputIndex: 0 },
+					{ from: 'node-q', to: 'node-r', outputIndex: 0, inputIndex: 0 },
+					{ from: 'node-r', to: 'node-loop', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+					{ from: 'node-loop', to: 'node-done', outputIndex: 0, inputIndex: 0 },
+				],
+			};
+			const requests: StepExecutionRequest[] = [];
+			const executor: IStepExecutor = {
+				execute: async (request) => {
+					requests.push(request);
+					await Promise.resolve();
+					const [items] = request.inputs as Array<Array<{ json: { path: string } }> | null>;
+					if (request.node.id === 'node-if') return { outputs: [items, items] };
+					if (request.node.id === 'node-done') return { outputs: [items] };
+					return {
+						outputs: [
+							(items ?? []).map(({ json }) => ({
+								json: { path: `${json.path}>${request.node.name}` },
+							})),
+						],
+					};
+				},
+			};
+
+			const { execution, steps } = await runWorkflow(
+				executor,
+				[[{ json: { path: 'i0' } }, { json: { path: 'i1' } }]],
+				{ workflowId: 'wf-loop-fork', graph: loopGraph },
+			);
+
+			const done = requests.filter(({ node }) => node.id === 'node-done');
+			expect(done).toHaveLength(1);
+			expect(done[0].inputs).toEqual([
+				[
+					{ json: { path: 'i0>P>R' } },
+					{ json: { path: 'i0>Q>R' } },
+					{ json: { path: 'i1>P>R' } },
+					{ json: { path: 'i1>Q>R' } },
+				],
+			]);
+			// one batch row per pass, never forked
+			expect(steps.filter(({ nodeId }) => nodeId === 'node-loop')).toHaveLength(3);
+			expect(steps.filter(({ nodeId }) => nodeId === 'node-r')).toHaveLength(4);
+			expect(execution.status).toBe('completed');
+		});
+	});
+
 	it('starts an awaited sub-execution from a step result and resumes the step with the sub-execution result', async () => {
 		const parentGraph: WorkflowGraph = {
 			nodes: [
@@ -675,7 +895,9 @@ describe('step execution (integration)', () => {
 			edges: [{ from: 'sub-trigger', to: 'x', outputIndex: 0, inputIndex: 0 }],
 		};
 		const subExecutionId = generateId();
-		const subExecutionResult = [{ nodeId: 'x', iteration: 0, outputs: [[{ json: { ran: 'x' } }]] }];
+		const subExecutionResult = [
+			{ nodeId: 'x', iteration: 0, branch: 0, outputs: [[{ json: { ran: 'x' } }]] },
+		];
 		const requests: StepExecutionRequest[] = [];
 		const executor: IStepExecutor = {
 			execute: async (request) => {
@@ -900,8 +1122,14 @@ describe('step execution (integration)', () => {
 		});
 		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them
-			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [{}] },
-			{ nodeId: 'node-a', iteration: 0, status: 'queued' },
+			{ nodeId: 'trigger', iteration: 0, branch: 0, status: 'completed', outputs: [{}] },
+			{
+				nodeId: 'node-a',
+				iteration: 0,
+				branch: 0,
+				sources: [{ nodeId: 'trigger', iteration: 0, branch: 0, outputIndex: 0 }],
+				status: 'queued',
+			},
 		]);
 		const stepId = created.find(({ nodeId }) => nodeId === 'node-a')!.id;
 

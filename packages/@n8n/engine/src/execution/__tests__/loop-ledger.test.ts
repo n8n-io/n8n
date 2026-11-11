@@ -5,7 +5,14 @@ import { exitSourcesInto, isTerminalStep, loadTerminalIterations } from '../loop
 import type { StepStore, StepSummary } from '../step-store';
 
 function tip(iteration: number, filledOutputSlots: boolean[], status = 'completed' as const) {
-	return { id: `step-B-${iteration}`, nodeId: 'B', iteration, status, filledOutputSlots };
+	return {
+		id: `step-B-${iteration}`,
+		nodeId: 'B',
+		iteration,
+		branch: 0,
+		status,
+		filledOutputSlots,
+	};
 }
 
 /**

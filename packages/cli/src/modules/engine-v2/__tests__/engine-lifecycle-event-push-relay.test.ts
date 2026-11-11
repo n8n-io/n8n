@@ -19,6 +19,7 @@ const stepFields = {
 	nodeId: 'node-a',
 	nodeName: 'Edit Fields',
 	iteration: 0,
+	branch: 0,
 };
 
 const executionStarted: LifecycleEvent = {

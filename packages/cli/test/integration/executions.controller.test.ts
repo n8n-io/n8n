@@ -362,6 +362,8 @@ describe('GET /executions/:id', () => {
 						id: 'step-1',
 						nodeId: 'trigger-id',
 						iteration: 0,
+						branch: 0,
+						sources: null,
 						status: 'completed',
 						outputs: [[{ json: { hello: 'world' } }]],
 						error: null,

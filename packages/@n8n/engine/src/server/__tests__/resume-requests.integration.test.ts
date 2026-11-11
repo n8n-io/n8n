@@ -97,8 +97,14 @@ async function seed(waits: Partial<Record<'wait-a' | 'wait-b', WaitDeclaration>>
 	});
 	const nodeIds = Object.keys(waits) as Array<'wait-a' | 'wait-b'>;
 	const created = await stepStore.createSteps(executionId, [
-		{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [[{ json: {} }]] },
-		...nodeIds.map((nodeId) => ({ nodeId, iteration: 0, status: 'queued' as const })),
+		{ nodeId: 'trigger', iteration: 0, branch: 0, status: 'completed', outputs: [[{ json: {} }]] },
+		...nodeIds.map((nodeId) => ({
+			nodeId,
+			iteration: 0,
+			branch: 0,
+			sources: [{ nodeId: 'trigger', iteration: 0, branch: 0, outputIndex: 0 }],
+			status: 'queued' as const,
+		})),
 	]);
 	const stepIds: Record<string, string> = {};
 	for (const nodeId of nodeIds) {

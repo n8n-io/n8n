@@ -5,13 +5,7 @@ import type {
 	SubExecutionDeclaration,
 	StepExecutionResult,
 } from '../dependencies';
-import {
-	deriveLoops,
-	isBatchStepConfig,
-	type GraphEdge,
-	type GraphNode,
-	type WorkflowLoop,
-} from '../graph';
+import { deriveLoops, isBatchStepConfig, type GraphNode } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
 import { runBatchStep } from './batch-step';
@@ -20,17 +14,15 @@ import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
 	isLiveExecutionStatus,
-	isSettledStatus,
 	hasResumeCondition,
 	type ResumeCause,
 	type SubExecutionResumeCause,
 	type StepError,
-	type StepKey,
 	type StepKeyId,
 	type StepSlots,
+	type StepSource,
 	type ExecutorWaitDeclaration,
 } from './execution.types';
-import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
 import type { StepRecord, StepStore } from './step-store';
@@ -314,6 +306,7 @@ export class StepReadyHandler {
 				workflowId: execution.workflowId,
 				mode: execution.mode,
 				iteration: step.iteration,
+				branch: step.branch,
 				callerContext: execution.callerContext,
 				responseExpectation: execution.responseExpectation,
 			},
@@ -361,46 +354,31 @@ export class StepReadyHandler {
 		return await runBatchStep(node.config, step.iteration, reader);
 	}
 
-	/** Inputs for `node`, each slot taken from the row its edge reads. */
+	/**
+	 * Inputs for the step, each slot read from the source the planner recorded
+	 * for it. The planner already chose which run of which predecessor feeds
+	 * each slot, so no routing happens here.
+	 */
 	private async gatherInputs(execution: ExecutionRecord, step: StepRecord): Promise<StepSlots> {
-		// These are all the edges that feed into the node this step runs.
-		const incomingEdges = execution.graph.edges.filter((edge) => edge.to === step.nodeId);
-		if (incomingEdges.length === 0) {
-			// Steps are planned only for a settled step's successors, so a step
-			// without a predecessor means the graph and the step rows disagree.
+		if (!step.sources) {
+			// Only the trigger has no sources, and it never gathers inputs.
 			throw new UnexpectedError(
-				`step ${step.id} runs node ${step.nodeId}, which has no predecessor in the execution graph`,
+				`step ${step.id} runs node ${step.nodeId} but records no sources to read`,
 			);
 		}
 
-		const loops = deriveLoops(execution.graph);
-		// Only an exit edge reads the row that ended a loop, so a step with no exit
-		// edge needs no such read at all.
-		const terminalIterations = await loadTerminalIterations(
-			this.stepStore,
-			execution.id,
-			exitSourcesInto(execution.graph, loops, [step.nodeId]),
-		);
-		const reads = resolveInputReads(incomingEdges, loops, step, terminalIterations);
-
+		const keys = step.sources
+			.filter((source): source is StepSource => source !== null)
+			.map(({ nodeId, iteration, branch }) => ({ nodeId, iteration, branch }));
 		// One key per distinct row: a predecessor wired to two input slots is read
 		// twice but loaded once.
 		const rows = await this.stepStore.loadStepsByKeys(execution.id, [
-			...new Map(reads.map(({ key }) => [stepKeyId(key), key])).values(),
+			...new Map(keys.map((key) => [stepKeyId(key), key])).values(),
 		]);
 
-		// Array of length equal to the highest input slot plus one.
-		// The entries are `null` placeholders filled by the loop immediately below.
-		const inputs: StepSlots = Array.from(
-			{ length: Math.max(...reads.map(({ edge }) => edge.inputIndex)) + 1 },
-			() => null,
+		return step.sources.map((source) =>
+			source === null ? null : readSourceValue(source, step, rows),
 		);
-
-		for (const { edge, key } of reads) {
-			inputs[edge.inputIndex] = readEdgeValue(edge, key, step, rows);
-		}
-
-		return inputs;
 	}
 
 	/**
@@ -424,77 +402,23 @@ export class StepReadyHandler {
 }
 
 /**
- * Which row each incoming edge reads for this step, one per input slot.
- *
- * An edge that connects nothing at this iteration is dropped, which is what lets
- * a batch node carry both an entry edge and a return edge on slot 0: they never
- * apply at the same iteration, so per iteration the slot still has one source.
- * Two edges that do both apply are the unsupported convergence case.
+ * The value a source delivers: the output slot it names. The planner records
+ * only live sources, so the step it names completed and filled that slot.
  */
-export function resolveInputReads(
-	incomingEdges: GraphEdge[],
-	loops: WorkflowLoop[],
-	step: Pick<StepRecord, 'id' | 'nodeId' | 'iteration'>,
-	terminalIterations: Map<string, number>,
-): Array<{ edge: GraphEdge; key: StepKey }> {
-	const reads = incomingEdges.flatMap((edge) => {
-		const source = sourceRow(
-			edge,
-			classifyEdge(edge, loops),
-			step,
-			terminalIterations.get(edge.from),
-		);
-		if (source.kind === 'row') return [{ edge, key: source.key }];
-		if (source.kind === 'none') return [];
-		// The planner queues a step only once every row it reads exists, so a loop
-		// that has not ended means the rows and the plan disagree.
-		throw new UnexpectedError(
-			`step ${step.id} reads node ${edge.from} across a loop that has not ended`,
-		);
-	});
-
-	if (reads.length === 0) {
-		throw new UnexpectedError(
-			`step ${step.id} runs node ${step.nodeId}, which no edge reaches at iteration ${step.iteration}`,
-		);
-	}
-
-	const filledSlots: Set<number> = new Set();
-	for (const { edge } of reads) {
-		if (filledSlots.has(edge.inputIndex)) {
-			// TODO(CAT-3982): same-slot convergence gets a defined meaning. We
-			// should have rejected this graph at validation time.
-			throw new UnexpectedError(
-				`step ${step.id} runs node ${step.nodeId}, which has more than one edge into input slot ${edge.inputIndex}; validated graphs have at most one edge per input slot`,
-			);
-		}
-		filledSlots.add(edge.inputIndex);
-	}
-
-	return reads;
-}
-
-/**
- * The value an edge delivers: the source's output slot for a completed
- * predecessor, `null` for a dead edge (predecessor settled without completing,
- * or left the slot unfilled).
- */
-function readEdgeValue(
-	edge: GraphEdge,
-	source: StepKey,
+function readSourceValue(
+	source: StepSource,
 	step: StepRecord,
 	rows: Record<StepKeyId, StepRecord>,
 ): JsonValue {
 	const row = rows[stepKeyId(source)];
-	if (!row || !isSettledStatus(row.status)) {
-		// A step is planned only once every predecessor settled, so running on
-		// a fabricated empty input would mask a planner/store inconsistency.
+	if (row?.status !== 'completed') {
+		// A step is planned only once every source completed, so running on a
+		// fabricated empty input would mask a planner/store inconsistency.
 		throw new UnexpectedError(
-			`step ${step.id} reads node ${edge.from}, whose step has not settled`,
+			`step ${step.id} reads node ${source.nodeId} run ${source.branch}, which has not completed`,
 		);
 	}
-	if (row.status !== 'completed') return null;
-	return row.outputs?.[edge.outputIndex] ?? null;
+	return row.outputs?.[source.outputIndex] ?? null;
 }
 
 /** The identifiers every step event carries. */
@@ -505,6 +429,7 @@ function stepEventFields(step: StepRecord, node: GraphNode) {
 		nodeId: step.nodeId,
 		nodeName: node.name,
 		iteration: step.iteration,
+		branch: step.branch,
 		at: new Date().toISOString(),
 	};
 }

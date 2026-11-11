@@ -21,6 +21,8 @@ const stepFields = {
 	nodeName: z.string().min(1),
 	/** Loop iteration this step ran at; `0` for a node outside a loop. */
 	iteration: z.number().int().nonnegative(),
+	/** Which run of the node at this iteration; `0` unless something upstream converged. */
+	branch: z.number().int().nonnegative(),
 	at: z.string().datetime(),
 };
 

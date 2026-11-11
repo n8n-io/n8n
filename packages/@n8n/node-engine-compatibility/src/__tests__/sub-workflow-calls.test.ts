@@ -20,6 +20,7 @@ const stepContext: StepExecutionContext = {
 	workflowId: 'wf-1',
 	mode: 'manual',
 	iteration: 0,
+	branch: 0,
 	callerContext: { hostMode: 'manual' },
 	responseExpectation: { kind: 'none' },
 };
@@ -47,6 +48,7 @@ describe('toSubWorkflowOutput', () => {
 				{
 					nodeId: 'x',
 					iteration: 0,
+					branch: 0,
 					outputs: [[{ json: { a: 1 }, pairedItem: { item: 3 } }]],
 				},
 			],

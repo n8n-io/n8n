@@ -7,8 +7,8 @@ import type {
 	ExecutionStatus,
 	ParentLink,
 	SeededSteps,
-	StepKey,
-	StepKeyId,
+	NodePass,
+	NodePassId,
 	StepSlots,
 	TriggerOutputs,
 	WorkflowDocument,
@@ -72,10 +72,10 @@ export interface ExecutionStore {
 	loadExecutionStatus(id: string): Promise<ExecutionStatus>;
 
 	/**
-	 * The outputs the caller seeded for the given steps, by step key id. A key
-	 * with no seeded outputs is absent from the result.
+	 * The outputs the caller seeded for the given node-passes, by node-pass id. A
+	 * node-pass with no seeded outputs is absent from the result.
 	 */
-	loadSeededOutputs(executionId: string, keys: StepKey[]): Promise<Map<StepKeyId, StepSlots>>;
+	loadSeededOutputs(executionId: string, keys: NodePass[]): Promise<Map<NodePassId, StepSlots>>;
 
 	/**
 	 * Compare-and-set status transition. Returns `true` iff this call performed

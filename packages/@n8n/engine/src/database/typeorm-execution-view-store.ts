@@ -191,13 +191,15 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 							'id', step.id,
 							'nodeId', step.node_id,
 							'iteration', step.iteration,
+							'branch', step.branch,
+							'sources', step.sources,
 							'status', step.status,
 							'outputs', step.outputs,
 							'error', step.error,
 							'createdAt', step.created_at,
 							'updatedAt', step.updated_at
 						)
-						ORDER BY step.created_at ASC, step.node_id ASC, step.iteration ASC
+						ORDER BY step.created_at ASC, step.node_id ASC, step.iteration ASC, step.branch ASC
 					) FILTER (WHERE step.id IS NOT NULL),
 					'[]'
 				)`,

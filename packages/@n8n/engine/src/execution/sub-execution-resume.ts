@@ -79,6 +79,16 @@ export function collectSubExecutionResult(
 
 	return completed
 		.filter((step) => !loopEntries.has(step.nodeId) || step.iteration === lastPass.get(step.nodeId))
-		.sort((a, b) => order.get(a.nodeId)! - order.get(b.nodeId)! || a.iteration - b.iteration)
-		.map(({ nodeId, iteration, outputs }) => ({ nodeId, iteration, outputs: outputs ?? [] }));
+		.sort(
+			(a, b) =>
+				order.get(a.nodeId)! - order.get(b.nodeId)! ||
+				a.iteration - b.iteration ||
+				a.branch - b.branch,
+		)
+		.map(({ nodeId, iteration, branch, outputs }) => ({
+			nodeId,
+			iteration,
+			branch,
+			outputs: outputs ?? [],
+		}));
 }

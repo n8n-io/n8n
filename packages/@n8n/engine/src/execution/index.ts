@@ -6,9 +6,13 @@ export type {
 	StartExecutionRequest,
 	StartExecutionResult,
 } from './start-execution.service';
-export { stepKeyId } from './execution.types';
+export { nodePassId, stepKeyId } from './execution.types';
 export type {
 	CallerContext,
+	NodePass,
+	NodePassId,
+	StepSource,
+	StepSources,
 	SubExecutionOutcome,
 	SubExecutionResult,
 	SubExecutionResumeCause,

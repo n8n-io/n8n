@@ -1,0 +1,198 @@
+{
+	"name": "Convergence runs per branch",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "8f3a1c52-6d0e-4b8a-9c41-2f6e7d1a0b01",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 300]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "5b0c6e1a-3f7d-4c2e-8a91-0d4b6f2e9c01",
+							"name": "numbers",
+							"value": "={{ [1, 2] }}",
+							"type": "array"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "8f3a1c52-6d0e-4b8a-9c41-2f6e7d1a0b02",
+			"name": "Seed",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [220, 300]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "numbers",
+				"options": {}
+			},
+			"id": "8f3a1c52-6d0e-4b8a-9c41-2f6e7d1a0b03",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [440, 300]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict"
+					},
+					"conditions": [
+						{
+							"id": "5b0c6e1a-3f7d-4c2e-8a91-0d4b6f2e9c02",
+							"leftValue": "={{ $json.numbers }}",
+							"rightValue": 1,
+							"operator": {
+								"type": "number",
+								"operation": "equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"id": "8f3a1c52-6d0e-4b8a-9c41-2f6e7d1a0b04",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2,
+			"position": [660, 300]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "5b0c6e1a-3f7d-4c2e-8a91-0d4b6f2e9c03",
+							"name": "via",
+							"value": "A",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "8f3a1c52-6d0e-4b8a-9c41-2f6e7d1a0b05",
+			"name": "A",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [880, 200]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "5b0c6e1a-3f7d-4c2e-8a91-0d4b6f2e9c04",
+							"name": "via",
+							"value": "B",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "8f3a1c52-6d0e-4b8a-9c41-2f6e7d1a0b06",
+			"name": "B",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [880, 400]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "5b0c6e1a-3f7d-4c2e-8a91-0d4b6f2e9c05",
+							"name": "via",
+							"value": "={{ $json.via }}",
+							"type": "string"
+						},
+						{
+							"id": "5b0c6e1a-3f7d-4c2e-8a91-0d4b6f2e9c06",
+							"name": "run",
+							"value": "={{ $runIndex }}",
+							"type": "number"
+						},
+						{
+							"id": "5b0c6e1a-3f7d-4c2e-8a91-0d4b6f2e9c07",
+							"name": "number",
+							"value": "={{ $('Split Out').item.json.numbers }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "8f3a1c52-6d0e-4b8a-9c41-2f6e7d1a0b07",
+			"name": "C",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [1100, 300]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "5b0c6e1a-3f7d-4c2e-8a91-0d4b6f2e9c08",
+							"name": "fromC",
+							"value": "={{ $('C').item.json.via }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "8f3a1c52-6d0e-4b8a-9c41-2f6e7d1a0b08",
+			"name": "D",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [1320, 300]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Seed", "type": "main", "index": 0 }]]
+		},
+		"Seed": {
+			"main": [[{ "node": "Split Out", "type": "main", "index": 0 }]]
+		},
+		"Split Out": {
+			"main": [[{ "node": "If", "type": "main", "index": 0 }]]
+		},
+		"If": {
+			"main": [
+				[{ "node": "A", "type": "main", "index": 0 }],
+				[{ "node": "B", "type": "main", "index": 0 }]
+			]
+		},
+		"A": {
+			"main": [[{ "node": "C", "type": "main", "index": 0 }]]
+		},
+		"B": {
+			"main": [[{ "node": "C", "type": "main", "index": 0 }]]
+		},
+		"C": {
+			"main": [[{ "node": "D", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"meta": {},
+	"tags": []
+}

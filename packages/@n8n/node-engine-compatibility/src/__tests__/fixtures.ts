@@ -537,6 +537,7 @@ export const stepRequest = (
 		workflowId: 'wf-1',
 		mode: 'manual',
 		iteration: 0,
+		branch: 0,
 		callerContext: { hostMode: 'manual' },
 		responseExpectation: { kind: 'none' },
 	},
