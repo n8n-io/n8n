@@ -128,6 +128,28 @@ const retrieverTool = tool({
         },
       },
       {
+        "content": "Deletes documents on the main flow, by \`deleteIds\` (comma-separated) or by \`deleteFilter\` (JSON, only on stores that support it). Declare with \`vectorStore({...})\`. No subnodes. Only available on stores whose \`operationModes\` enables it.
+<patterns>
+<pattern title="delete mode — delete documents by ID (generic)">
+// Substitute the type literal and provider-specific parameters — see the rest of this file.
+const store = vectorStore({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreXxx',
+  config: {
+    name: 'Knowledge Base',
+    parameters: { mode: 'delete', deleteBy: 'ids', deleteIds: expr('{{ $json.docId }}') }
+  }
+});
+</pattern>
+</patterns>",
+        "displayOptions": {
+          "show": {
+            "mode": [
+              "delete",
+            ],
+          },
+        },
+      },
+      {
         "content": "Updates a single document by \`id\`. Declare with \`vectorStore({...})\`. Required subnodes: \`embedding\`. Only available on stores whose \`operationModes\` enables it — most providers omit this mode.
 <patterns>
 <pattern title="update mode — update document by ID (generic)">
@@ -163,6 +185,13 @@ const store = vectorStore({
         "required": true,
       },
       "ai_embedding": {
+        "displayOptions": {
+          "hide": {
+            "mode": [
+              "delete",
+            ],
+          },
+        },
         "required": true,
       },
       "ai_reranker": {
@@ -209,12 +238,13 @@ const store = vectorStore({
               "insert",
               "load",
               "update",
+              "delete",
             ],
           },
         },
       },
     },
-    "searchHint": "Pick mode by where data flows: \`insert\` upserts documents into the store on the main flow; \`load\` runs a one-shot similarity search on the main flow; \`retrieve-as-tool\` is the canonical RAG mode — plug into an AI Agent's \`subnodes.tools\`; \`retrieve\` exposes the store as a subnode for another node's \`subnodes.vectorStore\`; \`update\` updates a single document by ID.",
+    "searchHint": "Pick mode by where data flows: \`insert\` upserts documents into the store on the main flow; \`load\` runs a one-shot similarity search on the main flow; \`retrieve-as-tool\` is the canonical RAG mode — plug into an AI Agent's \`subnodes.tools\`; \`retrieve\` exposes the store as a subnode for another node's \`subnodes.vectorStore\`; \`update\` updates a single document by ID; \`delete\` deletes documents by ID or filter on the main flow.",
   },
   "codex": {
     "categories": [
@@ -256,6 +286,12 @@ const store = vectorStore({
 			((parameters) => {
 				const mode = parameters?.mode;
 				const useReranker = parameters?.useReranker;
+
+				// A delete needs no embeddings, so it has only the main input
+				if (mode === 'delete') {
+					return [{ displayName: "", type: "main"}]
+				}
+
 				const inputs = [{ displayName: "Embedding", type: "ai_embedding", required: true, maxConnections: 1}]
 
 				if (['load', 'retrieve', 'retrieve-as-tool'].includes(mode) && useReranker) {
@@ -495,6 +531,60 @@ const store = vectorStore({
       "name": "id",
       "required": true,
       "type": "string",
+    },
+    {
+      "default": "ids",
+      "displayName": "Delete By",
+      "displayOptions": {
+        "show": {
+          "mode": [
+            "delete",
+          ],
+        },
+      },
+      "name": "deleteBy",
+      "options": [],
+      "type": "options",
+    },
+    {
+      "default": "",
+      "description": "Comma-separated IDs of the documents to delete",
+      "displayName": "IDs",
+      "displayOptions": {
+        "show": {
+          "deleteBy": [
+            "ids",
+          ],
+          "mode": [
+            "delete",
+          ],
+        },
+      },
+      "name": "deleteIds",
+      "placeholder": "e.g. 7b2c4f1e-…, 9d8e6a3b-…",
+      "required": true,
+      "type": "string",
+    },
+    {
+      "default": "{}",
+      "description": "Delete the documents that match this filter, in the filter syntax of the store",
+      "displayName": "Filter",
+      "displayOptions": {
+        "show": {
+          "deleteBy": [
+            "filter",
+          ],
+          "mode": [
+            "delete",
+          ],
+        },
+      },
+      "name": "deleteFilter",
+      "required": true,
+      "type": "json",
+      "typeOptions": {
+        "rows": 5,
+      },
     },
     {
       "displayOptions": {

@@ -7,6 +7,8 @@ import type { VectorStoreNodeConstructorArgs, NodeOperationMode } from '../types
 import {
 	transformDescriptionForOperationMode,
 	isUpdateSupported,
+	isDeleteSupported,
+	getDeleteByOptions,
 	getOperationModeOptions,
 } from '../utils';
 
@@ -180,6 +182,69 @@ describe('Vector Store Utilities', () => {
 
 			expect(retrieveOption?.outputConnectionType).toBe(NodeConnectionTypes.AiVectorStore);
 			expect(retrieveAsToolOption?.outputConnectionType).toBe(NodeConnectionTypes.AiTool);
+		});
+	});
+
+	describe('delete mode', () => {
+		const createArgs = (
+			operationModes: NodeOperationMode[] | undefined,
+			overrides: Partial<VectorStoreNodeConstructorArgs<VectorStore>> = {},
+		) =>
+			({
+				meta: {
+					displayName: 'Test Vector Store',
+					name: 'testVectorStore',
+					description: 'Test description',
+					docsUrl: 'https://example.com',
+					icon: 'file:test.svg',
+					operationModes,
+				},
+				sharedFields: [],
+				getVectorStoreClient: vi.fn(),
+				populateVectorStore: vi.fn(),
+				...overrides,
+			}) as unknown as VectorStoreNodeConstructorArgs<VectorStore>;
+
+		it('should support delete only when delete is in operationModes', () => {
+			expect(isDeleteSupported(createArgs(['load', 'delete']))).toBe(true);
+			expect(isDeleteSupported(createArgs(['load', 'insert']))).toBe(false);
+			expect(isDeleteSupported(createArgs(undefined))).toBe(false);
+		});
+
+		it('should not show the delete mode by default', () => {
+			const values = getOperationModeOptions(createArgs(undefined)).map(({ value }) => value);
+
+			expect(values).not.toContain('delete');
+			expect(DEFAULT_OPERATION_MODES).not.toContain('delete');
+		});
+
+		it('should show the delete mode when a store turns it on', () => {
+			const values = getOperationModeOptions(
+				createArgs([...DEFAULT_OPERATION_MODES, 'delete']),
+			).map(({ value }) => value);
+
+			expect(values).toContain('delete');
+		});
+
+		it('should give no "Delete By" choices when delete is off', () => {
+			expect(getDeleteByOptions(createArgs(['load']))).toEqual([]);
+		});
+
+		it('should give only the IDs choice when the store cannot parse a filter', () => {
+			expect(getDeleteByOptions(createArgs(['delete'])).map(({ value }) => value)).toEqual(['ids']);
+		});
+
+		it('should add the filter choice and the store-specific choices', () => {
+			const args = createArgs(['delete'], {
+				parseDeleteFilter: vi.fn(),
+				deleteByOptions: [{ name: 'Entire Collection', value: 'collection' }],
+			});
+
+			expect(getDeleteByOptions(args).map(({ value }) => value)).toEqual([
+				'ids',
+				'filter',
+				'collection',
+			]);
 		});
 	});
 });

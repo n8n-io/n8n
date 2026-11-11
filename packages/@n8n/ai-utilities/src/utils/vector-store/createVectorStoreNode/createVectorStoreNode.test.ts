@@ -75,6 +75,7 @@ describe('createVectorStoreNode', () => {
 		],
 		retrieveFields: [],
 		updateFields: [],
+		deleteFields: [],
 		getVectorStoreClient: vi.fn().mockReturnValue(vectorStore),
 	});
 
@@ -391,6 +392,31 @@ describe('createVectorStoreNode', () => {
 				expect(result[0][1].json.response).toHaveLength(2); // 2 documents for second query
 			});
 
+			it('should delete documents without the embeddings input', async () => {
+				const parameters: Record<string, NodeParameterValueType> = {
+					mode: 'delete',
+					deleteBy: 'ids',
+					deleteIds: 'doc-1',
+				};
+				executeContext.getNodeParameter.mockImplementation(
+					(parameterName: string): NodeParameterValueType | object => parameters[parameterName],
+				);
+				executeContext.getInputData.mockReturnValue([{ json: {} }]);
+				const VectorStoreNodeType = createVectorStoreNode({
+					...vectorStoreNodeArgs,
+					meta: { ...vectorStoreNodeArgs.meta, operationModes: ['load', 'delete'] },
+				});
+				const nodeType = new VectorStoreNodeType();
+
+				const result = await nodeType.execute.call(executeContext);
+
+				expect(executeContext.getInputConnectionData).not.toHaveBeenCalled();
+				expect(vectorStore.delete).toHaveBeenCalledWith({ ids: ['doc-1'] });
+				expect(result).toEqual([
+					[{ json: { deleted: true, deleteBy: 'ids', ids: ['doc-1'] }, pairedItem: { item: 0 } }],
+				]);
+			});
+
 			it('should throw error for unsupported mode in execute', async () => {
 				// ARRANGE
 				const parameters: Record<string, NodeParameterValueType> = {
@@ -407,7 +433,7 @@ describe('createVectorStoreNode', () => {
 				const nodeType = new VectorStoreNodeType();
 
 				await expect(nodeType.execute.call(executeContext)).rejects.toThrow(
-					'Only the "load", "update", "insert", and "retrieve-as-tool" operation modes are supported with execute',
+					'Only the "load", "update", "insert", "delete", and "retrieve-as-tool" operation modes are supported with execute',
 				);
 			});
 		});

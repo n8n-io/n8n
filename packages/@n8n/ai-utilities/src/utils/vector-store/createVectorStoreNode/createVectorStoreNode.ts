@@ -16,6 +16,7 @@ import {
 	handleLoadOperation,
 	handleInsertOperation,
 	handleUpdateOperation,
+	handleDeleteOperation,
 	handleRetrieveOperation,
 	handleRetrieveAsToolOperation,
 	handleRetrieveAsToolExecuteOperation,
@@ -24,6 +25,7 @@ import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types'
 // Import utility functions
 import {
 	transformDescriptionForOperationMode,
+	getDeleteByOptions,
 	getOperationModeOptions,
 	normalizeVectorStoreError,
 } from './utils';
@@ -85,7 +87,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			},
 			builderHint: {
 				searchHint:
-					"Pick mode by where data flows: `insert` upserts documents into the store on the main flow; `load` runs a one-shot similarity search on the main flow; `retrieve-as-tool` is the canonical RAG mode — plug into an AI Agent's `subnodes.tools`; `retrieve` exposes the store as a subnode for another node's `subnodes.vectorStore`; `update` updates a single document by ID.",
+					"Pick mode by where data flows: `insert` upserts documents into the store on the main flow; `load` runs a one-shot similarity search on the main flow; `retrieve-as-tool` is the canonical RAG mode — plug into an AI Agent's `subnodes.tools`; `retrieve` exposes the store as a subnode for another node's `subnodes.vectorStore`; `update` updates a single document by ID; `delete` deletes documents by ID or filter on the main flow.",
 				...args.meta.builderHint,
 				extraTypeDefContent: [
 					{
@@ -188,6 +190,22 @@ const retrieverTool = tool({
 </patterns>`,
 					},
 					{
+						displayOptions: { show: { mode: ['delete'] } },
+						content: `Deletes documents on the main flow, by \`deleteIds\` (comma-separated) or by \`deleteFilter\` (JSON, only on stores that support it). Declare with \`vectorStore({...})\`. No subnodes. Only available on stores whose \`operationModes\` enables it.
+<patterns>
+<pattern title="delete mode — delete documents by ID (generic)">
+// Substitute the type literal and provider-specific parameters — see the rest of this file.
+const store = vectorStore({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreXxx',
+  config: {
+    name: 'Knowledge Base',
+    parameters: { mode: 'delete', deleteBy: 'ids', deleteIds: expr('{{ $json.docId }}') }
+  }
+});
+</pattern>
+</patterns>`,
+					},
+					{
 						displayOptions: { show: { mode: ['update'] } },
 						content: `Updates a single document by \`id\`. Declare with \`vectorStore({...})\`. Required subnodes: \`embedding\`. Only available on stores whose \`operationModes\` enables it — most providers omit this mode.
 <patterns>
@@ -206,7 +224,7 @@ const store = vectorStore({
 					},
 				],
 				inputs: {
-					ai_embedding: { required: true },
+					ai_embedding: { required: true, displayOptions: { hide: { mode: ['delete'] } } },
 					ai_document: {
 						required: true,
 						displayOptions: { show: { mode: ['insert'] } },
@@ -220,7 +238,7 @@ const store = vectorStore({
 				},
 				outputs: {
 					main: {
-						displayOptions: { show: { mode: ['insert', 'load', 'update'] } },
+						displayOptions: { show: { mode: ['insert', 'load', 'update', 'delete'] } },
 					},
 					ai_vectorStore: {
 						required: true,
@@ -238,6 +256,12 @@ const store = vectorStore({
 			((parameters) => {
 				const mode = parameters?.mode;
 				const useReranker = parameters?.useReranker;
+
+				// A delete needs no embeddings, so it has only the main input
+				if (mode === 'delete') {
+					return [{ displayName: "", type: "${NodeConnectionTypes.Main}"}]
+				}
+
 				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionTypes.AiEmbedding}", required: true, maxConnections: 1}]
 
 				if (['load', 'retrieve', 'retrieve-as-tool'].includes(mode) && useReranker) {
@@ -402,6 +426,50 @@ const store = vectorStore({
 						},
 					},
 				},
+				{
+					displayName: 'Delete By',
+					name: 'deleteBy',
+					type: 'options',
+					default: 'ids',
+					options: getDeleteByOptions(args),
+					displayOptions: {
+						show: {
+							mode: ['delete'],
+						},
+					},
+				},
+				{
+					displayName: 'IDs',
+					name: 'deleteIds',
+					type: 'string',
+					default: '',
+					required: true,
+					description: 'Comma-separated IDs of the documents to delete',
+					placeholder: 'e.g. 7b2c4f1e-…, 9d8e6a3b-…',
+					displayOptions: {
+						show: {
+							mode: ['delete'],
+							deleteBy: ['ids'],
+						},
+					},
+				},
+				{
+					displayName: 'Filter',
+					name: 'deleteFilter',
+					type: 'json',
+					typeOptions: { rows: 5 },
+					default: '{}',
+					required: true,
+					description:
+						'Delete the documents that match this filter, in the filter syntax of the store',
+					displayOptions: {
+						show: {
+							mode: ['delete'],
+							deleteBy: ['filter'],
+						},
+					},
+				},
+				...transformDescriptionForOperationMode(args.deleteFields ?? [], 'delete'),
 				...transformDescriptionForOperationMode(args.loadFields ?? [], [
 					'load',
 					'retrieve-as-tool',
@@ -415,11 +483,18 @@ const store = vectorStore({
 
 		/**
 		 * Method to execute the node in regular workflow mode
-		 * Supports 'load', 'insert', and 'update' operation modes
+		 * Supports 'load', 'insert', 'update', 'delete', and 'retrieve-as-tool' operation modes
 		 */
 		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 			try {
 				const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
+
+				// Check before the embeddings, because the delete mode has no embeddings input
+				if (mode === 'delete') {
+					const resultData = await handleDeleteOperation(this, args);
+					return [resultData];
+				}
+
 				// Get the embeddings model connected to this node
 				const embeddings = (await this.getInputConnectionData(
 					NodeConnectionTypes.AiEmbedding,
@@ -468,7 +543,7 @@ const store = vectorStore({
 
 				throw new NodeOperationError(
 					this.getNode(),
-					'Only the "load", "update", "insert", and "retrieve-as-tool" operation modes are supported with execute',
+					'Only the "load", "update", "insert", "delete", and "retrieve-as-tool" operation modes are supported with execute',
 				);
 			} catch (error) {
 				normalizeVectorStoreError(this.getNode(), error);

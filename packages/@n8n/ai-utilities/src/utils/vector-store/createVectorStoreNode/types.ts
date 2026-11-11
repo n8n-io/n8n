@@ -54,7 +54,7 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 	 * the "Delete By" field shows the "Filter" choice.
 	 */
 	parseDeleteFilter?: (
-		filter: IDataObject,
+		filter: Record<string, unknown>,
 		context: IExecuteFunctions,
 		itemIndex: number,
 	) => unknown;
