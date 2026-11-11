@@ -12,7 +12,7 @@ import type {
 	TransactionRunner,
 	User,
 } from '@n8n/db';
-import { ConflictError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/errors';
 import { selfHealingOutputSchema, type CredentialResolutionResult } from '@n8n/instance-ai';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -658,6 +658,20 @@ describe('SelfHealingInvestigationService', () => {
 			} finally {
 				Object.assign(instanceSettings, { isLeader: true });
 			}
+		});
+
+		it.each([
+			['invalid_candidate', new BadRequestError('The candidate file is unavailable.')],
+			['workflow_changed', new ConflictError('Changed.')],
+			['save_failed', new Error('Database unavailable.')],
+		])('reports %s when a valid answer is not saved', async (reason, error) => {
+			results.complete.mockRejectedValue(error);
+			await expect(startAndFinish()).rejects.toThrow(error);
+			await vi.waitFor(() =>
+				expect(tracked(SELF_HEALING_FINISHED_INVESTIGATION)).toEqual([
+					expect.objectContaining({ outcome: 'no_result', termination_reason: reason }),
+				]),
+			);
 		});
 
 		it('reports an investigation only when the clean-up task closes it', async () => {

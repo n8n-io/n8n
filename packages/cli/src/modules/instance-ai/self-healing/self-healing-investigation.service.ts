@@ -55,11 +55,15 @@ type SkipReason = NonNullable<
 >;
 
 /** A code that says why a run has no result. Never an error message. */
-function noResultReason(run?: SelfHealingRunResult) {
+function noResultReason(run?: SelfHealingRunResult, error?: unknown) {
 	if (!run) return 'not_started';
 	if (run.status !== 'completed') return run.status;
 	if (run.finishReason !== 'stop') return run.finishReason ?? 'unknown';
-	return run.output ? 'save_failed' : 'invalid_output';
+	if (!run.output) return 'invalid_output';
+	// The run gave a valid answer, and `error` stopped the save.
+	if (error instanceof BadRequestError) return 'invalid_candidate';
+	if (error instanceof ConflictError) return 'workflow_changed';
+	return 'save_failed';
 }
 
 @Service()
@@ -334,7 +338,7 @@ export class SelfHealingInvestigationService {
 			}
 
 			if (await this.investigations.finishWithoutResult(investigation.id)) {
-				this.trackFinished(investigation, noResultReason(completedRun), completedRun);
+				this.trackFinished(investigation, noResultReason(completedRun, error), completedRun);
 			}
 			throw error;
 		}

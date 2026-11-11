@@ -83,7 +83,7 @@ export const SELF_HEALING_TELEMETRY = defineTelemetryEvents({
 			termination_reason: z
 				.string()
 				.describe(
-					"Why the investigation ended. 'completed' for a saved result. Otherwise a short code, for example cancelled, errored, max-iterations, invalid_output, save_failed, not_saved, crash_interrupted or not_started. Usage is unknown for crash_interrupted",
+					"Why the investigation ended. 'completed' for a saved result. Otherwise a short code, for example cancelled, errored, max-iterations, invalid_output, invalid_candidate, workflow_changed, save_failed, not_saved, crash_interrupted or not_started. Usage is unknown for crash_interrupted",
 				),
 			result_id: z.string().nullable(),
 			duration_seconds: z.number().nullable(),

@@ -8,6 +8,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
 import {
 	createRunExecutionData,
+	ExpressionError,
 	NodeOperationError,
 	type INode,
 	type IRun,
@@ -57,7 +58,11 @@ describe('SelfHealingTriggerService', () => {
 
 		ctx = {
 			type: 'workflowExecuteAfter',
-			workflow: { ...mock<IWorkflowBase>({ id: 'workflow', versionId: 'version' }), settings: {} },
+			workflow: {
+				...mock<IWorkflowBase>({ id: 'workflow', versionId: 'version' }),
+				nodes: [],
+				settings: {},
+			},
 			mode: 'trigger',
 			runData: mock<IRun>({
 				status: 'error',
@@ -133,6 +138,23 @@ describe('SelfHealingTriggerService', () => {
 				projectId: 'project',
 				errorType: 'NodeOperationError',
 				errorNodeType: 'n8n-nodes-base.httpRequest',
+			});
+		});
+	});
+
+	it('sends the type of the last executed node when the error has no node', async () => {
+		ctx.workflow.nodes = [mock<INode>({ name: 'Edit Fields', type: 'n8n-nodes-base.set' })];
+		ctx.runData.data.resultData.lastNodeExecuted = 'Edit Fields';
+		ctx.runData.data.resultData.error = new ExpressionError('Secret detail');
+
+		await service.onWorkflowExecuteAfter(ctx);
+
+		await vi.waitFor(() => {
+			expect(investigations.start).toHaveBeenCalledWith({
+				...failure,
+				projectId: 'project',
+				errorType: 'ExpressionError',
+				errorNodeType: 'n8n-nodes-base.set',
 			});
 		});
 	});

@@ -368,8 +368,7 @@ Each service calls `Telemetry.track()` at the place where the change occurs.
   `workflow-suggestion-outdated`, and `SelfHealingTelemetryEventRelay` reports the result.
 - A chat that starts from a result adds `result_id` and `result_kind` to
   `User launched Instance AI thread`. This links the chat to the result.
-- Events carry IDs, counts and codes only. They never carry an error message, a node name or
-  report text.
+- Events never carry an error message, a node name or report text.
 
 ## Availability
 

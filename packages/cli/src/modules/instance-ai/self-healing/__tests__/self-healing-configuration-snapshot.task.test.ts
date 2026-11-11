@@ -15,27 +15,47 @@ describe('SelfHealingConfigurationSnapshotTask', () => {
 	beforeEach(() => vi.resetAllMocks());
 
 	const counts = {
-		configurationCount: 0,
-		enabledProjectCount: 0,
-		allScopeCount: 0,
-		selectedScopeCount: 0,
-		watchedWorkflowCount: 0,
+		configurationCount: 5,
+		enabledProjectCount: 4,
+		allScopeCount: 3,
+		selectedScopeCount: 1,
+		watchedWorkflowCount: 20,
 	};
 
-	it('sends the current counts, also for an instance without configurations', async () => {
+	it('sends the current counts', async () => {
 		configurations.getAdoptionCounts.mockResolvedValue(counts);
 
 		await task.run(new AbortController().signal);
 
 		const properties = {
+			configuration_count: 5,
+			enabled_project_count: 4,
+			all_scope_count: 3,
+			selected_scope_count: 1,
+			watched_workflow_count: 20,
+		};
+		expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(event, properties);
+		expect(event.getValidationError(properties)).toBeNull();
+	});
+
+	it('sends zero counts for an instance without configurations', async () => {
+		configurations.getAdoptionCounts.mockResolvedValue({
+			configurationCount: 0,
+			enabledProjectCount: 0,
+			allScopeCount: 0,
+			selectedScopeCount: 0,
+			watchedWorkflowCount: 0,
+		});
+
+		await task.run(new AbortController().signal);
+
+		expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(event, {
 			configuration_count: 0,
 			enabled_project_count: 0,
 			all_scope_count: 0,
 			selected_scope_count: 0,
 			watched_workflow_count: 0,
-		};
-		expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(event, properties);
-		expect(event.getValidationError(properties)).toBeNull();
+		});
 	});
 
 	it('sends nothing when the run is aborted while it reads the counts', async () => {
