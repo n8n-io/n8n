@@ -407,6 +407,10 @@ export class WorkflowsPublicController {
 	)
 	@ApiTags(['Workflow'])
 	@ApiResponse(200, UpdatedWorkflowPublicDto)
+	@ApiErrorResponse(400, {
+		description:
+			'The request body is invalid, or the update changes a node that uses a credential the caller cannot access.',
+	})
 	@ApiErrorResponse(403, {
 		dto: WorkflowPublishForbiddenErrorPublicDto,
 		description: UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION,
