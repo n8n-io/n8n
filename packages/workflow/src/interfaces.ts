@@ -462,6 +462,8 @@ export interface ICredentialType {
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
 	__showManagedOAuthScopes?: boolean;
+	/** Lets n8n register the OAuth2 client at the `serverUrl` property, so users need no app of their own. */
+	dynamicClientRegistration?: boolean;
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,
@@ -3855,6 +3857,8 @@ export type WorkflowExecutionMockDataSource =
 
 export interface IWorkflowExecutionTelemetryMetadata {
 	mockDataSources?: WorkflowExecutionMockDataSource[];
+	/** Credentials the run uses only through the acting user's own access, not the workflow's project. */
+	personalCredentialsCount?: number;
 }
 
 /**

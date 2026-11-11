@@ -196,14 +196,19 @@ function getExecutionTelemetryProperties(
 	telemetryMetadata: RelayEventMap['workflow-post-execute']['telemetryMetadata'],
 ): ITelemetryTrackProperties {
 	const executionSource = source ?? 'user';
+	const { mockDataSources, personalCredentialsCount } = telemetryMetadata ?? {};
+	const personalCredentials = personalCredentialsCount
+		? { personal_credentials_count: personalCredentialsCount }
+		: {};
 
-	if (executionSource !== 'instance_ai') return { execution_source: executionSource };
-
-	const { mockDataSources } = telemetryMetadata ?? {};
+	if (executionSource !== 'instance_ai') {
+		return { execution_source: executionSource, ...personalCredentials };
+	}
 
 	return {
 		execution_source: executionSource,
 		...(mockDataSources?.length ? { mock_data_sources: mockDataSources.join(',') } : {}),
+		...personalCredentials,
 	};
 }
 
@@ -344,6 +349,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-signed-up': (event) => this.userSignedUp(event),
 			'user-mfa-enabled': (event) => this.userMfaEnabled(event),
 			'user-mfa-disabled': (event) => this.userMfaDisabled(event),
+			'user-logged-out': (event) => this.userLoggedOut(event),
 			'user-submitted-personalization-survey': (event) =>
 				this.userSubmittedPersonalizationSurvey(event),
 			'email-failed': (event) => this.emailFailed(event),
@@ -380,7 +386,8 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 			'runner-disconnected': (event) => this.runnerDisconnected(event),
-			'memory-guard-execution-stopped': (event) => this.memoryGuardExecutionStopped(event),
+			'memory-guard-execution-stopped': async (event) =>
+				await this.memoryGuardExecutionStopped(event),
 			'trusted-source-created': (event) => this.trustedSourceCreated(event),
 			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
 			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
@@ -2271,6 +2278,23 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	/**
+	 * Owner of the workflow's personal project, or the instance owner for a team project.
+	 * `undefined` when a lookup fails, so the event still goes out, without a user.
+	 */
+	private async getWorkflowOwnerId(workflowId: string) {
+		try {
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+			if (project.type === 'personal') {
+				const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
+				return owner?.id;
+			}
+			return await this.getInstanceOwnerId();
+		} catch {
+			return undefined;
+		}
+	}
+
 	/** Owner user ID once setup is complete, `undefined` while only the placeholder owner row exists. */
 	private async getInstanceOwnerId() {
 		if (!(await this.ownershipService.hasInstanceOwner())) return undefined;
@@ -2363,8 +2387,11 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED, { reason, mode });
 	}
 
-	private memoryGuardExecutionStopped(event: RelayEventMap['memory-guard-execution-stopped']) {
+	private async memoryGuardExecutionStopped(
+		event: RelayEventMap['memory-guard-execution-stopped'],
+	) {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION, {
+			user_id: await this.getWorkflowOwnerId(event.workflowId),
 			workflow_id: event.workflowId,
 			execution_mode: event.mode,
 			reason: event.reason,
@@ -2604,6 +2631,10 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private userMfaDisabled({ user }: RelayEventMap['user-mfa-disabled']) {
 		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_DISABLED_MFA, { user_id: user.id });
+	}
+
+	private userLoggedOut({ user }: RelayEventMap['user-logged-out']) {
+		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_LOGGED_OUT, { user_id: user.id });
 	}
 
 	private userSubmittedPersonalizationSurvey({
@@ -3049,6 +3080,7 @@ export class TelemetryEventRelay extends EventRelay {
 		durationMs,
 		counts,
 		selectedWorkflowCount,
+		selectedFolderCount,
 		openedReview,
 	}: RelayEventMap['promotion-promoted']) {
 		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES, {
@@ -3066,6 +3098,7 @@ export class TelemetryEventRelay extends EventRelay {
 			variable_count: counts?.variables,
 			tag_count: counts?.tags,
 			selected_workflow_count: selectedWorkflowCount,
+			selected_folder_count: selectedFolderCount,
 			opened_review: openedReview,
 		});
 	}
@@ -3080,6 +3113,8 @@ export class TelemetryEventRelay extends EventRelay {
 		durationMs,
 		workflowsChanged,
 		workflowsFailedToPublish,
+		foldersChanged,
+		projectsChanged,
 	}: RelayEventMap['promotion-applied']) {
 		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES, {
 			user_id: user.id,
@@ -3091,6 +3126,8 @@ export class TelemetryEventRelay extends EventRelay {
 			duration_ms: durationMs,
 			workflows_changed: workflowsChanged,
 			workflows_failed_to_publish: workflowsFailedToPublish,
+			folders_changed: foldersChanged,
+			projects_changed: projectsChanged,
 		});
 	}
 

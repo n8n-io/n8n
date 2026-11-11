@@ -8,6 +8,7 @@ import { computed, ref, shallowRef, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
+import type { OperationSelection } from '../promotionOperation';
 import {
 	applyProjectSelection,
 	continueApplyProjectSelection,
@@ -17,8 +18,7 @@ import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
 import type { ApplyCheckResult } from '../promotions.types';
 import { usePromotionOutcome } from './usePromotionOutcome';
 
-export type OperationRequest = {
-	workflowIds: string[];
+export type OperationRequest = OperationSelection & {
 	/** True when the selection imports a data table change that removes values. */
 	confirmDestructiveChanges: boolean;
 	/** Promote only. When it is missing, the backend generates the message. */
@@ -108,9 +108,10 @@ export function usePromotionOperation(
 		});
 	}
 
-	async function promote({ workflowIds, commitMessage }: OperationRequest) {
+	async function promote({ workflowIds, folderIds, commitMessage }: OperationRequest) {
 		const result = await promoteProjectSelection(rootStore.publicApiContext, projectId.value, {
 			workflowIds,
+			folderIds,
 			...(commitMessage && { commitMessage }),
 		});
 		outcome.showPromoted(projectId.value, result);
@@ -120,19 +121,17 @@ export function usePromotionOperation(
 	async function apply(request: OperationRequest, source: ApplyCheckResult) {
 		// Apply what the page shows. A branch or an instance that changed since is reported, not applied.
 		const expected = {
+			workflowIds: request.workflowIds,
+			folderIds: request.folderIds,
 			expectedSource: { environmentId: source.environmentId, ...source.git },
 			expectedPreviewRevision: preview.value?.revision,
 		};
 		const result = request.confirmDestructiveChanges
 			? await continueApplyProjectSelection(rootStore.publicApiContext, projectId.value, {
-					workflowIds: request.workflowIds,
 					...expected,
 					confirmDestructiveChanges: true,
 				})
-			: await applyProjectSelection(rootStore.publicApiContext, projectId.value, {
-					workflowIds: request.workflowIds,
-					...expected,
-				});
+			: await applyProjectSelection(rootStore.publicApiContext, projectId.value, expected);
 		if (result.status === 'applied') {
 			outcome.showApplied(result);
 			await leave();
@@ -150,7 +149,8 @@ export function usePromotionOperation(
 	}
 
 	async function submit(request: OperationRequest) {
-		if (isBusy.value || request.workflowIds.length === 0) return;
+		// The page enables the submit only with a selection. A project-only selection sends no ids.
+		if (isBusy.value) return;
 		const source = check.value;
 		if (direction.value === 'apply' && !source) return;
 		// Set before the dialog, so a second click does not open another one.
@@ -166,7 +166,7 @@ export function usePromotionOperation(
 			const kind = errorKind(cause);
 			const explained =
 				direction.value === 'promote'
-					? getPromoteErrorMessage(cause, preview.value?.changes ?? [], i18n)
+					? getPromoteErrorMessage(cause, preview.value?.resources ?? [], i18n)
 					: undefined;
 			error.value = explained
 				? { message: explained, kind: 'explained' }

@@ -15,6 +15,7 @@ import {
 
 import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
+import { hasAutomaticOAuthApp } from '../credentials.utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -122,7 +123,9 @@ export function useCredentialOAuth() {
 			return false;
 		}
 
-		const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
+		const overwrittenProperties = hasAutomaticOAuthApp(credentialType)
+			? ['clientId', 'clientSecret']
+			: (credentialType.__overwrittenProperties ?? []);
 		const nonOverwrittenConfigurableProperties = getManuallyConfigurableProperties(
 			credentialType,
 		).filter((prop) => !overwrittenProperties.includes(prop.name));
@@ -421,6 +424,9 @@ export function useCredentialOAuth() {
 		});
 
 		const data: ICredentialDataDecryptedObject = { ...options.data };
+		if (hasAutomaticOAuthApp(credentialType) && !data.clientId) {
+			data.useDynamicClientRegistration ??= true;
+		}
 		const allowedHttpRequestDomainsProperty = credentialType.properties.find(
 			(prop) => prop.name === 'allowedHttpRequestDomains',
 		);

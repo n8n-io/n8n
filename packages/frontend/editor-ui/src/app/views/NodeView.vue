@@ -109,13 +109,19 @@ import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { DEFAULT_NODE_SIZE, getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
+import {
+	DEFAULT_NODE_SIZE,
+	getBounds,
+	getNodeViewTab,
+	isPastableWorkflowText,
+} from '@/app/utils/nodeViewUtils';
 import { isChatNode } from '@/app/utils/aiUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { useClipboard } from '@n8n/composables/useClipboard';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/app/components/NodeViewUnfinishedWorkflowMessage.vue';
@@ -197,6 +203,7 @@ const workflowSaving = useWorkflowSaving({
 });
 const nodeHelpers = useNodeHelpers();
 const clipboard = useClipboard({ onPaste: onClipboardPaste });
+const { controlKeyText } = useDeviceSupport();
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -662,6 +669,39 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 	};
 
 	await mcpJsonNudgeTrigger.gate('paste', paste);
+}
+
+// The context menu has no paste event, so read the clipboard explicitly.
+async function onPasteFromContextMenu() {
+	// A browser paste prompt can stay open while the user navigates to another workflow
+	const originWorkflowId = workflowId.value;
+	let plainTextData: string;
+	try {
+		plainTextData = await navigator.clipboard.readText();
+	} catch {
+		if (!isStillOnWorkflow(originWorkflowId)) return;
+		toast.showMessage({
+			title: i18n.baseText('nodeView.showMessage.clipboardReadFailed.title'),
+			message: i18n.baseText('nodeView.showMessage.clipboardReadFailed.message', {
+				interpolate: { shortcut: `${controlKeyText.value}+V` },
+			}),
+			type: 'warning',
+		});
+		return;
+	}
+
+	if (!isStillOnWorkflow(originWorkflowId)) return;
+
+	if (!isPastableWorkflowText(plainTextData)) {
+		toast.showMessage({
+			title: i18n.baseText('nodeView.showMessage.clipboardNoWorkflowData.title'),
+			message: i18n.baseText('nodeView.showMessage.clipboardNoWorkflowData.message'),
+			type: 'info',
+		});
+		return;
+	}
+
+	await onClipboardPaste(plainTextData);
 }
 
 async function onCutNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
@@ -2169,6 +2209,7 @@ onBeforeUnmount(() => {
 			@update:nodes:pin="onPinNodes"
 			@duplicate:nodes="onDuplicateNodes"
 			@copy:nodes="onCopyNodes"
+			@paste:clipboard="onPasteFromContextMenu"
 			@cut:nodes="onCutNodes"
 			@replace:node="onClickReplaceNode"
 			@run:workflow="onRunWorkflowShortcut"

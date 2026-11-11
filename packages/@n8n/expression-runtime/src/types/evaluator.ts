@@ -370,3 +370,17 @@ export class MemoryLimitError extends ExpressionError {}
 export class TimeoutError extends ExpressionError {}
 export class SecurityViolationError extends ExpressionError {}
 export class SyntaxError extends ExpressionError {}
+
+/** A host error stopped a guest call, so the runtime that ran the call is discarded. */
+export class HostCallError extends Error {
+	constructor(
+		message: string,
+		/** The name of the host error that stopped the call, for example `RangeError`. */
+		readonly hostErrorName: string,
+	) {
+		super(message);
+	}
+}
+
+/** The runtime is being replaced after a host error. A later call can succeed. */
+export class RuntimeRestartingError extends Error {}

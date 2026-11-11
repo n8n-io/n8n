@@ -1,6 +1,7 @@
 import { NodeConnectionTypes, type INode, type IPinData, type IRunData } from 'n8n-workflow';
 
 import type { GraphConnection, DirectedGraph } from './directed-graph';
+import { getIncomingDataForConnection } from './get-incoming-data';
 
 function sortByInputIndexThenByName(
 	connection1: GraphConnection,
@@ -95,7 +96,7 @@ export function getSourceDataGroups(
 	const sortedConnectionsWithoutData = [];
 
 	for (const connection of connections) {
-		const hasData = runData[connection.from.name] || pinnedData[connection.from.name];
+		const hasData = getIncomingDataForConnection(connection, runData, pinnedData) !== undefined;
 
 		if (hasData) {
 			sortedConnectionsWithData.push(connection);

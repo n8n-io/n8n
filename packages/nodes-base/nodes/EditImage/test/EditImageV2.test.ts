@@ -141,7 +141,14 @@ async function nonWhiteBounds(
 	return { left, top, right, bottom };
 }
 
+<<<<<<< HEAD
 function renderTextBounds({
+=======
+// Removing a font unregisters every family loaded from the same file.
+let measureFontFamily: string | undefined;
+
+function measureTextBounds({
+>>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 	font,
 	text,
 	fontSize,
@@ -162,6 +169,7 @@ function renderTextBounds({
 	width: number;
 	height: number;
 }): { left: number; top: number; right: number; bottom: number } {
+<<<<<<< HEAD
 	const family = 'n8n-edit-image-test-font';
 	const fontKey = GlobalFonts.registerFromPath(font, family);
 	if (!fontKey) throw new Error('Expected the test font to load');
@@ -198,7 +206,30 @@ function renderTextBounds({
 		return { left, top, right, bottom };
 	} finally {
 		GlobalFonts.remove(fontKey);
+=======
+	if (!measureFontFamily) {
+		const family = 'n8n-edit-image-test-font';
+		if (!GlobalFonts.registerFromPath(font, family)) {
+			throw new Error('Expected the test font to load');
+		}
+		measureFontFamily = family;
+>>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 	}
+
+	const context = createCanvas(width, height).getContext('2d');
+	context.font = `${fontSize}px "${measureFontFamily}"`;
+	context.textAlign = horizontalAlignment === 'east' ? 'right' : 'left';
+	context.textBaseline = 'alphabetic';
+	const metrics = context.measureText(text);
+	const x = horizontalAlignment === 'east' ? width - positionX : positionX;
+	const y = verticalAlignment === 'south' ? height - positionY : positionY;
+
+	return {
+		left: Math.max(0, Math.floor(x - metrics.actualBoundingBoxLeft)),
+		top: Math.max(0, Math.floor(y - metrics.actualBoundingBoxAscent)),
+		right: Math.min(width, Math.ceil(x + metrics.actualBoundingBoxRight)),
+		bottom: Math.min(height, Math.ceil(y + metrics.actualBoundingBoxDescent)),
+	};
 }
 
 function createExecuteFunctions({
@@ -879,6 +910,47 @@ describe('Edit Image v2', () => {
 		const result = await new EditImage().execute.call(executeFunctions);
 
 		expect(outputBuffer(result).length).toBeGreaterThan(0);
+	});
+
+	it('registers a font once and keeps it registered for later text operations', async () => {
+		vi.resetModules();
+		const { EditImage: FreshEditImage } = await import('../EditImage.node');
+		const registerFromPath = vi.spyOn(GlobalFonts, 'registerFromPath');
+		const remove = vi.spyOn(GlobalFonts, 'remove');
+		const input = await imageBuffer('#ffffff', 80, 40);
+		const createTextExecuteFunctions = () =>
+			createExecuteFunctions({
+				parameters: {
+					operation: 'text',
+					dataPropertyName: 'data',
+					text: 'Hello',
+					fontSize: 12,
+					fontColor: '#000000',
+					positionX: 2,
+					positionY: 2,
+					horizontalAlignment: 'west',
+					verticalAlignment: 'north',
+					lineLength: 80,
+					options: { font: testFont },
+				},
+				input: {
+					json: {},
+					binary: { data: { data: input.toString('base64'), mimeType: 'image/png' } },
+				},
+				binaryBuffers: { data: input },
+			});
+
+		try {
+			await new FreshEditImage().execute.call(createTextExecuteFunctions());
+			await new FreshEditImage().execute.call(createTextExecuteFunctions());
+
+			expect(registerFromPath).toHaveBeenCalledTimes(1);
+			expect(registerFromPath).toHaveBeenCalledWith(testFont, expect.stringContaining('Geist'));
+			expect(remove).not.toHaveBeenCalled();
+		} finally {
+			registerFromPath.mockRestore();
+			remove.mockRestore();
+		}
 	});
 
 	it.each([['west', 'north'] as const, ['east', 'south'] as const])(

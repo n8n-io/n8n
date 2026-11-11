@@ -1,6 +1,10 @@
 {
   "name": "n8n-monorepo",
+<<<<<<< HEAD
   "version": "3.2.0",
+=======
+  "version": "2.48.0",
+>>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
   "private": true,
   "engines": {
     "node": ">=24.0.0",
@@ -73,6 +77,7 @@
     "sync:skill-links": "node scripts/sync-agent-skill-links.mjs",
     "check:skill-links": "node scripts/sync-agent-skill-links.mjs --check",
     "check:workspace-private-deps": "node scripts/check-workspace-private-deps.mjs",
+    "check:dependencies": "node .github/scripts/check-inflight.mjs",
     "check:cubic-config": "pnpm install-workflow-scripts && node .github/scripts/quality/check-cubic-config.mjs",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "n8n-module-sdk": "node packages/@n8n/module-cli/bin/n8n-module-sdk.mjs",

@@ -2201,6 +2201,28 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
+		it('should emit telemetry metadata that was filled in after the hooks were created', async () => {
+			const telemetryMetadata: NonNullable<IWorkflowExecutionDataProcess['telemetryMetadata']> = {};
+			lifecycleHooks = getLifecycleHooksForSubExecutions(
+				'integrated',
+				executionId,
+				workflowData,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				telemetryMetadata,
+			);
+
+			telemetryMetadata.personalCredentialsCount = 2;
+			await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-post-execute',
+				expect.objectContaining({ telemetryMetadata: { personalCredentialsCount: 2 } }),
+			);
+		});
+
 		describe('when parentExecution is provided', () => {
 			const parentWorkflowId = 'parent-workflow-id';
 			const parentExecutionId = 'parent-execution-id';

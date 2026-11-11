@@ -9,14 +9,13 @@ import {
 	type ClearedSubnodeInput,
 } from '@n8n/workflow-sdk';
 import isEqual from 'lodash/isEqual';
-import { NodeConnectionTypes, type IWorkflowSettings } from 'n8n-workflow';
+import { NodeConnectionTypes, type IWorkflowSettings, type INodeTypes } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
-import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { TagService } from '@/services/tag.service';
 import type { UrlService } from '@n8n/backend-services';
@@ -742,7 +741,7 @@ const touchesGraph = (op: PartialUpdateOperation) => !GRAPH_NEUTRAL_OPERATIONS.h
  */
 function resolveNodeGroupViolations(
 	result: ApplyOperationsSuccess,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 ): {
 	skippedOperations: SkippedOperation[];
 	removedGroups: Array<{ groupName: string; reason: string }>;
@@ -903,7 +902,7 @@ async function autoAssignCredentialsForAddedNodes(
 		aiGatewayService,
 	}: {
 		user: User;
-		nodeTypes: NodeTypes;
+		nodeTypes: INodeTypes;
 		credentialsService: CredentialsService;
 		aiGatewayService: AiGatewayService;
 	},
@@ -943,7 +942,7 @@ async function autoAssignCredentialsForAddedNodes(
 async function collectValidationWarnings(
 	updated: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>,
 	existing: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 ): Promise<Array<ValidationWarning & { preExisting?: boolean }>> {
 	const { ParseValidateHandler, getWarningKey } = await import('@n8n/ai-workflow-builder');
 
@@ -1039,7 +1038,7 @@ export const createUpdateWorkflowTool = (
 	workflowService: WorkflowService,
 	urlService: UrlService,
 	telemetry: Telemetry,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	credentialsService: CredentialsService,
 	sharedWorkflowRepository: SharedWorkflowRepository,
 	collaborationService: CollaborationService,

@@ -71,7 +71,11 @@ import { hasExpressionMapping, isValueExpression } from '@/app/utils/nodeTypesUt
 import { useParameterInputContribution } from '@/features/ndv/parameters/composables/useParameterInputContribution';
 
 import {
+<<<<<<< HEAD
 	APP_MODALS_ELEMENT_ID,
+=======
+	AI_TRANSFORM_NODE_TYPE,
+>>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 	CORE_NODES_CATEGORY,
 	CUSTOM_API_CALL_KEY,
 	DEBOUNCE_TIME,
@@ -116,8 +120,10 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
-import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
+import { ElColorPicker, ElDatePicker, ElSwitch } from 'element-plus';
 import {
+	N8nDialog,
+	N8nDialogBody,
 	N8nIcon,
 	N8nIconPicker,
 	N8nInput,
@@ -1001,6 +1007,10 @@ function closeCodeEditDialog() {
 	});
 }
 
+function onCodeEditDialogOpenUpdate(open: boolean) {
+	if (!open) closeCodeEditDialog();
+}
+
 function closeExpressionEditDialog() {
 	expressionEditDialogVisible.value = false;
 }
@@ -1725,18 +1735,16 @@ onUpdated(async () => {
 					remoteParameterOptionsLoadingIssues !== null
 				"
 			>
-				<ElDialog
-					width="calc(100% - var(--spacing--3xl))"
-					:class="$style.modal"
-					:model-value="codeEditDialogVisible"
-					:append-to="parameterModalContext?.appendTo ?? `#${APP_MODALS_ELEMENT_ID}`"
-					:append-to-body="parameterModalContext?.appendTo === 'body'"
-					:title="`${i18n.baseText('codeEdit.edit')} ${i18n
+				<N8nDialog
+					:open="codeEditDialogVisible"
+					size="cover"
+					:stacked="parameterModalContext !== undefined"
+					:header="`${i18n.baseText('codeEdit.edit')} ${i18n
 						.nodeText(ndvStore?.activeNode?.type)
 						.inputLabelDisplayName(parameter, path)}`"
-					:before-close="closeCodeEditDialog"
-					data-test-id="code-editor-fullscreen"
+					@update:open="onCodeEditDialogOpenUpdate"
 				>
+<<<<<<< HEAD
 					<div class="ignore-key-press-canvas code-edit-dialog">
 						<CodeNodeEditor
 							v-if="editorType === 'codeNodeEditor' && codeEditDialogVisible"
@@ -1784,18 +1792,73 @@ onUpdated(async () => {
 							fill-parent
 							@update:model-value="valueChangedDebounced"
 						/>
+=======
+					<N8nDialogBody>
+						<div
+							class="ignore-key-press-canvas code-edit-dialog"
+							data-test-id="code-editor-fullscreen"
+						>
+							<CodeNodeEditor
+								v-if="editorType === 'codeNodeEditor' && codeEditDialogVisible"
+								:id="parameterId"
+								:mode="codeEditorMode"
+								:model-value="modelValueString"
+								:default-value="parameter.default"
+								:language="editorLanguage"
+								:is-read-only="isReadOnly"
+								fill-parent
+								@update:model-value="valueChangedDebounced"
+							/>
+							<HtmlEditor
+								v-else-if="editorType === 'htmlEditor' && codeEditDialogVisible"
+								:model-value="modelValueString"
+								:is-read-only="isReadOnly"
+								:rows="editorRows"
+								:disable-expression-coloring="!isHtmlNode"
+								:disable-expression-completions="!isHtmlNode"
+								fullscreen
+								@update:model-value="valueChangedDebounced"
+							/>
+							<CssEditor
+								v-else-if="editorType === 'cssEditor' && codeEditDialogVisible"
+								:model-value="modelValueString"
+								:is-read-only="isReadOnly"
+								:rows="editorRows"
+								fullscreen
+								@update:model-value="valueChangedDebounced"
+							/>
+							<SqlEditor
+								v-else-if="editorType === 'sqlEditor' && codeEditDialogVisible"
+								:model-value="modelValueString"
+								:dialect="getTypeOption('sqlDialect')"
+								:is-read-only="isReadOnly"
+								:rows="editorRows"
+								fullscreen
+								@update:model-value="valueChangedDebounced"
+							/>
+							<JsEditor
+								v-else-if="editorType === 'jsEditor' && codeEditDialogVisible"
+								:model-value="modelValueString"
+								:is-read-only="isReadOnly"
+								:rows="editorRows"
+								:posthog-capture="shouldCaptureForPosthog"
+								fill-parent
+								@update:model-value="valueChangedDebounced"
+							/>
+>>>>>>> d48891758396576dc1d835d48a7f7e4be15f2684
 
-						<JsonEditor
-							v-else-if="parameter.type === 'json' && codeEditDialogVisible"
-							:model-value="isCustomAuthJsonField ? credentialJsonEditorValue : modelValueString"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fullscreen
-							fill-parent
-							@update:model-value="valueChangedDebounced"
-						/>
-					</div>
-				</ElDialog>
+							<JsonEditor
+								v-else-if="parameter.type === 'json' && codeEditDialogVisible"
+								:model-value="isCustomAuthJsonField ? credentialJsonEditorValue : modelValueString"
+								:is-read-only="isReadOnly"
+								:rows="editorRows"
+								fullscreen
+								fill-parent
+								@update:model-value="valueChangedDebounced"
+							/>
+						</div>
+					</N8nDialogBody>
+				</N8nDialog>
 
 				<TextEdit
 					:dialog-visible="textEditDialogVisible"
@@ -2463,24 +2526,6 @@ onUpdated(async () => {
 </style>
 
 <style lang="css" module>
-.modal {
-	--dialog--close--spacing--top: var(--spacing--md);
-	display: flex;
-	flex-direction: column;
-	overflow: clip;
-	height: calc(100% - var(--spacing--4xl));
-	margin-bottom: 0;
-
-	:global(.el-dialog__header) {
-		padding-bottom: 0;
-	}
-
-	:global(.el-dialog__body) {
-		height: calc(100% - var(--spacing--3xl));
-		padding: var(--spacing--sm);
-	}
-}
-
 .tipVisible {
 	--input--radius--bottom-left: 0;
 	--input--radius--bottom-right: 0;
