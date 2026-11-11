@@ -300,6 +300,39 @@ function statelessResponses(
 	});
 }
 
+/**
+ * Sends a requested reasoning level to a custom endpoint whatever the model id.
+ * The OpenAI SDK sends reasoning only for model ids it knows as OpenAI reasoning
+ * models and drops it for all others without an error. A custom endpoint names
+ * its own models (for example Claude behind an OpenAI-compatible proxy), so the
+ * SDK cannot tell from the id.
+ */
+function sendRequestedReasoning(
+	model: Parameters<typeof AiSdk.wrapLanguageModel>[0]['model'],
+): ReturnType<typeof AiSdk.wrapLanguageModel> {
+	return loadAi().wrapLanguageModel({
+		model,
+		middleware: {
+			transformParams: async ({ params }) => {
+				const openai = params.providerOptions?.openai;
+				const requested =
+					(params.reasoning !== undefined &&
+						params.reasoning !== 'provider-default' &&
+						params.reasoning !== 'none') ||
+					openai?.reasoningEffort !== undefined;
+				if (!requested || openai?.forceReasoning !== undefined) return params;
+				return {
+					...params,
+					providerOptions: {
+						...params.providerOptions,
+						openai: { ...openai, forceReasoning: true },
+					},
+				};
+			},
+		},
+	});
+}
+
 type OpenAiCompatibleProviderId = 'nvidia';
 
 export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
@@ -454,13 +487,13 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// `apiStyle` is the explicit override and wins over the automatic choice:
 			// it pins the route, so a refusal on it surfaces instead of falling back.
 			if (apiStyle === 'chat') return buildOpenAiCompatibleChat(providerCreds, model, guardedFetch);
-			if (apiStyle === 'responses') return guarded(model);
+			if (apiStyle === 'responses') return sendRequestedReasoning(guarded(model));
 			// Without it, only the endpoint knows whether it is a proxy for real
 			// OpenAI or an OpenAI-COMPATIBLE server, so both adapters share the
 			// transport and the first answer decides.
 			return withChatCompletionsFallback(
 				(headers) => endpointRouteKey(baseURL, providerCreds, headers),
-				statelessResponses(guarded(model)),
+				statelessResponses(sendRequestedReasoning(guarded(model))),
 				buildOpenAiCompatibleChat(providerCreds, model, guardedFetch),
 			);
 		},

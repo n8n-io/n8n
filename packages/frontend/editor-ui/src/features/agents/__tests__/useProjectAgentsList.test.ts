@@ -152,6 +152,7 @@ describe('useProjectAgentsList', () => {
 					gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
 				},
 				hasConfig: true,
+				skillVersions: {},
 			},
 		]);
 	});

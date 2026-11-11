@@ -1,7 +1,7 @@
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { APIRequest, User } from '@n8n/db';
+import { isPerson, type APIRequest, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -52,6 +52,12 @@ function prefix(pathSegment: string) {
 }
 
 const browserId = 'test-browser-id';
+/** Only a person logs in with a session cookie. */
+function asPerson(user: User) {
+	if (!isPerson(user)) throw new Error('Only a person can get a session cookie');
+	return user;
+}
+
 function createAgent(
 	target: express.Application | Server,
 	options?: { auth: boolean; user?: User; noRest?: boolean },
@@ -63,18 +69,15 @@ function createAgent(
 	if (withRestSegment) void agent.use(prefix(REST_PATH_SEGMENT));
 
 	if (options?.auth && options?.user) {
-		const token = Container.get(AuthService).issueJWT(
-			options.user,
-			options.user.mfaEnabled,
-			browserId,
-		);
+		const person = asPerson(options.user);
+		const token = Container.get(AuthService).issueJWT(person, person.mfaEnabled, browserId);
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;
 }
 
 const userDoesNotHaveApiKey = (user: User) => {
-	return !user.apiKeys || !Array.from(user.apiKeys) || user.apiKeys.length === 0;
+	return !isPerson(user) || !user.apiKeys || !Array.from(user.apiKeys) || user.apiKeys.length === 0;
 };
 
 const publicApiAgent = (
@@ -89,7 +92,7 @@ const publicApiAgent = (
 		throw new Error('User does not have an API key');
 	}
 
-	const agentApiKey = apiKey ?? user?.apiKeys[0].apiKey;
+	const agentApiKey = apiKey ?? (user && isPerson(user) ? user.apiKeys[0].apiKey : undefined);
 
 	const agent = request.agent(target);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
@@ -110,7 +113,8 @@ const publicApiAgentWithCookie = (
 		req.set('browser-id', browserId);
 		return await req;
 	});
-	const token = Container.get(AuthService).issueJWT(user, user.mfaEnabled, browserId);
+	const person = asPerson(user);
+	const token = Container.get(AuthService).issueJWT(person, person.mfaEnabled, browserId);
 	agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	return agent;
 };
@@ -280,6 +284,10 @@ export const setupTestServer = ({
 
 					case 'oauth2':
 						await import('@/controllers/oauth/oauth2-credential.controller.js');
+						break;
+
+					case 'oauth-server':
+						await import('@/modules/oauth-server/oauth-server.module.js');
 						break;
 
 					case 'jwks':

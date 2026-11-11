@@ -52,6 +52,7 @@ const runtimeErrors = ref<Record<string, string>>({});
 const errorIsConflict = ref<Record<string, boolean>>({});
 const platformSaveLabel = ref<string | undefined>();
 const platformCanFinish = ref(false);
+const platformCredentialRequired = ref<boolean | undefined>();
 const credentialModalOpen = ref(false);
 
 vi.mock('@n8n/i18n', () => ({
@@ -86,6 +87,7 @@ vi.mock('../channels/registry', async () => {
 				afterSave: mocks.afterSave,
 				keepOpenAfterConnect: mocks.keepOpenAfterConnect,
 				canFinish: platformCanFinish,
+				credentialRequired: platformCredentialRequired,
 				saveLabel: platformSaveLabel,
 				loading,
 				startOwnFlow: () => {
@@ -356,6 +358,7 @@ describe('AgentChannelModal', () => {
 		vi.clearAllMocks();
 		mocks.keepOpenAfterConnect = false;
 		platformCanFinish.value = false;
+		platformCredentialRequired.value = undefined;
 		catalog.value = [exampleIntegration];
 		statuses.value = {};
 		connectedCredentials.value = {};
@@ -775,6 +778,43 @@ describe('AgentChannelModal', () => {
 		// The backend releases the old channel once the swap is durable, so the
 		// modal must not issue a disconnect that could strand it.
 		expect(mocks.disconnect).not.toHaveBeenCalled();
+	});
+
+	describe('a channel that needs no credential', () => {
+		beforeEach(() => {
+			platformCredentialRequired.value = false;
+		});
+
+		it('saves without a credential', async () => {
+			const wrapper = mountModal('example_edit');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="agent-channel-credential-required"]').exists()).toBe(
+				false,
+			);
+			expect(mocks.connect).toHaveBeenCalledWith('example', '', { accessMode: 'all' }, {});
+		});
+
+		it('replaces a saved entry without a credential when a credential is chosen', async () => {
+			statuses.value.example = 'connected';
+			connectedCredentials.value.example = '';
+			const wrapper = mountModal('example_edit');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="select-credential"]').trigger('click');
+			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledWith(
+				'example',
+				'credential-new',
+				{ accessMode: 'all' },
+				{ replaces: { credentialId: '' } },
+			);
+		});
 	});
 
 	describe('action approval', () => {

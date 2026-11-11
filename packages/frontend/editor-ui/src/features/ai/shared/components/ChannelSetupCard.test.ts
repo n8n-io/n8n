@@ -30,11 +30,19 @@ const mocks = vi.hoisted(() => {
 		icon: 'teams',
 		credentialTypes: ['microsoftEntraOAuth2Api'],
 	};
+	const webhookIntegration = {
+		type: 'webhook',
+		label: 'Webhook',
+		icon: 'webhook',
+		credentialTypes: ['httpHeaderAuth', 'jwtAuth'],
+	};
 	return {
 		slackIntegration,
 		linearIntegration,
 		teamsIntegration,
+		webhookIntegration,
 		teamsKeepOpenAfterConnect: false,
+		webhookCredentialRequired: false as boolean | undefined,
 		connectedCredentials: {} as Record<string, string>,
 		ensureLoaded: vi.fn(),
 		reloadCatalog: vi.fn(),
@@ -284,6 +292,22 @@ vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupView.vue', async
 		},
 	};
 });
+
+vi.mock('@/features/agents/channels/webhook/AgentChannelWebhookSetup.vue', () => ({
+	default: {
+		emits: ['connect'],
+		setup(_: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
+			expose({
+				currentSettings: { authentication: 'none' },
+				get credentialRequired() {
+					return mocks.webhookCredentialRequired;
+				},
+			});
+		},
+		template:
+			'<div data-testid="mock-webhook-setup"><button data-testid="mock-webhook-connect" @click="$emit(\'connect\')">Connect</button></div>',
+	},
+}));
 
 vi.mock('@/features/agents/channels/linear/AgentChannelLinearSetup.vue', () => ({
 	default: {
@@ -891,6 +915,39 @@ describe('ChannelSetupCard', () => {
 			await flushPromises();
 
 			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+		});
+	});
+
+	describe('Webhook', () => {
+		beforeEach(() => {
+			const integrations = [mocks.slackIntegration, mocks.webhookIntegration];
+			mocks.setCatalog(integrations);
+			mocks.ensureLoaded.mockResolvedValue(integrations);
+			mocks.reloadCatalog.mockResolvedValue(integrations);
+			mocks.webhookCredentialRequired = false;
+		});
+
+		it('saves the channel without a credential when the view needs none', async () => {
+			const wrapper = mountCard({ integrationType: 'webhook' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="mock-webhook-connect"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledWith('webhook', '', { authentication: 'none' }, {});
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+		});
+
+		it('does not save the channel without a credential when the view does not opt out', async () => {
+			mocks.webhookCredentialRequired = undefined;
+			const wrapper = mountCard({ integrationType: 'webhook' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="mock-webhook-connect"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).not.toHaveBeenCalled();
+			expect(wrapper.emitted('resolve')).toBeUndefined();
 		});
 	});
 

@@ -1,4 +1,4 @@
-import type { AgentDto, AgentListItemDto } from '@n8n/api-types';
+import type { AgentDto, AgentListItemDto, AgentSkillVersionInfo } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -56,8 +56,14 @@ export function mapAgentDto(agent: Agent, state: AgentRunnableState): AgentDto {
 	};
 }
 
-/** List row. `config` is absent so the row is not a full-replace body. */
-export function mapAgentListItem(agent: Agent): AgentListItemDto {
+/**
+ * List row. `config` is absent so the row is not a full-replace body.
+ * The list services attach `skillVersions` to the row (one batched read per
+ * page), so the card can flag skill-only changes without loading the agent.
+ */
+export function mapAgentListItem(
+	agent: Agent & { skillVersions?: Record<string, AgentSkillVersionInfo> },
+): AgentListItemDto {
 	return {
 		id: agent.id,
 		name: agent.name ?? '',
@@ -70,6 +76,7 @@ export function mapAgentListItem(agent: Agent): AgentListItemDto {
 		updatedAt: toIsoTimestamp(agent.updatedAt),
 		personalisation: agent.schema?.personalisation ?? null,
 		hasConfig: isPresent(agent.schema),
+		...(agent.skillVersions === undefined ? {} : { skillVersions: agent.skillVersions }),
 	};
 }
 

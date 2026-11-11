@@ -11,6 +11,7 @@ import {
 import {
 	AgentApprovalSchema,
 	AgentTeamsSettingsSchema,
+	WEBHOOK_INTEGRATION_TYPE,
 	type AgentIntegrationConfig,
 } from './agent-integration.schema';
 import {
@@ -83,6 +84,7 @@ export const AGENT_SESSION_ORIGINS = [
 	'discord',
 	'whatsapp',
 	'teams',
+	'webhook',
 ] as const;
 
 export type AgentSessionStatus = (typeof AGENT_SESSION_STATUSES)[number];
@@ -307,6 +309,9 @@ const agentPublicShape = {
 	activeVersion: agentActiveVersionResponseSchema,
 };
 
+/** The draft, published, and latest version of each attached skill, keyed by skill id. */
+const agentSkillVersionsSchema = z.record(z.custom<AgentSkillVersionInfo>(isPlainObject));
+
 const agentBuilderStateShape = {
 	isRunnable: z.boolean(),
 	hasPublishHistory: z.boolean(),
@@ -314,7 +319,7 @@ const agentBuilderStateShape = {
 	skills: z.record(z.custom<AgentSkill>(isPlainObject)),
 	skillHashes: z.record(z.string()),
 	outdatedSkillIds: z.array(z.string()),
-	skillVersions: z.record(z.custom<AgentSkillVersionInfo>(isPlainObject)),
+	skillVersions: agentSkillVersionsSchema,
 };
 
 /** Fields a later public GET and PUT share. Builder-only state stays off this shape. */
@@ -336,6 +341,11 @@ const agentListItemShape = {
 	personalisation: nullableObjectGuardSchema<AgentPersonalisation>(),
 	/** `false` when the draft has no stored config. The list does not carry `config`. */
 	hasConfig: z.boolean(),
+	/**
+	 * Present when the list attaches skill versions, so a card can flag
+	 * skill-only changes without loading the agent.
+	 */
+	skillVersions: agentSkillVersionsSchema.optional(),
 };
 
 /**
@@ -649,24 +659,31 @@ const agentConnectIntegrationShape = {
 	 * Credential of the same type this channel takes over from. Swapping in one
 	 * request keeps the agent from ever holding two live channels or none.
 	 */
-	replaces: z.object({ credentialId: z.string().min(1) }).optional(),
+	replaces: z.object({ credentialId: z.string() }).optional(),
 	/** Channel actions that need approval before they run. */
 	approval: AgentApprovalSchema.optional(),
 };
 
 /**
+ * Channels whose own config check decides whether the entry holds a
+ * credential: n8n Chat never does, and a webhook does only for some
+ * authentications.
+ */
+const CREDENTIAL_OPTIONAL_TYPES: ReadonlySet<string> = new Set([
+	N8N_CHAT_INTEGRATION_TYPE,
+	WEBHOOK_INTEGRATION_TYPE,
+]);
+
+/**
  * Envelope check for the connect body. The channel itself is validated against
  * the per-platform integration schema, which is where `settings` is checked.
- * n8n Chat is the one channel without a credential, so it takes an empty `credentialId`.
  */
 const agentConnectIntegrationSchema = z
 	.object(agentConnectIntegrationShape)
 	.refine(
-		(value) =>
-			value.type === N8N_CHAT_INTEGRATION_TYPE
-				? value.credentialId === ''
-				: value.credentialId.length > 0,
-		{ message: 'credentialId is required, except for n8n Chat', path: ['credentialId'] },
+		({ type, credentialId, replaces }) =>
+			CREDENTIAL_OPTIONAL_TYPES.has(type) || (credentialId !== '' && replaces?.credentialId !== ''),
+		{ message: 'credentialId is required for this channel', path: ['credentialId'] },
 	);
 
 export class AgentConnectIntegrationDto extends Z.class(agentConnectIntegrationShape) {
@@ -738,6 +755,13 @@ export class UpdateAgentVersionDto extends Z.class(agentVersionMetadataShape) {}
 export class PublishAgentDto extends Z.class({
 	...agentVersionMetadataShape,
 	versionId: z.string().min(1).optional(),
+	/** The draft shown before confirmation. Omit when publishing a saved version. */
+	draft: z
+		.object({
+			versionId: z.string().min(1),
+			skillVersions: z.record(z.string(), z.number().int().positive()),
+		})
+		.optional(),
 }) {}
 
 export class RevertAgentToVersionDto extends Z.class({

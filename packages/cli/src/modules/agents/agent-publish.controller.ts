@@ -55,6 +55,7 @@ export class AgentPublishController {
 			req.headers?.['push-ref'],
 			undefined,
 			payload,
+			payload?.draft,
 		);
 		return await this.agentResponseMapper.toAgentDto(
 			agent,

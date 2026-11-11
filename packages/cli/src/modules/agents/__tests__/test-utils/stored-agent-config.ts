@@ -130,6 +130,8 @@ export function createAgentSkillRefsService(
 			]),
 		),
 	);
+	service.findSkillVersionsForAgents.mockResolvedValue(new Map());
+	service.matchesVersion.mockResolvedValue(true);
 	return service;
 }
 

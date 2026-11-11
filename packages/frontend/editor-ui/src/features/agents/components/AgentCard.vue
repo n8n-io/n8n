@@ -25,6 +25,7 @@ import { useAgentPublish } from '../composables/useAgentPublish';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import type { AgentListItem } from '../agent.types';
 import type { AgentResource } from '../types';
+import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
 
@@ -56,10 +57,7 @@ const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPe
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
 
-// Saving a draft bumps `versionId`, so a mismatch means unpublished edits.
-const hasUnpublishedChanges = computed(
-	() => isPublished.value && props.agent.versionId !== props.agent.activeVersionId,
-);
+const hasUnpublishedChanges = computed(() => hasAgentUnpublishedChanges(props.agent));
 const isUntitled = computed(() => props.agent.name === locale.baseText('agents.new.defaultName'));
 
 const isMcpEnabled = computed(

@@ -2,6 +2,7 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { AgentDefaultModelResolverService } from '../agent-default-model-resolver.service';
@@ -9,17 +10,24 @@ import type { BuilderModelLiveLookupService } from '../builder/builder-model-liv
 
 const user = { id: 'user-1' } as never;
 
-function makeService(credentials: Array<{ id: string; name: string; type: string }> = []) {
+type TestCredential = { id: string; name: string; type: string };
+
+function makeService(credentials: TestCredential[] = [], inaccessibleIds: string[] = []) {
 	const credentialsService = mock<CredentialsService>();
 	const modelLookupService = mock<BuilderModelLiveLookupService>();
 	const aiGatewayService = mock<AiGatewayService>();
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(credentials as never);
+	credentialsPermissionChecker.filterUsableThroughOwnAccess.mockImplementation(async (_user, all) =>
+		all.filter((c) => !inaccessibleIds.includes(c.id)),
+	);
 
 	return {
 		service: new AgentDefaultModelResolverService(
 			credentialsService,
 			modelLookupService,
 			aiGatewayService,
+			credentialsPermissionChecker,
 		),
 		modelLookupService,
 		aiGatewayService,
@@ -32,12 +40,24 @@ describe('AgentDefaultModelResolverService', () => {
 			{ id: 'anthropic-credential', name: 'Anthropic', type: 'anthropicApi' },
 		]);
 		modelLookupService.list.mockResolvedValue([
-			{ name: 'Claude Sonnet 5', value: 'claude-sonnet-5' },
+			{ name: 'Claude Sonnet 5.5', value: 'claude-sonnet-5-5' },
 		]);
 
 		await expect(service.resolve(user, 'project-1')).resolves.toEqual({
-			model: 'anthropic/claude-sonnet-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'anthropic-credential',
+		});
+	});
+
+	it("never picks another user's personal credential as the default", async () => {
+		const own = { id: 'own', name: 'My OpenAI', type: 'openAiApi' };
+		const colleague = { id: 'colleague', name: 'Their Anthropic', type: 'anthropicApi' };
+		const { service, modelLookupService } = makeService([own, colleague], [colleague.id]);
+		modelLookupService.list.mockResolvedValue([{ name: 'GPT-6.1 Terra', value: 'gpt-6.1-terra' }]);
+
+		await expect(service.resolve(user, 'project-1')).resolves.toEqual({
+			model: 'openai/gpt-6.1-terra',
+			credential: 'own',
 		});
 	});
 
@@ -46,11 +66,11 @@ describe('AgentDefaultModelResolverService', () => {
 			{ id: 'anthropic-credential', name: 'Anthropic', type: 'anthropicApi' },
 		]);
 		modelLookupService.list.mockResolvedValue([
-			{ name: 'Claude Sonnet 5', value: 'claude-sonnet-5-20260630' },
+			{ name: 'Claude Sonnet 5.5', value: 'claude-sonnet-5-5-20260928' },
 		]);
 
 		await expect(service.resolve(user, 'project-1')).resolves.toEqual({
-			model: 'anthropic/claude-sonnet-5-20260630',
+			model: 'anthropic/claude-sonnet-5-5-20260928',
 			credential: 'anthropic-credential',
 		});
 	});
@@ -67,10 +87,10 @@ describe('AgentDefaultModelResolverService', () => {
 	it('uses the managed OpenAI fallback only when the gateway allows it', async () => {
 		const { service, modelLookupService, aiGatewayService } = makeService();
 		aiGatewayService.getCredentialTypeForProvider.mockResolvedValue('openAiApi');
-		modelLookupService.list.mockResolvedValue([{ name: 'GPT-5.6 Terra', value: 'gpt-5.6-terra' }]);
+		modelLookupService.list.mockResolvedValue([{ name: 'GPT-6.1 Terra', value: 'gpt-6.1-terra' }]);
 
 		await expect(service.resolve(user, 'project-1')).resolves.toEqual({
-			model: 'openai/gpt-5.6-terra',
+			model: 'openai/gpt-6.1-terra',
 			credential: AI_GATEWAY_MANAGED_TAG,
 		});
 	});
@@ -80,10 +100,10 @@ describe('AgentDefaultModelResolverService', () => {
 			{ id: 'f1', name: 'My Foundry', type: 'azureOpenAiApi' },
 		]);
 		aiGatewayService.getCredentialTypeForProvider.mockResolvedValue('openAiApi');
-		modelLookupService.list.mockResolvedValue([{ name: 'GPT-5.6 Terra', value: 'gpt-5.6-terra' }]);
+		modelLookupService.list.mockResolvedValue([{ name: 'GPT-6.1 Terra', value: 'gpt-6.1-terra' }]);
 
 		await expect(service.resolve(user, 'project-1')).resolves.toEqual({
-			model: 'openai/gpt-5.6-terra',
+			model: 'openai/gpt-6.1-terra',
 			credential: AI_GATEWAY_MANAGED_TAG,
 		});
 		expect(modelLookupService.list).not.toHaveBeenCalledWith(
@@ -110,10 +130,10 @@ describe('AgentDefaultModelResolverService', () => {
 		expect(
 			service.resolveFromVerifiedModelIds('anthropic', 'anthropic-credential', [
 				'claude-opus-4-6',
-				'claude-sonnet-5',
+				'claude-sonnet-5-5',
 			]),
 		).toEqual({
-			model: 'anthropic/claude-sonnet-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'anthropic-credential',
 		});
 	});
@@ -126,10 +146,10 @@ describe('AgentDefaultModelResolverService', () => {
 		expect(
 			service.resolveFromVerifiedModelIds('anthropic', 'anthropic-credential', [
 				'claude-opus-4-6',
-				'claude-sonnet-5-20260630',
+				'claude-sonnet-5-5-20260928',
 			]),
 		).toEqual({
-			model: 'anthropic/claude-sonnet-5-20260630',
+			model: 'anthropic/claude-sonnet-5-5-20260928',
 			credential: 'anthropic-credential',
 		});
 	});
@@ -139,11 +159,11 @@ describe('AgentDefaultModelResolverService', () => {
 
 		expect(
 			service.resolveFromVerifiedModelIds('anthropic', 'anthropic-credential', [
-				'claude-sonnet-5-20260630',
-				'claude-sonnet-5',
+				'claude-sonnet-5-5-20260928',
+				'claude-sonnet-5-5',
 			]),
 		).toEqual({
-			model: 'anthropic/claude-sonnet-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'anthropic-credential',
 		});
 	});

@@ -224,11 +224,7 @@ export type {
 	DependencyCountsBatchResponse,
 } from './schemas/dependency-counts.schema';
 
-export type {
-	ProjectType,
-	ProjectIcon,
-	ProjectRelation,
-} from './schemas/project.schema';
+export type { ProjectType, ProjectIcon, ProjectRelation } from './schemas/project.schema';
 
 export {
 	isSourceControlledFileStatus,
@@ -774,6 +770,17 @@ export type {
 	AssistantThreadTabsState,
 	AssistantThreadTabsResponse,
 } from './schemas/assistant-thread-tabs.schema';
+
+export {
+	assistantAgentTargetSchema,
+	assistantAgentPreviewSessionSchema,
+} from './schemas/assistant-agent-targets.schema';
+export type {
+	AssistantAgentTarget,
+	AssistantAgentPreviewSession,
+	AssistantAgentTargetsState,
+	AssistantAgentTargetsResponse,
+} from './schemas/assistant-agent-targets.schema';
 
 export {
 	instanceAiSetupCredentialSelectionKey,

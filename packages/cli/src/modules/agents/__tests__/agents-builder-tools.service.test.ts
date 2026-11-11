@@ -25,6 +25,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ZodTypeAny } from 'zod';
 
 import type { CredentialTypes } from '@/credential-types';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { ConflictError, LockedError, UserError } from '@n8n/errors';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypesProxy } from '@n8n/backend-services';
@@ -113,6 +114,7 @@ function makeService() {
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
 	const collaborationService = mock<CollaborationService>();
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 
 	const service = new AgentsBuilderToolsService(
 		agentsService as unknown as AgentsService,
@@ -136,11 +138,14 @@ function makeService() {
 		telemetry,
 		collaborationService,
 		createAgentSkillRefsService(),
+		credentialsPermissionChecker,
 	);
 
 	return {
 		service,
 		collaborationService,
+		credentialsPermissionChecker,
+		builderModelLiveLookupService,
 		agentsService: purposeServices,
 		secureRuntime,
 		agentTaskService,
@@ -2029,6 +2034,32 @@ describe('AgentsBuilderToolsService', () => {
 				);
 			});
 		});
+	});
+
+	it('resolves the main model only from credentials the user can use through their own access', async () => {
+		const { service, builderModelLiveLookupService, credentialsPermissionChecker } = makeService();
+		credentialProvider.list.mockResolvedValue([
+			{ id: 'own', name: 'My Anthropic', type: 'anthropicApi' },
+			{ id: 'colleague', name: 'Their Anthropic', type: 'anthropicApi' },
+		]);
+		credentialsPermissionChecker.filterUsableThroughOwnAccess.mockImplementation(
+			async (_user, credentials) => credentials.filter((c) => c.id !== 'colleague'),
+		);
+		builderModelLiveLookupService.list.mockResolvedValue([
+			{ name: 'Claude Sonnet 5', value: 'claude-sonnet-5' },
+		]);
+		const tool = service
+			.getTools(agentId, projectId, credentialProvider, credentialService, user)
+			.json.find((candidate) => candidate.name === BUILDER_TOOLS.RESOLVE_LLM)!;
+
+		const result = await tool.handler!(
+			{ provider: 'anthropic', model: 'claude-sonnet-5' },
+			ctx as never,
+		);
+
+		expect(result).toEqual(
+			expect.objectContaining({ ok: true, credentialId: 'own', credentialName: 'My Anthropic' }),
+		);
 	});
 
 	describe('agent_builder_build_custom_tool tool', () => {

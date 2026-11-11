@@ -1,4 +1,4 @@
-import type { AgentSkill } from '@n8n/api-types';
+import type { AgentSkill, AgentSkillVersionInfo } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -22,7 +22,10 @@ const triageBody: AgentSkill = {
 	instructions: 'Sort tickets by urgency',
 };
 
-function agentFixture(schema: Agent['schema']): Agent {
+function agentFixture(
+	schema: Agent['schema'],
+	skillVersions?: Record<string, AgentSkillVersionInfo>,
+): Agent {
 	return {
 		id: 'agent-1',
 		name: 'Support',
@@ -41,6 +44,7 @@ function agentFixture(schema: Agent['schema']): Agent {
 		publicationRevision: 2,
 		setupCompletedAt: createdAt,
 		skills: { stale: { name: 'Stale' } },
+		...(skillVersions === undefined ? {} : { skillVersions }),
 		activeVersion: schema
 			? {
 					versionId: 'v1',
@@ -145,5 +149,14 @@ describe('AgentResponseMapper', () => {
 		expect(item).not.toHaveProperty('config');
 		expect(item).not.toHaveProperty('schema');
 		expect(mapAgentListItem(agentFixture(null)).hasConfig).toBe(false);
+	});
+
+	it('copies list-attached skill versions onto a list item', () => {
+		const schema = { name: 'Support' };
+		const skillVersions = { triage: { draft: 2, published: 1, latest: 2, pinned: false } };
+		const item = mapAgentListItem(agentFixture(schema as never, skillVersions));
+
+		expect(item.skillVersions).toEqual(skillVersions);
+		expect(mapAgentListItem(agentFixture(schema as never))).not.toHaveProperty('skillVersions');
 	});
 });

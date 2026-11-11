@@ -44,5 +44,6 @@ export function toAgentListItem(agent: Agent | AgentListItem): AgentListItem {
 		updatedAt: agent.updatedAt,
 		personalisation: agent.config?.personalisation ?? null,
 		hasConfig: agent.config !== null,
+		skillVersions: agent.skillVersions,
 	};
 }

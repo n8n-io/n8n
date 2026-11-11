@@ -262,3 +262,6 @@ export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
 ];
+
+/** An agent gets access only through shares to its personal project, never from its global role. */
+export const GLOBAL_AGENT_SCOPES: Scope[] = [];
